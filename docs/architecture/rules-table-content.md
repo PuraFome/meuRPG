@@ -101,7 +101,7 @@ The formulas are Int formulas ([Effects](rules.md#effects)); dice are `NdS`, `Nd
 | `value_per_point` | `grant_action` | What each point spent above `cost` adds to the result. Dice (`1d6`, with the sides of `heal`) add to `heal`; a flat formula adds to `temp_hp`, or to `heal` when there is no `temp_hp`. Needs `cost_max` and a `heal` or `temp_hp`. |
 | `heal` | `grant_action`, `on_event` | Dice of hit points regained, at least one die; `ability` adds that ability's modifier (worked out at `Derive`, so the dice carry it in `Bonus`). |
 | `temp_hp` | `grant_action`, `on_event` | Temporary hit points: a formula. |
-| `event` | `on_event` | `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; required. |
+| `event` | `on_event` | `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; required. `drop_to_zero` answers damage that drops the owner to 0 hit points (a blow, a spell, a trap), never the master's "Ajustar PV" and never damage that kills outright. |
 | `restore` | `on_event` | A resource of the entry (or its class) whose uses the hook gives back, `value` of them (an Int formula, 1 when empty), never more than are spent. |
 | `heal_percent_max` | `on_event` | 1 to 100: that share of the maximum hit points (rounded down, at least 1) regained, instead of `heal`. |
 | `resource` | `on_event` | The resource the hook spends (`cost` uses, 1 when empty): the hook runs only when that many are left. |

@@ -2,11 +2,14 @@ package play
 
 import (
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // The table entries of these tests are invented: a table race whose traits carry a resource and the
@@ -544,4 +547,119 @@ func TestDroppingToZeroRunsTheHookExceptForMassiveDamage(t *testing.T) {
 			t.Errorf("Ragna has %d hit points, want 0", v.GetHitPointsCurrent())
 		}
 	})
+}
+
+// stubbornTable is the table of a "drop_to_zero" hook: Ragna has one use of a once-per-long-rest resource and, dropped to 0 hit
+// points by damage, stands with a quarter of the maximum instead.
+func stubbornTable(t *testing.T) *armed {
+	t.Helper()
+	return fxTable(t, fxTrait("Teimosia da Mesa",
+		fxPool("teimosia", "1", "long_rest"),
+		&rulesv1.TableEffect{Type: "on_event", Event: "drop_to_zero", Resource: "teimosia", HealPercentMax: 25, TextPt: "Teimosia de teste."},
+	))
+}
+
+// trapHits puts a trap damage of amount points on Ragna in the open session, waiting for the master, and applies it.
+func trapHits(t *testing.T, a *armed, amount int32) {
+	t.Helper()
+	session := a.master.liveSession(t, a.campaignID).GetGameSession()
+	d, err := a.h.svc.queries.InsertTrapDamage(t.Context(), playdb.InsertTrapDamageParams{
+		GameSessionID: session.GetId(), TrapPointID: uuid.New().String(), FireID: uuid.New().String(), CharacterID: a.toren.GetId(),
+		DiceCount: 0, DiceSides: 0, DiceBonus: amount, DamageType: "damage-type:piercing", Faces: []int32{}, RollTotal: amount, Amount: amount, CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("InsertTrapDamage() error = %v", err)
+	}
+	if _, err := a.master.play.ApplyTrapDamage(t.Context(), connect.NewRequest(&playv1.ApplyTrapDamageRequest{CampaignId: a.campaignID, TrapDamageId: d.ID, IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("ApplyTrapDamage() error = %v", err)
+	}
+}
+
+// Trap damage is damage: in a combat or outside one, a trap that drops the character to 0 hit points runs its drop_to_zero hook
+// (the character stands with its result and the use is spent); damage that kills outright, or that finds the character already
+// at 0, does not.
+func TestTrapDamageRunsTheDropToZeroHook(t *testing.T) {
+	t.Parallel()
+	for _, inCombat := range []bool{true, false} {
+		name := "outside a combat"
+		if inCombat {
+			name = "in a combat"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := stubbornTable(t)
+			if inCombat {
+				fxFight(t, a)
+			}
+			a.hurt(t, a.toren, 5)
+			trapHits(t, a, 5)
+			v := a.vitals(t, a.toren)
+			if v.GetHitPointsCurrent() != v.GetHitPointsMax()/4 || usedOf(v, "teimosia") != 1 {
+				t.Errorf("after the trap Ragna has %d of %d hit points and %d uses spent; want a quarter of the maximum and 1", v.GetHitPointsCurrent(), v.GetHitPointsMax(), usedOf(v, "teimosia"))
+			}
+		})
+	}
+	t.Run("massive damage kills outright", func(t *testing.T) {
+		t.Parallel()
+		a := stubbornTable(t)
+		a.hurt(t, a.toren, 5)
+		trapHits(t, a, 5+a.vitals(t, a.toren).GetHitPointsMax())
+		if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 0 || usedOf(v, "teimosia") != 0 {
+			t.Errorf("after massive trap damage Ragna has %d hit points and %d uses spent; want 0 and 0", v.GetHitPointsCurrent(), usedOf(v, "teimosia"))
+		}
+	})
+	t.Run("a character already at 0 is not raised by a hook", func(t *testing.T) {
+		t.Parallel()
+		a := stubbornTable(t)
+		fxFight(t, a)
+		a.correct(t, a.toren, hpIs(0))
+		if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, a.id(t, "Ragna")); err != nil {
+			t.Fatalf("set the failed saves: %v", err)
+		}
+		trapHits(t, a, 4)
+		if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 0 || usedOf(v, "teimosia") != 0 {
+			t.Errorf("a dying Ragna has %d hit points and %d uses spent after the trap; want 0 and 0", v.GetHitPointsCurrent(), usedOf(v, "teimosia"))
+		}
+	})
+}
+
+// The master's own hit point adjustment ("Ajustar PV") is a correction, not something that happened in the fiction: it never runs the hook.
+func TestTheMastersAdjustmentToZeroDoesNotRunTheHook(t *testing.T) {
+	t.Parallel()
+	// AdjustCombatantHitPoints refuses a player's character: AdjustCharacterVitals is the only correction there is.
+	t.Run("the vitals", func(t *testing.T) {
+		t.Parallel()
+		a := stubbornTable(t)
+		fxFight(t, a)
+		a.hurt(t, a.toren, 5)
+		a.hurt(t, a.toren, 0)
+		if v := a.vitals(t, a.toren); v.GetHitPointsCurrent() != 0 || usedOf(v, "teimosia") != 0 {
+			t.Errorf("Ragna has %d hit points and %d uses spent after the correction; want 0 and 0", v.GetHitPointsCurrent(), usedOf(v, "teimosia"))
+		}
+	})
+}
+
+// A dead ally is not healed by a table action: the use is refused with TARGET_DEAD and nothing is spent.
+func TestAHealingActionRefusesADeadAlly(t *testing.T) {
+	t.Parallel()
+	a := fxTable(t, fxTrait("Fôlego da Mesa",
+		fxPool(poolKey, "5", "long_rest"),
+		&rulesv1.TableEffect{Type: "grant_action", Economy: "action", Resource: poolKey, Cost: "1", Heal: "1d6", TextPt: "Cura de teste."},
+	))
+	e := fxFight(t, a)
+	a.correct(t, a.bri, hpIs(0))
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, a.id(t, "Brisa")); err != nil {
+		t.Fatalf("set the failed saves: %v", err)
+	}
+	_, err := fxUse(t, a, e, fxActionKey(t, a, e, "Fôlego da Mesa"), func(r *playv1.TakeActionRequest) {
+		fxSpend(0)(r)
+		r.HealTargetCombatantId = a.id(t, "Brisa")
+	})
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+	if got := usedOf(a.vitals(t, a.toren), poolKey); got != 0 {
+		t.Errorf("the refused heal spent %d points", got)
+	}
+	if byLabel(t, a.get(t, a.caio), "Ragna").GetActionUsed() {
+		t.Error("the refused heal spent the action")
+	}
 }

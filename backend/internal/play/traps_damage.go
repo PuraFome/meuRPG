@@ -368,6 +368,9 @@ func (s *Service) landTrapDamageOnVitals(ctx context.Context, tx pgx.Tx, q *play
 		sessionID = session.ID
 	}
 	req, left, carried := trapDamageVitalsRequest(now, amount, ev)
+	if err := s.trapDropHook(ctx, tx, campaignID, characterID, now, amount, ev, req); err != nil {
+		return nil, err
+	}
 	before, vit, err := s.changeVitals(ctx, q, tx, sessionID, campaignID, characterID, req)
 	if err != nil {
 		return nil, err
@@ -387,6 +390,24 @@ func (s *Service) landTrapDamageOnVitals(ctx context.Context, tx pgx.Tx, q *play
 		}
 	}
 	return applied, nil
+}
+
+// trapDropHook runs the "drop_to_zero" hook of the character a trap's damage drops to 0 hit points, as the combat's damage does
+// (dropToZeroHook): the plan replaces the 0 in req, so the character stays up, and the event keeps the hook for its result.
+func (s *Service) trapDropHook(ctx context.Context, tx pgx.Tx, campaignID, characterID string, now *playv1.CharacterVitals, amount int32, ev *actionEvent, req *playv1.AdjustCharacterVitalsRequest) error {
+	if ev.Relentless {
+		return nil
+	}
+	dmg := combat.ApplyDamage(int(now.GetHitPointsCurrent()), int(now.GetHitPointsTemporary()), int(amount))
+	plan, kept, err := s.dropToZeroHook(ctx, tx, campaignID, characterID, now, dmg)
+	if err != nil || !kept {
+		return err
+	}
+	p := plan.request()
+	req.HitPointsCurrent, req.HitPointsTemporary = p.HitPointsCurrent, p.HitPointsTemporary
+	req.ResourcesUsed = append(req.ResourcesUsed, p.ResourcesUsed...)
+	ev.Hook = &plan.ev
+	return nil
 }
 
 // trapDamageVitalsRequest is the change of the vitals a damage makes: on the beast for a druid in a

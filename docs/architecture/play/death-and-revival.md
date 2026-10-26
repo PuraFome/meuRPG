@@ -29,6 +29,7 @@ stateDiagram-v2
   A hook that heals above 0 (its `heal` or `heal_percent_max`) stands the character up through `character_vitals` like a natural 20: the counts start over and the failure is not added, so the hook that comes with the third failure keeps the character alive; the uses it spends are written in the same vitals change.
   A hook the character cannot pay (the resource has no uses left) does nothing and the failure counts.
   The event keeps `hook` (the feature's key, the hit points healed, the uses spent), with the hit points before; the undo puts all of it back.
+  A character already dead (three failures, or confirmed dead) is never raised by a hook: the `death_save_failed` hook runs only on a save that is rolled, and the `drop_to_zero` hook only on a drop from above 0 (see [Attacks and damage](attacks-and-damage.md)); a healing action aimed at a dead ally is refused with `TARGET_DEAD`.
   The owner and the master read it (`DeathSave.hook`, `CombatLogDeathSave.hook`); the others see only the counts and the table's visibility rule.
 - **Damage at 0 HP.** Damage that hits someone at 0 HP (the master's "Aplicar") does not lower the HP: it adds a failure (`combat.DamageWhileDown`), two on a critical.
 - **Stable.** A character that becomes stable has both counts back at zero (`tally` clears the failures and keeps the three successes as the stable marker); damage to a stable character (`failuresWhileDown`) starts the counts over, so it counts one failure.
