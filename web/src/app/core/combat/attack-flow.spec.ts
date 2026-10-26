@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   AttackOutcome,
+  CombatantSide,
   CombatantState,
   PendingDamageSchema,
   PendingDamageStatus,
@@ -9,6 +10,8 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   missMark,
+  defaultTarget,
+  isHostile,
   nearestInReach,
   outcomeWord,
   stageAfterRoll,
@@ -205,5 +208,50 @@ describe('the target an attack starts on', () => {
     const list = [at('far1', 20, { tooFar: true }), at('far2', 25, { tooFar: true })];
     expect(nearestInReach(list)).toBe('far1');
     expect(nearestInReach([])).toBe('');
+  });
+});
+
+describe('the target an attack starts on, by who is hostile (G3)', () => {
+  const at = (id: string, distanceFt: number | undefined, extra: object = {}) =>
+    create(TargetInReachSchema, { combatantId: id, label: id, distanceFt, ...extra });
+  const foes =
+    (...ids: string[]) =>
+    (id: string) =>
+      ids.includes(id);
+
+  it('is the nearest hostile creature in reach, never the ally standing closer', () => {
+    // The armor's own ally at 1,5 m comes first in the list; the party is at 1,5 m too.
+    const list = [at('espada', 5), at('toren', 5), at('brisa', 10)];
+    expect(defaultTarget(list, foes('toren', 'brisa'))).toBe('toren');
+  });
+
+  it('is the nearest hostile out of reach when none of them is in reach', () => {
+    const list = [
+      at('espada', 5),
+      at('toren', 80, { tooFar: true }),
+      at('brisa', 60, { tooFar: true }),
+    ];
+    expect(defaultTarget(list, foes('toren', 'brisa'))).toBe('brisa');
+  });
+
+  it('skips a hostile creature the attack cannot target while another stands in reach', () => {
+    const list = [at('toren', 5, { untargetable: true }), at('brisa', 15), at('espada', 5)];
+    expect(defaultTarget(list, foes('toren', 'brisa'))).toBe('brisa');
+  });
+
+  it('falls back to the nearest of the others only when no hostile creature exists', () => {
+    const list = [at('far', 20, { tooFar: true }), at('near', 5)];
+    expect(defaultTarget(list, foes())).toBe('near');
+    expect(defaultTarget([], foes())).toBe('');
+  });
+});
+
+describe('who is hostile', () => {
+  it('is the other side of the party and the enemies, and nobody else', () => {
+    expect(isHostile(CombatantSide.ENEMY, CombatantSide.PARTY)).toBe(true);
+    expect(isHostile(CombatantSide.PARTY, CombatantSide.ENEMY)).toBe(true);
+    expect(isHostile(CombatantSide.ENEMY, CombatantSide.ENEMY)).toBe(false);
+    expect(isHostile(CombatantSide.PARTY, CombatantSide.PARTY)).toBe(false);
+    expect(isHostile(CombatantSide.UNSPECIFIED, CombatantSide.PARTY)).toBe(false);
   });
 });

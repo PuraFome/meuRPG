@@ -43,7 +43,7 @@ import {
   roundLabel,
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
-import { nearestInReach } from '../../../../core/combat/attack-flow';
+import { defaultTarget, isHostile } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
@@ -140,6 +140,8 @@ export class NpcCard {
 
   protected readonly attackKey = signal('');
   protected readonly targetId = signal('');
+  /** The master chose the target himself: a move of the creature does not take it away. */
+  private pickedByHand = false;
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** The master is typing the d20: the roll takes the whole row. */
@@ -191,6 +193,15 @@ export class NpcCard {
     () =>
       this.options()?.attackTargets.find((t) => t.attackKey === this.attackKey())?.targets ?? [],
   );
+  /** The creatures hostile to the one on turn: the party against the enemies, by the sides of the combat. */
+  private readonly foeIds = computed(() => {
+    const side = this.subject().side;
+    return new Set(
+      this.encounter()
+        .combatants.filter((c) => isHostile(side, c.side))
+        .map((c) => c.id),
+    );
+  });
   protected readonly targetLabel = computed(
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
   );
@@ -273,6 +284,7 @@ export class NpcCard {
       if (id !== turnOf) {
         turnOf = id;
         untracked(() => {
+          this.pickedByHand = false;
           this.last.set(null);
           this.error.set('');
         });
@@ -323,13 +335,24 @@ export class NpcCard {
         this.key = newKey();
       }
     });
+    // The target the attack starts on: the nearest hostile creature in reach, then the nearest out of reach, never an ally while
+    // another creature exists. It follows the creature when it moves (the distances change), until the master picks one.
     effect(() => {
-      const ids = this.targets().map((t) => t.combatantId);
-      if (!ids.includes(this.targetId())) {
-        this.targetId.set(nearestInReach(this.targets()));
-        this.mode.reset();
-        this.key = newKey();
-      }
+      const targets = this.targets();
+      const foes = this.foeIds();
+      untracked(() => {
+        const current = this.targetId();
+        if (this.pickedByHand && targets.some((t) => t.combatantId === current)) {
+          return;
+        }
+        this.pickedByHand = false;
+        const next = defaultTarget(targets, (id) => foes.has(id));
+        if (next !== current) {
+          this.targetId.set(next);
+          this.mode.reset();
+          this.key = newKey();
+        }
+      });
     });
   }
 
@@ -349,6 +372,7 @@ export class NpcCard {
   }
 
   protected pickTarget(id: string): void {
+    this.pickedByHand = true;
     this.targetId.set(id);
     this.mode.reset();
     this.key = newKey();

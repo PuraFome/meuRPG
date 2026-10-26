@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -64,6 +65,15 @@ type applyDamageOut struct {
 	made actionEvent
 	// vitals are the target's, after.
 	vitals *playv1.CharacterVitals
+	// hit is what the target's player is told of the blow, nil while nothing landed.
+	hit *attackHit
+}
+
+// attackHit is the attack damage that landed on a player's character, as its player reads it (AttackHit).
+type attackHit struct {
+	pendingID, actor, typePT string
+	amount                   int32
+	playerUserID             string
 }
 
 // ApplyPendingDamage implements playv1connect.CombatServiceHandler.
@@ -101,6 +111,7 @@ func (s *Service) applyDamageResponse(ctx context.Context, m authz.Membership, r
 		s.publishReturned(ctx, m.CampaignID, d, ev)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, out.vitals)
+		s.publishAttackHit(m.CampaignID, out.hit)
 	})
 	if err != nil {
 		return nil, err
@@ -166,6 +177,7 @@ func (f *applyDamageFlow) run(ctx context.Context) (any, error) {
 	}
 	f.c.characterID = &f.target.CharacterID
 	f.out.made = f.made
+	f.out.hit = f.hitFor()
 	return f.made, nil
 }
 
@@ -537,4 +549,31 @@ func discardHit(ctx context.Context, c *combatTx, p playdb.PendingDamage) ([]str
 		return nil, fmt.Errorf("discard the pending damage: %w", err)
 	}
 	return windows, nil
+}
+
+// hitFor is what the target's player hears of the blow: who hit (nobody by name when the attacker is hidden), how much
+// landed and of what type. The log line of a secret hit is the master's alone, so the sheet reads this instead.
+func (f *applyDamageFlow) hitFor() *attackHit {
+	user := f.now.GetPlayerUserId()
+	if user == "" {
+		return nil // a character with no player hears nothing
+	}
+	hit := &attackHit{pendingID: f.p.ID, amount: f.amount, typePT: damageTypePT[f.p.DamageType], playerUserID: user}
+	if !f.attacker.Hidden {
+		hit.actor = f.attacker.Label
+	}
+	return hit
+}
+
+// publishAttackHit tells the target's player the damage of an attack landed: to that player only.
+func (s *Service) publishAttackHit(campaignID string, hit *attackHit) {
+	if hit == nil {
+		return
+	}
+	s.hub.Publish(campaignID, live.Event{
+		Audience: live.Audience{UserID: hit.playerUserID},
+		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_AttackHit_{
+			AttackHit: &playv1.WatchGameSessionResponse_AttackHit{Id: hit.pendingID, ActorLabel: hit.actor, Amount: hit.amount, DamageTypePt: hit.typePT},
+		}},
+	})
 }

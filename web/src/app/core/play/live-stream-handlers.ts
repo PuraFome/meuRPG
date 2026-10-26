@@ -1,6 +1,7 @@
 import type { FreeRollVm } from '../free-dice/free-roll';
 import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
+import type { AttackHit } from '../combat/own-hit';
 import type { ShownImageVm, VitalsVm } from './live-session.types';
 
 /** What the page hands the live stream: one handler for each kind of message it cares about. */
@@ -70,6 +71,8 @@ export interface LiveStreamHandlers {
   onSessionMessage?(message: SessionMessage): void;
   /** `master_typing` (MR-051): show "O mestre está escrevendo…" for this many seconds; it carries no text. */
   onMasterTyping?(expiresInSeconds: number): void;
+  /** The master applied the damage of an attack to this player's character. */
+  onAttackHit?(hit: AttackHit): void;
   /** `held_rolls_changed`: the questions of the held rolls changed (content-free); read the list again. */
   onHeldRollsChanged?(): void;
   /** `free_roll_rolled` (MR-052): someone rolled at the table (never a secret roll); the log gets it and the dice tumble. */

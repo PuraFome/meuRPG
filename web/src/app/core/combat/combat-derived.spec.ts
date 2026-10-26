@@ -305,4 +305,14 @@ describe('unactedPlayerOnTurn', () => {
   it('does not count a spent reaction', () => {
     expect(unactedPlayerOnTurn(turn({ reactionUsed: true }))).toBe('Toren');
   });
+
+  it('is empty for a character at 0 hit points after the death save: the save is the whole turn (G5)', () => {
+    // The save is typed and no longer due; nothing else is spent, and nothing else can be.
+    expect(unactedPlayerOnTurn(turn({ state: CombatantState.DOWN, deathSaveDue: false }))).toBe('');
+    expect(unactedPlayerOnTurn(turn({ state: CombatantState.STABLE }))).toBe('');
+  });
+
+  it('still asks for a conscious character who has not acted, hurt as they are', () => {
+    expect(unactedPlayerOnTurn(turn({ state: CombatantState.BADLY_HURT }))).toBe('Toren');
+  });
 });

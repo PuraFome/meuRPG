@@ -384,6 +384,17 @@ describe('LiveSessionSourceLive.watch', () => {
     ]);
   });
 
+  it('maps `attack_hit` with who hit, how much and of what type', async () => {
+    expect(
+      await eventsOf({
+        case: 'attackHit',
+        value: { id: 'p1', actorLabel: '', amount: 5, damageTypePt: 'cortante' },
+      }),
+    ).toEqual([
+      { kind: 'attackHit', id: 'p1', actorLabel: '', amount: 5, damageTypePt: 'cortante' },
+    ]);
+  });
+
   it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
     expect(
       await events([

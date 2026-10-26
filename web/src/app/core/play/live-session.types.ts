@@ -192,7 +192,15 @@ export type LiveEventVm =
   /** `session_message_added` (MR-051, RN-36): a line of the conversation this reader may read, with its content. */
   | { readonly kind: 'sessionMessage'; readonly message: SessionMessage }
   /** `master_typing` (MR-051): the master is writing. Carries no text, only how long to show the hint. */
-  | { readonly kind: 'masterTyping'; readonly expiresInSeconds: number };
+  | { readonly kind: 'masterTyping'; readonly expiresInSeconds: number }
+  /** `attack_hit`: the master applied the damage of an attack to this player's character; who hit, how much, of what type. */
+  | {
+      readonly kind: 'attackHit';
+      readonly id: string;
+      readonly actorLabel: string;
+      readonly amount: number;
+      readonly damageTypePt: string;
+    };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

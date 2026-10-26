@@ -89,6 +89,13 @@ const TRANSLATORS: Translators = {
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
   // A line with no body says nothing.
   sessionMessageAdded: (v) => (v.message ? { kind: 'sessionMessage', message: v.message } : null),
+  attackHit: (v) => ({
+    kind: 'attackHit',
+    id: v.id,
+    actorLabel: v.actorLabel,
+    amount: v.amount,
+    damageTypePt: v.damageTypePt,
+  }),
   masterTyping: (v) => ({ kind: 'masterTyping', expiresInSeconds: v.expiresInSeconds }),
 };
 
