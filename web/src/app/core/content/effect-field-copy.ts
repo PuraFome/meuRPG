@@ -63,8 +63,7 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
   state_name:
     'Só letras minúsculas sem acento, números e _ (de 1 a 40). Os outros efeitos da entrada usam este nome em "Só enquanto o estado" e em active("nome").',
-  duration_rounds:
-    'Um número ou uma fórmula, em rodadas (1 minuto são 10). Vazio ou 0: dura até acabar.',
+  duration_rounds: 'Em rodadas (1 minuto são 10). Vazio ou 0: dura até acabar.',
   weapon_name:
     'O nome da arma em português, como na ficha (sem diferença de maiúsculas e acentos).',
   attack_bonus: 'De -5 a 10, somado à jogada de ataque.',
