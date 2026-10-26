@@ -107,9 +107,10 @@ func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.React
 		if use {
 			return connect.NewError(connect.CodeInvalidArgument, errors.New("the missile is thrown back with RollAttack and catch_window_id"))
 		}
-		got.ev = actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Caught: true, Before: t.Damage, After: 0}}
-		got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES, ByMaster: c.master, Used: true}
-		_, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Reduction: t.Reduced, Before: t.Damage, After: 0}, "")
+		byMaster := t.ByMaster || c.master
+		got.ev = actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: byMaster, Caught: true, Before: t.Damage, After: 0}}
+		got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES, ByMaster: byMaster, Used: true}
+		_, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: byMaster, Used: true, Reduction: t.Reduced, Before: t.Damage, After: 0}, "")
 		return err
 	}
 	if !use {
@@ -148,7 +149,7 @@ func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.React
 	c.lastAnswered = reaction.DeflectKind
 	c.characterID = &reactor.CharacterID
 	if throwBack {
-		t.Caught, t.Reduced = true, clamp32(reduction, 0, math.MaxInt32)
+		t.Caught, t.Reduced, t.ByMaster = true, clamp32(reduction, 0, math.MaxInt32), c.master
 		t.Damage = clamp32(left, 0, math.MaxInt32) // what the damage is now: 0, and Reduced what came off
 		body, err := json.Marshal(t)
 		if err != nil {
@@ -350,6 +351,7 @@ func (s *Service) spendRebuke(ctx context.Context, c *combatTx, reactor playdb.C
 // askAggressorSave keeps the window open for the second step: the aggressor is an NPC, so its saving
 // throw is the master's.
 func (s *Service) askAggressorSave(ctx context.Context, c *combatTx, w playdb.ReactionWindow, reactor playdb.Combatant, t windowTrigger, slot *slotRef, got *answered) error {
+	t.ByMaster = c.master
 	body, err := json.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("encode the window's trigger: %w", err)
@@ -409,6 +411,10 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	if err != nil {
 		return fmt.Errorf("open the fire's damage: %w", err)
 	}
+	byMaster := c.master
+	if w.Step == stepSecond { // the master only rolled the aggressor's save: the choice was the reactor's
+		byMaster = t.ByMaster
+	}
 	hit, vit, err := s.landRolled(ctx, c, p, aggressor, fire, share)
 	if err != nil {
 		return err
@@ -416,12 +422,12 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	s.rebukeEvent(c, w, reactor, aggressor, t, sv, hit, got)
-	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Slot: got.ev.Slot, Racial: t.Racial}, ""); err != nil {
+	s.rebukeEvent(c, w, reactor, aggressor, t, sv, hit, byMaster, got)
+	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: byMaster, Used: true, Slot: got.ev.Slot, Racial: t.Racial}, ""); err != nil {
 		return err
 	}
 	got.result = &playv1.ReactionResult{
-		Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: c.master, Used: true,
+		Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: byMaster, Used: true,
 		Result: &playv1.ReactionResult_HellishRebuke{HellishRebuke: &playv1.HellishRebukeResult{
 			Save:   rebukeSaveRoll(sv.face, conv.Int32(sv.bonus), sv.roll, sv.reroll),
 			SaveDc: clamp32(sv.dc, 0, math.MaxInt32), Saved: sv.saved, Damage: hit.Amount, Level: t.CastLevel, Racial: t.Racial,
@@ -472,10 +478,10 @@ func (s *Service) rebukeSave(ctx context.Context, c *combatTx, reactor, aggresso
 }
 
 // rebukeEvent writes the log line of the rebuke: the reactor's, completed with the save and the fire.
-func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, aggressor playdb.Combatant, t windowTrigger, sv rebukeSave, hit damageHit, got *answered) {
+func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, aggressor playdb.Combatant, t windowTrigger, sv rebukeSave, hit damageHit, byMaster bool, got *answered) {
 	re := got.ev.Reaction
 	if re == nil {
-		re = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Racial: t.Racial}
+		re = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: byMaster, Racial: t.Racial}
 	}
 	re.Slot, re.Racial = got.ev.Slot, t.Racial
 	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), conv.Int32(sv.bonus), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
