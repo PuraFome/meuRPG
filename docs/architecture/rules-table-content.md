@@ -9,7 +9,7 @@ For the engine around it see [Rules module](rules.md).
 
 | Piece | What it does |
 | --- | --- |
-| `Overlay` | The revision, the keys switched off, the entries of seven kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
+| `Overlay` | The revision, the keys switched off, the entries of eight kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`, `TableOption`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
 | Keys | Every table key is `<kind>:<name>@mesa`, the name 1 to 60 characters of `[a-z0-9-]`; a feature's key starts `feature:`, `trait:` or `background-feature:`. `With` refuses a key without `@mesa`, of another kind, malformed or already taken (even by another entry's feature). Because the prefix is the SRD's, every place that decides by prefix works for table keys. |
 | Reserved words | `With` refuses (`reserved_key`) a key, of an entry or a feature, with `magical-secrets`, `wild-shape` or `ability-score-improvement` in the name, or ending in `-spellcasting`, because the engine, `play` and the web react to those words in SRD keys. The keys the engine writes carry the kind (`feature:class-<name>-spellcasting@mesa`, `feature:subclass-<name>-spellcasting@mesa`, `feature:class-<name>-ability-score-improvement-<n>@mesa`), so a class and a subclass of the same name never collide. |
 | Copy-on-write | The SRD is a singleton many requests read at once. `With` copies (shallowly) only the maps it changes, adds the entries, rebuilds the indexes and the catalogue, and leaves the values shared. A table subclass of an SRD class enters a copy of the class with the new subclass list; the same for a race's subraces. Two contents made from the same SRD do not see each other, and a `Content` that already has a table layer does not accept another. |
@@ -26,7 +26,7 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 | What | Limit |
 | --- | --- |
-| Entries (of the seven kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
+| Entries (of the eight kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
 | Features | 60 per class and 60 per subclass, counted apart (`MaxTableFeatures`); the features the engine writes do not count |
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
@@ -136,6 +136,18 @@ Checked at its fields: `applies` is one of the two (`.applies`, `bad_value`); an
 `Derive` sets `Derived.UnactedAdvantage` and `Derived.SurprisedCritical` to the key of the feature that gives each.
 Surprise is the master's mark at the start of the combat, which the app already keeps ([Play](play/README.md)); "has not taken a turn" is the combat before it runs, or the first round before the creature's place in the order (`combat.HasNotActed`).
 The advantage is a source of the attack roll ("Name: vantagem neste ataque") and the critical hit is the roll's `critical_on_hit`.
+
+## Table options
+
+`TableOption` (`rules/overlay_option.go`) adds an option to one of the SRD's option sets.
+Its key is `option:<set>:<slug>@mesa` and `Set` is the set the key names: `invocation` (the Eldritch Invocations), `pact_boon`, `metamagic` (the three Metamagic features), `fighting_style` (the fighter's, the additional one, the paladin's and the ranger's), `hunters_prey`, `defensive_tactics`, `multiattack` and `superior_hunters_defense` (`optionSetDefs`; the menu's closed list `option_set_names` carries them with their Portuguese names).
+`With` writes the option as a feature of the clone and appends its key to the `Options` of every SRD feature that offers the set (the offering features are copied first: the SRD's are shared), and to `offeredBy`.
+So the choice engine needs nothing of its own: the picks are dealt in the pool of the set, a set with table options is not bound by the 20 keys of a listed `from` (the pool is computed), the option is a feature once picked (its effects apply while the character owns an offering feature), and the same option cannot be taken twice by name.
+
+Checked at its fields: the key's set is known and equals `set` (`.set`, `bad_value`); `prerequisite.class_level` is a class of the content and a level 1 to 20, both or neither (`.prerequisite.class_level.class_key`, `.level`); `requires_option_keys` are SRD options of a set or table options, at most 10, never the option itself (`.prerequisite.requires_option_keys[i]`); `requires_pact` is a Pact Boon, the SRD's or a table option of `pact_boon` (`.prerequisite.requires_pact`); `requires_spell_key` is a spell of the content (`.prerequisite.requires_spell_key`); the effects are the menu's, but a `choice` is refused (`.effects[i].type`: an option does not ask for another choice).
+Every prerequisite set must hold.
+The pool lists an option that does not qualify with its reason and `Blocked()` (as the invocations' own prerequisites), and a sheet that picks it has the problem `prerequisite`; a spell the character knows is a cantrip, a known or a prepared spell, or one a pick grants.
+An archived or switched-off option is left out of the pool unless the sheet already has it.
 
 ## The class
 

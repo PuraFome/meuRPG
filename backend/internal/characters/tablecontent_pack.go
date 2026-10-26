@@ -211,6 +211,8 @@ func bodyOfEntry(e *rulesv1.TableEntry) (tableBody, rulesv1.TableContentKind) {
 		return b.TableSpell, rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL
 	case *rulesv1.TableEntry_TableFeat:
 		return b.TableFeat, rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT
+	case *rulesv1.TableEntry_TableOption:
+		return b.TableOption, rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }

@@ -139,7 +139,10 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   it('offers what a choice may list, by the kind of choice', () => {
     expect(m.fromOptions('skill').map((o) => o.key)).toEqual(['skill:arcana', 'skill:perception']);
     expect(m.fromOptions('language').map((o) => o.namePt)).toEqual(['Comum', 'Primordial']);
-    expect(m.fromOptions('feature').map((o) => o.namePt)).toEqual(['Estilo de luta']);
+    expect(m.fromOptions('feature').map((o) => o.namePt)).toEqual([
+      'Estilo de luta',
+      'Dádiva do pacto',
+    ]);
     m.classNamePt = (k) => (k === 'class:wizard' ? 'Mago' : k);
     expect(m.fromOptions('spell').map((o) => o.namePt)).toEqual(['Mago', 'class:cleric']);
     expect(m.fromOptions('')).toEqual([]);

@@ -157,6 +157,9 @@ func (cb *choiceBuilder) fillOptions(p *pool, i int, e *optionEntry, poolOf map[
 		earlier = append(earlier, before.choice.Picked...)
 	}
 	for _, key := range e.options {
+		if cb.retired(key) {
+			continue
+		}
 		o := cb.optionOf(e, key)
 		switch {
 		case slices.Contains(earlier, key):
@@ -191,6 +194,9 @@ func (cb *choiceBuilder) optionOf(e *optionEntry, key string) ChoiceOption {
 	if f := c.features[key]; f != nil && isTableKey(key) && f.Parent != "" {
 		// An option of a table's own list: its text is the rule the player reads.
 		o.SummaryPT = strings.Join(f.Desc, " ")
+		if pre, ok := c.optionPrereq[key]; ok {
+			o.Prerequisites = cb.optionPrerequisites(pre)
+		}
 		return o
 	}
 	if c.choices == nil {
@@ -365,4 +371,55 @@ func (cb *choiceBuilder) pactBoon() string {
 // granted by a pick (the Pact of the Tome's).
 func (cb *choiceBuilder) knowsCantrip(key string) bool {
 	return slices.Contains(cb.b.Cantrips, key) || cb.grantedCantrip(key)
+}
+
+// retired says a table option is archived or switched off and the sheet has not picked it: it
+// is not a choice (a sheet that has it keeps it).
+func (cb *choiceBuilder) retired(key string) bool {
+	return (cb.c.archived[key] || cb.c.off[key]) && !slices.Contains(cb.plain, key)
+}
+
+// optionPrerequisites are what a table option asks for, each with whether the sheet meets it
+// now: a level in a class, other options, a Pact Boon and a spell the sheet knows.
+func (cb *choiceBuilder) optionPrerequisites(p TableOptionPrerequisite) []OptionPrerequisite {
+	c := cb.c
+	var out []OptionPrerequisite
+	if p.ClassKey != "" {
+		have := 0
+		for _, oc := range cb.x.classes {
+			if oc.key == p.ClassKey {
+				have = oc.level
+			}
+		}
+		pre := OptionPrerequisite{Kind: PrerequisiteLevel, Key: p.ClassKey, Level: p.ClassLevel, NamePT: c.namePT(p.ClassKey), Met: have >= p.ClassLevel}
+		if !pre.Met {
+			pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", p.ClassLevel, c.namePT(p.ClassKey), have)
+		}
+		out = append(out, pre)
+	}
+	for _, k := range p.RequiresOptions {
+		pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: k, NamePT: optionLabel(c.namePT(k)), Met: slices.Contains(cb.plain, k)}
+		if !pre.Met {
+			pre.ReasonPT = fmt.Sprintf("Exige a opção %s, que você ainda não escolheu.", optionLabel(c.namePT(k)))
+		}
+		out = append(out, pre)
+	}
+	if p.RequiresPact != "" {
+		out = append(out, cb.invocationBoon(p.RequiresPact))
+	}
+	if p.RequiresSpell != "" {
+		spell := p.RequiresSpell
+		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: spell, NamePT: c.namePT(spell), Met: cb.knowsSpell(spell)}
+		if !pre.Met {
+			pre.ReasonPT = fmt.Sprintf("Exige a magia %s, que você ainda não conhece.", c.namePT(spell))
+		}
+		out = append(out, pre)
+	}
+	return out
+}
+
+// knowsSpell says whether the sheet knows a spell: a cantrip, a known or a prepared spell, or
+// one a pick grants.
+func (cb *choiceBuilder) knowsSpell(key string) bool {
+	return cb.knowsCantrip(key) || slices.Contains(cb.b.SpellsKnown, key) || slices.Contains(cb.b.SpellsPrepared, key)
 }

@@ -664,6 +664,13 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Uma concessão só de ritual conjura como ritual.
 - **Dado** o editor de efeitos, **quando** cadastro uma magia concedida, **então** o servidor recusa uma magia que não existe, uma concessão só de ritual numa magia sem a etiqueta de ritual, um recurso que a entrada não define e uma habilidade que não é uma das quatro, cada um no seu campo.
 
+**Opções para os conjuntos de opções do SRD.**
+
+- **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma opção para um dos conjuntos de opções do SRD (uma Invocação Mística, uma opção de Metamagia, um estilo de luta, uma Dádiva do Pacto, uma Presa do Caçador, Táticas Defensivas, Ataque Múltiplo ou Defesa Superior do Caçador) com o texto, os efeitos do menu fechado e o que ela exige (um nível numa classe, outras opções, uma Dádiva do Pacto, uma magia que o personagem conhece), **então** a escolha desse conjunto a oferece, só em "Mirathel", junto das opções do SRD, **e** um conjunto com muitas opções da mesa não é cortado em 20.
+- **Dado** uma opção da mesa, **quando** um personagem não cumpre o que ela exige, **então** a escolha a lista bloqueada com o motivo ("Exige o nível 5 de Bruxo. Você está no 3.", "Exige o Pacto do Tomo"), **e** o servidor recusa uma ficha que a escolhe mesmo assim; **quando** o personagem cumpre, **então** o jogador a escolhe e os efeitos dela (e a ação, se tiver) ficam na ficha.
+- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma opção da mesa, **então** os jogadores não a recebem como oferta e o servidor a recusa como escolha nova; a ficha que já a tem a mantém.
+- **Dado** o editor de opção, **quando** salvo uma opção com um conjunto desconhecido, uma classe, opção, Dádiva do Pacto ou magia que não existe, um nível fora de 1 a 20 ou outra escolha entre os efeitos, **então** o servidor recusa cada um no seu campo, **e** o conjunto de uma opção nunca muda depois de criada.
+
 **Mudar, arquivar e ligar e desligar.**
 
 - **Dado** uma classe da mesa que uma ficha usa, **quando** o mestre muda um dos números dela, **então** a ficha mostra o número novo, as fichas travadas incluídas, **e** o que ficou fora das regras aparece na ficha como um aviso ("A classe mudou") com uma frase por mudança, sem bloquear nenhuma outra edição (RN-23).

@@ -107,6 +107,7 @@ describe('ContentList', () => {
       'Antecedentes1',
       'Magias1',
       'Talentos0',
+      'Opções0',
     ]);
     expect(text(el)).toContain('7 de 1000 entradas · o limite de uma campanha');
     expect(el.querySelector('.menu__item--on')?.getAttribute('aria-current')).toBe('page');
@@ -152,11 +153,12 @@ describe('ContentList', () => {
     expect(text(el)).toContain('Nenhuma entrada com esta busca');
   });
 
-  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, six kinds with 0', async () => {
+  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, seven kinds with 0', async () => {
     const { el } = await setup(Role.MASTER, { entries: [], kind: 'spells' });
     expect(text(el)).toContain('Nada cadastrado ainda.');
     expect(text(el)).toContain('O SRD continua valendo');
     expect(Array.from(el.querySelectorAll('.menu__count')).map((c) => c.textContent)).toEqual([
+      '0',
       '0',
       '0',
       '0',

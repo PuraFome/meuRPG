@@ -32,6 +32,7 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
       backgrounds: 1,
       spells: 1,
       feats: 0,
+      options: 0,
     });
     expect(limitLine(entries)).toBe('7 de 1000 entradas · o limite de uma campanha');
     expect(summaryLine(entries)).toBe('7 entradas, 1 arquivada');

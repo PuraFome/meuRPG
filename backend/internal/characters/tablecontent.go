@@ -52,6 +52,7 @@ var tableKinds = []struct {
 	{"background", rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND},
 	{"spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL},
 	{"feat", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT},
+	{"option", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -102,6 +103,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableSpell{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT:
 		return &rulesv1.TableFeat{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION:
+		return &rulesv1.TableOption{}
 	}
 	return nil
 }
@@ -123,10 +126,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableSpell{TableSpell: v}
 	case *rulesv1.TableFeat:
 		e.Body = &rulesv1.TableEntry_TableFeat{TableFeat: v}
+	case *rulesv1.TableOption:
+		e.Body = &rulesv1.TableEntry_TableOption{TableOption: v}
 	}
 }
 
-// bodyFields are the seven oneof getters of a write request.
+// bodyFields are the eight oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -135,6 +140,7 @@ type bodyFields interface {
 	GetTableBackground() *rulesv1.TableBackground
 	GetTableSpell() *rulesv1.TableSpell
 	GetTableFeat() *rulesv1.TableFeat
+	GetTableOption() *rulesv1.TableOption
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -154,6 +160,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableSpell(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL
 	case r.GetTableFeat() != nil:
 		return r.GetTableFeat(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT
+	case r.GetTableOption() != nil:
+		return r.GetTableOption(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -236,6 +244,9 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableFeat:
 			o.Feats = append(o.Feats, tableFeatOf(te, b))
 			idx["feats"] = append(idx["feats"], e)
+		case *rulesv1.TableOption:
+			o.Options = append(o.Options, tableOptionOf(te, b))
+			idx["options"] = append(idx["options"], e)
 		}
 	}
 	return o, idx
@@ -385,6 +396,18 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 		Prerequisite: rules.FeatPrerequisite{
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
+		},
+	}
+}
+
+// tableOptionOf is the engine's option of a stored one.
+func tableOptionOf(te rules.TableEntry, b *rulesv1.TableOption) rules.TableOption {
+	p := b.GetPrerequisite()
+	return rules.TableOption{
+		TableEntry: te, DescPT: b.GetDescPt(), Set: b.GetSet(), Effects: tableEffectsOf(b.GetEffects()),
+		Prerequisite: rules.TableOptionPrerequisite{
+			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
+			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
 		},
 	}
 }
@@ -583,7 +606,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.
@@ -658,15 +681,20 @@ func uniqueSlug(slug string, taken map[string]bool) string {
 
 // entryKey is the key of a new entry: "<kind>:<slug>@mesa", the slug made from
 // the name and unique among the campaign's keys (archived entries included).
-func entryKey(kind rulesv1.TableContentKind, name string, rows []charactersdb.CampaignContent) string {
+func entryKey(kind rulesv1.TableContentKind, body tableBody, rows []charactersdb.CampaignContent) string {
 	prefix := kindPrefix(kind)
+	// An option's key names its set ("option:<set>:<slug>@mesa"): the slug is unique within the set.
+	scope := prefix + ":"
+	if o, ok := body.(*rulesv1.TableOption); ok {
+		scope += o.GetSet() + ":"
+	}
 	taken := map[string]bool{}
 	for _, r := range rows {
-		if keyKind(r.ContentKey) == prefix {
-			taken[slugOfStoredKey(r.ContentKey)] = true
+		if rest, ok := strings.CutPrefix(r.ContentKey, scope); ok {
+			taken[strings.TrimSuffix(rest, "@mesa")] = true
 		}
 	}
-	return prefix + ":" + uniqueSlug(safeSlug(slugify(name), prefix), taken) + "@mesa"
+	return scope + uniqueSlug(safeSlug(slugify(body.GetNamePt()), prefix), taken) + "@mesa"
 }
 
 func asOverlayError(err error) (*rules.OverlayError, bool) {
@@ -947,6 +975,25 @@ func (v playerView) strip(body tableBody) {
 		b.ClassKeys = v.visible(b.ClassKeys)
 	case *rulesv1.TableFeat:
 		v.stripFeat(b)
+	case *rulesv1.TableOption:
+		v.stripOption(b)
+	}
+}
+
+// stripOption takes the hidden keys out of an option: its effects and what it requires.
+func (v playerView) stripOption(b *rulesv1.TableOption) {
+	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+	if p := b.GetPrerequisite(); p != nil {
+		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
+		if v.hidden(p.GetRequiresPact()) {
+			p.RequiresPact = ""
+		}
+		if v.hidden(p.GetRequiresSpellKey()) {
+			p.RequiresSpellKey = ""
+		}
+		if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
+			p.ClassLevel = nil
+		}
 	}
 }
 

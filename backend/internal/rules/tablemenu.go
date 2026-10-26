@@ -122,6 +122,8 @@ const (
 	ListResistanceConditions = "resistance_conditions"
 	// ListGrantAbilities are the casting abilities of a granted spell.
 	ListGrantAbilities = "granted_spell_abilities"
+	// ListOptionSetNames are the option sets a table option may join (TableOption.set).
+	ListOptionSetNames = "option_set_names"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -443,6 +445,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
+		{Name: ListOptionSetNames, Values: menuOptionSetNames()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 	}
 }
@@ -454,6 +457,15 @@ func (c *content) menuGrantAbilities() []MenuValue {
 		out = append(out, MenuValue{Key: string(a), NamePT: c.menuAbilityName(a)})
 	}
 	return append(out, MenuValue{Key: GrantedAbilityChoice, NamePT: "O jogador escolhe", HintPT: "Uma escolha, feita uma vez ao pegar a entrada: Inteligência, Sabedoria ou Carisma."})
+}
+
+// menuOptionSetNames are the sets a table option may join, with the SRD features that offer them.
+func menuOptionSetNames() []MenuValue {
+	out := make([]MenuValue, len(optionSetDefs))
+	for i, d := range optionSetDefs {
+		out[i] = MenuValue{Key: d.Name, NamePT: d.NamePT, HintPT: d.HintPT}
+	}
+	return out
 }
 
 // menuDamageTypes are the damage types, by Portuguese name.
