@@ -64,7 +64,7 @@ func (s *Service) CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, cha
 			RangeFt: i32(d.SpellRangeFt(det.AttackType, det.Range.Kind, det.Range.DistanceFt)),
 		}
 		for _, c := range o.Slots {
-			cs.Slots = append(cs.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})
+			cs.Slots = append(cs.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free), Total: i32(c.Total)})
 		}
 		for _, g := range o.Grants {
 			cs.Grants = append(cs.Grants, &playv1.CastingGrant{
