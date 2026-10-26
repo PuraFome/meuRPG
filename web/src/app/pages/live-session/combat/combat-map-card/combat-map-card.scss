@@ -349,3 +349,19 @@
   --mat-button-outlined-label-text-color: var(--mr-ink);
   --mat-button-outlined-outline-color: var(--mr-control-line);
 }
+
+// "Mover mesmo assim?": the NPC dragged past its movement (the master decides, for a dash or a push).
+.card__ask {
+  margin-top: var(--mr-space-2);
+}
+
+.card__ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+
+  button {
+    min-height: 44px;
+  }
+}
