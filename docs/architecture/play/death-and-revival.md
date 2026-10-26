@@ -25,6 +25,7 @@ stateDiagram-v2
 
 - **The save.** `RollDeathSave` (the owner, or the master) uses `combat.DeathSave`: 10 or more is a success, less a failure, a natural 1 is two failures, a natural 20 returns with 1 HP through `character_vitals`.
   The d20 is the app's or typed, on each roll (RN-18).
+- **Attacks against someone at 0 HP.** The combatant keeps no `condition:unconscious` for it: `downCharacters` lists the player's characters whose vitals are at 0 and `modeFacts.scene` gives the target that condition for the attack rules, so weapon and spell attacks (the write path `readModeInputs` and the read path of `GetTurnOptions`, `TargetInReach.roll_mode` and `critical_on_hit`) have advantage, and a hit from within 5 ft is critical (`DamageWhileDown`: two failures).
 - **A `death_save_failed` hook.** On each failed roll (a failure or a natural 1, which fires it once, though it counts two failures) `RollDeathSave` runs the first `on_event` hook of the character for `death_save_failed` that it can pay (`deathSaveHook`), **before** the failure is added to the count.
   A hook that heals above 0 (its `heal` or `heal_percent_max`) stands the character up through `character_vitals` like a natural 20: the counts start over and the failure is not added, so the hook that comes with the third failure keeps the character alive; the uses it spends are written in the same vitals change.
   A hook the character cannot pay (the resource has no uses left) does nothing and the failure counts.

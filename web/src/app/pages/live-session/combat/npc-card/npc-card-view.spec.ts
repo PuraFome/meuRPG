@@ -1,5 +1,4 @@
 import { AreaPlacement, AttackOutcome } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { DisabledReasonCode } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import {
@@ -7,7 +6,6 @@ import {
   attackShow,
   coverNoteOf,
   distanceText,
-  modeLinesOf,
   pairHintOf,
   resultOf,
   rollLabelOf,
@@ -120,12 +118,7 @@ describe('npc card view', () => {
     });
   });
 
-  it('words the mode lines, the hint, the label, the cover and the distance', () => {
-    expect(modeLinesOf(RollMode.NORMAL, [])).toEqual([]);
-    expect(modeLinesOf(RollMode.ADVANTAGE, [])).toEqual(['Vantagem neste ataque.']);
-    expect(
-      modeLinesOf(RollMode.ADVANTAGE, [{ kind: 1, textPt: 'Restringido' } as never]),
-    ).toHaveLength(1);
+  it('words the hint, the label, the cover and the distance', () => {
     expect(pairHintOf('lower')).toContain('menor');
     expect(pairHintOf('higher')).toContain('maior');
     expect(rollLabelOf(null)).toBe('');

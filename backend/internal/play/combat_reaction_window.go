@@ -77,6 +77,9 @@ type windowTrigger struct {
 	Trap    string   `json:"trap,omitempty"`
 	// Handed says a concentration's owner left the roll to the master.
 	Handed bool `json:"handed,omitempty"`
+	// ByMaster says the master made the reactor's decision on the first step of an answer that
+	// asks a second one (the master rolls the aggressor's save, which is not the reactor's choice).
+	ByMaster bool `json:"by_master,omitempty"`
 	// Rolling says the reactor's player is using the reaction and rolling its die
 	// (MarkReactionRolling): the master's clock waits longer before it passes the window.
 	Rolling bool `json:"rolling,omitempty"`

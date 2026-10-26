@@ -24,6 +24,7 @@ import {
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { pendingCountText } from '../../../../core/held-rolls/held-text';
+import { unactedPlayerOnTurn } from '../../../../core/combat/combat-derived';
 import { NextTurn } from './next-turn';
 import { TheatrePill } from '../theatre/theatre-pill';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -67,6 +68,10 @@ export class CombatBar {
   readonly actingFor = input('');
   protected readonly nextLabel = computed(() =>
     this.actingFor() ? `Encerrar o turno de ${this.actingFor()}` : 'Próximo turno',
+  );
+  /** The player character on turn who has not acted: passing their turn asks first (never while the master acts for one). */
+  protected readonly idle = computed(() =>
+    this.actingFor() ? '' : unactedPlayerOnTurn(this.encounter()),
   );
   /** The combat is played without a map (RN-25): the pill says it, and the end of the combat leaves no tokens behind. */
   readonly theatre = input(false);

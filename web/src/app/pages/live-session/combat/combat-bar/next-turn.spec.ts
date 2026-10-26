@@ -39,6 +39,47 @@ describe('NextTurn', () => {
     expect(go.textContent?.trim()).toBe('Passar o turno');
   });
 
+  describe('a player character who has not acted', () => {
+    function idle() {
+      const opened = setup(null);
+      opened.fixture.componentRef.setInput('idle', 'Toren');
+      opened.fixture.detectChanges();
+      opened.el.querySelector<HTMLButtonElement>('.next')!.click();
+      opened.fixture.detectChanges();
+      return opened;
+    }
+
+    it('asks in place before passing; "Cancelar" keeps the turn, "Passar a vez" passes it', () => {
+      const { fixture, el, sent } = idle();
+      expect(sent).toEqual([]);
+      expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
+        'Passar a vez de Toren? Ele ainda não agiu.',
+      );
+      const [cancel, pass] = Array.from(
+        el.querySelectorAll<HTMLButtonElement>('.ask__buttons button'),
+      );
+      expect(cancel.textContent?.trim()).toBe('Cancelar');
+      cancel.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+      el.querySelector<HTMLButtonElement>('.next')!.click();
+      fixture.detectChanges();
+      el.querySelectorAll<HTMLButtonElement>('.ask__buttons button')[1].click();
+      expect(sent).toEqual([false]);
+      expect(pass.textContent?.trim()).toBe('Passar a vez');
+    });
+
+    it('closes on Escape', () => {
+      const { fixture, el, sent } = idle();
+      el.querySelector('[role="alertdialog"]')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape' }),
+      );
+      fixture.detectChanges();
+      expect(el.querySelector('[role="alertdialog"]')).toBeNull();
+      expect(sent).toEqual([]);
+    });
+  });
+
   describe('the question about the owed damage', () => {
     function ask() {
       const opened = setup('Falta aplicar 5 de dano');

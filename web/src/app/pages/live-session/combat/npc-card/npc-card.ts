@@ -23,13 +23,11 @@ import {
   type GetTurnOptionsResponse,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { type Attack, type Creature } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { newKey } from '../../../../core/connect/idempotency';
-import { d20Count, orNormal } from '../../../../core/combat/roll-mode';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { ofThe } from '../../../../core/combat/move-plan';
 import { standUpRow } from '../../../../core/combat/stand-up';
@@ -52,7 +50,9 @@ import { Portrait } from '../../../../shared/portrait/portrait';
 import { MultiRoll } from '../multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { MasterSpend } from '../theatre/master-spend';
+import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackChoice } from './attack-choice';
+import { NpcRollMode } from './npc-mode';
 import {
   D20_FIELDS,
   type LastRoll,
@@ -60,7 +60,6 @@ import {
   attackShow,
   coverNoteOf,
   distanceText,
-  modeLinesOf,
   pairHintOf,
   resultOf,
   rollLabelOf,
@@ -99,6 +98,7 @@ import { PendingDamages } from './pending-damages';
     Portrait,
     RageStatus,
     MultiRoll,
+    RollModePicker,
     RollPicker,
     RouterLink,
   ],
@@ -205,7 +205,8 @@ export class NpcCard {
    * when the turn's options are read again, e.g. right after the turn passes).
    */
   protected readonly canRoll = computed(
-    () => !!this.attack() && !!this.targetId() && !this.busy() && !this.rollWhy(),
+    () =>
+      !!this.attack() && !!this.targetId() && !this.busy() && !this.rollWhy() && this.mode.ready(),
   );
   /** The damage of the attack just rolled shows inside its result box. */
   protected readonly inBox = computed(() => {
@@ -254,25 +255,13 @@ export class NpcCard {
       this.attacks(),
     ),
   );
-  /** The mode the server works out for this attack on this target (advantage, disadvantage, normal): the d20 the master
-   * types follow it, one face or two, as the player's own sheet does (SRD 5.1, "Advantage and Disadvantage"). */
-  protected readonly rollMode = computed(() =>
-    orNormal(
-      this.targets().find((t) => t.combatantId === this.targetId())?.rollMode ?? RollMode.NORMAL,
-    ),
+  /** How the d20 rolls: the server's suggestion for the target and the master's choice (the player's dialog has the same). */
+  protected readonly mode = new NpcRollMode(
+    () => this.targets().find((t) => t.combatantId === this.targetId()) ?? null,
   );
-  /** Why the roll has advantage or disadvantage ("Vantagem: atacante não visto"), so the master knows which die counts and why. */
-  protected readonly modeLines = computed(() =>
-    modeLinesOf(
-      this.rollMode(),
-      this.targets().find((t) => t.combatantId === this.targetId())?.sources ?? [],
-    ),
-  );
-  protected readonly faceCount = computed(() => d20Count(this.rollMode()));
+  protected readonly faceCount = this.mode.faceCount;
   protected readonly d20Fields = D20_FIELDS;
-  protected readonly combine = computed(() =>
-    this.rollMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
-  );
+  protected readonly combine = this.mode.combine;
   protected readonly pairHint = computed(() => pairHintOf(this.combine()));
   protected readonly rollLabel = computed(() => rollLabelOf(this.attack()));
 
@@ -338,6 +327,7 @@ export class NpcCard {
       const ids = this.targets().map((t) => t.combatantId);
       if (!ids.includes(this.targetId())) {
         this.targetId.set(nearestInReach(this.targets()));
+        this.mode.reset();
         this.key = newKey();
       }
     });
@@ -345,6 +335,7 @@ export class NpcCard {
 
   protected pickAttack(key: string): void {
     this.attackKey.set(key);
+    this.mode.reset();
     this.key = newKey();
   }
 
@@ -359,6 +350,7 @@ export class NpcCard {
 
   protected pickTarget(id: string): void {
     this.targetId.set(id);
+    this.mode.reset();
     this.key = newKey();
   }
 
@@ -434,6 +426,9 @@ export class NpcCard {
         target,
         die,
         this.key,
+        false,
+        '',
+        this.mode.choice(),
       );
       this.key = newKey();
       this.state().apply(res.encounter);
@@ -442,6 +437,7 @@ export class NpcCard {
       if (show) {
         this.animator.play(show);
       }
+      this.mode.reset();
       this.picker()?.reset();
       this.multi()?.reset();
     } catch (err) {

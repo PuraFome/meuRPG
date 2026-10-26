@@ -492,16 +492,17 @@ func TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters(t *testing.T) {
 	a.mustEndTurn(t, a.bia, e)  // the goblin
 
 	// A hit at 0 is a failure: the master reads it when he applies it, Toren's
-	// player in the log, everybody else not at all.
-	a.h.roller.queue(15, 3)
+	// player in the log, everybody else not at all. Toren is unconscious for the attack: the
+	// goblin next to him rolls with advantage and its hit is a critical hit, two failures.
+	a.h.roller.queue(15, 9, 3)
 	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", inAppRoll)
 	id := hit.GetPendingDamage().GetId()
 	a.mustDamage(t, a.master, e, id, inAppDamage)
 	applied, err := a.settle(t, a.master, e, id, true)
-	if err != nil || applied.GetDeathFailuresAdded() != 1 {
-		t.Fatalf("the hit at 0 = %v, %v; want one failure added", applied, err)
+	if err != nil || applied.GetDeathFailuresAdded() != 2 {
+		t.Fatalf("the hit at 0 = %v, %v; want two failures added", applied, err)
 	}
-	for who, want := range map[string]int32{"master": 1, "Toren's player": 1, "Pensantus's player": 0, "Brisa's player": 0} {
+	for who, want := range map[string]int32{"master": 2, "Toren's player": 2, "Pensantus's player": 0, "Brisa's player": 0} {
 		u := map[string]*user{"master": a.master, "Toren's player": a.caio, "Pensantus's player": a.ana, "Brisa's player": a.bia}[who]
 		var got int32
 		for _, r := range a.log(t, u, e).GetRounds() {
@@ -515,8 +516,8 @@ func TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters(t *testing.T) {
 	}
 	a.mustEndTurn(t, a.master, e) // the Capitão
 
-	// A failure (5), then two successes: stable. The others read the result, not the road.
-	for _, face := range []int{5, 12, 12} {
+	// Two successes more (three in all): stable. The others read the result, not the road.
+	for _, face := range []int{12, 12} {
 		e = a.passTo(t, e, "Toren")
 		a.h.roller.queue(face)
 		if _, err := a.deathSave(t, a.caio, e, "Toren", rollApp); err != nil {
@@ -535,8 +536,8 @@ func TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters(t *testing.T) {
 		lines[0].GetDeathSave().GetOutcome() != playv1.DeathSaveOutcome_DEATH_SAVE_OUTCOME_UNSPECIFIED || lines[0].GetDeathSave().GetSuccesses() != 0 || lines[0].GetDeathSave().GetFailures() != 0 {
 		t.Errorf("Pensantus's player reads the death save lines %v, want one that says stable and nothing else", lines)
 	}
-	if n := len(deathLines(a.log(t, a.caio, e))); n != 4 {
-		t.Errorf("Toren's player reads %d death save lines, want his 4", n)
+	if n := len(deathLines(a.log(t, a.caio, e))); n != 3 {
+		t.Errorf("Toren's player reads %d death save lines, want his 3", n)
 	}
 
 	// The end of the combat and of the session: the highlights and the summary carry no death save to anyone.
