@@ -205,7 +205,63 @@ func checkStream(t *testing.T, w *world, got *answers) {
 			t.Errorf("no stream received a %q event, and the script says nothing about it: make the script cause one, or list it in notTriggered with the reason (what each stream got: %v)", c, cases)
 		}
 	}
+	w.assertAttackHit(t, watchers)
 	w.streamSeen = cases
+}
+
+// assertAttackHit checks the leak rules of the attack_hit the script caused (a hidden NPC's hit on Toren, applied by the master): only
+// the character's player gets it, once, and the hidden attacker's name is not in it.
+func (w *world) assertAttackHit(t *testing.T, watchers map[*person]*streamWatcher) {
+	t.Helper()
+	for p, sw := range watchers {
+		var hits []*playv1.WatchGameSessionResponse_AttackHit
+		for _, ev := range sw.events {
+			if h := ev.GetAttackHit(); h != nil {
+				hits = append(hits, h)
+			}
+		}
+		if p != w.caio {
+			if len(hits) != 0 {
+				t.Errorf("%s's stream got an attack_hit, which is for the character's player alone: %v", p.name, hits)
+			}
+			continue
+		}
+		if len(hits) != 1 || hits[0].GetActorLabel() != "" || hits[0].GetAmount() != attackHitAmount || hits[0].GetId() == "" {
+			t.Errorf("%s's stream got %v, want one attack_hit of %d with no attacker's name (the bandit is hidden)", p.name, hits, attackHitAmount)
+		}
+	}
+}
+
+// attackHitAmount is what the master applies in the script's hit.
+const attackHitAmount = 2
+
+// hiddenBanditHitsToren has the hidden bandit hit Toren and the master apply the damage (ApplyPendingDamage): the damage the
+// target's player is told of as an attack_hit.
+func (w *world) hiddenBanditHitsToren(bandit, toren *playv1.Combatant) {
+	ctx := w.t.Context()
+	m := w.master
+	opts := must(m.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId()})))
+	key := ""
+	for _, a := range opts.GetOptions().GetAttacks() {
+		if a.GetAttack().GetKey() != "" && a.GetAttack().GetSaveDc() == 0 {
+			key = a.GetAttack().GetKey()
+			break
+		}
+	}
+	if key == "" {
+		w.t.Fatal("the bandit has no attack to make")
+	}
+	hit := must(m.combat.RollAttack(ctx, rq(&playv1.RollAttackRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: bandit.GetId(), AttackKey: key, TargetId: toren.GetId(), IdempotencyKey: newKey(),
+		D20Faces: []int32{19, 18}, AsReaction: true, // Toren is down at this point of the script: the roll takes two d20
+	})))
+	if hit.GetPendingDamage().GetId() == "" {
+		w.t.Fatalf("the bandit's attack = %v, want a hit", hit.GetRoll())
+	}
+	must(m.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true}})))
+	must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: proto.Int32(attackHitAmount),
+	})))
 }
 
 // streamScript makes everything the stream announces, short of ending the combat and the
@@ -256,6 +312,9 @@ func (w *world) streamScript() {
 	must(m.combat.AdjustCombatantHitPoints(ctx, rq(&playv1.AdjustCombatantHitPointsRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: boss.GetId(), IdempotencyKey: newKey(), Change: &playv1.AdjustCombatantHitPointsRequest_Damage{Damage: 50}})))
 	must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: boss.GetId(), IdempotencyKey: newKey(), Hidden: true})))
 	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:bandit", Count: 1, Name: w.secrets.marker("mon-stream")})))
+	// the hidden bandit hits Toren and the master applies the damage: Caio's stream alone hears an attack_hit, with no name
+	// for the attacker (it is hidden, and its line in the log is the master's); Ana's stream and the master's hear none
+	w.hiddenBanditHitsToren(bandit, w.combatant(w.toren))
 	for range 3 { // the turn passes: each member gets their own copy of the hint
 		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
 		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))

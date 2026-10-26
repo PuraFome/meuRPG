@@ -1,8 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 
-import { adjustVitalsRPC, combatRPC, getEncounterRPC, passTurnsTo, type Encounter } from './combat-support';
+import { adjustVitalsRPC, combatRPC, getEncounterRPC, passTurnsTo, tableForCombat, type Encounter } from './combat-support';
 import { rollsTable, vex } from './combat-rolls-support';
-import { openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { callRPC, newSignedInContext } from './support';
 
 // The master's combat against a player's character, as the rehearsal of the table found it (G3, G5, G7): the NPC's hit applied from its
 // card reads as the attack on the player's sheet, the NPC's "Alvo" starts on an enemy of its own side, and a downed character's turn
@@ -16,18 +17,62 @@ async function statusLines(p: Page): Promise<string[]> {
   return p.locator('[role=status]').evaluateAll((es) => es.map((e) => (e.textContent ?? '').trim()).filter(Boolean));
 }
 
-/** A table with the armor added to the combat (hidden or not), standing at (9, 10), next to Vex (8, 9) and Goblin 1 (9, 9), and its turn open. */
-async function armorTurn(browser: import('@playwright/test').Browser, name: string, hidden: boolean) {
-  const t = await rollsTable(browser, name, vex, { weaponKeys: ['equipment:rapier'] }, FACES);
-  let enc = await getEncounterRPC(t.m, t.campaignId);
-  enc = await combatRPC(t.m, 'AddMonsters', { campaignId: t.campaignId, encounterId: enc.id, creatureKey: 'monster:animated-armor', count: 1, hidden });
-  const armor = enc.combatants.find((c) => c.label === 'Armadura animada')!;
-  enc = await combatRPC(t.m, 'MoveCombatant', { campaignId: t.campaignId, encounterId: enc.id, combatantId: armor.id, col: 9, row: 10 });
-  enc = await passTurnsTo(t.m, t.campaignId, 'Armadura animada');
-  await openSessionPage(t.p, t.campaignId);
-  await openSessionPage(t.m, t.campaignId);
-  const card = t.m.getByRole('region', { name: /^(Ações da|Vez da) Armadura animada$/ });
-  return { ...t, enc, armorId: armor.id, card };
+/**
+ * A table whose combat has the armor in it from the setup (hidden or not), with an initiative no one else has, standing at (9, 10), next to Vex
+ * (8, 9) and Goblin 1 (9, 9), and its turn open. The armor's own d20 is typed in the setup instead of left to the server's dice: a tie with
+ * another NPC would make a joint turn, whose card is not the armor's alone, and the order of every test would depend on the roll.
+ */
+async function armorTurn(browser: Browser, name: string, hidden: boolean) {
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 390, height: 844 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, { build: vex, sheet: { weaponKeys: ['equipment:rapier'] } });
+  const campaignId = table.campaignId;
+  const started = await callRPC(m, 'meurpg.play.v1.CombatService/StartEncounter', {
+    campaignId,
+    idempotencyKey: crypto.randomUUID(),
+    name: 'Emboscada na estrada',
+    participants: [
+      { characterId: table.captainId, count: 1, hidden: false },
+      { characterId: table.goblinId, count: 2, hidden: false },
+    ],
+    monsters: [{ creatureKey: 'monster:animated-armor', count: 1 }],
+    monstersHidden: hidden,
+  });
+  expect(started.ok(), await started.text()).toBeTruthy();
+  let enc = (await started.json()).encounter as Encounter;
+  // The others roll 4 or more, the armor a 1: nobody shares its total.
+  for (const c of enc.combatants) {
+    enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: c.label === 'Armadura animada' ? 1 : (FACES[c.label as keyof typeof FACES] ?? 1) });
+  }
+  const at: Record<string, [number, number]> = { 'Capitão Goblin': [11, 5], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10], Vex: [8, 9], 'Armadura animada': [9, 10] };
+  for (const [label, [col, row]] of Object.entries(at)) {
+    const id = enc.combatants.find((c) => c.label === label)!.id;
+    enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id, col, row });
+  }
+  enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+  const armorId = enc.combatants.find((c) => c.label === 'Armadura animada')!.id;
+  enc = await passTurnsTo(m, campaignId, 'Armadura animada');
+  await openSessionPage(p, campaignId);
+  await openSessionPage(m, campaignId);
+  const card = m.getByRole('region', { name: /^(Ações da|Vez da) Armadura animada$/ });
+  return {
+    m,
+    p,
+    table,
+    campaignId,
+    enc,
+    armorId,
+    card,
+    done: async () => {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    },
+  };
 }
 
 /** The master types a hit (a d20 of 15 against Vex), rolls the damage and applies it from the NPC card. */
