@@ -1225,6 +1225,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a combat with bestiary monsters, **when** it ends, **then** XP by enemies counts each one's CR, like an NPC's.
 - **Given** a creature of the bestiary, **when** the GM chooses "Criar NPC", **then** the app makes a basic NPC sheet (a minion or a story NPC) with its numbers and up to three attacks, which the GM can rename and edit; the bestiary does not change.
 - **Given** a creature with several attacks per action or with spellcasting, **when** I read the NPC made from it, **then** the description says so in Portuguese ("Ataques por ação: 2 (ataque múltiplo)"; the spell save DC, attack bonus and spells); the basic sheet has no spell engine, so I read the numbers and roll.
+- **Given** a monster with Multiattack on its turn (the animated armor: two slams), **when** I open its attack card, **then** it shows "Ataques múltiplos: 2 × Pancada" and I make the routine's attacks one after another, each with its own target; after the first the action reads "1 de 2" (not "Usada"), the second is offered, and the action counts as used when the routine is done or when I choose "Encerrar os ataques"; a third attack is refused, the log says each attack, and "Desfazer última ação" takes back the last one.
+- **Given** a monster whose Multiattack has several routines or a choice between them, **when** I open its attack card, **then** I pick the routine to make; a creature without Multiattack keeps the card and the turn as before.
 - **Given** I am a player, **when** I look for the bestiary, **then** I find no entry point, and I never learn which creature a monster is, its CR or its rolled HP.
 
 #### In the app
