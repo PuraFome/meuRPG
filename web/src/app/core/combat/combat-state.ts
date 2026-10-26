@@ -33,14 +33,42 @@ export interface ReactionNotice {
   readonly text: string;
 }
 
-/** A combatant as a turn that moves on finds it, until the combat is read again: its part is open, and a player's character at 0
- * hit points that comes on turn owes its death save (SRD 5.1), which the stream's turn event does not carry. */
-function startOfTurn(c: Combatant, current: boolean): Combatant {
+/**
+ * A combatant as a turn that moves on finds it, until the combat is read again: its part is open, a player's character at 0
+ * hit points that comes on turn owes its death save (SRD 5.1), and one that takes the turn starts it with a fresh economy
+ * (Action, bonus action, reaction and movement), which the stream's turn event does not carry.
+ */
+function startOfTurn(c: Combatant, current: boolean, acts: boolean): Combatant {
   const due = c.kind === CombatantKind.PLAYER && c.state === CombatantState.DOWN && current;
-  if (!c.turnPartEnded && c.deathSaveDue === due) {
+  const fresh = acts && !c.defeated;
+  const spent = c.actionUsed || c.bonusActionUsed || c.reactionUsed || c.movementUsedDft > 0;
+  if (!c.turnPartEnded && c.deathSaveDue === due && !(fresh && spent)) {
     return c;
   }
-  return { ...c, turnPartEnded: false, deathSaveDue: due };
+  return {
+    ...c,
+    turnPartEnded: false,
+    deathSaveDue: due,
+    ...(fresh
+      ? {
+          actionUsed: false,
+          bonusActionUsed: false,
+          reactionUsed: false,
+          movementUsedDft: 0,
+          movementLeftDft: c.speedDft,
+          movementLeftFt: c.speedFt,
+        }
+      : {}),
+  };
+}
+
+/** Who starts a fresh economy when the turn passes to `currentId`: it, and the creatures that share its initiative total (a joint turn). */
+function takesTurn(e: Encounter, currentId: string, c: Combatant): boolean {
+  const cur = e.combatants.find((x) => x.id === currentId);
+  return (
+    c.id === currentId ||
+    (!!cur && c.kind === cur.kind && !!c.initiative && c.initiative === cur.initiative)
+  );
 }
 
 /** What `CombatState.beginRead` hands out. */
@@ -217,7 +245,13 @@ export class CombatState {
         : {
             // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
             turnGroupIds: [],
-            combatants: e.combatants.map((c) => startOfTurn(c, c.id === turn.currentCombatantId)),
+            combatants: e.combatants.map((c) =>
+              startOfTurn(
+                c,
+                c.id === turn.currentCombatantId,
+                takesTurn(e, turn.currentCombatantId, c),
+              ),
+            ),
           }),
     });
     return true;
