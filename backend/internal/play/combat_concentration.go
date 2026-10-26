@@ -387,11 +387,18 @@ func (s *Service) rollConcentration(
 		return false, nil
 	}
 	// Bênção and Perdição add their die to the saving throw (SRD 5.1).
-	extra, delta, err := s.rollEffectDice(call.in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), call.msg.GetExtraDieFaces())
+	own, err := s.maneuverDice(ctx, c.tx, c.session.CampaignID, reactor.CharacterID, call.msg.GetManeuverKey(), rules.ManeuverSave, "", "con")
+	if err != nil {
+		return false, err
+	}
+	extra, delta, err := s.rollEffectDice(call.in, append(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), own...), call.msg.GetExtraDieFaces())
 	if err != nil {
 		return false, err
 	}
 	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+		return false, err
+	}
+	if ev.ManeuverSpent, err = s.spendManeuverDice(ctx, c, reactor.CharacterID, extra); err != nil {
 		return false, err
 	}
 	return recordConcentrationRoll(ev, run, gate, save.Bonus, delta, dc, t.Spell), nil

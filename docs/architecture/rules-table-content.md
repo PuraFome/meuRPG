@@ -87,7 +87,7 @@ A goad is a damage die with a rider: the target makes a Wisdom save against `Man
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
-**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play does not spend these dice yet; a number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`).
+**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play spends them on the scene check, the concentration save, the effect save and the initiative ([Rests and resources](play/rests-and-resources.md#table-dice-on-the-characters-own-rolls)); the derived sheet lists them as `DerivedSheet.roll_dice`. A number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`); an always-on die has no effect type.
 
 ### Extra damage
 

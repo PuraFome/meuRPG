@@ -651,6 +651,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a table feature or feat with a cast option ("Opção de magia") that fits a spell (for example, "evocation spells: +2 cold damage, 2 uses per long rest"; "fire or cold damage: swap one for the other"; "one more die per slot level above the spell's own"), **when** its owner opens the cast sheet of a spell it fits, **then** the sheet lists the option; the ones that add by themselves are shown as always on, the others are ticked, and a type swap asks for the new damage type among the types the spell can take.
   The cast rolls the damage with the option: the fixed damage is a line of its own type when the type differs from the spell's, the swap changes the type of the damage, and the extra dice come with the slot chosen.
   An option with a resource spends one use with the slot; with no use left it is off, with the reason, and a cast that ticks it is refused and spends nothing. The master's undo gives the use back.
+- **Given** a table option with a die on the character's own rolls (for example, "a d6 on Perception checks", "a d6 on Constitution saves", "a d4 on the initiative", from a pool of two uses), **when** its owner rolls a scene check, a concentration save, an effect save or the initiative the die fits, **then** the roll offers the die; naming it rolls it with the d20 (in the app, or the face typed with physical dice), adds it to the total, shows it by name and spends one use.
+  A die that does not fit the roll (another skill or ability), one the character does not have, and one with no use left are refused and spend nothing. A number that is always on is a modifier of the feature, not a die.
 
 **Changing, archiving and switching.**
 

@@ -86,6 +86,8 @@ type effectDie struct {
 	Once        bool   `json:"-"`
 	EffectID    string `json:"-"`
 	CharacterID string `json:"-"`
+	// ManeuverResource says the die is a table maneuver's, and the resource a use of which the roll spends.
+	ManeuverResource string `json:"-"`
 }
 
 // effectDiceFor lists the dice the effects on a combatant add to a roll of the kind
@@ -433,11 +435,18 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 		x.run.offer, x.run.lucky, x.run.held = s.outsideOffers(ctx, c.tx, step.Held)
 		return false, true, nil
 	}
-	extra, delta, err := s.rollEffectDice(x.call.in, effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave), x.call.typedExtra)
+	own, err := s.maneuverDice(ctx, c.tx, c.session.CampaignID, x.reactor.CharacterID, x.msg.GetManeuverKey(), rules.ManeuverSave, "", x.ability)
+	if err != nil {
+		return false, false, err
+	}
+	extra, delta, err := s.rollEffectDice(x.call.in, append(effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave), own...), x.call.typedExtra)
 	if err != nil {
 		return false, false, err
 	}
 	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
+		return false, false, err
+	}
+	if x.ev.ManeuverSpent, err = s.spendManeuverDice(ctx, c, x.reactor.CharacterID, extra); err != nil {
 		return false, false, err
 	}
 	saved, err = s.recordEffectSaveRoll(ctx, c, x, step, extra, delta)
