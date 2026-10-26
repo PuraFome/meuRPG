@@ -117,6 +117,22 @@
   color: var(--mr-map-token-surface);
 }
 
+// Small squares: the border and the rings shrink with the token, so what is drawn around it never reaches over the neighbour's
+// square (a ring of 3 px + 2 px around a 8 px token would).
+:host(.tk--map) {
+  border-width: min(2px, calc(var(--tk) * 0.12));
+}
+
+:host(.tk--map.tk--current) {
+  outline-width: min(3px, calc(var(--tk) * 0.16));
+  outline-offset: min(2px, calc(var(--tk) * 0.1));
+}
+
+:host(.tk--map.tk--mine:not(.tk--current)) {
+  outline-width: min(2px, calc(var(--tk) * 0.12));
+  outline-offset: min(1px, calc(var(--tk) * 0.06));
+}
+
 :host(.tk--map.tk--mine:not(.tk--current)) {
   outline-color: var(--mr-map-token-ink);
 }

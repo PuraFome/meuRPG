@@ -285,6 +285,12 @@ export class CombatMap {
     return isCreature(c);
   }
 
+  /** A tap on a creature's button while choosing a target: the square under the pointer decides (see `tappedCreature`). */
+  protected tapPick(event: MouseEvent, id: string): void {
+    const boxes = this.shown().map((c) => ({ id: c.id, ...this.anchor(c), span: this.span(c) }));
+    this.layer.tapped(event, id, boxes, (hit) => this.pickTap.emit(hit));
+  }
+
   /** How many squares a side of the token is drawn on: Large is 2, Huge 3, Gargantuan 4 (the picture only: the server still counts one square). */
   protected span(c: Combatant): number {
     const n = Math.max(
