@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { CdkStepHeader, CdkStepper } from '@angular/cdk/stepper';
+import { takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -84,20 +85,51 @@ export class EditorStepper extends CdkStepper {
   /** Steps (by label) with something left to do that is not an error: the tab carries a "!" and "Escolha pendente". */
   readonly pending = input<readonly string[]>([]);
 
-  /** The steps opened so far: their content is built and kept. The first is open from the start. */
-  private readonly visited = signal<ReadonlySet<number>>(new Set([0]));
+  /** The steps (by label) opened so far: their content is built and kept. A step may appear or go away while the
+   * person is in the editor ("Escolhas" shows once the server has choices to offer), which moves the others'
+   * indexes, so the steps are known by label. */
+  private readonly visited = signal<ReadonlySet<string>>(new Set());
+
+  /** The label of the open step, to keep it open when the list of steps changes under it. */
+  private openLabel = '';
+
+  /** The open step is being put back on its new index: nobody opened a step, so none counts as visited. */
+  private realigning = false;
 
   constructor() {
     super();
     // Every way of opening a step (a tab, "Próximo", a refused save) ends in `selectionChange`.
-    this.selectionChange.subscribe((e) =>
-      this.visited.update((v) => (v.has(e.selectedIndex) ? v : new Set([...v, e.selectedIndex]))),
-    );
+    this.selectionChange.subscribe((e) => {
+      if (this.realigning) {
+        return;
+      }
+      this.openLabel = e.selectedStep.label;
+      this.visited.update(
+        (v) => new Set([...v, e.previouslySelectedStep.label, e.selectedStep.label]),
+      );
+    });
   }
 
-  /** Whether step `index` has its content: it was opened at least once, or it is eager. */
+  override ngAfterContentInit(): void {
+    super.ngAfterContentInit();
+    this.openLabel = this.labelAt(this.selectedIndex);
+    // A step that appears or goes away before the open one moves its index: the same step stays open.
+    this.steps.changes.pipe(takeUntil(this._destroyed)).subscribe(() => {
+      const index = this.steps.toArray().findIndex((step) => step.label === this.openLabel);
+      if (index >= 0 && index !== this.selectedIndex) {
+        this.realigning = true;
+        this.selectedIndex = index;
+        this.realigning = false;
+      }
+    });
+  }
+
+  /** Whether step `index` has its content: it is open, it was opened at least once, or it is eager. */
   protected rendered(index: number): boolean {
-    return this.visited().has(index) || this.eager().includes(this.labelAt(index));
+    const label = this.labelAt(index);
+    return (
+      index === this.selectedIndex || this.visited().has(label) || this.eager().includes(label)
+    );
   }
 
   protected isPending(index: number): boolean {

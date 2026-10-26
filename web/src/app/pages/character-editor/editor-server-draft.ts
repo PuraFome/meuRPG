@@ -63,6 +63,8 @@ export class EditorServerDraft {
   /** The step exists only when the race or a class asks a choice (a human rogue 1 has none). */
   readonly choicesStep = computed(() => this.choiceGroups().length > 0);
   private readonly pending = computed(() => pendingLabels(this.choiceGroups()));
+  /** The open choices that stop a player's sheet: the languages and tools only warn. */
+  private readonly blocking = computed(() => pendingLabels(this.choiceGroups(), false));
   /** The tab carries the "!" while a choice is open. */
   readonly pendingSteps = computed(() =>
     this.choicesStep() && this.pending().length > 0 ? [EDITOR_STEP_LABELS.escolhas] : [],
@@ -79,7 +81,7 @@ export class EditorServerDraft {
       s.status === 'ready' &&
       s.kind === 'player' &&
       !s.catalog.viewerIsMaster &&
-      this.pending().length > 0
+      this.blocking().length > 0
     );
   });
   /** "Falta uma escolha: Estilo de Luta.", the description of the blocked button. */

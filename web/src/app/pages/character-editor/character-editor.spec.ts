@@ -475,6 +475,28 @@ describe('CharacterEditor', () => {
     expect(el.querySelector('input[formcontrolname="armor"]')).toBeNull();
   });
 
+  it('says in the free language and tool fields that the picks of the race and background are in "Escolhas"', async () => {
+    configure({ id: 'camp-1' });
+    const { fixture, el } = await render();
+    fixture.componentInstance['fullForm'].patchValue({ className: 'class:wizard' });
+    fixture.detectChanges();
+    await openStep(fixture, 'Equipamento');
+
+    const hintOf = (control: string) =>
+      el
+        .querySelector(`textarea[formcontrolname="${control}"]`)
+        ?.closest('mat-form-field')
+        ?.querySelector('mat-hint')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim();
+    expect(hintOf('languagesText')).toBe(
+      'Um por linha: os que o mestre acrescenta. Os que a raça e o antecedente deixam escolher ficam no passo "Escolhas".',
+    );
+    expect(hintOf('toolProficienciesText')).toBe(
+      'Uma por linha: as que o mestre acrescenta. As que a raça ou o antecedente deixam escolher ficam no passo "Escolhas".',
+    );
+  });
+
   it("filters cantrips and spells to the chosen class's list", async () => {
     configure({ id: 'camp-1' });
     const { fixture } = await render();

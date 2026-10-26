@@ -42,7 +42,8 @@ test(
 
       await expect(p).toHaveURL(new RegExp(`${sheet}/choices$`));
       await expect(p.getByRole('heading', { level: 1, name: 'Completar escolhas pendentes' })).toBeVisible();
-      await expect(p.getByText(/Escolhas feitas: 0 de \d+/)).toBeVisible();
+      // The two +1 are open; the half-elf's language, which the sheet already names in its own field, counts as made.
+      await expect(p.getByText('Escolhas feitas: 1 de 3')).toBeVisible();
       // Nothing picked yet: the button is off, focusable, and the sentence beside it says why.
       const save = p.getByRole('button', { name: 'Salvar escolhas' });
       await expect(save).toHaveAttribute('aria-disabled', 'true');
