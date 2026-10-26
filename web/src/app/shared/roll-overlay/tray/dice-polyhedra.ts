@@ -11,6 +11,9 @@ import type { Corner, Edge, Face, Kind, Layout, Mat3, Poly, Vec3 } from './dice-
 const PHI = (1 + Math.sqrt(5)) / 2;
 export const KINDS: readonly Kind[] = [4, 6, 8, 10, 12, 20];
 
+/** The radius of a die's silhouette at rest, in die radii: how far it reaches from its centre. */
+export const restRadius = (kind: Kind): number => LOOK[kind].rest;
+
 /*
  * Silhouette radius at rest, in die radii (R): sets each solid's size, so the dice look alike in size at rest;
  * and how big a face's number is, against the face's inradius.
