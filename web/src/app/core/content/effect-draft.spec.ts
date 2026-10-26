@@ -393,12 +393,11 @@ describe('spell_modifier: the change decides the fields', () => {
     });
   });
 
-  it('asks only for what the chosen change needs', () => {
-    expect(missingRequired(base, m)).toEqual(['spell_change']);
-    expect(missingRequired({ ...base, spellChange: 'damage_type_swap' }, m)).toEqual([]);
-    expect(missingRequired({ ...base, spellChange: 'extra_dice_per_slot_over' }, m)).toEqual([
-      'count',
+  it('asks for the spells and the change, and for nothing else', () => {
+    expect(missingRequired(emptyEffect('spell_modifier'), m)).toEqual([
+      'applies_to',
+      'spell_change',
     ]);
-    expect(missingRequired({ ...base, spellChange: 'bonus_damage' }, m)).toEqual(['value']);
+    expect(missingRequired({ ...base, spellChange: 'bonus_damage' }, m)).toEqual([]);
   });
 });

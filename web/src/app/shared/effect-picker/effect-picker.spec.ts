@@ -218,6 +218,7 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(field('value')).toBeNull();
     setup({ ...base, spellChange: 'bonus_damage' }, { menu: m });
     expect(field('value')).not.toBeNull();
+    expect(field('damage_type')).not.toBeNull();
     expect(text(el)).toContain('Dano fixo somado');
     expect(field('count')).toBeNull();
     setup({ ...base, spellChange: 'extra_dice_per_slot_over' }, { menu: m });
