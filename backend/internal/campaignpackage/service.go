@@ -208,9 +208,6 @@ func (s *Service) Wait(ctx context.Context) {
 // Cancel stops every export running in this process (the server is going
 // down); they are marked interrupted by the next read.
 func (s *Service) Cancel() {
-	if s.ownTasks != nil {
-		s.ownTasks.Cancel()
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, cancel := range s.running {
