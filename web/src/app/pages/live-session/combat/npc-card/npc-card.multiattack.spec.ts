@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -100,6 +101,7 @@ async function open(
   });
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([]),
       { provide: CombatClient, useValue: fakeCombatClient({}) },
       { provide: CreaturesClient, useValue: { statBlock } },
     ],
@@ -203,10 +205,10 @@ describe("NpcCard: the creature's Multiattack", () => {
     );
     const pick = fixture.componentInstance as unknown as { pickRoutine(i: number): void };
     expect(root.querySelector('[data-routine-select]')).not.toBeNull();
-    expect(text(root)).toContain('2 × Espada longa');
-    expect(text(root)).toContain('1 × Arco longo');
+    expect(text(root)).toContain('2 × Espada longa'); // the first routine, selected
     pick.pickRoutine(1);
     await settle(fixture);
+    expect(text(root)).toContain('1 × Arco longo');
     // One attack was made and the bow's routine has one: it is done.
     expect(text(root)).toContain('Ação Usada');
   });
