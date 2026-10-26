@@ -14,7 +14,7 @@ Otherwise it is `failed_precondition` with `EncounterBlocked` `NOT_ENDED`; a com
   A player reads only their own character's row (zeros included, RN-20), and the categories are worked out without the characters the master gave back to the reserve, which are invisible to players in the combats they fought before too (RN-10): not in a category, not in a row, not even for their former player.
   `dropReserved` is the one filter, shared with the session summary.
 - **What counts**, per player character who fought:
-  - damage dealt to NPCs, only the HP that really left (temporary too; damage beyond 0 does not count);
+  - damage dealt to NPCs, only the HP that really left (temporary too; damage beyond 0 does not count). It counts for the creature that dealt it, whoever's turn it is: a blow on its own turn, an opportunity attack, the fire of a Hellish Rebuke (the reactor's, from the HP the answer's event kept), a zone's damage (the zone's owner) and a lasting effect's damage when its time comes (the caster, named in the effect's event; an older event without the caster counts for nobody, and an older Hellish Rebuke answer without the HP counts nothing);
   - healing done, what really came back, to whoever;
   - damage taken, from whoever (a blow at 0 HP is a death-save failure, not HP; a druid in Wild Shape takes it on the beast's pool, and what carries over when the form drops counts too, without counting twice: `hitPool`);
   - killing blows, NPCs their blow took to 0 HP;
