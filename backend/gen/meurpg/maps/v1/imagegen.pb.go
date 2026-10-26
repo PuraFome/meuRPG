@@ -304,7 +304,7 @@ const (
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_REFUSED ImageGenerationFailure = 2
 	// The service timed out, failed or could not be reached, also after the retry.
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_UNAVAILABLE ImageGenerationFailure = 3
-	// A picture came but the gallery had no room for it (the slot stays spent).
+	// A picture came but the gallery had no room for it (the slot stays spent: the gallery is the master's to clear).
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_GALLERY_FULL ImageGenerationFailure = 4
 	// An image the request needed is gone (deleted meanwhile).
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_IMAGE_MISSING ImageGenerationFailure = 5
@@ -314,6 +314,11 @@ const (
 	// operator's problem). The slot is back. "O serviço de imagens não está
 	// disponível."
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_SERVICE_OFF ImageGenerationFailure = 7
+	// The service's picture came but the server could not keep it (the file
+	// store or the database failed). The picture is lost and the slot is back:
+	// "A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não
+	// conta no seu limite."
+	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_STORAGE_FAILED ImageGenerationFailure = 8
 )
 
 // Enum value maps for ImageGenerationFailure.
@@ -327,16 +332,18 @@ var (
 		5: "IMAGE_GENERATION_FAILURE_IMAGE_MISSING",
 		6: "IMAGE_GENERATION_FAILURE_TIMEOUT",
 		7: "IMAGE_GENERATION_FAILURE_SERVICE_OFF",
+		8: "IMAGE_GENERATION_FAILURE_STORAGE_FAILED",
 	}
 	ImageGenerationFailure_value = map[string]int32{
-		"IMAGE_GENERATION_FAILURE_UNSPECIFIED":   0,
-		"IMAGE_GENERATION_FAILURE_NO_IMAGE":      1,
-		"IMAGE_GENERATION_FAILURE_REFUSED":       2,
-		"IMAGE_GENERATION_FAILURE_UNAVAILABLE":   3,
-		"IMAGE_GENERATION_FAILURE_GALLERY_FULL":  4,
-		"IMAGE_GENERATION_FAILURE_IMAGE_MISSING": 5,
-		"IMAGE_GENERATION_FAILURE_TIMEOUT":       6,
-		"IMAGE_GENERATION_FAILURE_SERVICE_OFF":   7,
+		"IMAGE_GENERATION_FAILURE_UNSPECIFIED":    0,
+		"IMAGE_GENERATION_FAILURE_NO_IMAGE":       1,
+		"IMAGE_GENERATION_FAILURE_REFUSED":        2,
+		"IMAGE_GENERATION_FAILURE_UNAVAILABLE":    3,
+		"IMAGE_GENERATION_FAILURE_GALLERY_FULL":   4,
+		"IMAGE_GENERATION_FAILURE_IMAGE_MISSING":  5,
+		"IMAGE_GENERATION_FAILURE_TIMEOUT":        6,
+		"IMAGE_GENERATION_FAILURE_SERVICE_OFF":    7,
+		"IMAGE_GENERATION_FAILURE_STORAGE_FAILED": 8,
 	}
 )
 
@@ -2424,7 +2431,7 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x1bIMAGE_GENERATION_STATE_DONE\x10\x02\x12\"\n" +
 	"\x1eIMAGE_GENERATION_STATE_REFUSED\x10\x03\x12!\n" +
 	"\x1dIMAGE_GENERATION_STATE_FAILED\x10\x04\x12#\n" +
-	"\x1fIMAGE_GENERATION_STATE_CANCELED\x10\x05*\xe0\x02\n" +
+	"\x1fIMAGE_GENERATION_STATE_CANCELED\x10\x05*\x8d\x03\n" +
 	"\x16ImageGenerationFailure\x12(\n" +
 	"$IMAGE_GENERATION_FAILURE_UNSPECIFIED\x10\x00\x12%\n" +
 	"!IMAGE_GENERATION_FAILURE_NO_IMAGE\x10\x01\x12$\n" +
@@ -2433,7 +2440,8 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"%IMAGE_GENERATION_FAILURE_GALLERY_FULL\x10\x04\x12*\n" +
 	"&IMAGE_GENERATION_FAILURE_IMAGE_MISSING\x10\x05\x12$\n" +
 	" IMAGE_GENERATION_FAILURE_TIMEOUT\x10\x06\x12(\n" +
-	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a*\xa5\x04\n" +
+	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a\x12+\n" +
+	"'IMAGE_GENERATION_FAILURE_STORAGE_FAILED\x10\b*\xa5\x04\n" +
 	"\x1cImageGenerationBlockedReason\x12/\n" +
 	"+IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#IMAGE_GENERATION_BLOCKED_REASON_OFF\x10\x01\x121\n" +

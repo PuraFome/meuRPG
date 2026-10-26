@@ -205,6 +205,21 @@ describe('MapView', () => {
     expect(moves).toEqual([{ kind: 'token', id: 't1', xBp: 4000, yBp: 3950 }]);
   });
 
+  it("lets a player drag only their own token where the master allows it, and never another's (B2)", () => {
+    setup({ isMaster: false, mode: 'view', onlyToken: 't1' });
+    const own = item('token:t1');
+    own.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    own.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    expect(moves.map((m) => [m.id, m.xBp])).toEqual([['t1', 4050]]);
+  });
+
+  it('keeps every token still for a player when the master has not allowed it', () => {
+    setup({ isMaster: false, mode: 'view' });
+    // Not even a control to press: a token is a picture for a player until the switch is on.
+    expect(item('token:t1')).toBeNull();
+    expect(moves).toEqual([]);
+  });
+
   it('starts a second move from the first one before the new tokens arrive from the parent', () => {
     setup({ isMaster: true, mode: 'tokens' });
     const token = item('token:t1');

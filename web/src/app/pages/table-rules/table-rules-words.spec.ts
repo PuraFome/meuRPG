@@ -18,6 +18,7 @@ describe('the words of the table rules', () => {
     featsAllowed: true,
     enemyReactions: 1,
     showSaveDc: false,
+    pickSwapAllowed: false,
     houseRules: [],
   } as RulesDraft;
 

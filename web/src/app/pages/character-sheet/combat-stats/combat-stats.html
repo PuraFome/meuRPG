@@ -18,6 +18,14 @@
   }
   <div class="box box--speed">
     <dt class="stat__label">Deslocamento</dt>
+    <!-- The box stacks its children in reverse: this one reads under the walking speed. -->
+    @if (extras().length > 0) {
+      <dd class="speed__extras">
+        @for (line of extras(); track line) {
+          <span class="speed__extra">{{ line }}</span>
+        }
+      </dd>
+    }
     <!-- One run of text, not flex items: a wrapped line must never begin with the dot. -->
     <dd class="box__value box__value--speed">{{ speed().meters }}<span class="speed__rest">&nbsp;· {{ speed().rest }}</span></dd>
   </div>

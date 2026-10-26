@@ -4107,6 +4107,12 @@ message CastSpellRequest {
   // caster back. It is `invalid_argument` for any other spell, and in a combat
   // without a map.
   SpellOrigin destination = 32;
+  // The trait, feat or feature whose granted_spell effect casts the spell (the
+  // `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
+  // grant's resource unless it is at will, the spell is cast at its own level and the spell
+  // attack and the save DC are the grant's. With a `slot` it casts through the slot instead
+  // (when the grant allows it). Empty for a spell of the character's classes.
+  string granted_by = 33;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -4193,6 +4199,8 @@ message PreviewSpellAreaRequest {
     SpellOrigin origin = 6;
     SpellDirection direction = 7;
   }
+  // As CastSpellRequest.granted_by: the grant the spell would be cast through ("" for a spell of the classes).
+  string granted_by = 8;
 }
 
 // PreviewSpellAreaResponse is who an area reaches.

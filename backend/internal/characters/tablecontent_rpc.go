@@ -399,7 +399,7 @@ func (c *createCall) run(ctx context.Context, tx pgx.Tx) error {
 	if err != nil {
 		return err
 	}
-	key := entryKey(c.kind, c.body.GetNamePt(), rows)
+	key := entryKey(c.kind, c.body, rows)
 	// A name another entry has is one more violation of this entry, listed with the ones the rules find (not instead of them).
 	lead := duplicateLead(entries, c.kind, key, c.body.GetNamePt())
 	st, err := prepare(key, c.kind, c.body, nil, lead...)
@@ -676,10 +676,14 @@ func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv
 			}
 		}
 		return nil
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE:
+		from, to, field = parentKeys(old, next, (*rulesv1.TableClassFeature).GetClassKey, "table_class_feature.class_key")
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION:
+		from, to, field = parentKeys(old, next, (*rulesv1.TableOption).GetSet, "table_option.set")
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS:
-		from, to, field = old.(*rulesv1.TableSubclass).GetClassKey(), next.(*rulesv1.TableSubclass).GetClassKey(), "table_subclass.class_key"
+		from, to, field = parentKeys(old, next, (*rulesv1.TableSubclass).GetClassKey, "table_subclass.class_key")
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBRACE:
-		from, to, field = old.(*rulesv1.TableSubrace).GetRaceKey(), next.(*rulesv1.TableSubrace).GetRaceKey(), "table_subrace.race_key"
+		from, to, field = parentKeys(old, next, (*rulesv1.TableSubrace).GetRaceKey, "table_subrace.race_key")
 	default:
 		return nil
 	}
@@ -687,6 +691,17 @@ func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv
 		return nil
 	}
 	return &rulesv1.TableContentViolation{Field: field, Reason: reasonImmutable, Message: "the parent of an entry never changes"}
+}
+
+// parentKeys reads the parent of the old and the new body with get. A body that is not a T
+// has no parent to compare, so both come back empty and the edit changes nothing.
+func parentKeys[T tableBody](old, next tableBody, get func(T) string, field string) (from, to, name string) {
+	o, okOld := old.(T)
+	n, okNext := next.(T)
+	if !okOld || !okNext {
+		return "", "", field
+	}
+	return get(o), get(n), field
 }
 
 // affectedSheet is a character that uses a changed entry and has issues now.

@@ -303,6 +303,8 @@ enum CastingBlockedReason {
   // The caster wears armor or a shield it is not proficient with, and cannot cast spells
   // (SRD 5.1, "Armor").
   CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 10;
+  // granted_by: the grant is not at will and has no use left.
+  CASTING_BLOCKED_REASON_NO_USES = 11;
 }
 
 // CastingBlocked is the detail of CastingService's `failed_precondition`.
@@ -361,6 +363,30 @@ message CastingSpell {
   // Whether it brings creatures: cast it with `summon` (CharacterService.GetSummonOptions
   // has the choices).
   bool summons = 18;
+  // The granted_spell effects that give the spell, each one a way to cast it with no slot
+  // (CastSpellOutsideCombatRequest.granted_by = source_key). The spell is listed once, even
+  // when the character's class has it too.
+  repeated CastingGrant grants = 22;
+}
+
+// CastingGrant is a granted_spell effect that gives a spell the character casts outside a combat.
+message CastingGrant {
+  // The trait, feat or feature that grants it, and its name.
+  string source_key = 1;
+  string source_name_pt = 2;
+  bool at_will = 3;
+  // The resource a cast spends one of, and the uses left; empty and 0 for an at-will grant.
+  string resource = 4;
+  int32 uses_left = 5;
+  // A spell slot casts it too, and: it casts only as a ritual.
+  bool also_with_slot = 6;
+  bool ritual_only = 7;
+  // Whether a cast works now: it is at will, or a use is left.
+  bool ready = 8;
+  // The casting ability of the grant and the numbers it gives.
+  string ability = 9;
+  int32 attack_bonus = 10;
+  int32 save_dc = 11;
 }
 
 // CastingEffectKind is what a spell does that the server applies, from the spell alone.
@@ -458,6 +484,13 @@ message CastSpellOutsideCombatRequest {
   // Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
   // "wis" or "cha"). Required for that spell, ignored by every other.
   string ability_key = 11;
+  // The trait, feat or feature whose granted_spell effect casts the spell (the
+  // `source_key` of the sheet's granted spell): the cast takes no slot, spends a use of
+  // the grant's resource unless it is at will, and the spell attack and the save DC are
+  // the grant's. With a `slot` it casts through the slot instead, which the grant must
+  // allow (also_with_slot) and which spends no use. A grant that is only for rituals
+  // takes `as_ritual`. Empty for a spell of the character's classes.
+  string granted_by = 12;
 }
 
 // ConfirmCastTimePassedRequest ends the casting of a spell that takes time.

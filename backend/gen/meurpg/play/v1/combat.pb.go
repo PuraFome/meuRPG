@@ -12741,7 +12741,13 @@ type CastSpellRequest struct {
 	// teleport provokes no opportunity attack and spends no movement; the undo puts the
 	// caster back. It is `invalid_argument` for any other spell, and in a combat
 	// without a map.
-	Destination   *SpellOrigin `protobuf:"bytes,32,opt,name=destination,proto3" json:"destination,omitempty"`
+	Destination *SpellOrigin `protobuf:"bytes,32,opt,name=destination,proto3" json:"destination,omitempty"`
+	// The trait, feat or feature whose granted_spell effect casts the spell (the
+	// `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
+	// grant's resource unless it is at will, the spell is cast at its own level and the spell
+	// attack and the save DC are the grant's. With a `slot` it casts through the slot instead
+	// (when the grant allows it). Empty for a spell of the character's classes.
+	GrantedBy     string `protobuf:"bytes,33,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12959,6 +12965,13 @@ func (x *CastSpellRequest) GetDestination() *SpellOrigin {
 		return x.Destination
 	}
 	return nil
+}
+
+func (x *CastSpellRequest) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
 }
 
 type isCastSpellRequest_Roll interface {
@@ -13504,7 +13517,9 @@ type PreviewSpellAreaRequest struct {
 	//
 	//	*PreviewSpellAreaRequest_Origin
 	//	*PreviewSpellAreaRequest_Direction
-	Area          isPreviewSpellAreaRequest_Area `protobuf_oneof:"area"`
+	Area isPreviewSpellAreaRequest_Area `protobuf_oneof:"area"`
+	// As CastSpellRequest.granted_by: the grant the spell would be cast through ("" for a spell of the classes).
+	GrantedBy     string `protobuf:"bytes,8,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -13597,6 +13612,13 @@ func (x *PreviewSpellAreaRequest) GetDirection() *SpellDirection {
 		}
 	}
 	return nil
+}
+
+func (x *PreviewSpellAreaRequest) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
 }
 
 type isPreviewSpellAreaRequest_Area interface {
@@ -24166,7 +24188,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\x82\b\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xa1\b\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -24194,7 +24216,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vability_key\x18\x14 \x01(\tR\n" +
 	"abilityKey\x12!\n" +
 	"\fsculpted_ids\x18\x1f \x03(\tR\vsculptedIds\x12=\n" +
-	"\vdestination\x18  \x01(\v2\x1b.meurpg.play.v1.SpellOriginR\vdestinationB\x06\n" +
+	"\vdestination\x18  \x01(\v2\x1b.meurpg.play.v1.SpellOriginR\vdestination\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18! \x01(\tR\tgrantedByB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"\x88\x01\n" +
@@ -24230,7 +24254,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14EndSpellZoneResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"P\n" +
 	"\x15MoveSpellZoneResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xc5\x02\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xe4\x02\n" +
 	"\x17PreviewSpellAreaRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -24239,7 +24263,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tspell_key\x18\x04 \x01(\tR\bspellKey\x12-\n" +
 	"\x04slot\x18\x05 \x01(\v2\x19.meurpg.play.v1.SpellSlotR\x04slot\x125\n" +
 	"\x06origin\x18\x06 \x01(\v2\x1b.meurpg.play.v1.SpellOriginH\x00R\x06origin\x12>\n" +
-	"\tdirection\x18\a \x01(\v2\x1e.meurpg.play.v1.SpellDirectionH\x00R\tdirectionB\x06\n" +
+	"\tdirection\x18\a \x01(\v2\x1e.meurpg.play.v1.SpellDirectionH\x00R\tdirection\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18\b \x01(\tR\tgrantedByB\x06\n" +
 	"\x04area\"\x90\x02\n" +
 	"\x18PreviewSpellAreaResponse\x123\n" +
 	"\x06origin\x18\x01 \x01(\v2\x1b.meurpg.play.v1.SpellOriginR\x06origin\x125\n" +

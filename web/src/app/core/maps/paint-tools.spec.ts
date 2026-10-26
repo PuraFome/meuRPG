@@ -141,8 +141,10 @@ describe('layerLines', () => {
       'Parede',
       'Cobertura',
       'Luz',
+      'Não dá para passar',
       'Portas',
     ]);
+    expect(lines[5].detail).toBe('nada pintado');
     expect(lines[4].detail).toBe('nada pintado');
     expect(plain(lines[0].detail)).toContain('2 quadrados');
     expect(plain(lines[0].detail)).toContain('custa +1,5 m por quadrado');
@@ -158,6 +160,27 @@ describe('layerLines', () => {
     expect(plain(layerLines({ ...NO_LAYERS, half: [{ col: 0, row: 0 }] })[2].detail)).toBe(
       '1 quadrado de meia cobertura',
     );
+  });
+});
+
+describe('"Não dá para passar" (B2)', () => {
+  it('paints and erases the no-pass layer with value 1 and 0', () => {
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'nopass' })).toEqual({
+      layer: MapLayer.NO_PASS,
+      value: 1,
+    });
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'nopass', erase: true })).toEqual({
+      layer: MapLayer.NO_PASS,
+      value: 0,
+    });
+  });
+
+  it('says what it does on the map and in the list of layers', () => {
+    expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'nopass' })).toBe(
+      'Não dá para passar · arraste para pintar · Shift apaga',
+    );
+    const line = layerLines({ ...NO_LAYERS, noPass: [{ col: 1, row: 1 }] })[4];
+    expect(plain(line.detail)).toBe('1 quadrado · bloqueia o movimento, não a visão');
   });
 });
 

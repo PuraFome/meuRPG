@@ -57,5 +57,14 @@ describe('OwnNumbers', () => {
       '2º nível: 2 livres de 2',
     ]);
     expect(slots[0].querySelectorAll('svg')).toHaveLength(4);
+    // The count is beside the rings (and takes their place on a phone); the circle's words stay its name.
+    expect(slots.map((s) => s.querySelector('.slot__free--long')?.textContent)).toEqual([
+      '3 de 4',
+      '2 de 2',
+    ]);
+    expect(slots.map((s) => s.querySelector('.slot__free--short')?.textContent)).toEqual([
+      '3/4',
+      '2/2',
+    ]);
   });
 });

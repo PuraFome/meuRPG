@@ -9,7 +9,7 @@ For the engine around it see [Rules module](rules.md).
 
 | Piece | What it does |
 | --- | --- |
-| `Overlay` | The revision, the keys switched off, the entries of seven kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
+| `Overlay` | The revision, the keys switched off, the entries of eight kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`, `TableOption`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
 | Keys | Every table key is `<kind>:<name>@mesa`, the name 1 to 60 characters of `[a-z0-9-]`; a feature's key starts `feature:`, `trait:` or `background-feature:`. `With` refuses a key without `@mesa`, of another kind, malformed or already taken (even by another entry's feature). Because the prefix is the SRD's, every place that decides by prefix works for table keys. |
 | Reserved words | `With` refuses (`reserved_key`) a key, of an entry or a feature, with `magical-secrets`, `wild-shape` or `ability-score-improvement` in the name, or ending in `-spellcasting`, because the engine, `play` and the web react to those words in SRD keys. The keys the engine writes carry the kind (`feature:class-<name>-spellcasting@mesa`, `feature:subclass-<name>-spellcasting@mesa`, `feature:class-<name>-ability-score-improvement-<n>@mesa`), so a class and a subclass of the same name never collide. |
 | Copy-on-write | The SRD is a singleton many requests read at once. `With` copies (shallowly) only the maps it changes, adds the entries, rebuilds the indexes and the catalogue, and leaves the values shared. A table subclass of an SRD class enters a copy of the class with the new subclass list; the same for a race's subraces. Two contents made from the same SRD do not see each other, and a `Content` that already has a table layer does not accept another. |
@@ -26,7 +26,7 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 | What | Limit |
 | --- | --- |
-| Entries (of the seven kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
+| Entries (of the eight kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
 | Features | 60 per class and 60 per subclass, counted apart (`MaxTableFeatures`); the features the engine writes do not count |
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
@@ -56,12 +56,14 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry, its class, or an SRD resource. Each use spends one and the action is off with none left. Refused as `bad_reference` when nothing defines it. |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
 | `resistance` | Resistance to every damage type but `except`, while `while` holds. `except` is a damage type of the content (refused at `.except`, `bad_reference`), `while` is `rage` (refused at `.while`, `bad_value`), and a `when` or `tags` is refused at its own field (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
+| `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
+| `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
-| Granted spell | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. A granted spell is on the sheet's list, does not count in the class numbers and needs no slot. Only a `note` grants spells. |
+| Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
 
 Never allowed: `handler` (not even one that exists, since a handler reads columns of an SRD class a table class lacks), `spellcasting` and `wild_shape` (the engine writes casting from the class), `replaces`, `beast_spells`, `song_of_rest`.
 A text-only feature always holds.
@@ -102,6 +104,30 @@ Checked at its fields:
 `Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
 
+### Granted spells
+
+`granted_spell` (menu name "Magia concedida"; `rules/grantedspells.go`) gives the character a spell apart from the lists of the classes. It is the table's way to write what a race trait, a feat or a feature grants: a cantrip at will, a spell with a few uses per rest, a ritual.
+
+| Field | Meaning |
+| --- | --- |
+| `spell` | An SRD key or a spell of the same table (`bad_reference` at `.spell`). |
+| `ability` | `int`, `wis`, `cha`, or `choice`: the player picks one of the three once for the entry, as a pick of the choice engine (`<entry>#grant-ability=ability:int`, in `feature_choice_keys`; until it is made the grant has no numbers and the sheet asks for it). It gives the spell attack bonus (proficiency + modifier) and the save DC (8 + the same) of the grant, whatever the classes cast with. |
+| `from_level` | An Int formula, 1 when empty: the class level for a feature of a class or subclass, the character level for anything else. Below it the effect is not there. |
+| `uses` | Empty or `at_will` for no limit; otherwise the name of a `resource` effect of the same entry (or its class, or an SRD resource): `bad_reference` at `.uses` when nothing defines it. Every cast spends one use. A feat's own `resource` effects count. |
+| `also_with_slot` | The grant may also be cast with a spell slot, which spends no use. |
+| `ritual_only` | The grant casts the spell as a ritual only (no slot, 10 minutes more); the spell needs the ritual tag, and the switch excludes `also_with_slot`. |
+| `counts_as_known` | The spell is also listed among the known ones, without using any pick of the class. |
+
+`when` gates the grant like any effect. Without `counts_as_known` the grant leaves the sheet's known spells, cantrips and prepared numbers as they are.
+A spell above a cantrip cast through a grant is cast at its own level; it cannot be cast at a higher level for free, and the material components are not waived.
+A cantrip scales with the character level.
+The effect fills `Derived.GrantedSpells`; `combat.Options` lists each one as a turn option with a `Grant` (no slots unless `also_with_slot`, disabled with `NO_USES` when the resource is spent), and `combat.OutsideSpells` as one more way to cast the spell. The players' catalog drops a hidden `spell` from the effect like it does for `spells`.
+
+`CastSpell` and `CastSpellOutsideCombat` take `granted_by`, the grant's source key.
+With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends one use of its resource (`NO_USES` when none is left); the combat's undo gives the use back (`actionEvent.GrantUse`).
+Outside a combat a use is spent when the casting starts, so a long casting through a grant has spent it before it ends; a ritual-only grant casts with `as_ritual`.
+A summoning spell is cast with the classes, not through a grant.
+
 ### Ambush
 
 `ambush` (menu name "Emboscada"; fields `applies`, `when`, `text_pt`; `rules/ambush.go`) is an edge against a target caught unprepared.
@@ -110,6 +136,29 @@ Checked at its fields: `applies` is one of the two (`.applies`, `bad_value`); an
 `Derive` sets `Derived.UnactedAdvantage` and `Derived.SurprisedCritical` to the key of the feature that gives each.
 Surprise is the master's mark at the start of the combat, which the app already keeps ([Play](play/README.md)); "has not taken a turn" is the combat before it runs, or the first round before the creature's place in the order (`combat.HasNotActed`).
 The advantage is a source of the attack roll ("Name: vantagem neste ataque") and the critical hit is the roll's `critical_on_hit`.
+
+## Table options
+
+`TableOption` (`rules/overlay_option.go`) adds an option to one of the SRD's option sets.
+Its key is `option:<set>:<slug>@mesa` and `Set` is the set the key names: `invocation` (the Eldritch Invocations), `pact_boon`, `metamagic` (the three Metamagic features), `fighting_style` (the fighter's, the additional one, the paladin's and the ranger's), `hunters_prey`, `defensive_tactics`, `multiattack` and `superior_hunters_defense` (`optionSetDefs`; the menu's closed list `option_set_names` carries them with their Portuguese names).
+`With` writes the option as a feature of the clone and appends its key to the `Options` of every SRD feature that offers the set (the offering features are copied first: the SRD's are shared), and to `offeredBy`.
+So the choice engine needs nothing of its own: the picks are dealt in the pool of the set, a set with table options is not bound by the 20 keys of a listed `from` (the pool is computed), the option is a feature once picked (its effects apply while the character owns an offering feature), and the same option cannot be taken twice by name.
+
+Checked at its fields: the key's set is known and equals `set` (`.set`, `bad_value`); `prerequisite.class_level` is a class of the content and a level 1 to 20, both or neither (`.prerequisite.class_level.class_key`, `.level`); `requires_option_keys` are SRD options of a set or table options, at most 10, never the option itself (`.prerequisite.requires_option_keys[i]`); `requires_pact` is a Pact Boon, the SRD's or a table option of `pact_boon` (`.prerequisite.requires_pact`); `requires_spell_key` is a spell of the content (`.prerequisite.requires_spell_key`); the effects are the menu's, but a `choice` is refused (`.effects[i].type`: an option does not ask for another choice).
+Every prerequisite set must hold.
+The pool lists an option that does not qualify with its reason and `Blocked()` (as the invocations' own prerequisites), and a sheet that picks it has the problem `prerequisite`; a spell the character knows is a cantrip, a known or a prepared spell, or one a pick grants.
+An archived or switched-off option is left out of the pool unless the sheet already has it.
+
+## Table class features
+
+`TableClassFeature` (`rules/overlay_classfeature.go`) adds a feature to a class, the SRD's or the table's, at a class level.
+Its key is `classfeature:<slug>@mesa`; it carries `Class`, `Level` (1 to 20), an optional `Replaces` and the feature body (name, text, effects).
+`With` writes it as a feature of the class and `applyClassFeatures` puts its key in the class's row of that level, the same row a feature of a table class sits in, so Derive, the choice engine, the level-up and `play` read it where they read the class's own features, and a subclass level row is built the same way (rows keyed by class level).
+The SRD's rows are shared, so a row is copied before it changes.
+`Replaces` is a feature of the class (an SRD one or another table class feature) that leaves the rows from the entry's level on, as the `replaces` effect hides lower tiers; the entry is refused if the class has no such feature at that level or later, or if it came earlier ("a character never loses what it already had"), and a feature replaced twice is refused at the second entry (in key order).
+A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
+An archived entry still applies to the sheets that have the class.
+Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
 
 ## The class
 
@@ -216,7 +265,7 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the fourteen effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the sixteen effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, `granted_spell_abilities`, skills, languages, tools and tag prefixes.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 

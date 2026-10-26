@@ -1,4 +1,4 @@
-import type { CastingSpell } from '../../../../gen/meurpg/play/v1/casting_pb';
+import type { CastingGrant, CastingSpell } from '../../../../gen/meurpg/play/v1/casting_pb';
 import {
   type CastWay,
   minutesWords,
@@ -6,6 +6,12 @@ import {
   ritualTimeText,
   spellLine,
 } from '../../../core/casting/cast-out-flow';
+import {
+  castableNow,
+  grantCard,
+  wayPicksOf,
+  type WayPick,
+} from '../../../core/casting/cast-grants';
 import type { CastDice, OutsideCastRequest } from '../../../core/casting/casting-client';
 import type { SlotRow } from '../../../core/combat/cast-flow';
 import { abilityMissing } from '../../../core/effects/ability-choice';
@@ -33,8 +39,12 @@ export function spellRowsOf(spells: readonly CastingSpell[]): readonly ChoiceRow
     id: s.spell?.key ?? '',
     title: s.spell?.namePt ?? '',
     detail: spellLine(s),
-    enabled: s.canCast || s.ritualAllowed,
-    reason: s.canCast || s.ritualAllowed ? '' : 'Sem espaço de magia livre.',
+    enabled: castableNow(s),
+    reason: castableNow(s)
+      ? ''
+      : s.grants.length > 0
+        ? 'Sem espaço de magia nem usos livres.'
+        : 'Sem espaço de magia livre.',
   }));
 }
 
@@ -57,6 +67,18 @@ export function wayRowsOf(s: CastingSpell, ways: readonly CastWay[]): readonly C
           enabled: true,
           reason: '',
         },
+  );
+}
+
+/** Every way to cast the spell as cards: the class's (a slot, a ritual) and each grant's. */
+export function wayCardsOf(s: CastingSpell): readonly ChoiceRow[] {
+  const picks = wayPicksOf(s);
+  const own = wayRowsOf(
+    s,
+    picks.filter((p) => p.grant === null).map((p) => p.way),
+  );
+  return picks.map((p) =>
+    p.grant ? grantCard(p) : (own.find((r) => r.id === p.way) as ChoiceRow),
   );
 }
 
@@ -94,6 +116,8 @@ export interface CastPicks {
   readonly chosen: readonly string[];
   readonly spellKey: string;
   readonly ability: string;
+  /** The grant the cast goes through, and whether it casts with a slot; the class's own when absent. */
+  readonly pick?: WayPick | null;
 }
 
 /** What the slot, the way and the targets still lack, as the button says it; empty when nothing does. */
@@ -101,7 +125,8 @@ export function missingOf(s: CastingSpell | null, picks: CastPicks): string {
   if (!s) {
     return '';
   }
-  if (picks.way === 'slot' && (s.spell?.level ?? 0) > 0 && !picks.slot) {
+  const slotWay = picks.pick ? picks.pick.slot : picks.way === 'slot';
+  if (slotWay && (s.spell?.level ?? 0) > 0 && !picks.slot) {
     return 'Escolha o espaço de magia.';
   }
   if (picks.showTargets && needsTarget(s) && picks.chosen.length === 0) {
@@ -123,11 +148,15 @@ export interface CastRequestParts {
   readonly dice: CastDice | null;
   /** `null`: the spell asks for no ability. */
   readonly ability: string | null;
+  /** The way picked, for a grant's: `grantedBy` and whether a slot goes with it. */
+  readonly pick?: WayPick | null;
 }
 
 /** What the cast sends: the way, the slot, the targets, the dice and the ability when the spell asks for one. */
 export function castRequestOf(p: CastRequestParts): OutsideCastRequest {
-  const slot = p.way === 'ritual' || (p.spell?.spell?.level ?? 0) === 0 ? null : p.slot;
+  const grant: CastingGrant | null = p.pick?.grant ?? null;
+  const slotted = p.pick ? p.pick.slot : p.way === 'slot';
+  const slot = !slotted || (p.spell?.spell?.level ?? 0) === 0 ? null : p.slot;
   return {
     campaignId: p.campaignId,
     casterId: p.casterId,
@@ -137,6 +166,7 @@ export function castRequestOf(p: CastRequestParts): OutsideCastRequest {
     targetIds: p.chosen,
     dice: p.dice,
     ...(p.ability === null ? {} : { abilityKey: p.ability }),
+    ...(grant ? { grantedBy: grant.sourceKey } : {}),
   };
 }
 

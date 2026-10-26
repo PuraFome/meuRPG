@@ -116,6 +116,7 @@
     "level": 1,
     "pact": true
   },
+  "grant_use": "x",
   "resource": "x",
   "hits": [
     {

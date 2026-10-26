@@ -1,0 +1,29 @@
+import type { SpellOption } from '../../../gen/meurpg/rules/v1/rules_pb';
+
+/**
+ * The reference the screen passes around for a spell it can cast. A spell of the character's classes is its key
+ * ("spell:bless"); a spell a trait, feat or feature grants (`SpellOption.grant`) is the key plus the grant's source
+ * ("spell:bless#granted=feat:graca@mesa"): the character may have the same spell both ways, and they are two options with
+ * their own costs. Everything past the option list reads the real key and the source apart (`splitCastRef`).
+ */
+const GRANTED = '#granted=';
+
+/** The reference of an option: its key, with the grant's source when it is a granted one. */
+export function castRefOf(o: SpellOption): string {
+  const key = o.spell?.key ?? '';
+  return o.grant ? `${key}${GRANTED}${o.grant.sourceKey}` : key;
+}
+
+/** A reference taken apart: the spell's key, and the source of the grant it is cast through (`''` for the classes'). */
+export function splitCastRef(ref: string): { key: string; grantedBy: string } {
+  const at = ref.indexOf(GRANTED);
+  return at < 0
+    ? { key: ref, grantedBy: '' }
+    : { key: ref.slice(0, at), grantedBy: ref.slice(at + GRANTED.length) };
+}
+
+/** The option a reference names; for a plain key, the class's option and not a granted one of the same spell. */
+export function optionOfRef(spells: readonly SpellOption[], ref: string): SpellOption | undefined {
+  const { key, grantedBy } = splitCastRef(ref);
+  return spells.find((s) => s.spell?.key === key && (s.grant?.sourceKey ?? '') === grantedBy);
+}
