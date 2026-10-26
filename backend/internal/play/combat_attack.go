@@ -398,12 +398,27 @@ func (f *attackFlow) checkEconomy(ctx context.Context) error {
 		}
 	}
 	if f.v.master {
-		return nil
+		return f.routineLeft()
 	}
 	if err := f.playerEconomy(ctx); err != nil {
 		return err
 	}
 	return f.checkReach()
+}
+
+// routineLeft holds the master to the Multiattack of a creature he runs (SRD 5.1): once the Attack
+// action made as many attacks as the longest routine has, one more is refused. A creature with no
+// Multiattack (one attack per action), an attack that is not of the Attack action (a reaction, the extra
+// action) and a player's character the master acts for stay as they were: the master has the last word.
+func (f *attackFlow) routineLeft() error {
+	a := f.attacker
+	if a.Kind != kindNPC || f.call.asReaction || f.call.useExtra || f.attack.Spell {
+		return nil
+	}
+	if f.sheet.AttacksPerAction > 1 && a.ActionUsed && int(a.AttacksMade) >= f.sheet.AttacksPerAction {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Multiattack has no attacks left this turn")
+	}
+	return nil
 }
 
 // checkExtraAction checks the extra action Velocidade gives takes one weapon attack (SRD 5.1, Haste).

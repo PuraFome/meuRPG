@@ -729,7 +729,7 @@ Um monstro do bestiário ([MR-042](historias.md#mr-042-bestiário)) entra no com
 O mestre o põe com "Pôr no combate", com os pontos de vida médios ou rolados, e a iniciativa de cada um.
 O jogador lê só a palavra de estado (RN-20), nunca pontos de vida, classe de armadura nem iniciativa, e um monstro escondido não chega a ele.
 O mestre lê a ficha da criatura do SRD ("Ficha da criatura"), o nível de desafio (ND) e os pontos de vida rolados; a linha do registro sobre eles é só do mestre.
-Os ataques da criatura seguem a regra de crítico da mesa (RN-24), e o Ataque Múltiplo segue o SRD 5.1: o mestre joga a combinação dos ataques da ficha.
+Os ataques da criatura seguem a regra de crítico da mesa (RN-24), e o Ataque Múltiplo segue o SRD 5.1: o mestre joga a rotina da criatura, um ataque depois do outro, cada um com o próprio alvo; o servidor conta os ataques e recusa o que vem depois do último, e a ação conta como usada quando a rotina termina ou o mestre a encerra.
 O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 75 XP, 18 para cada um de quatro jogadores e 3 de sobra.
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.
 O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe seus monstros salvos pelo mesmo caminho com "Começar este combate", e um jogador nunca recebe o encontro salvo.

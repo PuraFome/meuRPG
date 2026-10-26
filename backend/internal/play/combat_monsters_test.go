@@ -660,8 +660,8 @@ func TestMR042_TheStreamCarriesNoMonster(t *testing.T) {
 // TestMR042_MultiattackFollowsTheSRDCount: the turn options of a monster count as many
 // attacks to the Attack action as the creature's Multiattack (the SRD's count: the
 // Veterano 3, the Urso Pardo 2, the Montículo Movediço 2) and run out after the last.
-// The master runs his monsters, so he is not refused a further attack (as with any
-// NPC, "the master has the last word").
+// The master has the last word on any other NPC; a Multiattack holds him to its count
+// (combat_multiattack_test.go).
 func TestMR042_MultiattackFollowsTheSRDCount(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)

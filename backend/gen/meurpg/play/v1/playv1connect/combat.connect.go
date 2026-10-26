@@ -780,7 +780,9 @@ type CombatServiceClient interface {
 	//     attacker's own turn.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
 	//     (the attacker is not on turn; not for as_reaction), ACTION_USED or
-	//     ATTACKS_USED (a player), REACTION_USED (as_reaction, a player),
+	//     ATTACKS_USED (a player), ATTACKS_USED (the master's NPC made as many
+	//     attacks as its creature's Multiattack has; other NPCs are not held to a
+	//     count), REACTION_USED (as_reaction, a player),
 	//     COMBATANT_DOWN,
 	//     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
@@ -2734,7 +2736,9 @@ type CombatServiceHandler interface {
 	//     attacker's own turn.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
 	//     (the attacker is not on turn; not for as_reaction), ACTION_USED or
-	//     ATTACKS_USED (a player), REACTION_USED (as_reaction, a player),
+	//     ATTACKS_USED (a player), ATTACKS_USED (the master's NPC made as many
+	//     attacks as its creature's Multiattack has; other NPCs are not held to a
+	//     count), REACTION_USED (as_reaction, a player),
 	//     COMBATANT_DOWN,
 	//     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
 	//     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.

@@ -729,7 +729,7 @@ A monster from the bestiary ([MR-042](stories.md#mr-042-bestiary)) enters combat
 The master puts it in with "Pôr no combate", with its average hit points or rolled ones, and each one's initiative.
 The player reads only the state word (RN-20), never hit points, armor class or initiative, and a hidden monster does not reach them.
 The master reads the SRD creature sheet ("Ficha da criatura"), its challenge rating (CR, ND) and the rolled hit points; the log line about them is the master's alone.
-The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the mix of the sheet's attacks.
+The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the creature's routine, one attack after another, each with its own target; the server counts the attacks and refuses the one after the last, and the action counts as used when the routine is done or the master ends it.
 The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 XP, 18 to each of four players and 3 left over.
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
