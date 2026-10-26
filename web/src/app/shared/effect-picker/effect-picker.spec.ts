@@ -3,12 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
 import {
   conditionMenu,
-  extraDamageMenu,
   menu,
   rangedAttackMenu,
   resistanceMenu,
-  spellModifierMenu,
 } from '../../core/content/content-testing-menu';
+import { extraDamageMenu, spellModifierMenu } from '../../core/content/content-testing-menu-damage';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { EffectPicker } from './effect-picker';
 

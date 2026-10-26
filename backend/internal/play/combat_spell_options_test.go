@@ -309,10 +309,12 @@ func TestATickedBonusSpendsAUseAndAddsAPartOfItsOwnType(t *testing.T) {
 	e := g.optionFight(t)
 	key := g.featureKey(t)
 	// Not ticked: nothing changes and no use is spent.
-	plain, err := g.burn(t, e, 1)
-	if err != nil || len(plain.GetCast().GetPendingDamages()) != 1 || g.usesLeft(t) != 2 {
-		t.Fatalf("an untricked cast: %d pending damages, %d uses left, error %v; want one part and 2 uses", len(plain.GetCast().GetPendingDamages()), g.usesLeft(t), err)
-	}
+	g.undoes(t, "a cast with no option ticked", func() {
+		plain, err := g.burn(t, e, 1)
+		if err != nil || len(plain.GetCast().GetPendingDamages()) != 1 || g.usesLeft(t) != 2 {
+			t.Fatalf("an unticked cast: %d pending damages, %d uses left, error %v; want one part and 2 uses", len(plain.GetCast().GetPendingDamages()), g.usesLeft(t), err)
+		}
+	})
 	g.undoes(t, "a cast with the option ticked", func() {
 		cast, err := g.burn(t, e, 1, &playv1.SpellOptionChoice{Key: key})
 		if err != nil {
