@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
 
+import { RollDieSchema } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ReactionKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -135,5 +136,73 @@ describe('EffectSaveSheet, the save DC', () => {
     await roll(fixture, el);
     expect(plain(el.querySelector('.res')?.textContent)).toContain('Passou');
     expect(plain(el.querySelector('.res')?.textContent)).not.toMatch(/\bCD\b/);
+  });
+});
+
+describe('EffectSaveSheet, a table die on the save (MR-025)', () => {
+  const api = { rollEffectSave: vi.fn() };
+  const die = (key: string, name: string, ability: string) =>
+    create(RollDieSchema, {
+      key,
+      namePt: name,
+      applies: 'save',
+      sides: 8,
+      resource: 'dados',
+      ability,
+    });
+
+  function setup() {
+    const w = window();
+    const state = new CombatState();
+    state.apply(encounter({ reactionWindows: [w] } as never));
+    const data: EffectSaveSheetData = {
+      campaignId: 'camp',
+      encounterId: 'enc',
+      window: w,
+      round: 3,
+      state,
+      diceMode: DiceMode.PLAYERS_CHOOSE,
+      preference: DicePreference.APP,
+      // The save is of Sabedoria: the die of Força does not fit it.
+      rollDice: [
+        die('feature:mind@mesa', 'Mente firme', 'wis'),
+        die('feature:body@mesa', 'Corpo firme', 'str'),
+      ],
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: EffectsClient, useValue: api },
+        { provide: ResourceClient, useValue: {} },
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
+      ],
+    });
+    const fixture = TestBed.createComponent(EffectSaveSheet);
+    fixture.detectChanges();
+    return { fixture, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('offers the die that fits the ability and sends its key with the roll in the app', async () => {
+    api.rollEffectSave.mockReset();
+    api.rollEffectSave.mockResolvedValue({
+      encounter: encounter(),
+      result: undefined,
+      held: undefined,
+    });
+    const { fixture, el } = setup();
+    const offer = el.querySelector('app-roll-die-offer')!;
+    expect(offer.querySelectorAll('input')).toHaveLength(1);
+    expect(plain(offer.textContent)).toContain('Usar Mente firme');
+    expect(el.textContent).not.toContain('Corpo firme');
+    offer.querySelector<HTMLInputElement>('input')!.click();
+    fixture.detectChanges();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => plain(b.textContent).includes('Rolar no app'))!
+      .click();
+    await fixture.whenStable();
+    expect(api.rollEffectSave.mock.calls[0][3]).toEqual({
+      kind: 'app',
+      maneuverKey: 'feature:mind@mesa',
+    });
   });
 });

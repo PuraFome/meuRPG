@@ -103,6 +103,7 @@ export class SceneClient {
     die: SceneDie,
     idempotencyKey: string,
     extraDieFaces: readonly number[] = [],
+    maneuverKey = '',
   ): Promise<SceneRoll | HeldRollOffer> {
     const res = await this.client.rollSceneCheck({
       campaignId,
@@ -116,6 +117,7 @@ export class SceneClient {
             : { case: undefined },
       d20Faces: 'faces' in die ? [...die.faces] : [],
       extraDieFaces: [...extraDieFaces],
+      maneuverKey,
     });
     // A halfling's d20 of 1 asks the Lucky question, and a character that holds a Bardic Inspiration die is asked about
     // it, before the result is written: Lucky first.

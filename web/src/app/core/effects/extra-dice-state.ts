@@ -1,7 +1,10 @@
 import { Code, ConnectError } from '@connectrpc/connect';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
+
+import type { RollDie } from '../../../gen/meurpg/rules/v1/rules_pb';
 
 import { type ExtraDieField, genericDieFields, missingDice } from './effects';
+import { rollDieField } from './roll-die';
 
 /** The size of the dice the effects add to a roll for now (Bênção, Perdição, Orientação, Resistência: d4). */
 const EXTRA_DIE_FACES = 4;
@@ -13,8 +16,17 @@ const EXTRA_DIE_FACES = 4;
  * the faces. Held by the sheet that rolls; `ExtraDice` draws the fields. With the app's dice nothing is asked or sent.
  */
 export class ExtraDiceState {
-  /** The dice to ask for; empty until the server says the roll takes some. */
-  readonly fields = signal<readonly ExtraDieField[]>([]);
+  /** The dice the server said the roll takes. */
+  readonly asked = signal<readonly ExtraDieField[]>([]);
+  /** The table die ticked on the roll (a maneuver): its face is the last of the extra dice. */
+  readonly maneuver = signal<RollDie | null>(null);
+  /** The dice to ask for: those the server said the roll takes, then the table die ticked (always the last). */
+  readonly fields = computed<readonly ExtraDieField[]>(() => {
+    const die = this.maneuver();
+    return die ? [...this.asked(), rollDieField(die)] : this.asked();
+  });
+  /** `maneuver_key` of the request: the die ticked, or empty. */
+  readonly maneuverKey = computed(() => this.maneuver()?.key ?? '');
   /** The faces typed, aligned with the fields (`null` where one is empty or out of range). */
   readonly faces = signal<readonly (number | null)[]>([]);
 
@@ -25,7 +37,7 @@ export class ExtraDiceState {
     if (more === 0) {
       return '';
     }
-    this.fields.set(genericDieFields(more, EXTRA_DIE_FACES));
+    this.asked.set(genericDieFields(more, EXTRA_DIE_FACES));
     return more === 1
       ? 'Esta rolagem leva mais um d4: role-o e digite o resultado.'
       : `Esta rolagem leva mais ${more} d4: role-os e digite os resultados.`;

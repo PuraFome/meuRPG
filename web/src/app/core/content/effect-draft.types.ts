@@ -66,6 +66,16 @@ export interface EffectDraft {
   /** condition_immunity: the conditions the character takes none of. roll_mode: the condition its saves are against. */
   conditions: string[];
   againstCondition: string;
+  /** extra_damage: the dice (a formula) and sides, the type ("" is the weapon's), weapon kind, frequency, no crit doubling. */
+  dice: string;
+  diceSides: number;
+  damageType: string;
+  weapon: string;
+  frequency: string;
+  noCritDoubling: boolean;
+  /** spell_modifier: the spells it fits and its change. */
+  appliesTo: string;
+  spellChange: string;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

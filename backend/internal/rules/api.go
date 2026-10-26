@@ -696,6 +696,9 @@ type Derived struct {
 	// ExtraDamages are the damage the character's table features add to a weapon hit
 	// once per turn (extra_damage effects), with the amount worked out.
 	ExtraDamages []ExtraDamage
+	// SpellModifiers are the cast options the character's table features offer
+	// (spell_modifier effects), worked out for the character.
+	SpellModifiers []SpellModifier `json:",omitempty"`
 	// UnactedAdvantage and SurprisedCritical are the keys of the features whose ambush effects
 	// give advantage against a creature that has not had its turn yet, and make a hit on a surprised
 	// creature a critical hit; empty for none.

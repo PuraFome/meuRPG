@@ -859,6 +859,9 @@
     "face": 1,
     "from_id": "x"
   },
+  "table_uses": [
+    "x"
+  ],
   "die": {
     "kind": "x",
     "spent": 1,

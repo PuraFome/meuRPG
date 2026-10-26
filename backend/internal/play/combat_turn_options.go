@@ -145,6 +145,9 @@ func (s *Service) workOutOptions(ctx context.Context, m authz.Membership, d *enc
 	if err := s.attachMetamagic(ctx, nil, m.CampaignID, who, opts); err != nil {
 		return nil, none, s.dbError(ctx, "work out the Metamagic", err)
 	}
+	if err := s.attachTableOptions(ctx, m.CampaignID, who, opts); err != nil {
+		return nil, none, s.dbError(ctx, "work out the table's cast options", err)
+	}
 	code, err := s.gate(ctx, nil, m.CampaignID, d.enc, who)
 	if err != nil {
 		return nil, none, s.dbError(ctx, "check the combatant's turn", err)

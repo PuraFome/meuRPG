@@ -10,6 +10,7 @@ import {
   type MonsterHp,
   type StartExtras,
   type AddMonstersResult,
+  type InitiativeManeuver,
   type InitiativeRoll,
   type DamageDie,
   type ActionResult,
@@ -90,9 +91,10 @@ export class CombatTurnCalls {
     encounterId: string,
     combatantId: string,
     roll: InitiativeRoll,
+    maneuver?: InitiativeManeuver,
   ): Promise<InitiativeResult> {
     const res = await this.base.keyed(
-      ['submitInitiative', campaignId, encounterId, combatantId, roll],
+      ['submitInitiative', campaignId, encounterId, combatantId, roll, maneuver],
       (sent) =>
         this.base.client.submitInitiative({
           campaignId,
@@ -103,6 +105,7 @@ export class CombatTurnCalls {
             'inApp' in roll
               ? { case: 'rollInApp', value: true }
               : { case: 'd20Face', value: roll.face },
+          ...(maneuver ? { maneuverKey: maneuver.key, maneuverFace: maneuver.face ?? 0 } : {}),
         }),
     );
     return { encounter: need(res.encounter, 'SubmitInitiative'), held: res.heldRollOffer };

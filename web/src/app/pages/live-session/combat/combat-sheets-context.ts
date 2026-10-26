@@ -1,3 +1,4 @@
+import type { RollDie } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type Signal } from '@angular/core';
 import type { MatBottomSheet } from '@angular/material/bottom-sheet';
 import type { MatDialog } from '@angular/material/dialog';
@@ -55,6 +56,8 @@ export interface CombatSheetsContext {
   readonly vitals: () => readonly VitalsVm[];
   readonly ownVitals: Signal<VitalsVm | null>;
   readonly casterClasses: () => string;
+  /** The table dice the character may add to a save (`DerivedSheet.roll_dice`). */
+  readonly rollDice?: () => readonly RollDie[];
   readonly armorClass: () => number | null;
   readonly trapSkills: () => SearchSkills | null;
   readonly mapState: () => MapState;

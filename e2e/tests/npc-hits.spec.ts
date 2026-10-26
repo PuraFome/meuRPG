@@ -122,7 +122,7 @@ test('no turno de um personagem a 0 PV o teste contra a morte é o turno inteiro
   }
 });
 
-test('um personagem consciente que ainda não agiu continua perguntando: "Passar a vez de Vex? Ele ainda não agiu."', { tag: ['@MR-053'] }, async ({ browser }) => {
+test('um personagem consciente que ainda não agiu continua perguntando: "Passar a vez de Vex, que ainda não agiu?"', { tag: ['@MR-053'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   const t = await rollsTable(browser, 'Consciente passa', vex, { weaponKeys: ['equipment:rapier'] }, FACES);
   const { m, campaignId } = t;

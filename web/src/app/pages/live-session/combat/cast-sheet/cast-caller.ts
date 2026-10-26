@@ -81,7 +81,14 @@ export class CastCaller {
         const sculpted = this.choices.sculptedIds();
         // A placed area's key follows its request: the same slot, place and roll again is a retry of it.
         const key = flow
-          ? this.area.key.keyFor([slot, area, roll, this.choices.damageType(), sculpted])
+          ? this.area.key.keyFor([
+              slot,
+              area,
+              roll,
+              this.choices.damageType(),
+              sculpted,
+              this.s.tablePicks(),
+            ])
           : this.castKey;
         const picked = this.s.picked();
         const destination = this.s.teleportFt > 0 ? this.s.destination() : null;
@@ -110,6 +117,7 @@ export class CastCaller {
             ...(flow ? { area } : {}),
             ...(this.choices.asksAbility ? { abilityKey: this.s.ability() } : {}),
             ...(sculpted.length ? { sculptedIds: sculpted } : {}),
+            ...(this.s.tablePicks().length ? { spellOptions: this.s.tablePicks() } : {}),
             ...(destination ? { destination } : {}),
             ...(data.grant ? { grantedBy: data.grant.sourceKey } : {}),
           },

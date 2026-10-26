@@ -49,6 +49,7 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     vitals: () => this.vitals(),
     ownVitals: this.ownVitals,
     casterClasses: () => this.casterClasses(),
+    rollDice: () => this.rollDice(),
     armorClass: () => this.armorClass(),
     trapSkills: () => this.trapSkills(),
     mapState: () => this.mapState(),

@@ -163,6 +163,8 @@
           [busy]="busy()"
           [error]="error()"
           [held]="initiative.held.offer()"
+          [rollDice]="rollDice()"
+          (maneuverChange)="initiative.maneuver = $event"
           (answer)="initiative.held.answer($event)"
           (rollInApp)="own() && initiative.rollInApp(own()!.id)"
           (typeFace)="own() && initiative.submitFace(own()!.id, $event)"
@@ -793,19 +795,18 @@
         } @else if (actCard(); as who) {
           <span class="mr-tag mr-tag--pending"><mat-icon aria-hidden="true">hourglass_top</mat-icon>Esperando {{ who.label }}</span>
         }
-        @if (!joint()) {
-          <app-next-turn
-            class="phone__next"
-            [turn]="turnKey()"
-            [pendingNote]="owed()"
-            [busy]="busy()"
-            [waiting]="!!waitNote()"
-            [why]="waitWhy()"
-            [label]="acting() ? 'Encerrar o turno de ' + acting()!.label : 'Próximo turno'"
-            [idle]="acting() ? '' : idleOnTurn()"
-            (next)="nextTurn($event)"
-          />
-        }
+        <app-next-turn
+          class="phone__next"
+          [turn]="turnKey()"
+          [pendingNote]="owed()"
+          [busy]="busy()"
+          [waiting]="!!waitNote()"
+          [why]="waitWhy()"
+          [label]="acting() ? 'Encerrar o turno de ' + acting()!.label : 'Próximo turno'"
+          [idle]="acting() ? '' : idleOnTurn()"
+          [joint]="!!joint()"
+          (next)="nextTurn($event)"
+        />
       }
     </div>
   }

@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The RP scene during a session (MR-015; questions 51 to 55 of
@@ -1138,6 +1139,15 @@ func (c *sceneRollCall) modeAndBonus(ctx context.Context, sessionID string, acti
 	if err != nil {
 		return cm, 0, err
 	}
+	applies := rules.ManeuverCheck
+	if !isCheck {
+		applies = rules.ManeuverSave
+	}
+	own, err := c.s.maneuverDice(ctx, c.tx, c.m.CampaignID, c.out.who.ID, c.req.GetManeuverKey(), applies, action.Key, ability)
+	if err != nil {
+		return cm, 0, err
+	}
+	cm.Dice = append(cm.Dice, own...)
 	if bonus, err = c.s.withEffectDice(c.in, c.in.extraFaces, &cm, bonus); err != nil {
 		return cm, 0, err
 	}
@@ -1178,6 +1188,9 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 		return err
 	}
 	if err := c.s.spendCheckHelps(ctx, tc, cm.Helps); err != nil {
+		return err
+	}
+	if _, err := c.s.spendManeuverDice(ctx, tc, c.out.who.ID, cm.Rolled); err != nil {
 		return err
 	}
 	c.out.rollID, err = insertSceneEvent(ctx, tc, eventSceneCheckRolled, &c.m.UserID, &c.key, ev)

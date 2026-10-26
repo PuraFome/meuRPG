@@ -21,10 +21,14 @@ func (x effectCompiler) ambush() error {
 	return nil
 }
 
-// checkOnTarget checks the effects that ask something of the target: extra_damage and ambush.
+// checkOnTarget checks the effects that change a hit or a cast: extra_damage and ambush ask something of the
+// target, spell_modifier of the spell.
 func (b *overlayBuilder) checkOnTarget(site effectSite, e *Effect) error {
-	if e.Type == "ambush" {
+	switch e.Type {
+	case "ambush":
 		return b.checkAmbush(site, e)
+	case "spell_modifier":
+		return b.checkSpellModifier(site, e)
 	}
 	return b.checkExtraDamage(site, e)
 }
