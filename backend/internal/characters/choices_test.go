@@ -36,6 +36,7 @@ func choiceSheet(race, subrace, class, subclass string, level int32, picks ...st
 		SubraceKey:        subrace,
 		Classes:           []*charactersv1.ClassLevel{cl},
 		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:         testLanguages,
 		FeatureChoiceKeys: picks,
 	}}}
 }

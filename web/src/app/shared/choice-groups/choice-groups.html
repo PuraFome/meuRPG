@@ -11,6 +11,7 @@
   <section
     class="choice"
     [attr.data-pending]="isDone(section) ? null : ''"
+    [attr.data-advisory]="section.choices[0].advisory ? '' : null"
     [attr.aria-labelledby]="titleId(section.choices[0])"
   >
     <header class="choice__head">
