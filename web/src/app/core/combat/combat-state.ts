@@ -265,7 +265,9 @@ export class CombatState {
         : {
             // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
             turnGroupIds: [],
-            combatants: e.combatants.map((c) => startOfTurn(c, takesTurn(e, turn.currentCombatantId, c))),
+            combatants: e.combatants.map((c) =>
+              startOfTurn(c, takesTurn(e, turn.currentCombatantId, c)),
+            ),
           }),
     });
     return true;
