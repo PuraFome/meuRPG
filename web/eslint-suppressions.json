@@ -146,7 +146,7 @@
   },
   "src/app/core/maps/paint-layers.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 34
+      "count": 23
     }
   },
   "src/app/core/maps/paint-queue.ts": {
@@ -1512,11 +1512,6 @@
     }
   },
   "src/app/pages/live-session/session-map/session-map.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
-  "src/app/pages/live-session/session-tokens/session-tokens.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }

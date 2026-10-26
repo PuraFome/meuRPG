@@ -1,0 +1,239 @@
+:host {
+  display: block;
+}
+
+.mp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.mp__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.mp__lead,
+.mp__hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.mp__label {
+  margin: 0 0 var(--mr-space-1);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.mp__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-4) var(--mr-space-5);
+}
+
+// The pad: three by three, the move icon in the middle, 44 px buttons.
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  gap: var(--mr-space-2);
+}
+
+.pad__mid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mr-ink-muted);
+}
+
+.pad__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  &[aria-disabled='true'] {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.pad__btn--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+}
+
+.steps__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+}
+
+.steps__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 52px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.box {
+  padding: 10px 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.box__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.box__detail {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.busy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.go,
+.clear {
+  min-height: 48px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+  }
+}
+
+.go {
+  border-color: transparent;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+}
+
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.acts--full .go {
+  flex: 1 1 100%;
+}
+
+.acts--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.acts .go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 var(--mr-space-4);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// On a computer the filled button of the screen is "Enviar" in the conversation, so the player's "Mover Brisa" is outlined (C9-02).
+.go--outline {
+  background: var(--mr-surface);
+  border-color: var(--mr-control-line);
+  color: var(--mr-accent-text);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.go--off {
+  border: 1px dashed var(--mr-control-line);
+  background: transparent;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}
