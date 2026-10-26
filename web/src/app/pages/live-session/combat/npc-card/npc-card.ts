@@ -44,6 +44,7 @@ import {
   roundLabel,
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
+import { nearestInReach } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
@@ -270,7 +271,7 @@ export class NpcCard {
     effect(() => {
       const ids = this.targets().map((t) => t.combatantId);
       if (!ids.includes(this.targetId())) {
-        this.targetId.set(ids[0] ?? '');
+        this.targetId.set(nearestInReach(this.targets()));
         this.key = newKey();
       }
     });
