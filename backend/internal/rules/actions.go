@@ -127,6 +127,7 @@ func (x *deriver) resourcesAndActions() {
 	}
 	x.maneuvers()
 	x.extraDamages()
+	x.spellModifiers()
 	x.ambushes()
 	for _, a := range x.active {
 		if a.effect.Type != "grant_action" || !x.applies(a) {

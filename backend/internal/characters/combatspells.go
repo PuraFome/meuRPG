@@ -66,7 +66,7 @@ func spellBasics(d rules.Derived, det *rules.SpellDetails) link.Spell {
 	// A table feat's ranged_attack effect may multiply the range of a spell that needs
 	// an attack roll: the reach the cast checks and the target lists show is the caster's.
 	out := link.Spell{
-		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
+		Key: det.Spell.Key, Name: det.Spell.NamePT, Level: det.Spell.Level, School: det.Spell.School, Concentration: det.Duration.Concentration, Verbal: det.Components.Verbal,
 		RangeKind: det.Range.Kind, RangeFt: d.SpellRangeFt(det.AttackType, det.Range.Kind, det.Range.DistanceFt), AttackType: det.AttackType,
 		Economy: castEconomy[det.CastingTime.Unit],
 	}

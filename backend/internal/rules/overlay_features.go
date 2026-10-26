@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "spell_modifier", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -265,7 +265,7 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		}
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
-	case "extra_damage", "ambush":
+	case "extra_damage", "ambush", "spell_modifier":
 		return b.checkOnTarget(site, e)
 	case "resource":
 		return b.checkResourceEffect(site, e)
@@ -396,7 +396,25 @@ func (b *overlayBuilder) checkSuperiorityDie(site effectSite, e *Effect) error {
 	if !slices.Contains(maneuverApplies, e.Applies) {
 		return site.fail(".applies", ReasonValue, "applies %q is not on the table's menu", e.Applies)
 	}
+	if isRollDie(e.Applies) {
+		return b.checkRollDie(site, e)
+	}
+	if len(e.Targets) > 0 {
+		return site.fail(".targets", ReasonValue, "only a die added to ability checks lists targets")
+	}
 	return checkManeuverCost(site, e)
+}
+
+// checkRollDie checks a superiority die that goes on a roll of the character: no action, the targets of a check
+// and the ability of a save.
+func (b *overlayBuilder) checkRollDie(site effectSite, e *Effect) error {
+	if field, msg := rollDieShape(e); field != "" {
+		return site.fail("."+field, ReasonValue, "%s", msg)
+	}
+	if t, ok := b.base.rollDieTargetsOK(e.Targets); !ok {
+		return site.fail(".targets", ReasonReference, "target %q is not a skill or an ability of the content", t)
+	}
+	return nil
 }
 
 // checkManeuverCost checks the action a maneuver costs and the ability it adds,
@@ -450,7 +468,7 @@ var ownFields = map[string][]string{
 	"grant_action": {"economy", "resource"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
-	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
+	"superiority_die": {"value", "resource", "economy", "applies", "ability", "targets"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
@@ -461,6 +479,8 @@ var ownFields = map[string][]string{
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage type it leaves out and when it holds.
 	"resistance": {"except", "while"},
+	// A spell_modifier: which spells, what it changes, and the change's own fields.
+	"spell_modifier": {"applies_to", "spell_change", "from", "value", "damage_type", "count", "resource"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -504,6 +524,8 @@ var effectFields = []effectField{
 	{"weapon", func(e *Effect) bool { return e.Weapon != "" }, func(e *Effect) { e.Weapon = "" }},
 	{"frequency", func(e *Effect) bool { return e.Frequency != "" }, func(e *Effect) { e.Frequency = "" }},
 	{"no_crit_doubling", func(e *Effect) bool { return e.NoCritDoubling }, func(e *Effect) { e.NoCritDoubling = false }},
+	{"applies_to", func(e *Effect) bool { return e.AppliesTo != "" }, func(e *Effect) { e.AppliesTo = "" }},
+	{"spell_change", func(e *Effect) bool { return e.SpellChange != "" }, func(e *Effect) { e.SpellChange = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
 	{"prepares", func(e *Effect) bool { return e.Prepares }, func(e *Effect) { e.Prepares = false }},
 	{"prepared_max", func(e *Effect) bool { return e.PreparedMax != "" }, func(e *Effect) { e.PreparedMax = "" }},
@@ -639,7 +661,8 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
 	{[]string{"is not a damage type"}, func(e *Effect, _ func(...string) bool) string {
-		if e.Type == "extra_damage" {
+		switch e.Type {
+		case "extra_damage", "spell_modifier":
 			return ".damage_type"
 		}
 		return ".except"
@@ -696,18 +719,23 @@ func (b *overlayBuilder) compileEffectsOf(owner string) error {
 	return c.err()
 }
 
+// oneOfAKind says a feature has at most one effect of the type: its key names what the player marks.
+func oneOfAKind(effectType string) bool {
+	return effectType == "extra_damage" || effectType == "spell_modifier"
+}
+
 // compilePending checks and compiles one owner's pending effects, on copies. It
 // returns the ones that compiled, and whether any did not (those go to c).
 func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out []*Effect, failed bool) {
 	out = make([]*Effect, 0, len(p.effects))
-	extraDamages := 0
+	chosen := map[string]int{}
 	for i := range p.effects {
 		e := p.effects[i]
 		at := fmt.Sprintf("%s.effects[%d]", p.path, i)
-		if e.Type == "extra_damage" {
-			// One for each feature: the extra is chosen, marked and spent by the feature's key.
-			if extraDamages++; extraDamages > 1 {
-				c.add(ovErr(p.owner, "a feature has one extra_damage effect: give the other its own feature").at(at+".type", ReasonEffect))
+		if oneOfAKind(e.Type) {
+			// One for each feature: the extra or the option is chosen, marked and spent by the feature's key.
+			if chosen[e.Type]++; chosen[e.Type] > 1 {
+				c.add(ovErr(p.owner, "a feature has one %s effect: give the other its own feature", e.Type).at(at+".type", ReasonEffect))
 				failed = true
 				continue
 			}

@@ -718,8 +718,11 @@ func (u *undoer) marksBack(ctx context.Context, marks []markState) error {
 	return nil
 }
 
-// castSpentBack gives back the sorcery points and the slot of a player's cast.
+// castSpentBack gives back the sorcery points, the uses of the table's options and the slot of a player's cast.
 func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if err := u.tableUsesBack(ctx, who, ev); err != nil {
+		return err
+	}
 	if ev.Res != nil && ev.Res.Kind == resMetamagic && who.Kind == kindPlayer {
 		v, err := u.s.spendResource(ctx, u.c, who.CharacterID, rules.SorceryPointsKey, -ev.Res.Spent)
 		if err != nil {

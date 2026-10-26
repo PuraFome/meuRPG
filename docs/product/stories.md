@@ -648,6 +648,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The damage is a line of its own type (the feature's, or the weapon's when it names none), so a resistance to that type takes only that line.
   A critical hit doubles the dice unless the feature says otherwise; a fixed number is never doubled.
   The extra is off, with its reason, on the other kind of weapon (melee or ranged), against a target that is not larger when the feature asks for a larger one, when it was already used this turn (the default is once per turn; "em todo acerto" has no such limit) and when its resource has no use left.
+- **Given** a table feature or feat with a cast option ("Opção de magia") that fits a spell (for example, "evocation spells: +2 cold damage, 2 uses per long rest"; "fire or cold damage: swap one for the other"; "one more die per slot level above the spell's own"), **when** its owner opens the cast sheet of a spell it fits, **then** the sheet lists the option; the ones that add by themselves are shown as always on, the others are ticked, and a type swap asks for the new damage type among the types the spell can take.
+  The cast rolls the damage with the option: the fixed damage is a line of its own type when the type differs from the spell's, the swap changes the type of the damage, and the extra dice come with the slot chosen.
+  An option with a resource spends one use with the slot; with no use left it is off, with the reason, and a cast that ticks it is refused and spends nothing. The master's undo gives the use back.
 
 **Changing, archiving and switching.**
 
