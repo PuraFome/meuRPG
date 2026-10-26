@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,8 +91,7 @@ func (c *CloudTasks) serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	kind := Kind(strings.TrimPrefix(r.URL.Path, EndpointPrefix))
-	e, ok := c.lookup(kind)
+	e, ok := c.lookup(Kind(strings.TrimPrefix(r.URL.Path, EndpointPrefix)))
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -101,18 +101,20 @@ func (c *CloudTasks) serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(c.run(r, kind, e, payload))
+	w.WriteHeader(c.run(r, e, payload))
 }
 
 // run does one delivery and answers the status for it.
-func (c *CloudTasks) run(r *http.Request, kind Kind, e entry, payload json.RawMessage) int {
+func (c *CloudTasks) run(r *http.Request, e entry, payload json.RawMessage) int {
+	kind := e.kind
 	c.running.Add(1)
 	defer c.running.Add(-1)
 	ctx, cancel := context.WithTimeout(r.Context(), e.opts.Deadline)
 	defer cancel()
 	// The shutdown (Cancel) ends the handler too.
 	defer context.AfterFunc(c.base, cancel)()
-	retries := r.Header.Get("X-CloudTasks-TaskRetryCount")
+	// A count, never the header's text: only a number reaches the log.
+	retries, _ := strconv.Atoi(r.Header.Get("X-CloudTasks-TaskRetryCount"))
 
 	if e.interval > 0 {
 		// The next slot first: a handler that fails or is cut off must not break the chain.
@@ -124,7 +126,7 @@ func (c *CloudTasks) run(r *http.Request, kind Kind, e entry, payload json.RawMe
 	if len(payload) == 0 {
 		payload = json.RawMessage("{}")
 	}
-	err := c.call(ctx, kind, e, payload)
+	err := c.call(ctx, e, payload)
 	switch {
 	case err == nil:
 		return http.StatusOK
@@ -138,7 +140,7 @@ func (c *CloudTasks) run(r *http.Request, kind Kind, e entry, payload json.RawMe
 }
 
 // call runs the handler; a panic becomes an error (a retry may help).
-func (c *CloudTasks) call(ctx context.Context, kind Kind, e entry, payload json.RawMessage) (err error) {
-	defer safego.Recover(c.logger, "task "+string(kind), func() { err = errPanicked })
+func (c *CloudTasks) call(ctx context.Context, e entry, payload json.RawMessage) (err error) {
+	defer safego.Recover(c.logger, "task "+string(e.kind), func() { err = errPanicked })
 	return e.h(ctx, payload)
 }

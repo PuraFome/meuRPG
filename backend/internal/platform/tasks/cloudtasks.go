@@ -122,6 +122,9 @@ type CloudTasks struct {
 }
 
 type entry struct {
+	// kind is the kind as the code registered it. After the lookup the endpoint uses it, never the
+	// path it read: what reaches a log line or a task name is then a constant of the code.
+	kind     Kind
 	h        Handler
 	opts     Options
 	interval time.Duration // > 0 for a scheduled kind
@@ -226,7 +229,7 @@ func (c *CloudTasks) register(kind Kind, h Handler, opts Options, interval time.
 	if _, dup := c.handlers[kind]; dup {
 		panic(fmt.Sprintf("tasks: the kind %q is registered twice", kind))
 	}
-	c.handlers[kind] = entry{h: h, opts: opts, interval: interval}
+	c.handlers[kind] = entry{kind: kind, h: h, opts: opts, interval: interval}
 }
 
 func (c *CloudTasks) lookup(kind Kind) (entry, bool) {
