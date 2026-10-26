@@ -126,6 +126,8 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   darkvision_ft: 'a visão no escuro',
   ability_bonuses: 'os bônus de habilidade',
   choice_bonuses: 'os bônus à escolha',
+  choice_bonus_sets: 'os grupos de bônus à escolha',
+  sizes: 'os tamanhos à escolha',
   languages: 'os idiomas',
   language_choices: 'os idiomas à escolha',
   equipment_pt: 'o equipamento',

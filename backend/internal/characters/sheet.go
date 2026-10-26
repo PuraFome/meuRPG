@@ -528,6 +528,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		BaseScores:          abilityMap(f.GetBaseScores()),
 		Race:                f.GetRaceKey(),
 		Subrace:             f.GetSubraceKey(),
+		Size:                f.GetSize(),
 		SkillProficiencies:  f.GetSkillProficiencyKeys(),
 		Expertise:           f.GetExpertiseSkillKeys(),
 		ExtraAbilityBonuses: abilityMap(f.GetExtraAbilityBonuses()),

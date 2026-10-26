@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -92,7 +93,7 @@ func (s *Service) PuzzleOpenDoor(ctx context.Context, tx pgx.Tx, campaignID, map
 // the three take turns) and returns its decoded layers, its grid and its ID. A map
 // with no grid or no layers painted has no door: the layers are empty.
 func (s *Service) puzzleDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (doorMap, error) {
-	id, ok := parseID(mapID)
+	id, ok := uid.Canonical(mapID)
 	if !ok {
 		return doorMap{}, errors.Join(errPuzzleTarget, errMapNotFound())
 	}
@@ -151,8 +152,8 @@ func (s *Service) PuzzleCheckPoint(ctx context.Context, tx pgx.Tx, campaignID, m
 // puzzlePoint finds the point of the campaign's map, locking it when asked, and
 // returns the map's row and the point as they are.
 func (s *Service) puzzlePoint(ctx context.Context, q *mapsdb.Queries, campaignID, mapID, pointID string, lock bool) (mapsdb.Map, mapsdb.MapPoint, string, error) {
-	mid, ok := parseID(mapID)
-	pid, ok2 := parseID(pointID)
+	mid, ok := uid.Canonical(mapID)
+	pid, ok2 := uid.Canonical(pointID)
 	if !ok || !ok2 {
 		return mapsdb.Map{}, mapsdb.MapPoint{}, "", errors.Join(errPuzzleTarget, errPointNotFound())
 	}
@@ -215,7 +216,7 @@ func (s *Service) PuzzleRevealPoint(ctx context.Context, tx pgx.Tx, campaignID, 
 // PuzzleCheckClue says, inside tx, whether the clue is on a scene point of the
 // campaign's maps.
 func (s *Service) PuzzleCheckClue(ctx context.Context, tx pgx.Tx, campaignID, clueID string) error {
-	id, ok := parseID(clueID)
+	id, ok := uid.Canonical(clueID)
 	if !ok {
 		return errors.Join(errPuzzleTarget, errClueNotFound())
 	}
@@ -233,7 +234,7 @@ func (s *Service) PuzzleCheckClue(ctx context.Context, tx pgx.Tx, campaignID, cl
 // false, changing nothing, when the player had it already. The returned function,
 // called after the commit, tells the player's stream and the master's scene.
 func (s *Service) PuzzleRevealClue(ctx context.Context, tx pgx.Tx, campaignID, clueID, characterID, userID string, at time.Time) (gave bool, after func(context.Context), err error) {
-	id, ok := parseID(clueID)
+	id, ok := uid.Canonical(clueID)
 	if !ok {
 		return false, nil, errors.Join(errPuzzleTarget, errClueNotFound())
 	}
@@ -274,7 +275,7 @@ func (s *Service) PuzzleRevealClue(ctx context.Context, tx pgx.Tx, campaignID, c
 // notes): the cipher puzzle tells a player where its key is only then. A clue that is
 // gone, or not the campaign's, is not found, and not an error: the puzzle still reads.
 func (s *Service) PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, clueID, userID string) (bool, error) {
-	id, ok := parseID(clueID)
+	id, ok := uid.Canonical(clueID)
 	if !ok {
 		return false, nil
 	}
@@ -291,8 +292,8 @@ func (s *Service) PuzzleClueFoundBy(ctx context.Context, tx pgx.Tx, campaignID, 
 // square. The master sees everything. A point that is gone is not seen. It reads through
 // the pool.
 func (s *Service) PuzzleTrapSeenBy(ctx context.Context, m authz.Membership, mapID, pointID string) (bool, error) {
-	mid, ok1 := parseID(mapID)
-	pid, ok2 := parseID(pointID)
+	mid, ok1 := uid.Canonical(mapID)
+	pid, ok2 := uid.Canonical(pointID)
 	if !ok1 || !ok2 {
 		return false, nil
 	}

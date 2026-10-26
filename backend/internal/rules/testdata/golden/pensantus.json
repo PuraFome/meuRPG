@@ -263,6 +263,7 @@
     }
   ],
   "SpeedWalkFt": 25,
+  "Size": "Small",
   "SpeedFlyFt": 0,
   "SpeedSwimFt": 0,
   "SpeedClimbFt": 0,

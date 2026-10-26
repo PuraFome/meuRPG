@@ -83,6 +83,10 @@ export function emptyEffect(type = ''): EffectDraft {
     noCritDoubling: false,
     appliesTo: '',
     spellChange: '',
+    damageTypes: [],
+    kind: '',
+    conditions: [],
+    againstCondition: '',
   };
 }
 
@@ -141,6 +145,10 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noCritDoubling: e.noCritDoubling,
     appliesTo: e.appliesTo,
     spellChange: e.spellChange,
+    damageTypes: [...e.damageTypes],
+    kind: e.kind,
+    conditions: [...e.conditions],
+    againstCondition: e.againstCondition,
   };
 }
 
@@ -277,23 +285,24 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
-function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return CHOICE_FIELDS[name]?.(d) === '';
-}
-
-/** The draft's value of each required choice a request cannot leave empty. */
-const CHOICE_FIELDS: Readonly<Record<string, (d: EffectDraft) => string>> = {
-  event: (d) => d.event,
-  economy: (d) => d.economy,
-  applies: (d) => d.applies,
-  except: (d) => d.except,
-  while: (d) => d.while,
-  spell: (d) => d.spell,
-  ability: (d) => d.ability,
-  applies_to: (d) => d.appliesTo,
-  spell_change: (d) => d.spellChange,
+/** The required closed-list fields of the action, maneuver, resistance, spell and condition types, by name: whether each is still empty. */
+const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
+  event: (d) => d.event === '',
+  economy: (d) => d.economy === '',
+  applies: (d) => d.applies === '',
+  except: (d) => d.except === '',
+  while: (d) => d.while === '',
+  spell: (d) => d.spell === '',
+  ability: (d) => d.ability === '',
+  conditions: (d) => d.conditions.length === 0,
+  applies_to: (d) => d.appliesTo === '',
+  spell_change: (d) => d.spellChange === '',
 };
+
+/** Whether a required closed-list field is still empty. */
+function choiceEmpty(d: EffectDraft, name: string): boolean {
+  return CHOICE_EMPTY[name]?.(d) ?? false;
+}
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {

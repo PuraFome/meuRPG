@@ -1513,6 +1513,10 @@ message FullSheet {
   // A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
   // of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
   CuttingWordsAsk cutting_words_ask = 40;
+  // The size the player picked among the ones the race offers (Race.sizes: "Small" or
+  // "Medium"); empty is the race's own size. A size the race does not offer is an issue
+  // of the sheet (`race_size`), and the race's own counts.
+  string size = 41;
 }
 
 // CuttingWordsAsk is when the combat asks a bard to use Cutting Words.

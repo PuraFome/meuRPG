@@ -129,6 +129,10 @@ type Build struct {
 	// race lets the player choose (the half-elf's two +1), an Ability Score
 	// Improvement or a magic item. The sheet shows them as "manual".
 	ExtraAbilityBonuses map[Ability]int
+	// Size is the size the player picked among the ones the race offers (Small or
+	// Medium); empty is the race's own Size. A size the race does not offer is an
+	// Issue and the race's own counts.
+	Size string
 	// HitPoints says how levels after the first add hit points.
 	HitPoints HitPoints
 	// Armor is the worn body armor, or empty. Shield says whether a shield
@@ -400,6 +404,11 @@ type RaceEntry struct {
 	// their choice (a table race's "+2 and +1 to your choice"), largest first;
 	// nil for an SRD race (the half-elf's choice is in the SRD data).
 	ChoiceBonuses []int
+	// ChoiceBonusSets are alternative sets of such bonuses (the player picks one); nil for the
+	// races that have a single set or none. Sizes are the sizes the player picks one from; nil
+	// for the races that have only Size.
+	ChoiceBonusSets [][]int  `json:",omitempty"`
+	Sizes           []string `json:",omitempty"`
 	// SkillProficiencies are the skills its traits give (the half-orc's
 	// Intimidation), which the player does not choose.
 	SkillProficiencies []string
@@ -638,6 +647,9 @@ type Derived struct {
 	// HitDice has one entry per die size, largest first.
 	HitDice     []HitDice
 	SpeedWalkFt int
+	// Size is the character's size: the race's, or the one the player picked among the
+	// ones it offers ("Small", "Medium"...); empty without a race.
+	Size string `json:",omitempty"`
 	// The other speeds, in feet, 0 for none: a character has one only from a
 	// table's speed.fly, speed.swim, speed.climb or speed.burrow modifier (no SRD
 	// race has one); a creature (or a druid in Wild Shape) may fly, swim, climb or
@@ -1003,6 +1015,9 @@ type Hint struct {
 	Value int
 	// Tags are the conditions, such as "against:magic".
 	Tags []string
+	// AgainstCondition is, for a roll mode on saving throws, the condition key the
+	// saves are against ("condition:frightened"); empty for the others.
+	AgainstCondition string `json:",omitempty"`
 	// TextPT is a ready-to-show sentence in Portuguese.
 	TextPT string
 }
@@ -1106,4 +1121,6 @@ const (
 	// their choice (Catalog's RaceEntry.ChoiceBonuses) and the sheet's manual
 	// bonuses do not cover them.
 	IssueRaceBonus = "race_bonus"
+	// IssueRaceSize: the sheet picks a size the race does not offer.
+	IssueRaceSize = "race_size"
 )

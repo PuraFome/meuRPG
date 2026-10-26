@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -27,7 +28,7 @@ import (
 // play.DoorKeeper. The map must be the campaign's, or the answer is a
 // `not_found` Connect error.
 func (s *Service) OpenDoors(ctx context.Context, tx pgx.Tx, campaignID, mapID string, squares []grid.Square) ([]grid.Square, error) {
-	id, ok := parseID(mapID)
+	id, ok := uid.Canonical(mapID)
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -104,7 +105,7 @@ func openClosedDoors(set layerSet, squares []grid.Square, factor int) []grid.Squ
 // door lets sight through). It never fails the move. It implements
 // play.DoorKeeper.
 func (s *Service) DoorsChanged(ctx context.Context, campaignID, mapID string) {
-	id, ok := parseID(mapID)
+	id, ok := uid.Canonical(mapID)
 	if !ok {
 		return
 	}

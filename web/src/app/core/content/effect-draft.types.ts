@@ -60,6 +60,12 @@ export interface EffectDraft {
   alsoWithSlot: boolean;
   ritualOnly: boolean;
   countsAsKnown: boolean;
+  /** resistance: the damage types it covers (or "all", "nonmagical_bps") and its kind ("resist", "immune", "vulnerable"). */
+  damageTypes: string[];
+  kind: string;
+  /** condition_immunity: the conditions the character takes none of. roll_mode: the condition its saves are against. */
+  conditions: string[];
+  againstCondition: string;
   /** extra_damage: the dice (a formula) and sides, the type ("" is the weapon's), weapon kind, frequency, no crit doubling. */
   dice: string;
   diceSides: number;

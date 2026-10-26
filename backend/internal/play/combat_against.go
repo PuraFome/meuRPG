@@ -60,6 +60,31 @@ func conditionsAgainst(keys []string) []string {
 	return out
 }
 
+// withConditions adds to what a save is against the conditions it can give, by their keys
+// ("condition:frightened"): a table's roll mode against a condition (any of the 15) holds on these.
+func withSaveConditions(against, conditions []string) []string {
+	return withAgainst(slices.Clone(against), conditions...)
+}
+
+// effectSaveAgainst is what the saving throw of an effect that lasts is against: effectAgainst and the
+// conditions the effect gives.
+func effectSaveAgainst(key string, def *rules.EffectDef) []string {
+	against := effectAgainst(key, def)
+	if def == nil {
+		return against
+	}
+	return withSaveConditions(against, def.Conditions)
+}
+
+// trapSaveAgainst is what the saving throw of a trap is against: trapAgainst and the conditions it gives.
+func trapSaveAgainst(effect *rulesv1.TrapEffect) []string {
+	var conditions []string
+	for _, c := range effect.GetConditions() {
+		conditions = append(conditions, c.GetConditionKey())
+	}
+	return withSaveConditions(trapAgainst(effect), conditions)
+}
+
 // spellAgainst is what the saving throw against a spell is against: magic, poison when it deals poison damage, and
 // charm or fear when it is one of the spells that charm or frighten.
 func spellAgainst(sp link.Spell) []string {

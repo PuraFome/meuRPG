@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -167,7 +168,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 func taggedSavesOf(saves []link.TaggedSave) []combat.TaggedSave {
 	out := make([]combat.TaggedSave, 0, len(saves))
 	for _, t := range saves {
-		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities})
+		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities, Disadvantage: t.Disadvantage})
 	}
 	return out
 }
@@ -547,13 +548,20 @@ func (c textContext) otherSentence(src combat.Source) string {
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
 	case combat.SourceTaggedSave:
-		return fmt.Sprintf("%s: vantagem no teste de resistência %s", c.names(src.Condition), againstSentence(src.Against))
+		mode := "vantagem"
+		if src.Effect == combat.ModeDisadvantage {
+			mode = "desvantagem"
+		}
+		return fmt.Sprintf("%s: %s no teste de resistência %s", c.names(src.Condition), mode, c.againstSentence(src.Against))
 	}
 	return ""
 }
 
 // againstSentence is what a saving throw with a racial advantage is against, in Portuguese.
-func againstSentence(against string) string {
+func (c textContext) againstSentence(against string) string {
+	if strings.HasPrefix(against, "condition:") {
+		return "contra ficar " + strings.ToLower(c.cond(against))
+	}
 	switch against {
 	case combat.AgainstFrightened:
 		return "contra ficar amedrontado"

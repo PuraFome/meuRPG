@@ -346,3 +346,36 @@ func TestOpenLanguageAndToolPicksWarnAndDoNotStopTheSheet(t *testing.T) {
 		t.Errorf("problems = %+v, want the prerequisite of the Dwarvish the dwarf speaks", got)
 	}
 }
+
+func TestALanguageTakenTwiceInOneRoundIsADuplicateAndCountsOnce(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	half, acolyte := LanguagePickKey("race:half-elf"), LanguagePickKey("background:acolyte")
+	b := pickBuild("race:half-elf", "",
+		ScopedChoice(half, "language:abyssal"),
+		ScopedChoice(acolyte, "language:abyssal"), ScopedChoice(acolyte, "language:dwarvish"))
+	s := c.Choices(b)
+
+	bg := choiceOf(t, s, acolyte)
+	if !slices.Equal(bg.Unmet, []string{"language:abyssal"}) {
+		t.Fatalf("unmet = %v, want the Abyssal the race took", bg.Unmet)
+	}
+	if got := bg.Done(); got != 1 {
+		t.Errorf("the background has %d picks made, want 1: a repeat is not a pick", got)
+	}
+	if bg.Missing() != 1 {
+		t.Errorf("missing = %d, want the one still to pick", bg.Missing())
+	}
+	if done, _ := s.Counts(); done > 3 {
+		t.Errorf("done = %d, want the repeat left out", done)
+	}
+	var repeat bool
+	for _, p := range s.ChoiceProblems(false) {
+		if p.ChoiceKey == acolyte && p.Code == ChoiceProblemPrerequisite && p.OptionKey == "language:abyssal" {
+			repeat = true
+		}
+	}
+	if !repeat {
+		t.Errorf("problems = %+v, want the repeated Abyssal refused", s.ChoiceProblems(false))
+	}
+}

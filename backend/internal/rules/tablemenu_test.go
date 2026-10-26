@@ -246,24 +246,25 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 	srd := loadForTest(t)
 	m := srd.EffectMenu()
 	valid := map[string]Effect{
-		"modifier":        {Type: "modifier", Target: "ac", Mode: "add", Value: "1"},
-		"proficiency":     {Type: "proficiency", Proficiency: "skill:arcana"},
-		"resource":        {Type: "resource", Resource: "surto", Max: "1", Recharge: "long_rest"},
-		"sense":           {Type: "sense", Sense: "darkvision", RangeFt: 30},
-		"roll_mode":       {Type: "roll_mode", Roll: "advantage", Targets: []string{"attack"}},
-		"grant_action":    {Type: "grant_action", Economy: "action"},
-		"extra_attack":    {Type: "extra_attack", Count: 2},
-		"choice":          {Type: "choice", Choice: "skill", Count: 1},
-		"note":            {Type: "note"},
-		"superiority_die": {Type: "superiority_die", Applies: ManeuverDamage, Resource: "dados_de_teste", Value: "8"},
-		"ranged_attack":   {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
-		"extra_damage":    {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
-		"ambush":          {Type: "ambush", Applies: AmbushUnactedAdvantage},
-		"spell_modifier":  {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
-		"on_event":        {Type: "on_event", Event: EventLongRest, TempHP: "level()"},
-		"resistance":      {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
-		"breathes_water":  {Type: "breathes_water"},
-		"granted_spell":   {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
+		"modifier":           {Type: "modifier", Target: "ac", Mode: "add", Value: "1"},
+		"proficiency":        {Type: "proficiency", Proficiency: "skill:arcana"},
+		"resource":           {Type: "resource", Resource: "surto", Max: "1", Recharge: "long_rest"},
+		"sense":              {Type: "sense", Sense: "darkvision", RangeFt: 30},
+		"roll_mode":          {Type: "roll_mode", Roll: "advantage", Targets: []string{"attack"}},
+		"grant_action":       {Type: "grant_action", Economy: "action"},
+		"extra_attack":       {Type: "extra_attack", Count: 2},
+		"choice":             {Type: "choice", Choice: "skill", Count: 1},
+		"note":               {Type: "note"},
+		"superiority_die":    {Type: "superiority_die", Applies: ManeuverDamage, Resource: "dados_de_teste", Value: "8"},
+		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
+		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
+		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
+		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
+		"on_event":           {Type: "on_event", Event: EventLongRest, TempHP: "level()"},
+		"resistance":         {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
+		"condition_immunity": {Type: "condition_immunity", Conditions: []string{"condition:poisoned"}},
+		"breathes_water":     {Type: "breathes_water"},
+		"granted_spell":      {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -309,6 +310,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Except = ""
 		case "while":
 			e.While = ""
+		case "conditions":
+			e.Conditions = nil
 		case "event":
 			e.Event = ""
 		case "choice":

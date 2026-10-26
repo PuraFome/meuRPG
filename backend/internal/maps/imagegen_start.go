@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
@@ -22,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 )
 
 // How an image request starts: the status, the checks of the references and the prompt,
@@ -274,15 +275,15 @@ func (s *Service) readBlob(ctx context.Context, key string, limit int64) ([]byte
 }
 
 // errTooManyImageRequests is `resource_exhausted` for an image request made while the
-// server already has as many alive as it holds in memory.
+// server already has as many alive as the queue for the model takes.
 func errTooManyImageRequests() error {
 	return connect.NewError(connect.CodeResourceExhausted, errors.New("too many images are being made right now; wait for one to finish"))
 }
 
 // reserve is step 1: in one short transaction it finds the request an earlier
 // try with the same key made, or checks the cap and the gallery and inserts the
-// row, which reserves the slot. It starts the goroutine of a new request after
-// the commit. Every read goes through the transaction (see docs/architecture/transactions.md).
+// row, which reserves the slot. It queues the task of a new request after the
+// commit. Every read goes through the transaction (see docs/architecture/transactions.md).
 func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, error) {
 	var res reservation
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -290,7 +291,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		res, err = s.reserveTx(ctx, s.queries.WithTx(tx), &n, campaignID)
 		return err
 	})
-	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgUniqueViolation {
+	if db.IsUniqueViolation(err, imageRequestKeyIndex) {
 		// Two tries with the same key raced: the other one made the request.
 		if existing, getErr := s.queries.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key}); getErr == nil {
 			return s.racedReservation(ctx, existing, n, campaignID)
@@ -301,15 +302,43 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	}
 	if res.created {
 		logging.Event(ctx, s.logger, "image.requested", slog.String("generation_id", res.row.ID), slog.String("kind", n.kind))
-		s.generations.Add(1)
-		s.pending.Add(1) // run gives it back
-		go s.run(campaignID, res.row.ID, n.prepared)
+		return s.enqueueGeneration(ctx, campaignID, res)
 	}
 	return res.row, res.status, nil
 }
 
-// pgUniqueViolation is the SQLSTATE of a unique index that refused a row.
-const pgUniqueViolation = "23505"
+// enqueueTimeout is how long reserve waits for the runner to accept the task.
+const enqueueTimeout = 15 * time.Second
+
+// enqueueGeneration hands the committed request to the runner. If the runner cannot take it
+// (Cloud Tasks unreachable) the request must not stay pending with its slot spent: it ends
+// failed (unavailable), never sent and so not billed, and the slot goes back at once. The master
+// reads the failed request, not an error, so a retry of the same key finds the same answer.
+// (A server that dies between the commit and here leaves a pending request nothing runs;
+// expireStale gives its slot back after staleAfter.)
+func (s *Service) enqueueGeneration(ctx context.Context, campaignID string, res reservation) (mapsdb.ImageRequest, *mapsv1.ImageGenerationStatus, error) {
+	// The task is queued even when the master closes the page meanwhile.
+	ectx, cancel := context.WithTimeout(context.WithoutCancel(ctx), enqueueTimeout)
+	defer cancel()
+	err := s.tasks.Enqueue(ectx, tasks.Job{Kind: TaskImageGeneration, Payload: imageTask{CampaignID: campaignID, RequestID: res.row.ID}})
+	if err == nil || errors.Is(err, tasks.ErrExists) {
+		return res.row, res.status, nil
+	}
+	s.logger.ErrorContext(ctx, "maps: cannot queue an image request", "error", err)
+	s.finishUnsent(campaignID, res.row.ID, stateFailed, reasonUnavailable)
+	row, status := res.row, res.status
+	if r, getErr := s.queries.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: campaignID, ID: res.row.ID}); getErr == nil {
+		row = r
+	}
+	if st, statusErr := s.freshStatus(ctx, campaignID); statusErr == nil {
+		status = st
+	}
+	return row, status, nil
+}
+
+// imageRequestKeyIndex is the unique index of a campaign's idempotency keys: the only one an image request's insert
+// can break.
+const imageRequestKeyIndex = "image_requests_campaign_key_idx"
 
 // reservation is what one attempt of reserve's transaction leaves behind.
 type reservation struct {
@@ -365,9 +394,14 @@ func (s *Service) reserveTx(ctx context.Context, q *mapsdb.Queries, n *newReques
 			return reservation{}, err
 		}
 	}
-	// The server holds only so many requests alive. Two requests that pass this at
-	// once may both be taken: the cap is a bound on memory, not an exact count.
-	if s.pending.Load() >= maxPendingRequests {
+	// The server holds only so many requests alive, counted in the database (the transaction is
+	// SERIALIZABLE, so two requests for the last place cannot both take it): a queue of requests
+	// for the one call to the model stays short, whichever instance holds the task.
+	alive, err := q.CountPendingImageRequests(ctx, s.now().Add(-staleAfter))
+	if err != nil {
+		return reservation{}, fmt.Errorf("count the requests alive: %w", err)
+	}
+	if alive >= maxPendingRequests {
 		return reservation{}, errTooManyImageRequests()
 	}
 	row, err := s.insertRequest(ctx, q, campaignID, *n, inherited)

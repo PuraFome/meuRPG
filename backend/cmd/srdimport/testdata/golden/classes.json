@@ -31,11 +31,20 @@
     "proficiency:light-armor"
    ],
    "skill_choices": {
-    "choose": 1,
+    "choose": 2,
     "from": [
-     "skill:stealth"
+     "skill:arcana",
+     "skill:history"
     ]
-   }
+   },
+   "more_skill_choices": [
+    {
+     "choose": 1,
+     "from": [
+      "skill:stealth"
+     ]
+    }
+   ]
   },
   "spellcasting": {
    "level": 1,

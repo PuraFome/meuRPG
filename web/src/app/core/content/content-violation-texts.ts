@@ -319,6 +319,17 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
   { shape: /\.ability_bonuses\.[a-z]+$/, text: 'O bônus vai de −4 a +4.' },
   { shape: /\.choice_bonuses$/, text: 'No máximo 6 bônus à escolha.' },
   { shape: /\.choice_bonuses\[\]$/, text: 'Cada bônus à escolha vai de +1 a +4.' },
+  {
+    shape: /\.choice_bonus_sets$/,
+    text: 'No máximo 4 grupos de bônus, e a raça usa grupos ou uma lista só, nunca os dois.',
+  },
+  {
+    shape: /\.choice_bonus_sets\[\]\.bonuses$/,
+    text: 'Cada grupo tem de 1 a 6 bônus, e dois grupos não podem ser iguais.',
+  },
+  { shape: /\.choice_bonus_sets\[\]\.bonuses\[\]$/, text: 'Cada bônus de um grupo é +1 ou +2.' },
+  { shape: /\.sizes$/, text: 'O tamanho da raça precisa estar entre os que o jogador escolhe.' },
+  { shape: /\.sizes\[\]$/, text: 'Escolha Pequeno ou Médio, cada um uma vez.' },
   { shape: /\.language_choices$/, text: 'Idiomas à escolha: de 0 a 4.' },
   { shape: /\.languages\[\]$/, text: 'Este idioma não existe. Escolha da lista.' },
   {

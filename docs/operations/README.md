@@ -23,6 +23,8 @@ flowchart LR
   RUN --> GCS[(Cloud Storage<br/>images bucket)]
   RUN --> SM[Secret Manager]
   RUN --> GEM[Gemini API]
+  RUN -->|enqueue| CT[Cloud Tasks<br/>queue meurpg-tasks]
+  CT -->|POST /internal/tasks/kind<br/>OIDC token| RUN
   RUN --> OIDC[Google OIDC]
   JOB[Cloud Run job<br/>meurpg-migrate] --> CRDB
   CB[Cloud Build] --> AR[Artifact Registry]
@@ -36,6 +38,7 @@ flowchart LR
 | Cloud Run job `meurpg-migrate` | The same image, with `/app/migrate up` as the command | Runs before each new revision gets traffic; the API never migrates by itself |
 | CockroachDB | Managed CockroachDB in the same region | `DATABASE_URL` is a secret and must verify the server certificate on Cloud Run |
 | Cloud Storage | One private bucket for gallery images, thumbnails and campaign packages | Reached by the service account's token; no public or signed URL ([reference](reference.md#images-and-the-bucket)) |
+| Cloud Tasks | One queue, `meurpg-tasks`, in the same region: the detached work (images, exports, sweeps) is a task that calls the service back, so it runs inside a request and has CPU | Free for this volume (the first million operations a month); [reference](reference.md#cloud-tasks), [first deploy](runbook.md#11-cloud-tasks). The service's own `run.app` URL is the target, see [Ingress](#ingress-and-cloud-tasks) |
 | Secret Manager | `database-url`, `oidc-client-secret`, `gemini-api-key` (optional) | Delivered to Cloud Run as environment variables |
 | Cloud Build and Artifact Registry | One build per release, run as the `meurpg-build` service account | `deploy/gcp/cloudbuild.yaml`; the registry keeps the 10 newest images and deletes the rest after 30 days |
 | Load balancer and Cloud Armor | Terminates TLS for `meurpg.app`, applies the [edge policy](runbook.md#the-edge-policy-cloud-armor) | Cloud Run domain mappings are not offered in this region, so the domain sits behind a load balancer |
@@ -60,6 +63,10 @@ Nothing here is created from the repository by automation: the GCP resources are
 | Authentication | `--allow-unauthenticated` | The app does its own sign-in |
 
 When one instance stops being enough, the hub gives way to a shared channel (see [roadmap](../roadmap.md#infrastructure-not-built-yet)), and `max-instances` can go up. Re-read [the abuse limits](reference.md#abuse-limits) when it does.
+
+### Ingress and Cloud Tasks
+
+The ingress is `internal-and-cloud-load-balancing` and the task targets the default `run.app` URL, not the domain. Google's [ingress page](https://cloud.google.com/run/docs/securing/ingress) (it redirects to docs.cloud.google.com) lists Cloud Tasks among the Google Cloud products whose requests count as internal when they come from the same project (or VPC Service Controls perimeter) and use the default `run.app` URL, not a custom domain. The sentence was read through a search engine's excerpt, not from the page itself (the page could not be fetched when this was written), so the first deploy proves it with a test task ([first deploy, step 11](runbook.md#11-cloud-tasks)): a `404` in the request log for `/internal/tasks/smoke` means the call got through, anything else means it did not.
 
 ## See also
 

@@ -64,14 +64,16 @@ const pickedText =
       | 'weapon'
       | 'frequency'
       | 'appliesTo'
-      | 'spellChange',
+      | 'spellChange'
+      | 'kind'
+      | 'againstCondition',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
 
 /** A list that is sent (as a copy) when it has something in it. */
 const pickedList =
-  (key: 'targets' | 'from' | 'spells'): EffectWriter =>
+  (key: 'targets' | 'from' | 'spells' | 'damageTypes' | 'conditions'): EffectWriter =>
   (d) =>
     d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
 
@@ -122,6 +124,10 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['also_with_slot', (d) => (d.alsoWithSlot ? { alsoWithSlot: true } : {})],
   ['ritual_only', (d) => (d.ritualOnly ? { ritualOnly: true } : {})],
   ['counts_as_known', (d) => (d.countsAsKnown ? { countsAsKnown: true } : {})],
+  ['kind', pickedText('kind')],
+  ['damage_types', pickedList('damageTypes')],
+  ['conditions', pickedList('conditions')],
+  ['against_condition', pickedText('againstCondition')],
   ['dice', trimmedText('dice')],
   ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
   ['damage_type', pickedText('damageType')],

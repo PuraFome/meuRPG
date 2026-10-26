@@ -95,6 +95,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
 		ShieldIdle:            d.ShieldIdle,
+		Size:                  d.Size,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
 		SpeedWalkFt:           i32(d.SpeedWalkFt),
@@ -388,7 +389,17 @@ func raceToProto(r rules.RaceEntry) *rulesv1.Race {
 	return &rulesv1.Race{
 		Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
 		Archived: r.Archived, Off: r.Off, ChoiceBonuses: int32s(r.ChoiceBonuses), SkillKeys: r.SkillProficiencies,
+		ChoiceBonusSets: bonusSetsToProto(r.ChoiceBonusSets), Sizes: r.Sizes, Size: r.Size,
 	}
+}
+
+// bonusSetsToProto is a race's alternative sets of bonuses to place.
+func bonusSetsToProto(sets [][]int) []*rulesv1.BonusSet {
+	var out []*rulesv1.BonusSet
+	for _, s := range sets {
+		out = append(out, &rulesv1.BonusSet{Bonuses: int32s(s)})
+	}
+	return out
 }
 
 func subraceToProto(s rules.SubraceEntry) *rulesv1.Subrace {

@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -165,11 +165,17 @@ func (b *overlayBuilder) writeTrait(f *TableFeature, k featureKind) {
 // know records which entry (and class) a feature or option belongs to, for the
 // checks that need it once every entry exists.
 func (b *overlayBuilder) know(key string, k featureKind) {
+	b.ensureOwners()
+	b.featureEntry[key], b.featureClass[key] = k.owner, k.class
+}
+
+// ensureOwners makes the maps that say which entry owns a feature, an option or a
+// resource name.
+func (b *overlayBuilder) ensureOwners() {
 	if b.featureEntry == nil {
 		b.featureEntry, b.featureClass, b.optionEntry = map[string]string{}, map[string]string{}, map[string]string{}
 		b.resources, b.resourceMax = map[string]map[string]bool{}, map[string]map[string]string{}
 	}
-	b.featureEntry[key], b.featureClass[key] = k.owner, k.class
 }
 
 // declareResources notes the names the resource effects of a feature declare, in
@@ -335,10 +341,15 @@ func (b *overlayBuilder) checkGrantedSpells(site effectSite, e *Effect) error {
 }
 
 // resourceDefined says the owner can spend the resource: it is an SRD resource,
-// or a resource effect of the owner's entry or of its class defines it.
+// or a resource effect of the owner's entry or of its class defines it. A feat has
+// no feature owner: its effects are the feat's own, so its entry is itself.
 func (b *overlayBuilder) resourceDefined(owner, name string) bool {
 	_, srd := b.base.namesPT["resource:"+name]
-	return validResourceName(name) && (srd || b.resources[b.featureEntry[owner]][name] || b.resources[b.featureClass[owner]][name])
+	entry := b.featureEntry[owner]
+	if strings.HasPrefix(owner, "feat:") {
+		entry = owner
+	}
+	return validResourceName(name) && (srd || b.resources[entry][name] || b.resources[b.featureClass[owner]][name])
 }
 
 // checkChoiceEffect checks a choice effect: what it asks and what it offers.
@@ -492,7 +503,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
-	"roll_mode":    {"roll", "targets"},
+	"roll_mode":    {"roll", "targets", "against_condition"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
 	"choice":       {"choice", "count", "from"},
@@ -512,8 +523,10 @@ var ownFields = map[string][]string{
 	"ambush": {"applies"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
-	// A resistance names the damage type it leaves out and when it holds.
-	"resistance": {"except", "while"},
+	// A resistance names the damage types it covers (or the one it leaves out), its kind and when it holds.
+	"resistance": {"except", "while", "damage_types", "kind"},
+	// A condition_immunity names the conditions the character takes none of.
+	"condition_immunity": {"conditions"},
 	// A spell_modifier: which spells, what it changes, and the change's own fields.
 	"spell_modifier": {"applies_to", "spell_change", "from", "value", "damage_type", "count", "resource", "cost"},
 	// breathes_water has no field of its own: only the when that gates it.
@@ -574,6 +587,10 @@ var effectFields = []effectField{
 	{"no_crit_doubling", func(e *Effect) bool { return e.NoCritDoubling }, func(e *Effect) { e.NoCritDoubling = false }},
 	{"applies_to", func(e *Effect) bool { return e.AppliesTo != "" }, func(e *Effect) { e.AppliesTo = "" }},
 	{"spell_change", func(e *Effect) bool { return e.SpellChange != "" }, func(e *Effect) { e.SpellChange = "" }},
+	{"damage_types", func(e *Effect) bool { return len(e.DamageTypes) > 0 }, func(e *Effect) { e.DamageTypes = nil }},
+	{"kind", func(e *Effect) bool { return e.Kind != "" }, func(e *Effect) { e.Kind = "" }},
+	{"conditions", func(e *Effect) bool { return len(e.Conditions) > 0 }, func(e *Effect) { e.Conditions = nil }},
+	{"against_condition", func(e *Effect) bool { return e.AgainstCondition != "" }, func(e *Effect) { e.AgainstCondition = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
 	{"prepares", func(e *Effect) bool { return e.Prepares }, func(e *Effect) { e.Prepares = false }},
 	{"prepared_max", func(e *Effect) bool { return e.PreparedMax != "" }, func(e *Effect) { e.PreparedMax = "" }},
@@ -723,6 +740,12 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"against_condition holds on saving throws"}, fieldAttr(".targets"), ReasonValue},
+	{[]string{"against_condition takes no tags"}, fieldAttr(".tags"), ReasonValue},
+	{[]string{"against_condition"}, fieldAttr(".against_condition"), ReasonReference},
+	{[]string{"conditions are required", "is not a condition", "listed twice in conditions"}, fieldAttr(".conditions"), ReasonReference},
+	{[]string{"damage_types"}, fieldAttr(".damage_types"), ReasonValue},
+	{[]string{"is not resist, immune or vulnerable"}, fieldAttr(".kind"), ReasonValue},
 	{[]string{"is not a damage type"}, func(e *Effect, _ func(...string) bool) string {
 		switch e.Type {
 		case "extra_damage", "spell_modifier":
@@ -911,6 +934,8 @@ func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 	checkRaceBody(&c, tr, path)
 	bonuses := bonusMap(&c, key, path, tr.AbilityBonuses)
 	choice := raceChoiceBonuses(&c, key, path, tr.ChoiceBonuses)
+	sets := raceChoiceBonusSets(&c, key, path, tr)
+	checkRaceSizes(&c, key, path, tr)
 	b.checkRaceLanguages(&c, tr, path)
 	race := &srd51.Race{
 		Key: key, Name: tr.NamePT, SpeedFt: tr.SpeedFt, Size: tr.Size, AbilityBonuses: bonuses,
@@ -924,6 +949,12 @@ func (b *overlayBuilder) addRace(tr *TableRace, path string) error {
 	b.n.races[key] = race
 	if len(choice) > 0 {
 		b.n.raceChoice[key] = choice
+	}
+	if len(sets) > 0 {
+		b.n.raceSets[key] = sets
+	}
+	if len(tr.Sizes) > 0 {
+		b.n.raceSizes[key] = slices.Clone(tr.Sizes)
 	}
 	if tr.DarkvisionFt > 0 {
 		// The darkvision is an effect of the race itself: Derive reads those too.
@@ -960,6 +991,68 @@ func raceChoiceBonuses(c *entryErrors, key, path string, in []int) []int {
 	}
 	slices.SortFunc(choice, func(a, c int) int { return c - a })
 	return choice
+}
+
+// The limits of a race's alternative sets of bonuses to place: the SRD's bonuses are +1 and +2, a set has at
+// most one bonus per ability, and a race has a few sets.
+const (
+	maxRaceSetBonus = 2
+	maxRaceSets     = 4
+)
+
+// pickableSizes are the sizes a race lets the player pick from.
+var pickableSizes = []string{"Small", "Medium"}
+
+// raceChoiceBonusSets checks the alternative sets of bonuses a race lets the player place and returns them,
+// each largest first. A race has choice_bonuses (one set) or choice_bonus_sets, never both.
+func raceChoiceBonusSets(c *entryErrors, key, path string, tr *TableRace) [][]int {
+	if len(tr.ChoiceBonusSets) == 0 {
+		return nil
+	}
+	if len(tr.ChoiceBonuses) > 0 {
+		c.at(key, path, ".choice_bonus_sets", ReasonValue, "a race has choice_bonuses (one set) or choice_bonus_sets, not both")
+	}
+	if len(tr.ChoiceBonusSets) > maxRaceSets {
+		c.at(key, path, ".choice_bonus_sets", ReasonLimit, "at most %d sets of bonuses to place", maxRaceSets)
+	}
+	var out [][]int
+	for i, set := range tr.ChoiceBonusSets {
+		at := fmt.Sprintf(".choice_bonus_sets[%d]", i)
+		switch {
+		case len(set) == 0:
+			c.at(key, path, at+".bonuses", ReasonValue, "a set has at least one bonus to place")
+		case len(set) > len(abilityIndex):
+			c.at(key, path, at+".bonuses", ReasonLimit, "at most %d bonuses to place in a set", len(abilityIndex))
+		}
+		for j, v := range set {
+			if v < 1 || v > maxRaceSetBonus {
+				c.at(key, path, fmt.Sprintf("%s.bonuses[%d]", at, j), ReasonLimit, "a bonus to place is 1 to %d", maxRaceSetBonus)
+			}
+		}
+		sorted := slices.SortedFunc(slices.Values(set), func(a, b int) int { return b - a })
+		if slices.ContainsFunc(out, func(o []int) bool { return slices.Equal(o, sorted) }) {
+			c.at(key, path, at+".bonuses", ReasonValue, "the set is the same as an earlier one")
+		}
+		out = append(out, sorted)
+	}
+	return out
+}
+
+// checkRaceSizes checks the sizes a race lets the player pick from: Small or Medium, once each, and the
+// race's own size among them.
+func checkRaceSizes(c *entryErrors, key, path string, tr *TableRace) {
+	for i, s := range tr.Sizes {
+		at := fmt.Sprintf(".sizes[%d]", i)
+		switch {
+		case !slices.Contains(pickableSizes, s):
+			c.at(key, path, at, ReasonValue, "a size to pick is Small or Medium")
+		case slices.Contains(tr.Sizes[:i], s):
+			c.at(key, path, at, ReasonValue, "the size %s is listed twice", s)
+		}
+	}
+	if len(tr.Sizes) > 0 && !slices.Contains(tr.Sizes, tr.Size) {
+		c.at(key, path, ".sizes", ReasonValue, "the size of the race (%s) is one of the sizes to pick from", tr.Size)
+	}
 }
 
 // checkRaceLanguages checks the languages a race knows and lets the player choose.

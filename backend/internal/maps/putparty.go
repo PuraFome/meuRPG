@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -46,7 +47,7 @@ func (s *Service) PutPartyOnMap(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}

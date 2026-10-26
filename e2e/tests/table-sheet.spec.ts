@@ -107,11 +107,20 @@ test(
       await skills.getByRole('checkbox', { name: 'Atletismo', exact: true }).check();
       await skills.getByRole('checkbox', { name: 'Natureza', exact: true }).check();
 
+      // The race's +2 and +1 are two choices of "Escolhas", asked once the server has read the draft: the step is there, and the
+      // sheet is not complete without them.
+      await p.getByRole('tab', { name: /Escolhas/ }).click();
+      await p.getByRole('region', { name: /^Bônus de \+2/ }).getByRole('checkbox', { name: /^Sabedoria/ }).click();
+      await p.getByRole('region', { name: /^Bônus de \+1/ }).getByRole('checkbox', { name: /^Destreza/ }).click();
       await fillChoicesStep(p);
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();
       await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
       await expect(p.getByRole('heading', { name: 'Ícaro', level: 1 })).toBeVisible();
+      // The scores of the sheet carry the picks: Sabedoria 15 + 1 of the race + 2 picked, Destreza 13 + 1 picked.
+      const sheetText = (await p.locator('main').innerText()).replace(/\s+/g, ' ');
+      expect(sheetText).toContain('Sabedoria +4 valor 18');
+      expect(sheetText).toContain('Destreza +2 valor 14');
       await expect(p.getByText('Guardião do Vale 1').first()).toBeVisible();
       await expect(p.getByText('Corujeiro').first()).toBeVisible();
       // The background's own feature is on the sheet, as the player wrote it.

@@ -189,7 +189,7 @@ sequenceDiagram
     M->>P: PutOnStage(NPC, hidden)
     P->>C: CombatCharacters: is it a living NPC of the campaign?
     P->>P: locks the session, checks the limit of 4, stores stage_npcs and stage_changed
-    P-->>J: stage_changed (to everyone; to the master alone when hidden)
+    P-->>J: stage_changed (to everyone, or to the master alone when hidden)
     J->>P: GetOpenScene
     P-->>J: name, portrait and who speaks, no ID or sheet
     J->>K: GET /images/{portrait}

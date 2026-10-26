@@ -36,7 +36,8 @@ type MenuField struct {
 	Required bool
 	// Kind is how the editor asks: "formula" (an Int formula), "condition" (a Bool
 	// formula), "text", "number", "choice" (one of a closed list, named by List),
-	// "choices" (several of it), "tags", "resource_ref" or "yes_no" (a switch).
+	// "choices" (several of it), "cards" (one of a short list, as radio cards with
+	// their hints), "tags", "resource_ref" or "yes_no" (a switch).
 	Kind string
 	// List names the closed list of the menu the value comes from (a MenuList's
 	// Name), empty when the value is free.
@@ -130,6 +131,11 @@ const (
 	ListDamageTypes    = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
+	// ListResistanceTypes are the damage types of a resistance effect plus the closed words
+	// "all" and "nonmagical_bps"; ListResistanceKinds its kinds; ListConditions the 15 conditions.
+	ListResistanceTypes = "resistance_damage_types"
+	ListResistanceKinds = "resistance_kinds"
+	ListConditions      = "conditions"
 	// ListGrantAbilities are the casting abilities of a granted spell.
 	ListGrantAbilities = "granted_spell_abilities"
 	// ListOptionSetNames are the option sets a table option may join (TableOption.set).
@@ -167,9 +173,10 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "roll_mode", NamePT: "Vantagem ou desvantagem", HintPT: "Vantagem ou desvantagem em certas rolagens; com uma situação (tags), o app só lembra e o mestre decide.", Fields: []MenuField{
+	{Type: "roll_mode", NamePT: "Vantagem ou desvantagem", HintPT: "Vantagem ou desvantagem em certas rolagens; com uma situação (tags), o app só lembra e o mestre decide. Contra uma condição, vale de verdade nos testes de resistência para não ficar com ela.", Fields: []MenuField{
 		{Name: "roll", Required: true, Kind: "choice", List: ListRollModes},
 		{Name: "targets", Required: true, Kind: "choices", List: ListRollTargets},
+		{Name: "against_condition", Kind: "choice", List: ListConditions},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
@@ -228,9 +235,15 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição (em fúria). A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
-		{Name: "except", Required: true, Kind: "choice", List: ListDamageTypes},
-		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
+	{Type: "resistance", NamePT: "Resistência, imunidade ou vulnerabilidade a dano", HintPT: "Resistência (metade do dano), imunidade (nenhum dano) ou vulnerabilidade (o dobro) aos tipos de dano escolhidos, a todos os tipos, ou aos ataques não mágicos de pancada, perfuração e corte. Vale sempre ou só em fúria. A mesma proteção de outra fonte conta uma vez só.", Fields: []MenuField{
+		{Name: "kind", Kind: "cards", List: ListResistanceKinds, AlwaysShown: true},
+		{Name: "damage_types", Kind: "choices", List: ListResistanceTypes, AlwaysShown: true},
+		{Name: "except", Kind: "choice", List: ListDamageTypes},
+		{Name: "while", Kind: "choice", List: ListResistanceConditions},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "condition_immunity", NamePT: "Imunidade a condição", HintPT: "O personagem não fica com as condições escolhidas: nenhuma magia, armadilha ou golpe as coloca nele.", Fields: []MenuField{
+		{Name: "conditions", Required: true, Kind: "choices", List: ListConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "breathes_water", NamePT: "Respira na água", HintPT: "O personagem respira debaixo d'água. A ficha mostra a característica; o jogo não conta fôlego nem afogamento.", Fields: []MenuField{
@@ -536,6 +549,9 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
+		{Name: ListResistanceTypes, Values: c.menuResistanceTypes()},
+		{Name: ListResistanceKinds, Values: resistanceKindValues()},
+		{Name: ListConditions, Values: c.menuConditions()},
 		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
 		{Name: ListOptionSetNames, Values: menuOptionSetNames()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
@@ -567,6 +583,38 @@ func (c *content) menuDamageTypes() []MenuValue {
 	for _, t := range types {
 		out = append(out, MenuValue{Key: t.Key, NamePT: t.NamePT})
 	}
+	return out
+}
+
+// menuResistanceTypes are the SRD damage types plus the closed words a resistance takes.
+func (c *content) menuResistanceTypes() []MenuValue {
+	out := []MenuValue{
+		{Key: DamageTypeAll, NamePT: "Todos os tipos de dano"},
+		{Key: DamageTypeNonmagicalBPS, NamePT: "Contundente, perfurante e cortante não mágicos", HintPT: "Pancada, perfuração e corte de ataques que não são mágicos."},
+	}
+	return append(out, c.menuDamageTypes()...)
+}
+
+// resistanceKindValues are the three kinds of a resistance effect.
+func resistanceKindValues() []MenuValue {
+	return []MenuValue{
+		{Key: ResistanceKindResist, NamePT: "Resistência", HintPT: "Sofre metade do dano."},
+		{Key: ResistanceKindImmune, NamePT: "Imunidade", HintPT: "Não sofre dano."},
+		{Key: ResistanceKindVulnerable, NamePT: "Vulnerabilidade", HintPT: "Sofre o dobro do dano."},
+	}
+}
+
+// menuConditions are the conditions of the content, by name.
+func (c *content) menuConditions() []MenuValue {
+	var keys []string
+	if c.combatEffects != nil {
+		keys = sortedKeys(c.combatEffects.conditions)
+	}
+	out := make([]MenuValue, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, MenuValue{Key: k, NamePT: c.namePT(k)})
+	}
+	sortMenuByName(out)
 	return out
 }
 

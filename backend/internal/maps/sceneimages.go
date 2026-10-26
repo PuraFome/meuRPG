@@ -10,6 +10,7 @@ import (
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -108,7 +109,7 @@ func cleanSceneImageIDs(raw []string) ([]string, error) {
 	}
 	ids := make([]string, 0, len(raw))
 	for _, r := range raw {
-		id, ok := parseID(r)
+		id, ok := uid.Canonical(r)
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("image_ids must be UUIDs"))
 		}

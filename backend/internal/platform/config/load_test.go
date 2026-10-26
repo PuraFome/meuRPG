@@ -42,6 +42,43 @@ func loadCorpus() map[string]map[string]string {
 		"blob dir cloud":    cloud(map[string]string{"BLOB_DIR": "/data"}),
 		"blob bucket cloud": cloud(map[string]string{"BLOB_BUCKET": "b"}),
 
+		"tasks none": {},
+		"tasks all": {
+			"TASKS_QUEUE": " projects/demo-project/locations/southamerica-east1/queues/demo-tasks ", "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		},
+		"tasks all cloud": cloud(map[string]string{
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app/",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		}),
+		"tasks local target": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "http://localhost:8080",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		},
+		"tasks queue only":   {"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks"},
+		"tasks target only":  {"TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app"},
+		"tasks account only": {"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com"},
+		"tasks no account": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app",
+		},
+		"tasks bad queue": {"TASKS_QUEUE": "demo-tasks", "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app", "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com"},
+		"tasks http target": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "http://demo-api.run.app",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		},
+		"tasks target path": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "https://demo-api.run.app/api?x=1",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		},
+		"tasks target not a url": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "demo-api",
+			"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+		},
+		"tasks account not an email": {
+			"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "https://demo-api.run.app",
+			"TASKS_SERVICE_ACCOUNT": "demo-api",
+		},
+
 		"images fake":          {"IMAGE_GENERATOR": "fake"},
 		"images fake cloud":    cloud(map[string]string{"IMAGE_GENERATOR": "fake"}),
 		"images unknown":       {"IMAGE_GENERATOR": "dalle"},

@@ -24,6 +24,9 @@
 //	MAX_CAMPAIGNS_PER_USER campaigns one account may be master of (default 10)
 //	CAMPAIGN_CREATORS   verified e-mails, comma-separated, that may create campaigns (default: anyone)
 //	RATE_LIMIT_MULTIPLIER scales every request-rate limit (default 1; the e2e suite raises it)
+//	TASKS_QUEUE         full name of the Cloud Tasks queue for detached work (optional; with the next two, or none)
+//	TASKS_TARGET_URL    the service's own https URL, where Cloud Tasks calls back
+//	TASKS_SERVICE_ACCOUNT the account that signs that call's OIDC token
 //
 // Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
 // the API still starts, and the sign-in routes answer 503. CampaignService,
@@ -99,6 +102,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
@@ -191,8 +195,15 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	// instance's memory. They are built before the modules, which hold two of them.
 	policy := ratelimit.NewPolicy(cfg.Limits.RateMultiplier)
 
+	// The detached work: a Cloud Tasks queue when TASKS_* is set, else this process.
+	runner, taskEndpoint, err := newTaskRunner(ctx, logger, cfg)
+	if err != nil {
+		return err
+	}
+
 	identityService, m, err := wireSignIn(ctx, logger, cfg, pool, signInParts{
 		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), voice: newVoiceGenerator(ctx, logger, cfg), policy: policy,
+		tasks: runner,
 	})
 	if err != nil {
 		return err
@@ -208,19 +219,58 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		Limit: ratelimit.Middleware(policy.IP, cfg.TrustedProxyHops, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
 	mountServices(ctx, logger, srv, m, identityService, policy)
+	if taskEndpoint != nil {
+		// Cloud Tasks calls back here. The load balancer sends every path to the service,
+		// so the endpoint's own OIDC check is the only gate. No rate limit applies:
+		// ratelimit.Middleware limits only the API prefixes, not /internal/tasks/.
+		srv.Handle(tasks.EndpointPrefix, taskEndpoint)
+	}
 	if err := mountWeb(ctx, logger, srv, cfg); err != nil {
 		return err
 	}
+	// Every handler is registered by now: the scheduled kinds begin.
+	runner.Start(ctx)
+	// At shutdown the running tasks stop (in-process: the context of each; Cloud Tasks
+	// retries what was cut off).
+	srv.OnShutdown(taskCancel(runner))
 
 	err = srv.Run(ctx)
+	// The goroutines write their last lines before the pool closes: about a
+	// second, inside Cloud Run's 10 s with the HTTP drain.
+	waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	runner.Wait(waitCtx)
 	if m != nil {
-		// The goroutines write their last lines before the pool closes: about a
-		// second, inside Cloud Run's 10 s with the HTTP drain.
-		waitCtx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
 		m.maps.WaitForGenerations(waitCtx)
 	}
 	return err
+}
+
+// newTaskRunner builds the Runner of the detached work from TASKS_*: Cloud Tasks with its
+// endpoint when they are set, else a Runner of this process (no endpoint). The choice is
+// logged once.
+func newTaskRunner(ctx context.Context, logger *slog.Logger, cfg config.Config) (tasks.Runner, http.Handler, error) {
+	if !cfg.Tasks.Configured() {
+		logger.InfoContext(ctx, "TASKS_QUEUE is not set; detached work (images, exports, sweeps) runs in this process")
+		return tasks.NewInProcess(logger), nil, nil
+	}
+	c, err := tasks.NewCloudTasks(tasks.Config{
+		Queue: cfg.Tasks.Queue, TargetURL: cfg.Tasks.TargetURL, ServiceAccount: cfg.Tasks.ServiceAccount,
+	}, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+	logger.InfoContext(ctx, "detached work runs on Cloud Tasks", "queue", cfg.Tasks.Queue, "target", cfg.Tasks.TargetURL)
+	endpoint := c.Handler()
+	return c, endpoint, nil
+}
+
+// taskCancel is what the shutdown calls to stop the tasks running in this process.
+func taskCancel(r tasks.Runner) func() {
+	if c, ok := r.(interface{ Cancel() }); ok {
+		return c.Cancel
+	}
+	return func() {}
 }
 
 // openDatabase opens the pool, or returns nil when DATABASE_URL is empty.
@@ -322,6 +372,7 @@ type signInParts struct {
 	images gen.Generator
 	voice  voice.Generator
 	policy ratelimit.Policy
+	tasks  tasks.Runner
 }
 
 // wireSignIn builds sign-in and the modules that come with it. Sign-in needs
@@ -346,6 +397,7 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 		CampaignCreators:    cfg.Limits.CampaignCreators,
 		Policy:              parts.policy,
 		TrustedProxyHops:    cfg.TrustedProxyHops,
+		Tasks:               parts.tasks,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -398,7 +450,6 @@ func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Ser
 	// An export in flight stops with the server; the next read marks it
 	// interrupted. The sweeper deletes what expired while it runs.
 	srv.OnShutdown(m.packages.Cancel)
-	m.packages.RunSweeper(ctx)
 }
 
 // mountWeb serves the Angular build when WEB_DIR has one; without it the
@@ -508,6 +559,9 @@ type wireOptions struct {
 	// TrustedProxyHops says where the client's address is (see
 	// ratelimit.ClientKey): the claim links' limit per address reads it.
 	TrustedProxyHops int
+	// Tasks runs the detached work of maps and campaignpackage (nil: each uses an in-process
+	// runner of its own, as the tests do).
+	Tasks tasks.Runner
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -628,6 +682,7 @@ func wireModules(
 		Combats:       playService,  // whether a combat runs on a map: its grid and image cannot change then (MR-034)
 		// Whether a new map starts with the fog on is a table rule (RN-24).
 		Defaults: campaignsService,
+		Tasks:    opts.Tasks,
 		Logger:   logger,
 	})
 	if err != nil {
@@ -690,6 +745,7 @@ func wireModules(
 		Creation:       campaignsService, // who may create a campaign, and a retried create
 		Logger:         logger,
 		ContentVersion: rulesContent.Version(),
+		Tasks:          opts.Tasks,
 		Heavy:          opts.Policy.Package,
 		PartsLimit:     opts.Policy.PackageParts,
 	})

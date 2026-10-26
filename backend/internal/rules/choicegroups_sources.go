@@ -64,10 +64,14 @@ func (cb *choiceBuilder) traitChoices(g *groupBuild, tk string) {
 
 // abilityChoice is the race's "+1 to two abilities" (SRD 5.1, Half-Elf, Ability
 // Score Increase): the abilities are picks, and Derive adds the points. A table
-// race's choice is placed in the manual bonuses and is not asked here.
+// race's sets of bonuses are picks too (racebonuspicks.go).
 func (cb *choiceBuilder) abilityChoice(r *srd51.Race) {
 	c := cb.c
-	if r.AbilityBonusChoices == nil || len(c.raceChoice[r.Key]) > 0 {
+	if sets := c.raceBonusSets(r.Key); len(sets) > 0 {
+		cb.bonusChoices(r.Key, sets)
+		return
+	}
+	if r.AbilityBonusChoices == nil {
 		return
 	}
 	g := cb.group(ChoiceOriginRace, r.Key, 0, 0)

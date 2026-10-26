@@ -144,6 +144,8 @@ export function failureText(
       return `O pedido se perdeu pelo caminho. Tente de novo. ${back}`;
     case ImageGenerationFailure.STORAGE_FAILED:
       return `A imagem foi feita, mas não deu para guardá-la. Tente de novo. ${back}`;
+    case ImageGenerationFailure.MAP_CHANGED:
+      return `O mapa mudou depois do pedido. Gere de novo. ${back}`;
     case ImageGenerationFailure.SERVICE_OFF:
       return `O serviço de imagens não está disponível agora. ${back}`;
     default:

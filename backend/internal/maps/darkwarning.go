@@ -9,6 +9,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -28,7 +29,7 @@ func (s *Service) ListCharactersInTheDark(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
