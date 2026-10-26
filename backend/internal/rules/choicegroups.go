@@ -149,11 +149,24 @@ type Choice struct {
 	viaCantrips bool
 }
 
-// Done is how many of the choice's selections are made (never more than Picks).
+// Done is how many of the choice's selections are made (never more than Picks). A pick of an
+// option another choice took is a repeat, not a selection made.
 func (ch Choice) Done() int {
-	n := min(len(ch.Picked)+ch.legacy, ch.Picks)
+	n := min(len(ch.Picked)-ch.repeats()+ch.legacy, ch.Picks)
 	if n > 0 && ch.needsTexts() && !ch.textsComplete() {
 		return n - 1
+	}
+	return n
+}
+
+// repeats is how many of the picks are of an option that another choice (of the same
+// pool or family) took.
+func (ch Choice) repeats() int {
+	n := 0
+	for _, o := range ch.Options {
+		if slices.Contains(ch.Picked, o.Key) && o.taken() {
+			n++
+		}
 	}
 	return n
 }
@@ -561,4 +574,15 @@ func blockTaken(ch *Choice, taken []string) {
 			ch.Unmet = append(ch.Unmet, o.Key)
 		}
 	}
+}
+
+// taken says an earlier pick of the sheet already holds the option: a prerequisite of the
+// "taken" kind that is not met.
+func (o ChoiceOption) taken() bool {
+	for _, p := range o.Prerequisites {
+		if p.Kind == PrerequisiteTaken && !p.Met {
+			return true
+		}
+	}
+	return false
 }
