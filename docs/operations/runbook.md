@@ -501,11 +501,11 @@ Detached work (images, exports, sweeps) needs CPU, which the service has only in
 
    - `--max-concurrent-dispatches=4` and `--max-dispatches-per-second=5`: the service has one instance with 2 vCPU and a memory budget ([reference](reference.md#memory-budgets)), also serving streams; four exports or images at once is what it can carry, and a burst waits in the queue instead of reaching the instance.
    - `--max-attempts=5`, `--min-backoff=10s`, `--max-backoff=300s`, `--max-doublings=4`: a handler answers `500` only when a retry can help (the database was busy, an instance was stopping), so a few tries over minutes are enough: 10 s, 20 s, 40 s, 80 s.
-   - `--max-retry-duration=1h`: the most a task survives after its first attempt. This is the figure [Privacy](../privacy.md#logs-memory-and-infrastructure) quotes.
+   - `--max-retry-duration=3600s` (one hour; the flag takes seconds): the most a task survives after its first attempt. This is the figure [Privacy](../privacy.md#logs-memory-and-infrastructure) quotes.
 
    ```bash
    gcloud tasks queues create $QUEUE --location=$REGION \
-     --max-attempts=5 --min-backoff=10s --max-backoff=300s --max-doublings=4 --max-retry-duration=1h \
+     --max-attempts=5 --min-backoff=10s --max-backoff=300s --max-doublings=4 --max-retry-duration=3600s \
      --max-dispatches-per-second=5 --max-concurrent-dispatches=4
    ```
 
