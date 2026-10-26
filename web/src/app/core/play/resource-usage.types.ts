@@ -39,5 +39,12 @@ export interface ResourceUsageVm {
   readonly total: number;
   readonly used: number;
   /** When the uses come back: `short_rest` is "num descanso curto ou longo" (`RECHARGE_SHORT_REST`), `long_rest` only "num descanso longo". */
-  readonly recharge: 'short_rest' | 'long_rest' | 'dawn' | 'none';
+  readonly recharge:
+    | 'short_rest'
+    | 'long_rest'
+    | 'dawn'
+    | 'none'
+    | 'initiative'
+    | 'restore_one_on_short_rest'
+    | 'restore_one_on_long_rest';
 }

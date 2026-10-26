@@ -62,7 +62,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
-import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, costsRaceBody, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
@@ -5956,6 +5956,17 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, classFeature));
       await expect(m.getByLabel('Nome da característica')).toHaveValue('Rastro do Corvo');
       await expectScreenPasses(m, `Editor de característica de classe ${where}`);
+      // A trait with a pool that comes back on initiative, an action that spends 1 to 3 of it to heal, and a long-rest hook.
+      const costs = await createEntryRPC(m, campaignId, 'tableRace', costsRaceBody());
+      await open(m, entryRoute(campaignId, costs));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Brasa de Teste');
+      await expect(m.getByLabel('Custo máximo (o jogador escolhe)')).toHaveValue('3');
+      await expectScreenPasses(m, `Editor de raça, a ação com custo e cura, o recurso que volta na iniciativa e o gatilho ${where}`);
+      // A refusal at the field: the most the player may spend is below the cost.
+      await m.getByLabel('Custo máximo (o jogador escolhe)').fill('0');
+      await m.getByRole('button', { name: 'Salvar raça' }).click();
+      await expect(m.getByLabel('Custo máximo (o jogador escolhe)')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de raça, a recusa no custo máximo ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');

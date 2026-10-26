@@ -116,6 +116,24 @@ describe('toVitalsVm and the resources', () => {
       ['odd', 'none'],
     ]);
   });
+
+  it('maps the three recharge variants of a table resource', () => {
+    const vm = toVitalsVm(
+      create(CharacterVitalsSchema, {
+        characterId: 'c1',
+        resources: [
+          { key: 'a', total: 2, recharge: Recharge.INITIATIVE },
+          { key: 'b', total: 2, recharge: Recharge.RESTORE_ONE_ON_SHORT_REST },
+          { key: 'c', total: 2, recharge: Recharge.RESTORE_ONE_ON_LONG_REST },
+        ],
+      }),
+    );
+    expect(vm.resources?.map((r) => r.recharge)).toEqual([
+      'initiative',
+      'restore_one_on_short_rest',
+      'restore_one_on_long_rest',
+    ]);
+  });
 });
 
 describe('toShownImageVm', () => {
