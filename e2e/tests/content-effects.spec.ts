@@ -39,9 +39,13 @@ test(
       await m.goto(entryRoute(campaignId, sharpshot));
       await expect(m.getByLabel('Lados do dado')).toHaveValue('6');
       await expect(m.getByLabel('Dados (quantos)')).toHaveValue('1');
-      await expect(m.getByLabel('Tipo de dano')).toContainText('Fogo');
-      await expect(m.getByLabel('Arma')).toContainText('Ataque com arma à distância');
-      await expect(m.getByLabel('Quantas vezes')).toContainText('Uma vez por turno');
+      // Native selects: the text of a select is every option's, so the chosen one is read by its value and its checked option.
+      await expect(m.getByLabel('Tipo de dano')).toHaveValue('damage-type:fire');
+      await expect(m.getByLabel('Tipo de dano').locator('option:checked')).toHaveText('fogo');
+      await expect(m.getByLabel('Arma')).toHaveValue('ranged');
+      await expect(m.getByLabel('Arma').locator('option:checked')).toHaveText('Ataque com arma à distância');
+      await expect(m.getByLabel('Quantas vezes')).toHaveValue('once_per_turn');
+      await expect(m.getByLabel('Quantas vezes').locator('option:checked')).toHaveText('Uma vez por turno');
 
       const tinted = await createEntryRPC(m, campaignId, 'tableFeat', {
         namePt: 'Chama tingida',
@@ -51,7 +55,8 @@ test(
         ],
       });
       await m.goto(entryRoute(campaignId, tinted));
-      await expect(m.getByLabel('O que muda na magia')).toContainText('Trocar o tipo de dano');
+      await expect(m.getByLabel('O que muda na magia')).toHaveValue('damage_type_swap');
+      await expect(m.getByLabel('O que muda na magia').locator('option:checked')).toHaveText('Trocar o tipo de dano');
       await expect(m.getByText('Tipos de dano que troca')).toBeVisible();
       // The fields of the other changes are not asked.
       await expect(m.getByLabel('Dano fixo somado')).toHaveCount(0);
