@@ -597,6 +597,9 @@ export async function fillChoicesStep(page: Page): Promise<void> {
   }
   await tab.click();
   const maxRounds = 40;
+  // What this fill already took: an option another choice holds is never taken again, whether or not the page has heard
+  // the server say so (a language or a tool is one pick for the whole sheet).
+  const taken = new Set<string>();
   for (let round = 0; round < maxRounds && (await tab.textContent())?.includes('Escolha pendente'); round++) {
     const pending = page.locator('[data-pending]').first();
     // A favored enemy's type and its language are lists; the humanoid type asks two texts, so it is skipped.
@@ -613,12 +616,16 @@ export async function fillChoicesStep(page: Page): Promise<void> {
       continue;
     }
     const cards = pending.locator('.card[aria-checked="false"]:not([aria-disabled="true"])');
-    const names = await cards.allTextContents();
+    const names = await cards.locator('.card__name').allTextContents();
     const numeric = /Arquearia|Defesa|Duelo|Duelismo|Proteção|Duas Armas|Rajada|Influência|Visão do Diabo|Matador de Gigantes|Evasão|Esquiva/;
-    const best = names.map((text, i) => ({ i, r: numeric.test(text) ? 1 : 0 })).sort((a, b) => a.r - b.r || a.i - b.i)[0];
+    const best = names
+      .map((text, i) => ({ i, text: text.trim(), r: numeric.test(text) ? 1 : 0 }))
+      .filter((c) => !taken.has(c.text))
+      .sort((a, b) => a.r - b.r || a.i - b.i)[0];
     if (!best) {
       break;
     }
+    taken.add(best.text);
     await cards.nth(best.i).click();
   }
 }

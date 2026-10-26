@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 import { TestBed } from '@angular/core/testing';
 
 import {
+  type ChoiceGroup,
   ChoiceGroupSchema,
   ChoiceKind,
   ChoiceOptionSchema,
@@ -157,6 +158,141 @@ describe('ChoiceGroups', () => {
       ]);
       cards()[1].click();
       expect(sent[0].optionKeys).toEqual(['language:dwarvish']);
+    });
+  });
+
+  describe('two choices of one round that offer the same language', () => {
+    const NAMES: Record<string, string> = {
+      'language:elvish': 'Élfico',
+      'language:dwarvish': 'Anão',
+      'language:abyssal': 'Abissal',
+    };
+    function languages(
+      origin: ChoiceOrigin,
+      sourceNamePt: string,
+      key: string,
+      picks: number,
+      picked: string[] = [],
+      extra: Partial<{ unmet: string[]; blocked: string[] }> = {},
+    ) {
+      return create(ChoiceGroupSchema, {
+        origin,
+        sourceNamePt,
+        choices: [
+          create(ChoiceSchema, {
+            key,
+            featureKey: key,
+            kind: ChoiceKind.OPTIONS,
+            titlePt: picks === 1 ? 'Idioma' : 'Idiomas',
+            labelPt: `${picks === 1 ? 'Idioma' : 'Idiomas'} (${sourceNamePt})`,
+            picks,
+            picked,
+            unmet: extra.unmet ?? [],
+            missing: Math.max(picks - picked.length, 0),
+            advisory: true,
+            options: Object.entries(NAMES).map(([k, namePt]) =>
+              create(ChoiceOptionSchema, {
+                key: k,
+                storedKey: `${key}=${k}`,
+                namePt,
+                reasonPt: (extra.blocked ?? []).includes(k) ? 'Você já escolheu esta opção.' : '',
+              }),
+            ),
+          }),
+        ],
+      });
+    }
+    const race = (picked: string[] = [], extra = {}) =>
+      languages(ChoiceOrigin.RACE, 'Humano', 'race:human#language', 1, picked, extra);
+    const background = (picked: string[] = [], extra = {}) =>
+      languages(
+        ChoiceOrigin.BACKGROUND,
+        'Acólito',
+        'background:acolyte#language',
+        2,
+        picked,
+        extra,
+      );
+
+    function setupBoth(groups: ChoiceGroup[], done: number | null = null) {
+      const fixture = TestBed.createComponent(ChoiceGroups);
+      fixture.componentRef.setInput('groups', groups);
+      if (done !== null) {
+        fixture.componentRef.setInput('done', done);
+        fixture.componentRef.setInput('total', 3);
+      }
+      const sent: ChoiceSelection[] = [];
+      fixture.componentInstance.selected.subscribe((s) => sent.push(s));
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      const sections = () => Array.from(el.querySelectorAll<HTMLElement>('section.choice'));
+      const card = (section: number, name: string) =>
+        Array.from(sections()[section].querySelectorAll<HTMLElement>('.card')).find(
+          (c) => (c.querySelector('.card__name')?.textContent ?? '').trim() === name,
+        )!;
+      return { fixture, el, sent, sections, card };
+    }
+
+    it('does not offer, in the second choice, the language the first took before the server answers', () => {
+      const { fixture, sent, card } = setupBoth([race(), background()]);
+      card(0, 'Abissal').click();
+      fixture.detectChanges();
+      expect(sent.map((s) => s.optionKeys)).toEqual([['language:abyssal']]);
+      expect(card(1, 'Abissal').getAttribute('aria-disabled')).toBe('true');
+      expect(card(1, 'Abissal').textContent).toContain('Você já escolheu esta opção.');
+      card(1, 'Abissal').click();
+      fixture.detectChanges();
+      expect(sent.length).toBe(1);
+      card(1, 'Anão').click();
+      fixture.detectChanges();
+      expect(sent[1].optionKeys).toEqual(['language:dwarvish']);
+    });
+
+    it('does not offer, in the first choice, the language the second took', () => {
+      const { fixture, sent, card } = setupBoth([race(), background()]);
+      card(1, 'Abissal').click();
+      fixture.detectChanges();
+      expect(card(0, 'Abissal').getAttribute('aria-disabled')).toBe('true');
+      card(0, 'Abissal').click();
+      expect(sent.length).toBe(1);
+    });
+
+    it('frees the language again when the first choice lets it go', () => {
+      const { fixture, card } = setupBoth([race(), background()]);
+      card(1, 'Abissal').click();
+      fixture.detectChanges();
+      card(1, 'Abissal').click();
+      fixture.detectChanges();
+      expect(card(0, 'Abissal').getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('never disables a checked option, says it is a repeat and does not count it', () => {
+      const { sent, sections, card, el, fixture } = setupBoth(
+        [
+          race(['language:abyssal']),
+          background(['language:abyssal', 'language:dwarvish'], {
+            blocked: ['language:abyssal'],
+          }),
+        ],
+        3,
+      );
+      const repeated = card(1, 'Abissal');
+      expect(repeated.getAttribute('aria-checked')).toBe('true');
+      expect(repeated.getAttribute('aria-disabled')).toBeNull();
+      expect(sections()[1].textContent).toContain('Abissal já foi escolhido em Idioma (raça).');
+      // The step is not complete: the repeat is not a pick made.
+      expect(sections()[1].querySelector('.choice__origin')?.textContent).toContain('1 de 2');
+      expect(sections()[1].hasAttribute('data-pending')).toBe(true);
+      expect(el.querySelector('.choices__counter')?.textContent).toContain(
+        'Escolhas feitas: 2 de 3',
+      );
+      repeated.click();
+      fixture.detectChanges();
+      expect(sent[0].optionKeys).toEqual(['language:dwarvish']);
+      expect(sections()[1].textContent).not.toContain('já foi escolhido em');
+      expect(el.querySelector('.choices__counter')?.textContent).toContain(
+        'Escolhas feitas: 3 de 3',
+      );
     });
   });
 
