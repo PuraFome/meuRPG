@@ -140,7 +140,10 @@ let nextWhy = 0;
         flex: 1 1 0;
         min-width: max-content;
         white-space: nowrap;
-        background: var(--mr-surface);
+
+        &:not(.ask__pass) {
+          background: var(--mr-surface);
+        }
 
         @media (min-width: 768px) {
           --mat-button-outlined-container-height: 44px;
