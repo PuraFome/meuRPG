@@ -438,7 +438,19 @@ export function windowsBarText(e: Encounter): string {
   // A player's reaction that came to the master after 10 s without an answer (C8-04).
   const late = open.filter((w) => w.unanswered);
   if (late.length > 0) {
-    return `Falta responder por ${listNames([...new Set(late.map((w) => w.reactorLabel))])}`;
+    // Repreensão Infernal's second step is the master's roll of the aggressor's save: the player has answered already.
+    const rolls = late.filter((w) => w.secondStep && w.prompt.case === 'hellishRebukeSave');
+    const due = late.filter((w) => !rolls.includes(w));
+    const aggressors = rolls.flatMap((w) =>
+      w.prompt.case === 'hellishRebukeSave' ? [w.prompt.value.aggressorLabel] : [],
+    );
+    const parts = [
+      due.length > 0
+        ? `responder por ${listNames([...new Set(due.map((w) => w.reactorLabel))])}`
+        : '',
+      rolls.length > 0 ? `o teste ${ofThe([...new Set(aggressors)])}` : '',
+    ];
+    return `Falta ${parts.filter(Boolean).join(' e ')}`;
   }
   const mine = open.filter(
     (w) => !w.reactorIsPlayer && !combatantIsPlayer(e, w.reactorId) && w.reactorLabel,
