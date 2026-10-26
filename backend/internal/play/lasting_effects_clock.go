@@ -278,7 +278,7 @@ func (s *Service) dealEffectDamage(ctx context.Context, c *combatTx, who playdb.
 	if err := insertEvent(ctx, c, eventLastingTriggered, &c.actorUserID, nil, actionEvent{
 		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Pending: p.ID, Key: conv.OrZero(st.SourceKey),
 		Applied: hit.Applied, Before: hit.Before, After: hit.After,
-		Lasting: &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "damage", Targets: []string{who.ID}, Amount: amount, DType: dtype, Effects: []string{st.ID}},
+		Lasting: &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "damage", Caster: conv.OrZero(st.SourceID), Targets: []string{who.ID}, Amount: amount, DType: dtype, Effects: []string{st.ID}},
 	}); err != nil {
 		return false, err
 	}
