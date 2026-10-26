@@ -53,14 +53,18 @@ func (s *Service) SubmitInitiative(
 	}
 
 	var held *playv1.HeldRollOffer
+	var regained *playv1.CharacterVitals // the pool that returned a use on initiative
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventInitiativeSubmitted, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		held = nil
-		return s.initiativeWrite(ctx, c, call, force, &held)
+		held, regained = nil, nil
+		return s.initiativeWrite(ctx, c, call, force, &held, &regained)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "submit an initiative", err)
 	}
-	out, err := s.finish(ctx, call.m, res, s.changed(call.m.CampaignID))
+	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, call.m.CampaignID, d.enc)
+		s.publishVitals(call.m.CampaignID, regained)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +102,7 @@ func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest
 
 // initiativeWrite is the transaction of SubmitInitiative: who rolls, the roll, where it is
 // stored, and the new order.
-func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce, held **playv1.HeldRollOffer) (any, error) {
+func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce, held **playv1.HeldRollOffer, regained **playv1.CharacterVitals) (any, error) {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return nil, err
@@ -127,6 +131,9 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	if _, err := saveOrder(ctx, c.q, cs, orderCombatants(cs)); err != nil {
+		return nil, err
+	}
+	if *regained, err = s.regainOnInitiative(ctx, c, target); err != nil { // a pool that recharges on initiative
 		return nil, err
 	}
 	if err := touch(ctx, c); err != nil {

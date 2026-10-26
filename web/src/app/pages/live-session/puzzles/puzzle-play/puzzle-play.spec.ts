@@ -685,6 +685,12 @@ describe('PuzzlePlayPage (MR-038, RN-27, RN-10; E10-06 states 6 to 9)', () => {
       );
     });
 
+    it('names the letter "A carta" for the player once the cipher is solved, never "Os jogadores veem"', async () => {
+      const { el } = await render(cipher({ solved: true, solvedAt: at(0), solvedByName: 'Brisa' }));
+      expect(textOf(el.querySelector('#cb-letter'))).toBe('A carta');
+      expect(textOf(el)).not.toContain('Os jogadores veem');
+    });
+
     it('says the key has not been found yet', async () => {
       const lost = await render(cipher({ hasKeyClue: true }));
       expect(textOf(lost.el.querySelector('.key'))).toContain(

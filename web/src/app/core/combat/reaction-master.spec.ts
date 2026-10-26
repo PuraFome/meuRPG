@@ -356,7 +356,7 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
             armorClassWithShield: 17,
             slotEffects: [],
           } as never,
-          prompt: { case: 'shield', value: { slots: [{ level: 1, free: 3 }] } } as never,
+          prompt: { case: 'shield', value: { slots: [{ level: 1, free: 3, total: 4 }] } } as never,
         } as never),
       ],
     } as never);
@@ -367,9 +367,32 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
       expect(plain(card.text)).toBe(
         'O ataque de 16 do Capitão Goblin acerta a CA 12. Com Escudo Arcano a CA vai a 17 e o ataque erra.',
       );
-      expect(plain(card.cost)).toContain('Gasta a reação e um espaço de 1º nível (3 livres)');
+      expect(plain(card.cost)).toContain('Gasta a reação e um espaço de 1º nível (3 de 4 livres)');
       expect(card.cost).toContain('10 s');
     }
     expect(windowsBarText(e)).toBe('Falta responder por Pensantus');
+  });
+
+  it('reads the free slots alone when the total is not known', () => {
+    const e = encounter({
+      combatants,
+      reactionWindows: [
+        reactionWindow({
+          id: 'late',
+          kind: ReactionKind.SHIELD,
+          reactorId: 'pen',
+          reactorLabel: 'Pensantus',
+          reactorIsPlayer: true,
+          answerNow: true,
+          unanswered: true,
+          trigger: { actorId: 't', actorLabel: 'Toren', slotEffects: [] } as never,
+          prompt: { case: 'shield', value: { slots: [{ level: 1, free: 3, total: 0 }] } } as never,
+        } as never),
+      ],
+    } as never);
+    const card = reactionCards(e)[0];
+    expect(card.type === 'unanswered' && plain(card.cost)).toContain(
+      'um espaço de 1º nível (3 livres)',
+    );
   });
 });

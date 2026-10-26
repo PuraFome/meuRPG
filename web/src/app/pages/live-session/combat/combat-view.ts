@@ -1,3 +1,4 @@
+import { publishOwnHit } from '../../../core/combat/own-hit';
 import {
   Component,
   DestroyRef,
@@ -12,13 +13,13 @@ import {
 import {
   CombatEffect,
   CombatantSide,
-  CombatantState,
   CoverDegree,
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
   type MineTab,
   actingTab,
+  dyingIds,
   membersToEnd,
   ownCreatures,
   validTab,
@@ -115,11 +116,7 @@ export class CombatView extends CombatViewPartsDirective {
     // "Ainda não" holds while the character stays dying: when they leave DYING the question is
     // new the next time they fall.
     effect(() => {
-      const dying = new Set(
-        (this.encounter()?.combatants ?? [])
-          .filter((c) => c.state === CombatantState.DYING)
-          .map((c) => c.id),
-      );
+      const dying = dyingIds(this.encounter());
       untracked(() => {
         const later = this.deaths.later();
         if ([...later].some((id) => !dying.has(id))) {
@@ -170,6 +167,9 @@ export class CombatView extends CombatViewPartsDirective {
       }
       untracked(() => void this.log.load(this.api, campaignId, e.id));
     });
+    effect(() =>
+      publishOwnHit(this.state(), this.log.rounds(), this.isMaster() ? '' : (this.own()?.id ?? '')),
+    );
     // What a turn said is not carried into the next one.
     let turnOf = '';
     effect(() => {

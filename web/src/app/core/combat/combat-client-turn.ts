@@ -231,9 +231,22 @@ export class CombatTurnCalls {
     key?: string,
     useExtraAction = false,
     frenzy = false,
+    spend = 0,
+    healTarget = '',
   ): Promise<ActionResult> {
     const res = await this.base.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction, frenzy],
+      [
+        'takeAction',
+        campaignId,
+        encounterId,
+        combatantId,
+        actionKey,
+        die,
+        useExtraAction,
+        frenzy,
+        spend,
+        healTarget,
+      ],
       (sent) =>
         this.base.client.takeAction({
           campaignId,
@@ -245,6 +258,10 @@ export class CombatTurnCalls {
           useExtraAction,
           // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
           frenzy,
+          // A table feature that lets the player choose how many points to spend (0 takes the cost); the server checks the range.
+          spend,
+          // The ally a healing action goes to; empty is the actor.
+          healTargetCombatantId: healTarget,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die
@@ -253,7 +270,13 @@ export class CombatTurnCalls {
         }),
       key,
     );
-    return { encounter: need(res.encounter, 'TakeAction'), roll: res.roll, healed: res.healed };
+    return {
+      encounter: need(res.encounter, 'TakeAction'),
+      roll: res.roll,
+      healed: res.healed,
+      spent: res.spent,
+      tempHpGained: res.tempHpGained,
+    };
   }
 
   /** "Desfazer última ação": `expectedEventId` is the log's undoable event. */

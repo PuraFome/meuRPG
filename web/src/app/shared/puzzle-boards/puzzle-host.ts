@@ -42,7 +42,7 @@ import type { Turn } from './symbol-columns';
         <app-riddle-board [text]="riddleText()" [mode]="mode()" [verdict]="verdict()" [blocked]="blocked()" [busy]="busy()" [counters]="counters()" (answer)="onAnswer('riddle', $event)" />
       }
       @case ('cipher') {
-        <app-cipher-board [ciphertext]="ciphertext()" [mode]="mode()" [verdict]="verdict()" [blocked]="blocked()" [busy]="busy()" [counters]="counters()" (answer)="onAnswer('cipher', $event)" />
+        <app-cipher-board [ciphertext]="ciphertext()" [mode]="mode()" [player]="player()" [verdict]="verdict()" [blocked]="blocked()" [busy]="busy()" [counters]="counters()" (answer)="onAnswer('cipher', $event)" />
       }
       @case ('sequence') {
         @if (run().sequence; as playback) {
@@ -78,6 +78,8 @@ export class PuzzleHost {
   /** The run as a player reads it (the master's own read carries the same message in `MasterPuzzleRun.run`). */
   readonly run = input.required<PuzzleRun>();
   readonly mode = input<'play' | 'view'>('view');
+  /** The reader is a player: a solved puzzle is still read in the player's words. */
+  readonly player = input(false);
   /** The lights, wheels or pillars the last move changed (the server's `changed`). */
   readonly changed = input<readonly number[]>([]);
   /** The lights the master's hint rings (a shortest way). Only the master's page ever passes it. */

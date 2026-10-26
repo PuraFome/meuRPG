@@ -813,6 +813,8 @@ type overlayBuilder struct {
 	classFeatures []pendingClassFeature
 	offKeys       map[string]bool
 	resources     map[string]map[string]bool
+	// resourceMax is the formula of the maximum of each resource an entry declares.
+	resourceMax map[string]map[string]string
 }
 
 type pendingEffects struct {

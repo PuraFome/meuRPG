@@ -782,7 +782,7 @@ func (*TableEntry_TableClassFeature) isTableEntry_Body() {}
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die", "resistance", "breathes_water", "granted_spell" or "note"; "ability_increase" is a feat's alone.
+// "superiority_die", "resistance", "breathes_water", "granted_spell", "on_event" or "note"; "ability_increase" is a feat's alone.
 // "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
@@ -817,7 +817,12 @@ type TableEffect struct {
 	Sense   string `protobuf:"bytes,11,opt,name=sense,proto3" json:"sense,omitempty"`
 	RangeFt int32  `protobuf:"varint,12,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
 	// resource: a name for the resource, the formula of its maximum and when it
-	// comes back ("short_rest", "long_rest", "dawn" or "none").
+	// comes back ("short_rest", "long_rest", "dawn", "none", "initiative",
+	// "restore_one_on_short_rest" or "restore_one_on_long_rest"). The last three:
+	// "initiative" gives back one use when the owner rolls initiative, only if none is
+	// left; "restore_one_on_short_rest" gives back one use on a short rest and all of
+	// them on a long rest; "restore_one_on_long_rest" gives back one use on a long rest
+	// and none on a short one.
 	Resource string `protobuf:"bytes,13,opt,name=resource,proto3" json:"resource,omitempty"`
 	Max      string `protobuf:"bytes,14,opt,name=max,proto3" json:"max,omitempty"`
 	Recharge string `protobuf:"bytes,15,opt,name=recharge,proto3" json:"recharge,omitempty"`
@@ -834,7 +839,7 @@ type TableEffect struct {
 	From   []string `protobuf:"bytes,18,rep,name=from,proto3" json:"from,omitempty"`
 	// grant_action: "action", "bonus_action", "reaction", "free" or "movement". The
 	// action may also name in `resource` a resource effect of the same entry (or of
-	// its class) to spend: each use spends 1, and the action is off while none is left.
+	// its class) to spend: each use spends `cost` of it (1 when empty), and the action is off while fewer are left.
 	Economy string `protobuf:"bytes,19,opt,name=economy,proto3" json:"economy,omitempty"`
 	// note: spells the feature grants (a race that knows a cantrip).
 	Spells []string `protobuf:"bytes,20,rep,name=spells,proto3" json:"spells,omitempty"`
@@ -898,8 +903,44 @@ type TableEffect struct {
 	AlsoWithSlot  bool   `protobuf:"varint,33,opt,name=also_with_slot,json=alsoWithSlot,proto3" json:"also_with_slot,omitempty"`
 	RitualOnly    bool   `protobuf:"varint,34,opt,name=ritual_only,json=ritualOnly,proto3" json:"ritual_only,omitempty"`
 	CountsAsKnown bool   `protobuf:"varint,35,opt,name=counts_as_known,json=countsAsKnown,proto3" json:"counts_as_known,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// grant_action and on_event: how many uses of `resource` each use of the action (or
+	// each run of the hook) spends, a formula (level(), prof(), mod(...)); empty is 1,
+	// and it needs `resource`. The action is off, and the hook does not run, while fewer
+	// are left. Never above the resource's maximum: an entry whose cost the resource can
+	// never pay is refused. For on_event, `resource` is the resource the hook spends.
+	Cost string `protobuf:"bytes,36,opt,name=cost,proto3" json:"cost,omitempty"`
+	// grant_action: the most the player may spend on one use, a formula, never below
+	// `cost`. Set, the player chooses at use how many to spend, from `cost` to
+	// `cost_max` (or what is left); the server reads that number in the same
+	// transaction as the use and refuses one outside the range. Empty is a fixed cost.
+	CostMax string `protobuf:"bytes,37,opt,name=cost_max,json=costMax,proto3" json:"cost_max,omitempty"`
+	// grant_action with `cost_max`: what each point spent above `cost` adds to the
+	// result. Dice ("1d6", the same sides as `heal`) add to `heal`; a flat formula
+	// adds to `temp_hp` (or to `heal` when the action has no temp_hp). The result of
+	// spending `n` points is the base result plus this value `n - cost` times.
+	ValuePerPoint string `protobuf:"bytes,38,opt,name=value_per_point,json=valuePerPoint,proto3" json:"value_per_point,omitempty"`
+	// grant_action and on_event: hit points regained, dice ("1d6", "2d4+2"), at least one
+	// die. For grant_action the target is the owner or one creature chosen at use (the
+	// owner and one ally); `ability` adds that ability's modifier. The heal follows the
+	// rules of the spells: it never passes the maximum and a dead creature is not
+	// healed. For on_event the target is the owner.
+	Heal string `protobuf:"bytes,39,opt,name=heal,proto3" json:"heal,omitempty"`
+	// grant_action and on_event: temporary hit points, a formula. They do not stack:
+	// the target keeps the larger of what it had and this.
+	TempHp string `protobuf:"bytes,40,opt,name=temp_hp,json=tempHp,proto3" json:"temp_hp,omitempty"`
+	// on_event: when the hook runs, on the OWNER only: "short_rest" and "long_rest"
+	// (when the owner finishes the rest), "death_save_failed" (when one of the owner's
+	// death saves fails) or "drop_to_zero" (when the owner drops to 0 hit points).
+	Event string `protobuf:"bytes,41,opt,name=event,proto3" json:"event,omitempty"`
+	// on_event: the name of a resource of the entry (or of its class) whose uses the
+	// hook gives back, as many as `value` (an Int formula; empty is 1), never more than
+	// are spent, so the same event handled twice restores once.
+	Restore string `protobuf:"bytes,42,opt,name=restore,proto3" json:"restore,omitempty"`
+	// on_event: hit points regained as a percentage of the maximum (1 to 100, rounded
+	// down, at least 1), instead of `heal`; the two are not both set.
+	HealPercentMax int32 `protobuf:"varint,43,opt,name=heal_percent_max,json=healPercentMax,proto3" json:"heal_percent_max,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1175,6 +1216,62 @@ func (x *TableEffect) GetCountsAsKnown() bool {
 		return x.CountsAsKnown
 	}
 	return false
+}
+
+func (x *TableEffect) GetCost() string {
+	if x != nil {
+		return x.Cost
+	}
+	return ""
+}
+
+func (x *TableEffect) GetCostMax() string {
+	if x != nil {
+		return x.CostMax
+	}
+	return ""
+}
+
+func (x *TableEffect) GetValuePerPoint() string {
+	if x != nil {
+		return x.ValuePerPoint
+	}
+	return ""
+}
+
+func (x *TableEffect) GetHeal() string {
+	if x != nil {
+		return x.Heal
+	}
+	return ""
+}
+
+func (x *TableEffect) GetTempHp() string {
+	if x != nil {
+		return x.TempHp
+	}
+	return ""
+}
+
+func (x *TableEffect) GetEvent() string {
+	if x != nil {
+		return x.Event
+	}
+	return ""
+}
+
+func (x *TableEffect) GetRestore() string {
+	if x != nil {
+		return x.Restore
+	}
+	return ""
+}
+
+func (x *TableEffect) GetHealPercentMax() int32 {
+	if x != nil {
+		return x.HealPercentMax
+	}
+	return 0
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -6198,7 +6295,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\xc7\a\n" +
+	"\x04body\"\xa5\t\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6237,7 +6334,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x0ealso_with_slot\x18! \x01(\bR\falsoWithSlot\x12\x1f\n" +
 	"\vritual_only\x18\" \x01(\bR\n" +
 	"ritualOnly\x12&\n" +
-	"\x0fcounts_as_known\x18# \x01(\bR\rcountsAsKnown\"\xc3\x01\n" +
+	"\x0fcounts_as_known\x18# \x01(\bR\rcountsAsKnown\x12\x12\n" +
+	"\x04cost\x18$ \x01(\tR\x04cost\x12\x19\n" +
+	"\bcost_max\x18% \x01(\tR\acostMax\x12&\n" +
+	"\x0fvalue_per_point\x18& \x01(\tR\rvaluePerPoint\x12\x12\n" +
+	"\x04heal\x18' \x01(\tR\x04heal\x12\x17\n" +
+	"\atemp_hp\x18( \x01(\tR\x06tempHp\x12\x14\n" +
+	"\x05event\x18) \x01(\tR\x05event\x12\x18\n" +
+	"\arestore\x18* \x01(\tR\arestore\x12(\n" +
+	"\x10heal_percent_max\x18+ \x01(\x05R\x0ehealPercentMax\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

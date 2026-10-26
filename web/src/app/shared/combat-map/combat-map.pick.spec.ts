@@ -115,3 +115,54 @@ describe('CombatMap: choosing a target (C7-04)', () => {
     expect(el.querySelector('[role="status"]')?.textContent).toBe('Goblin 3: cobertura total');
   });
 });
+
+describe('CombatMap: a tap picks the creature whose square is under the pointer', () => {
+  // 9 px squares on a 40 x 30 map: the 44 px buttons of neighbouring swords reach over each other.
+  function small() {
+    const { fixture, el } = map({
+      columns: 40,
+      rows: 30,
+      combatants: [
+        combatant({ id: 's1', label: 'Espada voadora 1', col: 20, row: 12 }),
+        combatant({ id: 's2', label: 'Espada voadora 2', col: 21, row: 12 }),
+        combatant({ id: 'arm', label: 'Armadura animada', col: 21, row: 13, size: 4 }),
+      ],
+      pick: [
+        mark('s1', 'Espada voadora 1'),
+        mark('s2', 'Espada voadora 2'),
+        mark('arm', 'Armadura animada'),
+      ],
+    });
+    const inner = fixture.componentInstance as unknown as { layer: { unit: () => number } };
+    inner.layer.unit = () => 9;
+    const surface = el.querySelector<HTMLElement>('.cm__surface')!;
+    surface.getBoundingClientRect = () => ({ left: 0, top: 0, width: 360, height: 270 }) as DOMRect;
+    const taps: string[] = [];
+    fixture.componentInstance.pickTap.subscribe((id) => taps.push(id));
+    const click = (id: string, x: number, y: number, detail = 1) =>
+      el
+        .querySelector<HTMLButtonElement>(`[data-pick="${id}"]`)!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y, detail }));
+    return { taps, click };
+  }
+
+  it('sends the tap on a sword to that sword even when the button of its neighbour is on top', () => {
+    const { taps, click } = small();
+    // Square 21,12 is x 189-198, y 108-117: the button of the armor (the last one) is over it, and so is sword 1's.
+    click('arm', 193, 112);
+    click('s1', 193, 112);
+    expect(taps).toEqual(['s2', 's2']);
+  });
+
+  it('sends a tap on a square of the big creature to it', () => {
+    const { taps, click } = small();
+    click('s2', 21 * 9 + 5, 14 * 9 + 5);
+    expect(taps).toEqual(['arm']);
+  });
+
+  it('keeps the button of the keyboard: Enter on a button picks that creature', () => {
+    const { taps, click } = small();
+    click('s1', 0, 0, 0);
+    expect(taps).toEqual(['s1']);
+  });
+});
