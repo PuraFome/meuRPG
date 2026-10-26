@@ -98,6 +98,38 @@ test(
 );
 
 test(
+  'o editor não pergunta de novo ao servidor quando nada mudou: a resposta igual não dispara outra pergunta @RN-33',
+  { tag: '@RN-33' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Sem laco ${Date.now()}`);
+      let asked = 0;
+      p.on('request', (r) => {
+        if (/PreviewChoices|PreviewCharacter/.test(r.url())) asked++;
+      });
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
+      await p.getByLabel('Nome do personagem', { exact: true }).fill('Brenna');
+      await pick(p, 'Raça', 'Humano');
+      await pick(p, 'Classe', 'Guerreiro');
+      await expect(p.getByRole('tab', { name: /Escolhas/ })).toBeVisible();
+      // Settled: the draft asked once (a pause and a call each), and with no input it asks no more.
+      await p.waitForTimeout(800);
+      const settled = asked;
+      await p.waitForTimeout(2500);
+      expect(asked - settled).toBe(0);
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
   'dois idiomas iguais escolhidos em sequência, antes de o servidor responder, não passam: o repetido nem é oferecido @RN-33',
   { tag: '@RN-33' },
   async ({ browser }) => {

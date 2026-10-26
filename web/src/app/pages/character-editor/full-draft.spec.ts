@@ -235,4 +235,19 @@ describe('choicesAfterAnswer', () => {
       texts: null,
     });
   });
+
+  it('returns no keys when the answer lists a key the draft does not hold (the draft is not asked again)', () => {
+    const next = choicesAfterAnswer(
+      answer(['race:x#bonus-2=ability:str'], ['choice:keep']),
+      [],
+      {},
+    );
+    expect(next.keys).toBeNull();
+    const other = choicesAfterAnswer(
+      answer(['feature:gone'], ['choice:keep']),
+      ['feature:keep'],
+      {},
+    );
+    expect(other.keys).toBeNull();
+  });
 });

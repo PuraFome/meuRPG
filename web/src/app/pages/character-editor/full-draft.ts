@@ -192,9 +192,10 @@ export function choicesAfterAnswer(
 ): { keys: string[] | null; texts: Record<string, string> | null } {
   const gone = new Set(answer.notOffered);
   const live = new Set(answer.groups.flatMap((g) => g.choices.map((c) => c.key)));
+  const keptKeys = keys.filter((k) => !gone.has(k));
   const kept = Object.entries(texts).filter(([k]) => live.has(k.slice(0, k.lastIndexOf('#'))));
   return {
-    keys: gone.size > 0 ? keys.filter((k) => !gone.has(k)) : null,
+    keys: keptKeys.length !== keys.length ? keptKeys : null,
     texts: kept.length !== Object.keys(texts).length ? Object.fromEntries(kept) : null,
   };
 }
