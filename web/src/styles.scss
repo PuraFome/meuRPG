@@ -437,3 +437,14 @@ a:hover {
 body.mr-live-phone app-footer {
   display: none;
 }
+
+// The master's running combat from 1280px: its three columns (Ordem, the map, Turno) keep the widths they need and the map takes what
+// is left of the screen, so a 40-column map is not squeezed into the 1280px the other pages stop at (a square is about 11px there);
+// the side gutter is 24px instead of 48px, which is room for the map at 1280px, where Ordem (288px) and Turno (368px) already take
+// 656px of it. `main.app-content` outweighs the shell's own rule; the cap keeps an ultra-wide screen's lines readable.
+@media (min-width: 1280px) {
+  main.app-content:has(.tri--wide) {
+    --mr-gutter: var(--mr-space-6);
+    max-width: min(100%, 2400px);
+  }
+}

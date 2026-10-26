@@ -1,4 +1,8 @@
-import { type Combatant, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantState,
+  type Encounter,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { groupName, isCreature } from './creature-names';
 import { acts, actingIds, turnMembers } from './joint-turn';
 
@@ -117,4 +121,11 @@ export function membersToEnd(e: Encounter, tab: MineTab): Combatant[] {
     const now = e.combatants.find((c) => c.id === member.id);
     return !!now && acts(e, now);
   });
+}
+
+/** The ids of the combatants that are dying (0 hit points, making death saves). */
+export function dyingIds(e: Encounter | null | undefined): Set<string> {
+  return new Set(
+    (e?.combatants ?? []).filter((c) => c.state === CombatantState.DYING).map((c) => c.id),
+  );
 }

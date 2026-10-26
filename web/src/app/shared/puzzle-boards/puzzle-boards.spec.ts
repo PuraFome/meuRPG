@@ -419,6 +419,12 @@ describe('CipherBoard (E10-12 state 8)', () => {
     expect(view.querySelector('.col__bet')).toBeNull();
     expect(view.textContent).toContain('Os jogadores veem');
   });
+
+  it('calls the letter "A carta" for the player who solved it, not "Os jogadores veem"', () => {
+    const solved = cipher({ mode: 'view', player: true }).el;
+    expect(solved.querySelector('#cb-letter')?.textContent?.trim()).toBe('A carta');
+    expect(solved.textContent).not.toContain('Os jogadores veem');
+  });
 });
 
 describe('BellsBoard and SequenceStrip (E10-12 states 2 and 7)', () => {

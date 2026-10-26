@@ -109,6 +109,8 @@ export class LiveSessionView {
     }
     return e.combatants.find((c) => c.mine)?.armorClassBonus ?? null;
   });
+  /** The latest attack that hurt the player's own character, for the sheet's announcement. */
+  readonly ownHit = computed(() => this.parts.combat.ownHit());
   /** Whether it is the turn of the player's own combatant (it acts now): the death saves are rolled then. */
   readonly ownTurn = computed(() => {
     const e = this.parts.combat.encounter();

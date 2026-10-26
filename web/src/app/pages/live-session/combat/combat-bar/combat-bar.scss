@@ -1,5 +1,8 @@
 :host {
   display: block;
+  // The bar answers to the width it is given: in the setup it sits over the board, which beside the conversation column of a wide
+  // screen is narrower than a laptop's.
+  container-type: inline-size;
 
   // From 1024px the bar sticks under the app bar (64px), over the columns that scroll under it (the app bar is 10).
   @media (min-width: 1024px) {
@@ -111,6 +114,7 @@
 
 .bar__lead {
   flex: 1 1 auto;
+  min-width: 24ch;
   margin: 0;
   font-size: 16px;
   line-height: 21px;
@@ -274,4 +278,24 @@
   border-color: var(--mr-accent);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-text);
+}
+
+// A bar narrower than the title, the lead and the buttons side by side: the lead takes the line under them, with the whole width,
+// instead of a column a few letters wide. (A phone and a tablet stack the bar already.)
+@media (min-width: 1024px) {
+  @container (max-width: 1099px) {
+    .bar {
+      flex-flow: row wrap;
+      justify-content: space-between;
+    }
+
+    .bar__sep {
+      display: none;
+    }
+
+    .bar__lead {
+      flex-basis: 100%;
+      order: 3;
+    }
+  }
 }
