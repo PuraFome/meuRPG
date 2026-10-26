@@ -199,6 +199,10 @@ type LevelUpOffer struct {
 	// invocation to swap: one may be replaced at each level (SRD 5.1, Warlock,
 	// Eldritch Invocations).
 	CanSwapInvocation bool
+	// PickSwaps are the groups of picks the level may swap one in, at a level with an
+	// Ability Score Improvement. The rules always list them; the server leaves them out
+	// unless the table plays with the swap rule.
+	PickSwaps []SwapGroup
 
 	// Automatic.
 
@@ -300,6 +304,9 @@ type LevelUpChoices struct {
 	// SwapInvocation is an Eldritch Invocation the warlock gives up for another
 	// from FeatureChoices (one at each level of the class).
 	SwapInvocation string
+	// Swap is one pick given up for another of the same group, at a level with an
+	// Ability Score Improvement (the table's rule); zero for none.
+	Swap PickSwap
 	// HitPoints is the gain of this level.
 	HitPoints LevelUpHitPoints
 	// Instrument is the musical instrument (a proficiency key) that taking the Bard
@@ -433,6 +440,11 @@ func levelUpOptionsWith(b Build, idx int, classKey string, c *content, sub *srd5
 	o.AbilityScoreImprovement = isASILevel(row)
 	if o.AbilityScoreImprovement {
 		o.Feats = featOptions(bare, c)
+		o.PickSwaps = c.swapGroups(b, classKey)
+		if classKey == classWarlock {
+			// The warlock's own swap of an invocation is another rule.
+			o.PickSwaps = slices.DeleteFunc(o.PickSwaps, func(g SwapGroup) bool { return g.Group == SwapGroupInvocation })
+		}
 	}
 
 	// Features the level adds, by name; and the ones the guided flow does not
@@ -1042,6 +1054,7 @@ func applyPicks(after *Build, ch LevelUpChoices, c *content) {
 	after.Cantrips = append(after.Cantrips, ch.Cantrips...)
 	after.SpellsKnown = append(after.SpellsKnown, ch.Spells...)
 	after.SpellsPrepared = append(after.SpellsPrepared, ch.Prepared...)
+	applySwap(after, ch.Swap)
 	if ch.SwapInvocation != "" {
 		after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ch.SwapInvocation })
 	}
@@ -1145,14 +1158,15 @@ func checkLevelUp(before, after Build, c *content) *LevelUpError {
 	// The same numbers the options give: the class's, and the chosen
 	// subclass's, which are not in the options' top level while it is due.
 	offer, _ := levelUpOptionsWith(before, idx, classKey, c, sub)
-	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, c)
+	swap, swapped := swapOf(before, after, offer)
+	offOwnList, lerr := checkSpells(before, after, offer, offer.SpellList, swapped && swap.Group == SwapGroupCantrip, c)
 	if lerr != nil {
 		return lerr
 	}
 	gains := c.levelGains(classKey, sub, newLevel)
 
 	// Options, skills and expertise.
-	if lerr := checkLevelUpChoices(before, after, classKey, c); lerr != nil {
+	if lerr := checkLevelUpChoices(before, after, classKey, swap, swapped, c); lerr != nil {
 		return lerr
 	}
 	if lerr := c.checkLevelUpSkills(before, after, mc, gains); lerr != nil {
@@ -1291,8 +1305,8 @@ func checkNewIssues(dBefore, dAfter Derived, offOwnList map[string]bool) *LevelU
 // warlock swaps (SRD 5.1, Warlock, Eldritch Invocations: "when you gain a level in
 // this class, you can choose one of the invocations you know and replace it with
 // another invocation that you could learn at that level").
-func checkLevelUpChoices(before, after Build, classKey string, c *content) *LevelUpError {
-	if lerr := checkRemovedChoices(before, after, classKey, c); lerr != nil {
+func checkLevelUpChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
+	if lerr := checkRemovedChoices(before, after, classKey, swap, swapped, c); lerr != nil {
 		return lerr
 	}
 	for k, v := range before.FeatureChoiceText {
@@ -1308,10 +1322,10 @@ const levelUpChoicesField = "full.feature_choice_keys"
 
 // checkRemovedChoices refuses a pick of before that after lost, but for one
 // Eldritch Invocation a warlock swaps.
-func checkRemovedChoices(before, after Build, classKey string, c *content) *LevelUpError {
+func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
 	var gone []string
 	for _, k := range before.FeatureChoices {
-		if !slices.Contains(after.FeatureChoices, k) {
+		if !slices.Contains(after.FeatureChoices, k) && !(swapped && swap.Group != SwapGroupCantrip && swap.From == k) {
 			gone = append(gone, k)
 		}
 	}
@@ -1574,8 +1588,8 @@ func checkHitPoints(before, after Build, classIdx, die int, c *content) *LevelUp
 // prepared spells against what the level gives. It also returns the sheet
 // fields of the new known spells that are off the class's list, which the
 // Bard's Magical Secrets allow (up to offer.AnyClassSpells of them).
-func checkSpells(before, after Build, offer LevelUpOffer, list string, c *content) (map[string]bool, *LevelUpError) {
-	newKnown, lerr := checkSpellCounts(before, after, offer)
+func checkSpells(before, after Build, offer LevelUpOffer, list string, swapCantrip bool, c *content) (map[string]bool, *LevelUpError) {
+	newKnown, lerr := checkSpellCounts(before, after, offer, swapCantrip)
 	if lerr != nil {
 		return nil, lerr
 	}
@@ -1594,9 +1608,20 @@ func checkSpells(before, after Build, offer LevelUpOffer, list string, c *conten
 
 // checkSpellCounts checks the counts of the new cantrips, known (or spellbook)
 // spells and prepared spells, with none removed, and returns the new known ones.
-func checkSpellCounts(before, after Build, offer LevelUpOffer) ([]string, *LevelUpError) {
+func checkSpellCounts(before, after Build, offer LevelUpOffer, swapCantrip bool) ([]string, *LevelUpError) {
 	newCantrips, removed := added(before.Cantrips, after.Cantrips)
-	if removed || len(newCantrips) != offer.Cantrips {
+	want := offer.Cantrips
+	if swapCantrip {
+		// One cantrip given up for another (the table's swap rule): one gone, one more new.
+		var gone int
+		for _, k := range before.Cantrips {
+			if !slices.Contains(after.Cantrips, k) {
+				gone++
+			}
+		}
+		removed, want = gone != 1, want+1
+	}
+	if removed || len(newCantrips) != want {
 		return nil, refuse("full.cantrip_keys", LevelUpReasonCantrips, "the level gives %d new cantrips, none removed", offer.Cantrips)
 	}
 	newKnown, removed := added(before.SpellsKnown, after.SpellsKnown)

@@ -32,6 +32,7 @@ import {
   trim,
 } from './levelup-picks';
 import { choicesRequest } from './levelup-request';
+import { LevelUpSwap } from './levelup-swap';
 import type { LevelUpChoicesInit } from './levelup-client';
 
 /**
@@ -51,6 +52,8 @@ export class LevelUpDraft {
   /** "Aumentar habilidades" or "Um talento": the second is offered only when the server lists feats. */
   readonly asiMode = signal<AsiMode>('increase');
   readonly featKey = signal('');
+  /** "Trocar uma escolha": one earlier pick for another, where the table allows it. */
+  readonly swap: LevelUpSwap;
   /** The abilities the picked feat raises (`increase.count` of `increase.from`). */
   readonly featAbilities = signal<readonly Ability[]>([]);
   /** The card the hit points start on: a table that makes everybody roll starts on the die (RN-24), the rest on the average. */
@@ -120,6 +123,7 @@ export class LevelUpDraft {
     readonly have: SheetKeys,
     readonly catalog: LevelUpCatalog,
   ) {
+    this.swap = new LevelUpSwap(options);
     this.preparedMax.set(options.preparedMaxAfter);
     this.startCard = options.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : 'average';
     this.hpCard.set(this.startCard);
@@ -173,7 +177,7 @@ export class LevelUpDraft {
   }
 
   /** Whether anything was chosen beyond the defaults: leaving then asks first. */
-  readonly dirty = computed(() => anyPicked(this, this.startCard));
+  readonly dirty = computed(() => anyPicked(this, this.startCard) || this.swap.started());
 
   private build(hp: Rolled | null): LevelUpChoicesInit {
     return choicesRequest(
@@ -189,6 +193,7 @@ export class LevelUpDraft {
         skills: this.skills(),
         expertise: this.expertise(),
         instrument: this.instrument(),
+        swapPick: this.swap.pick(),
         lateDrafts: this.lateDrafts(),
         newDrafts: this.newDrafts(),
       },
@@ -354,6 +359,7 @@ export class LevelUpDraft {
       this.setFeat(other.featKey());
       this.featAbilities.set(this.abilities.adoptedFeatAbilities(other.featAbilities()));
     }
+    this.swap.adopt(other.swap);
     this.adoptHitPoints(other);
     const sameLevel =
       this.options.classKey === other.options.classKey &&

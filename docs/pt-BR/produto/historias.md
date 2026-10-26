@@ -671,6 +671,17 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma opção da mesa, **então** os jogadores não a recebem como oferta e o servidor a recusa como escolha nova; a ficha que já a tem a mantém.
 - **Dado** o editor de opção, **quando** salvo uma opção com um conjunto desconhecido, uma classe, opção, Dádiva do Pacto ou magia que não existe, um nível fora de 1 a 20 ou outra escolha entre os efeitos, **então** o servidor recusa cada um no seu campo, **e** o conjunto de uma opção nunca muda depois de criada.
 
+**Características de classe.**
+
+- **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma característica para uma classe (a do SRD ou uma da mesa) num nível de classe, com o texto e os efeitos, **então** todo personagem dessa classe a tem a partir desse nível, só em "Mirathel", como qualquer característica da classe.
+- **Dado** uma característica de classe que substitui outra da classe (uma característica inventada de Patrulheiro no nível 1 que substitui Inimigo Favorito), **então** os personagens da classe deixam de ter a substituída a partir desse nível, **e** ela não é pedida nas escolhas deles; **quando** desligo a entrada, **então** a classe volta a ser como antes e a característica substituída volta.
+- **Dado** o editor, **quando** salvo uma característica de classe com uma classe que não existe, um nível fora de 1 a 20 ou uma característica a substituir que a classe não tem nesse nível ou depois (ou que ela já tinha antes), **então** o servidor recusa cada um no seu campo.
+
+**Trocar uma escolha.**
+
+- **Dado** que a regra da mesa "Trocar uma escolha no aumento de atributo" está ligada e um Guerreiro chega ao nível 4, **quando** a subida de nível chega à etapa de habilidades, **então** ela também oferece abrir mão de uma escolha anterior de um grupo (truque, estilo de luta, opção de Metamagia, invocação, Dádiva do Pacto) por outra do mesmo conjunto, com "Não trocar" como padrão, **e** a ficha mostra a escolha nova e não a antiga; a escolha nova ainda precisa dos pré-requisitos de qualquer escolha.
+- **Dado** que a regra está desligada (o padrão), ou que o nível não tem Aumento de Habilidade, **então** a subida de nível não oferece troca e o servidor recusa uma (`SWAP_NOT_ALLOWED`).
+
 **Mudar, arquivar e ligar e desligar.**
 
 - **Dado** uma classe da mesa que uma ficha usa, **quando** o mestre muda um dos números dela, **então** a ficha mostra o número novo, as fichas travadas incluídas, **e** o que ficou fora das regras aparece na ficha como um aviso ("A classe mudou") com uma frase por mudança, sem bloquear nenhuma outra edição (RN-23).

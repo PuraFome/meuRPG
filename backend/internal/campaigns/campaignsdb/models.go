@@ -68,4 +68,5 @@ type CampaignTableRule struct {
 	HiddenAreaHits       string
 	EnemyReactions       string
 	ShowSaveDc           bool
+	PickSwapAllowed      bool
 }

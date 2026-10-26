@@ -5743,6 +5743,19 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, option));
       await expect(m.getByLabel('Nome da opção')).toHaveValue('Olhar do Corvo');
       await expectScreenPasses(m, `Editor de opção ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
+      await expectScreenPasses(m, `Editor de característica de classe, a classe a escolher ${where}`);
+      const classFeature = await createEntryRPC(m, campaignId, 'tableClassFeature', {
+        namePt: 'Rastro do Corvo',
+        descPt: ['Você segue o rastro de um corvo.'],
+        classKey: 'class:ranger',
+        level: 1,
+        replacesFeatureKey: 'feature:favored-enemy-1-type',
+        effects: [{ type: 'note', textPt: 'Segue o rastro de um corvo.' }],
+      });
+      await open(m, entryRoute(campaignId, classFeature));
+      await expect(m.getByLabel('Nome da característica')).toHaveValue('Rastro do Corvo');
+      await expectScreenPasses(m, `Editor de característica de classe ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');

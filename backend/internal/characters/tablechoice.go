@@ -89,7 +89,7 @@ func CheckSheetCanMove(sheet *charactersv1.CharacterSheet) error {
 // changedKinds says what changed, for the issue's text: "A classe mudou".
 var changedKinds = map[string]string{
 	"class": "A classe", "subclass": "A subclasse", "race": "A raça", "subrace": "A sub-raça",
-	"background": "O antecedente", "spell": "A magia", "feat": "O talento", "option": "A opção",
+	"background": "O antecedente", "spell": "A magia", "feat": "O talento", "option": "A opção", "classfeature": "A característica",
 }
 
 // IssueTableContentChanged is the code of the issue "A classe mudou" (and its

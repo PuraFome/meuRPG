@@ -149,6 +149,17 @@ Every prerequisite set must hold.
 The pool lists an option that does not qualify with its reason and `Blocked()` (as the invocations' own prerequisites), and a sheet that picks it has the problem `prerequisite`; a spell the character knows is a cantrip, a known or a prepared spell, or one a pick grants.
 An archived or switched-off option is left out of the pool unless the sheet already has it.
 
+## Table class features
+
+`TableClassFeature` (`rules/overlay_classfeature.go`) adds a feature to a class, the SRD's or the table's, at a class level.
+Its key is `classfeature:<slug>@mesa`; it carries `Class`, `Level` (1 to 20), an optional `Replaces` and the feature body (name, text, effects).
+`With` writes it as a feature of the class and `applyClassFeatures` puts its key in the class's row of that level, the same row a feature of a table class sits in, so Derive, the choice engine, the level-up and `play` read it where they read the class's own features, and a subclass level row is built the same way (rows keyed by class level).
+The SRD's rows are shared, so a row is copied before it changes.
+`Replaces` is a feature of the class (an SRD one or another table class feature) that leaves the rows from the entry's level on, as the `replaces` effect hides lower tiers; the entry is refused if the class has no such feature at that level or later, or if it came earlier ("a character never loses what it already had"), and a feature replaced twice is refused at the second entry (in key order).
+A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
+An archived entry still applies to the sheets that have the class.
+Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
+
 ## The class
 
 The ADR-0018 contract: hit die (6, 8, 10 or 12), two saves, skills, proficiencies, multiclass prerequisites, the subclass level (3 if unsaid) and exactly 20 table rows (proficiency bonus, which defaults to the SRD's, the features, cantrips, spells known and slots).

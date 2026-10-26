@@ -213,6 +213,8 @@ func bodyOfEntry(e *rulesv1.TableEntry) (tableBody, rulesv1.TableContentKind) {
 		return b.TableFeat, rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT
 	case *rulesv1.TableEntry_TableOption:
 		return b.TableOption, rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
+	case *rulesv1.TableEntry_TableClassFeature:
+		return b.TableClassFeature, rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
