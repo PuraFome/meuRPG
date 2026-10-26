@@ -90,6 +90,8 @@ func (c *content) choiceValueKnown(value string) bool {
 	switch {
 	case value == LanguageNone:
 		return true
+	case strings.HasPrefix(value, bonusSetPrefix):
+		return bonusSetPick(value) >= 0
 	case strings.HasPrefix(value, abilityPrefix):
 		_, ok := ability(strings.TrimPrefix(value, abilityPrefix))
 		return ok

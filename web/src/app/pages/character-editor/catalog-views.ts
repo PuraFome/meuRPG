@@ -54,11 +54,11 @@ export function skillNoteOf(c: ClassOptionVm | undefined): string {
 export function choiceBonusesHintOf(race: RaceOptionVm | undefined): string {
   const sets = race?.choiceBonusSets ?? [];
   if (sets.length > 0) {
-    return `Dá um destes grupos, nas habilidades que você escolher (uma por valor): ${sets.map((s) => bonusWords(s)).join(' ou ')}. Ponha em “Bônus manuais”, no passo Habilidades.`;
+    return `Dá um destes grupos, nas habilidades que você escolher (uma por valor): ${sets.map((s) => bonusWords(s)).join(' ou ')}. Escolha no passo Escolhas.`;
   }
   const bonuses = race?.choiceBonuses ?? [];
   return bonuses.length > 0
-    ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.`
+    ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher, uma diferente para cada valor: escolha no passo Escolhas.`
     : '';
 }
 

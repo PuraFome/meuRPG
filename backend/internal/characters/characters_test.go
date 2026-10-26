@@ -557,6 +557,7 @@ func TestPreviewCharacterCountsTheTablesHitPointEffect(t *testing.T) {
 	entry := master.addEntry(t, campaign, race)
 	sheet := hillDwarfSheet(2)
 	sheet.GetFull().RaceKey, sheet.GetFull().SubraceKey = entry.GetKey(), ""
+	withRaceBonusPicks(sheet, entry.GetKey())
 
 	got, err := ana.preview(t, campaign, "", charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, sheet)
 	if err != nil {

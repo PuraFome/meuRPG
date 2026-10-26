@@ -743,7 +743,7 @@ func TestRN23_ASubraceUnderTheSheetsOwnOffRaceKeepsWorking(t *testing.T) {
 	with := func(subrace string) *charactersv1.CharacterSheet {
 		s := pensantusSheet()
 		s.GetFull().RaceKey, s.GetFull().SubraceKey = race.GetKey(), subrace
-		return s
+		return withRaceBonusPicks(s, race.GetKey())
 	}
 	pc := owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", with(sub1.GetKey()))
 	master.setOff(t, campaign, true, race.GetKey())

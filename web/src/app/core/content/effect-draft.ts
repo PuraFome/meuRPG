@@ -402,7 +402,8 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
     (name === 'economy' && d.economy === '') ||
     (name === 'applies' && d.applies === '') ||
     (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '')
+    (name === 'while' && d.while === '') ||
+    (name === 'conditions' && d.conditions.length === 0)
   );
 }
 

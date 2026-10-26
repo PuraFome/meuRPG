@@ -1908,9 +1908,10 @@ type TableRace struct {
 	LanguageChoices int32           `protobuf:"varint,8,opt,name=language_choices,json=languageChoices,proto3" json:"language_choices,omitempty"`
 	Traits          []*TableFeature `protobuf:"bytes,9,rep,name=traits,proto3" json:"traits,omitempty"`
 	// Alternative sets of bonuses to place ("+2 and +1, or +1, +1 and +1"): the player
-	// picks one set at creation and each of its bonuses goes on a different ability
-	// (the sheet keeps them as manual ability bonuses, and an issue says when they cover
-	// no set). At most 4 sets, each of 1 to 6 bonuses of +1 or +2, no two the same; the
+	// picks one set at creation, in the choices of the sheet (`feature_choice_keys`), and
+	// each of its bonuses goes on a different ability (`choice_bonuses` is the same picker
+	// for a single set); until the picks fill the set the sheet has the issue
+	// `race_bonus`, and a new player's sheet is not saved. At most 4 sets, each of 1 to 6 bonuses of +1 or +2, no two the same; the
 	// race has `choice_bonuses` or this, never both.
 	ChoiceBonusSets []*BonusSet `protobuf:"bytes,10,rep,name=choice_bonus_sets,json=choiceBonusSets,proto3" json:"choice_bonus_sets,omitempty"`
 	// The sizes the player picks one from: "Small", "Medium", or both, once each. `size`

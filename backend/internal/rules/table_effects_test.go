@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -442,5 +443,149 @@ func TestRaceWithoutSetsKeepsItsOneSet(t *testing.T) {
 	}
 	if !bonus || !size || d.Size != "Medium" {
 		t.Errorf("issues = %+v, size %q; want a race_bonus and a race_size issue and Medium", d.Issues, d.Size)
+	}
+}
+
+// ---- the picks of a race's sets of bonuses ----
+
+// racePending is how many selections of the race's own choices are left.
+func racePending(set ChoiceSet, race string) int {
+	n := 0
+	for _, p := range set.Pending() {
+		if strings.HasPrefix(p.ChoiceKey, race+"#") {
+			n += p.Missing
+		}
+	}
+	return n
+}
+
+func scoreOf(d Derived, a Ability) int {
+	for _, ab := range d.Abilities {
+		if ab.Ability == a {
+			return ab.Score
+		}
+	}
+	return 0
+}
+
+// A race with a single "+2 and +1 to your choice" has the picker the half-elf's +1s have: in "Escolhas", a choice of
+// abilities for each bonus, the picks make the scores, no ability takes two bonuses, and no manual bonus is asked.
+func TestSingleSetOfBonusesIsPickedInTheChoices(t *testing.T) {
+	t.Parallel()
+	c, err := raceWith(t, inventedRace(func(r *TableRace) { r.ChoiceBonusSets, r.ChoiceBonuses, r.Sizes = nil, []int{2, 1}, nil }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	race := "race:gelideo" + tableSuffix
+	build := func(picks ...string) Build {
+		b := torenLevelUp()
+		b.Race, b.Subrace, b.ExtraAbilityBonuses, b.FeatureChoices = race, "", nil, picks
+		return b
+	}
+	pick := func(bonus int, a Ability) string { return ScopedChoice(BonusChoiceKey(race, bonus), abilityValue(a)) }
+
+	set := c.Choices(build())
+	plus2, plus1 := choiceOf(t, set, BonusChoiceKey(race, 2)), choiceOf(t, set, BonusChoiceKey(race, 1))
+	if plus2.Kind != ChoiceKindAbilities || plus2.Picks != 1 || plus1.Picks != 1 || len(plus2.Options) != 6 || plus2.Options[0].SummaryPT != "+2" {
+		t.Fatalf("the choices = %+v and %+v, want one pick of an ability each, +2 and +1", plus2, plus1)
+	}
+	if racePending(set, race) != 2 {
+		t.Errorf("pending = %d, want 2: nothing is picked yet", racePending(set, race))
+	}
+	if !hasIssue(Derive(build(), c), IssueRaceBonus) {
+		t.Error("no race_bonus issue while nothing is picked and no manual bonus placed")
+	}
+
+	picked := build(pick(2, STR), pick(1, DEX))
+	d := Derive(picked, c)
+	base := Derive(build(), c)
+	if got, want := scoreOf(d, STR)-scoreOf(base, STR), 2; got != want {
+		t.Errorf("Strength rose by %d, want %d", got, want)
+	}
+	if got, want := scoreOf(d, DEX)-scoreOf(base, DEX), 1; got != want {
+		t.Errorf("Dexterity rose by %d, want %d", got, want)
+	}
+	if hasIssue(d, IssueRaceBonus) || racePending(c.Choices(picked), race) != 0 {
+		t.Errorf("issues %+v, pending %d; want none: the picks fill the set", d.Issues, racePending(c.Choices(picked), race))
+	}
+	if ch := choiceOf(t, c.Choices(picked), BonusChoiceKey(race, 2)); ch.ResultPT != fmt.Sprintf("Força %d → %d.", scoreOf(base, STR), scoreOf(d, STR)) {
+		t.Errorf("the result reads %q", ch.ResultPT)
+	}
+
+	// The ability that took +2 is not offered for +1, and picking it again is refused and gives nothing.
+	again := build(pick(2, STR), pick(1, STR))
+	ch := choiceOf(t, c.Choices(again), BonusChoiceKey(race, 1))
+	if len(ch.Unmet) != 1 || len(ch.Picked) != 0 {
+		t.Errorf("the repeated pick: unmet %v, picked %v; want it refused", ch.Unmet, ch.Picked)
+	}
+	if o := choiceOf(t, c.Choices(picked), BonusChoiceKey(race, 1)).Options[0]; !o.Blocked() {
+		t.Errorf("Strength is offered for +1 after it took +2: %+v", o)
+	}
+	if got := scoreOf(Derive(again, c), STR) - scoreOf(base, STR); got != 2 {
+		t.Errorf("Strength rose by %d with the repeated pick, want 2: the repeat gives nothing", got)
+	}
+}
+
+// Several sets: the set is a choice of its own, the abilities of its bonuses come after it, and changing the set
+// leaves the old picks of the other bonuses unoffered.
+func TestSeveralSetsOfBonusesAreAChoiceOfTheSetThenOfTheAbilities(t *testing.T) {
+	t.Parallel()
+	c, err := raceWith(t, inventedRace(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	race := "race:gelideo" + tableSuffix
+	build := func(picks ...string) Build {
+		b := torenLevelUp()
+		b.Race, b.Subrace, b.ExtraAbilityBonuses, b.FeatureChoices = race, "", nil, picks
+		return b
+	}
+	set := c.Choices(build())
+	pickSet := choiceOf(t, set, BonusSetChoiceKey(race))
+	if len(pickSet.Options) != 2 || pickSet.Options[0].NamePT != "+2 e +1" || pickSet.Options[1].NamePT != "+1, +1 e +1" || pickSet.Picks != 1 {
+		t.Fatalf("the set choice = %+v", pickSet)
+	}
+	if racePending(set, race) != 1 {
+		t.Errorf("pending = %d, want 1: the abilities wait for the set", racePending(set, race))
+	}
+	three := build(ScopedChoice(BonusSetChoiceKey(race), bonusSetValue(1)))
+	ones := choiceOf(t, c.Choices(three), BonusChoiceKey(race, 1))
+	if ones.Picks != 3 || ones.TitlePT != "3 bônus de +1" {
+		t.Errorf("the +1 choice = %+v, want three picks", ones)
+	}
+	full := build(ScopedChoice(BonusSetChoiceKey(race), bonusSetValue(1)),
+		ScopedChoice(BonusChoiceKey(race, 1), abilityValue(STR)), ScopedChoice(BonusChoiceKey(race, 1), abilityValue(CON)), ScopedChoice(BonusChoiceKey(race, 1), abilityValue(WIS)))
+	d, base := Derive(full, c), Derive(build(), c)
+	for _, a := range []Ability{STR, CON, WIS} {
+		if scoreOf(d, a)-scoreOf(base, a) != 1 {
+			t.Errorf("%s rose by %d, want 1", a, scoreOf(d, a)-scoreOf(base, a))
+		}
+	}
+	if hasIssue(d, IssueRaceBonus) || racePending(c.Choices(full), race) != 0 {
+		t.Errorf("issues %+v, pending %d; want none", d.Issues, racePending(c.Choices(full), race))
+	}
+	// The other set: the +1 picks no longer fit and are not offered.
+	switched := build(append([]string{ScopedChoice(BonusSetChoiceKey(race), bonusSetValue(0))}, full.FeatureChoices[1:]...)...)
+	if n := len(c.Choices(switched).NotOffered); n == 0 {
+		// +1 is still a bonus of the first set, with one pick: the two extra ones are refused as past the number it takes.
+		if ch := choiceOf(t, c.Choices(switched), BonusChoiceKey(race, 1)); len(ch.Overflow) != 2 {
+			t.Errorf("the extra +1 picks: overflow %v, want 2", ch.Overflow)
+		}
+	}
+}
+
+// A sheet that placed the bonuses in the manual ones, before they were picks, keeps them: they stand for the picks.
+func TestManualBonusesStandForThePicksOfASheetThatPlacedThem(t *testing.T) {
+	t.Parallel()
+	c, err := raceWith(t, inventedRace(func(r *TableRace) { r.ChoiceBonusSets, r.ChoiceBonuses, r.Sizes = nil, []int{2, 1}, nil }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := torenLevelUp()
+	b.Race, b.Subrace = "race:gelideo"+tableSuffix, ""
+	b.ExtraAbilityBonuses = map[Ability]int{STR: 2, DEX: 1}
+	set := c.Choices(b)
+	if racePending(set, "race:gelideo"+tableSuffix) != 0 || hasIssue(Derive(b, c), IssueRaceBonus) {
+		t.Errorf("pending %d, issues %+v; want none: the manual +2 and +1 stand", racePending(set, "race:gelideo"+tableSuffix), Derive(b, c).Issues)
 	}
 }

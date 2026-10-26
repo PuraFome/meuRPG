@@ -12,6 +12,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // A table race with +2/+1 or +1/+1/+1 to place and Small or Medium to pick, whose trait halves the
@@ -62,8 +63,11 @@ func newFrostTable(t *testing.T) (*frostTable, *playv1.Encounter) {
 		a.toren = a.caio.heroSheet(t, a.campaignID, "Ragna", &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8},
 			RaceKey:    f.race, Size: "Small", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 1}},
-			ExtraAbilityBonuses: &rulesv1.AbilityScores{Strength: 2, Dexterity: 1},
-			WeaponKeys:          []string{greataxe},
+			FeatureChoiceKeys: []string{
+				rules.ScopedChoice(rules.BonusSetChoiceKey(f.race), "bonus-set:0"),
+				rules.ScopedChoice(rules.BonusChoiceKey(f.race, 2), "ability:str"), rules.ScopedChoice(rules.BonusChoiceKey(f.race, 1), "ability:dex"),
+			},
+			WeaponKeys: []string{greataxe},
 		})
 		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt})
@@ -143,23 +147,34 @@ func TestMR025_ATableRaceShowsItsChoicesAndResistsInCombat(t *testing.T) {
 	if !slices.ContainsFunc(d.GetHints(), func(h *rulesv1.Hint) bool { return strings.Contains(h.GetText(), "não mágicos") }) {
 		t.Errorf("Ragna's hints = %v, want the resistance to nonmagical weapon damage", d.GetHints())
 	}
-	// The other set, +1 in three abilities, is also right; two +1 cover neither; a size the race does not offer is an issue.
+	// The other set, +1 in three abilities, is also right; two +1 fill neither; a size the race does not offer is an issue.
+	set1 := rules.ScopedChoice(rules.BonusSetChoiceKey(f.race), "bonus-set:1")
+	ones := func(abilities ...string) []string {
+		out := []string{set1}
+		for _, a := range abilities {
+			out = append(out, rules.ScopedChoice(rules.BonusChoiceKey(f.race, 1), "ability:"+a))
+		}
+		return out
+	}
 	covered := f.edit(t, func(full *charactersv1.FullSheet) {
-		full.ExtraAbilityBonuses = &rulesv1.AbilityScores{Strength: 1, Dexterity: 1, Constitution: 1}
+		full.FeatureChoiceKeys = ones("str", "dex", "con")
 		full.Size = "Medium"
 	})
 	if codes := issueCodes(covered); slices.Contains(codes, "race_bonus") || covered.GetDerived().GetSize() != "Medium" {
 		t.Errorf("with +1/+1/+1 and Medium: issues %v, size %q; want no race_bonus and Medium", codes, covered.GetDerived().GetSize())
 	}
 	short := f.edit(t, func(full *charactersv1.FullSheet) {
-		full.ExtraAbilityBonuses = &rulesv1.AbilityScores{Strength: 1, Dexterity: 1}
+		full.FeatureChoiceKeys = ones("str", "dex")
 		full.Size = "Large"
 	})
-	if codes := issueCodes(short); !slices.Contains(codes, "race_bonus") || !slices.Contains(codes, "race_size") || short.GetDerived().GetSize() != "Medium" {
-		t.Errorf("with +1/+1 and Large: issues %v, size %q; want race_bonus, race_size and the race's own Medium", codes, short.GetDerived().GetSize())
+	if codes := issueCodes(short); !slices.Contains(codes, "race_size") || short.GetDerived().GetSize() != "Medium" {
+		t.Errorf("with a size the race does not offer: issues %v, size %q; want race_size and the race's own Medium", codes, short.GetDerived().GetSize())
 	}
 	f.edit(t, func(full *charactersv1.FullSheet) {
-		full.ExtraAbilityBonuses = &rulesv1.AbilityScores{Strength: 2, Dexterity: 1}
+		full.FeatureChoiceKeys = []string{
+			rules.ScopedChoice(rules.BonusSetChoiceKey(f.race), "bonus-set:0"),
+			rules.ScopedChoice(rules.BonusChoiceKey(f.race, 2), "ability:str"), rules.ScopedChoice(rules.BonusChoiceKey(f.race, 1), "ability:dex"),
+		}
 		full.Size = "Small"
 	})
 

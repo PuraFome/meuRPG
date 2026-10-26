@@ -118,7 +118,7 @@ describe('skillNoteOf', () => {
 describe('choiceBonusesHintOf', () => {
   it("tells where a race's free bonuses go", () => {
     expect(choiceBonusesHintOf(race({ choiceBonuses: [2, 1] }))).toBe(
-      'Dá +2 e +1 nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.',
+      'Dá +2 e +1 nas habilidades que você escolher, uma diferente para cada valor: escolha no passo Escolhas.',
     );
   });
 
@@ -138,7 +138,7 @@ describe('choiceBonusesHintOf', () => {
         }),
       ),
     ).toBe(
-      'Dá um destes grupos, nas habilidades que você escolher (uma por valor): +2 e +1 ou +1, +1 e +1. Ponha em “Bônus manuais”, no passo Habilidades.',
+      'Dá um destes grupos, nas habilidades que você escolher (uma por valor): +2 e +1 ou +1, +1 e +1. Escolha no passo Escolhas.',
     );
   });
 });
