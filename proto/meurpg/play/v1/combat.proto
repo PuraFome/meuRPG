@@ -2711,6 +2711,12 @@ message SubmitInitiativeRequest {
     // The face of a physical d20, 1 to 20.
     int32 d20_face = 6;
   }
+  // A table maneuver (a superiority_die effect of applies "initiative") the player adds to the
+  // initiative: its key. The die is rolled in the app, or with physical dice its face is
+  // `maneuver_face` (1 to its sides, required then). One use of its resource is spent when the
+  // initiative is set. The refusals are those of RollSceneCheckRequest.maneuver_key.
+  string maneuver_key = 7;
+  int32 maneuver_face = 8;
 }
 
 // SubmitInitiativeResponse returns the combat after the roll.
@@ -6019,6 +6025,13 @@ message ResolveConcentrationSaveRequest {
   // With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
   // saving throw, the second d20; `d20_face` is the first.
   optional int32 second_d20_face = 101;
+  // A table maneuver (a superiority_die effect of applies "save") the player adds to this roll:
+  // its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+  // roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+  // of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+  // maneuver the character has not or that does not go on this roll, and with a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+  string maneuver_key = 102;
 }
 
 message ResolveConcentrationSaveResponse {

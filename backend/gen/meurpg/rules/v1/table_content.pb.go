@@ -833,12 +833,12 @@ type TableEffect struct {
 	// `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
 	// "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
 	// unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
-	Dice           string `protobuf:"bytes,29,opt,name=dice,proto3" json:"dice,omitempty"`
-	DiceSides      int32  `protobuf:"varint,30,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
-	DamageType     string `protobuf:"bytes,31,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
-	Weapon         string `protobuf:"bytes,32,opt,name=weapon,proto3" json:"weapon,omitempty"`
-	Frequency      string `protobuf:"bytes,33,opt,name=frequency,proto3" json:"frequency,omitempty"`
-	NoCritDoubling bool   `protobuf:"varint,34,opt,name=no_crit_doubling,json=noCritDoubling,proto3" json:"no_crit_doubling,omitempty"`
+	Dice           string `protobuf:"bytes,30,opt,name=dice,proto3" json:"dice,omitempty"`
+	DiceSides      int32  `protobuf:"varint,31,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
+	DamageType     string `protobuf:"bytes,32,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
+	Weapon         string `protobuf:"bytes,33,opt,name=weapon,proto3" json:"weapon,omitempty"`
+	Frequency      string `protobuf:"bytes,34,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	NoCritDoubling bool   `protobuf:"varint,35,opt,name=no_crit_doubling,json=noCritDoubling,proto3" json:"no_crit_doubling,omitempty"`
 	// spell_modifier: cast options the feature offers for the spells it fits.
 	// `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
 	// key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
@@ -851,8 +851,8 @@ type TableEffect struct {
 	// names a resource effect of the same entry or its class: using the option spends one
 	// use, and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
 	// extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
-	AppliesTo     string `protobuf:"bytes,35,opt,name=applies_to,json=appliesTo,proto3" json:"applies_to,omitempty"`
-	SpellChange   string `protobuf:"bytes,36,opt,name=spell_change,json=spellChange,proto3" json:"spell_change,omitempty"`
+	AppliesTo     string `protobuf:"bytes,36,opt,name=applies_to,json=appliesTo,proto3" json:"applies_to,omitempty"`
+	SpellChange   string `protobuf:"bytes,37,opt,name=spell_change,json=spellChange,proto3" json:"spell_change,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5789,17 +5789,17 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
 	"\x05while\x18\x1c \x01(\tR\x05while\x12\x12\n" +
-	"\x04dice\x18\x1d \x01(\tR\x04dice\x12\x1d\n" +
+	"\x04dice\x18\x1e \x01(\tR\x04dice\x12\x1d\n" +
 	"\n" +
-	"dice_sides\x18\x1e \x01(\x05R\tdiceSides\x12\x1f\n" +
-	"\vdamage_type\x18\x1f \x01(\tR\n" +
+	"dice_sides\x18\x1f \x01(\x05R\tdiceSides\x12\x1f\n" +
+	"\vdamage_type\x18  \x01(\tR\n" +
 	"damageType\x12\x16\n" +
-	"\x06weapon\x18  \x01(\tR\x06weapon\x12\x1c\n" +
-	"\tfrequency\x18! \x01(\tR\tfrequency\x12(\n" +
-	"\x10no_crit_doubling\x18\" \x01(\bR\x0enoCritDoubling\x12\x1d\n" +
+	"\x06weapon\x18! \x01(\tR\x06weapon\x12\x1c\n" +
+	"\tfrequency\x18\" \x01(\tR\tfrequency\x12(\n" +
+	"\x10no_crit_doubling\x18# \x01(\bR\x0enoCritDoubling\x12\x1d\n" +
 	"\n" +
-	"applies_to\x18# \x01(\tR\tappliesTo\x12!\n" +
-	"\fspell_change\x18$ \x01(\tR\vspellChange\"\xc3\x01\n" +
+	"applies_to\x18$ \x01(\tR\tappliesTo\x12!\n" +
+	"\fspell_change\x18% \x01(\tR\vspellChange\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

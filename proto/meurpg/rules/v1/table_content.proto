@@ -186,12 +186,12 @@ message TableEffect {
   // `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
   // "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
   // unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
-  string dice = 29;
-  int32 dice_sides = 30;
-  string damage_type = 31;
-  string weapon = 32;
-  string frequency = 33;
-  bool no_crit_doubling = 34;
+  string dice = 30;
+  int32 dice_sides = 31;
+  string damage_type = 32;
+  string weapon = 33;
+  string frequency = 34;
+  bool no_crit_doubling = 35;
   // spell_modifier: cast options the feature offers for the spells it fits.
   // `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
   // key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
@@ -204,8 +204,8 @@ message TableEffect {
   // names a resource effect of the same entry or its class: using the option spends one
   // use, and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
   // extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
-  string applies_to = 35;
-  string spell_change = 36;
+  string applies_to = 36;
+  string spell_change = 37;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
