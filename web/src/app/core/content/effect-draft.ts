@@ -7,6 +7,7 @@ import type {
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters, metersToFeet } from '../units';
+import { visibleFields } from './effect-visible';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -53,15 +54,14 @@ export interface EffectDraft {
   /** resistance: the damage type it leaves out, and when it holds ("rage"). */
   except: string;
   while: string;
-  /** extra_damage: how many dice (a formula) and their sides, the damage type ("" is the weapon's), the weapon kind, how often it
-   * applies, and whether a critical hit leaves the dice alone. */
+  /** extra_damage: the dice (a formula) and sides, the type ("" is the weapon's), weapon kind, frequency, no crit doubling. */
   dice: string;
   diceSides: number;
   damageType: string;
   weapon: string;
   frequency: string;
   noCritDoubling: boolean;
-  /** spell_modifier: the spells it fits, and the one change it makes. */
+  /** spell_modifier: the spells it fits and its change. */
   appliesTo: string;
   spellChange: string;
 }
@@ -272,110 +272,6 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   }
   return out;
 }
-
-/** What a spell_modifier's change reads besides the fields every change has: the swap lists the types it swaps among, the bonus
- * damage its amount and type, the extra dice their count. The other fields stay out of the editor (and of the request). */
-const SPELL_CHANGE_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  damage_type_swap: ['from'],
-  bonus_damage: ['value', 'damage_type'],
-  extra_dice_per_slot_over: ['count'],
-};
-const SPELL_CHANGE_ONLY: ReadonlySet<string> = new Set(Object.values(SPELL_CHANGE_FIELDS).flat());
-
-/** A superiority_die on a roll of the character's own (checks, saves, initiative) reads fewer fields: only the checks take a
- * `targets` list, only a save an `ability`, and none of the three costs an action. */
-const ROLL_DIE_HIDES: Readonly<Record<string, readonly string[]>> = {
-  check: ['ability', 'economy'],
-  save: ['targets', 'economy'],
-  initiative: ['ability', 'targets', 'economy'],
-};
-
-/** The fields of the draft's type that apply to it now: a spell_modifier shows only what its chosen change reads (none of the
- * change's own fields until one is chosen), a superiority_die on a roll only what that roll reads; every other type shows all
- * of its menu fields. */
-export function visibleFields(
-  fields: readonly EffectMenuField[],
-  d: EffectDraft,
-): readonly EffectMenuField[] {
-  if (d.type === 'superiority_die') {
-    const hidden = ROLL_DIE_HIDES[d.applies] ?? ['targets'];
-    return fields.filter((f) => !hidden.includes(f.name));
-  }
-  if (d.type !== 'spell_modifier') {
-    return fields;
-  }
-  const own = SPELL_CHANGE_FIELDS[d.spellChange] ?? [];
-  return fields.filter((f) => !SPELL_CHANGE_ONLY.has(f.name) || own.includes(f.name));
-}
-
-/** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
-export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
-  target: 'O que muda',
-  mode: 'Como muda',
-  value: 'Valor',
-  when: 'Só quando',
-  tags: 'Situação',
-  proficiency: 'Proficiência em',
-  level: 'Quanto',
-  roll: 'Rolagem',
-  targets: 'Em quê',
-  sense: 'Sentido',
-  range_ft: 'Alcance',
-  resource: 'Nome do recurso',
-  max: 'Usos (máximo)',
-  recharge: 'Volta em',
-  choice: 'O jogador escolhe',
-  count: 'Quantos',
-  from: 'Entre',
-  economy: 'Tipo de ação',
-  applies: 'Onde o dado entra',
-  ability: 'Habilidade somada',
-  spells: 'Magias',
-  text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
-  while: 'Enquanto',
-  ignore_cover: 'Ignora meia cobertura e três quartos',
-  range_multiplier: 'Multiplica o alcance da magia por',
-  no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
-  dice: 'Dados (quantos)',
-  dice_sides: 'Lados do dado',
-  damage_type: 'Tipo de dano',
-  weapon: 'Arma',
-  frequency: 'Quantas vezes',
-  no_crit_doubling: 'Não dobra no acerto crítico',
-  applies_to: 'Vale para',
-  spell_change: 'O que muda na magia',
-};
-
-/** A label that reads differently in one type: a spell_modifier's `from` lists the damage types it swaps, its `count` is dice. */
-const TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  extra_damage: { value: 'Dano fixo' },
-  spell_modifier: {
-    from: 'Tipos de dano que troca',
-    value: 'Dano fixo somado',
-    count: 'Dados a mais por nível acima',
-    damage_type: 'Tipo do dano somado',
-    resource: 'Gasta um uso de',
-  },
-};
-
-/** The label of a field of a type: the type's own wording when it has one. */
-export function effectFieldLabel(type: string, name: string): string {
-  return TYPE_FIELD_LABELS[type]?.[name] ?? EFFECT_FIELD_LABELS[name] ?? name;
-}
-
-/** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
- * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
-export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
-  resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
-  text_pt: 'O que a ficha mostra. {value} vira o valor com sinal.',
-  ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
-  range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
-  no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
-  dice: 'Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.',
-  dice_sides: 'De 4 a 12: d4, d6, d8, d10 ou d12.',
-  no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
-};
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */
 export interface MenuOption {

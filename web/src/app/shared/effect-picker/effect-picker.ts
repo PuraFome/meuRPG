@@ -1,14 +1,9 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import {
-  EFFECT_FIELD_HINTS,
-  effectFieldLabel,
-  type EffectDraft,
-  type EffectMenuVm,
-  emptyEffect,
-  visibleFields,
-} from '../../core/content/effect-draft';
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import { visibleFields } from '../../core/content/effect-visible';
+import { EFFECT_FIELD_HINTS, effectFieldLabel } from '../../core/content/effect-labels';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';

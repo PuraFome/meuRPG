@@ -18,8 +18,8 @@ import {
   rangeMeters,
   splitTags,
   type EffectDraft,
-  visibleFields,
 } from './effect-draft';
+import { visibleFields } from './effect-visible';
 
 describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   const m = menu();
