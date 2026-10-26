@@ -9,7 +9,7 @@
 
 .held {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -71,14 +71,14 @@
 
 .ask__title {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 23px;
   font-weight: 800;
 }
 
 .ask__what {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 

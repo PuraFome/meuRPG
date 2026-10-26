@@ -30,7 +30,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 
@@ -43,7 +43,7 @@
     background: none;
     color: var(--mr-ink);
     font: inherit;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -91,19 +91,19 @@
 
 .pick__pt {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 22px;
 }
 
 .pick__s {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
 
 .pick__none {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }

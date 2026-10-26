@@ -35,7 +35,7 @@
 // The help under a field runs the whole column, not the field's width.
 .defeat__hint {
   margin: 4px 0 0 16px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

@@ -63,7 +63,7 @@ export interface StagePickerData {
     }
     .note {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
     .foot {

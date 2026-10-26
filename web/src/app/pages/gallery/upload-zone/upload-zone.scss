@@ -11,7 +11,7 @@ p {
 }
 
 .hint {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -32,7 +32,7 @@ p {
   .mat-icon {
     width: 24px;
     height: 24px;
-    font-size: 24px;
+    font-size: var(--mr-font-24);
   }
 }
 
@@ -99,7 +99,7 @@ p {
 }
 
 .zone__lead {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 24px;
   font-weight: 700;
 }
@@ -130,14 +130,14 @@ p {
     .mat-icon {
       width: 32px;
       height: 32px;
-      font-size: 32px;
+      font-size: var(--mr-font-32);
     }
   }
 }
 
 .empty__title {
   margin: var(--mr-space-1) 0 0;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
 }

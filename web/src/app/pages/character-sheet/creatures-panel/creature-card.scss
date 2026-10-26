@@ -31,7 +31,7 @@
   margin: 0;
   outline: none;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 800;
   line-height: 28px;
   overflow-wrap: anywhere;
@@ -39,7 +39,7 @@
 
 .sub {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -61,7 +61,7 @@
 }
 
 .tile__l {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 16px;
   color: var(--mr-ink-muted);
@@ -69,20 +69,20 @@
 
 .tile__v {
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 800;
   line-height: 28px;
 
   small {
     font-family: var(--mr-font-sans);
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     font-weight: 400;
     color: var(--mr-ink-muted);
   }
 }
 
 .tile__x {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -115,7 +115,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &--danger {
@@ -134,6 +134,6 @@
   }
 
   .tile__l {
-    font-size: 12px;
+    font-size: var(--mr-font-12);
   }
 }

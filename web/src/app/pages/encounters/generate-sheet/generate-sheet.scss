@@ -36,7 +36,7 @@
 
 .hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -57,12 +57,12 @@
 .res__t {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
 }
 
 .res__seed {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   color: var(--mr-ink-muted);
 }
 
@@ -92,21 +92,21 @@
 
 .line__pt {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 24px;
   overflow-wrap: anywhere;
 }
 
 .line__s {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
 
 .line__xp {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -148,7 +148,7 @@
 
   .line__xp {
     grid-area: xp;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .line__swap {
@@ -164,7 +164,7 @@
   padding-top: var(--mr-space-2);
   border-top: 2px solid var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 30px;
 }
@@ -173,7 +173,7 @@
   display: flex;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -181,13 +181,13 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .guide {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   a {

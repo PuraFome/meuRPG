@@ -83,7 +83,7 @@ p {
 }
 
 .tile__name {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 19px;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -91,7 +91,7 @@ p {
 
 .tile__meta,
 .tile__hint {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   font-weight: 400;
   color: var(--mr-ink-muted);
@@ -101,7 +101,7 @@ p {
   flex: none;
   width: 20px;
   height: 20px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   color: var(--mr-accent-text);
 }
 
@@ -132,14 +132,14 @@ p {
   padding: var(--mr-space-3);
   border: 2px dashed var(--mr-control-line);
   color: var(--mr-accent-text);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   text-align: center;
 
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   &:hover {
@@ -178,6 +178,6 @@ p {
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }

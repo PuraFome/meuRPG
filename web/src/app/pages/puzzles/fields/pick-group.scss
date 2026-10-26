@@ -12,7 +12,7 @@
 .pg__legend {
   padding: 0;
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   color: var(--mr-ink);
 }
@@ -70,13 +70,13 @@
 }
 
 .opt__title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   font-weight: 700;
 }
 
 .opt__sub {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -146,14 +146,14 @@
 }
 
 .pg--segments .opt__title {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .opt__check {
   flex: none;
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   color: var(--mr-accent-text);
 }
 

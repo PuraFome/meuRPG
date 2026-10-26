@@ -54,7 +54,7 @@ import { CoverMark } from './cover-mark';
       display: flex;
       align-items: flex-start;
       gap: 6px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

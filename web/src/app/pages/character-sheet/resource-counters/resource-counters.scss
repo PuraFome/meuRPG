@@ -7,7 +7,7 @@
 
 .block__title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 20px;
   font-weight: 700;
   color: var(--mr-ink);
@@ -15,7 +15,7 @@
 
 .block__note {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -48,21 +48,21 @@
 }
 
 .box__name {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
 
 .box__count {
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
   font-weight: 800;
 }
 
 .box__again {
   margin-top: auto;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -77,7 +77,7 @@
   align-items: center;
   gap: var(--mr-space-3);
   min-height: 36px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .row__level {
@@ -87,6 +87,6 @@
 }
 
 .row__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }

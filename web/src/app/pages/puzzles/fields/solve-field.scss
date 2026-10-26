@@ -4,7 +4,7 @@
 
 .sf__title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
@@ -21,7 +21,7 @@
 
 .sf__note {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

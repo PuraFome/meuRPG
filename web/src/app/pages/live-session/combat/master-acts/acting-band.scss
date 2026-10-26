@@ -22,14 +22,14 @@
 .band__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
   color: var(--mr-ink);
 }
 
 .band__sub {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

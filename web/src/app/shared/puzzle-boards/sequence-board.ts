@@ -68,7 +68,7 @@ import { SymbolGlyph } from './symbol-glyph';
 
     .line {
       margin: 0;
-      font-size: 17px;
+      font-size: var(--mr-font-17);
       line-height: 24px;
     }
 
@@ -86,7 +86,7 @@ import { SymbolGlyph } from './symbol-glyph';
     }
 
     .big__name {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       color: var(--mr-ink-muted);
     }
 
@@ -96,13 +96,13 @@ import { SymbolGlyph } from './symbol-glyph';
       border: 1.5px dashed var(--mr-control-line);
       border-radius: var(--mr-radius-md);
       color: var(--mr-ink-muted);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
     }
 
     .waiting {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 
@@ -110,7 +110,7 @@ import { SymbolGlyph } from './symbol-glyph';
       display: flex;
       justify-content: space-between;
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
 
     @keyframes strike {

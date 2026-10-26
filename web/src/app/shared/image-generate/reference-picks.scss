@@ -4,7 +4,7 @@
 
 .title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
 }
@@ -70,7 +70,7 @@
     border-radius: 50%;
     background: var(--mr-accent);
     color: var(--mr-on-accent);
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     line-height: 22px;
     text-align: center;
   }
@@ -84,7 +84,7 @@
 .tile__name {
   overflow: hidden;
   color: var(--mr-ink-muted);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -93,7 +93,7 @@
 .count,
 .note {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 

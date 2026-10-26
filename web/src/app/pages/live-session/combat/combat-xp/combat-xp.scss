@@ -4,7 +4,7 @@
 
 .lead {
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -25,7 +25,7 @@
 
 .total__label {
   grid-column: 1;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 500;
   line-height: 16px;
   color: var(--mr-ink-muted);
@@ -33,7 +33,7 @@
 
 .total__sum {
   grid-column: 1;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -43,14 +43,14 @@
   grid-column: 2;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 30px;
+  font-size: var(--mr-font-30);
   line-height: 34px;
   white-space: nowrap;
 }
 
 .sub {
   margin: 0 0 var(--mr-space-1);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   font-weight: 700;
   color: var(--mr-ink-muted);
@@ -100,14 +100,14 @@
 }
 
 .line__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }
 
 .line__math,
 .line__of {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -141,7 +141,7 @@
   min-height: 32px;
   padding: 4px 0;
   border-bottom: 1px solid var(--mr-rule);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 

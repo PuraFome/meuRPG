@@ -29,14 +29,14 @@
 .td__title {
   margin: 0;
   font-family: var(--mr-font-display, inherit);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
   overflow-wrap: anywhere;
 }
 
 .td__sub {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -49,7 +49,7 @@
 .td__label {
   display: block;
   margin-bottom: 4px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 17px;
 }
@@ -64,7 +64,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
 
   &:focus-visible {
@@ -79,7 +79,7 @@
 
 .td__hint {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -90,17 +90,17 @@
   align-items: center;
   gap: 4px 6px;
   margin: var(--mr-space-3) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   b {
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -143,12 +143,12 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-success-ink);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

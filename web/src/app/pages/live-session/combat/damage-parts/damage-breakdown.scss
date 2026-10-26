@@ -5,7 +5,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 
   th,
   td {
@@ -16,7 +16,7 @@
   }
 
   thead th {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     color: var(--mr-ink-muted);
   }
 
@@ -57,7 +57,7 @@
 .re {
   display: inline-block;
   margin-left: 6px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   color: var(--mr-ink-muted);
 }
 
@@ -81,7 +81,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -149,7 +149,7 @@
 }
 
 .ask__hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .ask__buttons {

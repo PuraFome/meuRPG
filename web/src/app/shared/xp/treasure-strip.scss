@@ -27,7 +27,7 @@
   width: 24px;
   height: 24px;
   margin-top: -1px;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   color: var(--mr-ink);
 }
 
@@ -39,7 +39,7 @@
 
 .strip__label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 18px;
   color: var(--mr-ink-muted);
@@ -49,13 +49,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
 }
 
 .strip__line {
   margin: 2px 0 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
 }
 
@@ -63,7 +63,7 @@
   margin: 2px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }
@@ -71,7 +71,7 @@
 .strip__more,
 .strip__why {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -113,7 +113,7 @@
   }
 
   .strip__big {
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     line-height: 26px;
   }
 }

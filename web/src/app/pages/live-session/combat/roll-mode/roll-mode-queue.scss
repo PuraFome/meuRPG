@@ -24,7 +24,7 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -33,7 +33,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

@@ -19,7 +19,7 @@
 // The one page with room for it: the title at the display-xl size.
 .welcome__title {
   @media (min-width: 768px) {
-    font-size: 48px;
+    font-size: var(--mr-font-48);
     line-height: 52px;
   }
 }
@@ -53,7 +53,7 @@
   gap: var(--mr-space-2);
   padding-top: var(--mr-space-4);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -66,7 +66,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -82,7 +82,7 @@
   }
 
   code {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     overflow-wrap: anywhere;
   }
 }

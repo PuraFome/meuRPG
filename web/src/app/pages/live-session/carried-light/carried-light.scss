@@ -38,13 +38,13 @@
 
 .row__label {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
 }
 
 .row__value {
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 24px;
 }
@@ -53,12 +53,12 @@
 .row__action {
   flex: none;
   color: var(--mr-accent-text);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .row__fail {
   margin: var(--mr-space-2) 0 0;
   color: var(--mr-danger-ink);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }

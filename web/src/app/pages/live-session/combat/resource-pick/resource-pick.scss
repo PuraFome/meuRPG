@@ -14,14 +14,14 @@
 .pick__legend {
   margin: 0 0 var(--mr-space-2);
   padding: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
 
 .pick__empty {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -77,7 +77,7 @@
 }
 
 .opt__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -86,7 +86,7 @@
   display: flex;
   align-items: flex-start;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
@@ -94,6 +94,6 @@
     width: 16px;
     height: 16px;
     margin-top: 1px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }

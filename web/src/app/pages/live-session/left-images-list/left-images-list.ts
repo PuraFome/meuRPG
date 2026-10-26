@@ -57,14 +57,14 @@ import type { ShownImageVm } from '../../../core/play/live-session.types';
     .left__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 18px;
+      font-size: var(--mr-font-18);
       font-weight: 700;
       line-height: 22px;
     }
 
     .left__note {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

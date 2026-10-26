@@ -12,7 +12,7 @@
 
 .deaths__sub {
   margin: 2px 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -64,7 +64,7 @@
 }
 
 .death__line {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -104,14 +104,14 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex-shrink: 0;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   strong {
@@ -125,7 +125,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-danger-ink);
 }
 
@@ -133,7 +133,7 @@
   margin: var(--mr-space-2) 0 0;
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   strong {

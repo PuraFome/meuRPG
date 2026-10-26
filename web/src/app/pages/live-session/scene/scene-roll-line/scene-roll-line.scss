@@ -30,19 +30,19 @@ app-combatant-token {
 }
 
 .rl__who {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
 .rl__time {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .rl__action {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;
@@ -51,7 +51,7 @@ app-combatant-token {
 .rl__formula {
   margin: 2px 0 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 800;
   line-height: 30px;
 }
@@ -75,7 +75,7 @@ app-combatant-token {
 
 .rl__attempt {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -88,7 +88,7 @@ app-combatant-token {
   align-self: stretch;
   margin-top: var(--mr-space-2);
   padding: 10px 14px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -125,7 +125,7 @@ app-combatant-token {
   margin: 0;
   color: var(--mr-warning-ink);
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
 
@@ -137,7 +137,7 @@ app-combatant-token {
 .rl__ask-text {
   margin: 0;
   color: var(--mr-warning-ink);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
 }
 

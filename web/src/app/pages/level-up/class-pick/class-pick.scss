@@ -7,7 +7,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: var(--mr-space-3) 0 var(--mr-space-3);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink);
 
@@ -15,7 +15,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &--plain {
@@ -27,7 +27,7 @@
 
 .sub {
   margin: var(--mr-space-4) 0 var(--mr-space-1);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
@@ -44,7 +44,7 @@
   align-items: flex-start;
   gap: 4px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink);
 
@@ -52,7 +52,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -139,13 +139,13 @@
 }
 
 .card__title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
 
 .card__desc {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

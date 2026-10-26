@@ -37,7 +37,7 @@
 }
 
 .face__cap {
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   line-height: 15px;
 }
 
@@ -46,7 +46,7 @@
   background: var(--mr-accent-soft);
 
   .face__n {
-    font-size: 28px;
+    font-size: var(--mr-font-28);
   }
 
   .face__cap {
@@ -59,14 +59,14 @@
   color: var(--mr-ink-muted);
 
   .face__n {
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     text-decoration: line-through;
   }
 }
 
 .d20__reason,
 .d20__src {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

@@ -21,14 +21,14 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0 0 -8px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -36,13 +36,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 38px;
 }
 
 .roll__lead {
   margin: -8px 0 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
@@ -62,12 +62,12 @@
 .roll__dice {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 48px;
+  font-size: var(--mr-font-48);
   line-height: 50px;
 }
 
 .roll__cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -105,7 +105,7 @@
 }
 
 .roll__type-label {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
@@ -119,7 +119,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 38px;
+  font-size: var(--mr-font-38);
   font-weight: 700;
   text-align: center;
 
@@ -141,13 +141,13 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 .roll__sum {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
 }
 
@@ -157,7 +157,7 @@
   align-items: center;
   gap: 0 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -165,7 +165,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   b {
@@ -181,7 +181,7 @@
   background: none;
   color: var(--mr-accent-text);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -189,7 +189,7 @@
 }
 
 .done__label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .done__result {
@@ -208,7 +208,7 @@
 .done__formula {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 26px;
 }
 
@@ -237,14 +237,14 @@
 
 .who__name {
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   line-height: 22px;
 }
 
 .who__total {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 30px;
 }
 
@@ -258,7 +258,7 @@
   border: 1px dashed var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -266,7 +266,7 @@
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 
@@ -277,7 +277,7 @@
 
 .who__note {
   margin: var(--mr-space-3) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -298,13 +298,13 @@
 }
 
 .creatures__label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .creatures__total {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 32px;
+  font-size: var(--mr-font-32);
   line-height: 36px;
 }
 

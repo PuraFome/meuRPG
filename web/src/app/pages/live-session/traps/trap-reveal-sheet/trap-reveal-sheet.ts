@@ -101,7 +101,7 @@ export function trapRevealLabel(picked: readonly string[], open: number, players
   styles: `
     .note {
       margin: var(--mr-space-3) 0 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       font-weight: 700;
     }
@@ -110,7 +110,7 @@ export function trapRevealLabel(picked: readonly string[], open: number, players
       display: flex;
       align-items: flex-start;
       gap: 6px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       font-weight: 400;
       color: var(--mr-ink-muted);
@@ -120,7 +120,7 @@ export function trapRevealLabel(picked: readonly string[], open: number, players
       flex: none;
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
   `,
 })

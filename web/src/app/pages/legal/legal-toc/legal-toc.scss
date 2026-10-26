@@ -19,7 +19,7 @@ summary {
   gap: var(--mr-space-2);
   min-height: 44px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 700;
   color: var(--mr-ink);
@@ -58,7 +58,7 @@ a {
   align-items: center;
   gap: 10px;
   min-height: 36px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-accent-text);
   text-decoration: none;

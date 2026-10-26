@@ -30,7 +30,7 @@
 .order__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 800;
   line-height: 28px;
 }
@@ -47,7 +47,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-ground);
   color: var(--mr-ink-muted);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 }
 
@@ -82,14 +82,14 @@
   align-items: center;
   gap: 8px;
   margin: 8px 18px 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -176,7 +176,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -186,7 +186,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0 8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
   font-weight: 700;
   color: var(--mr-ink);
@@ -213,7 +213,7 @@
   border: 1.5px solid var(--mr-accent);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 1;
 }

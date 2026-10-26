@@ -54,12 +54,12 @@ let nextId = 0;
     }
 
     .label {
-      font-size: 17px;
+      font-size: var(--mr-font-17);
       font-weight: 700;
     }
 
     .state {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 
@@ -110,7 +110,7 @@ let nextId = 0;
       .mat-icon {
         width: 16px;
         height: 16px;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
         color: var(--mr-ink);
       }
 
@@ -124,7 +124,7 @@ let nextId = 0;
       .switch--on & .mat-icon {
         width: 20px;
         height: 20px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
   `,

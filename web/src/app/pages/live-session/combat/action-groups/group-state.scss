@@ -7,7 +7,7 @@
   padding: 0 12px 0 8px;
   border: 1.5px solid var(--mr-ink);
   border-radius: var(--mr-radius-pill);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -17,7 +17,7 @@
     padding: 0;
     border: 0;
     color: var(--mr-ink-muted);
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 400;
   }
 }
@@ -37,7 +37,7 @@
 .mat-icon {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .dot {
@@ -53,7 +53,7 @@
   .mat-icon {
     width: 12px;
     height: 12px;
-    font-size: 12px;
+    font-size: var(--mr-font-12);
   }
 
   :host(.used) & {

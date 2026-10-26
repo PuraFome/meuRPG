@@ -74,13 +74,13 @@
 .type__label {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 }
 
 .type__hint {
   margin: -4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -101,7 +101,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 38px;
+  font-size: var(--mr-font-38);
   font-weight: 700;
   text-align: center;
 
@@ -121,7 +121,7 @@
 }
 
 .type__bonus {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
 }
 
@@ -140,7 +140,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -155,7 +155,7 @@
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 // The wait style is the border and the colour only: the big dash carries its own type, so the
@@ -170,7 +170,7 @@
 
 .type__dash {
   font-family: var(--mr-font-display);
-  font-size: 32px;
+  font-size: var(--mr-font-32);
 }
 
 .type__num {
@@ -186,7 +186,7 @@
 }
 
 .type__cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -208,14 +208,14 @@
 .type--compact {
   .type__label {
     font-family: var(--mr-font-sans);
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     font-weight: 700;
     line-height: 22px;
   }
 
   .type__field {
     height: 56px;
-    font-size: 32px;
+    font-size: var(--mr-font-32);
   }
 
   .type__sum {
@@ -223,7 +223,7 @@
   }
 
   .type__num {
-    font-size: 34px;
+    font-size: var(--mr-font-34);
     line-height: 34px;
   }
 }

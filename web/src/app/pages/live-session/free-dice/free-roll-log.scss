@@ -15,7 +15,7 @@
 .log__title {
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .log__list {
@@ -42,14 +42,14 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-strong);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   vertical-align: middle;
 
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 .log-fold {

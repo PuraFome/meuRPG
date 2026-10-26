@@ -74,7 +74,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   overflow-wrap: anywhere;
   resize: none;

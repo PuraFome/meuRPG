@@ -70,7 +70,7 @@ import { SymbolGlyph } from './symbol-glyph';
       position: absolute;
       top: 1px;
       left: 4px;
-      font-size: 11px;
+      font-size: var(--mr-font-11);
       line-height: 12px;
       color: var(--mr-ink-muted);
     }

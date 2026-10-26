@@ -26,7 +26,7 @@
   flex: none;
   width: 22px;
   height: 22px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   color: var(--mr-ink-muted);
 }
 
@@ -36,7 +36,7 @@
 }
 
 .head__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -58,13 +58,13 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .panel__text {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
@@ -75,7 +75,7 @@
 
 .panel__notice {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -117,13 +117,13 @@ a.row__main:hover .row__name {
 .row__icon {
   width: 22px;
   height: 22px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .row__chevron {
   width: 20px;
   height: 20px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   color: var(--mr-ink-muted);
 }
 
@@ -135,7 +135,7 @@ a.row__main:hover .row__name {
 }
 
 .row__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
   overflow-wrap: anywhere;
@@ -147,7 +147,7 @@ a.row__main:hover .row__name {
 
 .row__sub {
   color: var(--mr-ink-muted);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
 }
 
@@ -172,7 +172,7 @@ a.row__main:hover .row__name {
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -183,7 +183,7 @@ a.row__main:hover .row__name {
 
 .item__ask-text {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 

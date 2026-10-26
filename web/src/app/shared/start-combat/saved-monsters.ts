@@ -62,7 +62,7 @@ export interface SavedMonsterRow {
       border-radius: 8px;
       font-family: var(--mr-font-display);
       font-weight: 800;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
 
     .mon__t {
@@ -73,21 +73,21 @@ export interface SavedMonsterRow {
 
     .mon__n {
       font-family: var(--mr-font-display);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 700;
       line-height: 24px;
       overflow-wrap: anywhere;
     }
 
     .mon__s {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 18px;
       color: var(--mr-ink-muted);
     }
 
     .mon__c {
       font-family: var(--mr-font-display);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 800;
     }
   `,
