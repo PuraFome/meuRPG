@@ -134,7 +134,8 @@ test(
       const repeated = acolyte.getByRole('checkbox', { name: /^Abissal/ });
       await expect(repeated).toHaveAttribute('aria-disabled', 'true');
       await expect(repeated).toContainText('Você já escolheu esta opção.');
-      await repeated.click({ force: true });
+      // A click on the disabled option does nothing (the event, since a disabled control takes no pointer click).
+      await repeated.dispatchEvent('click');
       await expect(repeated).not.toBeChecked();
       await acolyte.getByRole('checkbox', { name: /^Anão/ }).click();
       // And the other way round: what the background took is not offered to the race.
