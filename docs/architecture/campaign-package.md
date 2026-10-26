@@ -68,12 +68,16 @@ What one part finds for the next (which doors, points and player characters exis
 
 ## Export
 
-`StartCampaignExport` records a row in `campaign_exports` (id: 128 random bits as 32 hex digits) and runs the export in the background, one at a time per instance, with a 20 minute limit (`exportTimeout`).
+`StartCampaignExport` records a row in `campaign_exports` (id: 128 random bits as 32 hex digits) in the `pending` state and, after the commit, enqueues the task `campaign-export` with the payload `{campaign_id, export_id}` (ids only) on the tasks runner ([Detached work](#detached-work)). The page sees a pending export as running.
+If the task cannot be enqueued the export is failed as interrupted at once, and the answer carries it.
+The handler runs one export at a time per instance, with a 20 minute limit (`exportTimeout`, never more than the 30 minutes of a Cloud Tasks dispatch).
+It is idempotent, because the delivery is at least once: it claims the row with `UPDATE ... SET state = 'running' WHERE state = 'pending'`, and a delivery that claims nothing (a duplicate while the export runs, or an export already done, failed or canceled) answers nil and writes nothing, so there is one zip.
+A delivery that finds a `running` row that has not moved for 10 minutes (`staleExportAfter`; the instance that claimed it died) fails it as interrupted instead of writing it again.
 
 1. The campaign is read in one `db.ReadTx`, which sees one moment of the database, into a `Snapshot`: the JSON entries in memory (they are small) and the image files by key.
 2. The zip is streamed through a pipe into the blob store, copying each image file through, so no image is held in memory.
-3. Progress is written to the row at most once a second, and the same read tells the job it was canceled.
-4. A restart leaves a `running` row, which the next read marks as interrupted after 10 minutes (`staleExportAfter`).
+3. Progress is written to the row at most once a second, and the same read tells the job it was canceled: a cancel only changes the row (and stops the export if it runs in the same process), so a running handler stops by itself.
+4. A restart leaves a `running` (or never claimed `pending`) row, which the next read marks as interrupted after 10 minutes (`staleExportAfter`).
 
 The file lives under `campaigns/<campaign>/exports/<id>.zip`, and the row expires 24 hours after it finished (`ExportTTL`; a failed or canceled export's row stays 1 hour).
 
@@ -131,7 +135,7 @@ sequenceDiagram
 ## Cleaning
 
 The rows of exports and uploads have no foreign key to the campaign or the account: a cascade would delete the row and leave the file where nothing names it.
-`Sweep` runs when the server starts and every 10 minutes (`sweepEvery`):
+`Sweep` is the handler of the scheduled task `campaign-sweep`, registered with `Every` every 10 minutes (`sweepEvery`) and run once when the runner starts; a pass is idempotent (it deletes what expired, a second finds nothing more):
 
 - It deletes what expired, file first and row after.
 - It also takes orphans, whatever their expiry: exports whose campaign or account no longer exists and uploads whose account is gone (deleting a campaign or an account does not call this package's code).
@@ -139,6 +143,10 @@ The rows of exports and uploads have no foreign key to the campaign or the accou
 - The bucket's own lifecycle rule is the last word ([Operations](../operations/reference.md#campaign-package)).
 
 At shutdown an export in flight stops with the server (`Cancel`); the next read marks it interrupted.
+
+## Detached work
+
+`Config.Tasks` is the `tasks.Runner` that runs the export and the sweep. In production it enqueues Cloud Tasks, which call the service back with CPU for that request; everywhere else (it is nil) the service owns an in-process runner and runs the same handlers in a goroutine, which `Wait` and `Cancel` of the service track. Import runs inside its request and needs no task.
 
 ## Rate limits and routes
 
