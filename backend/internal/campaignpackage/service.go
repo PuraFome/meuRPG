@@ -3,6 +3,7 @@ package campaignpackage
 import (
 	"context"
 	"errors"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -72,6 +73,9 @@ type Sessions interface {
 // Config is what New needs.
 type Config struct {
 	Pool *pgxpool.Pool
+	// Tasks runs the detached work (an export being written, the sweep of what expired).
+	// Nil means an in-process runner of its own, which is what tests and local runs use.
+	Tasks tasks.Runner
 	// Blobs is the blob store; nil turns the package off (every call answers
 	// IMAGES_OFF).
 	Blobs blob.Store

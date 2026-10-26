@@ -37,6 +37,7 @@ package maps
 import (
 	"context"
 	"errors"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -237,6 +238,9 @@ type Rules interface {
 type Config struct {
 	// Pool is the CockroachDB connection pool. Required.
 	Pool *pgxpool.Pool
+	// Tasks runs the detached work (an image being made). Nil means an in-process runner of
+	// its own, which is what tests and local runs use.
+	Tasks tasks.Runner
 	// Blobs stores the image files. Nil means images are off on this
 	// server: uploads, downloads and GalleryService answer `unavailable`.
 	// MapService works without it, but no image can be uploaded, so no map
