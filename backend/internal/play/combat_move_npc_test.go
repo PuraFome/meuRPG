@@ -32,12 +32,14 @@ func TestMoveCombatantFrozen_TheMasterDraggingAnNPCOnItsTurn(t *testing.T) {
 			want: moveWant{col: 16, row: 3, usedDft: 141, lastDft: 141, event: `{"col": 16, "combatant_id": "<Goblin 1>", "cost_dft": 141, "cost_ft": 14, "distance_dft": 141, "distance_ft": 14, "from": {"col": 18, "cover": "none", "placed": true, "row": 5}, "on_turn": true, "round": 1, "row": 3, "spent_dft": 141}`},
 		},
 		{
+			// Goblin 1 leaves the reach of the Escudeiro on the way (he stands at 3,8): a walk provokes, as a player's does.
 			name: "through rubble the path costs more than its length", setup: then(standAt(map[string][2]int32{"Goblin 1": {3, 9}}), onTurnOf("Goblin 1")), as: "master", label: "Goblin 1", col: 6, row: 9,
-			want: moveWant{col: 6, row: 9, usedDft: 250, lastDft: 150, event: `{"col": 6, "combatant_id": "<Goblin 1>", "cost_dft": 250, "cost_ft": 25, "distance_dft": 150, "distance_ft": 15, "from": {"col": 3, "cover": "none", "placed": true, "row": 9}, "on_turn": true, "round": 1, "row": 9, "spent_dft": 250}`},
+			want: moveWant{col: 6, row: 9, usedDft: 250, lastDft: 150, offered: true, event: `{"col": 6, "combatant_id": "<Goblin 1>", "cost_dft": 250, "cost_ft": 25, "distance_dft": 150, "distance_ft": 15, "from": {"col": 3, "cover": "none", "placed": true, "row": 9}, "move_id": "<offers>", "on_turn": true, "round": 1, "row": 9, "spent_dft": 250}`},
 		},
 		{
+			// 14 squares are 70 ft, and the crates at column 19 cost 5 ft more: 75 ft against 30, 45 missing.
 			name: "past the movement left is refused, so the master decides", setup: then(farEast, onTurnOf("Goblin 1")), as: "master", label: "Goblin 1", col: 8, row: 7,
-			refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":40`, `"missingDft":400`)),
+			refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":45`, `"missingDft":450`)),
 		},
 		{
 			name: "past the movement left, forced, is free", setup: then(farEast, onTurnOf("Goblin 1")), as: "master", label: "Goblin 1", col: 8, row: 7,
