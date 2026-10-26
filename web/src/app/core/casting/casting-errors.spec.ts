@@ -34,3 +34,15 @@ describe('the refusal of a cast by armor without proficiency', () => {
     expect(castingErrorText(err)).toBe(REFUSAL);
   });
 });
+
+describe('the refusal of a granted spell with no use left', () => {
+  it('reads the casting reason', () => {
+    const err = new ConnectError('x', Code.FailedPrecondition, undefined, [
+      {
+        desc: CastingBlockedSchema,
+        value: create(CastingBlockedSchema, { reason: CastingBlockedReason.NO_USES }),
+      },
+    ]);
+    expect(castingErrorText(err)).toBe('A concessão não tem mais usos.');
+  });
+});

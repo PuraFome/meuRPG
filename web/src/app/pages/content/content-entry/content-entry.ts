@@ -43,6 +43,8 @@ import { ArchiveQuestion } from '../archive/archive-question';
 import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
+import { ClassFeatureEditor } from '../class-feature-editor/class-feature-editor';
+import { OptionEditor } from '../option-editor/option-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
 import { ClassEditor } from '../class-editor/class-editor';
@@ -90,6 +92,8 @@ type PageState =
     ClassEditor,
     EntryRead,
     FeatEditor,
+    OptionEditor,
+    ClassFeatureEditor,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -440,16 +444,10 @@ export class ContentEntry {
 
   /** The entry as the server has it now: after a switch, an archive or a read again. */
   protected replace(entry: TableEntry): void {
-    const s = this.state();
-    if (s.status === 'ready') {
-      this.state.set({
-        status: 'ready',
-        ctx: { ...s.ctx, entries: replaceEntry(s.ctx.entries, entry) },
-      });
-    }
-  }
-
-  protected characterLink(a: AffectedCharacter): string[] {
-    return ['/campaigns', this.campaignId(), 'characters', a.characterId];
+    this.state.update((s) =>
+      s.status === 'ready'
+        ? { status: 'ready', ctx: { ...s.ctx, entries: replaceEntry(s.ctx.entries, entry) } }
+        : s,
+    );
   }
 }

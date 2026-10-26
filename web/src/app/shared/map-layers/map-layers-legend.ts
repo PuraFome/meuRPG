@@ -38,6 +38,9 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
       @if (layers().terrain.length) {
         <li><span class="mr-swatch mr-swatch--terrain" aria-hidden="true"></span>Terreno difícil</li>
       }
+      @if (layers().noPass?.length) {
+        <li><span class="mr-swatch mr-swatch--nopass" aria-hidden="true"></span>Não dá para passar</li>
+      }
       @if (layers().half.length) {
         <li><span class="mr-swatch mr-swatch--half" aria-hidden="true"></span>Meia cobertura</li>
       }

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
-import { menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
+import { grantedSpellMenu, menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
@@ -212,6 +212,54 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(text(field('no_long_range_disadvantage')!.closest('.frow')!)).toContain(
       'Só para armas.',
     );
+  });
+
+  it("draws granted_spell's spell from the table's catalog, the ability in its own words, and the switches unfolded", () => {
+    setup(
+      { ...emptyEffect('granted_spell'), spell: 'spell:light', ability: 'choice' },
+      { menu: grantedSpellMenu() },
+    );
+    fixture.componentRef.setInput('spellOptions', [
+      { value: 'spell:light', label: 'Luz' },
+      { value: 'spell:detect-magic', label: 'Detectar Magia' },
+    ]);
+    fixture.detectChanges();
+    const spell = field('spell') as HTMLSelectElement;
+    expect(Array.from(spell.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Luz',
+      'Detectar Magia',
+    ]);
+    expect(spell.value).toBe('spell:light');
+    change(spell, 'Detectar Magia');
+    expect(emitted.at(-1)?.spell).toBe('spell:detect-magic');
+
+    const ability = field('ability') as HTMLSelectElement;
+    expect(Array.from(ability.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Inteligência',
+      'Sabedoria',
+      'Carisma',
+      'O jogador escolhe',
+    ]);
+    expect(text(ability.closest('.frow')!)).toContain('Habilidade de conjuração');
+    for (const sw of ['also_with_slot', 'ritual_only', 'counts_as_known']) {
+      expect((field(sw) as HTMLInputElement).type).toBe('checkbox');
+    }
+    (field('ritual_only') as HTMLInputElement).dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.ritualOnly).toBe(true);
+    // The resource each cast spends is folded until it holds something; empty means at will.
+    expect(field('uses')).toBeNull();
+    setup(
+      {
+        ...emptyEffect('granted_spell'),
+        spell: 'spell:light',
+        ability: 'cha',
+        uses: 'usos_de_teste',
+      },
+      { menu: grantedSpellMenu() },
+    );
+    expect(text(field('uses')!.closest('.frow')!)).toContain('Vazio: à vontade, sem limite.');
   });
 
   it('puts the hint beside its field, and the refusal under it', () => {

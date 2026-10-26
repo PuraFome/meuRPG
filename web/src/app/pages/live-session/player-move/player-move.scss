@@ -1,0 +1,83 @@
+:host {
+  display: block;
+}
+
+.pm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.pm__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+// "O mestre liberou" / "O mestre voltou a mover os tokens.": a box of one line for 8 s (C9-03).
+.pm__line--notice {
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  font-weight: 700;
+}
+
+.pm__line--free {
+  border-color: transparent;
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    color: inherit;
+  }
+}
+
+.pm__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--mr-space-4);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  @media (min-width: 768px) {
+    align-self: flex-start;
+    min-height: 44px;
+  }
+}

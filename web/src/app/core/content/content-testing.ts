@@ -12,6 +12,8 @@ import {
   TableSubclassSchema,
   TableBackgroundSchema,
   TableFeatSchema,
+  TableOptionSchema,
+  TableClassFeatureSchema,
   TableFeatureSchema,
   TableEffectSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -40,6 +42,8 @@ export function entry(
     [TableContentKind.BACKGROUND]: 'background',
     [TableContentKind.SPELL]: 'spell',
     [TableContentKind.FEAT]: 'feat',
+    [TableContentKind.OPTION]: 'option:invocation',
+    [TableContentKind.CLASS_FEATURE]: 'classfeature',
   }[kind as 1];
   const body: Body =
     over.body ??
@@ -66,16 +70,36 @@ export function entry(
                   skills: ['skill:arcana', 'skill:history'],
                 }),
               }
-            : kind === TableContentKind.FEAT
+            : kind === TableContentKind.CLASS_FEATURE
               ? {
-                  case: 'tableFeat',
-                  value: create(TableFeatSchema, {
+                  case: 'tableClassFeature',
+                  value: create(TableClassFeatureSchema, {
                     namePt,
-                    descPt: ['Texto do talento.'],
-                    prerequisite: { minimums: { strength: STRENGTH_MINIMUM } },
+                    classKey: 'class:wizard',
+                    level: 2,
+                    descPt: ['Texto da característica.'],
                   }),
                 }
-              : { case: 'tableSpell', value: create(TableSpellSchema, { namePt, level: 1 }) });
+              : kind === TableContentKind.OPTION
+                ? {
+                    case: 'tableOption',
+                    value: create(TableOptionSchema, {
+                      namePt,
+                      set: 'invocation',
+                      descPt: ['Texto da opção.'],
+                      prerequisite: { classLevel: { classKey: 'class:warlock', level: 5 } },
+                    }),
+                  }
+                : kind === TableContentKind.FEAT
+                  ? {
+                      case: 'tableFeat',
+                      value: create(TableFeatSchema, {
+                        namePt,
+                        descPt: ['Texto do talento.'],
+                        prerequisite: { minimums: { strength: STRENGTH_MINIMUM } },
+                      }),
+                    }
+                  : { case: 'tableSpell', value: create(TableSpellSchema, { namePt, level: 1 }) });
   return create(TableEntrySchema, {
     key: over.key ?? `${prefix}:${slug}@mesa`,
     kind,

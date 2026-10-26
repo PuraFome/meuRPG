@@ -227,7 +227,7 @@ func (f *takeActionFlow) choose() error {
 	}
 	// A feature action is a class or subclass feature's or a race trait's (the goblin's
 	// Fuga Ágil, from the table's content).
-	f.feature = strings.HasPrefix(key, "feature:") || strings.HasPrefix(key, "trait:")
+	f.feature = strings.HasPrefix(key, "feature:") || strings.HasPrefix(key, "trait:") || strings.HasPrefix(key, "option:") || strings.HasPrefix(key, "classfeature:")
 	list := f.opts.GetStandardActions()
 	if f.feature {
 		list = f.opts.GetFeatureActions()

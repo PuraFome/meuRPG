@@ -127,6 +127,7 @@ export class FogBase {
       half: l.half.filter(on),
       threeQuarters: l.threeQuarters.filter(on),
       doors: (l.doors ?? []).filter(on),
+      noPass: (l.noPass ?? []).filter(on),
     };
     return hasLayers(out) ? out : null;
   });

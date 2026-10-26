@@ -23,7 +23,18 @@
         (answer)="questions.held.answer($event)"
       />
     } @else if (!s.done()) {
-      @if (ch.rows().length) {
+      @if (ch.grant; as g) {
+        <p class="grant" role="note">{{ grantLine(g) }}</p>
+        @if (g.alsoWithSlot) {
+          <app-check-row
+            label="Sem espaço (usa a concessão)"
+            [checked]="s.freeCast()"
+            path="grant.free"
+            (toggled)="ch.setFreeCast($event)"
+          />
+        }
+      }
+      @if (ch.rows().length && !ch.viaGrant()) {
         <app-slot-picker [rows]="ch.rows()" [chosen]="s.slot()" (pick)="pickSlot($event)" />
         @if (ch.warning()) {
           <div class="mr-notice mr-notice--warning" role="status">

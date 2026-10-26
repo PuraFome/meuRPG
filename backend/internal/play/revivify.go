@@ -202,7 +202,7 @@ func (s *Service) previewInside(ctx context.Context, m authz.Membership, sc revi
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the turn options", err)
 	}
-	cast, err := castableOf(opts, revivifyKey)
+	cast, err := castableOf(opts, revivifyKey, "")
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +484,7 @@ func (s *Service) revivifyCaster(ctx context.Context, c *combatTx, m authz.Membe
 	if err != nil {
 		return caster, nil, err
 	}
-	cast, err := castableOf(opts, revivifyKey)
+	cast, err := castableOf(opts, revivifyKey, "")
 	if err != nil {
 		return caster, nil, err
 	}

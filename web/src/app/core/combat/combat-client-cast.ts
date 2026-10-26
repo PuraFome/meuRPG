@@ -128,6 +128,7 @@ export class CombatCastCalls {
     spellKey: string,
     slot: SlotRef | null,
     area: AreaChoice | null,
+    grantedBy = '',
   ): Promise<PreviewSpellAreaResponse> {
     return this.base.client.previewSpellArea({
       campaignId,
@@ -136,6 +137,7 @@ export class CombatCastCalls {
       spellKey,
       slot: slot ?? undefined,
       area: areaOneof(area),
+      ...(grantedBy ? { grantedBy } : {}),
     });
   }
 

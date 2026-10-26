@@ -65,7 +65,7 @@
           [token]="t"
           [initial]="initial(t)"
           [at]="tokenAt(t)"
-          [interactive]="tokensMovable()"
+          [interactive]="tokensMovable() || (ownMovable() && tokenKey(t) === onlyToken())"
           [selected]="selectedKey() === 'token:' + tokenKey(t)"
           [kindShapes]="kindShapes()"
           [raised]="raisedKey() === 'token:' + tokenKey(t)"

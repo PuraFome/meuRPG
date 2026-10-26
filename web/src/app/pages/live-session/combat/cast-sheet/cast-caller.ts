@@ -111,6 +111,7 @@ export class CastCaller {
             ...(this.choices.asksAbility ? { abilityKey: this.s.ability() } : {}),
             ...(sculpted.length ? { sculptedIds: sculpted } : {}),
             ...(destination ? { destination } : {}),
+            ...(data.grant ? { grantedBy: data.grant.sourceKey } : {}),
           },
         );
         this.show(res.encounter, res.cast);

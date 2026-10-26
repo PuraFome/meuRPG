@@ -65,6 +65,7 @@ export interface LayerBits {
   half: number;
   threeQuarters: number;
   light: number;
+  noPass: number;
   columns: number;
   rows: number;
 }
@@ -98,6 +99,7 @@ export async function layersOf(page: Page, campaignId: string, mapId: string): P
     half: crumbs(bytes('cover'), 1),
     threeQuarters: crumbs(bytes('cover'), 2),
     light: crumbs(bytes('light')),
+    noPass: bits(bytes('noPass')),
     columns,
     rows,
   };
