@@ -675,6 +675,9 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// Hooks are the on_event effects of the character (the owner's alone), in the
+	// order of its features; HooksFor picks the ones of an event (hooks.go).
+	Hooks []EventHook `json:",omitempty"`
 	// Maneuvers are the dice the character's table options add to a roll
 	// (superiority_die effects), with the die's sides worked out for the level.
 	Maneuvers []Maneuver

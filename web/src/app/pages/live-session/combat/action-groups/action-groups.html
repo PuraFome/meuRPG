@@ -308,7 +308,7 @@
       button="Usar"
       [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
       [off]="featureOff(f) || !!locked()"
-      [reason]="locked() || reasonText(f.reason)"
+      [reason]="locked() || featureWhy(f)"
       [busy]="busy()"
       (press)="pressFeature(f)"
     />

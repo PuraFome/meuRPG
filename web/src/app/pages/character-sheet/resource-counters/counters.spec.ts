@@ -13,6 +13,16 @@ describe('rechargeLine', () => {
   });
 });
 
+describe('rechargeLine: the variants a table feature can have', () => {
+  it('says a use comes back on initiative, and what a rest returns of the others', () => {
+    expect(rechargeLine('initiative')).toBe('Volta um uso ao rolar iniciativa, se nenhum restar');
+    expect(rechargeLine('restore_one_on_short_rest')).toBe(
+      'Volta um uso num descanso curto e todos num longo',
+    );
+    expect(rechargeLine('restore_one_on_long_rest')).toBe('Volta um uso num descanso longo');
+  });
+});
+
 describe('resourceBoxes', () => {
   it('counts what is left of what there is, with the pips', () => {
     const [rage] = resourceBoxes([

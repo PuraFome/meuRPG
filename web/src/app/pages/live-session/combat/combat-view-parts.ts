@@ -1,3 +1,4 @@
+import { opensSheet } from '../../../core/combat/action-spend';
 import { afterNextRender, computed, inject, Directive } from '@angular/core';
 import {
   EncounterStatus,
@@ -271,6 +272,11 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     }
     if (key === 'feature:second-wind') {
       this.sheets.actions.secondWind(own, e, name, option.action.economy);
+      return;
+    }
+    if (opensSheet(option)) {
+      // A table feature that asks how many, for whom or the dice of its heal: its own sheet.
+      this.sheets.actions.tableAction(own, e, option);
       return;
     }
     const actionKey = key;

@@ -485,7 +485,11 @@ describe('CombatView calls: death saves', () => {
   const save = (
     outcome: DeathSaveOutcome,
     face: number | null = 14,
-    over: { failures?: number; stable?: boolean } = {},
+    over: {
+      failures?: number;
+      stable?: boolean;
+      hook?: { sourceNamePt: string; healed: number };
+    } = {},
   ) =>
     create(DeathSaveSchema, {
       outcome,
@@ -570,6 +574,21 @@ describe('CombatView calls: death saves', () => {
       critical: true,
     });
     expect(view.actionNote()).toBe('Teste contra a morte: 1d20 (20) = 20. Toren volta com 1 PV.');
+    expect(view.deaths.result()).toBe(view.actionNote());
+  });
+
+  it('a hook that stands the character up on a failed save is also the action note: the card of the dying is gone', async () => {
+    const { view } = mountDying(() => ({
+      encounter: grid('t', toren(), goblin()),
+      save: save(DeathSaveOutcome.FAILURE, 4, {
+        failures: 0,
+        hook: { sourceNamePt: 'Brasa Teimosa', healed: 22 },
+      }),
+    }));
+    await view.deaths.roll({ inApp: true });
+    expect(view.actionNote()).toContain(
+      'o traço Brasa Teimosa entrou em ação: você volta com 22 PV',
+    );
     expect(view.deaths.result()).toBe(view.actionNote());
   });
 

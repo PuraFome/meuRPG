@@ -185,7 +185,7 @@
             [style.left.%]="centerX(c)"
             [style.top.%]="centerY(c)"
             [style.--span]="span(c)"
-            (click)="pickTap.emit(m.id)"
+            (click)="tapPick($event, m.id)"
           ></button>
           @if (layer.tagsAt(c.id); as at) {
             <!-- The tags of this creature, beside its token: "Alvo" (or "×2") first, then "Longe". -->

@@ -140,6 +140,8 @@ type SlotChoice struct {
 	// Free is how many slots of this kind are free, so the app can warn
 	// about the last one.
 	Free int
+	// Total is how many slots of this kind the character has, spent or not.
+	Total int
 }
 
 // SpellOption is a spell the character can cast.
@@ -534,7 +536,7 @@ func actionOption(d rules.Derived, turn TurnState, u Usage, a rules.Action) Acti
 	}
 	left, _ := ResourceLeft(d, u, a.Resource)
 	o.UsesLeft = left
-	if o.Enabled && left == 0 {
+	if o.Enabled && left < a.UnitCost() { // fewer uses than one use costs: the table's content may set a cost above 1
 		o.Enabled = false
 		o.Reason = &Reason{Code: ReasonNoUses, Recharge: rechargeOf(d, a.Resource)}
 	} else if o.Enabled && a.Resource == actionSurgeResource && turn.ActionSurged {

@@ -41,6 +41,7 @@ import { arcaneRecoveryState } from '../hit-dice-sheet/arcane-recovery';
 import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../../../core/play/live-session.types';
+import type { OwnHit } from '../../../core/combat/own-hit';
 import { SlotDots } from '../../../shared/slot-dots/slot-dots';
 import {
   betterArmorClass,
@@ -52,6 +53,8 @@ import {
 
 /** How long "Acordado · testes contra a morte zerados" stays under the cards. */
 const WOKE_NOTICE_MS = 30000;
+/** How long after the hit points changed the log's hit still explains the change (the two come as separate events). */
+const HIT_WINDOW_MS = 4000;
 
 interface SlotRowVm {
   readonly key: string;
@@ -268,6 +271,14 @@ export class PlayerVitals {
   /** Said once by screen readers when the master changes a number: the
    * screen changes under the player's eyes, and this says what changed. */
   protected readonly announcement = signal('');
+  /** The latest attack that hurt this character, from the combat log (`null` outside a combat or without one). */
+  readonly lastHit = input<OwnHit | null>(null);
+  private hitStarted = false;
+  private hitSeen = '';
+  private hitSeenAt = 0;
+  private hitAnnounced = '';
+  private changedAt = 0;
+  private numbers = '';
   private previous: VitalsVm | null = null;
 
   constructor() {
@@ -295,10 +306,38 @@ export class PlayerVitals {
       if (!before || before.characterId !== v.characterId || before.revision === v.revision) {
         return;
       }
-      this.announcement.set(
-        `O mestre ajustou: ${v.hitPointsCurrent} de ${v.hitPointsMax} pontos de vida, ` +
-          `${v.hitPointsTemporary} temporários.`,
-      );
+      const numbers = `${v.hitPointsCurrent} de ${v.hitPointsMax} pontos de vida, ${v.hitPointsTemporary} temporários.`;
+      this.numbers = numbers;
+      this.changedAt = Date.now();
+      // The damage of an attack is said as the attack's; "O mestre ajustou" is the master's own adjustment.
+      const hit = untracked(() => this.lastHit());
+      const fresh =
+        hit && hit.id !== this.hitAnnounced && this.changedAt - this.hitSeenAt < HIT_WINDOW_MS;
+      if (hit && fresh) {
+        this.hitAnnounced = hit.id;
+        this.announcement.set(`${hit.text} ${numbers}`);
+        return;
+      }
+      this.announcement.set(`O mestre ajustou: ${numbers}`);
+    });
+    // The log can arrive after the hit points: the adjustment just announced was the attack's damage.
+    effect(() => {
+      const hit = this.lastHit();
+      const first = !this.hitStarted;
+      this.hitStarted = true;
+      if (!hit || hit.id === this.hitSeen) {
+        return;
+      }
+      this.hitSeen = hit.id;
+      if (first) {
+        this.hitAnnounced = hit.id; // a hit already in the log when the card opened is old news
+        return;
+      }
+      this.hitSeenAt = Date.now();
+      if (hit.id !== this.hitAnnounced && this.hitSeenAt - this.changedAt < HIT_WINDOW_MS) {
+        this.hitAnnounced = hit.id;
+        this.announcement.set(`${hit.text} ${this.numbers}`);
+      }
     });
   }
 

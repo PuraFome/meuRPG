@@ -127,9 +127,26 @@ It draws what `ConversationState` holds; the server decides who may read a line,
 - **Dice animation** (`shared/roll-overlay`, mounted once in the shell) plays when this screen rolls in the app: attacks, damage, scene checks, saving throws, initiative, grapples, reactions, hit dice and the like.
   It never plays for a physical die the player typed, for another person's roll arriving by stream (the free dice roller's table roll is the one exception, below), or outside play (editors, campaign pages).
   A word ("Passou", "Falhou") appears only where the same screen tells it to this viewer; the DC and the other side's result are never shown.
-  It is a native popover (`popover="manual"`) so it lies above open sheets; it is `aria-hidden` with one polite sentence when the dice land; focus does not move.
-  The dice tumble together, land one after another (at most 8 drawn, the rest is a "+N" chip), stay until a tap or Esc or 10 s, and a new roll replaces them.
-  Under `prefers-reduced-motion: reduce` (or without `matchMedia`) it does nothing.
+  It is a native popover (`popover="manual"`) so it lies above open sheets; the picture is `aria-hidden` and one polite sentence is read when the dice land; focus does not move.
+- **The tray** (`RollTray`) is one `<canvas>`: a felt with a wooden rim, with the dice thrown in, seen from above.
+  The dice roll for about 1.0 to 1.8 s (never past 3 s), bump into each other and the rim, and stop on the faces the server rolled, with their numbers within ±10° of upright.
+  Each screen picks its own seed, so the same roll looks different on two screens; the result never differs.
+  The d20 and the tens die of a d100 are garnet, every other die is paper; numbers are ink, or light on garnet.
+  A d4 keeps its numbers at the corners and its result upright at the top corner; a d100 is two d10, labelled "dezenas" and "unidades".
+  When the dice rest, the numbers on the sides fade and only the result stays strong.
+  A d20 that advantage or disadvantage left out is drawn at half strength and labelled "descartado"; a critical glows gold with sparks and "Crítico!", a fumble darkens, shakes and says "Falha crítica".
+  Meaning is always in words as well as colour.
+- **Size:** on a phone the tray spans the overlay's content width (16 px gutters) with a height of 0.55 times its width; from a tablet up it is at most 520 × 280 px.
+  The dice get smaller as there are more of them. At most 8 dice are drawn; the rest is a "+N" chip.
+  The label, the line, the note and the outcome stay under the tray and appear when the dice have landed.
+- **Closing:** a tap or Esc while the dice roll lands them at once; a second tap or Esc closes; the overlay closes by itself after 10 s at most; a new roll replaces the one in flight.
+- **Sound:** off by default, and quiet when on.
+  The "Som dos dados" button in the overlay (`aria-pressed`, 44 px) switches it on or off; the sound is synthesized, with nothing to load, and the browser starts it from that tap.
+  It lasts for the open tab: the setting lives in memory (`DiceSoundSetting`), never in web storage or a cookie, so a reload starts silent.
+- **Reduced motion** (`prefers-reduced-motion: reduce`, or a browser without `matchMedia`): nothing moves.
+  The dice appear at rest, in rows, with their results, in a card that neither dims nor blocks the page, with "Som dos dados" and "Fechar" under the words; Esc and the 10 s close it too.
+- **Colours** are the tray tokens ([tokens.md](tokens.md#dice-tray-tokens)); the canvas reads them from the page, and draws its numbers in the app's own Alegreya (never a font from a third party).
+  The module (`shared/roll-overlay/tray`, plain TypeScript with no Angular) loads with the first roll, so the first screen does not carry it.
 - **Natural 20 and natural 1:** a check, saving throw, contest, group check, scene roll or initiative whose counting d20 came up 20 or 1 carries a small `mr-tag` "20 natural" or "1 natural" next to its formula (`naturalMark`, `core/combat/natural-mark.ts`).
   It is information only: those rolls have no automatic success or failure on a natural die, so the tag never says "crítico" or changes a verdict. Attacks keep their "crítico" wording; an attack that misses on a natural 1 reads "Errou · 1 natural".
   A player sees it only on a roll whose face they already read.
@@ -178,7 +195,7 @@ The question is a `--warning` surface (`app-held-question`, `pages/live-session/
 
 - **Trap card, treasure card, "Quem notaria"** (`app-trap-noticers`): the table shows the server's numbers (passive Perception, the dim-light deduction, where the character is, whether they notice); the browser neither sums nor compares.
 - **Waiting damage:** an amber card in an `aria-live` region with a number field ("Mude o número se houver resistência: o app não calcula."), the HP before and after, "Aplicar N de dano" (the only filled button) and "Não aplicar", which asks in place.
-- **Rests** (`rest-card`): the master's "Descanso curto" / "Descanso longo" read the server's preview and open an `alertdialog`-style question in place that lists what comes back.
+- **Rests** (`rest-card`): the master's "Descanso curto" / "Descanso longo" read the server's preview and open an `alertdialog`-style question in place that lists what comes back. A resource that gives back one use (`RestResourceBack.back`) reads "Kai +1 uso" instead of "3 de 3". Each on_event hook of the owner for that rest is one more line, "Ao terminar o descanso longo, Kai: Fôlego da Mesa entrou em ação: ganha 3 PV temporários." (`hookSentence`, `core/combat/hook-text.ts`); a heal from dice is marked "(em média)" because the preview shows the average and the rest rolls the dice. The line prints only the numbers the server sent (the master and the owner), never a computed one.
 - **Treasure** (`pages/treasure`): generated by the server; "Pôr no mapa" asks for a hidden point; gold becomes XP only in a gold campaign.
 
 ## Puzzles

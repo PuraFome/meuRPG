@@ -62,7 +62,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
-import { archiveEntryRPC, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, costsRaceBody, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
@@ -1051,6 +1051,71 @@ test('o combate passa no axe e nas conferências de layout no tema escuro, no ce
   test.setTimeout(240_000);
   await scanCombatScreens(browser, 'dark', 390);
 });
+
+/** The master's initiative setup at the desktop widths between a laptop and a wide screen (MR-013): beside the conversation column
+ * of 1600px and more the board is narrower than at 1280, and the list must still read: a name on one line (an ellipsis, never a letter
+ * a line), no horizontal scroll, the bar's help text on a measure of its own, and the roll and the buttons inside the row. */
+async function scanMasterInitiativeSetup(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 941 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade iniciativa ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await m.goto(`/campaigns/${campaignId}/session`);
+    await expectStartCombatOffered(m);
+    await clickStartCombat(m);
+    await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
+    for (let i = 0; i < 3; i++) {
+      await m.getByRole('button', { name: 'Mais um Goblin', exact: true }).click();
+    }
+    await m.getByRole('button', { name: 'Mais um Capitão Goblin' }).click();
+    await m.getByRole('dialog').getByRole('button', { name: 'Iniciar combate' }).click();
+    await expect(m.getByText('Os NPCs rolaram sozinhos.')).toBeVisible();
+    await expectScreenPasses(m, `Iniciativa do mestre, antes de começar ${where}`);
+
+    // Every name keeps one line and nothing leaves its row or the page.
+    const list = m.locator('app-initiative-setup');
+    await expect(list.locator('.row__name').first()).toBeVisible();
+    for (const name of await list.locator('.row__name').all()) {
+      const box = await boxOf(name);
+      expect(box.height, `um nome em uma linha ${where}`).toBeLessThan(26);
+      expect(box.width, `um nome com largura ${where}`).toBeGreaterThan(60);
+    }
+    for (const row of await list.locator('.row').all()) {
+      const inside = await row.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [...el.querySelectorAll('.row__formula, .row__actions button')].every((c) => {
+          const b = c.getBoundingClientRect();
+          return b.left >= r.left - 1 && b.right <= r.right + 1;
+        });
+      });
+      expect(inside, `a rolagem e os botões dentro da linha ${where}`).toBe(true);
+    }
+    const lead = await boxOf(m.locator('.bar__lead'));
+    expect(lead.width, `o texto de ajuda da barra com medida ${where}`).toBeGreaterThan(300);
+    expect(await m.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `sem rolagem lateral ${where}`).toBe(true);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 1440], ['dark', 1728]] as const) {
+  test(`a iniciativa do mestre passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-013'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanMasterInitiativeSetup(browser, scheme, width);
+  });
+}
 
 /** Acting in a combat (Etapa 6, slice 6.5b; E6-06, E6-07, E6-08, E6-15, E6-11):
  * the player's "Sua vez" groups, the end-turn question, every step of the
@@ -5891,6 +5956,17 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, classFeature));
       await expect(m.getByLabel('Nome da característica')).toHaveValue('Rastro do Corvo');
       await expectScreenPasses(m, `Editor de característica de classe ${where}`);
+      // A trait with a pool that comes back on initiative, an action that spends 1 to 3 of it to heal, and a long-rest hook.
+      const costs = await createEntryRPC(m, campaignId, 'tableRace', costsRaceBody());
+      await open(m, entryRoute(campaignId, costs));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Brasa de Teste');
+      await expect(m.getByLabel('Custo máximo (o jogador escolhe)')).toHaveValue('3');
+      await expectScreenPasses(m, `Editor de raça, a ação com custo e cura, o recurso que volta na iniciativa e o gatilho ${where}`);
+      // A refusal at the field: the most the player may spend is below the cost.
+      await m.getByLabel('Custo máximo (o jogador escolhe)').fill('0');
+      await m.getByRole('button', { name: 'Salvar raça' }).click();
+      await expect(m.getByLabel('Custo máximo (o jogador escolhe)')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de raça, a recusa no custo máximo ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');
@@ -8570,6 +8646,18 @@ async function scanFreeDiceScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(playerSheet.locator('app-free-roll-card .card__line')).toContainText('2d6 + 3 = ');
     await expect(playerSheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeEnabled();
     await expectScreenPasses(p, `Rolar dados, o resultado do jogador ${where}`);
+
+    // The master's page shows the player's roll on the dice overlay. The suite runs with reduced motion, so the dice sit
+    // still in a card that leaves the page usable: scan it with the "Som dos dados" toggle (off, a 44 px target) and close it.
+    const overlay = m.locator('app-roll-overlay');
+    await expect(overlay.locator('.result')).toContainText('Rolagem livre · 2d6 + 3', { timeout: 15_000 });
+    const sound = overlay.getByRole('button', { name: 'Som dos dados' });
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+    expect((await sound.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await expectScreenPasses(m, `Rolar dados, a animação dos dados do mestre ${where}`);
+    await overlay.getByRole('button', { name: 'Fechar' }).click();
+    await expect(overlay.locator('.result')).toBeHidden();
+
     await p.keyboard.press('Escape');
     await expect(playerSheet).toBeHidden();
 
