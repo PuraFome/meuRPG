@@ -301,13 +301,18 @@ function lateText(w: ReactionWindow): string {
   return describeRow(w);
 }
 
+/** "3 de 4 livres" when the total is known, else "3 livres". */
+function freeLabel(slot: SlotChoice): string {
+  if (slot.total > 0)
+    return `${slot.free} de ${slot.total} ${slot.free === 1 ? 'livre' : 'livres'}`;
+  return `${slot.free} ${slot.free === 1 ? 'livre' : 'livres'}`;
+}
+
 /** What the reaction costs the character: its reaction, and the slot a spell takes. */
 function lateCost(w: ReactionWindow): string {
   const slots = w.prompt.case === 'shield' ? w.prompt.value.slots.filter((x) => x.free > 0) : [];
   const slot = [...slots].sort((x, y) => x.level - y.level)[0];
-  const spent = slot
-    ? ` e um espaço de ${circleLabel(slot.level)} (${slot.free} ${slot.free === 1 ? 'livre' : 'livres'})`
-    : '';
+  const spent = slot ? ` e um espaço de ${circleLabel(slot.level)} (${freeLabel(slot)})` : '';
   return `Gasta a reação${spent}. O jogador não respondeu em ${LATE_SECONDS} s; você responde por ele.`;
 }
 

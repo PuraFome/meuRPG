@@ -90,12 +90,12 @@ func slotChoices(d rules.Derived, u Usage, level int) []SlotChoice {
 	var out []SlotChoice
 	for l := level; l <= rules.MaxSlotLevel; l++ {
 		if free := SlotsFree(d, u, l); free > 0 {
-			out = append(out, SlotChoice{Level: l, Free: free})
+			out = append(out, SlotChoice{Level: l, Free: free, Total: d.SpellSlots[l-1]})
 		}
 	}
 	if p := d.PactMagic; p != nil && p.SlotLevel >= level {
 		if free := PactSlotsFree(d, u); free > 0 {
-			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free})
+			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free, Total: p.Slots})
 		}
 	}
 	return out

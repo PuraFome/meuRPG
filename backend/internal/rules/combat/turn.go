@@ -140,6 +140,8 @@ type SlotChoice struct {
 	// Free is how many slots of this kind are free, so the app can warn
 	// about the last one.
 	Free int
+	// Total is how many slots of this kind the character has, spent or not.
+	Total int
 }
 
 // SpellOption is a spell the character can cast.

@@ -354,7 +354,7 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 			Spell: spellToProto(sp.Spell), Economy: economyToProto[sp.Economy], Enabled: sp.Enabled, Reason: reasonProto(sp.Reason),
 		}
 		for _, c := range sp.Slots {
-			so.Slots = append(so.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})
+			so.Slots = append(so.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free), Total: i32(c.Total)})
 		}
 		out.Spells = append(out.Spells, so)
 	}

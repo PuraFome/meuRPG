@@ -9471,7 +9471,10 @@ type SlotChoice struct {
 	Pact bool `protobuf:"varint,2,opt,name=pact,proto3" json:"pact,omitempty"`
 	// How many slots of this kind are free, so the app can warn about the
 	// last one.
-	Free          int32 `protobuf:"varint,3,opt,name=free,proto3" json:"free,omitempty"`
+	Free int32 `protobuf:"varint,3,opt,name=free,proto3" json:"free,omitempty"`
+	// How many slots of this kind the character has in all, free or spent, so
+	// the app can read "3 of 4 free". 0 when not known.
+	Total         int32 `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9523,6 +9526,13 @@ func (x *SlotChoice) GetPact() bool {
 func (x *SlotChoice) GetFree() int32 {
 	if x != nil {
 		return x.Free
+	}
+	return 0
+}
+
+func (x *SlotChoice) GetTotal() int32 {
+	if x != nil {
+		return x.Total
 	}
 	return 0
 }
@@ -11730,12 +11740,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"summary_pt\x18\x04 \x01(\tR\tsummaryPt\x12\x18\n" +
 	"\aallowed\x18\x05 \x01(\bR\aallowed\x12,\n" +
-	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\"J\n" +
+	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\"`\n" +
 	"\n" +
 	"SlotChoice\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
-	"\x04free\x18\x03 \x01(\x05R\x04free\"\xd4\x01\n" +
+	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x05R\x05total\"\xd4\x01\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
