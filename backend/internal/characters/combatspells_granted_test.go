@@ -29,7 +29,7 @@ func TestMR025_AGrantedSpellIsCastWithTheGrantsAbility(t *testing.T) {
 		},
 	})
 	// A level 5 fighter casts nothing of his own: proficiency +3, Wisdom 16 (+3).
-	sheet := casterSheet("class:fighter", "", 5, 16, 12, 14, 10, 16, 8, nil, nil)
+	sheet := casterSheet("class:fighter", "subclass:champion", 5, 16, 12, 14, 10, 16, 8, nil, nil, "feature:fighter-fighting-style-defense")
 	ch := p.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Torin", sheet)
 	// A player's feats come from the level-up; the master adds one to a sheet.
 	sheet.GetFull().FeatKeys = []string{feat.GetKey()}

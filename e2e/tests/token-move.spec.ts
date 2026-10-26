@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { getMapRPC } from './editor-support';
-import { type FogTable, sessionRoute, squareBp, tableForFog } from './fog-support';
+import { CAVE_COLUMNS, CAVE_ROWS, type FogTable, sessionRoute, squareBp, tableForFog } from './fog-support';
 import { endOpenSessionRPC, showMapTool } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
@@ -43,11 +43,12 @@ async function openTokens(mp: Page, table: FogTable): Promise<void> {
   await expect(mp.getByRole('switch', { name: 'Os jogadores movem os próprios personagens' })).toBeVisible();
 }
 
-/** Where a character's token is now, by the server (the square). */
-async function squareOf(page: Page, table: FogTable, characterId: string): Promise<{ xBp: number; yBp: number }> {
+/** The square a character's token is on now, by the server. The server keeps the middle of the square in whole basis points
+ * (it rounds 4687.5 down), so the test compares squares, not points. */
+async function squareOf(page: Page, table: FogTable, characterId: string): Promise<{ col: number; row: number }> {
   const { tokens } = await getMapRPC(page, table.campaignId, table.mapId);
   const token = tokens.find((t) => t.characterId === characterId && !t.creatureId) as { xBp: number; yBp: number };
-  return { xBp: token.xBp, yBp: token.yBp };
+  return { col: Math.floor((token.xBp * CAVE_COLUMNS) / 10000), row: Math.floor((token.yBp * CAVE_ROWS) / 10000) };
 }
 
 test(
@@ -83,11 +84,11 @@ test(
 
       // The server walks it and says where it stopped: before the marked square, 6 squares (9 m) on.
       await go.click();
-      await expect(mp.getByText('O movimento parou antes.')).toBeVisible();
-      await expect(mp.getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 9 m\./)).toBeVisible();
+      await expect(mp.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
+      await expect(mp.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 9 m\./)).toBeVisible();
       await expect(mp.getByText(/Pedido: 10 quadrados \(15 m\) · andou 6 \(9 m\)/)).toBeVisible();
       await expect(mp.getByText('9 m · parou antes')).toBeVisible();
-      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(8, 7));
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 8, row: 7 });
     });
   },
 );
@@ -110,7 +111,7 @@ test(
       await expect(mp.getByText('Cada jogador arrasta só o próprio token. O mestre continua movendo todos.')).toBeVisible();
       const own = await asPlayer(table.pensantusId, 4, 7);
       expect(own.ok(), await own.text()).toBeTruthy();
-      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(4, 7));
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 4, row: 7 });
       // Not another character's token, and the master still moves everyone.
       expect((await asPlayer(table.torenId, 4, 9)).status()).toBe(403);
 
@@ -147,7 +148,7 @@ test(
       const first = await squareOf(mp, table, table.pensantusId);
       const second = await squareOf(mp, table, table.torenId);
       // The first of the list is the corner; the other is beside it, to the right.
-      expect([first, second]).toEqual(expect.arrayContaining([squareBp(12, 7), squareBp(13, 7)]));
+      expect([first, second]).toEqual(expect.arrayContaining([{ col: 12, row: 7 }, { col: 13, row: 7 }]));
     });
   },
 );
@@ -192,16 +193,16 @@ test(
       }
       await expect(ap.getByText('Pensantus vai 10 quadrados para a direita')).toBeVisible();
       await ap.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
-      await expect(ap.getByText('O movimento parou antes.')).toBeVisible();
-      await expect(ap.getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 6 \(9 m\)\./)).toBeVisible();
-      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(8, 7));
+      await expect(ap.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
+      await expect(ap.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 6 \(9 m\)\./)).toBeVisible();
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 8, row: 7 });
 
       // The master takes the switch back: the notice, and the panel goes away without moving anybody.
       await switchTo(false);
       await expect(ap.getByText('O mestre voltou a mover os tokens.').first()).toBeVisible();
       await expect(ap.getByRole('button', { name: 'Ir para a direita' })).toHaveCount(0);
       await expect(ap.getByRole('button', { name: 'Mover Pensantus' })).toHaveCount(0);
-      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(8, 7));
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 8, row: 7 });
     });
   },
 );

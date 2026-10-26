@@ -2775,7 +2775,7 @@ async function scanTokenMoveScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(m.getByText('Pensantus vai 10 quadrados para a direita')).toBeVisible();
     await expectScreenPasses(m, `Mover Pensantus, com destino ${where}`);
     await m.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
-    await expect(m.getByText('O movimento parou antes.')).toBeVisible();
+    await expect(m.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
     await expectScreenPasses(m, `Mover Pensantus, parou antes ${where}`);
 
     await m.getByRole('checkbox', { name: 'Escolher Toren para mover' }).check();
@@ -2856,7 +2856,7 @@ async function scanPlayerMoveScreens(browser: Browser, colorScheme: 'light' | 'd
     }
     await expectScreenPasses(p, `Jogador, Mover Pensantus, com plano ${where}`);
     await p.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
-    await expect(p.getByText('O movimento parou antes.')).toBeVisible();
+    await expect(p.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
     await expectScreenPasses(p, `Jogador, o movimento parou antes ${where}`);
 
     await switchTo(false);

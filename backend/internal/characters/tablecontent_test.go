@@ -137,6 +137,10 @@ func createReq(campaign string, body proto.Message) *rulesv1.CreateTableEntryReq
 		r.Body = &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: b}
 	case *rulesv1.TableFeat:
 		r.Body = &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: b}
+	case *rulesv1.TableOption:
+		r.Body = &rulesv1.CreateTableEntryRequest_TableOption{TableOption: b}
+	case *rulesv1.TableClassFeature:
+		r.Body = &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: b}
 	}
 	return r
 }
@@ -158,6 +162,10 @@ func updateReq(campaign, key string, revision int32, body proto.Message) *rulesv
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableSpell{TableSpell: b}
 	case *rulesv1.TableFeat:
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableFeat{TableFeat: b}
+	case *rulesv1.TableOption:
+		r.Body = &rulesv1.UpdateTableEntryRequest_TableOption{TableOption: b}
+	case *rulesv1.TableClassFeature:
+		r.Body = &rulesv1.UpdateTableEntryRequest_TableClassFeature{TableClassFeature: b}
 	}
 	return r
 }
