@@ -282,12 +282,25 @@ const SPELL_CHANGE_FIELDS: Readonly<Record<string, readonly string[]>> = {
 };
 const SPELL_CHANGE_ONLY: ReadonlySet<string> = new Set(Object.values(SPELL_CHANGE_FIELDS).flat());
 
+/** A superiority_die on a roll of the character's own (checks, saves, initiative) reads fewer fields: only the checks take a
+ * `targets` list, only a save an `ability`, and none of the three costs an action. */
+const ROLL_DIE_HIDES: Readonly<Record<string, readonly string[]>> = {
+  check: ['ability', 'economy'],
+  save: ['targets', 'economy'],
+  initiative: ['ability', 'targets', 'economy'],
+};
+
 /** The fields of the draft's type that apply to it now: a spell_modifier shows only what its chosen change reads (none of the
- * change's own fields until one is chosen); every other type shows all of its menu fields. */
+ * change's own fields until one is chosen), a superiority_die on a roll only what that roll reads; every other type shows all
+ * of its menu fields. */
 export function visibleFields(
   fields: readonly EffectMenuField[],
   d: EffectDraft,
 ): readonly EffectMenuField[] {
+  if (d.type === 'superiority_die') {
+    const hidden = ROLL_DIE_HIDES[d.applies] ?? ['targets'];
+    return fields.filter((f) => !hidden.includes(f.name));
+  }
   if (d.type !== 'spell_modifier') {
     return fields;
   }

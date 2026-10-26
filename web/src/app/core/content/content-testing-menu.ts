@@ -76,6 +76,7 @@ export function menuResponse(): GetEffectMenuResponse {
           field('resource', 'resource_ref', true),
           field('value', 'formula', true),
           field('ability', 'choice', false, 'abilities'),
+          field('targets', 'choices', false, 'roll_die_targets'),
           field('economy', 'choice', false, 'economies'),
           field('when', 'condition'),
           field('text_pt', 'text'),

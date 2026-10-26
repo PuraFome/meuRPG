@@ -401,3 +401,42 @@ describe('spell_modifier: the change decides the fields', () => {
     expect(missingRequired({ ...base, spellChange: 'bonus_damage' }, m)).toEqual([]);
   });
 });
+
+describe("superiority_die on the character's own rolls", () => {
+  const m = menu();
+  const die = { ...emptyEffect('superiority_die'), resource: 'dados', value: '6' };
+  const names = (applies: string) =>
+    visibleFields(m.fieldsOf('superiority_die'), { ...die, applies }).map((f) => f.name);
+
+  it('lets only a check list targets, only a save name an ability, and none of them an action', () => {
+    expect(names('check')).toContain('targets');
+    expect(names('check')).not.toContain('ability');
+    expect(names('check')).not.toContain('economy');
+    expect(names('save')).toContain('ability');
+    expect(names('save')).not.toContain('targets');
+    expect(names('initiative')).not.toEqual(expect.arrayContaining(['ability']));
+    expect(names('initiative')).not.toContain('targets');
+    expect(names('initiative')).not.toContain('economy');
+    // The older uses keep their fields, and never a targets list.
+    expect(names('damage')).toEqual(expect.arrayContaining(['ability', 'economy']));
+    expect(names('damage')).not.toContain('targets');
+  });
+
+  it('sends the targets of a check and drops what a change of roll left behind', () => {
+    const d = {
+      ...die,
+      applies: 'check',
+      targets: ['skill.stealth'],
+      ability: 'dex',
+      economy: 'bonus_action',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'superiority_die',
+      applies: 'check',
+      resource: 'dados',
+      value: '6',
+      targets: ['skill.stealth'],
+    });
+    expect(draftToEffect({ ...d, applies: 'damage' }, m)).not.toHaveProperty('targets');
+  });
+});
