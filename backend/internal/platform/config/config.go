@@ -351,6 +351,9 @@ type Tasks struct {
 // Configured says whether the queue is set. Load guarantees that it is all or nothing.
 func (t Tasks) Configured() bool { return t.Queue != "" }
 
+// tasksVariables is how many TASKS_* variables there are.
+const tasksVariables = 3
+
 var (
 	tasksQueueName = regexp.MustCompile(`^projects/[a-z][a-z0-9:.-]{3,60}/locations/[a-z0-9-]{3,40}/queues/[A-Za-z0-9_-]{1,100}$`)
 	tasksAccount   = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
@@ -374,7 +377,7 @@ func loadTasks(getenv func(string) string) (Tasks, []error) {
 	}
 	switch len(missing) {
 	case 0:
-	case 3:
+	case tasksVariables:
 		return Tasks{}, nil
 	default:
 		return Tasks{}, []error{fmt.Errorf("TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: %s", strings.Join(missing, ", "))}

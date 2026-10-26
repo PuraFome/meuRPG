@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -277,7 +278,7 @@ func TestCancelEndsRunningHandlers(t *testing.T) {
 	select {
 	case code := <-result:
 		if code != http.StatusInternalServerError {
-			t.Errorf("a cancelled handler = %d, want 500", code)
+			t.Errorf("a canceled handler = %d, want 500", code)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Cancel did not end the handler")
@@ -291,7 +292,7 @@ func TestScheduledDeliveryEnqueuesTheNextSlotBeforeRunning(t *testing.T) {
 	e.c.now = func() time.Time { return time.Unix(7000*600+5, 0) }
 	var order []string
 	e.c.Every("expired", 10*time.Minute, func(context.Context, json.RawMessage) error {
-		order = append(order, "handler:"+string(rune('0'+len(e.api.created())))) // creates seen when it ran
+		order = append(order, "handler:"+strconv.Itoa(len(e.api.created()))) // creates seen when it ran
 		return errors.New("fails")
 	}, Options{})
 	auth := "Bearer " + e.issuer.mint(t, tokenOpts{})

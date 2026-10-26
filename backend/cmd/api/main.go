@@ -261,7 +261,8 @@ func newTaskRunner(ctx context.Context, logger *slog.Logger, cfg config.Config) 
 		return nil, nil, err
 	}
 	logger.InfoContext(ctx, "detached work runs on Cloud Tasks", "queue", cfg.Tasks.Queue, "target", cfg.Tasks.TargetURL)
-	return c, c.Handler(), nil
+	endpoint := c.Handler()
+	return c, endpoint, nil
 }
 
 // taskCancel is what the shutdown calls to stop the tasks running in this process.

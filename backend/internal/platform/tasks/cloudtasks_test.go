@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -57,7 +58,7 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 		f.tokens++
 		n := f.tokens
 		f.mu.Unlock()
-		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": secretCanary + "-" + string(rune('0'+n)), "expires_in": 3600})
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": secretCanary + "-" + strconv.Itoa(n), "expires_in": 3600})
 		return
 	}
 	body, _ := io.ReadAll(r.Body)

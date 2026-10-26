@@ -44,6 +44,8 @@ const (
 const (
 	cloudTasksMetadataTimeout = 5 * time.Second
 	cloudTasksCallTimeout     = 15 * time.Second
+	cloudTasksTLSTimeout      = 10 * time.Second
+	cloudTasksIdleTimeout     = 90 * time.Second
 	cloudTasksTokenMargin     = time.Minute
 	cloudTasksMaxTokenBody    = 64 << 10
 	cloudTasksRetryPause      = 150 * time.Millisecond
@@ -138,8 +140,13 @@ func NewCloudTasks(cfg Config, logger *slog.Logger) (*CloudTasks, error) {
 		logger = slog.Default()
 	}
 	cfg.TargetURL = strings.TrimSuffix(cfg.TargetURL, "/")
-	api := http.DefaultTransport.(*http.Transport).Clone() //nolint:forcetypeassert // the standard library's transport
-	api.ResponseHeaderTimeout = cloudTasksCallTimeout
+	api := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		ForceAttemptHTTP2:     true,
+		TLSHandshakeTimeout:   cloudTasksTLSTimeout,
+		IdleConnTimeout:       cloudTasksIdleTimeout,
+		ResponseHeaderTimeout: cloudTasksCallTimeout,
+	}
 	base, cancel := context.WithCancel(context.Background())
 	c := &CloudTasks{
 		cfg:          cfg,
@@ -173,17 +180,24 @@ func (cfg Config) validate() error {
 	if !queueName.MatchString(cfg.Queue) {
 		return errors.New("tasks: the queue is not a full queue name (projects/P/locations/L/queues/Q)")
 	}
-	u, err := url.Parse(cfg.TargetURL)
-	if err != nil || u.Host == "" || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
-		return errors.New("tasks: the target URL must be a scheme and a host, without path or query")
-	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && isLoopback(u.Hostname())) {
-		return errors.New("tasks: the target URL must be https")
+	if err := checkTarget(cfg.TargetURL); err != nil {
+		return err
 	}
 	if !serviceAccountEmail.MatchString(cfg.ServiceAccount) {
 		return errors.New("tasks: the service account is not an e-mail address")
 	}
 	return nil
+}
+
+func checkTarget(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return errors.New("tasks: the target URL must be a scheme and a host, without path or query")
+	}
+	if u.Scheme == "https" || (u.Scheme == "http" && isLoopback(u.Hostname())) {
+		return nil
+	}
+	return errors.New("tasks: the target URL must be https")
 }
 
 func isLoopback(host string) bool {
@@ -376,24 +390,29 @@ func (c *CloudTasks) create(ctx context.Context, body []byte) error {
 			}
 		}
 		status, err := c.createOnce(ctx, body)
-		switch {
-		case err == nil && status == http.StatusOK:
-			return nil
-		case err == nil && status == http.StatusConflict:
-			return ErrExists
-		case err == nil:
-			lastErr = statusError("create", status)
-			if status != http.StatusTooManyRequests && status < http.StatusInternalServerError {
-				return lastErr
-			}
-		default:
-			lastErr = err
-			if ctx.Err() != nil {
-				return lastErr
-			}
+		done, err := judgeCreate(ctx, status, err)
+		if done {
+			return err
 		}
+		lastErr = err
 	}
 	return lastErr
+}
+
+// judgeCreate says what one attempt means: done with its answer (nil, ErrExists or a final
+// error), or not done, with the error of a failure another attempt may fix.
+func judgeCreate(ctx context.Context, status int, err error) (bool, error) {
+	switch {
+	case err != nil:
+		return ctx.Err() != nil, err
+	case status == http.StatusOK:
+		return true, nil
+	case status == http.StatusConflict:
+		return true, ErrExists
+	default:
+		retry := status == http.StatusTooManyRequests || status >= http.StatusInternalServerError
+		return !retry, statusError("create", status)
+	}
 }
 
 func (c *CloudTasks) createOnce(ctx context.Context, body []byte) (int, error) {
@@ -409,11 +428,11 @@ func (c *CloudTasks) createOnce(ctx context.Context, body []byte) (int, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.client.Do(req) //nolint:bodyclose // closed below by drainAndClose
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return 0, networkError("create", err)
 	}
-	defer drainAndClose(resp.Body)
+	defer func() { drainAndClose(resp.Body) }()
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.forgetToken()
 	}
@@ -474,11 +493,11 @@ func (c *CloudTasks) fetchTokenOnce(ctx context.Context) (token string, lifetime
 		return "", 0, false, errors.New("tasks: access token: cannot build the request")
 	}
 	req.Header.Set("Metadata-Flavor", "Google")
-	resp, err := c.metadata.Do(req) //nolint:bodyclose // closed below by drainAndClose
+	resp, err := c.metadata.Do(req)
 	if err != nil {
 		return "", 0, true, networkError("access token", err)
 	}
-	defer drainAndClose(resp.Body)
+	defer func() { drainAndClose(resp.Body) }()
 	if resp.StatusCode != http.StatusOK {
 		return "", 0, resp.StatusCode >= http.StatusInternalServerError, statusError("access token", resp.StatusCode)
 	}
