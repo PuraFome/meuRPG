@@ -2228,9 +2228,10 @@ func TestCombatSpellEventsPerAudience(t *testing.T) {
 	}
 	goblin := a.id(t, "Goblin")
 
-	// A cast at the visible Capitão, then the master's cast for Pensantus at the hidden goblin.
+	// A cast at the visible Capitão, then the master's cast for Pensantus at the Capitão again (the master
+	// acting for a character picks only what the character's player sees, so not the hidden goblin).
 	a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
-	a.mustCast(t, a.master, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
+	a.mustCast(t, a.master, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
 	a.mustEndTurn(t, a.master, e) // the sentinel: Toren's turn
 
 	count := func(who string) (logHints, vitals, encounters int) {
@@ -2256,11 +2257,11 @@ func TestCombatSpellEventsPerAudience(t *testing.T) {
 	if l, v, enc := count("master"); l != 2 || v != 2 || enc != 2 {
 		t.Errorf("the master got %d log hints, %d vitals, %d encounter hints; want 2, 2 and 2 (one for each cast)", l, v, enc)
 	}
-	if l, v, _ := count("caster"); l != 1 || v != 2 {
-		t.Errorf("the caster's player got %d log hints, %d vitals; want 1 (the visible cast) and 2 (both slots)", l, v)
+	if l, v, _ := count("caster"); l != 2 || v != 2 {
+		t.Errorf("the caster's player got %d log hints, %d vitals; want 2 (both visible casts) and 2 (both slots)", l, v)
 	}
-	if l, v, _ := count("other"); l != 1 || v != 0 {
-		t.Errorf("another player got %d log hints, %d vitals; want 1 and none", l, v)
+	if l, v, _ := count("other"); l != 2 || v != 0 {
+		t.Errorf("another player got %d log hints, %d vitals; want 2 and none", l, v)
 	}
 }
 
