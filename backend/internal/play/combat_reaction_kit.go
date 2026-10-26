@@ -128,11 +128,11 @@ func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 	var out []*rulesv1.SlotChoice
 	for l := int(level); l <= 9; l++ {
 		if free := k.st.SlotsTotal[l-1] - used[strconv.Itoa(l)]; free > 0 {
-			out = append(out, &rulesv1.SlotChoice{Level: int32(l), Free: int32(free), Total: int32(k.st.SlotsTotal[l-1])}) //nolint:gosec // 1 to 9, a count of slots
+			out = append(out, &rulesv1.SlotChoice{Level: int32(l), Free: int32(free), Total: n32(k.st.SlotsTotal[l-1])}) //nolint:gosec // 1 to 9, a count of slots
 		}
 	}
 	if free := k.st.PactSlots - used[usedPact]; free > 0 && int32(k.st.PactLevel) >= level { //nolint:gosec // a pact slot level
-		out = append(out, &rulesv1.SlotChoice{Level: int32(k.st.PactLevel), Pact: true, Free: int32(free), Total: int32(k.st.PactSlots)}) //nolint:gosec // a count of slots
+		out = append(out, &rulesv1.SlotChoice{Level: int32(k.st.PactLevel), Pact: true, Free: int32(free), Total: n32(k.st.PactSlots)}) //nolint:gosec // a count of slots
 	}
 	return out
 }
