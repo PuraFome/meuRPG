@@ -291,6 +291,7 @@
       "sense": "darkvision"
     }
   ],
+  "size": "Small",
   "skills": [
     {
       "ability": "ABILITY_DEXTERITY",

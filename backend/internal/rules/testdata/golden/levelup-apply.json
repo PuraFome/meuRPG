@@ -34,6 +34,7 @@
       "dex": 1,
       "str": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -92,6 +93,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -158,6 +160,7 @@
       "con": 1,
       "str": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -222,6 +225,7 @@
     "ExtraAbilityBonuses": {
       "con": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -286,6 +290,7 @@
     "ExtraAbilityBonuses": {
       "con": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -350,6 +355,7 @@
     "ExtraAbilityBonuses": {
       "dex": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -418,6 +424,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 1,
       "Rolls": [
@@ -484,6 +491,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 1,
       "Rolls": [
@@ -546,6 +554,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 1,
       "Rolls": [
@@ -611,6 +620,7 @@
       "cha": 1,
       "wis": 1
     },
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -679,6 +689,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -745,6 +756,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -806,6 +818,7 @@
       "skill:perception"
     ],
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -877,6 +890,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -955,6 +969,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 0,
       "Rolls": null
@@ -1016,6 +1031,7 @@
     ],
     "Expertise": null,
     "ExtraAbilityBonuses": null,
+    "Size": "",
     "HitPoints": {
       "Method": 1,
       "Rolls": [

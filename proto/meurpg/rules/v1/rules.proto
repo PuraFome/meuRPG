@@ -716,6 +716,9 @@ message DerivedSheet {
   // granted_spell effect, by level and name, each with its source. They are cast
   // through the grant (see GrantedSpell); the sheet lists them apart from `spells`.
   repeated GrantedSpell granted_spells = 48;
+  // The character's size: the race's own ("Small", "Medium"...), or the one the sheet
+  // picked among the sizes the race offers (Race.sizes). Empty without a known race.
+  string size = 50;
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
@@ -1281,6 +1284,12 @@ message AbilityInfo {
   string abbreviation_pt = 4;
 }
 
+// BonusSet is one set of ability bonuses to place, such as [2, 1]: a table race
+// lets the player pick one of several, and each bonus goes on a different ability.
+message BonusSet {
+  repeated int32 bonuses = 1;
+}
+
 // Race is a race from the rules content.
 message Race {
   // Content key, such as "race:gnome".
@@ -1306,6 +1315,13 @@ message Race {
   // "skill:intimidation". The player does not choose them and they are not a
   // class pick: a pick on the same skill adds nothing.
   repeated string skill_keys = 9;
+  // Alternative sets of bonuses to place, of which the player picks one (empty for the
+  // races with a single set in `choice_bonuses` or none), and the sizes the player picks
+  // one from ("Small", "Medium"; empty for the races with only their own size).
+  repeated BonusSet choice_bonus_sets = 10;
+  repeated string sizes = 11;
+  // The race's own size ("Small", "Medium"...), the default when the sheet picks none.
+  string size = 12;
 }
 
 // Subrace is a subrace of one race.

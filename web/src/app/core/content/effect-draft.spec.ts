@@ -1,7 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
+import { conditionMenu, menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
 import { grantedSpellMenu } from './content-testing-menu-costs';
 import {
   draftToEffect,
@@ -268,29 +268,94 @@ describe("ranged_attack: a table feat's switches and spell range multiplier", ()
   });
 });
 
-describe('resistance: every damage type but one, while a condition holds', () => {
+describe('resistance: the damage types it covers, its kind and when it holds', () => {
   const m = resistanceMenu();
 
-  it('sends the excepted type and the condition, and asks for both', () => {
+  it('asks for nothing alone: the server says which of the types or the exception is missing', () => {
+    expect(missingRequired(emptyEffect('resistance'), m)).toEqual([]);
+  });
+
+  it('sends the types, the kind and the condition, and only what is set', () => {
+    const d = {
+      ...emptyEffect('resistance'),
+      damageTypes: ['damage-type:cold', 'nonmagical_bps'],
+      kind: 'immune',
+      while: 'rage',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'resistance',
+      damageTypes: ['damage-type:cold', 'nonmagical_bps'],
+      kind: 'immune',
+      while: 'rage',
+    });
+    expect(draftToEffect({ ...emptyEffect('resistance'), damageTypes: ['all'] }, m)).toEqual({
+      type: 'resistance',
+      damageTypes: ['all'],
+    });
+  });
+
+  it('still sends the type it leaves out, as before', () => {
     const d = { ...emptyEffect('resistance'), except: 'damage-type:psychic', while: 'rage' };
     expect(draftToEffect(d, m)).toEqual({
       type: 'resistance',
       except: 'damage-type:psychic',
       while: 'rage',
     });
-    expect(missingRequired(emptyEffect('resistance'), m)).toEqual(['except', 'while']);
   });
 
   it('reads a stored one back and sends it unchanged', () => {
     const stored = create(TableEffectSchema, {
       type: 'resistance',
-      except: 'damage-type:psychic',
-      while: 'rage',
+      damageTypes: ['damage-type:poison'],
+      kind: 'vulnerable',
     });
     expect(draftToEffect(effectToDraft(stored), m)).toEqual({
       type: 'resistance',
-      except: 'damage-type:psychic',
-      while: 'rage',
+      damageTypes: ['damage-type:poison'],
+      kind: 'vulnerable',
+    });
+  });
+});
+
+describe('condition immunity and the roll mode against a condition', () => {
+  const m = conditionMenu();
+
+  it('asks for the conditions and sends them', () => {
+    expect(missingRequired(emptyEffect('condition_immunity'), m)).toEqual(['conditions']);
+    const d = { ...emptyEffect('condition_immunity'), conditions: ['condition:poisoned'] };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'condition_immunity',
+      conditions: ['condition:poisoned'],
+    });
+  });
+
+  it('sends the condition of a roll mode only when one is picked', () => {
+    const base = { ...emptyEffect('roll_mode'), roll: 'advantage', targets: ['save.wis'] };
+    expect(draftToEffect(base, m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+    });
+    expect(draftToEffect({ ...base, againstCondition: 'condition:frightened' }, m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
+    });
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
     });
   });
 });

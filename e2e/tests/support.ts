@@ -592,6 +592,9 @@ export async function withDefaultChoices(page: Page, campaignId: string, body: R
  */
 export async function fillChoicesStep(page: Page): Promise<void> {
   const tab = page.getByRole('tab', { name: /Escolhas/ });
+  // The step exists only after the server answered `PreviewChoices`, a pause and a call after the last field was typed: a spec
+  // that fills the form fast gets here before it, so a missing tab is given a moment before it counts as "nothing to choose".
+  await tab.waitFor({ state: 'attached', timeout: 1500 }).catch(() => undefined);
   if ((await tab.count()) === 0) {
     return;
   }

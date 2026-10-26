@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 
 import type { CharacterPreviewVm } from './character-editor.types';
+import { sameAnswer } from './server-choices';
 
 /** How long the draft rests before the server is asked: a run of keystrokes asks once. */
 const PAUSE_MS = 300;
@@ -38,7 +39,7 @@ export class ServerHitPoints {
         .then(() => this.ask())
         .then(
           (res) => {
-            if (mine === this.version) {
+            if (mine === this.version && !sameAnswer(this.answer(), res)) {
               this.answer.set(res);
             }
           },

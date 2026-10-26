@@ -265,17 +265,24 @@ export function rangedAttackMenu(): EffectMenuVm {
   return new EffectMenuVm(res);
 }
 
-/** The menu with the real one's resistance effect (every damage type but one, while raging), for its own specs. */
+/** The menu with the real one's resistance effect (damage types or every type but one, its kind as cards), for its own specs. */
 export function resistanceMenu(): EffectMenuVm {
   const res = menuResponse();
   res.types.push(
     create(EffectMenuTypeSchema, {
       type: 'resistance',
-      namePt: 'Resistência a dano',
-      hintPt: 'Resistência a todos os tipos de dano menos um.',
+      namePt: 'Resistência, imunidade ou vulnerabilidade a dano',
+      hintPt: 'Resistência, imunidade ou vulnerabilidade aos tipos de dano escolhidos.',
       fields: [
-        { name: 'except', kind: 'choice', required: true, list: 'damage_types' },
-        { name: 'while', kind: 'choice', required: true, list: 'resistance_conditions' },
+        { name: 'kind', kind: 'cards', list: 'resistance_kinds', alwaysShown: true },
+        {
+          name: 'damage_types',
+          kind: 'choices',
+          list: 'resistance_damage_types',
+          alwaysShown: true,
+        },
+        { name: 'except', kind: 'choice', list: 'damage_types' },
+        { name: 'while', kind: 'choice', list: 'resistance_conditions' },
         { name: 'text_pt', kind: 'text' },
       ],
     }),
@@ -286,8 +293,82 @@ export function resistanceMenu(): EffectMenuVm {
       values: [{ key: 'damage-type:psychic', namePt: 'Psíquico' }],
     }),
     create(EffectMenuListSchema, {
+      name: 'resistance_damage_types',
+      values: [
+        { key: 'all', namePt: 'Todos os tipos de dano' },
+        {
+          key: 'nonmagical_bps',
+          namePt: 'Contundente, perfurante e cortante não mágicos',
+          hintPt: 'Pancada, perfuração e corte de ataques que não são mágicos.',
+        },
+        { key: 'damage-type:cold', namePt: 'Frio' },
+        { key: 'damage-type:poison', namePt: 'Veneno' },
+      ],
+    }),
+    create(EffectMenuListSchema, {
+      name: 'resistance_kinds',
+      values: [
+        { key: 'resist', namePt: 'Resistência', hintPt: 'Sofre metade do dano.' },
+        { key: 'immune', namePt: 'Imunidade', hintPt: 'Não sofre dano.' },
+        { key: 'vulnerable', namePt: 'Vulnerabilidade', hintPt: 'Sofre o dobro do dano.' },
+      ],
+    }),
+    create(EffectMenuListSchema, {
       name: 'resistance_conditions',
       values: [{ key: 'rage', namePt: 'Em fúria' }],
+    }),
+  );
+  return new EffectMenuVm(res);
+}
+
+/** The menu with the real one's condition_immunity and the roll mode against a condition, for their own specs. */
+export function conditionMenu(): EffectMenuVm {
+  const res = menuResponse();
+  res.types.push(
+    create(EffectMenuTypeSchema, {
+      type: 'condition_immunity',
+      namePt: 'Imunidade a condição',
+      hintPt: 'O personagem não fica com as condições escolhidas.',
+      fields: [
+        { name: 'conditions', kind: 'choices', required: true, list: 'conditions' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+    create(EffectMenuTypeSchema, {
+      type: 'roll_mode',
+      namePt: 'Vantagem ou desvantagem',
+      hintPt: 'Vantagem ou desvantagem em certas rolagens.',
+      fields: [
+        { name: 'roll', kind: 'choice', required: true, list: 'roll_modes' },
+        { name: 'targets', kind: 'choices', required: true, list: 'roll_targets' },
+        { name: 'against_condition', kind: 'choice', list: 'conditions' },
+        { name: 'tags', kind: 'tags', list: 'tag_prefixes' },
+        { name: 'when', kind: 'condition' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+  );
+  res.lists.push(
+    create(EffectMenuListSchema, {
+      name: 'conditions',
+      values: [
+        { key: 'condition:frightened', namePt: 'Amedrontado' },
+        { key: 'condition:poisoned', namePt: 'Envenenado' },
+      ],
+    }),
+    create(EffectMenuListSchema, {
+      name: 'roll_modes',
+      values: [
+        { key: 'advantage', namePt: 'Vantagem' },
+        { key: 'disadvantage', namePt: 'Desvantagem' },
+      ],
+    }),
+    create(EffectMenuListSchema, {
+      name: 'roll_targets',
+      values: [
+        { key: 'save.wis', namePt: 'Teste de resistência de Sabedoria' },
+        { key: 'save.all', namePt: 'Todos os testes de resistência' },
+      ],
     }),
   );
   return new EffectMenuVm(res);

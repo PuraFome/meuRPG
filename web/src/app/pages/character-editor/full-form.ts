@@ -40,6 +40,8 @@ export function createFullForm(fb: FormBuilder) {
     name: ['', [Validators.required, Validators.maxLength(NAME_MAX)]],
     race: ['', Validators.required],
     subrace: [''],
+    /** The size picked among the ones the race offers; `''` is the race's own. */
+    raceSize: [''],
     className: ['', Validators.required],
     subclassName: [''],
     customSubclassName: [''],
@@ -98,6 +100,7 @@ export function fullFormValueOf(full: CharacterFormValue): FullFormRaw {
     name: full.name,
     race: full.race,
     subrace: full.subrace,
+    raceSize: full.raceSize ?? '',
     className: full.className,
     subclassName: full.subclassName,
     customSubclassName: full.customSubclassName,

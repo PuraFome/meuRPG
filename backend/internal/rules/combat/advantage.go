@@ -99,6 +99,8 @@ type TaggedSave struct {
 	Against string
 	// Abilities are the abilities of the saves it covers, all of them when empty.
 	Abilities []string
+	// Disadvantage says the trait gives disadvantage instead of advantage (a table's roll mode).
+	Disadvantage bool
 }
 
 // The condition keys and numbers the rules read.
@@ -578,7 +580,11 @@ func taggedSaveSources(s SaveScene) []Source {
 	var out []Source
 	for _, t := range s.Creature.TaggedSaves {
 		if slices.Contains(s.Against, t.Against) && (len(t.Abilities) == 0 || slices.Contains(t.Abilities, s.Ability)) {
-			out = append(out, Source{Kind: SourceTaggedSave, Effect: ModeAdvantage, Condition: t.Source, Against: t.Against})
+			effect := ModeAdvantage
+			if t.Disadvantage {
+				effect = ModeDisadvantage
+			}
+			out = append(out, Source{Kind: SourceTaggedSave, Effect: effect, Condition: t.Source, Against: t.Against})
 		}
 	}
 	return out

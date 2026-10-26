@@ -3057,8 +3057,12 @@ type FullSheet struct {
 	// A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
 	// of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
 	CuttingWordsAsk CuttingWordsAsk `protobuf:"varint,40,opt,name=cutting_words_ask,json=cuttingWordsAsk,proto3,enum=meurpg.characters.v1.CuttingWordsAsk" json:"cutting_words_ask,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The size the player picked among the ones the race offers (Race.sizes: "Small" or
+	// "Medium"); empty is the race's own size. A size the race does not offer is an issue
+	// of the sheet (`race_size`), and the race's own counts.
+	Size          string `protobuf:"bytes,41,opt,name=size,proto3" json:"size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FullSheet) Reset() {
@@ -3345,6 +3349,13 @@ func (x *FullSheet) GetCuttingWordsAsk() CuttingWordsAsk {
 		return x.CuttingWordsAsk
 	}
 	return CuttingWordsAsk_CUTTING_WORDS_ASK_UNSPECIFIED
+}
+
+func (x *FullSheet) GetSize() string {
+	if x != nil {
+		return x.Size
+	}
+	return ""
 }
 
 type isFullSheet_Background interface {
@@ -12850,7 +12861,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0eCharacterSheet\x125\n" +
 	"\x04full\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.FullSheetH\x00R\x04full\x128\n" +
 	"\x05basic\x18\x02 \x01(\v2 .meurpg.characters.v1.BasicSheetH\x00R\x05basicB\t\n" +
-	"\acontent\"\x89\x10\n" +
+	"\acontent\"\x9d\x10\n" +
 	"\tFullSheet\x12?\n" +
 	"\vbase_scores\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\n" +
 	"baseScores\x12\x19\n" +
@@ -12892,7 +12903,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\n" +
 	"feat_slots\x18! \x03(\v2..meurpg.characters.v1.FullSheet.FeatSlotsEntryR\tfeatSlots\x12f\n" +
 	"\x13feature_choice_text\x18\" \x03(\v26.meurpg.characters.v1.FullSheet.FeatureChoiceTextEntryR\x11featureChoiceText\x12Q\n" +
-	"\x11cutting_words_ask\x18( \x01(\x0e2%.meurpg.characters.v1.CuttingWordsAskR\x0fcuttingWordsAsk\x1aC\n" +
+	"\x11cutting_words_ask\x18( \x01(\x0e2%.meurpg.characters.v1.CuttingWordsAskR\x0fcuttingWordsAsk\x12\x12\n" +
+	"\x04size\x18) \x01(\tR\x04size\x1aC\n" +
 	"\x15ContentBaselinesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\x1a<\n" +

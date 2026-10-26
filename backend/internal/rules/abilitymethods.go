@@ -143,6 +143,15 @@ func CheckRolled(scores []int, sets [][]int) error {
 	return nil
 }
 
+// sumOf is the sum of the values.
+func sumOf(values []int) int {
+	n := 0
+	for _, v := range values {
+		n += v
+	}
+	return n
+}
+
 // FreeAbilityPoints is how many positive manual ability points (the
 // Build.ExtraAbilityBonuses that are above 0) a build may place without the
 // table's ways of making scores being worked around (RN-24): 2 for each Ability
@@ -154,8 +163,8 @@ func CheckRolled(scores []int, sets [][]int) error {
 // in the manual bonuses, so its points are free too.
 func (c *Content) FreeAbilityPoints(b Build) int {
 	n := 0
-	for _, v := range c.c.raceChoice[b.Race] {
-		n += v
+	for _, set := range c.c.raceBonusSets(b.Race) {
+		n = max(n, sumOf(set)) // the player picks one set: the largest is the most it can place
 	}
 	for _, cl := range b.Classes {
 		rows := c.c.classLevels[cl.Class]

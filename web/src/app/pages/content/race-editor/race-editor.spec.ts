@@ -105,6 +105,17 @@ describe('RaceEditor', () => {
     ]);
   });
 
+  it('offers the sizes to pick from, and sends no sizes and no sets when none is written', async () => {
+    const { fixture, el } = setup();
+    expect(el.querySelector('[data-field="table_race.sizes"]')).not.toBeNull();
+    // A race with no sizes sends none.
+    save.mockResolvedValue({ entry: corujeiro(), affected: [] });
+    click(el, 'Salvar raça');
+    await settle(fixture, 3);
+    expect(save.mock.calls[0][2].value).not.toHaveProperty('sizes');
+    expect(save.mock.calls[0][2].value).not.toHaveProperty('choiceBonusSets');
+  });
+
   it('says a darkvision it cannot read and does not save the race with none', async () => {
     const { fixture, el } = setup();
     const input = field(el, 'table_race.darkvision_ft') as HTMLInputElement;

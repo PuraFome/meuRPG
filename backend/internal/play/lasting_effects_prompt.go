@@ -57,7 +57,7 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 	def, _ := wv.s.effectDef(content, key)
 	p.TextPt = effectSaveText(def, t.Phase, wv.names, st)
 	if reactor != nil {
-		if err := wv.reactorSave(p, *reactor, ability, effectAgainst(key, def), t.OnDamage); err != nil {
+		if err := wv.reactorSave(p, *reactor, ability, effectSaveAgainst(key, def), t.OnDamage); err != nil {
 			return err
 		}
 	}

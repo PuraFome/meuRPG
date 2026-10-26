@@ -39,6 +39,12 @@ func (x *deriver) abilities() {
 	for _, a := range picked {
 		raceBonus[a]++
 	}
+	// The abilities the player picked for a table race's bonuses.
+	if x.race != nil {
+		for a, v := range x.c.racePicksOf(x.race.Key, scopedOf(x.b.FeatureChoices)).bonuses() {
+			raceBonus[a] += v
+		}
+	}
 	x.scores = map[Ability]int{}
 	x.mods = map[Ability]int{}
 	for _, a := range AllAbilities() {
@@ -474,35 +480,53 @@ func foldPT(s string) string {
 	return accentFolder.Replace(strings.ToLower(s))
 }
 
-// checkRaceBonus checks the bonuses a table race lets the player place ("+2 and
-// +1 to your choice"): the player puts them in the manual bonuses, and an
-// Issue says when the manual bonuses do not cover them. A level's Ability Score
-// Improvement only adds to them, so it never takes the check back.
+// checkRaceBonus checks the bonuses a table race lets the player place ("+2 and +1 to your choice", or one of several
+// sets): the player picks them in "Escolhas" (racebonuspicks.go), and an Issue says when the picks do not fill a set and
+// the manual bonuses, where a sheet placed them before they were picks, cover none. A level's Ability Score Improvement
+// only adds to the manual bonuses, so it never takes the check back.
 func (x *deriver) checkRaceBonus() {
 	if x.race == nil {
 		return
 	}
-	want := x.c.raceChoice[x.race.Key]
-	if len(want) == 0 {
+	sets := x.c.raceBonusSets(x.race.Key)
+	if len(sets) == 0 {
 		return
 	}
-	var placed []int
-	for _, v := range x.b.ExtraAbilityBonuses {
-		if v > 0 {
-			placed = append(placed, v)
+	if x.c.racePicksOf(x.race.Key, scopedOf(x.b.FeatureChoices)).complete(sets) || x.c.manualCoversSet(x.race.Key, x.b.ExtraAbilityBonuses) >= 0 {
+		return
+	}
+	options := make([]string, len(sets))
+	for i, set := range sets {
+		options[i] = bonusSetWords(set)
+	}
+	text := "escolha em quais habilidades vão os bônus %s, no passo Escolhas."
+	if len(sets) > 1 {
+		text = "escolha um dos grupos (%s) e em quais habilidades vão os bônus, no passo Escolhas."
+	}
+	x.issue(IssueRaceBonus, choiceKeysField, "%s: "+text, x.c.namePT(x.race.Key), strings.Join(options, " ou "))
+}
+
+// coversBonuses says the placed bonuses (largest first) cover the wanted ones (largest first).
+func coversBonuses(placed, want []int) bool {
+	if len(placed) < len(want) {
+		return false
+	}
+	for i, v := range want {
+		if placed[i] < v {
+			return false
 		}
 	}
-	slices.SortFunc(placed, func(a, b int) int { return b - a })
-	covered := len(placed) >= len(want)
-	for i := 0; covered && i < len(want); i++ {
-		covered = placed[i] >= want[i]
+	return true
+}
+
+// raceBonusSets are the sets of ability bonuses a table race lets the player place, largest first: its
+// alternative sets, or its single set of choice_bonuses; nil when it has none.
+func (c *content) raceBonusSets(raceKey string) [][]int {
+	if sets := c.raceSets[raceKey]; len(sets) > 0 {
+		return sets
 	}
-	if covered {
-		return
+	if one := c.raceChoice[raceKey]; len(one) > 0 {
+		return [][]int{one}
 	}
-	parts := make([]string, len(want))
-	for i, v := range want {
-		parts[i] = signed(v)
-	}
-	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: distribua %s em habilidades diferentes, à sua escolha, nos bônus manuais.", x.c.namePT(x.race.Key), strings.Join(parts, " e "))
+	return nil
 }

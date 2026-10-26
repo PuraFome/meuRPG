@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   TableBackgroundSchema,
+  TableRaceSchema,
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { abilities, feature } from './content-testing';
@@ -20,6 +21,7 @@ import {
   featureToDraft,
   draftToFeature,
   noBonuses,
+  raceToDraft,
   subraceToDraft,
 } from './feature-draft';
 
@@ -50,8 +52,40 @@ describe('the race, subrace and background forms (E10-01 states 6 and 7)', () =>
       choiceBonuses: [2, 1],
     });
     expect(choiceAmounts('+2 e 1')).toEqual([2, 1]);
+    // Several sets, written with a slash, are the race's alternatives; the player picks one.
+    const sets = draftToRace(
+      { ...d, choosing: true, choice: '2, 1 / 1, 1, 1', sizes: ['Small', 'Medium'] },
+      m,
+    );
+    expect(sets).toMatchObject({
+      choiceBonuses: [],
+      choiceBonusSets: [{ bonuses: [2, 1] }, { bonuses: [1, 1, 1] }],
+      sizes: ['Small', 'Medium'],
+    });
+    expect(draftToRace(d, m)).not.toHaveProperty('sizes');
+    expect(draftToRace(d, m)).not.toHaveProperty('choiceBonusSets');
     expect(bonusText(d.bonuses, abilities)).toBe('Destreza +1, Sabedoria +2');
     expect(bonusText(noBonuses(), abilities)).toBe('Nenhum');
+  });
+
+  it('reads a stored race with sets and sizes back as the text and the list it was written from', () => {
+    const stored = create(TableRaceSchema, {
+      namePt: 'Gelídeo',
+      size: 'Medium',
+      speedFt: 30,
+      choiceBonusSets: [{ bonuses: [2, 1] }, { bonuses: [1, 1, 1] }],
+      sizes: ['Small', 'Medium'],
+    });
+    const d = raceToDraft(stored);
+    expect(d).toMatchObject({
+      choosing: true,
+      choice: '2, 1 / 1, 1, 1',
+      sizes: ['Small', 'Medium'],
+    });
+    expect(draftToRace(d, m)).toMatchObject({
+      choiceBonusSets: [{ bonuses: [2, 1] }, { bonuses: [1, 1, 1] }],
+      sizes: ['Small', 'Medium'],
+    });
   });
 
   it('keeps the key of a feature the editor read, and leaves a new one with none', () => {

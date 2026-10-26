@@ -60,6 +60,12 @@ export interface EffectDraft {
   alsoWithSlot: boolean;
   ritualOnly: boolean;
   countsAsKnown: boolean;
+  /** resistance: the damage types it covers (or "all", "nonmagical_bps") and its kind ("resist", "immune", "vulnerable"). */
+  damageTypes: string[];
+  kind: string;
+  /** condition_immunity: the conditions the character takes none of. roll_mode: the condition its saves are against. */
+  conditions: string[];
+  againstCondition: string;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

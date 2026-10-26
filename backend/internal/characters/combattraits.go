@@ -50,22 +50,34 @@ func withCreatureType(content *rules.Content, monsterKey string, features []rule
 func taggedSavesOf(hints []rules.Hint) []link.TaggedSave {
 	var out []link.TaggedSave
 	for _, h := range hints {
-		against, ok := againstOf(h.Tags)
-		if h.Mode != "advantage" || !ok {
-			continue
+		if t, ok := taggedSaveOf(h); ok {
+			out = append(out, t)
 		}
-		t := link.TaggedSave{Source: h.Source, Against: against}
-		for _, target := range h.Targets {
-			if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
-				t.Abilities = append(t.Abilities, ability)
-			}
-		}
-		if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
-			continue // not only saving throws
-		}
-		out = append(out, t)
 	}
 	return out
+}
+
+// taggedSaveOf is the tagged save a hint gives, when it gives one: an advantage against a kind of source the combat knows
+// ("against:frightened"), or the advantage or disadvantage of a table's roll mode against a condition; on saving
+// throws only.
+func taggedSaveOf(h rules.Hint) (link.TaggedSave, bool) {
+	against, ok := againstOf(h.Tags)
+	if h.AgainstCondition != "" {
+		against, ok = h.AgainstCondition, len(h.Tags) == 0
+	}
+	if !ok || (h.Mode != "advantage" && (h.Mode != "disadvantage" || h.AgainstCondition == "")) {
+		return link.TaggedSave{}, false
+	}
+	if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
+		return link.TaggedSave{}, false // not only saving throws
+	}
+	t := link.TaggedSave{Source: h.Source, Against: against, Disadvantage: h.Mode == "disadvantage"}
+	for _, target := range h.Targets {
+		if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
+			t.Abilities = append(t.Abilities, ability)
+		}
+	}
+	return t, true
 }
 
 // againstOf is the kind of source the tags say the advantage holds against, when it is one the combat knows.
@@ -75,6 +87,20 @@ func againstOf(tags []string) (string, bool) {
 	}
 	kind, ok := strings.CutPrefix(tags[0], "against:")
 	return kind, ok && slices.Contains([]string{combat.AgainstMagic, combat.AgainstFrightened, combat.AgainstCharmed, combat.AgainstPoison}, kind)
+}
+
+// protections are the damage resistances, immunities and vulnerabilities the sheet's features give, and the conditions
+// they make it immune to.
+func protections(content *rules.Content, d rules.Derived) ([]link.Resistance, []link.ConditionImmunity) {
+	var resistances []link.Resistance
+	for _, r := range content.Resistances(d) {
+		resistances = append(resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While, Kind: r.Kind, Nonmagical: r.Nonmagical})
+	}
+	var immunities []link.ConditionImmunity
+	for _, c := range content.ConditionImmunities(d) {
+		immunities = append(immunities, link.ConditionImmunity{Source: c.Source, Conditions: c.Conditions})
+	}
+	return resistances, immunities
 }
 
 // traitsOf reads the combat traits of a derived sheet or stat block.
@@ -125,9 +151,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 			t.CreatureType = typ
 		}
 	}
-	for _, r := range content.Resistances(d) {
-		t.Resistances = append(t.Resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While})
-	}
+	t.Resistances, t.ConditionImmunities = protections(content, d)
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical

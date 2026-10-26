@@ -45,15 +45,12 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 	}
 	// The effects are queued before the entry is judged: if it is refused, its effects'
 	// problems come with the rest (compileEffectsOf).
-	// A feat's actions and hooks may spend the resources the feat declares.
+	// A feat's own resources are the ones its effects (a granted spell, an action, a hook) may spend.
 	k := featureKind{owner: key}
 	b.know(key, k)
 	b.declareResources(k, tf.Effects)
 	if len(tf.Effects) > 0 {
 		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
-		// A feat's own resources are the ones its effects (a granted spell, an action) may spend.
-		b.know(key, featureKind{owner: key})
-		b.declareResources(featureKind{owner: key}, tf.Effects)
 	}
 	if err := c.err(); err != nil {
 		return err

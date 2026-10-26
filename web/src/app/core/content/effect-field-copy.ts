@@ -22,8 +22,12 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ability: 'Habilidade somada',
   spells: 'Magias',
   text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
+  except: 'Todos os tipos de dano, menos',
   while: 'Enquanto',
+  kind: 'O que acontece',
+  damage_types: 'Tipos de dano',
+  conditions: 'Condições',
+  against_condition: 'Só nos testes de resistência contra a condição',
   cost: 'Custo (usos)',
   cost_max: 'Custo máximo (o jogador escolhe)',
   value_per_point: 'Por ponto gasto a mais',
@@ -62,6 +66,13 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
   range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
   no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
+  damage_types:
+    'Escolha os tipos, ou "Todos os tipos de dano" sozinho. Use este campo ou "Todos os tipos de dano, menos".',
+  except:
+    'Em vez de listar os tipos: vale para todos menos este. Deixe vazio se escolheu os tipos acima.',
+  while: 'Vazio, vale sempre. Em fúria, só enquanto o personagem estiver em fúria.',
+  against_condition:
+    'Vazio, a vantagem ou desvantagem fica como lembrete da situação. Com uma condição, o app aplica nos testes de resistência para não ficar com ela.',
   only_proficient:
     'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
   from_level:
