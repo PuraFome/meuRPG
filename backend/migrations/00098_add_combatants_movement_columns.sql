@@ -1,5 +1,5 @@
 -- +goose Up
--- The columns combat movement needs (MR-034, RN-21, Etapa 9, slice 9.6).
+-- The columns combat movement needs (MR-034, RN-21).
 --
 -- A move costs the exact length of its straight line, so movement is kept in
 -- tenths of a foot ("dft"): movement_used_dft is what was walked this turn (a

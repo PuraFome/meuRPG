@@ -1,6 +1,6 @@
 -- +goose Up
 -- map_vision_memory is what each player saw of a map with the fog of war on
--- (MR-036, Etapa 9, D6): the squares their character (or the group, with "Visão
+-- (MR-036, D6): the squares their character (or the group, with "Visão
 -- do grupo") has seen, so that the player keeps them, darkened, after moving
 -- away. One row per map and player. seen is a packed bitmap in the byte layout
 -- of package rules/grid (layer.go): one bit a square, row-major, the least

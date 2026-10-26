@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/traps.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// Traps in play (MR-035, Etapa 9, D5; RN-10, RN-02): searching for them, firing
+// Traps in play (MR-035, D5; RN-10, RN-02): searching for them, firing
 // them and the damage they do. The RPCs are PlayService's (play.proto); the
 // messages are here. A trap's own data (its DCs, its effect) is the map point's
 // (meurpg.maps.v1, TrapSpec) and never reaches a player until the trap fired.

@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/lasting_effects.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// This file is the messages of the effects that last in a combat (RN-22, Etapa 10):
+// This file is the messages of the effects that last in a combat (RN-22):
 // the spells, the actions and the conditions that stay on a combatant for a
 // duration (Bênção, Perdição, Velocidade, Imobilizar Pessoa, Teia, Esquivar, the
 // conditions the master marks), the clock of the turns that ends them and asks

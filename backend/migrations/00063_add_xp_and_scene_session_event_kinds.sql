@@ -1,6 +1,6 @@
 -- +goose Up
 -- The XP awards and the scenes are session events too (ADR-0007, MR-016,
--- MR-015, Etapa 7): an award given (xp_awarded), the last one undone
+-- MR-015): an award given (xp_awarded), the last one undone
 -- (xp_award_undone), a milestone marked (milestone_marked), a scene opened or
 -- closed (scene_opened, scene_closed) and a scene check rolled
 -- (scene_check_rolled). Their payloads hold IDs and numbers only, never a name

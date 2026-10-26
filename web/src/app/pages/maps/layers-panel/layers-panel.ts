@@ -21,7 +21,7 @@ import { RevealSwitch } from '../../../shared/reveal-switch/reveal-switch';
 export type LayerVisibility = Readonly<Record<PaintTool, boolean>>;
 
 /**
- * "Camadas" (E9-01 1, and "Portas" of Etapa 10): the five layers the master paints, each with how many squares it holds and a switch that
+ * "Camadas" (E9-01 1, and "Portas"): the five layers the master paints, each with how many squares it holds and a switch that
  * shows or hides it on his own map (his view only), the same drawings as the map's legend, and the "Tudo salvo"
  * tag that says whether the strokes reached the server ("Salvando…", or "Não salvou" with "Tentar de novo").
  * The light's three glyphs are named under its row. Presentational: the editor owns the layers and the queue.

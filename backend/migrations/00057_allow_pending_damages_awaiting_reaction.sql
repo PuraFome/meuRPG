@@ -1,7 +1,7 @@
 -- +goose Up
 -- A hit on a player's character that can cast Escudo waits for the target's
 -- reaction before its damage can be rolled: the new status 'awaiting_reaction'
--- (MR-014, Etapa 6). The CHECK lists every status, dropped, if present, and
+-- (MR-014). The CHECK lists every status, dropped, if present, and
 -- added again, so re-running this migration is safe.
 ALTER TABLE pending_damages
     DROP CONSTRAINT IF EXISTS pending_damages_status_valid,

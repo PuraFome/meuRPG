@@ -2,7 +2,7 @@
 //
 // Source: meurpg/play/v1/combat.proto
 
-// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// This file is the combat's API (MR-012, MR-013, MR-014): the
 // encounter, who fights, the initiative, the order of turns, the movement on
 // the map's grid, what a turn can do, the attacks and their damage, the
 // spells (slots, saving throws, healing, concentration), the reactions
