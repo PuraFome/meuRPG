@@ -786,7 +786,11 @@
     "given": true,
     "escape_dc": 1,
     "duration": "x",
-    "repeat_save": true
+    "repeat_save": true,
+    "pending_id": "x",
+    "more_pending_ids": [
+      "x"
+    ]
   },
   "creature_action": {
     "name": "x",

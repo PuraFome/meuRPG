@@ -8,6 +8,7 @@ import {
   CombatLogKind,
   HitRiderChoice,
   HitRiderLogResult,
+  PendingDamageStatus,
   SaveOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { logLine } from './combat-log';
@@ -151,7 +152,37 @@ describe("the line of a creature's rider", () => {
         repeatSave: true,
       }),
     ).toBe(
-      ' usou Garras em Brisa: Brisa falhou no teste (1d20 7 = 9 contra CD 10); ficou Paralisado por 1 minuto; repete o teste no fim de cada turno dele',
+      ' usou Garras em Brisa: Brisa falhou no teste (1d20 (7) + 2 = 9 contra CD 10); ficou Paralisado por 1 minuto; repete o teste no fim de cada turno dele',
+    );
+  });
+
+  it('writes the bonus of the roll with its sign, a negative one too', () => {
+    const line = (d20: number, saveTotal: number) =>
+      rider({
+        choice: HitRiderChoice.APPLY,
+        result: HitRiderLogResult.FAILED,
+        numbers: true,
+        d20,
+        saveTotal,
+      });
+    expect(line(2, 4)).toBe(' usou Garras em Brisa: Brisa falhou no teste (1d20 (2) + 2 = 4)');
+    expect(line(4, 3)).toBe(' usou Garras em Brisa: Brisa falhou no teste (1d20 (4) − 1 = 3)');
+  });
+
+  it('tells the damage the save governs after the save, and what the player reads of it', () => {
+    const base = {
+      choice: HitRiderChoice.APPLY,
+      result: HitRiderLogResult.FAILED,
+      actionNamePt: 'Mordida',
+    };
+    expect(
+      rider({
+        ...base,
+        damage: { amount: 9, damageTypePt: 'veneno', status: PendingDamageStatus.ROLLED },
+      }),
+    ).toBe(' usou Mordida em Brisa: Brisa falhou no teste, 9 de dano, esperando o mestre aplicar');
+    expect(rider({ ...base, damage: { status: PendingDamageStatus.AWAITING_ROLL } }, PLAYER)).toBe(
+      ' usou Mordida em Brisa: Brisa falhou no teste, falta rolar o dano',
     );
   });
 

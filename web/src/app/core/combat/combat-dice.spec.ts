@@ -1,5 +1,6 @@
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
+  d20TotalText,
   damageFormula,
   damageWords,
   extraDiceOf,
@@ -28,6 +29,14 @@ function roll(over: Partial<DiceRoll>): DiceRoll {
     ...over,
   } as DiceRoll;
 }
+
+describe('the d20 of a save that carries only its face and total', () => {
+  it('writes the bonus with its sign, and none for 0', () => {
+    expect(d20TotalText(2, 4)).toBe('1d20 (2) + 2 = 4');
+    expect(d20TotalText(4, 3)).toBe('1d20 (4) − 1 = 3');
+    expect(d20TotalText(14, 14)).toBe('1d20 (14) = 14');
+  });
+});
 
 describe('the dice formula', () => {
   it('writes the d20 with its face and the bonus', () => {

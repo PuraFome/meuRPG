@@ -11,7 +11,8 @@ import {
   HitRiderLogResult,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CombatantStateKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { rollText } from './combat-dice';
+import { d20TotalText, rollText } from './combat-dice';
+import { damageText } from './combat-log-attack';
 import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
@@ -318,7 +319,7 @@ export function hitRiderText(e: CombatLogEntry): string {
     [HitRiderChoice.STUN]: 'o Golpe Atordoante',
   };
   const roll = r.numbers
-    ? ` (1d20 ${r.d20} = ${r.saveTotal}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
+    ? ` (${d20TotalText(r.d20, r.saveTotal)}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
     : '';
   let result = '';
   if (r.result === HitRiderLogResult.SAVED) {
@@ -334,7 +335,7 @@ export function hitRiderText(e: CombatLogEntry): string {
 
 /**
  * The line of a creature's rider the master answered (the extra save or the grapple of an attack): "usou Garras em Brisa: Brisa
- * falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado por 1 minuto". Only what the entry carries is written: a player
+ * falhou no teste (1d20 (8) + 2 = 10 contra CD 10); ficou Paralisado por 1 minuto". Only what the entry carries is written: a player
  * reads no DC and no key, and the condition only for a target they own or one with a sign everyone sees.
  */
 function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hitRider']>): string {
@@ -344,17 +345,19 @@ function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hit
     return ` dispensou o efeito de ${name} em ${target}`;
   }
   const roll = r.numbers
-    ? ` (1d20 ${r.d20} = ${r.saveTotal}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
+    ? ` (${d20TotalText(r.d20, r.saveTotal)}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
     : '';
+  // The damage the save governs (a spider's poison), rolled and applied after the rider: its words follow the save's.
+  const damage = r.damage ? [r.damage, ...r.moreDamages].map(damageText).join('') : '';
   const duration = r.durationText ? ` por ${durationPt(r.durationText)}` : '';
   const repeat = r.repeatSave ? '; repete o teste no fim de cada turno dele' : '';
   const condition = r.conditionNamePt ? `; ficou ${r.conditionNamePt}${duration}${repeat}` : '';
   const escape = r.escapeDc > 0 ? ` (${dcLabel(r.escapeDc).replace('CD', 'CD de fuga')})` : '';
   let result = '';
   if (r.result === HitRiderLogResult.SAVED) {
-    result = `: ${target} passou no teste${roll}`;
+    result = `: ${target} passou no teste${roll}${damage}`;
   } else if (r.result === HitRiderLogResult.FAILED) {
-    result = `: ${target} falhou no teste${roll}${condition}`;
+    result = `: ${target} falhou no teste${roll}${damage}${condition}`;
   } else if (r.conditionNamePt) {
     result = `: ${target} ficou ${r.conditionNamePt}${escape}${duration}${repeat}`;
   }

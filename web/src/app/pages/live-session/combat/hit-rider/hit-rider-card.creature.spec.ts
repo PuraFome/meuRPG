@@ -168,4 +168,25 @@ describe("HitRiderCard: a creature's rider", () => {
     expect(text).toContain('Pedir salvaguarda de Brisa (CD 10)');
     expect(text).not.toContain('Golpe Atordoante');
   });
+
+  it('shows the shared error state when the stat block cannot be read, and keeps the offer', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [creaturesProvider({})] });
+    const fixture = TestBed.createComponent(Host);
+    await settle(fixture);
+    await settle(fixture);
+    const root = fixture.nativeElement as HTMLElement;
+    const alert = root.querySelector('[data-testid="rider-error"]');
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.classList.contains('mr-notice--danger')).toBe(true);
+    expect(alert?.textContent).toContain('Não deu para ler a ficha da criatura');
+    expect(root.querySelectorAll('[data-testid="hit-rider"]').length).toBe(2);
+  });
+
+  it('shows no error when the stat block is read', async () => {
+    const { fixture } = await open();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="rider-error"]'),
+    ).toBeNull();
+  });
 });

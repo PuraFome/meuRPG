@@ -19,6 +19,7 @@ const (
 	houndDC  = 12 // the Fire Breath of monster:hell-hound
 	ghoulDC  = 10 // the claws of monster:ghoul
 	crabDC   = 11 // the escape DC of the claw of monster:giant-crab
+	spiderDC = 11 // the bite of monster:giant-spider
 	creature = "creature-dc"
 )
 
@@ -311,6 +312,41 @@ func TestACreatureGrappleShowsThePlayersNeitherTheEscapeDCNorTheStatBlock(t *tes
 
 			ans := w.applyRider(rider)
 			w.checkNoStatBlock(t, []reply{ans}, nil, escape)
+		})
+	}
+}
+
+// A giant spider's bite hits Toren and the master applies the rider: the save is rolled by the server and the
+// poison it governs is opened as pending damage, then rolled and applied. The damage lines are on the rider's
+// line of the log (the master reads them all, with the stat block's key and DC); Toren's player and the other
+// player read the damage but never the DC, the key of the bite, nor the text of the action.
+func TestACreatureRiderDamageShowsThePlayersNoStatBlock(t *testing.T) {
+	for _, hidden := range []bool{false, true} {
+		t.Run("hidden "+strconv.FormatBool(hidden), func(t *testing.T) {
+			w := newWorld(t)
+			name := w.secrets.public("spider-name")
+			if hidden {
+				name = w.secrets.marker("spider-name")
+			}
+			w.secrets.number(creature, spiderDC, "dc")
+			dc := w.canaryOf(creature)
+			w.statBlockNeedles("monster:giant-spider", "bite")
+			spider := w.monsterOnTurn("monster:giant-spider", name, hidden)
+			rider := w.hitToren(spider, w.firstAttack(spider))
+			ans := w.applyRider(rider)
+			w.settleAll(spider)
+
+			// Positive control: the rider's line of the master's log holds the damage, rolled and applied.
+			var damage *playv1.CombatLogDamage
+			for _, e := range w.logOf() {
+				if r := e.GetHitRider(); r != nil {
+					damage = r.GetDamage()
+				}
+			}
+			if damage == nil || damage.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED || damage.GetAmount() <= 0 {
+				t.Fatalf("the master's line of the rider holds the damage %v, want it rolled and applied", damage)
+			}
+			w.checkNoStatBlock(t, []reply{ans}, nil, dc, w.canaryNamed("creature-action-key"), w.canaryNamed("creature-key"))
 		})
 	}
 }

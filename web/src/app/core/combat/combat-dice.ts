@@ -135,6 +135,11 @@ export function rollText(roll: DiceRoll): string {
   return roll.modifier === 0 ? `${roll.total} · dado físico` : `${rollFormula(roll)} · dado físico`;
 }
 
+/** A d20 whose bonus is not carried, only its face and total: `1d20 (2) + 2 = 4`, `1d20 (4) − 1 = 3`. */
+export function d20TotalText(face: number, total: number): string {
+  return `1d20 (${face})${modifierText(total - face)} = ${total}`;
+}
+
 /** The typed d20 and its bonus, before it is sent: `16 + 5 = 21`. */
 export function typedTotal(face: number, bonus: number): string {
   return `${face}${modifierText(bonus)} = ${face + bonus}`;

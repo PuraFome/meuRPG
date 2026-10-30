@@ -660,3 +660,77 @@ func TestCreatureAction_ItsSaveIsNotAgainstMagic(t *testing.T) {
 		t.Error("a spell attack action is not read as nonmagical")
 	}
 }
+
+// riderDamageOf is the damage the last rider line of a log carries, with the lines of the other types.
+func riderDamageOf(t *testing.T, l *playv1.ListCombatLogResponse) []*playv1.CombatLogDamage {
+	t.Helper()
+	var out []*playv1.CombatLogDamage
+	for _, en := range logEntries(l) {
+		if r := en.GetHitRider(); r != nil && en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER {
+			out = nil
+			if r.GetDamage() != nil {
+				out = append(out, r.GetDamage())
+			}
+			out = append(out, r.GetMoreDamages()...)
+		}
+	}
+	return out
+}
+
+// A spider's bite rider whose save fails opens poison damage as pending damage. The damage was never on the log
+// (the rider's event hosted no pending damage, so the roll and the apply that followed found no line): the master
+// reads it rolled and applied, Toren's player reads what became of his character, another player reads the amount
+// as rolled and no stat block key.
+func TestCreatureRider_TheDamageItOpensIsInTheLog(t *testing.T) {
+	t.Parallel()
+	a, e, spider := creatureFight(t, true, "monster:giant-spider", false)
+	r := a.mustAttack(t, a.master, e, spider, "basic:0", "Toren", d20(19))
+	a.mustDamage(t, a.master, e, r.GetPendingDamage().GetId(), typedDamage(5))
+	if _, err := a.settle(t, a.master, e, r.GetPendingDamage().GetId(), true); err != nil {
+		t.Fatalf("apply the bite: %v", err)
+	}
+	offers := ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)
+	if len(offers) != 1 {
+		t.Fatalf("spider offers = %v, want one", offers)
+	}
+	a.h.roller.queue(1) // Toren fails the save
+	if _, err := a.useRider(t, a.master, e, offers[0].GetId(), playv1.HitRiderChoice_HIT_RIDER_CHOICE_APPLY); err != nil {
+		t.Fatalf("UseHitRider(apply) error = %v", err)
+	}
+	for _, who := range []*user{a.master, a.caio, a.ana} {
+		got := riderDamageOf(t, a.log(t, who, e))
+		if len(got) != 1 || got[0].GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL {
+			t.Fatalf("before the roll, the rider's damage on the log = %v, want one line awaiting the roll", got)
+		}
+	}
+	var poison *playv1.PendingDamage
+	for _, p := range a.mustOptions(t, a.master, a.get(t, a.master), spider).GetPendingDamages() {
+		if p.GetDamageTypeKey() == "damage-type:poison" {
+			poison = p
+		}
+	}
+	if poison == nil {
+		t.Fatal("the failed save opened no poison damage")
+	}
+	a.mustDamage(t, a.master, e, poison.GetId(), typedDamage(9))
+	for _, who := range []*user{a.master, a.caio, a.ana} {
+		got := riderDamageOf(t, a.log(t, who, e))
+		if len(got) != 1 || got[0].GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL || got[0].GetAmount() != 9 || got[0].GetDamageTypeKey() != "damage-type:poison" {
+			t.Fatalf("after the roll, the rider's damage on the log = %v, want 9 poison rolled", got)
+		}
+	}
+	if _, err := a.settle(t, a.master, e, poison.GetId(), true); err != nil {
+		t.Fatalf("apply the poison: %v", err)
+	}
+	for _, who := range []*user{a.master, a.caio, a.ana} {
+		l := a.log(t, who, e)
+		got := riderDamageOf(t, l)
+		if len(got) != 1 || got[0].GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED || got[0].GetAmount() != 9 {
+			t.Fatalf("after the apply, the rider's damage on the log = %v, want 9 poison applied", got)
+		}
+		keys := monsterKeyed(l)
+		if (who == a.master) == (len(keys) == 0) {
+			t.Errorf("monster keys read by %p = %v, want some for the master alone", who, keys)
+		}
+	}
+}

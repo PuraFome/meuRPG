@@ -21,6 +21,7 @@ import { Ability } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityName } from '../../../../core/content/feat-text';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CREATURE_SIZES } from '../../../../core/creatures/creature-types';
+import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { dcLabel } from '../../../../core/format/save-dc';
 
 /** What the monk picks on an offer. */
@@ -42,6 +43,12 @@ export interface RiderPick {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule],
   template: `
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert" data-testid="rider-error">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
     @for (o of offers(); track o.id) {
       @if (isCreature(o)) {
         <div class="mr-notice rider" role="group" [attr.aria-label]="creatureTitle(o)" data-testid="hit-rider">
@@ -210,6 +217,8 @@ export class HitRiderCard {
   private readonly texts = signal<ReadonlyMap<string, { text: string; maxSize: string }>>(
     new Map(),
   );
+  /** Why the stat block could not be read (the offer still reads, without the save's ability and the SRD text). */
+  protected readonly error = signal('');
   private readonly asked = new Set<string>();
   private readonly labels = computed(() => new Map(this.combatants().map((c) => [c.id, c.label])));
 
@@ -240,7 +249,7 @@ export class HitRiderCard {
               this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
             }
           },
-          () => undefined, // the offer reads without the ability
+          (err: unknown) => this.error.set(combatErrorMessage(err, 'ler a ficha da criatura')), // the offer reads without the ability
         );
       }
     });
