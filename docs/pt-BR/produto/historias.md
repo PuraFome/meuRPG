@@ -1590,7 +1590,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dado** um monstro cujo ataque agarra (uma constritora), **quando** acerta, **então** a oferta diz "Agarrar (CD de fuga 12)"; "Aplicar" dá a condição sem teste e a linha anota a CD de fuga.
 - **Dado** que aperto "Dispensar", **então** nada é aplicado e o registro diz "dispensou o efeito de <ataque> em <alvo>".
 - **Dado** que a oferta foi respondida, **então** ela não se desfaz; **dado** que desfaço o dano que a abriu, **então** a oferta some, e um alvo que o acerto derrubou nunca recebe uma. Um ataque oferece o efeito uma vez para cada dano.
-- **Dado** que sou jogador, **então** nunca recebo a oferta e não posso responder uma; leio a linha da resposta com o nome do ataque e o alvo, e a rolagem e a CD só num personagem meu (RN-20).
+- **Dado** que sou jogador, **então** nunca recebo a oferta e não posso responder uma; leio a linha da resposta com o nome do ataque e o alvo, e a rolagem do teste só num personagem meu, nunca a CD (RN-20).
 
 #### No app
 - No mesmo lugar das ofertas do monge, ao lado dos cartões de dano: um cartão com o ícone de pata, o nome do ataque e o alvo, uma linha do que ele faz, "Aplicar" e "Dispensar". Ver [Design](../../design/combat.md#a-creatures-other-actions).

@@ -20,6 +20,7 @@ import {
 import { Ability } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityName } from '../../../../core/content/feat-text';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
+import { CREATURE_SIZES } from '../../../../core/creatures/creature-types';
 import { dcLabel } from '../../../../core/format/save-dc';
 
 /** What the monk picks on an offer. */
@@ -29,11 +30,12 @@ export interface RiderPick {
 }
 
 /**
- * The riders after a hit. The monk's (SRD 5.1, Monk) (SRD 5.1, Monk): the Open Hand technique on a Flurry of
+ * The riders after a hit. The monk's (SRD 5.1, Monk): the Open Hand technique on a Flurry of
  * Blows hit, and Stunning Strike (1 ki point) on a melee hit. Each offer is optional and
  * answered once. The target's save is rolled by the app; the DC is the ki save DC.
  * A creature's rider (kind CREATURE, the master's alone) is the attack's save or grapple from the stat block: "Pedir
- * salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar".
+ * salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
+ * and size exceptions the plan does not hold are the master's call) and, when the stat block sets one, the size limit.
  */
 @Component({
   selector: 'app-hit-rider-card',
@@ -50,6 +52,15 @@ export interface RiderPick {
               em {{ label(o.targetId) }}
             </p>
             <p class="rider__hint" [id]="hintId(o, 'creature')">{{ creatureLine(o) }}</p>
+            @if (sizeLimit(o); as limit) {
+              <p class="rider__hint" data-testid="rider-size">{{ limit }}</p>
+            }
+            @if (srdText(o); as text) {
+              <div class="rider__srd" data-testid="rider-srd">
+                <strong>Texto do SRD</strong>
+                <p class="rider__hint">{{ text }}</p>
+              </div>
+            }
             <div class="rider__btns rider__btns--row">
               <button
                 mat-stroked-button
@@ -153,6 +164,12 @@ export interface RiderPick {
       margin: 0;
     }
 
+    .rider__srd {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
     .rider__opt {
       display: flex;
       flex-direction: column;
@@ -188,8 +205,11 @@ export class HitRiderCard {
 
   protected readonly choices = HitRiderChoice;
   private readonly creatures = inject(CreaturesClient);
-  /** The ability of each creature rider's save, by the offer's action key, read from the attacker's stat block. */
+  /** What the attacker's stat block says of each creature rider (by the offer's id): the save's ability, the SRD text and the size limit. */
   private readonly abilities = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly texts = signal<ReadonlyMap<string, { text: string; maxSize: string }>>(
+    new Map(),
+  );
   private readonly asked = new Set<string>();
   private readonly labels = computed(() => new Map(this.combatants().map((c) => [c.id, c.label])));
 
@@ -200,13 +220,22 @@ export class HitRiderCard {
       const combatants = this.combatants();
       for (const o of this.offers() ?? []) {
         const key = combatants.find((c) => c.id === o.attackerId)?.bestiaryCreatureKey ?? '';
-        if (!campaignId || !this.isCreature(o) || o.escapeDc > 0 || !key || this.asked.has(o.id)) {
+        if (!campaignId || !this.isCreature(o) || !key || this.asked.has(o.id)) {
           continue;
         }
         this.asked.add(o.id);
         this.creatures.statBlock(campaignId, key).then(
           (block) => {
-            const ability = block?.actions.find((a) => a.key === o.actionKey)?.save?.ability;
+            const action = block?.actions.find((a) => a.key === o.actionKey);
+            const ability = action?.save?.ability;
+            if (action && (action.text || action.hitCondition?.maxSize)) {
+              this.texts.update((m) =>
+                new Map(m).set(o.id, {
+                  text: action.text,
+                  maxSize: action.hitCondition?.maxSize ?? '',
+                }),
+              );
+            }
             if (ability !== undefined && ability !== Ability.UNSPECIFIED) {
               this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
             }
@@ -240,6 +269,18 @@ export class HitRiderCard {
       ? `. Se falhar: ${o.conditionNamePt}`
       : '. Se falhar: dano extra';
     return `Pedir salvaguarda de ${target}${detail ? ` (${detail})` : ''}${fail}`;
+  }
+
+  /** The SRD's text of the action, the master's reminder of the exceptions the plan does not hold (the creature types, the sizes). */
+  protected srdText(o: HitRiderOffer): string {
+    return this.texts().get(o.id)?.text ?? '';
+  }
+
+  /** "Só criaturas até Grande" when the stat block sets the biggest size the effect holds. */
+  protected sizeLimit(o: HitRiderOffer): string {
+    const max = (this.texts().get(o.id)?.maxSize ?? '').toLowerCase();
+    const size = CREATURE_SIZES.find((z) => z.value === max);
+    return size ? `Só criaturas até ${size.label.toLowerCase()}` : '';
   }
 
   protected isOpenHand(o: HitRiderOffer): boolean {

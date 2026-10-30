@@ -247,15 +247,6 @@ var (
 	repeatSaveRe = regexp.MustCompile(`repeat the saving throw (?:at the end of|on) each of its turns`)
 )
 
-// sizeOrder ranks the sizes, for "Large or smaller".
-var sizeOrder = []string{"Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"}
-
-// SizeAtMost says whether size is the same as or smaller than largest.
-func SizeAtMost(size, largest string) bool {
-	a, b := slices.Index(sizeOrder, size), slices.Index(sizeOrder, largest)
-	return a >= 0 && b >= 0 && a <= b
-}
-
 // parseUsage reads the SRD's limit of an action.
 func parseUsage(text string) ActionUsage {
 	u := ActionUsage{Kind: UsageAtWill, Text: text}
@@ -533,6 +524,9 @@ func planClass(p ActionPlan, desc string) string {
 		damage += len(p.Save.Damage)
 		dcs++
 		conds[strings.TrimPrefix(p.Save.ConditionKey, "condition:")] = p.Save.ConditionKey != ""
+		if p.Save.OnSuccess == "other" { // the text's own effect on a success is not in the plan
+			return ActionPartial
+		}
 	}
 	if p.HitCondition != nil {
 		dcs++ // the escape DC

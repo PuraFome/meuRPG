@@ -74,7 +74,7 @@ func (s *Service) answerCreatureRider(ctx context.Context, c *combatTx, m authz.
 		return err
 	}
 	if !ok {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "the attack is no longer in the stat block")
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE, "the attack is no longer in the stat block")
 	}
 	re.ActionKey, re.ActionName = plan.Key, nameOfPlan(plan)
 	if choice == choiceDecline {
@@ -135,19 +135,14 @@ func (s *Service) savingRider(ctx context.Context, c *combatTx, m authz.Membersh
 		}
 		re.ConditionKey, re.ConditionName, re.Given = sv.ConditionKey, sv.ConditionNamePT, hit.CondSet
 	}
-	for _, id := range append([]string{hit.Pending}, hit.More...) {
-		if id != "" {
-			re.Pending = append(re.Pending, id)
-		}
-	}
 	return nil
 }
 
 // decorateCreatureRiders fills in the creature offers the master reads with what the stat block says: the
 // attack's name, the condition and the DC. A player's copy has no creature offer.
-func (s *Service) decorateCreatureRiders(ctx context.Context, m authz.Membership, out *playv1.Encounter) {
+func (s *Service) decorateCreatureRiders(ctx context.Context, m authz.Membership, out *playv1.Encounter) error {
 	if m.Role != authz.RoleMaster {
-		return
+		return nil
 	}
 	var content *rules.Content
 	for _, o := range out.GetHitRiders() {
@@ -157,7 +152,7 @@ func (s *Service) decorateCreatureRiders(ctx context.Context, m authz.Membership
 		if content == nil {
 			var err error
 			if content, err = s.roster.RulesContent(ctx, nil, m.CampaignID); err != nil {
-				return
+				return fmt.Errorf("read the content for the creature riders: %w", err)
 			}
 		}
 		plan, ok := content.MonsterActionPlan(o.GetActionKey())
@@ -172,4 +167,5 @@ func (s *Service) decorateCreatureRiders(ctx context.Context, m authz.Membership
 			o.EscapeDc, o.ConditionKey, o.ConditionNamePt = conv.Int32(hc.EscapeDC), hc.ConditionKey, hc.ConditionNamePT
 		}
 	}
+	return nil
 }

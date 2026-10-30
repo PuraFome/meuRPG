@@ -222,8 +222,8 @@ func TestMonsterPlanSavesFollowTheText(t *testing.T) {
 // the move is seen and chosen.
 const (
 	wantActions    = 884
-	wantStructured = 722
-	wantPartial    = 93
+	wantStructured = 721
+	wantPartial    = 94
 	wantText       = 69
 	wantMultiatk   = 148
 )
@@ -295,7 +295,7 @@ func TestMonsterPlanNamesWhatTheMasterReads(t *testing.T) {
 			}
 		}
 	}
-	const wantPartial = "Acid Spray|Beaks|Bite|Bites|Claws|Club|Constrict|Crush|Death Glare|Draining Kiss|Dreadful Glare|Engulf|Glaive|Hand Crossbow|Hooves|Javelin|Luring Song|Petrifying Breath|Possession|Quarterstaff|Shortbow|Smother|Sting|Stomp|Tail|Tendril|Tentacle|Tentacle Slam|Tentacles|Touch|War Pick|Web|Whelm|Whirlwind"
+	const wantPartial = "Acid Spray|Antennae|Beaks|Bite|Bites|Claws|Club|Constrict|Crush|Death Glare|Draining Kiss|Dreadful Glare|Engulf|Glaive|Hand Crossbow|Hooves|Javelin|Luring Song|Petrifying Breath|Possession|Quarterstaff|Shortbow|Smother|Sting|Stomp|Tail|Tendril|Tentacle|Tentacle Slam|Tentacles|Touch|War Pick|Web|Whelm|Whirlwind"
 	const wantText = "Breath Weapons|Change Shape|Create Specter|Darkness Aura|Enlarge|Ethereal Stride|Etherealness|Healing Touch|Illusory Appearance|Ink Cloud|Invisibility|Invisible Passage|Leadership|Nightmare Haunting|Read Thoughts|Reel|Swallow|Teleport"
 	if got := strings.Join(slices.Sorted(maps.Keys(partial)), "|"); got != wantPartial {
 		t.Errorf("partial actions of CR 0 to 5:\n got %s\nwant %s", got, wantPartial)

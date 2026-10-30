@@ -1590,7 +1590,7 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** a monster whose attack grapples (a constrictor), **when** it hits, **then** the offer reads "Agarrar (CD de fuga 12)"; "Aplicar" gives the condition with no save and the line notes the escape DC.
 - **Given** I press "Dispensar", **then** nothing is applied and the log says "dispensou o efeito de <attack> em <target>".
 - **Given** the offer was answered, **then** it cannot be undone; **given** I undo the damage that opened it, **then** the offer goes away, and a target the hit downed never gets one. An attack offers its rider once for each damage.
-- **Given** I am a player, **then** I never receive the offer and cannot answer one; I read the line of the answer with the attack's name and the target, and the roll and the DC only on a character that is mine (RN-20).
+- **Given** I am a player, **then** I never receive the offer and cannot answer one; I read the line of the answer with the attack's name and the target, and the roll of the save only on a character that is mine, never the DC (RN-20).
 
 #### In the app
 - The same place as the monk's offers, beside the damage cards: a card with the paw icon, the attack's name and the target, one line of what it does, "Aplicar" and "Dispensar". See [Design](../design/combat.md#a-creatures-other-actions).

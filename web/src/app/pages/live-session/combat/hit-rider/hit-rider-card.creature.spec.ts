@@ -25,6 +25,12 @@ const ghoul = create(CombatantSchema, {
   bestiaryCreatureKey: 'monster:ghoul',
 });
 
+const spider = create(CombatantSchema, {
+  id: 'spider',
+  label: 'Aranha 1',
+  bestiaryCreatureKey: 'monster:giant-spider',
+});
+
 const claws = create(HitRiderOfferSchema, {
   id: 'r1',
   kind: HitRiderKind.CREATURE,
@@ -39,7 +45,7 @@ const claws = create(HitRiderOfferSchema, {
 const grab = create(HitRiderOfferSchema, {
   id: 'r2',
   kind: HitRiderKind.CREATURE,
-  attackerId: 'ghoul',
+  attackerId: 'spider',
   targetId: 'brisa',
   actionKey: 'monster:giant-spider#web',
   actionNamePt: 'Teia',
@@ -54,7 +60,7 @@ const grab = create(HitRiderOfferSchema, {
   template: `<app-hit-rider-card
     campaignId="c"
     [offers]="offers"
-    [combatants]="[brisa, ghoul]"
+    [combatants]="[brisa, ghoul, spider]"
     (answer)="picks.push($event)"
   />`,
 })
@@ -62,6 +68,7 @@ class Host {
   offers = [claws, grab];
   brisa = brisa;
   ghoul = ghoul;
+  spider = spider;
   picks: RiderPick[] = [];
 }
 
@@ -74,12 +81,22 @@ async function open() {
           actions: [
             creatureAction({
               key: 'monster:ghoul#claws',
+              text: 'Hit: the target must succeed on a DC 10 Constitution saving throw or be paralyzed. This effect ignores elves and undead.',
               save: {
                 ability: Ability.CONSTITUTION,
                 dc: 10,
                 onSuccess: SpellSaveSuccess.NONE,
                 damage: [],
               },
+            } as never),
+          ],
+        }),
+        'monster:giant-spider': create(CreatureSchema, {
+          actions: [
+            creatureAction({
+              key: 'monster:giant-spider#web',
+              text: 'Ranged attack. Hit: the target is restrained.',
+              hitCondition: { conditionKey: 'condition:grappled', escapeDc: 12, maxSize: 'Large' },
             } as never),
           ],
         }),
@@ -111,6 +128,21 @@ describe("HitRiderCard: a creature's rider", () => {
     const text = (groups[1].textContent ?? '').replace(/\s+/g, ' ');
     expect(text).toContain('Agarrar (CD de fuga 12)');
     expect(text).toContain('Brisa fica agarrado');
+  });
+
+  it("reminds the master of the action's SRD text, where the exceptions the plan lacks are", async () => {
+    const { groups } = await open();
+    const srd = groups[0].querySelector('[data-testid="rider-srd"]');
+    expect(srd?.textContent).toContain('Texto do SRD');
+    expect(srd?.textContent).toContain('ignores elves and undead');
+    expect(groups[0].querySelector('[data-testid="rider-size"]')).toBeNull();
+  });
+
+  it('says the size limit a grapple has, in Portuguese', async () => {
+    const { groups } = await open();
+    expect(groups[1].querySelector('[data-testid="rider-size"]')?.textContent).toContain(
+      'Só criaturas até grande',
+    );
   });
 
   it('applies with Aplicar and declines with Dispensar, each button named for its attack', async () => {

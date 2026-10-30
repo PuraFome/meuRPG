@@ -63,15 +63,14 @@ type riderEvent struct {
 	// A creature's rider: the action, the condition it gave (Given says it was given), the escape DC of a
 	// grapple (the master's alone), the stat block's words for how long it lasts, whether the save repeats and
 	// the damage the save governs, opened as pending damage.
-	ActionKey     string   `json:"action_key,omitempty"`
-	ActionName    string   `json:"action_name,omitempty"`
-	ConditionKey  string   `json:"condition_key,omitempty"`
-	ConditionName string   `json:"condition_name,omitempty"`
-	Given         bool     `json:"given,omitempty"`
-	EscapeDC      int32    `json:"escape_dc,omitempty"`
-	Duration      string   `json:"duration,omitempty"`
-	RepeatSave    bool     `json:"repeat_save,omitempty"`
-	Pending       []string `json:"pending_ids,omitempty"`
+	ActionKey     string `json:"action_key,omitempty"`
+	ActionName    string `json:"action_name,omitempty"`
+	ConditionKey  string `json:"condition_key,omitempty"`
+	ConditionName string `json:"condition_name,omitempty"`
+	Given         bool   `json:"given,omitempty"`
+	EscapeDC      int32  `json:"escape_dc,omitempty"`
+	Duration      string `json:"duration,omitempty"`
+	RepeatSave    bool   `json:"repeat_save,omitempty"`
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning
