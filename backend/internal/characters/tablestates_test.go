@@ -149,8 +149,8 @@ func TestTheEffectMenuOffersTheStateAndWeaponTypes(t *testing.T) {
 				while = f
 			}
 		}
-		if while == nil || while.GetKind() != "state_ref" || while.GetRequired() != (name == "resistance") {
-			t.Errorf("%s: while = %v, want a state reference, required only for a resistance", name, while)
+		if while == nil || while.GetKind() != "state_ref" || while.GetRequired() {
+			t.Errorf("%s: while = %v, want an optional state reference", name, while)
 		}
 	}
 	lists := map[string]bool{}
