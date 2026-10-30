@@ -800,7 +800,7 @@ func (e *logEntry) commonFields(c *logViewing, visible bool, lastID string) *pla
 	out := &playv1.CombatLogEntry{
 		Id: e.id, Kind: e.kind, At: timestamppb.New(e.at), Round: e.ev.Round,
 		ActorId: c.actor.ID, ActorLabel: c.actor.Label, TargetId: c.target.ID, TargetLabel: c.target.Label,
-		Key: e.ev.Key,
+		Key: shownKey(c.v, c.actor, e.ev.Key),
 	}
 	out.ByMaster = e.byMasterFor(c.actor)
 	if c.v.master {
@@ -908,6 +908,9 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 			showDC = c.v.master
 		}
 		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(target), showDC)
+		if r.ActionKey != "" && !c.v.master {
+			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
+		}
 	}
 	return true
 }
@@ -1017,12 +1020,9 @@ func (e *logEntry) creatureActionView(v combatViewer, byID map[string]playdb.Com
 	if cr == nil {
 		return nil
 	}
-	out := &playv1.CombatLogCreatureAction{
-		ActionKey: e.ev.Key, ActionNamePt: cr.Name, Reminder: cr.Reminder, ConditionKey: cr.ConditionKey, ConditionNamePt: cr.ConditionName,
-		DurationText: cr.Duration, RepeatSave: cr.RepeatSave,
-	}
+	out := &playv1.CombatLogCreatureAction{ActionNamePt: cr.Name, Reminder: cr.Reminder}
 	if v.master {
-		out.Text = cr.Text
+		out.ActionKey, out.Text = e.ev.Key, cr.Text
 	}
 	outward := len(withoutOwnerOnly([]string{cr.ConditionKey})) > 0
 	for _, h := range e.ev.Hits {
@@ -1031,6 +1031,11 @@ func (e *logEntry) creatureActionView(v combatViewer, byID map[string]playdb.Com
 			continue
 		}
 		out.ConditionTargetIds = append(out.ConditionTargetIds, h.Target)
+	}
+	// The condition and how long it lasts are told with who got it: a viewer who sees no target given it
+	// (every target saved, or none that the viewer sees) reads nothing of them.
+	if v.master || len(out.ConditionTargetIds) > 0 {
+		out.ConditionKey, out.ConditionNamePt, out.DurationText, out.RepeatSave = cr.ConditionKey, cr.ConditionName, cr.Duration, cr.RepeatSave
 	}
 	return out
 }

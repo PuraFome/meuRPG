@@ -324,6 +324,9 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 		hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Applied: ev.Applied, Before: ev.Before, DeathBefore: ev.DeathBefore}}
 	}
 	for _, h := range hits {
+		if err := u.ridersBack(ctx, h.Pending); err != nil { // the offer the landing of this damage opened
+			return err
+		}
 		if err := u.hitRolledBack(ctx, h); err != nil {
 			return err
 		}
@@ -409,6 +412,9 @@ func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before
 // damageApplied: the character's vitals as they were, its death saves too, and the
 // damage waits for the master again.
 func (u *undoer) damageApplied(ctx context.Context, ev actionEvent) error {
+	if err := u.ridersBack(ctx, ev.Pending); err != nil { // the offer this damage opened goes with it
+		return err
+	}
 	if err := putBackMove(ctx, u.c, ev.Target, ev.ReturnedFrom); err != nil {
 		return err
 	}
@@ -434,6 +440,17 @@ func (u *undoer) damageApplied(ctx context.Context, ev actionEvent) error {
 	}
 	if _, err := u.c.q.ClearPendingDamageApplied(ctx, ev.Pending); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("put back the pending damage: %w", err)
+	}
+	return nil
+}
+
+// ridersBack takes back the rider offers the landing of a pending damage opened.
+func (u *undoer) ridersBack(ctx context.Context, pending string) error {
+	if pending == "" {
+		return nil
+	}
+	if err := u.c.q.DeleteHitRidersOfPending(ctx, &pending); err != nil {
+		return fmt.Errorf("take the rider back: %w", err)
 	}
 	return nil
 }

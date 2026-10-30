@@ -201,7 +201,7 @@ func (s *Service) UseHitRider(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, res.event == nil || !res.event.Secret)
 		if res.event != nil && res.event.Rider != nil {
 			s.publishPushed(ctx, m.CampaignID, d, []*forcedMove{res.event.Rider.Pushed})
 		}
@@ -254,7 +254,7 @@ func (s *Service) riderOffer(ctx context.Context, c *combatTx, m authz.Membershi
 		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
 	}
 	if row.Kind == riderCreature && !v.master { // a creature's rider is the master's: a player is told nothing of an NPC's attack (RN-10)
-		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may answer"))
+		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
 	}
 	attacker, okA := combatantByID(cs, row.AttackerID)
 	target, okT := combatantByID(cs, row.TargetID)
@@ -484,6 +484,15 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		}
 	}
 	return out
+}
+
+// creatureRiderForPlayer takes from a creature rider's line what a player may not read: the stat block's key,
+// and the condition and its duration unless it was given to a target the player owns or it has an outward sign.
+func creatureRiderForPlayer(out *playv1.CombatLogHitRider, owns bool, r *riderEvent) {
+	out.ActionKey = ""
+	if !r.Given || (!owns && len(withoutOwnerOnly([]string{r.ConditionKey})) == 0) {
+		out.ConditionKey, out.ConditionNamePt, out.DurationText, out.RepeatSave = "", "", "", false
+	}
 }
 
 // goadTarget is what a goading maneuver does once its die is counted in the damage: the target

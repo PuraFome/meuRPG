@@ -1781,9 +1781,17 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
 
 -- name: InsertHitRider :one
 -- A rider a monk's hit offers (combat_riders.go).
-INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at, action_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at, action_key, pending_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
+
+-- name: DeleteHitRidersOfPending :exec
+-- The offers the landing of a damage opened go when that damage is undone.
+DELETE FROM hit_riders WHERE pending_id = $1;
+
+-- name: CountHitRidersOfPending :one
+-- Whether the damage already opened an offer (one damage offers its rider once).
+SELECT count(*) FROM hit_riders WHERE pending_id = $1;
 
 -- name: GetHitRider :one
 SELECT * FROM hit_riders WHERE encounter_id = $1 AND id = $2;

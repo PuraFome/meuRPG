@@ -1062,11 +1062,13 @@ export type CombatLogHitRider = Message<"meurpg.play.v1.CombatLogHitRider"> & {
   pushNoMap: boolean;
 
   /**
-   * A creature's rider (UseHitRider on a CREATURE offer): the attack's action key and name, the
-   * condition given (set when it was: a grapple, or a failed save), the grapple's escape DC (the
-   * master's), the duration the stat block words ("1 minute", or empty) and whether the target
-   * repeats the save at the end of its turns. For a creature's rider the roll and the DC are the
-   * master's alone: the target's player reads the result.
+   * A creature's rider (UseHitRider on a CREATURE offer): the attack's action key (the master's;
+   * a player reads the name), the name, the condition given (set when it was: a grapple, or a
+   * failed save; a player reads it only for a target they own or a condition with an outward
+   * sign), the grapple's escape DC (the master's), the duration the stat block words ("1
+   * minute", or empty) and whether the target repeats the save at the end of its turns. For a
+   * creature's rider the DC is the master's alone; the d20 and the save total are the master's and
+   * the target's player's, as for a spell's save: the save is the one that player's character makes.
    *
    * @generated from field: string action_key = 9;
    */

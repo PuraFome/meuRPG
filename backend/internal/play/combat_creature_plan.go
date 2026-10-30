@@ -51,6 +51,9 @@ func (s *Service) planOfAction(ctx context.Context, c *combatTx, who playdb.Comb
 	return plan, ok, nil
 }
 
+// Limitation: the match of a basic sheet's attack to the action is by name (the sheet keeps no key of the action),
+// so two actions whose names are equal up to the cut share the first one's plan.
+//
 // planOfAttack finds the action of the attacker's stat block that an attack of its sheet is: a creature's
 // attack has the action's key; an NPC made from a stat block has a basic sheet whose attack is named like
 // the action (cut to the sheet's length).
@@ -134,8 +137,10 @@ func planPartKey(i int) string { return "plan-damage-" + strconv.Itoa(i) }
 // spellOfPlan is the action as the spell machinery reads it: the save and the damage it governs, and the
 // area. A save "other" (the text's own effect) is read as none: the engine knows no other. The key is the
 // action's, so that the pending damages it opens say where they come from.
+// Limitation: every action is spent as an action; the plan does not say whether a stat block action costs a
+// bonus action or a reaction.
 func spellOfPlan(plan rules.ActionPlan) link.Spell {
-	sp := link.Spell{Key: plan.Key, Name: nameOfPlan(plan), Economy: rules.EconomyAction, RangeKind: rules.RangeSelf}
+	sp := link.Spell{Key: plan.Key, Name: nameOfPlan(plan), Economy: rules.EconomyAction, RangeKind: rules.RangeSelf, Nonmagical: plan.Attack == nil || !plan.Attack.Spell}
 	if sv := plan.Save; sv != nil {
 		sp.SaveAbility, sp.SaveDC, sp.CasterDC = string(sv.Ability), sv.DC, sv.DC
 		sp.SaveOnSuccess = sv.OnSuccess
@@ -162,3 +167,13 @@ func spellOfPlan(plan rules.ActionPlan) link.Spell {
 // maxPlanPointFt is how far from the creature the point of a sphere or cylinder may be: the stat block
 // words the distance in its text, and the master places the point.
 const maxPlanPointFt = 120
+
+// shownKey is a key as the viewer may read it: the key of a stat block action ("monster:ghoul#claws")
+// names the creature's type, which a player must not learn from an NPC's line (RN-20). A player reads the
+// action's name instead; the master, and the key of a creature that belongs to a character, are whole.
+func shownKey(v combatViewer, actor playdb.Combatant, key string) string {
+	if !v.master && actor.Kind == kindNPC && strings.Contains(key, "#") {
+		return ""
+	}
+	return key
+}

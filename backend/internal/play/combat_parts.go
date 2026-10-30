@@ -938,9 +938,11 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err
 	}
-	if plan, ok, err := s.planOfAttack(ctx, c, attacker, attack.Key); err != nil {
+	plan, planned, err := s.planOfAttack(ctx, c, attacker, attack.Key)
+	if err != nil {
 		return err
-	} else if ok {
+	}
+	if planned {
 		h.planned = plannedParts(plan)
 	}
 	if sheet.Traits.DivineSmite && attacker.Kind == kindPlayer {

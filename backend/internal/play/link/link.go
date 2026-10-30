@@ -425,7 +425,10 @@ type Dice struct {
 // Spell is what a cast needs from a spell and the caster's sheet, resolved at
 // the slot level the spell is cast with (MR-014).
 type Spell struct {
-	Key, Name string
+	// Nonmagical says the effect is a creature's action from its stat block, not a spell: its saving throw
+	// is not against magic (Magic Resistance, Gnome Cunning do not apply).
+	Nonmagical bool
+	Key, Name  string
 	// Level is the spell's own level, 0 for a cantrip, and School its school's key ("school:evocation").
 	Level  int
 	School string

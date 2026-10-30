@@ -2,11 +2,15 @@ package play
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The master uses the full actions of an NPC's stat block from its turn (UseCreatureAction): a breath weapon
@@ -503,5 +507,155 @@ func TestCreatureRider_GrappleNotesTheEscapeDC(t *testing.T) {
 	}
 	if mine := a.lastRiderLineOf(t, a.caio); mine.GetEscapeDc() != 0 || mine.GetConditionKey() != "condition:grappled" {
 		t.Errorf("Toren's player reads %v, want the grapple without the escape DC", mine)
+	}
+}
+
+// monsterKeyed lists the lines of a log that name a stat block's key ("monster:...") in any field a player
+// reads: the entry's key, the creature action's, the rider's.
+func monsterKeyed(l *playv1.ListCombatLogResponse) []string {
+	var out []string
+	for _, en := range logEntries(l) {
+		for _, k := range []string{en.GetKey(), en.GetCreatureAction().GetActionKey(), en.GetHitRider().GetActionKey()} {
+			if strings.Contains(k, "monster:") {
+				out = append(out, k)
+			}
+		}
+	}
+	return out
+}
+
+// A player never reads the key of an NPC's stat block action, in the line of the action nor in the lines of
+// the damage it opened (RN-20); the master does. The condition, its duration and its repeating are told with
+// who got it: a breath every target saved against tells a player none of them.
+func TestCreatureAction_PlayersReadNoMonsterKeyAndTheConditionOnlyWithItsTarget(t *testing.T) {
+	t.Parallel()
+	const glare = "monster:mummy#dreadful-glare"
+	for _, saved := range []bool{true, false} {
+		a, e, mummy := creatureFight(t, true, "monster:mummy", false)
+		if saved {
+			a.h.roller.queue(20)
+		} else {
+			a.h.roller.queue(1)
+		}
+		a.mustUseAction(t, a.master, e, mummy, glare, []string{"Toren"})
+		for _, who := range []*user{a.caio, a.ana} {
+			l := a.log(t, who, e)
+			if keys := monsterKeyed(l); len(keys) != 0 {
+				t.Errorf("saved=%v: a player reads the stat block keys %v", saved, keys)
+			}
+			line := lastCreatureLine(t, l)
+			told := line.GetConditionKey() != "" || line.GetDurationText() != "" || line.GetRepeatSave() || len(line.GetConditionTargetIds()) != 0
+			if saved && told {
+				t.Errorf("every target saved, a player reads the condition: %v", line)
+			}
+			// Frightened is a condition with no outward sign: Toren's player reads it, the other does not.
+			owner := who == a.caio
+			if !saved && owner && (line.GetConditionKey() != "condition:frightened" || len(line.GetConditionTargetIds()) != 1) {
+				t.Errorf("Toren failed, his player reads %v, want the condition on him", line)
+			}
+			if !saved && !owner && told {
+				t.Errorf("Toren failed, another player reads %v of a condition with no outward sign", line)
+			}
+		}
+		if keys := monsterKeyed(a.log(t, a.master, e)); len(keys) == 0 {
+			t.Errorf("saved=%v: the master reads no key: the control is unreachable", saved)
+		}
+	}
+}
+
+// The damage a breath opened has the action's key in its pending damage; the lines that follow the roll and
+// the apply do not show it to a player.
+func TestCreatureAction_TheDamageLinesShowAPlayerNoMonsterKey(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	a.h.roller.queue(1) // Toren fails
+	res := a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren"})
+	ids := res.GetResult().GetPendingDamages()
+	if len(ids) == 0 {
+		t.Fatal("the breath opened no damage")
+	}
+	a.mustDamage(t, a.master, e, ids[0].GetId(), typedDamage(12))
+	if _, err := a.settle(t, a.master, e, ids[0].GetId(), true); err != nil {
+		t.Fatalf("apply the breath's damage: %v", err)
+	}
+	for _, who := range []*user{a.caio, a.ana} {
+		if keys := monsterKeyed(a.log(t, who, e)); len(keys) != 0 {
+			t.Errorf("a player reads %v", keys)
+		}
+	}
+	if keys := monsterKeyed(a.log(t, a.master, e)); len(keys) == 0 {
+		t.Error("the master reads no key in the lines of the breath's damage")
+	}
+}
+
+// The undo of a breath takes back the action, the condition and the pending damage it opened.
+func TestCreatureAction_UndoTakesBackThePendingDamage(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	a.h.roller.queue(1, 1)
+	res := a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren", "Goblin"})
+	if len(res.GetResult().GetPendingDamages()) != 2 {
+		t.Fatalf("pending damages = %d, want 2", len(res.GetResult().GetPendingDamages()))
+	}
+	l := a.log(t, a.master, e)
+	if err := a.undo(t, a.master, e, l.GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	opts, err := a.master.combat.GetTurnOptions(t.Context(), connect.NewRequest(&playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, hound)}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(opts.Msg.GetPendingDamages()); n != 0 || byLabel(t, a.get(t, a.master), hound).GetActionUsed() {
+		t.Errorf("after the undo: %d pending damages, action used %v; want none and the action back", n, byLabel(t, a.get(t, a.master), hound).GetActionUsed())
+	}
+	// The same breath can be used again.
+	a.h.roller.queue(20, 20)
+	a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren", "Goblin"})
+}
+
+// The undo of the damage that opened a rider takes the offer back, and applying the damage again offers it
+// once: a stale offer would let the master apply a rider of a hit that did not happen. A hit that downs the
+// target offers none.
+func TestCreatureRider_UndoOfTheDamageTakesTheOfferBack(t *testing.T) {
+	t.Parallel()
+	a, e, ghoul := creatureFight(t, true, "monster:ghoul", false)
+	res := a.mustAttack(t, a.master, e, ghoul, "basic:1", "Toren", d20(19))
+	id := res.GetPendingDamage().GetId()
+	a.mustDamage(t, a.master, e, id, typedDamage(5))
+	if _, err := a.settle(t, a.master, e, id, true); err != nil {
+		t.Fatalf("apply the claws: %v", err)
+	}
+	if n := len(ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)); n != 1 {
+		t.Fatalf("offers = %d, want 1", n)
+	}
+	l := a.log(t, a.master, e)
+	if err := a.undo(t, a.master, e, l.GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if n := len(ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)); n != 0 {
+		t.Errorf("after the undo of the damage the offer is still open (%d)", n)
+	}
+	if _, err := a.settle(t, a.master, e, id, true); err != nil {
+		t.Fatalf("apply the claws again: %v", err)
+	}
+	if n := len(ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)); n != 1 {
+		t.Errorf("after applying again the offers = %d, want exactly 1", n)
+	}
+}
+
+// A creature's action is no spell: its save is not against magic (Magic Resistance, Gnome Cunning give no
+// advantage), unless the stat block's attack is a spell attack.
+func TestCreatureAction_ItsSaveIsNotAgainstMagic(t *testing.T) {
+	t.Parallel()
+	plan := rules.ActionPlan{Key: "monster:x#breath", Save: &rules.ActionSave{Ability: "dex", DC: 12}}
+	if slices.Contains(spellAgainst(spellOfPlan(plan)), combat.AgainstMagic) {
+		t.Error("a breath's save is against magic")
+	}
+	if !slices.Contains(spellAgainst(link.Spell{Key: "spell:fireball"}), combat.AgainstMagic) {
+		t.Error("a spell's save is not against magic")
+	}
+	spell := rules.ActionPlan{Key: "monster:x#bolt", Attack: &rules.ActionAttack{Spell: true}, Save: plan.Save}
+	if spellOfPlan(spell).Nonmagical {
+		t.Error("a spell attack action is not read as nonmagical")
 	}
 }

@@ -35,6 +35,9 @@ func (s *Service) offerCreatureRider(ctx context.Context, c *combatTx, target pl
 	if d.pending.CastID != nil || d.attacker == "" || d.key == "" {
 		return nil
 	}
+	if d.hit.After != nil && (d.hit.After.HP == 0 || d.hit.After.Defeated) { // a target the hit downed or defeated has no save to ask
+		return nil
+	}
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
@@ -47,8 +50,16 @@ func (s *Service) offerCreatureRider(ctx context.Context, c *combatTx, target pl
 	if err != nil || !ok || !creatureRiderOf(plan) {
 		return err
 	}
+	return s.insertCreatureRider(ctx, c, attacker, target, plan, d.pending.ID)
+}
+
+// insertCreatureRider writes the offer of a rider, once for the damage that opened it.
+func (s *Service) insertCreatureRider(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, plan rules.ActionPlan, pending string) error {
+	if n, err := c.q.CountHitRidersOfPending(ctx, &pending); err != nil || n > 0 {
+		return err
+	}
 	if _, err := c.q.InsertHitRider(ctx, playdb.InsertHitRiderParams{
-		EncounterID: c.enc.ID, AttackerID: attacker.ID, TargetID: target.ID, Kind: riderCreature, Round: c.enc.Round, CreatedAt: c.now, ActionKey: &plan.Key,
+		EncounterID: c.enc.ID, AttackerID: attacker.ID, TargetID: target.ID, Kind: riderCreature, Round: c.enc.Round, CreatedAt: c.now, ActionKey: &plan.Key, PendingID: &pending,
 	}); err != nil {
 		return fmt.Errorf("offer the creature's rider: %w", err)
 	}

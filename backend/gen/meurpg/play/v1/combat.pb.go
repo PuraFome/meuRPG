@@ -4746,11 +4746,13 @@ type CombatLogHitRider struct {
 	// The save was failed but the combat has no map (theatre of the mind), so the push is
 	// the table's to imagine.
 	PushNoMap bool `protobuf:"varint,8,opt,name=push_no_map,json=pushNoMap,proto3" json:"push_no_map,omitempty"`
-	// A creature's rider (UseHitRider on a CREATURE offer): the attack's action key and name, the
-	// condition given (set when it was: a grapple, or a failed save), the grapple's escape DC (the
-	// master's), the duration the stat block words ("1 minute", or empty) and whether the target
-	// repeats the save at the end of its turns. For a creature's rider the roll and the DC are the
-	// master's alone: the target's player reads the result.
+	// A creature's rider (UseHitRider on a CREATURE offer): the attack's action key (the master's;
+	// a player reads the name), the name, the condition given (set when it was: a grapple, or a
+	// failed save; a player reads it only for a target they own or a condition with an outward
+	// sign), the grapple's escape DC (the master's), the duration the stat block words ("1
+	// minute", or empty) and whether the target repeats the save at the end of its turns. For a
+	// creature's rider the DC is the master's alone; the d20 and the save total are the master's and
+	// the target's player's, as for a spell's save: the save is the one that player's character makes.
 	ActionKey       string `protobuf:"bytes,9,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	ActionNamePt    string `protobuf:"bytes,10,opt,name=action_name_pt,json=actionNamePt,proto3" json:"action_name_pt,omitempty"`
 	ConditionKey    string `protobuf:"bytes,11,opt,name=condition_key,json=conditionKey,proto3" json:"condition_key,omitempty"`

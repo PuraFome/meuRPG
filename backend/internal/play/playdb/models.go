@@ -335,6 +335,7 @@ type HitRider struct {
 	Used        bool
 	CreatedAt   time.Time
 	ActionKey   *string
+	PendingID   *string
 }
 
 type InspirationHold struct {

@@ -206,7 +206,7 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 // header of a spell that reads hit points and the Metamagic it spent.
 func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *playv1.SpellCast {
 	out := &playv1.SpellCast{
-		CastId: ev.CastID, SpellKey: ev.Key, Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
+		CastId: ev.CastID, SpellKey: shownKey(v, caster, ev.Key), Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
