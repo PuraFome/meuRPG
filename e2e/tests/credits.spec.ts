@@ -28,7 +28,7 @@ function readAttributionParagraph(): string {
 }
 
 test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca' }, async ({ page }) => {
-    const attribution = readAttributionParagraph();
+  const attribution = readAttributionParagraph();
 
   await page.goto('/credits');
   // A web-first assertion, which waits for the page to render the text (and
