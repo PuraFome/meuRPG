@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 import { combatRPC, passTurnsTo, tableForCombat, type Encounter } from './combat-support';
 import { vex } from './combat-rolls-support';
@@ -56,8 +56,14 @@ async function monsterTurn(browser: Browser, name: string, creatureKey: string) 
 }
 
 /** The text of the combat log, for the audience of the page (the player's sheet or the master's fold, opened first). */
+const openLogs = new WeakMap<Page, Locator>();
 async function logText(page: Page, master: boolean): Promise<string> {
-  const log = master ? await masterLog(page) : await openCombatLog(page);
+  // Opened once per page: on a phone the log is a sheet, and its opener is gone while it is open.
+  let log = openLogs.get(page);
+  if (!log) {
+    log = master ? await masterLog(page) : await openCombatLog(page);
+    openLogs.set(page, log);
+  }
   return (await log.textContent()) ?? '';
 }
 
@@ -68,12 +74,19 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
     const use = card.getByRole('button', { name: /^Usar Sopro de fogo/ });
     await expect(use).toBeVisible();
     await expect(card.getByRole('group', { name: /Quem a ação atinge/ })).toBeVisible();
+    // The card names the action and its usage in Portuguese: "Sopro de fogo", "Recarga 5–6", no "Salvaguarda" and no English name.
+    const before = (await card.innerText()).replace(/\s+/g, ' ');
+    expect(before).toContain('Sopro de fogo');
+    expect(before).toContain('Recarga 5–6');
+    expect(before).not.toContain('Fire Breath');
+    expect(before).not.toMatch(/Salvaguarda/i);
     await use.click();
     const result = card.getByTestId('creature-action-result');
     await expect(result).toBeVisible();
     // The save is random: the line says it passed or failed, and the master reads the roll against the DC.
     await expect(result).toContainText(/Passou|Falhou|Falha automática/);
     await expect(result).toContainText('Teste de resistência');
+    expect((await card.innerText()).replace(/\s+/g, ' ')).not.toMatch(/Salvaguarda|Fire Breath/i);
     // The action is spent.
     await expect(use).toBeDisabled();
     // The player's log carries the action and the save, never the stat block's words or the DC.
@@ -81,6 +94,7 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
     await expect(playerLog).toContainText(/usou Sopro de fogo/);
     const log = (await playerLog.textContent()) ?? '';
     expect(log).toMatch(/Vex (falhou|resistiu)/);
+    expect(log).not.toMatch(/Fire Breath|Salvaguarda/i);
     expect(log).not.toContain('Texto do SRD');
     expect(log).not.toMatch(/\bCD\b/);
   } finally {
@@ -110,3 +124,41 @@ test('a mordida da carniçal acerta e oferece o efeito das garras: o mestre apli
   }
 });
 
+
+test('a mordida da aranha: o dano de veneno do efeito chega ao registro do mestre e ao do jogador alvo', { tag: ['@MR-012', '@RN-20'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  const { m, p, card, done } = await monsterTurn(browser, 'Veneno', 'monster:giant-spider');
+  try {
+    // A typed hit (a d20 of 15), the bite's damage rolled and applied; the bite then offers its poison rider.
+    await card.locator('label', { hasText: 'Mordida' }).click();
+    await card.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await card.getByLabel(/Role 1d20/).fill('15');
+    await card.getByRole('button', { name: 'Confirmar 15' }).click();
+    await card.getByRole('button', { name: 'Rolar dano' }).click();
+    await card.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
+    const offer = m.getByTestId('hit-rider').first();
+    await expect(offer).toBeVisible();
+    await offer.getByRole('button', { name: /^Aplicar / }).click();
+    await expect(offer).toBeHidden();
+    // The save is random, the poison damage is not: it is rolled whether the save passed (half) or failed. The rider's damage is a
+    // line of its own on the log, awaiting the roll, then rolled, then applied; the master and the target's player read each stage.
+    await expect.poll(() => logText(m, true)).toMatch(/usou Mordida em Vex: Vex (passou|falhou) no teste.*falta rolar o dano/);
+    await expect.poll(() => logText(p, false)).toMatch(/usou Mordida em Vex: Vex (passou|falhou) no teste.*falta rolar o dano/);
+    await card.getByRole('button', { name: 'Rolar dano' }).click();
+    const rolled = /usou Mordida em Vex: Vex (passou|falhou) no teste \([^)]*\)[^)]*\), \d+ de dano/;
+    await expect.poll(() => logText(m, true)).toMatch(rolled);
+    expect(await logText(m, true)).toMatch(/contra\sCD\s11/); // only the master reads the DC
+    await expect.poll(() => logText(p, false)).toMatch(rolled);
+    await card.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
+    await expect.poll(() => logText(m, true)).not.toMatch(/esperando o mestre aplicar/);
+    for (const text of [await logText(m, true), await logText(p, false)]) {
+      expect(text).toMatch(rolled);
+      expect(text).not.toContain('falta rolar o dano');
+      expect(text).not.toMatch(/Poison|poison|Bite|Salvaguarda/);
+    }
+    // The player never reads the DC.
+    expect(await logText(p, false)).not.toMatch(/\bCD\b/);
+  } finally {
+    await done().catch(() => undefined);
+  }
+});
