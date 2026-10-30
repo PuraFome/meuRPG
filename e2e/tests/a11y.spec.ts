@@ -2149,7 +2149,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await rollSceneRPC(p, campaignId, ids[3], 14);
     await rollSceneRPC(p, campaignId, ids[4], 3);
     // Each roll is a chip beside its action; opening them shows the formula and the verdict.
-    await openRolls(m);
+    await openRolls(m, 3);
     await expect(m.getByText('Não passou · CD 10')).toBeVisible();
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
     await expectScreenPasses(m, `Cena aberta com três rolagens ${where}`);
@@ -3281,7 +3281,7 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await openSessionPage(m, campaignId);
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
     await expect(m.getByText('Os jogadores veem a CD')).toBeVisible();
-    await openRolls(m);
+    await openRolls(m, 3);
     await expect(m.getByText('Tentativa 1 de 1').first()).toBeVisible();
     await expectScreenPasses(m, `Cena aberta do mestre com os limites e as tentativas ${where}`);
     const grant = m.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça' });
@@ -3354,7 +3354,7 @@ async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' 
     await rollSceneRPC(p, campaignId, actionIds[0], 11);
     await rollSceneRPC(p, campaignId, actionIds[4], 3);
     await openSessionPage(m, campaignId);
-    await openRolls(m);
+    await openRolls(m, 2);
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
 
     await endSessionFromBar(m);
