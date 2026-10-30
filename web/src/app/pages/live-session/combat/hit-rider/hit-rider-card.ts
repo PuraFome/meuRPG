@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -8,6 +17,11 @@ import {
   type Combatant,
   type HitRiderOffer,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { Ability } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { abilityName } from '../../../../core/content/feat-text';
+import { CreaturesClient } from '../../../../core/creatures/creatures-client';
+import { CREATURE_SIZES } from '../../../../core/creatures/creature-types';
+import { dcLabel } from '../../../../core/format/save-dc';
 
 /** What the monk picks on an offer. */
 export interface RiderPick {
@@ -16,9 +30,12 @@ export interface RiderPick {
 }
 
 /**
- * The monk's riders after a hit (SRD 5.1, Monk): the Open Hand technique on a Flurry of
+ * The riders after a hit. The monk's (SRD 5.1, Monk): the Open Hand technique on a Flurry of
  * Blows hit, and Stunning Strike (1 ki point) on a melee hit. Each offer is optional and
  * answered once. The target's save is rolled by the app; the DC is the ki save DC.
+ * A creature's rider (kind CREATURE, the master's alone) is the attack's save or grapple from the stat block: "Pedir
+ * salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
+ * and size exceptions the plan does not hold are the master's call) and, when the stat block sets one, the size limit.
  */
 @Component({
   selector: 'app-hit-rider-card',
@@ -26,6 +43,40 @@ export interface RiderPick {
   imports: [MatButtonModule, MatIconModule],
   template: `
     @for (o of offers(); track o.id) {
+      @if (isCreature(o)) {
+        <div class="mr-notice rider" role="group" [attr.aria-label]="creatureTitle(o)" data-testid="hit-rider">
+          <mat-icon aria-hidden="true">pets</mat-icon>
+          <div class="rider__body">
+            <p class="rider__text">
+              <strong>{{ creatureTitle(o) }}</strong>
+              em {{ label(o.targetId) }}
+            </p>
+            <p class="rider__hint" [id]="hintId(o, 'creature')">{{ creatureLine(o) }}</p>
+            @if (sizeLimit(o); as limit) {
+              <p class="rider__hint" data-testid="rider-size">{{ limit }}</p>
+            }
+            @if (srdText(o); as text) {
+              <div class="rider__srd" data-testid="rider-srd">
+                <strong>Texto do SRD</strong>
+                <p class="rider__hint">{{ text }}</p>
+              </div>
+            }
+            <div class="rider__btns rider__btns--row">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="busy()"
+                [attr.aria-label]="'Aplicar ' + creatureTitle(o)"
+                [attr.aria-describedby]="hintId(o, 'creature')"
+                (click)="pick(o, choices.APPLY)"
+              >
+                Aplicar
+              </button>
+              <button mat-button type="button" [disabled]="busy()" [attr.aria-label]="'Dispensar ' + creatureTitle(o)" (click)="pick(o, choices.DECLINE)">Dispensar</button>
+            </div>
+          </div>
+        </div>
+      } @else {
       <div class="mr-notice rider" role="group" [attr.aria-label]="title(o)" data-testid="hit-rider">
         <mat-icon aria-hidden="true">sports_martial_arts</mat-icon>
         <div class="rider__body">
@@ -89,6 +140,7 @@ export interface RiderPick {
           </div>
         </div>
       </div>
+      }
     }
   `,
   styles: `
@@ -112,6 +164,12 @@ export interface RiderPick {
       margin: 0;
     }
 
+    .rider__srd {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
     .rider__opt {
       display: flex;
       flex-direction: column;
@@ -129,17 +187,101 @@ export interface RiderPick {
       flex-direction: column;
       gap: 10px;
     }
+
+    .rider__btns--row {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
   `,
 })
 export class HitRiderCard {
   readonly offers = input<readonly HitRiderOffer[]>([]);
   readonly combatants = input<readonly Combatant[]>([]);
   readonly busy = input(false);
+  /** The campaign, to read the attacker's stat block for a creature's rider (the save's ability); the master's alone. */
+  readonly campaignId = input('');
 
   readonly answer = output<RiderPick>();
 
   protected readonly choices = HitRiderChoice;
+  private readonly creatures = inject(CreaturesClient);
+  /** What the attacker's stat block says of each creature rider (by the offer's id): the save's ability, the SRD text and the size limit. */
+  private readonly abilities = signal<ReadonlyMap<string, string>>(new Map());
+  private readonly texts = signal<ReadonlyMap<string, { text: string; maxSize: string }>>(
+    new Map(),
+  );
+  private readonly asked = new Set<string>();
   private readonly labels = computed(() => new Map(this.combatants().map((c) => [c.id, c.label])));
+
+  constructor() {
+    // A creature's rider names the save's ability, which the offer does not carry: the attacker's stat block (kept in memory) has it.
+    effect(() => {
+      const campaignId = this.campaignId();
+      const combatants = this.combatants();
+      for (const o of this.offers() ?? []) {
+        const key = combatants.find((c) => c.id === o.attackerId)?.bestiaryCreatureKey ?? '';
+        if (!campaignId || !this.isCreature(o) || !key || this.asked.has(o.id)) {
+          continue;
+        }
+        this.asked.add(o.id);
+        this.creatures.statBlock(campaignId, key).then(
+          (block) => {
+            const action = block?.actions.find((a) => a.key === o.actionKey);
+            const ability = action?.save?.ability;
+            if (action && (action.text || action.hitCondition?.maxSize)) {
+              this.texts.update((m) =>
+                new Map(m).set(o.id, {
+                  text: action.text,
+                  maxSize: action.hitCondition?.maxSize ?? '',
+                }),
+              );
+            }
+            if (ability !== undefined && ability !== Ability.UNSPECIFIED) {
+              this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
+            }
+          },
+          () => undefined, // the offer reads without the ability
+        );
+      }
+    });
+  }
+
+  protected isCreature(o: HitRiderOffer): boolean {
+    return o.kind === HitRiderKind.CREATURE;
+  }
+
+  /** The attack's name ("Garras"), or the rider's kind when the offer has none. */
+  protected creatureTitle(o: HitRiderOffer): string {
+    return o.actionNamePt || 'Efeito do ataque';
+  }
+
+  /** "Pedir salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", and what a failure gives. */
+  protected creatureLine(o: HitRiderOffer): string {
+    const target = this.label(o.targetId) || 'o alvo';
+    if (o.escapeDc > 0) {
+      const condition = o.conditionNamePt
+        ? `: ${target} fica ${o.conditionNamePt.toLowerCase()}`
+        : '';
+      return `Agarrar (CD de fuga ${o.escapeDc})${condition}`;
+    }
+    const detail = [dcLabel(o.saveDc), this.abilities().get(o.id) ?? ''].filter(Boolean).join(', ');
+    const fail = o.conditionNamePt
+      ? `. Se falhar: ${o.conditionNamePt}`
+      : '. Se falhar: dano extra';
+    return `Pedir salvaguarda de ${target}${detail ? ` (${detail})` : ''}${fail}`;
+  }
+
+  /** The SRD's text of the action, the master's reminder of the exceptions the plan does not hold (the creature types, the sizes). */
+  protected srdText(o: HitRiderOffer): string {
+    return this.texts().get(o.id)?.text ?? '';
+  }
+
+  /** "Só criaturas até Grande" when the stat block sets the biggest size the effect holds. */
+  protected sizeLimit(o: HitRiderOffer): string {
+    const max = (this.texts().get(o.id)?.maxSize ?? '').toLowerCase();
+    const size = CREATURE_SIZES.find((z) => z.value === max);
+    return size ? `Só criaturas até ${size.label.toLowerCase()}` : '';
+  }
 
   protected isOpenHand(o: HitRiderOffer): boolean {
     return o.kind === HitRiderKind.OPEN_HAND;

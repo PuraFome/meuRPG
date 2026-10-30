@@ -324,6 +324,9 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 		hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Applied: ev.Applied, Before: ev.Before, DeathBefore: ev.DeathBefore}}
 	}
 	for _, h := range hits {
+		if err := u.ridersBack(ctx, h.Pending); err != nil { // the offer the landing of this damage opened
+			return err
+		}
 		if err := u.hitRolledBack(ctx, h); err != nil {
 			return err
 		}
@@ -409,6 +412,9 @@ func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before
 // damageApplied: the character's vitals as they were, its death saves too, and the
 // damage waits for the master again.
 func (u *undoer) damageApplied(ctx context.Context, ev actionEvent) error {
+	if err := u.ridersBack(ctx, ev.Pending); err != nil { // the offer this damage opened goes with it
+		return err
+	}
 	if err := putBackMove(ctx, u.c, ev.Target, ev.ReturnedFrom); err != nil {
 		return err
 	}
@@ -434,6 +440,17 @@ func (u *undoer) damageApplied(ctx context.Context, ev actionEvent) error {
 	}
 	if _, err := u.c.q.ClearPendingDamageApplied(ctx, ev.Pending); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("put back the pending damage: %w", err)
+	}
+	return nil
+}
+
+// ridersBack takes back the rider offers the landing of a pending damage opened.
+func (u *undoer) ridersBack(ctx context.Context, pending string) error {
+	if pending == "" {
+		return nil
+	}
+	if err := u.c.q.DeleteHitRidersOfPending(ctx, &pending); err != nil {
+		return fmt.Errorf("take the rider back: %w", err)
 	}
 	return nil
 }
@@ -811,13 +828,22 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 		if err := u.deleteHitPendings(ctx, h); err != nil {
 			return err
 		}
-		// A spell that read hit points changed the targets at once: their hit
-		// points, death saves and conditions come back.
-		if target, ok := u.find(h.Target); ok && h.Fx != "" {
-			if err := u.castTargetBack(ctx, target, h); err != nil {
-				return err
-			}
+		if err := u.castHitTargetBack(ctx, h); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// castHitTargetBack puts back what the cast changed in the target at once: a spell that read hit points
+// changed its hit points, death saves and conditions; a creature's action gave it a condition.
+func (u *undoer) castHitTargetBack(ctx context.Context, h castHit) error {
+	target, ok := u.find(h.Target)
+	switch {
+	case ok && h.Fx != "":
+		return u.castTargetBack(ctx, target, h)
+	case ok && h.CondSet:
+		return u.setConditionsBack(ctx, target.ID, h.CondBefore)
 	}
 	return nil
 }

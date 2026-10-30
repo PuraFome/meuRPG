@@ -1451,6 +1451,30 @@ service CombatService {
   //     for Stunning Strike, there is no ki point left.
   //   - `invalid_argument`: the choice is not one the offer has.
   rpc UseHitRider(UseHitRiderRequest) returns (UseHitRiderResponse);
+
+  // UseCreatureAction has the master use one action of an NPC's stat block that is no attack roll,
+  // from the NPC's turn (SRD 5.1, Monsters): a breath weapon or any other action that asks a saving
+  // throw ("Fire Breath", "Enslave", "Frightful Presence"), or an action with no roll at all (the
+  // table's reminder). The server rolls each target's saving throw against the action's DC, as a
+  // spell's save, opens the damage the save governs as pending damage (half for a target that saves
+  // when the action says so; roll them with RollDamage) and gives the condition to a target that
+  // fails. An action with no roll spends the action and writes the line, nothing else. The action
+  // is spent, as a spell's is. The master alone: the stat block's numbers never reach a player,
+  // who reads the save they made and the damage they take (RN-20).
+  //
+  // On a map, an action with an area (a cone, a line, a sphere) is placed with `origin` or
+  // `direction` as CastSpell places a spell, and the server takes who is inside; without a map the
+  // master names the `target_ids`. An action with no area takes the `target_ids` it lists.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: as TakeAction. A player gets `permission_denied`.
+  //   - `invalid_argument`: no action key, a target repeated or too many, or an area chosen for an
+  //     action that has none (or none for one that needs it).
+  //   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, ACTION_USED, INCAPACITATED,
+  //     TARGET_DEFEATED, and CREATURE_ACTION_UNAVAILABLE (the combatant is no NPC, its stat block
+  //     has no such action, or the action is an attack roll or a Multiattack: those are made with
+  //     TakeAction).
+  rpc UseCreatureAction(UseCreatureActionRequest) returns (UseCreatureActionResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1902,6 +1926,9 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 111;
   // AnswerReaction: the window was answered already, by the player or by the master (the first answer wins).
   ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED = 112;
+  // UseCreatureAction: the combatant is no NPC, its stat block has no such action, or the action is
+  // an attack roll or a Multiattack (those are made with TakeAction). Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE = 113;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2175,6 +2202,9 @@ enum HitRiderKind {
   HIT_RIDER_KIND_OPEN_HAND = 1;
   // Stunning Strike (Monk 5): on a melee hit, 1 ki point.
   HIT_RIDER_KIND_STUNNING_STRIKE = 2;
+  // A rider of a creature's attack: its save with a condition or extra damage, or the condition
+  // of a grapple (the attack's plan in the stat block). Offered to the master alone.
+  HIT_RIDER_KIND_CREATURE = 3;
 }
 
 // HitRiderChoice is what the monk picks.
@@ -2190,6 +2220,9 @@ enum HitRiderChoice {
   HIT_RIDER_CHOICE_STUN = 4;
   // Declines the offer.
   HIT_RIDER_CHOICE_DECLINE = 5;
+  // A creature's rider: apply it (the target's save, then the condition or the extra damage; or the
+  // grapple's condition). DECLINE skips it.
+  HIT_RIDER_CHOICE_APPLY = 6;
 }
 
 // HitRiderOffer is one open offer (Encounter.hit_riders).
@@ -2202,6 +2235,14 @@ message HitRiderOffer {
   int32 save_dc = 5;
   // Ki points left, for Stunning Strike.
   int32 ki_left = 6;
+  // A creature's rider (kind CREATURE; the master alone gets it): the attack's action key
+  // ("monster:ghoul#claws") and its name, the condition it gives and the escape DC of a grapple
+  // (0 when the rider is a save: `save_dc` is then its DC).
+  string action_key = 7;
+  string action_name_pt = 8;
+  string condition_key = 9;
+  string condition_name_pt = 10;
+  int32 escape_dc = 11;
 }
 
 // UseHitRiderRequest answers an offer.
@@ -2216,6 +2257,89 @@ message UseHitRiderRequest {
 // UseHitRiderResponse returns the combat.
 message UseHitRiderResponse {
   Encounter encounter = 1;
+}
+
+// UseCreatureActionRequest has the master use an action of an NPC's stat block that is no attack
+// roll (UseCreatureAction).
+message UseCreatureActionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The NPC that acts (a UUID): its turn, with its action not spent.
+  string combatant_id = 3;
+  // The action's key in the stat block, "monster:hell-hound#fire-breath" (the key of its
+  // CreatureAction/CreatureSave).
+  string action_key = 4;
+  // The creatures it affects (UUIDs). Empty for an action with no roll, and for an area on a map
+  // (the server takes who is inside).
+  repeated string target_ids = 5;
+  // The area on a map, as CastSpellRequest chooses it: a point (sphere, cylinder) or a
+  // direction (cone, line, cube). Neither for an action centered on the creature.
+  oneof area {
+    SpellOrigin origin = 6;
+    SpellDirection direction = 7;
+  }
+  string idempotency_key = 8;
+}
+
+// CreatureActionTarget is what an action did to one creature it affected.
+message CreatureActionTarget {
+  string combatant_id = 1;
+  // The creature's saving throw. The roll and the result are the master's and the target's own
+  // player's; `dc` is the master's alone (a stat block's number never reaches a player).
+  SaveResult save = 2;
+  // The pending damages the action opened for it (roll them with RollDamage): the first and the
+  // others, as SpellTargetResult has them. Only the master.
+  string pending_damage_id = 3;
+  repeated string more_pending_damage_ids = 4;
+  // The condition the action gave it (the failed save's); false when it saved, was immune or the
+  // action gives none.
+  bool condition_applied = 5;
+}
+
+// CreatureActionResult is what an action did.
+message CreatureActionResult {
+  // Stable ID of the use (a UUID): the cast_id of its pending damages.
+  string cast_id = 1;
+  string action_key = 2;
+  // The action rolls nothing: a logged reminder that spent the action.
+  bool reminder = 3;
+  // The condition a failed save gives ("condition:frightened") and its Portuguese name; empty for none.
+  string condition_key = 4;
+  string condition_name_pt = 5;
+  // The stat block's words for how long it lasts ("1 minute"), and whether the target repeats
+  // the save at the end of its turns: notes for the master, nothing counts the time.
+  string duration_text = 6;
+  bool repeat_save = 7;
+  repeated CreatureActionTarget targets = 8;
+  // The pending damages the action opened. Only the master.
+  repeated PendingDamage pending_damages = 9;
+}
+
+// UseCreatureActionResponse returns the combat and what the action did.
+message UseCreatureActionResponse {
+  Encounter encounter = 1;
+  CreatureActionResult result = 2;
+  // An area placed on the map: where it landed. Unset for the others.
+  SpellArea area = 3;
+}
+
+// CombatLogCreatureAction is the line of a creature's action (CombatLogKind SPELL_CAST with
+// `creature_action` set: `spell.targets` has each creature's save and damage). The stat block's
+// numbers are not in it for a player.
+message CombatLogCreatureAction {
+  string action_key = 1;
+  string action_name_pt = 2;
+  // The action rolls nothing: the table's reminder.
+  bool reminder = 3;
+  // The condition a failed save gives, and the creatures that got it (UUIDs).
+  string condition_key = 4;
+  string condition_name_pt = 5;
+  repeated string condition_target_ids = 6;
+  // How long the stat block says it lasts, and whether the save repeats.
+  string duration_text = 7;
+  bool repeat_save = 8;
+  // The SRD's text of the action, in English. Only the master.
+  string text = 9;
 }
 
 // HitRiderLogResult is how an answered rider ended.
@@ -2245,6 +2369,20 @@ message CombatLogHitRider {
   // The save was failed but the combat has no map (theatre of the mind), so the push is
   // the table's to imagine.
   bool push_no_map = 8;
+  // A creature's rider (UseHitRider on a CREATURE offer): the attack's action key (the master's;
+  // a player reads the name), the name, the condition given (set when it was: a grapple, or a
+  // failed save; a player reads it only for a target they own or a condition with an outward
+  // sign), the grapple's escape DC (the master's), the duration the stat block words ("1
+  // minute", or empty) and whether the target repeats the save at the end of its turns. For a
+  // creature's rider the DC is the master's alone; the d20 and the save total are the master's and
+  // the target's player's, as for a spell's save: the save is the one that player's character makes.
+  string action_key = 9;
+  string action_name_pt = 10;
+  string condition_key = 11;
+  string condition_name_pt = 12;
+  int32 escape_dc = 13;
+  string duration_text = 14;
+  bool repeat_save = 15;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -5100,6 +5238,10 @@ message CombatLogEntry {
   // a move, a feature, a Wild Shape or the end of the turn made through the master's hand, not the player's. Everyone
   // who gets the line gets the flag, the player too when they are back.
   bool by_master = 112;
+  // SPELL_CAST of a creature's action (UseCreatureAction): which action, the condition a failed
+  // save gave and the table's reminder. `spell.targets` has the saves and the damage; the spell
+  // key is the action's.
+  CombatLogCreatureAction creature_action = 113;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.

@@ -199,6 +199,9 @@ const (
 	// CombatServiceUseHitRiderProcedure is the fully-qualified name of the CombatService's UseHitRider
 	// RPC.
 	CombatServiceUseHitRiderProcedure = "/meurpg.play.v1.CombatService/UseHitRider"
+	// CombatServiceUseCreatureActionProcedure is the fully-qualified name of the CombatService's
+	// UseCreatureAction RPC.
+	CombatServiceUseCreatureActionProcedure = "/meurpg.play.v1.CombatService/UseCreatureAction"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -1487,6 +1490,29 @@ type CombatServiceClient interface {
 	//     for Stunning Strike, there is no ki point left.
 	//   - `invalid_argument`: the choice is not one the offer has.
 	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
+	// UseCreatureAction has the master use one action of an NPC's stat block that is no attack roll,
+	// from the NPC's turn (SRD 5.1, Monsters): a breath weapon or any other action that asks a saving
+	// throw ("Fire Breath", "Enslave", "Frightful Presence"), or an action with no roll at all (the
+	// table's reminder). The server rolls each target's saving throw against the action's DC, as a
+	// spell's save, opens the damage the save governs as pending damage (half for a target that saves
+	// when the action says so; roll them with RollDamage) and gives the condition to a target that
+	// fails. An action with no roll spends the action and writes the line, nothing else. The action
+	// is spent, as a spell's is. The master alone: the stat block's numbers never reach a player,
+	// who reads the save they made and the damage they take (RN-20).
+	//
+	// On a map, an action with an area (a cone, a line, a sphere) is placed with `origin` or
+	// `direction` as CastSpell places a spell, and the server takes who is inside; without a map the
+	// master names the `target_ids`. An action with no area takes the `target_ids` it lists.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction. A player gets `permission_denied`.
+	//   - `invalid_argument`: no action key, a target repeated or too many, or an area chosen for an
+	//     action that has none (or none for one that needs it).
+	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, ACTION_USED, INCAPACITATED,
+	//     TARGET_DEFEATED, and CREATURE_ACTION_UNAVAILABLE (the combatant is no NPC, its stat block
+	//     has no such action, or the action is an attack roll or a Multiattack: those are made with
+	//     TakeAction).
+	UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -1829,6 +1855,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
 			connect.WithClientOptions(opts...),
 		),
+		useCreatureAction: connect.NewClient[v1.UseCreatureActionRequest, v1.UseCreatureActionResponse](
+			httpClient,
+			baseURL+CombatServiceUseCreatureActionProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("UseCreatureAction")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1888,6 +1920,7 @@ type combatServiceClient struct {
 	answerRageEnd            *connect.Client[v1.AnswerRageEndRequest, v1.AnswerRageEndResponse]
 	endRage                  *connect.Client[v1.EndRageRequest, v1.EndRageResponse]
 	useHitRider              *connect.Client[v1.UseHitRiderRequest, v1.UseHitRiderResponse]
+	useCreatureAction        *connect.Client[v1.UseCreatureActionRequest, v1.UseCreatureActionResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -2158,6 +2191,11 @@ func (c *combatServiceClient) EndRage(ctx context.Context, req *connect.Request[
 // UseHitRider calls meurpg.play.v1.CombatService.UseHitRider.
 func (c *combatServiceClient) UseHitRider(ctx context.Context, req *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
 	return c.useHitRider.CallUnary(ctx, req)
+}
+
+// UseCreatureAction calls meurpg.play.v1.CombatService.UseCreatureAction.
+func (c *combatServiceClient) UseCreatureAction(ctx context.Context, req *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error) {
+	return c.useCreatureAction.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -3446,6 +3484,29 @@ type CombatServiceHandler interface {
 	//     for Stunning Strike, there is no ki point left.
 	//   - `invalid_argument`: the choice is not one the offer has.
 	UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error)
+	// UseCreatureAction has the master use one action of an NPC's stat block that is no attack roll,
+	// from the NPC's turn (SRD 5.1, Monsters): a breath weapon or any other action that asks a saving
+	// throw ("Fire Breath", "Enslave", "Frightful Presence"), or an action with no roll at all (the
+	// table's reminder). The server rolls each target's saving throw against the action's DC, as a
+	// spell's save, opens the damage the save governs as pending damage (half for a target that saves
+	// when the action says so; roll them with RollDamage) and gives the condition to a target that
+	// fails. An action with no roll spends the action and writes the line, nothing else. The action
+	// is spent, as a spell's is. The master alone: the stat block's numbers never reach a player,
+	// who reads the save they made and the damage they take (RN-20).
+	//
+	// On a map, an action with an area (a cone, a line, a sphere) is placed with `origin` or
+	// `direction` as CastSpell places a spell, and the server takes who is inside; without a map the
+	// master names the `target_ids`. An action with no area takes the `target_ids` it lists.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: as TakeAction. A player gets `permission_denied`.
+	//   - `invalid_argument`: no action key, a target repeated or too many, or an area chosen for an
+	//     action that has none (or none for one that needs it).
+	//   - `failed_precondition` (EncounterBlocked): NOT_YOUR_TURN, ACTION_USED, INCAPACITATED,
+	//     TARGET_DEFEATED, and CREATURE_ACTION_UNAVAILABLE (the combatant is no NPC, its stat block
+	//     has no such action, or the action is an attack roll or a Multiattack: those are made with
+	//     TakeAction).
+	UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3784,6 +3845,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("UseHitRider")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceUseCreatureActionHandler := connect.NewUnaryHandler(
+		CombatServiceUseCreatureActionProcedure,
+		svc.UseCreatureAction,
+		connect.WithSchema(combatServiceMethods.ByName("UseCreatureAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -3894,6 +3961,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceEndRageHandler.ServeHTTP(w, r)
 		case CombatServiceUseHitRiderProcedure:
 			combatServiceUseHitRiderHandler.ServeHTTP(w, r)
+		case CombatServiceUseCreatureActionProcedure:
+			combatServiceUseCreatureActionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -4117,4 +4186,8 @@ func (UnimplementedCombatServiceHandler) EndRage(context.Context, *connect.Reque
 
 func (UnimplementedCombatServiceHandler) UseHitRider(context.Context, *connect.Request[v1.UseHitRiderRequest]) (*connect.Response[v1.UseHitRiderResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UseHitRider is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UseCreatureAction is not implemented"))
 }

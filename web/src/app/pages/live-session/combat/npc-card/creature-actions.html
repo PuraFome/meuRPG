@@ -1,0 +1,106 @@
+@if (actions().length) {
+<section class="acts" aria-labelledby="acts-title">
+  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
+
+  @if (needsTargets()) {
+    <div class="targets" role="group" aria-labelledby="acts-targets">
+      <p class="acts__sub" id="acts-targets">{{ theatre() ? 'Quem a ação atinge (você decide quem está ao alcance)' : 'Quem a ação atinge' }}</p>
+      <ul class="targets__list">
+        @for (c of candidates(); track c.id) {
+          <li class="targets__row">
+            <app-check-box [checked]="chosen().has(c.id)" [label]="'Alvo: ' + c.label" (toggle)="toggle(c.id)" />
+            <span aria-hidden="true">{{ c.label }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <ul class="acts__list">
+    @for (c of cards(); track c.action.key) {
+      <li class="act">
+        <p class="act__head">
+          <b class="act__name">{{ c.name }}</b>
+          @if (c.usage) {
+            <span class="act__usage">{{ c.usage }}</span>
+          }
+        </p>
+        @for (line of c.lines; track $index) {
+          <p class="act__line">{{ line }}</p>
+        }
+        @if (c.note) {
+          <p class="act__note">{{ c.note }}</p>
+        }
+        @if (c.text) {
+          <p class="act__text"><span class="act__tag">Texto do SRD, em inglês</span> <span lang="en">{{ c.text }}</span></p>
+        }
+        <button
+          mat-stroked-button
+          type="button"
+          class="offer"
+          [class.mr-button--off]="!!c.why"
+          [attr.aria-label]="'Usar ' + c.name"
+          [attr.aria-describedby]="c.why ? 'act-why-' + $index : null"
+          [disabled]="busy() || turnBusy() || !!c.why"
+          disabledInteractive
+          (click)="use(c.action)"
+        >
+          <mat-icon aria-hidden="true">bolt</mat-icon>Usar
+        </button>
+        @if (c.why) {
+          <p class="act__why" [id]="'act-why-' + $index">{{ c.why }}</p>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (shown(); as r) {
+    <div class="done" role="status" aria-live="polite" data-testid="creature-action-result">
+      <p class="done__head">{{ r.name }}</p>
+      @if (r.reminder) {
+        <p class="done__line">Lembrete registrado no registro do combate. A ação foi gasta.</p>
+      }
+      @if (r.lines.length) {
+        <ul class="done__list" [attr.aria-label]="'Alvos de ' + r.name">
+          @for (t of r.lines; track t.id) {
+            <li class="done__row">
+              <b>{{ t.label }}</b>
+              @if (t.word) {
+                <span class="pill" [class.pill--miss]="!t.saved">
+                  <mat-icon aria-hidden="true">{{ t.saved ? 'check' : 'close' }}</mat-icon>{{ t.word }}
+                </span>
+              }
+              @if (t.roll) {
+                <span class="done__roll">{{ t.roll }}</span>
+              }
+              @if (t.condition) {
+                <span class="done__cond">{{ t.condition }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+      @for (n of r.notes; track $index) {
+        <p class="done__note">{{ n }}</p>
+      }
+      @if (r.pendings.length) {
+        <app-pending-damages
+          [flat]="true"
+          (settledNote)="settledNote.emit()"
+          [pendings]="r.pendings"
+          [encounter]="encounter()"
+          [campaignId]="campaignId()"
+          [state]="state()"
+        />
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+</section>
+}

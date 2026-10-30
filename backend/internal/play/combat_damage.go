@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -475,6 +476,9 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 // trap, a hazard, an ongoing effect) is no attack, and those resistances do not cover it.
 func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (combat.Origin, error) {
 	switch {
+	case g.CastID != nil && strings.Contains(g.AttackKey, "#"): // a creature's action: magical only when the stat block says a spell attack
+		plan, ok, err := f.s.planOfAction(ctx, f.c, f.attacker, g.AttackKey)
+		return combat.Origin{Attack: true, Magical: err == nil && ok && plan.Attack != nil && plan.Attack.Spell}, err
 	case g.CastID != nil:
 		return combat.Origin{Attack: true, Magical: true}, nil
 	case g.AttackerID == nil || g.AttackKey == "":

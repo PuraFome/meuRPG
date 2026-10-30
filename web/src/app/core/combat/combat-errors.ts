@@ -215,6 +215,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     'Já respondido: a primeira resposta vale. A tela foi atualizada.',
   ],
   [
+    EncounterBlockedReason.CREATURE_ACTION_UNAVAILABLE,
+    'A criatura não tem essa ação, ou ela se faz com ataque: use o ataque da ficha.',
+  ],
+  [
     EncounterBlockedReason.REACTION_NEEDS_ROLL,
     'Falta o dado: role no app ou digite o resultado do dado.',
   ],

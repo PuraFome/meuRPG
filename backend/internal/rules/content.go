@@ -42,9 +42,12 @@ type content struct {
 	// attacksPerAction holds the creature corrections of effects/corrections.json:
 	// the Multiattack count the snapshot has wrong, by creature key.
 	attacksPerAction map[string]int
-	magicItems       map[string]*srd51.MagicItem
-	languages        map[string]*srd51.Language
-	named            map[string]*srd51.Named
+	// monsterPlans are the plans of the creatures' actions (monsterplan.go), by
+	// creature key.
+	monsterPlans map[string]*MonsterPlan
+	magicItems   map[string]*srd51.MagicItem
+	languages    map[string]*srd51.Language
+	named        map[string]*srd51.Named
 
 	// classLevels[class][n-1] is row n of the class table, and
 	// subclassLevels[subclass][n] the subclass row at class level n.
@@ -223,6 +226,9 @@ func load(fsys fs.FS) (*content, error) {
 	c.multiclassTable = c.findMulticlassTable()
 	c.buildCatalog(nil)
 	c.buildCreatures()
+	if err := c.buildPlans(); err != nil {
+		return nil, err
+	}
 	c.buildMagicItems()
 	if err := c.loadTreasure(fsys); err != nil {
 		return nil, err
@@ -1061,7 +1067,7 @@ var creatureCorrectionFields = []string{
 	"attacks_per_action", "armor_class", "hit_points", "hit_points_roll",
 	"speed_walk", "speed_fly", "speed_swim", "speed_climb", "speed_burrow",
 	"darkvision", "blindsight", "tremorsense", "truesight", "passive_perception",
-	"skills", "damage_immunities", "condition_immunities",
+	"skills", "damage_immunities", "condition_immunities", fieldActionSaveSuccess, // the last is handled before the field switch: it corrects an action
 }
 
 // correctionFields are the class table columns effects/corrections.json may

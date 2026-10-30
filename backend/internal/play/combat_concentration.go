@@ -46,6 +46,9 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 	if d.pending.Healing || !d.hit.Applied || isCreature(target) {
 		return nil
 	}
+	if err := s.offerCreatureRider(ctx, c, target, d); err != nil { // the rider of an NPC's attack that hit (combat_creature_rider.go)
+		return err
+	}
 	if err := s.hellishWindow(ctx, c, target, d); err != nil {
 		return err
 	}

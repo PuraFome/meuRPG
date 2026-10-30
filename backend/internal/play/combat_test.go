@@ -981,6 +981,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: campaign, EncounterId: enc, RiderId: "00000000-0000-4000-8000-000000000001", Choice: playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE, IdempotencyKey: newKey()}))
 			return err
 		},
+		"UseCreatureAction": func(u *user, ctx context.Context) error {
+			_, err := u.combat.UseCreatureAction(ctx, connect.NewRequest(&playv1.UseCreatureActionRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, ActionKey: "monster:hell-hound#fire-breath", IdempotencyKey: newKey()}))
+			return err
+		},
 		"StandUp(Pensantus)": func(u *user, ctx context.Context) error {
 			_, err := u.combat.StandUp(ctx, connect.NewRequest(&playv1.StandUpRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey()}))
 			return err
@@ -1001,7 +1005,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "GetStartRoster": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
 		"AddCombatants": true, "AddMonsters": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
-		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true, "EndSpellZone": true,
+		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true, "EndSpellZone": true, "UseCreatureAction": true,
 	}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {

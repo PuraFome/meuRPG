@@ -300,7 +300,7 @@ Columns: `source_id` (a Berserker's frenzy has its own combatant as source), `en
 `spent_at` is when a roll used up an effect whose clock still runs (such as the next attack roll its target makes); the row stays until its end, a spent effect changes no roll, and the master's undo of that roll sets it back to `NULL`.
 `combatant_states_effect_valid` requires the effect columns on an `effect`.
 
-`hit_riders` are the offers a monk's hit makes (RN-35): the attacker, the target, `kind` (`open_hand`, `stunning_strike`), the `round` of the hit, and `used` with `choice` once answered.
+`hit_riders` are the offers a hit makes: the monk's (RN-35) and the master's, for an NPC attack with a rider (RN-40). Columns: the attacker, the target, `kind` (`open_hand`, `stunning_strike`, `creature`; `hit_riders_kind_valid`), the `round` of the hit, and `used` with `choice` once answered. A `creature` offer also has `action_key`, the stat block action it comes from ("monster:ghoul#claws"), and `pending_id`, the damage whose landing opened it, so that undoing that damage takes the offer back and an attack offers once for each damage.
 
 ## `spell_zones`
 

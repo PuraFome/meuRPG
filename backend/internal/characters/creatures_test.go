@@ -67,6 +67,67 @@ func TestCreatureToProto(t *testing.T) {
 	}
 }
 
+// protoAction finds an action of a creature by its English name.
+func protoAction(t *testing.T, creature, name string) *rulesv1.CreatureAction {
+	t.Helper()
+	c, ok := loadRules(t).CreatureByKey(creature)
+	if !ok {
+		t.Fatalf("no creature %s", creature)
+	}
+	for _, a := range creatureToProto(c).GetActions() {
+		if a.GetName() == name {
+			return a
+		}
+	}
+	t.Fatalf("%s has no action %q", creature, name)
+	return nil
+}
+
+// TestCreatureActionPlanToProto: the plan of an action reaches the message: its
+// key, kind and class, the rider save with the damage it governs and the
+// condition of a failure, a grapple, and an area.
+func TestCreatureActionPlanToProto(t *testing.T) {
+	t.Parallel()
+	claws := protoAction(t, "monster:ghoul", "Claws")
+	s := claws.GetSave()
+	if claws.GetKey() != "monster:ghoul#claws" || claws.GetKind() != rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_ATTACK ||
+		claws.GetPlanClass() != rulesv1.CreatureActionClass_CREATURE_ACTION_CLASS_STRUCTURED || !claws.GetMelee() || claws.GetSpellAttack() || claws.GetReachFt() != 5 {
+		t.Errorf("claws = %v", claws)
+	}
+	if !s.GetOnHit() || s.GetConditionKey() != "condition:paralyzed" || s.GetConditionPt() == "" || s.GetDuration() != "1 minute" || !s.GetRepeatSave() || len(s.GetDamage()) != 0 {
+		t.Errorf("claws save = %v, want a paralyzing rider on a hit", s)
+	}
+
+	bite := protoAction(t, "monster:giant-spider", "Bite")
+	if got := bite.GetSave().GetDamage(); len(got) != 1 || got[0].GetDice() != "2d8" || got[0].GetDamageTypeKey() != "damage-type:poison" ||
+		bite.GetSave().GetOnSuccess() != rulesv1.SpellSaveSuccess_SPELL_SAVE_SUCCESS_HALF || len(bite.GetDamage()) != 1 || bite.GetDamage()[0].GetDice() != "1d8+3" {
+		t.Errorf("giant spider bite = %v, want 1d8+3 on the hit and 2d8 poison governed by the save, half on a success", bite)
+	}
+
+	grapple := protoAction(t, "monster:chuul", "Pincer").GetHitCondition()
+	if grapple.GetConditionKey() != "condition:grappled" || grapple.GetEscapeDc() != 14 || grapple.GetMaxSize() != "Large" || grapple.GetConditionPt() == "" {
+		t.Errorf("chuul pincer grapple = %v", grapple)
+	}
+
+	breath := protoAction(t, "monster:adult-blue-dragon", "Lightning Breath")
+	if breath.GetKind() != rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_SAVE || breath.GetArea().GetShape() != rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_LINE ||
+		breath.GetArea().GetSizeFt() != 90 || breath.GetArea().GetWidthFt() != 5 || breath.GetSave().GetOnHit() ||
+		len(breath.GetSave().GetDamage()) != 1 || breath.GetSave().GetDamage()[0].GetDice() != "12d10" {
+		t.Errorf("lightning breath = %v", breath)
+	}
+	if protoAction(t, "monster:adult-red-dragon", "Fire Breath").GetSave().GetOnSuccess() != rulesv1.SpellSaveSuccess_SPELL_SAVE_SUCCESS_HALF {
+		t.Error("the corrected breath weapons halve on a success")
+	}
+
+	shape := protoAction(t, "monster:ancient-brass-dragon", "Change Shape")
+	if shape.GetKind() != rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_OTHER || shape.GetPlanClass() != rulesv1.CreatureActionClass_CREATURE_ACTION_CLASS_TEXT || shape.GetSave() != nil {
+		t.Errorf("change shape = %v, want text only", shape)
+	}
+	if multi := protoAction(t, "monster:adult-red-dragon", "Multiattack"); multi.GetKind() != rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_MULTIATTACK {
+		t.Errorf("multiattack kind = %v", multi.GetKind())
+	}
+}
+
 // TestDerivedSheetSpeeds: a creature's other speeds and its saving-throw actions
 // reach the DerivedSheet.
 func TestDerivedSheetSpeeds(t *testing.T) {

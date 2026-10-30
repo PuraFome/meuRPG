@@ -229,6 +229,7 @@
             />
             <app-hit-rider-card
               [offers]="encounter()?.hitRiders ?? []"
+              [campaignId]="campaignId()"
               [combatants]="encounter()?.combatants ?? []"
               [busy]="busy()"
               (answer)="answerRider($event)"
@@ -659,6 +660,7 @@
     />
     <app-hit-rider-card
       [offers]="e.hitRiders"
+      [campaignId]="campaignId()"
       [combatants]="e.combatants"
       [busy]="busy()"
       (answer)="answerRider($event)"
@@ -683,6 +685,7 @@
         [offering]="offers.offering()"
         [offerWhy]="offers.why()"
         (castArea)="sheets.masterArea($event)"
+        (creatureArea)="sheets.creatureArea($event)"
         (offer)="offers.toggle()"
         (endRage)="rage.end($event)"
         (settledNote)="settled()"

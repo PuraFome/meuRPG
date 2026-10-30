@@ -213,6 +213,9 @@ type hitFacts struct {
 	usesLeft map[string]int32
 	// opportunity says an opportunity attack: a melee attack made from the square the mover left.
 	opportunity bool
+	// planned are the damage parts of a creature's attack after its first, from the stat block's plan
+	// (plannedParts): each rolls with its own type.
+	planned []partRecord
 }
 
 // scene is the rules' ExtraScene for the hit.
@@ -283,7 +286,7 @@ func (h hitFacts) buildParts() []partRecord {
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
 	maneuvers := append(h.maneuverParts(), h.extraDamageParts()...)
-	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 {
+	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
 		return nil
 	}
 	weapon := partRecord{
@@ -300,6 +303,7 @@ func (h hitFacts) buildParts() []partRecord {
 	for _, e := range autos {
 		out = append(out, h.fromExtra(e, partAuto))
 	}
+	out = append(out, h.planned...)
 	return append(out, maneuvers...)
 }
 
@@ -934,6 +938,13 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err
 	}
+	plan, planned, err := s.planOfAttack(ctx, c, attacker, attack.Key)
+	if err != nil {
+		return err
+	}
+	if planned {
+		h.planned = plannedParts(plan)
+	}
 	if sheet.Traits.DivineSmite && attacker.Kind == kindPlayer {
 		vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)
 		if err != nil {
@@ -1202,6 +1213,9 @@ func dtPT(key string) string { return damageTypePT[key] }
 // damage get the steps; a creature's or an NPC's are the master's alone (RN-20).
 func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.PendingDamage, cs []playdb.Combatant, v combatViewer) *playv1.PendingDamage {
 	out := pendingProto(p, cs)
+	if j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == conv.OrZero(p.AttackerID) }); j >= 0 {
+		out.AttackKey = shownKey(v, cs[j], p.AttackKey) // a stat block action's key names the creature's type (RN-20)
+	}
 	out.Parts = partsProto(p, ruleOfPending(p), dtPT)
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
 	if i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {

@@ -451,7 +451,7 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 		return nil, nil // the caster left the combat meanwhile
 	}
 	caster := cs[i]
-	sp, err := s.roster.CombatSpell(ctx, nil, res.session.CampaignID, caster.CharacterID, ev.Key, slotLevelOf(ev), "")
+	sp, err := s.areaSpellOf(ctx, res.session.CampaignID, caster, ev)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
@@ -486,6 +486,23 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 		return nil, nil //nolint:nilerr // the map changed since: the cast keeps its answer, only without a drawing
 	}
 	return &playv1.SpellArea{Origin: originProto(plan.origin), Squares: squaresProto(plan.squares)}, nil
+}
+
+// areaSpellOf is the spell whose area a cast event placed: the caster's spell, or the spell made from the
+// action of a stat block that a creature used (spellOfPlan).
+func (s *Service) areaSpellOf(ctx context.Context, campaignID string, caster playdb.Combatant, ev actionEvent) (link.Spell, error) {
+	if ev.CreatureAct == nil {
+		return s.roster.CombatSpell(ctx, nil, campaignID, caster.CharacterID, ev.Key, slotLevelOf(ev), "")
+	}
+	content, err := s.roster.RulesContent(ctx, nil, campaignID)
+	if err != nil {
+		return link.Spell{}, err
+	}
+	plan, ok := content.MonsterActionPlan(ev.Key)
+	if !ok {
+		return link.Spell{}, errCombatantNotFound()
+	}
+	return spellOfPlan(plan), nil
 }
 
 // slotLevelOf is the level a cast was made at, for reading the spell again: the
