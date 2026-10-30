@@ -34,6 +34,7 @@ esac
 
 passed=(); notrun=(); cut=(); failed=()
 left=${#chunks[@]}
+first=yes
 for chunk in "${chunks[@]}"; do
   label=$(jq -r .label <<<"$chunk")
   field=$(jq -r .field <<<"$chunk")
@@ -50,6 +51,15 @@ for chunk in "${chunks[@]}"; do
   limit=$(( remaining * 2 / (left > 0 ? left : 1) ))
   [ "$limit" -gt "$remaining" ] && limit=$remaining
   left=$(( left - 1 ))
+
+  # /auth/login lets one address 40 requests at once (20 sign-ins) and refills one every 3 s, and every chunk signs in
+  # again in its setup: RESET_STACK_CMD (the workflow restarts the api) gives each chunk after the first a fresh bucket.
+  if [ -n "${RESET_STACK_CMD:-}" ] && [ "$first" = no ]; then
+    echo "::group::reset the stack before ${label}"
+    bash -c "$RESET_STACK_CMD" || echo "::warning::the reset failed; the login rate limit may be spent"
+    echo "::endgroup::"
+  fi
+  first=no
 
   echo "::group::${label}"
   if [ "$kind" = playwright ]; then

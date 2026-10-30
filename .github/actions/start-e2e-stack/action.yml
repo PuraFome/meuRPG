@@ -9,6 +9,9 @@ inputs:
   artifact:
     description: The name of the artifact build-e2e-images uploaded.
     required: true
+  npm-cache:
+    description: Set to "npm" to restore and save the npm cache. Empty (the default) caches nothing, for the workflows that run refs that are not main's.
+    default: ""
 runs:
   using: composite
   steps:
@@ -16,7 +19,7 @@ runs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version-file: ${{ inputs.code-dir }}/.node-version
-        cache: "npm"
+        cache: ${{ inputs.npm-cache }}
         cache-dependency-path: ${{ inputs.code-dir }}/e2e/package-lock.json
 
     - name: Install the e2e dependencies (no install scripts)
