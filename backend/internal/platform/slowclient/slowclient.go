@@ -60,7 +60,10 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 // ReadBody gives the rest of the request body d to arrive. Call it before
 // reading the body, in a handler that is not a stream. Call the function it
 // returns only once the body has been read to its end, and never on a path that
-// returns with the body unread.
+// returns with the body unread. (A return before the call, such as a refusal for
+// a missing session or a rate limit, has no deadline yet: handlers that can
+// refuse a client before they read call ReadBody as late as their checks allow,
+// not earlier.)
 //
 // The deadline is what ends a client that goes on trickling after the handler
 // has answered: the server has no ReadTimeout, and when a handler returns with
