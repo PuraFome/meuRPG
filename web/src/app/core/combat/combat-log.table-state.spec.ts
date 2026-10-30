@@ -26,4 +26,14 @@ describe('the log of a state a table feature defines', () => {
     expect(stateText(entry, on)).toBe('Postura do Salgueiro de Toren começou');
     expect(stateText(entry, off)).toBe('Postura do Salgueiro de Toren acabou (ficou incapacitado)');
   });
+
+  it('says the master ended it, never the raw reason', () => {
+    const off = create(CombatLogStateChangeSchema, {
+      kind: CombatantStateKind.TABLE,
+      key: 'f#postura',
+      namePt: 'Postura do Salgueiro',
+      reason: 'master',
+    });
+    expect(stateText(entry, off)).toBe('Postura do Salgueiro de Toren acabou (o mestre encerrou)');
+  });
 });
