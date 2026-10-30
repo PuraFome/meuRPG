@@ -184,15 +184,16 @@ export async function showMapTool(page: Page, tool: MapTool): Promise<void> {
 
 /**
  * Opens every roll of the open scene on the master's "Cena" ("Ações e rolagens": each roll is a chip that opens its detail under the
- * action) and returns the opened rolls, each action's newest first.
+ * action) and returns the opened rolls, each action's newest first. `expectedRolls` is the exact number of rolls the scene has: they
+ * reach this page by the stream, so it waits for that many chips before it opens any.
  */
-export async function openRolls(page: Page, rolls: number): Promise<Locator> {
+export async function openRolls(page: Page, expectedRolls: number): Promise<Locator> {
   await showMasterTab(page, 'cena');
   const chips = page.locator('app-scene-actions .chip');
   // The rolls reach this page by the stream, after the RPCs that made them have returned: opening the chips found so far
   // would leave out the one still on its way, so wait for all of them first.
-  await expect(chips).toHaveCount(rolls);
-  for (let i = 0; i < rolls; i++) {
+  await expect(chips).toHaveCount(expectedRolls);
+  for (let i = 0; i < expectedRolls; i++) {
     const chip = chips.nth(i);
     if ((await chip.getAttribute('aria-expanded')) === 'false') {
       await chip.click();
