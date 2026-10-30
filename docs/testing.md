@@ -116,6 +116,28 @@ Every test that looks for something absent needs a positive control that shows t
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
+## Before ready
+
+A change often makes stale a test that nobody thought to run: a golden file, a hash, a frozen table, a stored event fixture, or a list that must name every service method, error reason or event kind.
+`make before-ready` runs every Go test of that kind, against the test database like `make test`, and takes about twenty minutes on four vCPUs against an on-disk database, most of it the scenario goldens of `internal/play` (each scenario builds its own database); the in-memory test database below is faster.
+Run it before you write `ready:` and before you open a pull request.
+
+```bash
+make db-test-start
+export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+make before-ready
+```
+
+Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.
+`BEFORE_READY_JOBS` sets how many packages run at once (4 by default); `BEFORE_READY_ONLY='internal/rules$'` runs only the packages whose directory matches, to rerun what failed.
+On a failure it prints the command that rewrites the failed test's file (`-update`, `UPDATE_GOLDEN=1` or the package's own flag), or says to edit the expected values by hand when there is no generator.
+Rewrite a file only when the change is intended, read the diff of every rewritten file before you commit it, and run a new golden test with `-count=5` once, because a Go map's order is random.
+
+The tests, grouped by package, and the command that regenerates each group are in `backend/internal/archtest/before_ready.txt`: one place, one tab-separated line for each group.
+A test that turns a second train round red is added to it.
+`TestBeforeReadyListIsWhole` keeps it whole: a test that reads a `.golden`, `.sha256` or `testdata` file, or calls `goldentest.Compare` or `goldentest.JSON`, and is on no line of its package fails it, and so does a line that matches no test.
+It follows plain function calls of the same package (a method call is not followed, so the tests of a package that compare through methods keep a naming convention in their line, for example `TestLasting(Core|RPC)` in `internal/play`).
+
 ## Web unit tests
 
 `make web-test` runs `cd web && npm test` (Vitest through the Angular `unit-test` builder).
