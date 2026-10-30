@@ -140,7 +140,8 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 		le := &loginError{status: http.StatusUnsupportedMediaType, reason: "not_a_form"}
 		return loginRequest{}, le, "send an application/x-www-form-urlencoded form"
 	}
-	slowclient.ReadBody(w, readTimeout) // a form is a few hundred bytes; no reason to wait on a trickle
+	doneReading := slowclient.ReadBody(w, readTimeout) // a form is a few hundred bytes; no reason to wait on a trickle
+	defer doneReading()
 	r.Body = http.MaxBytesReader(w, r.Body, maxLoginFormBytes)
 	if err := r.ParseForm(); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {

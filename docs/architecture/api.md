@@ -177,6 +177,8 @@ The limit sits on the operation that can hang (`platform/slowclient`):
 | The body of an image, thumbnail, fog tile or app file | 2 minutes to be written (`slowclient.WriteBody`, cleared when the handler ends). |
 | A part of a campaign import | 2 minutes (`partReadTimeout`). |
 
+The deadline of a body read (`slowclient.ReadBody`) is cleared as soon as the read is over (the function it returns): left on the connection, it would reach net/http's background read, which cancels the request's context, while the handler still decodes or stores what it read.
+
 `ReadHeaderTimeout` (10 s) and `IdleTimeout` (2 minutes) apply to every connection.
 A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and the app opens a new one.
 

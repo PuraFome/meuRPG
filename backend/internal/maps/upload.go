@@ -90,7 +90,8 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 
 	// A client that trickles the body must not hold the connection for the 35
 	// minutes Cloud Run allows: 10 MiB in 2 minutes is under 1 Mbit/s.
-	slowclient.ReadBody(w, uploadReadTimeout)
+	doneReading := slowclient.ReadBody(w, uploadReadTimeout)
+	defer doneReading()
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 	form, err := r.MultipartReader()
 	if err != nil {
@@ -120,12 +121,18 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 	// memory at a time, from the read to the end of the decode. The client's
 	// time to send the file starts when its turn does, and is shorter than
 	// the upload's whole: the slot is not held for a trickle.
+	// The upload's own deadline has done its work with the form's first field: it must not stay armed while the upload waits for
+	// its turn (the same background read would cancel the request).
+	doneReading()
 	release, err := s.acquireProcessing(ctx)
 	if err != nil {
 		return mapsdb.GalleryImage{}, err
 	}
-	slowclient.ReadBody(w, s.slotReadTimeout)
+	doneSlot := slowclient.ReadBody(w, s.slotReadTimeout)
 	name, data, err := readFile(form)
+	// The deadline is for the file's read alone: a small body is at its end by now, and a deadline that outlived the read
+	// would fire on net/http's background read and cancel the request while the file is decoded and stored.
+	doneSlot()
 	if err != nil {
 		release()
 		return mapsdb.GalleryImage{}, err
