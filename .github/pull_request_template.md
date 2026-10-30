@@ -4,6 +4,8 @@ Uma ou duas frases.
 ## História e regras
 MR-xxx · RN-xx
 
+Closes #
+
 ## Como testei
 - [ ] Testes automáticos novos ou atualizados
 - [ ] Testei na tela (com prints, se algo visível mudou)

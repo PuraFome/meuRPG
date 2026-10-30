@@ -43,12 +43,14 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 			}
 		}
 	}
-	// The effects are queued before the entry is judged: if it is refused, its effects'
-	// problems come with the rest (compileEffectsOf).
-	// A feat's own resources are the ones its effects (a granted spell, an action, a hook) may spend.
+	// A feat's own resources and states are the ones its effects (a granted spell, an action, a hook)
+	// may spend and read.
 	k := featureKind{owner: key}
 	b.know(key, k)
 	b.declareResources(k, tf.Effects)
+	b.declareStates(key, key, tf.Effects)
+	// The effects are queued before the entry is judged: if it is refused, its effects'
+	// problems come with the rest (compileEffectsOf).
 	if len(tf.Effects) > 0 {
 		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
 	}

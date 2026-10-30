@@ -129,6 +129,7 @@ function minimalDerivedSheet(): DerivedSheet {
     issues: [],
     resources: [],
     actions: [],
+    states: [],
     standardActions: [],
     nextLevelXp: 2700,
     speedFlyFt: 0,

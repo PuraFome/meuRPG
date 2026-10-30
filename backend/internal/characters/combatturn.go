@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -46,6 +47,7 @@ func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characte
 		ID, Kind       string
 		Sheet          []byte
 		WildShapeBeast *string
+		ActiveStates   []byte
 	}
 	var found []row
 	q := s.queriesIn(tx)
@@ -55,7 +57,7 @@ func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characte
 			return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
 		}
 		for _, r := range rows {
-			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast})
+			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast, ActiveStates: r.ActiveStates})
 		}
 	} else {
 		rows, err := q.ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
@@ -63,7 +65,7 @@ func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characte
 			return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", err)
 		}
 		for _, r := range rows {
-			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast})
+			found = append(found, row{ID: r.ID, Kind: r.Kind, Sheet: r.Sheet, WildShapeBeast: r.WildShapeBeast, ActiveStates: r.ActiveStates})
 		}
 	}
 	rows := found
@@ -81,13 +83,24 @@ func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characte
 	switch {
 	case sheet.GetFull() != nil:
 		// A druid in Wild Shape fights as the beast (MR-037).
-		d := derive(content, sheet.GetFull(), rows[0].WildShapeBeast)
+		d := derive(content, sheet.GetFull(), rows[0].WildShapeBeast, rows[0].ActiveStates)
 		d.ArmorUntrained = armorTrainingOf(d, rows[0].Kind, rows[0].WildShapeBeast)
+		if rows[0].Kind != kindPlayer {
+			d = withoutStates(d) // only a player's character keeps states: they live in its vitals
+		}
 		return rows[0].Kind, d, content, nil
 	case sheet.GetBasic() != nil:
 		return rows[0].Kind, basicDerived(content, sheet.GetBasic()), content, nil
 	}
 	return "", rules.Derived{}, nil, s.dbError(ctx, "read a character for a combat", fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id))
+}
+
+// withoutStates is the derived sheet of a character that cannot have temporary states: no
+// state and no card to start one.
+func withoutStates(d rules.Derived) rules.Derived {
+	d.States = nil
+	d.Actions = slices.DeleteFunc(slices.Clone(d.Actions), func(a rules.Action) bool { return a.State != "" })
+	return d
 }
 
 // basicDerived is the little of rules.Derived that a combat reads, for a
@@ -186,7 +199,7 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
 	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice, out.SavageAttacks = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice, d.SavageAttacks
 	for _, a := range d.Actions {
-		out.FeatureActions = append(out.FeatureActions, featureActionOf(a))
+		out.FeatureActions = append(out.FeatureActions, featureActionOf(d, a))
 	}
 	out.Hooks = hooksOf(content, d.Hooks)
 	out.FighterLevel, _ = lastClassLevel(d, "class:fighter")
@@ -202,15 +215,19 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 }
 
 // featureActionOf is the combat's view of an action a feature grants: its economy, its resource and cost, and
-// what it heals or gives.
-func featureActionOf(a rules.Action) link.FeatureAction {
+// what it heals or gives; the card of a state also says how many rounds the state lasts.
+func featureActionOf(d rules.Derived, a rules.Action) link.FeatureAction {
 	fa := link.FeatureAction{
 		Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
+		State: a.State, StateActive: a.StateActive,
 		Cost: a.Cost, CostMax: a.CostMax, TempHP: a.Result.TempHP, TempHPPerPoint: a.Result.TempHPPerPoint,
 		HealPerPoint: link.Dice{Count: a.Result.HealPerPoint.Count, Sides: a.Result.HealPerPoint.Sides, Bonus: a.Result.HealPerPoint.Bonus},
 	}
 	if h := a.Result.Heal; h != nil {
 		fa.Heal = &link.Dice{Count: h.Count, Sides: h.Sides, Bonus: h.Bonus}
+	}
+	if i := slices.IndexFunc(d.States, func(s rules.State) bool { return s.Key == a.State }); a.State != "" && i >= 0 {
+		fa.StateRounds = d.States[i].DurationRounds
 	}
 	return fa
 }

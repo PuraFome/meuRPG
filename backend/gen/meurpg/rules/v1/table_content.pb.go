@@ -782,7 +782,8 @@ func (*TableEntry_TableClassFeature) isTableEntry_Body() {}
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die", "resistance", "breathes_water", "granted_spell", "on_event" or "note"; "ability_increase" is a feat's alone.
+// "superiority_die", "extra_damage", "ambush", "resistance", "state", "weapon_rule", "pseudo_weapon",
+// "breathes_water", "granted_spell", "on_event" or "note"; "ability_increase" is a feat's alone.
 // "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
@@ -799,7 +800,8 @@ type TableEffect struct {
 	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
 	Mode   string `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
 	Value  string `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
-	// modifier: a Bool formula; the effect applies only while it is true.
+	// A Bool formula; the effect applies only while it is true. It may read a state of the
+	// same entry with active("name"), which is true while that state is on (see `state`).
 	When string `protobuf:"bytes,5,opt,name=when,proto3" json:"when,omitempty"`
 	// Makes an effect situational ("against:magic"): the engine shows it as a
 	// reminder and the master decides.
@@ -883,6 +885,12 @@ type TableEffect struct {
 	// `while` is empty (always) or "rage" (for as long as the character is raging). The
 	// effect has no `when` and no `tags`. An attack the sheet or the stat block does not
 	// mark as magical counts as nonmagical.
+	//
+	// `while` is the state gate, shared by the effects that hold only while a state is on:
+	// resistance, roll_mode, extra_damage, weapon_rule and pseudo_weapon. On resistance it
+	// is empty, "rage" or the `state_name` of a state of the same entry; on the others it is
+	// optional and names a state of the same entry (never "rage"): the effect applies only
+	// while that state is on. A name no state effect of the entry defines is refused.
 	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
 	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
 	// extra_damage: damage added to a weapon hit when `applies` holds. `value` is the
@@ -982,8 +990,45 @@ type TableEffect struct {
 	// against being this condition ("condition:frightened") get the roll mode of `roll`.
 	// It has no `tags`: the condition is the situation, and the app applies the mode.
 	AgainstCondition string `protobuf:"bytes,55,opt,name=against_condition,json=againstCondition,proto3" json:"against_condition,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// state: a temporary state the feature switches on and off (a stance for 1 minute, a
+	// form that lasts until a long rest). `state_name` names it within the entry, like a
+	// resource (1 to 40 characters of a-z, 0-9 and _; at most 8 states in an entry).
+	// `duration_rounds` is a formula for how many rounds it lasts (empty or 0: until it
+	// ends; at most 14400, 24 hours); `ends_on` lists the other ways it ends: "dismiss"
+	// (the player ends it), "incapacitated" (0 hit points or an incapacitating
+	// condition), "short_rest" (a short or long rest) and "long_rest". A state needs a
+	// duration or at least one `ends_on`. `resource` is a resource of the entry or its
+	// class that each start spends one use of, and `economy` ("action", "bonus_action" or
+	// "free") what starting it costs; ending it is free. The sheet shows an action with
+	// Ativar and Encerrar. The other effects of the entry hold only while it is on, by
+	// their `while` or by a `when` that calls active("state_name").
+	StateName      string   `protobuf:"bytes,56,opt,name=state_name,json=stateName,proto3" json:"state_name,omitempty"`
+	DurationRounds string   `protobuf:"bytes,57,opt,name=duration_rounds,json=durationRounds,proto3" json:"duration_rounds,omitempty"`
+	EndsOn         []string `protobuf:"bytes,58,rep,name=ends_on,json=endsOn,proto3" json:"ends_on,omitempty"`
+	// weapon_rule: changes the weapon lines `weapon` chooses: "any", "melee", "ranged",
+	// "finesse", "magic" (lines the sheet marks as magical) or "named" (the weapon whose
+	// Portuguese name is `weapon_name`, ignoring case and accents; required for "named",
+	// refused for the others). `attack_ability` and `damage_ability` offer another ability
+	// for the attack roll and for the damage ("str", "dex", "con", "int", "wis", "cha"): the
+	// best of the line's own and the offered ones applies. `attack_bonus` and `damage_bonus`
+	// add, from -5 to 10. `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
+	// for "ranged"). The rule must change something. pseudo_weapon: `weapon` is "melee" or
+	// "ranged" and these are the fields of the attack line the feature gives: `attack_name`
+	// (1 to 40 characters), `damage_dice` (plain dice, 1 to 10 of d4, d6, d8, d10 or d12),
+	// `damage_type` (a "damage-type:" key of the SRD), `ability` (the ability it attacks and
+	// hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
+	// a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
+	// proficient with, is never an item, and the weapon rules change it like any weapon.
+	WeaponName    string `protobuf:"bytes,59,opt,name=weapon_name,json=weaponName,proto3" json:"weapon_name,omitempty"`
+	AttackAbility string `protobuf:"bytes,60,opt,name=attack_ability,json=attackAbility,proto3" json:"attack_ability,omitempty"`
+	DamageAbility string `protobuf:"bytes,61,opt,name=damage_ability,json=damageAbility,proto3" json:"damage_ability,omitempty"`
+	AttackBonus   int32  `protobuf:"varint,62,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
+	DamageBonus   int32  `protobuf:"varint,63,opt,name=damage_bonus,json=damageBonus,proto3" json:"damage_bonus,omitempty"`
+	ReachFt       int32  `protobuf:"varint,64,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
+	AttackName    string `protobuf:"bytes,65,opt,name=attack_name,json=attackName,proto3" json:"attack_name,omitempty"`
+	DamageDice    string `protobuf:"bytes,66,opt,name=damage_dice,json=damageDice,proto3" json:"damage_dice,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1397,6 +1442,83 @@ func (x *TableEffect) GetConditions() []string {
 func (x *TableEffect) GetAgainstCondition() string {
 	if x != nil {
 		return x.AgainstCondition
+	}
+	return ""
+}
+
+func (x *TableEffect) GetStateName() string {
+	if x != nil {
+		return x.StateName
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDurationRounds() string {
+	if x != nil {
+		return x.DurationRounds
+	}
+	return ""
+}
+
+func (x *TableEffect) GetEndsOn() []string {
+	if x != nil {
+		return x.EndsOn
+	}
+	return nil
+}
+
+func (x *TableEffect) GetWeaponName() string {
+	if x != nil {
+		return x.WeaponName
+	}
+	return ""
+}
+
+func (x *TableEffect) GetAttackAbility() string {
+	if x != nil {
+		return x.AttackAbility
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDamageAbility() string {
+	if x != nil {
+		return x.DamageAbility
+	}
+	return ""
+}
+
+func (x *TableEffect) GetAttackBonus() int32 {
+	if x != nil {
+		return x.AttackBonus
+	}
+	return 0
+}
+
+func (x *TableEffect) GetDamageBonus() int32 {
+	if x != nil {
+		return x.DamageBonus
+	}
+	return 0
+}
+
+func (x *TableEffect) GetReachFt() int32 {
+	if x != nil {
+		return x.ReachFt
+	}
+	return 0
+}
+
+func (x *TableEffect) GetAttackName() string {
+	if x != nil {
+		return x.AttackName
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDamageDice() string {
+	if x != nil {
+		return x.DamageDice
 	}
 	return ""
 }
@@ -6062,7 +6184,8 @@ type EffectMenuField struct {
 	// "text", "number", "choice" (one value of `list`), "choices" (several), "cards" (one
 	// value of a short `list`, shown as radio cards with their hints), "tags",
 	// "resource_ref" (the name of a resource effect the entry defines; the editor lists
-	// the ones it has) or "yes_no" (a switch: true or false).
+	// the ones it has), "state_ref" (the name of a state effect the entry defines, or one
+	// of `list` when it has one: "rage" for a resistance) or "yes_no" (a switch: true or false).
 	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
 	// The EffectMenuList the value comes from, when it is a closed list; empty for a
 	// free value. For a `choice` effect's `from` the list depends on the kind chosen:
@@ -6228,8 +6351,10 @@ type EffectMenuList struct {
 	// "modifier_targets", "modifier_modes", "proficiency_targets",
 	// "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
 	// "economies", "choice_kinds", "skills", "languages", "tools", "tag_prefixes",
-	// "abilities" (the six abilities, for an ability_increase's `from`) or
-	// "ability_increase_amounts" (its `value`: "1" or "2").
+	// "abilities" (the six abilities, for an ability_increase's `from`),
+	// "ability_increase_amounts" (its `value`: "1" or "2"), "state_ends" (a state's
+	// `ends_on`), "state_economies" (its `economy`), "weapon_filters" (a weapon_rule's
+	// `weapon`) or "weapon_kinds" (a pseudo_weapon's).
 	Name          string             `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Values        []*EffectMenuValue `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -6450,7 +6575,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\x9f\f\n" +
+	"\x04body\"\x92\x0f\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6514,7 +6639,22 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\n" +
 	"conditions\x186 \x03(\tR\n" +
 	"conditions\x12+\n" +
-	"\x11against_condition\x187 \x01(\tR\x10againstCondition\"\xc3\x01\n" +
+	"\x11against_condition\x187 \x01(\tR\x10againstCondition\x12\x1d\n" +
+	"\n" +
+	"state_name\x188 \x01(\tR\tstateName\x12'\n" +
+	"\x0fduration_rounds\x189 \x01(\tR\x0edurationRounds\x12\x17\n" +
+	"\aends_on\x18: \x03(\tR\x06endsOn\x12\x1f\n" +
+	"\vweapon_name\x18; \x01(\tR\n" +
+	"weaponName\x12%\n" +
+	"\x0eattack_ability\x18< \x01(\tR\rattackAbility\x12%\n" +
+	"\x0edamage_ability\x18= \x01(\tR\rdamageAbility\x12!\n" +
+	"\fattack_bonus\x18> \x01(\x05R\vattackBonus\x12!\n" +
+	"\fdamage_bonus\x18? \x01(\x05R\vdamageBonus\x12\x19\n" +
+	"\breach_ft\x18@ \x01(\x05R\areachFt\x12\x1f\n" +
+	"\vattack_name\x18A \x01(\tR\n" +
+	"attackName\x12\x1f\n" +
+	"\vdamage_dice\x18B \x01(\tR\n" +
+	"damageDice\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

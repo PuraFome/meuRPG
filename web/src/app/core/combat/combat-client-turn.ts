@@ -236,6 +236,7 @@ export class CombatTurnCalls {
     frenzy = false,
     spend = 0,
     healTarget = '',
+    endState = false,
   ): Promise<ActionResult> {
     const res = await this.base.keyed(
       [
@@ -249,6 +250,7 @@ export class CombatTurnCalls {
         frenzy,
         spend,
         healTarget,
+        endState,
       ],
       (sent) =>
         this.base.client.takeAction({
@@ -261,6 +263,8 @@ export class CombatTurnCalls {
           useExtraAction,
           // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
           frenzy,
+          // The card of a table state: true ends the state that is on ("Encerrar"), false starts it ("Ativar").
+          endState,
           // A table feature that lets the player choose how many points to spend (0 takes the cost); the server checks the range.
           spend,
           // The ally a healing action goes to; empty is the actor.

@@ -295,7 +295,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -310,7 +310,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -325,7 +325,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -414,7 +414,7 @@ WHERE campaign_id = sqlc.arg(campaign_id)::UUID
 -- combatant starts with (initiative, speed).
 -- The beast of a druid in Wild Shape comes along (MR-037): the combatant starts
 -- with the beast's speed and size.
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
@@ -425,7 +425,7 @@ ORDER BY c.created_at, c.id;
 -- Those of the given characters that may fight in a combat of the campaign:
 -- its living characters, players' and NPCs, oldest first (package play).
 -- The beast of a druid in Wild Shape comes along, as in ListCombatParty.
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
@@ -438,7 +438,7 @@ ORDER BY c.created_at, c.id;
 -- of a combat that ran (a dead character's sheet names the attacks in the log,
 -- and its player's page reads the turn options). Nothing that starts a combat
 -- or lets a character act uses it.
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
@@ -644,6 +644,11 @@ ON CONFLICT (character_id) DO UPDATE SET beast = excluded.beast, hp = excluded.h
 -- The druid is itself again.
 DELETE FROM character_wild_shapes WHERE character_id = $1;
 
+-- name: SetActiveStates :exec
+-- The temporary states that are on for a character (a table feature's state effect): the whole
+-- list, as JSON. The caller also bumps the vitals' revision (TouchVitals).
+UPDATE characters SET active_states = sqlc.arg(states)::JSONB WHERE id = sqlc.arg(id);
+
 -- name: CarryHitPoints :exec
 -- The sheet's maximum hit points changed from old_max to new_max (a level-up,
 -- an edit): a character whose current hit points are set gains what the maximum
@@ -705,7 +710,7 @@ RETURNING revision, updated_at;
 -- a Wild Shape form, and the familiar the player looks through, if it is still with
 -- the character (MR-036, MR-037). A dead character is listed (is_dead): its
 -- player keeps seeing what the living party sees.
-SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
+SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states,
        cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
        (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c

@@ -38,8 +38,8 @@ const wildShapeAction = "feature:wild-shape"
 // beast's armor class, hit points, speeds, attacks and senses, and no spells. A
 // form that is no longer allowed or known (the content changed) is ignored, so the
 // character never loses its own numbers.
-func derive(content *rules.Content, full *charactersv1.FullSheet, beast *string) rules.Derived {
-	d := rules.Derive(buildOf(full), content)
+func derive(content *rules.Content, full *charactersv1.FullSheet, beast *string, active []byte) rules.Derived {
+	d := rules.Derive(buildWithStates(full, stateKeysOf(active)), content)
 	if beast == nil || *beast == "" {
 		return d
 	}
@@ -135,11 +135,11 @@ func (s *Service) shapedVitals(ctx context.Context, tx pgx.Tx, content *rules.Co
 	if err != nil {
 		return nil, link.Character{}, row, notFoundOrWrap(err, "read the vitals")
 	}
-	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 	if err != nil {
 		return nil, link.Character{}, row, err
 	}
-	body, err := combatCharacter(content, row.ID, kindPlayer, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+	body, err := combatCharacter(content, row.ID, kindPlayer, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 	if err != nil {
 		return nil, link.Character{}, row, err
 	}

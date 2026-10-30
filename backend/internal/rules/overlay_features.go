@@ -17,7 +17,8 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
+	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -62,6 +63,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 		b.writeTrait(f, k)
 	}
 	b.declareResources(k, effects)
+	b.declareStates(f.Key, k.owner, effects)
 	if len(effects) > 0 {
 		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: effects, path: path, strict: b.strict[k.owner]})
 	}
@@ -230,6 +232,7 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 		n.namesEN[o.Key], n.namesPT[o.Key] = o.NamePT, o.NamePT
 		n.features[o.Key] = &srd51.Feature{Key: o.Key, Name: o.NamePT, Class: k.class, Subclass: k.subclass, Level: k.level, Desc: slices.Clone(o.DescPT), Parent: f.Key}
 		b.declareResources(k, o.Effects)
+		b.declareStates(o.Key, k.owner, o.Effects)
 		if len(o.Effects) > 0 {
 			b.pending = append(b.pending, pendingEffects{owner: o.Key, entry: k.owner, effects: o.Effects, path: at, strict: b.strict[k.owner]})
 		}
@@ -262,23 +265,12 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 			return err
 		}
 	}
-	switch e.Type {
-	case "choice":
-		return b.checkChoiceEffect(site, e)
-	case "ability_increase", "proficiency":
-		return checkOwnFields(site, e)
-	case "grant_action":
-		return b.checkGrantAction(site, e)
-	case "on_event":
-		return b.checkOnEvent(site, e)
-	case "superiority_die":
-		return b.checkSuperiorityDie(site, e)
-	case "extra_damage", "ambush", "spell_modifier":
-		return b.checkOnTarget(site, e)
-	case "resource":
-		return b.checkResourceEffect(site, e)
-	case "granted_spell":
-		return b.checkGrantedSpell(site, e)
+	entry := b.featureEntry[owner]
+	if err := b.checkStateReads(site, entry, e); err != nil {
+		return err
+	}
+	if check, ok := effectTypeChecks[e.Type]; ok {
+		return check(b, site, e)
 	}
 	return nil
 }
@@ -294,6 +286,27 @@ func (b *overlayBuilder) checkGrantedSpell(site effectSite, e *Effect) error {
 		return site.fail(".uses", ReasonReference, "the grant spends %q, which no resource effect of this entry or its class defines", e.Uses)
 	}
 	return nil
+}
+
+// effectTypeChecks are what the table's menu checks of each effect type at its fields, once
+// the checks every effect goes through are done.
+var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Effect) error{
+	"state": func(b *overlayBuilder, site effectSite, e *Effect) error {
+		return b.checkState(site, b.featureEntry[site.owner], e)
+	},
+	"weapon_rule":      (*overlayBuilder).checkWeaponEffects,
+	"pseudo_weapon":    (*overlayBuilder).checkWeaponEffects,
+	"choice":           (*overlayBuilder).checkChoiceEffect,
+	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
+	"proficiency":      func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
+	"grant_action":     (*overlayBuilder).checkGrantAction,
+	"on_event":         (*overlayBuilder).checkOnEvent,
+	"granted_spell":    (*overlayBuilder).checkGrantedSpell,
+	"superiority_die":  (*overlayBuilder).checkSuperiorityDie,
+	"extra_damage":     (*overlayBuilder).checkOnTarget,
+	"spell_modifier":   (*overlayBuilder).checkOnTarget,
+	"ambush":           (*overlayBuilder).checkOnTarget,
+	"resource":         (*overlayBuilder).checkResourceEffect,
 }
 
 // checkOwnFields checks the fields of an ability_increase or a proficiency
@@ -503,7 +516,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
-	"roll_mode":    {"roll", "targets", "against_condition"},
+	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
 	"choice":       {"choice", "count", "from"},
@@ -518,7 +531,7 @@ var ownFields = map[string][]string{
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
-	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling"},
+	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling", "while"},
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush": {"applies"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
@@ -529,6 +542,11 @@ var ownFields = map[string][]string{
 	"condition_immunity": {"conditions"},
 	// A spell_modifier: which spells, what it changes, and the change's own fields.
 	"spell_modifier": {"applies_to", "spell_change", "from", "value", "damage_type", "count", "resource", "cost"},
+	// A state: its name in the entry, how long it lasts and how it ends, what starting it spends and costs.
+	"state": {"state_name", "duration_rounds", "ends_on", "resource", "economy"},
+	// A weapon rule changes the weapons its filter chooses; a pseudo-weapon is an attack line of its own.
+	"weapon_rule":   {"weapon", "weapon_name", "attack_ability", "damage_ability", "attack_bonus", "damage_bonus", "reach_ft", "while"},
+	"pseudo_weapon": {"attack_name", "weapon", "damage_dice", "damage_type", "ability", "reach_ft", "range_ft", "while"},
 	// breathes_water has no field of its own: only the when that gates it.
 	"breathes_water": {},
 	// A granted_spell names the spell, from which level, what it spends, and the switches.
@@ -606,6 +624,17 @@ var effectFields = []effectField{
 	{"counts_as_known", func(e *Effect) bool { return e.CountsAsKnown }, func(e *Effect) { e.CountsAsKnown = false }},
 	{"no_fly", func(e *Effect) bool { return e.NoFly }, func(e *Effect) { e.NoFly = false }},
 	{"no_swim", func(e *Effect) bool { return e.NoSwim }, func(e *Effect) { e.NoSwim = false }},
+	{"state_name", func(e *Effect) bool { return e.StateName != "" }, func(e *Effect) { e.StateName = "" }},
+	{"duration_rounds", func(e *Effect) bool { return e.DurationRounds != "" }, func(e *Effect) { e.DurationRounds = "" }},
+	{"ends_on", func(e *Effect) bool { return len(e.EndsOn) > 0 }, func(e *Effect) { e.EndsOn = nil }},
+	{"weapon_name", func(e *Effect) bool { return e.WeaponName != "" }, func(e *Effect) { e.WeaponName = "" }},
+	{"attack_ability", func(e *Effect) bool { return e.AttackAbility != "" }, func(e *Effect) { e.AttackAbility = "" }},
+	{"damage_ability", func(e *Effect) bool { return e.DamageAbility != "" }, func(e *Effect) { e.DamageAbility = "" }},
+	{"attack_bonus", func(e *Effect) bool { return e.AttackBonus != 0 }, func(e *Effect) { e.AttackBonus = 0 }},
+	{"damage_bonus", func(e *Effect) bool { return e.DamageBonus != 0 }, func(e *Effect) { e.DamageBonus = 0 }},
+	{"reach_ft", func(e *Effect) bool { return e.ReachFt != 0 }, func(e *Effect) { e.ReachFt = 0 }},
+	{"attack_name", func(e *Effect) bool { return e.AttackName != "" }, func(e *Effect) { e.AttackName = "" }},
+	{"damage_dice", func(e *Effect) bool { return e.DamageDice != "" }, func(e *Effect) { e.DamageDice = "" }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.
@@ -776,6 +805,7 @@ func formulaAttr(e *Effect, has func(words ...string) bool) string {
 		{"when", e.When},
 		{"value", e.Value},
 		{"max", e.Max},
+		{"duration_rounds", e.DurationRounds},
 		{"from_level", e.FromLevel},
 		{"cost", e.Cost},
 		{"cost_max", e.CostMax},
@@ -856,6 +886,7 @@ func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out [
 			failed = true
 			continue
 		}
+		b.bindGate(b.featureEntry[p.owner], &e)
 		if err := b.n.compileEffect(p.owner, &e); err != nil {
 			attr, reason := effectError(&e, err.Error())
 			c.add(ovErr(p.owner, "%v", err).at(at+attr, reason))

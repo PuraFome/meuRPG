@@ -97,6 +97,13 @@ type VitalsKeeper interface {
 	// SetArmorBase puts the base armor class an effect that lasts gives the character (Mage
 	// Armor), 0 for none, inside tx and returns the vitals before and after.
 	SetArmorBase(ctx context.Context, tx pgx.Tx, campaignID, characterID string, armorClass int32) (before, after *playv1.CharacterVitals, err error)
+	// SetActiveStates puts the temporary states that are on for the character (a table
+	// feature's state effect) at states, a key and the rounds left of each, inside tx, and
+	// returns the vitals before and after. A key the sheet does not define is
+	// `invalid_argument`. The vitals' revision moves only when the list does. `not_found`
+	// for anything but a living, active player character of the campaign. The caller decides
+	// when a state starts and ends, spends what it costs and writes the history.
+	SetActiveStates(ctx context.Context, tx pgx.Tx, campaignID, characterID string, states []*playv1.ActiveState) (before, after *playv1.CharacterVitals, err error)
 
 	// SetHitPointsMaxBonus puts Aid's bonus to the character's maximum hit points
 	// at bonus inside tx (0 ends it) and returns the vitals before and after: the

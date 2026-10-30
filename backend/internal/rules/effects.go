@@ -126,9 +126,13 @@ type Effect struct {
 	// Except (a "damage-type:" key), or the DamageTypes ("damage-type:" keys, or one of
 	// the words DamageTypeAll and DamageTypeNonmagicalBPS). Except and DamageTypes
 	// exclude each other and one of them is required. While is ResistanceAlways ("") or
-	// ResistanceWhileRage ("rage"). It takes no When, because While is its condition.
+	// ResistanceWhileRage ("rage"), or the name of a state of the entry. It takes no When, because While is its condition.
 	// Content.Resistances lists it, so play applies it with the other resistances (the
 	// same type from two sources counts once).
+	//
+	// While is the state gate (gate.go): the other types in gatedEffectTypes
+	// (roll_mode, extra_damage, weapon_rule, pseudo_weapon) read it too, and hold
+	// only while the named state of their entry is on.
 	Except      string   `json:"except,omitempty"`
 	While       string   `json:"while,omitempty"`
 	DamageTypes []string `json:"damage_types,omitempty"`
@@ -158,6 +162,32 @@ type Effect struct {
 	// fixed damage), DamageType and Count are the change's own.
 	AppliesTo   string `json:"applies_to,omitempty"`
 	SpellChange string `json:"spell_change,omitempty"`
+
+	// state (state.go): a temporary state a feature switches on for a while (a stance, a
+	// form). StateName names it within the entry (a-z, 0-9 and _, like a resource);
+	// DurationRounds is an Int formula for how many rounds it lasts (empty or 0: until
+	// it ends); EndsOn lists the ways it ends besides its duration (StateEnds*);
+	// Resource, the one it spends on start, and Economy, what starting it costs,
+	// are the fields grant_action has.
+	StateName      string   `json:"state_name,omitempty"`
+	DurationRounds string   `json:"duration_rounds,omitempty"`
+	EndsOn         []string `json:"ends_on,omitempty"`
+
+	// weapon_rule and pseudo_weapon (weaponrule.go). weapon_rule changes the weapon
+	// lines Weapon chooses (Weapon* filters; WeaponName for WeaponNamed): AttackAbility
+	// and DamageAbility offer another ability (the best of the options applies),
+	// AttackBonus and DamageBonus add, ReachFt widens a melee reach. pseudo_weapon gives
+	// an attack line of its own: AttackName, Weapon (WeaponMelee or WeaponRanged),
+	// DamageDice (plain dice, "1d6"), DamageType (a "damage-type:" key), Ability, ReachFt
+	// for a melee one and RangeFt (above) for a ranged one.
+	WeaponName    string `json:"weapon_name,omitempty"`
+	AttackAbility string `json:"attack_ability,omitempty"`
+	DamageAbility string `json:"damage_ability,omitempty"`
+	AttackBonus   int    `json:"attack_bonus,omitempty"`
+	DamageBonus   int    `json:"damage_bonus,omitempty"`
+	ReachFt       int    `json:"reach_ft,omitempty"`
+	AttackName    string `json:"attack_name,omitempty"`
+	DamageDice    string `json:"damage_dice,omitempty"`
 
 	// proficiency, level "expertise" on a skill: OnlyProficient doubles the skill
 	// only where the character has its proficiency from another source when the
@@ -235,7 +265,14 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf, dice, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
+
+	// What the overlay resolves for the state gate (gate.go), on the copy of the effect
+	// that is compiled: entry is the table entry the effect belongs to; stateKey is,
+	// for a state, its key on the sheet; gateKey is the key of the state While names;
+	// whenStates maps the names the `when` formula reads with active() to those keys.
+	entry, stateKey, gateKey string
+	whenStates               map[string]string
 }
 
 // The closed sets of the effect schema.
@@ -243,7 +280,8 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
+		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -311,6 +349,8 @@ func (x effectCompiler) compile(src string, kind formula.Kind) (*formula.Program
 // of it (compiled formulas included).
 func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 	other := *x.e
+	// What the overlay resolves for the state gate (gate.go) is not a field the author set.
+	other.entry, other.stateKey, other.gateKey, other.whenStates = "", "", "", nil
 	strip(&other)
 	return reflect.DeepEqual(other, Effect{})
 }
@@ -321,6 +361,9 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ranged_attack":      effectCompiler.rangedAttack,
 	"resistance":         effectCompiler.resistance,
 	"condition_immunity": effectCompiler.conditionImmunity,
+	"state":              effectCompiler.state,
+	"weapon_rule":        effectCompiler.weaponRule,
+	"pseudo_weapon":      effectCompiler.pseudoWeapon,
 	"breathes_water":     effectCompiler.breathesWater,
 	"granted_spell":      effectCompiler.grantedSpell,
 	"replaces":           effectCompiler.replaces,
@@ -354,7 +397,7 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		return x.fail("unknown effect type")
 	}
 	var err error
-	if e.when, err = x.compile(e.When, formula.Bool); err != nil {
+	if e.when, err = x.compileWhen(e.When); err != nil {
 		return err
 	}
 	for _, tag := range e.Tags {
@@ -381,6 +424,19 @@ func (c *content) compileEffect(key string, e *Effect) error {
 	return nil
 }
 
+// compileWhen compiles the condition of an effect: the one formula that may read a
+// state with active().
+func (x effectCompiler) compileWhen(src string) (*formula.Program, error) {
+	if src == "" {
+		return nil, nil
+	}
+	p, err := x.c.compileGated(src)
+	if err != nil {
+		return nil, x.fail("formula %q: %v", src, err)
+	}
+	return p, nil
+}
+
 // strayFields refuses the fields of one type on an effect of another.
 func (x effectCompiler) strayFields() error {
 	e := x.e
@@ -394,6 +450,9 @@ func (x effectCompiler) strayFields() error {
 		return x.fail("replaces belongs to the replaces effect")
 	}
 	if err := x.strayOwnFields(); err != nil {
+		return err
+	}
+	if err := x.strayStateAndWeapon(); err != nil {
 		return err
 	}
 	if err := x.strayExtraDamage(); err != nil {
@@ -424,8 +483,14 @@ func (x effectCompiler) straySpellAndRangeFields() error {
 // strayExtraDamage refuses the fields of extra_damage and spell_modifier on an effect of another type.
 func (x effectCompiler) strayExtraDamage() error {
 	e := x.e
-	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || (e.DamageType != "" && e.Type != "spell_modifier") || e.Weapon != "" || e.Frequency != "" || e.NoCritDoubling) {
-		return x.fail("dice, dice_sides, damage_type, weapon, frequency and no_crit_doubling belong to extra_damage")
+	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || e.Frequency != "" || e.NoCritDoubling) {
+		return x.fail("dice, dice_sides, frequency and no_crit_doubling belong to extra_damage")
+	}
+	if !slices.Contains(damageTypeEffects, e.Type) && e.DamageType != "" {
+		return x.fail("damage_type belongs to extra_damage, spell_modifier and pseudo_weapon")
+	}
+	if !slices.Contains(weaponEffects, e.Type) && e.Weapon != "" {
+		return x.fail("weapon belongs to extra_damage, weapon_rule and pseudo_weapon")
 	}
 	if e.Type != "spell_modifier" && (e.AppliesTo != "" || e.SpellChange != "") {
 		return x.fail("applies_to and spell_change belong to spell_modifier")
@@ -445,11 +510,15 @@ func (x effectCompiler) strayConditions() error {
 	return nil
 }
 
-// strayOwnFields refuses the fields of resistance on an effect of another type, and
-// only_proficient on one that is not a proficiency.
+// strayOwnFields refuses the fields of resistance on an effect of another type (while
+// is also read by the effects of gatedEffectTypes), and only_proficient on one that is
+// not a proficiency.
 func (x effectCompiler) strayOwnFields() error {
-	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "" || len(x.e.DamageTypes) > 0 || x.e.Kind != "") {
-		return x.fail("except, while, damage_types and kind belong to resistance")
+	if x.e.Type != "resistance" && (x.e.Except != "" || len(x.e.DamageTypes) > 0 || x.e.Kind != "") {
+		return x.fail("except, damage_types and kind belong to resistance")
+	}
+	if x.e.While != "" && !slices.Contains(gatedEffectTypes, x.e.Type) {
+		return x.fail("while belongs to the effects that hold only while a state is on")
 	}
 	if x.e.Type != "proficiency" && x.e.OnlyProficient {
 		return x.fail("only_proficient belongs to proficiency")
@@ -477,8 +546,8 @@ func (x effectCompiler) resistance() error {
 	if !slices.Contains(ResistanceKinds, e.Kind) {
 		return x.fail("kind %q is not resist, immune or vulnerable", e.Kind)
 	}
-	if e.While != ResistanceAlways && e.While != ResistanceWhileRage {
-		return x.fail("while must be empty or %q", ResistanceWhileRage)
+	if e.While != ResistanceAlways && e.While != ResistanceWhileRage && !formula.ValidStateName(e.While) {
+		return x.fail("while must be empty, %q or the name of a state", ResistanceWhileRage)
 	}
 	if e.When != "" {
 		return x.fail("a resistance has no when: while is its condition")
@@ -823,8 +892,9 @@ func (x effectCompiler) note() error {
 
 // programKey identifies a compiled formula: its text and its kind.
 type programKey struct {
-	src  string
-	kind formula.Kind
+	src   string
+	kind  formula.Kind
+	gated bool
 }
 
 // compileFormula compiles one formula. While a table layer is being added
@@ -832,14 +902,26 @@ type programKey struct {
 // the same few formulas ("prof()", "1") in many features, so each is compiled
 // once. The memo is dropped when With is done; the SRD load does not use it.
 func (c *content) compileFormula(src string, kind formula.Kind) (*formula.Program, error) {
+	return c.compileWith(c.compiler, src, kind, false)
+}
+
+// compileGated compiles the condition of an effect, which may read a state with
+// active() (see formula.Compiler.WithStates).
+func (c *content) compileGated(src string) (*formula.Program, error) {
+	return c.compileWith(c.compiler.WithStates(), src, formula.Bool, true)
+}
+
+// compileWith is compileFormula with the compiler chosen; gated tells the memo
+// which of the two programs a text means.
+func (c *content) compileWith(compiler *formula.Compiler, src string, kind formula.Kind, gated bool) (*formula.Program, error) {
 	if c.programs == nil {
-		return c.compiler.Compile(src, kind)
+		return compiler.Compile(src, kind)
 	}
-	key := programKey{src, kind}
+	key := programKey{src, kind, gated}
 	if p, ok := c.programs[key]; ok {
 		return p, nil
 	}
-	p, err := c.compiler.Compile(src, kind)
+	p, err := compiler.Compile(src, kind)
 	if err == nil {
 		c.programs[key] = p
 	}
@@ -897,3 +979,10 @@ func (c *content) validRollTarget(t string) bool {
 	}
 	return c.validModifierTarget(t) && (strings.HasPrefix(t, "skill.") || strings.HasPrefix(t, "save."))
 }
+
+// The effect types that read the fields they share: weapon (extra_damage's filter, the
+// weapon lines a weapon_rule chooses, the kind of a pseudo_weapon) and damage_type.
+var (
+	weaponEffects     = []string{"extra_damage", "weapon_rule", "pseudo_weapon"}
+	damageTypeEffects = []string{"extra_damage", "spell_modifier", "pseudo_weapon"}
+)

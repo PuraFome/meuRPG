@@ -107,6 +107,7 @@ func (c chainEvent) payload() (ev actionEvent, ok bool) {
 var chainRules = []func(c chainEvent) chainVerdict{
 	chainCreatures,
 	chainConcentrationEnd,
+	chainStateEndedByVitals,
 	chainOffer,
 	chainMoveCompanions,
 	chainPuzzle,
@@ -135,6 +136,20 @@ func chainVerdictOf(c chainEvent) chainVerdict {
 // close the undo chain.
 func chainCreatures(c chainEvent) chainVerdict {
 	if c.row.Kind == eventCreatureSummoned || c.row.Kind == eventCreatureDismissed {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
+// chainStateEndedByVitals: a table state that ended at 0 hit points or by the master's
+// correction is written before the change's own event. The line stays in the log (the
+// state is off, and an undo of the hit points does not turn it on), and it never closes the
+// undo chain.
+func chainStateEndedByVitals(c chainEvent) chainVerdict {
+	if c.row.Kind != eventStateChanged {
+		return chainGoOn
+	}
+	if ev, ok := c.payload(); ok && ev.StateKind == stateTable && !ev.StateStarted && (ev.StateReason == stateEndIncapacitated || ev.StateReason == stateEndMaster) {
 		return chainSkip
 	}
 	return chainGoOn

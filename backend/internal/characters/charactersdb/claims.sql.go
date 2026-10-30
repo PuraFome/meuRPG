@@ -14,7 +14,7 @@ const claimReservedCharacter = `-- name: ClaimReservedCharacter :one
 UPDATE characters
 SET reserved = false, player_user_id = $1::UUID, claimed_at = $2::TIMESTAMPTZ
 WHERE campaign_id = $3::UUID AND id = $4::UUID AND reserved
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type ClaimReservedCharacterParams struct {
@@ -61,6 +61,7 @@ func (q *Queries) ClaimReservedCharacter(ctx context.Context, arg ClaimReservedC
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -328,7 +329,7 @@ UPDATE characters
 SET reserved = true, player_user_id = NULL, claimed_at = NULL
 WHERE campaign_id = $1::UUID AND id = $2::UUID
   AND kind = 'player' AND NOT reserved AND claimed_at IS NOT NULL AND status = 'active'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type ReturnCharacterToReserveParams struct {
@@ -368,6 +369,7 @@ func (q *Queries) ReturnCharacterToReserve(ctx context.Context, arg ReturnCharac
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }

@@ -1371,6 +1371,31 @@ message CharacterVitals {
   // the WIZARD level, rounded up; SRD 5.1, Wizard). 0: the character has no wizard
   // level. Whether the use is left is the `arcane_recovery` resource.
   int32 arcane_recovery_allowance = 102;
+  // The temporary states that are on for the character (a table feature's `state`
+  // effect: a stance, a form), with the rounds left of each. Only the master and the
+  // character's player read them, like the rest of the vitals. A combat starts and ends
+  // them with TakeAction (the same card as a granted action); a round of the owner's
+  // turn counts down `rounds_left`; a rest, an incapacity and the end of a combat end
+  // the ones that say so; the master's correction ends one by hand.
+  repeated ActiveState active_states = 103;
+}
+
+// ActiveState is a temporary state that is on for a character. The numbers about the
+// state itself (its name, duration and ways to end) come from the sheet's content at the
+// time of the read, so a state the content no longer defines is not listed.
+message ActiveState {
+  // The state's key, as in meurpg.rules.v1.DerivedState.key.
+  string key = 1;
+  // The Portuguese name of the feature that defines it.
+  string name_pt = 2;
+  // The effect's text for the sheet, in Portuguese; may be empty.
+  string text_pt = 3;
+  // How many rounds it lasts in all, and how many are left; both 0 for a state that lasts
+  // until it ends.
+  int32 duration_rounds = 4;
+  int32 rounds_left = 5;
+  // How it ends besides its duration: "dismiss", "incapacitated", "short_rest", "long_rest".
+  repeated string ends_on = 6;
 }
 
 // WildShapeState is a druid's Wild Shape form (MR-037). Like the character's
@@ -1936,6 +1961,9 @@ message AdjustCharacterVitalsRequest {
   // dice of that size the character has); the other sizes stay as they are.
   // `invalid_argument` for a size the character does not have.
   map<int32, int32> hit_dice_used_by_die = 30;
+  // The keys of states to end (CharacterVitals.active_states[].key), whatever the way
+  // each says it ends. `invalid_argument` for a state the character does not have on.
+  repeated string end_states = 11;
 }
 
 // ResourceUsed sets how many uses of one resource are spent.

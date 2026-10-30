@@ -87,6 +87,17 @@ export function emptyEffect(type = ''): EffectDraft {
     kind: '',
     conditions: [],
     againstCondition: '',
+    stateName: '',
+    durationRounds: '',
+    endsOn: [],
+    weaponName: '',
+    attackAbility: '',
+    damageAbility: '',
+    attackBonus: 0,
+    damageBonus: 0,
+    reachM: '',
+    attackName: '',
+    damageDice: '',
   };
 }
 
@@ -149,6 +160,17 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     kind: e.kind,
     conditions: [...e.conditions],
     againstCondition: e.againstCondition,
+    stateName: e.stateName,
+    durationRounds: e.durationRounds,
+    endsOn: [...e.endsOn],
+    weaponName: e.weaponName,
+    attackAbility: e.attackAbility,
+    damageAbility: e.damageAbility,
+    attackBonus: e.attackBonus,
+    damageBonus: e.damageBonus,
+    reachM: rangeMeters(e.reachFt),
+    attackName: e.attackName,
+    damageDice: e.damageDice,
   };
 }
 
@@ -299,9 +321,14 @@ const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
   spell_change: (d) => d.spellChange === '',
 };
 
-/** Whether a required closed-list field is still empty. */
+/** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty: the table's own, else the draft's string of that name. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return CHOICE_EMPTY[name]?.(d) ?? false;
+  const own = CHOICE_EMPTY[name];
+  if (own) {
+    return own(d);
+  }
+  const v = d[name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft];
+  return typeof v === 'string' && v.trim() === '';
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */

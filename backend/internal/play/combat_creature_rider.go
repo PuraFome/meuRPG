@@ -119,7 +119,7 @@ func (s *Service) savingRider(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := s.spellSave(ctx, c, m, sp, attacker, target, coverView{}, &hit, modes); err != nil {
 		return err
 	}
-	re.Duration, re.RepeatSave = sv.Duration, sv.RepeatSave
+	re.Duration, re.RepeatSave, re.Pending, re.More = sv.Duration, sv.RepeatSave, hit.Pending, hit.More
 	if hit.Save == nil {
 		return nil
 	}

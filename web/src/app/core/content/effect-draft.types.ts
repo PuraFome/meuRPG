@@ -76,6 +76,21 @@ export interface EffectDraft {
   /** spell_modifier: the spells it fits and its change. */
   appliesTo: string;
   spellChange: string;
+  /** state: its name in the entry, the formula of its duration in rounds (empty: until it ends), and how else it ends. */
+  stateName: string;
+  durationRounds: string;
+  endsOn: string[];
+  /** weapon_rule: which weapons (and the name of "named"), another ability for the attack and for the damage, bonuses (signed),
+   * and a melee reach in metres as typed. pseudo_weapon: its kind in `weapon`, `attackName`, `damageDice`, `damageType`, the
+   * ability in `ability`, the reach in `reachM` and the range in `rangeM`. */
+  weaponName: string;
+  attackAbility: string;
+  damageAbility: string;
+  attackBonus: number;
+  damageBonus: number;
+  reachM: string;
+  attackName: string;
+  damageDice: string;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

@@ -9130,13 +9130,15 @@ async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dar
     await expect(m.getByTestId('hit-rider').first()).toBeVisible();
     await expectScreenPasses(m, `A ficha do mestre, a oferta do efeito das garras ${where}`);
     await m.getByTestId('hit-rider').first().getByRole('button', { name: /^Aplicar / }).click();
+    // The apply settles before the part ends, as a master does it: the offer is gone once the answer is on screen.
+    await expect(m.getByTestId('hit-rider')).toHaveCount(0);
     await endPartRPC(m, campaignId, 'Carniçal');
 
     // The hell hound's card: the actions area, then the result of the breath's saving throw.
     const card = m.getByRole('region', { name: 'Vez do Cão infernal' });
-    await expect(card.getByRole('button', { name: /^Usar Fire Breath/ })).toBeVisible();
+    await expect(card.getByRole('button', { name: /^Usar Sopro de fogo/ })).toBeVisible();
     await expectScreenPasses(m, `A ficha do mestre, a vez do Cão infernal com "Outras ações" ${where}`);
-    await card.getByRole('button', { name: /^Usar Fire Breath/ }).click();
+    await card.getByRole('button', { name: /^Usar Sopro de fogo/ }).click();
     await expect(card.getByTestId('creature-action-result')).toBeVisible();
     await expectScreenPasses(m, `A ficha do mestre, o resultado da salvaguarda da ação ${where}`);
   } finally {

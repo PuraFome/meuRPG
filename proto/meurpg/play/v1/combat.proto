@@ -1929,6 +1929,11 @@ enum EncounterBlockedReason {
   // UseCreatureAction: the combatant is no NPC, its stat block has no such action, or the action is
   // an attack roll or a Multiattack (those are made with TakeAction). Nothing is spent.
   ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE = 113;
+  // TakeAction: the action starts a temporary state (a table feature's state effect) that is
+  // already on for the character. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON = 114;
+  // TakeAction with end_state: the state the action would end is not on. Nothing changes.
+  ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON = 115;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2383,6 +2388,12 @@ message CombatLogHitRider {
   int32 escape_dc = 13;
   string duration_text = 14;
   bool repeat_save = 15;
+  // The damage the rider's save governs (a ghoul's poison), as the viewer gets it: the same message a
+  // cast's target carries, AWAITING_ROLL until the damage is rolled, then rolled and applied. The first
+  // damage type, then the others in more_damages. Unset when the rider opened none. A player reads it as
+  // they read a cast's damage: the amount as rolled unless the target is theirs, never the stat block.
+  CombatLogDamage damage = 16;
+  repeated CombatLogDamage more_damages = 17;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -4041,6 +4052,13 @@ message TakeActionRequest {
   // a creature or a combatant the caller does not see is refused with `invalid_argument`; a dead target with
   // `failed_precondition` (EncounterBlocked TARGET_DEAD), and then nothing is spent. Ignored by any other action.
   string heal_target_combatant_id = 104;
+  // True: the action is the card of a temporary state (a table feature's state effect,
+  // rules.v1.Action.state_key) and the player ends the state that is on ("Encerrar");
+  // false starts it ("Ativar"), spending the action's economy and the use of its resource.
+  // Starting a state that is on is refused with `failed_precondition` (EncounterBlocked
+  // STATE_ALREADY_ON), and so is ending one that is not (STATE_NOT_ON); nothing is spent.
+  // Ignored by an action that is not a state's.
+  bool end_state = 105;
 }
 
 // PreserveLifeHeal is the hit points the cleric gives one creature with Preserve Life.
@@ -5065,14 +5083,23 @@ enum CombatLogKind {
 
 // CombatLogStateChange is a state that began or ended.
 message CombatLogStateChange {
+  // COMBATANT_STATE_KIND_TABLE for a temporary state a table feature defines; `key` and
+  // `name_pt` then say which.
   CombatantStateKind kind = 2;
   // True when it began.
   bool started = 3;
   // Why it ended (empty when it began): the combatant's own text key, one of
   // "no_attack" (the turn ended with no attack on a hostile creature or damage taken),
   // "unconscious", "by_choice", "duration" or "left" (the source's concentration or
-  // the combat ended).
+  // the combat ended). A table state also ends for "incapacitated" (hit points at 0 or a
+  // condition) and "master" (his correction). In a combat every start and every end of a
+  // table state writes a line; outside a combat there is no combat log, so a rest or a
+  // correction made there writes none.
   string reason = 4;
+  // For a table state: its key (rules.v1.DerivedState.key) and the Portuguese name of
+  // the feature that defines it.
+  string key = 5;
+  string name_pt = 6;
 }
 
 // CombatLogModeChange is a roll whose mode is not the server's suggestion.

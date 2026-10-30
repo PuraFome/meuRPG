@@ -193,7 +193,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	// The menu: every type with its name, the lists they point at, the option sets,
 	// the helpers and the classes classLevel takes.
 	menu := master.effectMenu(t, campaign)
-	if len(menu.GetTypes()) != 20 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
+	if len(menu.GetTypes()) != 23 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
 		t.Fatalf("menu = %d types, limits %d/%d, extra attacks %d to %d", len(menu.GetTypes()), menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
 	}
 	lists := map[string]*rulesv1.EffectMenuList{}
@@ -214,7 +214,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	if senses == nil || len(senses.GetValues()) != 4 || senses.GetValues()[0].GetKey() != "darkvision" || senses.GetValues()[0].GetNamePt() != "Visão no escuro" {
 		t.Errorf("senses = %v", senses)
 	}
-	if len(menu.GetHelpers()) != 12 || len(fightingStyles(t, menu)) < 4 {
+	if len(menu.GetHelpers()) != 13 || len(fightingStyles(t, menu)) < 4 {
 		t.Errorf("helpers = %d, fighting styles = %d", len(menu.GetHelpers()), len(fightingStyles(t, menu)))
 	}
 	if !slices.Contains(menu.GetClassIndexes(), "wizard") || slices.ContainsFunc(menu.GetClassIndexes(), func(s string) bool { return strings.HasSuffix(s, "@mesa") }) {

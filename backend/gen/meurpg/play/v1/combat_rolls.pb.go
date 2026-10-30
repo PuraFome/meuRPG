@@ -411,6 +411,9 @@ const (
 	CombatantStateKind_COMBATANT_STATE_KIND_DODGING CombatantStateKind = 3
 	// "Ataque descuidado": Reckless Attack, until the start of its next turn.
 	CombatantStateKind_COMBATANT_STATE_KIND_RECKLESS CombatantStateKind = 4
+	// A temporary state a table feature defines (a stance, a form). Only in the combat log:
+	// the states of a character are in its vitals (CharacterVitals.active_states).
+	CombatantStateKind_COMBATANT_STATE_KIND_TABLE CombatantStateKind = 5
 )
 
 // Enum value maps for CombatantStateKind.
@@ -421,6 +424,7 @@ var (
 		2: "COMBATANT_STATE_KIND_HUNTERS_MARK_TARGET",
 		3: "COMBATANT_STATE_KIND_DODGING",
 		4: "COMBATANT_STATE_KIND_RECKLESS",
+		5: "COMBATANT_STATE_KIND_TABLE",
 	}
 	CombatantStateKind_value = map[string]int32{
 		"COMBATANT_STATE_KIND_UNSPECIFIED":         0,
@@ -428,6 +432,7 @@ var (
 		"COMBATANT_STATE_KIND_HUNTERS_MARK_TARGET": 2,
 		"COMBATANT_STATE_KIND_DODGING":             3,
 		"COMBATANT_STATE_KIND_RECKLESS":            4,
+		"COMBATANT_STATE_KIND_TABLE":               5,
 	}
 )
 
@@ -1819,13 +1824,14 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x1cDAMAGE_STEP_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bDAMAGE_STEP_KIND_RESISTANCE\x10\x01\x12\"\n" +
 	"\x1eDAMAGE_STEP_KIND_VULNERABILITY\x10\x02\x12\x1d\n" +
-	"\x19DAMAGE_STEP_KIND_IMMUNITY\x10\x03*\xcc\x01\n" +
+	"\x19DAMAGE_STEP_KIND_IMMUNITY\x10\x03*\xec\x01\n" +
 	"\x12CombatantStateKind\x12$\n" +
 	" COMBATANT_STATE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19COMBATANT_STATE_KIND_RAGE\x10\x01\x12,\n" +
 	"(COMBATANT_STATE_KIND_HUNTERS_MARK_TARGET\x10\x02\x12 \n" +
 	"\x1cCOMBATANT_STATE_KIND_DODGING\x10\x03\x12!\n" +
-	"\x1dCOMBATANT_STATE_KIND_RECKLESS\x10\x04*e\n" +
+	"\x1dCOMBATANT_STATE_KIND_RECKLESS\x10\x04\x12\x1e\n" +
+	"\x1aCOMBATANT_STATE_KIND_TABLE\x10\x05*e\n" +
 	"\n" +
 	"StatePhase\x12\x1b\n" +
 	"\x17STATE_PHASE_UNSPECIFIED\x10\x00\x12\x1d\n" +

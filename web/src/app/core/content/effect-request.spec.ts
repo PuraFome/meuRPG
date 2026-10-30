@@ -1,6 +1,7 @@
-import { EffectMenuVm, draftToEffect, emptyEffect } from './effect-draft';
+import { EffectMenuVm, draftToEffect, emptyEffect, missingRequired } from './effect-draft';
 import type { EffectDraft } from './effect-draft';
 import { menuResponse } from './content-testing-menu';
+import { stateMenu } from './content-testing-states';
 
 /** A menu that reads exactly the fields it is given, so a case can ask for any of them. */
 function menuReading(names: readonly string[]): EffectMenuVm {
@@ -181,5 +182,45 @@ describe('the effect a request sends, field by field', () => {
     expect(draftToEffect(emptyEffect('any'), menuReading(['constructor', 'toString']))).toEqual({
       type: 'any',
     });
+  });
+});
+
+describe('the state and weapon effects of the menu', () => {
+  it('sends a state with its name, duration and ways to end, and nothing it does not read', () => {
+    const d: EffectDraft = {
+      ...emptyEffect('state'),
+      stateName: ' postura ',
+      durationRounds: '10',
+      endsOn: ['dismiss', 'long_rest'],
+      economy: 'bonus_action',
+      attackBonus: 3,
+    };
+    const e = draftToEffect(d, stateMenu());
+    expect(e.type).toBe('state');
+    expect(e.stateName).toBe('postura');
+    expect(e.durationRounds).toBe('10');
+    expect(e.endsOn).toEqual(['dismiss', 'long_rest']);
+    expect(e.economy).toBe('bonus_action');
+    expect(e.attackBonus).toBeUndefined();
+  });
+
+  it('sends a weapon rule with signed bonuses and the reach in feet', () => {
+    const d: EffectDraft = {
+      ...emptyEffect('weapon_rule'),
+      weapon: 'melee',
+      attackBonus: -2,
+      damageBonus: 1,
+      reachM: '3',
+      while: 'postura',
+    };
+    const e = draftToEffect(d, stateMenu());
+    expect(e.attackBonus).toBe(-2);
+    expect(e.damageBonus).toBe(1);
+    expect(e.reachFt).toBe(10);
+    expect(e.while).toBe('postura');
+  });
+
+  it('asks for the name of a state before the server does', () => {
+    expect(missingRequired(emptyEffect('state'), stateMenu())).toContain('state_name');
   });
 });

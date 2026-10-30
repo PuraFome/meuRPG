@@ -65,6 +65,11 @@ type Action struct {
 	// ("standard:dash" for Cunning Action's Dash), whose effect on the turn it
 	// has; "" for any other action.
 	Standard string
+	// State is the key of the state the action starts or ends (the action's own Key); ""
+	// for any other action. StateActive says the state is on, so the action ends it: free,
+	// and without the resource that starting it spends.
+	State       string `json:",omitempty"`
+	StateActive bool   `json:",omitempty"`
 	// Cost is how many uses of Resource each use of the action spends, from the
 	// grant_action effect's cost (1 when the effect has none); CostMax, when above
 	// Cost, is the most the player may spend on one use, and the use asks how many.
@@ -154,6 +159,7 @@ func (x *deriver) resourcesAndActions() {
 		}
 		x.grantAction(a)
 	}
+	x.states()
 	x.hooks()
 }
 

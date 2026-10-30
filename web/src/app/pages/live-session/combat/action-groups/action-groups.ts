@@ -45,6 +45,7 @@ import {
   actionTabs,
   classTabName,
   featureGroup,
+  featureVerb,
   partByEconomy,
 } from '../../../../core/combat/action-tabs';
 import { cannotAct } from '../../../../core/combat/conditions';
@@ -469,6 +470,8 @@ export class ActionGroups {
     this.frenzyAsk.set(null);
     this.rage.emit({ key, frenzy });
   }
+
+  protected readonly featureVerb = featureVerb;
 
   /** Whether a feature is off, why, and the line under its name: what a use costs and what is left (the server's reason, or "Faltam usos"). */
   protected readonly featureOff = featureIsOff;

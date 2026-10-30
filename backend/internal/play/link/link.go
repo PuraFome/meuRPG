@@ -396,6 +396,12 @@ type FeatureAction struct {
 	Heal                   *Dice
 	HealPerPoint           Dice
 	TempHP, TempHPPerPoint int
+	// State is the key of the state the action starts or ends (rules.Action.State), or "";
+	// StateActive says the state is on, so taking the action ends it.
+	State       string `json:",omitempty"`
+	StateActive bool   `json:",omitempty"`
+	// StateRounds is how many rounds the state lasts once started, 0 until it ends.
+	StateRounds int `json:",omitempty"`
 }
 
 // Hook is an on_event effect of the character (rules.EventHook): what the hook of an event gives,

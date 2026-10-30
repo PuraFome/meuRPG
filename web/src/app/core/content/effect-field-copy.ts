@@ -23,11 +23,22 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   spells: 'Magias',
   text_pt: 'Texto na ficha',
   except: 'Todos os tipos de dano, menos',
-  while: 'Enquanto',
+  while: 'Só enquanto o estado',
   kind: 'O que acontece',
   damage_types: 'Tipos de dano',
   conditions: 'Condições',
   against_condition: 'Só nos testes de resistência contra a condição',
+  state_name: 'Nome do estado',
+  duration_rounds: 'Duração (rodadas)',
+  ends_on: 'Também acaba',
+  weapon_name: 'Nome da arma',
+  attack_ability: 'Habilidade do ataque',
+  damage_ability: 'Habilidade do dano',
+  attack_bonus: 'Bônus no ataque',
+  damage_bonus: 'Bônus no dano',
+  reach_ft: 'Alcance corpo a corpo',
+  attack_name: 'Nome do ataque',
+  damage_dice: 'Dados de dano',
   cost: 'Custo (usos)',
   cost_max: 'Custo máximo (o jogador escolhe)',
   value_per_point: 'Por ponto gasto a mais',
@@ -60,6 +71,16 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
  * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
 export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
+  state_name:
+    'Só letras minúsculas sem acento, números e _ (de 1 a 40). Os outros efeitos da entrada usam este nome em "Só enquanto o estado" e em active("nome").',
+  duration_rounds: 'Em rodadas (1 minuto são 10). Vazio ou 0: dura até acabar.',
+  weapon_name:
+    'O nome da arma em português, como na ficha (sem diferença de maiúsculas e acentos).',
+  attack_bonus: 'De -5 a 10, somado à jogada de ataque.',
+  damage_bonus: 'De -5 a 10, somado ao dano.',
+  reach_ft: 'Em metros, de 1,5 em 1,5; só para armas de corpo a corpo.',
+  attack_name: 'O nome do ataque na lista de ataques da ficha.',
+  damage_dice: 'Dados simples, como 1d6 ou 2d8 (d4, d6, d8, d10 ou d12; até 10 dados).',
   cost: 'Quantos usos cada vez gasta; vazio é 1. Não passa do máximo do recurso.',
   cost_max:
     'Com ele, o jogador escolhe na hora quantos gastar, do custo até este valor (ou o que restar).',
@@ -101,11 +122,20 @@ export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<s
   {
     granted_spell: { ability: 'Habilidade de conjuração' },
     extra_damage: { value: 'Dano fixo', applies: 'Contra quem' },
+    resistance: { while: 'Enquanto' },
     spell_modifier: {
       from: 'Tipos de dano que troca',
       value: 'Dano fixo somado',
       count: 'Dados a mais por nível acima',
       damage_type: 'Tipo do dano somado',
+    },
+    // A state's resource is spent once at each start; a pseudo-weapon names its kind, its ability and its reach in the words of an attack.
+    state: { resource: 'Gasta um uso de' },
+    pseudo_weapon: {
+      weapon: 'Tipo de ataque',
+      ability: 'Habilidade do ataque',
+      reach_ft: 'Alcance de contato',
+      range_ft: 'Alcance (à distância)',
     },
   };
 

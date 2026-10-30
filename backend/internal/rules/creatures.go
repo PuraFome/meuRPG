@@ -398,8 +398,9 @@ type CreatureAbility struct {
 // CreatureAction is an action of a stat block.
 type CreatureAction struct {
 	Name, Text, Usage string
-	// NamePT is the action's Portuguese name when the content has one (the attacks
-	// a character can have through a creature: names_pt.json "attack:<slug>"); empty otherwise.
+	// NamePT is the action's Portuguese name when the content has one (names_pt.json
+	// "attack:<slug>": every action of a creature of challenge rating 5 or less; the
+	// key keeps "attack" though the action may roll no attack); empty otherwise.
 	NamePT string
 	// HasAttack says it is an attack roll, with AttackBonus to the d20.
 	HasAttack   bool

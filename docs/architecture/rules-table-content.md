@@ -56,11 +56,14 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
 | `on_event` | The owner's hook on `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
-| `resistance` | Resistance, immunity or vulnerability (`kind`: `resist`, the default, `immune` or `vulnerable`) to the `damage_types` it lists: `damage-type:` keys of the content, `all` (alone) or `nonmagical_bps` (bludgeoning, piercing and slashing from attacks that are not magical); or to every type but `except`. `except` and `damage_types` exclude each other and one is required. `while` is empty (always) or `rage`. Refusals name the field: `.damage_types` (unknown type, empty, a type twice, `all` mixed with others, both `except` and `damage_types`), `.except` (`bad_reference`), `.kind`, `.while`, and `.when` or `.tags` (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
+| `resistance` | Resistance, immunity or vulnerability (`kind`: `resist`, the default, `immune` or `vulnerable`) to the `damage_types` it lists: `damage-type:` keys of the content, `all` (alone) or `nonmagical_bps` (bludgeoning, piercing and slashing from attacks that are not magical); or to every type but `except`. `except` and `damage_types` exclude each other and one is required. `while` is empty (always), `rage` or the `state_name` of a `state` effect of the same entry (`.while`: `bad_reference` for a state nothing defines). Refusals name the field: `.damage_types` (unknown type, empty, a type twice, `all` mixed with others, both `except` and `damage_types`), `.except` (`bad_reference`), `.kind`, `.while`, and `.when` or `.tags` (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
+| `state` | A temporary state the character turns on and off: a stance, a form. `state_name` (1 to 40 of `a-z`, `0-9`, `_`; the name the entry's other effects read it by; unique in the entry), `duration_rounds` (an Int formula in rounds, 0 to 14,400; empty or 0 lasts until it ends), `ends_on` (any of `dismiss`, `incapacitated`, `short_rest`, `long_rest`), `economy` (`action`, `bonus_action` or `free`, what turning it on costs) and optionally `resource` (as in `grant_action`). At most 8 states for an entry (`limit`). See [States](#states). |
+| `weapon_rule` | Changes the weapon lines its filter picks. `weapon` is `any`, `melee`, `ranged`, `finesse`, `magic` or `named` (then `weapon_name` is the Portuguese name of the weapon); `attack_ability` and `damage_ability` name another ability (the better of it and the weapon's counts); `attack_bonus` and `damage_bonus` are -5 to 10; `reach_ft` (5 to 60, in steps of 5) is a longer melee reach. At least one ability, bonus or reach must be set (refused at `.type`); `weapon_name` is required with `named` and refused otherwise; a reach is refused on `ranged`; no `tags`. Gated by `while` and `when`. |
+| `pseudo_weapon` | An attack line of its own on the sheet: `attack_name`, `weapon` (`melee` or `ranged`), `damage_dice` (`NdS`, N up to 10, S a weapon die), `damage_type`, `ability`, `reach_ft` (melee, 5 to 60, optional) or `range_ft` (ranged, 5 to 300, required; each kind refuses the other's field). It is never an item, counts as a weapon the character is proficient with, and the weapon rules change it too. Gated by `while` and `when`. |
 | `condition_immunity` | `conditions`: the keys of the conditions (`condition:poisoned`, one of the 15 of `combat_effects.json`), listed once each, at least one; refused at `.conditions`. The character takes none of them (see [Effects](rules.md#effects)). |
 | `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
 | `granted_spell` | See [Granted spells](#granted-spells). |
-| `extra_damage` | See [Extra damage](#extra-damage). |
+| `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
@@ -134,7 +137,7 @@ How combat spends the die (damage, grapple, reduction) is in the [play module](p
 
 ### Extra damage
 
-`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.
+`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `while`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.
 Checked at its fields:
 
 - `applies` is `any_target` or `larger_target` (`.applies`, `bad_value`);
@@ -222,6 +225,21 @@ The SRD's rows are shared, so a row is copied before it changes.
 A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
 An archived entry still applies to the sheets that have the class.
 Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
+
+## States
+
+A `state` effect defines a state; the character's player turns it on and off.
+`Derive` lists the states of the sheet in `Derived.States` (key = the feature's key, `#`, the state's name) and gives each an action in `Derived.Actions`, with `state_key` and `state_active`, so the card is the one of a granted action: "Ativar" spends the economy and the use of `resource`, "Encerrar" costs nothing.
+Which states are on is not on the sheet but a session input, `Build.ActiveStates` (the keys, kept per character; see [Characters](characters.md#temporary-states)); a key no state effect of the sheet defines is ignored.
+
+**The gate.** `while` is on `resistance`, `roll_mode`, `extra_damage`, `weapon_rule` and `pseudo_weapon` (`gatedEffectTypes` in `rules/gate.go`), and `when` of any type may read `active("name")`, a Bool that is true while the state of that name in the same entry is on.
+A name belongs to the entry of the effect, as a resource name does: `.while` and `active("x")` name a `state` effect of the same class, subclass, race, subrace, background or feat (refused `bad_reference`).
+`active()` is refused in a formula that is not a condition (`bad_formula`).
+A gated effect whose state is off does nothing and is not listed (a resistance is listed only while its state is on).
+To gate another type: add it to `gatedEffectTypes` and `while` to its fields in the menu (`state_ref`); a Derive step that asks `applies` needs nothing else.
+
+**Weapons.** `weapon_rule` and `pseudo_weapon` are read where the sheet builds a weapon line (`attacks.go`), so the attack list, the attack roll and the damage roll agree.
+A pseudo-weapon's line has the key `pseudo:<feature key>` (`#2`, `#3` for a feature's further ones) and is proficient; a weapon rule that names no ability keeps the weapon's.
 
 ## The class
 
@@ -328,7 +346,7 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_damage_types`, `resistance_kinds`, `resistance_conditions`, `conditions`, `granted_spell_abilities`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_damage_types`, `resistance_kinds`, `resistance_conditions`, `conditions`, `granted_spell_abilities`, `state_ends`, `state_economies`, `weapon_filters`, `weapon_kinds`, skills, languages, tools and tag prefixes.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 

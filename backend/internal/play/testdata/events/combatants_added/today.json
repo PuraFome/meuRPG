@@ -757,6 +757,17 @@
   "state_started": true,
   "state_reason": "x",
   "state_id": "x",
+  "state_lines": [
+    "x"
+  ],
+  "state_name": "x",
+  "states_before": [
+    {
+      "key": "x",
+      "rounds": 1
+    }
+  ],
+  "states_changed": true,
   "rider": {
     "choice": "x",
     "result": "x",
@@ -786,7 +797,11 @@
     "given": true,
     "escape_dc": 1,
     "duration": "x",
-    "repeat_save": true
+    "repeat_save": true,
+    "pending_id": "x",
+    "more_pending_ids": [
+      "x"
+    ]
   },
   "creature_action": {
     "name": "x",

@@ -6,7 +6,8 @@
 // formula can only do arithmetic over the character:
 //
 //   - The environment is the Env struct: a closed set of pure functions
-//     (level, classLevel, mod, score, prof, armor, shield). Nothing in it
+//     (level, classLevel, mod, score, prof, armor, shield, and active, which
+//     only a compiler made with WithStates accepts). Nothing in it
 //     touches a database, the network, the clock or randomness, and an
 //     unknown name is a compile error.
 //   - Every Expr builtin is disabled. Only floor, ceil, min and max come
@@ -84,6 +85,27 @@ type Env struct {
 	// while the walking speed itself is worked out, so only the other speeds
 	// may read it.
 	SpeedWalk func() int `expr:"speedwalk"`
+	// Active says whether the state of the effect's entry with this name is on for
+	// the character (a gate: only a compiler made with WithStates accepts the call).
+	Active func(name string) bool `expr:"active"`
+}
+
+// MaxStateNameBytes bounds the name active() takes; a state is named like a
+// resource: a-z, 0-9 and _.
+const MaxStateNameBytes = 40
+
+// ValidStateName says whether s can name a state: 1 to MaxStateNameBytes
+// characters of a-z, 0-9 and _.
+func ValidStateName(s string) bool {
+	if s == "" || len(s) > MaxStateNameBytes {
+		return false
+	}
+	for _, r := range s {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 // Abilities are the arguments mod and score accept.
@@ -110,21 +132,35 @@ type Program struct {
 	source  string
 	kind    Kind
 	program *vm.Program
+	states  []string
 }
 
 // Source returns the formula's text.
 func (p *Program) Source() string { return p.source }
 
+// ActiveNames are the state names the formula reads with active(), sorted, once each.
+func (p *Program) ActiveNames() []string { return slices.Clone(p.states) }
+
 // Compiler compiles formulas for one set of content. It knows the class
 // indexes that classLevel accepts.
 type Compiler struct {
 	classes []string
+	// states says the compiler accepts active("name"), the gate on a state of the
+	// effect's entry: the `when` of an effect.
+	states bool
 }
 
 // NewCompiler returns a Compiler that accepts classLevel of these class
 // indexes ("wizard", ...).
 func NewCompiler(classes []string) *Compiler {
 	return &Compiler{classes: slices.Clone(classes)}
+}
+
+// WithStates returns a compiler for the same classes that also accepts
+// active("name") in a condition. The plain compiler refuses it: a state only
+// gates the `when` of an effect, never a number.
+func (c *Compiler) WithStates() *Compiler {
+	return &Compiler{classes: c.classes, states: true}
 }
 
 // Compile checks and compiles a formula of the given kind. The error names
@@ -158,12 +194,16 @@ func (c *Compiler) Compile(source string, kind Kind) (*Program, error) {
 	if _, err := reach(tree.Node); err != nil {
 		return nil, err
 	}
+	states := activeNamesOf(tree.Node)
+	if kind != Bool && len(states) > 0 {
+		return nil, errors.New("active() is a condition: a number cannot read a state")
+	}
 
 	program, err := expr.Compile(source, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("formula does not compile: %w", err)
 	}
-	return &Program{source: source, kind: kind, program: program}, nil
+	return &Program{source: source, kind: kind, program: program, states: states}, nil
 }
 
 func (c *Compiler) options(kind Kind) []expr.Option {
@@ -434,6 +474,8 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 	var literals []string // non-nil: the function takes one text argument from this set
 	arity := 0
 	switch callee.Value {
+	case "active":
+		return c.checkActive(n)
 	case "level", "prof", "armor", "shield", "speedwalk":
 	case "mod", "score":
 		literals, arity = abilities, 1
@@ -465,6 +507,68 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 		}
 	}
 	return nil
+}
+
+// checkActive allows active("name") for a compiler made with WithStates: one
+// literal that can name a state.
+func (c *Compiler) checkActive(n *ast.CallNode) error {
+	if !c.states {
+		return errors.New("active() can only be used in the condition (\"Só quando\") of an effect")
+	}
+	if len(n.Arguments) != 1 {
+		return fmt.Errorf("active takes 1 argument(s), got %d", len(n.Arguments))
+	}
+	s, ok := n.Arguments[0].(*ast.StringNode)
+	if !ok {
+		return errors.New("the argument of active must be written as text, such as active(\"postura\")")
+	}
+	if !ValidStateName(s.Value) {
+		return fmt.Errorf("active does not accept %q: a state is named with a-z, 0-9 and _ (1 to %d)", s.Value, MaxStateNameBytes)
+	}
+	return nil
+}
+
+// activeNamesOf lists, sorted and once each, the literal names the tree passes
+// to active().
+func activeNamesOf(node ast.Node) []string {
+	var names []string
+	ast.Walk(&node, activeCollector{&names})
+	slices.Sort(names)
+	return slices.Compact(names)
+}
+
+// activeCollector gathers the names active() is called with.
+type activeCollector struct{ names *[]string }
+
+func (v activeCollector) Visit(node *ast.Node) {
+	call, ok := (*node).(*ast.CallNode)
+	if !ok || len(call.Arguments) != 1 {
+		return
+	}
+	if id, ok := call.Callee.(*ast.IdentifierNode); !ok || id.Value != "active" {
+		return
+	}
+	if s, ok := call.Arguments[0].(*ast.StringNode); ok {
+		*v.names = append(*v.names, s.Value)
+	}
+}
+
+// ParseActiveNames lists, sorted and once each, the well-formed names source
+// passes to active(), without checking the rest of the formula: it is how a caller
+// that holds the text learns which states a condition reads before it compiles it.
+// A formula that does not parse gives none.
+func ParseActiveNames(source string) []string {
+	tree, err := parser.Parse(source)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, name := range activeNamesOf(tree.Node) {
+		if ValidStateName(name) {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // checkArmorComparison allows `armor() == "heavy"` (either side) with a

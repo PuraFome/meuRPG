@@ -283,7 +283,7 @@ export function resistanceMenu(): EffectMenuVm {
           alwaysShown: true,
         },
         { name: 'except', kind: 'choice', list: 'damage_types' },
-        { name: 'while', kind: 'choice', list: 'resistance_conditions' },
+        { name: 'while', kind: 'state_ref', list: 'resistance_conditions' },
         { name: 'text_pt', kind: 'text' },
       ],
     }),

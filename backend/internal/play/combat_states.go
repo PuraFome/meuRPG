@@ -51,6 +51,8 @@ func stateKindProto(kind string) playv1.CombatantStateKind {
 		return playv1.CombatantStateKind_COMBATANT_STATE_KIND_DODGING
 	case stateReckless:
 		return playv1.CombatantStateKind_COMBATANT_STATE_KIND_RECKLESS
+	case stateTable:
+		return playv1.CombatantStateKind_COMBATANT_STATE_KIND_TABLE
 	}
 	return playv1.CombatantStateKind_COMBATANT_STATE_KIND_UNSPECIFIED
 }
@@ -654,6 +656,11 @@ func (s *Service) afterConditionsSet(ctx context.Context, c *combatTx, target pl
 		if err := s.endRage(ctx, c, target, "unconscious"); err != nil {
 			return err
 		}
+	}
+	now := target
+	now.Conditions = conditions
+	if err := s.dropStatesIfIncapacitated(ctx, c, now); err != nil {
+		return err
 	}
 	sources := readConditionSources(target.ConditionSources)
 	if len(sources) == 0 {

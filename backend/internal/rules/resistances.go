@@ -128,11 +128,28 @@ func (c *Content) Resistances(d Derived) []Resistance {
 		}
 		for _, e := range c.c.effects[f.Key] {
 			if e.Type == "resistance" {
-				out = append(out, c.c.resistancesOf(f.Key, e)...)
+				out = append(out, c.c.gatedResistances(d, f.Key, e)...)
 			}
 		}
 	}
 	return out
+}
+
+// gatedResistances are the entries of a resistance effect that holds while a state is on
+// (gate.go): none while the state is off, and the effect's entries, now unconditional,
+// while it is on. Rage is for play to judge, so that gate stays on the entries.
+func (c *content) gatedResistances(d Derived, key string, e *Effect) []Resistance {
+	rs := c.resistancesOf(key, e)
+	if e.While == ResistanceAlways || e.While == ResistanceWhileRage {
+		return rs
+	}
+	if !d.StateOn(e.gateKey) {
+		return nil
+	}
+	for i := range rs {
+		rs[i].While = ResistanceAlways
+	}
+	return rs
 }
 
 // resistancesOf are the entries of one resistance effect of a feature.
@@ -244,14 +261,14 @@ func (c *content) damageTypesBut(except string) []string {
 func (x *deriver) resistanceHint(a activeEffect) {
 	e := a.effect
 	if e.TextPT == "" {
-		e = &Effect{TextPT: x.c.resistanceText(e)}
+		e = &Effect{TextPT: x.c.resistanceText(a.owner, e)}
 		a = activeEffect{owner: a.owner, effect: e}
 	}
 	x.hint(a, nil, "note", 0)
 }
 
-// resistanceText is the sentence of a resistance effect, in Portuguese.
-func (c *content) resistanceText(e *Effect) string {
+// resistanceText is the sentence of a resistance effect of the entry owner, in Portuguese.
+func (c *content) resistanceText(owner string, e *Effect) string {
 	what := map[string]string{
 		ResistanceKindResist: "Resistência a", ResistanceKindImmune: "Imunidade a", ResistanceKindVulnerable: "Vulnerabilidade a",
 	}[kindOf(e)]
@@ -274,8 +291,12 @@ func (c *content) resistanceText(e *Effect) string {
 		types = strings.Join(parts, ", ")
 	}
 	text := what + " " + types
-	if e.While == ResistanceWhileRage {
+	switch e.While {
+	case ResistanceAlways:
+	case ResistanceWhileRage:
 		text += ", enquanto estiver em fúria"
+	default:
+		text += ", enquanto " + c.namePT(owner) + " estiver ativo"
 	}
 	return text + "."
 }

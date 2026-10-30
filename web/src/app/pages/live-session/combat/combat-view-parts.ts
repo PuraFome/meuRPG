@@ -294,6 +294,9 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
               undefined,
               false,
               frenzy,
+              0,
+              '',
+              option.action?.stateActive === true,
             )
           ).encounter,
       )

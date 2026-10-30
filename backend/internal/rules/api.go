@@ -177,6 +177,10 @@ type Build struct {
 	// feature: its effects apply and the sheet lists it. The abilities a feat
 	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
 	Feats []string
+	// ActiveStates are the keys of the states that are on for the character right now
+	// (State.Key). Like MageArmor, they belong to the game session: the caller sets them and the
+	// sheet never stores them. A key that no state effect of the sheet defines is ignored.
+	ActiveStates []string `json:",omitempty"`
 	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
 	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
 	// the sheet lists the feat at that level and not the improvement. A feat the master added
@@ -687,6 +691,10 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// States are the temporary states the character's features define and may switch on
+	// (state.go), with the ones that are on marked. Each has an action in Actions that
+	// starts it and, while it is on, ends it.
+	States []State `json:",omitempty"`
 	// Hooks are the on_event effects of the character (the owner's alone), in the
 	// order of its features; HooksFor picks the ones of an event (hooks.go).
 	Hooks []EventHook `json:",omitempty"`
@@ -912,6 +920,11 @@ type Attack struct {
 	// RangeFt is the reach or normal range, LongRangeFt the long range.
 	RangeFt     int
 	LongRangeFt int
+	// ReachFt is the melee reach a weapon rule or a pseudo-weapon gives the line (RangeFt is at
+	// least this, and an attack on the actor's own turn reaches that far); 0 when the line has the
+	// usual 5 ft. The rules that count 5 ft (an opportunity attack, a hostile creature next to a
+	// ranged attacker) keep counting it.
+	ReachFt int `json:",omitempty"`
 	// Melee is true for a weapon the SRD lists as a melee weapon, thrown or not
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.

@@ -822,6 +822,10 @@ type overlayBuilder struct {
 	resources     map[string]map[string]bool
 	// resourceMax is the formula of the maximum of each resource an entry declares.
 	resourceMax map[string]map[string]string
+	// stateKeys are the states each entry defines, by name, with the key each has on the
+	// sheet, and stateCount how many state effects of the entry use each name (state.go).
+	stateKeys  map[string]map[string]string
+	stateCount map[string]map[string]int
 }
 
 type pendingEffects struct {

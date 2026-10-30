@@ -30,7 +30,7 @@ import { NpcCard } from './npc-card';
 const breath = creatureAction({
   key: 'monster:hell-hound#fire-breath',
   name: 'Fire Breath',
-  namePt: 'Sopro de Fogo',
+  namePt: 'Sopro de fogo',
   area: { shape: CreatureAreaShape.CONE, sizeFt: 15, widthFt: 0 },
   save: {
     ability: Ability.DEXTERITY,
@@ -109,7 +109,7 @@ const rollButtons = (root: HTMLElement) =>
 describe("NpcCard: the creature's other actions", () => {
   it('lists the breath from the stat block the card already reads, with the creatures client stubbed', async () => {
     const { root } = await open({ 'monster:hell-hound': hound });
-    expect(root.querySelector('app-creature-actions')?.textContent).toContain('Sopro de Fogo');
+    expect(root.querySelector('app-creature-actions')?.textContent).toContain('Sopro de fogo');
   });
 
   it('shows nothing, and no error, for a stat block that cannot be read', async () => {
@@ -121,7 +121,7 @@ describe("NpcCard: the creature's other actions", () => {
   it('applies the damage the action opened inside its result, once, not again in the card list', async () => {
     const { fixture, root } = await open({ 'monster:hell-hound': hound });
     expect(rollButtons(root)).toHaveLength(1); // before the use: the card's list holds it
-    root.querySelector<HTMLButtonElement>('button[aria-label="Usar Sopro de Fogo"]')!.click();
+    root.querySelector<HTMLButtonElement>('button[aria-label="Usar Sopro de fogo"]')!.click();
     await settle(fixture);
     await settle(fixture);
     expect(root.querySelector('[data-testid="creature-action-result"]')).not.toBeNull();

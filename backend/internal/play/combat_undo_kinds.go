@@ -583,6 +583,9 @@ func (u *undoer) actionStatesBack(ctx context.Context, who playdb.Combatant, ev 
 			return fmt.Errorf("take the state off: %w", err)
 		}
 	}
+	if err := u.statesBack(ctx, who, ev); err != nil { // a table's state the action began or ended
+		return err
+	}
 	if err := u.c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: who.ID, Disengaged: ev.DisengagedBefore}); err != nil {
 		return fmt.Errorf("put back the disengage: %w", err)
 	}

@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"slices"
 	"strings"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -62,6 +63,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	out.Resources = mapToProto(d.Resources, resourceToProto)
 	out.SaveActions = mapToProto(d.SaveActions, saveActionToProto)
 	out.Actions = mapToProto(d.Actions, actionToProto)
+	out.States = mapToProto(d.States, stateToProto)
 	out.StandardActions = mapToProto(d.StandardActions, actionToProto)
 	out.Features = mapToProto(d.Features, featureToProto)
 	out.BreathWeapon = breathWeaponToProto(d.BreathWeapon)
@@ -281,12 +283,13 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Beams:               i32(a.Beams),
 		DamageNotePt:        a.DamageNotePT,
 		SpellDice:           a.SpellDice,
+		ReachFt:             i32(a.ReachFt),
 	}
 }
 
 func actionToProto(a rules.Action) *rulesv1.Action {
 	return &rulesv1.Action{
-		Key: a.Key, NamePt: a.NamePT, Economy: economyToProto[a.Economy], ResourceKey: a.Resource, SourceKey: a.Source,
+		Key: a.Key, NamePt: a.NamePT, Economy: economyToProto[a.Economy], ResourceKey: a.Resource, SourceKey: a.Source, StateKey: a.State, StateActive: a.StateActive,
 		Cost: i32(a.Cost), CostMax: i32(a.CostMax), TempHp: i32(a.Result.TempHP), TempHpPerPoint: i32(a.Result.TempHPPerPoint),
 		HealPerPoint: diceToProto(a.Result.HealPerPoint), Heal: healToProto(a.Result.Heal),
 	}
@@ -298,6 +301,14 @@ func healToProto(f *rules.DiceFormula) *rulesv1.DiceFormula {
 		return nil
 	}
 	return &rulesv1.DiceFormula{Count: i32(f.Count), Sides: i32(f.Sides), Bonus: i32(f.Bonus)}
+}
+
+// stateToProto is a temporary state the sheet defines.
+func stateToProto(s rules.State) *rulesv1.DerivedState {
+	return &rulesv1.DerivedState{
+		Key: s.Key, Name: s.Name, NamePt: s.NamePT, SourceKey: s.Source, DurationRounds: i32(s.DurationRounds), EndsOn: slices.Clone(s.EndsOn),
+		ResourceKey: s.Resource, Economy: economyToProto[s.Economy], TextPt: s.TextPT, Active: s.Active,
+	}
 }
 
 // diceToProto is nil for a weapon without damage dice.

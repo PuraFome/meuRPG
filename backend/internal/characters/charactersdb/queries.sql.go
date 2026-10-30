@@ -14,7 +14,7 @@ const approveCharacter = `-- name: ApproveCharacter :one
 UPDATE characters
 SET status = 'active'
 WHERE campaign_id = $1::UUID AND id = $2 AND status = 'pending'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type ApproveCharacterParams struct {
@@ -55,6 +55,7 @@ func (q *Queries) ApproveCharacter(ctx context.Context, arg ApproveCharacterPara
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -528,7 +529,7 @@ func (q *Queries) GetCampaignContentImport(ctx context.Context, arg GetCampaignC
 }
 
 const getCharacter = `-- name: GetCharacter :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 `
 
@@ -567,12 +568,13 @@ func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (Cha
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
 
 const getCharacterByCreateKey = `-- name: GetCharacterByCreateKey :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states FROM characters
 WHERE campaign_id = $1::UUID AND create_key = $2::UUID
 `
 
@@ -611,6 +613,7 @@ func (q *Queries) GetCharacterByCreateKey(ctx context.Context, arg GetCharacterB
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -732,7 +735,7 @@ func (q *Queries) GetCharacterCreatureForUpdate(ctx context.Context, arg GetChar
 }
 
 const getCharacterForUpdate = `-- name: GetCharacterForUpdate :one
-SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash FROM characters
+SELECT id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states FROM characters
 WHERE campaign_id = $1::UUID AND id = $2
 FOR UPDATE
 `
@@ -775,6 +778,7 @@ func (q *Queries) GetCharacterForUpdate(ctx context.Context, arg GetCharacterFor
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -896,7 +900,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -932,6 +936,7 @@ type GetVitalsRow struct {
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
+	ActiveStates            []byte
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -962,6 +967,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.HitPointsMaxBonus,
 		&i.ExhaustionLevel,
 		&i.ArmorClassBase,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -971,7 +977,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -1007,6 +1013,7 @@ type GetVitalsWithDeadRow struct {
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
+	ActiveStates            []byte
 }
 
 // GetVitals that also answers for a player character that died: the page of a
@@ -1038,6 +1045,7 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.HitPointsMaxBonus,
 		&i.ExhaustionLevel,
 		&i.ArmorClassBase,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -1211,7 +1219,7 @@ VALUES (
     $11::BOOL, $12, $12
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type InsertCharacterParams struct {
@@ -1278,6 +1286,7 @@ func (q *Queries) InsertCharacter(ctx context.Context, arg InsertCharacterParams
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -1553,7 +1562,7 @@ VALUES (
     $6, $7::UUID, $8, $8
 )
 ON CONFLICT (campaign_id, create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type InsertNpcFromCreatureParams struct {
@@ -1610,6 +1619,7 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -1882,7 +1892,7 @@ func (q *Queries) ListCharactersForPackage(ctx context.Context, campaignID strin
 }
 
 const listCombatCharacters = `-- name: ListCombatCharacters :many
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
@@ -1903,6 +1913,7 @@ type ListCombatCharactersRow struct {
 	PlayerUserID   *string
 	Sheet          []byte
 	WildShapeBeast *string
+	ActiveStates   []byte
 }
 
 // Those of the given characters that may fight in a combat of the campaign:
@@ -1924,6 +1935,7 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 			&i.PlayerUserID,
 			&i.Sheet,
 			&i.WildShapeBeast,
+			&i.ActiveStates,
 		); err != nil {
 			return nil, err
 		}
@@ -1936,7 +1948,7 @@ func (q *Queries) ListCombatCharacters(ctx context.Context, arg ListCombatCharac
 }
 
 const listCombatCharactersWithDead = `-- name: ListCombatCharactersWithDead :many
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
@@ -1957,6 +1969,7 @@ type ListCombatCharactersWithDeadRow struct {
 	PlayerUserID   *string
 	Sheet          []byte
 	WildShapeBeast *string
+	ActiveStates   []byte
 }
 
 // ListCombatCharacters that also returns a character that died, for the reads
@@ -1979,6 +1992,7 @@ func (q *Queries) ListCombatCharactersWithDead(ctx context.Context, arg ListComb
 			&i.PlayerUserID,
 			&i.Sheet,
 			&i.WildShapeBeast,
+			&i.ActiveStates,
 		); err != nil {
 			return nil, err
 		}
@@ -1991,7 +2005,7 @@ func (q *Queries) ListCombatCharactersWithDead(ctx context.Context, arg ListComb
 }
 
 const listCombatParty = `-- name: ListCombatParty :many
-SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast
+SELECT c.id, c.kind, c.name, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states
 FROM characters AS c
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
 WHERE c.campaign_id = $1::UUID
@@ -2006,6 +2020,7 @@ type ListCombatPartyRow struct {
 	PlayerUserID   *string
 	Sheet          []byte
 	WildShapeBeast *string
+	ActiveStates   []byte
 }
 
 // The campaign's living, active player characters, oldest first: the party
@@ -2029,6 +2044,7 @@ func (q *Queries) ListCombatParty(ctx context.Context, campaignID string) ([]Lis
 			&i.PlayerUserID,
 			&i.Sheet,
 			&i.WildShapeBeast,
+			&i.ActiveStates,
 		); err != nil {
 			return nil, err
 		}
@@ -2596,7 +2612,7 @@ func (q *Queries) ListNpcPortraits(ctx context.Context, arg ListNpcPortraitsPara
 }
 
 const listPartyVision = `-- name: ListPartyVision :many
-SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast,
+SELECT c.id, c.player_user_id, c.sheet, ws.beast AS wild_shape_beast, c.active_states,
        cc.id AS familiar_id, cc.monster_key AS familiar_monster_key,
        (c.status = 'dead')::BOOL AS is_dead
 FROM characters AS c
@@ -2613,6 +2629,7 @@ type ListPartyVisionRow struct {
 	PlayerUserID       *string
 	Sheet              []byte
 	WildShapeBeast     *string
+	ActiveStates       []byte
 	FamiliarID         *string
 	FamiliarMonsterKey *string
 	IsDead             bool
@@ -2637,6 +2654,7 @@ func (q *Queries) ListPartyVision(ctx context.Context, campaignID string) ([]Lis
 			&i.PlayerUserID,
 			&i.Sheet,
 			&i.WildShapeBeast,
+			&i.ActiveStates,
 			&i.FamiliarID,
 			&i.FamiliarMonsterKey,
 			&i.IsDead,
@@ -2705,7 +2723,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -2737,6 +2755,7 @@ type ListVitalsRow struct {
 	HitPointsMaxBonus       *int32
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
+	ActiveStates            []byte
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2776,6 +2795,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.HitPointsMaxBonus,
 			&i.ExhaustionLevel,
 			&i.ArmorClassBase,
+			&i.ActiveStates,
 		); err != nil {
 			return nil, err
 		}
@@ -2821,7 +2841,7 @@ SET status = 'dead',
     death_encounter_id = CASE WHEN status = 'dead' THEN death_encounter_id ELSE $3::UUID END,
     revivify_blocked = CASE WHEN status = 'dead' THEN revivify_blocked ELSE false END
 WHERE campaign_id = $4::UUID AND id = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type MarkCharacterDeadParams struct {
@@ -2874,6 +2894,7 @@ func (q *Queries) MarkCharacterDead(ctx context.Context, arg MarkCharacterDeadPa
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -2945,7 +2966,7 @@ UPDATE characters
 SET status = 'active', revived_at = $1::TIMESTAMPTZ, death_round = NULL, death_encounter_id = NULL,
     revivify_blocked = false, revive_key = $2, revive_hash = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND status = 'dead'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type ReviveCharacterParams struct {
@@ -2997,6 +3018,7 @@ func (q *Queries) ReviveCharacter(ctx context.Context, arg ReviveCharacterParams
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -3037,6 +3059,22 @@ func (q *Queries) ReviveCreatures(ctx context.Context, arg ReviveCreaturesParams
 		return nil, err
 	}
 	return items, nil
+}
+
+const setActiveStates = `-- name: SetActiveStates :exec
+UPDATE characters SET active_states = $1::JSONB WHERE id = $2
+`
+
+type SetActiveStatesParams struct {
+	States []byte
+	ID     string
+}
+
+// The temporary states that are on for a character (a table feature's state effect): the whole
+// list, as JSON. The caller also bumps the vitals' revision (TouchVitals).
+func (q *Queries) SetActiveStates(ctx context.Context, arg SetActiveStatesParams) error {
+	_, err := q.db.Exec(ctx, setActiveStates, arg.States, arg.ID)
+	return err
 }
 
 const setCampaignContentArchived = `-- name: SetCampaignContentArchived :one
@@ -3146,7 +3184,7 @@ const setCharacterRevivifyBlocked = `-- name: SetCharacterRevivifyBlocked :one
 UPDATE characters
 SET revivify_blocked = $1
 WHERE campaign_id = $2::UUID AND id = $3 AND kind = 'player' AND status = 'dead'
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type SetCharacterRevivifyBlockedParams struct {
@@ -3186,6 +3224,7 @@ func (q *Queries) SetCharacterRevivifyBlocked(ctx context.Context, arg SetCharac
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -3235,7 +3274,7 @@ const setStoryEditing = `-- name: SetStoryEditing :one
 UPDATE characters
 SET story_editing_allowed = $1
 WHERE campaign_id = $2::UUID AND id = $3
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type SetStoryEditingParams struct {
@@ -3276,6 +3315,7 @@ func (q *Queries) SetStoryEditing(ctx context.Context, arg SetStoryEditingParams
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -3493,7 +3533,7 @@ const updateCharacterSheet = `-- name: UpdateCharacterSheet :one
 UPDATE characters
 SET name = $1, sheet = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4::UUID AND id = $5 AND revision = $6
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type UpdateCharacterSheetParams struct {
@@ -3544,6 +3584,7 @@ func (q *Queries) UpdateCharacterSheet(ctx context.Context, arg UpdateCharacterS
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }
@@ -3552,7 +3593,7 @@ const updateCharacterStory = `-- name: UpdateCharacterStory :one
 UPDATE characters
 SET story = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3::UUID AND id = $4 AND revision = $5
-RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash
+RETURNING id, campaign_id, kind, player_user_id, master_user_id, status, name, sheet, story, story_editing_allowed, sheet_schema, revision, sheet_locked_at, died_at, created_at, updated_at, create_key, create_hash, reserved, claimed_at, revived_at, death_round, death_encounter_id, revivify_blocked, revive_key, revive_hash, active_states
 `
 
 type UpdateCharacterStoryParams struct {
@@ -3600,6 +3641,7 @@ func (q *Queries) UpdateCharacterStory(ctx context.Context, arg UpdateCharacterS
 		&i.RevivifyBlocked,
 		&i.ReviveKey,
 		&i.ReviveHash,
+		&i.ActiveStates,
 	)
 	return i, err
 }

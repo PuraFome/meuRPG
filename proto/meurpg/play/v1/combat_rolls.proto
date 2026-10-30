@@ -292,6 +292,9 @@ enum CombatantStateKind {
   COMBATANT_STATE_KIND_DODGING = 3;
   // "Ataque descuidado": Reckless Attack, until the start of its next turn.
   COMBATANT_STATE_KIND_RECKLESS = 4;
+  // A temporary state a table feature defines (a stance, a form). Only in the combat log:
+  // the states of a character are in its vitals (CharacterVitals.active_states).
+  COMBATANT_STATE_KIND_TABLE = 5;
 }
 
 // StatePhase is the moment of a turn.

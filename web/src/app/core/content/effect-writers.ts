@@ -34,6 +34,11 @@ const trimmedText =
       | 'restore'
       | 'fromLevel'
       | 'uses'
+      | 'stateName'
+      | 'durationRounds'
+      | 'weaponName'
+      | 'attackName'
+      | 'damageDice'
       | 'dice',
   ): EffectWriter =>
   (d) => {
@@ -66,14 +71,16 @@ const pickedText =
       | 'appliesTo'
       | 'spellChange'
       | 'kind'
-      | 'againstCondition',
+      | 'againstCondition'
+      | 'attackAbility'
+      | 'damageAbility',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
 
 /** A list that is sent (as a copy) when it has something in it. */
 const pickedList =
-  (key: 'targets' | 'from' | 'spells' | 'damageTypes' | 'conditions'): EffectWriter =>
+  (key: 'targets' | 'from' | 'spells' | 'damageTypes' | 'conditions' | 'endsOn'): EffectWriter =>
   (d) =>
     d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
 
@@ -136,6 +143,17 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['no_crit_doubling', (d) => (d.noCritDoubling ? { noCritDoubling: true } : {})],
   ['applies_to', pickedText('appliesTo')],
   ['spell_change', pickedText('spellChange')],
+  ['state_name', trimmedText('stateName')],
+  ['duration_rounds', trimmedText('durationRounds')],
+  ['ends_on', pickedList('endsOn')],
+  ['weapon_name', trimmedText('weaponName')],
+  ['attack_ability', pickedText('attackAbility')],
+  ['damage_ability', pickedText('damageAbility')],
+  ['attack_bonus', (d) => (d.attackBonus !== 0 ? { attackBonus: d.attackBonus } : {})],
+  ['damage_bonus', (d) => (d.damageBonus !== 0 ? { damageBonus: d.damageBonus } : {})],
+  ['reach_ft', (d) => (rangeFeet(d.reachM) > 0 ? { reachFt: rangeFeet(d.reachM) } : {})],
+  ['attack_name', trimmedText('attackName')],
+  ['damage_dice', trimmedText('damageDice')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'only_proficient',

@@ -191,3 +191,11 @@ export function actionCounts(
     standard: extra.standard,
   };
 }
+
+/** The button of a feature: a state (a stance, a form) is turned on and off, the rest is used. */
+export function featureVerb(a: ActionOption): string {
+  if (!a.action?.stateKey) {
+    return 'Usar';
+  }
+  return a.action.stateActive ? 'Encerrar' : 'Ativar';
+}

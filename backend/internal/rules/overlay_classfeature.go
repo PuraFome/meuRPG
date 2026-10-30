@@ -52,6 +52,7 @@ func (b *overlayBuilder) addClassFeature(o *TableClassFeature, path string) erro
 	k := featureKind{prefix: featureKeyPrefix, owner: key, class: o.Class, level: o.Level}
 	b.know(key, k)
 	b.declareResources(k, o.Effects)
+	b.declareStates(key, key, o.Effects)
 	if len(o.Effects) > 0 {
 		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: o.Effects, path: path, strict: b.strict[key]})
 	}

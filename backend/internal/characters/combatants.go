@@ -39,7 +39,7 @@ func (s *Service) CombatParty(ctx context.Context, tx pgx.Tx, campaignID string)
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the party", err)
 		}
@@ -134,7 +134,7 @@ func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID st
 	}
 	out := make([]link.Character, 0, len(rows))
 	for _, row := range rows {
-		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast)
+		c, err := combatCharacter(content, row.ID, row.Kind, row.Name, row.PlayerUserID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 		if err != nil {
 			return nil, s.dbError(ctx, "list the characters of a combat", err)
 		}
@@ -147,7 +147,7 @@ func (s *Service) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID st
 // sheet: derived by the rules for a full sheet (a player, an enemy, a boss),
 // as written for a basic one (a minion, a story NPC). A druid in Wild Shape
 // (beast) starts, and keeps, with the beast's speed, size and jumps (MR-037).
-func combatCharacter(content *rules.Content, id, kind, name string, playerUserID *string, doc []byte, beast *string) (link.Character, error) {
+func combatCharacter(content *rules.Content, id, kind, name string, playerUserID *string, doc []byte, beast *string, active []byte) (link.Character, error) {
 	sheet, err := loadSheet(id, doc)
 	if err != nil {
 		return link.Character{}, err
@@ -155,7 +155,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 	c := link.Character{ID: id, Name: name, Player: kind == "player", PlayerUserID: conv.OrZero(playerUserID)}
 	switch {
 	case sheet.GetFull() != nil:
-		d := derive(content, sheet.GetFull(), beast)
+		d := derive(content, sheet.GetFull(), beast, active)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
 		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, raceSizeOf(content, d, sheet.GetFull().GetRaceKey())
 		if beast != nil && *beast != "" {

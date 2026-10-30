@@ -49,6 +49,7 @@ type Character struct {
 	RevivifyBlocked     bool
 	ReviveKey           *string
 	ReviveHash          *string
+	ActiveStates        []byte
 }
 
 type CharacterCreature struct {

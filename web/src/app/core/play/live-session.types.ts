@@ -58,6 +58,17 @@ export interface VitalsVm {
   readonly resources?: readonly ResourceUsageVm[];
   /** The beast a druid is in now; `null` or absent in the character's own shape. While it is set, the numbers above wait. */
   readonly wildShape?: WildShapeVm | null;
+  /** The temporary states that are on (a stance, a form a table feature defines), with the rounds left; absent or empty without one. */
+  readonly states?: readonly ActiveStateVm[];
+}
+
+/** A temporary state that is on for a character. `roundsLeft` is 0 for one that lasts until it ends. */
+export interface ActiveStateVm {
+  readonly key: string;
+  readonly namePt: string;
+  readonly textPt: string;
+  readonly durationRounds: number;
+  readonly roundsLeft: number;
 }
 
 /** The open game session being watched. */

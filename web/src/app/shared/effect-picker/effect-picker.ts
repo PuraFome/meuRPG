@@ -87,7 +87,7 @@ export class EffectPicker {
     return Array.isArray(v)
       ? v.length > 0
       : typeof v === 'number'
-        ? v > 0
+        ? v !== 0
         : typeof v === 'string'
           ? v.trim() !== ''
           : v === true;
@@ -133,12 +133,11 @@ export class EffectPicker {
       // One hint: a field's own sentence says what it is for; the menu's line (the functions) is the fallback
       return own || this.menu().formulaHint();
     }
-    if (f.kind === 'resource_ref') {
-      // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
-      return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
+    if (f.kind === 'resource_ref' || f.kind === 'state_ref') {
+      return this.refHint(f, own);
     }
     if (f.kind === 'condition') {
-      return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
+      return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas; active("nome") vale enquanto o estado de mesmo nome desta entrada está ligado.';
     }
     if (f.kind === 'choice') {
       const list = this.optionsOf(f);
@@ -146,6 +145,28 @@ export class EffectPicker {
       return picked?.hint ?? own;
     }
     return own;
+  }
+
+  /** The hint of a field that names a resource or a state of the entry. */
+  private refHint(f: EffectMenuField, own: string): string {
+    if (f.kind === 'state_ref') {
+      return this.stateRefHint(f);
+    }
+    // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
+    if (this.effect().type === 'state') {
+      return STATE_RESOURCE_HINT;
+    }
+    return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
+  }
+
+  /** Under "Só enquanto o estado": the name of a state effect of the entry, and the ready values the menu lists ("rage"). */
+  private stateRefHint(f: EffectMenuField): string {
+    const ready = this.menu()
+      .list(f.list)
+      .map((o) => `${o.key} (${o.namePt})`);
+    const own =
+      'O nome de um estado que esta entrada define (o campo "Nome do estado" de um efeito Estado).';
+    return ready.length > 0 ? `${own} Também vale: ${ready.join(', ')}.` : own;
   }
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
@@ -198,7 +219,7 @@ export class EffectPicker {
   /** What the draft holds for a field of the menu, by its proto name. */
   protected read(name: string): string {
     const v = this.effect()[camel(name)];
-    return typeof v === 'string' ? v : typeof v === 'number' ? (v > 0 ? String(v) : '') : '';
+    return typeof v === 'string' ? v : typeof v === 'number' ? (v !== 0 ? String(v) : '') : '';
   }
 
   protected list(name: string): readonly string[] {
@@ -206,8 +227,13 @@ export class EffectPicker {
     return Array.isArray(v) ? v : [];
   }
 
-  protected meters(): string {
-    return this.effect().rangeM;
+  /** What a field in metres holds (the server stores feet): the range and the melee reach. */
+  protected meters(name: string): string {
+    return name === 'reach_ft' ? this.effect().reachM : this.effect().rangeM;
+  }
+
+  protected inMeters(name: string): boolean {
+    return name === 'range_ft' || name === 'reach_ft';
   }
 
   /** Whether a yes-or-no field is on. */
@@ -226,20 +252,19 @@ export class EffectPicker {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: text });
   }
 
-  protected setNumber(name: string, text: string): void {
+  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. */
+  protected setNumber(f: EffectMenuField, text: string): void {
     const n = Number(text.trim());
-    this.effectChange.emit({
-      ...this.effect(),
-      [camel(name)]: Number.isInteger(n) && n > 0 ? n : 0,
-    });
+    const ok = Number.isInteger(n) && (n > 0 || (n < 0 && f.min < 0));
+    this.effectChange.emit({ ...this.effect(), [camel(f.name)]: ok ? n : 0 });
   }
 
   protected setFlag(name: string, on: boolean): void {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: on });
   }
 
-  protected setMeters(text: string): void {
-    this.effectChange.emit({ ...this.effect(), rangeM: text });
+  protected setMeters(name: string, text: string): void {
+    this.effectChange.emit({ ...this.effect(), [name === 'reach_ft' ? 'reachM' : 'rangeM']: text });
   }
 
   protected setChoice(f: EffectMenuField, value: string): void {
@@ -267,6 +292,9 @@ const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
   resource: 'Gasta usos de',
   restore: 'Devolve usos de',
 };
+
+const STATE_RESOURCE_HINT =
+  'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada vez que o estado liga, gasta 1 uso; sem usos, o cartão fica desligado.';
 
 const RESOURCE_REF_HINT =
   'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';
