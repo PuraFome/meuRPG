@@ -42,7 +42,7 @@ endif
 # deploy/local/compose.yaml and the go-db job in .github/workflows/backend.yml
 # (install it with `brew install cockroachdb/tap/cockroach@26.2`). Its data
 # lives outside the repo, so every worktree shares one database.
-COCKROACH_VERSION := v26.2.7
+COCKROACH_VERSION := v26.2.8
 COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 
 # The test CockroachDB (`make db-test-start`): a second native node on port
