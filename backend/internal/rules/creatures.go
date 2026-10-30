@@ -411,6 +411,10 @@ type CreatureAction struct {
 	// Multiattack is the routines of the Multiattack action: the creature
 	// makes one routine's attacks. Empty for any other action.
 	Multiattack [][]CreatureAttackCount
+	// Plan is how the server reads the action (monsterplan.go): its key, kind,
+	// class, attack, rider save, grapple and area. Always set for an action of a
+	// creature of the content.
+	Plan *ActionPlan
 }
 
 // CreatureDamage is one damage part ("2d4+2", "damage-type:piercing").
@@ -424,6 +428,10 @@ type CreatureSave struct {
 	DC      int
 	// OnSuccess is "none", "half" or "other".
 	OnSuccess string
+	// Plan is the save as the server reads it (the damage it governs, the
+	// condition of a failure, whether it rides on an attack); nil when the
+	// action has no plan.
+	Plan *ActionSave
 }
 
 // CreatureAttackCount is one attack of a Multiattack routine: the name of the
@@ -472,9 +480,27 @@ func (c *content) creature(m *srd51.Monster) Creature {
 	out.Senses = c.monsterSenses(m)
 	out.Traits, out.Reactions, out.LegendaryActions = creatureAbilities(m.SpecialAbilities), creatureAbilities(m.Reactions), creatureAbilities(m.LegendaryActions)
 	for _, a := range m.Actions {
-		out.Actions = append(out.Actions, c.creatureAction(a))
+		act := c.creatureAction(a)
+		c.attachPlan(m, &act)
+		out.Actions = append(out.Actions, act)
 	}
 	return out
+}
+
+// attachPlan sets the plan of the creature's action on act.
+func (c *content) attachPlan(m *srd51.Monster, act *CreatureAction) {
+	p := c.monsterPlans[m.Key]
+	if p == nil {
+		return
+	}
+	plan, ok := p.Action(m.Key + "#" + slugOf(act.Name))
+	if !ok {
+		return
+	}
+	act.Plan = &plan
+	if act.Save != nil {
+		act.Save.Plan = plan.Save
+	}
 }
 
 // creatureScores are the six scores, and the saves the stat block lists.

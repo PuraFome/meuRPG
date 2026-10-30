@@ -2485,6 +2485,95 @@ message CreatureAction {
   // through a creature; empty when the content has none, and the screen then shows
   // the English `name` as it is.
   string name_pt = 9;
+  // The key of the action: "<creature key>#<slug of the name>", such as
+  // "monster:ghoul#claws". It is the key of the action's attack and of its
+  // saving-throw action on a sheet made from the creature.
+  string key = 10;
+  // What the action does, as the server reads it.
+  CreatureActionKind kind = 11;
+  // How far the server reads the action's text. Anything but STRUCTURED means
+  // the text states something the other fields do not hold, and the master reads
+  // it.
+  CreatureActionClass plan_class = 12;
+  // For an attack roll: a melee attack (otherwise ranged) and a spell attack
+  // (otherwise a weapon's).
+  bool melee = 13;
+  bool spell_attack = 14;
+  // For an attack roll: the reach of a melee attack, and the normal and long
+  // range of a ranged attack or a thrown weapon, in feet; 0 when it has none.
+  int32 reach_ft = 15;
+  int32 range_ft = 16;
+  int32 long_range_ft = 17;
+  // A condition the attack gives its target on a hit with no saving throw (a
+  // grapple). Unset when it gives none.
+  CreatureHitCondition hit_condition = 18;
+  // The area of an action that affects every creature in it (a breath weapon).
+  // Unset for an action that picks its targets.
+  CreatureArea area = 19;
+}
+
+// CreatureActionKind is what an action does (CreatureAction.kind).
+enum CreatureActionKind {
+  CREATURE_ACTION_KIND_UNSPECIFIED = 0;
+  // It makes an attack roll; `damage` is what a hit deals. It may also have a
+  // saving throw, asked once the attack hits (CreatureSave.on_hit).
+  CREATURE_ACTION_KIND_ATTACK = 1;
+  // It asks the creatures it affects for a saving throw; the damage it governs
+  // is in the save.
+  CREATURE_ACTION_KIND_SAVE = 2;
+  // It is the Multiattack action: a routine of other actions.
+  CREATURE_ACTION_KIND_MULTIATTACK = 3;
+  // It has no roll of its own; the text is a reminder for the master.
+  CREATURE_ACTION_KIND_OTHER = 4;
+}
+
+// CreatureActionClass is how far the server reads an action's text
+// (CreatureAction.plan_class).
+enum CreatureActionClass {
+  CREATURE_ACTION_CLASS_UNSPECIFIED = 0;
+  // Every damage part, saving throw and condition the text states is in the
+  // other fields.
+  CREATURE_ACTION_CLASS_STRUCTURED = 1;
+  // The fields hold the attack, the damage or the saving throw, but the text
+  // states a number or a condition they do not.
+  CREATURE_ACTION_CLASS_PARTIAL = 2;
+  // Nothing to roll: the text is the whole action.
+  CREATURE_ACTION_CLASS_TEXT = 3;
+}
+
+// CreatureHitCondition is a condition an attack gives its target when it hits,
+// with no saving throw: a grapple, which the target ends with an escape check.
+message CreatureHitCondition {
+  // Content key of the condition ("condition:grappled") and its Portuguese name.
+  string condition_key = 1;
+  string condition_pt = 2;
+  // The difficulty class to escape the grapple.
+  int32 escape_dc = 3;
+  // The biggest size the target may have, as the SRD's word ("Large"); empty when
+  // any size is grappled.
+  string max_size = 4;
+}
+
+// CreatureAreaShape is the shape of a CreatureArea.
+enum CreatureAreaShape {
+  CREATURE_AREA_SHAPE_UNSPECIFIED = 0;
+  CREATURE_AREA_SHAPE_CONE = 1;
+  CREATURE_AREA_SHAPE_LINE = 2;
+  CREATURE_AREA_SHAPE_SPHERE = 3;
+  CREATURE_AREA_SHAPE_CUBE = 4;
+  CREATURE_AREA_SHAPE_CYLINDER = 5;
+  // Everything within `size_ft` of the creature.
+  CREATURE_AREA_SHAPE_RADIUS = 6;
+}
+
+// CreatureArea is the area an action affects, as the SRD words it.
+message CreatureArea {
+  CreatureAreaShape shape = 1;
+  // The length of a cone or a line, the edge of a cube, the radius of a sphere,
+  // a cylinder or a radius, in feet.
+  int32 size_ft = 2;
+  // A line's width in feet; 0 for any other shape.
+  int32 width_ft = 3;
 }
 
 // CreatureDamagePart is one damage roll of an action.
@@ -2505,6 +2594,27 @@ message CreatureSave {
   int32 dc = 2;
   // What a success does; OTHER when the text says neither "nothing" nor "half".
   SpellSaveSuccess on_success = 3;
+  // The damage the save governs: all of it for a creature that fails, and
+  // `on_success` says what a creature that saves takes. Empty when the save only
+  // gives a condition. For an action with no attack roll it is the same as
+  // CreatureAction.damage; for an attack it is the extra damage of the rider (a
+  // bite's poison), which CreatureAction.damage does not repeat.
+  repeated CreatureDamagePart damage = 4;
+  // The condition a failed save gives (content key "condition:paralyzed" and its
+  // Portuguese name); empty when it gives none.
+  string condition_key = 5;
+  string condition_pt = 6;
+  // True when the save is the rider of an attack, asked of the target once the
+  // attack hits; false when the action asks it directly of the creatures it
+  // affects.
+  bool on_hit = 7;
+  // How long the condition lasts, in the SRD's words ("1 minute"); empty when
+  // the text gives another end. A note for the master: the server does not count
+  // the time.
+  string duration = 8;
+  // The target repeats the saving throw at the end of each of its turns to end
+  // the condition. A note for the master.
+  bool repeat_save = 9;
 }
 
 // CreatureMultiattackRoutine is one way to spend a Multiattack: these attacks.

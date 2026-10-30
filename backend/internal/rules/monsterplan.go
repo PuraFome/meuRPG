@@ -80,7 +80,10 @@ type ActionUsage struct {
 
 // ActionDamage is a damage part of an action.
 type ActionDamage struct {
-	Dice       DiceFormula
+	Dice DiceFormula
+	// DiceText is the dice as the rest of the content writes them ("2d8",
+	// "1d6+3", or a flat "5").
+	DiceText   string
 	TypeKey    string
 	TypeNamePT string
 }
@@ -106,8 +109,8 @@ type ActionSave struct {
 	// Empty when the save only gives a condition.
 	Damage []ActionDamage
 	// ConditionKey is the condition a failed save gives ("condition:paralyzed"),
-	// or "".
-	ConditionKey string
+	// or "", and ConditionNamePT its Portuguese name.
+	ConditionKey, ConditionNamePT string
 	// Duration is how long the condition lasts, in the SRD's words ("1 minute"),
 	// or "" when the text gives another end. RepeatSave says the target repeats
 	// the saving throw at the end of each of its turns. Both are notes for the
@@ -122,8 +125,8 @@ type ActionSave struct {
 // ActionHitCondition is a condition an attack gives its target when it hits,
 // with no saving throw: a grapple (escape DC).
 type ActionHitCondition struct {
-	ConditionKey string
-	EscapeDC     int
+	ConditionKey, ConditionNamePT string
+	EscapeDC                      int
 	// MaxSize is the biggest size the target may have ("Large"), or "".
 	MaxSize string
 }
@@ -288,26 +291,21 @@ func (c *content) parseDamageChain(s string) []ActionDamage {
 // nextDamagePart reads one damage part at the start of s and returns what
 // follows it.
 func (c *content) nextDamagePart(s string) (ActionDamage, string, bool) {
-	var dice DiceFormula
-	var typ string
+	var text, typ string
 	var n int
 	if m := damageChainRe.FindStringSubmatch(s); m != nil {
-		f, ok := ParseDice(m[2])
-		if !ok {
-			return ActionDamage{}, "", false
-		}
-		dice, typ, n = f, m[3], len(m[0])
+		text, typ, n = strings.ReplaceAll(m[2], " ", ""), m[3], len(m[0])
 	} else if m := flatDamageRe.FindStringSubmatch(s); m != nil {
-		v, _ := strconv.Atoi(m[1])
-		dice, typ, n = DiceFormula{Bonus: v}, m[2], len(m[0])
+		text, typ, n = m[1], m[2], len(m[0])
 	} else {
 		return ActionDamage{}, "", false
 	}
+	dice, ok := ParseDice(text)
 	key := "damage-type:" + typ
-	if !c.isDamageTypeKey(key) {
+	if !ok || !c.isDamageTypeKey(key) {
 		return ActionDamage{}, "", false
 	}
-	return ActionDamage{Dice: dice, TypeKey: key, TypeNamePT: c.namePT(key)}, s[n:], true
+	return ActionDamage{Dice: dice, DiceText: text, TypeKey: key, TypeNamePT: c.namePT(key)}, s[n:], true
 }
 
 // speaksOfSave says the sentence is about a saving throw and its failure.
@@ -416,7 +414,7 @@ func (c *content) dataDamage(a srd51.MonsterAction) ([]ActionDamage, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s: %q are not dice", a.Name, d.Dice)
 		}
-		out = append(out, ActionDamage{Dice: f, TypeKey: d.DamageType, TypeNamePT: c.namePT(d.DamageType)})
+		out = append(out, ActionDamage{Dice: f, DiceText: d.Dice, TypeKey: d.DamageType, TypeNamePT: c.namePT(d.DamageType)})
 	}
 	return out, nil
 }
@@ -442,6 +440,9 @@ func planAttack(a srd51.MonsterAction) *ActionAttack {
 func (c *content) planSave(a srd51.MonsterAction, p *ActionPlan, damage []ActionDamage) {
 	s := &ActionSave{Ability: Ability(a.Save.Ability), DC: a.Save.DC, OnSuccess: a.Save.OnSuccess, OnHit: p.Attack != nil}
 	s.ConditionKey = failedSaveCondition(a.Desc)
+	if s.ConditionKey != "" {
+		s.ConditionNamePT = c.namePT(s.ConditionKey)
+	}
 	s.Duration, s.RepeatSave = conditionDuration(a.Desc)
 	if p.Attack == nil {
 		p.Kind = ActionKindSave
@@ -460,12 +461,12 @@ func (c *content) planSave(a srd51.MonsterAction, p *ActionPlan, damage []Action
 }
 
 // planHitCondition reads a grapple an attack gives on a hit.
-func planHitCondition(a srd51.MonsterAction) *ActionHitCondition {
+func (c *content) planHitCondition(a srd51.MonsterAction) *ActionHitCondition {
 	m := escapeRe.FindStringSubmatch(a.Desc)
 	if m == nil || strings.Contains(a.Desc, "Instead of dealing damage") {
 		return nil
 	}
-	h := &ActionHitCondition{ConditionKey: "condition:grappled"}
+	h := &ActionHitCondition{ConditionKey: "condition:grappled", ConditionNamePT: c.namePT("condition:grappled")}
 	h.EscapeDC, _ = strconv.Atoi(m[1])
 	if sz := sizeRe.FindStringSubmatch(a.Desc); sz != nil {
 		h.MaxSize = sz[1]
@@ -485,7 +486,7 @@ func (c *content) planAction(m *srd51.Monster, a srd51.MonsterAction) (ActionPla
 	}
 	if a.HasAttack && atkHeadRe.MatchString(a.Desc) {
 		p.Kind, p.Attack, p.Damage = ActionKindAttack, planAttack(a), damage
-		p.HitCondition = planHitCondition(a)
+		p.HitCondition = c.planHitCondition(a)
 	}
 	if a.Save != nil {
 		c.planSave(a, &p, damage)
