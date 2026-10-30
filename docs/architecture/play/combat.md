@@ -146,7 +146,7 @@ stateDiagram-v2
   The line of a part is the master's alone when the member is hidden or its group has no player character, also when the turn waits for the saving throws of effects: the player's log and `combat_log_changed` do not carry it.
   No stream event of its own: `encounter_changed` and `turn_changed` suffice.
 - **On the web.** `core/combat/joint-turn.ts` (pure) groups the order; the master's card is `joint-card`, and `end-part` and `joint-others` are the player's.
-  `CombatState.applyTurn` keeps the group and ended parts when `turn_changed` moves the current combatant inside the same round.
+  `CombatState.applyTurn` reads the combat again when `turn_changed` moves the current combatant inside the same round (a part ended in the group): the event does not say whose part ended. The screen that made the call already holds the answer, which is newer than the event.
 
 ## Who sees what (RN-10, RN-20)
 
@@ -176,7 +176,7 @@ Two simultaneous changes wait for each other, so a double tap on "Encerrar turno
 ## Combat on screen
 
 The session page (`pages/live-session`) reads the combat (`CombatClient.turn.get`, `core/combat`) at every `ready` and after each `encounter_changed` newer than its copy; `CombatState` compares revisions and sets an older copy aside.
-`combatant_moved` applies in place; a combatant the screen does not know makes it read. `turn_changed` applies in place only when it is the very next revision of the copy on screen (the master's event carries the combat's `revision`; a player's says 0, with no number to compare, and applies), because a patched copy claims the revision of the event and must hold everything up to it. An event more than one revision ahead (something in between, such as the master setting a character to 0 hit points, is not in the copy), and a turn that moves to a combatant who is down (its death save due is the server's to decide at the start of the turn), make the page read the combat again. An event no newer than the copy changes nothing.
+`combatant_moved` applies in place; a combatant the screen does not know makes it read. `turn_changed` applies in place only when it is the very next revision of the copy on screen (the master's event carries the combat's `revision`; a player's says 0, with no number to compare, and applies), because a patched copy claims the revision of the event and must hold everything up to it. An event more than one revision ahead (something in between, such as the master setting a character to 0 hit points, is not in the copy), and a turn that moves to a combatant who is down (its death save due is the server's to decide at the start of the turn), and a part that ends inside a joint turn (the event names only the new current combatant, not who ended), make the page read the combat again. An event no newer than the copy changes nothing.
 A read that began before one of those events, or before an answer to a call was applied, is dropped when it answers, and the page reads again up to 3 times (`CombatState.changedSince`).
 A read that fails is retried once 1.5 s later; after that the next stream event or reconnection reads it.
 The "Alvo" of an NPC's attack (`NpcCard`, `defaultTarget`) starts on the nearest hostile creature in reach (hostile: the party against the enemies by `side`), then the nearest hostile out of reach, and never an ally unless no other creature exists. It is worked out again when the options change because the NPC moved, until the master picks a target by hand (`pickedByHand`; a new turn starts clean).
