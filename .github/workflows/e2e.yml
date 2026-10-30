@@ -20,6 +20,7 @@ on:
       - ".dockerignore"
       - "Makefile"
       - ".github/workflows/e2e.yml"
+      - ".github/scripts/e2e-no-retries.sh"
       - ".node-version"
       - "!**/*.md"
   push:
@@ -33,6 +34,7 @@ on:
       - ".dockerignore"
       - "Makefile"
       - ".github/workflows/e2e.yml"
+      - ".github/scripts/e2e-no-retries.sh"
       - ".node-version"
       - "!**/*.md"
   # The nightly run and a manual run test everything, with no path filter
@@ -134,6 +136,10 @@ jobs:
       - name: Lint
         working-directory: e2e
         run: npm run lint
+
+      - name: Check that the tests are not retried
+        # A retry hides a flaky test: the config keeps `retries: 0` (docs/ci.md, "Flaky tests").
+        run: .github/scripts/e2e-no-retries.sh
 
   # Builds the two images once (the production image and devidp) and hands them
   # to the shards, which used to build them four times over (124 to 162 s each,

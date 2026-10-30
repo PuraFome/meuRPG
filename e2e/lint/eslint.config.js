@@ -36,6 +36,8 @@ module.exports = tseslint.config(
       // the spacing rule is style, which Prettier owns.
       'playwright/expect-expect': 'off',
       'playwright/consistent-spacing-between-blocks': 'off',
+      // No exits: a skipped test hides a flake instead of fixing it, and `test.fixme` is a skip with a nicer name.
+      'playwright/no-skipped-test': ['error', { disallowFixme: true }],
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
