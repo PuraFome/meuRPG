@@ -85,7 +85,7 @@ describe('SessionDark: the warning on the master’s session map card', () => {
 
   it('passes "Ver no mapa" on to the page', async () => {
     const { el, shown } = await mount();
-    button(el, 'Ver Brisa no mapa').click();
+    button(el, 'Ver no mapa, Brisa').click();
     expect(shown).toHaveBeenCalledWith('c-Brisa');
   });
 

@@ -27,6 +27,11 @@
 
 // The one frame: initials are not an image, so they keep their tile.
 .fig__tile {
+  // The initials are drawn, not text, so a button that holds the tile is named by the words beside it (WCAG 2.5.3).
+  &::before {
+    content: attr(data-initials);
+  }
+
   display: flex;
   align-items: center;
   justify-content: center;

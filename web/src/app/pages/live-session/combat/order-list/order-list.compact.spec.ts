@@ -49,7 +49,7 @@ describe('OrderList compact rows (C1-02, Main)', () => {
     const plain = (n?: Element | null) => (n?.textContent ?? '').replace(/\u00a0/g, ' ').trim();
     const head = (label: string) =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('.row__head')).find((h) =>
-        h.getAttribute('aria-label')?.startsWith(label),
+        h.querySelector('.row__label')?.textContent?.startsWith(label),
       )!;
     return { fixture, el, head, plain };
   }
@@ -57,7 +57,10 @@ describe('OrderList compact rows (C1-02, Main)', () => {
   it('draws a closed row of one line, with the name, the initiative and armor class, the hit points and a bar', () => {
     const { el, head, plain } = setup();
     expect(head('Goblin 1').getAttribute('aria-expanded')).toBe('false');
-    expect(head('Goblin 1').getAttribute('aria-label')).toBe('Goblin 1, é a vez, 7 de 7 PV');
+    // The head is named by what it shows (WCAG 2.5.3); the state and the hit points in words are its description.
+    expect(head('Goblin 1').hasAttribute('aria-label')).toBe(false);
+    const said = head('Goblin 1').getAttribute('aria-describedby')!;
+    expect(plain(el.querySelector(`#${said}`))).toBe('Goblin 1, é a vez, 7 de 7 PV');
     const first = el.querySelector('li.row')!;
     expect(plain(first.querySelector('.row__sub'))).toBe('Inic. 14 · CA 15');
     expect(first.querySelector('.row__hp-n')?.textContent?.replace(/\s+/g, '')).toBe('7/7');
@@ -82,7 +85,7 @@ describe('OrderList compact rows (C1-02, Main)', () => {
       b.getAttribute('aria-label'),
     );
     expect(names).toEqual([
-      'Dano ou cura em Pensantus',
+      'Dano/Cura: Pensantus',
       'Condições de Pensantus',
       'Mais ações para Pensantus',
     ]);

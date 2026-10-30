@@ -94,12 +94,13 @@ export function openTreasureSheet(
         <ul class="mr-list">
           @for (p of found(); track p.id) {
             <li>
-              <button type="button" class="mr-list__row ft__row" [attr.aria-label]="p.name + ', ' + sub(p) + '. Abrir'" (click)="open(p)">
+              <button type="button" class="mr-list__row ft__row" (click)="open(p)">
                 <app-chest-icon />
                 <span class="mr-list__text">
-                  <b class="mr-list__name">{{ p.name }}</b>
+                  <b class="mr-list__name">{{ p.name }}</b>&ngsp;
                   <span class="mr-list__sub">{{ sub(p) }}</span>
                 </span>
+                <span class="mr-visually-hidden">. Abrir</span>
                 <mat-icon aria-hidden="true">chevron_right</mat-icon>
               </button>
             </li>

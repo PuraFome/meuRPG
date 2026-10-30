@@ -259,7 +259,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
 
     // "Passar o tempo": the four buttons pass the time at once and the answer says what ended; "Outro tempo" takes any seconds.
     const time = m.getByRole('group', { name: 'Passar o tempo' });
-    await time.getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await time.getByRole('button', { name: '10 min, passar 10 minutos' }).click();
     await expect(panel).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
     await time.getByRole('button', { name: 'Outro tempo' }).click();
     await panel.getByLabel('Segundos').fill('0');
@@ -343,7 +343,7 @@ test('fora do combate: "Dar efeito" põe um efeito do catálogo no personagem, c
     await expect(card).toContainText(/1 hora|3600|60 minutos/);
 
     // The time the master passes is taken off the effect.
-    await m.getByRole('group', { name: 'Passar o tempo' }).getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await m.getByRole('group', { name: 'Passar o tempo' }).getByRole('button', { name: '10 min, passar 10 minutos' }).click();
     await expect(panel).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
   } finally {
     await endOpenSessionRPC(m, campaignId);

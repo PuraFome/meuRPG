@@ -79,6 +79,10 @@ export class MapToken {
   });
   protected readonly label = computed(() => {
     const t = this.token();
-    return `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;
+    const said = `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;
+    // The disc shows the initial, or two characters ("Go" when two names start alike, "G1" for a numbered copy): the name starts with them as a word (WCAG 2.5.3).
+    const shown = this.initial();
+    const firstWord = said.split(/[\s,]/)[0].toLowerCase();
+    return shown.length > 1 && firstWord !== shown.toLowerCase() ? `${shown}, ${said}` : said;
   });
 }

@@ -40,7 +40,7 @@ test(
       // The NPC's eye: hidden from the players, the speech button dashed and off.
       await m.getByRole('button', { name: 'Esconder Mira dos jogadores' }).click();
       await expect(row).toContainText('Escondida dos jogadores');
-      await expect(row.getByRole('button', { name: /Mira está escondida dos jogadores e não fala/ })).toHaveAttribute('aria-disabled', 'true');
+      await expect(row.getByRole('button', { name: /Dar a fala: Mira está escondida dos jogadores e não fala/ })).toHaveAttribute('aria-disabled', 'true');
       await expect(stage).toHaveCount(0);
       expect(await getStageRPC(p, campaignId)).toEqual([]);
       expect((await getStageRPC(m, campaignId)).map((n) => n.name)).toEqual(['Mira']);

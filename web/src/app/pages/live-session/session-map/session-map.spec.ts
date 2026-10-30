@@ -296,7 +296,7 @@ describe('SessionMap: "Ir para <mapa>" on a Submapa point', () => {
     expect(goButtons(el)).toHaveLength(1);
     expect(goButtons(el)[0].textContent).toContain('Ir para Interior da torre');
     expect(goButtons(el)[0].getAttribute('aria-label')).toBe(
-      'Levar a sessão para Interior da torre',
+      'Ir para Interior da torre, levando a sessão',
     );
   });
 

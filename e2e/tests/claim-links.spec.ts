@@ -135,7 +135,7 @@ test(
 
       await page.goto(`/campaigns/${campaignId}`);
       const row = rowOf(page, 'Kai');
-      await row.getByRole('button', { name: /Devolver Kai à reserva/ }).click();
+      await row.getByRole('button', { name: /Devolver à reserva: Kai/ }).click();
       const question = row.getByRole('group', { name: 'Devolver Kai à reserva?' });
       await expect(question).toContainText('Kai fica sem dono e o link deixa de existir.');
       await expect(question.getByRole('button', { name: 'Cancelar' })).toBeFocused();

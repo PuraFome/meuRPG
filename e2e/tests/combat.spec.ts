@@ -487,7 +487,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
 
     // "Dano/Cura" on Goblin 2: 3 of damage, then a heal back.
     await openOrderRow(m, 'Goblin 2');
-    await m.getByRole('button', { name: 'Dano ou cura em Goblin 2' }).click();
+    await m.getByRole('button', { name: 'Dano/Cura: Goblin 2' }).click();
     const dialog = m.getByRole('dialog', { name: 'Dano ou cura em Goblin 2' });
     await expect(dialog.getByRole('heading', { name: 'Dano ou cura em Goblin 2' })).toBeFocused();
     await expect(dialog.getByText('Agora: 7 de 7 PV')).toBeVisible();
@@ -501,7 +501,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
     await expect(p.getByText('4 de 7')).toHaveCount(0);
 
     await openOrderRow(m, 'Goblin 2');
-    await m.getByRole('button', { name: 'Dano ou cura em Goblin 2' }).click();
+    await m.getByRole('button', { name: 'Dano/Cura: Goblin 2' }).click();
     await m.getByRole('dialog').locator('label', { hasText: /^\s*Cura\s*$/ }).click();
     await m.getByLabel('PV curados').fill('9');
     await expect(m.getByText('Depois: 7 de 7 PV')).toBeVisible();
@@ -1037,7 +1037,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Sua reação: Disponível.')).toBeVisible();
-    await p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' }).click();
+    await p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ }).click();
     const sheet = p.getByRole('dialog', { name: 'Ataque de oportunidade com Adaga' });
     // A melee attack: "corpo a corpo", not the dagger's thrown range.
     await expect(sheet.getByText(/^Reação ·.*corpo a corpo$/)).toBeVisible();

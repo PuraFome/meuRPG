@@ -131,10 +131,6 @@ export class StagePlayer {
     this.timers.add(timer);
   }
 
-  protected figureLabel(npc: StageNpc): string {
-    return npc.speaking ? `Ver ${npc.name} maior, fala agora` : `Ver ${npc.name} maior`;
-  }
-
   protected thumb(npc: StageNpc): string {
     return npc.portraitUrl ? `${npc.portraitUrl}/thumb` : '';
   }

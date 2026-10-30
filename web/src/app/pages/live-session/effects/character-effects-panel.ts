@@ -97,6 +97,11 @@ export class CharacterEffectsPanel {
   protected readonly opening = signal(false);
 
   protected readonly presets = TIME_PRESETS;
+
+  /** The name of a time button starts with what it shows ("10 min, passar 10 minutos"): a voice command says what it sees (WCAG 2.5.3). */
+  protected presetName(p: { readonly short: string; readonly label: string }): string {
+    return p.short === p.label ? `Passar ${p.label}` : `${p.short}, passar ${p.label}`;
+  }
   protected readonly maxSeconds = MAX_SECONDS;
   protected readonly seconds = signal('60');
   protected readonly advancing = signal(false);

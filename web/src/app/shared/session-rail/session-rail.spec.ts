@@ -42,7 +42,7 @@ describe('SessionRail', () => {
 
   it('has a tab list with the counts in words', () => {
     const { tab } = setup();
-    expect(tab(0).getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
+    expect(tab(0).getAttribute('aria-label')).toBe('Conversa 3, 3 mensagens novas');
     expect(tab(0).getAttribute('aria-selected')).toBe('true');
   });
 
