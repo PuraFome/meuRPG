@@ -62,7 +62,7 @@ describe('TabList', () => {
 
   it('puts the count in the name, in words, and hides the badge from a reader', () => {
     const { tabs } = setup();
-    expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
+    expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa 3, 3 mensagens novas');
     expect(tabs()[2].getAttribute('aria-label')).toBeNull();
     const badge = tabs()[0].querySelector('.tl__badge');
     expect(badge?.textContent?.trim()).toBe('3');

@@ -100,7 +100,7 @@ test(
       await expect(master.getByRole('button', { name: 'Taverna do Javali, Cena de RP, escondido' })).toBeVisible();
 
       // Reveal the map; the player opens the submap point's sheet, then the target.
-      await master.getByRole('button', { name: 'Revelar o mapa aos jogadores' }).click();
+      await master.getByRole('button', { name: 'Revelar aos jogadores o mapa' }).click();
       await expect(master.getByRole('button', { name: 'Esconder o mapa dos jogadores' })).toBeVisible();
 
       await player.goto(mapUrl);
@@ -237,7 +237,7 @@ test(
       try {
         await openSessionPage(master, table.campaignId, 'mapa');
         await expect(master.getByLabel('Mapa atual')).toHaveValue(mapId);
-        await master.getByRole('button', { name: 'Levar a sessão para Interior da torre' }).click();
+        await master.getByRole('button', { name: 'Ir para Interior da torre, levando a sessão' }).click();
         await expect(master.getByLabel('Mapa atual')).toHaveValue(towerId);
       } finally {
         await endOpenSessionRPC(master, table.campaignId);

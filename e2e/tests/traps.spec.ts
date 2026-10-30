@@ -282,7 +282,7 @@ test(
 
       const card = treasurePanel(m).getByRole('article', { name: 'Baú de moedas' });
       await expect(card).toContainText('O que tem dentro · só você vê até achar');
-      await card.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
+      await card.getByRole('button', { name: 'Marcar como encontrado: Baú de moedas' }).click();
       await expect(card.getByRole('button', { name: 'Marcar como encontrado' })).toHaveAttribute('aria-disabled', 'true');
       await card.locator('label', { hasText: 'Pensantus' }).click();
       await card.locator('label', { hasText: 'Toren' }).click();

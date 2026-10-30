@@ -79,6 +79,9 @@ export class MapToken {
   });
   protected readonly label = computed(() => {
     const t = this.token();
-    return `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;
+    const said = `${t.name}${t.mine ? ' (você)' : ''}, ${t.hidden ? 'escondido' : 'visível'}`;
+    // The disc shows the initial, or the initial and a number when two names start alike: the name starts with what shows (WCAG 2.5.3).
+    const shown = this.initial();
+    return shown.length > 1 && !said.toLowerCase().startsWith(shown.toLowerCase()) ? `${shown}, ${said}` : said;
   });
 }

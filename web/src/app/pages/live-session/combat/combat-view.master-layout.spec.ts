@@ -71,7 +71,7 @@ describe("CombatView, the master's three columns (alternative B)", () => {
     const rail = el.querySelector('app-session-rail')!;
     expect(rail.getAttribute('aria-label')).toBe('Turno e conversa');
     expect(rail.getAttribute('role')).toBe('complementary');
-    expect(tabNames(el, 'app-session-rail')).toEqual(['Turno', 'Conversa, 3 mensagens novas']);
+    expect(tabNames(el, 'app-session-rail')).toEqual(['Turno', 'Conversa 3, 3 mensagens novas']);
     // The order is not drawn a second time inside the rail.
     expect(rail.querySelector('app-order-list')).toBeNull();
   });
@@ -196,7 +196,7 @@ describe("CombatView, the master's phone (C6-01)", () => {
         .replace(/\s+/g, ' ')
         .trim(),
     );
-    expect(names).toEqual(['Turno', 'Ordem, 2 combatentes', 'Mapa']);
+    expect(names).toEqual(['Turno', 'Ordem 2, 2 combatentes', 'Mapa']);
     expect(el.querySelector<HTMLElement>('#ptab-panel-turn')!.hidden).toBe(false);
     expect(el.querySelector<HTMLElement>('#ptab-panel-order')!.hidden).toBe(true);
     expect(el.querySelector<HTMLElement>('#ptab-panel-map')!.hidden).toBe(true);

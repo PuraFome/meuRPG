@@ -59,7 +59,7 @@ describe('ShownImageBlock', () => {
     expect(el.querySelector('.block__name')?.textContent).toBe('Capitão Goblin');
     expect(el.textContent).not.toContain('Fica aqui enquanto o mestre mostrar.');
     expect(
-      el.querySelector('button[aria-label="Ver Capitão Goblin em tela cheia"]'),
+      el.querySelector('button[aria-label="Ver em tela cheia: Capitão Goblin"]'),
     ).not.toBeNull();
   });
 

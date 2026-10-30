@@ -70,7 +70,7 @@ describe('ReachedMilestones (E8-14)', () => {
     expect(text(el)).toContain('Samuel marcou Pensantus e Toren');
     expect(el.querySelectorAll('.item__give')).toHaveLength(1);
     expect(el.querySelector('.item__give')?.getAttribute('aria-label')).toBe(
-      'Dar Chegar ao Vale Seco a mais alguém',
+      'Dar a mais alguém: Chegar ao Vale Seco',
     );
     expect(el.querySelectorAll('[data-undo]')).toHaveLength(1);
     expect(el.querySelector('[data-undo]')?.getAttribute('aria-label')).toBe(

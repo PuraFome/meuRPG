@@ -110,7 +110,7 @@ test(
       await expect(left.getByText('Planta da torre', { exact: true })).toBeVisible();
 
       // The player opens it full screen, and the file is served to them.
-      await left.getByRole('button', { name: 'Ver Planta da torre em tela cheia' }).click();
+      await left.getByRole('button', { name: 'Ver em tela cheia: Planta da torre' }).click();
       const viewer = player.getByRole('dialog');
       await expect(viewer.getByRole('img', { name: 'Planta da torre' })).toBeVisible();
       await viewer.getByRole('button', { name: 'Fechar' }).click();

@@ -613,7 +613,7 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     if (width < 768) {
       // A phone folds it to one row; opened, the thumbnails are buttons.
       await left.getByRole('button', { name: /^Imagens que o mestre deixou/ }).click();
-      await expect(left.getByRole('button', { name: 'Ver Capitão Goblin em tela cheia' })).toBeVisible();
+      await expect(left.getByRole('button', { name: 'Ver em tela cheia: Capitão Goblin' })).toBeVisible();
       await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, a dobra aberta, jogador ${suffix}`);
     }
   } finally {
@@ -2156,7 +2156,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     // With a scene open, the points of the map say what they do with it.
     await showMapTool(m, 'Pontos');
     await expect(m.getByText('Cena aberta agora')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Trocar para esta cena: Posto da guarda' })).toBeVisible();
     await expectScreenPasses(m, `Pontos do mapa com a cena aberta ${where}`);
     await showMasterTab(m, 'cena');
     await m.getByRole('button', { name: 'Trocar cena' }).click();
@@ -2291,7 +2291,7 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     for (const text of ['Salvar o mercador', 'Chegar ao Vale Seco', 'Derrotar o Barão Ivo']) {
       await experience(m).getByLabel('Nome do marco').fill(text);
       await experience(m).getByLabel('Nome do marco').press('Enter');
-      await expect(experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+      await expect(experience(m).getByRole('button', { name: `Marcar como alcançado: “${text}”` })).toBeVisible();
       if (text !== 'Derrotar o Barão Ivo') {
         await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
       }
@@ -2309,7 +2309,7 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('button', { name: 'Voltar' }).click();
 
     // "Marcar como alcançado".
-    await experience(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
+    await experience(m).getByRole('button', { name: 'Marcar como alcançado: “Chegar ao Vale Seco”' }).click();
     await expect(m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
     await expectScreenPasses(m, `Marcar como alcançado ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Marcar como alcançado' }).click();
@@ -2715,16 +2715,16 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
     await expectScreenPasses(m, `Em cena, vazio ${where}`);
     await m.getByRole('button', { name: 'Pôr em cena', exact: true }).click();
-    await expect(m.getByRole('button', { name: 'Pôr Mira em cena' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Pôr em cena: Mira' })).toBeVisible();
     await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(m, `Pôr em cena ${where}`);
     for (const name of ['Mira', 'Capitão Goblin']) {
-      await m.getByRole('button', { name: `Pôr ${name} em cena` }).click();
-      await expect(m.getByRole('button', { name: `Tirar ${name} de cena` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
+      await m.getByRole('button', { name: `Pôr em cena: ${name}` }).click();
+      await expect(m.getByRole('button', { name: `Tirar de cena: ${name}` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
     }
     await m.getByRole('button', { name: width >= 768 ? 'Fechar' : 'Fechar', exact: true }).last().click();
     await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
-    await expect(m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Fala agora: Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
     await expectScreenPasses(m, `Em cena, dois NPCs, um falando ${where}`);
 
     const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
@@ -4155,7 +4155,7 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await showMapTool(m, 'Tesouro');
     const chest = m.getByRole('region', { name: 'Tesouros do mapa' }).getByRole('article', { name: 'Baú de moedas' });
     await expectScreenPasses(m, `Tesouros do mapa, escondido ${where}`);
-    await chest.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
+    await chest.getByRole('button', { name: 'Marcar como encontrado: Baú de moedas' }).click();
     await expectScreenPasses(m, `Marcar como encontrado no lugar ${where}`);
     await chest.locator('label', { hasText: 'Pensantus' }).click();
     await chest.getByRole('button', { name: 'Marcar como encontrado' }).click();
@@ -6970,7 +6970,7 @@ async function scanClaims(browser: Browser, colorScheme: 'light' | 'dark', width
     await expect(rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' })).toBeVisible();
     await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
     await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
-    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver Brisa à reserva/ }).click();
+    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver à reserva: Brisa/ }).click();
     await expect(rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' })).toBeVisible();
     await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
     await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
@@ -8721,7 +8721,7 @@ async function scanDarkWarningScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(m, `No escuro, o aviso do mestre ${where}`);
 
     // "Ver no mapa": the map centers and only Toren is labelled.
-    await notice.getByRole('button', { name: 'Ver Toren no mapa' }).click();
+    await notice.getByRole('button', { name: 'Ver no mapa, Toren' }).click();
     await expect(m.locator('app-dark-marks .label')).toHaveText('Toren · no escuro');
     await expectScreenPasses(m, `No escuro, Ver no mapa ${where}`);
 

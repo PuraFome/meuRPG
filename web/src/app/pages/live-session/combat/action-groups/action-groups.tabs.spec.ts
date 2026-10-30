@@ -79,9 +79,9 @@ describe('ActionGroups: the action tabs (C4-03, C4-04, C6-07)', () => {
   it('draws Ataques, Magias and Outras for a caster, each with its count in the tab’s name', () => {
     const { tabs } = setup(wizard);
     expect(tabs().map((t) => t.getAttribute('aria-label'))).toEqual([
-      'Ataques, 2 ataques',
-      'Magias, 4 magias',
-      'Outras, 3 ações',
+      'Ataques 2, 2 ataques',
+      'Magias 4, 4 magias',
+      'Outras 3, 3 ações',
     ]);
   });
 
@@ -113,9 +113,9 @@ describe('ActionGroups: the action tabs (C4-03, C4-04, C6-07)', () => {
       standardActions: [standard('dash', 'Disparada')],
     });
     expect(tabs().map((t) => t.getAttribute('aria-label'))).toEqual([
-      'Ataques, 1 ataque',
-      'Guerreiro, 2 habilidades',
-      'Outras, 1 ação',
+      'Ataques 1, 1 ataque',
+      'Guerreiro 2, 2 habilidades',
+      'Outras 1, 1 ação',
     ]);
     expect(names(panel('class'))).toEqual(['Retomar o Fôlego', 'Surto de Ação']);
   });

@@ -108,7 +108,7 @@ describe('StagePlayer', () => {
     expect(items[0].querySelector('app-stage-figure .fig--speaking')).toBeNull();
     expect(flat(items[1].querySelector('.stage__tag'))).toContain('Fala agora');
     expect(items[0].querySelector('.stage__tag')).toBeNull();
-    expect(figures(el)[1].getAttribute('aria-label')).toBe('Ver Capitão Goblin maior, fala agora');
+    expect(figures(el)[1].getAttribute('aria-label')).toBe('Capitão Goblin Fala agora, ver maior');
     expect(figures(el)[0].getAttribute('aria-label')).toBe('Ver Mira maior');
   });
 
