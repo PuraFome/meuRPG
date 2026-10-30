@@ -11,8 +11,7 @@
 //     Send until the platform closes the connection;
 //   - the read of a request body that a client can trickle: ReadBody, for the
 //     image upload, the sign-in form and the campaign package's parts, and
-//     Middleware, for every unary RPC
-//     (UnaryBodyTimeout);
+//     Middleware, for every unary RPC (UnaryBodyTimeout);
 //   - the write of a large response on a plain route: WriteBody, for the
 //     image, thumbnail and tile downloads and the app's files.
 package slowclient

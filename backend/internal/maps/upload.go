@@ -121,6 +121,9 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 	// memory at a time, from the read to the end of the decode. The client's
 	// time to send the file starts when its turn does, and is shorter than
 	// the upload's whole: the slot is not held for a trickle.
+	// The upload's own deadline has done its work with the form's first field: it must not stay armed while the upload waits for
+	// its turn (the same background read would cancel the request).
+	doneReading()
 	release, err := s.acquireProcessing(ctx)
 	if err != nil {
 		return mapsdb.GalleryImage{}, err
