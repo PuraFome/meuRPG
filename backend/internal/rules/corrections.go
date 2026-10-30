@@ -38,10 +38,13 @@ type classRowCorrection struct {
 
 // creatureCorrection sets one field of a creature's stat block.
 type creatureCorrection struct {
-	Creature string          `json:"creature"`
-	Field    string          `json:"field"`
-	Value    json.RawMessage `json:"value"`
-	Source   string          `json:"source"`
+	Creature string `json:"creature"`
+	// Action names the stat block's action a field of the action
+	// ("action_save_success") corrects; "" for a field of the creature.
+	Action string          `json:"action,omitempty"`
+	Field  string          `json:"field"`
+	Value  json.RawMessage `json:"value"`
+	Source string          `json:"source"`
 }
 
 // spellCorrection sets the attack, the saving throw, the damage and the damage
@@ -129,14 +132,46 @@ func (c *content) correctCreatures(name string, corrections []creatureCorrection
 		if corr.Source == "" {
 			return fmt.Errorf("%s: %s: %s needs a source", name, corr.Creature, corr.Field)
 		}
-		if seen[corr.Creature+"/"+corr.Field] {
+		id := corr.Creature + "/" + corr.Action + "/" + corr.Field
+		if seen[id] {
 			return fmt.Errorf("%s: %s: %s is corrected twice", name, corr.Creature, corr.Field)
 		}
-		seen[corr.Creature+"/"+corr.Field] = true
-		if err := c.correctCreature(corr.Creature, m, corr.Field, corr.Value); err != nil {
+		seen[id] = true
+		if err := c.correctCreatureField(corr, m); err != nil {
 			return fmt.Errorf("%s: %s: %s: %w", name, corr.Creature, corr.Field, err)
 		}
 	}
+	return nil
+}
+
+// correctCreatureField applies one creature correction: a field of the stat
+// block, or of one of its actions when the correction names the action.
+func (c *content) correctCreatureField(corr creatureCorrection, m *srd51.Monster) error {
+	if corr.Field == fieldActionSaveSuccess {
+		return correctActionSaveSuccess(m, corr.Action, corr.Value)
+	}
+	if corr.Action != "" {
+		return fmt.Errorf("%s is a field of the creature, not of an action", corr.Field)
+	}
+	return c.correctCreature(corr.Creature, m, corr.Field, corr.Value)
+}
+
+// fieldActionSaveSuccess is the creature correction of what a creature that
+// saves still takes from an action.
+const fieldActionSaveSuccess = "action_save_success"
+
+// correctActionSaveSuccess sets what the action's saving throw does on a
+// success ("half", "none" or "other").
+func correctActionSaveSuccess(m *srd51.Monster, action string, raw json.RawMessage) error {
+	var outcome string
+	if err := json.Unmarshal(raw, &outcome); err != nil || !slices.Contains(spellCorrectionSaveSuccess, outcome) {
+		return fmt.Errorf("needs half, none or other")
+	}
+	i := slices.IndexFunc(m.Actions, func(a srd51.MonsterAction) bool { return a.Name == action })
+	if i < 0 || m.Actions[i].Save == nil {
+		return fmt.Errorf("%s has no action %q with a saving throw", m.Key, action)
+	}
+	m.Actions[i].Save.OnSuccess = outcome
 	return nil
 }
 
