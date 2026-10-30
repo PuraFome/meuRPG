@@ -1781,8 +1781,8 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
 
 -- name: InsertHitRider :one
 -- A rider a monk's hit offers (combat_riders.go).
-INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at, action_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetHitRider :one

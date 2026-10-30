@@ -213,6 +213,9 @@ type hitFacts struct {
 	usesLeft map[string]int32
 	// opportunity says an opportunity attack: a melee attack made from the square the mover left.
 	opportunity bool
+	// planned are the damage parts of a creature's attack after its first, from the stat block's plan
+	// (plannedParts): each rolls with its own type.
+	planned []partRecord
 }
 
 // scene is the rules' ExtraScene for the hit.
@@ -283,7 +286,7 @@ func (h hitFacts) buildParts() []partRecord {
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
 	maneuvers := append(h.maneuverParts(), h.extraDamageParts()...)
-	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 {
+	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
 		return nil
 	}
 	weapon := partRecord{
@@ -300,6 +303,7 @@ func (h hitFacts) buildParts() []partRecord {
 	for _, e := range autos {
 		out = append(out, h.fromExtra(e, partAuto))
 	}
+	out = append(out, h.planned...)
 	return append(out, maneuvers...)
 }
 
@@ -933,6 +937,11 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	}
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err
+	}
+	if plan, ok, err := s.planOfAttack(ctx, c, attacker, attack.Key); err != nil {
+		return err
+	} else if ok {
+		h.planned = plannedParts(plan)
 	}
 	if sheet.Traits.DivineSmite && attacker.Kind == kindPlayer {
 		vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, attacker.CharacterID)

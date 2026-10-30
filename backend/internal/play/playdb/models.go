@@ -334,6 +334,7 @@ type HitRider struct {
 	Choice      *string
 	Used        bool
 	CreatedAt   time.Time
+	ActionKey   *string
 }
 
 type InspirationHold struct {

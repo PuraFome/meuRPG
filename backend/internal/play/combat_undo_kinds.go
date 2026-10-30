@@ -811,13 +811,22 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 		if err := u.deleteHitPendings(ctx, h); err != nil {
 			return err
 		}
-		// A spell that read hit points changed the targets at once: their hit
-		// points, death saves and conditions come back.
-		if target, ok := u.find(h.Target); ok && h.Fx != "" {
-			if err := u.castTargetBack(ctx, target, h); err != nil {
-				return err
-			}
+		if err := u.castHitTargetBack(ctx, h); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// castHitTargetBack puts back what the cast changed in the target at once: a spell that read hit points
+// changed its hit points, death saves and conditions; a creature's action gave it a condition.
+func (u *undoer) castHitTargetBack(ctx context.Context, h castHit) error {
+	target, ok := u.find(h.Target)
+	switch {
+	case ok && h.Fx != "":
+		return u.castTargetBack(ctx, target, h)
+	case ok && h.CondSet:
+		return u.setConditionsBack(ctx, target.ID, h.CondBefore)
 	}
 	return nil
 }
