@@ -26,6 +26,7 @@ import {
   showsText,
   targetLines,
   usableActions,
+  usageText,
 } from './creature-action';
 
 /** The text with its no-break spaces as plain ones. */
@@ -63,7 +64,7 @@ describe('usableActions', () => {
 describe('actionLines: what the plan says, in Portuguese', () => {
   it('writes the save, the area, the damage with "metade se passar"', () => {
     expect(actionLines(fireBreath()).map(plain)).toEqual([
-      'Salvaguarda de Destreza, CD 13 · cone de 4,5 m',
+      'Teste de resistência de Destreza, CD 13 · cone de 4,5 m',
       'Dano: 6d6 de fogo, metade se passar',
     ]);
   });
@@ -83,7 +84,7 @@ describe('actionLines: what the plan says, in Portuguese', () => {
       },
     } as never);
     expect(actionLines(gaze)).toEqual([
-      'Salvaguarda de Sabedoria, CD 14',
+      'Teste de resistência de Sabedoria, CD 14',
       'Se falhar: Paralisado por 1 minuto; repete o teste no fim de cada turno dele',
     ]);
   });
@@ -147,6 +148,29 @@ describe('durationPt', () => {
     expect(durationPt('10 minutes')).toBe('10 minutos');
     expect(durationPt('1 hour')).toBe('1 hora');
     expect(durationPt('until the end of its next turn')).toBe('until the end of its next turn');
+  });
+});
+
+describe('usageText', () => {
+  it('translates the SRD limits of an action, with an en dash between the numbers of a recharge', () => {
+    expect(usageText('Recharge 5-6')).toBe('Recarga 5\u20136');
+    expect(usageText('Recharge 4-6')).toBe('Recarga 4\u20136');
+    expect(usageText('Recharge 6')).toBe('Recarga 6');
+    expect(usageText('1/Day')).toBe('1/dia');
+    expect(usageText('3/day')).toBe('3/dia');
+    expect(usageText('4/Day')).toBe('4/dia');
+    expect(usageText('Recharges after a Short or Long Rest')).toBe(
+      'Recarrega após um descanso curto ou longo',
+    );
+    expect(usageText('Recharges after a short or long rest')).toBe(
+      'Recarrega após um descanso curto ou longo',
+    );
+    expect(usageText('Recharges after a Long Rest')).toBe('Recarrega após um descanso longo');
+  });
+
+  it('keeps any other wording as the SRD has it, and an empty limit empty', () => {
+    expect(usageText('')).toBe('');
+    expect(usageText('Costs 2 Actions')).toBe('Costs 2 Actions');
   });
 });
 

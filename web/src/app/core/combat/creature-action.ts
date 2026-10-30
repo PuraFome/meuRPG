@@ -62,6 +62,36 @@ export function durationPt(text: string): string {
   return `${n} ${unit}${n === 1 ? '' : 's'}`;
 }
 
+/**
+ * How the SRD words the limit of an action ("Recharge 5-6", "3/Day", "Recharges after a Short or Long Rest"), in Portuguese:
+ * "Recarga 5–6" (an en dash between the numbers), "Recarga 6", "3/dia", "Recarrega após um descanso curto ou longo". Any other wording
+ * stays as the SRD has it.
+ */
+export function usageText(text: string): string {
+  const t = text.trim();
+  const recharge = /^recharge\s+(\d)\s*[-–]\s*(\d)$/i.exec(t);
+  if (recharge) {
+    return `Recarga ${recharge[1]}–${recharge[2]}`;
+  }
+  const single = /^recharge\s+(\d)$/i.exec(t);
+  if (single) {
+    return `Recarga ${single[1]}`;
+  }
+  const perDay = /^(\d+)\s*\/\s*day$/i.exec(t);
+  if (perDay) {
+    return `${perDay[1]}/dia`;
+  }
+  const rest = /^recharges after an? (short|long)(?: or (short|long))? rest$/i.exec(t);
+  if (rest) {
+    const kinds = new Set([rest[1], rest[2]].filter(Boolean).map((k) => k.toLowerCase()));
+    if (kinds.size === 2) {
+      return 'Recarrega após um descanso curto ou longo';
+    }
+    return `Recarrega após um descanso ${kinds.has('short') ? 'curto' : 'longo'}`;
+  }
+  return t;
+}
+
 /** The shape of the area in words: "cone de 4,5 m", "linha de 18 m × 1,5 m", "raio de 3 m ao redor dele". */
 export function creatureAreaText(area: CreatureArea | undefined): string {
   if (!area) {
@@ -132,7 +162,7 @@ export function actionLines(a: CreatureAction): string[] {
   const s = a.save!;
   const lines: string[] = [];
   const ability = s.ability === Ability.UNSPECIFIED ? '' : abilityName(s.ability);
-  const test = ability ? `Salvaguarda de ${ability}` : 'Salvaguarda';
+  const test = ability ? `Teste de resistência de ${ability}` : 'Teste de resistência';
   lines.push(
     joinDots([s.dc > 0 ? `${test}, CD ${s.dc}` : test, creatureAreaText(a.area)].filter(Boolean)),
   );
@@ -181,7 +211,7 @@ export interface TargetLine {
   /** "Falhou", "Passou: metade do dano", "Falha automática"; `''` when the target rolled nothing. */
   readonly word: string;
   readonly saved: boolean;
-  /** "Salvaguarda: 1d20 (12) + 2 = 14 contra CD 13", or `''`. */
+  /** "Teste de resistência: 1d20 (12) + 2 = 14 contra CD 13", or `''`. */
   readonly roll: string;
   /** "Ficou Amedrontado", or `''`. */
   readonly condition: string;
@@ -212,7 +242,7 @@ export function targetLines(
       label: labels.get(t.combatantId) ?? 'Alvo',
       word,
       saved,
-      roll: save?.roll ? tight(`Salvaguarda: ${d20Formula(save.roll)}${dc}`) : '',
+      roll: save?.roll ? tight(`Teste de resistência: ${d20Formula(save.roll)}${dc}`) : '',
       condition:
         t.conditionApplied && result.conditionNamePt ? `Ficou ${result.conditionNamePt}` : '',
     };

@@ -119,7 +119,7 @@ describe("HitRiderCard: a creature's rider", () => {
     const text = (groups[0].textContent ?? '').replace(/\s+/g, ' ');
     expect(groups[0].getAttribute('aria-label')).toBe('Garras');
     expect(text).toContain('Garras em Brisa');
-    expect(text).toContain('Pedir salvaguarda de Brisa (CD 10, Constituição)');
+    expect(text).toContain('Pedir teste de resistência de Brisa (CD 10, Constituição)');
     expect(text).toContain('Se falhar: Paralisado');
   });
 
@@ -135,6 +135,7 @@ describe("HitRiderCard: a creature's rider", () => {
     const srd = groups[0].querySelector('[data-testid="rider-srd"]');
     expect(srd?.textContent).toContain('Texto do SRD');
     expect(srd?.textContent).toContain('ignores elves and undead');
+    expect(srd?.querySelector('[lang="en"]')?.textContent).toContain('ignores elves'); // read as English
     expect(groups[0].querySelector('[data-testid="rider-size"]')).toBeNull();
   });
 
@@ -165,7 +166,7 @@ describe("HitRiderCard: a creature's rider", () => {
     await settle(fixture);
     await settle(fixture);
     const text = ((fixture.nativeElement as HTMLElement).textContent ?? '').replace(/\s+/g, ' ');
-    expect(text).toContain('Pedir salvaguarda de Brisa (CD 10)');
+    expect(text).toContain('Pedir teste de resistência de Brisa (CD 10)');
     expect(text).not.toContain('Golpe Atordoante');
   });
 

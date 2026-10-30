@@ -139,12 +139,26 @@ describe('CreatureActions: the list, by the class of the plan', () => {
     const { root } = await open();
     const t = text(root);
     expect(t).toContain('Sopro de Fogo');
-    expect(t).toContain('Salvaguarda de Destreza, CD 13');
+    expect(t).toContain('Teste de resistência de Destreza, CD 13');
     expect(t).toContain('cone de 4,5 m');
     expect(t).toContain('Dano: 6d6 de fogo, metade se passar');
     expect(t).toContain('Semblante Horrível');
     expect(t).toContain('Se falhar: Amedrontado por 1 minuto');
     expect(t).toContain('Sem teste: gasta a ação');
+  });
+
+  it('says the limit of an action in Portuguese', async () => {
+    const { fixture, root } = await open();
+    const limited = breath();
+    limited.usage = 'Recharge 5-6';
+    fixture.componentRef.setInput(
+      'creature',
+      create(CreatureSchema, { actions: [limited] as never }),
+    );
+    await settle(fixture);
+    const t = text(root);
+    expect(t).toContain('Recarga 5\u20136');
+    expect(t).not.toContain('Recharge');
   });
 
   it('shows the SRD text as a reminder only where the plan does not hold the whole action', async () => {

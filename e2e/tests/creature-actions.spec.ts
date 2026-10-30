@@ -73,7 +73,7 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
     await expect(result).toBeVisible();
     // The save is random: the line says it passed or failed, and the master reads the roll against the DC.
     await expect(result).toContainText(/Passou|Falhou|Falha automática/);
-    await expect(result).toContainText('Salvaguarda');
+    await expect(result).toContainText('Teste de resistência');
     // The action is spent.
     await expect(use).toBeDisabled();
     // The player's log carries the action and the save, never the stat block's words or the DC.

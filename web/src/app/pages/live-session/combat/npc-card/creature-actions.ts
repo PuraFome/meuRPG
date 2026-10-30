@@ -39,6 +39,7 @@ import {
   showsText,
   usableActions,
   targetLines,
+  usageText,
 } from '../../../../core/combat/creature-action';
 import { CheckBox } from '../../../../shared/check-box/check-box';
 import type { CreatureActionOutcome } from '../area-cast/master-creature-area';
@@ -117,7 +118,7 @@ export class CreatureActions {
       lines: actionLines(a),
       note: classNote(a),
       text: showsText(a) ? a.text : '',
-      usage: a.usage,
+      usage: usageText(a.usage),
       why: this.whyNot(a),
     })),
   );

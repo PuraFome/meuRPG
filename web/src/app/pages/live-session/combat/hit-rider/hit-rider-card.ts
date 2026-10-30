@@ -35,7 +35,7 @@ export interface RiderPick {
  * Blows hit, and Stunning Strike (1 ki point) on a melee hit. Each offer is optional and
  * answered once. The target's save is rolled by the app; the DC is the ki save DC.
  * A creature's rider (kind CREATURE, the master's alone) is the attack's save or grapple from the stat block: "Pedir
- * salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
+ * teste de resistência de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
  * and size exceptions the plan does not hold are the master's call) and, when the stat block sets one, the size limit.
  */
 @Component({
@@ -65,7 +65,7 @@ export interface RiderPick {
             @if (srdText(o); as text) {
               <div class="rider__srd" data-testid="rider-srd">
                 <strong>Texto do SRD</strong>
-                <p class="rider__hint">{{ text }}</p>
+                <p class="rider__hint" lang="en">{{ text }}</p>
               </div>
             }
             <div class="rider__btns rider__btns--row">
@@ -264,7 +264,7 @@ export class HitRiderCard {
     return o.actionNamePt || 'Efeito do ataque';
   }
 
-  /** "Pedir salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", and what a failure gives. */
+  /** "Pedir teste de resistência de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", and what a failure gives. */
   protected creatureLine(o: HitRiderOffer): string {
     const target = this.label(o.targetId) || 'o alvo';
     if (o.escapeDc > 0) {
@@ -277,7 +277,7 @@ export class HitRiderCard {
     const fail = o.conditionNamePt
       ? `. Se falhar: ${o.conditionNamePt}`
       : '. Se falhar: dano extra';
-    return `Pedir salvaguarda de ${target}${detail ? ` (${detail})` : ''}${fail}`;
+    return `Pedir teste de resistência de ${target}${detail ? ` (${detail})` : ''}${fail}`;
   }
 
   /** The SRD's text of the action, the master's reminder of the exceptions the plan does not hold (the creature types, the sizes). */
