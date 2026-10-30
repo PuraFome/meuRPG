@@ -57,6 +57,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Dica | Hint | Dois sentidos. Numa ficha: um bônus ou uma vantagem que depende da situação (Esperteza Gnômica), que o mestre decide quando aplicar. Num quebra-cabeça: um texto que o mestre libera, ou que um jogador ganha ao passar num teste de perícia contra a CD do mestre (RN-27). |
 | Documento da campanha | Campaign document | O texto particular do mestre para preparar a campanha: Markdown, com imagens da galeria e links para mapas e fichas (MR-018). O salvamento é recusado se o documento mudou depois que o app o abriu. |
 | Estado do personagem | Character state | Onde o personagem está: rascunho, travada, morto ou pendente de aprovação. |
+| Estado (de uma característica) | Temporary state | Uma postura ou forma que uma característica da mesa define, ligada com "Ativar" e desligada com "Encerrar" (ou pela duração, por um descanso ou por incapacidade); outros efeitos da característica podem valer só enquanto ele está ligado (MR-025). |
 | Ficha | Sheet | Os dados de regra de um personagem. Completa para jogador, inimigo e boss; básica (PV, CA, deslocamento, iniciativa e até três ataques) para minion e NPC de história. |
 | História do personagem | Character story | Personalidade, aparência, história e aliados. Depois da trava da ficha, o jogador só a edita enquanto o mestre permite. |
 | Notas do mestre | Master notes | O que o mestre escreve sobre um personagem, por campanha. Nunca chegam ao jogador (RN-11). |

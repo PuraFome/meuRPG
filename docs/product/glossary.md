@@ -57,6 +57,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Dica | Hint | Two meanings. On a sheet: a bonus or advantage that depends on the situation (Gnome Cunning), which the master decides when to apply. In a puzzle: a text the master releases, or that a player earns by passing a skill check against the master's DC (RN-27). |
 | Documento da campanha | Campaign document | The master's private text for preparing the campaign: Markdown, with gallery images and links to maps and sheets (MR-018). Saving is refused if it changed after the app opened it. |
 | Estado do personagem | Character state | Where the character is: draft, locked, dead or pending approval. |
+| Estado (de uma característica) | Temporary state | A stance or form a table feature defines, turned on with "Ativar" and off with "Encerrar" (or by its duration, a rest or incapacity); other effects of the feature may hold only while it is on (MR-025). |
 | Ficha | Sheet | A character's rules data. Full for player, enemy and boss; basic (HP, AC, speed, initiative and up to three attacks) for minion and story NPC. |
 | História do personagem | Character story | Personality, appearance, backstory and allies. After the sheet lock, the player edits it only while the master allows. |
 | Notas do mestre | Master notes | What the master writes about a character, per campaign. Never reaches the player (RN-11). |
