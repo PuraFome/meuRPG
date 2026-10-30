@@ -11,6 +11,10 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:8080';
 // means Playwright's own Chromium).
 const channel = process.env.E2E_BROWSER_CHANNEL ?? (process.env.CI ? '' : 'chrome');
 
+// E2E_COLOR_SCHEME=light|dark runs every context that does not pin a scheme of its own in that scheme: the repeat of the
+// changed tests (.github/workflows/repeat-changed.yml) runs them once in each. Empty keeps the browser's own.
+const colorScheme = process.env.E2E_COLOR_SCHEME === 'light' || process.env.E2E_COLOR_SCHEME === 'dark' ? process.env.E2E_COLOR_SCHEME : undefined;
+
 export default defineConfig({
   testDir: './tests',
   globalSetup: './global-setup.ts',
@@ -33,6 +37,7 @@ export default defineConfig({
     // neither dims nor blocks the page, so no overlay covers a control during a test and the layout and axe checks measure a
     // still screen.
     reducedMotion: 'reduce',
+    colorScheme,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
