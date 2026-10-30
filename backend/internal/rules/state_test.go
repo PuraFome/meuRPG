@@ -418,3 +418,42 @@ func TestAStateCannotBeNamedRage(t *testing.T) {
 		t.Fatal("a state named rage is accepted: a resistance's while rage would mean the barbarian's rage")
 	}
 }
+
+// entryStateEffects are the effects of an entry with a state of its own, a resistance gated by `while` and a modifier gated by active().
+func entryStateEffects() []Effect {
+	return []Effect{
+		{Type: "state", StateName: "postura", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree},
+		{Type: "resistance", Except: "damage-type:psychic", While: "postura"},
+		{Type: "modifier", Target: "speed.walk", Mode: "add", Value: "10", When: `active("postura")`},
+	}
+}
+
+func TestAClassFeatureAndAnOptionDefineTheirOwnStates(t *testing.T) {
+	feature := TableClassFeature{
+		TableEntry: TableEntry{Key: "classfeature:postura-de-teste@mesa", NamePT: "Postura de Teste"},
+		Class:      "class:ranger", Level: 1, Effects: entryStateEffects(),
+	}
+	option := TableOption{
+		TableEntry: TableEntry{Key: "option:fighting_style:postura-de-teste@mesa", NamePT: "Postura de Teste"},
+		Set:        "fighting_style", Effects: entryStateEffects(),
+	}
+	for name, o := range map[string]Overlay{
+		"class feature": {Revision: 1, ClassFeatures: []TableClassFeature{feature}},
+		"option":        {Revision: 1, Options: []TableOption{option}},
+	} {
+		if _, err := loadForTest(t).With(o); err != nil {
+			t.Errorf("%s: a state, a resistance with while and a modifier with active() of the same entry are refused: %v", name, err)
+		}
+	}
+
+	twice := append(entryStateEffects(), Effect{Type: "state", StateName: "postura", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree})
+	feature.Effects, option.Effects = twice, twice
+	for name, o := range map[string]Overlay{
+		"class feature": {Revision: 1, ClassFeatures: []TableClassFeature{feature}},
+		"option":        {Revision: 1, Options: []TableOption{option}},
+	} {
+		if _, err := loadForTest(t).With(o); err == nil {
+			t.Errorf("%s: two states with one name are accepted", name)
+		}
+	}
+}

@@ -137,6 +137,7 @@ func (b *overlayBuilder) addOption(o *TableOption, path string) error {
 		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: o.Effects, path: path, strict: b.strict[key]})
 		b.know(key, featureKind{owner: key})
 		b.declareResources(featureKind{owner: key}, o.Effects)
+		b.declareStates(key, key, o.Effects)
 	}
 	if err := c.err(); err != nil {
 		return err
