@@ -42,9 +42,12 @@ type content struct {
 	// attacksPerAction holds the creature corrections of effects/corrections.json:
 	// the Multiattack count the snapshot has wrong, by creature key.
 	attacksPerAction map[string]int
-	magicItems       map[string]*srd51.MagicItem
-	languages        map[string]*srd51.Language
-	named            map[string]*srd51.Named
+	// monsterPlans are the plans of the creatures' actions (monsterplan.go), by
+	// creature key.
+	monsterPlans map[string]*MonsterPlan
+	magicItems   map[string]*srd51.MagicItem
+	languages    map[string]*srd51.Language
+	named        map[string]*srd51.Named
 
 	// classLevels[class][n-1] is row n of the class table, and
 	// subclassLevels[subclass][n] the subclass row at class level n.
@@ -223,6 +226,9 @@ func load(fsys fs.FS) (*content, error) {
 	c.multiclassTable = c.findMulticlassTable()
 	c.buildCatalog(nil)
 	c.buildCreatures()
+	if err := c.buildPlans(); err != nil {
+		return nil, err
+	}
 	c.buildMagicItems()
 	if err := c.loadTreasure(fsys); err != nil {
 		return nil, err
