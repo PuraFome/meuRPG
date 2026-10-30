@@ -403,7 +403,7 @@ func (w *world) buildCombat() {
 			})))
 		}
 	}
-	e = w.pinNPCInitiatives(e)
+	e = w.pinNPCInitiatives(e.GetId())
 	e = must(m.combat.BeginCombat(ctx, rq(&playv1.BeginCombatRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey()}))).GetEncounter()
 	w.encounter = e
 	w.t.Logf("initiative order at the start of the combat: %s", initiativeOrder(e))
@@ -763,9 +763,9 @@ func (w *world) buildStreamTargets() {
 // script assumes holds on every run: the app rolls an NPC's initiative at random, and a total that equals another
 // combatant's makes them take one joint turn (groupRuns), in which an NPC that "reacts" to the other's move is acting.
 // Each one takes the highest face that leaves its total different from everybody else's, in the order of the list.
-func (w *world) pinNPCInitiatives(e *playv1.Encounter) *playv1.Encounter {
+func (w *world) pinNPCInitiatives(encounterID string) *playv1.Encounter {
 	ctx := w.t.Context()
-	e = must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter() // the players' totals are in
+	e := must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter() // the players' totals are in
 	taken := map[int32]bool{}
 	for _, c := range e.GetCombatants() {
 		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER && c.Initiative != nil {
@@ -780,13 +780,24 @@ func (w *world) pinNPCInitiatives(e *playv1.Encounter) *playv1.Encounter {
 		for taken[face+c.GetInitiativeBonus()] {
 			face--
 		}
+		if face < 1 {
+			w.t.Fatalf("no d20 face leaves %s a total of its own: %s", c.GetLabel(), initiativeOrder(e))
+		}
 		taken[face+c.GetInitiativeBonus()] = true
 		must(w.master.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
-			CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: c.GetId(), IdempotencyKey: newKey(),
+			CampaignId: w.campaign, EncounterId: encounterID, CombatantId: c.GetId(), IdempotencyKey: newKey(),
 			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
 		})))
 	}
-	return must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	pinned := must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	seen := map[int32]string{}
+	for _, c := range pinned.GetCombatants() {
+		if other, ok := seen[c.GetInitiative()]; ok {
+			w.t.Fatalf("%s and %s share the initiative total %d after the pin: %s", other, c.GetLabel(), c.GetInitiative(), initiativeOrder(pinned))
+		}
+		seen[c.GetInitiative()] = c.GetLabel()
+	}
+	return pinned
 }
 
 // initiativeOrder says the turn order of the combat as the master reads it: label, total, bonus and face of each combatant.
