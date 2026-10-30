@@ -1,0 +1,11 @@
+# Accepted OSV-Scanner findings (see docs/ci.md, "Vulnerability scans").
+# The scan fails on any finding that is not listed here. A finding is listed
+# only when no fixed version can be installed, and always with a reason and an
+# expiry date, so it comes back for a decision instead of staying forever:
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2026-12-31
+# reason = "Why it cannot be fixed now and why it does not reach us."
+#
+# Nothing is accepted today.

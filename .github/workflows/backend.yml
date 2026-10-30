@@ -164,11 +164,11 @@ jobs:
   go:
     # No `go test` here: go-db runs every package (the pure ones too, with
     # -race), so a test run in this job only repeated it. This job is the
-    # fast, database-free check: lint, the complexity limits and known
-    # vulnerabilities. The image build moved to the e2e workflow, which builds
-    # it once and runs it. The module boundaries are a test
-    # (internal/archtest), so go-db's "rest" group runs them.
-    name: go (lint, vulncheck)
+    # fast, database-free check: lint and the complexity limits. The image
+    # build moved to the e2e workflow, which builds it once and runs it. The
+    # module boundaries are a test (internal/archtest), so go-db's "rest"
+    # group runs them. Known vulnerabilities are the govulncheck job.
+    name: go (lint)
     needs: changes
     if: ${{ needs.changes.outputs.go == 'true' }}
     timeout-minutes: 15
@@ -237,6 +237,32 @@ jobs:
         # number is an edit the reviewer sees.
         if: ${{ !cancelled() }}
         run: ../.github/scripts/nolint-cap.sh
+
+  # The known vulnerabilities that the Go code actually calls (Dependabot and
+  # osv-scan flag every vulnerable module, called or not). It runs on the same
+  # triggers as the other Go jobs, and nightly because a vulnerability is
+  # published against code that did not change. A called vulnerability fails it.
+  govulncheck:
+    name: govulncheck (called vulnerabilities)
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: govulncheck
         # Invoked directly (rather than golang/govulncheck-action) so the
@@ -425,7 +451,7 @@ jobs:
   # so a red main or nightly does not go unnoticed.
   report:
     name: report (issue when main is red)
-    needs: [proto, changes, go, go-db-shard, go-db, go-coverage]
+    needs: [proto, changes, go, govulncheck, go-db-shard, go-db, go-coverage]
     # Only the upstream repository has issues: a fork's red main (synced from upstream) has nowhere to report.
     if: ${{ always() && github.repository == 'PuraFome/meuRPG' && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-26.04

@@ -8,10 +8,11 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 
 | Workflow | Runs on | Jobs |
 | --- | --- | --- |
-| `backend` | PRs and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
+| `backend` | PRs and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
 | `web` | `web/`, `.node-version`, the workflow | `test and build`, `coverage` |
 | `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change; nightly; manual | `plan`, `lint and typecheck`, `images`, `playwright` shards, `report` |
 | `codeql` | PRs touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
+| `osv-scan` | Changes to a lockfile (`backend/go.mod`, `backend/go.sum`, the `package-lock.json` of `web/`, `e2e/` and `e2e/lint/`), `osv-scanner.toml` or the workflow; pushes to `main`; nightly; manual | `osv-scanner (lockfiles)`, `report` |
 | `workflows-lint` | Changes under `.github/` | `actionlint` and `zizmor`, at versions pinned by number and sha256 |
 
 - A new run of the same PR cancels the previous one. A push to `main` never cancels a run in progress, but GitHub keeps only one waiting run per workflow, so in a burst of merges an intermediate commit may get no run of its own. Deploy only a commit whose own run passed.
@@ -25,7 +26,8 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | Job | Checks |
 | --- | --- |
 | `proto` | `buf lint`, `buf format`, `buf breaking` against `main`, and that `buf generate` and `make sqlc` leave the committed generated code unchanged |
-| `go (lint, vulncheck)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits), the [`//nolint` cap](#the-nolint-cap) and `govulncheck` (version pinned). It runs no `go test`: `go-db` runs every package |
+| `go (lint)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits) and the [`//nolint` cap](#the-nolint-cap). It runs no `go test`: `go-db` runs every package |
+| `govulncheck (called vulnerabilities)` | `govulncheck ./...` (version pinned): fails on a known vulnerability in a module or in the Go standard library that the code actually calls. See [Vulnerability scans](#vulnerability-scans) |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory CockroachDB (the image `COCKROACH_IMAGE`, pinned by digest, the same as `compose.yaml`), with `MEURPG_REQUIRE_DB=1`. Each package has a 25-minute `-timeout` inside the job's 30 |
 | `go (integration tests against CockroachDB)` | Waits for every group; the stable check for a branch protection rule |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
@@ -120,6 +122,17 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 - `lint and typecheck` needs no Docker, so a mistake fails in about a minute.
 - `images` builds the production image and the devidp image once (with the GitHub Actions layer cache) and hands both over as an artifact; each shard runs `docker load`, so a broken Dockerfile fails before any shard.
 - Each shard starts the stack with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build` (`compose.ci.yaml` keeps the database in memory; `compose.ci-images.yaml` points at the loaded images), checks on one shard that the production image does not contain the devidp, and runs the tests on Chromium. A failed shard shows the stack logs and keeps its Playwright report as the artifact `playwright-report-<n>`.
+
+## Vulnerability scans
+
+Two scans look for known vulnerabilities, and they answer different questions.
+
+- **`govulncheck`** (a job of `backend`, so it runs with the other Go jobs, on pushes to `main` and nightly) reports only the vulnerabilities in code the backend **calls**, in a module or in the standard library of the Go version in `go.mod`. Any finding fails the job. The fix is to bump the module (or the Go version).
+- **`osv-scan`** (its own workflow) reads the lockfiles (`backend/go.mod`, `web/package-lock.json`, `e2e/package-lock.json`, `e2e/lint/package-lock.json`) and lists every vulnerable **version** installed, called or not, dev-only or not. Any finding fails the job. It reads `go.mod` because OSV-Scanner does not support `go.sum`. The nightly run exists because a vulnerability is published against a version we already have, with no change on our side. OSV-Scanner is a release binary pinned by version and sha256, like the tools of `workflows-lint`.
+
+A finding is fixed by a dependency bump. When a transitive package is pinned exactly by its parent, `web/package.json` forces a fixed version with `overrides` (the ones there now are listed below); remove an override once the parent ships the fix. Only a finding with no installable fix goes in `osv-scanner.toml`, with its `id`, a `reason` and an `ignoreUntil` date, so the finding returns for a decision when the date passes. Nothing is accepted today.
+
+`web/package.json` overrides: `vite` and `undici` under `@angular/build`; `@modelcontextprotocol/sdk` and `zod` under `@angular/cli`; `undici` under `jsdom`.
 
 ## Pinning and dependencies
 

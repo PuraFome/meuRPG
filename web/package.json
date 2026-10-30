@@ -41,7 +41,7 @@
     "@bufbuild/protoc-gen-es": "2.16.0",
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.5",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "angular-eslint": "21.4.0",
     "dependency-cruiser": "18.6.0",
     "eslint": "10.12.0",
@@ -49,6 +49,19 @@
     "prettier": "3.9.10",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
+  },
+  "overrides": {
+    "@angular/build": {
+      "vite": "^7.3.7",
+      "undici": "^7.30.1"
+    },
+    "@angular/cli": {
+      "@modelcontextprotocol/sdk": "^1.32.0",
+      "zod": "^4.6.6"
+    },
+    "jsdom": {
+      "undici": "^8.12.2"
+    }
   }
 }

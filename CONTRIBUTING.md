@@ -5,7 +5,7 @@ Until the MVP, the author squash-merges a PR as soon as CI is green, without wai
 
 ## Tools
 
-Go (version in `backend/go.mod`), Node (`.node-version`), Docker, `buf`, `make`, and optionally `sqlc`, `golangci-lint`, `goose` (`make sqlc` and `make lint` run the pinned versions by themselves).
+Go (version in `backend/go.mod`), Node (`.node-version`), Docker, `buf`, `make`, and optionally `sqlc`, `golangci-lint`, `goose`, `govulncheck` and `osv-scanner` (`make sqlc` and `make lint` run the pinned versions by themselves).
 On a Mac they all install with Homebrew.
 The pinned versions and where each one lives are in [docs/development.md](docs/development.md#tools).
 
@@ -35,6 +35,8 @@ The pinned versions and where each one lives are in [docs/development.md](docs/d
 | `cd web && npm run lint` / `npm run format:check` / `npm run depcruise` | The web linters, as in CI |
 | `make e2e` | Starts the local stack and runs the Playwright tests in `e2e/` |
 | `.github/scripts/go-complexity.sh` | The complexity limits, as CI checks them: no Go function over cyclomatic 15, cognitive 15 or maintainability 20 |
+| `cd backend && govulncheck ./...` | The known vulnerabilities the Go code calls, as the `govulncheck` job runs them (`brew install govulncheck`; CI pins its own version) |
+| `osv-scanner scan source --config osv-scanner.toml -L backend/go.mod -L web/package-lock.json -L e2e/package-lock.json -L e2e/lint/package-lock.json` | The lockfile scan of the `osv-scan` workflow (`brew install osv-scanner`) |
 | `.github/scripts/nolint-cap.sh` | The `//nolint` cap: no more directives in `backend/` than the number in `.github/nolint-cap` (`--lower` writes the cap down after you remove some) |
 
 The Go and web linters are ratchets: they judge what your change adds, and the backlog may only shrink.
