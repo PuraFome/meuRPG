@@ -580,6 +580,7 @@ The decisions that the former architecture page carried: who decided what, when,
 - **Proposal: 100 generated images per day** as the Google quota and as `IMAGE_DAILY_LIMIT`, and **20 per campaign per month** (`IMAGE_MONTHLY_LIMIT`), from the estimate of 3 to 6 images per 4-hour session and 4 to 5 sessions a month (US$ 1.34 per campaign per month at most). The per-session numbers are an estimate to be replaced after measuring with the real key.
 - **16/10/2026, Vinicius: 200 generated images per campaign per month in production** (`IMAGE_MONTHLY_LIMIT=200`, the daily 100 unchanged), for a campaign mastered by Claude that shows scenes as images; at about US$ 0.034 per 1K image that is at most about US$ 6.80 per campaign per month. The MR-039 question to Samuel about 20 is closed by it.
 - **The production ELK is Samuel's decision**, with Cloud Logging (free at the current volume, 30 days) as the alternative.
+- **30/10/2026, Samuel: the backlog lives on GitHub.** The backlog moved to the repository's GitHub Issues and a public board ("MeuRPG"); epics are issues labelled `epic` with their tasks as sub-issues. Private items stay outside the public repository: the master's campaign prep, book content, legal and privacy work, and the private ADRs.
 - **Prices checked:** Cloud Storage on 30/09/2026; the Gemini price page on 06/10/2026.
 - **The upload-slot memory figure was corrected on 06/10/2026** (230 MiB measured earlier, 178 MiB after the thumbnail and reference started scaling in strips).
 

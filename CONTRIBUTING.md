@@ -59,11 +59,20 @@ The initial web bundle is a build gate (500 kB), see [docs/ci.md](docs/ci.md#the
 1. Branch from `main`: `feat/`, `fix/`, `docs/` or `chore/` and a short name. Without write access, work in a fork.
 2. Write the code, the tests and the documentation in the same PR.
 3. Commit in English with [Conventional Commits](https://www.conventionalcommits.org/), for example `feat(characters): lock sheet on first session`.
-4. Open the PR citing the story (`MR-006`) and the rule (`RN-01`) it fulfils, with the [PR template](.github/pull_request_template.md).
+4. Open the PR citing the story (`MR-006`) and the rule (`RN-01`) it fulfils, and the issue it closes (`Closes #N`), or `Refs #N` for an issue it only advances, with the [PR template](.github/pull_request_template.md).
 5. CI must be green. A single PR is squash-merged. A merge train (stacked PR branches, each opened against the previous one) is merged with merge commits, in order, so each branch keeps its history.
 6. Never force-push a branch that others build on.
 
 What CI checks, and how failures are read, is in [docs/ci.md](docs/ci.md).
+
+## The backlog
+
+The backlog is the repository's issues and the "MeuRPG" board (https://github.com/users/vfraga/projects/1).
+
+- An epic is an issue labelled `epic`; its tasks are its sub-issues.
+- The labels are `area: rules`, `area: play`, `area: characters`, `area: maps`, `area: web`, `ops` and `code-health`, next to GitHub's own `bug`, `enhancement` and `documentation`.
+- The milestones are "Sessão zero" and "Antes de outra mesa".
+- The board's Status is A fazer, Fazendo, Bloqueado, Em revisão and Feito.
 
 ## Keeping the docs current
 
