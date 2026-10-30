@@ -6,8 +6,8 @@ set -euo pipefail
 
 config="${1:-e2e/playwright.config.ts}"
 
-# Every line that mentions retries, comments aside.
-lines=$(grep -nE '^[^/]*\bretries\b' "$config" || true)
+# Every line that mentions retries, whole-line comments aside (a "/" before the word, as in a URL, hides nothing).
+lines=$(grep -nE '\bretries\b' "$config" | grep -vE '^[0-9]+:[[:space:]]*(//|/\*|\*)' || true)
 count=$(grep -c . <<<"$lines" || true)
 
 if [ "$count" -ne 1 ] || ! grep -Eq '^[0-9]+:[[:space:]]*retries:[[:space:]]*0,?[[:space:]]*$' <<<"$lines"; then

@@ -21,3 +21,7 @@ test('retries: 0 passes', () => assert.equal(check('export default {\n  retries:
 test('retries on CI fails', () => assert.equal(check('export default {\n  retries: process.env.CI ? 2 : 0,\n};\n'), 1));
 test('no retries line fails, so the guard is explicit', () => assert.equal(check('export default {};\n'), 1));
 test('a spec that sets retries fails', () => assert.equal(check('export default {\n  retries: 0,\n};\n', 'test.describe.configure({ retries: 2 });\n'), 1));
+test('retries after a "/" on the same line still counts', () =>
+  assert.equal(check("export default {\n  retries: 0,\n  use: { baseURL: 'http://x', retries: 2 },\n};\n"), 1));
+test('a retries line that is a comment is ignored', () =>
+  assert.equal(check('export default {\n  // retries: 3 would hide flakes\n  retries: 0,\n};\n'), 0));

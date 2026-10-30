@@ -73,7 +73,10 @@ jobs:
           fail() { echo "::error::$1" >&2; exit 1; }
           [[ "$KIND" == playwright || "$KIND" == go ]] || fail "kind must be playwright or go"
           [[ -n "$TEST" ]] || fail "test is empty"
-          RUNS=$((10#${RUNS:-0})); RUNNERS=$((10#${RUNNERS:-0}))
+          # Digits only before any arithmetic: $(( )) would evaluate an expression (or a variable name) as code.
+          [[ "$RUNS" =~ ^[0-9]{1,3}$ ]] || fail "runs must be a number from 1 to 500"
+          [[ "$RUNNERS" =~ ^[0-9]{1,2}$ ]] || fail "runners must be a number from 1 to 20"
+          RUNS=$((10#$RUNS)); RUNNERS=$((10#$RUNNERS))
           [[ "$RUNS" -ge 1 && "$RUNS" -le 500 ]] || fail "runs must be a number from 1 to 500"
           [[ "$RUNNERS" -ge 1 && "$RUNNERS" -le 20 ]] || fail "runners must be a number from 1 to 20"
           [[ "$HEAD_REF" =~ ^[A-Za-z0-9._/@~^-]+$ ]] || fail "head is not a ref"
@@ -166,7 +169,7 @@ jobs:
           set +e
           # The ref under test must not retry either: a retried failure would count as a pass.
           (cd ../.. && .github/scripts/e2e-no-retries.sh code/e2e/playwright.config.ts) || exit 1
-          npx playwright test --grep="$TEST" --repeat-each="$REPEATS" --global-timeout=2100000 --reporter=list,json
+          npx playwright test --grep="$TEST" --repeat-each="$REPEATS" --global-timeout=2100000
           echo "playwright exit code: $?"
 
       - name: Count the runs
@@ -193,7 +196,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: flake-traces-${{ matrix.side }}-${{ matrix.runner }}
-          path: code/e2e/test-results/
+          path: |
+            code/e2e/test-results/
+            code/e2e/playwright-report/
           retention-days: 7
           if-no-files-found: ignore
 

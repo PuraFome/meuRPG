@@ -28,7 +28,13 @@ export default defineConfig({
   // the parallel workers all hit that cold start at once. Warm, every
   // request answers in milliseconds, so this only absorbs the start.
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['html', { open: 'never' }], ...(process.env.CI ? [['github'] as const] : [])],
+  // The JSON file is for the flaky-test tools (.github/scripts/flake.mjs): it is written only where they name it.
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ...(process.env.CI ? [['github'] as const] : []),
+    ...(process.env.PLAYWRIGHT_JSON_OUTPUT_NAME ? [['json'] as const] : []),
+  ],
   use: {
     baseURL,
     // A control that never shows up fails in seconds with its locator, not at the test's own timeout.

@@ -64,7 +64,7 @@ for chunk in "${chunks[@]}"; do
   echo "::group::${label}"
   if [ "$kind" = playwright ]; then
     E2E_COLOR_SCHEME="$field" timeout --kill-after=15 "$limit" \
-      npx playwright test "$file" --grep "$regex" --repeat-each="$repeats" --max-failures=1 --reporter=list
+      npx playwright test "$file" --grep "$regex" --repeat-each="$repeats" --max-failures=1
   else
     timeout --kill-after=15 "$limit" \
       go test -race -count="$repeats" -failfast -timeout 30m -run "$regex" "$field"
@@ -74,7 +74,14 @@ for chunk in "${chunks[@]}"; do
   case "$code" in
     0) passed+=("$label") ;;
     124 | 137) cut+=("$label") ;;
-    *) failed+=("$label") ;;
+    *)
+      failed+=("$label")
+      # The next chunk's run empties test-results/ and playwright-report/: keep this one's traces and report.
+      if [ "$kind" = playwright ]; then
+        keep="kept/${#failed[@]}"
+        mkdir -p "$keep" && cp -r test-results playwright-report "$keep"/ 2>/dev/null || true
+      fi
+      ;;
   esac
 done
 

@@ -110,7 +110,7 @@ jobs:
           set +e
           # PART_ARGS holds several flags, so it is word-split on purpose.
           # shellcheck disable=SC2086
-          npx playwright test $PART_ARGS --global-timeout=2400000 --reporter=list,json
+          npx playwright test $PART_ARGS --global-timeout=2400000
           echo "code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Count the failures
