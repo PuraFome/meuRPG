@@ -8,9 +8,8 @@
 name: workflows-lint
 
 on:
+  # No paths filter: the `select` job chooses, so a train (refactor/train-*) always runs the full gate.
   pull_request:
-    paths:
-      - ".github/**"
   push:
     branches: [main]
     paths:
@@ -31,7 +30,34 @@ env:
   ZIZMOR_SHA256: e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a
 
 jobs:
+  # Is this workflow selected (docs/ci.md, "What runs when"): a train, main, the schedule and a manual run always
+  # run it; any other pull request only when it changes what it judges. On a fork only pull requests and manual runs.
+  select:
+    name: select (is this workflow selected)
+    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.run.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history: the diff against the base branch needs it.
+          fetch-depth: 0
+
+      - name: Is this workflow selected
+        id: run
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh run '^\.github/'
+
   lint:
+    needs: select
+    if: ${{ needs.select.outputs.run == 'true' }}
     name: actionlint and zizmor
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -67,6 +93,8 @@ jobs:
   # The scripts the flaky-test process uses (flake.mjs, flake-targets.mjs) have unit tests (and so does the retries check's
   # script): they run here because this workflow runs on every change under .github/.
   scripts:
+    needs: select
+    if: ${{ needs.select.outputs.run == 'true' }}
     name: tests of the CI scripts
     runs-on: ubuntu-26.04
     timeout-minutes: 5
