@@ -1586,7 +1586,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Critérios de aceitação
 - **Dado** um monstro cujo ataque pede um teste do alvo ao acertar (as garras do carniçal), **quando** o dano de um acerto cai numa criatura do outro lado que ainda está de pé, **então** recebo uma oferta ao lado dos cartões de dano: "Pedir teste de resistência de <alvo> (CD 10, Constituição). Se falhar: Paralisado", com "Aplicar" e "Dispensar".
-- **Dado** que aperto "Aplicar", **então** o app rola o teste do alvo contra a CD, abre o dano extra como dano pendente quando o ataque tem (metade se o alvo passa, quando a ficha diz), dá a condição a quem falha (RN-39), e o registro diz "usou <ataque> em <alvo>: <alvo> falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado".
+- **Dado** que aperto "Aplicar", **então** o app rola o teste do alvo contra a CD, abre o dano extra como dano pendente quando o ataque tem (metade se o alvo passa, quando a ficha diz), dá a condição a quem falha (RN-39), e o registro diz "usou <ataque> em <alvo>: <alvo> falhou no teste (1d20 (8) + 2 = 10 contra CD 10); ficou Paralisado".
 - **Dado** um monstro cujo ataque agarra (uma constritora), **quando** acerta, **então** a oferta diz "Agarrar (CD de fuga 12)"; "Aplicar" dá a condição sem teste e a linha anota a CD de fuga.
 - **Dado** que aperto "Dispensar", **então** nada é aplicado e o registro diz "dispensou o efeito de <ataque> em <alvo>".
 - **Dado** que a oferta foi respondida, **então** ela não se desfaz; **dado** que desfaço o dano que a abriu, **então** a oferta some, e um alvo que o acerto derrubou nunca recebe uma. Um ataque oferece o efeito uma vez para cada dano.

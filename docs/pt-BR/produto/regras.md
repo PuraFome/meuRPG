@@ -408,6 +408,7 @@ O mestre vê tudo.
 - Um NPC escondido não vem de jeito nenhum: nem na ordem, nem no mapa, e o turno dele aparece como "Vez do mestre".
 - O registro do combate omite toda linha que envolva um combatente escondido, os dados de um NPC e os PV dele.
 - As resistências, vulnerabilidades e imunidades de uma criatura (inclusive as a ataques não mágicos, listadas como "Resistência a perfurante de ataque não mágico") são do mestre. O dano que um jogador lê num NPC é o dano como rolado, então nem um total reduzido à metade nem uma linha faltando diz a que o alvo resiste.
+- O mesmo vale para o dano num personagem depois que o mestre o aplica (de magia, de ação de criatura ou de efeito): o dono do alvo e o mestre leem o valor sofrido, os demais jogadores leem o valor como rolado, então a linha nunca diz a que o alvo resiste.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.

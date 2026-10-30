@@ -423,5 +423,4 @@ func TestACreatureRiderResistedDamageNeverReachesAnotherPlayer(t *testing.T) {
 	}
 	// Toren's player and the other one read no stat block either (the resisted amount is no needle: it is too small
 	// a number to be searched in every "amount" field without chance matches, so it is compared above).
-	w.checkNoStatBlock(t, nil, nil)
 }

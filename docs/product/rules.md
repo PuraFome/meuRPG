@@ -408,6 +408,7 @@ The master sees everything.
 - A hidden NPC does not come at all: not in the order, not on the map, and its turn shows as "Vez do mestre".
 - The combat log omits any line involving a hidden combatant, an NPC's dice and its hit points.
 - A creature's resistances, vulnerabilities and immunities (the nonmagical ones too, listed as "Resistência a perfurante de ataque não mágico") are the master's. The damage a player reads on an NPC is the damage as rolled, so neither a halved total nor a missing line tells what the target resists.
+- The same holds for damage on a character after the master applies it (a spell's, a creature action's or a rider's): the target's owner and the master read the amount taken, every other player reads the amount as rolled, so the line never tells what the target resists.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.
