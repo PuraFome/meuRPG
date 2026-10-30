@@ -111,7 +111,7 @@ func TestReadBodyEndsATrickledBody(t *testing.T) {
 	t.Parallel()
 	done := make(chan error, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		slowclient.ReadBody(w, 300*time.Millisecond)
+		defer slowclient.ReadBody(w, 300*time.Millisecond)()
 		buf := make([]byte, 1024)
 		for {
 			if _, err := r.Body.Read(buf); err != nil {

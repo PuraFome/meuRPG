@@ -10,8 +10,8 @@
 //     connection that never closed) ends the stream instead of blocking inside
 //     Send until the platform closes the connection;
 //   - the read of a request body that a client can trickle: ReadBody, for the
-//     image upload and the sign-in form, and Middleware, for every unary RPC
-//     (UnaryBodyTimeout);
+//     image upload, the sign-in form and the campaign package's parts, and
+//     Middleware, for every unary RPC (UnaryBodyTimeout);
 //   - the write of a large response on a plain route: WriteBody, for the
 //     image, thumbnail and tile downloads and the app's files.
 package slowclient
@@ -58,10 +58,31 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 }
 
 // ReadBody gives the rest of the request body d to arrive. Call it before
-// reading the body, in a handler that is not a stream. A writer that cannot set
+// reading the body, in a handler that is not a stream. Call the function it
+// returns only once the body has been read to its end, and never on a path that
+// returns with the body unread. (A return before the call, such as a refusal for
+// a missing session or a rate limit, has no deadline yet: handlers that can
+// refuse a client before they read call ReadBody as late as their checks allow,
+// not earlier.)
+//
+// The deadline is what ends a client that goes on trickling after the handler
+// has answered: the server has no ReadTimeout, and when a handler returns with
+// the body unread, net/http discards what is left (up to 256 KB, or the whole
+// of a chunked body) under whatever deadline the connection still has. Cleared,
+// a trickler would hold the connection and the goroutine for as long as Cloud
+// Run lets a request live. Armed, the discard ends with the deadline.
+//
+// Once the body is at its end the deadline has nothing left to bound, and it is
+// harmful: net/http starts a background read at the end of the body (how it
+// notices a client that left), the deadline fires on that read, and the
+// request's context is canceled while the handler still decodes or stores what
+// it read. A body small enough to arrive whole with an earlier read is already
+// at its end when the handler calls ReadBody. A writer that cannot set
 // deadlines (a test's recorder) is left alone.
-func ReadBody(w http.ResponseWriter, d time.Duration) {
-	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(d))
+func ReadBody(w http.ResponseWriter, d time.Duration) (done func()) {
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Now().Add(d))
+	return func() { _ = rc.SetReadDeadline(time.Time{}) }
 }
 
 // WriteBody gives the response body d to be written: a client that stops

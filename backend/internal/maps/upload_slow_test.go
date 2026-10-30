@@ -1,12 +1,14 @@
 package maps
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -15,6 +17,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
 
 // The read deadline of the upload surfaces as os.ErrDeadlineExceeded from the
@@ -223,5 +227,116 @@ func TestATrickledUploadDoesNotHoldTheProcessingSlot(t *testing.T) {
 		<-h.svc.processing
 	case <-time.After(5 * time.Second):
 		t.Fatal("the processing slot was not freed after the trickled upload")
+	}
+}
+
+// slowBlobs is a blob store whose writes take a while, as they do under load.
+type slowBlobs struct {
+	blob.Store
+	delay time.Duration
+}
+
+func (b slowBlobs) Put(ctx context.Context, key, contentType string, r io.Reader) error {
+	select {
+	case <-time.After(b.delay):
+	case <-ctx.Done():
+		return fmt.Errorf("the request was canceled while the image was stored: %w", context.Cause(ctx))
+	}
+	return b.Store.Put(ctx, key, contentType, r)
+}
+
+// The slot's deadline is for the file's read. A small upload arrives whole before the slot is taken, so net/http's
+// background read (the one that notices a client that left) is already waiting on the connection; a deadline that
+// outlived the read would fire on it while the image is stored and cancel the request (499). The store here takes
+// four times the deadline, and the upload must still be created.
+func TestASmallUploadWhoseStoreOutlastsTheSlotDeadlineIsCreated(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.slotReadTimeout = 50 * time.Millisecond
+	h.svc.blobs = slowBlobs{Store: h.svc.blobs, delay: 200 * time.Millisecond}
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+
+	if res := master.upload(campaign, "a.png", pngImage(t, 8, 8)); res.status != http.StatusCreated {
+		t.Fatalf("upload with a slow store: status %d, body %s; want 201", res.status, res.body)
+	}
+}
+
+// answerWhileTrickling sends head and first as the start of a chunked request, goes on sending a byte every 20 ms and
+// returns the status line of the answer. It fails when no answer comes within wait: net/http discards what is left of a
+// body the handler did not read before it answers, so a connection with no deadline left holds the answer back for as
+// long as the client trickles.
+func answerWhileTrickling(t *testing.T, addr, head, first string, wait time.Duration) string {
+	t.Helper()
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	chunk := func(s string) string { return fmt.Sprintf("%x\r\n%s\r\n", len(s), s) }
+	if _, err := conn.Write([]byte(head + "Transfer-Encoding: chunked\r\n\r\n" + chunk(first))); err != nil {
+		t.Fatal(err)
+	}
+	stop := make(chan struct{})
+	t.Cleanup(func() { close(stop) })
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(20 * time.Millisecond):
+				if _, err := conn.Write([]byte(chunk("x"))); err != nil {
+					return
+				}
+			}
+		}
+	}()
+	_ = conn.SetReadDeadline(time.Now().Add(wait))
+	line, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		t.Fatalf("no answer within %v while the client kept trickling (the connection has no read deadline left): %v", wait, err)
+	}
+	return line
+}
+
+func multipartStart(boundary, campaign string) string {
+	return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"campaign_id\"\r\n\r\n" + campaign + "\r\n"
+}
+
+// otherPart is a part that is not the file: the upload is refused at once, with the rest of the body unread.
+func otherPart(boundary string) string {
+	return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\nabc"
+}
+
+// A form whose second part is not the file is refused at once, under the processing slot, with the rest of the body unread.
+// A client that goes on trickling does not hold the connection: the slot's deadline stays armed on a path that returns
+// without having read the body to its end.
+func TestARefusedFormThatKeepsTricklingUnderTheSlotIsNotHeld(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.slotReadTimeout = 300 * time.Millisecond
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + master.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
+	first := multipartStart("B", campaign) + otherPart("B")
+	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, first, 10*time.Second)
+	if !strings.Contains(line, " 400 ") {
+		t.Fatalf("status line = %q, want 400 (the form must have a file field)", line)
+	}
+}
+
+// A caller who may not upload is refused right after the campaign field, with the rest of the body unread: a client that
+// goes on trickling does not hold the connection past the upload's deadline.
+func TestARefusedUploadThatKeepsTricklingIsNotHeld(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.formReadTimeout = 300 * time.Millisecond
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+	stranger := h.newUser("Stranger")
+	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + stranger.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
+	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, multipartStart("B", campaign)+otherPart("B"), 10*time.Second)
+	if strings.Contains(line, " 201 ") {
+		t.Fatalf("status line = %q, want a refusal", line)
 	}
 }

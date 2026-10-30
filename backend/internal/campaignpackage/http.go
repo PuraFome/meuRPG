@@ -79,11 +79,12 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 		return rateLimited(err)
 	}
 	want := partLength(imp.TotalBytes, n)
-	slowclient.ReadBody(w, partReadTimeout)
+	doneReading := slowclient.ReadBody(w, s.partReadTimeout)
 	// One byte past the length is enough to know the body is too long.
 	body := http.MaxBytesReader(w, r.Body, want+1)
 	counter := &countingReader{r: body}
-	if err := s.blobs.Put(ctx, partKey(imp.ID, n), "application/octet-stream", io.LimitReader(counter, want+1)); err != nil {
+	err = s.blobs.Put(ctx, partKey(imp.ID, n), "application/octet-stream", io.LimitReader(counter, want+1))
+	if err != nil {
 		if _, tooBig := errors.AsType[*http.MaxBytesError](err); tooBig {
 			return wrongLength()
 		}
@@ -94,6 +95,7 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 		_ = s.blobs.Delete(ctx, partKey(imp.ID, n))
 		return wrongLength()
 	}
+	doneReading() // the body is read to its end: the rest of the request must not run under its deadline
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
