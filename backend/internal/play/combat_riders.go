@@ -32,12 +32,15 @@ import (
 const (
 	riderOpenHand = "open_hand"
 	riderStunning = "stunning_strike"
+	// riderCreature is the rider of a creature's attack (combat_creature_rider.go).
+	riderCreature = "creature"
 
 	choiceProne       = "prone"
 	choicePush        = "push"
 	choiceNoReactions = "no_reactions"
 	choiceStun        = "stun"
 	choiceDecline     = "decline"
+	choiceApply       = "apply"
 
 	effectStunningStrike = "effect:stunning-strike"
 	effectNoReactions    = "effect:open-hand-no-reactions"
@@ -57,6 +60,17 @@ type riderEvent struct {
 	DC     int32  `json:"dc,omitempty"`
 	// Pushed is the forced move of a push that landed (combat_forced.go).
 	Pushed *forcedMove `json:"pushed,omitempty"`
+	// A creature's rider: the action, the condition it gave (Given says it was given), the escape DC of a
+	// grapple (the master's alone), the stat block's words for how long it lasts, whether the save repeats and
+	// the damage the save governs, opened as pending damage.
+	ActionKey     string `json:"action_key,omitempty"`
+	ActionName    string `json:"action_name,omitempty"`
+	ConditionKey  string `json:"condition_key,omitempty"`
+	ConditionName string `json:"condition_name,omitempty"`
+	Given         bool   `json:"given,omitempty"`
+	EscapeDC      int32  `json:"escape_dc,omitempty"`
+	Duration      string `json:"duration,omitempty"`
+	RepeatSave    bool   `json:"repeat_save,omitempty"`
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning
@@ -91,8 +105,11 @@ func (s *Service) offerRiders(ctx context.Context, c *combatTx, attacker, target
 }
 
 func riderKindProto(kind string) playv1.HitRiderKind {
-	if kind == riderOpenHand {
+	switch kind {
+	case riderOpenHand:
 		return playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND
+	case riderCreature:
+		return playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE
 	}
 	return playv1.HitRiderKind_HIT_RIDER_KIND_STUNNING_STRIKE
 }
@@ -107,12 +124,13 @@ func (d *encounterData) hitRidersView(v combatViewer, vitals map[string]*playv1.
 		}
 		a, okA := combatantByID(d.cs, r.AttackerID)
 		t, okT := combatantByID(d.cs, r.TargetID)
-		// Only the master and the attacker's own player see the offer, and only on a target they see.
-		mayRead := v.master || v.owns(a)
+		// Only the master and the attacker's own player see the offer, and only on a target they see; a
+		// creature's rider is the master's alone.
+		mayRead := v.master || (v.owns(a) && r.Kind != riderCreature)
 		if !okA || !okT || a.Defeated || !mayRead || !v.sees(t) {
 			continue
 		}
-		offer := &playv1.HitRiderOffer{Id: r.ID, Kind: riderKindProto(r.Kind), AttackerId: r.AttackerID, TargetId: r.TargetID}
+		offer := &playv1.HitRiderOffer{Id: r.ID, Kind: riderKindProto(r.Kind), AttackerId: r.AttackerID, TargetId: r.TargetID, ActionKey: conv.OrZero(r.ActionKey)}
 		for _, res := range vitals[a.CharacterID].GetResources() {
 			if res.GetKey() == resKi {
 				offer.KiLeft = max(res.GetTotal()-res.GetUsed(), 0)
@@ -135,10 +153,12 @@ func riderChoiceOf(kind string, in playv1.HitRiderChoice) (string, error) {
 		choice = choiceNoReactions
 	case playv1.HitRiderChoice_HIT_RIDER_CHOICE_STUN:
 		choice = choiceStun
+	case playv1.HitRiderChoice_HIT_RIDER_CHOICE_APPLY:
+		choice = choiceApply
 	case playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE:
 		return choiceDecline, nil
 	}
-	ok := (kind == riderOpenHand && slices.Contains([]string{choiceProne, choicePush, choiceNoReactions}, choice)) ||
+	ok := (kind == riderCreature && choice == choiceApply) || (kind == riderOpenHand && slices.Contains([]string{choiceProne, choicePush, choiceNoReactions}, choice)) ||
 		(kind == riderStunning && choice == choiceStun)
 	if !ok {
 		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("the choice is not one this offer has"))
@@ -180,7 +200,7 @@ func (s *Service) UseHitRider(
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, res.event == nil || !res.event.Secret)
 		if res.event != nil && res.event.Rider != nil {
 			s.publishPushed(ctx, m.CampaignID, d, []*forcedMove{res.event.Rider.Pushed})
 		}
@@ -209,7 +229,11 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 	ev := actionEvent{Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: row.Kind}
 	re := &riderEvent{Choice: choice, Result: riderDecl}
 	ev.Rider = re
-	if choice != choiceDecline {
+	if row.Kind == riderCreature {
+		if err := s.answerCreatureRider(ctx, c, m, row, attacker, target, choice, re); err != nil {
+			return actionEvent{}, err
+		}
+	} else if choice != choiceDecline {
 		if err := s.applyChoice(ctx, c, m, cs, row.Kind, attacker, target, choice, re); err != nil {
 			return actionEvent{}, err
 		}
@@ -227,6 +251,9 @@ func (s *Service) riderOffer(ctx context.Context, c *combatTx, m authz.Membershi
 			return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
 		}
 		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodeNotFound, errors.New("offer not found"))
+	}
+	if row.Kind == riderCreature && !v.master { // a creature's rider is the master's: a player is told nothing of an NPC's attack (RN-10)
+		return row, playdb.Combatant{}, playdb.Combatant{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the monk's player or the master may answer"))
 	}
 	attacker, okA := combatantByID(cs, row.AttackerID)
 	target, okT := combatantByID(cs, row.TargetID)
@@ -424,6 +451,8 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		out.Choice = playv1.HitRiderChoice_HIT_RIDER_CHOICE_NO_REACTIONS
 	case choiceStun:
 		out.Choice = playv1.HitRiderChoice_HIT_RIDER_CHOICE_STUN
+	case choiceApply:
+		out.Choice = playv1.HitRiderChoice_HIT_RIDER_CHOICE_APPLY
 	default:
 		out.Choice = playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE
 	}
@@ -438,6 +467,15 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
 	}
 	out.PushedFt, out.PushNoMap = pushedFt(r.Pushed), pushedNoMap(r.Pushed)
+	if r.ActionKey != "" {
+		out.ActionKey, out.ActionNamePt, out.DurationText, out.RepeatSave = r.ActionKey, r.ActionName, r.Duration, r.RepeatSave
+		if r.Given {
+			out.ConditionKey, out.ConditionNamePt = r.ConditionKey, r.ConditionName
+		}
+		if showDC { // the stat block's numbers are the master's alone
+			out.EscapeDc = r.EscapeDC
+		}
+	}
 	if numbers && r.D20 > 0 {
 		out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
 		if showDC { // the DC is the master's, and the target's player's when the table shows it
@@ -445,6 +483,15 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		}
 	}
 	return out
+}
+
+// creatureRiderForPlayer takes from a creature rider's line what a player may not read: the stat block's key,
+// and the condition and its duration unless it was given to a target the player owns or it has an outward sign.
+func creatureRiderForPlayer(out *playv1.CombatLogHitRider, owns bool, r *riderEvent) {
+	out.ActionKey = ""
+	if !r.Given || (!owns && len(withoutOwnerOnly([]string{r.ConditionKey})) == 0) {
+		out.ConditionKey, out.ConditionNamePt, out.DurationText, out.RepeatSave = "", "", "", false
+	}
 }
 
 // goadTarget is what a goading maneuver does once its die is counted in the damage: the target

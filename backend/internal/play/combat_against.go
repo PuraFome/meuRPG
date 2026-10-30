@@ -88,7 +88,10 @@ func trapSaveAgainst(effect *rulesv1.TrapEffect) []string {
 // spellAgainst is what the saving throw against a spell is against: magic, poison when it deals poison damage, and
 // charm or fear when it is one of the spells that charm or frighten.
 func spellAgainst(sp link.Spell) []string {
-	out := withAgainst(nil, combat.AgainstMagic)
+	var out []string
+	if !sp.Nonmagical { // a creature's breath or claws is no magic
+		out = withAgainst(out, combat.AgainstMagic)
+	}
 	out = withAgainst(out, spellImposes[sp.Key]...)
 	if slices.ContainsFunc(sp.Damages, func(d link.Dice) bool { return d.DamageType == poisonDamage }) {
 		out = withAgainst(out, combat.AgainstPoison)

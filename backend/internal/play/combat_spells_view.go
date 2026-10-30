@@ -58,6 +58,17 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 	return out
 }
 
+// creatureSaveView is saveView for the save a cast asks: when the cast is a creature's action, the DC is a
+// number of a stat block and never reaches a player, not even the target's own when the table shows the
+// DC of a spell's save. The player reads the roll of the save they make and how it ended.
+func creatureSaveView(ev actionEvent, h castHit, v combatViewer, caster, target playdb.Combatant) *playv1.SaveResult {
+	out := saveView(h.Save, v, caster, target)
+	if out != nil && ev.CreatureAct != nil && !v.master {
+		out.Dc = 0
+	}
+	return out
+}
+
 // attackRollView is a spell attack's d20 for the master and the caster's player.
 func attackRollView(h castHit, v combatViewer, caster playdb.Combatant) *playv1.DiceRoll {
 	if h.Outcome == "" || (!v.master && !v.owns(caster)) {
@@ -195,7 +206,7 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 // header of a spell that reads hit points and the Metamagic it spent.
 func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *playv1.SpellCast {
 	out := &playv1.SpellCast{
-		CastId: ev.CastID, SpellKey: ev.Key, Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
+		CastId: ev.CastID, SpellKey: shownKey(v, caster, ev.Key), Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
@@ -209,7 +220,7 @@ func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *p
 func targetResultProto(ev actionEvent, h castHit, v combatViewer, caster, target playdb.Combatant) *playv1.SpellTargetResult {
 	r := &playv1.SpellTargetResult{
 		CombatantId: h.Target, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
-		AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+		AttackRoll: attackRollView(h, v, caster), Save: creatureSaveView(ev, h, v, caster, target),
 		Effect: effectView(h, v, target),
 	}
 	r.AttackMode = modeToProto[modeOfKey(h.RollMode)]

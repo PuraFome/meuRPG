@@ -7,6 +7,12 @@ import { SummonSheet, type SummonSheetData } from '../../../shared/summon-sheet/
 import { AttackSheet, type AttackSheetData } from './attack-sheet/attack-sheet';
 import { attackAriaLabel, attackSheetData } from './attack-sheet/attack-sheet-data';
 import type { MasterAreaCastData } from './area-cast/master-area-cast';
+import {
+  type CreatureActionOutcome,
+  MasterCreatureArea,
+  type MasterCreatureAreaData,
+} from './area-cast/master-creature-area';
+import type { CreatureAreaRequest } from './npc-card/creature-actions';
 import { MasterAreaCast } from './area-cast/master-area-cast';
 import { CastSheet, type CastMapData, type CastSheetData } from './cast-sheet/cast-sheet';
 import {
@@ -258,6 +264,41 @@ export class CombatSheets {
         ...masterAreaFocus(found.targets),
       },
     ).subscribe();
+  }
+
+  /** "Usar" on a creature's action with a shape, on a map: the master's picker of the area, the same map as the spells'. The
+   * action is sent from the dialog; `done` gets what it did, or `null` when the master gave up or there is no map. */
+  creatureArea(req: CreatureAreaRequest): void {
+    const e = this.ctx.encounter();
+    const who = e ? currentCombatant(e) : null;
+    const map = this.castMap();
+    if (!e || !who || !map) {
+      req.done(null);
+      return;
+    }
+    const data: MasterCreatureAreaData = {
+      campaignId: this.ctx.campaignId(),
+      encounterId: e.id,
+      actor: who,
+      action: req.action,
+      placement: req.placement,
+      targetIds: [],
+      map,
+      state: this.ctx.state(),
+    };
+    openSheet<MasterCreatureArea, MasterCreatureAreaData, CreatureActionOutcome | null>(
+      this.ctx.dialog,
+      this.ctx.bottomSheet,
+      MasterCreatureArea,
+      {
+        data,
+        ariaLabel: `${who.label} usa ${req.action.namePt || req.action.name}`,
+        labelledBy: 'sheet-t',
+        width: '760px',
+        tall: true,
+        focus: '[role="application"]',
+      },
+    ).subscribe((outcome) => req.done(outcome ?? null));
   }
 
   /** "Mover" on a zone: the picker of its new place (a sheet on a phone, a dialog from a tablet up). `false` without a battle map. */

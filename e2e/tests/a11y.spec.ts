@@ -10,7 +10,7 @@ import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -9077,4 +9077,83 @@ test('o mestre agir por um personagem passa no axe e nas conferências de layout
 test('o mestre agir por um personagem passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-053'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanMasterActs(browser, 'dark', 390);
+});
+
+/** The master's creature actions (W7-M, MR-012): a hell hound's NPC card with its "Outras ações" area (a breath weapon with the targets
+ * named in the mind's theatre), the result of the save action under the list, and the offer of a ghoul's claw rider after the hit. */
+async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade ações ${Date.now()}`, false, false, { build: vex, sheet: { weaponKeys: ['equipment:rapier'] } });
+    campaignId = table.campaignId;
+    const started = await callRPC(m, 'meurpg.play.v1.CombatService/StartEncounter', {
+      campaignId,
+      idempotencyKey: crypto.randomUUID(),
+      name: 'Emboscada na estrada',
+      participants: [],
+      monsters: [
+        { creatureKey: 'monster:hell-hound', count: 1 },
+        { creatureKey: 'monster:ghoul', count: 1 },
+      ],
+      mode: 'ENCOUNTER_MODE_THEATRE',
+    });
+    expect(started.ok(), await started.text()).toBeTruthy();
+    let enc = (await started.json()).encounter as Encounter;
+    const hound = enc.combatants.find((c) => c.label === 'Cão infernal')!;
+    const ghoul = enc.combatants.find((c) => c.label === 'Carniçal')!;
+    const faces = new Map([[hound.id, 20], [ghoul.id, 19]]);
+    for (const c of enc.combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces.get(c.id) ?? 1 });
+    }
+    enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    for (const c of [hound, ghoul]) {
+      enc = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: c.id, hidden: false });
+    }
+    await openSessionPage(m, campaignId);
+
+    // Both monsters share the turn (the master plays one part after the other): the ghoul's claw hits and offers its rider.
+    const ghoulCard = m.getByRole('region', { name: 'Vez do Carniçal' });
+    await ghoulCard.locator('label', { hasText: 'Garras' }).click();
+    await ghoulCard.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await ghoulCard.getByLabel(/Role 1d20/).fill('15');
+    await ghoulCard.getByRole('button', { name: 'Confirmar 15' }).click();
+    await ghoulCard.getByRole('button', { name: 'Rolar dano' }).click();
+    await ghoulCard.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
+    await expect(m.getByTestId('hit-rider').first()).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, a oferta do efeito das garras ${where}`);
+    await m.getByTestId('hit-rider').first().getByRole('button', { name: /^Aplicar / }).click();
+    await endPartRPC(m, campaignId, 'Carniçal');
+
+    // The hell hound's card: the actions area, then the result of the breath's saving throw.
+    const card = m.getByRole('region', { name: 'Vez do Cão infernal' });
+    await expect(card.getByRole('button', { name: /^Usar Fire Breath/ })).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, a vez do Cão infernal com "Outras ações" ${where}`);
+    await card.getByRole('button', { name: /^Usar Fire Breath/ }).click();
+    await expect(card.getByTestId('creature-action-result')).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, o resultado da salvaguarda da ação ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCreatureActions(browser, 'light', 1280);
+});
+
+test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCreatureActions(browser, 'dark', 390);
 });

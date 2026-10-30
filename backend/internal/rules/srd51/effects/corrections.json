@@ -1,5 +1,5 @@
 {
-  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) over the spells a subclass always has (subclass_corrections) and over the subclasses whose spells only join the class list (expanded_list_corrections), over a class's spell list (spell_list_corrections) over the features a subclass has at a level (subclass_feature_corrections) and over a class's multiclass proficiencies (multiclass_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table, and its damage_choice (\"scale\" or \"alternative\") says what the caster picks among the damage types; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
+  "_comment": "Corrections to data/ (never edited by hand): values the 5e-database snapshot has wrong or lacks against the SRD 5.1's own text and tables. The loader applies them over the class table rows (corrections), over a creature's stat block, or one of its actions when the correction names it (creature_corrections), over a spell's attack, saving throw and damage table (spell_corrections) over the spells a subclass always has (subclass_corrections) and over the subclasses whose spells only join the class list (expanded_list_corrections), over a class's spell list (spell_list_corrections) over the features a subclass has at a level (subclass_feature_corrections) and over a class's multiclass proficiencies (multiclass_corrections); it refuses an unknown class, creature, spell, subclass, field or level, a value that does not fit its field, and a correction without a source. A spell correction's damage replaces the spell's whole damage table, and its damage_choice (\"scale\" or \"alternative\") says what the caster picks among the damage types; a spell with a damage table and no saving throw records the dice for display and for the master, and rolls nothing at cast.",
   "corrections": [
     {
       "class": "class:warlock",
@@ -238,6 +238,34 @@
       "field": "passive_perception",
       "value": 13,
       "source": "SRD 5.1, Blink Dog: passive Perception 13 (Perception +3; the snapshot has 10)"
+    },
+    {
+      "creature": "monster:adult-red-dragon",
+      "action": "Fire Breath",
+      "field": "action_save_success",
+      "value": "half",
+      "source": "SRD 5.1, Adult Red Dragon, Fire Breath: a creature that succeeds on the saving throw takes half as much damage (the snapshot has no damage on a success)"
+    },
+    {
+      "creature": "monster:ancient-white-dragon",
+      "action": "Cold Breath",
+      "field": "action_save_success",
+      "value": "half",
+      "source": "SRD 5.1, Ancient White Dragon, Cold Breath: a creature that succeeds on the saving throw takes half as much damage (the snapshot has no damage on a success)"
+    },
+    {
+      "creature": "monster:green-dragon-wyrmling",
+      "action": "Poison Breath",
+      "field": "action_save_success",
+      "value": "half",
+      "source": "SRD 5.1, Green Dragon Wyrmling, Poison Breath: a creature that succeeds on the saving throw takes half as much damage (the snapshot has no damage on a success)"
+    },
+    {
+      "creature": "monster:winter-wolf",
+      "action": "Cold Breath",
+      "field": "action_save_success",
+      "value": "half",
+      "source": "SRD 5.1, Winter Wolf, Cold Breath: a creature that succeeds on the saving throw takes half as much damage (the snapshot has no damage on a success)"
     }
   ],
   "spell_corrections": [
