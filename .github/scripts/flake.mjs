@@ -82,6 +82,12 @@ export function parseGo(text) {
       continue;
     }
     const key = `${ev.Package}\t${ev.Test ?? ''}`;
+    if (ev.Action === 'run' && ev.Test) {
+      // -count repeats a test: each run starts with an empty output, its subtests' too.
+      lines.delete(key);
+      if (!ev.Test.includes('/')) for (const k of [...lines.keys()]) if (k.startsWith(`${key}/`)) lines.delete(k);
+      continue;
+    }
     if (ev.Action === 'output') {
       const into = ev.Test ? lines : packageOutput;
       const k = ev.Test ? key : ev.Package;

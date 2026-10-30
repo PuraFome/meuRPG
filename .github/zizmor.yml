@@ -1,0 +1,6 @@
+# zizmor's configuration (workflows-lint.yml runs it with --offline over .github).
+rules:
+  # It asks for `uses: $/.github/actions/x` instead of `uses: ./.github/actions/x`, a syntax actionlint (pinned in
+  # workflows-lint.yml) rejects as an invalid action reference. Drop this when actionlint accepts it.
+  self-repository:
+    disable: true
