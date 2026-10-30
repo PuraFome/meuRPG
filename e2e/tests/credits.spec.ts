@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
 // (web/src/app/pages/credits) shows the same text, hardcoded from the same
 // source. This test reads NOTICE at runtime instead of hardcoding the
 // attribution itself, so it can never drift from what NOTICE actually says,
-// and self-`fixme`s if NOTICE is ever missing (it exists as of phase 2).
+// and fails if NOTICE is ever missing: a skipped test would hide it.
 const noticePath = path.resolve(__dirname, '..', '..', 'NOTICE');
 
 /**
@@ -28,8 +28,6 @@ function readAttributionParagraph(): string {
 }
 
 test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca' }, async ({ page }) => {
-  test.fixme(!fs.existsSync(noticePath), 'NOTICE not written yet (WP-B, backend/internal/rules) — see plan §3');
-
   const attribution = readAttributionParagraph();
 
   await page.goto('/credits');
@@ -43,7 +41,6 @@ test('a página de créditos mostra a atribuição do SRD 5.1', { tag: '@licenca
 // The SRD 5.2.1 line (CC BY 4.0): the three tables of the 2024 rules the app uses are credited with the exact
 // paragraph of NOTICE, which this test reads at runtime, like the 5.1 one above.
 test('a página de créditos mostra a atribuição do SRD 5.2.1 e o rótulo das regras de 2024', { tag: '@licenca' }, async ({ page }) => {
-  test.fixme(!fs.existsSync(noticePath), 'NOTICE not written yet');
   const text = fs.readFileSync(noticePath, 'utf-8');
   const paragraph = text.split(/\n\s*\n/).find((p) => p.includes('This work includes material from the System Reference Document 5.2.1'));
   if (!paragraph) {

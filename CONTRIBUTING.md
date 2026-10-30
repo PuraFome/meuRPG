@@ -54,6 +54,10 @@ The initial web bundle is a build gate (500 kB), see [docs/ci.md](docs/ci.md#the
 - **Secrets** (the OIDC client secret, `GEMINI_API_KEY`, session cookies) never go to the repository, a test, a log or an issue.
 - The app's UI text is in Portuguese; code, comments, commits and docs are in English.
 
+## Flaky tests
+
+A red test is a bug in the test or in the app, never noise: there are no retries, no `skip` or `fixme`, no longer timeout, no fixed sleep and no looser assertion, and "the train did not touch that test" is not a reason to merge. A flaky test stops holding a train only once it is acknowledged: its artifacts were read, a `flake-check` run shows it fails without the train, it has an owner, and its fix goes in the next train. How to reproduce one, what counts as fixed and how to dispatch `flake-check` are in [docs/ci.md](docs/ci.md#flaky-tests) and [docs/testing.md](docs/testing.md#reproducing-a-flaky-test).
+
 ## Branches, commits and pull requests
 
 1. Branch from `main`: `feat/`, `fix/`, `docs/` or `chore/` and a short name. Without write access, work in a fork.

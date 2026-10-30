@@ -1,0 +1,60 @@
+# Builds the two images of the e2e stack (the production image and devidp) from a checkout and uploads them as an
+# artifact, for the runners of start-e2e-stack. The same builds as the `image` job of e2e.yml, for the workflows that
+# test a ref of their own (flake-check, the repeat of the changed tests, the nightly hunt).
+name: Build the e2e images
+description: Build the api and devidp images from a checkout and upload them as an artifact.
+inputs:
+  code-dir:
+    description: The checkout to build from.
+    default: "."
+  artifact:
+    description: The name of the artifact that holds the two image tars.
+    required: true
+  cache-write:
+    description: Whether to write the build cache (off for refs that are not main's, so they cannot fill the cache).
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Docker Hub's anonymous pull limit is shared by GitHub's runners: BuildKit and every Docker Hub image the
+      # Dockerfiles name come through Google's mirror (same bytes: the Dockerfiles pin digests).
+      with:
+        driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+        buildkitd-config-inline: |
+          [registry."docker.io"]
+            mirrors = ["mirror.gcr.io"]
+
+    - name: Build the production image
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ${{ inputs.code-dir }}
+        file: ${{ inputs.code-dir }}/backend/Dockerfile
+        build-args: |
+          VERSION=dev
+          COMMIT=local
+        tags: meurpg-ci/api:ci
+        outputs: type=docker,dest=${{ runner.temp }}/api.tar
+        cache-from: type=gha,scope=api
+        cache-to: ${{ inputs.cache-write == 'true' && 'type=gha,scope=api,mode=max' || '' }}
+
+    - name: Build the devidp image
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ${{ inputs.code-dir }}
+        file: ${{ inputs.code-dir }}/deploy/local/devidp.Dockerfile
+        tags: meurpg-ci/devidp:ci
+        outputs: type=docker,dest=${{ runner.temp }}/devidp.tar
+        cache-from: type=gha,scope=devidp
+        cache-to: ${{ inputs.cache-write == 'true' && 'type=gha,scope=devidp,mode=max' || '' }}
+
+    - name: Upload the images
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.artifact }}
+        path: |
+          ${{ runner.temp }}/api.tar
+          ${{ runner.temp }}/devidp.tar
+        retention-days: 1
+        if-no-files-found: error

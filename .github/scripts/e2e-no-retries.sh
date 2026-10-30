@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Fails unless e2e/playwright.config.ts sets `retries: 0` and nothing else sets retries.
+# A retry hides a flaky test (docs/ci.md, "Flaky tests"): the fix is the test or the app.
+# Usage: e2e-no-retries.sh [config]   (default: e2e/playwright.config.ts)
+set -euo pipefail
+
+config="${1:-e2e/playwright.config.ts}"
+
+# Every line that mentions retries, whole-line comments aside (a "/" before the word, as in a URL, hides nothing).
+lines=$(grep -nE '\bretries\b' "$config" | grep -vE '^[0-9]+:[[:space:]]*(//|/\*|\*)' || true)
+count=$(grep -c . <<<"$lines" || true)
+
+if [ "$count" -ne 1 ] || ! grep -Eq '^[0-9]+:[[:space:]]*retries:[[:space:]]*0,?[[:space:]]*$' <<<"$lines"; then
+  echo "::error file=${config}::retries must be set once, to 0 (no retries: a flaky test is fixed, not retried). Found:" >&2
+  echo "${lines:-<nothing>}" >&2
+  exit 1
+fi
+# Nothing else may turn retries on: a spec's test.describe.configure({ retries }) or a --retries flag.
+others=$(grep -rnE 'retries[[:space:]]*:' "$(dirname "$config")/tests" "$(dirname "$config")/package.json" 2>/dev/null || true)
+flags=$(grep -rnE -- '--retries' .github/workflows Makefile 2>/dev/null || true)
+others="${others}${others:+${flags:+$'\n'}}${flags}"
+if [ -n "$others" ]; then
+  echo "::error::something besides ${config} sets retries:" >&2
+  echo "$others" >&2
+  exit 1
+fi
+echo "retries is 0"
