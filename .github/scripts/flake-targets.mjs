@@ -9,7 +9,7 @@
 //     backend/internal/leaktest), a sample of up to SAMPLE tests that call it.
 // A change outside any test body (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
 //
-// Output: {playwright: [{file, title, grep, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
+// Output: {playwright: [{file, title, grep, signins, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
 // for Playwright's --grep (the title with its metacharacters escaped); `why` is "changed" or "calls <helper>".
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';

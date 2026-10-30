@@ -53,7 +53,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
-        run: .github/scripts/gate-select.sh run '^\.github/'
+        run: .github/scripts/gate-select.sh run '^(\.github/|e2e/lint/package-lock\.json$)'
 
   lint:
     needs: select
