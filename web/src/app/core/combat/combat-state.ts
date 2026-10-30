@@ -232,7 +232,8 @@ export class CombatState {
    * more than one revision ahead of the copy on screen (the copy lacks what the revisions in between changed, such as a
    * character's hit points, and a patched copy would claim a revision whose data it does not have), or it moves to a
    * combatant who is down, whose start of turn (the death save due) the server sets and the event does not carry.
-   * It patches in place only the very next revision, or an event with no number (a player on a fog map).
+   * It patches in place only the very next revision, or an event with no number (a player on a fog map), and only a turn that
+   * moves on: a part that ended inside a joint turn is read again.
    */
   applyTurn(turn: TurnChange): boolean {
     const e = this.encounter();
@@ -249,10 +250,14 @@ export class CombatState {
     if (e.combatants.some((c) => c.id === turn.currentCombatantId && isDown(c))) {
       return false; // a down combatant's turn starts with a death save the server decides
     }
-    // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
-    // round: the group and who already ended their part stay. Only a turn that moves on starts over.
+    // A part that ended inside a joint turn moves "current" to another member of the same group, in the same round. The
+    // event does not say whose part ended, and a copy that is exactly one revision behind did not take the call that ended
+    // it (the part was ended from another screen, or the answer is still on its way): patching only the current
+    // combatant would leave the member who ended still acting. The combat is read again.
+    if (turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId)) {
+      return turn.currentCombatantId === e.currentCombatantId;
+    }
     this.patched++;
-    const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
       // The event was the next revision and the copy took it whole: an older answer arriving now is dropped by `apply`.
@@ -260,15 +265,9 @@ export class CombatState {
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
       masterTurn: turn.masterTurn,
-      ...(sameGroup
-        ? {}
-        : {
-            // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
-            turnGroupIds: [],
-            combatants: e.combatants.map((c) =>
-              startOfTurn(c, takesTurn(e, turn.currentCombatantId, c)),
-            ),
-          }),
+      // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
+      turnGroupIds: [],
+      combatants: e.combatants.map((c) => startOfTurn(c, takesTurn(e, turn.currentCombatantId, c))),
     });
     return true;
   }
