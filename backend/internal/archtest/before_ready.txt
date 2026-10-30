@@ -1,0 +1,62 @@
+# The tests `make before-ready` runs (docs/testing.md#before-ready): every Go test that
+# compares what the code produces with a golden, a hash, a frozen table or a stored fixture,
+# and the inventory tests that list the service methods, the error reasons, the
+# authorization matrices and the event kinds. A branch that changes any of what they compare
+# makes them stale, so a session runs them before it writes `ready:`.
+#
+# One tab-separated line each (an editor that turns tabs into spaces breaks the line, and
+# TestBeforeReadyListIsWhole says so):
+#
+#   run<TAB>package<TAB>-run regex<TAB>how to regenerate
+#   helper<TAB>package<TAB>function<TAB>why   a function whose callers compare with a file
+#   skip<TAB>package<TAB>-run regex<TAB>why   a test that compares with a file, kept off the run
+#
+# package is the directory under backend/ ("." never: a package with no tests is not listed).
+# The regex is the argument of `go test -run` for that package: anchor names with ^( | )$, or
+# use the naming convention the package keeps. {test} in the last column is the name of the
+# test that failed. A test that turns a second train round red is added here.
+# TestBeforeReadyListIsWhole fails for a test that reads a golden, hash or fixture file
+# (a ".golden", ".sha256" or "testdata" literal, goldentest.Compare/JSON, an -update flag) and
+# is on no line of its package, and for a line that matches nothing.
+run	cmd/api	^TestRunConfigurations$	cd backend && go test ./cmd/api -run '^{test}$' -update
+run	cmd/api	^(TestEveryProcedureRefusesAnonymousCalls|TestConnectGETOnlyForRequestsWithoutData)$	no generator: give the new RPC its session gate, or add it to publicProcedures with the reason (cmd/api/anonymous_test.go)
+run	cmd/srdimport	^TestSrdImport(MagicItems|Subclasses|Traits|Classes|Monsters|Features|Equipment)$	cd backend && go test ./cmd/srdimport -run '^{test}$' -update
+run	internal/archtest	^Test	no generator: fix the code, proto/error-reasons.json (docs/architecture/api.md#error-reasons) or backend/internal/archtest/before_ready.txt as the failure says
+run	internal/authz	^TestPendingMayCallIsTheAgreedList$	no generator: edit the agreed list in internal/authz/pending.go and its test together
+run	internal/campaigns	^(TestAuthorizationMatrix|TestEveryMethodNeedsASession|TestReadsWithIDsArePostOnly|TestCampaignDocumentAuthorizationMatrix|TestEveryDocumentMethodNeedsASession|TestGetCampaignDocumentIsPostOnly)$	no generator: give the new RPC its row in the authorization matrix and its signed-out call in the test the failure names
+run	internal/characters	^(TestAuthorizationMatrix|TestEveryMethodNeedsASession|TestReadsWithIDsArePostOnly)$	no generator: give the new RPC its row in the authorization matrix (internal/characters/authz_test.go) and its session check (unit_test.go)
+run	internal/characters	^(TestGetLevelUpOptionsFrozenGolden|TestGetLevelUpOptionsFrozenSwitchedOffContent|TestLevelUpOptionsToProtoFrozen|TestListLevelUpsFrozen)$	cd backend && go test ./internal/characters -run '^{test}$' -update-levelup-golden
+run	internal/characters	^(TestCleanChoicePicksFrozen|TestApplyChoicePicksFrozen|TestCompleteCharacterChoicesFrozen|TestCompleteCharacterChoicesFrozenRules|TestGetCampaignOpenChoicesFrozen|TestListSpellsFrozenViewers|TestListSpellsFrozenRefusals|TestDerivedToProtoGolden|TestCatalogToProtoGolden)$	cd backend && go test ./internal/characters -run '^{test}$' -update-choices-goldens
+run	internal/characters	^(TestReadPackJSONIsFrozen|TestTableContentRefusalsGolden|TestCheckPackIsFrozen|TestCreateTableEntryWithAKeyIsFrozen|TestAssignInIsFrozen|TestWithoutArchivedIsFrozen|TestForPlayerOfEveryKindIsFrozen)$	cd backend && go test ./internal/characters -run '^{test}$' -update-table-content
+run	internal/characters	^(TestCombatSpellGoldenOfEveryKind|TestCombatSheetGoldenOfEveryKind|TestReactionStatsGoldenOfEveryKind|TestPartyVisionGoldenOfEveryViewer|TestPackagePartGoldenOfExportStageAndApply|TestFullReactionStatsOfHandMadeSheets)$	cd backend && go test ./internal/characters -run '^{test}$' -update-combat-reads-golden
+run	internal/characters	^TestSpellcastingBlocksOfEveryCreature$	cd backend && go test ./internal/characters -run '^{test}$' -update-spellcasting-blocks
+run	internal/characters	^(TestListCharactersEditorGoldenOfEveryViewer|TestGetCharacterEditorGoldenOfEveryViewer|TestCheckLevelUpChoicesFrozen|TestGetLevelUpOptionsFrozenRefusals|TestRollLevelUpHitPointsFrozen|TestLevelUpCharacterFrozenRefusals|TestLevelUpCharacterFrozenWrites|TestPreviewLevelUpFrozenShape|TestGuidedLevelUpFrozenFaults)$	no generator: edit the expected values in the test by hand, from what the failure prints
+run	internal/identity/oidctest	^TestNewRefusalMessagesAreFrozen$	no generator: the refusal messages are frozen on purpose, edit the expected text by hand
+run	internal/leaktest	^(TestEveryProcedureIsClassified|TestLeakMatrix)$	no generator: classify the new procedure in internal/leaktest (guard_test.go) and give a read that leaks nothing its row in the matrix
+run	internal/maps	AuthorizationMatrix$|^TestEveryMethodNeedsASession$	no generator: give the new RPC its row in the authorization matrix and its signed-out call in the test the failure names
+run	internal/maps	^(TestFogSight_NewSight|TestFogSight_LightSources|TestFogSight_FamiliarEyes|TestFogStreams_WhoIsToldOfEachTokenWriteWithFog|TestFogStreams_WhoIsToldOfEachTokenWriteWithoutFog|TestLayersGolden_WhatEachViewerReadsWithFog|TestLayersGolden_WhatEachViewerReadsWithoutFog|TestStoreImageEveryOutcome|TestServeImageWhoGetsWhichImage|TestPackageStaging)$	cd backend && go test ./internal/maps -run '^{test}$' -update
+run	internal/maps	^(TestTileBytesPerViewer|TestBuildTilesIndex|TestDecodeWorkingCopyShape|TestTileServeRefusals)$	no generator: copy the RECORD line the failure prints into frozenDigests (internal/maps/tile_bytes_test.go) only if the change of bytes is intended
+run	internal/maps/dungeonimg	^TestRenderPixels$	no generator: put the sha256 the failure prints into the case of the table (render_golden_test.go) only if the change of pixels is intended
+run	internal/maps/refimg	^TestRenderPixels$	no generator: put the sha256 the failure prints into the case of the table (render_golden_test.go) only if the change of pixels is intended
+run	internal/platform/config	^TestLoadEnvironments$	cd backend && go test ./internal/platform/config -run '^{test}$' -update
+run	internal/play	^(TestCastEndProtoIsFrozen|TestCastEndTheEndingIsWhatEachCallerReads|TestCastEndConfirmIsWhatEachCallerReads|TestActionsRestIsFrozen|TestTurnOptionsAreFrozen|TestCastSpellIsFrozen|TestRollAttackIsFrozen|TestRollDamageIsFrozen|TestTakeActionIsFrozen|TestCombatLogGolden|TestCombatViewGolden)$	cd backend && UPDATE_GOLDEN=1 go test ./internal/play -run '^{test}$'
+run	internal/play	^TestLasting(Core|RPC)	cd backend && go test ./internal/play -run '^{test}$' -update-lasting
+run	internal/play	^(TestPuzzleView_EachViewerReadsTheirOwnRun|TestPuzzleView_TheCipherKeyAndTheSequencePlayback)$	cd backend && go test ./internal/play -run '^{test}$' -update-puzzle-view
+run	internal/play	^TestListTrapActivity_WhatEachViewerReads$	cd backend && go test ./internal/play -run '^{test}$' -update-trap-activity
+run	internal/play	^TestListTrapDamagesGolden$	cd backend && go test ./internal/play -run '^{test}$' -update-trap-damages
+run	internal/play	^TestFiringProtoGoldenOfEveryViewer$	cd backend && go test ./internal/play -run '^{test}$' -update-trap-firing
+run	internal/play	^TestTodaysPayloadsAreWhatTheWritersWrite$	cd backend && go test ./internal/play -run TestTodaysPayloads -update
+run	internal/play	^(TestEveryEventKindHasAStoredPayload|TestStoredPayloadsDecode|TestEverySQLPayloadPathIsListed|TestStoredMovesKeepTheirUndoVerdict|TestSessionEventKindsMatchTheTable)$	no generator: classify the new kind in stored_events_test.go (actionEventKinds, otherWriters or externalKinds), add its row to session_event_kinds, then: cd backend && go test ./internal/play -run TestTodaysPayloads -update
+run	internal/play	^(TestAuthorizationMatrix|TestEveryMethodNeedsASession|TestMR013_CombatAuthorizationMatrix|TestMR012_CombatActionsAuthorizationMatrix|TestMR014_SpellsAuthorizationMatrix|TestMR032_HighlightsAuthorizationMatrix|TestMR034_OpportunityAuthorizationMatrix|TestPM06_RollCallsAreAuthorized|TestReactionWindowAnswersAreTheReactorsAndTheMasters|TestTheAreaCallsAreRefusedToWhoMayNotMakeThem|TestMR043_TheBuilderAuthorizationMatrix)$	no generator: give the new RPC its row in the authorization matrix and its signed-out call in the test the failure names (a new CombatService method goes in one of the lists actionRPCs, spellRPCs, areaRPCs, highlightRPCs, opportunityRPCs, reactionRPCs, rollRPCs or in the matrix of combat_test.go)
+helper	internal/play	runGolden	plays the scenarios and compares them with the golden file of the call
+run	internal/progression	^(TestAuthorizationMatrix|TestHistoryAndMilestonesWhatEachViewerReads|TestAddMilestoneStepByStep|TestMoveMilestoneStepByStep)$	cd backend && go test ./internal/progression -run '^{test}$' -update (a new RPC also needs its row in the authorization matrix, internal/progression/authz_test.go)
+run	internal/rules	(Characterization|Golden)$|^TestCorrectSubclassFeaturesRowOfANewSubclass$	cd backend && go test ./internal/rules -run '^{test}$' -update
+run	internal/rules	^TestSnapshot$	no generator: regenerate data/ with cmd/srdimport, or raise "revision" and "sha256" in internal/rules/srd51/data/effects/revision.json as the failure says
+run	internal/rules/combat	Characterization$	cd backend && go test ./internal/rules/combat -run '^{test}$' -update
+run	internal/rules/dungeon	^(TestGolden|TestCheckCorruptionCorpus)$	cd backend && go test ./internal/rules/dungeon -run '^{test}$' -update (a change of the generator output also bumps Version in internal/rules/dungeon/types.go)
+run	internal/rules/encounter	Characterization$	cd backend && go test ./internal/rules/encounter -run '^{test}$' -update
+run	internal/rules/formula	^TestCompileCharacterization$	cd backend && go test ./internal/rules/formula -run '^{test}$' -update
+run	internal/rules/grid	Characterization$	cd backend && go test ./internal/rules/grid -run '^{test}$' -update
+run	internal/rules/puzzle	Sweep$	cd backend && go test ./internal/rules/puzzle -run '^{test}$' -update
+run	internal/rules/vision	Characterization$	cd backend && go test ./internal/rules/vision -run '^{test}$' -update
+run	migrations	^TestEveryEventKindOfTheCodeIsInTheTable$	no generator: add the kind to session_event_kinds in a new migration (docs/data/README.md)
