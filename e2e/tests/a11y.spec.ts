@@ -613,7 +613,7 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     if (width < 768) {
       // A phone folds it to one row; opened, the thumbnails are buttons.
       await left.getByRole('button', { name: /^Imagens que o mestre deixou/ }).click();
-      await expect(left.getByRole('button', { name: 'Ver em tela cheia: Capitão Goblin' })).toBeVisible();
+      await expect(left.getByRole('button', { name: 'Ver Capitão Goblin em tela cheia' })).toBeVisible();
       await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, a dobra aberta, jogador ${suffix}`);
     }
   } finally {
@@ -8789,7 +8789,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
   const phone = width < 768;
   const openChat = async (page: Page) => {
     if (phone) {
-      await page.getByRole('button', { name: /^Conversa(, \d+ mensage(?:m|ns) novas?)?$/ }).click();
+      await page.getByRole('button', { name: /^Conversa( \d+, \d+ mensage(?:m|ns) novas?)?$/ }).click();
     }
     // The empty feed is not drawn; the panel is there once its message box is.
     await expect(messageBoxOf(page)).toBeVisible();
@@ -8825,7 +8825,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
 
     // The player: on a phone the tab says there is news, then the full-screen view.
     if (phone) {
-      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
+      await expect(p.getByRole('button', { name: /^Conversa \d+, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
       // The notice at the top of the page says the same, in view without scrolling; it is awaited by its words.
       const notice = p.getByRole('button', { name: /^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/ });
       await expect(notice).toBeVisible();
