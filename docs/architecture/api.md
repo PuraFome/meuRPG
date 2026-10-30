@@ -177,7 +177,7 @@ The limit sits on the operation that can hang (`platform/slowclient`):
 | The body of an image, thumbnail, fog tile or app file | 2 minutes to be written (`slowclient.WriteBody`, cleared when the handler ends). |
 | A part of a campaign import | 2 minutes (`partReadTimeout`). |
 
-The deadline of a body read (`slowclient.ReadBody`) is cleared as soon as the read is over (the function it returns): left on the connection, it would reach net/http's background read, which cancels the request's context, while the handler still decodes or stores what it read.
+The deadline of a body read (`slowclient.ReadBody`) is cleared only once the body has been read to its end, on the success path. A handler that returns with the body unread after it called `ReadBody` (a refusal, a form that is wrong, a failed store) leaves it armed (the refusals before the call, such as a missing session or a rate limit, have no deadline yet): the server has no `ReadTimeout`, and net/http discards what is left of the body (up to 256 KB, or all of a chunked one) under the connection's deadline, so a client that keeps trickling is cut off by it. At the end of the body the deadline must go, because net/http's background read, which notices a client that left, would otherwise fire on it and cancel the request while the handler still decodes or stores what it read.
 
 `ReadHeaderTimeout` (10 s) and `IdleTimeout` (2 minutes) apply to every connection.
 A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and the app opens a new one.
