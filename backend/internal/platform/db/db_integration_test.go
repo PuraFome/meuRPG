@@ -20,7 +20,7 @@ import (
 //
 // Start a throwaway CockroachDB with:
 //
-//	docker run -d --rm --name crdb -p 26257:26257 cockroachdb/cockroach:v26.2.7 start-single-node --insecure
+//	docker run -d --rm --name crdb -p 26257:26257 cockroachdb/cockroach:v26.2.8 start-single-node --insecure
 //	export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable'
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
