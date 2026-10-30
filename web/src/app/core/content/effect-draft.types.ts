@@ -60,6 +60,22 @@ export interface EffectDraft {
   alsoWithSlot: boolean;
   ritualOnly: boolean;
   countsAsKnown: boolean;
+  /** resistance: the damage types it covers (or "all", "nonmagical_bps") and its kind ("resist", "immune", "vulnerable"). */
+  damageTypes: string[];
+  kind: string;
+  /** condition_immunity: the conditions the character takes none of. roll_mode: the condition its saves are against. */
+  conditions: string[];
+  againstCondition: string;
+  /** extra_damage: the dice (a formula) and sides, the type ("" is the weapon's), weapon kind, frequency, no crit doubling. */
+  dice: string;
+  diceSides: number;
+  damageType: string;
+  weapon: string;
+  frequency: string;
+  noCritDoubling: boolean;
+  /** spell_modifier: the spells it fits and its change. */
+  appliesTo: string;
+  spellChange: string;
   /** state: its name in the entry, the formula of its duration in rounds (empty: until it ends), and how else it ends. */
   stateName: string;
   durationRounds: string;
@@ -67,7 +83,6 @@ export interface EffectDraft {
   /** weapon_rule: which weapons (and the name of "named"), another ability for the attack and for the damage, bonuses (signed),
    * and a melee reach in metres as typed. pseudo_weapon: its kind in `weapon`, `attackName`, `damageDice`, `damageType`, the
    * ability in `ability`, the reach in `reachM` and the range in `rangeM`. */
-  weapon: string;
   weaponName: string;
   attackAbility: string;
   damageAbility: string;
@@ -76,7 +91,6 @@ export interface EffectDraft {
   reachM: string;
   attackName: string;
   damageDice: string;
-  damageType: string;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

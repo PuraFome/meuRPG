@@ -1605,6 +1605,23 @@ message WatchGameSessionResponse {
     // dice on the screen and the log. Every stream of the campaign gets it,
     // except for a secret roll, which nobody hears of.
     FreeRollRolled free_roll_rolled = 45;
+    // The master applied the damage of an attack to a player's character (RN-02): to that character's player only,
+    // so the sheet says whose blow it was, whether or not the attacker is hidden and its line is in the log.
+    AttackHit attack_hit = 46;
+  }
+
+  // AttackHit is the attack damage that landed on a player's character, as that player reads it: who hit (empty when the
+  // attacker is hidden: the app says "Alguém"), how much and of what type. `id` is the pending damage, so a hit is said once.
+  // It says nothing of the hit points: those come with VitalsChanged.
+  message AttackHit {
+    // The pending damage that was applied (a UUID).
+    string id = 1;
+    // The attacker's name; empty when it is hidden from this player.
+    string actor_label = 2;
+    // What landed after the target's resistances and the master's last word, as the master settled it.
+    int32 amount = 3;
+    // The damage type in Portuguese, lower case ("cortante", "fogo"); empty when the hit has none.
+    string damage_type_pt = 4;
   }
 
   // FreeRollRolled carries a table roll of the free dice roller, whole.

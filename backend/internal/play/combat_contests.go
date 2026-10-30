@@ -145,6 +145,9 @@ func settleContest(ctx context.Context, c *combatTx, row playdb.CombatContest, w
 		if !won {
 			return contestResolved, contestLineGrappleFailed, nil
 		}
+		if immune, err := c.immuneToCondition(ctx, defender, "condition:grappled"); err != nil || immune {
+			return contestResolved, contestLineGrappleFailed, err
+		}
 		return contestResolved, contestLineGrappled, applyGrapple(ctx, c, initiator, defender, row.EscapeDc)
 	case purposeEscape:
 		if !won {
@@ -1073,6 +1076,9 @@ func (s *Service) readShoveRun(ctx context.Context, c *combatTx, req shoveChoice
 
 // shoveKnocksProne is the outcome PRONE: the target falls.
 func shoveKnocksProne(ctx context.Context, r *shoveRun) (stored, line string, err error) {
+	if immune, err := r.c.immuneToCondition(ctx, r.target, condProne); err != nil || immune {
+		return shoveStays, contestLineShoveStays, err // a target that cannot be knocked prone stays on its feet
+	}
 	err = setConditionsOf(ctx, r.c, r.target, withCondition(r.target.Conditions, condProne))
 	return shoveProne, contestLineShoveProne, err
 }

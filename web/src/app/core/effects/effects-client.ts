@@ -25,12 +25,14 @@ import { heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** How a player answers the saving throw an effect asks: the d20 in the app, the faces of physical dice, or the master. */
 export type EffectSaveAnswer =
-  | { readonly kind: 'app' }
+  | { readonly kind: 'app'; readonly maneuverKey?: string }
   | {
       readonly kind: 'typed';
       readonly face: number;
       readonly second?: number;
       readonly extra: readonly number[];
+      /** A table die added to the roll: its face is the last of `extra`. */
+      readonly maneuverKey?: string;
     }
   | { readonly kind: 'hand' }
   /** The master skips the save (a table option). */
@@ -118,6 +120,7 @@ export class EffectsClient {
               ? { case: 'skip', value: true }
               : { case: 'delegateToMaster', value: true },
       extraDieFaces: typed ? [...typed.extra] : [],
+      ...(how.kind === 'app' || how.kind === 'typed' ? { maneuverKey: how.maneuverKey ?? '' } : {}),
       ...(typed?.second !== undefined ? { secondD20Face: typed.second } : {}),
     });
     if (!res.encounter) {

@@ -45,6 +45,7 @@ const ROUTES: { [K in Exclude<Kind, OwnKind>]: (h: LiveStreamHandlers, e: Event<
   freeRollRolled: (h, e) => h.onFreeRollRolled?.(e.roll),
   puzzleChanged: (h, e) => h.onPuzzleChanged?.(e.puzzleId),
   sessionMessage: (h, e) => h.onSessionMessage?.(e.message),
+  attackHit: (h, e) => h.onAttackHit?.(e),
   masterTyping: (h, e) => h.onMasterTyping?.(e.expiresInSeconds),
 };
 

@@ -6,6 +6,14 @@ import type { ChoicesPreviewVm } from './character-editor.types';
 const PAUSE_MS = 300;
 
 /**
+ * Whether two answers say the same: a signal set with an equal answer would still notify, and an effect that reads the
+ * draft the answer feeds (the spell sections, the hit points) would ask again, for ever, with nothing changed.
+ */
+export function sameAnswer<T>(a: T | null, b: T): boolean {
+  return a !== null && JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
  * The choices the server reads in the draft on screen (`PreviewChoices`, PM-05). The browser knows no rule: which
  * choices a race and a class ask, what each option stores and what is still open are the server's answer. Each
  * change of the draft asks once, after a pause; only the newest answer counts; while one is on the way the last
@@ -35,7 +43,7 @@ export class ServerChoices {
         .then(() => this.ask())
         .then(
           (res) => {
-            if (mine === this.version) {
+            if (mine === this.version && !sameAnswer(this.answer(), res)) {
               this.answer.set(res);
             }
           },

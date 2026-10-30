@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -167,7 +168,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 func taggedSavesOf(saves []link.TaggedSave) []combat.TaggedSave {
 	out := make([]combat.TaggedSave, 0, len(saves))
 	for _, t := range saves {
-		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities})
+		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities, Disadvantage: t.Disadvantage})
 	}
 	return out
 }
@@ -250,6 +251,8 @@ type modeFacts struct {
 	// enc and surprised are the combat and who is surprised now, for the ambush effects.
 	enc       playdb.Encounter
 	surprised []string
+	// down are the player's characters at 0 hit points: unconscious for an attack against them.
+	down []string
 }
 
 // modeResult is the mode of one roll: the truth, and what a viewer may read.
@@ -305,6 +308,9 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		// A table feat's ranged_attack effect: the weapon keeps its aim at long range.
 		NoLongRangeDisadvantage:   shape.Weapon && traits.RangedWeaponNoLongRangeDisadvantage,
 		StrengthOrDexterityWeapon: shape.Weapon && shape.physical(),
+	}
+	if slices.Contains(f.down, target.ID) {
+		s.Target.Conditions = append(slices.Clone(s.Target.Conditions), unconscious)
 	}
 	s.Helped = f.helperOf(attacker, target) != nil
 	s.AttackerUnseen = f.unseen(target, attacker)
@@ -547,13 +553,20 @@ func (c textContext) otherSentence(src combat.Source) string {
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
 	case combat.SourceTaggedSave:
-		return fmt.Sprintf("%s: vantagem no teste de resistência %s", c.names(src.Condition), againstSentence(src.Against))
+		mode := "vantagem"
+		if src.Effect == combat.ModeDisadvantage {
+			mode = "desvantagem"
+		}
+		return fmt.Sprintf("%s: %s no teste de resistência %s", c.names(src.Condition), mode, c.againstSentence(src.Against))
 	}
 	return ""
 }
 
 // againstSentence is what a saving throw with a racial advantage is against, in Portuguese.
-func againstSentence(against string) string {
+func (c textContext) againstSentence(against string) string {
+	if strings.HasPrefix(against, "condition:") {
+		return "contra ficar " + strings.ToLower(c.cond(against))
+	}
 	switch against {
 	case combat.AgainstFrightened:
 		return "contra ficar amedrontado"
@@ -693,9 +706,13 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
+	down, err := s.downCharacters(ctx, nil, campaignID, d.cs)
+	if err != nil {
+		return turnModes{}, err
+	}
 	return turnModes{
 		who: who, sheet: sheet, viewer: v, names: s.namesFor(ctx, campaignID), ownTurn: actsNow(d.enc, who),
-		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps, enc: d.enc, surprised: surprised},
+		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps, enc: d.enc, surprised: surprised, down: down},
 	}, nil
 }
 

@@ -3,7 +3,6 @@ import { computed, signal } from '@angular/core';
 
 import {
   type Combatant,
-  CombatantKind,
   CombatantState,
   type Encounter,
   EncounterStatus,
@@ -34,14 +33,49 @@ export interface ReactionNotice {
   readonly text: string;
 }
 
-/** A combatant as a turn that moves on finds it, until the combat is read again: its part is open, and a player's character at 0
- * hit points that comes on turn owes its death save (SRD 5.1), which the stream's turn event does not carry. */
-function startOfTurn(c: Combatant, current: boolean): Combatant {
-  const due = c.kind === CombatantKind.PLAYER && c.state === CombatantState.DOWN && current;
-  if (!c.turnPartEnded && c.deathSaveDue === due) {
+/**
+ * A combatant as a turn that moves on finds it, until the combat is read again: its part is open and no death save is due (a
+ * turn to a combatant who is down is never patched: the server decides what it owes at its start, see `applyTurn`), and one
+ * that takes the turn starts it with a fresh economy (Action, bonus action, reaction and movement), which the stream's turn
+ * event does not carry.
+ */
+function startOfTurn(c: Combatant, acts: boolean): Combatant {
+  const fresh = acts && !c.defeated;
+  const spent = c.actionUsed || c.bonusActionUsed || c.reactionUsed || c.movementUsedDft > 0;
+  if (!c.turnPartEnded && !c.deathSaveDue && !(fresh && spent)) {
     return c;
   }
-  return { ...c, turnPartEnded: false, deathSaveDue: due };
+  return {
+    ...c,
+    turnPartEnded: false,
+    deathSaveDue: false,
+    ...(fresh
+      ? {
+          actionUsed: false,
+          bonusActionUsed: false,
+          reactionUsed: false,
+          movementUsedDft: 0,
+          movementLeftDft: c.speedDft,
+          movementLeftFt: c.speedFt,
+        }
+      : {}),
+  };
+}
+
+/** Who starts a fresh economy when the turn passes to `currentId`: it, and the creatures that share its initiative total (a joint turn). */
+function takesTurn(e: Encounter, currentId: string, c: Combatant): boolean {
+  const cur = e.combatants.find((x) => x.id === currentId);
+  return (
+    c.id === currentId ||
+    (!!cur && c.kind === cur.kind && !!c.initiative && c.initiative === cur.initiative)
+  );
+}
+
+/** Whether a combatant is down: at 0 hit points, or marked so. */
+function isDown(c: Combatant): boolean {
+  return (
+    c.state === CombatantState.DOWN || (c.hitPointsCurrent !== undefined && c.hitPointsCurrent <= 0)
+  );
 }
 
 /** What `CombatState.beginRead` hands out. */
@@ -57,7 +91,7 @@ export interface ReadTicket {
  * after the stream's events. Pure TypeScript with signals, so its rules
  * (a read that started before a later read, or before an answer, never
  * replaces it; an answer with an older revision than the copy on screen is
- * dropped; `turn_changed` and `combatant_moved` apply in place; a combatant the screen doesn't know
+ * dropped; `turn_changed` applies in place only as the very next revision and `combatant_moved` in place; a combatant the screen doesn't know
  * means "read the combat again") are tested without a DOM.
  */
 export class CombatState {
@@ -193,24 +227,35 @@ export class CombatState {
     }
   }
 
-  /** `turn_changed`. `false` when it is about a combat the screen doesn't
-   * have: read it again. */
+  /**
+   * `turn_changed`. `false` when the page must read the combat again: it is about a combat the screen doesn't have, it is
+   * more than one revision ahead of the copy on screen (the copy lacks what the revisions in between changed, such as a
+   * character's hit points, and a patched copy would claim a revision whose data it does not have), or it moves to a
+   * combatant who is down, whose start of turn (the death save due) the server sets and the event does not carry.
+   * It patches in place only the very next revision, or an event with no number (a player on a fog map).
+   */
   applyTurn(turn: TurnChange): boolean {
     const e = this.encounter();
     if (!e || e.id !== turn.encounterId) {
       return false;
     }
+    const revision = turn.revision ?? 0;
+    if (revision > 0 && revision <= e.revision) {
+      return true; // an event no newer than the combat on screen: nothing to patch, nothing to read again
+    }
+    if (revision > 0 && revision !== e.revision + 1) {
+      return false; // a gap: what the revisions in between changed is not in the copy
+    }
+    if (e.combatants.some((c) => c.id === turn.currentCombatantId && isDown(c))) {
+      return false; // a down combatant's turn starts with a death save the server decides
+    }
     // A part that ended inside a joint turn moves "current" to another member of the same group, in the same
     // round: the group and who already ended their part stay. Only a turn that moves on starts over.
-    const revision = turn.revision ?? 0;
-    if (revision > 0 && revision < e.revision) {
-      return true; // an event older than the combat on screen: nothing to patch, nothing to read again
-    }
     this.patched++;
     const sameGroup = turn.round === e.round && e.turnGroupIds.includes(turn.currentCombatantId);
     this.encounter.set({
       ...e,
-      // The patched turn is as new as the event: an older answer arriving now is dropped by `apply`.
+      // The event was the next revision and the copy took it whole: an older answer arriving now is dropped by `apply`.
       revision: Math.max(e.revision, revision),
       round: turn.round,
       currentCombatantId: turn.currentCombatantId,
@@ -220,7 +265,9 @@ export class CombatState {
         : {
             // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
             turnGroupIds: [],
-            combatants: e.combatants.map((c) => startOfTurn(c, c.id === turn.currentCombatantId)),
+            combatants: e.combatants.map((c) =>
+              startOfTurn(c, takesTurn(e, turn.currentCombatantId, c)),
+            ),
           }),
     });
     return true;

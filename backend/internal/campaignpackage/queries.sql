@@ -3,11 +3,11 @@
 -- their own queries read and write.
 
 -- name: InsertCampaignExport :one
--- A new export, running. create_key and create_hash are the idempotency key of
+-- A new export, pending: its task claims it (ClaimCampaignExport). create_key and create_hash are the idempotency key of
 -- StartCampaignExport; a retry with the same key reads the first export
 -- (GetCampaignExportByCreateKey).
 INSERT INTO campaign_exports (id, campaign_id, requested_by, state, create_key, create_hash, created_at, updated_at, expires_at)
-VALUES (sqlc.arg(id), sqlc.arg(campaign_id), sqlc.arg(requested_by), 'running', sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now), sqlc.arg(expires_at))
+VALUES (sqlc.arg(id), sqlc.arg(campaign_id), sqlc.arg(requested_by), 'pending', sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now), sqlc.arg(expires_at))
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
 
@@ -29,9 +29,15 @@ LIMIT 1;
 
 -- name: GetRunningCampaignExport :one
 SELECT * FROM campaign_exports
-WHERE campaign_id = $1 AND state = 'running'
+WHERE campaign_id = $1 AND state IN ('pending', 'running')
 ORDER BY created_at DESC, id
 LIMIT 1;
+
+-- name: ClaimCampaignExport :one
+-- The task takes the export: only a pending one, so a duplicate delivery gets no row.
+UPDATE campaign_exports SET state = 'running', updated_at = $2
+WHERE id = $1 AND state = 'pending'
+RETURNING *;
 
 -- name: SetCampaignExportProgress :exec
 UPDATE campaign_exports SET percent = $2, updated_at = $3
@@ -48,20 +54,20 @@ RETURNING *;
 -- name: FailCampaignExport :one
 UPDATE campaign_exports
 SET state = 'failed', failure = $2, updated_at = $3, finished_at = $3, expires_at = $4
-WHERE id = $1 AND state = 'running'
+WHERE id = $1 AND state IN ('pending', 'running')
 RETURNING *;
 
 -- name: CancelCampaignExport :one
 UPDATE campaign_exports
 SET state = 'canceled', updated_at = $2, finished_at = $2, expires_at = $3
-WHERE id = $1 AND state = 'running'
+WHERE id = $1 AND state IN ('pending', 'running')
 RETURNING *;
 
 -- name: FailStaleCampaignExports :execrows
 -- A run that has not moved for a while was cut off by a restart: it will not finish.
 UPDATE campaign_exports
 SET state = 'failed', failure = 'interrupted', updated_at = sqlc.arg(now), finished_at = sqlc.arg(now), expires_at = sqlc.arg(expires_at)
-WHERE state = 'running' AND updated_at < sqlc.arg(stale_before);
+WHERE state IN ('pending', 'running') AND updated_at < sqlc.arg(stale_before);
 
 -- name: ListExpiredCampaignExports :many
 -- What the sweeper takes: the exports past their time and the orphans, whose campaign

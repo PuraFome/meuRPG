@@ -27,6 +27,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -1021,7 +1022,7 @@ func (s *Service) serveTile(w http.ResponseWriter, r *http.Request) error {
 // parseTilePath reads the map and the tile of the request's path; anything that
 // is not a map ID and two non-negative numbers is a map that is not found.
 func parseTilePath(r *http.Request) (mapID string, tx, ty int, err error) {
-	mapID, ok := parseID(r.PathValue("map"))
+	mapID, ok := uid.Canonical(r.PathValue("map"))
 	tx, errX := strconv.Atoi(r.PathValue("tx"))
 	ty, errY := strconv.Atoi(r.PathValue("ty"))
 	if !ok || errX != nil || errY != nil || tx < 0 || ty < 0 {

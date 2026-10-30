@@ -192,20 +192,53 @@ message TableEffect {
   // range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
   // ignore_cover, range_multiplier and no_long_range_disadvantage.
   bool no_long_range_disadvantage = 26;
-  // resistance: resistance to every damage type but `except` (a "damage-type:" key
-  // of the SRD, such as "damage-type:psychic") while `while` holds; `while` is "rage"
-  // for as long as the character is raging, or the `state_name` of a state of the same
-  // entry. Both are required, and the effect has no `when` and no `tags`. Resistance
-  // never stacks: the same type from another source (the barbarian's own rage
-  // resistance) counts once.
+  // resistance: resistance, immunity or vulnerability to damage types (SRD 5.1,
+  // "Damage Resistance and Vulnerability"). The types are either `damage_types` (the
+  // SRD's "damage-type:" keys, such as "damage-type:cold", or one of the closed words
+  // "all" for every type and "nonmagical_bps" for the bludgeoning, piercing and slashing
+  // damage of attacks that are not magical; "all" is alone in the list, no key is
+  // listed twice) or every type but `except` (a "damage-type:" key); exactly one of
+  // the two is set. `kind` is "resist" (half the damage, the default when empty),
+  // "immune" (none) or "vulnerable" (double). Immunity wins over resistance, resistance
+  // is applied before vulnerability, and the same kind from two sources counts once.
+  // `while` is empty (always) or "rage" (for as long as the character is raging). The
+  // effect has no `when` and no `tags`. An attack the sheet or the stat block does not
+  // mark as magical counts as nonmagical.
   //
   // `while` is the state gate, shared by the effects that hold only while a state is on:
-  // resistance, roll_mode, extra_damage, weapon_rule and pseudo_weapon. On all but
-  // resistance it is optional and names a state of the same entry (never "rage"):
-  // the effect applies only while that state is on. A name no state effect of the entry
-  // defines is refused.
+  // resistance, roll_mode, extra_damage, weapon_rule and pseudo_weapon. On resistance it
+  // is empty, "rage" or the `state_name` of a state of the same entry; on the others it is
+  // optional and names a state of the same entry (never "rage"): the effect applies only
+  // while that state is on. A name no state effect of the entry defines is refused.
   string except = 27;
   string while = 28;
+  // extra_damage: damage added to a weapon hit when `applies` holds. `value` is the
+  // fixed part (a formula) and may be empty when dice are set; `dice` is a formula for
+  // how many dice, `dice_sides` their sides (4, 6, 8, 10 or 12), set together.
+  // `damage_type` is a "damage-type:" key of the SRD; empty is the weapon's own type.
+  // `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
+  // "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
+  // unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+  string dice = 44;
+  int32 dice_sides = 45;
+  string damage_type = 46;
+  string weapon = 47;
+  string frequency = 48;
+  bool no_crit_doubling = 49;
+  // spell_modifier: cast options the feature offers for the spells it fits.
+  // `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
+  // key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
+  // whose school or one of whose damage types it is. `spell_change` is the one change:
+  // "damage_type_swap" (`from` lists the damage types it swaps among: the damage of one
+  // of them becomes another of them, which the caster picks at the cast),
+  // "bonus_damage" (`value` is the fixed damage added, a formula; `damage_type` its type,
+  // empty is the spell's own) or "extra_dice_per_slot_over" (`count` more dice of the
+  // spell's damage die for each slot level above the spell's own). `resource`, when set,
+  // names a resource effect of the same entry or its class: using the option spends `cost`
+  // uses (a formula, empty is 1; the cost field of grant_action), and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
+  // extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
+  string applies_to = 50;
+  string spell_change = 51;
   // proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
   // skill is doubled only where the character already has its proficiency from
   // another source when the sheet is worked out (the race, the background, the
@@ -267,6 +300,15 @@ message TableEffect {
   // on_event: hit points regained as a percentage of the maximum (1 to 100, rounded
   // down, at least 1), instead of `heal`; the two are not both set.
   int32 heal_percent_max = 43;
+  repeated string damage_types = 52;
+  string kind = 53;
+  // condition_immunity: the keys of the conditions ("condition:poisoned", one of the 15
+  // of the SRD) the character takes none of: no spell, trap or blow puts them on it.
+  repeated string conditions = 54;
+  // roll_mode: the saving throws (the `targets` are "save.<ability>" or "save.all")
+  // against being this condition ("condition:frightened") get the roll mode of `roll`.
+  // It has no `tags`: the condition is the situation, and the app applies the mode.
+  string against_condition = 55;
   // state: a temporary state the feature switches on and off (a stance for 1 minute, a
   // form that lasts until a long rest). `state_name` names it within the entry, like a
   // resource (1 to 40 characters of a-z, 0-9 and _; at most 8 states in an entry).
@@ -279,9 +321,9 @@ message TableEffect {
   // "free") what starting it costs; ending it is free. The sheet shows an action with
   // Ativar and Encerrar. The other effects of the entry hold only while it is on, by
   // their `while` or by a `when` that calls active("state_name").
-  string state_name = 44;
-  string duration_rounds = 45;
-  repeated string ends_on = 46;
+  string state_name = 56;
+  string duration_rounds = 57;
+  repeated string ends_on = 58;
   // weapon_rule: changes the weapon lines `weapon` chooses: "any", "melee", "ranged",
   // "finesse", "magic" (lines the sheet marks as magical) or "named" (the weapon whose
   // Portuguese name is `weapon_name`, ignoring case and accents; required for "named",
@@ -296,16 +338,14 @@ message TableEffect {
   // hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
   // a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
   // proficient with, is never an item, and the weapon rules change it like any weapon.
-  string weapon = 47;
-  string weapon_name = 48;
-  string attack_ability = 49;
-  string damage_ability = 50;
-  int32 attack_bonus = 51;
-  int32 damage_bonus = 52;
-  int32 reach_ft = 53;
-  string attack_name = 54;
-  string damage_dice = 55;
-  string damage_type = 56;
+  string weapon_name = 59;
+  string attack_ability = 60;
+  string damage_ability = 61;
+  int32 attack_bonus = 62;
+  int32 damage_bonus = 63;
+  int32 reach_ft = 64;
+  string attack_name = 65;
+  string damage_dice = 66;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -532,6 +572,8 @@ message TableRace {
   AbilityScores ability_bonuses = 4;
   // Bonuses the player places on abilities of their choice, such as [2, 1] for "+2
   // and +1 to your choice"; each goes on a different ability.
+  // A single set of such bonuses; `choice_bonus_sets` holds several. A race has one or
+  // the other, never both. Each bonus is 1 to 4 here.
   repeated int32 choice_bonuses = 5;
   // 0, or the range of the darkvision, in feet.
   int32 darkvision_ft = 6;
@@ -539,6 +581,17 @@ message TableRace {
   repeated string languages = 7;
   int32 language_choices = 8;
   repeated TableFeature traits = 9;
+  // Alternative sets of bonuses to place ("+2 and +1, or +1, +1 and +1"): the player
+  // picks one set at creation, in the choices of the sheet (`feature_choice_keys`), and
+  // each of its bonuses goes on a different ability (`choice_bonuses` is the same picker
+  // for a single set); until the picks fill the set the sheet has the issue
+  // `race_bonus`, and a new player's sheet is not saved. At most 4 sets, each of 1 to 6 bonuses of +1 or +2, no two the same; the
+  // race has `choice_bonuses` or this, never both.
+  repeated BonusSet choice_bonus_sets = 10;
+  // The sizes the player picks one from: "Small", "Medium", or both, once each. `size`
+  // is the default (and one of them); the character creator asks only when there are
+  // two. Empty means the race has only `size`.
+  repeated string sizes = 11;
 }
 
 // TableSubrace is a subrace.
@@ -1370,7 +1423,8 @@ message EffectMenuField {
   // The effect is refused without it.
   bool required = 2;
   // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
-  // "text", "number", "choice" (one value of `list`), "choices" (several), "tags",
+  // "text", "number", "choice" (one value of `list`), "choices" (several), "cards" (one
+  // value of a short `list`, shown as radio cards with their hints), "tags",
   // "resource_ref" (the name of a resource effect the entry defines; the editor lists
   // the ones it has), "state_ref" (the name of a state effect the entry defines, or one
   // of `list` when it has one: "rage" for a resistance) or "yes_no" (a switch: true or false).

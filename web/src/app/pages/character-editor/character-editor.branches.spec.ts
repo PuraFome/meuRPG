@@ -464,6 +464,39 @@ describe('CharacterEditor, the texts and numbers it derives', () => {
     expect(cmp.views.finalConstitution()).toBe(14 + 1 + 1 + 2);
   });
 
+  it('asks "Tamanho" only for a race that offers a real choice, and starts it over when the race changes', async () => {
+    const { fake } = configure({ id: 'camp-1' });
+    const gelideo = {
+      key: 'race:gelideo@mesa',
+      namePt: 'Gelídeo',
+      constitutionBonus: 0,
+      choiceBonuses: [],
+      choiceBonusSets: [
+        [2, 1],
+        [1, 1, 1],
+      ],
+      sizes: ['Small', 'Medium'],
+      size: 'Medium',
+      subraces: [],
+      ...SRD,
+      fromTable: true,
+    };
+    fake.catalogFn = () => Promise.resolve({ ...catalog(), races: [...catalog().races, gelideo] });
+    const { cmp, fixture, el } = await render();
+    const sizeField = () => el.querySelector('mat-select[formcontrolname="raceSize"]');
+    cmp.fullForm.patchValue({ race: 'race:human' });
+    await settleView(fixture);
+    expect(cmp.views.sizeChoices()).toEqual([]);
+    expect(sizeField()).toBeNull();
+    cmp.fullForm.patchValue({ race: 'race:gelideo@mesa', raceSize: 'Small' });
+    await settleView(fixture);
+    expect(cmp.views.sizeChoices().map((o: { value: string }) => o.value)).toEqual(['', 'Small']);
+    expect(sizeField()).not.toBeNull();
+    expect(cmp.views.choiceBonusesHint()).toContain('+2 e +1 ou +1, +1 e +1');
+    cmp.fullForm.patchValue({ race: 'race:human' });
+    expect(cmp.fullForm.controls.raceSize.value).toBe('');
+  });
+
   it('heads a caster section by its class, its subclass and how far its spells reach', async () => {
     const { cmp } = await ready();
     expect(

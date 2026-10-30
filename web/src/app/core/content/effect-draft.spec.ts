@@ -1,7 +1,8 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
+import { conditionMenu, menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
+import { extraDamageMenu, spellModifierMenu } from './content-testing-menu-damage';
 import { grantedSpellMenu } from './content-testing-menu-costs';
 import {
   draftToEffect,
@@ -12,7 +13,9 @@ import {
   unreadableRange,
   rangeMeters,
   splitTags,
+  type EffectDraft,
 } from './effect-draft';
+import { visibleFields } from './effect-visible';
 
 describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   const m = menu();
@@ -268,29 +271,145 @@ describe("ranged_attack: a table feat's switches and spell range multiplier", ()
   });
 });
 
-describe('resistance: every damage type but one, while a condition holds', () => {
+describe('resistance: the damage types it covers, its kind and when it holds', () => {
   const m = resistanceMenu();
 
-  it('sends the excepted type and the condition, and asks for both', () => {
+  it('asks for nothing alone: the server says which of the types or the exception is missing', () => {
+    expect(missingRequired(emptyEffect('resistance'), m)).toEqual([]);
+  });
+
+  it('sends the types, the kind and the condition, and only what is set', () => {
+    const d = {
+      ...emptyEffect('resistance'),
+      damageTypes: ['damage-type:cold', 'nonmagical_bps'],
+      kind: 'immune',
+      while: 'rage',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'resistance',
+      damageTypes: ['damage-type:cold', 'nonmagical_bps'],
+      kind: 'immune',
+      while: 'rage',
+    });
+    expect(draftToEffect({ ...emptyEffect('resistance'), damageTypes: ['all'] }, m)).toEqual({
+      type: 'resistance',
+      damageTypes: ['all'],
+    });
+  });
+
+  it('still sends the type it leaves out, as before', () => {
     const d = { ...emptyEffect('resistance'), except: 'damage-type:psychic', while: 'rage' };
     expect(draftToEffect(d, m)).toEqual({
       type: 'resistance',
       except: 'damage-type:psychic',
       while: 'rage',
     });
-    expect(missingRequired(emptyEffect('resistance'), m)).toEqual(['except', 'while']);
   });
 
   it('reads a stored one back and sends it unchanged', () => {
     const stored = create(TableEffectSchema, {
       type: 'resistance',
-      except: 'damage-type:psychic',
-      while: 'rage',
+      damageTypes: ['damage-type:poison'],
+      kind: 'vulnerable',
     });
     expect(draftToEffect(effectToDraft(stored), m)).toEqual({
       type: 'resistance',
-      except: 'damage-type:psychic',
-      while: 'rage',
+      damageTypes: ['damage-type:poison'],
+      kind: 'vulnerable',
+    });
+  });
+});
+
+describe('condition immunity and the roll mode against a condition', () => {
+  const m = conditionMenu();
+
+  it('asks for the conditions and sends them', () => {
+    expect(missingRequired(emptyEffect('condition_immunity'), m)).toEqual(['conditions']);
+    const d = { ...emptyEffect('condition_immunity'), conditions: ['condition:poisoned'] };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'condition_immunity',
+      conditions: ['condition:poisoned'],
+    });
+  });
+
+  it('sends the condition of a roll mode only when one is picked', () => {
+    const base = { ...emptyEffect('roll_mode'), roll: 'advantage', targets: ['save.wis'] };
+    expect(draftToEffect(base, m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+    });
+    expect(draftToEffect({ ...base, againstCondition: 'condition:frightened' }, m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
+    });
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'roll_mode',
+      roll: 'advantage',
+      targets: ['save.wis'],
+      againstCondition: 'condition:frightened',
+    });
+  });
+});
+
+describe('extra_damage: dice, type, weapon and frequency', () => {
+  const m = extraDamageMenu();
+
+  it('sends only what is set, the dice with their sides', () => {
+    const d = {
+      ...emptyEffect('extra_damage'),
+      applies: 'any_target',
+      dice: '1',
+      diceSides: 6,
+      damageType: 'damage-type:fire',
+      weapon: 'ranged',
+      frequency: 'each_hit',
+      noCritDoubling: true,
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'extra_damage',
+      applies: 'any_target',
+      dice: '1',
+      diceSides: 6,
+      damageType: 'damage-type:fire',
+      weapon: 'ranged',
+      frequency: 'each_hit',
+      noCritDoubling: true,
+    });
+    expect(
+      draftToEffect({ ...emptyEffect('extra_damage'), applies: 'any_target', value: '2' }, m),
+    ).toEqual({
+      type: 'extra_damage',
+      applies: 'any_target',
+      value: '2',
+    });
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'extra_damage',
+      applies: 'any_target',
+      dice: '2',
+      diceSides: 8,
+      weapon: 'ranged',
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'extra_damage',
+      applies: 'any_target',
+      dice: '2',
+      diceSides: 8,
+      weapon: 'ranged',
     });
   });
 });
@@ -350,6 +469,97 @@ describe('granted_spell: a spell the entry gives, cast with no slot', () => {
   });
 });
 
+describe('spell_modifier: the change decides the fields', () => {
+  const m = spellModifierMenu();
+  const base = { ...emptyEffect('spell_modifier'), appliesTo: 'damage_spell' };
+  const names = (d: EffectDraft) =>
+    visibleFields(m.fieldsOf('spell_modifier'), d).map((f) => f.name);
+
+  it('shows the swap the types, the bonus its amount and type, the dice their count, and none before a change is picked', () => {
+    expect(names(base)).toEqual(['applies_to', 'spell_change', 'resource', 'when', 'text_pt']);
+    expect(names({ ...base, spellChange: 'damage_type_swap' })).toContain('from');
+    expect(names({ ...base, spellChange: 'damage_type_swap' })).not.toContain('value');
+    expect(names({ ...base, spellChange: 'bonus_damage' })).toEqual(
+      expect.arrayContaining(['value', 'damage_type']),
+    );
+    expect(names({ ...base, spellChange: 'extra_dice_per_slot_over' })).toContain('count');
+    expect(names({ ...base, spellChange: 'extra_dice_per_slot_over' })).not.toContain('from');
+  });
+
+  it('sends only the fields of the chosen change, even if another was typed before', () => {
+    const d = {
+      ...base,
+      spellChange: 'bonus_damage',
+      value: '1',
+      damageType: 'damage-type:fire',
+      from: ['damage-type:cold'],
+      count: 2,
+      resource: 'tintas',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'spell_modifier',
+      appliesTo: 'damage_spell',
+      spellChange: 'bonus_damage',
+      value: '1',
+      damageType: 'damage-type:fire',
+      resource: 'tintas',
+    });
+    expect(draftToEffect({ ...d, spellChange: 'damage_type_swap' }, m)).toEqual({
+      type: 'spell_modifier',
+      appliesTo: 'damage_spell',
+      spellChange: 'damage_type_swap',
+      from: ['damage-type:cold'],
+      resource: 'tintas',
+    });
+  });
+
+  it('asks for the spells and the change, and for nothing else', () => {
+    expect(missingRequired(emptyEffect('spell_modifier'), m)).toEqual([
+      'applies_to',
+      'spell_change',
+    ]);
+    expect(missingRequired({ ...base, spellChange: 'bonus_damage' }, m)).toEqual([]);
+  });
+});
+
+describe("superiority_die on the character's own rolls", () => {
+  const m = menu();
+  const die = { ...emptyEffect('superiority_die'), resource: 'dados', value: '6' };
+  const names = (applies: string) =>
+    visibleFields(m.fieldsOf('superiority_die'), { ...die, applies }).map((f) => f.name);
+
+  it('lets only a check list targets, only a save name an ability, and none of them an action', () => {
+    expect(names('check')).toContain('targets');
+    expect(names('check')).not.toContain('ability');
+    expect(names('check')).not.toContain('economy');
+    expect(names('save')).toContain('ability');
+    expect(names('save')).not.toContain('targets');
+    expect(names('initiative')).not.toEqual(expect.arrayContaining(['ability']));
+    expect(names('initiative')).not.toContain('targets');
+    expect(names('initiative')).not.toContain('economy');
+    // The older uses keep their fields, and never a targets list.
+    expect(names('damage')).toEqual(expect.arrayContaining(['ability', 'economy']));
+    expect(names('damage')).not.toContain('targets');
+  });
+
+  it('sends the targets of a check and drops what a change of roll left behind', () => {
+    const d = {
+      ...die,
+      applies: 'check',
+      targets: ['skill.stealth'],
+      ability: 'dex',
+      economy: 'bonus_action',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'superiority_die',
+      applies: 'check',
+      resource: 'dados',
+      value: '6',
+      targets: ['skill.stealth'],
+    });
+    expect(draftToEffect({ ...d, applies: 'damage' }, m)).not.toHaveProperty('targets');
+  });
+});
 describe('breathes_water: no field of its own', () => {
   const m = grantedSpellMenu();
 

@@ -16,6 +16,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { RollDie } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { SceneClient } from '../../../../core/play/scene-client';
@@ -92,6 +93,8 @@ export class ScenePlayer {
   readonly dicePreference = input.required<DicePreference>();
   /** The skills Talento Confiável raises for the character (the sheet's), for the typed die's preview. */
   readonly reliableTalent = input<readonly string[]>([]);
+  /** The table dice the character may add to a roll. */
+  readonly rollDice = input<readonly RollDie[]>([]);
   /** A phone (C7-07): the scene is in tabs, "Ações · Mapa · Imagens"; the map and the images come projected (`sceneMap`, `sceneImages`). */
   readonly tabs = input(false);
   /** How many images the master left (the count on "Imagens"; the tab is not drawn at 0). */
@@ -199,6 +202,7 @@ export class ScenePlayer {
       preference: this.dicePreference(),
       state: this.state(),
       reliableTalent: this.reliableTalent(),
+      rollDice: this.rollDice(),
     }).subscribe(() => {
       this.rollSheetOpen = false;
       if (!this.gone) {

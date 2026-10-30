@@ -143,6 +143,8 @@ type attackModeInputs struct {
 	helps  []playdb.CombatHelp
 	// surprised are the combatants surprised now.
 	surprised []string
+	// down are the player's characters at 0 hit points (unconscious for the attack rules).
+	down []string
 }
 
 // readModeInputs reads the combat's states in the transaction.
@@ -159,12 +161,16 @@ func (s *Service) readModeInputs(ctx context.Context, c *combatTx, cs []playdb.C
 	if err != nil {
 		return attackModeInputs{}, err
 	}
-	return attackModeInputs{cs: cs, states: statesOf(rows), hiding: hiding, helps: helps, surprised: surprised}, nil
+	down, err := s.downCharacters(ctx, c.tx, c.session.CampaignID, cs)
+	if err != nil {
+		return attackModeInputs{}, err
+	}
+	return attackModeInputs{cs: cs, states: statesOf(rows), hiding: hiding, helps: helps, surprised: surprised, down: down}, nil
 }
 
 // facts is the combat as the advantage rules read it.
 func (in attackModeInputs) facts(enc playdb.Encounter, sight *fogSight) modeFacts {
-	return modeFacts{cs: in.cs, states: in.states, theatre: isTheatre(enc), sight: sight, hiding: in.hiding, helps: in.helps, enc: enc, surprised: in.surprised}
+	return modeFacts{cs: in.cs, states: in.states, theatre: isTheatre(enc), sight: sight, hiding: in.hiding, helps: in.helps, enc: enc, surprised: in.surprised, down: in.down}
 }
 
 // rollModeAsk is a RequestRollMode call once its fields are checked.

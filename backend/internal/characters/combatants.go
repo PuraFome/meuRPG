@@ -157,7 +157,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 	case sheet.GetFull() != nil:
 		d := derive(content, sheet.GetFull(), beast, active)
 		c.InitiativeBonus, c.SpeedFt, c.HitPointsMax = d.Initiative, d.SpeedWalkFt, max(d.HitPointsMax, 0)
-		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, raceSize(content, sheet.GetFull().GetRaceKey())
+		c.SpeedFlyFt, c.Size = d.SpeedFlyFt, raceSizeOf(content, d, sheet.GetFull().GetRaceKey())
 		if beast != nil && *beast != "" {
 			c.Size = beastSize(content, *beast)
 		}
@@ -180,6 +180,15 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 		return link.Character{}, fmt.Errorf("%w: the sheet of character %s has no content", errCorruptDocument, id)
 	}
 	return c, nil
+}
+
+// raceSizeOf is the size of a character, as a link.Character.Size: the one the sheet picked among
+// the race's sizes, or the race's own.
+func raceSizeOf(content *rules.Content, d rules.Derived, raceKey string) string {
+	if d.Size != "" {
+		return strings.ToLower(d.Size)
+	}
+	return raceSize(content, raceKey)
 }
 
 // raceSize is the size of a race, as a link.Character.Size: "medium" for a race

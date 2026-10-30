@@ -1,73 +1,40 @@
-import { type WritableSignal, untracked } from '@angular/core';
-
-import {
-  CombatLogKind,
-  type CombatLogEntry,
-  type CombatLogRound,
-  PendingDamageStatus,
-} from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../format/article';
 
-/** The latest attack that hurt the player's own character, as the log tells it to them. */
+/** The latest attack that hurt the player's own character, as the server told it to them (`attack_hit`). */
 export interface OwnHit {
-  /** The log entry's id, so a hit is announced once. */
+  /** The pending damage that was applied, so a hit is announced once. */
   readonly id: string;
   /** "A Espada voadora 2 acertou você: 9 de dano cortante." */
   readonly text: string;
 }
 
-const MS = 1000;
-const NS_PER_MS = 1_000_000;
-
-/** Whether the entry is an attack whose damage was applied to `ownId` (a miss, a roll still to come, a heal and the master's
- * `HIT_POINTS_ADJUSTED` are not). */
-function hurts(e: CombatLogEntry, ownId: string): boolean {
-  const d = e.damage;
-  return (
-    e.kind === CombatLogKind.ATTACK &&
-    e.targetId === ownId &&
-    !!d &&
-    d.status === PendingDamageStatus.APPLIED &&
-    !d.healing &&
-    d.amount > 0
-  );
+/** What `attack_hit` carries (play.proto). */
+export interface AttackHit {
+  readonly id: string;
+  /** The attacker's name; empty when it is hidden from this player. */
+  readonly actorLabel: string;
+  readonly amount: number;
+  /** "cortante", "fogo"; empty when the hit has no type. */
+  readonly damageTypePt: string;
 }
 
-const atMs = (e: CombatLogEntry) =>
-  Number(e.at?.seconds ?? 0) * MS + (e.at?.nanos ?? 0) / NS_PER_MS;
-
 /** "dano cortante", "dano de fogo". */
-function damageWords(e: CombatLogEntry): string {
-  const name = e.damage?.damageTypePt.toLowerCase() ?? '';
+function damageWords(typePt: string): string {
+  const name = typePt.toLowerCase();
   if (!name) {
     return 'dano';
   }
   return /^(cortante|perfurante|contundente)$/.test(name) ? `dano ${name}` : `dano de ${name}`;
 }
 
-/**
- * The newest attack of the log whose damage was applied to the combatant `ownId`: what the player's sheet says when their hit
- * points drop, so the damage reads as the attack's and not as the master's own adjustment. `null` when no attack hurt them.
- */
-export function ownHitOf(rounds: readonly CombatLogRound[], ownId: string): OwnHit | null {
-  const hits = ownId ? rounds.flatMap((r) => r.entries).filter((e) => hurts(e, ownId)) : [];
-  if (!hits.length) {
-    return null;
-  }
-  const e = hits.reduce((a, b) => (atMs(b) > atMs(a) ? b : a));
-  const who = e.actorLabel || 'Alguém';
+/** The sentence the sheet says for the damage of an attack that landed: "A Espada voadora 2 acertou você: 9 de dano cortante.".
+ * A hidden attacker is "Alguém": the player is told they were hit, not by what. */
+export function ownHitOf(hit: AttackHit): OwnHit {
+  const who = hit.actorLabel
+    ? `${article(hit.actorLabel) === 'a' ? 'A' : 'O'} ${hit.actorLabel}`
+    : 'Alguém';
   return {
-    id: e.id,
-    text: `${article(who) === 'a' ? 'A' : 'O'} ${who} acertou você: ${e.damage?.amount} de ${damageWords(e)}.`,
+    id: hit.id,
+    text: `${who} acertou você: ${hit.amount} de ${damageWords(hit.damageTypePt)}.`,
   };
-}
-
-/** The page's sheet says the damage of an attack as the attack's: puts the newest hit of the log on the combat state (none for
- * the master, who has no own character here). */
-export function publishOwnHit(
-  state: { readonly ownHit: WritableSignal<OwnHit | null> },
-  rounds: readonly CombatLogRound[],
-  ownId: string,
-): void {
-  untracked(() => state.ownHit.set(ownHitOf(rounds, ownId)));
 }

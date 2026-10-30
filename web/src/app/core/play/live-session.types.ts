@@ -13,6 +13,7 @@ import type { SearchSkills } from '../traps/trap-search';
 import type { HitDieSize } from '../resources/hit-dice-text';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
+import type { RollDie } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
 import type {
   PactSlotsVm,
@@ -203,7 +204,15 @@ export type LiveEventVm =
   /** `session_message_added` (MR-051, RN-36): a line of the conversation this reader may read, with its content. */
   | { readonly kind: 'sessionMessage'; readonly message: SessionMessage }
   /** `master_typing` (MR-051): the master is writing. Carries no text, only how long to show the hint. */
-  | { readonly kind: 'masterTyping'; readonly expiresInSeconds: number };
+  | { readonly kind: 'masterTyping'; readonly expiresInSeconds: number }
+  /** `attack_hit`: the master applied the damage of an attack to this player's character; who hit, how much, of what type. */
+  | {
+      readonly kind: 'attackHit';
+      readonly id: string;
+      readonly actorLabel: string;
+      readonly amount: number;
+      readonly damageTypePt: string;
+    };
 
 /**
  * What a failed call means for the page, from its Connect code and typed
@@ -248,6 +257,8 @@ export interface PlayerSheetVm {
   readonly revivify?: boolean;
   /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */
   readonly senses: readonly string[];
+  /** The table dice the character may add to a check, a save or the initiative (`DerivedSheet.roll_dice`); empty for none. */
+  readonly rollDice?: readonly RollDie[];
 }
 
 /** From `ListCharacters`, what the master's "Grupo" row shows under a

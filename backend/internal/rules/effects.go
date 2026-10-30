@@ -121,17 +121,47 @@ type Effect struct {
 	RangeMultiplier         int  `json:"range_multiplier,omitempty"`
 	NoLongRangeDisadvantage bool `json:"no_long_range_disadvantage,omitempty"`
 
-	// resistance: resistance to every damage type but Except (a "damage-type:"
-	// key) while the condition in While holds ("rage", ResistanceWhileRage, or the
-	// name of a state of the entry). It takes no When, because While is its
-	// condition. Content.Resistances lists it, so play applies it with the other
-	// resistances (resistance never stacks).
+	// resistance: resistance (Kind "resist", the default), immunity ("immune") or
+	// vulnerability ("vulnerable") to the damage types it names: every damage type but
+	// Except (a "damage-type:" key), or the DamageTypes ("damage-type:" keys, or one of
+	// the words DamageTypeAll and DamageTypeNonmagicalBPS). Except and DamageTypes
+	// exclude each other and one of them is required. While is ResistanceAlways ("") or
+	// ResistanceWhileRage ("rage"), or the name of a state of the entry. It takes no When, because While is its condition.
+	// Content.Resistances lists it, so play applies it with the other resistances (the
+	// same type from two sources counts once).
 	//
 	// While is the state gate (gate.go): the other types in gatedEffectTypes
 	// (roll_mode, extra_damage, weapon_rule, pseudo_weapon) read it too, and hold
 	// only while the named state of their entry is on.
-	Except string `json:"except,omitempty"`
-	While  string `json:"while,omitempty"`
+	Except      string   `json:"except,omitempty"`
+	While       string   `json:"while,omitempty"`
+	DamageTypes []string `json:"damage_types,omitempty"`
+	Kind        string   `json:"kind,omitempty"`
+
+	// condition_immunity: the creature takes none of the Conditions ("condition:" keys of
+	// the 15 conditions). roll_mode may also name an AgainstCondition: its advantage or
+	// disadvantage holds on the saving throws against being that condition.
+	Conditions       []string `json:"conditions,omitempty"`
+	AgainstCondition string   `json:"against_condition,omitempty"`
+
+	// extra_damage (extradamage.go): the dice it rolls, Dice an Int formula for how many
+	// and DiceSides (4, 6, 8, 10 or 12) their sides, beside the fixed Value; DamageType a
+	// "damage-type:" key (empty is the weapon's own); Weapon one of ExtraDamageAnyWeapon,
+	// ExtraDamageMeleeWeapon and ExtraDamageRangedWeapon; Frequency one of
+	// ExtraDamageOncePerTurn and ExtraDamageEachHit; NoCritDoubling keeps a critical hit
+	// from doubling the dice.
+	Dice           string `json:"dice,omitempty"`
+	DiceSides      int    `json:"dice_sides,omitempty"`
+	DamageType     string `json:"damage_type,omitempty"`
+	Weapon         string `json:"weapon,omitempty"`
+	Frequency      string `json:"frequency,omitempty"`
+	NoCritDoubling bool   `json:"no_crit_doubling,omitempty"`
+
+	// spell_modifier (spellmodifier.go): AppliesTo which spells ("damage_spell", "cantrip", an SRD
+	// school key or damage type key) and SpellChange what it does (SpellChange*). From, Value (the
+	// fixed damage), DamageType and Count are the change's own.
+	AppliesTo   string `json:"applies_to,omitempty"`
+	SpellChange string `json:"spell_change,omitempty"`
 
 	// state (state.go): a temporary state a feature switches on for a while (a stance, a
 	// form). StateName names it within the entry (a-z, 0-9 and _, like a resource);
@@ -150,7 +180,6 @@ type Effect struct {
 	// an attack line of its own: AttackName, Weapon (WeaponMelee or WeaponRanged),
 	// DamageDice (plain dice, "1d6"), DamageType (a "damage-type:" key), Ability, ReachFt
 	// for a melee one and RangeFt (above) for a ranged one.
-	Weapon        string `json:"weapon,omitempty"`
 	WeaponName    string `json:"weapon_name,omitempty"`
 	AttackAbility string `json:"attack_ability,omitempty"`
 	DamageAbility string `json:"damage_ability,omitempty"`
@@ -159,7 +188,6 @@ type Effect struct {
 	ReachFt       int    `json:"reach_ft,omitempty"`
 	AttackName    string `json:"attack_name,omitempty"`
 	DamageDice    string `json:"damage_dice,omitempty"`
-	DamageType    string `json:"damage_type,omitempty"`
 
 	// proficiency, level "expertise" on a skill: OnlyProficient doubles the skill
 	// only where the character has its proficiency from another source when the
@@ -237,7 +265,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
 
 	// What the overlay resolves for the state gate (gate.go), on the copy of the effect
 	// that is compiled: entry is the table entry the effect belongs to; stateKey is,
@@ -253,7 +281,7 @@ var (
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
-		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "granted_spell", "on_event",
+		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -274,7 +302,7 @@ var (
 	// maneuverApplies is where a superiority die goes: the damage of a weapon attack
 	// after a hit, an attack roll, the Athletics check of a grapple, or a reduction
 	// of the damage of a melee attack that hits the character (a reaction).
-	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee, ManeuverGoad}
+	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee, ManeuverGoad, ManeuverCheck, ManeuverSave, ManeuverInitiative}
 	// handlers are the Go functions an effect may name. Content (and, later,
 	// the table's homebrew) can only point at these; it never brings code.
 	handlers = []string{
@@ -330,33 +358,35 @@ func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 // effectCheckers check what each effect type needs, after the checks every
 // effect goes through.
 var effectCheckers = map[string]func(x effectCompiler) error{
-	"ranged_attack":    effectCompiler.rangedAttack,
-	"resistance":       effectCompiler.resistance,
-	"state":            effectCompiler.state,
-	"weapon_rule":      effectCompiler.weaponRule,
-	"pseudo_weapon":    effectCompiler.pseudoWeapon,
-	"breathes_water":   effectCompiler.breathesWater,
-	"granted_spell":    effectCompiler.grantedSpell,
-	"replaces":         effectCompiler.replaces,
-	"modifier":         effectCompiler.modifier,
-	"proficiency":      effectCompiler.proficiency,
-	"roll_mode":        effectCompiler.rollMode,
-	"sense":            effectCompiler.sense,
-	"spellcasting":     effectCompiler.spellcasting,
-	"resource":         effectCompiler.resource,
-	"choice":           effectCompiler.choice,
-	"ability_increase": effectCompiler.abilityIncrease,
-	"grant_action":     effectCompiler.grantAction,
-	"on_event":         effectCompiler.onEvent,
-	"superiority_die":  effectCompiler.superiorityDie,
-	"extra_damage":     effectCompiler.extraDamage,
-	"ambush":           effectCompiler.ambush,
-	"extra_attack":     effectCompiler.extraAttack,
-	"wild_shape":       effectCompiler.wildShape,
-	"song_of_rest":     effectCompiler.songOfRest,
-	"beast_spells":     effectCompiler.beastSpells,
-	"handler":          effectCompiler.handler,
-	"note":             effectCompiler.note,
+	"ranged_attack":      effectCompiler.rangedAttack,
+	"resistance":         effectCompiler.resistance,
+	"condition_immunity": effectCompiler.conditionImmunity,
+	"state":              effectCompiler.state,
+	"weapon_rule":        effectCompiler.weaponRule,
+	"pseudo_weapon":      effectCompiler.pseudoWeapon,
+	"breathes_water":     effectCompiler.breathesWater,
+	"granted_spell":      effectCompiler.grantedSpell,
+	"replaces":           effectCompiler.replaces,
+	"modifier":           effectCompiler.modifier,
+	"proficiency":        effectCompiler.proficiency,
+	"roll_mode":          effectCompiler.rollMode,
+	"sense":              effectCompiler.sense,
+	"spellcasting":       effectCompiler.spellcasting,
+	"resource":           effectCompiler.resource,
+	"choice":             effectCompiler.choice,
+	"ability_increase":   effectCompiler.abilityIncrease,
+	"grant_action":       effectCompiler.grantAction,
+	"on_event":           effectCompiler.onEvent,
+	"superiority_die":    effectCompiler.superiorityDie,
+	"extra_damage":       effectCompiler.extraDamage,
+	"spell_modifier":     effectCompiler.spellModifier,
+	"ambush":             effectCompiler.ambush,
+	"extra_attack":       effectCompiler.extraAttack,
+	"wild_shape":         effectCompiler.wildShape,
+	"song_of_rest":       effectCompiler.songOfRest,
+	"beast_spells":       effectCompiler.beastSpells,
+	"handler":            effectCompiler.handler,
+	"note":               effectCompiler.note,
 }
 
 // compileEffect checks one effect against the schema and compiles its
@@ -425,6 +455,12 @@ func (x effectCompiler) strayFields() error {
 	if err := x.strayStateAndWeapon(); err != nil {
 		return err
 	}
+	if err := x.strayExtraDamage(); err != nil {
+		return err
+	}
+	if err := x.strayConditions(); err != nil {
+		return err
+	}
 	if err := x.strayCosts(); err != nil {
 		return err
 	}
@@ -444,12 +480,42 @@ func (x effectCompiler) straySpellAndRangeFields() error {
 	return nil
 }
 
-// strayOwnFields refuses except on an effect of another type than resistance, while on
-// one that does not read the gate (gatedEffectTypes), and only_proficient on one that is
+// strayExtraDamage refuses the fields of extra_damage and spell_modifier on an effect of another type.
+func (x effectCompiler) strayExtraDamage() error {
+	e := x.e
+	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || e.Frequency != "" || e.NoCritDoubling) {
+		return x.fail("dice, dice_sides, frequency and no_crit_doubling belong to extra_damage")
+	}
+	if !slices.Contains(damageTypeEffects, e.Type) && e.DamageType != "" {
+		return x.fail("damage_type belongs to extra_damage, spell_modifier and pseudo_weapon")
+	}
+	if !slices.Contains(weaponEffects, e.Type) && e.Weapon != "" {
+		return x.fail("weapon belongs to extra_damage, weapon_rule and pseudo_weapon")
+	}
+	if e.Type != "spell_modifier" && (e.AppliesTo != "" || e.SpellChange != "") {
+		return x.fail("applies_to and spell_change belong to spell_modifier")
+	}
+	return nil
+}
+
+// strayConditions refuses conditions on an effect that is no condition_immunity and against_condition on one that
+// is no roll_mode.
+func (x effectCompiler) strayConditions() error {
+	switch {
+	case x.e.Type != "condition_immunity" && len(x.e.Conditions) > 0:
+		return x.fail("conditions belong to condition_immunity")
+	case x.e.Type != "roll_mode" && x.e.AgainstCondition != "":
+		return x.fail("against_condition belongs to roll_mode")
+	}
+	return nil
+}
+
+// strayOwnFields refuses the fields of resistance on an effect of another type (while
+// is also read by the effects of gatedEffectTypes), and only_proficient on one that is
 // not a proficiency.
 func (x effectCompiler) strayOwnFields() error {
-	if x.e.Type != "resistance" && x.e.Except != "" {
-		return x.fail("except belongs to resistance")
+	if x.e.Type != "resistance" && (x.e.Except != "" || len(x.e.DamageTypes) > 0 || x.e.Kind != "") {
+		return x.fail("except, damage_types and kind belong to resistance")
 	}
 	if x.e.While != "" && !slices.Contains(gatedEffectTypes, x.e.Type) {
 		return x.fail("while belongs to the effects that hold only while a state is on")
@@ -467,20 +533,44 @@ func (x effectCompiler) rangedAttack() error {
 	return nil
 }
 
-// resistance checks the damage type a resistance leaves out and when it holds.
+// resistance checks what a resistance covers (the damage types it names, or every
+// type but the one it leaves out), its kind and when it holds.
 func (x effectCompiler) resistance() error {
 	e := x.e
-	if !x.c.isLiveDamageType(e.Except) {
-		return x.fail("except %q is not a damage type", e.Except)
+	if e.Except != "" && len(e.DamageTypes) > 0 {
+		return x.fail("except and damage_types exclude each other")
 	}
-	if e.While != ResistanceWhileRage && !formula.ValidStateName(e.While) {
-		return x.fail("while must be %q or the name of a state", ResistanceWhileRage)
+	if msg := x.c.checkDamageTypes(e); msg != "" {
+		return x.fail("%s", msg)
+	}
+	if !slices.Contains(ResistanceKinds, e.Kind) {
+		return x.fail("kind %q is not resist, immune or vulnerable", e.Kind)
+	}
+	if e.While != ResistanceAlways && e.While != ResistanceWhileRage && !formula.ValidStateName(e.While) {
+		return x.fail("while must be empty, %q or the name of a state", ResistanceWhileRage)
 	}
 	if e.When != "" {
 		return x.fail("a resistance has no when: while is its condition")
 	}
 	if len(e.Tags) > 0 {
 		return x.fail("a resistance has no tags: while is its condition")
+	}
+	return nil
+}
+
+// conditionImmunity checks the conditions the character takes none of.
+func (x effectCompiler) conditionImmunity() error {
+	e := x.e
+	if len(e.Conditions) == 0 {
+		return x.fail("conditions are required")
+	}
+	for i, k := range e.Conditions {
+		if !x.c.isCondition(k) {
+			return x.fail("%q is not a condition", k)
+		}
+		if slices.Contains(e.Conditions[:i], k) {
+			return x.fail("the condition %q is listed twice in conditions", k)
+		}
 	}
 	return nil
 }
@@ -567,6 +657,26 @@ func (x effectCompiler) rollMode() error {
 			return x.fail("unknown target %q", t)
 		}
 	}
+	if e.AgainstCondition != "" {
+		return x.againstCondition()
+	}
+	return nil
+}
+
+// againstCondition checks a roll_mode that holds on the saving throws against one condition.
+func (x effectCompiler) againstCondition() error {
+	e := x.e
+	if !x.c.isCondition(e.AgainstCondition) {
+		return x.fail("against_condition %q is not a condition", e.AgainstCondition)
+	}
+	for _, t := range e.Targets {
+		if !strings.HasPrefix(t, "save.") {
+			return x.fail("against_condition holds on saving throws: target %q is not one", t)
+		}
+	}
+	if len(e.Tags) > 0 {
+		return x.fail("against_condition takes no tags: the condition is the situation")
+	}
 	return nil
 }
 
@@ -647,6 +757,9 @@ func (x effectCompiler) superiorityDie() error {
 	if e.value, err = x.compile(e.Value, formula.Int); err != nil {
 		return err
 	}
+	if err := x.strayTargets(); err != nil {
+		return err
+	}
 	return x.maneuverRider()
 }
 
@@ -673,10 +786,31 @@ func (x effectCompiler) maneuverRider() error {
 		if e.Economy != "" && e.Economy != EconomyBonusAction {
 			return x.fail("a grapple maneuver costs a bonus action or nothing")
 		}
+	case ManeuverCheck, ManeuverSave, ManeuverInitiative:
+		return x.rollDie()
 	default:
 		if e.Ability != "" || e.Economy != "" {
 			return x.fail("%s takes no ability and no economy", e.Applies)
 		}
+	}
+	return nil
+}
+
+// strayTargets refuses the targets of a superiority die that is not on ability checks.
+func (x effectCompiler) strayTargets() error {
+	if x.e.Applies != ManeuverCheck && len(x.e.Targets) > 0 {
+		return x.fail("only a die added to ability checks lists targets")
+	}
+	return nil
+}
+
+// rollDie checks a superiority die that goes on a roll of the character.
+func (x effectCompiler) rollDie() error {
+	if _, msg := rollDieShape(x.e); msg != "" {
+		return x.fail("%s", msg)
+	}
+	if t, ok := x.c.rollDieTargetsOK(x.e.Targets); !ok {
+		return x.fail("unknown target %q: a die on ability checks lists skills and abilities", t)
 	}
 	return nil
 }
@@ -845,3 +979,10 @@ func (c *content) validRollTarget(t string) bool {
 	}
 	return c.validModifierTarget(t) && (strings.HasPrefix(t, "skill.") || strings.HasPrefix(t, "save."))
 }
+
+// The effect types that read the fields they share: weapon (extra_damage's filter, the
+// weapon lines a weapon_rule chooses, the kind of a pseudo_weapon) and damage_type.
+var (
+	weaponEffects     = []string{"extra_damage", "weapon_rule", "pseudo_weapon"}
+	damageTypeEffects = []string{"extra_damage", "spell_modifier", "pseudo_weapon"}
+)

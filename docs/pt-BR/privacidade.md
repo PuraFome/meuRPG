@@ -117,6 +117,7 @@ As linhas que guardam só IDs, números e chaves de conteúdo não dizem nada so
 | ID da conta, ID da campanha e outros IDs de jogo, caminho e resultado da requisição, no log da API (sem IP, e-mail nem nome) | Cloud Logging, São Paulo (produção); stdout no ambiente local | Achar a causa de um erro e seguir uma sessão | Legítimo interesse | 30 dias em produção; ver [Os logs da API](#os-logs-da-api) |
 | IP, user agent e URL de cada requisição, com a decisão do Cloud Armor | Logs do Cloud Run e do balanceador de carga no Cloud Logging, São Paulo | Operar e proteger a plataforma | Legítimo interesse | 30 dias |
 | IP do cliente nos limitadores de taxa (login e toda a API) | Memória do servidor | Frear força bruta e abuso | Legítimo interesse | Minutos; nunca no banco nem no log |
+| Uma tarefa da fila de trabalho em segundo plano: o tipo de trabalho e IDs (campanha, pedido, exportação), nunca um nome nem texto livre | Cloud Tasks, São Paulo (a região do serviço) | Gerar uma imagem, uma exportação ou uma varredura depois que a chamada que pediu já respondeu | Contrato | Até o trabalho rodar. Uma tarefa que continua falhando é descartada no máximo 1 hora depois da primeira tentativa (a duração máxima de novas tentativas da fila, [Operação](../operations/runbook.md#11-cloud-tasks)) |
 | Backups do banco | Cockroach Labs, São Paulo | Recuperação de desastre | Legítimo interesse | No máximo 30 dias ([Operação](../operations/reference.md)) |
 
 ### Cookies e navegador
@@ -258,7 +259,7 @@ Um fornecedor fora do Brasil que consiga alcançá-los ainda faz uma transferên
 
 | Fornecedor | O que faz | Dados | Contrato |
 | --- | --- | --- | --- |
-| Google Cloud | Cloud Run, o balanceador de carga e o Cloud Armor na frente dele, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Adendo de Processamento de Dados com as cláusulas-padrão brasileiras |
+| Google Cloud | Cloud Run, o balanceador de carga e o Cloud Armor na frente dele, Cloud Logging, Cloud Storage, Cloud Tasks, Secret Manager | Tudo, em São Paulo | Adendo de Processamento de Dados com as cláusulas-padrão brasileiras |
 | Cockroach Labs (CockroachDB Cloud) | O banco gerenciado e seus backups, no Google Cloud em São Paulo | O banco de dados | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Entrar com o Google | O Google controla a própria conta; o app recebe só o identificador e o e-mail | Não é nosso operador |
 | Google (Gemini API) | Gera as imagens que o mestre pede e a voz das linhas do narrador e dos NPCs, pelo servidor | Ver abaixo. O Google pode guardar dados por pouco tempo ou em cache **em qualquer país**: uma transferência internacional | [Termos dos serviços pagos da Gemini API](https://ai.google.dev/gemini-api/terms). **A definir:** o mecanismo de transferência |

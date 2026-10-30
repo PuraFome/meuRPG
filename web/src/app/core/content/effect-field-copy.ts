@@ -22,12 +22,15 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ability: 'Habilidade somada',
   spells: 'Magias',
   text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
+  except: 'Todos os tipos de dano, menos',
   while: 'Só enquanto o estado',
+  kind: 'O que acontece',
+  damage_types: 'Tipos de dano',
+  conditions: 'Condições',
+  against_condition: 'Só nos testes de resistência contra a condição',
   state_name: 'Nome do estado',
   duration_rounds: 'Duração (rodadas)',
   ends_on: 'Também acaba',
-  weapon: 'Armas',
   weapon_name: 'Nome da arma',
   attack_ability: 'Habilidade do ataque',
   damage_ability: 'Habilidade do dano',
@@ -36,7 +39,6 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   reach_ft: 'Alcance corpo a corpo',
   attack_name: 'Nome do ataque',
   damage_dice: 'Dados de dano',
-  damage_type: 'Tipo de dano',
   cost: 'Custo (usos)',
   cost_max: 'Custo máximo (o jogador escolhe)',
   value_per_point: 'Por ponto gasto a mais',
@@ -55,6 +57,14 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ritual_only: 'Só como ritual',
   counts_as_known: 'Conta como magia conhecida',
   only_proficient: 'Só onde já tem proficiência',
+  dice: 'Dados (quantos)',
+  dice_sides: 'Lados do dado',
+  damage_type: 'Tipo de dano',
+  weapon: 'Arma',
+  frequency: 'Quantas vezes',
+  no_crit_doubling: 'Não dobra no acerto crítico',
+  applies_to: 'Vale para',
+  spell_change: 'O que muda na magia',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
@@ -85,6 +95,13 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
   range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
   no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
+  damage_types:
+    'Escolha os tipos, ou "Todos os tipos de dano" sozinho. Use este campo ou "Todos os tipos de dano, menos".',
+  except:
+    'Em vez de listar os tipos: vale para todos menos este. Deixe vazio se escolheu os tipos acima.',
+  while: 'Vazio, vale sempre. Em fúria, só enquanto o personagem estiver em fúria.',
+  against_condition:
+    'Vazio, a vantagem ou desvantagem fica como lembrete da situação. Com uma condição, o app aplica nos testes de resistência para não ficar com ela.',
   only_proficient:
     'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
   from_level:
@@ -93,6 +110,9 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   also_with_slot: 'O personagem também pode conjurar com um espaço de magia, sem gastar usos.',
   ritual_only:
     'Só conjura como ritual (10 minutos a mais, sem espaço). Pede uma magia com a etiqueta de ritual.',
+  dice: 'Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.',
+  dice_sides: 'De 4 a 12: d4, d6, d8, d10 ou d12.',
+  no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
   counts_as_known:
     'A magia aparece também entre as conhecidas da ficha, sem gastar nenhuma escolha da classe.',
 };
@@ -101,6 +121,14 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
 export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> =
   {
     granted_spell: { ability: 'Habilidade de conjuração' },
+    extra_damage: { value: 'Dano fixo' },
+    resistance: { while: 'Enquanto' },
+    spell_modifier: {
+      from: 'Tipos de dano que troca',
+      value: 'Dano fixo somado',
+      count: 'Dados a mais por nível acima',
+      damage_type: 'Tipo do dano somado',
+    },
     // A state's resource is spent once at each start; a pseudo-weapon names its kind, its ability and its reach in the words of an attack.
     state: { resource: 'Gasta um uso de' },
     pseudo_weapon: {

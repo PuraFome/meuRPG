@@ -1097,8 +1097,10 @@ func TestRN03_DeathSavesAndTheMasterConfirms(t *testing.T) {
 	a.mustEndTurn(t, a.bia, e)  // the goblin
 
 	// Damage while down is a failure, and the hit points stay at 0: the goblin hits him
-	// (15 + 4 against 12), the master rolls 1d6 (3) + 2 and applies it.
-	a.h.roller.queue(15, 3)
+	// (15 + 4 against 12), the master rolls 1d6 (3) + 2 and applies it. Toren is unconscious for
+	// the attack (SRD 5.1): the goblin, next to him, rolls with advantage and the hit is a
+	// critical hit, so two failures.
+	a.h.roller.queue(15, 9, 3)
 	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", inAppRoll)
 	id := hit.GetPendingDamage().GetId()
 	a.mustDamage(t, a.master, e, id, inAppDamage)
@@ -1106,18 +1108,18 @@ func TestRN03_DeathSavesAndTheMasterConfirms(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyPendingDamage() error = %v", err)
 	}
-	if applied.GetDeathFailuresAdded() != 1 || a.vitals(t, a.toren).GetHitPointsCurrent() != 0 {
-		t.Errorf("damage at 0 = %v, Toren at %d PV; want 1 failure added and 0 PV", applied, a.vitals(t, a.toren).GetHitPointsCurrent())
+	if applied.GetDeathFailuresAdded() != 2 || a.vitals(t, a.toren).GetHitPointsCurrent() != 0 {
+		t.Errorf("damage at 0 = %v, Toren at %d PV; want 2 failures added and 0 PV", applied, a.vitals(t, a.toren).GetHitPointsCurrent())
 	}
-	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetDeathSuccesses() != 1 || c.GetDeathFailures() != 1 {
-		t.Errorf("Toren's counts = %d and %d, want 1 and 1", c.GetDeathSuccesses(), c.GetDeathFailures())
+	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetDeathSuccesses() != 1 || c.GetDeathFailures() != 2 {
+		t.Errorf("Toren's counts = %d and %d, want 1 and 2", c.GetDeathSuccesses(), c.GetDeathFailures())
 	}
 	a.mustEndTurn(t, a.master, e) // the Capitão
 
 	// A critical hit is two failures: three in all, and he is dying for the master;
 	// for the players the word is still "Caído" (never "morrendo").
 	a.h.roller.queue(2, 2)
-	crit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Toren", d20(20))
+	crit := a.mustAttack(t, a.master, e, "Capitão Goblin", sword, "Toren", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{20, 5} })
 	a.mustDamage(t, a.master, e, crit.GetPendingDamage().GetId(), inAppDamage)
 	applied, err = a.settle(t, a.master, e, crit.GetPendingDamage().GetId(), true)
 	if err != nil || applied.GetDeathFailuresAdded() != 2 {
@@ -1249,17 +1251,18 @@ func TestRN03_NaturalOneTwentyAndStable(t *testing.T) {
 	if byLabel(t, a.get(t, a.caio), "Toren").GetDeathSaveDue() {
 		t.Error("a stable character owes a death save")
 	}
-	// A damage that hits a stable character starts the saves again: a failure.
+	// A damage that hits a stable character starts the saves again: a failure, two here because
+	// the goblin next to the unconscious Toren hits with a critical hit.
 	a.mustEndTurn(t, a.caio, e)
-	a.h.roller.queue(15, 3)
+	a.h.roller.queue(15, 9, 3)
 	e = a.passTo(t, e, "Goblin")
 	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", inAppRoll)
 	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), inAppDamage)
 	if _, err := a.settle(t, a.master, e, hit.GetPendingDamage().GetId(), true); err != nil {
 		t.Fatalf("ApplyPendingDamage() error = %v", err)
 	}
-	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetDeathSuccesses() != 0 || c.GetDeathFailures() != 1 || c.GetState() != playv1.CombatantState_COMBATANT_STATE_DOWN {
-		t.Errorf("Toren after damage while stable = %d successes, %d failures, %v; want 0, 1 and DOWN", c.GetDeathSuccesses(), c.GetDeathFailures(), c.GetState())
+	if c := byLabel(t, a.get(t, a.caio), "Toren"); c.GetDeathSuccesses() != 0 || c.GetDeathFailures() != 2 || c.GetState() != playv1.CombatantState_COMBATANT_STATE_DOWN {
+		t.Errorf("Toren after damage while stable = %d successes, %d failures, %v; want 0, 2 and DOWN", c.GetDeathSuccesses(), c.GetDeathFailures(), c.GetState())
 	}
 }
 
@@ -1844,7 +1847,7 @@ func TestCombatUndoTakesBackEveryNewAction(t *testing.T) {
 	// And a damage at 0 hit points: a failure that the undo takes away.
 	b.correct(t, b.toren, hpIs(0))
 	b.h.roller.queue(3)
-	crit := b.mustAttack(t, b.master, eb, "Capitão Goblin", sword, "Toren", d20(20))
+	crit := b.mustAttack(t, b.master, eb, "Capitão Goblin", sword, "Toren", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{20, 5} }) // advantage: Toren is unconscious
 	b.mustDamage(t, b.master, eb, crit.GetPendingDamage().GetId(), inAppDamage)
 	b.undoes(t, "a damage at 0 hit points", func() {
 		if _, err := b.settle(t, b.master, eb, crit.GetPendingDamage().GetId(), true); err != nil {

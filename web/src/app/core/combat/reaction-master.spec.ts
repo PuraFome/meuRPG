@@ -373,6 +373,44 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
     expect(windowsBarText(e)).toBe('Falta responder por Pensantus');
   });
 
+  it("says what waits for the master's roll, not an answer due, once the player answered Repreensão Infernal", () => {
+    const rebuke = (extra: object = {}) =>
+      reactionWindow({
+        id: 'save',
+        kind: ReactionKind.HELLISH_REBUKE,
+        secondStep: true,
+        reactorId: 'pen',
+        reactorLabel: 'Seraphin',
+        reactorIsPlayer: true,
+        unanswered: true,
+        prompt: {
+          case: 'hellishRebukeSave',
+          value: {
+            aggressorLabel: 'Armadura animada',
+            saveDc: 13,
+            saveBonus: 1,
+            bonusKnown: true,
+            diceCount: 1,
+          },
+        } as never,
+        ...extra,
+      } as never);
+    expect(windowsBarText(encounter({ combatants, reactionWindows: [rebuke()] } as never))).toBe(
+      'Falta o teste da Armadura animada',
+    );
+    const late = reactionWindow({
+      id: 'late',
+      kind: ReactionKind.SHIELD,
+      reactorId: 'pen',
+      reactorLabel: 'Pensantus',
+      reactorIsPlayer: true,
+      unanswered: true,
+    } as never);
+    expect(
+      windowsBarText(encounter({ combatants, reactionWindows: [late, rebuke()] } as never)),
+    ).toBe('Falta responder por Pensantus e o teste da Armadura animada');
+  });
+
   it('reads the free slots alone when the total is not known', () => {
     const e = encounter({
       combatants,

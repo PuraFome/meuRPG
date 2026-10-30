@@ -727,10 +727,11 @@ func TestRN24_TheManualBonusesCannotGetAroundTheMethod(t *testing.T) {
 	}
 }
 
-// TestRN24_ATableRacesChoiceBonusesAreFreeManualPoints: a table race that says "+2 and
-// +1 to your choice" (ChoiceBonuses) is placed in the manual bonuses: exactly what the
-// race allows is accepted and clears the race_bonus issue; more is refused.
-func TestRN24_ATableRacesChoiceBonusesAreFreeManualPoints(t *testing.T) {
+// TestRN24_ATableRacesChoiceBonusesArePicksAndStillFreeManualPoints: a table race that says "+2 and
+// +1 to your choice" (ChoiceBonuses) is a choice of "Escolhas", like the half-elf's: a new player's sheet
+// must pick the abilities (a different one for each bonus) before it saves, the picks make the scores, and a
+// sheet that placed exactly what the race allows in the manual bonuses stands for the picks; more is refused.
+func TestRN24_ATableRacesChoiceBonusesArePicksAndStillFreeManualPoints(t *testing.T) {
 	t.Parallel()
 	_, master, players, campaign, _ := newAbilityTable(t)
 	ana, bia := players[0], players[1]
@@ -743,37 +744,57 @@ func TestRN24_ATableRacesChoiceBonusesAreFreeManualPoints(t *testing.T) {
 	}
 	hasRaceBonusIssue := func(c *charactersv1.Character) bool {
 		for _, is := range c.GetDerived().GetIssues() {
-			if is.GetField() == "full.extra_ability_bonuses" {
+			if is.GetCode() == "race_bonus" {
 				return true
 			}
 		}
 		return false
 	}
-	// Nothing placed: it saves, with the pendency.
-	pending, err := ana.createWith(campaign, mStd, withBonus(nil))
-	if err != nil {
-		t.Fatalf("a table race with nothing placed: %v", err)
+	// Nothing picked, nothing placed: the sheet has choices still to make.
+	_, err := ana.createWith(campaign, mStd, withBonus(nil))
+	wantCode(t, "a table race with nothing picked", err, connect.CodeFailedPrecondition)
+	// The picks: +2 Dexterity and +1 Constitution, each a different ability: accepted, no pendency, and the scores are higher.
+	picked := withBonus(nil)
+	picked.GetFull().FeatureChoiceKeys = []string{
+		rules.ScopedChoice(rules.BonusChoiceKey(race.GetKey(), 2), "ability:dex"), rules.ScopedChoice(rules.BonusChoiceKey(race.GetKey(), 1), "ability:con"),
 	}
-	if !hasRaceBonusIssue(pending) {
-		t.Error("nothing placed: want the race bonus pendency")
-	}
-	// +2 Dexterity and +1 Constitution: accepted, and the pendency is gone.
-	placed, err := bia.createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1}))
+	placed, err := bia.createWith(campaign, mStd, picked)
 	if err != nil {
-		t.Fatalf("+2 Dex and +1 Con on a +2/+1 race: %v", err)
+		t.Fatalf("+2 Dex and +1 Con picked on a +2/+1 race: %v", err)
 	}
 	if hasRaceBonusIssue(placed) {
 		t.Errorf("issues = %v, want the race bonus pendency cleared", placed.GetDerived().GetIssues())
 	}
+	for _, ab := range placed.GetDerived().GetAbilities() {
+		want := map[rulesv1.Ability]int32{rulesv1.Ability_ABILITY_DEXTERITY: 2, rulesv1.Ability_ABILITY_CONSTITUTION: 2}[ab.GetAbility()] // +1 picked and the race's own +1
+		if ab.GetBonus() != want {
+			t.Errorf("%v: bonus %d, want %d", ab.GetAbility(), ab.GetBonus(), want)
+		}
+	}
+	// The same ability for both bonuses is refused.
+	repeated := withBonus(nil)
+	repeated.GetFull().FeatureChoiceKeys = []string{
+		rules.ScopedChoice(rules.BonusChoiceKey(race.GetKey(), 2), "ability:dex"), rules.ScopedChoice(rules.BonusChoiceKey(race.GetKey(), 1), "ability:dex"),
+	}
+	_, err = players[2].createWith(campaign, mStd, repeated)
+	wantCode(t, "the same ability for +2 and +1", err, connect.CodeFailedPrecondition)
+	// A sheet that placed +2 Dexterity and +1 Constitution by hand stands for the picks.
+	manual, err := players[3].createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1}))
+	if err != nil {
+		t.Fatalf("+2 Dex and +1 Con placed on a +2/+1 race: %v", err)
+	}
+	if hasRaceBonusIssue(manual) {
+		t.Errorf("issues = %v, want the race bonus pendency cleared", manual.GetDerived().GetIssues())
+	}
 	// More than the race allows is refused.
-	_, err = players[2].createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1, Wisdom: 1}))
+	_, err = ana.createWith(campaign, mStd, withBonus(&rulesv1.AbilityScores{Dexterity: 2, Constitution: 1, Wisdom: 1}))
 	if r := abilityRefusal(t, "+4 on a +2/+1 race", err); r.GetReason() != extra {
 		t.Errorf("refusal = %v, want EXTRA_BONUSES", r)
 	}
 	// And so is an edit of the draft that goes over.
-	over := placed.GetSheet()
+	over := manual.GetSheet()
 	over.GetFull().ExtraAbilityBonuses = &rulesv1.AbilityScores{Dexterity: 2, Constitution: 1, Wisdom: 1}
-	_, err = bia.update(t, placed, placed.GetName(), over)
+	_, err = players[3].update(t, manual, manual.GetName(), over)
 	if r := abilityRefusal(t, "a draft edit over the race's points", err); r.GetReason() != extra {
 		t.Errorf("refusal = %v, want EXTRA_BONUSES", r)
 	}

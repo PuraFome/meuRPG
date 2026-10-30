@@ -50,16 +50,8 @@ func (s *Service) applyLastingSpell(
 	if !ok || len(targs) == 0 || len(made.Hits) != len(targs) {
 		return nil
 	}
-	kinds, err := s.creatureKindsOf(ctx, c, targs)
+	taken, err := s.spellHolds(ctx, c, content, def, ability, caster, targs, made)
 	if err != nil {
-		return err
-	}
-	states, err := s.readStates(ctx, c.tx, c.enc.ID)
-	if err != nil {
-		return err
-	}
-	taken := s.markSpellHits(content, def, states, kinds, targs, made)
-	if taken, err = s.dropWithoutHold(ctx, c, def, ability, caster, targs, taken, made); err != nil {
 		return err
 	}
 	if len(taken) == 0 {
@@ -135,9 +127,28 @@ func (s *Service) creatureKindsOf(ctx context.Context, c *combatTx, targs []play
 	return kinds, nil
 }
 
+// spellHolds are the targets an effect of a spell takes hold of: the ones it may affect (their kind of creature, the
+// conditions they are immune to) and, for a base armor class, the ones that wear no armor. The hits say which.
+func (s *Service) spellHolds(ctx context.Context, c *combatTx, content *rules.Content, def *rules.EffectDef, ability string, caster playdb.Combatant, targs []playdb.Combatant, made *actionEvent) ([]playdb.Combatant, error) {
+	kinds, err := s.creatureKindsOf(ctx, c, targs)
+	if err != nil {
+		return nil, err
+	}
+	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	if err != nil {
+		return nil, err
+	}
+	sheets, err := c.sheetImmunities(ctx, targs)
+	if err != nil {
+		return nil, err
+	}
+	taken := s.markSpellHits(content, def, states, kinds, sheets, targs, made)
+	return s.dropWithoutHold(ctx, c, def, ability, caster, targs, taken, made)
+}
+
 // markSpellHits says, on each hit, whether the effect took hold of its target, and returns the
 // targets it took hold of.
-func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, states map[string][]playdb.CombatantState, kinds map[string]string, targs []playdb.Combatant, made *actionEvent) []playdb.Combatant {
+func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, states map[string][]playdb.CombatantState, kinds map[string]string, sheets map[string]link.Traits, targs []playdb.Combatant, made *actionEvent) []playdb.Combatant {
 	var taken []playdb.Combatant
 	for i, t := range targs {
 		hit := &made.Hits[i]
@@ -149,7 +160,9 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
 			continue
 		}
-		if slices.ContainsFunc(def.Conditions, func(k string) bool { return combat.ImmuneTo(effectModsOf(states, t.ID), k) }) {
+		if slices.ContainsFunc(def.Conditions, func(k string) bool {
+			return combat.ImmuneTo(effectModsOf(states, t.ID), k) || sheetImmuneTo(sheets[t.ID], k)
+		}) {
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, whyImmune
 			continue
 		}

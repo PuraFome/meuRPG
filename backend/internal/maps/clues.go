@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -154,7 +155,7 @@ func (s *Service) UpdateSceneClue(
 	if err != nil {
 		return nil, err
 	}
-	clueID, ok := parseID(req.Msg.GetClueId())
+	clueID, ok := uid.Canonical(req.Msg.GetClueId())
 	if !ok {
 		return nil, errClueNotFound()
 	}
@@ -193,7 +194,7 @@ func (s *Service) MoveSceneClue(
 	if err != nil {
 		return nil, err
 	}
-	clueID, ok := parseID(req.Msg.GetClueId())
+	clueID, ok := uid.Canonical(req.Msg.GetClueId())
 	if !ok {
 		return nil, errClueNotFound()
 	}
@@ -252,7 +253,7 @@ func (s *Service) RemoveSceneClue(
 	if err != nil {
 		return nil, err
 	}
-	clueID, ok := parseID(req.Msg.GetClueId())
+	clueID, ok := uid.Canonical(req.Msg.GetClueId())
 	if !ok {
 		return nil, errClueNotFound()
 	}
@@ -302,7 +303,7 @@ func (s *Service) RevealSceneClue(
 	if err != nil {
 		return nil, err
 	}
-	clueID, ok := parseID(req.Msg.GetClueId())
+	clueID, ok := uid.Canonical(req.Msg.GetClueId())
 	if !ok {
 		return nil, errClueNotFound()
 	}

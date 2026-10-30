@@ -1,4 +1,3 @@
-import { publishOwnHit } from '../../../core/combat/own-hit';
 import {
   Component,
   DestroyRef,
@@ -167,9 +166,6 @@ export class CombatView extends CombatViewPartsDirective {
       }
       untracked(() => void this.log.load(this.api, campaignId, e.id));
     });
-    effect(() =>
-      publishOwnHit(this.state(), this.log.rounds(), this.isMaster() ? '' : (this.own()?.id ?? '')),
-    );
     // What a turn said is not carried into the next one.
     let turnOf = '';
     effect(() => {

@@ -97,6 +97,50 @@ test(
   },
 );
 
+/** True when the page sends no preview request (`PreviewChoices`, `PreviewCharacter`) for `ms`. */
+function previewQuietFor(page: Page, ms: number): Promise<boolean> {
+  return page.waitForRequest(/PreviewChoices|PreviewCharacter/, { timeout: ms }).then(
+    () => false,
+    () => true,
+  );
+}
+
+/** Waits out the asks already on their way: true once the page has been quiet for `ms`, false if it never is in `rounds`. */
+async function previewSettles(page: Page, ms: number, rounds = 3): Promise<boolean> {
+  for (let i = 0; i < rounds; i++) {
+    if (await previewQuietFor(page, ms)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+test(
+  'o editor não pergunta de novo ao servidor quando nada mudou: a resposta igual não dispara outra pergunta @RN-33',
+  { tag: '@RN-33' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Sem laco ${Date.now()}`);
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
+      await p.getByLabel('Nome do personagem', { exact: true }).fill('Brenna');
+      await pick(p, 'Raça', 'Humano');
+      await pick(p, 'Classe', 'Guerreiro');
+      await expect(p.getByRole('tab', { name: /Escolhas/ })).toBeVisible();
+      // The draft's first round of asks settles (a pause and a call each), and with no input it asks no more.
+      expect(await previewSettles(p, 1000)).toBe(true);
+      expect(await previewQuietFor(p, 2500)).toBe(true);
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
 test(
   'dois idiomas iguais escolhidos em sequência, antes de o servidor responder, não passam: o repetido nem é oferecido @RN-33',
   { tag: '@RN-33' },

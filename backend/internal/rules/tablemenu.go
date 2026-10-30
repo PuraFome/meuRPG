@@ -36,7 +36,8 @@ type MenuField struct {
 	Required bool
 	// Kind is how the editor asks: "formula" (an Int formula), "condition" (a Bool
 	// formula), "text", "number", "choice" (one of a closed list, named by List),
-	// "choices" (several of it), "tags", "resource_ref" or "yes_no" (a switch).
+	// "choices" (several of it), "cards" (one of a short list, as radio cards with
+	// their hints), "tags", "resource_ref" or "yes_no" (a switch).
 	Kind string
 	// List names the closed list of the menu the value comes from (a MenuList's
 	// Name), empty when the value is free.
@@ -117,10 +118,24 @@ const (
 	ListIncreaseAmounts    = "ability_increase_amounts"
 	ListRangedAttacks      = "ranged_attack_applies"
 	ListExtraDamageApplies = "extra_damage_applies"
-	ListAmbushApplies      = "ambush_applies"
-	ListDamageTypes        = "damage_types"
+	// ListExtraDamageWeapons and ListExtraDamageFrequencies are the closed values of an
+	// extra_damage's weapon and frequency.
+	ListExtraDamageWeapons     = "extra_damage_weapons"
+	ListExtraDamageFrequencies = "extra_damage_frequencies"
+	// ListSpellModifierTargets and ListSpellChanges are the spells a spell_modifier fits and what it changes.
+	ListSpellModifierTargets = "spell_modifier_targets"
+	// ListRollDieTargets are the skills and abilities a superiority die on ability checks may be limited to.
+	ListRollDieTargets = "roll_die_targets"
+	ListSpellChanges   = "spell_changes"
+	ListAmbushApplies  = "ambush_applies"
+	ListDamageTypes    = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
 	ListResistanceConditions = "resistance_conditions"
+	// ListResistanceTypes are the damage types of a resistance effect plus the closed words
+	// "all" and "nonmagical_bps"; ListResistanceKinds its kinds; ListConditions the 15 conditions.
+	ListResistanceTypes = "resistance_damage_types"
+	ListResistanceKinds = "resistance_kinds"
+	ListConditions      = "conditions"
 	// ListGrantAbilities are the casting abilities of a granted spell.
 	ListGrantAbilities = "granted_spell_abilities"
 	// ListOptionSetNames are the option sets a table option may join (TableOption.set).
@@ -165,9 +180,10 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "roll_mode", NamePT: "Vantagem ou desvantagem", HintPT: "Vantagem ou desvantagem em certas rolagens; com uma situação (tags), o app só lembra e o mestre decide.", Fields: []MenuField{
+	{Type: "roll_mode", NamePT: "Vantagem ou desvantagem", HintPT: "Vantagem ou desvantagem em certas rolagens; com uma situação (tags), o app só lembra e o mestre decide. Contra uma condição, vale de verdade nos testes de resistência para não ficar com ela.", Fields: []MenuField{
 		{Name: "roll", Required: true, Kind: "choice", List: ListRollModes},
 		{Name: "targets", Required: true, Kind: "choices", List: ListRollTargets},
+		{Name: "against_condition", Kind: "choice", List: ListConditions},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
@@ -186,11 +202,12 @@ var menuTypes = []MenuType{
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, como redução do dano de um ataque corpo a corpo (reação), ou ao dano com uma provocação: o alvo faz um teste de Sabedoria contra a CD da manobra (8 + proficiência + o modificador da habilidade escolhida) e, se falhar, tem desvantagem nos ataques contra quem não seja o personagem até o fim do próximo turno dele. O texto é o efeito que o mestre lê.", Fields: []MenuField{
+	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, como redução do dano de um ataque corpo a corpo (reação), ou ao dano com uma provocação: o alvo faz um teste de Sabedoria contra a CD da manobra (8 + proficiência + o modificador da habilidade escolhida) e, se falhar, tem desvantagem nos ataques contra quem não seja o personagem até o fim do próximo turno dele. Também pode ir num teste de habilidade do personagem (todos, ou só os das perícias e habilidades da lista), num teste de resistência (qualquer, ou o da habilidade escolhida) ou na iniciativa; esses não custam ação. O texto é o efeito que o mestre lê.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListManeuverApplies},
 		{Name: "resource", Required: true, Kind: "resource_ref"},
 		{Name: "value", Required: true, Kind: "formula"},
 		{Name: "ability", Kind: "choice", List: ListAbilities},
+		{Name: "targets", Kind: "choices", List: ListRollDieTargets},
 		{Name: "economy", Kind: "choice", List: ListEconomies},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
@@ -200,9 +217,15 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "extra_damage", NamePT: "Dano extra", HintPT: "Dano somado a um ataque com arma que acertou, no máximo uma vez por turno, quando o alvo é o que o texto pede (qualquer um, ou maior que o personagem). O valor é uma fórmula. Se a entrada define um recurso, cada uso gasta um (por descanso curto ou longo). O jogador escolhe usar na hora de rolar o dano.", Fields: []MenuField{
+	{Type: "extra_damage", NamePT: "Dano extra", HintPT: "Dano somado a um ataque com arma que acertou, quando o alvo é o que o texto pede (qualquer um, ou maior que o personagem): um número fixo (o valor, uma fórmula), dados, ou os dois. Sem tipo, o dano é do tipo da arma. Por padrão vale uma vez por turno; pode valer em todo acerto. Os dados dobram no acerto crítico, a menos que a entrada diga que não. Se a entrada define um recurso, cada uso gasta um (por descanso curto ou longo). O jogador escolhe usar na hora de rolar o dano.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListExtraDamageApplies},
-		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "value", Kind: "formula", AlwaysShown: true},
+		{Name: "dice", Kind: "formula", AlwaysShown: true},
+		{Name: "dice_sides", Kind: "number", Min: MinExtraDamageSides, Max: MaxExtraDamageSides, AlwaysShown: true},
+		{Name: "damage_type", Kind: "choice", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "weapon", Kind: "choice", List: ListExtraDamageWeapons, AlwaysShown: true},
+		{Name: "frequency", Kind: "choice", List: ListExtraDamageFrequencies, AlwaysShown: true},
+		{Name: "no_crit_doubling", Kind: "yes_no"},
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
@@ -221,9 +244,11 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição: em fúria ou enquanto um estado da entrada estiver ligado. A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
-		{Name: "except", Required: true, Kind: "choice", List: ListDamageTypes},
-		{Name: "while", Required: true, Kind: "state_ref", List: ListResistanceConditions},
+	{Type: "resistance", NamePT: "Resistência, imunidade ou vulnerabilidade a dano", HintPT: "Resistência (metade do dano), imunidade (nenhum dano) ou vulnerabilidade (o dobro) aos tipos de dano escolhidos, a todos os tipos, ou aos ataques não mágicos de pancada, perfuração e corte. Vale sempre ou só em fúria. A mesma proteção de outra fonte conta uma vez só.", Fields: []MenuField{
+		{Name: "kind", Kind: "cards", List: ListResistanceKinds, AlwaysShown: true},
+		{Name: "damage_types", Kind: "choices", List: ListResistanceTypes, AlwaysShown: true},
+		{Name: "except", Kind: "choice", List: ListDamageTypes},
+		{Name: "while", Kind: "state_ref", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "state", NamePT: "Estado", HintPT: "Algo que o personagem liga por um tempo, como uma postura ou uma forma. A ficha ganha uma carta com Ativar e Encerrar, como uma ação: ligar gasta o tempo de ação escolhido e, se houver, um uso de um recurso da entrada. A duração é em rodadas (vazio ou 0: dura até acabar) e acaba também nas situações marcadas. Os outros efeitos da entrada valem só enquanto o estado está ligado: pelo campo \"Só enquanto o estado\" ou pela condição active(\"nome\").", Fields: []MenuField{
@@ -259,6 +284,10 @@ var menuTypes = []MenuType{
 		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "condition_immunity", NamePT: "Imunidade a condição", HintPT: "O personagem não fica com as condições escolhidas: nenhuma magia, armadilha ou golpe as coloca nele.", Fields: []MenuField{
+		{Name: "conditions", Required: true, Kind: "choices", List: ListConditions},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "breathes_water", NamePT: "Respira na água", HintPT: "O personagem respira debaixo d'água. A ficha mostra a característica; o jogo não conta fôlego nem afogamento.", Fields: []MenuField{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
@@ -284,6 +313,18 @@ var menuTypes = []MenuType{
 		{Name: "temp_hp", Kind: "formula"},
 		{Name: "restore", Kind: "resource_ref"},
 		{Name: "value", Kind: "formula"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "spell_modifier", NamePT: "Opção de magia", HintPT: "Uma opção de quem conjura para as magias que a entrada escolhe (as que causam dano, os truques, uma escola ou um tipo de dano). Muda o dano de um jeito só: trocar o tipo de dano por outro da lista (quem conjura escolhe ao conjurar), somar um dano fixo (o valor, uma fórmula, do tipo da magia ou do tipo dado) ou somar dados por nível do espaço acima do nível da magia. Sem recurso, somar dano e somar dados valem sempre e a troca de tipo é livre. Com um recurso da entrada, cada uso gasta um e quem conjura marca a opção na ficha de conjuração.", Fields: []MenuField{
+		{Name: "applies_to", Required: true, Kind: "choice", List: ListSpellModifierTargets},
+		{Name: "spell_change", Required: true, Kind: "choice", List: ListSpellChanges},
+		{Name: "from", Kind: "choices", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "value", Kind: "formula", AlwaysShown: true},
+		{Name: "damage_type", Kind: "choice", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "count", Kind: "number", Min: 1, Max: maxSpellExtraDice, AlwaysShown: true},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "cost", Kind: "formula"},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -338,6 +379,9 @@ var (
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
 		ManeuverGoad:        "Dano de um ataque com arma que acertou e provocação (teste de Sabedoria)",
+		ManeuverCheck:       "Teste de habilidade (todos, ou os de perícias e habilidades escolhidas)",
+		ManeuverSave:        "Teste de resistência (qualquer, ou o de uma habilidade)",
+		ManeuverInitiative:  "Iniciativa",
 	}
 	ambushNms = map[string][2]string{
 		AmbushUnactedAdvantage:  {"Vantagem contra quem não agiu", "Vantagem nas jogadas de ataque contra uma criatura que ainda não teve um turno no combate."},
@@ -346,6 +390,12 @@ var (
 	extraDamageNms = map[string][2]string{
 		ExtraDamageAnyTarget:    {"Qualquer alvo", "Vale contra qualquer criatura atingida."},
 		ExtraDamageLargerTarget: {"Alvo maior que o personagem", "Só vale se o alvo for de um tamanho maior que o do personagem."},
+	}
+	extraDamageWeaponNms = map[string]string{
+		ExtraDamageAnyWeapon: "Qualquer ataque com arma", ExtraDamageMeleeWeapon: "Ataque com arma corpo a corpo", ExtraDamageRangedWeapon: "Ataque com arma à distância",
+	}
+	extraDamageFrequencyNms = map[string]string{
+		ExtraDamageOncePerTurn: "Uma vez por turno", ExtraDamageEachHit: "Em todo acerto",
 	}
 	rangedAttackNms = map[string][2]string{
 		RangedAttackSpell:  {"Magias com jogada de ataque", "Só as magias que pedem jogada de ataque. O alcance multiplicado vale para as que têm alcance em metros; toque e pessoal não mudam."},
@@ -433,6 +483,15 @@ func (c *content) menuSkillRolls() []MenuValue {
 		out = append(out, MenuValue{Key: "skill." + strings.TrimPrefix(k, "skill:"), NamePT: "Perícia: " + c.namePT(k)})
 	}
 	return out
+}
+
+// menuRollDieTargets are the skills and the abilities a die on ability checks may be limited to.
+func (c *content) menuRollDieTargets() []MenuValue {
+	var out []MenuValue
+	for _, a := range AllAbilities() {
+		out = append(out, MenuValue{Key: "check." + string(a), NamePT: "Testes de " + c.menuAbilityName(a)})
+	}
+	return append(out, c.menuSkillRolls()...)
 }
 
 // menuSaves are the six saving throws as targets ("save.dex").
@@ -553,8 +612,16 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
+		{Name: ListExtraDamageWeapons, Values: extraDamageWeaponValues()},
+		{Name: ListExtraDamageFrequencies, Values: extraDamageFrequencyValues()},
+		{Name: ListSpellModifierTargets, Values: c.menuSpellTargets()},
+		{Name: ListRollDieTargets, Values: c.menuRollDieTargets()},
+		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
+		{Name: ListResistanceTypes, Values: c.menuResistanceTypes()},
+		{Name: ListResistanceKinds, Values: resistanceKindValues()},
+		{Name: ListConditions, Values: c.menuConditions()},
 		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
 		{Name: ListOptionSetNames, Values: menuOptionSetNames()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
@@ -590,6 +657,38 @@ func (c *content) menuDamageTypes() []MenuValue {
 	for _, t := range types {
 		out = append(out, MenuValue{Key: t.Key, NamePT: t.NamePT})
 	}
+	return out
+}
+
+// menuResistanceTypes are the SRD damage types plus the closed words a resistance takes.
+func (c *content) menuResistanceTypes() []MenuValue {
+	out := []MenuValue{
+		{Key: DamageTypeAll, NamePT: "Todos os tipos de dano"},
+		{Key: DamageTypeNonmagicalBPS, NamePT: "Contundente, perfurante e cortante não mágicos", HintPT: "Pancada, perfuração e corte de ataques que não são mágicos."},
+	}
+	return append(out, c.menuDamageTypes()...)
+}
+
+// resistanceKindValues are the three kinds of a resistance effect.
+func resistanceKindValues() []MenuValue {
+	return []MenuValue{
+		{Key: ResistanceKindResist, NamePT: "Resistência", HintPT: "Sofre metade do dano."},
+		{Key: ResistanceKindImmune, NamePT: "Imunidade", HintPT: "Não sofre dano."},
+		{Key: ResistanceKindVulnerable, NamePT: "Vulnerabilidade", HintPT: "Sofre o dobro do dano."},
+	}
+}
+
+// menuConditions are the conditions of the content, by name.
+func (c *content) menuConditions() []MenuValue {
+	var keys []string
+	if c.combatEffects != nil {
+		keys = sortedKeys(c.combatEffects.conditions)
+	}
+	out := make([]MenuValue, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, MenuValue{Key: k, NamePT: c.namePT(k)})
+	}
+	sortMenuByName(out)
 	return out
 }
 

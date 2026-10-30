@@ -716,10 +716,17 @@ message DerivedSheet {
   // granted_spell effect, by level and name, each with its source. They are cast
   // through the grant (see GrantedSpell); the sheet lists them apart from `spells`.
   repeated GrantedSpell granted_spells = 48;
+  // The table dice the character may add to its own checks, saving throws and initiative
+  // (superiority_die effects of applies check, save and initiative), with the uses of
+  // `resource` in the vitals. Empty for a character with none.
+  repeated RollDie roll_dice = 49;
+  // The character's size: the race's own ("Small", "Medium"...), or the one the sheet
+  // picked among the sizes the race offers (Race.sizes). Empty without a known race.
+  string size = 50;
   // The temporary states the character's features define (a table's `state` effect),
   // with the ones that are on marked. Which are on is the game session's, not the
   // sheet's. Each has an action in `actions`.
-  repeated DerivedState states = 49;
+  repeated DerivedState states = 51;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.
@@ -942,6 +949,26 @@ message DiceFormula {
 }
 
 // DerivedClass is one of a character's classes, with names resolved.
+// RollDie is a table die the character adds to a roll of its own: sent back as the
+// `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave and SubmitInitiative.
+message RollDie {
+  // The feature (option) that gives it.
+  string key = 1;
+  string name_pt = 2;
+  // "check", "save" or "initiative".
+  string applies = 3;
+  // The die's sides, worked out for the character.
+  int32 sides = 4;
+  // The resource each use spends, one use.
+  string resource = 5;
+  // check: the skills ("skill.stealth") and abilities ("check.dex") it is limited to; empty is every
+  // ability check. save: `ability` ("str"...) limits it to that ability's saves; empty is any.
+  repeated string targets = 6;
+  string ability = 7;
+  // The rider the table reads.
+  string text_pt = 8;
+}
+
 message DerivedClass {
   // Content key of the class, such as "class:wizard".
   string class_key = 1;
@@ -1319,6 +1346,12 @@ message AbilityInfo {
   string abbreviation_pt = 4;
 }
 
+// BonusSet is one set of ability bonuses to place, such as [2, 1]: a table race
+// lets the player pick one of several, and each bonus goes on a different ability.
+message BonusSet {
+  repeated int32 bonuses = 1;
+}
+
 // Race is a race from the rules content.
 message Race {
   // Content key, such as "race:gnome".
@@ -1344,6 +1377,13 @@ message Race {
   // "skill:intimidation". The player does not choose them and they are not a
   // class pick: a pick on the same skill adds nothing.
   repeated string skill_keys = 9;
+  // Alternative sets of bonuses to place, of which the player picks one (empty for the
+  // races with a single set in `choice_bonuses` or none), and the sizes the player picks
+  // one from ("Small", "Medium"; empty for the races with only their own size).
+  repeated BonusSet choice_bonus_sets = 10;
+  repeated string sizes = 11;
+  // The race's own size ("Small", "Medium"...), the default when the sheet picks none.
+  string size = 12;
 }
 
 // Subrace is a subrace of one race.
@@ -2171,6 +2211,10 @@ message SpellOption {
   // unless the grant is at will. A spell the character has both from a class and from
   // a grant is two options. `slots` lists slots only when grant.also_with_slot.
   SpellGrantOption grant = 32;
+  // The cast options the character's table features offer for this spell (spell_modifier
+  // effects), at the spell's own level. Empty for a character with none. The cast checks
+  // them again at the slot it is cast with.
+  repeated SpellTableOption table_options = 33;
 }
 
 // SpellGrantOption is how a granted spell is cast now.
@@ -2188,6 +2232,30 @@ message SpellGrantOption {
   string ability = 7;
   int32 attack_bonus = 8;
   int32 save_dc = 9;
+}
+
+// SpellTableOption is a cast option a table feature offers for a spell (a spell_modifier).
+message SpellTableOption {
+  // The feature that gives it ("feature:...@mesa"); CastSpellRequest.spell_options names it.
+  string key = 1;
+  string name_pt = 2;
+  // What it does, in one sentence.
+  string summary_pt = 3;
+  // "damage_type_swap", "bonus_damage" or "extra_dice_per_slot_over".
+  string change = 4;
+  // True when it applies by itself (no resource, not a swap): shown, not ticked.
+  bool always_on = 5;
+  // The resource each use spends, one use; empty for none, and the uses it has left.
+  string resource = 6;
+  int32 uses_left = 7;
+  // Whether the caster may tick it now; when not, the reason in Portuguese.
+  bool allowed = 8;
+  string disabled_reason_pt = 9;
+  // damage_type_swap: the damage types the caster may pick as the new one (SRD
+  // "damage-type:" keys), for the spell's damage.
+  repeated string damage_type_keys = 10;
+  // How many uses of `resource` ticking it spends (the feature's cost, at least 1).
+  int32 cost = 11;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the

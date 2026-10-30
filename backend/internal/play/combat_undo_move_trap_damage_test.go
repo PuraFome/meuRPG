@@ -523,7 +523,7 @@ func TestUndoKindDamageAppliedOnACharacterAtZero(t *testing.T) {
 	e := a.threeAndAGoblin(t)
 	a.correct(t, a.toren, hpIs(0))
 	e = a.passTo(t, e, "Goblin")
-	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", d20(15))
+	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{15, 4} }) // advantage: Toren is unconscious
 	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), typedDamage(3))
 	w := newUndoWatch(t, a)
 

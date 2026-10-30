@@ -163,6 +163,10 @@ function racesOf(content: GenContent): RulesCatalogVm['races'] {
     constitutionBonus: r.abilityBonuses?.constitution ?? 0,
     subraces: subraces.get(r.key) ?? [],
     choiceBonuses: r.choiceBonuses,
+    ...(r.choiceBonusSets.length > 0
+      ? { choiceBonusSets: r.choiceBonusSets.map((s) => s.bonuses) }
+      : {}),
+    ...(r.sizes.length > 0 ? { sizes: r.sizes, size: r.size } : {}),
     skillKeys: r.skillKeys,
     fromTable: isTableKey(r.key),
     archived: r.archived,

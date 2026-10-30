@@ -155,6 +155,42 @@ describe('CombatState', () => {
     expect(state.encounter()?.combatants[0]).toMatchObject({ placed: false });
   });
 
+  it('starts the surviving member of a joint turn with a fresh economy in the next round', () => {
+    const state = new CombatState();
+    const swords = [
+      combatant({ id: 's1', label: 'Espada 1', initiative: 12, defeated: true, actionUsed: true }),
+      combatant({
+        id: 's2',
+        label: 'Espada 2',
+        initiative: 12,
+        actionUsed: true,
+        bonusActionUsed: true,
+        reactionUsed: true,
+        movementUsedDft: 100,
+        movementLeftDft: 0,
+        speedDft: 100,
+      }),
+    ];
+    state.apply(
+      encounter({
+        combatants: swords,
+        currentCombatantId: 's2',
+        round: 1,
+        turnGroupIds: ['s1', 's2'],
+      }),
+    );
+    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 's2', masterTurn: false });
+    const [dead, alive] = state.encounter()!.combatants;
+    expect(alive).toMatchObject({
+      actionUsed: false,
+      bonusActionUsed: false,
+      reactionUsed: false,
+      movementUsedDft: 0,
+      movementLeftDft: 100,
+    });
+    expect(dead.actionUsed).toBe(true);
+  });
+
   it('drops a read that started before turn_changed, which the read may not show, and says to read again', () => {
     const state = new CombatState();
     state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1 }));
@@ -182,11 +218,11 @@ describe('CombatState', () => {
       round: 2,
       currentCombatantId: 'b',
       masterTurn: false,
-      revision: 6,
+      revision: 5,
     });
-    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 5 });
     // The answer of a call that began before the turn changed is older: it does not bring the turn back.
-    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 5 }));
+    state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
     expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b' });
     // An event about a turn older than the one on screen changes nothing.
     expect(
@@ -195,13 +231,65 @@ describe('CombatState', () => {
         round: 1,
         currentCombatantId: 'a',
         masterTurn: false,
-        revision: 5,
+        revision: 4,
       }),
     ).toBe(true);
-    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 6 });
+    expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 5 });
     // No number to compare (a player on a fog map): the turn applies and the revision stays.
     state.applyTurn({ encounterId: 'enc', round: 3, currentCombatantId: 'a', masterTurn: false });
-    expect(state.encounter()).toMatchObject({ round: 3, revision: 6 });
+    expect(state.encounter()).toMatchObject({ round: 3, revision: 5 });
+  });
+
+  describe('a turn event and the revisions of the copy on screen', () => {
+    const turn = (revision: number, currentCombatantId = 'b') => ({
+      encounterId: 'enc',
+      round: 2,
+      currentCombatantId,
+      masterTurn: false,
+      revision,
+    });
+
+    it('patches in place the event that is the very next revision', () => {
+      const state = new CombatState();
+      state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+      expect(state.applyTurn(turn(5))).toBe(true);
+      expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b', revision: 5 });
+    });
+
+    it('says to read again for an event two revisions ahead, and leaves the copy as it is', () => {
+      const state = new CombatState();
+      state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+      // The revision in between (the master set a character to 0) is not in the copy: a patched copy would claim it.
+      expect(state.applyTurn(turn(6))).toBe(false);
+      expect(state.encounter()).toMatchObject({ round: 1, currentCombatantId: 'a', revision: 4 });
+    });
+
+    it('says to read again for a turn that moves to a combatant who is down', () => {
+      const down = combatant({
+        id: 'p',
+        label: 'Pensantus',
+        kind: CombatantKind.PLAYER,
+        state: CombatantState.DOWN,
+      });
+      const state = new CombatState();
+      state.apply(
+        encounter({ combatants: [...two, down], currentCombatantId: 'a', round: 1, revision: 4 }),
+      );
+      expect(state.applyTurn(turn(5, 'p'))).toBe(false);
+      expect(state.encounter()).toMatchObject({ round: 1, currentCombatantId: 'a' });
+      // A combatant at 0 hit points counts, whatever its state says.
+      const empty = combatant({ id: 'z', label: 'Z', hitPointsCurrent: 0 });
+      state.apply(encounter({ combatants: [...two, empty], currentCombatantId: 'a', revision: 5 }));
+      expect(state.applyTurn(turn(6, 'z'))).toBe(false);
+    });
+
+    it('still drops an older answer after a turn patched in place', () => {
+      const state = new CombatState();
+      state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+      state.applyTurn(turn(5));
+      state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1, revision: 4 }));
+      expect(state.encounter()).toMatchObject({ round: 2, currentCombatantId: 'b' });
+    });
   });
 
   it('drops a read that started before combatant_moved', () => {
@@ -341,7 +429,7 @@ describe('CombatState, the reaction windows that closed (PM-04)', () => {
     expect(state.wasAnnounced('w2')).toBe(false);
   });
 
-  it("a turn that comes to a player's character at 0 hit points brings its death save due, until the combat is read again", () => {
+  it("a turn that comes to a player's character at 0 hit points is read again: its death save due is the server's", () => {
     const state = new CombatState();
     state.apply(
       encounter({
@@ -353,17 +441,32 @@ describe('CombatState, the reaction windows that closed (PM-04)', () => {
             label: 'Pensantus',
             kind: CombatantKind.PLAYER,
             state: CombatantState.DOWN,
+            deathSaveDue: true,
           }),
           combatant({ id: 'g', label: 'Goblin' }),
         ],
       }),
     );
-    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 'p', masterTurn: false });
+    expect(
+      state.applyTurn({
+        encounterId: 'enc',
+        round: 2,
+        currentCombatantId: 'p',
+        masterTurn: false,
+        revision: 6,
+      }),
+    ).toBe(false);
+    expect(state.encounter()).toMatchObject({ currentCombatantId: 'g', revision: 5 });
+    // A turn that moves on to somebody standing patches in place, and the death save is no longer due.
     const due = (id: string) =>
       state.encounter()?.combatants.find((c) => c.id === id)?.deathSaveDue;
-    expect(due('p')).toBe(true);
-    expect(due('g')).toBe(false);
-    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 'g', masterTurn: false });
+    state.applyTurn({
+      encounterId: 'enc',
+      round: 2,
+      currentCombatantId: 'g',
+      masterTurn: false,
+      revision: 6,
+    });
     expect(due('p')).toBe(false);
   });
 });

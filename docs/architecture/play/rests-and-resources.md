@@ -107,6 +107,16 @@ The creature's type is read on the server; the reason is in the master's line of
 The healed number goes only to the master and the target's player.
 `TakeAction` refuses the feature actions that have a flow of their own.
 
+### Table dice on the character's own rolls
+
+The `superiority_die` effects of applies `check`, `save` and `initiative` ([Rules: table content](../rules-table-content.md#maneuvers)) are dice the player adds to a roll of its character. The request names the maneuver (`maneuver_key`: `RollSceneCheck`, `ResolveConcentrationSave`, `RollEffectSave`, `SubmitInitiative`) and the derived sheet lists the choices (`DerivedSheet.roll_dice`: key, sides, resource, `targets` or `ability`). `combat_roll_maneuver.go`:
+
+- `maneuverForRoll` checks the maneuver is the character's and fits the roll: a `check` die fits the skill (`skill.stealth`) or the ability (`check.dex`) of the check when it lists targets, a `save` die the ability of the save when it names one (the scene's `save:` actions are saves). Anything else is `invalid_argument`; no use left is `NO_USES_LEFT`.
+- On the checks and saves the die joins the dice an effect adds (`effectDie.ManeuverResource`): it is rolled with them (in the app, or typed as the last of `extra_die_faces`), added to the total and shown as a source ("Nome +1d6: 4"). The resource is spent when the roll is written (`spendManeuverDice`, so a roll that waits for a Lucky or Bardic Inspiration question spends nothing), and the event keeps it in `ManeuverSpent`.
+- On the initiative the die is rolled after the d20 is settled (in the app, or `maneuver_face` with physical dice) and added to the total (`initiativeManeuver`).
+
+Not covered: the trap search, the puzzle hint, the group check, the checks of a contest, Hide and the Counterspell check, the death save, and the rolls made on someone else's call. Another creature's roll (an ally's) takes no die of the character.
+
 ### Metamagic (sorcerer 3)
 
 `CastSpellRequest.metamagic` carries the options of a casting with their parameters.

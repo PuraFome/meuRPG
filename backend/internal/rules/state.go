@@ -226,8 +226,8 @@ func (x effectCompiler) strayStateAndWeapon() error {
 		{[]string{"state"}, e.StateName != "" || e.DurationRounds != "" || len(e.EndsOn) > 0, "state_name, duration_rounds and ends_on belong to state"},
 		{[]string{"weapon_rule"}, e.WeaponName != "" || e.AttackAbility != "" || e.DamageAbility != "" || e.AttackBonus != 0 || e.DamageBonus != 0,
 			"weapon_name, attack_ability, damage_ability, attack_bonus and damage_bonus belong to weapon_rule"},
-		{[]string{"pseudo_weapon"}, e.AttackName != "" || e.DamageDice != "" || e.DamageType != "", "attack_name, damage_dice and damage_type belong to pseudo_weapon"},
-		{[]string{"weapon_rule", "pseudo_weapon"}, e.Weapon != "" || e.ReachFt != 0, "weapon and reach_ft belong to weapon_rule and pseudo_weapon"},
+		{[]string{"pseudo_weapon"}, e.AttackName != "" || e.DamageDice != "", "attack_name and damage_dice belong to pseudo_weapon"},
+		{[]string{"weapon_rule", "pseudo_weapon"}, e.ReachFt != 0, "reach_ft belongs to weapon_rule and pseudo_weapon"},
 	}
 	for _, g := range groups {
 		if g.set && !slices.Contains(g.types, e.Type) {

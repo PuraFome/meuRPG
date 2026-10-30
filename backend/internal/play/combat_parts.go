@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -84,6 +85,8 @@ type partRecord struct {
 	// part is once per turn, remembered by Key in the attacker's table_once_turns.
 	Table string `json:"table,omitempty"`
 	Once  bool   `json:"once,omitempty"`
+	// NoCrit: a critical hit does not double this part's dice (an extra_damage that says so).
+	NoCrit bool `json:"no_crit,omitempty"`
 }
 
 // partRoll is what a part rolled, in the pending damage's part_rolls column and in the
@@ -326,8 +329,10 @@ func (h hitFacts) maneuverParts() []partRecord {
 }
 
 // extraDamageParts lists, for a player's character, the damage the table's features add to a weapon hit
-// (extra_damage): one choosable extra each, flat and never doubled, of the weapon's damage type. It is
-// listed also when it does not hold, off with its reason (the size of a creature is no secret).
+// (extra_damage): one choosable extra each, with the fixed damage and the dice the feature says, of its own
+// damage type or the weapon's. The fixed part is never doubled by a critical hit, the dice are unless the
+// feature says so. It is listed also when it does not hold, off with its reason (the size of a creature and
+// the kind of weapon are no secret).
 func (h hitFacts) extraDamageParts() []partRecord {
 	if h.attacker.Kind != kindPlayer || !h.attack.Weapon {
 		return nil
@@ -336,8 +341,9 @@ func (h hitFacts) extraDamageParts() []partRecord {
 	var out []partRecord
 	for _, x := range h.sheet.Traits.ExtraDamages {
 		sp := partRecord{
-			Key: x.Key, Label: x.NamePT, Kind: partExtra, Flat: clamp32(x.Amount, 0, extraDamageMax), DamageType: h.attack.DamageType,
-			Source: x.Key, Choosable: true, Rider: x.TextPT, Table: tableExtraDamage, Once: true, Available: true,
+			Key: x.Key, Label: x.NamePT, Kind: partExtra, Flat: clamp32(x.Amount, 0, extraDamageMax), DamageType: cmp.Or(x.DamageType, h.attack.DamageType),
+			Count: clamp32(x.DiceCount, 0, extraDamageMaxDice), Sides: clamp32(x.DiceSides, 0, 100), NoCrit: x.NoCritDoubling,
+			Source: x.Key, Choosable: true, Rider: x.TextPT, Table: tableExtraDamage, Once: x.Frequency != rules.ExtraDamageEachHit, Available: true,
 		}
 		if x.Resource != "" {
 			left := h.usesLeft[x.Resource]
@@ -346,22 +352,36 @@ func (h hitFacts) extraDamageParts() []partRecord {
 				sp.Available, sp.Reason = false, "Sem usos do recurso"
 			}
 		}
-		switch {
-		case !sp.Available:
-		case used[x.Key] == turnKey(h.enc):
-			sp.Available, sp.Reason = false, "Já usado neste turno"
-		case x.Applies == rules.ExtraDamageLargerTarget && combat.SizeRank(h.target.Size) <= combat.SizeRank(h.attacker.Size):
-			sp.Available, sp.Reason = false, "O alvo não é maior que você"
+		if sp.Available {
+			sp.Available, sp.Reason = h.extraDamageHolds(x, sp, used)
 		}
 		out = append(out, sp)
 	}
 	return out
 }
 
+// extraDamageHolds says an extra_damage can be added to this hit, and why not when it cannot.
+func (h hitFacts) extraDamageHolds(x link.ExtraDamage, sp partRecord, used map[string]string) (bool, string) {
+	ranged := !h.attack.Melee || h.thrownAtRange()
+	switch {
+	case sp.Once && used[x.Key] == turnKey(h.enc):
+		return false, "Já usado neste turno"
+	case x.Weapon == rules.ExtraDamageMeleeWeapon && ranged:
+		return false, "Só vale com arma corpo a corpo"
+	case x.Weapon == rules.ExtraDamageRangedWeapon && !ranged:
+		return false, "Só vale com arma à distância"
+	case x.Applies == rules.ExtraDamageLargerTarget && combat.SizeRank(h.target.Size) <= combat.SizeRank(h.attacker.Size):
+		return false, "O alvo não é maior que você"
+	}
+	return true, ""
+}
+
 // tableExtraDamage is partRecord.Table of an extra_damage part; extraDamageMax bounds its flat damage.
 const (
 	tableExtraDamage = "extra_damage"
 	extraDamageMax   = 999
+	// extraDamageMaxDice is the most dice an extra_damage rolls (rules.maxExtraDice).
+	extraDamageMaxDice = 20
 )
 
 // readTableOnce reads the once-per-turn marks of the table's extras: the turn each feature last used.
@@ -435,7 +455,7 @@ func (h hitFacts) fromExtra(e combat.Extra, kind string) partRecord {
 func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string) []*playv1.DamagePart {
 	var out []*playv1.DamagePart
 	for _, sp := range readParts(p.Parts) {
-		count, fixed := combat.CriticalDice(rules.DiceFormula{Count: int(sp.Count), Sides: int(sp.Sides)}, p.Critical, rule)
+		count, fixed := partCriticalDice(sp, p.Critical, rule)
 		if sp.Count == 0 {
 			count, fixed = 0, 0
 		}
@@ -448,7 +468,7 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 			Key: sp.Key, LabelPt: sp.Label, DiceCount: clamp32(count, 0, 200), DiceSides: sp.Sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
 			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sp.Source,
 			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
+			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
 		})
 	}
 	return out
@@ -767,12 +787,21 @@ func (r *partsRoll) sumUp() {
 	}
 }
 
+// partCriticalDice is the dice a part rolls on a hit and the fixed number that comes with them: a critical
+// hit doubles them (or adds the maximum), except those of a part that keeps its dice.
+func partCriticalDice(sp partRecord, critical bool, rule combat.CriticalRule) (count, fixed int) {
+	if sp.NoCrit {
+		return int(sp.Count), 0
+	}
+	return combat.CriticalDice(rules.DiceFormula{Count: int(sp.Count), Sides: int(sp.Sides)}, critical, rule)
+}
+
 // diceOf is the dice a part rolls and the fixed number that comes without rolling: the
 // critical's rule applied to its dice, and, for the weapon, the extra dice of a feature
 // (Brutal Critical), always rolled after the critical's own.
 func (r rollPartsInput) diceOf(sp partRecord) (count, fixed int) {
 	if sp.Count > 0 && sp.Sides > 0 {
-		count, fixed = combat.CriticalDice(rules.DiceFormula{Count: int(sp.Count), Sides: int(sp.Sides)}, r.p.Critical, r.rule)
+		count, fixed = partCriticalDice(sp, r.p.Critical, r.rule)
 	}
 	if sp.Key == partWeapon && count > 0 {
 		count += int(r.p.ExtraDice)
@@ -1054,12 +1083,28 @@ func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID strin
 	var out []combat.Modifier
 	raging := hasState(states, who.ID, stateRage) && !sheet.Traits.HeavyArmor
 	for _, r := range sheet.Traits.Resistances {
-		if r.While == rules.ResistanceWhileRage && !raging {
+		if !rules.ResistanceActive(r.While, raging) {
 			continue
 		}
-		out = append(out, combat.Modifier{Kind: combat.StepResistance, Source: r.Source, DamageTypes: r.DamageTypes})
+		out = append(out, traitModifier(r))
 	}
 	return out, nil
+}
+
+// traitModifier is the modifier a sheet's resistance, immunity or vulnerability makes. A trait of the
+// content that names no kind is a resistance.
+func traitModifier(r link.Resistance) combat.Modifier {
+	m := combat.Modifier{Kind: combat.StepResistance, Source: r.Source, DamageTypes: r.DamageTypes}
+	switch r.Kind {
+	case rules.ResistanceKindImmune:
+		m.Kind = combat.StepImmunity
+	case rules.ResistanceKindVulnerable:
+		m.Kind = combat.StepVulnerability
+	}
+	if r.Nonmagical {
+		m.Qualifier = combat.QualifierNonmagical
+	}
+	return m
 }
 
 // statBlockModifiers are the immunities, resistances and vulnerabilities of a creature

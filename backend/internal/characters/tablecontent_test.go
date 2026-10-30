@@ -1157,7 +1157,7 @@ func sheetWithTable(race, background, spell string) *charactersv1.CharacterSheet
 	f.Background = &charactersv1.FullSheet_BackgroundKey{BackgroundKey: background}
 	f.SkillProficiencyKeys = []string{"skill:investigation", "skill:medicine"}
 	f.KnownSpellKeys = append(f.KnownSpellKeys, spell)
-	return s
+	return withRaceBonusPicks(s, race)
 }
 
 // TestTableContentEveryMechanicalChangeLetsTheSheetSave (the review's

@@ -2723,6 +2723,12 @@ message SubmitInitiativeRequest {
     // The face of a physical d20, 1 to 20.
     int32 d20_face = 6;
   }
+  // A table maneuver (a superiority_die effect of applies "initiative") the player adds to the
+  // initiative: its key. The die is rolled in the app, or with physical dice its face is
+  // `maneuver_face` (1 to its sides, required then). One use of its resource is spent when the
+  // initiative is set. The refusals are those of RollSceneCheckRequest.maneuver_key.
+  string maneuver_key = 7;
+  int32 maneuver_face = 8;
 }
 
 // SubmitInitiativeResponse returns the combat after the roll.
@@ -4164,6 +4170,20 @@ message CastSpellRequest {
   // attack and the save DC are the grant's. With a `slot` it casts through the slot instead
   // (when the grant allows it). Empty for a spell of the character's classes.
   string granted_by = 33;
+  // The cast options of the character's table features the caster ticked
+  // (SpellOption.table_options that are not always on). Each must be an option the
+  // spell takes at this slot, with a use left when it names a resource; otherwise
+  // `invalid_argument` or, with no use left, `failed_precondition` with NO_USES. The
+  // always-on ones apply without being named. The uses are spent with the slot.
+  repeated SpellOptionChoice spell_options = 34;
+}
+
+// SpellOptionChoice is a table cast option ticked on a casting.
+message SpellOptionChoice {
+  // The option's feature key.
+  string key = 1;
+  // damage_type_swap: the new damage type, one of the option's damage_type_keys.
+  string damage_type_key = 2;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -6100,6 +6120,13 @@ message ResolveConcentrationSaveRequest {
   // With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
   // saving throw, the second d20; `d20_face` is the first.
   optional int32 second_d20_face = 101;
+  // A table maneuver (a superiority_die effect of applies "save") the player adds to this roll:
+  // its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+  // roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+  // of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+  // maneuver the character has not or that does not go on this roll, and with a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+  string maneuver_key = 102;
 }
 
 message ResolveConcentrationSaveResponse {

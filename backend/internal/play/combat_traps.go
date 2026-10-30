@@ -176,7 +176,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapAgainst(effect), &out[i]); err != nil {
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapSaveAgainst(effect), &out[i]); err != nil {
 			return nil, err
 		}
 		if trapNeedsAC(effect) {
@@ -327,6 +327,11 @@ func giveTrapConditions(ctx context.Context, c *combatTx, cc *trapCaughtEvent, w
 	}
 	merged := slices.Clone(who.Conditions)
 	for _, k := range keys {
+		if immune, err := c.immuneToCondition(ctx, *who, k); err != nil {
+			return err
+		} else if immune {
+			continue
+		}
 		merged = appendOnce(merged, k)
 	}
 	cc.Conditions = keys

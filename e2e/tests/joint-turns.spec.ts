@@ -31,7 +31,7 @@ test(
       await expect(m.getByRole('heading', { name: /^Turno conjunto: / })).toBeVisible();
       const card = m.getByRole('region', { name: /^Turno conjunto: / });
       await expect(card.getByText('Falta')).toBeVisible();
-      await expect(m.getByRole('button', { name: 'Próximo turno' })).toHaveCount(0);
+      await expect(m.getByRole('button', { name: 'Próximo turno' })).toHaveAttribute('aria-disabled', 'true');
       await expect(m.getByRole('group', { name: /^Turno conjunto: .*iniciativa \d+$/ })).toHaveCount(2);
 
       // The player: "Sua vez", the pill, the other member's state, and the footer.

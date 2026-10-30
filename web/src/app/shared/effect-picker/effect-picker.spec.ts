@@ -1,7 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
-import { menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
+import {
+  conditionMenu,
+  menu,
+  rangedAttackMenu,
+  resistanceMenu,
+} from '../../core/content/content-testing-menu';
+import { extraDamageMenu, spellModifierMenu } from '../../core/content/content-testing-menu-damage';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { EffectPicker } from './effect-picker';
 
@@ -215,6 +221,64 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     );
   });
 
+  it("shows extra_damage's dice, type, weapon and frequency unfolded, and sets them", () => {
+    const m = extraDamageMenu();
+    setup({ ...emptyEffect('extra_damage'), applies: 'any_target' }, { menu: m });
+    for (const f of ['value', 'dice', 'dice_sides', 'damage_type', 'weapon', 'frequency']) {
+      expect(field(f), f).not.toBeNull();
+    }
+    // The crit switch is rarer: folded until "Mais opções".
+    expect(field('no_crit_doubling')).toBeNull();
+    expect(text(el)).toContain('Dano fixo');
+    expect(text(el)).toContain('Lados do dado');
+    const dice = field('dice') as HTMLInputElement;
+    dice.value = '1';
+    dice.dispatchEvent(new Event('input'));
+    expect(emitted.at(-1)?.dice).toBe('1');
+    const sides = field('dice_sides') as HTMLInputElement;
+    sides.value = '6';
+    sides.dispatchEvent(new Event('input'));
+    expect(emitted.at(-1)?.diceSides).toBe(6);
+    change(field('damage_type') as HTMLSelectElement, 'Fogo');
+    expect(emitted.at(-1)?.damageType).toBe('damage-type:fire');
+    change(field('frequency') as HTMLSelectElement, 'Em todo acerto');
+    expect(emitted.at(-1)?.frequency).toBe('each_hit');
+    setup(
+      {
+        ...emptyEffect('extra_damage'),
+        applies: 'any_target',
+        dice: '1',
+        diceSides: 6,
+        noCritDoubling: true,
+      },
+      { menu: m },
+    );
+    expect((field('no_crit_doubling') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("shows a spell_modifier's fields by its change: the swap the types, the bonus its amount, the dice their count", () => {
+    const m = spellModifierMenu();
+    const base = { ...emptyEffect('spell_modifier'), appliesTo: 'damage_spell' };
+    setup(base, { menu: m });
+    expect(field('spell_change')).not.toBeNull();
+    for (const f of ['from', 'value', 'count']) {
+      expect(field(f), f).toBeNull();
+    }
+    setup({ ...base, spellChange: 'damage_type_swap' }, { menu: m });
+    expect(text(el)).toContain('tipos de dano que troca');
+    expect(el.querySelector('[data-field$=".from"]')).not.toBeNull();
+    expect(field('value')).toBeNull();
+    setup({ ...base, spellChange: 'bonus_damage' }, { menu: m });
+    expect(field('value')).not.toBeNull();
+    expect(field('damage_type')).not.toBeNull();
+    expect(text(el)).toContain('Dano fixo somado');
+    expect(field('count')).toBeNull();
+    setup({ ...base, spellChange: 'extra_dice_per_slot_over' }, { menu: m });
+    expect(text(el)).toContain('Dados a mais por nível acima');
+    expect(field('count')).not.toBeNull();
+    expect(field('value')).toBeNull();
+  });
+
   it("draws granted_spell's spell from the table's catalog, the ability in its own words, and the switches unfolded", () => {
     setup(
       { ...emptyEffect('granted_spell'), spell: 'spell:light', ability: 'choice' },
@@ -299,6 +363,68 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
       'Destreza',
       'Constituição',
     ]);
+  });
+});
+
+describe('EffectPicker: resistance, condition immunity and the roll mode against a condition', () => {
+  let fixture: ComponentFixture<EffectPicker>;
+  let el: HTMLElement;
+  const emitted: EffectDraft[] = [];
+
+  function setup(effect: EffectDraft, m: EffectMenuVm) {
+    emitted.length = 0;
+    TestBed.resetTestingModule();
+    fixture = TestBed.createComponent(EffectPicker);
+    fixture.componentRef.setInput('effect', effect);
+    fixture.componentRef.setInput('menu', m);
+    fixture.componentRef.setInput('basePath', 'table_race.traits[0].effects[0]');
+    fixture.componentRef.setInput('issuesOf', () => []);
+    fixture.componentInstance.effectChange.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  }
+  const field = (path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
+
+  it('asks the kind as three radio cards, shown from the start, with the resistance on when nothing is set', () => {
+    setup(emptyEffect('resistance'), resistanceMenu());
+    const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    expect(radios.map((r) => r.value)).toEqual(['resist', 'immune', 'vulnerable']);
+    expect(radios.map((r) => r.checked)).toEqual([true, false, false]);
+    expect(el.textContent).toContain('Não sofre dano.');
+    expect(field('damage_types')).not.toBeNull();
+    // The rarer fields stay folded: "Todos os tipos de dano, menos" and "Enquanto".
+    expect(field('except')).toBeNull();
+    expect(field('while')).toBeNull();
+  });
+
+  it('puts the card picked in the draft, and the damage types picked from the SRD ones plus the closed words', () => {
+    setup(emptyEffect('resistance'), resistanceMenu());
+    el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click();
+    expect(emitted.at(-1)?.kind).toBe('immune');
+    const select = field('damage_types')!.querySelector('select')!;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(
+      expect.arrayContaining(['Todos os tipos de dano', 'Frio', 'Veneno']),
+    );
+    select.selectedIndex = Array.from(select.options).findIndex((o) => o.text.trim() === 'Frio');
+    select.dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.damageTypes).toEqual(['damage-type:cold']);
+  });
+
+  it('lists the conditions to take none of, and the one a roll mode is against', () => {
+    setup(emptyEffect('condition_immunity'), conditionMenu());
+    const select = field('conditions')!.querySelector('select')!;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(
+      expect.arrayContaining(['Amedrontado', 'Envenenado']),
+    );
+    setup(
+      { ...emptyEffect('roll_mode'), roll: 'advantage', targets: ['save.wis'] },
+      conditionMenu(),
+    );
+    expect(field('against_condition')).toBeNull(); // folded: optional
+    el.querySelector<HTMLButtonElement>('button.more')!.click();
+    fixture.detectChanges();
+    expect(field('against_condition')).not.toBeNull();
   });
 });
 

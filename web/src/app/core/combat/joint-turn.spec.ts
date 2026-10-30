@@ -130,6 +130,8 @@ describe('joint turns (MR-013)', () => {
     expect(npcPlural(['Lutador 1', 'Lutador 2'])).toBe('os Lutadores');
     expect(npcPlural(['Capataz 1', 'Capataz 2'])).toBe('os Capatazes');
     expect(npcPlural(['Gás 1', 'Gás 2'])).toBe('os Gás');
+    expect(npcPlural(['Espada voadora 2', 'Espada voadora 3'])).toBe('as Espadas voadoras');
+    expect(npcPlural(['Cobra de pedra 1', 'Cobra de pedra 2'])).toBe('as Cobras de pedra');
   });
 
   it('lets act only the members whose part has not ended', () => {

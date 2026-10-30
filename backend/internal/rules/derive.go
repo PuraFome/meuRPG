@@ -275,7 +275,7 @@ func issueGroupsOf(code string) issueGroups {
 		return issueGroups{classes: true, race: true, background: true}
 	case IssueSpellCount, IssueSpellLevel, IssueSpellNotOnList, IssueHitPointRolls, IssueLevel:
 		return issueGroups{classes: true}
-	case IssueRaceBonus:
+	case IssueRaceBonus, IssueRaceSize:
 		return issueGroups{race: true}
 	case IssueFormula:
 		return issueGroups{classes: true, race: true, background: true, spells: true}
@@ -319,6 +319,7 @@ func (x *deriver) resolveRace() {
 		x.issue(IssueUnknownKey, "full.race_key", "A raça escolhida não existe no conteúdo %s.", c.version)
 	default:
 		x.race = r
+		x.pickSize()
 	}
 	if x.b.Subrace == "" {
 		return
@@ -332,6 +333,33 @@ func (x *deriver) resolveRace() {
 	default:
 		x.subrace = s
 	}
+}
+
+// pickSize sets the character's size: the race's own, or the one the player picked among the
+// sizes the race offers. A size the race does not offer is an issue, and the race's own counts.
+func (x *deriver) pickSize() {
+	x.d.Size = x.race.Size
+	pick := x.b.Size
+	if pick == "" {
+		return
+	}
+	switch offered := x.c.raceSizes[x.race.Key]; {
+	case slices.Contains(offered, pick):
+		x.d.Size = pick
+	case len(offered) == 0:
+		x.issue(IssueRaceSize, "full.size", "%s não tem escolha de tamanho.", x.c.namePT(x.race.Key))
+	default:
+		x.issue(IssueRaceSize, "full.size", "%s: escolha um destes tamanhos: %s.", x.c.namePT(x.race.Key), strings.Join(x.c.sizeNamesPT(offered), " ou "))
+	}
+}
+
+// sizeNamesPT are the sizes in Portuguese, in the order given.
+func (c *content) sizeNamesPT(sizes []string) []string {
+	out := make([]string, len(sizes))
+	for i, s := range sizes {
+		out[i] = sizeNamePT[s]
+	}
+	return out
 }
 
 // resolveClass looks up the i-th class of the Build and its subclass, and

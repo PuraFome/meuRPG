@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -47,7 +48,7 @@ func (s *Service) readerOf(ctx context.Context, m authz.Membership, asCharacterI
 	if !v.master {
 		return viewer{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master may read as a character"))
 	}
-	id, ok := parseID(asCharacterID)
+	id, ok := uid.Canonical(asCharacterID)
 	if !ok {
 		return viewer{}, errCharacterNotFound()
 	}
@@ -161,7 +162,7 @@ func (s *Service) GetMapVision(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -235,7 +236,7 @@ func (s *Service) ForgetMapVision(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}

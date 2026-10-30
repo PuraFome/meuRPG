@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // Traps, treasure and who knows about them (MR-035, MR-041, RN-10).
@@ -229,7 +230,7 @@ func parseCharacterIDs(raw []string) ([]string, error) {
 	}
 	ids := make([]string, 0, len(raw))
 	for _, r := range raw {
-		id, ok := parseID(r)
+		id, ok := uid.Canonical(r)
 		if !ok {
 			return nil, errCharacterNotFound()
 		}
@@ -259,11 +260,11 @@ func (s *Service) pointCall(ctx context.Context, campaignID, mapID, pointID stri
 	if err != nil {
 		return authz.Membership{}, "", "", err
 	}
-	mid, ok := parseID(mapID)
+	mid, ok := uid.Canonical(mapID)
 	if !ok {
 		return authz.Membership{}, "", "", errMapNotFound()
 	}
-	pid, ok := parseID(pointID)
+	pid, ok := uid.Canonical(pointID)
 	if !ok {
 		return authz.Membership{}, "", "", errPointNotFound()
 	}

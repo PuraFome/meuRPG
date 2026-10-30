@@ -182,22 +182,13 @@ func (s *Service) openVoice(ctx context.Context, row playdb.SessionMessage) (*bl
 	} else if !errors.Is(err, blob.ErrNotFound) {
 		return nil, fmt.Errorf("open the voice: %w", err)
 	}
-	// The voice is made for the line, not for the request that asked: it must not be lost when the
-	// first reader goes away, and the others who wait for it still want it.
-	made := make(chan error, 1)
-	go func() {
-		_, err, _ := s.msgs.flights.Do(row.ID, func() (any, error) {
-			return nil, s.makeVoice(context.WithoutCancel(ctx), row)
-		})
-		made <- err
-	}()
-	select {
-	case err := <-made:
-		if err != nil {
-			return nil, err
-		}
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	// The voice is made for the line, not for the request that asked: the others who wait for it
+	// still want it. It has a timeout of its own and stops when the last of them leaves.
+	err := s.msgs.flights.wait(ctx, row.ID, voiceTailTimeout, func(runCtx context.Context) error {
+		return s.makeVoice(runCtx, row)
+	})
+	if err != nil {
+		return nil, err
 	}
 	obj, err := s.msgs.blobs.Open(ctx, key)
 	if err != nil {
@@ -212,6 +203,9 @@ func (s *Service) openVoice(ctx context.Context, row playdb.SessionMessage) (*bl
 func (s *Service) makeVoice(ctx context.Context, row playdb.SessionMessage) error {
 	s.msgs.gate.Lock()
 	defer s.msgs.gate.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err // nobody waits for it any more, or its time is up: do not start the call
+	}
 	key := audioKey(row.CampaignID, row.ID)
 	if obj, err := s.msgs.blobs.Open(ctx, key); err == nil {
 		_ = obj.Close()

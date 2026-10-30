@@ -367,6 +367,10 @@ func tableRaceOf(te rules.TableEntry, b *rulesv1.TableRace) rules.TableRace {
 	for _, n := range b.GetChoiceBonuses() {
 		r.ChoiceBonuses = append(r.ChoiceBonuses, int(n))
 	}
+	for _, set := range b.GetChoiceBonusSets() {
+		r.ChoiceBonusSets = append(r.ChoiceBonusSets, intsOf(set.GetBonuses()))
+	}
+	r.Sizes = b.GetSizes()
 	return r
 }
 
@@ -400,9 +404,13 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Cost: e.GetCost(), CostMax: e.GetCostMax(), ValuePerPoint: e.GetValuePerPoint(), Heal: e.GetHeal(), TempHP: e.GetTempHp(),
 			Event: e.GetEvent(), Restore: e.GetRestore(), HealPercentMax: int(e.GetHealPercentMax()),
 			StateName: e.GetStateName(), DurationRounds: e.GetDurationRounds(), EndsOn: e.GetEndsOn(),
-			Weapon: e.GetWeapon(), WeaponName: e.GetWeaponName(), AttackAbility: e.GetAttackAbility(), DamageAbility: e.GetDamageAbility(),
+			WeaponName: e.GetWeaponName(), AttackAbility: e.GetAttackAbility(), DamageAbility: e.GetDamageAbility(),
 			AttackBonus: int(e.GetAttackBonus()), DamageBonus: int(e.GetDamageBonus()), ReachFt: int(e.GetReachFt()),
-			AttackName: e.GetAttackName(), DamageDice: e.GetDamageDice(), DamageType: e.GetDamageType(),
+			AttackName: e.GetAttackName(), DamageDice: e.GetDamageDice(),
+			Dice: e.GetDice(), DiceSides: int(e.GetDiceSides()), DamageType: e.GetDamageType(), Weapon: e.GetWeapon(),
+			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
+			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),
+			DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(), Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
 		})
 	}
 	return out
@@ -1073,4 +1081,13 @@ func (v playerView) casting(c *rulesv1.TableCasting) {
 	if c != nil && v.hidden(c.GetListFrom()) {
 		c.ListFrom = ""
 	}
+}
+
+// intsOf is the int32s as ints.
+func intsOf(in []int32) []int {
+	out := make([]int, len(in))
+	for i, n := range in {
+		out[i] = int(n)
+	}
+	return out
 }

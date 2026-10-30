@@ -1,6 +1,7 @@
 import {
   AttackOutcome,
   type AttackRoll,
+  CombatantSide,
   type HeldRollOffer,
   type PendingDamage,
   PendingDamageStatus,
@@ -167,6 +168,36 @@ export function nearestInReach(targets: readonly TargetInReach[]): string {
     }
   }
   return (best ?? targets[0])?.combatantId ?? '';
+}
+
+/** Whether a creature of side `of` is the enemy of one of side `to`: the party against the enemies. An NPC marked "Aliado" is in the
+ * party; no other pairing is hostile. */
+export function isHostile(of: CombatantSide, to: CombatantSide): boolean {
+  return (
+    (of === CombatantSide.PARTY && to === CombatantSide.ENEMY) ||
+    (of === CombatantSide.ENEMY && to === CombatantSide.PARTY)
+  );
+}
+
+/**
+ * The creature an attack starts aimed at: the nearest hostile creature in reach (a player's character, for an NPC); then the
+ * nearest hostile out of reach; never an ally, unless no other creature exists, and then the nearest of the others
+ * (`nearestInReach`). `isFoe` says whether the creature with that id is hostile to the attacker.
+ */
+export function defaultTarget(
+  targets: readonly TargetInReach[],
+  isFoe: (combatantId: string) => boolean,
+): string {
+  const foes = targets.filter((t) => isFoe(t.combatantId));
+  const open = foes.filter((t) => !t.untargetable);
+  const inReach = nearestInReach(open.filter((t) => !t.tooFar));
+  if (inReach !== '') {
+    return inReach;
+  }
+  const byDistance = (a: TargetInReach, b: TargetInReach) =>
+    (a.distanceFt ?? Infinity) - (b.distanceFt ?? Infinity);
+  const out = [...(open.length > 0 ? open : foes)].sort(byDistance)[0];
+  return out?.combatantId ?? nearestInReach(targets);
 }
 
 /** The line about the target after the damage is rolled: "Goblin 2

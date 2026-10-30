@@ -38,7 +38,8 @@ const trimmedText =
       | 'durationRounds'
       | 'weaponName'
       | 'attackName'
-      | 'damageDice',
+      | 'damageDice'
+      | 'dice',
   ): EffectWriter =>
   (d) => {
     const text = d[key].trim();
@@ -64,17 +65,22 @@ const pickedText =
       | 'while'
       | 'event'
       | 'spell'
+      | 'damageType'
       | 'weapon'
+      | 'frequency'
+      | 'appliesTo'
+      | 'spellChange'
+      | 'kind'
+      | 'againstCondition'
       | 'attackAbility'
-      | 'damageAbility'
-      | 'damageType',
+      | 'damageAbility',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
 
 /** A list that is sent (as a copy) when it has something in it. */
 const pickedList =
-  (key: 'targets' | 'from' | 'spells' | 'endsOn'): EffectWriter =>
+  (key: 'targets' | 'from' | 'spells' | 'damageTypes' | 'conditions' | 'endsOn'): EffectWriter =>
   (d) =>
     d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
 
@@ -125,10 +131,21 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['also_with_slot', (d) => (d.alsoWithSlot ? { alsoWithSlot: true } : {})],
   ['ritual_only', (d) => (d.ritualOnly ? { ritualOnly: true } : {})],
   ['counts_as_known', (d) => (d.countsAsKnown ? { countsAsKnown: true } : {})],
+  ['kind', pickedText('kind')],
+  ['damage_types', pickedList('damageTypes')],
+  ['conditions', pickedList('conditions')],
+  ['against_condition', pickedText('againstCondition')],
+  ['dice', trimmedText('dice')],
+  ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
+  ['damage_type', pickedText('damageType')],
+  ['weapon', pickedText('weapon')],
+  ['frequency', pickedText('frequency')],
+  ['no_crit_doubling', (d) => (d.noCritDoubling ? { noCritDoubling: true } : {})],
+  ['applies_to', pickedText('appliesTo')],
+  ['spell_change', pickedText('spellChange')],
   ['state_name', trimmedText('stateName')],
   ['duration_rounds', trimmedText('durationRounds')],
   ['ends_on', pickedList('endsOn')],
-  ['weapon', pickedText('weapon')],
   ['weapon_name', trimmedText('weaponName')],
   ['attack_ability', pickedText('attackAbility')],
   ['damage_ability', pickedText('damageAbility')],
@@ -137,7 +154,6 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['reach_ft', (d) => (rangeFeet(d.reachM) > 0 ? { reachFt: rangeFeet(d.reachM) } : {})],
   ['attack_name', trimmedText('attackName')],
   ['damage_dice', trimmedText('damageDice')],
-  ['damage_type', pickedText('damageType')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'only_proficient',

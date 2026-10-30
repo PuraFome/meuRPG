@@ -56,16 +56,18 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
 | `on_event` | The owner's hook on `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
-| `resistance` | Resistance to every damage type but `except`, while `while` holds. `except` is a damage type of the content (refused at `.except`, `bad_reference`), `while` is `rage` or the `state_name` of a `state` effect of the same entry (refused at `.while`: `bad_reference` for a state nothing defines, `bad_value` for an empty one), and a `when` or `tags` is refused at its own field (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
+| `resistance` | Resistance, immunity or vulnerability (`kind`: `resist`, the default, `immune` or `vulnerable`) to the `damage_types` it lists: `damage-type:` keys of the content, `all` (alone) or `nonmagical_bps` (bludgeoning, piercing and slashing from attacks that are not magical); or to every type but `except`. `except` and `damage_types` exclude each other and one is required. `while` is empty (always), `rage` or the `state_name` of a `state` effect of the same entry (`.while`: `bad_reference` for a state nothing defines). Refusals name the field: `.damage_types` (unknown type, empty, a type twice, `all` mixed with others, both `except` and `damage_types`), `.except` (`bad_reference`), `.kind`, `.while`, and `.when` or `.tags` (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
 | `state` | A temporary state the character turns on and off: a stance, a form. `state_name` (1 to 40 of `a-z`, `0-9`, `_`; the name the entry's other effects read it by; unique in the entry), `duration_rounds` (an Int formula in rounds, 0 to 14,400; empty or 0 lasts until it ends), `ends_on` (any of `dismiss`, `incapacitated`, `short_rest`, `long_rest`), `economy` (`action`, `bonus_action` or `free`, what turning it on costs) and optionally `resource` (as in `grant_action`). At most 8 states for an entry (`limit`). See [States](#states). |
 | `weapon_rule` | Changes the weapon lines its filter picks. `weapon` is `any`, `melee`, `ranged`, `finesse`, `magic` or `named` (then `weapon_name` is the Portuguese name of the weapon); `attack_ability` and `damage_ability` name another ability (the better of it and the weapon's counts); `attack_bonus` and `damage_bonus` are -5 to 10; `reach_ft` (5 to 60, in steps of 5) is a longer melee reach. At least one ability, bonus or reach must be set (refused at `.type`); `weapon_name` is required with `named` and refused otherwise; a reach is refused on `ranged`; no `tags`. Gated by `while` and `when`. |
 | `pseudo_weapon` | An attack line of its own on the sheet: `attack_name`, `weapon` (`melee` or `ranged`), `damage_dice` (`NdS`, N up to 10, S a weapon die), `damage_type`, `ability`, `reach_ft` (melee, 5 to 60, optional) or `range_ft` (ranged, 5 to 300, required; each kind refuses the other's field). It is never an item, counts as a weapon the character is proficient with, and the weapon rules change it too. Gated by `while` and `when`. |
+| `condition_immunity` | `conditions`: the keys of the conditions (`condition:poisoned`, one of the 15 of `combat_effects.json`), listed once each, at least one; refused at `.conditions`. The character takes none of them (see [Effects](rules.md#effects)). |
 | `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
 | `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
+| `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
 
@@ -131,17 +133,23 @@ A resource counts uses; a pool of hit points is not offered.
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
+**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play spends them on the scene check, the concentration save, the effect save and the initiative ([Rests and resources](play/rests-and-resources.md#table-dice-on-the-characters-own-rolls)); the derived sheet lists them as `DerivedSheet.roll_dice`. A number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`); an always-on die has no effect type.
+
 ### Extra damage
 
-`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is fixed damage a feature adds to a weapon hit, once per turn, when the target is what `applies` asks.
+`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `while`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.
 Checked at its fields:
 
 - `applies` is `any_target` or `larger_target` (`.applies`, `bad_value`);
-- `value` is required and compiles (`.value`, `bad_value`, `bad_formula`);
+- `value` (the fixed part, never doubled) and `dice` (an Int formula for how many dice, 1 to 20 once worked out) compile (`.value`, `.dice`, `bad_value`, `bad_formula`); at least one is set;
+- `dice` and `dice_sides` (4, 6, 8, 10 or 12) go together (`.dice`, `.dice_sides`, `bad_value`);
+- `damage_type` is a `damage-type:` key of the content; empty is the weapon's own type (`.damage_type`, `bad_reference`);
+- `weapon` is `any` (empty), `melee` or `ranged`; `frequency` is `once_per_turn` (empty) or `each_hit` (`.weapon`, `.frequency`, `bad_value`);
+- `no_crit_doubling` keeps a critical hit from doubling the dice, and needs dice (`.no_crit_doubling`, `bad_value`);
 - `resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`);
-- any field the type does not read is refused for the entry being written (`economy`, `ability`...), and a feature has at most one (`.type`, `forbidden_effect`).
+- any field the type does not read is refused for the entry being written (`economy`, `ability`, or these fields on another type), and a feature has at most one (`.type`, `forbidden_effect`).
 
-`Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
+`Derive` fills `Derived.ExtraDamages` with the fixed amount and the dice worked out (`Amount`, `Dice`), the damage type, the weapon and the frequency with their defaults; a resource the character does not have at that level leaves the effect out, and so does a formula that gives no damage.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
 
 ### Granted spells
@@ -167,6 +175,24 @@ The effect fills `Derived.GrantedSpells`; `combat.Options` lists each one as a t
 With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends one use of its resource (`NO_USES` when none is left); the combat's undo gives the use back (`actionEvent.GrantUse`).
 Outside a combat a use is spent when the casting starts, so a long casting through a grant has spent it before it ends; a ritual-only grant casts with `as_ritual`.
 A summoning spell is cast with the classes, not through a grant.
+
+### Spell modifier
+
+`spell_modifier` (menu name "Opção de magia"; fields `applies_to`, `spell_change`, `from`, `value`, `damage_type`, `count`, `resource`, `cost`, `when`, `text_pt`; `rules/spellmodifier.go`) is a cast option a feature offers for the spells it fits.
+`applies_to` is `damage_spell` (a spell that rolls damage), `cantrip`, an SRD school key (`school:evocation`) or an SRD damage type key (`damage-type:fire`: a spell that deals damage of that type); `spell_change` is the one change:
+
+| `spell_change` | Fields | What it does |
+| --- | --- | --- |
+| `damage_type_swap` | `from`: at least two different damage types | The damage of a type in the list becomes another type of the list, which the caster picks at the cast |
+| `bonus_damage` | `value`: a formula, 1 to 99 once worked out; `damage_type`: empty is the spell's own | Adds a fixed damage |
+| `extra_dice_per_slot_over` | `count`: 1 to 6 | Adds that many dice of the spell's damage die for each slot level above the spell's own (none for a cantrip) |
+
+`resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`): the option is ticked on the cast sheet and spends `cost` uses of it (the `cost` formula of `grant_action`, empty is 1, checked as there: it needs the resource, is at least 1 and is refused at `.cost` when the resource can never pay it).
+Without a resource, `bonus_damage` and `extra_dice_per_slot_over` are always on and `damage_type_swap` is a free choice.
+A feature has at most one (`.type`, `forbidden_effect`).
+Checked at its fields: `.applies_to` and `.spell_change` (`bad_value`; `bad_reference` for a key the content does not have), `.from`, `.value` (`bad_formula`), `.damage_type` and `.count`; the fields of the other changes, and these fields on any other type, are refused for the entry being written.
+`Derive` fills `Derived.SpellModifiers` with the amounts worked out; a resource the character does not have at that level leaves the effect out.
+How a cast applies it is in [Spells](play/casting.md#casting-in-combat).
 
 ### Ambush
 
@@ -245,8 +271,8 @@ The catalog lists no always-prepared spell for an expanded subclass.
 
 ## Race, subrace, background
 
-- **Race and subrace** (2014 format): ability bonuses, size, speed, darkvision (a sense of the race itself), languages and how many to choose, and the traits as features with effects from the menu.
-  "+2 and +1 of your choice" is the master's option (`ChoiceBonuses`): the player puts the bonuses in the manual ones and `Derive` warns (`race_bonus`) while they do not cover.
+- **Race and subrace** (2014 format): ability bonuses, size, speed, darkvision (a sense of the race itself), languages and how many to choose, and the traits as features with effects from the menu. The bonuses the player places come as `choice_bonuses` (one set, each bonus 1 to 4, at most six) or as `choice_bonus_sets` (up to four sets of 1 to 6 bonuses of +1 or +2, no two the same; a race has one or the other, refused at `.choice_bonus_sets`): the player picks them in "Escolhas", as the half-elf's +1s: a choice of the set when the race has several (`race:x#bonus-set=bonus-set:1`) and, for each distinct bonus of the set, a choice of as many abilities as the set has of it (`race:x#bonus-2=ability:str`). Each ability takes one bonus (a repeated pick is refused as unmet and gives nothing, and the other choices do not offer the ability), `Derive` adds the picks to the race's own bonuses, and the issue `race_bonus` says so until the picks fill the set. A sheet that placed the bonuses in the manual ones before they were picks, covering a set, stands for the picks. `sizes` (`Small`, `Medium`, once each, with the race's own `size` among them) are the sizes the player picks one from, kept in `FullSheet.size`; empty is the race's own size, a size the race does not offer is the issue `race_size`, and `Derived.Size` is the size that counts (the Small heavy-weapon reminder and the combatant's size read it).
+  "+2 and +1 of your choice" is the master's option (`ChoiceBonuses`, a single set): the player picks the abilities in "Escolhas" and `Derive` warns (`race_bonus`) until they are picked.
   A subrace adds bonuses and traits.
 - **Background:** two skills, tools, languages to choose, the equipment as text and the feature, usually a note.
   A table background's equipment reaches `Derive` (`background_equipment_pt`).
@@ -320,7 +346,7 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, `granted_spell_abilities`, `state_ends`, `state_economies`, `weapon_filters`, `weapon_kinds`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_damage_types`, `resistance_kinds`, `resistance_conditions`, `conditions`, `granted_spell_abilities`, `state_ends`, `state_economies`, `weapon_filters`, `weapon_kinds`, skills, languages, tools and tag prefixes.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 

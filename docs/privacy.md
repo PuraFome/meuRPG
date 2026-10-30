@@ -117,6 +117,7 @@ Rows that hold only IDs, numbers and content keys say nothing about a person.
 | Account ID, campaign ID and other game IDs, request path and result, in the API log (no IP, e-mail or name) | Cloud Logging, São Paulo (production); stdout locally | Find the cause of an error and follow a session | Legitimate interest | 30 days in production; see [API logs](#api-logs) |
 | IP, user agent and URL of each request, with Cloud Armor's decision | Cloud Run and load balancer logs in Cloud Logging, São Paulo | Operate and protect the platform | Legitimate interest | 30 days |
 | Client IP in the rate limiters (sign-in and the whole API) | Server memory | Slow down brute force and abuse | Legitimate interest | Minutes; never in the database or the log |
+| A task of the queue of detached work: the kind of work and IDs (campaign, request, export), never a name or free text | Cloud Tasks, São Paulo (the service's region) | Run an image, an export or a sweep after the call that asked for it has answered | Contract | Until the work runs. A task that keeps failing is dropped at most 1 hour after its first attempt (the queue's maximum retry duration, [Operations](operations/runbook.md#11-cloud-tasks)) |
 | Database backups | Cockroach Labs, São Paulo | Disaster recovery | Legitimate interest | At most 30 days ([Operations](operations/reference.md)) |
 
 ### Cookies and the browser
@@ -258,7 +259,7 @@ A vendor outside Brazil that can reach it still makes an international transfer,
 
 | Vendor | What it does | Data | Contract |
 | --- | --- | --- | --- |
-| Google Cloud | Cloud Run, the load balancer and Cloud Armor in front of it, Cloud Logging, Cloud Storage, Secret Manager | Everything, in São Paulo | Data Processing Addendum with the Brazilian standard clauses |
+| Google Cloud | Cloud Run, the load balancer and Cloud Armor in front of it, Cloud Logging, Cloud Storage, Cloud Tasks, Secret Manager | Everything, in São Paulo | Data Processing Addendum with the Brazilian standard clauses |
 | Cockroach Labs (CockroachDB Cloud) | The managed database and its backups, on Google Cloud in São Paulo | The database | **To be defined:** the current contract covers the GDPR |
 | Google (sign-in) | Sign in with Google | Google controls its own account; the app receives only the identifier and the e-mail | Not our processor |
 | Google (Gemini API) | Generates the images the master asks for and the voice of the narrator's and NPCs' lines, through the server | See below. Google may keep data briefly or in cache **in any country**: an international transfer | [Gemini API Paid Services terms](https://ai.google.dev/gemini-api/terms). **To be defined:** the transfer mechanism |

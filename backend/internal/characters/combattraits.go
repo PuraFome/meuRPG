@@ -50,22 +50,34 @@ func withCreatureType(content *rules.Content, monsterKey string, features []rule
 func taggedSavesOf(hints []rules.Hint) []link.TaggedSave {
 	var out []link.TaggedSave
 	for _, h := range hints {
-		against, ok := againstOf(h.Tags)
-		if h.Mode != "advantage" || !ok {
-			continue
+		if t, ok := taggedSaveOf(h); ok {
+			out = append(out, t)
 		}
-		t := link.TaggedSave{Source: h.Source, Against: against}
-		for _, target := range h.Targets {
-			if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
-				t.Abilities = append(t.Abilities, ability)
-			}
-		}
-		if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
-			continue // not only saving throws
-		}
-		out = append(out, t)
 	}
 	return out
+}
+
+// taggedSaveOf is the tagged save a hint gives, when it gives one: an advantage against a kind of source the combat knows
+// ("against:frightened"), or the advantage or disadvantage of a table's roll mode against a condition; on saving
+// throws only.
+func taggedSaveOf(h rules.Hint) (link.TaggedSave, bool) {
+	against, ok := againstOf(h.Tags)
+	if h.AgainstCondition != "" {
+		against, ok = h.AgainstCondition, len(h.Tags) == 0
+	}
+	if !ok || (h.Mode != "advantage" && (h.Mode != "disadvantage" || h.AgainstCondition == "")) {
+		return link.TaggedSave{}, false
+	}
+	if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
+		return link.TaggedSave{}, false // not only saving throws
+	}
+	t := link.TaggedSave{Source: h.Source, Against: against, Disadvantage: h.Mode == "disadvantage"}
+	for _, target := range h.Targets {
+		if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
+			t.Abilities = append(t.Abilities, ability)
+		}
+	}
+	return t, true
 }
 
 // againstOf is the kind of source the tags say the advantage holds against, when it is one the combat knows.
@@ -75,6 +87,20 @@ func againstOf(tags []string) (string, bool) {
 	}
 	kind, ok := strings.CutPrefix(tags[0], "against:")
 	return kind, ok && slices.Contains([]string{combat.AgainstMagic, combat.AgainstFrightened, combat.AgainstCharmed, combat.AgainstPoison}, kind)
+}
+
+// protections are the damage resistances, immunities and vulnerabilities the sheet's features give, and the conditions
+// they make it immune to.
+func protections(content *rules.Content, d rules.Derived) ([]link.Resistance, []link.ConditionImmunity) {
+	var resistances []link.Resistance
+	for _, r := range content.Resistances(d) {
+		resistances = append(resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While, Kind: r.Kind, Nonmagical: r.Nonmagical})
+	}
+	var immunities []link.ConditionImmunity
+	for _, c := range content.ConditionImmunities(d) {
+		immunities = append(immunities, link.ConditionImmunity{Source: c.Source, Conditions: c.Conditions})
+	}
+	return resistances, immunities
 }
 
 // traitsOf reads the combat traits of a derived sheet or stat block.
@@ -125,23 +151,11 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 			t.CreatureType = typ
 		}
 	}
-	for _, r := range content.Resistances(d) {
-		t.Resistances = append(t.Resistances, link.Resistance{Source: r.Source, NamePT: r.NamePT, DamageTypes: r.DamageTypes, While: r.While})
-	}
+	t.Resistances, t.ConditionImmunities = protections(content, d)
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
-	for _, m := range d.Maneuvers {
-		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
-			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
-			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC,
-		})
-	}
-	for _, x := range d.ExtraDamages {
-		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
-			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
-		})
-	}
+	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	return t
 }
 
@@ -154,4 +168,28 @@ func armorTrainingOf(d rules.Derived, kind string, beast *string) rules.ArmorUnt
 		return rules.ArmorUntrained{}
 	}
 	return d.ArmorUntrained
+}
+
+// tableTraitsOf are the maneuvers, extra damages and cast options the character's table features give.
+func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.ExtraDamage, options []link.SpellModifier) {
+	for _, m := range d.Maneuvers {
+		maneuvers = append(maneuvers, link.Maneuver{
+			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
+			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC, Targets: m.Targets,
+		})
+	}
+	for _, x := range d.ExtraDamages {
+		extras = append(extras, link.ExtraDamage{
+			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
+			DiceCount: x.Dice.Count, DiceSides: x.Dice.Sides, NoCritDoubling: x.NoCritDoubling, DamageType: x.DamageType,
+			Weapon: x.Weapon, Frequency: x.Frequency,
+		})
+	}
+	for _, m := range d.SpellModifiers {
+		options = append(options, link.SpellModifier{
+			Key: m.Key, NamePT: m.NamePT, AppliesTo: m.AppliesTo, Change: m.Change, BonusType: m.BonusType, Resource: m.Resource,
+			TextPT: m.TextPT, From: m.From, Bonus: m.Bonus, ExtraDice: m.ExtraDice, Cost: m.Cost,
+		})
+	}
+	return maneuvers, extras, options
 }

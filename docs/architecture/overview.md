@@ -71,7 +71,7 @@ A module reaches another only through that module's `link` package or through a 
 | `system` | `SystemService.GetServerInfo`: the build's version and commit. |
 | `platform` | The shared plumbing: configuration, database, HTTP server, logs, rate limits, dice and more (list below). |
 
-`platform` packages: `blob`, `config`, `db`, `dbtest` (test harness), `dice`, `httpserver`, `idem`, `logging`, `names`, `nostore`, `ratelimit`, `rpcerr`, `rpclog`, `safego`, `secret`, `slowclient`, `tablerules`, `testenv`, `wiring`.
+`platform` packages: `blob`, `config`, `db`, `dbtest` (test harness), `dice`, `httpserver`, `idem`, `logging`, `names`, `nostore`, `ratelimit`, `rpcerr`, `rpclog`, `safego`, `secret`, `slowclient`, `tablerules`, `tasks`, `testenv`, `wiring`.
 
 ### Module boundaries are a test
 

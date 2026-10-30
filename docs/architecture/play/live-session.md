@@ -59,6 +59,7 @@ Events, after `ready`:
 | --- | --- |
 | `heartbeat` | Every 25 s (`DefaultHeartbeat`) |
 | `vitals_changed` | A character's HP, slots or resources changed; to the master and the owner |
+| `attack_hit` | The master applied the damage of an attack to a player's character (`ApplyPendingDamage`): the pending damage's id, the attacker's name (empty when it is hidden: the sheet says "Alguém acertou você"), the amount that landed and the type in Portuguese. To that character's player only. The sheet says it as the attack's ("A Armadura animada acertou você: 5 de dano de concussão.") and not as "O mestre ajustou", also when the attacker is hidden and its log line is the master's alone; a real adjustment keeps "O mestre ajustou". It carries no hit points: they come with `vitals_changed` |
 | `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed` | The map (see [Architecture](../maps/README.md#maps-points-and-tokens)) |
 | `shown_image_changed`, `left_images_changed` | The image on show and the list left with the players |
 | `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed` | Combat (see [Combat log and events](combat-log.md)) |
@@ -220,7 +221,7 @@ Narrator and NPC lines can be heard; players' lines are text only.
 `GET /session-messages/{id}/audio` serves the voice to the readers of the line: the same session, membership and readers rule as the line (`404` for everything else, no oracle), then:
 
 1. The stored file `campaigns/<campaign>/voice/<line>` is served (`Cache-Control: private, no-cache`, `Vary: Cookie`, the line's id as ETag; ranges work).
-2. If none exists, one voice is made at a time per line (`singleflight`; a second request waits for the first and does not pay again), under a server-wide gate that counts the day's voices (`audio_made_at`, Brasília days) against `TTS_DAILY_LIMIT` (`429`, reason `DAILY_LIMIT_REACHED`).
+2. If none exists, one voice is made at a time per line (`voiceFlights`; a second request waits for the first and does not pay again). The making is detached from the request that asked, since the others who wait still want it, but it is bounded: it has its own timeout (3 minutes) and it is canceled when the last reader leaves, so a voice nobody waits for does not hold the gate or call the model; the next request starts it again, under a server-wide gate that counts the day's voices (`audio_made_at`, Brasília days) against `TTS_DAILY_LIMIT` (`429`, reason `DAILY_LIMIT_REACHED`).
 3. `voice.Generator.Speak` calls Gemini (`GEMINI_TTS_MODEL`) with the narrator's voice or the NPC's (`voice.ForNPC`: a hash of the NPC's id over a short list of voices that speak Portuguese well) and answers a WAV; it is stored like an image and served from then on. The older models answer raw 16-bit PCM (`audio/L16;codec=pcm;rate=…`), which gets a WAV header; the newer ones answer a WAV file (`audio/wav`, or bytes that start with `RIFF`), which is kept byte for byte, never wrapped twice. Either is refused above 10 MiB.
 
 Without a key and a model (and without `TTS_GENERATOR=fake`) the route answers `412` with `failed_precondition`, reason `OFF`, after the readers check, and `ListSessionMessages.voice_enabled` is false.

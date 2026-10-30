@@ -18,6 +18,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 - The nightly and manual runs ignore the path filters and test everything. The `backend` workflow's `changes` job lets a pull request that touches no Go, proto or Go-CI file skip the Go jobs.
 - Every job has a `timeout-minutes`, so a stuck test cannot burn the six-hour default.
 - **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend` and `e2e` opens a GitHub issue labelled `ci-red`, or comments on the one already open.
+  It runs only in `PuraFome/meuRPG`: a fork has no issues to report to.
 
 ## Backend
 

@@ -8,6 +8,7 @@ import type {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
+import { visibleFields } from './effect-visible';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 
 export type { EffectDraft, EffectInit } from './effect-draft.types';
@@ -74,10 +75,21 @@ export function emptyEffect(type = ''): EffectDraft {
     alsoWithSlot: false,
     ritualOnly: false,
     countsAsKnown: false,
+    dice: '',
+    diceSides: 0,
+    damageType: '',
+    weapon: '',
+    frequency: '',
+    noCritDoubling: false,
+    appliesTo: '',
+    spellChange: '',
+    damageTypes: [],
+    kind: '',
+    conditions: [],
+    againstCondition: '',
     stateName: '',
     durationRounds: '',
     endsOn: [],
-    weapon: '',
     weaponName: '',
     attackAbility: '',
     damageAbility: '',
@@ -86,7 +98,6 @@ export function emptyEffect(type = ''): EffectDraft {
     reachM: '',
     attackName: '',
     damageDice: '',
-    damageType: '',
   };
 }
 
@@ -137,10 +148,21 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     alsoWithSlot: e.alsoWithSlot,
     ritualOnly: e.ritualOnly,
     countsAsKnown: e.countsAsKnown,
+    dice: e.dice,
+    diceSides: e.diceSides,
+    damageType: e.damageType,
+    weapon: e.weapon,
+    frequency: e.frequency,
+    noCritDoubling: e.noCritDoubling,
+    appliesTo: e.appliesTo,
+    spellChange: e.spellChange,
+    damageTypes: [...e.damageTypes],
+    kind: e.kind,
+    conditions: [...e.conditions],
+    againstCondition: e.againstCondition,
     stateName: e.stateName,
     durationRounds: e.durationRounds,
     endsOn: [...e.endsOn],
-    weapon: e.weapon,
     weaponName: e.weaponName,
     attackAbility: e.attackAbility,
     damageAbility: e.damageAbility,
@@ -149,7 +171,6 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     reachM: rangeMeters(e.reachFt),
     attackName: e.attackName,
     damageDice: e.damageDice,
-    damageType: e.damageType,
   };
 }
 
@@ -157,7 +178,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
  * list is not sent: the server reads "not set" the same way. */
 export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   const out: EffectInit = { type: d.type };
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     Object.assign(out, EFFECT_WRITERS.get(f.name)?.(d));
   }
   return out;
@@ -286,8 +307,26 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty. */
+/** The required closed-list fields of the action, maneuver, resistance, spell and condition types, by name: whether each is still empty. */
+const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
+  event: (d) => d.event === '',
+  economy: (d) => d.economy === '',
+  applies: (d) => d.applies === '',
+  except: (d) => d.except === '',
+  while: (d) => d.while === '',
+  spell: (d) => d.spell === '',
+  ability: (d) => d.ability === '',
+  conditions: (d) => d.conditions.length === 0,
+  applies_to: (d) => d.appliesTo === '',
+  spell_change: (d) => d.spellChange === '',
+};
+
+/** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty: the table's own, else the draft's string of that name. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
+  const own = CHOICE_EMPTY[name];
+  if (own) {
+    return own(d);
+  }
   const v = d[name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft];
   return typeof v === 'string' && v.trim() === '';
 }
@@ -295,7 +334,7 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [];
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     if (!f.required) {
       continue;
     }

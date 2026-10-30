@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   ElementRef,
   Injector,
   afterNextRender,
@@ -35,21 +36,29 @@ let nextWhy = 0;
           <button mat-stroked-button type="button" class="ask__go" (click)="confirm()">Passar o turno</button>
         </div>
       </div>
+    } @else if (passing()) {
+      <div class="ask" role="alertdialog" aria-labelledby="idle-title" (keydown.escape)="passing.set(false)">
+        <p class="ask__title" id="idle-title">Passar a vez de {{ idle() }}, que ainda não agiu?</p>
+        <div class="ask__buttons">
+          <button #safe mat-stroked-button type="button" (click)="passing.set(false)">Cancelar</button>
+          <button mat-flat-button type="button" class="ask__pass" (click)="pass()">Passar a vez</button>
+        </div>
+      </div>
     } @else {
       <button
         mat-flat-button
         type="button"
         class="next"
-        [class.next--off]="waiting()"
-        [disabled]="busy() || waiting()"
+        [class.next--off]="off()"
+        [disabled]="busy() || off()"
         disabledInteractive
-        [attr.aria-describedby]="waiting() && why() ? whyId : null"
+        [attr.aria-describedby]="off() && reason() ? whyId : null"
         (click)="press()"
       >
         <mat-icon aria-hidden="true">skip_next</mat-icon>{{ label() }}
       </button>
-      @if (waiting() && why()) {
-        <p class="why" [id]="whyId"><mat-icon aria-hidden="true">lock</mat-icon>{{ why() }}</p>
+      @if (off() && reason()) {
+        <p class="why" [id]="whyId"><mat-icon aria-hidden="true">lock</mat-icon>{{ reason() }}</p>
       }
     }
   `,
@@ -129,11 +138,20 @@ let nextWhy = 0;
         flex: 1 1 0;
         min-width: max-content;
         white-space: nowrap;
-        background: var(--mr-surface);
+
+        &:not(.ask__pass) {
+          background: var(--mr-surface);
+        }
 
         @media (min-width: 768px) {
           --mat-button-outlined-container-height: 44px;
         }
+      }
+
+      .ask__pass {
+        --mat-button-filled-container-height: 48px;
+        flex: 1 1 0;
+        min-width: max-content;
       }
 
       .ask__go {
@@ -155,13 +173,22 @@ export class NextTurn {
   readonly waiting = input(false);
   /** Why it cannot pass, written under the button and linked to it ("Responda ao pedido abaixo para seguir."), or `''`. */
   readonly why = input('');
+  /** A joint turn: each member ends its part from the Turno panel, so the button stays in its place, off, and says so. */
+  readonly joint = input(false);
+  protected readonly off = computed(() => this.waiting() || this.joint());
+  protected readonly reason = computed(() =>
+    this.joint() ? 'Cada um encerra a parte no painel Turno' : this.why(),
+  );
   protected readonly whyId = `next-why-${nextWhy++}`;
   /** Whose turn it is and the round: the question belongs to one turn. */
   readonly turn = input('');
   /** `true` when the master passes the turn although a damage waits. */
   readonly next = output<boolean>();
 
+  /** The player character on turn who has not acted yet ("Toren"), or `''`: passing their turn is asked first. */
+  readonly idle = input('');
   protected readonly asking = signal(false);
+  protected readonly passing = signal(false);
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
@@ -173,12 +200,19 @@ export class NextTurn {
       this.turn();
       this.waiting();
       this.busy();
+      this.idle();
       this.asking.set(false);
+      this.passing.set(false);
     });
   }
 
   protected press(): void {
-    if (this.waiting()) {
+    if (this.off()) {
+      return;
+    }
+    if (this.idle() && !this.pendingNote()) {
+      this.passing.set(true);
+      afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
       return;
     }
     if (!this.pendingNote()) {
@@ -187,6 +221,13 @@ export class NextTurn {
     }
     this.asking.set(true);
     afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected pass(): void {
+    this.passing.set(false);
+    if (!this.waiting() && !this.busy()) {
+      this.next.emit(false);
+    }
   }
 
   protected confirm(): void {

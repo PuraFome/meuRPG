@@ -170,6 +170,8 @@ export interface CharacterFormValue {
   cuttingWordsAsk: CuttingWordsAskKey;
   /** The feats of the sheet (`FullSheet.feat_keys`, MR-025). Set by the master's editor only: absent, the save keeps the stored feats. */
   featKeys?: string[];
+  /** The size picked among the ones the race offers (`FullSheet.size`, not the NPC's `size`); `''` is the race's own. */
+  raceSize?: string;
   /** A feat taken in place of an improvement (`FullSheet.feat_slots`), carried with `featKeys`; the server drops the slot of a removed feat. */
   featSlots?: Record<string, string>;
 }
@@ -251,6 +253,11 @@ export interface RaceOptionVm extends TableMark {
   readonly constitutionBonus: number;
   /** "+2 and +1 to your choice" as [2, 1]: the player places them in the manual bonuses; empty for the SRD's races. */
   readonly choiceBonuses: readonly number[];
+  /** Alternative sets of such bonuses, of which the player picks one ([[2, 1], [1, 1, 1]]); absent means none (`Race.choice_bonus_sets`). */
+  readonly choiceBonusSets?: readonly (readonly number[])[];
+  /** The sizes the player picks one from ("Small", "Medium"), and the race's own (`Race.sizes`, `Race.size`); absent means no choice. */
+  readonly sizes?: readonly string[];
+  readonly size?: string;
   /** The skills its traits give (`Race.skill_keys`), which the player does not choose; absent means none. */
   readonly skillKeys?: readonly string[];
   readonly subraces: readonly SubraceOptionVm[];

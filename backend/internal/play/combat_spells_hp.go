@@ -340,6 +340,9 @@ func (s *Service) giveCondition(ctx context.Context, c *combatTx, t playdb.Comba
 	if key == "" || slices.Contains(t.Conditions, key) || len(t.Conditions) >= maxConditions {
 		return nil
 	}
+	if immune, err := c.immuneToCondition(ctx, t, key); err != nil || immune {
+		return err
+	}
 	return s.setCondition(ctx, c, t, append(slices.Clone(t.Conditions), key), h)
 }
 

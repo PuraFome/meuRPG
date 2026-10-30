@@ -5,12 +5,22 @@ import { CheckRow } from './check-row';
 import { FieldNote } from './field-note';
 import { NumberStepper } from './number-stepper';
 import { PickList } from './pick-list';
+import { RadioCards, type RadioCard } from './radio-cards';
 import { SelectField, type SelectOption } from './select-field';
 import { SwitchField } from './switch-field';
 import { TextField } from './text-field';
 
 @Component({
-  imports: [CheckRow, FieldNote, NumberStepper, PickList, SelectField, SwitchField, TextField],
+  imports: [
+    CheckRow,
+    FieldNote,
+    NumberStepper,
+    PickList,
+    RadioCards,
+    SelectField,
+    SwitchField,
+    TextField,
+  ],
   template: `
     <app-text-field label="Nome" [value]="name()" path="table_spell.name_pt" [issues]="issues()" hint="Dica." (valueChange)="name.set($event)" />
     <app-select-field label="Escola" [options]="options" [value]="school()" path="table_spell.school_key" (valueChange)="school.set($event)" />
@@ -18,6 +28,7 @@ import { TextField } from './text-field';
     <app-switch-field label="Ritual" [checked]="on()" (toggled)="on.set($event)" />
     <app-check-row label="V" [checked]="on()" (toggled)="on.set($event)" />
     <app-number-stepper label="Sabedoria" [value]="n()" [min]="-4" [max]="4" (valueChange)="n.set($event)" />
+    <app-radio-cards label="O que acontece" [options]="cards" [value]="card()" path="table_race.traits[0].effects[0].kind" [issues]="issues()" (valueChange)="card.set($event)" />
     <app-field-note id="note" [issues]="issues()" />
   `,
 })
@@ -29,6 +40,12 @@ class Host {
   readonly off = signal(false);
   readonly hintText = signal('');
   readonly n = signal(0);
+  readonly card = signal('resist');
+  readonly cards: RadioCard[] = [
+    { value: 'resist', label: 'Resistência', hint: 'Sofre metade do dano.' },
+    { value: 'immune', label: 'Imunidade', hint: 'Não sofre dano.' },
+    { value: 'vulnerable', label: 'Vulnerabilidade' },
+  ];
   readonly issues = signal<string[]>([]);
   readonly options: SelectOption[] = [
     { value: 'a', label: 'Alfa' },
@@ -129,6 +146,25 @@ describe('form fields', () => {
     const box = el.querySelector<HTMLInputElement>('app-check-row input')!;
     box.click();
     expect(host().on()).toBe(true);
+  });
+
+  it('radio cards: one native radio per card with its line, the checked one on, the path on the first', () => {
+    const radios = Array.from(
+      el.querySelectorAll<HTMLInputElement>('app-radio-cards input[type="radio"]'),
+    );
+    expect(radios.map((r) => r.value)).toEqual(['resist', 'immune', 'vulnerable']);
+    expect(radios.map((r) => r.checked)).toEqual([true, false, false]);
+    expect(radios[0].getAttribute('data-field')).toBe('table_race.traits[0].effects[0].kind');
+    expect(radios[1].hasAttribute('data-field')).toBe(false);
+    expect(radios.every((r) => r.name === radios[0].name && r.name !== '')).toBe(true);
+    expect(text(el.querySelector('app-radio-cards')!)).toContain('Sofre metade do dano.');
+    radios[1].click();
+    fixture.detectChanges();
+    expect(host().card()).toBe('immune');
+    expect(radios.map((r) => r.checked)).toEqual([false, true, false]);
+    expect(
+      el.querySelector('app-radio-cards [role="radiogroup"]')!.getAttribute('aria-label'),
+    ).toBe('O que acontece');
   });
 
   it('stepper: minus and plus stop at the limits and the value reads with its sign', () => {

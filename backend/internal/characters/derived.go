@@ -70,6 +70,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	out.Resistances = mapToProto(d.Resistances, resistanceToProto)
 	out.Languages = mapToProto(d.Languages, func(l rules.NamedKey) string { return l.NamePT })
 	out.Proficiencies = proficienciesToProto(d.Proficiencies)
+	out.RollDice = rollDiceToProto(d.Maneuvers)
 	out.Hints = mapToProto(d.Hints, func(h rules.Hint) *rulesv1.Hint { return &rulesv1.Hint{SourceKey: h.Source, Text: h.TextPT} })
 	out.Issues = mapToProto(d.Issues, func(is rules.Issue) *rulesv1.Issue {
 		return &rulesv1.Issue{Code: is.Code, Field: is.Field, Message: is.Message}
@@ -96,6 +97,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
 		ShieldIdle:            d.ShieldIdle,
+		Size:                  d.Size,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
 		SpeedWalkFt:           i32(d.SpeedWalkFt),
@@ -398,7 +400,17 @@ func raceToProto(r rules.RaceEntry) *rulesv1.Race {
 	return &rulesv1.Race{
 		Key: r.Key, Name: r.Name, NamePt: r.NamePT, SpeedFt: i32(r.SpeedFt), AbilityBonuses: abilityScores(r.AbilityBonuses),
 		Archived: r.Archived, Off: r.Off, ChoiceBonuses: int32s(r.ChoiceBonuses), SkillKeys: r.SkillProficiencies,
+		ChoiceBonusSets: bonusSetsToProto(r.ChoiceBonusSets), Sizes: r.Sizes, Size: r.Size,
 	}
+}
+
+// bonusSetsToProto is a race's alternative sets of bonuses to place.
+func bonusSetsToProto(sets [][]int) []*rulesv1.BonusSet {
+	var out []*rulesv1.BonusSet
+	for _, s := range sets {
+		out = append(out, &rulesv1.BonusSet{Bonuses: int32s(s)})
+	}
+	return out
 }
 
 func subraceToProto(s rules.SubraceEntry) *rulesv1.Subrace {
@@ -510,6 +522,21 @@ func openChoices(d rules.Derived) []*charactersv1.OpenChoice {
 	var out []*charactersv1.OpenChoice
 	for _, o := range d.OpenChoices {
 		out = append(out, &charactersv1.OpenChoice{Kind: openChoiceKinds[o.Kind], Missing: i32(o.Missing)})
+	}
+	return out
+}
+
+// rollDiceToProto lists the table dice that go on the character's own rolls: the maneuvers of applies check,
+// save and initiative.
+func rollDiceToProto(ms []rules.Maneuver) []*rulesv1.RollDie {
+	var out []*rulesv1.RollDie
+	for _, m := range ms {
+		if m.Applies != rules.ManeuverCheck && m.Applies != rules.ManeuverSave && m.Applies != rules.ManeuverInitiative {
+			continue
+		}
+		out = append(out, &rulesv1.RollDie{
+			Key: m.Key, NamePt: m.NamePT, Applies: m.Applies, Sides: i32(m.Sides), Resource: m.Resource, Targets: m.Targets, Ability: m.Ability, TextPt: m.TextPT,
+		})
 	}
 	return out
 }

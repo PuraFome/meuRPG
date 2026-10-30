@@ -45,7 +45,7 @@ type ChoiceResistance struct {
 // raise some (the half-elf's two +1), in the order of the race's list.
 func (x *deriver) pickedAbilities() []Ability {
 	r := x.race
-	if r == nil || r.AbilityBonusChoices == nil || len(x.c.raceChoice[r.Key]) > 0 {
+	if r == nil || r.AbilityBonusChoices == nil || len(x.c.raceBonusSets(r.Key)) > 0 {
 		return nil
 	}
 	key := AbilityChoiceKey(r.Key)
@@ -221,12 +221,13 @@ func (cb *choiceBuilder) results(set *ChoiceSet) {
 // Sabedoria 14 → 15".
 func (cb *choiceBuilder) abilityResult(ch *Choice) string {
 	d := cb.derive()
+	bonus := max(bonusOfChoiceKey(ch.Key), 1) // the half-elf's picks are +1
 	var parts []string
 	for _, k := range ch.Picked {
 		a := Ability(strings.TrimPrefix(k, abilityPrefix))
 		for _, ab := range d.Abilities {
 			if ab.Ability == a {
-				parts = append(parts, fmt.Sprintf("%s %d → %d", cb.c.namePT(string(a)), ab.Score-1, ab.Score))
+				parts = append(parts, fmt.Sprintf("%s %d → %d", cb.c.namePT(string(a)), ab.Score-bonus, ab.Score))
 			}
 		}
 	}

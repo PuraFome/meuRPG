@@ -401,8 +401,8 @@ func TestTheGateIsOnTheMenuOfEveryTypeThatReadsIt(t *testing.T) {
 			t.Errorf("type %s reads the gate but its menu has no while", typ)
 			continue
 		}
-		if f := menu.Types[i].Fields[j]; f.Kind != "state_ref" || f.Required != (typ == "resistance") {
-			t.Errorf("type %s: while = %+v, want a state reference, required only for a resistance", typ, f)
+		if f := menu.Types[i].Fields[j]; f.Kind != "state_ref" || f.Required {
+			t.Errorf("type %s: while = %+v, want an optional state reference", typ, f)
 		}
 		if !slices.Contains(ownFields[typ], "while") {
 			t.Errorf("type %s: while is not in its own fields", typ)

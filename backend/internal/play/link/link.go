@@ -184,26 +184,47 @@ type Sheet struct {
 type Maneuver struct {
 	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
 	Sides, SaveDC                                            int
+	// Targets are the skills ("skill.stealth") and abilities ("check.dex") a die on ability checks goes on;
+	// empty is every ability check.
+	Targets []string
 }
 
-// ExtraDamage is damage a table feature adds to a weapon hit once per turn (the engine's extra_damage
-// effect): Applies says what it asks of the target ("any_target" or "larger_target"), Resource the
-// uses it spends ("" for none) and Amount the fixed damage, never doubled by a critical hit.
+// ExtraDamage is damage a table feature adds to a weapon hit (the engine's extra_damage effect):
+// Applies says what it asks of the target ("any_target" or "larger_target"), Resource the uses it
+// spends ("" for none), Amount the fixed damage (never doubled by a critical hit) and DiceCount d
+// DiceSides the dice (0 for none; a critical hit doubles them unless NoCritDoubling). DamageType is
+// the damage's own type, empty for the weapon's. Weapon ("any", "melee" or "ranged") says which weapon
+// attacks it goes with and Frequency ("once_per_turn" or "each_hit") how often.
 type ExtraDamage struct {
 	Key, NamePT, Applies, Resource, TextPT string
-	Amount                                 int
+	DamageType, Weapon, Frequency          string
+	Amount, DiceCount, DiceSides           int
+	NoCritDoubling                         bool
+}
+
+// SpellModifier is a cast option a table feature offers (the engine's spell_modifier effect): AppliesTo
+// says which spells it fits ("damage_spell", "cantrip", a school key or a damage type key) and Change what
+// it does ("damage_type_swap", "bonus_damage" or "extra_dice_per_slot_over"). From are the types a swap is
+// among, Bonus and BonusType the fixed damage and its type (empty is the spell's), ExtraDice the dice per
+// slot level above the spell's own, and Resource the resource each use spends ("" for none).
+type SpellModifier struct {
+	Key, NamePT, AppliesTo, Change, BonusType, Resource, TextPT string
+	From                                                        []string
+	Bonus, ExtraDice, Cost                                      int
 }
 
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
 
-// TaggedSave is an advantage on saving throws against one kind of source ("magic", "frightened", "charmed",
-// "poison"), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
+// TaggedSave is an advantage (or a disadvantage, Disadvantage) on saving throws against one kind of source ("magic",
+// "frightened", "charmed", "poison", or a condition key such as "condition:frightened" for a table's roll mode against
+// a condition), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
 // empty).
 type TaggedSave struct {
 	Source, Against string
 	Abilities       []string
+	Disadvantage    bool `json:",omitempty"`
 }
 
 // Traits are what a sheet has that changes how its owner rolls and what its
@@ -250,12 +271,16 @@ type Traits struct {
 	StealthDisadvantage bool
 	// ArmorUntrained says the character wears armor or a shield it is not proficient with.
 	ArmorUntrained bool
-	// Resistances are the damage resistances the features and traits give.
+	// Resistances are the damage resistances, immunities and vulnerabilities the features and traits give.
 	Resistances []Resistance
+	// ConditionImmunities are the conditions the features and traits make the sheet immune to.
+	ConditionImmunities []ConditionImmunity `json:",omitempty"`
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
 	ExtraDamages []ExtraDamage
+	// SpellModifiers are the cast options the table's features offer (spell_modifier effects).
+	SpellModifiers []SpellModifier
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
@@ -279,6 +304,16 @@ type Resistance struct {
 	Source, NamePT string
 	DamageTypes    []string
 	While          string
+	// Kind is rules.ResistanceKindResist, ResistanceKindImmune or ResistanceKindVulnerable, and Nonmagical
+	// limits it to the damage of attacks that are not magical.
+	Kind       string `json:",omitempty"`
+	Nonmagical bool   `json:",omitempty"`
+}
+
+// ConditionImmunity is a condition the sheet takes none of, with the trait that says so.
+type ConditionImmunity struct {
+	Source     string
+	Conditions []string
 }
 
 // Senses are a creature's special senses, as a range in feet (0 for none).
@@ -397,8 +432,9 @@ type Dice struct {
 // the slot level the spell is cast with (MR-014).
 type Spell struct {
 	Key, Name string
-	// Level is the spell's own level, 0 for a cantrip.
-	Level int
+	// Level is the spell's own level, 0 for a cantrip, and School its school's key ("school:evocation").
+	Level  int
+	School string
 	// Economy is "action", "bonus_action" or "reaction"; "" for a casting time
 	// too long for a fight.
 	Economy       string
