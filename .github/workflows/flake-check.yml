@@ -170,6 +170,7 @@ jobs:
           echo "playwright exit code: $?"
 
       - name: Count the runs
+        shell: bash
         env:
           SIDE: ${{ matrix.side }}
           RUNNER: ${{ matrix.runner }}
@@ -246,7 +247,14 @@ jobs:
           go test -race -json -timeout 35m -count="$REPEATS" -run "$TEST" "$PACKAGE" > "$RUNNER_TEMP/go.jsonl"
           echo "go test exit code: $?"
 
+      - name: Set up Node
+        if: ${{ !cancelled() }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
       - name: Count the runs
+        shell: bash
         env:
           SIDE: ${{ matrix.side }}
           RUNNER: ${{ matrix.runner }}

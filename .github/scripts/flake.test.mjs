@@ -131,9 +131,9 @@ test('parseGo keeps the seed -shuffle=on printed and a command to run the packag
     ev({ Action: 'fail', Package: 'github.com/x/backend/internal/play', Test: 'TestA' }),
     ev({ Action: 'fail', Package: 'github.com/x/backend/internal/play' }),
   ].join('\n');
-  const got = parseGo(lines, 3);
+  const got = parseGo(lines, 3, '^(TestA)$');
   assert.equal(got.failures[0].seed, '4242');
-  assert.equal(got.failures[0].replay, 'cd backend && go test -race -shuffle=4242 -count=3 github.com/x/backend/internal/play');
+  assert.equal(got.failures[0].replay, "cd backend && MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' MEURPG_REQUIRE_DB=1 go test -race -shuffle=4242 -count=3 -run '^(TestA)$' github.com/x/backend/internal/play");
   // The seed line is never the signature of a package that failed with no test.
   const bare = parseGo([ev({ Action: 'output', Package: 'p', Output: '-test.shuffle 1\n' }), ev({ Action: 'output', Package: 'p', Output: 'FAIL\tp [build failed]\n' }), ev({ Action: 'fail', Package: 'p' })].join('\n'));
   assert.equal(bare.failures[0].signature, 'FAIL p [build failed]');
@@ -168,4 +168,11 @@ test('the verdict is incomplete when a side has fewer runners than expected, or 
   assert.equal(verdict(sides, 2).kind, 'clean');
   assert.equal(verdict(sides, 3).kind, 'incomplete');
   assert.equal(verdict(aggregate([]), 2).kind, 'incomplete');
+});
+
+test('issueBody caps a long list of failures', () => {
+  const failures = Array.from({ length: 80 }, (_, i) => ({ kind: 'go', test: `Test${i}`, signature: 'boom' }));
+  const body = issueBody(failures);
+  assert.equal(body.match(/\*\*Go\*\*/g).length, 50);
+  assert.match(body, /e mais 30 falhas/);
 });

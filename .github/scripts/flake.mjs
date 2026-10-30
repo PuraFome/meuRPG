@@ -82,7 +82,7 @@ export function parsePlaywright(report) {
 const GO_SIGNATURE = /^(panic:|fatal error:|WARNING: DATA RACE|.+_test\.go:\d+:|.+\.go:\d+:\d+: )/;
 
 /** `go test -json` events (one JSON per line): every top-level test is a run, a package that fails with no test is one too. */
-export function parseGo(text, count = 1) {
+export function parseGo(text, count = 1, run = '') {
   const out = { passed: 0, failed: 0, failures: [] };
   const seeds = new Map(); // package -> the seed -shuffle=on chose, which the output prints
   const lines = new Map(); // "pkg\ttest" -> its output
@@ -141,7 +141,7 @@ export function parseGo(text, count = 1) {
     const seed = seeds.get(f.pkg);
     if (seed) {
       f.seed = seed;
-      f.replay = `cd backend && go test -race -shuffle=${seed} -count=${count} ${f.pkg}`;
+      f.replay = `cd backend && MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' MEURPG_REQUIRE_DB=1 go test -race -shuffle=${seed} -count=${count}${run ? ` -run '${run}'` : ''} ${f.pkg}`;
     }
   }
   return out;
@@ -255,15 +255,26 @@ export function issueBody(failures, { sha = '?', url = '?', seed = '?' } = {}) {
     '',
   ];
   const seen = new Set();
+  let listed = 0;
+  let more = 0;
   for (const f of failures) {
     const key = `${f.kind}\t${f.test}\t${f.signature}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    // A stack that is down fails every test: GitHub refuses a comment over 65,536 characters, so the list is capped.
+    if (listed >= ISSUE_MAX_FAILURES) {
+      more++;
+      continue;
+    }
+    listed++;
     out.push(`- **${f.kind === 'go' ? 'Go' : 'Playwright'}** \`${f.test.replace(/`/g, "'")}\``, `  - assinatura: \`${f.signature.replace(/`/g, "'")}\``);
     if (f.replay) out.push(`  - repetir: \`${f.replay.replace(/`/g, "'")}\``);
   }
-  return out.join('\n') + '\n';
+  if (more > 0) out.push(`- ... e mais ${more} falha${more === 1 ? '' : 's'}: veja os artefatos da execução.`);
+  return out.join('\n').slice(0, 60000) + '\n';
 }
+
+const ISSUE_MAX_FAILURES = 50;
 
 function flag(args, name) {
   const i = args.indexOf(`--${name}`);
@@ -289,7 +300,7 @@ function main(argv) {
   if (cmd === 'parse') {
     const text = fs.existsSync(b) ? fs.readFileSync(b, 'utf8') : '';
     const missing = text.trim() === '';
-    const parsed = a === 'go' ? parseGo(text, Number(flag(argv, 'count') ?? 1)) : missing ? { passed: 0, failed: 0, failures: [] } : parsePlaywrightText(text);
+    const parsed = a === 'go' ? parseGo(text, Number(flag(argv, 'count') ?? 1), flag(argv, 'run') ?? '') : missing ? { passed: 0, failed: 0, failures: [] } : parsePlaywrightText(text);
     const replay = flag(argv, 'replay');
     if (replay) for (const f of parsed.failures) f.replay = replay;
     const none = parsed.passed + parsed.failed === 0;
