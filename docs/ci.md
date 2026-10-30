@@ -8,7 +8,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 
 | Workflow | Runs on | Jobs |
 | --- | --- | --- |
-| `backend` | PRs and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
+| `backend` | PRs (all of a train) and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
 | `web` | `web/`, `.node-version`, the workflow | `test and build`, `coverage` |
 | `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change; nightly; manual | `plan`, `lint and typecheck`, `images`, `playwright` shards, `report` |
 | `codeql` | PRs touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
@@ -19,10 +19,24 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | `flake-check` | Manual only | `plan`, `images`, `playwright` or `go` runners, `summary`: [flake-check](#flake-check) |
 
 - A new run of the same PR cancels the previous one. A push to `main` never cancels a run in progress, but GitHub keeps only one waiting run per workflow, so in a burst of merges an intermediate commit may get no run of its own. Deploy only a commit whose own run passed.
-- The nightly and manual runs ignore the path filters and test everything. The `backend` workflow's `changes` job lets a pull request that touches no Go, proto or Go-CI file skip the Go jobs.
 - Every job has a `timeout-minutes`, so a stuck test cannot burn the six-hour default.
-- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend`, `e2e` and `osv-scan` opens a GitHub issue labelled `ci-red`, or comments on the one already open.
+- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend`, `e2e` and `osv-scan` opens a GitHub issue labelled `ci-red`, or comments on the one it opened: each job finds its own issue by its exact title (`CI vermelho: <workflow> na main`) and never writes into another one.
   It runs only in `PuraFome/meuRPG`: a fork has no issues to report to.
+
+### What runs when
+
+The `Runs on` column above is what each workflow judges. Whether it runs for an event is decided in the jobs, not by a `paths` filter on the pull request, so that a train can run everything:
+
+| Where and what | Runs |
+| --- | --- |
+| `PuraFome/meuRPG`, any trigger | Everything the workflow lists: pushes to `main`, the schedules, pull requests, manual runs |
+| Any other repository (the fork `vfraga/meuRPG`) | Only `pull_request` and `workflow_dispatch`. A push to the fork (a train branch pushed there for `flake-check`, or a sync of `main`) and a schedule start nothing: every job is skipped by a job-level `if` |
+| A pull request from `refactor/train-*` | The full gate, whatever it changes (a docs-only train included): `e2e` runs every `@a11y` shard, `backend` every `go-db` group and the Go jobs, and `web`, `workflows-lint`, `osv-scan` and `codeql` run |
+| Any other pull request | The workflows whose files it changes (the `Runs on` column), and within `backend` and `e2e` the Go jobs and the `@a11y` shards only when it touches what they judge. The fork's draft pull requests, the preflights, rely on this |
+| Nightly and manual runs | Everything, with no path selection |
+
+`.github/scripts/gate-select.sh` makes the choice (its tests: `gate-select.test.mjs`); the `changes`, `plan` and `select` jobs call it. A pull request that touches no file of a workflow still starts it, and its jobs are skipped.
+`nightly-hunt` runs only in `PuraFome/meuRPG`; `flake-check` and `repeat-changed` are described below.
 
 ## Backend
 
@@ -192,7 +206,7 @@ The fix is in the test (wait for the condition that matters, own the state it ne
 
 ### flake-check
 
-`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners.
+`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), so it never takes the gate's runners. The fork holds a train branch only once it is pushed there: run `git push fork refactor/train-<n>` before the dispatch.
 
 Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check.yml --repo vfraga/meuRPG --ref <train branch> -f kind=playwright -f test='<title>'`. `--ref` names the train branch: it is the head, and the run's caches are scoped to that branch. The base is always the repository's default branch (`main`). There are no ref inputs: the run never checks out a ref it was given as text, so a dispatch cannot run code from a ref of its choosing in the default branch's context.
 
