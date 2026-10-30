@@ -18,7 +18,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 - A new run of the same PR cancels the previous one. A push to `main` never cancels a run in progress, but GitHub keeps only one waiting run per workflow, so in a burst of merges an intermediate commit may get no run of its own. Deploy only a commit whose own run passed.
 - The nightly and manual runs ignore the path filters and test everything. The `backend` workflow's `changes` job lets a pull request that touches no Go, proto or Go-CI file skip the Go jobs.
 - Every job has a `timeout-minutes`, so a stuck test cannot burn the six-hour default.
-- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend` and `e2e` opens a GitHub issue labelled `ci-red`, or comments on the one already open.
+- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend`, `e2e` and `osv-scan` opens a GitHub issue labelled `ci-red`, or comments on the one already open.
   It runs only in `PuraFome/meuRPG`: a fork has no issues to report to.
 
 ## Backend
@@ -127,7 +127,7 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 
 Two scans look for known vulnerabilities, and they answer different questions.
 
-- **`govulncheck`** (a job of `backend`, so it runs with the other Go jobs, on pushes to `main` and nightly) reports only the vulnerabilities in code the backend **calls**, in a module or in the standard library of the Go version in `go.mod`. Any finding fails the job. The fix is to bump the module (or the Go version).
+- **`govulncheck`** (a job of `backend`, so it runs with the other Go jobs: on pull requests that touch Go, on pushes to `main` and nightly) reports only the vulnerabilities in code the backend **calls**, in a module or in the standard library of the Go version in `go.mod`. Any finding fails the job. The fix is to bump the module (or the Go version).
 - **`osv-scan`** (its own workflow) reads the lockfiles (`backend/go.mod`, `web/package-lock.json`, `e2e/package-lock.json`, `e2e/lint/package-lock.json`) and lists every vulnerable **version** installed, called or not, dev-only or not. Any finding fails the job. It reads `go.mod` because OSV-Scanner does not support `go.sum`. The nightly run exists because a vulnerability is published against a version we already have, with no change on our side. OSV-Scanner is a release binary pinned by version and sha256, like the tools of `workflows-lint`.
 
 A finding is fixed by a dependency bump. When a transitive package is pinned exactly by its parent, `web/package.json` forces a fixed version with `overrides` (the ones there now are listed below); remove an override once the parent ships the fix. Only a finding with no installable fix goes in `osv-scanner.toml`, with its `id`, a `reason` and an `ignoreUntil` date, so the finding returns for a decision when the date passes. Nothing is accepted today.
