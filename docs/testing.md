@@ -136,7 +136,7 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 `make e2e` starts the local environment (like `make up`), installs the `e2e/` dependencies if missing, runs the tests and prints where the HTML report is (`cd e2e && npx playwright show-report`); the stack stays up until `make down`.
 
 - Locally the tests drive the installed Google Chrome (`channel: 'chrome'`); in CI they drive the Chromium that `npx playwright install chromium` downloads, at the version pinned by `package-lock.json`. `E2E_BROWSER_CHANNEL` overrides both (empty means Playwright's Chromium). `E2E_BASE_URL` and `E2E_IDP_ORIGIN` point the suite at another stack.
-- There are no retries (`retries: 0`): a flaky acceptance test is a bug to fix.
+- There are no retries (`retries: 0`, checked by the e2e lint job) and no `test.skip` or `test.fixme` (the e2e lint fails on both): a flaky acceptance test is a bug to fix. See [Reproducing a flaky test](#reproducing-a-flaky-test).
 - Each test that proves an acceptance criterion carries the story's or rule's tag, such as `@MR-001`; `npx playwright test --grep @MR-001` runs only that story's.
 - RPCs from a test go through `page.request` (same cookies as the page) with `Connect-Protocol-Version: 1`.
 - The dice animation never moves (`reducedMotion: 'reduce'`): the dice sit still in a card that neither dims nor blocks the page, so no overlay covers a control and layout checks measure a still screen.
@@ -159,6 +159,20 @@ On the same screens it runs the alignment checks of `e2e/tests/layout.ts`: an ic
 **e2e linters.** `cd e2e && npm run lint:install && npm run lint` runs ESLint with `no-floating-promises`, `await-thenable` (a missing `await` is the classic Playwright flake) and `eslint-plugin-playwright`.
 `e2e/lint/` is its own small package because typescript-eslint needs an older TypeScript than the one `e2e/` type-checks with.
 See [CI](ci.md#web-and-e2e-linters).
+
+## Reproducing a flaky test
+
+A red test is a bug in the test or in the app until the evidence says which ([CI](ci.md#flaky-tests) has the rule and the banned fixes). Read the artifacts first, then reproduce before you fix.
+
+- **Read the artifacts.** Playwright: `error-context.md`, the screenshots and the trace through the CLI: `npx playwright trace actions <trace.zip>` lists the steps, `npx playwright trace action <trace.zip> <n>` shows the one that failed. Go: the log and the stack of the panic.
+- **Ask whether the app is wrong.** A page that kept a stale state, a request canceled early, an answer that arrived after the click: the fix is in the app and carries a unit test that fails without it.
+- **Playwright:** `npx playwright test --grep "<title>" --repeat-each=<n>` repeats one test; `--shuffle <seed>` runs the files and tests in a random order, and the same seed gives the same order; `--workers=<n>` changes how many run at once. Run it in both colour schemes with `E2E_COLOR_SCHEME=light` and `=dark` for a test that does not pin one.
+- **Go:** `go test -race -count=<n> -run '^TestName$' ./internal/pkg` repeats a test; `-shuffle=on` runs the tests of a package in a random order and prints the seed (`-shuffle=<seed>` repeats that order); `-race` is always on in CI.
+- **On CI:** the [`flake-check`](ci.md#flake-check) workflow runs a test many times with and without a branch, on runners of their own.
+
+A failure you cannot reproduce gets diagnostics that will explain its next occurrence (an assertion message that names the state, a log line, a screenshot at the step), and a note that says so. It never gets a guessed fix.
+
+**When it is fixed.** The fix fails before and passes after, over about 3/p clean runs, where p is the failure rate you measured, and never fewer than 30: at p = 10% that is 30 runs, at p = 2% it is 150. A fix proved by one green run proves nothing. A new or changed test is repeated 10 times before it is pushed, and the repeat job of the pull request does it again ([CI](ci.md#repeat-of-the-changed-tests)).
 
 ## The devidp and the test identity provider
 
@@ -200,5 +214,6 @@ Safari does not accept it, so local sign-in is in Chrome or Firefox.
 | Web coverage                                           | `web / coverage`                 |
 | Playwright tests and the accessibility checks          | `e2e`, in shards                 |
 | Playwright lint and type-check                         | `e2e / lint and typecheck`       |
+| The tests a PR changes, repeated                       | `repeat-changed`                 |
 
 Details, triggers and gates are in [CI](ci.md).

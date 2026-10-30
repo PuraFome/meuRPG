@@ -13,7 +13,10 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change; nightly; manual | `plan`, `lint and typecheck`, `images`, `playwright` shards, `report` |
 | `codeql` | PRs touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
 | `osv-scan` | Changes to a lockfile (`backend/go.mod`, `backend/go.sum`, the `package-lock.json` of `web/`, `e2e/` and `e2e/lint/`), `osv-scanner.toml` or the workflow; pushes to `main`; nightly; manual | `osv-scanner (lockfiles)`, `report` |
-| `workflows-lint` | Changes under `.github/` | `actionlint` and `zizmor`, at versions pinned by number and sha256 |
+| `workflows-lint` | Changes under `.github/` | `actionlint` and `zizmor`, at versions pinned by number and sha256; the unit tests of the CI scripts (`node --test`) |
+| `repeat-changed` | PRs touching `e2e/`, `backend/` or its own files | `targets`, `images`, `playwright`, `go`: [the repeat of the changed tests](#repeat-of-the-changed-tests) |
+| `nightly-hunt` | Nightly, only in `PuraFome/meuRPG`; manual | `plan`, `image`, `playwright` shards, `go` groups, `report`: [the nightly hunt](#the-nightly-hunt) |
+| `flake-check` | Manual only | `plan`, `images`, `playwright` or `go` runners, `summary`: [flake-check](#flake-check) |
 
 - A new run of the same PR cancels the previous one. A push to `main` never cancels a run in progress, but GitHub keeps only one waiting run per workflow, so in a burst of merges an intermediate commit may get no run of its own. Deploy only a commit whose own run passed.
 - The nightly and manual runs ignore the path filters and test everything. The `backend` workflow's `changes` job lets a pull request that touches no Go, proto or Go-CI file skip the Go jobs.
@@ -100,7 +103,7 @@ ESLint's bulk suppressions list the old violations as a count per file and rule 
 - `web/eslint.config.js`: typescript-eslint with the type-aware promise rules and no `any`; angular-eslint with the template and accessibility rules, OnPush, standalone components and `inject()`; `complexity` 15 and `max-depth` 4; no app file over 400 lines of code (`max-lines`, the Angular style guide's limit; blank lines and comments do not count, specs are exempt); no magic numbers in app code (-1, 0, 1, 2, the radix 10, 100 and 1000, default values, enum members, readonly fields and array indexes are allowed; specs are exempt); a `setTimeout(` in a `*.spec.ts` is forbidden (see [Testing](testing.md#web-unit-tests)); and no `.replace(/ /g, ' ')` (a space replaced by itself: write a non-breaking space as ` `, which CodeQL also flags as `js/identity-replacement`).
 - **Layers and imports (dependency-cruiser).** `cd web && npm run depcruise` applies `web/.dependency-cruiser.cjs` to `web/src/app` (specs and `src/gen` are not cruised): no import cycles; `core/` imports neither `pages/` nor `shell/`; `shared/` does not import `pages/`; a page (a direct child folder of `pages/`) does not import another page (its own sub-folders are fine). Type-only imports count. `web/.dependency-cruiser-known-violations.json` is empty and must stay empty: move what two layers or pages share down to `core/` or `shared/`. dependency-cruiser is a dev dependency used only by this check.
 - **Formatting.** `cd web && npm run format:check` (Prettier, `web/.prettierrc`) checks TypeScript, SCSS and JSON. Angular templates are left out, because Prettier's HTML printer changes whitespace between elements and text, which changes what renders when CSS makes an element inline; format templates by hand. `.git-blame-ignore-revs` lists the one formatting commit (`git config blame.ignoreRevsFile .git-blame-ignore-revs`, once, locally).
-- **e2e.** `cd e2e && npm run lint:install && npm run lint` (see [Testing](testing.md#end-to-end-tests-playwright)). `expect-expect` is off in `e2e/`: the tests assert through helpers.
+- **e2e.** `cd e2e && npm run lint:install && npm run lint` (see [Testing](testing.md#end-to-end-tests-playwright)). `expect-expect` is off in `e2e/`: the tests assert through helpers. `test.skip` and `test.fixme` are errors (`playwright/no-skipped-test` with `disallowFixme`), and the `e2e / lint and typecheck` job runs `.github/scripts/e2e-no-retries.sh`, which fails unless `retries` is set once, to 0, in `e2e/playwright.config.ts` and nowhere else (no `--retries`, no `test.describe.configure({ retries })`).
 
 ### The web bundle budget
 
@@ -159,3 +162,78 @@ Those two pull the same digest from Cockroach Labs' registry on Google Cloud, an
 
 Never rerun first. Read the annotations, the logs, the Playwright report and the trace, decide whether the application, the test or the infrastructure failed, fix it, and rerun only as confirmation.
 Before merging, read CodeQL's comments on the PR and the open code-scanning alerts: a green check ignores warnings.
+
+## Flaky tests
+
+A red test is a bug in the test or in the app until the evidence says which. It is never noise, and nothing here lets a flaky test through: no retries, no quarantine (`test.skip`, `test.fixme`, a skipped Go test), and no "the train did not touch that test".
+
+### When a flaky test stops holding a train
+
+A flaky test that fails a train's gate holds that train until the test is **acknowledged**. It is acknowledged when all four are true:
+
+1. **Its artifacts were read.** For Playwright, `error-context.md`, the trace (`npx playwright trace actions <trace.zip>`, then `npx playwright trace action <trace.zip> <n>` for the step that failed) and the screenshots; for Go, the log and the stack of the panic.
+2. **A `flake-check` run shows it fails without the train, and that the train does not make it fail more often.** The run compares the head (with the train) and the base (without it) on the same test, many times; see [flake-check](#flake-check).
+3. **It has an owner:** a person or a branch that is fixing it, named on the issue.
+4. **Its fix goes in the next train.**
+
+Until all four are true the train waits. When they are, the train may merge with the failure on the record, and the failure is a `ci-red` issue with its owner, not a rerun.
+
+### Banned fixes
+
+The lint and the train review look for these:
+
+- retries (`retries` in the config, `--retries`, a rerun of a job until it is green, gotestsum's `--rerun-fails`);
+- `test.fixme`, `test.skip`, or a skipped Go test (`t.Skip` to dodge a failure);
+- a longer timeout;
+- a fixed sleep or `waitForTimeout`;
+- a looser assertion.
+
+The fix is in the test (wait for the condition that matters, own the state it needs) or in the app (a page that kept a stale state, a request canceled early, an answer that arrived after the click). When it is the app, the fix carries a unit test that fails without it. How to reproduce a flake and what counts as fixed are in [Testing](testing.md#reproducing-a-flaky-test).
+
+### flake-check
+
+`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners. It is on the fork's `main` only after the train that adds it merges.
+
+Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check --repo vfraga/meuRPG -f kind=playwright -f test='<title>' -f head=<train branch> -f base=main`.
+
+| Input | Meaning |
+| --- | --- |
+| `kind` | `playwright` or `go` |
+| `test` | Playwright: the `--grep` (a title, read as a regular expression: escape `(`, `.`, `+`, `?`). Go: the `-run` regular expression |
+| `package` | Go only: the package relative to `backend/`, for example `./internal/play` |
+| `head`, `base` | The refs with and without the train (a branch, a tag or a commit) |
+| `runs` | Runs per side, default 30. Rounded up to a multiple of `runners` |
+| `runners` | Runners per side, default 5 (each does `runs / runners` repeats) |
+
+Each side builds from its own ref (Playwright builds that ref's images and stack; Go starts CockroachDB as the `go-db` jobs do and runs with `-race`), on runners of its own: a matrix of side by runner. The last job writes, to the job summary and to the `flake-check` artifact (`flake-check.json`), the passes and failures of each side, the failure rate, and the first error line of each failure (its signature, with ids, addresses and times taken out, so one flake counts as one signature).
+
+Read it like this:
+
+- **The head fails more often than the base:** the summary says to dispatch again with `runs=100`. A few failures in 30 runs can be chance; a rate that holds at 100 is the train's doing. Find what the train changed.
+- **The head does not fail more often, and the base fails:** the flake is there without the train. That is evidence for point 2 of the rule above; the owner and the fix go on the issue.
+- **Neither fails:** it did not reproduce. Read its artifacts again and add diagnostics that will explain its next occurrence; never guess a fix.
+- **"Incomplete":** a runner died before it reported (the summary job then fails). Read the failed jobs and dispatch again.
+- **"The side ran no test":** the test does not exist on that ref, or the title matches nothing there.
+
+The traces of the failures are kept as the artifacts `flake-traces-<side>-<runner>` (Playwright) and the log as `flake-log-<side>-<runner>` (Go).
+
+### Repeat of the changed tests
+
+The `repeat-changed` job runs next to the gate on every pull request that touches `e2e/` or `backend/`. A new or edited test that is flaky fails here, before it is merged.
+
+`.github/scripts/flake-targets.mjs` maps the diff against the base to the tests to repeat:
+
+- the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing);
+- for a changed helper, a sample of up to 5 of the tests that call it, directly or through other helpers: an exported function of an `e2e/tests/*-support.ts`, or a function or method of `backend/internal/leaktest`.
+
+`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which every context that does not pin a scheme of its own follows); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
+
+The summary of `targets` lists the tests it found and why (`changed`, or `calls <helper>`). The scripts have unit tests, run by `workflows-lint` (`node --test .github/scripts/*.test.mjs`).
+
+### The nightly hunt
+
+`nightly-hunt` runs in `PuraFome/meuRPG` only, at 04:30 in São Paulo, and looks for the test that fails only in another order, more than once, or under the race detector:
+
+- **Playwright:** the whole suite (the nine shards of `e2e`) with `--shuffle <seed>`. The seed is printed in the `plan` job and in the summary, and goes in the issue. To replay an order, dispatch the workflow with that seed (`seed` input) or run `cd e2e && npx playwright test <the shard's flags> --shuffle <seed>` against a local stack.
+- **Go:** the `go-db` groups with `-shuffle=on -count=3 -race`, through `gotestsum --jsonfile` (pinned: `GOTESTSUM_VERSION` in the workflow, updated by hand), never with `--rerun-fails`. Go prints the seed it chose for each package; the issue names the command that runs the package again in that order. The JSON of each group is kept as the artifact `nightly-go-json-<group>` for 30 days: it also holds the time of every test.
+- **A failure** opens, or comments on, a `ci-red` issue (the same way the `report` jobs of `backend` and `e2e` do) with the test, its signature and the seed or command to replay it. The rule above applies: a failure found here is a bug, and its fix is the next train's.
