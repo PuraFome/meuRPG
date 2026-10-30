@@ -100,7 +100,7 @@ test(
       await expect(master.getByRole('button', { name: 'Taverna do Javali, Cena de RP, escondido' })).toBeVisible();
 
       // Reveal the map; the player opens the submap point's sheet, then the target.
-      await master.getByRole('button', { name: 'Revelar aos jogadores o mapa' }).click();
+      await master.getByRole('button', { name: 'Revelar aos jogadores' }).click();
       await expect(master.getByRole('button', { name: 'Esconder o mapa dos jogadores' })).toBeVisible();
 
       await player.goto(mapUrl);
