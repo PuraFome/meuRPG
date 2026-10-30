@@ -10,7 +10,7 @@ config="${1:-e2e/playwright.config.ts}"
 lines=$(grep -nE '\bretries\b' "$config" | grep -vE '^[0-9]+:[[:space:]]*(//|/\*|\*)' || true)
 count=$(grep -c . <<<"$lines" || true)
 
-if [ "$count" -ne 1 ] || ! grep -Eq '^[0-9]+:[[:space:]]*retries:[[:space:]]*0,?[[:space:]]*$' <<<"$lines"; then
+if [ "$count" -ne 1 ] || ! grep -Eq '^[0-9]+:[[:space:]]*retries[[:space:]]*:[[:space:]]*0[[:space:]]*,?[[:space:]]*(//.*)?$' <<<"$lines"; then
   echo "::error file=${config}::retries must be set once, to 0 (no retries: a flaky test is fixed, not retried). Found:" >&2
   echo "${lines:-<nothing>}" >&2
   exit 1

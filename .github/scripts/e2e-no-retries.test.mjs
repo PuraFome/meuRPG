@@ -25,3 +25,8 @@ test('retries after a "/" on the same line still counts', () =>
   assert.equal(check("export default {\n  retries: 0,\n  use: { baseURL: 'http://x', retries: 2 },\n};\n"), 1));
 test('a retries line that is a comment is ignored', () =>
   assert.equal(check('export default {\n  // retries: 3 would hide flakes\n  retries: 0,\n};\n'), 0));
+test('retries: 0 with spacing or a trailing comment still passes', () => {
+  assert.equal(check('export default {\n  retries : 0 ,   // a flaky test is fixed\n};\n'), 0);
+  assert.equal(check('export default {\n  retries: 0, /* none */\n};\n'), 1, 'a block comment is not understood: it fails loudly');
+});
+test('a value that only starts with 0 fails', () => assert.equal(check('export default {\n  retries: 0 + 2,\n};\n'), 1));

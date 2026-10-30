@@ -109,5 +109,9 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Install TypeScript (the compiler API reads the specs; no install scripts)
+        working-directory: e2e/lint
+        run: npm ci --ignore-scripts
+
       - name: node --test
         run: node --test .github/scripts/*.test.mjs

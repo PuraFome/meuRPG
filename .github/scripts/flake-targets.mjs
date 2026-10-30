@@ -13,10 +13,25 @@
 // for Playwright's --grep (the title with its metacharacters escaped); `why` is "changed" or "calls <helper>".
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 export const SAMPLE = 5;
+
+// The TypeScript compiler API reads the specs, so a test header that Prettier wraps over several lines is found like
+// any other. It comes from e2e/lint (TypeScript 5.x, with the JavaScript API; e2e/ itself has the native 7.x):
+// `npm ci --ignore-scripts` there first.
+const requireFromLint = createRequire(new URL('../../e2e/lint/package.json', import.meta.url));
+let tsApi;
+function typescript() {
+  try {
+    tsApi ??= requireFromLint('typescript');
+  } catch (err) {
+    throw new Error(`flake-targets.mjs reads the specs with TypeScript's compiler API: run \`npm ci --ignore-scripts\` in e2e/lint first (${err.message})`);
+  }
+  return tsApi;
+}
 
 const SPEC = /^e2e\/tests\/[^/]+\.spec\.ts$/;
 const SUPPORT = /^e2e\/tests\/[^/]+-support\.ts$/;
@@ -52,57 +67,67 @@ export function changedLines(diff) {
 const touches = (ranges, from, to) => ranges.some(([a, b, deletion]) => (deletion ? from <= a && to >= a + 1 : a <= to && b >= from));
 const indentOf = (line) => line.length - line.trimStart().length;
 
-const NOT_A_TEST = /^\s*test\.(describe|beforeAll|beforeEach|afterAll|afterEach|step|use|slow|setTimeout|info|skip|fixme|fail)\b/;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** The title of a test(...) call on a line, as {title, regex}; a template literal's ${...} becomes ".*". */
-/**
- * How many sign-ins one run of a test may make, for the login rate limit. A textual count misses a closure called
- * several times (login.spec.ts "cada pessoa tem uma conta": one `signIn(` in `accountOf`, called 3 times), a loop and a
- * helper, so a test that signs in at all, or opens /auth/login itself, counts as at least 3.
- */
-export function signinsOf(body) {
-  const literal = (body.match(/\bsignIn\(/g) ?? []).length;
-  return literal > 0 || body.includes('/auth/login') ? Math.max(literal, 3) : 0;
-}
+/** The members of `test.` that are not a test: groups, hooks and the calls that change one. */
+const NOT_A_TEST = new Set(['describe', 'beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'step', 'use', 'slow', 'setTimeout', 'info', 'skip', 'fixme', 'fail']);
 
-export function titleOf(line) {
-  if (NOT_A_TEST.test(line)) return null;
-  const m = /^\s*test(?:\.\w+)?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/.exec(line);
-  if (!m) return null;
-  const [, quote, raw] = m;
-  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (quote !== '`' || !raw.includes('${')) {
-    const title = raw.replace(/\\(['"`\\])/g, '$1');
-    return { title, regex: escape(title) };
+/** The title of a test(...) call, from its first argument, as {title, regex}; a template literal's ${...} becomes ".*". */
+function titleOfNode(ts, arg) {
+  if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return { title: arg.text, regex: escapeRe(arg.text) };
+  if (ts.isTemplateExpression(arg)) {
+    const parts = [arg.head.text, ...arg.templateSpans.map((span) => span.literal.text)];
+    return { title: arg.getText().slice(1, -1), regex: parts.map(escapeRe).join('.*') };
   }
-  const parts = raw.split(/\$\{[^}]*\}/).map((p) => escape(p.replace(/\\(['"`\\])/g, '$1')));
-  return { title: raw, regex: parts.join('.*') };
+  return null;
 }
 
-/** The tests of a spec: {title, regex, from, to, body}. A test ends at the first closing line with its own indentation. */
-export function playwrightTests(text) {
-  const lines = text.split('\n');
+/** The calls of `test(...)`, `test.only(...)` and so on, and of the `test.beforeEach/beforeAll` hooks, of a spec. */
+function playwrightCalls(text) {
+  const ts = typescript();
+  const source = ts.createSourceFile('spec.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const lines = (node) => [source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, source.getLineAndCharacterOfPosition(node.getEnd()).line + 1];
   const tests = [];
-  for (let i = 0; i < lines.length; i++) {
-    const t = titleOf(lines[i]);
-    if (!t) continue;
-    const indent = indentOf(lines[i]);
-    let end = i;
-    // A one-line test ends on its own line: `test('x', async () => {});`.
-    if (!/[{(]\s*$/.test(lines[i]) && /\}\)?;?\s*$/.test(lines[i]) && !/=>\s*\{\s*$/.test(lines[i])) {
-      end = i;
-    } else {
-      for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].trim() !== '' && indentOf(lines[j]) <= indent && /^\s*[})\]]/.test(lines[j])) {
-          end = j;
-          break;
-        }
-        end = j;
+  const hooks = [];
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const member = ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'test' ? callee.name.text : null;
+      const [from, to] = lines(node);
+      const body = text.slice(node.getStart(source), node.getEnd());
+      if (member === 'beforeEach' || member === 'beforeAll') hooks.push({ from, to, body });
+      else if ((ts.isIdentifier(callee) && callee.text === 'test') || (member !== null && !NOT_A_TEST.has(member))) {
+        const title = node.arguments.length > 0 ? titleOfNode(ts, node.arguments[0]) : null;
+        if (title) tests.push({ ...title, from, to, body });
       }
     }
-    tests.push({ ...t, from: i + 1, to: end + 1, body: lines.slice(i, end + 1).join('\n') });
-  }
-  return tests;
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return { tests, hooks };
+}
+
+/** The tests of a spec: {title, regex, from, to, body}, in file order. */
+export function playwrightTests(text) {
+  return playwrightCalls(text).tests;
+}
+
+/** The `test.beforeEach` and `test.beforeAll` hooks of a spec: {from, to, body}. */
+export function playwrightHooks(text) {
+  return playwrightCalls(text).hooks;
+}
+
+/**
+ * How many sign-ins one run of a test may make, for the login rate limit. A textual count misses a closure called
+ * several times (login.spec.ts "cada pessoa tem uma conta": one `signIn(` in `accountOf`, called 3 times), a loop, a
+ * hook and a helper, so a test that signs in at all counts as at least 3: `body` is the test and the hooks of its file,
+ * `signers` the names of the functions that sign in (signIn itself, and the helpers that call it), and a test that
+ * opens /auth/login itself counts too.
+ */
+export function signinsOf(body, signers = ['signIn']) {
+  const literal = (body.match(/\bsignIn\(/g) ?? []).length;
+  const heavy = literal > 0 || body.includes('/auth/login') || [...signers].some((name) => new RegExp(`\\b${escapeRe(name)}\\(`).test(body));
+  return heavy ? Math.max(literal, 3) : 0;
 }
 
 /** The top-level statements of a file whose lines start in column 0: {name, from, to, body}. A leading comment belongs to the statement. */
@@ -136,8 +161,7 @@ export const tsFuncOf = (line) => (TS_FUNCTION.exec(line) ?? TS_ARROW.exec(line)
 /** A Go function or method (with a receiver, with type parameters). */
 export const goFuncOf = (line) => /^func\s+(?:\([^)]*\)\s*)?(\w+)(?:\[[^\]]*\])?\(/.exec(line)?.[1];
 
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const callsAny = (body, names) => [...names].some((n) => new RegExp(`\\b${escapeRegex(n)}\\b`).test(body));
+const callsAny = (body, names) => [...names].some((n) => new RegExp(`\\b${escapeRe(n)}\\b`).test(body));
 
 /** The helper and the functions that call it, up to three levels: a test that calls a helper that calls it calls it too. */
 function withCallers(name, functionsOf) {
@@ -167,7 +191,7 @@ export function mapDiff({ diff, read, files }) {
   const notes = [];
   const addPlaywright = (file, t, why) => {
     const key = `${file}\t${t.title}`;
-    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: signinsOf(t.body), why });
+    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: signinsOf(`${t.body}\n${hooksOf(file)}`, signersOf()), why });
   };
   const addGo = (pkg, test, why) => {
     const key = `${pkg}\t${test}`;
@@ -182,6 +206,10 @@ export function mapDiff({ diff, read, files }) {
   };
   const testsOf = (file) => once('tests', file, () => playwrightTests(read(file)));
   const functionsOf = (kind, file, nameOf) => once(kind, file, () => topLevel(read(file), nameOf));
+  const hooksOf = (file) => once('hooks', file, () => playwrightHooks(read(file)).map((h) => h.body).join('\n'));
+  // The functions that sign in: signIn and, up to three levels, the helpers of e2e/tests that call it.
+  let signers;
+  const signersOf = () => (signers ??= withCallers('signIn', () => files('e2e/tests/').filter((f) => f.endsWith('.ts')).sort().flatMap((f) => (read(f) === undefined ? [] : functionsOf('ts', f, tsFuncOf)))));
   const goPkg = (file) => `./${file.replace(/^backend\//, '').replace(/\/[^/]+$/, '')}`;
 
   const helpers = []; // {kind, name, file}
