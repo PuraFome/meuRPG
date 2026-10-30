@@ -1,4 +1,5 @@
 // Unit tests of flake-targets.mjs: node --test .github/scripts/
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -214,4 +215,13 @@ test('a helper is followed through the helpers that call it, and a Go method cou
   assert.ok(pw.playwright.some((t) => t.title === 'through a spec helper'), JSON.stringify(pw.playwright));
   const go = m(hunk('backend/internal/leaktest/table_test.go', 4, 4));
   assert.deepEqual(go.go.map((t) => t.test), ['TestViaMethods']);
+});
+
+test('signinsOf counts a closure that signs in, or /auth/login, as a heavy test', async () => {
+  const { signinsOf } = await import('./flake-targets.mjs');
+  const real = fs.readFileSync('e2e/tests/login.spec.ts', 'utf8');
+  const test3 = playwrightTests(real).find((t) => t.title.startsWith('cada pessoa tem uma conta'));
+  assert.equal(signinsOf(test3.body), 3);
+  assert.equal(signinsOf("await page.goto('/auth/login?return_to=x');"), 3);
+  assert.equal(signinsOf('await page.goto("/");'), 0);
 });

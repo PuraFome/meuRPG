@@ -92,3 +92,9 @@ test('a test that signs in once repeats in one run: 6 + 2 x 10 fits the limit', 
   assert.equal(r.code, 0, r.out);
   assert.equal(r.calls.trim().split('\n').filter((l) => l.includes('--repeat-each=10')).length, 2);
 });
+
+test('the stack is reset only when the sign-ins would not fit: six plain chunks need none', () => {
+  const r = run('playwright', pw('one', 'two', 'three'), { BUDGET_SECONDS: '60', RESET_STACK_CMD: 'echo reset >> "$(dirname "$(command -v npx)")/calls.log"' });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(r.calls.split('\n').filter((l) => l === 'reset').length, 0);
+});

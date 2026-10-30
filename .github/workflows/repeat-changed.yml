@@ -121,7 +121,7 @@ jobs:
           CI: "true"
           RESET_STACK_CMD: >-
             docker compose -f ../deploy/local/compose.yaml -f ../deploy/local/compose.ci.yaml -f ../deploy/local/compose.ci-images.yaml
-            up -d --no-build --wait --force-recreate api
+            up -d --no-build --no-deps --wait --force-recreate api
         run: ../.github/scripts/repeat-changed.sh playwright ../targets.json
 
       - name: Show the stack logs

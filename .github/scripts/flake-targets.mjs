@@ -55,6 +55,16 @@ const indentOf = (line) => line.length - line.trimStart().length;
 const NOT_A_TEST = /^\s*test\.(describe|beforeAll|beforeEach|afterAll|afterEach|step|use|slow|setTimeout|info|skip|fixme|fail)\b/;
 
 /** The title of a test(...) call on a line, as {title, regex}; a template literal's ${...} becomes ".*". */
+/**
+ * How many sign-ins one run of a test may make, for the login rate limit. A textual count misses a closure called
+ * several times (login.spec.ts "cada pessoa tem uma conta": one `signIn(` in `accountOf`, called 3 times), a loop and a
+ * helper, so a test that signs in at all, or opens /auth/login itself, counts as at least 3.
+ */
+export function signinsOf(body) {
+  const literal = (body.match(/\bsignIn\(/g) ?? []).length;
+  return literal > 0 || body.includes('/auth/login') ? Math.max(literal, 3) : 0;
+}
+
 export function titleOf(line) {
   if (NOT_A_TEST.test(line)) return null;
   const m = /^\s*test(?:\.\w+)?\(\s*(['"`])((?:\\.|(?!\1).)*)\1/.exec(line);
@@ -157,7 +167,7 @@ export function mapDiff({ diff, read, files }) {
   const notes = [];
   const addPlaywright = (file, t, why) => {
     const key = `${file}\t${t.title}`;
-    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: (t.body.match(/\bsignIn\(/g) ?? []).length, why });
+    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: signinsOf(t.body), why });
   };
   const addGo = (pkg, test, why) => {
     const key = `${pkg}\t${test}`;

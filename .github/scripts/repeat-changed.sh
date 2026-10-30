@@ -38,7 +38,8 @@ esac
 
 passed=(); notrun=(); cut=(); failed=()
 left=${#chunks[@]}
-first=yes
+spent=0 # login requests since the stack started or was reset
+per_run=0
 for chunk in "${chunks[@]}"; do
   label=$(jq -r .label <<<"$chunk")
   field=$(jq -r .field <<<"$chunk")
@@ -61,7 +62,7 @@ for chunk in "${chunks[@]}"; do
   # the global setup makes 3 of them in every run of `playwright test`. A test that signs in itself, repeated 10 times,
   # can spend the bucket (login.spec.ts "cada pessoa tem uma conta": 3 sign-ins a run, 60 requests in 21 s, a 429 on
   # the 7th run). So a chunk whose sign-ins would not fit runs in batches of repeats, and RESET_STACK_CMD (the workflow
-  # recreates the api container: an empty rate-limit bucket) comes before every batch but the very first.
+  # recreates the api container: an empty rate-limit bucket) comes before a batch that would not fit what is left.
   batch=$repeats
   if [ "$kind" = playwright ]; then
     per_run=$(( signins * 2 ))
@@ -77,13 +78,20 @@ for chunk in "${chunks[@]}"; do
   while [ "$todo" -gt 0 ]; do
     n=$(( todo < batch ? todo : batch ))
     todo=$(( todo - n ))
-    if [ -n "${RESET_STACK_CMD:-}" ] && [ "$kind" = playwright ] && [ "$first" = no ]; then
-      echo "reset the stack (a fresh login rate-limit bucket)"
-      bash -c "$RESET_STACK_CMD" || echo "::warning::the reset failed; the login rate limit may be spent"
-    fi
-    first=no
     left_s=$(( chunk_deadline - $(date +%s) ))
     if [ "$left_s" -lt 1 ]; then code=124; break; fi
+    if [ "$kind" = playwright ]; then
+      # The requests this batch could make, counted as if nothing refilled: reset only when they would not fit.
+      cost=$(( SETUP_REQUESTS + per_run * n ))
+      if [ $(( spent + cost )) -gt "$LOGIN_BURST" ] && [ -n "${RESET_STACK_CMD:-}" ]; then
+        echo "reset the stack (a fresh login rate-limit bucket)"
+        bash -c "$RESET_STACK_CMD" || echo "::warning::the reset failed; the login rate limit may be spent"
+        spent=0
+        left_s=$(( chunk_deadline - $(date +%s) ))
+        if [ "$left_s" -lt 1 ]; then code=124; break; fi
+      fi
+      spent=$(( spent + cost ))
+    fi
     if [ "$kind" = playwright ]; then
       E2E_COLOR_SCHEME="$field" timeout --kill-after=15 "$left_s" \
         npx playwright test "$file" --grep "$regex" --repeat-each="$n" --max-failures=1
