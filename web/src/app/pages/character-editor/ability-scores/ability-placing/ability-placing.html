@@ -69,7 +69,7 @@
         [disabled]="placement()[ability] === null && picked() === null"
         (click)="tapAbility(ability)"
       >
-        <span class="slot__name" aria-hidden="true">{{ abilityLabel(ability) }}</span>
+        <span class="slot__name" aria-hidden="true">{{ abilityLabel(ability) }}</span>&ngsp;
         <span class="slot__value" aria-hidden="true">
           @if (placement()[ability] !== null) {
             {{ results()[placement()[ability]!].total }}

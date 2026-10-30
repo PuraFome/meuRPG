@@ -75,7 +75,7 @@ test(
       const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
       await expect(stage).toBeVisible();
       await expect(stage.getByText('Fala agora')).toBeVisible();
-      await expect(stage.getByRole('button', { name: 'Capitão Goblin Fala agora, ver maior' })).toBeVisible();
+      await expect(stage.getByRole('button', { name: 'Capitão Goblin Fala agora (ver maior)' })).toBeVisible();
       await expect(stage).not.toContainText(/Inimigo|PV|CA\b/);
       await expect(stage.locator('img')).toHaveCount(2);
       // Each one is a chip: the portrait in a 48 px square tile, contained so it is never cropped (C5-01).
@@ -86,7 +86,7 @@ test(
       expect(tile).toEqual({ fit: 'contain', width: 48, height: 48 });
 
       // Tap Mira: the larger view, only her name and picture.
-      await stage.getByRole('button', { name: 'Ver Mira maior' }).click();
+      await stage.getByRole('button', { name: 'Mira (ver maior)' }).click();
       const big = p.getByRole('dialog', { name: 'Mira' });
       await expect(big.getByRole('heading', { name: 'Mira' })).toBeFocused();
       await expect(big.locator('img')).toHaveAttribute('src', `/images/${miraImage}`);

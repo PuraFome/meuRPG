@@ -6,6 +6,8 @@ import { AbilityResult } from '../../../../core/dice/dice';
 
 export type DiceResultState = 'free' | 'chosen' | 'placed';
 
+let nextSay = 0;
+
 /** "6, 6, 5 e 2". */
 function listWords(items: readonly number[]): string {
   return items.length < 2
@@ -30,6 +32,8 @@ function listWords(items: readonly number[]): string {
   styleUrl: './dice-result.scss',
 })
 export class DiceResult {
+  /** The id of the hidden sentence that describes the button. */
+  protected readonly sayId = `dice-result-say-${nextSay++}`;
   readonly result = input.required<AbilityResult>();
   readonly state = input.required<DiceResultState>();
   /** The ability's name while placed: "Força". */

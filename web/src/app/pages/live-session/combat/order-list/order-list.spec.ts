@@ -79,9 +79,9 @@ describe('OrderList', () => {
     const { el, adjusted, npcAdjusted } = setup();
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.row__adjust'));
     expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Dano ou cura em Pensantus',
-      'Dano ou cura em Capitão Goblin',
-      'Dano ou cura em Goblin 3',
+      'Dano/Cura: Pensantus',
+      'Dano/Cura: Capitão Goblin',
+      'Dano/Cura: Goblin 3',
     ]);
     buttons[0].click();
     buttons[1].click();

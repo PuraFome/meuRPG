@@ -1,15 +1,15 @@
 <ng-template #body>
-  <span class="chip__total">{{ result().total }}</span>
+  <span class="chip__total">{{ result().total }}</span>&ngsp;
   @if (result().dice.length > 0) {
-    <span class="chip__dice" aria-hidden="true">
+    <span class="chip__dice" [attr.aria-hidden]="interactive() ? null : 'true'">
       @for (die of result().dice; track $index) {
         <span class="chip__die" [class.chip__die--dropped]="$index === result().dropped">{{
           die
-        }}</span>
+        }}</span>&ngsp;
       }
     </span>
   }
-  <span class="chip__state" aria-hidden="true">
+  <span class="chip__state" [attr.aria-hidden]="interactive() ? null : 'true'">
     @if (state() === 'placed') {
       <mat-icon>check</mat-icon>
     }
@@ -22,11 +22,13 @@
     type="button"
     class="chip chip--{{ state() }}"
     [attr.aria-pressed]="state() === 'chosen'"
-    [attr.aria-label]="label()"
+    [attr.aria-describedby]="sayId"
     (click)="pressed.emit()"
   >
     <ng-container [ngTemplateOutlet]="body" />
   </button>
+  <!-- The button is named by what it shows (WCAG 2.5.3): the total, the dice and the state; the sentence is its description. -->
+  <span class="mr-visually-hidden" [id]="sayId">{{ label() }}</span>
 } @else {
   <div class="chip chip--{{ state() }}" role="group" [attr.aria-label]="label()">
     <ng-container [ngTemplateOutlet]="body" />

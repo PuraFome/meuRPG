@@ -25,7 +25,7 @@ import { initialsOf } from '../../../../core/play/stage-view';
       @if (src() && !failed()) {
         <img class="fig__img" [src]="src()" alt="" decoding="async" draggable="false" (error)="failed.set(true)" />
       } @else {
-        <span class="fig__tile" aria-hidden="true">{{ initials() }}</span>
+        <span class="fig__tile" aria-hidden="true" [attr.data-initials]="initials()"></span>
       }
     </span>
   `,

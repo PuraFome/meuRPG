@@ -85,7 +85,7 @@ describe('OrderList compact rows (C1-02, Main)', () => {
       b.getAttribute('aria-label'),
     );
     expect(names).toEqual([
-      'Dano ou cura em Pensantus',
+      'Dano/Cura: Pensantus',
       'Condições de Pensantus',
       'Mais ações para Pensantus',
     ]);

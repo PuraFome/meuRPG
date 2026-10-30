@@ -11,13 +11,14 @@
           [attr.aria-hidden]="fig.leaving ? 'true' : null"
           [attr.inert]="fig.leaving ? '' : null"
         >
-          <button type="button" class="stage__btn" [attr.data-stage-id]="npc.id" [attr.aria-label]="figureLabel(npc)" (click)="enlarge(npc)">
-            <app-stage-figure [src]="thumb(npc)" [name]="npc.name" [speaking]="npc.speaking" [chip]="true" />
+          <button type="button" class="stage__btn" [attr.data-stage-id]="npc.id" (click)="enlarge(npc)">
+            <app-stage-figure aria-hidden="true" [src]="thumb(npc)" [name]="npc.name" [speaking]="npc.speaking" [chip]="true" />
             <span class="stage__who">
-              <span class="stage__name">{{ npc.name }}</span>
+              <span class="stage__name">{{ npc.name }}</span>&ngsp;
               @if (npc.speaking) {
-                <span class="stage__tag"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora</span>
+                <span class="stage__tag"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora</span>&ngsp;
               }
+              <span class="mr-visually-hidden">(ver maior)</span>
             </span>
           </button>
         </li>

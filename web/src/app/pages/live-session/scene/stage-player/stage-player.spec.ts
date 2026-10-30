@@ -108,8 +108,8 @@ describe('StagePlayer', () => {
     expect(items[0].querySelector('app-stage-figure .fig--speaking')).toBeNull();
     expect(flat(items[1].querySelector('.stage__tag'))).toContain('Fala agora');
     expect(items[0].querySelector('.stage__tag')).toBeNull();
-    expect(figures(el)[1].getAttribute('aria-label')).toBe('Capitão Goblin Fala agora, ver maior');
-    expect(figures(el)[0].getAttribute('aria-label')).toBe('Ver Mira maior');
+    expect(flat(figures(el)[1])).toBe('Capitão Goblin Fala agora (ver maior)');
+    expect(flat(figures(el)[0])).toBe('Mira (ver maior)');
   });
 
   it('draws the portrait with no box: a bare image with its base line, the thumbnail of the stage', () => {
@@ -126,7 +126,7 @@ describe('StagePlayer', () => {
   it('keeps the tile only for the initials: an NPC with no portrait', () => {
     const { el } = setup([aldo]);
     expect(el.querySelector('.fig__img')).toBeNull();
-    expect(flat(el.querySelector('.fig__tile'))).toBe('AL');
+    expect(el.querySelector('.fig__tile')?.getAttribute('data-initials')).toBe('AL');
     expect(el.querySelector('app-stage-figure')?.getAttribute('aria-label')).toBe(
       'Sem retrato: Aldo',
     );
@@ -137,7 +137,7 @@ describe('StagePlayer', () => {
     el.querySelector('.fig__img')!.dispatchEvent(new Event('error'));
     await settle(fixture);
     expect(el.querySelector('.fig__img')).toBeNull();
-    expect(flat(el.querySelector('.fig__tile'))).toBe('CG');
+    expect(el.querySelector('.fig__tile')?.getAttribute('data-initials')).toBe('CG');
   });
 
   it('follows the stage: an NPC comes in, the speaker changes, one leaves', async () => {

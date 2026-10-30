@@ -898,9 +898,9 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
     if (width < 768) {
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^\d+ [\d ]*Livre$/ }).first().click();
       await page.getByRole('button', { name: /^Força: colocar o/ }).click();
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^\d+ [\d ]*Livre$/ }).first().click();
     } else {
       await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
     }
@@ -1232,7 +1232,7 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
     await openOrderRow(m, 'Goblin 1');
-    await m.getByRole('button', { name: 'Dano ou cura em Goblin 1' }).click();
+    await m.getByRole('button', { name: 'Dano/Cura: Goblin 1' }).click();
     await expect(m.getByRole('heading', { name: 'Dano ou cura em Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Dano/Cura de um NPC ${where}`);
   } finally {
@@ -2731,12 +2731,12 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(stage).toBeVisible();
     await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(p, `Palco do jogador, dois NPCs ${where}`);
-    await stage.getByRole('button', { name: 'Ver Mira maior' }).click();
+    await stage.getByRole('button', { name: 'Mira (ver maior)' }).click();
     await expect(p.getByRole('heading', { name: 'Mira' })).toBeFocused();
     await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(p, `Mira maior ${where}`);
     await p.keyboard.press('Escape');
-    await expect(stage.getByRole('button', { name: 'Ver Mira maior' })).toBeFocused();
+    await expect(stage.getByRole('button', { name: 'Mira (ver maior)' })).toBeFocused();
 
     // Four on the stage: the grid on a phone, the row on a desktop.
     await putOnStageRPC(m, campaignId, aldoId);
