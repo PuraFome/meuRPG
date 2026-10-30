@@ -1,7 +1,7 @@
-# The tests `make before-ready` runs (docs/testing.md#before-ready): every Go test that
-# compares what the code produces with a golden, a hash, a frozen table or a stored fixture,
-# and the inventory tests that list the service methods, the error reasons, the
-# authorization matrices and the event kinds. A branch that changes any of what they compare
+# The tests `make before-ready` runs (docs/testing.md#before-ready): the tests that compare
+# against a stored file or against literals the project froze (names with Frozen or Golden:
+# goldens, hashes, frozen tables, refusal messages, stored fixtures) and the inventory tests that
+# list the service methods, the error reasons, the authorization matrices and the event kinds. A branch that changes any of what they compare
 # makes them stale, so a session runs them before it writes `ready:`.
 #
 # One tab-separated line each (an editor that turns tabs into spaces breaks the line, and
@@ -9,15 +9,15 @@
 #
 #   run<TAB>package<TAB>-run regex<TAB>how to regenerate
 #   helper<TAB>package<TAB>function<TAB>why   a function whose callers compare with a file
-#   skip<TAB>package<TAB>-run regex<TAB>why   a test that compares with a file, kept off the run
 #
 # package is the directory under backend/ ("." never: a package with no tests is not listed).
 # The regex is the argument of `go test -run` for that package: anchor names with ^( | )$, or
 # use the naming convention the package keeps. {test} in the last column is the name of the
 # test that failed. A test that turns a second train round red is added here.
 # TestBeforeReadyListIsWhole fails for a test that reads a golden, hash or fixture file
-# (a ".golden", ".sha256" or "testdata" literal, goldentest.Compare/JSON, an -update flag) and
-# is on no line of its package, and for a line that matches nothing.
+# (a ".golden", ".sha256" or "testdata" literal or a constant holding one, goldentest.Compare/JSON,
+# a flag.Bool, a variable named frozen* or *Golden) and is on no line of its package, and for a
+# line that matches nothing.
 run	cmd/api	^TestRunConfigurations$	cd backend && go test ./cmd/api -run '^{test}$' -update
 run	cmd/api	^(TestEveryProcedureRefusesAnonymousCalls|TestConnectGETOnlyForRequestsWithoutData)$	no generator: give the new RPC its session gate, or add it to publicProcedures with the reason (cmd/api/anonymous_test.go)
 run	cmd/srdimport	^TestSrdImport(MagicItems|Subclasses|Traits|Classes|Monsters|Features|Equipment)$	cd backend && go test ./cmd/srdimport -run '^{test}$' -update
@@ -48,6 +48,7 @@ run	internal/play	^TestFiringProtoGoldenOfEveryViewer$	cd backend && go test ./i
 run	internal/play	^TestTodaysPayloadsAreWhatTheWritersWrite$	cd backend && go test ./internal/play -run TestTodaysPayloads -update
 run	internal/play	^(TestEveryEventKindHasAStoredPayload|TestStoredPayloadsDecode|TestEverySQLPayloadPathIsListed|TestStoredMovesKeepTheirUndoVerdict|TestSessionEventKindsMatchTheTable)$	no generator: classify the new kind in stored_events_test.go (actionEventKinds, otherWriters or externalKinds), add its row to session_event_kinds, then: cd backend && go test ./internal/play -run TestTodaysPayloads -update
 run	internal/play	^(TestAuthorizationMatrix|TestEveryMethodNeedsASession|TestMR013_CombatAuthorizationMatrix|TestMR012_CombatActionsAuthorizationMatrix|TestMR014_SpellsAuthorizationMatrix|TestMR032_HighlightsAuthorizationMatrix|TestMR034_OpportunityAuthorizationMatrix|TestPM06_RollCallsAreAuthorized|TestReactionWindowAnswersAreTheReactorsAndTheMasters|TestTheAreaCallsAreRefusedToWhoMayNotMakeThem|TestMR043_TheBuilderAuthorizationMatrix)$	no generator: give the new RPC its row in the authorization matrix and its signed-out call in the test the failure names (a new CombatService method goes in one of the lists actionRPCs, spellRPCs, areaRPCs, highlightRPCs, opportunityRPCs, reactionRPCs, rollRPCs or in the matrix of combat_test.go)
+run	internal/play	Frozen|Golden|^(TestAddCharacterEffectGroupsReplacesRetriesAndTellsTheStreams|TestAddLastingEffectConcentrationLogAndStreams)$	no generator: the expected text is in the test (a frozen refusal message, a golden map); edit it by hand, from what the failure prints, only if the change is intended
 helper	internal/play	runGolden	plays the scenarios and compares them with the golden file of the call
 run	internal/progression	^(TestAuthorizationMatrix|TestHistoryAndMilestonesWhatEachViewerReads|TestAddMilestoneStepByStep|TestMoveMilestoneStepByStep)$	cd backend && go test ./internal/progression -run '^{test}$' -update (a new RPC also needs its row in the authorization matrix, internal/progression/authz_test.go)
 run	internal/rules	(Characterization|Golden)$|^TestCorrectSubclassFeaturesRowOfANewSubclass$	cd backend && go test ./internal/rules -run '^{test}$' -update

@@ -118,9 +118,10 @@ See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
 ## Before ready
 
-A change often makes stale a test that nobody thought to run: a golden file, a hash, a frozen table, a stored event fixture, or a list that must name every service method, error reason or event kind.
-`make before-ready` runs every Go test of that kind, against the test database like `make test`, and takes about twenty minutes on four vCPUs against an on-disk database, most of it the scenario goldens of `internal/play` (each scenario builds its own database); the in-memory test database below is faster.
-Run it before you write `ready:` and before you open a pull request.
+A change often makes stale a test that nobody thought to run: a golden file, a hash, a frozen table or refusal message, a stored event fixture, or a list that must name every service method, error reason or event kind.
+`make before-ready` runs every Go test of that kind, against the test database like `make test`.
+Run it before you write `ready:` (the status commit a session pushes when its branch is final) and before you open a pull request.
+The rule for what belongs in it: the tests that compare against a stored file or against literals the project froze (names with `Frozen` or `Golden`), and the inventory tests.
 
 ```bash
 make db-test-start
@@ -128,15 +129,18 @@ export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?ssl
 make before-ready
 ```
 
+A whole run took about 20 minutes on a 4-vCPU VM against an on-disk database, with four packages at once: `internal/play` alone takes 12 minutes, because each scenario of its seven `runGolden` goldens builds a database of its own, and the database is the limit: `go test -parallel 16` made the play group slower (22 minutes with the frozen tests added), not faster.
+While you work, run the groups your change touches: `make before-ready ONLY='internal/play$'` (a regex on the package directory; `BEFORE_READY_ONLY` is the same variable), and the whole list before `ready:`.
+`BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
+
 Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.
-`BEFORE_READY_JOBS` sets how many packages run at once (4 by default); `BEFORE_READY_ONLY='internal/rules$'` runs only the packages whose directory matches, to rerun what failed.
 On a failure it prints the command that rewrites the failed test's file (`-update`, `UPDATE_GOLDEN=1` or the package's own flag), or says to edit the expected values by hand when there is no generator.
 Rewrite a file only when the change is intended, read the diff of every rewritten file before you commit it, and run a new golden test with `-count=5` once, because a Go map's order is random.
 
 The tests, grouped by package, and the command that regenerates each group are in `backend/internal/archtest/before_ready.txt`: one place, one tab-separated line for each group.
-A test that turns a second train round red is added to it.
-`TestBeforeReadyListIsWhole` keeps it whole: a test that reads a `.golden`, `.sha256` or `testdata` file, or calls `goldentest.Compare` or `goldentest.JSON`, and is on no line of its package fails it, and so does a line that matches no test.
-It follows plain function calls of the same package (a method call is not followed, so the tests of a package that compare through methods keep a naming convention in their line, for example `TestLasting(Core|RPC)` in `internal/play`).
+A test that turns a second train round red (a train round is one CI run of the merge train) is added to it.
+`TestBeforeReadyListIsWhole` keeps it whole: a test that reads a `.golden`, `.sha256` or `testdata` file (or a constant that holds one), calls `goldentest.Compare` or `goldentest.JSON`, reads a `flag.Bool` or a variable named for the frozen digests or the goldens, and is on no line of its package, fails it; so does a line that matches no test.
+It follows plain function calls of the same package, not method calls (names collide between types), so a test that compares through a method keeps to a naming convention in its line, for example `TestLasting(Core|RPC)` in `internal/play`, and `Frozen|Golden` names are on the list by their name.
 
 ## Web unit tests
 

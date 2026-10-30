@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -18,14 +19,14 @@ import (
 // beforeReadyFile is the list `make before-ready` runs (docs/testing.md#before-ready).
 const beforeReadyFile = "before_ready.txt"
 
-// beforeReadyLine is one line of the list: `run` (tests to run), `skip` (tests that pin a file
-// but need no run, with the reason) or `helper` (a function whose callers pin a file).
+// beforeReadyLine is one line of the list: `run` (tests to run) or `helper` (a function whose
+// callers pin a file).
 type beforeReadyLine struct {
-	kind  string // "run", "skip" or "helper"
+	kind  string // "run" or "helper"
 	pkg   string // directory under backend/
 	re    *regexp.Regexp
 	regex string
-	last  string // the regenerate command (run), or the reason (skip, helper)
+	last  string // the regenerate command (run), or why the function pins (helper)
 	n     int    // line number, for messages
 }
 
@@ -46,8 +47,8 @@ func readBeforeReady(t *testing.T) []beforeReadyLine {
 		}
 		cols := strings.Split(text, "\t")
 		const wantCols = 4
-		if len(cols) != wantCols || (cols[0] != "run" && cols[0] != "skip" && cols[0] != "helper") || strings.TrimSpace(cols[3]) == "" {
-			t.Fatalf("%s:%d: want `run|skip<TAB>package<TAB>regex<TAB>regenerate command (run) or reason (skip)`, got %q", beforeReadyFile, n, text)
+		if len(cols) != wantCols || (cols[0] != "run" && cols[0] != "helper") || strings.TrimSpace(cols[3]) == "" {
+			t.Fatalf("%s:%d: want `run|helper<TAB>package<TAB>regex<TAB>regenerate command (run) or reason (helper)`, got %q", beforeReadyFile, n, text)
 		}
 		re, err := regexp.Compile(cols[2])
 		if err != nil {
@@ -63,7 +64,7 @@ func readBeforeReady(t *testing.T) []beforeReadyLine {
 
 // pinSignal says whether a node on its own shows that a function compares its
 // result with a stored file: a literal naming a golden, a hash file or the
-// fixtures, the shared golden package, or an `-update` flag read.
+// fixtures, the shared golden package, or a package-level name that holds one of them (see pinNames).
 func pinSignal(n ast.Node) bool {
 	switch v := n.(type) {
 	case *ast.BasicLit:
@@ -78,11 +79,55 @@ func pinSignal(n ast.Node) bool {
 	case *ast.SelectorExpr:
 		id, ok := v.X.(*ast.Ident)
 		return ok && id.Name == "goldentest" && (v.Sel.Name == "Compare" || v.Sel.Name == "JSON")
-	case *ast.StarExpr:
-		id, ok := v.X.(*ast.Ident)
-		return ok && strings.HasPrefix(strings.ToLower(id.Name), "update")
 	}
 	return false
+}
+
+// pinNames returns the package-level names that stand for a stored file: a constant or variable
+// whose value names a golden, a hash file or the fixtures, one named for the goldens or the
+// frozen digests (frozenDigests), and a flag.Bool that turns the rewriting on. A test that
+// reads one of them compares with a stored file.
+func pinNames(files []*ast.File) map[string]bool {
+	names := map[string]bool{}
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok || (gd.Tok != token.CONST && gd.Tok != token.VAR) {
+				continue
+			}
+			for _, spec := range gd.Specs {
+				vs := spec.(*ast.ValueSpec)
+				pins := false
+				for _, v := range vs.Values {
+					ast.Inspect(v, func(n ast.Node) bool {
+						pins = pins || pinSignal(n) || isFlagCall(n)
+						return true
+					})
+				}
+				for _, id := range vs.Names {
+					lower := strings.ToLower(id.Name)
+					if pins || strings.Contains(lower, "frozen") || strings.Contains(lower, "golden") {
+						names[id.Name] = true
+					}
+				}
+			}
+		}
+	}
+	return names
+}
+
+// isFlagCall says whether n is flag.Bool(...) or the same call through an import alias ending in flag.
+func isFlagCall(n ast.Node) bool {
+	call, ok := n.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	id, ok := sel.X.(*ast.Ident)
+	return ok && strings.HasSuffix(id.Name, "flag")
 }
 
 // pinningTests returns the Test functions of one package directory that
@@ -107,32 +152,31 @@ func pinningTests(t *testing.T, dir string, helpers []beforeReadyLine) (pins, al
 		}
 		files = append(files, file)
 	}
+	names := pinNames(files)
 	direct := map[string]bool{}
 	calls := map[string][]string{}
 	var tests []string
-	{
-		for _, file := range files {
-			for _, decl := range file.Decls {
-				fd, ok := decl.(*ast.FuncDecl)
-				if !ok || fd.Body == nil || fd.Recv != nil {
-					continue
-				}
-				name := fd.Name.Name
-				if strings.HasPrefix(name, "Test") && strings.HasSuffix(fset.Position(fd.Pos()).Filename, "_test.go") {
-					tests = append(tests, name)
-				}
-				ast.Inspect(fd.Body, func(n ast.Node) bool {
-					if pinSignal(n) {
-						direct[name] = true
-					}
-					if call, ok := n.(*ast.CallExpr); ok {
-						if id, ok := call.Fun.(*ast.Ident); ok {
-							calls[name] = append(calls[name], id.Name)
-						}
-					}
-					return true
-				})
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Body == nil || fd.Recv != nil {
+				continue
 			}
+			name := fd.Name.Name
+			if strings.HasPrefix(name, "Test") {
+				tests = append(tests, name)
+			}
+			ast.Inspect(fd.Body, func(n ast.Node) bool {
+				if id, ok := n.(*ast.Ident); ok && names[id.Name] || pinSignal(n) {
+					direct[name] = true
+				}
+				if call, ok := n.(*ast.CallExpr); ok {
+					if id, ok := call.Fun.(*ast.Ident); ok {
+						calls[name] = append(calls[name], id.Name)
+					}
+				}
+				return true
+			})
 		}
 	}
 	for _, h := range helpers {
@@ -165,8 +209,7 @@ func pinningTests(t *testing.T, dir string, helpers []beforeReadyLine) (pins, al
 
 // TestBeforeReadyListIsWhole keeps the list `make before-ready` runs honest:
 // every line names a package and tests that exist, and a test that compares
-// with a golden, a hash or a fixture file is on the list (or skipped with the
-// reason), so a new one cannot be forgotten.
+// with a golden, a hash or a fixture file is on the list, so a new one cannot be forgotten.
 func TestBeforeReadyListIsWhole(t *testing.T) {
 	t.Parallel()
 	lines := readBeforeReady(t)
@@ -175,7 +218,14 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 		byPkg[l.pkg] = append(byPkg[l.pkg], l)
 	}
 
-	for pkg, ls := range byPkg {
+	var problems []string
+	pkgs := make([]string, 0, len(byPkg))
+	for pkg := range byPkg {
+		pkgs = append(pkgs, pkg)
+	}
+	sort.Strings(pkgs)
+	for _, pkg := range pkgs {
+		ls := byPkg[pkg]
 		dir := filepath.Join(backendRoot, pkg)
 		_, all := pinningTests(t, dir, nil)
 		for _, l := range ls {
@@ -184,7 +234,7 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 			}
 			for _, part := range alternatives(l.regex) {
 				if !anyMatch(regexp.MustCompile(part), all) {
-					t.Errorf("%s:%d: %s matches no test of %s: the test was renamed or removed, fix the line", beforeReadyFile, l.n, part, pkg)
+					problems = append(problems, fmt.Sprintf("%s:%d: %s matches no test of %s: the test was renamed or removed, fix the line", beforeReadyFile, l.n, part, pkg))
 				}
 			}
 		}
@@ -220,18 +270,21 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 		pins, _ := pinningTests(t, dir, helpersOf(byPkg[pkg]))
 		for _, name := range pins {
 			if !listed(byPkg[pkg], name) {
-				t.Errorf("%s compares with a golden, hash or fixture file but is not in %s: add a `run` line for %s (with the command that rewrites its file) or a `skip` line with the reason",
-					fmt.Sprintf("%s.%s", pkg, name), beforeReadyFile, pkg)
+				problems = append(problems, fmt.Sprintf("%s.%s compares with a golden, hash or fixture file but is not in %s: add a `run` line for %s (with the command that rewrites its file)", pkg, name, beforeReadyFile, pkg))
 			}
 		}
+	}
+	for _, p := range problems {
+		t.Error(p)
 	}
 }
 
 // namesRegex is a regex that only lists names: ^(TestA|TestB)$.
 var namesRegex = regexp.MustCompile(`^\^\(([A-Za-z0-9_|]+)\)\$$`)
 
-// alternatives splits a regex that lists names into each name, so a renamed test is
-// found even when the others of its line still match; any other regex is one part.
+// alternatives splits a regex into the alternatives to check one by one, so a renamed test is
+// found even when the others of its line still match: the names of ^(TestA|TestB)$, or the
+// parts of a regex at its top-level bars.
 func alternatives(regex string) []string {
 	if m := namesRegex.FindStringSubmatch(regex); m != nil {
 		var out []string
@@ -240,7 +293,22 @@ func alternatives(regex string) []string {
 		}
 		return out
 	}
-	return []string{regex}
+	var out []string
+	depth, start := 0, 0
+	for i, r := range regex {
+		switch r {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case '|':
+			if depth == 0 {
+				out = append(out, regex[start:i])
+				start = i + 1
+			}
+		}
+	}
+	return append(out, regex[start:])
 }
 
 func anyMatch(re *regexp.Regexp, names []string) bool {
@@ -269,4 +337,26 @@ func listed(ls []beforeReadyLine, name string) bool {
 		}
 	}
 	return false
+}
+
+// TestBeforeReadyDetector keeps the guard's eyes honest on a fixture package
+// (testdata/pinfixture): what compares with a stored file is found through a
+// constant, a flag, the frozen digests and a helper, and a test that merely
+// dereferences a variable named update is not.
+func TestBeforeReadyDetector(t *testing.T) {
+	t.Parallel()
+	pins, all := pinningTests(t, filepath.Join("testdata", "pinfixture"), nil)
+	wantPins := []string{"TestThroughAConst", "TestThroughAFlag", "TestThroughAHelper", "TestThroughTheDigests"}
+	if !slices.Equal(pins, wantPins) {
+		t.Errorf("pins = %v, want %v", pins, wantPins)
+	}
+	if len(all) != len(wantPins)+2 {
+		t.Errorf("tests = %v, want the %d pins and 2 more", all, len(wantPins))
+	}
+	if got := alternatives(`AuthorizationMatrix$|^TestEvery$`); !slices.Equal(got, []string{`AuthorizationMatrix$`, `^TestEvery$`}) {
+		t.Errorf("alternatives = %q", got)
+	}
+	if got := alternatives(`(Characterization|Golden)$|^TestX$`); len(got) != 2 {
+		t.Errorf("alternatives = %q, want 2", got)
+	}
 }

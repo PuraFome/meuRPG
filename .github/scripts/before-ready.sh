@@ -86,7 +86,14 @@ regen_for() {
 failed=0
 for pkg in $packages; do
   out="$tmp/$(echo "$pkg" | tr '/' '_').out"
-  if [ "$(cat "$out.status")" = 0 ]; then
+  status="$(cat "$out.status" 2>/dev/null || echo missing)"
+  if [ "$status" = missing ]; then
+    failed=1
+    echo
+    echo "=== FAILED: $pkg: the test run left no result (the script was interrupted, or go could not start): run it again."
+    continue
+  fi
+  if [ "$status" = 0 ]; then
     grep -E '^(ok|\?)' "$out" || true
     continue
   fi
