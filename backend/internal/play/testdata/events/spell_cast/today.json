@@ -778,7 +778,24 @@
       "distance_ft": 1,
       "short": true,
       "no_map": true
-    }
+    },
+    "action_key": "x",
+    "action_name": "x",
+    "condition_key": "x",
+    "condition_name": "x",
+    "given": true,
+    "escape_dc": 1,
+    "duration": "x",
+    "repeat_save": true
+  },
+  "creature_action": {
+    "name": "x",
+    "reminder": true,
+    "condition_key": "x",
+    "condition_name": "x",
+    "duration": "x",
+    "repeat_save": true,
+    "text": "x"
   },
   "hid_before": [
     {

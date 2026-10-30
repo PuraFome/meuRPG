@@ -1,5 +1,6 @@
 {
   "basic sheet casting spell:sacred-flame": {
+    "Nonmagical": false,
     "Key": "spell:sacred-flame",
     "Name": "Chama Sagrada",
     "Level": 0,
@@ -38,6 +39,7 @@
     "ZoneLaid": false
   },
   "cleric spell:cure-wounds@1": {
+    "Nonmagical": false,
     "Key": "spell:cure-wounds",
     "Name": "Curar Ferimentos",
     "Level": 1,
@@ -81,6 +83,7 @@
     "ZoneLaid": false
   },
   "cleric spell:cure-wounds@3": {
+    "Nonmagical": false,
     "Key": "spell:cure-wounds",
     "Name": "Curar Ferimentos",
     "Level": 1,
@@ -124,6 +127,7 @@
     "ZoneLaid": false
   },
   "cleric spell:flame-strike@5": {
+    "Nonmagical": false,
     "Key": "spell:flame-strike",
     "Name": "Coluna de Chamas",
     "Level": 5,
@@ -178,6 +182,7 @@
     "ZoneLaid": false
   },
   "cleric spell:flame-strike@6 radiant": {
+    "Nonmagical": false,
     "Key": "spell:flame-strike",
     "Name": "Coluna de Chamas",
     "Level": 5,
@@ -232,6 +237,7 @@
     "ZoneLaid": false
   },
   "cleric spell:guiding-bolt@1": {
+    "Nonmagical": false,
     "Key": "spell:guiding-bolt",
     "Name": "Raio Guiador",
     "Level": 1,
@@ -277,6 +283,7 @@
     "ZoneLaid": false
   },
   "cleric spell:healing-word@1": {
+    "Nonmagical": false,
     "Key": "spell:healing-word",
     "Name": "Palavra Curativa",
     "Level": 1,
@@ -320,6 +327,7 @@
     "ZoneLaid": false
   },
   "cleric spell:hold-person@2": {
+    "Nonmagical": false,
     "Key": "spell:hold-person",
     "Name": "Imobilizar Pessoa",
     "Level": 2,
@@ -358,6 +366,7 @@
     "ZoneLaid": false
   },
   "cleric spell:mass-cure-wounds@5": {
+    "Nonmagical": false,
     "Key": "spell:mass-cure-wounds",
     "Name": "Curar Ferimentos em Massa",
     "Level": 5,
@@ -401,6 +410,7 @@
     "ZoneLaid": false
   },
   "cleric spell:sacred-flame@0": {
+    "Nonmagical": false,
     "Key": "spell:sacred-flame",
     "Name": "Chama Sagrada",
     "Level": 0,
@@ -446,6 +456,7 @@
     "ZoneLaid": false
   },
   "cleric spell:spirit-guardians@3": {
+    "Nonmagical": false,
     "Key": "spell:spirit-guardians",
     "Name": "Espíritos Guardiões",
     "Level": 3,
@@ -494,6 +505,7 @@
     "ZoneLaid": false
   },
   "cleric spell:spiritual-weapon@2": {
+    "Nonmagical": false,
     "Key": "spell:spiritual-weapon",
     "Name": "Arma Espiritual",
     "Level": 2,
@@ -539,6 +551,7 @@
     "ZoneLaid": false
   },
   "fighter casting spell:cure-wounds (no spellcasting)": {
+    "Nonmagical": false,
     "Key": "spell:cure-wounds",
     "Name": "Curar Ferimentos",
     "Level": 1,
@@ -582,6 +595,7 @@
     "ZoneLaid": false
   },
   "fighter casting spell:fire-bolt (no spellcasting)": {
+    "Nonmagical": false,
     "Key": "spell:fire-bolt",
     "Name": "Raio de Fogo",
     "Level": 0,
@@ -643,6 +657,7 @@
     "message": "spell not found"
   },
   "wizard spell:animate-dead@3": {
+    "Nonmagical": false,
     "Key": "spell:animate-dead",
     "Name": "Animar Mortos",
     "Level": 3,
@@ -681,6 +696,7 @@
     "ZoneLaid": false
   },
   "wizard spell:cone-of-cold@5": {
+    "Nonmagical": false,
     "Key": "spell:cone-of-cold",
     "Name": "Cone de Frio",
     "Level": 5,
@@ -726,6 +742,7 @@
     "ZoneLaid": false
   },
   "wizard spell:contact-other-plane@5": {
+    "Nonmagical": false,
     "Key": "spell:contact-other-plane",
     "Name": "Contato Extraplanar",
     "Level": 5,
@@ -764,6 +781,7 @@
     "ZoneLaid": false
   },
   "wizard spell:false-life@1": {
+    "Nonmagical": false,
     "Key": "spell:false-life",
     "Name": "Vitalidade Falsa",
     "Level": 1,
@@ -816,6 +834,7 @@
     "ZoneLaid": false
   },
   "wizard spell:find-familiar@1": {
+    "Nonmagical": false,
     "Key": "spell:find-familiar",
     "Name": "Convocar Familiar",
     "Level": 1,
@@ -854,6 +873,7 @@
     "ZoneLaid": false
   },
   "wizard spell:fire-bolt@0": {
+    "Nonmagical": false,
     "Key": "spell:fire-bolt",
     "Name": "Raio de Fogo",
     "Level": 0,
@@ -899,6 +919,7 @@
     "ZoneLaid": false
   },
   "wizard spell:fireball@3": {
+    "Nonmagical": false,
     "Key": "spell:fireball",
     "Name": "Bola de Fogo",
     "Level": 3,
@@ -944,6 +965,7 @@
     "ZoneLaid": false
   },
   "wizard spell:fireball@5": {
+    "Nonmagical": false,
     "Key": "spell:fireball",
     "Name": "Bola de Fogo",
     "Level": 3,
@@ -989,6 +1011,7 @@
     "ZoneLaid": false
   },
   "wizard spell:hold-person@3": {
+    "Nonmagical": false,
     "Key": "spell:hold-person",
     "Name": "Imobilizar Pessoa",
     "Level": 2,
@@ -1027,6 +1050,7 @@
     "ZoneLaid": false
   },
   "wizard spell:magic-missile@1": {
+    "Nonmagical": false,
     "Key": "spell:magic-missile",
     "Name": "Mísseis Mágicos",
     "Level": 1,
@@ -1072,6 +1096,7 @@
     "ZoneLaid": false
   },
   "wizard spell:magic-missile@3": {
+    "Nonmagical": false,
     "Key": "spell:magic-missile",
     "Name": "Mísseis Mágicos",
     "Level": 1,
@@ -1117,6 +1142,7 @@
     "ZoneLaid": false
   },
   "wizard spell:ray-of-frost@0": {
+    "Nonmagical": false,
     "Key": "spell:ray-of-frost",
     "Name": "Raio de Gelo",
     "Level": 0,
@@ -1162,6 +1188,7 @@
     "ZoneLaid": false
   },
   "wizard spell:shield@1": {
+    "Nonmagical": false,
     "Key": "spell:shield",
     "Name": "Escudo Arcano",
     "Level": 1,
@@ -1200,6 +1227,7 @@
     "ZoneLaid": false
   },
   "wizard spell:sleep@1": {
+    "Nonmagical": false,
     "Key": "spell:sleep",
     "Name": "Sono",
     "Level": 1,
