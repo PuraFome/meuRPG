@@ -49,7 +49,7 @@ export interface CreatureActionOutcome {
 }
 
 /**
- * "Hell Hound usa Sopro de Fogo": the master places the area of a creature's action on the map with the same map as the
+ * "Hell Hound usa Sopro de fogo": the master places the area of a creature's action on the map with the same map as the
  * spells' picker (a point, or one of eight directions) and uses it. The server takes who is inside, so the dialog lists nobody:
  * the result says who it reached. Nothing is spent until "Usar".
  */

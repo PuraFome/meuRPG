@@ -309,7 +309,7 @@ var logHandlers = map[string]logHandler{
 	eventZoneMoved:               effectLine,
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
-	eventHitRider:                plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER),
+	eventHitRider:                (*logBuilder).hitRider,
 	eventStateChanged:            plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED),
 	eventDamagePartRemoved:       (*logBuilder).partRemoved,
 	eventTrapSearched:            (*logBuilder).trapSearched,
@@ -440,6 +440,22 @@ func (b *logBuilder) spellCast(_ playdb.ListEncounterEventsRow, entry *logEntry)
 				b.byPending[id] = entry
 			}
 		}
+	}
+	return true
+}
+
+// hitRider is an answered rider: the damage a creature's rider opened (a ghoul's poison) is hosted by its event, as a
+// cast hosts the damage of its targets, so the roll and the apply that follow land on its line.
+func (b *logBuilder) hitRider(_ playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER
+	r := entry.ev.Rider
+	if r == nil || r.Pending == "" {
+		return true
+	}
+	entry.pend = map[string]*damageLog{}
+	for _, id := range append([]string{r.Pending}, r.More...) {
+		entry.pend[id] = &damageLog{status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL}
+		b.byPending[id] = entry
 	}
 	return true
 }
@@ -911,8 +927,21 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 		if r.ActionKey != "" && !c.v.master {
 			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
 		}
+		e.riderDamage(c, out.HitRider, r)
 	}
 	return true
+}
+
+// riderDamage adds the damage a creature's rider opened, as the viewer gets a cast target's.
+func (e *logEntry) riderDamage(c *logViewing, out *playv1.CombatLogHitRider, r *riderEvent) {
+	if dl, ok := e.pend[r.Pending]; ok {
+		out.Damage = dl.view(c.v, c.actor, c.target)
+	}
+	for _, id := range r.More {
+		if dl, ok := e.pend[id]; ok {
+			out.MoreDamages = append(out.MoreDamages, dl.view(c.v, c.actor, c.target))
+		}
+	}
 }
 
 func (e *logEntry) fillDoor(_ *logViewing, out *playv1.CombatLogEntry) bool {
@@ -1223,7 +1252,9 @@ func (d *damageLog) viewAmount(out *playv1.CombatLogDamage, v combatViewer, targ
 // viewApplied adds the master's apply of a character's damage to the view.
 func (d *damageLog) viewApplied(out *playv1.CombatLogDamage, v combatViewer, target playdb.Combatant) {
 	ap := d.applied
-	out.Amount = ap.Amount
+	if v.master || v.owns(target) { // the apply is after the target's modifiers and the master's override: another player keeps the amount as rolled (RN-20)
+		out.Amount = ap.Amount
+	}
 	out.RelentlessEndurance = ap.Relentless
 	if v.master || v.owns(target) {
 		out.Hook = hookProto(ap.Hook, "") // what a drop_to_zero hook gave is the target's player's and the master's

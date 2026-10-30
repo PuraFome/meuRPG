@@ -71,6 +71,10 @@ type riderEvent struct {
 	EscapeDC      int32  `json:"escape_dc,omitempty"`
 	Duration      string `json:"duration,omitempty"`
 	RepeatSave    bool   `json:"repeat_save,omitempty"`
+	// Pending and More are the pending damages the save governs (the first damage type, then the others): the log
+	// hosts the damage lines that follow on this event, as a cast hosts those of its targets.
+	Pending string   `json:"pending_id,omitempty"`
+	More    []string `json:"more_pending_ids,omitempty"`
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning

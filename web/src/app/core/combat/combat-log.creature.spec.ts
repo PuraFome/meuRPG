@@ -8,6 +8,7 @@ import {
   CombatLogKind,
   HitRiderChoice,
   HitRiderLogResult,
+  PendingDamageStatus,
   SaveOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { logLine } from './combat-log';
@@ -31,8 +32,8 @@ const breath = (over: Record<string, unknown> = {}) =>
     kind: CombatLogKind.SPELL_CAST,
     actorLabel: 'Cão Infernal 1',
     key: 'monster:hell-hound#fire-breath',
-    keyNamePt: 'Sopro de Fogo',
-    creatureAction: { actionKey: 'monster:hell-hound#fire-breath', actionNamePt: 'Sopro de Fogo' },
+    keyNamePt: 'Sopro de fogo',
+    creatureAction: { actionKey: 'monster:hell-hound#fire-breath', actionNamePt: 'Sopro de fogo' },
     spell: {
       targets: [
         {
@@ -57,7 +58,7 @@ describe('the line of a creature action', () => {
     const line = logLine(breath(), '', MASTER);
     expect(line?.icon).toBe('bolt');
     expect(line?.text).toBe(
-      ' usou Sopro de Fogo: o Toren falhou (CD 13; ' +
+      ' usou Sopro de fogo: o Toren falhou (CD 13; ' +
         'd20 11, bônus desconhecido), 21 de dano; a Brisa resistiu (CD 13; d20 11, bônus desconhecido), 10 de dano',
     );
   });
@@ -66,7 +67,7 @@ describe('the line of a creature action', () => {
     const line = logLine(
       breath({
         creatureAction: {
-          actionNamePt: 'Semblante Horrível',
+          actionNamePt: 'Semblante horripilante',
           conditionKey: 'condition:frightened',
           conditionNamePt: 'Amedrontado',
           conditionTargetIds: ['t1'],
@@ -77,7 +78,7 @@ describe('the line of a creature action', () => {
       '',
       PLAYER,
     );
-    expect(line?.text).toContain('usou Semblante Horrível: o Toren falhou');
+    expect(line?.text).toContain('usou Semblante horripilante: o Toren falhou');
     expect(line?.text).toContain(
       '. Amedrontado: o Toren, por 1 minuto; repete o teste no fim de cada turno dele',
     );
@@ -85,10 +86,10 @@ describe('the line of a creature action', () => {
 
   it('shows the SRD text under the line for the master only, because the server sends it to nobody else', () => {
     const withText = breath({
-      creatureAction: { actionNamePt: 'Sopro de Fogo', text: 'The hound exhales fire.' },
+      creatureAction: { actionNamePt: 'Sopro de fogo', text: 'The hound exhales fire.' },
     });
     expect(logLine(withText, '', MASTER)?.notes).toEqual(['Texto do SRD: The hound exhales fire.']);
-    const masked = breath({ creatureAction: { actionNamePt: 'Sopro de Fogo' } });
+    const masked = breath({ creatureAction: { actionNamePt: 'Sopro de fogo' } });
     expect(logLine(masked, '', PLAYER)?.notes).toBeUndefined();
   });
 
@@ -97,12 +98,12 @@ describe('the line of a creature action', () => {
       entry({
         kind: CombatLogKind.SPELL_CAST,
         actorLabel: 'Fantasma',
-        creatureAction: { actionNamePt: 'Forma Etérea', reminder: true },
+        creatureAction: { actionNamePt: 'Forma etérea', reminder: true },
       }),
       '',
       MASTER,
     );
-    expect(line?.text).toBe(' usou Forma Etérea: lembrete, a ação foi gasta');
+    expect(line?.text).toBe(' usou Forma etérea: lembrete, a ação foi gasta');
   });
 
   it("renders only what arrives: a player's line carries no DC", () => {
@@ -119,7 +120,7 @@ describe('the line of a creature action', () => {
       },
     });
     expect(logLine(masked, '', PLAYER)?.text).toBe(
-      ' usou Sopro de Fogo: o Toren falhou, 21 de dano',
+      ' usou Sopro de fogo: o Toren falhou, 21 de dano',
     );
   });
 });
@@ -151,7 +152,37 @@ describe("the line of a creature's rider", () => {
         repeatSave: true,
       }),
     ).toBe(
-      ' usou Garras em Brisa: Brisa falhou no teste (1d20 7 = 9 contra CD 10); ficou Paralisado por 1 minuto; repete o teste no fim de cada turno dele',
+      ' usou Garras em Brisa: Brisa falhou no teste (1d20 (7) + 2 = 9 contra CD 10); ficou Paralisado por 1 minuto; repete o teste no fim de cada turno dele',
+    );
+  });
+
+  it('writes the bonus of the roll with its sign, a negative one too', () => {
+    const line = (d20: number, saveTotal: number) =>
+      rider({
+        choice: HitRiderChoice.APPLY,
+        result: HitRiderLogResult.FAILED,
+        numbers: true,
+        d20,
+        saveTotal,
+      });
+    expect(line(2, 4)).toBe(' usou Garras em Brisa: Brisa falhou no teste (1d20 (2) + 2 = 4)');
+    expect(line(4, 3)).toBe(' usou Garras em Brisa: Brisa falhou no teste (1d20 (4) − 1 = 3)');
+  });
+
+  it('tells the damage the save governs after the save, and what the player reads of it', () => {
+    const base = {
+      choice: HitRiderChoice.APPLY,
+      result: HitRiderLogResult.FAILED,
+      actionNamePt: 'Mordida',
+    };
+    expect(
+      rider({
+        ...base,
+        damage: { amount: 9, damageTypePt: 'veneno', status: PendingDamageStatus.ROLLED },
+      }),
+    ).toBe(' usou Mordida em Brisa: Brisa falhou no teste, 9 de dano, esperando o mestre aplicar');
+    expect(rider({ ...base, damage: { status: PendingDamageStatus.AWAITING_ROLL } }, PLAYER)).toBe(
+      ' usou Mordida em Brisa: Brisa falhou no teste, falta rolar o dano',
     );
   });
 

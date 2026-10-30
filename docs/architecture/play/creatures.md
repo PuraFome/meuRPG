@@ -92,7 +92,7 @@ HP pools come from `Combatant.wild_shape_hit_points_*` (owner and master only) a
 The damage that passes from the beast to the druid comes from the server in the combat log line (`COMBAT_LOG_KIND_WILD_SHAPE`, `CombatLogEntry.wild_shape`, `CombatLogWildShape`: the beast, whether it started or ended, the reason `WildShapeEndReason`, `carried_damage`); the number goes only to the druid's player and the master, and the others read "voltou à forma normal".
 The player's notices (`core/combat/combat-notices.ts`: `FormNotices`, `ConcentrationWatch`, `wildActionLine`) read that line and say the reason and the number; what the log already had when the combat was read is not news.
 The master's "Perdeu a concentração" question is offered only to whoever has creatures of a summon (`summon_group_id` with the owner).
-The Portuguese attack names (`attack:<slug>` in `names_pt.json`, `Attack.name_pt`, `CreatureAction.name_pt`) mean the browser translates nothing.
+The Portuguese action names (`attack:<slug>` in `names_pt.json`, `Attack.name_pt`, `CreatureAction.name_pt`, `action_name_pt` of the log) mean the browser translates no name; only the SRD's usage text ("Recharge 5-6") is translated there, by `usageText`.
 
 ## Wild Shape
 

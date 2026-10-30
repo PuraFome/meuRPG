@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
@@ -19,6 +20,7 @@ const (
 	houndDC  = 12 // the Fire Breath of monster:hell-hound
 	ghoulDC  = 10 // the claws of monster:ghoul
 	crabDC   = 11 // the escape DC of the claw of monster:giant-crab
+	spiderDC = 11 // the bite of monster:giant-spider
 	creature = "creature-dc"
 )
 
@@ -54,6 +56,14 @@ func (w *world) monsterOnTurn(key, name string, hidden bool) *playv1.Combatant {
 	}
 	w.t.Fatalf("the turn of %s never came", key)
 	return nil
+}
+
+// seenByAna puts Pensantus next to the fight, so that the other player sees what happens on it.
+func (w *world) seenByAna() {
+	w.t.Helper()
+	must(w.master.combat.MoveCombatant(w.t.Context(), rq(&playv1.MoveCombatantRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: w.combatant(w.pens).GetId(), IdempotencyKey: newKey(), Col: 12, Row: 13, Forced: true,
+	})))
 }
 
 // readsOf are the reads that show the combat and its log, plus the answers the test holds.
@@ -97,9 +107,12 @@ func (w *world) checkNoStatBlock(t *testing.T, master []reply, held []reply, pos
 }
 
 // logOf is the entries of the master's log, to read what a line holds.
-func (w *world) logOf() []*playv1.CombatLogEntry {
+func (w *world) logOf() []*playv1.CombatLogEntry { return w.logOfPerson(w.master) }
+
+// logOfPerson is the entries of p's log.
+func (w *world) logOfPerson(p *person) []*playv1.CombatLogEntry {
 	var out []*playv1.CombatLogEntry
-	for _, r := range must(w.master.combat.ListCombatLog(w.t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}))).GetRounds() {
+	for _, r := range must(p.combat.ListCombatLog(w.t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}))).GetRounds() {
 		out = append(out, r.GetEntries()...)
 	}
 	return out
@@ -313,4 +326,101 @@ func TestACreatureGrappleShowsThePlayersNeitherTheEscapeDCNorTheStatBlock(t *tes
 			w.checkNoStatBlock(t, []reply{ans}, nil, escape)
 		})
 	}
+}
+
+// A giant spider's bite hits Toren and the master applies the rider: the save is rolled by the server and the
+// poison it governs is opened as pending damage, then rolled and applied. The damage lines are on the rider's
+// line of the log (the master reads them all, with the stat block's key and DC); Toren's player and the other
+// player read the damage but never the DC, the key of the bite, nor the text of the action.
+func TestACreatureRiderDamageShowsThePlayersNoStatBlock(t *testing.T) {
+	for _, hidden := range []bool{false, true} {
+		t.Run("hidden "+strconv.FormatBool(hidden), func(t *testing.T) {
+			w := newWorld(t)
+			name := w.secrets.public("spider-name")
+			if hidden {
+				name = w.secrets.marker("spider-name")
+			}
+			w.secrets.number(creature, spiderDC, "dc")
+			dc := w.canaryOf(creature)
+			w.statBlockNeedles("monster:giant-spider", "bite")
+			spider := w.monsterOnTurn("monster:giant-spider", name, hidden)
+			w.seenByAna()
+			rider := w.hitToren(spider, w.firstAttack(spider))
+			ans := w.applyRider(rider)
+			w.settleAll(spider)
+
+			// Positive control: the rider's line of the master's log holds the damage, rolled and applied.
+			var damage *playv1.CombatLogDamage
+			for _, e := range w.logOf() {
+				if r := e.GetHitRider(); r != nil {
+					damage = r.GetDamage()
+				}
+			}
+			if damage == nil || damage.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED || damage.GetAmount() <= 0 {
+				t.Fatalf("the master's line of the rider holds the damage %v, want it rolled and applied", damage)
+			}
+			if !hidden { // positive control: the players' logs carry the damage line too (a hidden creature's line is masked)
+				for _, p := range []*person{w.caio, w.ana} {
+					if d := riderDamageIn(w.logOfPerson(p)); d == nil || d.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+						t.Errorf("%s: the rider's line holds the damage %v, want it applied", p.name, d)
+					}
+				}
+			}
+			w.checkNoStatBlock(t, []reply{ans}, nil, dc, w.canaryNamed("creature-action-key"), w.canaryNamed("creature-key"))
+		})
+	}
+}
+
+// riderDamageIn is the damage of the last rider line of a log.
+func riderDamageIn(log []*playv1.CombatLogEntry) *playv1.CombatLogDamage {
+	var d *playv1.CombatLogDamage
+	for _, e := range log {
+		if r := e.GetHitRider(); r != nil {
+			d = r.GetDamage()
+		}
+	}
+	return d
+}
+
+// A dwarf resists poison: the spider's poison on Toren is halved when the master applies it. His player and the
+// master read what he took; the other player reads the damage as rolled, never the resisted amount (it would tell
+// the resistance). The amounts are compared on the rider's line itself.
+func TestACreatureRiderResistedDamageNeverReachesAnotherPlayer(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	must(w.master.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: w.fullSheet("class:wizard", "race:dwarf", 1),
+	})))
+	w.secrets.public("spider-name")
+	spider := w.monsterOnTurn("monster:giant-spider", w.secrets.public("spider-name"), false)
+	w.seenByAna()
+	rider := w.hitToren(spider, w.firstAttack(spider))
+	w.applyRider(rider)
+	opts := must(w.master.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: spider.GetId()})))
+	var poison string
+	for _, p := range opts.GetPendingDamages() {
+		if p.GetDamageTypeKey() == "damage-type:poison" {
+			poison = p.GetId()
+		}
+	}
+	if poison == "" {
+		t.Fatal("the rider opened no poison damage")
+	}
+	must(w.master.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: poison, IdempotencyKey: newKey(),
+		Roll: &playv1.RollDamageRequest_TypedSum{TypedSum: 16},
+	})))
+	must(w.master.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: poison, IdempotencyKey: newKey(),
+	})))
+	took := riderDamageIn(w.logOf()).GetAmount()
+	rolled := riderDamageIn(w.logOfPerson(w.ana)).GetAmount()
+	if took <= 0 || rolled <= took {
+		t.Fatalf("the master reads %d, another player %d; want the resisted amount below the rolled one", took, rolled)
+	}
+	if mine := riderDamageIn(w.logOfPerson(w.caio)).GetAmount(); mine != took {
+		t.Errorf("Toren's player reads %d, want what he took (%d)", mine, took)
+	}
+	// Toren's player and the other one read no stat block either (the resisted amount is no needle: it is too small
+	// a number to be searched in every "amount" field without chance matches, so it is compared above).
 }

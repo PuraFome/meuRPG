@@ -99,11 +99,11 @@ describe('the DC of a monk rider save in the log', () => {
     });
 
   it('shows the DC beside the roll when the server sent it', () => {
-    expect(line(rider(15))).toContain('falhou no teste (1d20 4 = 7 contra CD 15)');
+    expect(line(rider(15))).toContain('falhou no teste (1d20 (4) + 3 = 7 contra CD 15)');
   });
 
   it('shows the roll alone, with no "CD 0", when the server sent none', () => {
-    expect(line(rider(0))).toContain('falhou no teste (1d20 4 = 7)');
+    expect(line(rider(0))).toContain('falhou no teste (1d20 (4) + 3 = 7)');
     expect(line(rider(0))).not.toMatch(/CD/);
   });
 });

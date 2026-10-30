@@ -7,6 +7,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,6 +22,7 @@ import { Ability } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { abilityName } from '../../../../core/content/feat-text';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CREATURE_SIZES } from '../../../../core/creatures/creature-types';
+import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { dcLabel } from '../../../../core/format/save-dc';
 
 /** What the monk picks on an offer. */
@@ -34,7 +36,7 @@ export interface RiderPick {
  * Blows hit, and Stunning Strike (1 ki point) on a melee hit. Each offer is optional and
  * answered once. The target's save is rolled by the app; the DC is the ki save DC.
  * A creature's rider (kind CREATURE, the master's alone) is the attack's save or grapple from the stat block: "Pedir
- * salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
+ * teste de resistência de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar". Under it, the SRD's text of the action as a reminder ("Texto do SRD": the creature-type
  * and size exceptions the plan does not hold are the master's call) and, when the stat block sets one, the size limit.
  */
 @Component({
@@ -42,6 +44,12 @@ export interface RiderPick {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule],
   template: `
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger" role="alert" data-testid="rider-error">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
     @for (o of offers(); track o.id) {
       @if (isCreature(o)) {
         <div class="mr-notice rider" role="group" [attr.aria-label]="creatureTitle(o)" data-testid="hit-rider">
@@ -58,7 +66,7 @@ export interface RiderPick {
             @if (srdText(o); as text) {
               <div class="rider__srd" data-testid="rider-srd">
                 <strong>Texto do SRD</strong>
-                <p class="rider__hint">{{ text }}</p>
+                <p class="rider__hint" lang="en">{{ text }}</p>
               </div>
             }
             <div class="rider__btns rider__btns--row">
@@ -210,6 +218,8 @@ export class HitRiderCard {
   private readonly texts = signal<ReadonlyMap<string, { text: string; maxSize: string }>>(
     new Map(),
   );
+  /** Why the stat block could not be read (the offer still reads, without the save's ability and the SRD text). */
+  protected readonly error = signal('');
   private readonly asked = new Set<string>();
   private readonly labels = computed(() => new Map(this.combatants().map((c) => [c.id, c.label])));
 
@@ -218,7 +228,11 @@ export class HitRiderCard {
     effect(() => {
       const campaignId = this.campaignId();
       const combatants = this.combatants();
-      for (const o of this.offers() ?? []) {
+      const offers = this.offers() ?? [];
+      if (offers.length === 0) {
+        untracked(() => this.error.set('')); // no offer, no failure to tell
+      }
+      for (const o of offers) {
         const key = combatants.find((c) => c.id === o.attackerId)?.bestiaryCreatureKey ?? '';
         if (!campaignId || !this.isCreature(o) || !key || this.asked.has(o.id)) {
           continue;
@@ -226,6 +240,7 @@ export class HitRiderCard {
         this.asked.add(o.id);
         this.creatures.statBlock(campaignId, key).then(
           (block) => {
+            this.error.set('');
             const action = block?.actions.find((a) => a.key === o.actionKey);
             const ability = action?.save?.ability;
             if (action && (action.text || action.hitCondition?.maxSize)) {
@@ -240,7 +255,11 @@ export class HitRiderCard {
               this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
             }
           },
-          () => undefined, // the offer reads without the ability
+          (err: unknown) => {
+            // The offer reads without the ability; the next change of the offers or the combatants asks again.
+            this.asked.delete(o.id);
+            this.error.set(combatErrorMessage(err, 'ler a ficha da criatura'));
+          },
         );
       }
     });
@@ -255,7 +274,7 @@ export class HitRiderCard {
     return o.actionNamePt || 'Efeito do ataque';
   }
 
-  /** "Pedir salvaguarda de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", and what a failure gives. */
+  /** "Pedir teste de resistência de Brisa (CD 10, Constituição)" or "Agarrar (CD de fuga 12)", and what a failure gives. */
   protected creatureLine(o: HitRiderOffer): string {
     const target = this.label(o.targetId) || 'o alvo';
     if (o.escapeDc > 0) {
@@ -268,7 +287,7 @@ export class HitRiderCard {
     const fail = o.conditionNamePt
       ? `. Se falhar: ${o.conditionNamePt}`
       : '. Se falhar: dano extra';
-    return `Pedir salvaguarda de ${target}${detail ? ` (${detail})` : ''}${fail}`;
+    return `Pedir teste de resistência de ${target}${detail ? ` (${detail})` : ''}${fail}`;
   }
 
   /** The SRD's text of the action, the master's reminder of the exceptions the plan does not hold (the creature types, the sizes). */

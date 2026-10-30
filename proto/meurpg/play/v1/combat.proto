@@ -2388,6 +2388,12 @@ message CombatLogHitRider {
   int32 escape_dc = 13;
   string duration_text = 14;
   bool repeat_save = 15;
+  // The damage the rider's save governs (a ghoul's poison), as the viewer gets it: the same message a
+  // cast's target carries, AWAITING_ROLL until the damage is rolled, then rolled and applied. The first
+  // damage type, then the others in more_damages. Unset when the rider opened none. A player reads it as
+  // they read a cast's damage: the amount as rolled unless the target is theirs, never the stat block.
+  CombatLogDamage damage = 16;
+  repeated CombatLogDamage more_damages = 17;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
