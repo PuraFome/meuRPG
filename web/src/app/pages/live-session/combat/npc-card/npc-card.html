@@ -193,6 +193,21 @@
     } @else {
       <p class="card__cap">Este combatente não tem ataques na ficha. Use "Dano/Cura" na ordem para ajustar os PV.</p>
     }
+    @if (isNpc()) {
+      <app-creature-actions
+        [campaignId]="campaignId()"
+        [encounter]="encounter()"
+        [subject]="subject()"
+        [state]="state()"
+        [creature]="block()"
+        [pendings]="pendings()"
+        [theatre]="theatre()"
+        [turnBusy]="turnBusy()"
+        (damageOpened)="creatureDamageIds.set($event)"
+        (pickArea)="creatureArea.emit($event)"
+        (settledNote)="settledNote.emit()"
+      />
+    }
     @if (isNpc() && areaSpells().length) {
       <p class="card__cap">Magias de área</p>
       <div class="area-spells">
