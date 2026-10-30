@@ -56,7 +56,7 @@ describe('StageViewer', () => {
   it('draws the initials, in the same tile, for an NPC with no portrait', () => {
     const { el } = setup('s2');
     expect(el.querySelector('.fig__img')).toBeNull();
-    expect(flat(el.querySelector('.fig__tile'))).toBe('AL');
+    expect(el.querySelector('.fig__tile')?.getAttribute('data-initials')).toBe('AL');
   });
 
   it('falls back to the initials when the image fails, with no broken icon', () => {
@@ -64,7 +64,7 @@ describe('StageViewer', () => {
     el.querySelector('.fig__img')!.dispatchEvent(new Event('error'));
     fixture.detectChanges();
     expect(el.querySelector('.fig__img')).toBeNull();
-    expect(flat(el.querySelector('.fig__tile'))).toBe('MI');
+    expect(el.querySelector('.fig__tile')?.getAttribute('data-initials')).toBe('MI');
   });
 
   it('closes by itself when the NPC leaves the stage, keeping its name meanwhile', () => {

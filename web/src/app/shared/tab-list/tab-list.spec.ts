@@ -62,7 +62,7 @@ describe('TabList', () => {
 
   it('puts the count in the name, in words, and hides the badge from a reader', () => {
     const { tabs } = setup();
-    expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
+    expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa 3, 3 mensagens novas');
     expect(tabs()[2].getAttribute('aria-label')).toBeNull();
     const badge = tabs()[0].querySelector('.tl__badge');
     expect(badge?.textContent?.trim()).toBe('3');
@@ -86,7 +86,7 @@ describe('TabList', () => {
     fixture.componentRef.setInput('tabs', TABS.slice(0, 2));
     fixture.detectChanges();
     expect(el.querySelector('.tl--compact')).not.toBeNull();
-    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa3', 'Ficha1']);
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa 3', 'Ficha 1']);
   });
 
   it('selects on a click', () => {

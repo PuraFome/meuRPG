@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 42 histórias: 40 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
+O MVP tem 45 histórias: 43 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
 Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam.
@@ -66,6 +66,8 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-052](#mr-052-o-rolador-de-dados-livre) | Sessão | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-053](#mr-053-o-mestre-age-pelo-personagem-de-um-jogador) | Combate | MVP |
+| [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela) | Combate | MVP |
+| [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1554,6 +1556,53 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-013](#mr-013-ordem-dos-turnos), [MR-014](#mr-014-sua-vez), [RN-03](regras.md), [RN-10](regras.md), [RN-18](regras.md). Veja o [Design](../../design/combat.md).
+
+### MR-054: Usar a ação de uma criatura no turno dela
+
+**Como** mestre, **quero** usar o sopro, o olhar ou outra ação de um monstro no cartão do NPC, **para que** o app role os testes e o dano que a ficha pede e eu não faça isso à mão.
+
+- Prioridade: MVP
+- Regras: RN-20, RN-22, RN-29, RN-38, RN-39, RN-41, RN-42
+- Módulos: play, rules
+
+#### Critérios de aceitação
+- **Dado** um monstro do bestiário no turno dele, **quando** leio o cartão, **então** "Outras ações" lista as ações dele que pedem um teste de resistência ou não rolam nada, cada uma com o que o app leu (o atributo e a CD, a área, o dano e "metade se passar", a condição que uma falha dá) e um botão "Usar"; os ataques e o Ataque Múltiplo não estão ali, são feitos com o cartão de ataque (MR-042).
+- **Dado** uma ação que o app lê só em parte ou não lê, **quando** a leio, **então** o cartão diz isso ("O texto diz algo que o app não calcula: leia o lembrete.") e mostra o texto do SRD, em inglês.
+- **Dado** um combate num mapa e uma ação com forma (um cone, uma linha, uma esfera), **quando** aperto "Usar", **então** a posiciono no mapa como a área de uma magia e aperto "Usar <ação>"; nada é gasto antes disso, e o servidor pega quem está dentro. **Dado** um combate sem grade, ou uma ação sem forma, **então** nomeio os alvos (os inimigos já vêm marcados) e "Usar" espera ao menos um.
+- **Dado** que usei a ação, **então** o app rola o teste de cada alvo contra a CD da ficha, a ação é gasta, e sob a lista leio para cada alvo "Falhou" ou "Passou: metade do dano", a rolagem contra a CD e a condição que recebeu; o dano que abriu está ali para aplicar ou descartar, e o personagem de um jogador espera que eu aplique.
+- **Dado** que o teste da ação nomeia uma condição, **então** o alvo que falha a recebe, a menos que seja imune ou já a tenha, e o resultado anota a duração e o teste repetido para eu guardar; o app não conta o tempo.
+- **Dado** uma ação sem rolagem (Invisibilidade, Mudar de Forma), **quando** a uso, **então** ela gasta a ação, o cartão mostra o texto do SRD com "Lembrete registrado no registro do combate. A ação foi gasta." e o registro diz "usou <ação>: lembrete, a ação foi gasta".
+- **Dado** que a ação do NPC já foi gasta, **então** todo "Usar" fica desligado e diz "A ação deste turno já foi usada."; **dado** que não é a vez do NPC ou que não sou o mestre, o servidor recusa.
+- **Dado** que desfaço a última ação, **então** o uso vai embora com o dano e a condição.
+- **Dado** que sou jogador, **então** não encontro "Outras ações", leio a linha do registro com o nome da ação e, para os alvos que vejo, se cada um passou ou falhou e o dano que tomo, e nunca a ficha, a CD nem qual criatura é (RN-20).
+
+#### No app
+- O cartão do NPC do mestre ("Turno"): "Outras ações", com a lista "Quem a ação atinge" quando cabe, um bloco por ação (nome, uso, linhas, nota, texto do SRD, "Usar") e o resultado sob a lista com o dano pendente. Num mapa, o diálogo de posicionar é "<NPC> usa <ação>". Ver [Design](../../design/combat.md#a-creatures-other-actions).
+
+#### Relacionadas
+- [MR-042](#mr-042-bestiário), [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura), [RN-38](regras.md#rn-38-ações-de-teste-de-resistência-de-uma-criatura), [RN-41](regras.md#rn-41-ações-sem-rolagem).
+
+### MR-055: Responder ao efeito extra de uma criatura
+
+**Como** mestre, **quero** que o app me ofereça o efeito extra do ataque de um monstro quando ele acerta (a paralisia do carniçal, o agarrão de uma serpente), **para que** eu o aplique com o teste e a CD certos, ou o deixe de lado.
+
+- Prioridade: MVP
+- Regras: RN-20, RN-29, RN-34, RN-39, RN-40
+- Módulos: play, rules
+
+#### Critérios de aceitação
+- **Dado** um monstro cujo ataque pede um teste do alvo ao acertar (as garras do carniçal), **quando** o dano de um acerto cai numa criatura do outro lado que ainda está de pé, **então** recebo uma oferta ao lado dos cartões de dano: "Pedir salvaguarda de <alvo> (CD 10, Constituição). Se falhar: Paralisado", com "Aplicar" e "Dispensar".
+- **Dado** que aperto "Aplicar", **então** o app rola o teste do alvo contra a CD, abre o dano extra como dano pendente quando o ataque tem (metade se o alvo passa, quando a ficha diz), dá a condição a quem falha (RN-39), e o registro diz "usou <ataque> em <alvo>: <alvo> falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado".
+- **Dado** um monstro cujo ataque agarra (uma constritora), **quando** acerta, **então** a oferta diz "Agarrar (CD de fuga 12)"; "Aplicar" dá a condição sem teste e a linha anota a CD de fuga.
+- **Dado** que aperto "Dispensar", **então** nada é aplicado e o registro diz "dispensou o efeito de <ataque> em <alvo>".
+- **Dado** que a oferta foi respondida, **então** ela não se desfaz; **dado** que desfaço o dano que a abriu, **então** a oferta some, e um alvo que o acerto derrubou nunca recebe uma. Um ataque oferece o efeito uma vez para cada dano.
+- **Dado** que sou jogador, **então** nunca recebo a oferta e não posso responder uma; leio a linha da resposta com o nome do ataque e o alvo, e a rolagem do teste só num personagem meu, nunca a CD (RN-20).
+
+#### No app
+- No mesmo lugar das ofertas do monge, ao lado dos cartões de dano: um cartão com o ícone de pata, o nome do ataque e o alvo, uma linha do que ele faz, "Aplicar" e "Dispensar". Ver [Design](../../design/combat.md#a-creatures-other-actions).
+
+#### Relacionadas
+- [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela), [RN-40](regras.md#rn-40-efeito-extra-no-acerto-de-uma-criatura).
 
 ## Prioridade: MVP (pré-requisito)
 

@@ -61,9 +61,9 @@ describe('PlannedMilestones (E8-14)', () => {
     expect(el.textContent).toContain('3 marcos · só você vê');
     const reach = Array.from(el.querySelectorAll<HTMLButtonElement>('[data-act="reach"]'));
     expect(reach.map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Marcar “Salvar o mercador” como alcançado',
-      'Marcar “Chegar ao Vale Seco” como alcançado',
-      'Marcar “Derrotar o Barão Ivo” como alcançado',
+      'Marcar como alcançado: “Salvar o mercador”',
+      'Marcar como alcançado: “Chegar ao Vale Seco”',
+      'Marcar como alcançado: “Derrotar o Barão Ivo”',
     ]);
     expect(el.querySelector('[data-id="a"][data-act="up"]')?.getAttribute('aria-disabled')).toBe(
       'true',

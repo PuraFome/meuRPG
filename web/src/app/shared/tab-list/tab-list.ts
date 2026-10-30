@@ -32,7 +32,7 @@ export interface TabItem {
   readonly badge?: string;
   /** What the count means; neutral when absent. Colour is never alone: `words` says the same. */
   readonly tone?: TabTone;
-  /** The count in words, appended to the tab's name ("3 mensagens novas"): the name is "Conversa, 3 mensagens novas". */
+  /** The count in words, appended to the tab's name ("3 mensagens novas"): the name is "Conversa 3, 3 mensagens novas". */
   readonly words?: string;
 }
 
@@ -42,7 +42,7 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
 
 /**
  * The ARIA tabs pattern, drawn as an underlined row: one tab stop (the selected tab), the arrow keys, Home and End move
- * and select, and each tab's name carries its count in words ("Conversa, 3 mensagens novas"). The panels are the
+ * and select, and each tab's name carries its count in words ("Conversa 3, 3 mensagens novas"). The panels are the
  * caller's: they keep their ids from `tabPanelId` and stay mounted, `hidden` when inactive. A row of route links is a
  * `nav`, not this; a radio choice is `app-segmented`.
  */
@@ -72,7 +72,9 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
             <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>
           }
           <span>{{ t.label }}</span>
+          <!-- A space between the label and the count, so the text the eye reads is the start of the name (WCAG 2.5.3). -->
           @if (t.badge) {
+            &ngsp;
             <span class="tl__badge" [class]="'tl__badge tl__badge--' + (t.tone ?? 'count')" aria-hidden="true">{{ t.badge }}</span>
           }
         </button>
@@ -179,7 +181,10 @@ export class TabList {
   }
 
   protected nameOf(tab: TabItem): string | null {
-    return tab.words ? `${tab.label}, ${tab.words}` : null;
+    // The name starts with what the eye reads, label and count ("Ataques 3"), so a voice command matches (WCAG 2.5.3).
+    return tab.words
+      ? `${tab.badge ? `${tab.label} ${tab.badge}` : tab.label}, ${tab.words}`
+      : null;
   }
 
   protected select(id: string): void {

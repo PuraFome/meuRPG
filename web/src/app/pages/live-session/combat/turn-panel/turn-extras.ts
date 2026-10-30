@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
             mat-button
             type="button"
             class="opp__btn"
-            [attr.aria-label]="'Ataque de oportunidade com ' + o.name"
+            [attr.aria-label]="opportunities().length > 1 ? 'Ataque de oportunidade (' + o.name + ')' : 'Ataque de oportunidade com ' + o.name"
             (click)="opportunity.emit(o.key)"
           >
             <mat-icon aria-hidden="true">swords</mat-icon>Ataque de oportunidade{{ opportunities().length > 1 ? ' (' + o.name + ')' : '' }}

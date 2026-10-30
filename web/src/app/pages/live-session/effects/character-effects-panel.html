@@ -106,7 +106,7 @@
           matButton="outlined"
           type="button"
           class="cx__preset"
-          [attr.aria-label]="'Passar ' + p.label"
+          [attr.aria-label]="presetName(p)"
           [disabled]="advancing()"
           disabledInteractive
           (click)="advanceBy(p.seconds)"

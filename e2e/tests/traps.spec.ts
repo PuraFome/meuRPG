@@ -282,7 +282,7 @@ test(
 
       const card = treasurePanel(m).getByRole('article', { name: 'Baú de moedas' });
       await expect(card).toContainText('O que tem dentro · só você vê até achar');
-      await card.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
+      await card.getByRole('button', { name: 'Marcar como encontrado: Baú de moedas' }).click();
       await expect(card.getByRole('button', { name: 'Marcar como encontrado' })).toHaveAttribute('aria-disabled', 'true');
       await card.locator('label', { hasText: 'Pensantus' }).click();
       await card.locator('label', { hasText: 'Toren' }).click();
@@ -292,7 +292,7 @@ test(
 
       // The player: the toast, the row and the sheet with the value and what is inside.
       await expect(p.getByRole('status').filter({ hasText: 'Pensantus e Toren encontraram: Baú de moedas' })).toBeVisible();
-      await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
+      await p.getByRole('button', { name: /^Baú de moedas\s+Tesouro/ }).click();
       const sheet = p.getByRole('dialog', { name: 'Baú de moedas' });
       await expect(sheet).toContainText('250');
       await expect(sheet).toContainText('250 PO e uma adaga de prata.');

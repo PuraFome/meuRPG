@@ -1,0 +1,107 @@
+# Known vulnerabilities in the lockfiles: OSV-Scanner reads the Go modules of
+# backend/ and the npm lockfiles of web/, e2e/ and e2e/lint/, and fails on any
+# finding that osv-scanner.toml does not accept (with a reason and an expiry).
+#
+# Unlike govulncheck (the `govulncheck` job of backend.yml), which reports
+# only what the Go code calls, this lists every vulnerable version we install,
+# called or not: it is the check that covers the npm packages and the Go
+# modules the code does not reach.
+#
+# OSV-Scanner is a release binary pinned by version and sha256, downloaded
+# straight from GitHub, like the tools of workflows-lint.yml. To update it,
+# change the version and the checksum together (the release page lists it in
+# osv-scanner_SHA256SUMS).
+name: osv-scan
+
+on:
+  pull_request:
+    paths:
+      - "backend/go.mod"
+      - "backend/go.sum"
+      - "web/package-lock.json"
+      - "e2e/package-lock.json"
+      - "e2e/lint/package-lock.json"
+      - "osv-scanner.toml"
+      - ".github/workflows/osv-scan.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/go.mod"
+      - "backend/go.sum"
+      - "web/package-lock.json"
+      - "e2e/package-lock.json"
+      - "e2e/lint/package-lock.json"
+      - "osv-scanner.toml"
+      - ".github/workflows/osv-scan.yml"
+  # A vulnerability is published against a version we already have, with no
+  # change on our side: the nightly run catches it (03:00 in São Paulo).
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+# Only a pull request's runs cancel each other; a push to main runs to the end.
+concurrency:
+  group: osv-scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  OSV_SCANNER_VERSION: "2.7.0"
+  OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+
+jobs:
+  osv-scan:
+    name: osv-scanner (lockfiles)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install osv-scanner
+        run: |
+          curl -fsSL -o osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum --check --strict
+          chmod +x osv-scanner
+
+      - name: Scan the lockfiles
+        # go.mod, not go.sum: the scanner reads the module list from go.mod
+        # (go.sum is not a lockfile it supports).
+        run: |
+          ./osv-scanner scan source --config osv-scanner.toml \
+            -L backend/go.mod \
+            -L web/package-lock.json \
+            -L e2e/package-lock.json \
+            -L e2e/lint/package-lock.json
+
+  report:
+    name: report (issue when main is red)
+    needs: [osv-scan]
+    # Only the upstream repository has issues: a fork's red main (synced from upstream) has nowhere to report.
+    if: ${{ always() && github.repository == 'PuraFome/meuRPG' && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
+          gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
+          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+          fi

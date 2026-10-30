@@ -46,6 +46,11 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-35 | **Race traits and the monk's Slow Fall in combat.** A half-orc dropped to 0 hit points but not killed outright stays at 1 (Relentless Endurance, once per long rest, used by the app by itself); its critical hit with a melee weapon attack rolls one more weapon die (Savage Attacks); a monk's reaction takes 5 times its level off a pit's fall damage (Slow Fall); a goblin's Fuga Ágil is Disengage or Hide as a bonus action; a halfling whose d20 shows a 1 (an attack, or a check or saving throw the player rolls) is asked "Tirou 1: rolar de novo?" before the result, and the new roll stands; on a saving throw the app rolls for a player's halfling in someone else's action, the app rolls the 1 again by itself (Lucky). | [Detail](#rn-35-race-traits-and-the-monks-slow-fall-in-combat) |
 | RN-36 | **Who reads a line of the scene's conversation.** A line is for the whole table or for chosen readers; the master always reads every line, can choose any set of players, and a player chooses everyone or "só o mestre". Whoever is not chosen never receives the line: not its text, its image, its existence, its count or a notice that it was sent, in a read, on the stream, in the summary or in the voice. The master speaks as the narrator or as an NPC of the campaign; a player as their own character (RN-18) or out of character. | [Detail](#rn-36-who-reads-a-line-of-the-scenes-conversation) |
 | RN-37 | **Areas that spells keep on the map.** Spirit Guardians, Moonbeam, Cloudkill and Web leave their area on the map while they last. A creature that comes into it, or begins its turn in it, makes the spell's saving throw, at most once on a turn for each area; the cast itself hits nobody. The area ends with the concentration or its time, and moves where the spell lets it. A hidden caster's area is the master's alone. | [Detail](#rn-37-areas-that-spells-keep-on-the-map) |
+| RN-38 | **A creature's save actions.** The master uses an NPC's action that asks a saving throw (a breath weapon, a gaze) from its turn. The app rolls each target's save against the stat block's DC, opens the damage the save governs (half on a success when the action says so) and spends the action. A player reads each target's result and the damage they take, never the DC or the stat block. | [Detail](#rn-38-a-creatures-save-actions) |
+| RN-39 | **A condition a failed save gives.** A creature that fails the save of an action gets the condition the action names, unless it is immune or already has it. The duration and the repeated save are notes for the master; the app counts no time. | [Detail](#rn-39-a-condition-a-failed-save-gives) |
+| RN-40 | **A rider on a creature's hit.** An NPC attack that asks a save of its target on a hit, or grapples it, offers the master the rider once the damage has landed: "Aplicar" or "Dispensar". A grapple gives the condition and notes the escape DC. A player never receives the offer. | [Detail](#rn-40-a-rider-on-a-creatures-hit) |
+| RN-41 | **Actions without a roll.** A creature's action that rolls nothing (a power the text describes) is used as a reminder: it spends the action and writes a log line, and the master reads the SRD text. | [Detail](#rn-41-actions-without-a-roll) |
+| RN-42 | **A monster attack with several damage parts.** A hit of a stat block attack deals every damage part of the action (a sword plus fire) as one damage to apply, each part resisted by its own type. | [Detail](#rn-42-a-monster-attack-with-several-damage-parts) |
 
 ## RN-01: Sheet lock
 
@@ -446,6 +451,7 @@ A druid in Wild Shape has a separate pool of beast hit points, a number only for
 
 **Bestiary monsters** (RN-29).
 The app never tells the player which creature a monster is, beyond the name the master gave it. The creature, the CR and the rolled hit points are the master's.
+The same holds for its actions (RN-38 to RN-42): the stat block, the DCs, the escape DC, the saves the NPC's targets roll for the master and the action key never reach a player. The player reads the action's name, whether each target they see passed or failed and the damage they take; a rider offer is the master's alone.
 
 **Combat on a map with fog** ([MR-036](stories.md#mr-036-fog-of-war-by-sight), RN-10).
 Each player sees only the NPCs their character sees now (with "Visão do grupo", the ones the group sees). An NPC they do not see is like a hidden one: out of the order, with no name, state or square, its turn is "Vez do mestre", and naming it is answered as if it did not exist. Player characters and their creatures never disappear. Attacking an enemy the character cannot see is not possible in the app: the player tells the master.
@@ -909,6 +915,59 @@ A spell the master wrote for the table can keep its area the same way ([RN-23](#
 The zones are in `Encounter.zones` for the map to draw; `MoveSpellZone` moves one.
 How it is built: [Architecture](../architecture/play/spell-zones.md).
 Tests: `zones_test.go` and `zones_hidden_test.go` in `internal/play`, and `internal/leaktest`.
+
+## RN-38: A creature's save actions
+
+An NPC that comes from the bestiary (RN-29) has the actions of its SRD 5.1 stat block, and the app reads from their text what it can compute.
+An action that asks a saving throw instead of rolling to hit (a dragon's breath, a gaze, a frightful presence) is used by the master from the NPC's card, in "Outras ações", on that NPC's turn; only the master may, and the action must be unused.
+The card shows what the app read of the action: the ability and the DC of the save, the area, the damage with what a success does ("metade se passar" or "nada se passar") and the condition a failure gives (RN-39).
+
+- **How far the app reads an action.** Each action is *structured* (every damage part, save and condition of the text is in the plan), *partial* (the plan has the save or the damage, but the text says something more, a number or a condition the app does not compute) or *text-only* (nothing to roll). For a partial or text-only action the card shows the SRD text, in English, as a reminder, and a note ("O texto diz algo que o app não calcula: leia o lembrete."). What the plan cannot read stays in the text for the master to rule on.
+- **Who is hit.** On a map an action with a shape asks where it goes, with the same map as the spells' area: a cone, a line or a cube from a direction, a sphere or a cylinder at a point (up to 120 feet away, the stat block words the distance in text), and a radius around the creature with no choice. The server takes who is inside, with cover, and the master names nobody. An action with no shape, and every action in a combat without a grid (RN-25), asks the master to name the targets; the enemies of the creature start chosen.
+- **The save.** The app rolls a d20 for every target against the action's DC (a player's character too, as for a spell's save with the app's dice), with the target's own modifiers, advantages and conditions.
+- **The damage.** The damage the save governs opens as pending damage for each target that takes it, in the stat block's parts (RN-42): in full for a target that fails, half for one that passes when the action says "half", nothing for one that passes when it says "none". An NPC's target takes it at once and a player's character waits for the master, as for any damage (RN-02); the damage shows under the result and is applied or discarded there. The concentration save of a damaged creature follows (RN-31).
+- **What the use costs.** The action of the NPC's turn. There is no slot, no concentration and no reaction window; a limit such as "Recharge 5-6" or "3/day" is read and shown, and the app does not enforce it. The log has one line for the use, and "Desfazer última ação" takes it back with its damage and condition.
+- **What players read (RN-20).** A player never sees a stat block, an action's DC or its key (it names the creature's type). The log line says the action's name and, for each target the player sees, whether it passed or failed, with the damage; the save's dice and the DC are the master's, and the owner of a target character reads that character's own dice. A hidden creature's action is masked as a hidden NPC's attack is.
+
+How it is built: [Attacks and damage](../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders) and [Rules: creatures](../architecture/rules-creatures-items.md#the-actions-of-a-stat-block).
+Tests: `combat_creature_action_test.go` in `internal/play`, `creatureaction_test.go` in `internal/leaktest` (`TestACreatureActionShowsThePlayersTheirSaveNeverTheStatBlock`) and `monsterplan_test.go` in `internal/rules`.
+
+## RN-39: A condition a failed save gives
+
+When the save of a creature's action (RN-38) names a condition, a target that fails it gets the condition, like any other condition (RN-22), unless it is immune to it or already has it.
+The SRD words the duration ("for 1 minute") and sometimes a new save at the end of each of the target's turns; the app writes both in the log line and in a note under the result and counts no time, so the master ends the condition.
+The log line says which targets got it. A player reads the condition for a target they own and for one that wears a sign everyone sees; for any other target, only the pass or fail.
+
+## RN-40: A rider on a creature's hit
+
+Some attacks of a stat block add to a hit: the ghoul's claws and the giant spider's bite ask a save of the target (a condition, or extra damage with half on a success), and a constrictor's attack grapples with no save (the SRD gives an escape DC).
+The attack itself is made as before, with the NPC's attack card.
+Once its damage has landed on a target from the other side, and the hit did not down the target, the master gets an offer beside the damage cards: "Pedir salvaguarda de Brisa (CD 10, Constituição). Se falhar: Paralisado" or "Agarrar (CD de fuga 12)", with "Aplicar" and "Dispensar".
+
+- **Apply.** For a save, the app rolls the target's save, opens the extra damage as pending damage (half on a success when the action says so) and gives the condition to a target that fails (RN-39). For a grapple, the app gives the condition and writes the escape DC in the line; the escape follows RN-34.
+- **Decline.** Nothing happens and the log says the master set the effect aside.
+- **Once.** An attack offers its rider once for each damage; a downed target has none, and the master's undo of that damage takes the offer back. An answered offer cannot be undone, like the monk's riders (RN-35).
+- **What players read (RN-20).** A player never receives the offer, so the creature rider is the master's alone. The line of the answer names the attack and the target; the save roll (d20 and total) is the master's and the target owner's, the DC is the master's alone (as in RN-20), and a player who answers an offer is refused whether it exists or not.
+- **Limits the master judges.** The offer shows the action's SRD text ("Texto do SRD") and, when the stat block sets one, the size limit ("Só criaturas até grande"). The app does not check the target's size or type: exceptions like the ghoul's paralysis ignoring elves and undead, or a grapple that holds only creatures up to a size, are the master's call when applying. An action whose save has its own effect on a success ("other") is marked partial, because the plan reads it as none. The escape DC is written in the line and is not carried into the grappled creature's escape contest (RN-34): the master sets it there.
+
+How it is built: [Attacks and damage](../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders).
+Tests: `TestACreatureRiderShowsThePlayersTheirSaveNeverTheStatBlock` in `internal/leaktest`.
+
+## RN-41: Actions without a roll
+
+A creature has actions that roll nothing: Change Shape, Invisibility, a teleport, a healing touch (SRD 5.1).
+The app does not play them.
+The master uses the action from the NPC's card like any other: it spends the NPC's action, the log gets "usou <action>: lembrete, a ação foi gasta" and the card shows the SRD text, in English, with "Lembrete registrado no registro do combate. A ação foi gasta."
+The master does the rest by hand (the creature's position, hit points and conditions) with the tools of the order.
+A player reads the log line with the action's name only.
+
+## RN-42: A monster attack with several damage parts
+
+A stat block attack can deal more than one kind of damage (a flaming sword: slashing plus fire; a bite: piercing plus poison).
+The first part is the attack's own damage and the others come from the stat block's plan, so a hit opens one pending damage with all the parts as automatic parts: one "Aplicar", one concentration check, and each part is resisted, made vulnerable or made immune by its own damage type (RN-20, RN-22).
+A critical hit follows the table's rule (RN-24) for every part.
+A player's character attack is unchanged.
+A player reads the damage as rolled, with the type of each part, and never what the target resists.
 
 ## Flows and states
 

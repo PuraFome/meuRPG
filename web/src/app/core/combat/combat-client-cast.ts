@@ -1,4 +1,5 @@
 import {
+  type CreatureActionResult,
   type Encounter,
   type PreviewSpellAreaResponse,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -17,6 +18,7 @@ import {
   type SummonRequest,
 } from './combat-client-types';
 import { castExtrasBody, castRollOneof, areaOneof, need } from './combat-client-wire';
+import type { Square } from './combat-grid';
 import { HeldRollAsked, heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** The calls of spells: casting, previewing an area, the hidden creatures an area reached, and the zones a spell keeps. */
@@ -190,5 +192,59 @@ export class CombatCastCalls {
       this.base.client.endSpellZone({ campaignId, encounterId, zoneId, idempotencyKey: sent }),
     );
     return need(res.encounter, 'EndSpellZone');
+  }
+
+  /** `UseCreatureAction` (master only): the NPC on turn uses one action of its stat block that is no attack roll. `targetIds`
+   * are the creatures it affects (none for an action with no roll, or for an area on a map: the server takes who is inside);
+   * `area` places a cone, a line, a cube, a sphere or a cylinder on a map. One key per use: the same action, targets and place
+   * again is a retry; after it worked, the next use is new. */
+  async useCreatureAction(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    actionKey: string,
+    targetIds: readonly string[],
+    area?: AreaChoice | null,
+  ): Promise<{
+    readonly encounter: Encounter;
+    readonly result: CreatureActionResult;
+    readonly area: { readonly origin: Square | null; readonly squares: readonly Square[] } | null;
+  }> {
+    const places = area
+      ? 'origin' in area
+        ? [area.origin.col, area.origin.row]
+        : [area.direction.dx, area.direction.dy]
+      : [];
+    const res = await this.base.keyed(
+      [
+        'useCreatureAction',
+        campaignId,
+        encounterId,
+        combatantId,
+        actionKey,
+        targetIds.join(','),
+        ...places,
+      ],
+      (sent) =>
+        this.base.client.useCreatureAction({
+          campaignId,
+          encounterId,
+          combatantId,
+          actionKey,
+          targetIds: [...targetIds],
+          area: areaOneof(area),
+          idempotencyKey: sent,
+        }),
+    );
+    return {
+      encounter: need(res.encounter, 'UseCreatureAction'),
+      result: need(res.result, 'UseCreatureAction'),
+      area: res.area
+        ? {
+            origin: res.area.origin ? { col: res.area.origin.col, row: res.area.origin.row } : null,
+            squares: res.area.squares.map((q) => ({ col: q.col, row: q.row })),
+          }
+        : null,
+    };
   }
 }

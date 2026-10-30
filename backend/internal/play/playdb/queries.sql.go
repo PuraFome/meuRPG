@@ -541,6 +541,18 @@ func (q *Queries) CloseRollModeRequestsOf(ctx context.Context, arg CloseRollMode
 	return items, nil
 }
 
+const countHitRidersOfPending = `-- name: CountHitRidersOfPending :one
+SELECT count(*) FROM hit_riders WHERE pending_id = $1
+`
+
+// Whether the damage already opened an offer (one damage offers its rider once).
+func (q *Queries) CountHitRidersOfPending(ctx context.Context, pendingID *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countHitRidersOfPending, pendingID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countLastingEffectTrigger = `-- name: CountLastingEffectTrigger :exec
 UPDATE combatant_states SET triggers_fired = triggers_fired + 1 WHERE id = $1
 `
@@ -1052,6 +1064,16 @@ DELETE FROM hidden_reveals WHERE encounter_id = $1
 // Ending the combat drops what was still to answer.
 func (q *Queries) DeleteHiddenRevealsOfEncounter(ctx context.Context, encounterID string) error {
 	_, err := q.db.Exec(ctx, deleteHiddenRevealsOfEncounter, encounterID)
+	return err
+}
+
+const deleteHitRidersOfPending = `-- name: DeleteHitRidersOfPending :exec
+DELETE FROM hit_riders WHERE pending_id = $1
+`
+
+// The offers the landing of a damage opened go when that damage is undone.
+func (q *Queries) DeleteHitRidersOfPending(ctx context.Context, pendingID *string) error {
+	_, err := q.db.Exec(ctx, deleteHitRidersOfPending, pendingID)
 	return err
 }
 
@@ -1739,7 +1761,7 @@ func (q *Queries) GetHiddenReveal(ctx context.Context, arg GetHiddenRevealParams
 }
 
 const getHitRider = `-- name: GetHitRider :one
-SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at FROM hit_riders WHERE encounter_id = $1 AND id = $2
+SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at, action_key, pending_id FROM hit_riders WHERE encounter_id = $1 AND id = $2
 `
 
 type GetHitRiderParams struct {
@@ -1760,6 +1782,8 @@ func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRi
 		&i.Choice,
 		&i.Used,
 		&i.CreatedAt,
+		&i.ActionKey,
+		&i.PendingID,
 	)
 	return i, err
 }
@@ -3659,9 +3683,9 @@ func (q *Queries) InsertHiddenReveal(ctx context.Context, arg InsertHiddenReveal
 }
 
 const insertHitRider = `-- name: InsertHitRider :one
-INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at
+INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at, action_key, pending_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at, action_key, pending_id
 `
 
 type InsertHitRiderParams struct {
@@ -3671,6 +3695,8 @@ type InsertHitRiderParams struct {
 	Kind        string
 	Round       int32
 	CreatedAt   time.Time
+	ActionKey   *string
+	PendingID   *string
 }
 
 // A rider a monk's hit offers (combat_riders.go).
@@ -3682,6 +3708,8 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 		arg.Kind,
 		arg.Round,
 		arg.CreatedAt,
+		arg.ActionKey,
+		arg.PendingID,
 	)
 	var i HitRider
 	err := row.Scan(
@@ -3694,6 +3722,8 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 		&i.Choice,
 		&i.Used,
 		&i.CreatedAt,
+		&i.ActionKey,
+		&i.PendingID,
 	)
 	return i, err
 }
@@ -6023,7 +6053,7 @@ func (q *Queries) ListHeldReactionHolds(ctx context.Context, encounterID string)
 }
 
 const listHitRiders = `-- name: ListHitRiders :many
-SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at FROM hit_riders WHERE encounter_id = $1 ORDER BY created_at, id
+SELECT id, encounter_id, attacker_id, target_id, kind, round, choice, used, created_at, action_key, pending_id FROM hit_riders WHERE encounter_id = $1 ORDER BY created_at, id
 `
 
 func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitRider, error) {
@@ -6045,6 +6075,8 @@ func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitR
 			&i.Choice,
 			&i.Used,
 			&i.CreatedAt,
+			&i.ActionKey,
+			&i.PendingID,
 		); err != nil {
 			return nil, err
 		}

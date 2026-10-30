@@ -687,6 +687,9 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	}
 	names := s.namesFor(ctx, m.CampaignID) // the content is read once for the whole view
 	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.npcDetails(ctx, m, d), names)
+	if err := s.decorateCreatureRiders(ctx, m, out); err != nil {
+		return nil, s.dbError(ctx, "read the creature riders", err)
+	}
 	if v.sight != nil { // a fog map: the revision is what this player could see happen
 		if out.Revision, err = s.visibleRevision(ctx, d.enc.ID, v.userID); err != nil {
 			return nil, s.dbError(ctx, "count what the player could see", err)

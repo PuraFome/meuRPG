@@ -5,6 +5,7 @@ import {
   SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { circleLabel } from './combat-options';
+import { creatureActionText } from './combat-log-creature';
 import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
 import { luckyText } from './lucky';
@@ -128,6 +129,15 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   [
     CombatLogKind.SPELL_CAST,
     ({ e, base, ctx }) => {
+      if (e.creatureAction) {
+        // The master also reads the SRD's text of the action, as a line under the sentence.
+        return {
+          ...base,
+          icon: 'bolt',
+          text: creatureActionText(e, ctx),
+          ...(e.creatureAction.text ? { notes: [`Texto do SRD: ${e.creatureAction.text}`] } : {}),
+        };
+      }
       if (e.spell?.effectKind === SpellEffectKind.REVIVE) {
         return { ...base, icon: 'favorite', ...reviveCastText(e, ctx) };
       }

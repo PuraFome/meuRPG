@@ -40,7 +40,7 @@
               type="button"
               class="row__action"
               [attr.data-mark]="p.id"
-              [attr.aria-label]="'Marcar ' + p.name + ' como encontrado'"
+              [attr.aria-label]="'Marcar como encontrado: ' + p.name"
               (click)="startMarking(p.id)"
             >
               <mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado
@@ -77,7 +77,7 @@
               class="row__go"
               [disabled]="pendingMapId() !== null"
               disabledInteractive
-              [attr.aria-label]="'Levar a sessão para ' + target.name"
+              [attr.aria-label]="'Ir para ' + target.name + ', levando a sessão'"
               (click)="goToMap.emit(p)"
             >
               <mat-icon aria-hidden="true">login</mat-icon>Ir para {{ target.name }}
@@ -94,7 +94,7 @@
                 type="button"
                 [disabled]="pendingSceneId() === p.id"
                 disabledInteractive
-                [attr.aria-label]="(openScenePointId() === null ? 'Abrir cena ' : 'Trocar para a cena ') + p.name"
+                [attr.aria-label]="(openScenePointId() === null ? 'Abrir cena ' : 'Trocar para esta cena: ') + p.name"
                 (click)="openScene.emit(p)"
               >
                 <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>{{ openScenePointId() === null ? 'Abrir cena' : 'Trocar para esta cena' }}

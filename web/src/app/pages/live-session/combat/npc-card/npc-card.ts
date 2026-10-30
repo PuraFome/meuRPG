@@ -52,6 +52,7 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { MasterSpend } from '../theatre/master-spend';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackChoice } from './attack-choice';
+import { CreatureActions, type CreatureAreaRequest } from './creature-actions';
 import { NpcRollMode } from './npc-mode';
 import {
   D20_FIELDS,
@@ -89,6 +90,7 @@ import { PendingDamages } from './pending-damages';
     AttackChoice,
     CombatantTags,
     CombatantToken,
+    CreatureActions,
     MasterSpend,
     MatButtonModule,
     MatFormFieldModule,
@@ -133,6 +135,8 @@ export class NpcCard {
   readonly offer = output<void>();
   /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */
   readonly castArea = output<string>();
+  /** "Usar" on a creature's action with a shape, on a map: the page opens the picker of the area and answers with what the action did. */
+  readonly creatureArea = output<CreatureAreaRequest>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
   readonly settledNote = output<void>();
   /** "Encerrar fúria": the id of the raging combatant. */
@@ -152,7 +156,8 @@ export class NpcCard {
   protected readonly last = signal<LastRoll | null>(null);
   private key = newKey();
   /** The creature's stat block, read once per kind (the client keeps it): its Multiattack routines. `null` until read, and when it cannot be. */
-  private readonly block = signal<Creature | null>(null);
+  protected readonly block = signal<Creature | null>(null);
+  protected readonly creatureDamageIds = signal<readonly string[]>([]);
   /** The routine the master picked, when the creature has a choice between several. */
   protected readonly routineIdx = signal(0);
   /** "Encerrar os ataques": the master ended the routine before its last attack; the action counts as used. */
@@ -177,7 +182,6 @@ export class NpcCard {
   protected readonly isNpc = computed(
     () => !isPlayer(this.subject()) && !isCreature(this.subject()),
   );
-  /** The one on turn is at 0 hit points: nobody spends movement for them. */
   /** "do Goblin", "da Brisa". */
   protected readonly ofLabel = computed(() => ofThe([this.subject().label]));
   protected readonly down = computed(() => isDown(this.subject()));
@@ -226,7 +230,7 @@ export class NpcCard {
   });
   protected readonly others = computed(() => {
     const id = this.last()?.pending?.id;
-    return this.pendings().filter((p) => p.id !== id);
+    return this.pendings().filter((p) => p.id !== id && !this.creatureDamageIds().includes(p.id));
   });
   /** The routines of the creature's Multiattack that this NPC can make; none for a creature without one (the card is then as it was). */
   protected readonly routines = computed(() => routinesOf(this.block(), this.attacks()));

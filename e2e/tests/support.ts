@@ -722,10 +722,10 @@ const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/
  * Chooses a tab of "O que você pode fazer" ("Ataques", "Magias", the class's tab such as "Guerreiro" or "Chi", "Outras") and
  * returns its panel. Only the chosen tab's panel is shown: "Atacar com X" is in "Ataques" (the one shown first), "Conjurar X" and
  * a cantrip's "Cast" in "Magias", "Usar X" in the class's tab, the standard actions ("Disparada", "Esconder") in "Outras".
- * A tab's accessible name carries its count in words ("Magias, 3 magias"), so it is found by the start of it.
+ * A tab's accessible name is its label, its count and the count in words ("Magias 3, 3 magias"), so it is found by the label and the digits after it.
  */
 export async function openActionTab(page: Page, label: string): Promise<Locator> {
-  const tab = page.getByRole('tablist', { name: 'Tipos de ação' }).getByRole('tab', { name: new RegExp(`^${escapeRegExp(label)}(,|$)`) });
+  const tab = page.getByRole('tablist', { name: 'Tipos de ação' }).getByRole('tab', { name: new RegExp(`^${escapeRegExp(label)}( \\d+)?(,|$)`) });
   await tab.click();
   await expect(tab).toHaveAttribute('aria-selected', 'true');
   return page.getByRole('tabpanel', { name: new RegExp(`^${escapeRegExp(label)}\\b`) });

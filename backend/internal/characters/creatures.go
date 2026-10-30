@@ -259,21 +259,77 @@ func creatureToProto(c rules.Creature) *rulesv1.Creature {
 		out.Senses = append(out.Senses, &rulesv1.Sense{Key: s.Source, NamePt: s.NamePT, RangeFt: i32(s.RangeFt), Sense: s.Key})
 	}
 	for _, a := range c.Actions {
-		act := &rulesv1.CreatureAction{Name: a.Name, NamePt: a.NamePT, Text: a.Text, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: i32(a.AttackBonus)}
-		for _, d := range a.Damage {
-			act.Damage = append(act.Damage, &rulesv1.CreatureDamagePart{Dice: d.Dice, DamageTypeKey: d.TypeKey, DamageTypePt: d.TypeNamePT})
+		out.Actions = append(out.Actions, creatureActionToProto(a))
+	}
+	return out
+}
+
+var (
+	creatureActionKindToProto = map[string]rulesv1.CreatureActionKind{
+		rules.ActionKindAttack:      rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_ATTACK,
+		rules.ActionKindSave:        rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_SAVE,
+		rules.ActionKindMultiattack: rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_MULTIATTACK,
+		rules.ActionKindOther:       rulesv1.CreatureActionKind_CREATURE_ACTION_KIND_OTHER,
+	}
+	creatureActionClassToProto = map[string]rulesv1.CreatureActionClass{
+		rules.ActionStructured: rulesv1.CreatureActionClass_CREATURE_ACTION_CLASS_STRUCTURED,
+		rules.ActionPartial:    rulesv1.CreatureActionClass_CREATURE_ACTION_CLASS_PARTIAL,
+		rules.ActionText:       rulesv1.CreatureActionClass_CREATURE_ACTION_CLASS_TEXT,
+	}
+	creatureAreaShapeToProto = map[string]rulesv1.CreatureAreaShape{
+		rules.AreaCone:     rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_CONE,
+		rules.AreaLine:     rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_LINE,
+		rules.AreaSphere:   rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_SPHERE,
+		rules.AreaCube:     rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_CUBE,
+		rules.AreaCylinder: rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_CYLINDER,
+		rules.AreaRadius:   rulesv1.CreatureAreaShape_CREATURE_AREA_SHAPE_RADIUS,
+	}
+)
+
+// creatureActionToProto is an action of a stat block with the plan the server
+// reads from it.
+func creatureActionToProto(a rules.CreatureAction) *rulesv1.CreatureAction {
+	act := &rulesv1.CreatureAction{Name: a.Name, NamePt: a.NamePT, Text: a.Text, Usage: a.Usage, HasAttack: a.HasAttack, AttackBonus: i32(a.AttackBonus)}
+	for _, d := range a.Damage {
+		act.Damage = append(act.Damage, &rulesv1.CreatureDamagePart{Dice: d.Dice, DamageTypeKey: d.TypeKey, DamageTypePt: d.TypeNamePT})
+	}
+	if a.Save != nil {
+		act.Save = creatureSaveToProto(a.Save)
+	}
+	for _, routine := range a.Multiattack {
+		r := &rulesv1.CreatureMultiattackRoutine{}
+		for _, x := range routine {
+			r.Attacks = append(r.Attacks, &rulesv1.CreatureAttackCount{Name: x.Name, Count: i32(x.Count), Kind: x.Kind, CountText: x.Text})
 		}
-		if a.Save != nil {
-			act.Save = &rulesv1.CreatureSave{Ability: abilityToProto[a.Save.Ability], Dc: i32(a.Save.DC), OnSuccess: saveSuccessToProto[a.Save.OnSuccess]}
+		act.Multiattack = append(act.Multiattack, r)
+	}
+	if p := a.Plan; p != nil {
+		act.Key, act.Kind, act.PlanClass = p.Key, creatureActionKindToProto[p.Kind], creatureActionClassToProto[p.Class]
+		if at := p.Attack; at != nil {
+			act.Melee, act.SpellAttack = at.Melee, at.Spell
+			act.ReachFt, act.RangeFt, act.LongRangeFt = i32(at.ReachFt), i32(at.RangeFt), i32(at.LongRangeFt)
 		}
-		for _, routine := range a.Multiattack {
-			r := &rulesv1.CreatureMultiattackRoutine{}
-			for _, x := range routine {
-				r.Attacks = append(r.Attacks, &rulesv1.CreatureAttackCount{Name: x.Name, Count: i32(x.Count), Kind: x.Kind, CountText: x.Text})
-			}
-			act.Multiattack = append(act.Multiattack, r)
+		if h := p.HitCondition; h != nil {
+			act.HitCondition = &rulesv1.CreatureHitCondition{ConditionKey: h.ConditionKey, ConditionPt: h.ConditionNamePT, EscapeDc: i32(h.EscapeDC), MaxSize: h.MaxSize}
 		}
-		out.Actions = append(out.Actions, act)
+		if ar := p.Area; ar != nil {
+			act.Area = &rulesv1.CreatureArea{Shape: creatureAreaShapeToProto[ar.Shape], SizeFt: i32(ar.SizeFt), WidthFt: i32(ar.WidthFt)}
+		}
+	}
+	return act
+}
+
+// creatureSaveToProto is the saving throw of an action, with what the plan
+// reads of it: the damage it governs, the condition of a failure and whether it
+// rides on an attack.
+func creatureSaveToProto(s *rules.CreatureSave) *rulesv1.CreatureSave {
+	out := &rulesv1.CreatureSave{Ability: abilityToProto[s.Ability], Dc: i32(s.DC), OnSuccess: saveSuccessToProto[s.OnSuccess]}
+	if p := s.Plan; p != nil {
+		for _, d := range p.Damage {
+			out.Damage = append(out.Damage, &rulesv1.CreatureDamagePart{Dice: d.DiceText, DamageTypeKey: d.TypeKey, DamageTypePt: d.TypeNamePT})
+		}
+		out.ConditionKey, out.ConditionPt = p.ConditionKey, p.ConditionNamePT
+		out.OnHit, out.Duration, out.RepeatSave = p.OnHit, p.Duration, p.RepeatSave
 	}
 	return out
 }

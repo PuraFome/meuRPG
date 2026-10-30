@@ -800,7 +800,7 @@ func (e *logEntry) commonFields(c *logViewing, visible bool, lastID string) *pla
 	out := &playv1.CombatLogEntry{
 		Id: e.id, Kind: e.kind, At: timestamppb.New(e.at), Round: e.ev.Round,
 		ActorId: c.actor.ID, ActorLabel: c.actor.Label, TargetId: c.target.ID, TargetLabel: c.target.Label,
-		Key: e.ev.Key,
+		Key: shownKey(c.v, c.actor, e.ev.Key),
 	}
 	out.ByMaster = e.byMasterFor(c.actor)
 	if c.v.master {
@@ -902,7 +902,15 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 	if r := e.ev.Rider; r != nil {
 		// The target's roll is the master's (an NPC's roll never reaches a player, RN-20), or the
 		// target's own player's when a player's character made the save.
-		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(c.byID[e.ev.Target]), c.v.saveDCFor(c.byID[e.ev.Target]))
+		target := c.byID[e.ev.Target]
+		showDC := c.v.saveDCFor(target)
+		if r.ActionKey != "" { // a creature's DC is a number of its stat block: the master's alone, even when the table shows a save's DC
+			showDC = c.v.master
+		}
+		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(target), showDC)
+		if r.ActionKey != "" && !c.v.master {
+			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
+		}
 	}
 	return true
 }
@@ -1001,7 +1009,38 @@ func (e *logEntry) fillRemoval(c *logViewing, out *playv1.CombatLogEntry) bool {
 
 func (e *logEntry) fillSpell(c *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Spell = e.spellView(c.v, c.byID)
+	out.CreatureAction = e.creatureActionView(c.v, c.byID)
 	return true
+}
+
+// creatureActionView is what the line of a creature's action says besides the cast: which action, the
+// condition a failed save gave and to whom (the ones the viewer sees; a condition with no outward sign is
+// the target's own player's and the master's), how long it lasts. The text of the action is the master's.
+// Nil for any other cast. The stat block's numbers are in the saves, which the viewer reads as saveView
+// gives them: the DC is the master's alone.
+func (e *logEntry) creatureActionView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogCreatureAction {
+	cr := e.ev.CreatureAct
+	if cr == nil {
+		return nil
+	}
+	out := &playv1.CombatLogCreatureAction{ActionNamePt: cr.Name, Reminder: cr.Reminder}
+	if v.master {
+		out.ActionKey, out.Text = e.ev.Key, cr.Text
+	}
+	outward := len(withoutOwnerOnly([]string{cr.ConditionKey})) > 0
+	for _, h := range e.ev.Hits {
+		target := byID[h.Target]
+		if !h.CondSet || e.spellTargetUnseen(v, h, target) || (!outward && !v.master && !v.owns(target)) {
+			continue
+		}
+		out.ConditionTargetIds = append(out.ConditionTargetIds, h.Target)
+	}
+	// The condition and how long it lasts are told with who got it: a viewer who sees no target given it
+	// (every target saved, or none that the viewer sees) reads nothing of them.
+	if v.master || len(out.ConditionTargetIds) > 0 {
+		out.ConditionKey, out.ConditionNamePt, out.DurationText, out.RepeatSave = cr.ConditionKey, cr.ConditionName, cr.Duration, cr.RepeatSave
+	}
+	return out
 }
 
 func (e *logEntry) fillTrap(c *logViewing, out *playv1.CombatLogEntry) bool {
@@ -1114,7 +1153,7 @@ func (e *logEntry) spellTargetUnseen(v combatViewer, h castHit, target playdb.Co
 func (e *logEntry) spellTargetView(v combatViewer, h castHit, caster, target playdb.Combatant) *playv1.CombatLogSpellTarget {
 	t := &playv1.CombatLogSpellTarget{
 		TargetId: target.ID, TargetLabel: target.Label, Darts: h.Darts, Outcome: outcomeToProto[h.Outcome],
-		AttackRoll: attackRollView(h, v, caster), Save: saveView(h.Save, v, caster, target),
+		AttackRoll: attackRollView(h, v, caster), Save: creatureSaveView(e.ev, h, v, caster, target),
 		Effect: effectView(h, v, target),
 	}
 	coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)

@@ -390,7 +390,7 @@ test('o XP que o NPC dá: o ND preenche o XP, o valor digitado fica e "Usar" vol
 
     // "Remover ataque" is a text button, not a bin beside the fields.
     await m.getByRole('button', { name: 'Adicionar ataque' }).click();
-    await expect(m.getByRole('button', { name: 'Remover o ataque 1' })).toHaveText('Remover ataque');
+    await expect(m.getByRole('button', { name: 'Remover ataque 1' })).toHaveText('Remover ataque');
 
     await m.getByLabel('Nome do ataque').fill('Cimitarra');
     // The attack's fields sit in a compact grid where a click on the select can land on its label: the keyboard opens it.

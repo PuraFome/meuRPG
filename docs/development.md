@@ -179,6 +179,8 @@ See [Operations](operations/logs.md#locally-with-elk).
 | buf | any recent | `make proto`, `make proto-lint` |
 | sqlc | 1.31.1 | `Makefile` (`make sqlc` runs it with `go run`) |
 | golangci-lint | 2.14.0 | `Makefile`; see [CI](ci.md#go-linters-and-the-ratchet) |
+| govulncheck | 1.8.0 | `govulncheck` job of `backend.yml`; see [CI](ci.md#vulnerability-scans) |
+| osv-scanner | 2.7.0 | `osv-scan.yml`, with its sha256 |
 | CockroachDB | `COCKROACH_VERSION` in the `Makefile` | `compose.yaml`, `compose.ci.yaml`, `COCKROACH_IMAGE` in `backend.yml` |
 
 `make web-install` runs `npm ci --ignore-scripts` in `web/` and never runs third-party install scripts.

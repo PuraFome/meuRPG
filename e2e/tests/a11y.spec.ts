@@ -10,7 +10,7 @@ import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -898,9 +898,9 @@ async function scanEditorRolls(browser: Browser, colorScheme: 'light' | 'dark', 
     await page.getByRole('tab', { name: 'Habilidades' }).click();
     await page.getByRole('radio', { name: /Rolar 4d6/ }).check();
     if (width < 768) {
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^\d+ [\d ]*Livre$/ }).first().click();
       await page.getByRole('button', { name: /^Força: colocar o/ }).click();
-      await page.getByRole('button', { name: /^\d+: dados .* Livre\.$/ }).first().click();
+      await page.getByRole('button', { name: /^\d+ [\d ]*Livre$/ }).first().click();
     } else {
       await page.getByLabel('Força', { exact: true }).selectOption({ index: 1 });
     }
@@ -1232,7 +1232,7 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
     await openOrderRow(m, 'Goblin 1');
-    await m.getByRole('button', { name: 'Dano ou cura em Goblin 1' }).click();
+    await m.getByRole('button', { name: 'Dano/Cura: Goblin 1' }).click();
     await expect(m.getByRole('heading', { name: 'Dano ou cura em Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Dano/Cura de um NPC ${where}`);
   } finally {
@@ -1633,9 +1633,9 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
-    await expect(p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ })).toBeVisible();
     await expectScreenPasses(p, `Sua reação, com o ataque de oportunidade ${where}`);
-    await p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' }).click();
+    await p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ }).click();
     await expect(p.getByRole('dialog', { name: /Adaga/ })).toBeVisible();
     await expectScreenPasses(p, `Ataque de oportunidade, escolher o alvo ${where}`);
     await p.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click();
@@ -2149,14 +2149,14 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await rollSceneRPC(p, campaignId, ids[3], 14);
     await rollSceneRPC(p, campaignId, ids[4], 3);
     // Each roll is a chip beside its action; opening them shows the formula and the verdict.
-    await openRolls(m);
+    await openRolls(m, 3);
     await expect(m.getByText('Não passou · CD 10')).toBeVisible();
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
     await expectScreenPasses(m, `Cena aberta com três rolagens ${where}`);
     // With a scene open, the points of the map say what they do with it.
     await showMapTool(m, 'Pontos');
     await expect(m.getByText('Cena aberta agora')).toBeVisible();
-    await expect(m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Trocar para esta cena: Posto da guarda' })).toBeVisible();
     await expectScreenPasses(m, `Pontos do mapa com a cena aberta ${where}`);
     await showMasterTab(m, 'cena');
     await m.getByRole('button', { name: 'Trocar cena' }).click();
@@ -2291,7 +2291,7 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     for (const text of ['Salvar o mercador', 'Chegar ao Vale Seco', 'Derrotar o Barão Ivo']) {
       await experience(m).getByLabel('Nome do marco').fill(text);
       await experience(m).getByLabel('Nome do marco').press('Enter');
-      await expect(experience(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+      await expect(experience(m).getByRole('button', { name: `Marcar como alcançado: “${text}”` })).toBeVisible();
       if (text !== 'Derrotar o Barão Ivo') {
         await experience(m).getByRole('button', { name: 'Adicionar marco', exact: true }).click();
       }
@@ -2309,7 +2309,7 @@ async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'da
     await m.getByRole('button', { name: 'Voltar' }).click();
 
     // "Marcar como alcançado".
-    await experience(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
+    await experience(m).getByRole('button', { name: 'Marcar como alcançado: “Chegar ao Vale Seco”' }).click();
     await expect(m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
     await expectScreenPasses(m, `Marcar como alcançado ${where}`);
     await m.getByRole('dialog').getByRole('button', { name: 'Marcar como alcançado' }).click();
@@ -2715,28 +2715,28 @@ async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
     await expectScreenPasses(m, `Em cena, vazio ${where}`);
     await m.getByRole('button', { name: 'Pôr em cena', exact: true }).click();
-    await expect(m.getByRole('button', { name: 'Pôr Mira em cena' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Pôr em cena: Mira' })).toBeVisible();
     await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(m, `Pôr em cena ${where}`);
     for (const name of ['Mira', 'Capitão Goblin']) {
-      await m.getByRole('button', { name: `Pôr ${name} em cena` }).click();
-      await expect(m.getByRole('button', { name: `Tirar ${name} de cena` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
+      await m.getByRole('button', { name: `Pôr em cena: ${name}` }).click();
+      await expect(m.getByRole('button', { name: `Tirar de cena: ${name}` }).or(m.getByText(`${name} entrou na cena.`).first()).first()).toBeVisible();
     }
     await m.getByRole('button', { name: width >= 768 ? 'Fechar' : 'Fechar', exact: true }).last().click();
     await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
-    await expect(m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Fala agora: Capitão Goblin está com a fala. Tirar a fala' })).toBeVisible();
     await expectScreenPasses(m, `Em cena, dois NPCs, um falando ${where}`);
 
     const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
     await expect(stage).toBeVisible();
     await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(p, `Palco do jogador, dois NPCs ${where}`);
-    await stage.getByRole('button', { name: 'Ver Mira maior' }).click();
+    await stage.getByRole('button', { name: 'Mira (ver maior)' }).click();
     await expect(p.getByRole('heading', { name: 'Mira' })).toBeFocused();
     await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(p, `Mira maior ${where}`);
     await p.keyboard.press('Escape');
-    await expect(stage.getByRole('button', { name: 'Ver Mira maior' })).toBeFocused();
+    await expect(stage.getByRole('button', { name: 'Mira (ver maior)' })).toBeFocused();
 
     // Four on the stage: the grid on a phone, the row on a desktop.
     await putOnStageRPC(m, campaignId, aldoId);
@@ -3281,7 +3281,7 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await openSessionPage(m, campaignId);
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
     await expect(m.getByText('Os jogadores veem a CD')).toBeVisible();
-    await openRolls(m);
+    await openRolls(m, 3);
     await expect(m.getByText('Tentativa 1 de 1').first()).toBeVisible();
     await expectScreenPasses(m, `Cena aberta do mestre com os limites e as tentativas ${where}`);
     const grant = m.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça' });
@@ -3354,7 +3354,7 @@ async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' 
     await rollSceneRPC(p, campaignId, actionIds[0], 11);
     await rollSceneRPC(p, campaignId, actionIds[4], 3);
     await openSessionPage(m, campaignId);
-    await openRolls(m);
+    await openRolls(m, 2);
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
 
     await endSessionFromBar(m);
@@ -4155,7 +4155,7 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await showMapTool(m, 'Tesouro');
     const chest = m.getByRole('region', { name: 'Tesouros do mapa' }).getByRole('article', { name: 'Baú de moedas' });
     await expectScreenPasses(m, `Tesouros do mapa, escondido ${where}`);
-    await chest.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
+    await chest.getByRole('button', { name: 'Marcar como encontrado: Baú de moedas' }).click();
     await expectScreenPasses(m, `Marcar como encontrado no lugar ${where}`);
     await chest.locator('label', { hasText: 'Pensantus' }).click();
     await chest.getByRole('button', { name: 'Marcar como encontrado' }).click();
@@ -4169,7 +4169,7 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await chest.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
 
     // The player: the toast, the row and sheet of the treasure, and the search in each step.
-    await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
+    await p.getByRole('button', { name: /^Baú de moedas\s+Tesouro/ }).click();
     await expect(p.getByRole('dialog', { name: 'Baú de moedas' })).toBeVisible();
     await expectScreenPasses(p, `Folha do tesouro, jogador ${where}`);
     await p.getByRole('dialog', { name: 'Baú de moedas' }).getByRole('button', { name: 'Fechar', exact: true }).last().click();
@@ -6970,7 +6970,7 @@ async function scanClaims(browser: Browser, colorScheme: 'light' | 'dark', width
     await expect(rowOf(m, 'Sálvia').getByRole('group', { name: 'Revogar o link de Sálvia?' })).toBeVisible();
     await expectScreenPasses(m, `Personagens reservados, revogar o link ${where}`);
     await rowOf(m, 'Sálvia').getByRole('button', { name: 'Cancelar' }).click();
-    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver Brisa à reserva/ }).click();
+    await rowOf(m, 'Brisa').getByRole('button', { name: /Devolver à reserva: Brisa/ }).click();
     await expect(rowOf(m, 'Brisa').getByRole('group', { name: 'Devolver Brisa à reserva?' })).toBeVisible();
     await expectScreenPasses(m, `Personagens reservados, devolver à reserva ${where}`);
     await rowOf(m, 'Brisa').getByRole('button', { name: 'Cancelar' }).click();
@@ -8467,7 +8467,7 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     }
     await time.getByRole('button', { name: 'Outro tempo' }).click();
     await expectScreenPasses(m, `Passar o tempo, "Outro tempo" ${where}`);
-    await time.getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await time.getByRole('button', { name: '10 min, passar 10 minutos' }).click();
     await expect(panel).toContainText('Passou 10 minutos.');
     await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
 
@@ -8721,7 +8721,7 @@ async function scanDarkWarningScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(m, `No escuro, o aviso do mestre ${where}`);
 
     // "Ver no mapa": the map centers and only Toren is labelled.
-    await notice.getByRole('button', { name: 'Ver Toren no mapa' }).click();
+    await notice.getByRole('button', { name: 'Ver no mapa, Toren' }).click();
     await expect(m.locator('app-dark-marks .label')).toHaveText('Toren · no escuro');
     await expectScreenPasses(m, `No escuro, Ver no mapa ${where}`);
 
@@ -8789,7 +8789,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
   const phone = width < 768;
   const openChat = async (page: Page) => {
     if (phone) {
-      await page.getByRole('button', { name: /^Conversa(, \d+ mensage(?:m|ns) novas?)?$/ }).click();
+      await page.getByRole('button', { name: /^Conversa( \d+, \d+ mensage(?:m|ns) novas?)?$/ }).click();
     }
     // The empty feed is not drawn; the panel is there once its message box is.
     await expect(messageBoxOf(page)).toBeVisible();
@@ -8825,7 +8825,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
 
     // The player: on a phone the tab says there is news, then the full-screen view.
     if (phone) {
-      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
+      await expect(p.getByRole('button', { name: /^Conversa \d+, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
       // The notice at the top of the page says the same, in view without scrolling; it is awaited by its words.
       const notice = p.getByRole('button', { name: /^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/ });
       await expect(notice).toBeVisible();
@@ -9077,4 +9077,83 @@ test('o mestre agir por um personagem passa no axe e nas conferências de layout
 test('o mestre agir por um personagem passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-053'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanMasterActs(browser, 'dark', 390);
+});
+
+/** The master's creature actions (W7-M, MR-012): a hell hound's NPC card with its "Outras ações" area (a breath weapon with the targets
+ * named in the mind's theatre), the result of the save action under the list, and the offer of a ghoul's claw rider after the hit. */
+async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade ações ${Date.now()}`, false, false, { build: vex, sheet: { weaponKeys: ['equipment:rapier'] } });
+    campaignId = table.campaignId;
+    const started = await callRPC(m, 'meurpg.play.v1.CombatService/StartEncounter', {
+      campaignId,
+      idempotencyKey: crypto.randomUUID(),
+      name: 'Emboscada na estrada',
+      participants: [],
+      monsters: [
+        { creatureKey: 'monster:hell-hound', count: 1 },
+        { creatureKey: 'monster:ghoul', count: 1 },
+      ],
+      mode: 'ENCOUNTER_MODE_THEATRE',
+    });
+    expect(started.ok(), await started.text()).toBeTruthy();
+    let enc = (await started.json()).encounter as Encounter;
+    const hound = enc.combatants.find((c) => c.label === 'Cão infernal')!;
+    const ghoul = enc.combatants.find((c) => c.label === 'Carniçal')!;
+    const faces = new Map([[hound.id, 20], [ghoul.id, 19]]);
+    for (const c of enc.combatants) {
+      enc = await combatRPC(m, 'SubmitInitiative', { campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces.get(c.id) ?? 1 });
+    }
+    enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
+    for (const c of [hound, ghoul]) {
+      enc = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: c.id, hidden: false });
+    }
+    await openSessionPage(m, campaignId);
+
+    // Both monsters share the turn (the master plays one part after the other): the ghoul's claw hits and offers its rider.
+    const ghoulCard = m.getByRole('region', { name: 'Vez do Carniçal' });
+    await ghoulCard.locator('label', { hasText: 'Garras' }).click();
+    await ghoulCard.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await ghoulCard.getByLabel(/Role 1d20/).fill('15');
+    await ghoulCard.getByRole('button', { name: 'Confirmar 15' }).click();
+    await ghoulCard.getByRole('button', { name: 'Rolar dano' }).click();
+    await ghoulCard.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
+    await expect(m.getByTestId('hit-rider').first()).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, a oferta do efeito das garras ${where}`);
+    await m.getByTestId('hit-rider').first().getByRole('button', { name: /^Aplicar / }).click();
+    await endPartRPC(m, campaignId, 'Carniçal');
+
+    // The hell hound's card: the actions area, then the result of the breath's saving throw.
+    const card = m.getByRole('region', { name: 'Vez do Cão infernal' });
+    await expect(card.getByRole('button', { name: /^Usar Fire Breath/ })).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, a vez do Cão infernal com "Outras ações" ${where}`);
+    await card.getByRole('button', { name: /^Usar Fire Breath/ }).click();
+    await expect(card.getByTestId('creature-action-result')).toBeVisible();
+    await expectScreenPasses(m, `A ficha do mestre, o resultado da salvaguarda da ação ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCreatureActions(browser, 'light', 1280);
+});
+
+test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanCreatureActions(browser, 'dark', 390);
 });

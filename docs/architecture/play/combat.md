@@ -83,7 +83,8 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `RequestRollMode`, `AnswerRollModeRequest`, `CancelRollModeRequest` | Player asks; master answers | A mode the server did not suggest |
 | `CastSpell`, `PreviewSpellArea`, `ResolveHiddenReveal`, `EndConcentration` | See [Casting](casting.md) | Spells |
 | `TakeAction` | The player on their own character, on their turn; the master on any combatant on turn | Standard actions and feature actions; the table's actions that spend several points, heal or give temporary hit points (`spend`, `heal_target_combatant_id`: see [Attacks and damage](attacks-and-damage.md#the-tables-actions-that-spend-heal-and-give-mr-025)) |
-| `AnswerRageEnd`, `EndRage`, `UseHitRider` | The barbarian's player / monk's player; master | See [Attacks and damage](attacks-and-damage.md) |
+| `AnswerRageEnd`, `EndRage`, `UseHitRider` | The barbarian's player / monk's player; master (also a creature's rider) | See [Attacks and damage](attacks-and-damage.md) |
+| `UseCreatureAction` | The master, for the NPC on turn | A save action or an action with no roll from the NPC's stat block: see [Attacks and damage](attacks-and-damage.md#a-creatures-actions-and-riders) |
 | `MoveCombatant`, `GetMoveOptions`, `SpendMovement`, `StandUp` | See [Movement](movement.md) and [Theatre](theatre.md) | Movement |
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md) | Opportunity attacks |
 | `AnswerReaction`, `MarkReactionRolling`, `ResolveConcentrationSave`, `UseReaction`, `DeclineReaction` | See [Reactions](reactions.md) | Reaction windows |

@@ -679,6 +679,9 @@ type actionEvent struct {
 	StatesChanged bool       `json:"states_changed,omitempty"`
 	// Rider is an answered monk rider (hit_rider).
 	Rider *riderEvent `json:"rider,omitempty"`
+	// CreatureAct is the action of a stat block an NPC used (UseCreatureAction): the event is a spell_cast whose key is
+	// the action's, so that the log, the undo and the fog read it as they read a cast.
+	CreatureAct *creatureActionEvent `json:"creature_action,omitempty"`
 
 	// HidBefore is the hiding an attack or a cast ended, which its undo gives back
 	// (combat_hide.go).
@@ -859,4 +862,18 @@ func jsonUnmarshal(raw []byte, v any) error {
 		return errors.New("empty")
 	}
 	return json.Unmarshal(raw, v)
+}
+
+// creatureActionEvent is what a creature's action says beyond the cast it is written as: its name, the
+// condition a failed save gives (the targets that got it are the hits with CondSet), the stat block's words
+// for how long it lasts and its text. The DC and the bonus are the hits' saves, the master's alone.
+type creatureActionEvent struct {
+	Name string `json:"name"`
+	// Reminder: the action rolls nothing; it spent the action and wrote the line.
+	Reminder      bool   `json:"reminder,omitempty"`
+	ConditionKey  string `json:"condition_key,omitempty"`
+	ConditionName string `json:"condition_name,omitempty"`
+	Duration      string `json:"duration,omitempty"`
+	RepeatSave    bool   `json:"repeat_save,omitempty"`
+	Text          string `json:"text,omitempty"`
 }

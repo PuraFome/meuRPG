@@ -61,7 +61,7 @@ test(
         await field.fill(text);
         await field.press('Enter');
         await expect(panel(m).getByLabel('Nome do marco')).toHaveCount(0);
-        await expect(panel(m).getByRole('button', { name: `Marcar “${text}” como alcançado` })).toBeVisible();
+        await expect(panel(m).getByRole('button', { name: `Marcar como alcançado: “${text}”` })).toBeVisible();
       }
       await expect(panel(m)).toContainText('3 marcos · só você vê');
 
@@ -79,7 +79,7 @@ test(
       await expect(panel(m).getByRole('button', { name: 'Remover Salvar o mercador' })).toBeFocused();
 
       // Mark "Chegar ao Vale Seco" reached, out of order.
-      await panel(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' }).click();
+      await panel(m).getByRole('button', { name: 'Marcar como alcançado: “Chegar ao Vale Seco”' }).click();
       const dialog = m.getByRole('dialog', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' });
       await expect(dialog).toContainText('1 personagem pode subir de nível');
       await dialog.getByRole('button', { name: 'Marcar como alcançado' }).click();
@@ -99,7 +99,7 @@ test(
       await panel(m).getByRole('button', { name: 'Desfazer Chegar ao Vale Seco' }).click();
       await expect(m.getByRole('alertdialog')).toContainText('volta para “Marcos planejados”');
       await m.getByRole('alertdialog').getByRole('button', { name: 'Desfazer marco' }).click();
-      await expect(panel(m).getByRole('button', { name: 'Marcar “Chegar ao Vale Seco” como alcançado' })).toBeVisible();
+      await expect(panel(m).getByRole('button', { name: 'Marcar como alcançado: “Chegar ao Vale Seco”' })).toBeVisible();
       await expect(panel(m)).toContainText('3 marcos · só você vê');
       await expect(panel(m)).toContainText('Nenhum marco alcançado ainda');
     } finally {

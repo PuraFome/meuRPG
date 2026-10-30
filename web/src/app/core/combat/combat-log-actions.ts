@@ -21,6 +21,7 @@ import { countsSentence } from './death-saves';
 import { article } from '../format/article';
 import { dcLabel } from '../format/save-dc';
 import { the } from './combat-log-words';
+import { durationPt } from './creature-action';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
  * are only in the entry for the master and the target's player; why a touch did nothing is the master's alone. */
@@ -307,6 +308,9 @@ export function wildShapeText(e: CombatLogEntry): string {
 export function hitRiderText(e: CombatLogEntry): string {
   const r = e.hitRider;
   const target = e.targetLabel || 'alguém';
+  if (r && (r.choice === HitRiderChoice.APPLY || r.actionNamePt)) {
+    return creatureRiderText(e, r);
+  }
   if (!r || r.choice === HitRiderChoice.DECLINE) {
     return ` dispensou a técnica em ${target}`;
   }
@@ -330,4 +334,33 @@ export function hitRiderText(e: CombatLogEntry): string {
     }
   }
   return ` usou ${names[r.choice] ?? 'a técnica'} em ${target}${result}`;
+}
+
+/**
+ * The line of a creature's rider the master answered (the extra save or the grapple of an attack): "usou Garras em Brisa: Brisa
+ * falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado por 1 minuto". Only what the entry carries is written: a player
+ * reads no DC and no key, and the condition only for a target they own or one with a sign everyone sees.
+ */
+function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hitRider']>): string {
+  const target = e.targetLabel || 'alguém';
+  const name = r.actionNamePt || 'o ataque';
+  if (r.choice === HitRiderChoice.DECLINE) {
+    return ` dispensou o efeito de ${name} em ${target}`;
+  }
+  const roll = r.numbers
+    ? ` (1d20 ${r.d20} = ${r.saveTotal}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
+    : '';
+  const duration = r.durationText ? ` por ${durationPt(r.durationText)}` : '';
+  const repeat = r.repeatSave ? '; repete o teste no fim de cada turno dele' : '';
+  const condition = r.conditionNamePt ? `; ficou ${r.conditionNamePt}${duration}${repeat}` : '';
+  const escape = r.escapeDc > 0 ? ` (${dcLabel(r.escapeDc).replace('CD', 'CD de fuga')})` : '';
+  let result = '';
+  if (r.result === HitRiderLogResult.SAVED) {
+    result = `: ${target} passou no teste${roll}`;
+  } else if (r.result === HitRiderLogResult.FAILED) {
+    result = `: ${target} falhou no teste${roll}${condition}`;
+  } else if (r.conditionNamePt) {
+    result = `: ${target} ficou ${r.conditionNamePt}${escape}${duration}${repeat}`;
+  }
+  return ` usou ${name} em ${target}${result}`;
 }

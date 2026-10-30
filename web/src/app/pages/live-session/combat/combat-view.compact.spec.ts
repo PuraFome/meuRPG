@@ -123,10 +123,10 @@ describe('CombatView: the player’s own turn on a phone', () => {
         t.getAttribute('aria-label'),
       ),
     ).toEqual([
-      'Ataques, 1 ataque',
-      'Magias, 1 magia',
-      'Guerreiro, 1 habilidade',
-      'Outras, 0 ações',
+      'Ataques 1, 1 ataque',
+      'Magias 1, 1 magia',
+      'Guerreiro 1, 1 habilidade',
+      'Outras 0, 0 ações',
     ]);
   });
 
@@ -219,7 +219,7 @@ describe('CombatView: the rail at 1280 and off turn on a phone', () => {
     ];
     expect(
       tabs.map((t) => t.getAttribute('aria-label') ?? t.textContent?.replace(/\s+/g, ' ').trim()),
-    ).toEqual([expect.stringContaining('Ações'), 'Conversa, 3 mensagens novas']);
+    ).toEqual([expect.stringContaining('Ações'), 'Conversa 3, 3 mensagens novas']);
     expect(tabs[1].querySelector('.tl__badge--news')?.textContent).toBe('3');
     const chat = rail.querySelector<HTMLElement>('#rail-panel-chat')!;
     expect(chat.hidden).toBe(true);

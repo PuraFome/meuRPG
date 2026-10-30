@@ -154,7 +154,7 @@ test(
       await expect(scene.getByRole('button', { name: 'Rolar Percepção' })).toBeVisible();
 
       // The master sees both, newest first, with the formula and Passou / Não passou.
-      const rolls = await openRolls(master);
+      const rolls = await openRolls(master, 2);
       await expect(rolls).toHaveCount(2);
       const newest = rolls.filter({ hasText: 'Resistir ao cheiro de fumaça' });
       await expect(newest).toContainText('Pensantus');
@@ -309,7 +309,7 @@ test(
       // The point that is open says so; the other offers to swap. Opening a scene took the board to "Cena": the points are under "Mapa".
       await showMapTool(master, 'Pontos');
       await expect(points.getByText('Cena aberta agora')).toHaveCount(1);
-      await points.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }).click();
+      await points.getByRole('button', { name: 'Trocar para esta cena: Posto da guarda' }).click();
       await expect(master.getByRole('heading', { name: 'Cena: Posto da guarda' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: Posto da guarda' })).toBeVisible();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
@@ -403,7 +403,7 @@ test(
       await expect(clues.getByRole('button')).toHaveCount(0);
 
       // The master reads which attempt each roll was, and "Dar mais uma tentativa" is only on the last, failed, one.
-      const rolls = await openRolls(master);
+      const rolls = await openRolls(master, 3);
       await expect(rolls).toHaveCount(3);
       await expect(rolls.nth(0)).toContainText('Tentativa 3 de 3');
       await expect(rolls.nth(2)).toContainText('Tentativa 1 de 3');
@@ -475,7 +475,7 @@ test(
       await expect(scene).not.toContainText(/\bCD\b|passou/i);
 
       // The master sees both results, and with the DC hidden any exhausted roll may be given another try.
-      const rolls = await openRolls(master);
+      const rolls = await openRolls(master, 2);
       await expect(rolls).toHaveCount(2);
       await expect(rolls.nth(0)).toContainText('Passou · CD 12');
       await expect(rolls.nth(0)).toContainText('Tentativa 2 de 2');

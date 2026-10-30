@@ -130,7 +130,8 @@ export class EffectPicker {
       return this.menu().tagHint();
     }
     if (f.kind === 'formula') {
-      return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
+      // One hint: a field's own sentence says what it is for; the menu's line (the functions) is the fallback
+      return own || this.menu().formulaHint();
     }
     if (f.kind === 'resource_ref' || f.kind === 'state_ref') {
       return this.refHint(f, own);

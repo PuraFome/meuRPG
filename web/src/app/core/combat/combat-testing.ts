@@ -1,4 +1,14 @@
-import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { create } from '@bufbuild/protobuf';
+
+import {
+  type Creature,
+  type CreatureAction,
+  CreatureActionClass,
+  CreatureActionKind,
+  CreatureActionSchema,
+  SpellAreaShape,
+} from '../../../gen/meurpg/rules/v1/rules_pb';
+import { CreaturesClient } from '../creatures/creatures-client';
 import {
   type Combatant,
   CombatantKind,
@@ -136,4 +146,30 @@ export function spellZone(
     occupantIds: [],
     ...over,
   } as unknown as SpellZone;
+}
+
+/**
+ * The `CreaturesClient` of a spec that renders the NPC card or the rider offers: both read the creature's stat block (the card for
+ * its Multiattack and its other actions, the offer for the save's ability). Without this stub the read goes to the network and
+ * fails; here it answers `blocks[key]`, and fails for any other key as a stat block that cannot be read does.
+ */
+export function creaturesProvider(blocks: Readonly<Record<string, Creature>> = {}) {
+  const statBlock = async (_campaignId: string, key: string): Promise<Creature> => {
+    const block = blocks[key];
+    if (!block) {
+      throw new Error(`no stat block for ${key}`);
+    }
+    return block;
+  };
+  return { provide: CreaturesClient, useValue: { statBlock } };
+}
+
+/** An action of a stat block for specs: a save (default) or no roll, with the plan the server would read. */
+export function creatureAction(over: Partial<CreatureAction> & { key: string }): CreatureAction {
+  return create(CreatureActionSchema, {
+    name: over.key.split('#')[1] ?? over.key,
+    kind: CreatureActionKind.SAVE,
+    planClass: CreatureActionClass.STRUCTURED,
+    ...over,
+  } as never);
 }

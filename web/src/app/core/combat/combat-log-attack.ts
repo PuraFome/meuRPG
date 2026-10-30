@@ -163,7 +163,7 @@ function saveNotes(save: SaveResult, ctx: LogContext): string {
 }
 
 /** One target of a cast: what the roll, the save and the damage did to it. */
-function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
+export function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string {
   const who = t.targetLabel || 'alguém';
   // A spell with two damage types (Tempestade de Gelo) rolls each one: the target's text tells all.
   const damage = t.damage ? [t.damage, ...t.moreDamages].map(damageText).join('') : '';
