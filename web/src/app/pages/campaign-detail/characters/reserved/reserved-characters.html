@@ -77,7 +77,7 @@
             <div class="row__actions">
               @if (isClaimed(c)) {
                 <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id]" [attr.aria-label]="'Ver ficha de ' + c.name">Ver ficha</a>
-                <button type="button" mat-stroked-button class="danger" data-opener="return" [attr.aria-label]="'Devolver ' + c.name + ' à reserva'" (click)="ask(c, 'return')">Devolver à reserva</button>
+                <button type="button" mat-stroked-button class="danger" data-opener="return" [attr.aria-label]="'Devolver à reserva: ' + c.name" (click)="ask(c, 'return')">Devolver à reserva</button>
               } @else {
                 @switch (c.claim?.state) {
                   @case ('sent') {

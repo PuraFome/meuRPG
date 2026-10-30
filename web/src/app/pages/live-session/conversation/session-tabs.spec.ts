@@ -54,7 +54,7 @@ describe('SessionTabs', () => {
   it('shows the unread count on "Conversa", in words for a screen reader', () => {
     const { el } = setup('scene', 3);
     const chat = el.querySelectorAll('button.tab')[1];
-    expect(chat.getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
+    expect(chat.getAttribute('aria-label')).toBe('Conversa 3, 3 mensagens novas');
     const badge = chat.querySelector('.tab__badge') as HTMLElement;
     expect(badge.textContent?.trim()).toBe('3');
     expect(badge.getAttribute('aria-hidden')).toBe('true');
@@ -63,7 +63,7 @@ describe('SessionTabs', () => {
   it('says "1 mensagem nova" in the singular and caps the badge at 99+', () => {
     const one = setup('scene', 1);
     expect(one.el.querySelectorAll('button.tab')[1].getAttribute('aria-label')).toBe(
-      'Conversa, 1 mensagem nova',
+      'Conversa 1, 1 mensagem nova',
     );
     one.fixture.componentRef.setInput('unread', 120);
     one.fixture.detectChanges();

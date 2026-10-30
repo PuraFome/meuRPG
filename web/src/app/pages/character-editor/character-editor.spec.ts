@@ -1564,7 +1564,7 @@ describe('CharacterEditor', () => {
       expect(el.textContent).toContain('Máximo de 3 ataques');
       expect(el.textContent).toContain('3 de 3 ataques');
 
-      (el.querySelector('[aria-label="Remover o ataque 2"]') as HTMLButtonElement).click();
+      (el.querySelector('[aria-label="Remover ataque 2"]') as HTMLButtonElement).click();
       fixture.detectChanges();
       await fixture.whenStable();
       expect(el.querySelectorAll('app-npc-attack-card').length).toBe(2);

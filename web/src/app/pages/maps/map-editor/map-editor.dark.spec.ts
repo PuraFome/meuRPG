@@ -128,7 +128,7 @@ describe('MapEditor: the light warning (B3)', () => {
 
   it('"Ver no mapa" labels only the chosen one', async () => {
     await setup(true, dark('Brisa', 'Jabuti'));
-    el.querySelector<HTMLButtonElement>('button[aria-label="Ver Jabuti no mapa"]')!.click();
+    el.querySelector<HTMLButtonElement>('button[aria-label="Ver no mapa, Jabuti"]')!.click();
     await settle();
     expect(Array.from(el.querySelectorAll('.label')).map((l) => flat(l))).toEqual([
       'Jabuti · no escuro',

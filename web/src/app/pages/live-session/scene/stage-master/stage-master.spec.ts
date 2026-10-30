@@ -105,7 +105,7 @@ describe('StageMaster', () => {
     button(el, `Mais ações de ${name}`).click();
     await settle(fixture);
     document
-      .querySelector<HTMLButtonElement>(`button[aria-label="Tirar ${name} de cena"]`)!
+      .querySelector<HTMLButtonElement>(`button[aria-label="Tirar de cena: ${name}"]`)!
       .click();
     await settle(fixture);
   }
@@ -132,7 +132,7 @@ describe('StageMaster', () => {
 
   it('marks the speaker on the card: "Fala agora", pressed, with the 2px border', async () => {
     const { el } = await setup();
-    const speaker = button(el, 'Capitão Goblin está com a fala. Tirar a fala');
+    const speaker = button(el, 'Fala agora: Capitão Goblin está com a fala. Tirar a fala');
     expect(flat(speaker)).toContain('Fala agora');
     expect(speaker.getAttribute('aria-pressed')).toBe('true');
     expect(cards(el)[1].classList.contains('row--speaking')).toBe(true);
@@ -178,10 +178,10 @@ describe('StageMaster', () => {
     await settle(fixture);
     expect(api.calls).toContain('speaker mira');
     expect(state.stage().map((n) => n.speaking)).toEqual([true, false]);
-    expect(button(el, 'Mira está com a fala. Tirar a fala').getAttribute('aria-pressed')).toBe(
-      'true',
-    );
-    button(el, 'Mira está com a fala. Tirar a fala').click();
+    expect(
+      button(el, 'Fala agora: Mira está com a fala. Tirar a fala').getAttribute('aria-pressed'),
+    ).toBe('true');
+    button(el, 'Fala agora: Mira está com a fala. Tirar a fala').click();
     await settle(fixture);
     expect(api.calls).toContain('speaker nobody');
     expect(state.stage().every((n) => !n.speaking)).toBe(true);
@@ -241,7 +241,7 @@ describe('StageMaster', () => {
       const { el, api, fixture, state } = await setup();
       putButton(el).click();
       await settle(fixture);
-      button(el, 'Pôr Aldo em cena').click();
+      button(el, 'Pôr em cena: Aldo').click();
       await settle(fixture);
       expect(api.calls).toContain('put aldo');
       expect(state.stage().map((n) => n.name)).toEqual(['Mira', 'Capitão Goblin', 'Aldo']);
@@ -250,7 +250,7 @@ describe('StageMaster', () => {
       expect(flat(el.querySelector('[role="status"]'))).toBe('Aldo entrou na cena.');
       expect(flat(el.querySelector('.st__count'))).toBe('3 de 4');
       // The button became the "Em cena" tag, and focus went to the next one that still has a button.
-      expect(el.querySelector('button[aria-label="Pôr Aldo em cena"]')).toBeNull();
+      expect(el.querySelector('button[aria-label="Pôr em cena: Aldo"]')).toBeNull();
     });
 
     it('"Fechar" closes the list and gives focus back to "Pôr em cena"', async () => {
@@ -302,9 +302,9 @@ describe('StageMaster', () => {
       const { el, fixture } = await setup(three);
       putButton(el).click();
       await settle(fixture);
-      button(el, 'Pôr Barão Ivo em cena').click();
+      button(el, 'Pôr em cena: Barão Ivo').click();
       await settle(fixture);
-      const off = button(el, 'Pôr Goblin em cena');
+      const off = button(el, 'Pôr em cena: Goblin');
       expect(off.getAttribute('aria-disabled')).toBe('true');
       expect(off.getAttribute('aria-describedby')).not.toBeNull();
       expect(flat(el.querySelector('.sl__reason'))).toBe(
@@ -319,10 +319,10 @@ describe('StageMaster', () => {
     await settle(fixture);
     let release: () => void = () => undefined;
     api.hold = new Promise<void>((r) => (release = r));
-    button(el, 'Pôr Aldo em cena').click();
-    button(el, 'Pôr Aldo em cena').click();
+    button(el, 'Pôr em cena: Aldo').click();
+    button(el, 'Pôr em cena: Aldo').click();
     fixture.detectChanges();
-    expect(button(el, 'Pôr Aldo em cena').getAttribute('aria-disabled')).toBe('true');
+    expect(button(el, 'Pôr em cena: Aldo').getAttribute('aria-disabled')).toBe('true');
     release();
     await settle(fixture);
     expect(api.calls.filter((c) => c === 'put aldo')).toHaveLength(1);
@@ -334,7 +334,7 @@ describe('StageMaster', () => {
     await settle(fixture);
     const { Code, ConnectError } = await import('@connectrpc/connect');
     api.failWith = new ConnectError('boom', Code.Unavailable);
-    button(el, 'Pôr Aldo em cena').click();
+    button(el, 'Pôr em cena: Aldo').click();
     await settle(fixture);
     expect(flat(el.querySelector('[role="alert"]'))).toContain('Não deu para mudar o palco');
     expect(state.stage()).toHaveLength(2);

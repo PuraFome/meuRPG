@@ -69,7 +69,7 @@
     </div>
   } @else {
     <div class="tr__acts">
-    <button #opener matButton="outlined" type="button" class="tr__mark" [attr.aria-label]="'Marcar o ' + point().name + ' como encontrado'" (click)="startMarking()">
+    <button #opener matButton="outlined" type="button" class="tr__mark" [attr.aria-label]="'Marcar como encontrado: ' + point().name" (click)="startMarking()">
       <mat-icon aria-hidden="true">check</mat-icon>Marcar como encontrado
     </button>
     <button matButton type="button" class="tr__show" [disabled]="busy()" (click)="reveal.emit({ point: point(), revealed: !point().revealed })">

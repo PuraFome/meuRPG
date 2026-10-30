@@ -63,7 +63,7 @@
             [class.row__speak--off]="card.npc.hidden"
             [attr.aria-pressed]="card.npc.speaking"
             [aria-disabled]="card.npc.hidden || ctl().busy(card.npc.characterId)"
-            [attr.aria-label]="card.npc.hidden ? card.npc.name + ' está escondida dos jogadores e não fala. Mostre-a para dar a fala' : card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
+            [attr.aria-label]="card.npc.hidden ? 'Dar a fala: ' + card.npc.name + ' está escondida dos jogadores e não fala. Mostre-a para dar a fala' : card.npc.speaking ? 'Fala agora: ' + card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
             (click)="speak(card)"
           >
             <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>
@@ -78,7 +78,7 @@
             <mat-icon aria-hidden="true">more_vert</mat-icon>
           </button>
           <mat-menu #menu="matMenu">
-            <button mat-menu-item type="button" [attr.aria-label]="'Tirar ' + card.npc.name + ' de cena'" (click)="take(card, i)">
+            <button mat-menu-item type="button" [attr.aria-label]="'Tirar de cena: ' + card.npc.name" (click)="take(card, i)">
               <mat-icon aria-hidden="true">logout</mat-icon>Tirar de cena
             </button>
             <a mat-menu-item [routerLink]="['/campaigns', campaignId(), 'characters', card.npc.characterId]">

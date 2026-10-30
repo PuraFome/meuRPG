@@ -13,7 +13,7 @@ const BADGE_MAX = 99;
  * "Cena · Ficha · Conversa"): "Cena" is the session page, "Ficha" is the panel of the player's character inside the session
  * (`sheetPanel`; a link to the character when it is off, and the master's "Grupo" is a tab of the board or a link to the campaign,
  * where the party is), and "Conversa" opens the full-screen conversation. The unread count sits on "Conversa" in the accent colour and is
- * spoken in words in the button's name ("Conversa, 3 mensagens novas").
+ * spoken in words in the button's name ("Conversa 3, 3 mensagens novas").
  */
 @Component({
   selector: 'app-session-tabs',
@@ -33,7 +33,7 @@ const BADGE_MAX = 99;
         >
           Grupo
           @if (groupCount() > 0) {
-            <span class="tab__badge tab__badge--wait" aria-hidden="true">{{ groupCount() }}</span>
+            &ngsp;<span class="tab__badge tab__badge--wait" aria-hidden="true">{{ groupCount() }}</span>
           }
         </button>
       } @else if (sheetPanel()) {
@@ -51,7 +51,7 @@ const BADGE_MAX = 99;
       >
         Conversa
         @if (unread() > 0) {
-          <span class="tab__badge" aria-hidden="true">{{ badge() }}</span>
+          &ngsp;<span class="tab__badge" aria-hidden="true">{{ badge() }}</span>
         }
       </button>
     </nav>
@@ -80,7 +80,7 @@ export class SessionTabs {
   protected readonly groupName = computed(() => {
     const n = this.groupCount();
     return n > 0
-      ? `Grupo, ${n} ${n === 1 ? 'conjuração esperando' : 'conjurações esperando'}`
+      ? `Grupo ${n}, ${n === 1 ? 'conjuração esperando' : 'conjurações esperando'}`
       : null;
   });
   protected readonly chatName = computed(() => {
@@ -88,6 +88,6 @@ export class SessionTabs {
     if (n === 0) {
       return null;
     }
-    return `Conversa, ${unreadWords(n)}`;
+    return `Conversa ${this.badge()}, ${unreadWords(n)}`;
   });
 }

@@ -2229,7 +2229,7 @@ describe('LiveSession', () => {
       // A line that comes while "Ficha" is open counts on "Conversa".
       source.push({ kind: 'sessionMessage', message: line('m1', { authorUserId: 'u-mestre' }) });
       await settle(fixture);
-      expect(tabButtons()[2].getAttribute('aria-label')).toBe('Conversa, 1 mensagem nova');
+      expect(tabButtons()[2].getAttribute('aria-label')).toBe('Conversa 1, 1 mensagem nova');
 
       tabButtons()[0].click();
       await settle(fixture);
@@ -2292,7 +2292,7 @@ describe('LiveSession', () => {
         message: line('m2', { authorUserId: 'u-mestre', at: 1 }),
       });
       await settle(fixture);
-      expect(chat().getAttribute('aria-label')).toBe('Conversa, 2 mensagens novas');
+      expect(chat().getAttribute('aria-label')).toBe('Conversa 2, 2 mensagens novas');
       chat().click();
       await settle(fixture);
       expect(chat().getAttribute('aria-label')).toBeNull();

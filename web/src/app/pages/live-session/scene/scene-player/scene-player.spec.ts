@@ -129,7 +129,7 @@ describe('ScenePlayer', () => {
 
     it('has "Ações", "Mapa" and "Imagens" with the count, under the title, and no eyebrow', () => {
       const { el } = tabbed({ imagesCount: 2 });
-      expect(tabs(el).map((t) => flat(t))).toEqual(['casinoAções', 'mapMapa', 'imageImagens2']);
+      expect(tabs(el).map((t) => flat(t))).toEqual(['casinoAções', 'mapMapa', 'imageImagens 2']);
       expect(el.querySelector('.sc__eyebrow')).toBeNull();
       expect(el.querySelector('[role="tablist"]')?.getAttribute('aria-label')).toBe(
         'Seções da cena',
@@ -159,7 +159,7 @@ describe('ScenePlayer', () => {
       const { el } = tabbed({ waiting: true });
       const actions = tabs(el)[0];
       expect(actions.querySelector('.tl__badge--wait')?.textContent?.trim()).toBe('1');
-      expect(actions.getAttribute('aria-label')).toBe('Ações, um teste em grupo espera você');
+      expect(actions.getAttribute('aria-label')).toBe('Ações 1, um teste em grupo espera você');
     });
 
     it('falls back to "Ações" when the open tab goes (the last image is taken back)', () => {

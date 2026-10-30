@@ -132,7 +132,7 @@ export class StagePlayer {
   }
 
   protected figureLabel(npc: StageNpc): string {
-    return npc.speaking ? `Ver ${npc.name} maior, fala agora` : `Ver ${npc.name} maior`;
+    return npc.speaking ? `${npc.name} Fala agora, ver maior` : `Ver ${npc.name} maior`;
   }
 
   protected thumb(npc: StageNpc): string {

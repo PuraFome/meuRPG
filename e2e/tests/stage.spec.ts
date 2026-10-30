@@ -61,21 +61,21 @@ test(
 
       await m.getByRole('button', { name: 'Pôr em cena', exact: true }).click();
       await expect(m.getByRole('heading', { name: 'Pôr em cena', level: 4 })).toBeFocused();
-      await m.getByRole('button', { name: 'Pôr Mira em cena' }).click();
+      await m.getByRole('button', { name: 'Pôr em cena: Mira' }).click();
       await expect(m.getByText('Mira entrou na cena.').first()).toBeVisible();
-      await m.getByRole('button', { name: 'Pôr Capitão Goblin em cena' }).click();
+      await m.getByRole('button', { name: 'Pôr em cena: Capitão Goblin' }).click();
       await expect(m.locator('.st__count')).toHaveText('2 de 4');
       await m.getByRole('button', { name: 'Fechar', exact: true }).click();
       await expect(m.getByRole('button', { name: 'Pôr em cena', exact: true })).toBeFocused();
       await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
-      const speaker = m.getByRole('button', { name: 'Capitão Goblin está com a fala. Tirar a fala' });
+      const speaker = m.getByRole('button', { name: 'Fala agora: Capitão Goblin está com a fala. Tirar a fala' });
       await expect(speaker).toHaveAttribute('aria-pressed', 'true');
 
       // The player: both on the stage, the speaker marked, no kind, no numbers.
       const stage = p.getByRole('group', { name: 'Em cena: Mira e Capitão Goblin' });
       await expect(stage).toBeVisible();
       await expect(stage.getByText('Fala agora')).toBeVisible();
-      await expect(stage.getByRole('button', { name: 'Ver Capitão Goblin maior, fala agora' })).toBeVisible();
+      await expect(stage.getByRole('button', { name: 'Capitão Goblin Fala agora, ver maior' })).toBeVisible();
       await expect(stage).not.toContainText(/Inimigo|PV|CA\b/);
       await expect(stage.locator('img')).toHaveCount(2);
       // Each one is a chip: the portrait in a 48 px square tile, contained so it is never cropped (C5-01).
@@ -96,7 +96,7 @@ test(
 
       // The master takes Mira off at once: the view closes and her image is a 404.
       await m.getByRole('button', { name: 'Mais ações de Mira' }).click();
-      await m.getByRole('menuitem', { name: 'Tirar Mira de cena' }).click();
+      await m.getByRole('menuitem', { name: 'Tirar de cena: Mira' }).click();
       await expect(big).toBeHidden();
       await expect(stage).toHaveCount(0);
       await expect(p.getByRole('group', { name: 'Em cena: Capitão Goblin' })).toBeVisible();

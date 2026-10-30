@@ -71,9 +71,9 @@ describe('DarkWarning', () => {
       b.getAttribute('aria-label'),
     );
     expect(labels).toEqual([
-      'Ver Brisa no mapa',
+      'Ver no mapa, Brisa',
       'Acender luz de Brisa',
-      'Ver Jabuti no mapa',
+      'Ver no mapa, Jabuti',
       'Acender luz de Jabuti',
     ]);
   });

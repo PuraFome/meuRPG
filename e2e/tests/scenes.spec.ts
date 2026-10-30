@@ -309,7 +309,7 @@ test(
       // The point that is open says so; the other offers to swap. Opening a scene took the board to "Cena": the points are under "Mapa".
       await showMapTool(master, 'Pontos');
       await expect(points.getByText('Cena aberta agora')).toHaveCount(1);
-      await points.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }).click();
+      await points.getByRole('button', { name: 'Trocar para esta cena: Posto da guarda' }).click();
       await expect(master.getByRole('heading', { name: 'Cena: Posto da guarda' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: Posto da guarda' })).toBeVisible();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
