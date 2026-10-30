@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"slices"
@@ -134,7 +135,7 @@ func (c *content) correctCreatures(name string, corrections []creatureCorrection
 		}
 		id := corr.Creature + "/" + corr.Action + "/" + corr.Field
 		if seen[id] {
-			return fmt.Errorf("%s: %s: %s is corrected twice", name, corr.Creature, corr.Field)
+			return fmt.Errorf("%s: %s: %s%s is corrected twice", name, corr.Creature, actionPrefix(corr.Action), corr.Field)
 		}
 		seen[id] = true
 		if err := c.correctCreatureField(corr, m); err != nil {
@@ -156,6 +157,15 @@ func (c *content) correctCreatureField(corr creatureCorrection, m *srd51.Monster
 	return c.correctCreature(corr.Creature, m, corr.Field, corr.Value)
 }
 
+// actionPrefix names the action of a correction in an error ("Breath/"), or nothing for a field of the
+// creature.
+func actionPrefix(action string) string {
+	if action == "" {
+		return ""
+	}
+	return action + "/"
+}
+
 // fieldActionSaveSuccess is the creature correction of what a creature that
 // saves still takes from an action.
 const fieldActionSaveSuccess = "action_save_success"
@@ -165,7 +175,7 @@ const fieldActionSaveSuccess = "action_save_success"
 func correctActionSaveSuccess(m *srd51.Monster, action string, raw json.RawMessage) error {
 	var outcome string
 	if err := json.Unmarshal(raw, &outcome); err != nil || !slices.Contains(spellCorrectionSaveSuccess, outcome) {
-		return fmt.Errorf("needs half, none or other")
+		return errors.New("needs half, none or other")
 	}
 	i := slices.IndexFunc(m.Actions, func(a srd51.MonsterAction) bool { return a.Name == action })
 	if i < 0 || m.Actions[i].Save == nil {

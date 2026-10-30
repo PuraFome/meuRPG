@@ -18,6 +18,5 @@ DELETE FROM hit_riders WHERE kind = 'creature';
 ALTER TABLE hit_riders DROP COLUMN IF EXISTS pending_id;
 ALTER TABLE hit_riders DROP COLUMN IF EXISTS action_key;
 ALTER TABLE hit_riders DROP CONSTRAINT IF EXISTS hit_riders_kind_valid;
-ALTER TABLE hit_riders DROP CONSTRAINT IF EXISTS hit_riders_kind_valid;
 ALTER TABLE hit_riders ADD CONSTRAINT hit_riders_kind_valid
     CHECK (kind IN ('open_hand', 'stunning_strike'));

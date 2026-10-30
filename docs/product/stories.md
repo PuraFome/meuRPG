@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 42 stories: 40 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
+The MVP has 45 stories: 43 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
 Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass.
@@ -66,6 +66,8 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-052](#mr-052-the-free-dice-roller) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-053](#mr-053-the-master-acts-for-a-players-character) | Combat | MVP |
+| [MR-054](#mr-054-use-a-creatures-action-from-its-turn) | Combat | MVP |
+| [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1548,6 +1550,53 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-013](#mr-013-turn-order), [MR-014](#mr-014-your-turn), [RN-03](rules.md), [RN-10](rules.md), [RN-18](rules.md). See [Design](../design/combat.md).
+
+### MR-054: Use a creature's action from its turn
+
+**As a** game master, **I want** to use a monster's breath weapon, gaze or other action from the NPC's card, **so that** the app rolls the saves and the damage the stat block calls for and I do not do it by hand.
+
+- Priority: MVP
+- Rules: RN-20, RN-22, RN-29, RN-38, RN-39, RN-41, RN-42
+- Modules: play, rules
+
+#### Acceptance criteria
+- **Given** a bestiary monster on its turn, **when** I read its card, **then** "Outras ações" lists its actions that ask a saving throw or roll nothing, each with what the app read (the ability and the DC, the area, the damage and "metade se passar", the condition a failure gives) and a "Usar" button; the attacks and the Multiattack are not there, they are made with the attack card (MR-042).
+- **Given** an action the app reads only in part or not at all, **when** I read it, **then** the card says so ("O texto diz algo que o app não calcula: leia o lembrete.") and shows the SRD text, in English.
+- **Given** a combat on a map and an action with a shape (a cone, a line, a sphere), **when** I press "Usar", **then** I place it on the map as I place a spell's area and press "Usar <action>"; nothing is spent before that, and the server takes who is inside. **Given** a combat with no grid, or an action with no shape, **then** I name the targets (the enemies come marked) and "Usar" waits for at least one.
+- **Given** I used the action, **then** the app rolls each target's save against the stat block's DC, the action is spent, and under the list I read for each target "Falhou" or "Passou: metade do dano", the roll against the DC and the condition it got; the damage it opened is there to apply or discard, and a player's character waits for me to apply it.
+- **Given** the action's save names a condition, **then** a target that fails gets it unless it is immune or already has it, and the result notes the duration and the repeated save for me to keep; the app counts no time.
+- **Given** an action with no roll (Invisibility, Change Shape), **when** I use it, **then** it spends the action, the card shows the SRD text with "Lembrete registrado no registro do combate. A ação foi gasta." and the log says "usou <action>: lembrete, a ação foi gasta".
+- **Given** the NPC's action is already spent, **then** every "Usar" is off and says "A ação deste turno já foi usada."; **given** it is not the NPC's turn or I am not the master, the server refuses.
+- **Given** I undo the last action, **then** the use goes with its damage and condition.
+- **Given** I am a player, **then** I find no "Outras ações", I read the log line with the action's name and, for the targets I see, whether each passed or failed and the damage I take, and never the stat block, the DC or which creature it is (RN-20).
+
+#### In the app
+- The NPC card of the master ("Turno"): "Outras ações", with the targets list "Quem a ação atinge" when it applies, one block per action (name, usage, lines, note, SRD text, "Usar") and the result under the list with the pending damage. On a map the placing dialog is "<NPC> usa <action>". See [Design](../design/combat.md#a-creatures-other-actions).
+
+#### Related
+- [MR-042](#mr-042-bestiary), [MR-055](#mr-055-answer-a-creatures-rider), [RN-38](rules.md#rn-38-a-creatures-save-actions), [RN-41](rules.md#rn-41-actions-without-a-roll).
+
+### MR-055: Answer a creature's rider
+
+**As a** game master, **I want** the app to offer me the extra effect of a monster's attack once it hits (a ghoul's paralysis, a snake's grapple), **so that** I apply it with the right save and DC, or set it aside.
+
+- Priority: MVP
+- Rules: RN-20, RN-29, RN-34, RN-39, RN-40
+- Modules: play, rules
+
+#### Acceptance criteria
+- **Given** a monster whose attack asks a save of the target when it hits (the ghoul's claws), **when** the damage of a hit lands on a creature of the other side that is still up, **then** I get an offer beside the damage cards: "Pedir salvaguarda de <target> (CD 10, Constituição). Se falhar: Paralisado", with "Aplicar" and "Dispensar".
+- **Given** I press "Aplicar", **then** the app rolls the target's save against the DC, opens the extra damage as pending damage when the attack has it (half if the target passes, when the stat block says so), gives the condition to a target that fails (RN-39), and the log says "usou <attack> em <target>: <target> falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado".
+- **Given** a monster whose attack grapples (a constrictor), **when** it hits, **then** the offer reads "Agarrar (CD de fuga 12)"; "Aplicar" gives the condition with no save and the line notes the escape DC.
+- **Given** I press "Dispensar", **then** nothing is applied and the log says "dispensou o efeito de <attack> em <target>".
+- **Given** the offer was answered, **then** it cannot be undone; **given** I undo the damage that opened it, **then** the offer goes away, and a target the hit downed never gets one. An attack offers its rider once for each damage.
+- **Given** I am a player, **then** I never receive the offer and cannot answer one; I read the line of the answer with the attack's name and the target, and the roll and the DC only on a character that is mine (RN-20).
+
+#### In the app
+- The same place as the monk's offers, beside the damage cards: a card with the paw icon, the attack's name and the target, one line of what it does, "Aplicar" and "Dispensar". See [Design](../design/combat.md#a-creatures-other-actions).
+
+#### Related
+- [MR-054](#mr-054-use-a-creatures-action-from-its-turn), [RN-40](rules.md#rn-40-a-rider-on-a-creatures-hit).
 
 ## Priority: MVP (prerequisite)
 

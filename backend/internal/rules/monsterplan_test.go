@@ -2,7 +2,8 @@ package rules
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -271,47 +272,44 @@ func TestMonsterPlanEveryCreature(t *testing.T) {
 	}
 }
 
-// TestMonsterPlanLogsWhatTheMasterReads lists, with -v, the partial and
-// text-only actions of the creatures of challenge rating 0 to 5 (the ones the
-// first floors use): the actions whose text the master still reads.
-func TestMonsterPlanLogsWhatTheMasterReads(t *testing.T) {
+// TestMonsterPlanNamesWhatTheMasterReads pins the partial and text-only actions
+// of the creatures of challenge rating 0 to 5 (the ones the first floors use):
+// the actions whose text the master still reads. A change in the plan that moves
+// an action between classes shows here by name.
+func TestMonsterPlanNamesWhatTheMasterReads(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	list, err := c.ListCreatures(CreatureFilter{MaxCR: "5"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	partial, text := map[string][]string{}, map[string][]string{}
+	partial, text := map[string]bool{}, map[string]bool{}
 	for _, e := range list {
 		p, _ := c.MonsterPlan(e.Key)
 		for _, a := range p.Actions {
 			switch a.Class {
 			case ActionPartial:
-				partial[a.Name] = append(partial[a.Name], e.Name)
+				partial[a.Name] = true
 			case ActionText:
-				text[a.Name] = append(text[a.Name], e.Name)
+				text[a.Name] = true
 			}
 		}
 	}
-	logActionNames(t, "partial", partial)
-	logActionNames(t, "text-only", text)
-}
-
-func logActionNames(t *testing.T, class string, byName map[string][]string) {
-	t.Helper()
-	var lines []string
-	for name, creatures := range byName {
-		lines = append(lines, fmt.Sprintf("%s (%s)", name, strings.Join(creatures, ", ")))
+	const wantPartial = "Acid Spray|Beaks|Bite|Bites|Claws|Club|Constrict|Crush|Death Glare|Draining Kiss|Dreadful Glare|Engulf|Glaive|Hand Crossbow|Hooves|Javelin|Luring Song|Petrifying Breath|Possession|Quarterstaff|Shortbow|Smother|Sting|Stomp|Tail|Tendril|Tentacle|Tentacle Slam|Tentacles|Touch|War Pick|Web|Whelm|Whirlwind"
+	const wantText = "Breath Weapons|Change Shape|Create Specter|Darkness Aura|Enlarge|Ethereal Stride|Etherealness|Healing Touch|Illusory Appearance|Ink Cloud|Invisibility|Invisible Passage|Leadership|Nightmare Haunting|Read Thoughts|Reel|Swallow|Teleport"
+	if got := strings.Join(slices.Sorted(maps.Keys(partial)), "|"); got != wantPartial {
+		t.Errorf("partial actions of CR 0 to 5:\n got %s\nwant %s", got, wantPartial)
 	}
-	sort.Strings(lines)
-	t.Logf("%s actions of CR 0 to 5: %d names\n%s", class, len(lines), strings.Join(lines, "\n"))
+	if got := strings.Join(slices.Sorted(maps.Keys(text)), "|"); got != wantText {
+		t.Errorf("text-only actions of CR 0 to 5:\n got %s\nwant %s", got, wantText)
+	}
 }
 
 // TestActionSaveSuccessCorrection: the loader refuses a correction of an action's
 // save that cannot apply, and writes a good one over the action.
 func TestActionSaveSuccessCorrection(t *testing.T) {
 	t.Parallel()
-	newContent := func() *content {
+	newWyrmContent := func() *content {
 		return &content{
 			classLevels: map[string][]*srd51.Level{},
 			monsters: map[string]*srd51.Monster{"monster:wyrm": {Key: "monster:wyrm", Actions: []srd51.MonsterAction{
@@ -330,12 +328,12 @@ func TestActionSaveSuccessCorrection(t *testing.T) {
 		"no action named":                   one("", `"half"`),
 		"action on a field of the creature": `{"creature_corrections":[{"creature":"monster:wyrm","action":"Breath","field":"hit_points","value":5,"source":"SRD"}]}`,
 	} {
-		c := newContent()
+		c := newWyrmContent()
 		if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(doc)}}); err == nil {
 			t.Errorf("%s: the loader accepted it", name)
 		}
 	}
-	c := newContent()
+	c := newWyrmContent()
 	if err := c.applyCorrections(fstest.MapFS{"effects/corrections.json": {Data: []byte(one("Breath", `"half"`))}}); err != nil {
 		t.Fatal(err)
 	}

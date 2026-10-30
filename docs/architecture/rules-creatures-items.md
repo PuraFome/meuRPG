@@ -31,6 +31,22 @@ The number comes from SRD 5.1 and not from the snapshot, which gets some wrong: 
 The same file corrects other stat-block fields, a spell's attack, saving throw and damage by slot level, and the spells a subclass always has, all applied over the snapshot at load (see [Rules content](../rules-content.md)).
 `TestMultiattackCountsFollowTheSRDText` reads the Multiattack text of every creature and checks the number the engine uses, with an explicit list of the creatures whose text it cannot read, each with the reason.
 
+### The actions of a stat block
+
+`rules/monsterplan.go` turns a creature's actions into a plan a combat can play: `Content.MonsterPlan(key)` returns a `MonsterPlan` (the creature's `[]ActionPlan`, built at load for the 334 creatures) and `MonsterActionPlan("<creature key>#<slug of the name>")` one `ActionPlan`, the key of its Attack ("monster:ghoul#claws") and of the creature action the master uses.
+The snapshot already holds an action's attack bonus, damage parts and saving throw; what it leaves in the text (the damage a failed save deals to the target of a hit, the condition a failed save gives and its duration, the escape DC of a grapple, an area, a usage limit) the plan reads from the SRD's own words with patterns checked against every creature. What a pattern cannot read reliably stays in `Text`, which the master always reads.
+
+An `ActionPlan` has:
+
+- `Kind`: `attack` (an attack roll), `save` (asks the creatures it affects for a saving throw), `multiattack` (a routine of other actions, `Routines`) or `other` (no roll).
+- `Attack` (bonus, melee or spell, reach and range) and `Damage` (every part of a hit, in order); `Save` (`ActionSave`: ability, DC, `OnSuccess` of `none`, `half` or `other`, the `Damage` it governs, the condition a failure gives with its `Duration` and `RepeatSave`, and `OnHit` when the save is the rider of an attack rather than asked of the creatures the action affects); `HitCondition` (a condition a hit gives with no save, with the escape DC and the largest size it holds); `Area` (cone, line, sphere, cube, cylinder or a radius around the creature, with its size); `Usage` (at will, recharge, per day, per rest; read and shown, nothing enforces it).
+- `Class`, how far the plan reads the action. *Structured*: every damage part, save and condition the text states is in the plan. *Partial*: the plan has the attack, damage or save the data states, but the text carries a number or a condition the plan does not hold, so the master reads it. *Text*: nothing to roll, the text is the reminder. The counts over the 334 creatures (884 actions: 722 structured, 93 partial, 69 text, 148 with a Multiattack count) are pinned by `TestMonsterPlanEveryCreature`, so a pattern that moves an action between classes fails the test and the move is chosen; `TestMonsterPlanNamesWhatTheMasterReads` pins by name the partial and text-only actions of challenge rating 0 to 5.
+
+Traits, reactions, legendary actions and spellcasting are not planned.
+
+**Corrections of action-level data.**
+`creature_corrections` take an optional `action` (the action's name in the stat block) beside `creature` and `field`; `action_save_success` is the one field that belongs to an action, not to the creature: it sets what the action's saving throw does on a success (`half`, `none` or `other`) when the snapshot or the text reading gets it wrong. The loader refuses an unknown action, an action with no saving throw, a value that is not one of the three, an action named on a field of the creature, and two corrections of the same field of the same action. The play flow that uses the plan is in [Attacks and damage](play/attacks-and-damage.md#a-creatures-actions-and-riders); the API sends the plan to the master as `CreatureAction` (`rules.v1`), with `kind`, `plan_class`, `save`, `area` and `text`.
+
 ## Summons
 
 The `summon` effect is a closed type of `effects/spells.json`, next to `hp_pool`, `hp_threshold`, `zero_hp_target`, `flat_heal`, `temp_hp` and `max_hp`.

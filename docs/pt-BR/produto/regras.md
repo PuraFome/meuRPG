@@ -46,6 +46,11 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-35 | **Traços de raça e a Queda Lenta do monge em combate.** Um meio-orc levado a 0 PV mas não morto de vez fica com 1 (Relentless Endurance, uma vez por descanso longo, usado pelo app sozinho); o acerto crítico dele com um ataque de arma corpo a corpo rola mais um dado de arma (Savage Attacks); a reação de um monge tira 5 vezes o nível dele do dano de queda de um fosso (Queda Lenta); a Fuga Ágil do goblin é Desengajar ou Esconder-se como ação bônus; um halfling cujo d20 mostra 1 (um ataque, ou um teste de perícia ou de resistência que o jogador rola) recebe "Tirou 1: rolar de novo?" antes do resultado, e a nova rolagem vale; num teste de resistência em que o app rola pelo halfling de um jogador na ação de outra pessoa, o app rola o 1 de novo sozinho (Sortudo). | [Detalhes](#rn-35-traços-de-raça-e-a-queda-lenta-do-monge-em-combate) |
 | RN-36 | **Quem lê uma linha da conversa da cena.** Uma linha é para a mesa toda ou para leitores escolhidos; o mestre sempre lê todas as linhas, pode escolher qualquer conjunto de jogadores, e um jogador escolhe todos ou "só o mestre". Quem não foi escolhido nunca recebe a linha: nem o texto, nem a imagem, nem a existência, nem a contagem, nem um aviso de que foi enviada, numa leitura, no stream, no resumo ou na voz. O mestre fala como narrador ou como um NPC da campanha; um jogador, como o próprio personagem (RN-18) ou fora do personagem. | [Detalhes](#rn-36-quem-lê-uma-linha-da-conversa-da-cena) |
 | RN-37 | **Áreas que as magias mantêm no mapa.** Espíritos Guardiões, Raio Lunar, Névoa Mortal e Teia deixam a área no mapa enquanto duram. Uma criatura que entra nela, ou começa o turno nela, faz o teste de resistência da magia, no máximo uma vez por turno para cada área; a conjuração em si não atinge ninguém. A área acaba com a concentração ou com o tempo, e se move onde a magia permite. A área de um conjurador escondido é só do mestre. | [Detalhes](#rn-37-áreas-que-as-magias-mantêm-no-mapa) |
+| RN-38 | **Ações de teste de resistência de uma criatura.** O mestre usa, no turno de um NPC, uma ação dele que pede um teste de resistência (um sopro, um olhar). O app rola o teste de cada alvo contra a CD da ficha, abre o dano que o teste governa (metade se passar, quando a ação diz) e gasta a ação. O jogador lê o resultado de cada alvo e o dano que toma, nunca a CD nem a ficha. | [Detalhe](#rn-38-ações-de-teste-de-resistência-de-uma-criatura) |
+| RN-39 | **Condição de um teste falho.** Uma criatura que falha no teste de uma ação recebe a condição que a ação nomeia, a menos que seja imune ou já a tenha. A duração e o teste repetido são anotações para o mestre; o app não conta o tempo. | [Detalhe](#rn-39-condição-de-um-teste-falho) |
+| RN-40 | **Efeito extra no acerto de uma criatura.** Um ataque de NPC que pede um teste do alvo ao acertar, ou o agarra, oferece o efeito ao mestre depois que o dano caiu: "Aplicar" ou "Dispensar". Agarrar dá a condição e anota a CD de fuga. O jogador nunca recebe a oferta. | [Detalhe](#rn-40-efeito-extra-no-acerto-de-uma-criatura) |
+| RN-41 | **Ações sem rolagem.** Uma ação de criatura que não rola nada (um poder que o texto descreve) é usada como lembrete: gasta a ação e escreve uma linha no registro, e o mestre lê o texto do SRD. | [Detalhe](#rn-41-ações-sem-rolagem) |
+| RN-42 | **Ataque de monstro com várias partes de dano.** O acerto de um ataque da ficha causa todas as partes de dano da ação (uma espada mais fogo) como um só dano a aplicar, cada parte resistida pelo próprio tipo. | [Detalhe](#rn-42-ataque-de-monstro-com-várias-partes-de-dano) |
 
 ## RN-01: Trava da ficha
 
@@ -446,6 +451,7 @@ Um druida em Forma Selvagem tem uma reserva separada de PV da fera, um número s
 
 **Monstros do bestiário** (RN-29).
 O app nunca diz ao jogador qual criatura um monstro é, além do nome que o mestre deu. A criatura, o ND e os PV rolados são do mestre.
+O mesmo vale para as ações dele (RN-38 a RN-42): a ficha, as CDs, a CD de fuga, os testes que os alvos do NPC rolam para o mestre e a chave da ação nunca chegam a um jogador. O jogador lê o nome da ação, se cada alvo que ele vê passou ou falhou e o dano que toma; a oferta de efeito extra é só do mestre.
 
 **Combate num mapa com névoa** ([MR-036](historias.md#mr-036-névoa-de-guerra-pela-visão), RN-10).
 Cada jogador vê só os NPCs que o personagem dele vê agora (com "Visão do grupo", os que o grupo vê). Um NPC que ele não vê é como um escondido: fora da ordem, sem nome, estado nem quadrado, o turno dele é "Vez do mestre", e nomeá-lo é respondido como se não existisse. Os personagens de jogador e suas criaturas nunca somem. Atacar um inimigo que o personagem não vê não é possível no app: o jogador avisa o mestre.
@@ -909,6 +915,58 @@ Uma magia que o mestre escreveu para a mesa pode manter a área do mesmo jeito (
 As zonas estão em `Encounter.zones` para o mapa desenhar; `MoveSpellZone` move uma.
 Como é feito: [Arquitetura](../../architecture/play/spell-zones.md).
 Testes: `zones_test.go` e `zones_hidden_test.go` em `internal/play`, e `internal/leaktest`.
+
+## RN-38: Ações de teste de resistência de uma criatura
+
+Um NPC que vem do bestiário (RN-29) tem as ações da ficha do SRD 5.1, e o app lê do texto delas o que consegue calcular.
+Uma ação que pede um teste de resistência em vez de rolar para acertar (o sopro de um dragão, um olhar, uma presença aterradora) é usada pelo mestre no cartão do NPC, em "Outras ações", no turno desse NPC; só o mestre pode, e a ação precisa estar livre.
+O cartão mostra o que o app leu da ação: o atributo e a CD do teste, a área, o dano com o que o sucesso faz ("metade se passar" ou "nada se passar") e a condição que uma falha dá (RN-39).
+
+- **Até onde o app lê uma ação.** Cada ação é *estruturada* (toda parte de dano, teste e condição do texto está no plano), *parcial* (o plano tem o teste ou o dano, mas o texto diz algo mais, um número ou uma condição que o app não calcula) ou *só texto* (nada a rolar). Numa ação parcial ou só texto o cartão mostra o texto do SRD, em inglês, como lembrete, e uma nota ("O texto diz algo que o app não calcula: leia o lembrete."). O que o plano não consegue ler fica no texto para o mestre decidir.
+- **Quem é atingido.** Num mapa, uma ação com forma pergunta para onde ela vai, com o mesmo mapa da área das magias: um cone, uma linha ou um cubo a partir de uma direção, uma esfera ou um cilindro num ponto (até 36 m de distância, pois a ficha descreve a distância em texto), e um raio ao redor da criatura, sem escolha. O servidor pega quem está dentro, com a cobertura, e o mestre não nomeia ninguém. Uma ação sem forma, e toda ação num combate sem grade (RN-25), pede que o mestre nomeie os alvos; os inimigos da criatura já começam marcados.
+- **O teste.** O app rola um d20 para cada alvo contra a CD da ação (o personagem de um jogador também, como no teste de uma magia com os dados do app), com os modificadores, vantagens e condições do próprio alvo.
+- **O dano.** O dano que o teste governa abre como dano pendente para cada alvo que o toma, nas partes da ficha (RN-42): inteiro para quem falha, metade para quem passa quando a ação diz "metade", nada para quem passa quando diz "nada". O alvo NPC toma na hora e o personagem de um jogador espera o mestre, como em qualquer dano (RN-02); o dano aparece sob o resultado e é aplicado ou descartado ali. O teste de concentração de quem tomou dano vem em seguida (RN-31).
+- **O que o uso custa.** A ação do turno do NPC. Não há espaço de magia, concentração nem janela de reação; um limite como "Recharge 5-6" ou "3/day" é lido e mostrado, e o app não o impõe. O registro tem uma linha para o uso, e "Desfazer última ação" o desfaz com o dano e a condição.
+- **O que os jogadores leem (RN-20).** Um jogador nunca vê uma ficha, a CD de uma ação nem a chave dela (que revela o tipo da criatura). A linha do registro diz o nome da ação e, para cada alvo que o jogador vê, se passou ou falhou, com o dano; os dados do teste e a CD são do mestre, e o dono de um personagem alvo lê os dados do próprio personagem. A ação de uma criatura escondida é mascarada como o ataque de um NPC escondido.
+
+Como é construído: [Ataques e dano](../../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders) e [Regras: criaturas](../../architecture/rules-creatures-items.md#the-actions-of-a-stat-block).
+Testes: `combat_creature_action_test.go` em `internal/play`, `creatureaction_test.go` em `internal/leaktest` (`TestACreatureActionShowsThePlayersTheirSaveNeverTheStatBlock`) e `monsterplan_test.go` em `internal/rules`.
+
+## RN-39: Condição de um teste falho
+
+Quando o teste de uma ação de criatura (RN-38) nomeia uma condição, o alvo que falha recebe a condição, como qualquer outra (RN-22), a menos que seja imune a ela ou já a tenha.
+O SRD diz a duração ("por 1 minuto") e às vezes um novo teste no fim de cada turno do alvo; o app escreve as duas coisas na linha do registro e numa nota sob o resultado e não conta o tempo, então o mestre encerra a condição.
+A linha do registro diz quais alvos a receberam. Um jogador lê a condição de um alvo que é dele e de um que tem um sinal que todos veem; de qualquer outro alvo, só se passou ou falhou.
+
+## RN-40: Efeito extra no acerto de uma criatura
+
+Alguns ataques da ficha somam algo ao acerto: as garras do carniçal e a mordida da aranha gigante pedem um teste do alvo (uma condição, ou dano extra com metade se passar), e o ataque de uma serpente constritora agarra sem teste (o SRD dá uma CD de fuga).
+O ataque em si é feito como antes, com o cartão de ataque do NPC.
+Depois que o dano caiu num alvo do outro lado, e o acerto não derrubou o alvo, o mestre recebe uma oferta ao lado dos cartões de dano: "Pedir salvaguarda de Brisa (CD 10, Constituição). Se falhar: Paralisado" ou "Agarrar (CD de fuga 12)", com "Aplicar" e "Dispensar".
+
+- **Aplicar.** Num teste, o app rola o teste do alvo, abre o dano extra como dano pendente (metade se passar, quando a ação diz) e dá a condição a quem falha (RN-39). Num agarrão, o app dá a condição e escreve a CD de fuga na linha; a fuga segue a RN-34.
+- **Dispensar.** Nada acontece e o registro diz que o mestre deixou o efeito de lado.
+- **Uma vez.** Um ataque oferece o efeito uma vez para cada dano; um alvo derrubado não tem oferta, e o desfazer do mestre sobre esse dano retira a oferta. Uma oferta respondida não se desfaz, como os efeitos do monge (RN-35).
+- **O que os jogadores leem (RN-20).** Um jogador nunca recebe a oferta: o efeito da criatura é só do mestre. A linha da resposta nomeia o ataque e o alvo; a rolagem e a CD são do mestre e do dono do alvo, e um jogador que tente responder é recusado, exista a oferta ou não.
+
+Como é construído: [Ataques e dano](../../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders).
+Testes: `TestACreatureRiderShowsThePlayersTheirSaveNeverTheStatBlock` em `internal/leaktest`.
+
+## RN-41: Ações sem rolagem
+
+Uma criatura tem ações que não rolam nada: Mudar de Forma, Invisibilidade, um teletransporte, um toque que cura (SRD 5.1).
+O app não as joga.
+O mestre usa a ação no cartão do NPC como qualquer outra: ela gasta a ação do NPC, o registro ganha "usou <ação>: lembrete, a ação foi gasta" e o cartão mostra o texto do SRD, em inglês, com "Lembrete registrado no registro do combate. A ação foi gasta."
+O mestre faz o resto à mão (posição, pontos de vida e condições da criatura) com as ferramentas da ordem.
+Um jogador lê a linha do registro só com o nome da ação.
+
+## RN-42: Ataque de monstro com várias partes de dano
+
+Um ataque da ficha pode causar mais de um tipo de dano (uma espada flamejante: cortante mais fogo; uma mordida: perfurante mais veneno).
+A primeira parte é o dano do próprio ataque e as outras vêm do plano da ficha, então um acerto abre um só dano pendente com todas as partes como partes automáticas: um "Aplicar", uma checagem de concentração, e cada parte é resistida, tornada vulnerável ou imune pelo próprio tipo de dano (RN-20, RN-22).
+Um acerto crítico segue a regra da mesa (RN-24) em todas as partes.
+O ataque do personagem de um jogador não muda.
+Um jogador lê o dano como rolado, com o tipo de cada parte, e nunca o que o alvo resiste.
 
 ## Fluxos e estados
 

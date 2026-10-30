@@ -1213,6 +1213,9 @@ func dtPT(key string) string { return damageTypePT[key] }
 // damage get the steps; a creature's or an NPC's are the master's alone (RN-20).
 func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.PendingDamage, cs []playdb.Combatant, v combatViewer) *playv1.PendingDamage {
 	out := pendingProto(p, cs)
+	if j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == conv.OrZero(p.AttackerID) }); j >= 0 {
+		out.AttackKey = shownKey(v, cs[j], p.AttackKey) // a stat block action's key names the creature's type (RN-20)
+	}
 	out.Parts = partsProto(p, ruleOfPending(p), dtPT)
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
 	if i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {

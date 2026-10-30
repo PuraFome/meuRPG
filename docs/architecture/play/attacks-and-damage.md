@@ -225,7 +225,7 @@ A failed Strength save on the push moves the target through the forced-movement 
 The answer is a `hit_rider` event (`CombatLogKind.HIT_RIDER`) and cannot be undone.
 Its log line carries the target's d20, save total and the DC only for the master, and for the target's player when a player's character made the save; the monk's player reads only the result, since an NPC's roll never reaches a player (`TestOpenHandRidersOnlyOnFlurryHits`).
 
-### A creature's actions and riders (W7-M)
+### A creature's actions and riders
 
 An NPC's stat block carries more than its sheet attacks: `rules.ActionPlan` (see [Rules: creatures](../rules-creatures-items.md#creatures)) says which action asks a saving throw, which attack has a rider and which attack has several damage parts. `combat_creature_plan.go` ties a combatant to its plan by its monster key; an NPC's basic-sheet attack (`basic:i`) is matched to the action by name.
 

@@ -24,6 +24,7 @@ func TestWhatASaveIsAgainst(t *testing.T) {
 		{"a spell that frightens", spellAgainst(link.Spell{Key: "spell:fear"}), []string{"frightened", "magic"}},
 		{"an effect of a spell", effectAgainst("spell:hold-person", &rules.EffectDef{Conditions: []string{"condition:paralyzed"}}), []string{"magic"}},
 		{"an effect that gives fear", effectAgainst("effect:dread", &rules.EffectDef{Conditions: []string{"condition:frightened"}}), []string{"frightened"}},
+		{"an effect a creature action gives is no magic", effectAgainst("monster:ghoul#claws", &rules.EffectDef{Conditions: []string{"condition:frightened"}}), []string{"frightened"}},
 		{"an effect with no source known", effectAgainst("effect:web-restrained", nil), nil},
 		{"a trap's poison", trapAgainst(&rulesv1.TrapEffect{Damage: []*rulesv1.TrapDamage{{DamageTypeKey: "damage-type:poison"}}}), []string{"poison"}},
 		{"a trap that poisons", trapAgainst(&rulesv1.TrapEffect{Conditions: []*rulesv1.TrapCondition{{ConditionKey: "condition:poisoned"}}}), []string{"poison"}},

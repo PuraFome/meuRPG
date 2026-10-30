@@ -1067,7 +1067,7 @@ var creatureCorrectionFields = []string{
 	"attacks_per_action", "armor_class", "hit_points", "hit_points_roll",
 	"speed_walk", "speed_fly", "speed_swim", "speed_climb", "speed_burrow",
 	"darkvision", "blindsight", "tremorsense", "truesight", "passive_perception",
-	"skills", "damage_immunities", "condition_immunities", fieldActionSaveSuccess,
+	"skills", "damage_immunities", "condition_immunities", fieldActionSaveSuccess, // the last is handled before the field switch: it corrects an action
 }
 
 // correctionFields are the class table columns effects/corrections.json may
