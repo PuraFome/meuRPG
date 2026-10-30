@@ -158,7 +158,7 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
       ]);
       expect(
         Array.from(time.querySelectorAll('.cx__preset')).map((b) => b.getAttribute('aria-label')),
-      ).toEqual(['Passar 1 minuto', 'Passar 10 minutos', 'Passar 1 hora', 'Passar 8 horas']);
+      ).toEqual(['1 min, passar 1 minuto', '10 min, passar 10 minutos', 'Passar 1 hora', 'Passar 8 horas']);
       expect(el.querySelector('.mat-mdc-unelevated-button')).toBeNull();
       expect(el.querySelector('input[data-field="seconds"]')).toBeNull();
     });

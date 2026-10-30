@@ -53,7 +53,7 @@
           class="row__reach"
           [attr.data-id]="m.id"
           data-act="reach"
-          [attr.aria-label]="'Marcar “' + m.text + '” como alcançado'"
+          [attr.aria-label]="'Marcar como alcançado: “' + m.text + '”'"
           (click)="reach.emit(m)"
         >
           <mat-icon aria-hidden="true">flag</mat-icon>Marcar como alcançado

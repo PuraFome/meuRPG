@@ -15,7 +15,7 @@
         <strong>{{ n.lead }}</strong> {{ names() }}
       </p>
       @if (first(); as one) {
-        <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + one.name + ' no mapa'" (click)="show.emit(one.characterId)">
+        <button matButton="outlined" type="button" [attr.aria-label]="'Ver no mapa, ' + one.name" (click)="show.emit(one.characterId)">
           <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
         </button>
       }
@@ -32,7 +32,7 @@
               <li class="dark__row">
                 <span class="dark__name">{{ c.name }}</span>
                 <span class="dark__buttons">
-                  <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + c.name + ' no mapa'" (click)="show.emit(c.characterId)">
+                  <button matButton="outlined" type="button" [attr.aria-label]="'Ver no mapa, ' + c.name" (click)="show.emit(c.characterId)">
                     <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
                   </button>
                   @if (canLight()) {
@@ -47,7 +47,7 @@
         } @else if (first(); as one) {
           <p class="dark__title"><strong>{{ n.lead }}</strong> {{ n.text }}</p>
           <span class="dark__buttons">
-            <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + one.name + ' no mapa'" (click)="show.emit(one.characterId)">
+            <button matButton="outlined" type="button" [attr.aria-label]="'Ver no mapa, ' + one.name" (click)="show.emit(one.characterId)">
               <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
             </button>
             @if (canLight()) {

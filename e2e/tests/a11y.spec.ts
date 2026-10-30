@@ -8467,7 +8467,7 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     }
     await time.getByRole('button', { name: 'Outro tempo' }).click();
     await expectScreenPasses(m, `Passar o tempo, "Outro tempo" ${where}`);
-    await time.getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await time.getByRole('button', { name: '10 min, passar 10 minutos' }).click();
     await expect(panel).toContainText('Passou 10 minutos.');
     await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
 

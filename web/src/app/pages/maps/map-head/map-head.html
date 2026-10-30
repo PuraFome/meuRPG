@@ -141,7 +141,7 @@
         class="state__action"
         [disabled]="busy()"
         [attr.aria-label]="
-          map().revealed ? 'Esconder o mapa dos jogadores' : 'Revelar o mapa aos jogadores'
+          map().revealed ? 'Esconder o mapa dos jogadores' : 'Revelar aos jogadores o mapa'
         "
         (click)="toggleReveal.emit()"
       >

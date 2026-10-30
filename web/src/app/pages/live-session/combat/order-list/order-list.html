@@ -96,7 +96,7 @@
         class="row__head"
         [attr.aria-expanded]="isOpen(c)"
         [attr.aria-controls]="'row-' + c.id"
-        [attr.aria-label]="headName(c)"
+        [attr.aria-describedby]="'rowsay-' + c.id"
         (click)="toggle(c.id)"
       >
         <app-combatant-token
@@ -142,6 +142,8 @@
         </span>
         <mat-icon class="row__chev" aria-hidden="true">{{ isOpen(c) ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
+      <!-- The head's name is what it shows (WCAG 2.5.3); the state and the hit points in words are its description. -->
+      <span class="mr-visually-hidden" [id]="'rowsay-' + c.id">{{ headName(c) }}</span>
 
       @if (isOpen(c)) {
         <div class="row__open" [id]="'row-' + c.id">

@@ -59,7 +59,7 @@ import { Portrait } from '../../../../shared/portrait/portrait';
               class="sl__put sl__put--off"
               aria-disabled="true"
               [attr.aria-describedby]="reasonId"
-              [attr.aria-label]="'Pôr ' + c.name + ' em cena'"
+              [attr.aria-label]="'Pôr em cena: ' + c.name"
             >
               <mat-icon aria-hidden="true">block</mat-icon>Pôr em cena
             </button>
@@ -70,7 +70,7 @@ import { Portrait } from '../../../../shared/portrait/portrait';
               class="sl__put"
               data-put
               [aria-disabled]="ctl().busy(c.characterId)"
-              [attr.aria-label]="'Pôr ' + c.name + ' em cena'"
+              [attr.aria-label]="'Pôr em cena: ' + c.name"
               (click)="put(c)"
             >
               <mat-icon aria-hidden="true">login</mat-icon>Pôr em cena
