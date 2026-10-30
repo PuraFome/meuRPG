@@ -240,6 +240,11 @@ const attackHitAmount = 2
 func (w *world) hiddenBanditHitsToren(bandit, toren *playv1.Combatant) {
 	ctx := w.t.Context()
 	m := w.master
+	// The bandit reacts: it must not be in the group whose turn it is (a joint turn is a tie of totals).
+	cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	if cur.GetCurrentCombatantId() == bandit.GetId() {
+		w.t.Fatalf("the bandit has the turn (round %d), so it cannot react: %s", cur.GetRound(), initiativeOrder(cur))
+	}
 	opts := must(m.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId()})))
 	key := ""
 	for _, a := range opts.GetOptions().GetAttacks() {
