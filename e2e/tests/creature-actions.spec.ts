@@ -3,7 +3,8 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { combatRPC, passTurnsTo, tableForCombat, type Encounter } from './combat-support';
 import { vex } from './combat-rolls-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { masterLog } from './combat-layout';
+import { callRPC, newSignedInContext, openCombatLog } from './support';
 
 // The master's creature actions that are no attack roll (a breath weapon, a claw's rider), as the master and the player read them.
 // The table and the combat come through the API, in the mind's theatre (the master names the targets, no map to pick on); the d20s
@@ -36,10 +37,12 @@ async function monsterTurn(browser: Browser, name: string, creatureKey: string) 
   }
   enc = await combatRPC(m, 'BeginCombat', { campaignId, encounterId: enc.id });
   const monster = enc.combatants.find((c) => monsterIds.has(c.id))!;
+  // A monster starts hidden, and the players read nothing of a hidden creature's turn: show it, as the master does at the ambush.
+  await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: monster.id, hidden: false });
   await passTurnsTo(m, campaignId, monster.label);
   await openSessionPage(p, campaignId);
   await openSessionPage(m, campaignId);
-  const card = m.getByRole('region', { name: new RegExp(`^(Ações da|Vez da) ${monster.label}$`) });
+  const card = m.getByRole('region', { name: new RegExp(`^(Ações|Vez) d[ao] ${monster.label}$`) });
   return {
     m,
     p,
@@ -52,18 +55,19 @@ async function monsterTurn(browser: Browser, name: string, creatureKey: string) 
   };
 }
 
-/** The text of the combat log, for the audience of the page. */
-async function logText(page: Page): Promise<string> {
-  return (await page.getByRole('log', { name: 'Registro do combate' }).textContent()) ?? '';
+/** The text of the combat log, for the audience of the page (the player's sheet or the master's fold, opened first). */
+async function logText(page: Page, master: boolean): Promise<string> {
+  const log = master ? await masterLog(page) : await openCombatLog(page);
+  return (await log.textContent()) ?? '';
 }
 
 test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no cartão e o jogador lê a salvaguarda dele sem o texto do SRD nem a CD', { tag: ['@MR-012', '@RN-20'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   const { p, card, done } = await monsterTurn(browser, 'Sopro', 'monster:hell-hound');
   try {
-    const use = card.getByRole('button', { name: /^Usar Sopro/ });
+    const use = card.getByRole('button', { name: /^Usar Fire Breath/ });
     await expect(use).toBeVisible();
-    await expect(card.getByRole('group', { name: /alvos/i })).toBeVisible();
+    await expect(card.getByRole('group', { name: /Quem a ação atinge/ })).toBeVisible();
     await use.click();
     const result = card.getByTestId('creature-action-result');
     await expect(result).toBeVisible();
@@ -73,9 +77,10 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
     // The action is spent.
     await expect(use).toBeDisabled();
     // The player's log carries the action and the save, never the stat block's words or the DC.
-    await p.getByRole('log', { name: 'Registro do combate' }).waitFor({ state: 'attached' });
-    await expect.poll(() => logText(p)).toMatch(/usou Sopro/);
-    const log = await logText(p);
+    const playerLog = await openCombatLog(p);
+    await expect(playerLog).toContainText(/usou Fire Breath/);
+    const log = (await playerLog.textContent()) ?? '';
+    expect(log).toMatch(/Vex (falhou|resistiu)/);
     expect(log).not.toContain('Texto do SRD');
     expect(log).not.toMatch(/\bCD\b/);
   } finally {
@@ -88,7 +93,8 @@ test('a mordida da carniçal acerta e oferece o efeito das garras: o mestre apli
   const { m, card, done } = await monsterTurn(browser, 'Garras', 'monster:ghoul');
   try {
     // A typed hit (a d20 of 15), the damage rolled and applied; the claw then offers its rider.
-    const claws = card.getByRole('button', { name: 'Digitar o resultado' }).first();
+    await card.locator('label', { hasText: 'Garras' }).click();
+    const claws = card.getByRole('button', { name: 'Digitar o resultado' });
     await claws.click();
     await card.getByLabel(/Role 1d20/).fill('15');
     await card.getByRole('button', { name: 'Confirmar 15' }).click();
@@ -98,7 +104,7 @@ test('a mordida da carniçal acerta e oferece o efeito das garras: o mestre apli
     await expect(offer).toBeVisible();
     await offer.getByRole('button', { name: /^Aplicar / }).click();
     await expect(offer).toBeHidden();
-    await expect.poll(() => logText(m)).toMatch(/usou Garras/);
+    await expect.poll(() => logText(m, true)).toMatch(/usou Garras/);
   } finally {
     await done().catch(() => undefined);
   }
