@@ -220,6 +220,28 @@ func TestTwoPseudoWeaponsOfOneFeatureHaveOwnKeys(t *testing.T) {
 	}
 }
 
+// A gated pseudo-weapon that is off still counts, so the line of the one after it keeps its key.
+func TestAPseudoWeaponKeepsItsKeyWhileAnEarlierOneIsOff(t *testing.T) {
+	gated := Effect{Type: "pseudo_weapon", AttackName: "Raio A", Weapon: WeaponRanged, DamageDice: "1d4", DamageType: "damage-type:fire", Ability: "int", RangeFt: 30, While: stateName}
+	plain := gated
+	plain.AttackName, plain.While = "Raio B", ""
+	effects := append(stanceEffects(), gated, plain)
+	want := PseudoWeaponKey(stateFeature, 2)
+	for _, on := range []bool{false, true} {
+		b := ruleBuild()
+		if on {
+			b = ruleBuild(stateKeyOfTest())
+		}
+		got := ruleAttacks(t, b, effects...)
+		if a, ok := got[want]; !ok || a.NamePT != "Raio B" {
+			t.Errorf("state on=%v: line %q = %+v, want Raio B", on, want, a)
+		}
+		if _, ok := got[PseudoWeaponKey(stateFeature, 1)]; ok != on {
+			t.Errorf("state on=%v: the first line present = %v", on, ok)
+		}
+	}
+}
+
 var weaponRuleRefusals = []struct {
 	name  string
 	edit  func(e *Effect)

@@ -270,11 +270,14 @@ func (x *deriver) betterAbility(a, b Ability) Ability {
 func (x *deriver) pseudoWeapons() {
 	nth := map[string]int{}
 	for _, a := range x.active {
-		if a.effect.Type != "pseudo_weapon" || !x.applies(a) {
+		if a.effect.Type != "pseudo_weapon" {
 			continue
 		}
+		// The count takes every effect of the feature, gated off or not, so a line keeps its key while another switches.
 		nth[a.owner]++
-		x.pseudoWeapon(a, nth[a.owner])
+		if x.applies(a) {
+			x.pseudoWeapon(a, nth[a.owner])
+		}
 	}
 }
 

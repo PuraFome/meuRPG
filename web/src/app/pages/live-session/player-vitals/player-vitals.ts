@@ -105,7 +105,6 @@ export class PlayerVitals {
 
   /** Whether it is the character's own turn in the combat: the death save is rolled then (SRD 5.1), so off turn the card says so. */
   readonly onTurn = input(false);
-  /** The hint of a character at 0 hit points in a combat, off turn: when the death save is rolled. */
   /** The states that are on, each with the rounds left in words ("2 rodadas"; nothing for one that lasts until it ends). */
   protected readonly states = computed(() =>
     (this.vitals().states ?? []).map((s) => ({
@@ -115,6 +114,7 @@ export class PlayerVitals {
         s.durationRounds > 0 ? `${s.roundsLeft} ${s.roundsLeft === 1 ? 'rodada' : 'rodadas'}` : '',
     })),
   );
+  /** The hint of a character at 0 hit points in a combat, off turn: when the death save is rolled. */
   protected readonly deathSaveHint = computed(
     () => this.down() && !this.pools() && this.ownDeathSaves() !== null && !this.onTurn(),
   );
