@@ -33,7 +33,7 @@ const BADGE_MAX = 99;
         >
           Grupo
           @if (groupCount() > 0) {
-            <span class="tab__badge tab__badge--wait" aria-hidden="true">{{ groupCount() }}</span>
+            &ngsp;<span class="tab__badge tab__badge--wait" aria-hidden="true">{{ groupCount() }}</span>
           }
         </button>
       } @else if (sheetPanel()) {
@@ -51,7 +51,7 @@ const BADGE_MAX = 99;
       >
         Conversa
         @if (unread() > 0) {
-          <span class="tab__badge" aria-hidden="true">{{ badge() }}</span>
+          &ngsp;<span class="tab__badge" aria-hidden="true">{{ badge() }}</span>
         }
       </button>
     </nav>

@@ -90,7 +90,7 @@ describe('SessionMap: the light warning (B3)', () => {
 
   it('"Ver no mapa" marks only the chosen one with “<Nome> · no escuro”', async () => {
     const { fixture, el } = await mount(true);
-    el.querySelector<HTMLButtonElement>('button[aria-label="Ver Brisa no mapa"]')!.click();
+    el.querySelector<HTMLButtonElement>('button[aria-label="Ver no mapa, Brisa"]')!.click();
     await settle(fixture, 2);
     expect(el.querySelector('.label')?.textContent?.trim()).toBe('Brisa · no escuro');
   });

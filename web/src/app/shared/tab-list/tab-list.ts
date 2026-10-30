@@ -72,7 +72,9 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
             <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>
           }
           <span>{{ t.label }}</span>
+          <!-- A space between the label and the count, so the text the eye reads is the start of the name (WCAG 2.5.3). -->
           @if (t.badge) {
+            &ngsp;
             <span class="tl__badge" [class]="'tl__badge tl__badge--' + (t.tone ?? 'count')" aria-hidden="true">{{ t.badge }}</span>
           }
         </button>
@@ -180,7 +182,9 @@ export class TabList {
 
   protected nameOf(tab: TabItem): string | null {
     // The name starts with what the eye reads, label and count ("Ataques 3"), so a voice command matches (WCAG 2.5.3).
-    return tab.words ? `${tab.badge ? `${tab.label} ${tab.badge}` : tab.label}, ${tab.words}` : null;
+    return tab.words
+      ? `${tab.badge ? `${tab.label} ${tab.badge}` : tab.label}, ${tab.words}`
+      : null;
   }
 
   protected select(id: string): void {

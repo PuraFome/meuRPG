@@ -86,7 +86,7 @@ describe('TabList', () => {
     fixture.componentRef.setInput('tabs', TABS.slice(0, 2));
     fixture.detectChanges();
     expect(el.querySelector('.tl--compact')).not.toBeNull();
-    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa3', 'Ficha1']);
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa 3', 'Ficha 1']);
   });
 
   it('selects on a click', () => {

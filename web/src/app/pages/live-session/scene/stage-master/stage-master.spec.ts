@@ -178,9 +178,9 @@ describe('StageMaster', () => {
     await settle(fixture);
     expect(api.calls).toContain('speaker mira');
     expect(state.stage().map((n) => n.speaking)).toEqual([true, false]);
-    expect(button(el, 'Fala agora: Mira está com a fala. Tirar a fala').getAttribute('aria-pressed')).toBe(
-      'true',
-    );
+    expect(
+      button(el, 'Fala agora: Mira está com a fala. Tirar a fala').getAttribute('aria-pressed'),
+    ).toBe('true');
     button(el, 'Fala agora: Mira está com a fala. Tirar a fala').click();
     await settle(fixture);
     expect(api.calls).toContain('speaker nobody');
