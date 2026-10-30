@@ -118,7 +118,7 @@ func diceOfPlan(d rules.ActionDamage) link.Dice {
 // sheet keeps the first part only (an NPC's basic sheet, Derived.Attacks), so the others come from the
 // plan. An attack with a single part has none.
 func plannedParts(plan rules.ActionPlan) []partRecord {
-	if len(plan.Damage) < 2 {
+	if len(plan.Damage) <= 1 {
 		return nil
 	}
 	out := make([]partRecord, 0, len(plan.Damage)-1)

@@ -83,7 +83,8 @@ func creatureFight(t *testing.T, theatre bool, key string, hidden bool) (*armed,
 	if !theatre {
 		a.castStand(t, map[string][2]int32{hound: {10, 5}, "Toren": {8, 5}, "Goblin": {7, 5}, "Pensantus": {10, 9}, "Brisa": {1, 1}})
 	}
-	return a, a.passTo(t, e, hound), hound
+	e = a.passTo(t, e, hound)
+	return a, e, hound
 }
 
 func hitOn(res *playv1.UseCreatureActionResponse, id string) *playv1.CreatureActionTarget {
