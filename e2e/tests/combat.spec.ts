@@ -1037,7 +1037,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Sua reação: Disponível.')).toBeVisible();
-    await p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' }).click();
+    await p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ }).click();
     const sheet = p.getByRole('dialog', { name: 'Ataque de oportunidade com Adaga' });
     // A melee attack: "corpo a corpo", not the dagger's thrown range.
     await expect(sheet.getByText(/^Reação ·.*corpo a corpo$/)).toBeVisible();

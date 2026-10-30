@@ -1633,9 +1633,9 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
-    await expect(p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' })).toBeVisible();
+    await expect(p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ })).toBeVisible();
     await expectScreenPasses(p, `Sua reação, com o ataque de oportunidade ${where}`);
-    await p.getByRole('button', { name: 'Ataque de oportunidade com Adaga' }).click();
+    await p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ }).click();
     await expect(p.getByRole('dialog', { name: /Adaga/ })).toBeVisible();
     await expectScreenPasses(p, `Ataque de oportunidade, escolher o alvo ${where}`);
     await p.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click();
@@ -4169,7 +4169,7 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await chest.getByRole('alertdialog').getByRole('button', { name: 'Voltar' }).click();
 
     // The player: the toast, the row and sheet of the treasure, and the search in each step.
-    await p.getByRole('button', { name: /Baú de moedas, Tesouro/ }).click();
+    await p.getByRole('button', { name: /^Baú de moedas\s+Tesouro/ }).click();
     await expect(p.getByRole('dialog', { name: 'Baú de moedas' })).toBeVisible();
     await expectScreenPasses(p, `Folha do tesouro, jogador ${where}`);
     await p.getByRole('dialog', { name: 'Baú de moedas' }).getByRole('button', { name: 'Fechar', exact: true }).last().click();
