@@ -409,3 +409,12 @@ func TestTheGateIsOnTheMenuOfEveryTypeThatReadsIt(t *testing.T) {
 		}
 	}
 }
+
+func TestAStateCannotBeNamedRage(t *testing.T) {
+	_, err := loadForTest(t).With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{
+		{Type: "state", StateName: "rage", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree},
+	})}})
+	if err == nil {
+		t.Fatal("a state named rage is accepted: a resistance's while rage would mean the barbarian's rage")
+	}
+}

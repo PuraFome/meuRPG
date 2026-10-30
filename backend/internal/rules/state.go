@@ -125,6 +125,9 @@ func (b *overlayBuilder) checkState(site effectSite, entry string, e *Effect) er
 	if !formula.ValidStateName(e.StateName) {
 		return site.fail(".state_name", ReasonValue, "a state name has 1 to %d characters of a-z, 0-9 and _", formula.MaxStateNameBytes)
 	}
+	if e.StateName == ResistanceWhileRage {
+		return site.fail(".state_name", ReasonValue, "%q is the barbarian's rage, not a name for a state", ResistanceWhileRage)
+	}
 	if b.stateCount[entry][e.StateName] > 1 {
 		return site.fail(".state_name", ReasonValue, "two states of this entry are named %q", e.StateName)
 	}

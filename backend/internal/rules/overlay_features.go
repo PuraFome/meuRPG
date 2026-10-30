@@ -627,7 +627,6 @@ var effectFields = []effectField{
 	{"state_name", func(e *Effect) bool { return e.StateName != "" }, func(e *Effect) { e.StateName = "" }},
 	{"duration_rounds", func(e *Effect) bool { return e.DurationRounds != "" }, func(e *Effect) { e.DurationRounds = "" }},
 	{"ends_on", func(e *Effect) bool { return len(e.EndsOn) > 0 }, func(e *Effect) { e.EndsOn = nil }},
-	{"weapon", func(e *Effect) bool { return e.Weapon != "" }, func(e *Effect) { e.Weapon = "" }},
 	{"weapon_name", func(e *Effect) bool { return e.WeaponName != "" }, func(e *Effect) { e.WeaponName = "" }},
 	{"attack_ability", func(e *Effect) bool { return e.AttackAbility != "" }, func(e *Effect) { e.AttackAbility = "" }},
 	{"damage_ability", func(e *Effect) bool { return e.DamageAbility != "" }, func(e *Effect) { e.DamageAbility = "" }},
@@ -636,7 +635,6 @@ var effectFields = []effectField{
 	{"reach_ft", func(e *Effect) bool { return e.ReachFt != 0 }, func(e *Effect) { e.ReachFt = 0 }},
 	{"attack_name", func(e *Effect) bool { return e.AttackName != "" }, func(e *Effect) { e.AttackName = "" }},
 	{"damage_dice", func(e *Effect) bool { return e.DamageDice != "" }, func(e *Effect) { e.DamageDice = "" }},
-	{"damage_type", func(e *Effect) bool { return e.DamageType != "" }, func(e *Effect) { e.DamageType = "" }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.
