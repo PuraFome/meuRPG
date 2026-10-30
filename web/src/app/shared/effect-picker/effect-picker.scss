@@ -6,6 +6,8 @@
 
 .type {
   min-width: 0;
+  // The type's description is a line under the select; the next field's outline label rises into that space.
+  padding-bottom: var(--mr-space-2);
 }
 
 .fields {

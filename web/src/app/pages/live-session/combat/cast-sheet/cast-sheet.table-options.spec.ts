@@ -189,7 +189,9 @@ describe('CastSheet: the cast options of table features (MR-025)', () => {
     await settle();
     tick('Chama tingida');
     expect(flat(picker()!.querySelector('legend'))).toBe('Novo tipo de dano · Chama tingida');
-    expect(Array.from(picker()!.querySelectorAll('.type'), flat)).toEqual(['Frio', 'Fogo']);
+    expect(
+      Array.from(picker()!.querySelectorAll('input[type=radio]'), (r) => flat(r.closest('label'))),
+    ).toEqual(['Frio', 'Fogo']);
     pickType('Fogo');
     await cast(el, settle);
     expect(castSpell.mock.calls[0][12]).toMatchObject({

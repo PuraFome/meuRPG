@@ -1,0 +1,120 @@
+:host {
+  display: block;
+}
+
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    // Inside the card: the scroll container it sits in (overflow: auto) clips a ring drawn outside at the sides.
+    outline-offset: -4px;
+  }
+
+  &--on {
+    padding: 7px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &--fixed {
+    cursor: default;
+  }
+
+  &--off {
+    border-style: dashed;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.opt__box {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 4px;
+
+  &--round {
+    border-radius: 50%;
+  }
+
+  .opt--on & {
+    border-color: var(--mr-accent);
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+  }
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.opt__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mr-on-accent);
+}
+
+.opt__mark {
+  flex: none;
+  margin-top: 1px;
+  color: var(--mr-accent);
+}
+
+.opt__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opt__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+.opt__cost {
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.opt__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.opt__why {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    font-size: 16px;
+  }
+}

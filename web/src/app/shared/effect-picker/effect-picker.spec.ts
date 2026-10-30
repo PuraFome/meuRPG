@@ -221,6 +221,14 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     );
   });
 
+  it('asks an extra damage "Contra quem", and gives the dice one hint, not two run together', () => {
+    setup({ ...emptyEffect('extra_damage'), applies: 'any_target' }, { menu: extraDamageMenu() });
+    expect(text(field('applies')!.closest('.frow')!)).toContain('Contra quem');
+    expect(text(el)).not.toContain('Onde o dado entra');
+    const hint = text(field('dice')!.closest('.frow')!.querySelector('.frow__hint')!);
+    expect(hint).toBe('Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.');
+  });
+
   it("shows extra_damage's dice, type, weapon and frequency unfolded, and sets them", () => {
     const m = extraDamageMenu();
     setup({ ...emptyEffect('extra_damage'), applies: 'any_target' }, { menu: m });

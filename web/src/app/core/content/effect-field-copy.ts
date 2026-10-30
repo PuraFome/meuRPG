@@ -100,7 +100,7 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
 export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> =
   {
     granted_spell: { ability: 'Habilidade de conjuração' },
-    extra_damage: { value: 'Dano fixo' },
+    extra_damage: { value: 'Dano fixo', applies: 'Contra quem' },
     spell_modifier: {
       from: 'Tipos de dano que troca',
       value: 'Dano fixo somado',
