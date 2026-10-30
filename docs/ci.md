@@ -194,14 +194,13 @@ The fix is in the test (wait for the condition that matters, own the state it ne
 
 `flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners.
 
-Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check --repo vfraga/meuRPG -f kind=playwright -f test='<title>' -f head=<train branch> -f base=main`.
+Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check.yml --repo vfraga/meuRPG --ref <train branch> -f kind=playwright -f test='<title>'`. `--ref` names the train branch: it is the head, and the run's caches are scoped to that branch. The base is always the repository's default branch (`main`). There are no ref inputs: the run never checks out a ref it was given as text, so a dispatch cannot run code from a ref of its choosing in the default branch's context.
 
 | Input | Meaning |
 | --- | --- |
 | `kind` | `playwright` or `go` |
 | `test` | Playwright: the `--grep` (a title, read as a regular expression: escape `(`, `.`, `+`, `?`). Go: the `-run` regular expression |
 | `package` | Go only: the package relative to `backend/`, for example `./internal/play` |
-| `head`, `base` | The refs with and without the train (a branch, a tag or a commit) |
 | `runs` | Runs per side, default 30. Rounded up to a multiple of `runners` |
 | `runners` | Runners per side, default 5 (each does `runs / runners` repeats) |
 

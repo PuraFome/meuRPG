@@ -5,8 +5,8 @@
 # base ref, each side on its own runners, and writes the counts and the first error line of each failure to the job
 # summary and to the `flake-check` artifact. See docs/ci.md, "Flaky tests", for how to dispatch it and read it.
 #
-# The workflow file that runs is the one on the ref you dispatch from (the fork's main): it reads the tools from there
-# and the tests from the refs it tests.
+# The head is the ref the run is dispatched on (`--ref <train branch>`), the base is the default branch: there are no
+# ref inputs, so the run never checks out a ref it was handed as text. The workflow file and the tools are the head's.
 #
 # Every third-party action is pinned by full commit SHA; the `# vX.Y.Z` comment is for humans.
 name: flake-check
@@ -27,15 +27,6 @@ on:
         description: "Go only: the package, relative to backend/ (for example ./internal/play)"
         type: string
         required: false
-      head:
-        description: "The ref with the train (a branch, a tag or a commit)"
-        type: string
-        required: true
-      base:
-        description: "The ref without it (usually main)"
-        type: string
-        default: main
-        required: true
       runs:
         description: "Runs per side (rounded up to a multiple of runners)"
         type: string
@@ -53,8 +44,8 @@ env:
   KIND: ${{ inputs.kind }}
   TEST: ${{ inputs.test }}
   PACKAGE: ${{ inputs.package }}
-  HEAD_REF: ${{ inputs.head }}
-  BASE_REF: ${{ inputs.base }}
+  HEAD_REF: ${{ github.ref_name }}
+  BASE_REF: ${{ github.event.repository.default_branch }}
   RUNS: ${{ inputs.runs }}
   RUNNERS: ${{ inputs.runners }}
 
@@ -79,15 +70,13 @@ jobs:
           RUNS=$((10#$RUNS)); RUNNERS=$((10#$RUNNERS))
           [[ "$RUNS" -ge 1 && "$RUNS" -le 500 ]] || fail "runs must be a number from 1 to 500"
           [[ "$RUNNERS" -ge 1 && "$RUNNERS" -le 20 ]] || fail "runners must be a number from 1 to 20"
-          [[ "$HEAD_REF" =~ ^[A-Za-z0-9._/@~^-]+$ ]] || fail "head is not a ref"
-          [[ "$BASE_REF" =~ ^[A-Za-z0-9._/@~^-]+$ ]] || fail "base is not a ref"
           if [[ "$KIND" == go ]]; then
             [[ "$PACKAGE" =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]*$ ]] || fail "a Go test needs its package (for example ./internal/play)"
           fi
           repeats=$(( (RUNS + RUNNERS - 1) / RUNNERS ))
-          matrix=$(jq -nc --arg head "$HEAD_REF" --arg base "$BASE_REF" --argjson runners "$RUNNERS" --argjson repeats "$repeats" '
-            [{side: "head", ref: $head}, {side: "base", ref: $base}]
-            | [.[] as $s | range(1; $runners + 1) | {side: $s.side, ref: $s.ref, runner: ., repeats: $repeats}]
+          matrix=$(jq -nc --argjson runners "$RUNNERS" --argjson repeats "$repeats" '
+            ["head", "base"]
+            | [.[] as $side | range(1; $runners + 1) | {side: $side, runner: ., repeats: $repeats}]
             | {include: .}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           {
@@ -103,11 +92,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        include:
-          - side: head
-            ref: ${{ inputs.head }}
-          - side: base
-            ref: ${{ inputs.base }}
+        side: [head, base]
     steps:
       - name: Checkout the tools (this workflow's own ref)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -115,11 +100,21 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
-      - name: Checkout the ref under test
+      # The head is the ref the run was dispatched on (no `ref:`: github.ref), the base the default branch. Neither
+      # comes from an input, so a dispatch cannot make this run code from a ref of its choosing in main's context.
+      - name: Checkout the head (the ref this run was dispatched on)
+        if: ${{ matrix.side == 'head' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ matrix.ref }}
+          path: code
+
+      - name: Checkout the base (the default branch)
+        if: ${{ matrix.side == 'base' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
           path: code
 
       - name: Build the images
@@ -144,11 +139,21 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
-      - name: Checkout the ref under test
+      # The head is the ref the run was dispatched on (no `ref:`: github.ref), the base the default branch. Neither
+      # comes from an input, so a dispatch cannot make this run code from a ref of its choosing in main's context.
+      - name: Checkout the head (the ref this run was dispatched on)
+        if: ${{ matrix.side == 'head' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ matrix.ref }}
+          path: code
+
+      - name: Checkout the base (the default branch)
+        if: ${{ matrix.side == 'base' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
           path: code
 
       - name: Start the stack of this ref
@@ -223,11 +228,21 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
-      - name: Checkout the ref under test
+      # The head is the ref the run was dispatched on (no `ref:`: github.ref), the base the default branch. Neither
+      # comes from an input, so a dispatch cannot make this run code from a ref of its choosing in main's context.
+      - name: Checkout the head (the ref this run was dispatched on)
+        if: ${{ matrix.side == 'head' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ matrix.ref }}
+          path: code
+
+      - name: Checkout the base (the default branch)
+        if: ${{ matrix.side == 'base' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
           path: code
 
       - name: Set up Go
