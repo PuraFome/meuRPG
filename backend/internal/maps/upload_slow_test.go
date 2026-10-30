@@ -303,19 +303,25 @@ func multipartStart(boundary, campaign string) string {
 	return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"campaign_id\"\r\n\r\n" + campaign + "\r\n"
 }
 
-// A client that sends the start of its file and then trickles is answered when the slot's deadline ends the read, and the
-// connection is not held for what is left of the body: the deadline stays armed on a path that returns with the body unread.
-func TestATricklerThatHitsTheSlotDeadlineIsAnsweredAndNotHeld(t *testing.T) {
+// otherPart is a part that is not the file: the upload is refused at once, with the rest of the body unread.
+func otherPart(boundary string) string {
+	return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"note\"\r\n\r\nabc"
+}
+
+// A form whose second part is not the file is refused at once, under the processing slot, with the rest of the body unread.
+// A client that goes on trickling does not hold the connection: the slot's deadline stays armed on a path that returns
+// without having read the body to its end.
+func TestARefusedFormThatKeepsTricklingUnderTheSlotIsNotHeld(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	h.svc.slotReadTimeout = 300 * time.Millisecond
 	master := h.newUser("Master")
 	campaign := h.newCampaign(master)
 	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + master.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
-	first := multipartStart("B", campaign) + "--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.png\"\r\nContent-Type: image/png\r\n\r\nPNG"
+	first := multipartStart("B", campaign) + otherPart("B")
 	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, first, 10*time.Second)
 	if !strings.Contains(line, " 400 ") {
-		t.Fatalf("status line = %q, want 400 (the upload took too long)", line)
+		t.Fatalf("status line = %q, want 400 (the form must have a file field)", line)
 	}
 }
 
@@ -329,7 +335,7 @@ func TestARefusedUploadThatKeepsTricklingIsNotHeld(t *testing.T) {
 	campaign := h.newCampaign(master)
 	stranger := h.newUser("Stranger")
 	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + stranger.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
-	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, multipartStart("B", campaign), 10*time.Second)
+	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, multipartStart("B", campaign)+otherPart("B"), 10*time.Second)
 	if strings.Contains(line, " 201 ") {
 		t.Fatalf("status line = %q, want a refusal", line)
 	}

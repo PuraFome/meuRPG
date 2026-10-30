@@ -45,7 +45,9 @@ func TestLoginFormReadHasADeadline(t *testing.T) {
 }
 
 // A form over the limit is refused with the rest of the body unread. A client that goes on trickling it must not hold the
-// connection: the deadline stays armed on every path that returns without having read the form to its end.
+// connection. (net/http closes the connection after a MaxBytesReader overflow and the read deadline's error is sticky, so
+// no path of this route can leave a trickler holding it with a cleared deadline: this test guards the rule, it is not red
+// with the deadline cleared on the way out.)
 func TestAnOversizedLoginFormThatKeepsTricklingIsNotHeld(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
