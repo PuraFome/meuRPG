@@ -225,6 +225,16 @@ A failed Strength save on the push moves the target through the forced-movement 
 The answer is a `hit_rider` event (`CombatLogKind.HIT_RIDER`) and cannot be undone.
 Its log line carries the target's d20, save total and the DC only for the master, and for the target's player when a player's character made the save; the monk's player reads only the result, since an NPC's roll never reaches a player (`TestOpenHandRidersOnlyOnFlurryHits`).
 
+### A creature's actions and riders (W7-M)
+
+An NPC's stat block carries more than its sheet attacks: `rules.ActionPlan` (see [Rules: creatures](../rules-creatures-items.md#creatures)) says which action asks a saving throw, which attack has a rider and which attack has several damage parts. `combat_creature_plan.go` ties a combatant to its plan by its monster key; an NPC's basic-sheet attack (`basic:i`) is matched to the action by name.
+
+- **`CombatService.UseCreatureAction`** (master only). An action that asks a save (a breath weapon, a gaze) or rolls nothing (a reminder). It is the cast flow with the plan as the spell: `spellOfPlan` turns the plan into a `link.Spell`, and the targets, the area (`SpellOrigin` or `SpellDirection`, through `planArea`), the save roll (`rollSpellSave`), the pending damage the save governs (`openSavePendings`, half on a save when the plan says so) and the condition on a failure (`giveCondition`) are the ones of `CastSpell`. It spends the actor's action, and the actor must be the combatant on turn. The event is a `spell_cast` whose `creature_action` field holds the action's name, its reminder and its condition, so the log (`CombatLogEntry.creature_action`), the undo and the fog work as for a cast. An attack made with a roll is refused (`CREATURE_ACTION_UNAVAILABLE`): it is made from the sheet.
+- **Attack riders.** A hit by an NPC attack whose plan has a save on hit (a ghoul's claws, a spider's bite) or a condition on hit (a constrictor's grapple) opens a `hit_riders` row of the kind `creature` with the action's key once its damage has landed (`offerCreatureRider`, from `afterDamage`). The master answers with `UseHitRider`: apply rolls the target's save as a spell save is rolled, opens the damage the save governs as pending damage and gives the condition on a failure, or gives the grapple's condition and notes the escape DC in the line; decline skips it. Like the monk's riders the answer is a `hit_rider` event and cannot be undone, and an offer stays open if the damage that opened it is undone.
+- **Damage parts.** The parts of an NPC attack after the first come from the plan (`plannedParts`) as automatic parts of the same pending damage, so one apply, one concentration check, and each part takes the resistance of its own type. A character's attack is unchanged.
+
+Who sees what: the creature's numbers (the DC, the escape DC, the plan's text) are the master's. A player reads the save his own character makes and the damage he takes; a creature rider is never in a player's `hit_riders`, and a player who answers one gets `permission_denied` whether it exists or not. A hidden creature's action is masked as a hidden NPC's attack is (`TestACreatureActionShowsThePlayersTheirSaveNeverTheStatBlock`, `TestACreatureRiderShowsThePlayersTheirSaveNeverTheStatBlock`).
+
 ## Not modeled
 
 - Wild Shape's duration (hours) is not counted.
