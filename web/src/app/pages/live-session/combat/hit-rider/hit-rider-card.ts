@@ -198,7 +198,7 @@ export class HitRiderCard {
     effect(() => {
       const campaignId = this.campaignId();
       const combatants = this.combatants();
-      for (const o of this.offers()) {
+      for (const o of this.offers() ?? []) {
         const key = combatants.find((c) => c.id === o.attackerId)?.bestiaryCreatureKey ?? '';
         if (!campaignId || !this.isCreature(o) || o.escapeDc > 0 || !key || this.asked.has(o.id)) {
           continue;
@@ -206,7 +206,7 @@ export class HitRiderCard {
         this.asked.add(o.id);
         this.creatures.statBlock(campaignId, key).then(
           (block) => {
-            const ability = block.actions.find((a) => a.key === o.actionKey)?.save?.ability;
+            const ability = block?.actions.find((a) => a.key === o.actionKey)?.save?.ability;
             if (ability !== undefined && ability !== Ability.UNSPECIFIED) {
               this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
             }

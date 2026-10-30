@@ -23,8 +23,7 @@ export function creatureActionText(e: CombatLogEntry, ctx: LogContext): string {
   }
   if (a.conditionNamePt && a.conditionTargetIds.length > 0) {
     const labels = a.conditionTargetIds.map((id) => {
-      const label = targets.find((t) => t.targetId === id)?.targetLabel || 'alguém';
-      return ctx.players.has(label) ? label : the(label);
+      return the(targets.find((t) => t.targetId === id)?.targetLabel || 'alguém');
     });
     const duration = a.durationText ? `, por ${durationPt(a.durationText)}` : '';
     const repeat = a.repeatSave ? '; repete o teste no fim de cada turno dele' : '';
