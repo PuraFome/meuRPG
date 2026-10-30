@@ -15,7 +15,8 @@
 
   &:has(input:focus-visible) {
     outline: 2px solid var(--mr-focus);
-    outline-offset: 2px;
+    // Inside the card: the scroll container it sits in (overflow: auto) clips a ring drawn outside at the sides.
+    outline-offset: -4px;
   }
 
   &--on {
