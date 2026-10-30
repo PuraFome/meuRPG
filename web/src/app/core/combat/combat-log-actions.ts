@@ -254,6 +254,8 @@ function stateReason(key: string): string {
       return 'a duração acabou';
     case 'incapacitated':
       return 'ficou incapacitado';
+    case 'master':
+      return 'o mestre encerrou';
     case 'left':
       return 'a concentração ou o combate acabou';
     default:
