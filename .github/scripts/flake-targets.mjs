@@ -157,7 +157,7 @@ export function mapDiff({ diff, read, files }) {
   const notes = [];
   const addPlaywright = (file, t, why) => {
     const key = `${file}\t${t.title}`;
-    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, why });
+    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: (t.body.match(/\bsignIn\(/g) ?? []).length, why });
   };
   const addGo = (pkg, test, why) => {
     const key = `${pkg}\t${test}`;

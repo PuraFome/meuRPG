@@ -73,3 +73,22 @@ test('the regex of a title reaches Playwright with its backslashes, and the spec
   assert.equal(r.code, 0, r.out);
   assert.ok(r.calls.includes('playwright test tests/a.spec.ts --grep first \\(1\\.5\\) test --repeat-each=10'), r.calls);
 });
+
+// /auth/login: 40 requests at once per address; a sign-in is 2 and the setup of each run makes 3.
+test('a test that signs in a lot repeats in batches, the stack reset before each but the first', () => {
+  const targets = { playwright: [{ file: 'e2e/tests/a.spec.ts', title: 'three', grep: 'three', signins: 3, why: 'changed' }], go: [], notes: [] };
+  const r = run('playwright', targets, { BUDGET_SECONDS: '60', RESET_STACK_CMD: 'echo reset >> "$(dirname "$(command -v npx)")/calls.log"' });
+  assert.equal(r.code, 0, r.out);
+  const lines = r.calls.trim().split('\n');
+  // 6 + 6 x 10 = 66 > 40: batches of (40 - 6) / 6 = 5, so two per colour scheme: 4 runs, 3 resets (none before the first).
+  assert.equal(lines.filter((l) => l.startsWith('playwright test')).length, 4);
+  assert.ok(lines.every((l) => !l.startsWith('playwright test') || l.includes('--repeat-each=5')), r.calls);
+  assert.equal(lines.filter((l) => l === 'reset').length, 3);
+});
+
+test('a test that signs in once repeats in one run: 6 + 2 x 10 fits the limit', () => {
+  const targets = { playwright: [{ file: 'e2e/tests/a.spec.ts', title: 'one', grep: 'one', signins: 1, why: 'changed' }], go: [], notes: [] };
+  const r = run('playwright', targets, { BUDGET_SECONDS: '60' });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(r.calls.trim().split('\n').filter((l) => l.includes('--repeat-each=10')).length, 2);
+});

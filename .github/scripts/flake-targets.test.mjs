@@ -132,7 +132,7 @@ test('playwrightTests finds each test, one-line ones too, and not the describe',
 
 test('a changed test body maps to that test alone', () => {
   const got = map(hunk('e2e/tests/a.spec.ts', 11, 11));
-  assert.deepEqual(got.playwright, [{ file: 'e2e/tests/a.spec.ts', title: 'second test', grep: 'second test', why: 'changed' }]);
+  assert.deepEqual(got.playwright, [{ file: 'e2e/tests/a.spec.ts', title: 'second test', grep: 'second test', signins: 0, why: 'changed' }]);
   assert.deepEqual(got.go, []);
 });
 
