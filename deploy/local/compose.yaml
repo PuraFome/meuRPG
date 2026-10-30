@@ -21,7 +21,7 @@ services:
     # (from 2026-09-23). v26.3 is an "Innovation" release (no LTS) and is
     # skipped: Dependabot proposes only patches of this line (see
     # .github/dependabot.yml).
-    image: cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
+    image: cockroachdb/cockroach:v26.2.8@sha256:1ad58b6a69928691e0c9289b847dcb35ac25108c6ead23fcabf47e37b9195e9a
     command: ["start-single-node", "--insecure"]
     environment:
       # start-single-node reads this on first boot (empty data dir only) and
