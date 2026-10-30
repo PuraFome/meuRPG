@@ -97,7 +97,7 @@ let nextId = 0;
 
     .pick__add {
       min-width: 220px;
-      flex: 0 1 260px;
+      flex: 1 1 320px;
     }
   `,
 })
