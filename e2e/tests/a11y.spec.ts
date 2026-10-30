@@ -9130,6 +9130,8 @@ async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dar
     await expect(m.getByTestId('hit-rider').first()).toBeVisible();
     await expectScreenPasses(m, `A ficha do mestre, a oferta do efeito das garras ${where}`);
     await m.getByTestId('hit-rider').first().getByRole('button', { name: /^Aplicar / }).click();
+    // The apply settles before the part ends, as a master does it: the offer is gone once the answer is on screen.
+    await expect(m.getByTestId('hit-rider')).toHaveCount(0);
     await endPartRPC(m, campaignId, 'Carniçal');
 
     // The hell hound's card: the actions area, then the result of the breath's saving throw.

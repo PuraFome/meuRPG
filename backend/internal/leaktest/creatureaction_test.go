@@ -30,19 +30,7 @@ func (w *world) monsterOnTurn(key, name string, hidden bool) *playv1.Combatant {
 	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
-	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{
-		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: key, Count: 1, Name: name, Hidden: &hidden,
-	})))
-	e := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
-	var mon *playv1.Combatant
-	for _, c := range e.GetCombatants() {
-		if c.GetBestiaryCreatureKey() == key {
-			mon = c
-		}
-	}
-	if mon == nil {
-		w.t.Fatalf("%s is not in the combat", key)
-	}
+	e, mon := w.addMonsterWithATotalOfItsOwn(key, name, hidden)
 	for id, sq := range map[string][2]int32{w.combatant(w.toren).GetId(): {12, 14}, mon.GetId(): {13, 14}} {
 		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
 	}
@@ -56,6 +44,42 @@ func (w *world) monsterOnTurn(key, name string, hidden bool) *playv1.Combatant {
 	}
 	w.t.Fatalf("the turn of %s never came", key)
 	return nil
+}
+
+// addMonsterWithATotalOfItsOwn adds the creature mid-combat with an initiative total nobody else has. The app rolls a
+// creature's initiative at random and the master cannot set it after the combat began (SubmitInitiative refuses), so
+// a creature whose total ties with one on the track is removed and added again. A tied total makes them one joint
+// turn, in which the creature does not become the current one, and the turns the caller passes would walk into the
+// next round past an unrolled death save (pinNPCInitiatives pins the NPCs of the world before the combat begins).
+func (w *world) addMonsterWithATotalOfItsOwn(key, name string, hidden bool) (*playv1.Encounter, *playv1.Combatant) {
+	w.t.Helper()
+	ctx := w.t.Context()
+	m := w.master
+	for range 60 {
+		must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: key, Count: 1, Name: name, Hidden: &hidden,
+		})))
+		e := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		var mon *playv1.Combatant
+		ties := false
+		for _, c := range e.GetCombatants() {
+			if c.GetBestiaryCreatureKey() == key {
+				mon = c
+			}
+		}
+		if mon == nil {
+			w.t.Fatalf("%s is not in the combat", key)
+		}
+		for _, c := range e.GetCombatants() {
+			ties = ties || (c.GetId() != mon.GetId() && c.Initiative != nil && c.GetInitiative() == mon.GetInitiative())
+		}
+		if !ties {
+			return e, mon
+		}
+		must(m.combat.RemoveCombatant(ctx, rq(&playv1.RemoveCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: mon.GetId(), IdempotencyKey: newKey()})))
+	}
+	w.t.Fatalf("the app never rolled %s a total of its own", key)
+	return nil, nil
 }
 
 // seenByAna puts Pensantus next to the fight, so that the other player sees what happens on it.

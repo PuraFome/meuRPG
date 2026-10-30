@@ -358,23 +358,42 @@ describe('CombatState', () => {
       expect(turnBanner(e).title).toBe('Sua vez, Pensantus');
     });
 
-    it('keeps the group, and who ended their part, when a part ends inside it', () => {
+    it('reads the combat again when a part ends inside the group, since the event does not say whose', () => {
       const state = new CombatState();
       state.apply(
         encounter({
-          combatants: [{ ...brisa, turnPartEnded: true }, toren, pens],
+          combatants: [brisa, toren, pens],
           currentCombatantId: 'b',
           turnGroupIds: ['b', 't'],
           revision: 5,
         }),
       );
       const round = state.encounter()!.round;
-      // Brisa ended her part: the server moves "current" to Toren, in the same round, and says so.
-      state.applyTurn({ encounterId: 'enc', round, currentCombatantId: 't', masterTurn: false });
-      const e = state.encounter()!;
-      expect(e.turnGroupIds).toEqual(['b', 't']);
-      expect(e.combatants.find((c) => c.id === 'b')?.turnPartEnded).toBe(true);
-      expect(turnMembers(e).map((c) => c.id)).toEqual(['b', 't']);
+      // Brisa's part was ended from another screen: the server moves "current" to Toren, in the same round. The copy
+      // still shows Brisa acting, so patching only "current" would leave her turn open.
+      const patched = state.applyTurn({
+        encounterId: 'enc',
+        round,
+        currentCombatantId: 't',
+        masterTurn: false,
+        revision: 6,
+      });
+      expect(patched).toBe(false);
+      expect(state.encounter()?.currentCombatantId).toBe('b');
+    });
+
+    it('has nothing to read when the event names the combatant already current in the group', () => {
+      const state = onJointTurn();
+      const round = state.encounter()!.round;
+      expect(
+        state.applyTurn({
+          encounterId: 'enc',
+          round,
+          currentCombatantId: 'b',
+          masterTurn: false,
+          revision: 6,
+        }),
+      ).toBe(true);
     });
 
     it('starts the same group again in the next round, with nobody having ended their part', () => {
