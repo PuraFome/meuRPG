@@ -180,7 +180,7 @@ Until all four are true the train waits. When they are, the train may merge with
 
 ### Banned fixes
 
-The lint and the train review look for these:
+The train review looks for all of these; the lint catches the skips (`test.skip`, `test.fixme`) and the retries check catches retries:
 
 - retries (`retries` in the config, `--retries`, a rerun of a job until it is green, gotestsum's `--rerun-fails`);
 - `test.fixme`, `test.skip`, or a skipped Go test (`t.Skip` to dodge a failure);
@@ -226,7 +226,7 @@ The `repeat-changed` job runs next to the gate on every pull request that touche
 - the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing);
 - for a changed helper, a sample of up to 5 of the tests that call it, directly or through other helpers: an exported function of an `e2e/tests/*-support.ts`, or a function or method of `backend/internal/leaktest`.
 
-`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which every context that does not pin a scheme of its own follows); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
+`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which the page and the contexts made with no `colorScheme` option follow; a helper that passes its own, even `undefined`, keeps it, and a test that names its theme in its title is covered by that title); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
 
 The summary of `targets` lists the tests it found and why (`changed`, or `calls <helper>`). The scripts have unit tests, run by `workflows-lint` (`node --test .github/scripts/*.test.mjs`).
 

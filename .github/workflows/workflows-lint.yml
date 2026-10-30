@@ -64,8 +64,8 @@ jobs:
         # need the network are left out.
         run: ./zizmor --offline .github
 
-  # The scripts the flaky-test process uses (flake.mjs, flake-targets.mjs) have unit tests, and the retries check has
-  # its own: they run here because this workflow runs on every change under .github/.
+  # The scripts the flaky-test process uses (flake.mjs, flake-targets.mjs) have unit tests (and so does the retries check's
+  # script): they run here because this workflow runs on every change under .github/.
   scripts:
     name: tests of the CI scripts
     runs-on: ubuntu-26.04

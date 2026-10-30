@@ -17,7 +17,8 @@ if [ "$count" -ne 1 ] || ! grep -Eq '^[0-9]+:[[:space:]]*retries:[[:space:]]*0,?
 fi
 # Nothing else may turn retries on: a spec's test.describe.configure({ retries }) or a --retries flag.
 others=$(grep -rnE 'retries[[:space:]]*:' "$(dirname "$config")/tests" "$(dirname "$config")/package.json" 2>/dev/null || true)
-others+=$(grep -rnE -- '--retries' .github/workflows Makefile 2>/dev/null || true)
+flags=$(grep -rnE -- '--retries' .github/workflows Makefile 2>/dev/null || true)
+others="${others}${others:+${flags:+$'\n'}}${flags}"
 if [ -n "$others" ]; then
   echo "::error::something besides ${config} sets retries:" >&2
   echo "$others" >&2
