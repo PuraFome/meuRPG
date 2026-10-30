@@ -36,7 +36,7 @@ const fireBreath = () =>
   creatureAction({
     key: 'monster:hell-hound#fire-breath',
     name: 'Fire Breath',
-    namePt: 'Sopro de Fogo',
+    namePt: 'Sopro de fogo',
     text: 'The hound exhales fire in a 15-foot cone.',
     usage: 'Recharge 5-6',
     area: { shape: CreatureAreaShape.CONE, sizeFt: 15, widthFt: 0 },

@@ -1585,7 +1585,7 @@ See [Architecture](../architecture/campaign-package.md).
 - Modules: play, rules
 
 #### Acceptance criteria
-- **Given** a monster whose attack asks a save of the target when it hits (the ghoul's claws), **when** the damage of a hit lands on a creature of the other side that is still up, **then** I get an offer beside the damage cards: "Pedir salvaguarda de <target> (CD 10, Constituição). Se falhar: Paralisado", with "Aplicar" and "Dispensar".
+- **Given** a monster whose attack asks a save of the target when it hits (the ghoul's claws), **when** the damage of a hit lands on a creature of the other side that is still up, **then** I get an offer beside the damage cards: "Pedir teste de resistência de <target> (CD 10, Constituição). Se falhar: Paralisado", with "Aplicar" and "Dispensar".
 - **Given** I press "Aplicar", **then** the app rolls the target's save against the DC, opens the extra damage as pending damage when the attack has it (half if the target passes, when the stat block says so), gives the condition to a target that fails (RN-39), and the log says "usou <attack> em <target>: <target> falhou no teste (1d20 8 = 10 contra CD 10); ficou Paralisado".
 - **Given** a monster whose attack grapples (a constrictor), **when** it hits, **then** the offer reads "Agarrar (CD de fuga 12)"; "Aplicar" gives the condition with no save and the line notes the escape DC.
 - **Given** I press "Dispensar", **then** nothing is applied and the log says "dispensou o efeito de <attack> em <target>".

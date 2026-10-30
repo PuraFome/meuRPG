@@ -6,7 +6,7 @@ import { the } from './combat-log-words';
 import type { LogContext } from './combat-log-types';
 
 /**
- * The line of an NPC's action that is no attack roll (`CombatLogKind.SPELL_CAST` with `creature_action`): "usou Sopro de Fogo:
+ * The line of an NPC's action that is no attack roll (`CombatLogKind.SPELL_CAST` with `creature_action`): "usou Sopro de fogo:
  * Brisa falhou (CD 13), 14 de dano; Toren resistiu (CD 13), 7 de dano. Amedrontado: Brisa, por 1 minuto". The stat block's
  * numbers (the DC, the key) arrive only for the master, so only what arrives is written. An action with no roll is a reminder.
  */

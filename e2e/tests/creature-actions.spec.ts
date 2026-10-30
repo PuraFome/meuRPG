@@ -65,7 +65,7 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
   test.setTimeout(180_000);
   const { p, card, done } = await monsterTurn(browser, 'Sopro', 'monster:hell-hound');
   try {
-    const use = card.getByRole('button', { name: /^Usar Fire Breath/ });
+    const use = card.getByRole('button', { name: /^Usar Sopro de fogo/ });
     await expect(use).toBeVisible();
     await expect(card.getByRole('group', { name: /Quem a ação atinge/ })).toBeVisible();
     await use.click();
@@ -78,7 +78,7 @@ test('o sopro do cão infernal: o mestre usa a ação, o resultado aparece no ca
     await expect(use).toBeDisabled();
     // The player's log carries the action and the save, never the stat block's words or the DC.
     const playerLog = await openCombatLog(p);
-    await expect(playerLog).toContainText(/usou Fire Breath/);
+    await expect(playerLog).toContainText(/usou Sopro de fogo/);
     const log = (await playerLog.textContent()) ?? '';
     expect(log).toMatch(/Vex (falhou|resistiu)/);
     expect(log).not.toContain('Texto do SRD');

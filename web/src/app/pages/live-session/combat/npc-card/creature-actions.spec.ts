@@ -29,7 +29,7 @@ const breath = () =>
   creatureAction({
     key: 'monster:hell-hound#fire-breath',
     name: 'Fire Breath',
-    namePt: 'Sopro de Fogo',
+    namePt: 'Sopro de fogo',
     text: 'The hound exhales fire in a 15-foot cone.',
     area: { shape: CreatureAreaShape.CONE, sizeFt: 15, widthFt: 0 },
     save: {
@@ -43,7 +43,7 @@ const gaze = () =>
   creatureAction({
     key: 'monster:ghost#horrifying-visage',
     name: 'Horrifying Visage',
-    namePt: 'Semblante Horrível',
+    namePt: 'Semblante horripilante',
     text: 'Each non-undead creature within 60 feet that can see the ghost must succeed on a DC 13 Wisdom saving throw or be frightened for 1 minute.',
     planClass: CreatureActionClass.PARTIAL,
     save: {
@@ -60,7 +60,7 @@ const reminder = () =>
   creatureAction({
     key: 'monster:ghost#etherealness',
     name: 'Etherealness',
-    namePt: 'Forma Etérea',
+    namePt: 'Forma etérea',
     text: 'The ghost enters the Ethereal Plane from the Material Plane, or vice versa.',
     kind: CreatureActionKind.OTHER,
     planClass: CreatureActionClass.TEXT,
@@ -138,11 +138,11 @@ describe('CreatureActions: the list, by the class of the plan', () => {
   it('names each action in Portuguese and says what it does, from the plan', async () => {
     const { root } = await open();
     const t = text(root);
-    expect(t).toContain('Sopro de Fogo');
+    expect(t).toContain('Sopro de fogo');
     expect(t).toContain('Teste de resistência de Destreza, CD 13');
     expect(t).toContain('cone de 4,5 m');
     expect(t).toContain('Dano: 6d6 de fogo, metade se passar');
-    expect(t).toContain('Semblante Horrível');
+    expect(t).toContain('Semblante horripilante');
     expect(t).toContain('Se falhar: Amedrontado por 1 minuto');
     expect(t).toContain('Sem teste: gasta a ação');
   });
@@ -198,7 +198,7 @@ describe('CreatureActions: using a save action', () => {
     const boxes = [...root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
     boxes.find((b) => b.closest('li')!.textContent!.includes('Brisa'))!.click(); // off
     await settle(fixture);
-    use('Sopro de Fogo').click();
+    use('Sopro de fogo').click();
     await settle(fixture);
     expect(useCreatureAction).toHaveBeenCalledWith(
       'c',
@@ -209,7 +209,7 @@ describe('CreatureActions: using a save action', () => {
     );
     expect(apply).toHaveBeenCalled();
     const done = text(root.querySelector('[role="status"]') as HTMLElement);
-    expect(done).toContain('Sopro de Fogo');
+    expect(done).toContain('Sopro de fogo');
     expect(done).toContain('Toren');
     expect(done).toContain('Falhou');
     expect(done).toContain('contra CD 13');
@@ -225,7 +225,7 @@ describe('CreatureActions: using a save action', () => {
       }
     }
     await settle(fixture);
-    const button = use('Sopro de Fogo');
+    const button = use('Sopro de fogo');
     expect(button.getAttribute('aria-disabled') ?? button.disabled.toString()).toBe('true');
     expect(text(root)).toContain('Escolha ao menos um alvo.');
     expect(button.getAttribute('aria-describedby')).toBe('act-why-0');
@@ -233,7 +233,7 @@ describe('CreatureActions: using a save action', () => {
 
   it('is off once the action of the turn is spent', async () => {
     const { root, use, useCreatureAction } = await open({ spent: true, theatre: true });
-    use('Sopro de Fogo').click();
+    use('Sopro de fogo').click();
     expect(useCreatureAction).not.toHaveBeenCalled();
     expect(text(root)).toContain('A ação deste turno já foi usada.');
   });
@@ -244,7 +244,7 @@ describe('CreatureActions: using a save action', () => {
       theatre: true,
       useCreatureAction: vi.fn().mockRejectedValue(new ConnectError('no', Code.Unavailable)),
     });
-    use('Semblante Horrível').click();
+    use('Semblante horripilante').click();
     await settle(fixture);
     expect(root.querySelector('[role="alert"]')).not.toBeNull();
     expect(root.querySelector('[role="status"]')).toBeNull();
@@ -254,7 +254,7 @@ describe('CreatureActions: using a save action', () => {
 describe('CreatureActions: an action with an area, on a map', () => {
   it('asks the page for the map picker with the placement, sends no target, and keeps what the picker answers', async () => {
     const { use, area, useCreatureAction, fixture, root } = await open();
-    use('Sopro de Fogo').click();
+    use('Sopro de fogo').click();
     await settle(fixture);
     expect(useCreatureAction).not.toHaveBeenCalled();
     expect(area).toHaveLength(1);
@@ -268,12 +268,12 @@ describe('CreatureActions: an action with an area, on a map', () => {
 
   it('does nothing more when the master gives the picker up', async () => {
     const { root, use, area, fixture } = await open();
-    use('Sopro de Fogo').click();
+    use('Sopro de fogo').click();
     await settle(fixture);
     area[0].done(null);
     await settle(fixture);
     expect(root.querySelector('[role="status"]')).toBeNull();
-    expect(use('Sopro de Fogo').disabled).toBe(false);
+    expect(use('Sopro de fogo').disabled).toBe(false);
   });
 });
 
@@ -289,7 +289,7 @@ describe('CreatureActions: an action with no roll', () => {
         area: null,
       })),
     });
-    use('Forma Etérea').click();
+    use('Forma etérea').click();
     await settle(fixture);
     expect(useCreatureAction).toHaveBeenCalledWith(
       'c',

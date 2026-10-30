@@ -29,7 +29,7 @@ const toren = combatant({ id: 't', label: 'Toren', kind: CombatantKind.PLAYER, c
 const breath = creatureAction({
   key: 'monster:hell-hound#fire-breath',
   name: 'Fire Breath',
-  namePt: 'Sopro de Fogo',
+  namePt: 'Sopro de fogo',
   area: { shape: CreatureAreaShape.CONE, sizeFt: 15, widthFt: 0 },
   save: { ability: Ability.DEXTERITY, dc: 13, onSuccess: SpellSaveSuccess.HALF, damage: [] },
 } as never);
@@ -69,7 +69,7 @@ async function open(placement = AreaPlacement.DIRECTION, fail = false) {
   const fixture = TestBed.createComponent(MasterCreatureArea);
   await settle(fixture);
   const el = fixture.nativeElement as HTMLElement;
-  const use = () => el.querySelector<HTMLButtonElement>('button[aria-label="Usar Sopro de Fogo"]')!;
+  const use = () => el.querySelector<HTMLButtonElement>('button[aria-label="Usar Sopro de fogo"]')!;
   const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
   return { fixture, el, use, map, useCreatureAction, close, apply };
 }
@@ -78,7 +78,7 @@ describe('MasterCreatureArea: the master places the area of a creature action', 
   it('names the creature and the action and the shape, and keeps "Usar" off until a direction is placed', async () => {
     const { el, use } = await open();
     expect(plain(el.querySelector('.frame__title')?.textContent)).toBe(
-      'Cão Infernal 1 usa Sopro de Fogo',
+      'Cão Infernal 1 usa Sopro de fogo',
     );
     expect(plain(el.textContent)).toContain('cone de 4,5');
     expect(plain(el.textContent)).toContain('Para onde?');
