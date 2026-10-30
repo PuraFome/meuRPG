@@ -65,7 +65,6 @@ export function changedLines(diff) {
 }
 
 const touches = (ranges, from, to) => ranges.some(([a, b, deletion]) => (deletion ? from <= a && to >= a + 1 : a <= to && b >= from));
-const indentOf = (line) => line.length - line.trimStart().length;
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

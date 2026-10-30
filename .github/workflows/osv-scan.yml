@@ -101,7 +101,7 @@ jobs:
 
   report:
     name: report (issue when main is red)
-    needs: [osv-scan]
+    needs: [select, osv-scan]
     # Only the upstream repository has issues: a fork's red main (synced from upstream) has nowhere to report.
     if: ${{ always() && github.repository == 'PuraFome/meuRPG' && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-26.04

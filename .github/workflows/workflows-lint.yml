@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - ".github/**"
+      - "e2e/lint/package-lock.json"
 
 # Only a pull request's runs cancel each other; a push to main runs to the end.
 concurrency:
