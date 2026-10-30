@@ -12,7 +12,7 @@ const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'repeat-c
 // The fake tool looks at its arguments: a regex with FAIL fails, one with SLOW outlasts the budget, the rest pass.
 function run(kind, targets, env = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'repeat-'));
-  const shim = '#!/usr/bin/env bash\nargs="$*"\ncase "$args" in *FAIL*) exit 1 ;; *SLOW*) sleep 30 ;; esac\nexit 0\n';
+  const shim = '#!/usr/bin/env bash\nargs="$*"\necho "$args" >> "$(dirname "$0")/calls.log"\ncase "$args" in *FAIL*) exit 1 ;; *SLOW*) sleep 30 ;; esac\nexit 0\n';
   for (const name of ['npx', 'go']) {
     fs.writeFileSync(path.join(dir, name), shim, { mode: 0o755 });
   }
@@ -23,7 +23,8 @@ function run(kind, targets, env = {}) {
     env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, GITHUB_STEP_SUMMARY: summary, MIN_SECONDS: '1', ...env },
     encoding: 'utf8',
   });
-  return { code: r.status, summary: fs.existsSync(summary) ? fs.readFileSync(summary, 'utf8') : '', out: r.stdout + r.stderr };
+  const calls = fs.existsSync(path.join(dir, 'calls.log')) ? fs.readFileSync(path.join(dir, 'calls.log'), 'utf8') : '';
+  return { calls, code: r.status, summary: fs.existsSync(summary) ? fs.readFileSync(summary, 'utf8') : '', out: r.stdout + r.stderr };
 }
 
 const pw = (...titles) => ({ playwright: titles.map((t) => ({ file: 'e2e/tests/a.spec.ts', title: t, grep: t, why: 'changed' })), go: [], notes: [] });
@@ -64,4 +65,11 @@ test('Go targets run once per package, with the tests joined in the regex', () =
   assert.equal(r.code, 1, r.out);
   assert.match(r.summary, /Passed: 1/);
   assert.match(r.summary, /FAILED: \.\/internal\/b: TestFAIL/);
+});
+
+test('the regex of a title reaches Playwright with its backslashes, and the spec file scopes it', () => {
+  const targets = { playwright: [{ file: 'e2e/tests/a.spec.ts', title: 'first (1.5) test', grep: 'first \\(1\\.5\\) test', why: 'changed' }], go: [], notes: [] };
+  const r = run('playwright', targets, { BUDGET_SECONDS: '60' });
+  assert.equal(r.code, 0, r.out);
+  assert.ok(r.calls.includes('playwright test tests/a.spec.ts --grep first \\(1\\.5\\) test --repeat-each=10'), r.calls);
 });

@@ -17,13 +17,14 @@ budget="${BUDGET_SECONDS:-900}"
 summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 deadline=$(( $(date +%s) + budget ))
 
-# One chunk per line: a label, the scheme (Playwright) or "-", and the regex.
+# One chunk per line, as compact JSON (a regex keeps its backslashes that way): {label, field, regex, file}.
+# For Playwright `field` is the colour scheme and `file` the spec, relative to e2e/; for Go `field` is the package.
 case "$kind" in
   playwright)
-    mapfile -t chunks < <(jq -r '.playwright[] | .grep as $g | .title as $t | ("light", "dark") | [($t + " (" + . + ")"), ., $g] | @tsv' "$targets")
+    mapfile -t chunks < <(jq -c '.playwright[] | . as $t | ("light", "dark") | {label: ($t.title + " (" + . + ")"), field: ., regex: $t.grep, file: ($t.file | sub("^e2e/"; ""))}' "$targets")
     ;;
   go)
-    mapfile -t chunks < <(jq -r '.go | group_by(.pkg)[] | [(.[0].pkg + ": " + (map(.test) | join(", "))), .[0].pkg, ("^(" + (map(.test) | join("|")) + ")$")] | @tsv' "$targets")
+    mapfile -t chunks < <(jq -c '.go | group_by(.pkg)[] | {label: (.[0].pkg + ": " + (map(.test) | join(", "))), field: .[0].pkg, regex: ("^(" + (map(.test) | join("|")) + ")$"), file: ""}' "$targets")
     ;;
   *)
     echo "unknown kind: $kind" >&2
@@ -34,7 +35,10 @@ esac
 passed=(); notrun=(); cut=(); failed=()
 left=${#chunks[@]}
 for chunk in "${chunks[@]}"; do
-  IFS=$'\t' read -r label field regex <<<"$chunk"
+  label=$(jq -r .label <<<"$chunk")
+  field=$(jq -r .field <<<"$chunk")
+  regex=$(jq -r .regex <<<"$chunk")
+  file=$(jq -r .file <<<"$chunk")
   now=$(date +%s)
   remaining=$(( deadline - now ))
   if [ "$remaining" -lt "${MIN_SECONDS:-20}" ]; then
@@ -50,7 +54,7 @@ for chunk in "${chunks[@]}"; do
   echo "::group::${label}"
   if [ "$kind" = playwright ]; then
     E2E_COLOR_SCHEME="$field" timeout --kill-after=15 "$limit" \
-      npx playwright test --grep "$regex" --repeat-each="$repeats" --max-failures=1 --reporter=list
+      npx playwright test "$file" --grep "$regex" --repeat-each="$repeats" --max-failures=1 --reporter=list
   else
     timeout --kill-after=15 "$limit" \
       go test -race -count="$repeats" -failfast -timeout 30m -run "$regex" "$field"

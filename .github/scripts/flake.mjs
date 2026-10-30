@@ -34,12 +34,27 @@ export function signatureOf(text) {
     .slice(0, 300);
 }
 
+/** The report as text: one that does not parse (the run was killed mid-write) is a failure of the run itself. */
+export function parsePlaywrightText(text) {
+  try {
+    return parsePlaywright(JSON.parse(text));
+  } catch {
+    return { passed: 0, failed: 1, failures: [{ test: '(the run)', signature: 'the Playwright report is not valid JSON' }] };
+  }
+}
+
 /** Playwright's JSON report: one entry per repetition of the `chrome` project (the sign-in setup is not a test). */
 export function parsePlaywright(report) {
   const out = { passed: 0, failed: 0, failures: [] };
   const visit = (suite) => {
     for (const spec of suite.specs ?? []) {
       for (const t of spec.tests ?? []) {
+        // A failed sign-in setup skips every test after it: the runner counted nothing, which is not "no such test".
+        if (t.projectName === 'setup' && t.status !== 'expected' && t.status !== 'skipped') {
+          out.failed++;
+          out.failures.push({ test: '(sign-in setup)', signature: signatureOf(t.results?.[t.results.length - 1]?.error?.message ?? 'the sign-in setup failed') });
+          continue;
+        }
         if (t.projectName && t.projectName !== 'chrome') continue;
         if (t.status === 'skipped') continue;
         if (t.status === 'expected') {
@@ -67,8 +82,9 @@ export function parsePlaywright(report) {
 const GO_SIGNATURE = /^(panic:|fatal error:|WARNING: DATA RACE|.+_test\.go:\d+:|.+\.go:\d+:\d+: )/;
 
 /** `go test -json` events (one JSON per line): every top-level test is a run, a package that fails with no test is one too. */
-export function parseGo(text) {
+export function parseGo(text, count = 1) {
   const out = { passed: 0, failed: 0, failures: [] };
+  const seeds = new Map(); // package -> the seed -shuffle=on chose, which the output prints
   const lines = new Map(); // "pkg\ttest" -> its output
   const packageOutput = new Map();
   const failedPackages = new Set();
@@ -89,6 +105,8 @@ export function parseGo(text) {
       continue;
     }
     if (ev.Action === 'output') {
+      const seed = !ev.Test && /^-test\.shuffle (\d+)/.exec(ev.Output ?? '');
+      if (seed) seeds.set(ev.Package, seed[1]);
       const into = ev.Test ? lines : packageOutput;
       const k = ev.Test ? key : ev.Package;
       into.set(k, (into.get(k) ?? '') + ev.Output);
@@ -109,14 +127,22 @@ export function parseGo(text) {
     } else {
       out.failed++;
       failedTests.add(key);
-      out.failures.push({ test: ev.Test, signature: signatureOf(firstErrorLine(lines.get(key) ?? '', subOutput(lines, ev.Package, ev.Test))) });
+      out.failures.push({ test: ev.Test, pkg: ev.Package, signature: signatureOf(firstErrorLine(lines.get(key) ?? '', subOutput(lines, ev.Package, ev.Test))) });
     }
   }
   // A package that failed with no failed test (a panic, a build error, a timeout) is a failure of its own.
   for (const pkg of failedPackages) {
     if ([...failedTests].some((k) => k.startsWith(`${pkg}\t`))) continue;
     out.failed++;
-    out.failures.push({ test: `(package ${pkg})`, signature: signatureOf(firstErrorLine(packageOutput.get(pkg) ?? '', '')) });
+    out.failures.push({ test: `(package ${pkg})`, pkg, signature: signatureOf(firstErrorLine(packageOutput.get(pkg) ?? '', '')) });
+  }
+  // How to run the package again in the same order: the seed is the one the run printed.
+  for (const f of out.failures) {
+    const seed = seeds.get(f.pkg);
+    if (seed) {
+      f.seed = seed;
+      f.replay = `cd backend && go test -race -shuffle=${seed} -count=${count} ${f.pkg}`;
+    }
   }
   return out;
 }
@@ -132,8 +158,9 @@ function firstErrorLine(...texts) {
   const all = texts.join('').split('\n').map((l) => l.trim()).filter(Boolean);
   return (
     all.find((l) => GO_SIGNATURE.test(l)) ??
-    all.find((l) => !/^(=== |--- |FAIL|PASS|ok\s)/.test(l)) ??
-    all[0] ??
+    all.find((l) => !/^(=== |--- |FAIL|PASS|ok\s|-test\.shuffle )/.test(l)) ??
+    all.find((l) => /^FAIL\s/.test(l)) ??
+    all.find((l) => !l.startsWith('-test.shuffle ')) ??
     ''
   );
 }
@@ -165,10 +192,15 @@ const rate = (s) => (s && s.passed + s.failed > 0 ? s.failed / (s.passed + s.fai
 const percent = (r) => (r === null ? 'n/a' : `${(r * 100).toFixed(1)}%`);
 
 /** The verdict: what the head did against the base, and what to do next. */
-export function verdict(sides) {
+export function verdict(sides, expectedRunners = 0) {
   const head = sides.head;
   const base = sides.base;
-  if (!head || !base) return { kind: 'incomplete', text: 'A side has no result: read the runners of the run.' };
+  if (!head || !base) return { kind: 'incomplete', text: 'A side has no result: a job before the runners failed, or none of them reported. Read the failed jobs of the run.' };
+  for (const [name, side] of [['head', head], ['base', base]]) {
+    if (side.runners < expectedRunners) {
+      return { kind: 'incomplete', text: `The ${name} side has ${side.runners} of ${expectedRunners} runners: the rest died before they reported, so the two sides are not comparable. Read the failed runners and dispatch again.` };
+    }
+  }
   const hr = head.passed + head.failed;
   const br = base.passed + base.failed;
   if (hr === 0 || br === 0) {
@@ -187,7 +219,7 @@ export function verdict(sides) {
 }
 
 export function markdown(sides, meta = {}) {
-  const v = verdict(sides);
+  const v = verdict(sides, Number(meta.runners ?? 0));
   const out = [`## flake-check: ${meta.test ?? '(test)'}`, ''];
   if (meta.kind) out.push(`Kind: ${meta.kind}. Head: \`${meta.head ?? '?'}\`. Base: \`${meta.base ?? '?'}\`. Runs per side asked: ${meta.runs ?? '?'}.`, '');
   out.push('| Side | Runs | Passed | Failed | Failure rate | Runners |', '|---|---|---|---|---|---|');
@@ -210,6 +242,29 @@ export function markdown(sides, meta = {}) {
   return out.join('\n');
 }
 
+/** The body of the ci-red issue the nightly hunt files (Portuguese, like the other CI reports): the test, the signature and how to run it again. */
+export function issueBody(failures, { sha = '?', url = '?', seed = '?' } = {}) {
+  const out = [
+    `A caça noturna a testes instáveis falhou na main (${failures.length} falha${failures.length === 1 ? '' : 's'}).`,
+    '',
+    `Commit: ${sha}`,
+    `Execução: ${url}`,
+    `Semente do Playwright: ${seed}`,
+    '',
+    'Uma falha aqui é um erro do teste ou do app, nunca ruído: leia os artefatos da execução, reproduza com a mesma ordem e corrija a causa (docs/ci.md, "Flaky tests"). Sem retries, sem skip, sem quarentena.',
+    '',
+  ];
+  const seen = new Set();
+  for (const f of failures) {
+    const key = `${f.kind}\t${f.test}\t${f.signature}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(`- **${f.kind === 'go' ? 'Go' : 'Playwright'}** \`${f.test.replace(/`/g, "'")}\``, `  - assinatura: \`${f.signature.replace(/`/g, "'")}\``);
+    if (f.replay) out.push(`  - repetir: \`${f.replay.replace(/`/g, "'")}\``);
+  }
+  return out.join('\n') + '\n';
+}
+
 function flag(args, name) {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : undefined;
@@ -217,6 +272,7 @@ function flag(args, name) {
 
 function findResults(dir) {
   const found = [];
+  if (!fs.existsSync(dir)) return found;
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
@@ -233,20 +289,27 @@ function main(argv) {
   if (cmd === 'parse') {
     const text = fs.existsSync(b) ? fs.readFileSync(b, 'utf8') : '';
     const missing = text.trim() === '';
-    const parsed = a === 'go' ? parseGo(text) : missing ? { passed: 0, failed: 0, failures: [] } : parsePlaywright(JSON.parse(text));
+    const parsed = a === 'go' ? parseGo(text, Number(flag(argv, 'count') ?? 1)) : missing ? { passed: 0, failed: 0, failures: [] } : parsePlaywrightText(text);
+    const replay = flag(argv, 'replay');
+    if (replay) for (const f of parsed.failures) f.replay = replay;
     const none = parsed.passed + parsed.failed === 0;
     process.stdout.write(JSON.stringify({ kind: a, side: flag(argv, 'side') ?? '', runner: Number(flag(argv, 'runner') ?? 0), ...parsed, missing: none }) + '\n');
     return 0;
   }
   if (cmd === 'aggregate') {
     const sides = aggregate(findResults(a));
-    const meta = { kind: flag(argv, 'kind'), test: flag(argv, 'test'), head: flag(argv, 'head'), base: flag(argv, 'base'), runs: flag(argv, 'runs') };
+    const meta = { kind: flag(argv, 'kind'), test: flag(argv, 'test'), head: flag(argv, 'head'), base: flag(argv, 'base'), runs: flag(argv, 'runs'), runners: flag(argv, 'runners') };
     process.stdout.write(markdown(sides, meta) + '\n');
     const json = flag(argv, 'json');
-    if (json) fs.writeFileSync(json, JSON.stringify({ ...meta, verdict: verdict(sides), sides }, null, 2) + '\n');
-    return 0;
+    if (json) fs.writeFileSync(json, JSON.stringify({ ...meta, verdict: verdict(sides, Number(meta.runners ?? 0)), sides }, null, 2) + '\n');
+    return verdict(sides, Number(meta.runners ?? 0)).kind === 'incomplete' ? 1 : 0;
   }
-  process.stderr.write('usage: flake.mjs parse <playwright|go> <file> | aggregate <dir>\n');
+  if (cmd === 'issue') {
+    const failures = findResults(a).flatMap((r) => r.failures.map((f) => ({ ...f, kind: r.kind })));
+    process.stdout.write(issueBody(failures, { sha: flag(argv, 'sha'), url: flag(argv, 'run-url'), seed: flag(argv, 'seed') }));
+    return failures.length > 0 ? 0 : 3; // 3: nothing failed, so there is nothing to file
+  }
+  process.stderr.write('usage: flake.mjs parse <playwright|go> <file> | aggregate <dir> | issue <dir>\n');
   return 2;
 }
 

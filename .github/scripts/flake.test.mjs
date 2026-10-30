@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { aggregate, markdown, parseGo, parsePlaywright, signatureOf, verdict } from './flake.mjs';
+import { aggregate, issueBody, parsePlaywrightText, markdown, parseGo, parsePlaywright, signatureOf, verdict } from './flake.mjs';
 
 const pw = (tests) => ({ suites: [{ title: 'f.spec.ts', specs: [], suites: [{ title: 'd', specs: tests.map(([title, ...runs]) => ({ title, tests: runs })) }] }] });
 const run = (status, message, projectName = 'chrome') => ({ projectName, status, results: [{ status: status === 'expected' ? 'passed' : 'failed', error: message ? { message } : undefined }] });
@@ -52,7 +52,7 @@ test('parseGo counts top-level tests and names the assertion that failed', () =>
   const got = parseGo(lines);
   assert.equal(got.passed, 1);
   assert.equal(got.failed, 1);
-  assert.deepEqual(got.failures, [{ test: 'TestB', signature: 'b_test.go:12: want 1, got 2' }]);
+  assert.deepEqual(got.failures, [{ test: 'TestB', pkg: 'p', signature: 'b_test.go:12: want 1, got 2' }]);
 });
 
 test('parseGo prefers a data race or a panic over the harness lines, and counts a package that fails with no test', () => {
@@ -122,4 +122,50 @@ test('parseGo reads each run of a test that -count repeats on its own', () => {
     got.failures.map((f) => f.signature),
     ['a_test.go:6: got 1', 'a_test.go:6: got 3'],
   );
+});
+
+test('parseGo keeps the seed -shuffle=on printed and a command to run the package again in that order', () => {
+  const lines = [
+    ev({ Action: 'output', Package: 'github.com/x/backend/internal/play', Output: '-test.shuffle 4242\n' }),
+    ev({ Action: 'output', Package: 'github.com/x/backend/internal/play', Test: 'TestA', Output: '    a_test.go:3: boom\n' }),
+    ev({ Action: 'fail', Package: 'github.com/x/backend/internal/play', Test: 'TestA' }),
+    ev({ Action: 'fail', Package: 'github.com/x/backend/internal/play' }),
+  ].join('\n');
+  const got = parseGo(lines, 3);
+  assert.equal(got.failures[0].seed, '4242');
+  assert.equal(got.failures[0].replay, 'cd backend && go test -race -shuffle=4242 -count=3 github.com/x/backend/internal/play');
+  // The seed line is never the signature of a package that failed with no test.
+  const bare = parseGo([ev({ Action: 'output', Package: 'p', Output: '-test.shuffle 1\n' }), ev({ Action: 'output', Package: 'p', Output: 'FAIL\tp [build failed]\n' }), ev({ Action: 'fail', Package: 'p' })].join('\n'));
+  assert.equal(bare.failures[0].signature, 'FAIL p [build failed]');
+});
+
+test('issueBody names each failure once, with its signature and how to repeat it', () => {
+  const failures = [
+    { kind: 'playwright', test: 'the test', signature: 'Error: timed out <time>', replay: 'cd e2e && npx playwright test --shuffle 7 --shard 1/3' },
+    { kind: 'playwright', test: 'the test', signature: 'Error: timed out <time>', replay: 'cd e2e && npx playwright test --shuffle 7 --shard 1/3' },
+    { kind: 'go', test: 'TestA', signature: 'a_test.go:3: boom' },
+  ];
+  const body = issueBody(failures, { sha: 'abc', url: 'https://run', seed: '7' });
+  assert.equal(body.match(/\*\*Playwright\*\*/g).length, 1);
+  assert.match(body, /Semente do Playwright: 7/);
+  assert.match(body, /repetir: `cd e2e && npx playwright test --shuffle 7 --shard 1\/3`/);
+  assert.match(body, /\*\*Go\*\* `TestA`/);
+});
+
+test('a failed sign-in setup is a failure of its own, not "no such test"', () => {
+  const report = { suites: [{ specs: [{ title: 'sign in', tests: [{ projectName: 'setup', status: 'unexpected', results: [{ error: { message: 'login refused' } }] }] }, { title: 'x', tests: [{ projectName: 'chrome', status: 'skipped', results: [] }] }] }] };
+  const got = parsePlaywright(report);
+  assert.equal(got.failed, 1);
+  assert.equal(got.failures[0].test, '(sign-in setup)');
+});
+
+test('a report that is not JSON is a failure of the run', () => {
+  assert.equal(parsePlaywrightText('{"suites": [').failed, 1);
+});
+
+test('the verdict is incomplete when a side has fewer runners than expected, or none reported', () => {
+  const sides = aggregate([side('head', 6, 0), side('head', 6, 0), side('base', 6, 0), side('base', 6, 0)]);
+  assert.equal(verdict(sides, 2).kind, 'clean');
+  assert.equal(verdict(sides, 3).kind, 'incomplete');
+  assert.equal(verdict(aggregate([]), 2).kind, 'incomplete');
 });

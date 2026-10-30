@@ -54,6 +54,7 @@ jobs:
 
       - name: Map the diff to tests
         id: map
+        shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |

@@ -49,7 +49,11 @@ function inner(): number {
   return 1;
 }
 
-export const other = 2;
+export function unused(): number {
+  return 2;
+}
+
+export const limit = 2;
 `;
 
 const goTest = `package play
@@ -103,8 +107,8 @@ const hunk = (file, from, to) => `--- a/${file}\n+++ b/${file}\n@@ -${from},${to
 const map = (diff) => mapDiff({ diff, read, files: listFiles });
 
 test('changedLines reads the new-side ranges of a -U0 diff, a deletion as the line it leaves', () => {
-  const diff = '--- a/f\n+++ b/f\n@@ -3 +3 @@\n-a\n+b\n@@ -10,2 +10,0 @@\n-x\n-y\n@@ -20,0 +21,3 @@\n+1\n+2\n+3\n';
-  assert.deepEqual(changedLines(diff), { f: [[3, 3], [10, 11], [21, 23]] });
+  const diff = '--- a/f\n+++ b/f\n@@ -3 +3 @@\n-a\n+b\n@@ -10,2 +9,0 @@\n-x\n-y\n@@ -20,0 +21,3 @@\n+1\n+2\n+3\n--- a/gone\n+++ /dev/null\n@@ -1,4 +0,0 @@\n-z\n';
+  assert.deepEqual(changedLines(diff), { f: [[3, 3], [9, 9, true], [21, 23]] });
 });
 
 test('titleOf escapes a title and turns an interpolation into a wildcard', () => {
@@ -153,9 +157,10 @@ test('a changed exported helper of a *-support.ts maps to the tests that call it
     ],
   );
   const none = map(hunk('e2e/tests/thing-support.ts', 12, 12));
-  assert.deepEqual(none.playwright, []); // `other` is exported and nobody calls it
+  assert.deepEqual(none.playwright, []); // `unused` is exported and nobody calls it
   assert.match(none.notes[0], /no test calls it/);
   assert.deepEqual(map(hunk('e2e/tests/thing-support.ts', 9, 9)), { playwright: [], go: [], notes: [] }); // not exported
+  assert.deepEqual(map(hunk('e2e/tests/thing-support.ts', 16, 16)), { playwright: [], go: [], notes: [] }); // a constant, not a function
 });
 
 test('a changed leaktest helper maps to the tests that call it', () => {
@@ -167,6 +172,14 @@ test('a changed leaktest helper maps to the tests that call it', () => {
       ['./internal/leaktest', 'TestUsesSeed', 'calls seed'],
     ],
   );
+});
+
+test('a deletion inside a test maps to it; removing a whole test touches the tests around it no more', () => {
+  const inside = map('--- a/e2e/tests/a.spec.ts\n+++ b/e2e/tests/a.spec.ts\n@@ -7,1 +6,0 @@\n-x\n');
+  assert.deepEqual(inside.playwright.map((t) => t.title), ['first (1.5) test']);
+  const between = map('--- a/e2e/tests/a.spec.ts\n+++ b/e2e/tests/a.spec.ts\n@@ -9,2 +8,0 @@\n-x\n-y\n');
+  assert.deepEqual(between.playwright, []); // the blank line between two tests
+  assert.deepEqual(map('--- a/e2e/tests/a.spec.ts\n+++ /dev/null\n@@ -1,4 +0,0 @@\n-x\n').playwright, []);
 });
 
 test('a change outside any test maps to nothing', () => {
@@ -188,4 +201,17 @@ test('a helper with many callers is sampled, spread and the same every time', ()
   });
   assert.equal(got.playwright.length, 5);
   assert.match(got.notes.join('\n'), /has \d+ callers; 5 run/);
+});
+
+test('a helper is followed through the helpers that call it, and a Go method counts as a helper', () => {
+  const more = {
+    ...files,
+    'e2e/tests/c.spec.ts': "async function twoPeople(page) {\n  await openThing(page);\n}\n\ntest('through a spec helper', async ({ page }) => {\n  await twoPeople(page);\n});\n",
+    'backend/internal/leaktest/table_test.go': 'package leaktest\n\nfunc (rt *table) attack(t *testing.T) {\n\t_ = 1\n}\n\nfunc (rt *table) both(t *testing.T) {\n\trt.attack(t)\n}\n\nfunc TestViaMethods(t *testing.T) {\n\trt := &table{}\n\trt.both(t)\n}\n',
+  };
+  const m = (diff) => mapDiff({ diff, read: (f) => more[f], files: (p) => Object.keys(more).filter((f) => f.startsWith(p)) });
+  const pw = m(hunk('e2e/tests/thing-support.ts', 5, 6));
+  assert.ok(pw.playwright.some((t) => t.title === 'through a spec helper'), JSON.stringify(pw.playwright));
+  const go = m(hunk('backend/internal/leaktest/table_test.go', 4, 4));
+  assert.deepEqual(go.go.map((t) => t.test), ['TestViaMethods']);
 });

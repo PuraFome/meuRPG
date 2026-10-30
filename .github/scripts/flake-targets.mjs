@@ -23,7 +23,7 @@ const SUPPORT = /^e2e\/tests\/[^/]+-support\.ts$/;
 const GO_TEST = /^backend\/.*_test\.go$/;
 const LEAKTEST = /^backend\/internal\/leaktest\/[^/]+\.go$/;
 
-/** The new-side line ranges the diff (made with -U0) changes, per file: {file: [[from, to], ...]}. A deletion is the line it leaves behind. */
+/** The new-side line ranges the diff (made with -U0) changes, per file: {file: [[from, to], ...]}. A pure deletion is [line before, line before, true]. */
 export function changedLines(diff) {
   const out = {};
   let file = null;
@@ -34,17 +34,22 @@ export function changedLines(diff) {
       out[file] ??= [];
       continue;
     }
+    if (line.startsWith('+++ ')) {
+      file = null; // /dev/null: the file is gone, its hunks are no test's
+      continue;
+    }
     const h = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
     if (h && file) {
       const start = Number(h[1]);
       const count = h[2] === undefined ? 1 : Number(h[2]);
-      out[file].push(count === 0 ? [start, start + 1] : [start, start + count - 1]);
+      // A pure deletion names the line BEFORE it (`+9,0`): it touches only what spans that line and the next.
+      out[file].push(count === 0 ? [start, start, true] : [start, start + count - 1]);
     }
   }
   return out;
 }
 
-const touches = (ranges, from, to) => ranges.some(([a, b]) => a <= to && b >= from);
+const touches = (ranges, from, to) => ranges.some(([a, b, deletion]) => (deletion ? from <= a && to >= a + 1 : a <= to && b >= from));
 const indentOf = (line) => line.length - line.trimStart().length;
 
 const NOT_A_TEST = /^\s*test\.(describe|beforeAll|beforeEach|afterAll|afterEach|step|use|slow|setTimeout|info|skip|fixme|fail)\b/;
@@ -112,10 +117,28 @@ export function topLevel(text, nameOf) {
   });
 }
 
-export const exportedOf = (line) => /^export\s+(?:async\s+)?function\s+(\w+)/.exec(line)?.[1] ?? /^export\s+const\s+(\w+)\s*[=:]/.exec(line)?.[1];
-export const goFuncOf = (line) => /^func\s+(\w+)\(/.exec(line)?.[1];
+const TS_FUNCTION = /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/;
+const TS_ARROW = /^(?:export\s+)?const\s+(\w+)\s*(?::[^=]+)?=\s*(?:async\s*)?(?:\(|function\b|\w+\s*=>)/;
+/** An exported function of a support file: the helpers whose change maps to their callers. */
+export const exportedOf = (line) => (/^export\s/.test(line) ? (TS_FUNCTION.exec(line) ?? TS_ARROW.exec(line))?.[1] : undefined);
+/** Any top-level function of a TypeScript file, exported or not: a spec's own helper can call a support one. */
+export const tsFuncOf = (line) => (TS_FUNCTION.exec(line) ?? TS_ARROW.exec(line))?.[1];
+/** A Go function or method (with a receiver, with type parameters). */
+export const goFuncOf = (line) => /^func\s+(?:\([^)]*\)\s*)?(\w+)(?:\[[^\]]*\])?\(/.exec(line)?.[1];
 
-const callsOf = (body, name) => new RegExp(`\\b${name}\\b`).test(body);
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const callsAny = (body, names) => [...names].some((n) => new RegExp(`\\b${escapeRegex(n)}\\b`).test(body));
+
+/** The helper and the functions that call it, up to three levels: a test that calls a helper that calls it calls it too. */
+function withCallers(name, functionsOf) {
+  const names = new Set([name]);
+  for (let level = 0; level < 3; level++) {
+    const before = names.size;
+    for (const f of functionsOf()) if (!names.has(f.name) && callsAny(f.body, names)) names.add(f.name);
+    if (names.size === before) break;
+  }
+  return names;
+}
 
 /** Up to n items spread evenly over the (sorted) list, the same ones every time. */
 export function sample(items, n = SAMPLE) {
@@ -163,20 +186,25 @@ export function mapDiff({ diff, read, files }) {
   for (const h of helpers) {
     const callers = [];
     if (h.kind === 'playwright') {
-      for (const file of files('e2e/tests/').filter((f) => SPEC.test(f)).sort()) {
+      const tsFiles = files('e2e/tests/').filter((f) => f.endsWith('.ts')).sort();
+      const names = withCallers(h.name, () => tsFiles.flatMap((f) => (read(f) === undefined ? [] : topLevel(read(f), tsFuncOf))));
+      for (const file of tsFiles.filter((f) => SPEC.test(f))) {
         const text = read(file);
         if (text === undefined) continue;
-        for (const t of playwrightTests(text)) if (callsOf(t.body, h.name)) callers.push({ file, t });
+        for (const t of playwrightTests(text)) if (callsAny(t.body, names)) callers.push({ file, t });
       }
       const picked = sample(callers);
       for (const c of picked) addPlaywright(c.file, c.t, `calls ${h.name}`);
       if (callers.length === 0) notes.push(`${h.file}: the helper ${h.name} changed and no test calls it`);
       else if (callers.length > picked.length) notes.push(`${h.file}: the helper ${h.name} has ${callers.length} callers; ${picked.length} run`);
     } else {
-      for (const file of files('backend/internal/leaktest/').filter((f) => GO_TEST.test(f)).sort()) {
+      const goFiles = files('backend/internal/leaktest/').filter((f) => GO_TEST.test(f)).sort();
+      const isTest = (n) => /^Test[A-Z_0-9]/.test(n);
+      const names = withCallers(h.name, () => goFiles.flatMap((f) => (read(f) === undefined ? [] : topLevel(read(f), goFuncOf).filter((fn) => !isTest(fn.name)))));
+      for (const file of goFiles) {
         const text = read(file);
         if (text === undefined) continue;
-        for (const f of topLevel(text, goFuncOf)) if (/^Test[A-Z_0-9]/.test(f.name) && callsOf(f.body, h.name)) callers.push({ file, name: f.name });
+        for (const f of topLevel(text, goFuncOf)) if (isTest(f.name) && callsAny(f.body, names)) callers.push({ file, name: f.name });
       }
       const picked = sample(callers);
       for (const c of picked) addGo(goPkg(c.file), c.name, `calls ${h.name}`);
@@ -199,7 +227,7 @@ function main(argv) {
     process.stderr.write('usage: flake-targets.mjs --base <ref>\n');
     return 2;
   }
-  const diff = execFileSync('git', ['diff', '-U0', '--no-color', `${argv[i + 1]}...HEAD`, '--', 'e2e/tests', 'backend/internal', 'backend/migrations'], {
+  const diff = execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '-U0', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', `${argv[i + 1]}...HEAD`, '--', 'e2e/tests', 'backend/internal', 'backend/migrations'], {
     encoding: 'utf8',
     maxBuffer: 256 * 1024 * 1024,
   });

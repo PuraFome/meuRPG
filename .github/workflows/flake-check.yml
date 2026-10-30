@@ -66,7 +66,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
-      repeats: ${{ steps.plan.outputs.repeats }}
     steps:
       - name: Check the inputs and make the matrix
         id: plan
@@ -74,12 +73,13 @@ jobs:
           fail() { echo "::error::$1" >&2; exit 1; }
           [[ "$KIND" == playwright || "$KIND" == go ]] || fail "kind must be playwright or go"
           [[ -n "$TEST" ]] || fail "test is empty"
-          [[ "$RUNS" =~ ^[0-9]+$ && "$RUNS" -ge 1 && "$RUNS" -le 500 ]] || fail "runs must be a number from 1 to 500"
-          [[ "$RUNNERS" =~ ^[0-9]+$ && "$RUNNERS" -ge 1 && "$RUNNERS" -le 20 ]] || fail "runners must be a number from 1 to 20"
+          RUNS=$((10#${RUNS:-0})); RUNNERS=$((10#${RUNNERS:-0}))
+          [[ "$RUNS" -ge 1 && "$RUNS" -le 500 ]] || fail "runs must be a number from 1 to 500"
+          [[ "$RUNNERS" -ge 1 && "$RUNNERS" -le 20 ]] || fail "runners must be a number from 1 to 20"
           [[ "$HEAD_REF" =~ ^[A-Za-z0-9._/@~^-]+$ ]] || fail "head is not a ref"
           [[ "$BASE_REF" =~ ^[A-Za-z0-9._/@~^-]+$ ]] || fail "base is not a ref"
           if [[ "$KIND" == go ]]; then
-            [[ "$PACKAGE" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "a Go test needs its package (for example ./internal/play)"
+            [[ "$PACKAGE" =~ ^[A-Za-z0-9._][A-Za-z0-9._/-]*$ ]] || fail "a Go test needs its package (for example ./internal/play)"
           fi
           repeats=$(( (RUNS + RUNNERS - 1) / RUNNERS ))
           matrix=$(jq -nc --arg head "$HEAD_REF" --arg base "$BASE_REF" --argjson runners "$RUNNERS" --argjson repeats "$repeats" '
@@ -87,7 +87,6 @@ jobs:
             | [.[] as $s | range(1; $runners + 1) | {side: $s.side, ref: $s.ref, runner: ., repeats: $repeats}]
             | {include: .}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-          echo "repeats=$repeats" >> "$GITHUB_OUTPUT"
           {
             echo "Each side: $RUNNERS runner(s) × $repeats run(s) = $((RUNNERS * repeats)) runs (asked: $RUNS)."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -165,7 +164,9 @@ jobs:
           REPEATS: ${{ matrix.repeats }}
         run: |
           set +e
-          npx playwright test --grep "$TEST" --repeat-each="$REPEATS" --reporter=list,json
+          # The ref under test must not retry either: a retried failure would count as a pass.
+          (cd ../.. && .github/scripts/e2e-no-retries.sh code/e2e/playwright.config.ts) || exit 1
+          npx playwright test --grep="$TEST" --repeat-each="$REPEATS" --global-timeout=2100000 --reporter=list,json
           echo "playwright exit code: $?"
 
       - name: Count the runs
@@ -284,6 +285,11 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
       - name: Download the results
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -291,8 +297,9 @@ jobs:
           path: results
 
       - name: Write the summary
+        shell: bash
         run: |
-          node .github/scripts/flake.mjs aggregate results --kind "$KIND" --test "$TEST" --head "$HEAD_REF" --base "$BASE_REF" --runs "$RUNS" --json flake-check.json | tee -a "$GITHUB_STEP_SUMMARY"
+          node .github/scripts/flake.mjs aggregate results --kind "$KIND" --test "$TEST" --head "$HEAD_REF" --base "$BASE_REF" --runs "$RUNS" --runners "$RUNNERS" --json flake-check.json | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Keep the counts and signatures
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
