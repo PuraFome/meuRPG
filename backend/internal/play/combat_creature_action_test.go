@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -64,7 +65,28 @@ func houndFight(t *testing.T, theatre bool) (*armed, *playv1.Encounter, string) 
 // after the party's, and the answer is its label.
 func creatureFight(t *testing.T, theatre bool, key string, hidden bool) (*armed, *playv1.Encounter, string) {
 	t.Helper()
-	a := newCastingParty(t)
+	return creatureFightOf(t, newCastingParty(t), theatre, key, hidden)
+}
+
+// dwarfParty is the casting party with Toren a dwarf: resistant to poison.
+func dwarfParty(t *testing.T) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:dwarf", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.pens = a.ana.castingHero(t, a.campaignID, "Pensantus", classLevel("class:wizard", 5, ""),
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, []string{fireBolt},
+			[]string{mageArmorKey, detectMagicKey, alarmKey, identifyKey, magicMissileSpell, shieldSpell, holdPerson},
+			[]string{mageArmorKey, magicMissileSpell, shieldSpell}, "")
+		a.bri = a.bia.castingHero(t, a.campaignID, "Brisa", classLevel("class:cleric", 3, "subclass:life"),
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{sacredFlame}, nil,
+			[]string{cureWounds, healingWord, prayerKey, detectMagicKey, blessKey, aidSpell}, "")
+	})
+}
+
+// creatureFightOf is creatureFight on a party already built.
+func creatureFightOf(t *testing.T, a *armed, theatre bool, key string, hidden bool) (*armed, *playv1.Encounter, string) {
+	t.Helper()
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1},
 		players: map[string]int32{"Toren": 10, "Pensantus": 5, "Brisa": 1},
@@ -751,5 +773,46 @@ func TestCreatureRider_TheDamageItOpensIsInTheLog(t *testing.T) {
 		if (who == a.master) == (len(keys) == 0) {
 			t.Errorf("monster keys read by %p = %v, want some for the master alone", who, keys)
 		}
+	}
+}
+
+// The poison a rider opens on a poison-resistant dwarf: the master and Toren's player read what the dwarf took
+// (the resistance halved it), another player reads the damage as rolled, as for an attack: the line must not tell
+// the resistance. This was read from the apply, which overwrote the amount as rolled for every viewer.
+func TestCreatureRider_AResistedDamageShowsAnotherPlayerTheAmountAsRolled(t *testing.T) {
+	t.Parallel()
+	a, e, spider := creatureFightOf(t, dwarfParty(t), true, "monster:giant-spider", false)
+	r := a.mustAttack(t, a.master, e, spider, "basic:0", "Toren", d20(19))
+	a.mustDamage(t, a.master, e, r.GetPendingDamage().GetId(), typedDamage(5))
+	if _, err := a.settle(t, a.master, e, r.GetPendingDamage().GetId(), true); err != nil {
+		t.Fatalf("apply the bite: %v", err)
+	}
+	offers := ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)
+	a.h.roller.queue(1, 1) // Toren fails the save (a dwarf rolls two dice against poison)
+	if _, err := a.useRider(t, a.master, e, offers[0].GetId(), playv1.HitRiderChoice_HIT_RIDER_CHOICE_APPLY); err != nil {
+		t.Fatalf("UseHitRider(apply) error = %v", err)
+	}
+	var poison *playv1.PendingDamage
+	for _, p := range a.mustOptions(t, a.master, a.get(t, a.master), spider).GetPendingDamages() {
+		if p.GetDamageTypeKey() == "damage-type:poison" {
+			poison = p
+		}
+	}
+	if poison == nil {
+		t.Fatal("the failed save opened no poison damage")
+	}
+	a.mustDamage(t, a.master, e, poison.GetId(), typedDamage(10))
+	if _, err := a.settle(t, a.master, e, poison.GetId(), true); err != nil {
+		t.Fatalf("apply the poison: %v", err)
+	}
+	amount := func(u *user) int32 {
+		d := riderDamageOf(t, a.log(t, u, e))
+		if len(d) != 1 || d[0].GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+			t.Fatalf("the rider's damage = %v, want one applied line", d)
+		}
+		return d[0].GetAmount()
+	}
+	if m, o, other := amount(a.master), amount(a.caio), amount(a.ana); m != 5 || o != 5 || other != 10 {
+		t.Errorf("amounts: master %d, Toren's player %d, another player %d; want 5, 5 and 10 (as rolled)", m, o, other)
 	}
 }

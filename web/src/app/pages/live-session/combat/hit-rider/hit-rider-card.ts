@@ -7,6 +7,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -227,7 +228,11 @@ export class HitRiderCard {
     effect(() => {
       const campaignId = this.campaignId();
       const combatants = this.combatants();
-      for (const o of this.offers() ?? []) {
+      const offers = this.offers() ?? [];
+      if (offers.length === 0) {
+        untracked(() => this.error.set('')); // no offer, no failure to tell
+      }
+      for (const o of offers) {
         const key = combatants.find((c) => c.id === o.attackerId)?.bestiaryCreatureKey ?? '';
         if (!campaignId || !this.isCreature(o) || !key || this.asked.has(o.id)) {
           continue;
@@ -235,6 +240,7 @@ export class HitRiderCard {
         this.asked.add(o.id);
         this.creatures.statBlock(campaignId, key).then(
           (block) => {
+            this.error.set('');
             const action = block?.actions.find((a) => a.key === o.actionKey);
             const ability = action?.save?.ability;
             if (action && (action.text || action.hitCondition?.maxSize)) {
@@ -249,7 +255,11 @@ export class HitRiderCard {
               this.abilities.update((m) => new Map(m).set(o.id, abilityName(ability)));
             }
           },
-          (err: unknown) => this.error.set(combatErrorMessage(err, 'ler a ficha da criatura')), // the offer reads without the ability
+          (err: unknown) => {
+            // The offer reads without the ability; the next change of the offers or the combatants asks again.
+            this.asked.delete(o.id);
+            this.error.set(combatErrorMessage(err, 'ler a ficha da criatura'));
+          },
         );
       }
     });

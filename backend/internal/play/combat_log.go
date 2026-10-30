@@ -1249,7 +1249,9 @@ func (d *damageLog) viewAmount(out *playv1.CombatLogDamage, v combatViewer, targ
 // viewApplied adds the master's apply of a character's damage to the view.
 func (d *damageLog) viewApplied(out *playv1.CombatLogDamage, v combatViewer, target playdb.Combatant) {
 	ap := d.applied
-	out.Amount = ap.Amount
+	if v.master || v.owns(target) { // the apply is after the target's modifiers and the master's override: another player keeps the amount as rolled (RN-20)
+		out.Amount = ap.Amount
+	}
 	out.RelentlessEndurance = ap.Relentless
 	if v.master || v.owns(target) {
 		out.Hook = hookProto(ap.Hook, "") // what a drop_to_zero hook gave is the target's player's and the master's

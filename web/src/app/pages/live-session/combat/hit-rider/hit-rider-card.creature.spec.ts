@@ -14,6 +14,7 @@ import {
   CreatureSchema,
   SpellSaveSuccess,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { creatureAction, creaturesProvider } from '../../../../core/combat/combat-testing';
 import { settle } from '../../../../../test-settle';
 import { HitRiderCard, type RiderPick } from './hit-rider-card';
@@ -182,6 +183,48 @@ describe("HitRiderCard: a creature's rider", () => {
     expect(alert?.classList.contains('mr-notice--danger')).toBe(true);
     expect(alert?.textContent).toContain('Não deu para ler a ficha da criatura');
     expect(root.querySelectorAll('[data-testid="hit-rider"]').length).toBe(2);
+  });
+
+  it('replaces the error on a later success, asking again when the offers change, and clears it when no offer is left', async () => {
+    let fail = true;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: CreaturesClient,
+          useValue: {
+            statBlock: async () => {
+              if (fail) {
+                throw new Error('down');
+              }
+              return create(CreatureSchema, { actions: [] });
+            },
+          },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(HitRiderCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('combatants', [brisa, ghoul, spider]);
+    fixture.componentRef.setInput('offers', [claws]);
+    await settle(fixture);
+    await settle(fixture);
+    const root = fixture.nativeElement as HTMLElement;
+    const alert = () => root.querySelector('[data-testid="rider-error"]');
+    expect(alert()).not.toBeNull();
+    fail = false;
+    fixture.componentRef.setInput('combatants', [brisa, spider, ghoul]); // the combat changed: the card asks again
+    await settle(fixture);
+    await settle(fixture);
+    expect(alert()).toBeNull();
+    fail = true;
+    fixture.componentRef.setInput('offers', [grab]);
+    await settle(fixture);
+    await settle(fixture);
+    expect(alert()).not.toBeNull();
+    fixture.componentRef.setInput('offers', []);
+    await settle(fixture);
+    expect(alert()).toBeNull();
   });
 
   it('shows no error when the stat block is read', async () => {
