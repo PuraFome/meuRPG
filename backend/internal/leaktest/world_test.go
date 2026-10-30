@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -790,12 +791,15 @@ func (w *world) pinNPCInitiatives(encounterID string) *playv1.Encounter {
 		})))
 	}
 	pinned := must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
-	seen := map[int32]string{}
+	// The players tie by design (they all rolled 12); what must not tie is an NPC with anybody.
+	byTotal := map[int32][]*playv1.Combatant{}
 	for _, c := range pinned.GetCombatants() {
-		if other, ok := seen[c.GetInitiative()]; ok {
-			w.t.Fatalf("%s and %s share the initiative total %d after the pin: %s", other, c.GetLabel(), c.GetInitiative(), initiativeOrder(pinned))
+		byTotal[c.GetInitiative()] = append(byTotal[c.GetInitiative()], c)
+	}
+	for total, tied := range byTotal {
+		if len(tied) > 1 && slices.ContainsFunc(tied, func(c *playv1.Combatant) bool { return c.GetKind() != playv1.CombatantKind_COMBATANT_KIND_PLAYER }) {
+			w.t.Fatalf("%d combatants share the initiative total %d after the pin: %s", len(tied), total, initiativeOrder(pinned))
 		}
-		seen[c.GetInitiative()] = c.GetLabel()
 	}
 	return pinned
 }
