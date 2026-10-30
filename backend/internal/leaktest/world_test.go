@@ -1,6 +1,8 @@
 package leaktest
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 	"uuid"
@@ -401,8 +403,10 @@ func (w *world) buildCombat() {
 			})))
 		}
 	}
+	e = w.pinNPCInitiatives(e)
 	e = must(m.combat.BeginCombat(ctx, rq(&playv1.BeginCombatRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey()}))).GetEncounter()
 	w.encounter = e
+	w.t.Logf("initiative order at the start of the combat: %s", initiativeOrder(e))
 	for _, c := range e.GetCombatants() {
 		w.secrets.id("combatant", c.GetId(), w.combatantReaders(c)...)
 	}
@@ -753,4 +757,43 @@ func (w *world) buildStreamTargets() {
 	ms := must(m.xp.AddMilestone(ctx, rq(&progressionv1.AddMilestoneRequest{CampaignId: w.campaign, Text: w.secrets.marker("milestone-stream")}))).GetMilestone()
 	w.milestoneStream = ms.GetId()
 	w.secrets.id("milestone", ms.GetId())
+}
+
+// pinNPCInitiatives replaces the d20 the app rolled for every NPC and creature with a fixed face, so the turn order the
+// script assumes holds on every run: the app rolls an NPC's initiative at random, and a total that equals another
+// combatant's makes them take one joint turn (groupRuns), in which an NPC that "reacts" to the other's move is acting.
+// Each one takes the highest face that leaves its total different from everybody else's, in the order of the list.
+func (w *world) pinNPCInitiatives(e *playv1.Encounter) *playv1.Encounter {
+	ctx := w.t.Context()
+	e = must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter() // the players' totals are in
+	taken := map[int32]bool{}
+	for _, c := range e.GetCombatants() {
+		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER && c.Initiative != nil {
+			taken[c.GetInitiative()] = true
+		}
+	}
+	for _, c := range e.GetCombatants() {
+		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER {
+			continue
+		}
+		face := int32(20)
+		for taken[face+c.GetInitiativeBonus()] {
+			face--
+		}
+		taken[face+c.GetInitiativeBonus()] = true
+		must(w.master.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
+			CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: c.GetId(), IdempotencyKey: newKey(),
+			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
+		})))
+	}
+	return must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+}
+
+// initiativeOrder says the turn order of the combat as the master reads it: label, total, bonus and face of each combatant.
+func initiativeOrder(e *playv1.Encounter) string {
+	var out []string
+	for _, c := range e.GetCombatants() {
+		out = append(out, fmt.Sprintf("%s=%d(bonus %d, d20 %d)", c.GetLabel(), c.GetInitiative(), c.GetInitiativeBonus(), c.GetInitiativeFace()))
+	}
+	return strings.Join(out, ", ")
 }
