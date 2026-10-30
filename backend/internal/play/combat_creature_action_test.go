@@ -331,6 +331,25 @@ func TestCreatureAction_PlayersNeverReadTheStatBlock(t *testing.T) {
 	}
 }
 
+// The line of an action that rolls no attack names it in Portuguese (names_pt.json), for the master and for a
+// player alike: a breath ("Sopro de fogo") and a reminder ("Liderança").
+func TestCreatureAction_TheLogNamesTheActionInPortuguese(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	a.h.roller.queue(18, 3)
+	a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren", "Goblin"})
+	for name, who := range map[string]*user{"master": a.master, "player": a.caio} {
+		if got := lastCreatureLine(t, a.log(t, who, e)).GetActionNamePt(); got != "Sopro de fogo" {
+			t.Errorf("the %s reads the breath as %q, want %q", name, got, "Sopro de fogo")
+		}
+	}
+	k, ke, knight := creatureFight(t, true, "monster:knight", false)
+	k.mustUseAction(t, k.master, ke, knight, "monster:knight#leadership", nil)
+	if got := lastCreatureLine(t, k.log(t, k.caio, ke)).GetActionNamePt(); got != "Liderança" {
+		t.Errorf("a player reads the reminder as %q, want %q", got, "Liderança")
+	}
+}
+
 // A hidden hound's breath is the master's line alone, and the hound is not named to a player.
 func TestCreatureAction_AHiddenCreatureMasksTheLine(t *testing.T) {
 	t.Parallel()

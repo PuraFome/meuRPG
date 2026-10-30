@@ -332,7 +332,7 @@ func (c *content) loadNamesPT(fsys fs.FS) error {
 		return err
 	}
 	for k, v := range names.Names {
-		if !c.exists(k) && !hasFreeNamePrefix(k) && !c.isAttackName(k) {
+		if !c.exists(k) && !hasFreeNamePrefix(k) && !c.isActionName(k) {
 			return fmt.Errorf("effects/names_pt.json: unknown key %q", k)
 		}
 		c.namesPT[k] = v
@@ -1419,16 +1419,16 @@ func (c *content) checkImmunityKeys(keys []string, prefix string) error {
 	return nil
 }
 
-// isAttackName reports whether key is "attack:<slug>" for the name of an attack
-// action of some SRD creature (the Portuguese names of creature attacks).
-func (c *content) isAttackName(key string) bool {
+// isActionName reports whether key is "attack:<slug>" for the name of an action
+// of some SRD creature, attack or not (the Portuguese names of creature actions).
+func (c *content) isActionName(key string) bool {
 	slug, ok := strings.CutPrefix(key, "attack:")
 	if !ok {
 		return false
 	}
 	for _, m := range c.monsters {
 		for _, a := range m.Actions {
-			if a.HasAttack && slugOf(a.Name) == slug {
+			if slugOf(a.Name) == slug {
 				return true
 			}
 		}
