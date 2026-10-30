@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 )
 
 // The read deadline of the upload surfaces as os.ErrDeadlineExceeded from the
@@ -223,5 +225,33 @@ func TestATrickledUploadDoesNotHoldTheProcessingSlot(t *testing.T) {
 		<-h.svc.processing
 	case <-time.After(5 * time.Second):
 		t.Fatal("the processing slot was not freed after the trickled upload")
+	}
+}
+
+// slowBlobs is a blob store whose writes take a while, as they do under load.
+type slowBlobs struct {
+	blob.Store
+	delay time.Duration
+}
+
+func (b slowBlobs) Put(ctx context.Context, key, contentType string, r io.Reader) error {
+	time.Sleep(b.delay)
+	return b.Store.Put(ctx, key, contentType, r)
+}
+
+// The slot's deadline is for the file's read. A small upload arrives whole before the slot is taken, so net/http's
+// background read (the one that notices a client that left) is already waiting on the connection; a deadline that
+// outlived the read would fire on it while the image is stored and cancel the request (499). The store here takes
+// four times the deadline, and the upload must still be created.
+func TestASmallUploadWhoseStoreOutlastsTheSlotDeadlineIsCreated(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.slotReadTimeout = 50 * time.Millisecond
+	h.svc.blobs = slowBlobs{Store: h.svc.blobs, delay: 200 * time.Millisecond}
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+
+	if res := master.upload(campaign, "a.png", pngImage(t, 8, 8)); res.status != http.StatusCreated {
+		t.Fatalf("upload with a slow store: status %d, body %s; want 201", res.status, res.body)
 	}
 }

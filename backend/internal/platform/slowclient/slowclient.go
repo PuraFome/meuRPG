@@ -10,7 +10,8 @@
 //     connection that never closed) ends the stream instead of blocking inside
 //     Send until the platform closes the connection;
 //   - the read of a request body that a client can trickle: ReadBody, for the
-//     image upload and the sign-in form, and Middleware, for every unary RPC
+//     image upload, the sign-in form and the campaign package's parts, and
+//     Middleware, for every unary RPC
 //     (UnaryBodyTimeout);
 //   - the write of a large response on a plain route: WriteBody, for the
 //     image, thumbnail and tile downloads and the app's files.
@@ -58,10 +59,18 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 }
 
 // ReadBody gives the rest of the request body d to arrive. Call it before
-// reading the body, in a handler that is not a stream. A writer that cannot set
-// deadlines (a test's recorder) is left alone.
-func ReadBody(w http.ResponseWriter, d time.Duration) {
-	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(d))
+// reading the body, in a handler that is not a stream, and call the function it
+// returns as soon as the read is over: a deadline left on the connection reaches
+// the background read that net/http starts once the body is at its end (it is
+// how a client that left is noticed), and when it fires, the request's context
+// is canceled while the handler still decodes or stores what it read. A body
+// that is small enough to arrive whole with an earlier read hits its end before
+// this call, so for it the deadline is set on that background read. A writer
+// that cannot set deadlines (a test's recorder) is left alone.
+func ReadBody(w http.ResponseWriter, d time.Duration) (done func()) {
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Now().Add(d))
+	return func() { _ = rc.SetReadDeadline(time.Time{}) }
 }
 
 // WriteBody gives the response body d to be written: a client that stops
