@@ -192,7 +192,7 @@ The fix is in the test (wait for the condition that matters, own the state it ne
 
 ### flake-check
 
-`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners. It is on the fork's `main` only after the train that adds it merges.
+`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners.
 
 Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check --repo vfraga/meuRPG -f kind=playwright -f test='<title>' -f head=<train branch> -f base=main`.
 
@@ -215,7 +215,9 @@ Read it like this:
 - **"Incomplete":** a runner died before it reported (the summary job then fails). Read the failed jobs and dispatch again.
 - **"The side ran no test":** the test does not exist on that ref, or the title matches nothing there.
 
-The traces of the failures are kept as the artifacts `flake-traces-<side>-<runner>` (Playwright) and the log as `flake-log-<side>-<runner>` (Go).
+`flake-check` runs refs that are not `main`'s, so it writes no cache (no `cache:` on `setup-node` or `setup-go`, no cache save, no `cache-to` on the image builds): a ref under test cannot poison a cache that `main`'s runs restore.
+
+The traces and the HTML report of the failures are kept as the artifacts `flake-traces-<side>-<runner>` (Playwright) and the log as `flake-log-<side>-<runner>` (Go).
 
 ### Repeat of the changed tests
 
@@ -226,7 +228,7 @@ The `repeat-changed` job runs next to the gate on every pull request that touche
 - the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing);
 - for a changed helper, a sample of up to 5 of the tests that call it, directly or through other helpers: an exported function of an `e2e/tests/*-support.ts`, or a function or method of `backend/internal/leaktest`.
 
-`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which the page and the contexts made with no `colorScheme` option follow; a helper that passes its own, even `undefined`, keeps it, and a test that names its theme in its title is covered by that title); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
+`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which the page and the contexts made with no `colorScheme` option follow; a helper that passes its own, even `undefined`, keeps it, and a test that names its theme in its title is covered by that title); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. All the Playwright chunks share one stack and one client address, and `/auth/login` allows that address 40 requests at once (20 sign-ins) and one more every 3 seconds, which the global setup's three sign-ins spend each time, so the workflow recreates the `api` container (an empty rate-limit bucket) before every chunk but the first. The traces and the report of a failed chunk are kept in `e2e/kept/` for the artifact. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
 
 The summary of `targets` lists the tests it found and why (`changed`, or `calls <helper>`). The scripts have unit tests, run by `workflows-lint` (`node --test .github/scripts/*.test.mjs`).
 

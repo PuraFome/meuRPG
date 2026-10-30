@@ -163,6 +163,15 @@ export function mapDiff({ diff, read, files }) {
     const key = `${pkg}\t${test}`;
     if (!go.has(key) || why === 'changed') go.set(key, { pkg, test, why });
   };
+  // Each file is parsed once per kind of parse, however many helpers and levels ask for it.
+  const cache = new Map();
+  const once = (kind, file, parse) => {
+    const key = `${kind}\t${file}`;
+    if (!cache.has(key)) cache.set(key, parse());
+    return cache.get(key);
+  };
+  const testsOf = (file) => once('tests', file, () => playwrightTests(read(file)));
+  const functionsOf = (kind, file, nameOf) => once(kind, file, () => topLevel(read(file), nameOf));
   const goPkg = (file) => `./${file.replace(/^backend\//, '').replace(/\/[^/]+$/, '')}`;
 
   const helpers = []; // {kind, name, file}
@@ -170,12 +179,12 @@ export function mapDiff({ diff, read, files }) {
     const text = read(file);
     if (text === undefined) continue;
     if (SPEC.test(file)) {
-      for (const t of playwrightTests(text)) if (touches(ranges, t.from, t.to)) addPlaywright(file, t, 'changed');
+      for (const t of testsOf(file)) if (touches(ranges, t.from, t.to)) addPlaywright(file, t, 'changed');
     } else if (SUPPORT.test(file)) {
-      for (const f of topLevel(text, exportedOf)) if (touches(ranges, f.from, f.to)) helpers.push({ kind: 'playwright', name: f.name, file });
+      for (const f of functionsOf('exported', file, exportedOf)) if (touches(ranges, f.from, f.to)) helpers.push({ kind: 'playwright', name: f.name, file });
     } else if (GO_TEST.test(file) || LEAKTEST.test(file)) {
       const leak = LEAKTEST.test(file);
-      for (const f of topLevel(text, goFuncOf)) {
+      for (const f of functionsOf('go', file, goFuncOf)) {
         if (!touches(ranges, f.from, f.to)) continue;
         if (/^Test[A-Z_0-9]/.test(f.name) || f.name === 'Test') addGo(goPkg(file), f.name, 'changed');
         else if (leak) helpers.push({ kind: 'go', name: f.name, file });
@@ -187,11 +196,11 @@ export function mapDiff({ diff, read, files }) {
     const callers = [];
     if (h.kind === 'playwright') {
       const tsFiles = files('e2e/tests/').filter((f) => f.endsWith('.ts')).sort();
-      const names = withCallers(h.name, () => tsFiles.flatMap((f) => (read(f) === undefined ? [] : topLevel(read(f), tsFuncOf))));
+      const names = withCallers(h.name, () => tsFiles.flatMap((f) => (read(f) === undefined ? [] : functionsOf('ts', f, tsFuncOf))));
       for (const file of tsFiles.filter((f) => SPEC.test(f))) {
         const text = read(file);
         if (text === undefined) continue;
-        for (const t of playwrightTests(text)) if (callsAny(t.body, names)) callers.push({ file, t });
+        for (const t of testsOf(file)) if (callsAny(t.body, names)) callers.push({ file, t });
       }
       const picked = sample(callers);
       for (const c of picked) addPlaywright(c.file, c.t, `calls ${h.name}`);
@@ -200,11 +209,11 @@ export function mapDiff({ diff, read, files }) {
     } else {
       const goFiles = files('backend/internal/leaktest/').filter((f) => GO_TEST.test(f)).sort();
       const isTest = (n) => /^Test[A-Z_0-9]/.test(n);
-      const names = withCallers(h.name, () => goFiles.flatMap((f) => (read(f) === undefined ? [] : topLevel(read(f), goFuncOf).filter((fn) => !isTest(fn.name)))));
+      const names = withCallers(h.name, () => goFiles.flatMap((f) => (read(f) === undefined ? [] : functionsOf('go', f, goFuncOf).filter((fn) => !isTest(fn.name)))));
       for (const file of goFiles) {
         const text = read(file);
         if (text === undefined) continue;
-        for (const f of topLevel(text, goFuncOf)) if (isTest(f.name) && callsAny(f.body, names)) callers.push({ file, name: f.name });
+        for (const f of functionsOf('go', file, goFuncOf)) if (isTest(f.name) && callsAny(f.body, names)) callers.push({ file, name: f.name });
       }
       const picked = sample(callers);
       for (const c of picked) addGo(goPkg(c.file), c.name, `calls ${h.name}`);

@@ -287,9 +287,12 @@ jobs:
             printf 'A caça noturna a testes instáveis falhou na main, sem um teste que apareça nos resultados (a pilha não subiu, ou um runner caiu).\n\nCommit: %s\nExecução: %s\nSemente do Playwright: %s\n' "$SHA" "$RUN_URL" "$SEED" > body.md
           fi
           gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          # Its own issue, by title: another open ci-red issue (a red main for another reason) is not this one.
+          title="CI vermelho: caça noturna a testes instáveis"
+          number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then
             gh issue comment "$number" --body-file body.md
           else
-            gh issue create --label ci-red --title "CI vermelho: caça noturna a testes instáveis" --body-file body.md
+            gh issue create --label ci-red --title "$title" --body-file body.md
           fi

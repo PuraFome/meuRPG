@@ -21,6 +21,7 @@ on:
       - "Makefile"
       - ".github/workflows/e2e.yml"
       - ".github/scripts/e2e-no-retries.sh"
+      - ".github/actions/**"
       - ".node-version"
       - "!**/*.md"
   push:
@@ -35,6 +36,7 @@ on:
       - "Makefile"
       - ".github/workflows/e2e.yml"
       - ".github/scripts/e2e-no-retries.sh"
+      - ".github/actions/**"
       - ".node-version"
       - "!**/*.md"
   # The nightly run and a manual run test everything, with no path filter
@@ -157,53 +159,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-        # Docker Hub's anonymous pull limit is shared by GitHub's runners and
-        # failed the builds: BuildKit itself and every Docker Hub image the
-        # Dockerfiles name (the frontend, Node, Go) come through Google's
-        # Docker Hub mirror. The Dockerfiles pin digests, so the bytes are
-        # the same wherever they come from.
+      # Docker Hub mirror, VERSION=dev, the tars straight to disk and the layer cache: all in the composite action,
+      # shared with the workflows that test a ref of their own (flake-check, repeat-changed, nightly-hunt).
+      - name: Build and upload the images
+        uses: ./.github/actions/build-e2e-images
         with:
-          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
-          buildkitd-config-inline: |
-            [registry."docker.io"]
-              mirrors = ["mirror.gcr.io"]
-
-      - name: Build the production image
-        # VERSION=dev, as in compose.yaml: the app test reads it from the page.
-        # The tar goes straight to disk (type=docker,dest=): no registry, no push.
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: backend/Dockerfile
-          build-args: |
-            VERSION=dev
-            COMMIT=local
-          tags: meurpg-ci/api:ci
-          outputs: type=docker,dest=${{ runner.temp }}/api.tar
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,scope=api,mode=max
-
-      - name: Build the devidp image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: deploy/local/devidp.Dockerfile
-          tags: meurpg-ci/devidp:ci
-          outputs: type=docker,dest=${{ runner.temp }}/devidp.tar
-          cache-from: type=gha,scope=devidp
-          cache-to: type=gha,scope=devidp,mode=max
-
-      - name: Upload the images
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: e2e-images
-          path: |
-            ${{ runner.temp }}/api.tar
-            ${{ runner.temp }}/devidp.tar
-          retention-days: 1
-          if-no-files-found: error
+          artifact: e2e-images
+          cache-write: "true"
 
   e2e:
     # The suite is split across nine runners, each with its own stack: on
@@ -229,46 +191,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      # Node, the e2e dependencies (no install scripts), Chromium for the exact @playwright/test version the lockfile
+      # pins, the images, and the local stack (compose.ci.yaml keeps CockroachDB in memory; compose.ci-images.yaml
+      # points the services at the loaded images, --no-build).
+      - name: Start the local stack (CockroachDB, migrations, devidp, API)
+        uses: ./.github/actions/start-e2e-stack
         with:
-          node-version-file: .node-version
-          cache: "npm"
-          cache-dependency-path: e2e/package-lock.json
-
-      - name: Install e2e dependencies (no install scripts)
-        working-directory: e2e
-        run: npm ci --ignore-scripts
+          artifact: e2e-images
+          npm-cache: npm
 
       - name: Type-check the tests
         working-directory: e2e
         run: npm run typecheck
-
-      - name: Install Chromium for Playwright
-        # The browser build is the one this exact @playwright/test version
-        # expects, so package-lock.json pins it too. --with-deps installs
-        # the system libraries Chromium needs.
-        working-directory: e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: Download the images
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: e2e-images
-          path: ${{ runner.temp }}/images
-
-      - name: Load the images
-        env:
-          IMAGES_DIR: ${{ runner.temp }}/images
-        run: |
-          docker load --input "$IMAGES_DIR/api.tar"
-          docker load --input "$IMAGES_DIR/devidp.tar"
-
-      - name: Start the local stack (CockroachDB, migrations, devidp, API)
-        # compose.ci.yaml keeps CockroachDB's store in memory (CI only).
-        # compose.ci-images.yaml points the services at the images loaded
-        # above, and --no-build keeps compose from building them again.
-        run: docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build --detach
 
       - name: Check that the production image has no devidp
         # The api service runs the image the `image` job built from
