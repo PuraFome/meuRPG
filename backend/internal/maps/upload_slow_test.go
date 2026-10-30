@@ -1,12 +1,14 @@
 package maps
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -235,7 +237,11 @@ type slowBlobs struct {
 }
 
 func (b slowBlobs) Put(ctx context.Context, key, contentType string, r io.Reader) error {
-	time.Sleep(b.delay)
+	select {
+	case <-time.After(b.delay):
+	case <-ctx.Done():
+		return fmt.Errorf("the request was canceled while the image was stored: %w", context.Cause(ctx))
+	}
 	return b.Store.Put(ctx, key, contentType, r)
 }
 
@@ -253,5 +259,78 @@ func TestASmallUploadWhoseStoreOutlastsTheSlotDeadlineIsCreated(t *testing.T) {
 
 	if res := master.upload(campaign, "a.png", pngImage(t, 8, 8)); res.status != http.StatusCreated {
 		t.Fatalf("upload with a slow store: status %d, body %s; want 201", res.status, res.body)
+	}
+}
+
+// answerWhileTrickling sends head and first as the start of a chunked request, goes on sending a byte every 20 ms and
+// returns the status line of the answer. It fails when no answer comes within wait: net/http discards what is left of a
+// body the handler did not read before it answers, so a connection with no deadline left holds the answer back for as
+// long as the client trickles.
+func answerWhileTrickling(t *testing.T, addr, head, first string, wait time.Duration) string {
+	t.Helper()
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	chunk := func(s string) string { return fmt.Sprintf("%x\r\n%s\r\n", len(s), s) }
+	if _, err := conn.Write([]byte(head + "Transfer-Encoding: chunked\r\n\r\n" + chunk(first))); err != nil {
+		t.Fatal(err)
+	}
+	stop := make(chan struct{})
+	t.Cleanup(func() { close(stop) })
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(20 * time.Millisecond):
+				if _, err := conn.Write([]byte(chunk("x"))); err != nil {
+					return
+				}
+			}
+		}
+	}()
+	_ = conn.SetReadDeadline(time.Now().Add(wait))
+	line, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		t.Fatalf("no answer within %v while the client kept trickling (the connection has no read deadline left): %v", wait, err)
+	}
+	return line
+}
+
+func multipartStart(boundary, campaign string) string {
+	return "--" + boundary + "\r\nContent-Disposition: form-data; name=\"campaign_id\"\r\n\r\n" + campaign + "\r\n"
+}
+
+// A client that sends the start of its file and then trickles is answered when the slot's deadline ends the read, and the
+// connection is not held for what is left of the body: the deadline stays armed on a path that returns with the body unread.
+func TestATricklerThatHitsTheSlotDeadlineIsAnsweredAndNotHeld(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.slotReadTimeout = 300 * time.Millisecond
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + master.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
+	first := multipartStart("B", campaign) + "--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.png\"\r\nContent-Type: image/png\r\n\r\nPNG"
+	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, first, 10*time.Second)
+	if !strings.Contains(line, " 400 ") {
+		t.Fatalf("status line = %q, want 400 (the upload took too long)", line)
+	}
+}
+
+// A caller who may not upload is refused right after the campaign field, with the rest of the body unread: a client that
+// goes on trickling does not hold the connection past the upload's deadline.
+func TestARefusedUploadThatKeepsTricklingIsNotHeld(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	h.svc.formReadTimeout = 300 * time.Millisecond
+	master := h.newUser("Master")
+	campaign := h.newCampaign(master)
+	stranger := h.newUser("Stranger")
+	head := "POST " + UploadPath + " HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + stranger.id + "\r\nContent-Type: multipart/form-data; boundary=B\r\n"
+	line := answerWhileTrickling(t, h.server.Listener.Addr().String(), head, multipartStart("B", campaign), 10*time.Second)
+	if strings.Contains(line, " 201 ") {
+		t.Fatalf("status line = %q, want a refusal", line)
 	}
 }

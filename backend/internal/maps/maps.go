@@ -335,6 +335,8 @@ type Service struct {
 	// slotReadTimeout is how long an upload that holds the processing slot has
 	// to send its file (uploadSlotReadTimeout; tests shorten it).
 	slotReadTimeout time.Duration
+	// formReadTimeout is how long an upload has to send its whole body (uploadReadTimeout; tests shorten it).
+	formReadTimeout time.Duration
 
 	// tiles is the image of a fog map as tiles per player (tiles.go).
 	tiles *tileRenderer
@@ -417,6 +419,7 @@ func New(cfg Config) (*Service, error) {
 		maxPoints:       cfg.MaxPointsPerMap,
 		processing:      make(chan struct{}, 1),
 		slotReadTimeout: uploadSlotReadTimeout,
+		formReadTimeout: uploadReadTimeout,
 		dungeonGate:     make(chan struct{}, dungeonGenerators),
 		dungeonLimit:    newDungeonLimiter(nil),
 		tiles:           newTileRenderer(),

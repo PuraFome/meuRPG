@@ -58,14 +58,24 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 }
 
 // ReadBody gives the rest of the request body d to arrive. Call it before
-// reading the body, in a handler that is not a stream, and call the function it
-// returns as soon as the read is over: a deadline left on the connection reaches
-// the background read that net/http starts once the body is at its end (it is
-// how a client that left is noticed), and when it fires, the request's context
-// is canceled while the handler still decodes or stores what it read. A body
-// that is small enough to arrive whole with an earlier read hits its end before
-// this call, so for it the deadline is set on that background read. A writer
-// that cannot set deadlines (a test's recorder) is left alone.
+// reading the body, in a handler that is not a stream. Call the function it
+// returns only once the body has been read to its end, and never on a path that
+// returns with the body unread.
+//
+// The deadline is what ends a client that goes on trickling after the handler
+// has answered: the server has no ReadTimeout, and when a handler returns with
+// the body unread, net/http discards what is left (up to 256 KB, or the whole
+// of a chunked body) under whatever deadline the connection still has. Cleared,
+// a trickler would hold the connection and the goroutine for as long as Cloud
+// Run lets a request live. Armed, the discard ends with the deadline.
+//
+// Once the body is at its end the deadline has nothing left to bound, and it is
+// harmful: net/http starts a background read at the end of the body (how it
+// notices a client that left), the deadline fires on that read, and the
+// request's context is canceled while the handler still decodes or stores what
+// it read. A body small enough to arrive whole with an earlier read is already
+// at its end when the handler calls ReadBody. A writer that cannot set
+// deadlines (a test's recorder) is left alone.
 func ReadBody(w http.ResponseWriter, d time.Duration) (done func()) {
 	rc := http.NewResponseController(w)
 	_ = rc.SetReadDeadline(time.Now().Add(d))

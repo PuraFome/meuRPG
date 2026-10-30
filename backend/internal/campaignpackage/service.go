@@ -1,6 +1,7 @@
 package campaignpackage
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -92,6 +93,8 @@ type Config struct {
 	// export, preview, create, download) and PartsLimit the parts of an
 	// upload, per user. Nil: no limit (tests).
 	Heavy, PartsLimit *ratelimit.Limiter
+	// PartReadTimeout is how long a client has to send one part of an import; zero means partReadTimeout. Tests shorten it.
+	PartReadTimeout time.Duration
 }
 
 // Service is the campaign package: the export job, the upload and the import.
@@ -106,9 +109,11 @@ type Service struct {
 	version  string
 	heavy    *ratelimit.Limiter
 	partsLim *ratelimit.Limiter
-	heavyN   *ratelimit.Notifier
-	partsN   *ratelimit.Notifier
-	tasks    tasks.Runner
+	// partReadTimeout is how long a client has to send one part (Config.PartReadTimeout).
+	partReadTimeout time.Duration
+	heavyN          *ratelimit.Notifier
+	partsN          *ratelimit.Notifier
+	tasks           tasks.Runner
 	// ownTasks is the in-process runner New made when Config.Tasks was nil; the service waits
 	// for it and cancels it. A runner of the caller is the caller's to start, wait and cancel.
 	ownTasks *tasks.InProcess
@@ -136,6 +141,7 @@ func New(cfg Config) (*Service, error) {
 		logger: cfg.Logger, now: cfg.Now, version: cfg.ContentVersion, heavy: cfg.Heavy, partsLim: cfg.PartsLimit,
 		exportSlot: make(chan struct{}, 1), running: map[string]context.CancelFunc{},
 	}
+	s.partReadTimeout = cmp.Or(cfg.PartReadTimeout, partReadTimeout)
 	if s.logger == nil {
 		s.logger = slog.Default()
 	}

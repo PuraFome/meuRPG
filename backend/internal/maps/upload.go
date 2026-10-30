@@ -90,8 +90,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 
 	// A client that trickles the body must not hold the connection for the 35
 	// minutes Cloud Run allows: 10 MiB in 2 minutes is under 1 Mbit/s.
-	doneReading := slowclient.ReadBody(w, uploadReadTimeout)
-	defer doneReading()
+	doneReading := slowclient.ReadBody(w, s.formReadTimeout) // left armed on every path that returns with the body unread
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBody)
 	form, err := r.MultipartReader()
 	if err != nil {
@@ -121,22 +120,33 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 	// memory at a time, from the read to the end of the decode. The client's
 	// time to send the file starts when its turn does, and is shorter than
 	// the upload's whole: the slot is not held for a trickle.
-	// The upload's own deadline has done its work with the form's first field: it must not stay armed while the upload waits for
-	// its turn (the same background read would cancel the request).
+	//
+	// The upload's own deadline has done its work with the form's first field,
+	// and it must not stay armed while the upload waits for its turn: a small
+	// body is at its end, and the deadline would fire on net/http's background
+	// read. The slot's deadline takes over below; if the wait fails, the
+	// deadline is armed again, because the body is still unread.
 	doneReading()
 	release, err := s.acquireProcessing(ctx)
 	if err != nil {
+		slowclient.ReadBody(w, s.slotReadTimeout)
 		return mapsdb.GalleryImage{}, err
 	}
 	doneSlot := slowclient.ReadBody(w, s.slotReadTimeout)
 	name, data, err := readFile(form)
-	// The deadline is for the file's read alone: a small body is at its end by now, and a deadline that outlived the read
-	// would fire on net/http's background read and cancel the request while the file is decoded and stored.
-	doneSlot()
+	if err == nil {
+		// The closing boundary can still be on its way: read the rest to the end, under the slot's deadline and the body's limit.
+		if _, copyErr := io.Copy(io.Discard, r.Body); copyErr != nil {
+			err = formError(copyErr, "cannot read the end of the form")
+		}
+	}
 	if err != nil {
-		release()
+		release() // the deadline stays armed: the body may be unread, and what net/http discards of it is bounded by it
 		return mapsdb.GalleryImage{}, err
 	}
+	// The body is at its end: a deadline that outlived the read would fire on net/http's background read and cancel the
+	// request while the file is decoded and stored.
+	doneSlot()
 	res, err := decodeUpload(data)
 	release()
 	if err != nil {
