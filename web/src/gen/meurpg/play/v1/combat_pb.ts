@@ -8262,8 +8262,10 @@ export type CombatLogStateChange = Message<"meurpg.play.v1.CombatLogStateChange"
    * Why it ended (empty when it began): the combatant's own text key, one of
    * "no_attack" (the turn ended with no attack on a hostile creature or damage taken),
    * "unconscious", "by_choice", "duration" or "left" (the source's concentration or
-   * the combat ended). A table state also ends for "incapacitated", "short_rest",
-   * "long_rest" and "master".
+   * the combat ended). A table state also ends for "incapacitated" (hit points at 0 or a
+   * condition) and "master" (his correction). In a combat every start and every end of a
+   * table state writes a line; outside a combat there is no combat log, so a rest or a
+   * correction made there writes none.
    *
    * @generated from field: string reason = 4;
    */

@@ -135,6 +135,95 @@ func (r *stanceRig) goblinHits(t *testing.T, face int32) bool {
 	return res.GetRoll().GetOutcome() == playv1.AttackOutcome_ATTACK_OUTCOME_HIT
 }
 
+// stateLines are the log lines of the table's states, as the master reads them: "start", or
+// "end:" and the reason. Sorted, because the log lists a round's lines by its own order.
+func (r *stanceRig) stateLines(t *testing.T) []string {
+	t.Helper()
+	var out []string
+	for _, round := range r.a.log(t, r.a.master, r.a.get(t, r.a.master)).GetRounds() {
+		for _, en := range round.GetEntries() {
+			st := en.GetState()
+			if st.GetKind() != playv1.CombatantStateKind_COMBATANT_STATE_KIND_TABLE {
+				continue
+			}
+			if st.GetKey() == "" {
+				t.Errorf("a state line with no key: %v", en)
+			}
+			if st.GetStarted() {
+				out = append(out, "start")
+			} else {
+				out = append(out, "end:"+st.GetReason())
+			}
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+func (r *stanceRig) wantLines(t *testing.T, want ...string) {
+	t.Helper()
+	slices.Sort(want)
+	if got := r.stateLines(t); !slices.Equal(got, want) {
+		t.Errorf("state lines = %v, want %v", got, want)
+	}
+}
+
+func TestStartingAndEndingAStateByChoiceWriteTheirLinesAndTheUndoTakesThemBack(t *testing.T) {
+	t.Parallel()
+	r := newStanceRig(t, stanceEffects("10", "dismiss"))
+	r.wantLines(t)
+	r.mustToggle(t, stanceName, false)
+	r.wantLines(t, "start")
+	r.mustToggle(t, stanceName, true)
+	r.wantLines(t, "start", "end:by_choice")
+	r.undoLast(t)
+	r.wantLines(t, "start")
+	r.undoLast(t)
+	r.wantLines(t)
+}
+
+func TestAStateEndedByTheVitalsGivesBackWhatItGaveAndWritesItsLine(t *testing.T) {
+	t.Parallel()
+	correct := func(r *stanceRig, req *playv1.AdjustCharacterVitalsRequest) {
+		t.Helper()
+		req.CampaignId, req.CharacterId, req.IdempotencyKey = r.a.campaignID, r.a.toren.GetId(), newKey()
+		if _, err := r.a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req)); err != nil {
+			t.Fatalf("AdjustCharacterVitals() error = %v", err)
+		}
+	}
+	zero := int32(0)
+	cases := []struct {
+		name   string
+		ends   []string
+		change func(r *stanceRig)
+		reason string
+	}{
+		{"hit points at 0", []string{"incapacitated"}, func(r *stanceRig) { correct(r, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &zero}) }, "incapacitated"},
+		{"the master's end_states", []string{"dismiss"}, func(r *stanceRig) {
+			correct(r, &playv1.AdjustCharacterVitalsRequest{EndStates: []string{r.stateKey(stanceName)}})
+		}, "master"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := newStanceRig(t, stanceEffects("10", tc.ends...))
+			plain := r.derived(t)
+			r.mustToggle(t, stanceName, false)
+			if got := byLabel(t, r.a.get(t, r.a.master), "Toren").GetSpeedFt(); got != plain.GetSpeedWalkFt()+10 {
+				t.Fatalf("speed with the state = %d, want %d", got, plain.GetSpeedWalkFt()+10)
+			}
+			tc.change(r)
+			if got := r.states(t); len(got) != 0 {
+				t.Fatalf("states = %v, want none", got)
+			}
+			if got := byLabel(t, r.a.get(t, r.a.master), "Toren").GetSpeedFt(); got != plain.GetSpeedWalkFt() {
+				t.Errorf("Toren's combat speed = %d, want the plain %d: the state ended", got, plain.GetSpeedWalkFt())
+			}
+			r.wantLines(t, "start", "end:"+tc.reason)
+		})
+	}
+}
+
 func TestAStateStartsSpendsItsCostAndChangesTheSheet(t *testing.T) {
 	t.Parallel()
 	r := newStanceRig(t, stanceEffects("10", "dismiss", "incapacitated"))

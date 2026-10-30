@@ -54,6 +54,14 @@ func (s *Service) vitalsOf(ctx context.Context, c *combatTx, characterID string,
 	if err == nil && before.GetWildShape() != nil && after.GetWildShape() == nil {
 		c.told = append(c.told, after) // the beast is gone: the streams and the fog hear of it
 	}
+	if err != nil {
+		return before, after, err
+	}
+	// Hit points at 0 end the states that say so: the combatant loses what they gave.
+	if ended := endedBetween(before, after); len(ended) > 0 {
+		c.told = append(c.told, after)
+		err = s.followEndedStates(ctx, c, characterID, ended, func(string) string { return stateEndIncapacitated })
+	}
 	return before, after, err
 }
 

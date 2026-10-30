@@ -146,7 +146,7 @@ func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, r
 	}
 	if run.touched != nil {
 		run.visionMap = conv.OrZero(run.touched.MapID)
-		if err := s.endConcentrationOfDownCharacter(ctx, tx, q, session, call, *run.touched, adjusted); err != nil {
+		if err := s.followCorrectionInCombat(ctx, tx, q, session, call, *run.touched, before, adjusted); err != nil {
 			return err
 		}
 	}
@@ -272,6 +272,35 @@ func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx
 		return err
 	}
 	return s.endConcentrationAtZero(ctx, c, cs[i], "")
+}
+
+// followCorrectionInCombat is what a correction leaves in the combat the character is in: the
+// concentration of one set to 0 hit points, and the states that ended.
+func (s *Service) followCorrectionInCombat(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, before, adjusted *playv1.CharacterVitals) error {
+	if err := s.endConcentrationOfDownCharacter(ctx, tx, q, session, call, enc, adjusted); err != nil {
+		return err
+	}
+	return s.followCorrectionStates(ctx, tx, q, session, call, enc, before, adjusted)
+}
+
+// followCorrectionStates is what a correction that ended states leaves in the combat of the
+// character: the combatant is refreshed and each state has its line, with the master's
+// reason for the ones he named and the incapacitated one for the rest (the hit points at 0).
+func (s *Service) followCorrectionStates(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, before, adjusted *playv1.CharacterVitals) error {
+	ended := endedBetween(before, adjusted)
+	if len(ended) == 0 {
+		return nil
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), actorUserID: call.m.UserID, svc: s, master: true})
+	if err != nil {
+		return err
+	}
+	return s.followEndedStates(ctx, c, call.charText, ended, func(key string) string {
+		if slices.Contains(call.msg.GetEndStates(), key) {
+			return stateEndMaster
+		}
+		return stateEndIncapacitated
+	})
 }
 
 // vitalsNumbers are the numbers a session event keeps about a character's

@@ -30,11 +30,14 @@ import (
 // The combatant copies the character's speed, size and jumps when it joins, so every
 // change of the states writes them again (applyBody).
 
-// The reasons a table state ends, as the log line says them (CombatLogStateChange.reason).
+// The reasons a table state ends in a combat, as the log line says them
+// (CombatLogStateChange.reason). Every start and every end in a combat writes a line;
+// outside a combat there is no combat log, so a rest or a correction writes none.
 const (
 	stateEndDuration      = "duration"
 	stateEndIncapacitated = "incapacitated"
 	stateEndByChoice      = "by_choice"
+	stateEndMaster        = "master"
 	stateEndCombat        = "left"
 )
 
@@ -97,9 +100,32 @@ func (f *takeActionFlow) toggleState(ctx context.Context, fa link.FeatureAction)
 	if err != nil {
 		return err
 	}
+	// The line is written before the action's own event, which names it: the undo of the
+	// action takes the line back with it (linesBefore).
+	shown, reason := after, ""
+	if fa.StateActive {
+		shown, reason = now, stateEndByChoice
+	}
+	st := stateIn(shown, fa.State)
+	line, err := f.s.tableStateLine(ctx, f.c, f.who, st, !fa.StateActive, reason)
+	if err != nil {
+		return err
+	}
 	f.out.vitals = after
 	f.made.StatesBefore, f.made.StatesChanged = recs, true
+	f.made.StateLines = append(f.made.StateLines, line)
 	return nil
+}
+
+// stateIn is the state of the vitals with the key (an empty one with that key when the
+// vitals do not list it).
+func stateIn(v *playv1.CharacterVitals, key string) *playv1.ActiveState {
+	for _, st := range v.GetActiveStates() {
+		if st.GetKey() == key {
+			return st
+		}
+	}
+	return &playv1.ActiveState{Key: key}
 }
 
 // putStates sets the states of a player's character inside the combat's transaction, gives
@@ -136,9 +162,9 @@ func (u *undoer) statesBack(ctx context.Context, who playdb.Combatant, ev action
 }
 
 // tableStateLine writes the log line of a table state that began or ended, for the
-// combatant it belongs to.
-func (s *Service) tableStateLine(ctx context.Context, c *combatTx, who playdb.Combatant, st *playv1.ActiveState, started bool, reason string) error {
-	return insertEvent(ctx, c, eventStateChanged, &c.actorUserID, nil, actionEvent{
+// combatant it belongs to, and returns the line's id.
+func (s *Service) tableStateLine(ctx context.Context, c *combatTx, who playdb.Combatant, st *playv1.ActiveState, started bool, reason string) (string, error) {
+	return insertEventID(ctx, c, eventStateChanged, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateTable, Key: st.GetKey(), StateName: st.GetNamePt(), StateStarted: started, StateReason: reason,
 	})
 }
@@ -184,7 +210,7 @@ func (s *Service) endStatesWhere(ctx context.Context, c *combatTx, who playdb.Co
 	}
 	c.told = append(c.told, after)
 	for _, st := range ended {
-		if err := s.tableStateLine(ctx, c, who, st, false, reason); err != nil {
+		if _, err := s.tableStateLine(ctx, c, who, st, false, reason); err != nil {
 			return err
 		}
 	}
@@ -238,7 +264,7 @@ func (s *Service) tickOne(ctx context.Context, c *combatTx, who playdb.Combatant
 	}
 	c.told = append(c.told, after)
 	for _, st := range ended {
-		if err := s.tableStateLine(ctx, c, who, st, false, stateEndDuration); err != nil {
+		if _, err := s.tableStateLine(ctx, c, who, st, false, stateEndDuration); err != nil {
 			return err
 		}
 	}
@@ -262,6 +288,50 @@ func (s *Service) endCombatStates(ctx context.Context, c *combatTx, cs []playdb.
 	for _, who := range cs {
 		if err := s.endStatesWhere(ctx, c, who, stateEndCombat, func(st *playv1.ActiveState) bool { return st.GetDurationRounds() > 0 }); err != nil {
 			return fmt.Errorf("end the states with the combat: %w", err)
+		}
+	}
+	return nil
+}
+
+// endedBetween are the states the vitals had before and no longer have after.
+func endedBetween(before, after *playv1.CharacterVitals) []*playv1.ActiveState {
+	var out []*playv1.ActiveState
+	for _, st := range before.GetActiveStates() {
+		if !slices.ContainsFunc(after.GetActiveStates(), func(a *playv1.ActiveState) bool { return a.GetKey() == st.GetKey() }) {
+			out = append(out, st)
+		}
+	}
+	return out
+}
+
+// followEndedStates is what a change of the vitals that ended states leaves in the combat
+// of the character (the hit points at 0, the master's correction): its combatant takes the
+// numbers of the states it still has (a speed bonus ends with its state), and each state
+// that ended has its line. A character that is not in the combat leaves nothing to do.
+func (s *Service) followEndedStates(ctx context.Context, c *combatTx, characterID string, ended []*playv1.ActiveState, reasonOf func(key string) string) error {
+	if len(ended) == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	i := slices.IndexFunc(cs, func(cb playdb.Combatant) bool { return cb.Kind == kindPlayer && cb.CharacterID == characterID })
+	if i < 0 {
+		return nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{characterID})
+	if err != nil {
+		return err
+	}
+	if len(chars) == 1 {
+		if err := applyBody(ctx, c, cs[i], chars[0]); err != nil {
+			return err
+		}
+	}
+	for _, st := range ended {
+		if _, err := s.tableStateLine(ctx, c, cs[i], st, false, reasonOf(st.GetKey())); err != nil {
+			return err
 		}
 	}
 	return nil

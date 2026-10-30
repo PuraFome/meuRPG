@@ -671,6 +671,9 @@ type actionEvent struct {
 	StateStarted bool   `json:"state_started,omitempty"`
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
+	// StateLines are the lines of the table states an action began or ended by choice,
+	// written before its own event: its undo takes them back with it (linesBefore).
+	StateLines []string `json:"state_lines,omitempty"`
 	// StateName is the Portuguese name of the feature that defines a table state (the "table"
 	// kind) whose line this is; Key is the state's key. StatesBefore are the character's
 	// states before an action that began or ended one (StatesChanged): an undo puts them back.
@@ -740,11 +743,12 @@ type effectRef struct {
 
 // linesBefore are the lines the action wrote before its own event about what its undo
 // puts back: the "ended" lines of the effects it ended, the "added" lines of what those
-// left behind and the "revealed" lines of the creatures it revealed. The undo takes them
+// left behind, the "revealed" lines of the creatures it revealed and the lines of the
+// table states it began or ended. The undo takes them
 // back with the action (UndoneAlso), so that no log keeps them and they do not stop the
 // undo chain.
 func (ev actionEvent) linesBefore() []string {
-	return slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines)
+	return slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines, ev.StateLines)
 }
 
 // revealedIDs are the hidden creatures the event made appear: its list, and the targets of

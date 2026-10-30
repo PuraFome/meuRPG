@@ -757,6 +757,9 @@
   "state_started": true,
   "state_reason": "x",
   "state_id": "x",
+  "state_lines": [
+    "x"
+  ],
   "state_name": "x",
   "states_before": [
     {

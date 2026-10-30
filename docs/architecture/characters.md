@@ -373,7 +373,7 @@ Each method takes the caller's transaction and runs after the other module's own
 The states a table feature defines (a stance, a form) that are on for a character are `characters.active_states`, a JSON list of `{key, rounds_left}` in the order they began.
 It is a column of the character, not of the vitals, because the sheet's numbers depend on it: every `Derive` of the sheet (`derive`, `maxima`, the combat sheet) passes the keys as `Build.ActiveStates`, and the vitals view and its revision follow the column.
 `SetActiveStates` (the `VitalsKeeper` the combat calls) replaces the list and checks that every key is a state the sheet defines; a key the content does not define is dropped on the next write and ignored on read.
-A short rest ends the states that say `short_rest`, a long rest the ones that say `short_rest` or `long_rest`; reaching 0 hit points ends the ones that say `incapacitated`; `AdjustVitals` with `end_states` ends the keys it names.
+A short rest ends the states that say `short_rest`, a long rest the ones that say `short_rest` or `long_rest`; reaching 0 hit points ends the ones that say `incapacitated`; `AdjustVitals` with `end_states` ends the keys it names. The characters module only drops them; in a combat, play writes the combatant's numbers again and the state lines for what ended (outside a combat there is no combat log, so no line).
 Starting and counting down are the combat's ([Lasting effects](play/lasting-effects.md#table-states)).
 
 ## Vitals and rests
