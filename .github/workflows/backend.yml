@@ -271,7 +271,7 @@ jobs:
       # Docker Hub, whose anonymous pull limit GitHub's shared runners hit.
       # A digest names the bytes, so the registry does not change the image.
       # Keep the digest in sync with compose.yaml and compose.ci.yaml.
-      COCKROACH_IMAGE: us-docker.pkg.dev/cockroach-cloud-images/cockroachdb/cockroach:v26.2.7@sha256:9464ae30465b887295459b98d129a76d074caeaa4c86836d369c6d2fdddd1685
+      COCKROACH_IMAGE: us-docker.pkg.dev/cockroach-cloud-images/cockroachdb/cockroach:v26.2.8@sha256:1ad58b6a69928691e0c9289b847dcb35ac25108c6ead23fcabf47e37b9195e9a
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
