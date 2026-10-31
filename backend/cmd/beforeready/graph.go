@@ -22,17 +22,13 @@ func parseGraph(mod, text string) (dirs []string, deps map[string][]string, err 
 		if !ok {
 			continue
 		}
-		if !strings.Contains(path, " [") && !strings.HasSuffix(path, ".test") && !strings.HasSuffix(path, "_test") {
+		if isPlainPackage(path) {
 			isPkg[dir] = true
 		}
 		if sets[dir] == nil {
 			sets[dir] = map[string]bool{dir: true}
 		}
-		for _, d := range strings.Fields(rest) {
-			if dd, ok := moduleDir(mod, d); ok {
-				sets[dir][dd] = true
-			}
-		}
+		addModuleDirs(sets[dir], mod, rest)
 	}
 	if len(isPkg) == 0 {
 		return nil, nil, errors.New("go list found no package of the module " + mod)
@@ -49,6 +45,21 @@ func parseGraph(mod, text string) (dirs []string, deps map[string][]string, err 
 	}
 	sort.Strings(dirs)
 	return dirs, deps, nil
+}
+
+// isPlainPackage says whether an import path of go list -test is the package itself, not one
+// of its test variants.
+func isPlainPackage(p string) bool {
+	return !strings.Contains(p, " [") && !strings.HasSuffix(p, ".test") && !strings.HasSuffix(p, "_test")
+}
+
+// addModuleDirs adds the directories of the module packages among the space-separated imports.
+func addModuleDirs(set map[string]bool, mod, imports string) {
+	for _, d := range strings.Fields(imports) {
+		if dd, ok := moduleDir(mod, d); ok {
+			set[dd] = true
+		}
+	}
 }
 
 // moduleDir turns an import path of the module (or one of its test variants) into its

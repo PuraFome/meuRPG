@@ -152,30 +152,55 @@ func whyFile(l Line, f Facts, file, self string, deps map[string]bool, pkg strin
 	if why := whyEverything(file); why != "" {
 		return why
 	}
-	if file == listPath {
-		if f.NewLines == nil {
-			return file + " changed and the list of the merge base could not be read"
-		}
-		if f.NewLines[l.Raw] {
-			return "its line in " + file + " is new or changed"
-		}
+	if why := whyList(l, f, file); why != "" {
+		return why
 	}
-	if pkg == self {
+	switch {
+	case pkg == self:
 		return file + " is in the package"
-	}
-	if pkg != "" && deps[pkg] {
+	case pkg != "" && deps[pkg]:
 		return file + " is in " + strings.TrimPrefix(pkg, backendDir+"/") + ", which the package imports"
+	case isProtoSchema(file) && importsGenerated(deps):
+		return file + " is a proto file, and the package imports the code generated from proto/"
 	}
-	if strings.HasPrefix(file, "proto/") && file != errorReasons {
-		for d := range deps {
-			if d == genDir || strings.HasPrefix(d, genDir+"/") {
-				return file + " is a proto file, and the package imports the code generated from proto/"
-			}
+	if in := inputOf(l, file); in != "" {
+		return file + " is an input of the line (" + in + ")"
+	}
+	return ""
+}
+
+// whyList says why a change to the list itself selects the line: its line is new or changed.
+func whyList(l Line, f Facts, file string) string {
+	if file != listPath {
+		return ""
+	}
+	if f.NewLines == nil {
+		return file + " changed and the list of the merge base could not be read"
+	}
+	if f.NewLines[l.Raw] {
+		return "its line in " + file + " is new or changed"
+	}
+	return ""
+}
+
+func isProtoSchema(file string) bool {
+	return strings.HasPrefix(file, "proto/") && file != errorReasons
+}
+
+func importsGenerated(deps map[string]bool) bool {
+	for d := range deps {
+		if d == genDir || strings.HasPrefix(d, genDir+"/") {
+			return true
 		}
 	}
+	return false
+}
+
+// inputOf returns the input of the line that contains the file, or "".
+func inputOf(l Line, file string) string {
 	for _, in := range l.Inputs {
 		if file == in || strings.HasPrefix(file, strings.TrimSuffix(in, "/")+"/") {
-			return file + " is an input of the line (" + in + ")"
+			return in
 		}
 	}
 	return ""

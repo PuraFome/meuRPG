@@ -11,6 +11,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -239,7 +240,7 @@ func fields(s string) []string {
 
 // sh runs a command in dir and returns its stdout.
 func sh(dir string, name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	cmd.Dir = dir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
