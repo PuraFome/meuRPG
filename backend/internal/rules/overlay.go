@@ -877,7 +877,7 @@ const (
 	claimCreatures
 )
 
-// overlayKinds lists the ten kinds in the order addEntries adds them.
+// overlayKinds lists the kinds in the order addEntries adds them.
 func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 	return []overlayKind{
 		{
@@ -1150,7 +1150,17 @@ func checkTableKey(prefix, key string) error {
 // the words the engine reserves. It returns the reason (ReasonKey or ReasonReservedKey)
 // and the English message of the first thing wrong, or "" when the key is fine.
 func CheckEntryKey(kind, key string) (reason, message string) {
-	err := checkTableKey(kind+":", key)
+	return keyProblem(checkTableKey(kind+":", key))
+}
+
+// CheckOptionKey is CheckEntryKey for an option, whose key is "option:<set>:<slug>@mesa":
+// a known set and a slug as any key's. It gives the reason the overlay itself gives.
+func CheckOptionKey(key string) (reason, message string) {
+	return keyProblem(checkOptionKey(key))
+}
+
+// keyProblem is the reason and message of a key check's error, or "" and "" for none.
+func keyProblem(err error) (reason, message string) {
 	if err == nil {
 		return "", ""
 	}

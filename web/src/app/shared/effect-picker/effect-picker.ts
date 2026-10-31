@@ -13,6 +13,7 @@ import {
   UNREADABLE_RANGE,
   draftKey,
   emptyEffect,
+  meterKey,
   unreadableNumber,
 } from '../../core/content/effect-draft';
 import {
@@ -96,7 +97,7 @@ export class EffectPicker {
   protected readonly typeIssues = computed(() => this.issuesOf()(`${this.basePath()}.type`));
 
   private filled(f: EffectMenuField): boolean {
-    const v = this.effect()[draftKey(f.name)];
+    const v = this.effect()[meterKey(f.name) ?? draftKey(f.name)];
     return Array.isArray(v)
       ? v.length > 0
       : typeof v === 'number'
@@ -252,11 +253,12 @@ export class EffectPicker {
 
   /** What a field in metres holds (the server stores feet): the range and the melee reach. */
   protected meters(name: string): string {
-    return name === 'reach_ft' ? this.effect().reachM : this.effect().rangeM;
+    const key = meterKey(name);
+    return key ? this.effect()[key] : '';
   }
 
   protected inMeters(name: string): boolean {
-    return name === 'range_ft' || name === 'reach_ft';
+    return meterKey(name) !== undefined;
   }
 
   /** Whether a yes-or-no field is on. */
@@ -306,7 +308,7 @@ export class EffectPicker {
   }
 
   private unreadableText(f: EffectMenuField): string {
-    if (f.name === 'range_ft' || f.name === 'reach_ft') {
+    if (this.inMeters(f.name)) {
       return UNREADABLE_RANGE;
     }
     return f.min < 0 ? UNREADABLE_BONUS : UNREADABLE_COUNT;
@@ -317,7 +319,10 @@ export class EffectPicker {
   }
 
   protected setMeters(name: string, text: string): void {
-    this.effectChange.emit({ ...this.effect(), [name === 'reach_ft' ? 'reachM' : 'rangeM']: text });
+    const key = meterKey(name);
+    if (key) {
+      this.effectChange.emit({ ...this.effect(), [key]: text });
+    }
   }
 
   protected setChoice(f: EffectMenuField, value: string): void {

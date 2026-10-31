@@ -231,6 +231,8 @@ func TestCheckPackIsFrozen(t *testing.T) {
 			&rulesv1.TableEntry{Key: "feat:sem-nome@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, Body: &rulesv1.TableEntry_TableFeat{TableFeat: &rulesv1.TableFeat{NamePt: "c"}}},
 			&rulesv1.TableEntry{Key: "race:raca@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_RACE, NamePt: "r", Body: &rulesv1.TableEntry_TableRace{TableRace: &rulesv1.TableRace{NamePt: "r"}}},
 			&rulesv1.TableEntry{Key: "feat:wild-shape@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, NamePt: "w", Body: &rulesv1.TableEntry_TableFeat{TableFeat: &rulesv1.TableFeat{NamePt: "w"}}},
+			&rulesv1.TableEntry{Key: "option:fighting_style:guarda@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, NamePt: "g", Body: &rulesv1.TableEntry_TableOption{TableOption: &rulesv1.TableOption{NamePt: "g", Set: "fighting_style"}}},
+			&rulesv1.TableEntry{Key: "option:nenhum:guarda@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, NamePt: "g", Body: &rulesv1.TableEntry_TableOption{TableOption: &rulesv1.TableOption{NamePt: "g", Set: "fighting_style"}}},
 		), map[int][]*rulesv1.TableContentViolation{
 			2: {{Field: "table_feat.x", Reason: reasonUnknownField, Key: "feat:um@mesa", Message: "the field \"x\" does not exist"}},
 			3: {{Field: "table_feat.y", Reason: reasonUnknownField}},

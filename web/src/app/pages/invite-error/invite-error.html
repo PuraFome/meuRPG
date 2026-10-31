@@ -11,5 +11,9 @@
     </p>
   </div>
 
+  @if (claimHint()) {
+    <p class="mr-muted">{{ claimHint() }}</p>
+  }
+
   <a matButton="filled" routerLink="/">Voltar para o início</a>
 </div>

@@ -97,16 +97,18 @@
       "entries": [
         "2 feat:um@mesa TABLE_CONTENT_KIND_FEAT um unknown=table_feat.x",
         "7 feat:sem-nome@mesa TABLE_CONTENT_KIND_FEAT c unknown=",
-        "8 race:raca@mesa TABLE_CONTENT_KIND_RACE r unknown="
+        "8 race:raca@mesa TABLE_CONTENT_KIND_RACE r unknown=",
+        "10 option:fighting_style:guarda@mesa TABLE_CONTENT_KIND_OPTION g unknown="
       ],
       "violations": [
-        "pack.entries[0].kind | bad_value |  | the kind of an entry is one of the ten kinds",
+        "pack.entries[0].kind | bad_value |  | the kind of an entry is one of the kinds of table content",
         "pack.entries[1].key | bad_key |  | the slug may only have a-z, 0-9 and -",
         "pack.entries[3].key | duplicate_key |  | the pack has this key twice",
         "pack.entries[4].body | bad_value |  | an entry has exactly the body of its kind",
         "pack.entries[5].body | bad_value |  | an entry has exactly the body of its kind",
         "pack.entries[6].name_pt | bad_value |  | the name of an entry is the name in its body",
-        "pack.entries[9].key | reserved_key |  | the slug cannot have \"wild-shape\": the engine reads it in SRD keys, so it is reserved"
+        "pack.entries[9].key | reserved_key |  | the slug cannot have \"wild-shape\": the engine reads it in SRD keys, so it is reserved",
+        "pack.entries[11].key | bad_key |  | the key names an unknown option set \"nenhum\""
       ]
     }
   }

@@ -43,8 +43,8 @@ func TestThunderwavePushesAFailedSaveTenFeetAway(t *testing.T) {
 	c.wave(t)
 	wantSquare(t, c, "Goblin 1", [2]int32{20, 7})
 	wantSquare(t, c, "Goblin 2", [2]int32{22, 8})
-	if got := c.castTargetsOf(t, c.get(t, c.master))["Goblin 1"].GetPushedFt(); got != 10 {
-		t.Errorf("the log says Goblin 1 was pushed %d ft, want 10", got)
+	if tg := c.castTargetsOf(t, c.get(t, c.master))["Goblin 1"]; tg.GetPushedFt() != 10 || tg.GetPushStopped() {
+		t.Errorf("the log says Goblin 1 was pushed %d ft, stopped %v, want 10 ft and not stopped", tg.GetPushedFt(), tg.GetPushStopped())
 	}
 
 	c.undoLast(t)
@@ -60,6 +60,38 @@ func TestThunderwavePushStopsBeforeAWall(t *testing.T) {
 
 	c.wave(t)
 	wantSquare(t, c, "Goblin 1", [2]int32{22, 6})
+	if tg := c.castTargetsOf(t, c.get(t, c.master))["Goblin 1"]; tg.GetPushedFt() != 5 || !tg.GetPushStopped() {
+		t.Errorf("the log says Goblin 1 was pushed %d ft, stopped %v, want 5 ft and stopped", tg.GetPushedFt(), tg.GetPushStopped())
+	}
+}
+
+// TestThunderwavePushAgainstTheWallMovesNobodyAndSaysSo: the goblin already stands against the
+// east wall, so it fails the save, keeps its square, and the log says the push was stopped.
+func TestThunderwavePushAgainstTheWallMovesNobodyAndSaysSo(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	c.waveFight(t, [2]int32{21, 6}, [2]int32{22, 6})
+
+	c.wave(t)
+	wantSquare(t, c, "Goblin 1", [2]int32{22, 6})
+	if tg := c.castTargetsOf(t, c.get(t, c.master))["Goblin 1"]; tg.GetPushedFt() != 0 || !tg.GetPushStopped() {
+		t.Errorf("the log says Goblin 1 was pushed %d ft, stopped %v, want 0 ft and stopped", tg.GetPushedFt(), tg.GetPushStopped())
+	}
+}
+
+// TestThunderwaveLeavesACreatureThatSavesWhereItStands: a save that holds moves nobody and the
+// log has no push.
+func TestThunderwaveLeavesACreatureThatSavesWhereItStands(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	c.waveFight(t, [2]int32{17, 7}, [2]int32{18, 7})
+
+	c.h.roller.queue(20, 20, 20, 20)
+	c.wave(t)
+	wantSquare(t, c, "Goblin 1", [2]int32{18, 7})
+	if tg := c.castTargetsOf(t, c.get(t, c.master))["Goblin 1"]; tg.GetPushedFt() != 0 || tg.GetPushStopped() || tg.GetPushNoMap() {
+		t.Errorf("the log says Goblin 1 was pushed %d ft, stopped %v, no map %v, want no push", tg.GetPushedFt(), tg.GetPushStopped(), tg.GetPushNoMap())
+	}
 }
 
 // TestThunderwavePushStopsBeforeACreature: Toren stands two squares behind the goblin, outside

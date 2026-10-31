@@ -312,6 +312,12 @@ a.mr-list__row:hover .mr-list__name {
   }
 }
 
+// The live region around notices that come and go: it is on the page before
+// the text, so a screen reader announces what arrives. It draws no box.
+.mr-live {
+  display: contents;
+}
+
 // Screen-reader-only text.
 .mr-visually-hidden {
   position: absolute;

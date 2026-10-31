@@ -217,7 +217,8 @@ jobs:
           GROUP: ${{ matrix.group }}
         run: |
           mkdir -p result
-          run_regex=$(.github/scripts/go-db-shard.sh --run "$GROUP")
+          # The script lists the packages with `go list`, which needs backend's go.mod.
+          run_regex=$(cd backend && ../.github/scripts/go-db-shard.sh --run "$GROUP")
           node .github/scripts/flake.mjs parse go "$RUNNER_TEMP/go-$GROUP.json" --side nightly --count 3 --run "$run_regex" > result/result.json
           cat result/result.json
 
