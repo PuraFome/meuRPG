@@ -2,7 +2,6 @@ import {
   Component,
   ElementRef,
   Injector,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -40,10 +39,11 @@ import {
   rowsEdited,
   rowsOfTable,
   sortedFeatures,
+  unreadableClassPaths,
 } from '../../../core/content/class-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
 import {
   ABILITY_FIELDS,
   type AbilityField,
@@ -440,7 +440,12 @@ export class ClassEditor {
     isKnownPath(path, this.draft(), this.columns(), this.menu());
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
+    if (this.saver.saving() || this.saveBlocked()) {
+      return;
+    }
+    const unreadable = unreadableClassPaths(this.draft().features, this.menu());
+    if (unreadable.length > 0) {
+      this.reveal(unreadable[0]);
       return;
     }
     const body: EntryBody = { case: 'tableClass', value: draftToClass(this.draft(), this.menu()) };
@@ -453,24 +458,21 @@ export class ClassEditor {
       return;
     }
     const first = this.saver.placement().fields[0];
-    // The refused feature is opened, so its input exists when the focus goes there.
-    const feature = first
-      ? featureIdOfPath(
-          this.draft().features,
-          (k) => classFeatureBase(this.draft().features, k),
-          first,
-        )
-      : '';
+    if (first) {
+      this.reveal(first);
+    }
+  }
+
+  /** Opens the feature that holds the path, so its input exists, and focuses the input. */
+  private reveal(path: string): void {
+    const feature = featureIdOfPath(
+      this.draft().features,
+      (k) => classFeatureBase(this.draft().features, k),
+      path,
+    );
     if (feature) {
       this.openFeature.set(feature);
     }
-    afterNextRender(
-      () => {
-        if (first) {
-          focusField(this.host.nativeElement, first);
-        }
-      },
-      { injector: this.injector },
-    );
+    focusAfterRender(this.host.nativeElement, this.injector, path);
   }
 }

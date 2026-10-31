@@ -5,7 +5,7 @@ import {
   type EffectMenuVm,
   draftToEffect,
   emptyEffect,
-  holdsUnreadableNumber,
+  unreadableNumberPaths,
 } from '../../core/content/effect-draft';
 import {
   conditionMenu,
@@ -715,7 +715,7 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
       expect(input.getAttribute('aria-invalid')).toBe('true');
       expect(text(el)).toContain('Escreva um número inteiro, como 2.');
       // an editor does not save a draft that holds it
-      expect(holdsUnreadableNumber(emitted.at(-1))).toBe(true);
+      expect(unreadableNumberPaths('x', [emitted.at(-1)!], menu())).toEqual(['x[0].count']);
     });
   }
 
@@ -727,8 +727,35 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
     expect(emitted.at(-1)?.count).toBe(3);
     expect(input.getAttribute('aria-invalid')).toBeNull();
     expect(asked()).not.toContain('Escreva um número inteiro');
-    expect(holdsUnreadableNumber(emitted.at(-1))).toBe(false);
+    expect(unreadableNumberPaths('x', [emitted.at(-1)!], menu())).toEqual([]);
     expect(draftToEffect(emitted.at(-1)!, menu()).count).toBe(3);
+  });
+
+  it('reads a sign where the menu allows one: "+1" is a bonus of 1, "+1" in a count is a 1 too', () => {
+    setup(emptyEffect('weapon_rule'), stateMenu());
+    typeInto('attack_bonus', '+1');
+    expect(emitted.at(-1)?.attackBonus).toBe(1);
+    typeInto('attack_bonus', '-2');
+    expect(emitted.at(-1)?.attackBonus).toBe(-2);
+    setup({ ...emptyEffect('choice'), choice: 'skill', count: 2 });
+    typeInto('count', '+3');
+    expect(emitted.at(-1)?.count).toBe(3);
+    typeInto('count', '-3');
+    expect(emitted.at(-1)?.count).toBeNaN();
+  });
+
+  it('never shows the text typed for another effect: a picker reused for the next effect shows the error on an empty field', () => {
+    const first = { ...emptyEffect('choice'), choice: 'skill', count: 2 };
+    setup(first);
+    const input = typeInto('count', 'abc');
+    expect(input.value).toBe('abc');
+    const second = { ...emptyEffect('choice'), choice: 'skill', count: Number.NaN };
+    fixture.componentRef.setInput('effect', second);
+    fixture.detectChanges();
+    const again = field('count') as HTMLInputElement;
+    expect(again.value).toBe('');
+    expect(again.getAttribute('aria-invalid')).toBe('true');
+    expect(text(el)).toContain('Escreva um número inteiro, como 2.');
   });
 
   it('reads an empty field as "not set", and a bonus may be negative', () => {

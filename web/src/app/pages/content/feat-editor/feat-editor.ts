@@ -17,8 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
 import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
-import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
+import { EntrySaver, focusAfterRender, focusField } from '../../../core/content/entry-saver';
+import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import {
   type FeatDraft,
   type Scores,
@@ -26,6 +26,7 @@ import {
   emptyFeat,
   featPaths,
   featToDraft,
+  unreadableFeatPaths,
 } from '../../../core/content/feat-draft';
 import {
   ABILITY_FIELDS,
@@ -145,7 +146,12 @@ export class FeatEditor {
     featPaths(this.draft(), this.menu()).includes(path);
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
+    if (this.saver.saving() || this.saveBlocked()) {
+      return;
+    }
+    const unreadable = unreadableFeatPaths(this.draft(), this.menu());
+    if (unreadable.length > 0) {
+      focusAfterRender(this.host.nativeElement, this.injector, unreadable[0]);
       return;
     }
     const body: EntryBody = {

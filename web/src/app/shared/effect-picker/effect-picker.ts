@@ -223,7 +223,7 @@ export class EffectPicker {
       ? v
       : typeof v === 'number'
         ? Number.isNaN(v)
-          ? (this.unreadable()[name] ?? '')
+          ? (this.unreadable()[this.typedKey(name)] ?? '')
           : v !== 0
             ? String(v)
             : ''
@@ -260,16 +260,22 @@ export class EffectPicker {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: text });
   }
 
-  /** What was typed in a number field the draft cannot hold (a NaN there), by field name: the field shows it with its error. */
+  /** What was typed in a number field of the effect shown that the draft cannot hold (a NaN there), by the effect's id and the field.
+   * It lives as long as this picker: a picker made new for the same effect, or reused for another, shows the error on an empty field. */
   private readonly unreadable = signal<Readonly<Record<string, string>>>({});
 
-  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. An empty field is 0, "not set".
-   * Anything else is kept as typed and the draft holds a NaN, so a save is refused instead of sending 0. */
+  private typedKey(name: string): string {
+    return `${this.effect().id}:${name}`;
+  }
+
+  /** A whole number, with a sign where the menu allows one (a bonus may be negative, and "+1" reads as 1). An empty field is 0, "not set".
+   * Anything else is kept as typed and the draft holds a NaN, so an editor does not save instead of sending 0. */
   protected setNumber(f: EffectMenuField, text: string): void {
     const t = text.trim();
-    const ok = (f.min < 0 ? /^-?\d+$/ : /^\d+$/).test(t);
-    const { [f.name]: _, ...rest } = this.unreadable();
-    this.unreadable.set(t === '' || ok ? rest : { ...rest, [f.name]: text });
+    const ok = (f.min < 0 ? /^[+-]?\d+$/ : /^\+?\d+$/).test(t);
+    const key = this.typedKey(f.name);
+    const { [key]: _, ...rest } = this.unreadable();
+    this.unreadable.set(t === '' || ok ? rest : { ...rest, [key]: text });
     this.effectChange.emit({
       ...this.effect(),
       [camel(f.name)]: t === '' ? 0 : ok ? Number(t) : Number.NaN,
