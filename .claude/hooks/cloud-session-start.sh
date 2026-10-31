@@ -5,7 +5,9 @@
 # The environment's setup script installs Docker, the CockroachDB image and the native cockroach
 # binary. A VM keeps its files when it is restored but not its processes, so every start and resume
 # brings up dockerd and the in-memory test CockroachDB (`make db-test-start`, localhost:26258) and
-# hands the session MEURPG_TEST_DATABASE_URL. Outside a cloud session it does nothing.
+# hands the session MEURPG_TEST_DATABASE_URL. It also installs the pre-push hook (.claude/hooks/pre-push),
+# which runs CI's linters on what a work branch changed before it is pushed. Outside a cloud session it
+# does nothing.
 [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] || exit 0
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 
@@ -16,6 +18,8 @@ SUDO=
 
 {
   date
+  hooks="$(git rev-parse --git-common-dir)/hooks"
+  mkdir -p "$hooks" && install -m 755 .claude/hooks/pre-push "$hooks/pre-push"
   if ! docker info >/dev/null 2>&1; then
     $SUDO nohup dockerd >/tmp/dockerd.log 2>&1 &
     for _ in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 1; done
