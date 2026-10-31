@@ -47,7 +47,7 @@ func vitalsGoldenRich() vitalsMax {
 	m := vitalsMax{
 		hitPoints: 30, pactLevel: 2, pactSlots: 2,
 		hitDice:      []rules.HitDice{{Die: 10, Count: 2}, {Die: 6, Count: 3}},
-		hitDiceTotal: 5, wizardLevel: 3, conMod: 2,
+		hitDiceTotal: 5, classLevels: map[string]int{"class:wizard": 3}, conMod: 2,
 		resources: []rules.Resource{
 			{Key: "arcane_recovery", NamePT: "Recuperação Arcana", Max: 1, Recharge: rules.RechargeLongRest},
 			{Key: "second_wind", NamePT: "Retomar o Fôlego", Max: 1, Recharge: rules.RechargeShortRest},
@@ -298,4 +298,24 @@ func vitalsPreview(flat map[string]string) string {
 		delete(flat, k)
 	}
 	return fieldsMoved(map[string]string{}, flat)
+}
+
+// The allowance of a slot recovery counts the levels of its class alone, and only on a sheet that
+// has the feature (its resource): a druid of another circle has none.
+func TestRecoveryAllowanceCountsOnlyTheClassAndNeedsTheResource(t *testing.T) {
+	t.Parallel()
+	land := vitalsMax{
+		classLevels: map[string]int{"class:fighter": 4, "class:druid": 5},
+		resources:   []rules.Resource{{Key: "natural_recovery", Max: 1, Recharge: rules.RechargeLongRest}},
+	}
+	if got := land.recoveryAllowance(rules.NaturalRecovery); got != 3 {
+		t.Errorf("Land druid 5 / fighter 4: natural allowance = %d, want 3", got)
+	}
+	if got := land.recoveryAllowance(rules.ArcaneRecovery); got != 0 {
+		t.Errorf("no wizard: arcane allowance = %d, want 0", got)
+	}
+	other := vitalsMax{classLevels: map[string]int{"class:druid": 5}}
+	if got := other.recoveryAllowance(rules.NaturalRecovery); got != 0 {
+		t.Errorf("druid without the feature: allowance = %d, want 0", got)
+	}
 }

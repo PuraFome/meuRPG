@@ -1382,6 +1382,10 @@ message CharacterVitals {
   // turn counts down `rounds_left`; a rest, an incapacity and the end of a combat end
   // the ones that say so; the master's correction ends one by hand.
   repeated ActiveState active_states = 103;
+  // The combined level of spell slots the Circle of the Land druid's Natural Recovery
+  // gives back (half the DRUID level, rounded up; SRD 5.1, Druid 2). 0: the character
+  // does not have the feature. Whether the use is left is the `natural_recovery` resource.
+  int32 natural_recovery_allowance = 104;
 }
 
 // ActiveState is a temporary state that is on for a character. The numbers about the

@@ -691,28 +691,29 @@ func (s *Service) ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, c
 	return r.view, after, gain, nil
 }
 
-// UseArcaneRecovery spends the wizard's use and gives back the expended spell slots
-// (SRD 5.1, Wizard, Arcane Recovery): slots maps a spell level to how many slots of it
-// come back. Only the spellcasting slots count, never the pact slots, and only the
-// WIZARD level sets the allowance. It returns the vitals before and after and the
-// combined level recovered. The refusals are link's: ErrNoResource (not a wizard),
-// ErrNoUsesLeft, ErrSlotLevelTooHigh (a slot of the 6th level or higher),
-// ErrSlotNotExpended and ErrArcaneOver (a PointsError: the combined level asked and the
-// allowance). It implements play.RestKeeper.
-func (s *Service) UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error) {
+// UseSlotRecovery spends the use of a slot recovery and gives back the expended spell
+// slots (SRD 5.1, Wizard, Arcane Recovery; Druid, Natural Recovery): slots maps a spell
+// level to how many slots of it come back. Only the spellcasting slots count, never the
+// pact slots, and only the levels of the recovery's class set the allowance. It returns the
+// vitals before and after and the combined level recovered. The refusals are link's:
+// ErrNoResource (the sheet lacks the feature), ErrNoUsesLeft, ErrSlotLevelTooHigh (a slot of
+// the 6th level or higher), ErrSlotNotExpended and ErrSlotRecoveryOver (a PointsError: the
+// combined level asked and the allowance). It implements play.RestKeeper.
+func (s *Service) UseSlotRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, rec rules.SlotRecovery, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error) {
 	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	use, left := resourceLeft(r.view, rules.ArcaneRecoveryKey)
-	if use == nil || r.m.wizardLevel < 1 {
+	use, left := resourceLeft(r.view, rec.ResourceKey)
+	classLevel := r.m.recoveryLevel(rec)
+	if use == nil || classLevel < 1 {
 		return nil, nil, 0, link.ErrNoResource
 	}
 	if left < 1 {
 		return nil, nil, 0, link.ErrNoUsesLeft
 	}
 	for level := range slots {
-		if level > rules.ArcaneRecoveryMaxSlotLevel {
+		if level > rules.SlotRecoveryMaxSlotLevel {
 			return nil, nil, 0, link.ErrSlotLevelTooHigh
 		}
 	}
@@ -721,12 +722,12 @@ func (s *Service) UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, 
 			return nil, nil, 0, link.ErrSlotNotExpended
 		}
 	}
-	levels, err = rules.ArcaneRecoveryCheck(slots, r.m.wizardLevel)
+	levels, err = rules.SlotRecoveryCheck(slots, classLevel)
 	if err != nil {
-		return nil, nil, 0, &link.PointsError{Err: link.ErrArcaneOver, Needed: levels, Available: rules.ArcaneRecoveryAllowance(r.m.wizardLevel)}
+		return nil, nil, 0, &link.PointsError{Err: link.ErrSlotRecoveryOver, Needed: levels, Available: rules.SlotRecoveryAllowance(classLevel)}
 	}
 	after = proto.CloneOf(r.view)
-	u, _ := resourceLeft(after, rules.ArcaneRecoveryKey)
+	u, _ := resourceLeft(after, rec.ResourceKey)
 	u.Used++
 	for level, count := range slots {
 		slotOf(after, i32(level)).Used -= i32(count)

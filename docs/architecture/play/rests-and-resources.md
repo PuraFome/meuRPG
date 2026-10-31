@@ -41,7 +41,8 @@ The table's content adds `restore_one_on_short_rest` (one use on a short rest, a
 A rest is refused with `COMBAT_OPEN` while a combat is running.
 
 **The clock.** The SRD allows one long rest in 24 hours and the app keeps no game clock, so it records the rest and warns: `GetRestPreview.long_rest_already_taken` says the open session already had one, and `TakeRest` never refuses for it.
-**Not tracked:** the death saves (they live on the combatant of one combat), and the slots Arcane Recovery and Natural Recovery choose (a use is a counter a long rest returns; the master adjusts slots by hand).
+**Not tracked:** the death saves (they live on the combatant of one combat).
+The slots Arcane Recovery and Natural Recovery give back are chosen by the player (see below).
 A rest also moves game time on (`advanceGameTime`), which ends effects whose seconds run out (see [Lasting effects](lasting-effects.md)) and spells that last (see [Casting](casting.md)).
 
 ### The table's hooks on a rest
@@ -76,11 +77,15 @@ A typed roll must send `typed_song_face`, or the call is refused with `ResourceB
 The answer and the event carry `song_of_rest_sides` and `song_of_rest_face`.
 Tests: `TestSongOfRest*`, `TestTheSongsDieRolledWithARealDieIsTyped` (`play`), `TestSongOfRestDieFollowsTheBardLevel` (`rules`).
 
+Wholeness of Body (`wholeness_of_body`, one use, recharge `long_rest`) is the resource of an action in a combat: `TakeAction` spends the use and heals (see [Attacks and damage](attacks-and-damage.md#standard-and-feature-actions)).
+A long rest gives the use back.
+
 ## Class resource flows
 
-Each flow is a `ResourceService` call and an `action_taken` event with a `resourceEvent`; the master's undo takes them back (see [Undo](undo.md)).
+Each flow below, except the two slot recoveries, is a `ResourceService` call and an `action_taken` event with a `resourceEvent`; the master's undo takes them back (see [Undo](undo.md)).
+Arcane Recovery and Natural Recovery are their own keyed events and have no undo.
 The pure rules are in `rules` (`rest.go`, `resources.go`, `metamagic.go`); the numbers that change are `characters`' (`rests.go`), reached through `RestKeeper`.
-The code is `resources.go` (rests), `combat_resources.go`, `combat_metamagic.go` and `combat_inspiration.go` (flows) and `resources_arcane.go`.
+The code is `resources.go` (rests), `combat_resources.go`, `combat_metamagic.go` and `combat_inspiration.go` (flows) and `resources_slot_recovery.go`.
 
 ### Flexible Casting (sorcerer 2)
 
@@ -89,13 +94,19 @@ The slot is stored in `character_vitals.spell_slots_created` and counts in the l
 `ConvertSpellSlot(level)` spends one free slot for as many points as its level.
 Sorcery points are the resource `sorcery_points`, whose maximum is the sorcerer level; a conversion past the maximum is refused (`SORCERY_POINTS_FULL`, `SORCERY_POINTS_OVER`), carrying the points and the maximum.
 
-### Arcane Recovery (wizard 1)
+### Arcane Recovery (wizard 1) and Natural Recovery (Circle of the Land druid 2)
 
 After a short rest, `UseArcaneRecovery(character, slots)` spends the resource `arcane_recovery` (one use, recharge `long_rest`) and lowers `used` of the chosen slots, in one transaction that locks the session, checks the key (scoped to the character) and writes the vitals and the `arcane_recovery_used` event (levels and counts only).
-The rules are `rules.ArcaneRecoveryAllowance` (half the wizard level, rounded up) and `rules.ArcaneRecoveryCheck` (levels 1 to 5, combined level within the allowance).
+`UseNaturalRecovery` is the same call for the resource `natural_recovery` and the DRUID level, and writes `natural_recovery_used`.
+Both run one path (`useRecovery`, `characters.UseSlotRecovery`) parameterised by a `rules.SlotRecovery` (resource key and class key).
+Only the levels of that class count in a multiclass character, and the pact slots never do.
+A character without the resource, such as a druid of another circle, is refused with `NOT_AVAILABLE`.
+The master corrects a wrong recovery with `AdjustCharacterVitals`; there is no undo.
+The rules are `rules.SlotRecoveryAllowance` (half the class level, rounded up) and `rules.SlotRecoveryCheck` (levels 1 to 5, combined level within the allowance).
 The character checks are `characters`'; their refusals are `ResourceBlocked` reasons: `NOT_AVAILABLE`, `NO_USES_LEFT`, `SLOT_LEVEL_TOO_HIGH`, `SLOT_NOT_EXPENDED`, `OVER_ALLOWANCE` (with the level asked and the allowance).
 The call needs the latest `rest_taken` of the open session to be a short rest (`NO_SHORT_REST` otherwise) and no combat open.
-`CharacterVitals.arcane_recovery_allowance` lets the sheet word the allowance.
+`CharacterVitals.arcane_recovery_allowance` and `natural_recovery_allowance` let the sheet word the allowance; each is 0 for a character without the feature.
+The short rest sheet has one section for each recovery the character has.
 
 ### Lay on Hands (paladin 1)
 
