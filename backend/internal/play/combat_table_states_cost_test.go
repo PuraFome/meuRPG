@@ -69,7 +69,7 @@ func TestTheTurnStartDerivesNoSheetForACharacterWithoutStates(t *testing.T) {
 func TestMageArmorArmorClassCountsTheStatesThatAreOn(t *testing.T) {
 	t.Parallel()
 	r := newStanceRig(t, stanceEffects("10", "dismiss"))
-	mageArmorAC := func() int32 {
+	mageArmorAC := func() int {
 		t.Helper()
 		tx, err := r.a.h.pool.Begin(t.Context())
 		if err != nil {
@@ -83,7 +83,7 @@ func TestMageArmorArmorClassCountsTheStatesThatAreOn(t *testing.T) {
 		if !got.Applies || got.Wears {
 			t.Fatalf("MageArmorAC() = %+v, want it to apply to a character that wears no armor", got)
 		}
-		return int32(got.AC)
+		return got.AC
 	}
 	off := mageArmorAC()
 	r.mustToggle(t, stanceName, false) // +2 AC while the stance is on
