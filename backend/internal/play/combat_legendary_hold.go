@@ -74,15 +74,18 @@ type resistScope struct {
 
 // guardResistance opens the savepoint of a cast that may be held: a spell with a saving throw that has, among
 // its targets, a creature with Legendary Resistance and a use left whose save the master has not decided yet.
-// Any other cast is made as it always was.
+// The replay of an answered window has the savepoint too, so a replay that is dropped leaves nothing.
+// A spell cast by a creature that is not a player's character, and any other cast, is made as it always was.
 func (f *castFlow) guardResistance(ctx context.Context) (*resistScope, error) {
-	if f.sp.SaveAbility == "" || f.sp.AttackType != "" || f.sp.HP != nil || f.laysZone() {
+	if f.caster.Kind != kindPlayer || f.sp.SaveAbility == "" || f.sp.AttackType != "" || f.sp.HP != nil || f.laysZone() {
 		return nil, nil
 	}
 	capable := map[string]bool{}
+	replaying := false
 	for _, t := range f.targs {
 		if f.c.replay.keptSave(t.ID) != nil {
-			continue // decided already: the replay of the window's answer
+			replaying = true // decided already: the replay of the window's answer
+			continue
 		}
 		_, left, err := f.s.resistanceOf(ctx, f.c, t)
 		if err != nil {
@@ -90,7 +93,7 @@ func (f *castFlow) guardResistance(ctx context.Context) (*resistScope, error) {
 		}
 		capable[t.ID] = left > 0
 	}
-	if !anyTrue(capable) {
+	if !replaying && !anyTrue(capable) {
 		return nil, nil
 	}
 	sp, err := f.c.tx.Begin(ctx)
@@ -210,7 +213,11 @@ type savedDice struct {
 // saveDice rolls the dice of a target's saving throw against a spell, or lands the dice the held cast rolled
 // for it: the replay of a window's answer never rolls a save twice.
 func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save, mode combat.RollMode, sheet link.Sheet, effects []effectDie) (savedDice, error) {
-	if out, ok := keptDice(c.replay.keptSave(target.ID), save.Bonus, mode, effects); ok {
+	if k := c.replay.keptSave(target.ID); k != nil {
+		out, ok := keptDice(k, save.Bonus, mode, effects)
+		if !ok {
+			return savedDice{}, fmt.Errorf("the held save of %s does not fit the save as it stands: %w", target.ID, errKeptDiceMismatch)
+		}
 		return out, nil
 	}
 	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
@@ -230,10 +237,13 @@ func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save,
 	return savedDice{d20: d20, lucky: lucky, extra: extra, extraTotal: extraTotal}, nil
 }
 
+// errKeptDiceMismatch is the replay of a held save whose kept dice no longer fit it.
+var errKeptDiceMismatch = errors.New("kept dice mismatch")
+
 // keptDice rebuilds the dice of a save from the roll the hold kept: the faces in the order they were rolled,
 // the die that counted, the die Lucky rolled again and the faces of the effects' dice (which the state still
-// lists, in the same order). It answers false when the roll does not fit the save as it stands, which makes the
-// replay roll it as any save.
+// lists, in the same order). It answers false when the roll does not fit the save as it stands: the replay then
+// fails and the hold is dropped, since a save is never rolled twice.
 func keptDice(k *saveRoll, bonus int, mode combat.RollMode, effects []effectDie) (savedDice, bool) {
 	if k == nil || k.Auto || k.Sculpted || k.D20 == 0 || len(k.Extra) != len(effects) {
 		return savedDice{}, false

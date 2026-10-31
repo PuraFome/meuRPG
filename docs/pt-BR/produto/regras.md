@@ -747,7 +747,10 @@ No teatro da mente (RN-25) os monstros não têm quadrado.
 Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso numa salvaguarda que falha, por escolha do mestre: nas salvaguardas que o mestre rola por ele (a de um efeito e a de concentração) ele pede a característica junto com a rolagem, e uma rolagem que falha vira sucesso e gasta um uso.
 Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
 A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que a salvaguarda teve sucesso (RN-20).
-Quando a magia de um jogador faz o monstro falhar numa salvaguarda (num alvo ou em vários), o lançamento espera o mestre, que vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, ou deixa como estão (RN-31). Os mesmos dados resolvem o lançamento. A salvaguarda contra uma zona de magia, a de uma armadilha e a de um efeito de acerto de arma não oferecem a característica.
+Quando a magia de um jogador faz o monstro falhar numa salvaguarda (num alvo ou em vários), o lançamento espera o mestre (RN-31).
+Ele vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, ou deixa como estão.
+Os mesmos dados resolvem o lançamento.
+Nenhuma outra salvaguarda que o app rola pela criatura oferece a característica: nem a contra uma zona de magia, uma armadilha, o efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria

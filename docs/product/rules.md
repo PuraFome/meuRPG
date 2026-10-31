@@ -747,7 +747,10 @@ In theatre of the mind (RN-25) monsters have no square.
 A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice: for the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll, and a roll that fails becomes a success that spends one use.
 A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and the uses are the combat's (a new combat starts with all of them).
 The master's log line says the roll and the choice; the player's line says the save succeeded (RN-20).
-When a player's spell makes it fail a saving throw (on one target or many), the cast waits for the master, who sees the failed roll and turns the failures he chooses, one use each, or lets them stand (RN-31). The same dice settle the cast. The save against a spell zone, a trap's save and a weapon's rider save are not offered the trait.
+When a player's spell makes it fail a saving throw (on one target or many), the cast waits for the master (RN-31).
+He sees the failed roll and turns the failures he chooses, one use each, or lets them stand.
+The same dice settle the cast.
+No other save the app rolls for the creature offers the trait: not the save against a spell zone, a trap, a weapon's rider, Turn Undead or Hellish Rebuke.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates

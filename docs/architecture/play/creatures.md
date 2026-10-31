@@ -149,7 +149,9 @@ The players' line of the cast is a save that passed.
 A hold that is dropped (the combat ends, the cast is no longer possible) spends nothing and leaves no part of the cast.
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
 
-Not covered, so a failed save stays failed there: the save a creature makes against a spell zone, a trap's save, and the save of a weapon's hit rider.
+Only a player's spell offers the trait to a save the app rolls.
+Not covered, so a failed save stays failed there: the save against a spell zone, a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead, and the Dexterity save against Hellish Rebuke.
+A spell cast for an NPC is not offered either.
 
 ## On screen
 

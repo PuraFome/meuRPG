@@ -164,6 +164,27 @@ func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, by
 	}
 }
 
+// masterClosedText is the sentence a window that closed by itself leaves for the master. The window of
+// Legendary Resistance is his alone, with no reactor to name.
+func masterClosedText(n reactionNote, kind reaction.Kind, name, label string) string {
+	if kind == reaction.LegendaryResistance {
+		return "A Resistência Lendária fechou: o gatilho não vale mais."
+	}
+	switch n.reason {
+	case reaction.ReasonReactionSpent:
+		return fmt.Sprintf("%s de %s fechou: a reação já foi usada.", name, label)
+	case reaction.ReasonReactorIncapacitated:
+		return fmt.Sprintf("%s de %s fechou: não pode reagir.", name, label)
+	}
+	switch kind {
+	case reaction.CounterspellKind:
+		return fmt.Sprintf("A Contramágica de %s fechou: a magia já foi anulada.", label)
+	case reaction.Concentration:
+		return fmt.Sprintf("O teste de concentração de %s fechou: a concentração já acabou.", label)
+	}
+	return fmt.Sprintf("%s de %s fechou: o gatilho não vale mais.", name, label)
+}
+
 // closedText is the sentence a window that closed by itself leaves: the reactor reads
 // only the reason about itself (never that another reactor acted), the master the
 // reason in the fight's words (PM-04c, 11).
@@ -175,19 +196,7 @@ func closedText(n reactionNote, reactor playdb.Combatant, hasReactor, forMaster 
 		label = reactor.Label
 	}
 	if forMaster {
-		switch n.reason {
-		case reaction.ReasonReactionSpent:
-			return fmt.Sprintf("%s de %s fechou: a reação já foi usada.", name, label)
-		case reaction.ReasonReactorIncapacitated:
-			return fmt.Sprintf("%s de %s fechou: não pode reagir.", name, label)
-		}
-		switch kind {
-		case reaction.CounterspellKind:
-			return fmt.Sprintf("A Contramágica de %s fechou: a magia já foi anulada.", label)
-		case reaction.Concentration:
-			return fmt.Sprintf("O teste de concentração de %s fechou: a concentração já acabou.", label)
-		}
-		return fmt.Sprintf("%s de %s fechou: o gatilho não vale mais.", name, label)
+		return masterClosedText(n, kind, name, label)
 	}
 	switch n.reason {
 	case reaction.ReasonReactionSpent:

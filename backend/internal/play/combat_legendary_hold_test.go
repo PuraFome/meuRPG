@@ -20,7 +20,13 @@ var resistKind = playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE
 // dragons, in plain sight, side by side east of the wizard.
 func resistFight(t *testing.T, dragons ...string) (*armed, *playv1.Encounter) {
 	t.Helper()
-	a := newCasters(t)
+	return resistFightOf(t, "", dragons...)
+}
+
+// resistFightOf is resistFight with the three heroes of one race ("" keeps each one's own).
+func resistFightOf(t *testing.T, race string, dragons ...string) (*armed, *playv1.Encounter) {
+	t.Helper()
+	a := newCastersOf(t, 3, race)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1},
 		players: map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
