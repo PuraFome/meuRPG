@@ -19,12 +19,12 @@
 #   MEURPG_TEST_DATABASE_URL  required: the tests that need a database fail without it
 #   BEFORE_READY_JOBS         packages tested at once (default 4)
 #   BEFORE_READY_LIST         another list file, to try a few tests (same format)
-#   BEFORE_READY_ALL          1: run every line of the list, whatever the change
+#   BEFORE_READY_ALL          any value but empty or 0: run every line of the list, whatever the change
 #   BEFORE_READY_BASE         a revision to compare the working tree with, instead of the merge
 #                             base with origin/main (HEAD: only what is not committed yet)
 #   BEFORE_READY_ONLY         an extended regex: test only the packages whose directory
 #                             matches it (a rerun of what failed, e.g. 'internal/rules$'). It
-#                             narrows the selected lines, or every line with BEFORE_READY_ALL=1
+#                             narrows the selected lines, or every line with BEFORE_READY_ALL set
 #
 # Bash 3.2 compatible (macOS's /bin/bash): no associative arrays, no mapfile, no wait -n.
 set -euo pipefail
@@ -61,10 +61,12 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 started="$(date +%s)"
 
-# The lines to run: the change decides (see the header), BEFORE_READY_ALL=1 takes them all. The
-# children of --one read the chosen list through BEFORE_READY_LIST.
+# The lines to run: the change decides (see the header), and a BEFORE_READY_ALL that is set
+# (not empty, not 0) takes them all. The children of --one read the chosen list through BEFORE_READY_LIST.
 all_flag=""
-[ "${BEFORE_READY_ALL:-}" = 1 ] && all_flag="-all"
+case "${BEFORE_READY_ALL:-}" in "" | 0) ;; *) all_flag="-all" ;; esac
+# go run starts in backend/, so a relative list is made absolute here.
+case "$list" in /*) ;; *) list="$PWD/$list" ;; esac
 if (cd "$root/backend" && go run ./cmd/beforeready -list "$list" -out "$tmp/selected.txt" -only "${BEFORE_READY_ONLY:-}" -base "${BEFORE_READY_BASE:-}" $all_flag); then
   list="$tmp/selected.txt"
 else

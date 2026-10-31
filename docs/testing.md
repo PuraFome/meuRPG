@@ -133,14 +133,14 @@ By default it runs only the lines of the list that the change can affect. It com
 
 - a file of the line's package directory, `testdata/` and embedded data included;
 - a package the line's tests import, directly or not (`go list -deps -test`): a change in `internal/rules/combat` runs the `internal/play` goldens, and a change in `internal/play` runs the lines of the packages that import it;
-- a file under `proto/` (the lines of the packages that import the generated code), or one of the line's `inputs`, the fifth column of the list: the files its tests read outside their package, such as `proto/error-reasons.json`, `backend/migrations`, `NOTICE` or `web/src/app/pages/credits/credits.ts`. `TestBeforeReadyInputsAreComplete` fails for a `../` path that a listed test reads and its line does not name;
+- a file under `proto/` (the lines of the packages that import the generated code), or one of the line's `inputs`, the fifth column of the list: the files its tests read outside their package, such as `proto/error-reasons.json`, `backend/migrations`, `NOTICE` or `web/src/app/pages/credits/credits.ts`. `TestBeforeReadyInputsAreComplete` fails for a `../` path that a listed test reads and its line does not name (it sees the `Test` functions, the functions, methods and package-level names they use, in the `_test.go` files of the package; a path built at run time, or read in a non-test file or through an import, is not seen, nor is a package that a build tag adds to the test binary);
 - the tool itself (`.github/scripts/before-ready.sh`, `backend/cmd/beforeready`) or the dependencies (`backend/go.mod`, `backend/go.sum`): every line runs. A change to `backend/internal/archtest/before_ready.txt` runs the lines it adds or edits, and the `internal/archtest` line.
 
 A change that touches none of this (web, docs, the `Makefile`) runs nothing, says so and exits 0, without asking for the database.
 The output names each package that runs and the changed file or import that selected it, then the packages it skipped.
 When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge.
 
-`BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change.
+`BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change; any value but empty or `0` does the same.
 `ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
 `BEFORE_READY_BASE=<revision>` compares the working tree with that revision instead of the merge base (`HEAD`: only what is not committed yet).
 `BEFORE_READY_JOBS` sets how many packages run at once (4 by default).

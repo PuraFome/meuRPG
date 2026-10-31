@@ -157,7 +157,7 @@ func pinningTests(t *testing.T, dir string, helpers []beforeReadyLine) (pins, al
 	}
 	var files []*ast.File
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), "_test.go") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
 		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
@@ -444,8 +444,10 @@ func covered(p string, inputs []string) bool {
 
 // upwardPaths returns, for each Test function of the package in dir, the paths with a ".."
 // segment that it reaches, as written (relative to dir) and cut before a wildcard: the string
-// literals of its body, of the functions it calls and of the package-level names it uses, and a
-// filepath.Join("..", ...) as one path.
+// literals of its body, of the functions and methods (by name) it calls, in test and non-test
+// files of the package, and of the package-level names it uses, and a filepath.Join("..", ...)
+// as one path. Its limits: a path built at run time, read in another package or through an
+// embed, or in a file a build tag leaves out, is not seen.
 func upwardPaths(t *testing.T, dir string) map[string][]string {
 	t.Helper()
 	fset := token.NewFileSet()
@@ -457,7 +459,7 @@ func upwardPaths(t *testing.T, dir string) map[string][]string {
 	uses := map[string][]string{} // node -> the nodes (functions, package-level names) it mentions
 	var tests []string
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), "_test.go") {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
 		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
@@ -467,13 +469,17 @@ func upwardPaths(t *testing.T, dir string) map[string][]string {
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
-				if d.Body == nil || d.Recv != nil {
+				if d.Body == nil {
 					continue
 				}
-				if strings.HasPrefix(d.Name.Name, "Test") {
+				// A method is known by its name alone, whatever its receiver: two types
+				// with the same method name share a node, which attributes more, never less.
+				if d.Recv == nil && strings.HasPrefix(d.Name.Name, "Test") && strings.HasSuffix(e.Name(), "_test.go") {
 					tests = append(tests, d.Name.Name)
 				}
-				own[d.Name.Name], uses[d.Name.Name] = scanUpward(d.Body)
+				o, u := scanUpward(d.Body)
+				own[d.Name.Name] = append(own[d.Name.Name], o...)
+				uses[d.Name.Name] = append(uses[d.Name.Name], u...)
 			case *ast.GenDecl:
 				for _, spec := range d.Specs {
 					if vs, ok := spec.(*ast.ValueSpec); ok {
@@ -573,12 +579,14 @@ func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
 	t.Parallel()
 	got := upwardPaths(t, filepath.Join("testdata", "upfixture"))
 	want := map[string][]string{
-		"TestDirect":         {"../data/a.txt"},
-		"TestThroughAConst":  {"../../proto/x.json"},
-		"TestThroughAHelper": {"../../NOTICE"},
-		"TestThroughAGlob":   {"../../migrations"},
-		"TestThroughAJoin":   {"../.."},
-		"TestOwnDirectory":   nil,
+		"TestDirect":              {"../data/a.txt"},
+		"TestThroughAConst":       {"../../proto/x.json"},
+		"TestThroughAHelper":      {"../../NOTICE"},
+		"TestThroughAGlob":        {"../../migrations"},
+		"TestThroughAJoin":        {"../.."},
+		"TestThroughAMethod":      {"../../web/m.json"},
+		"TestThroughANonTestFile": {"../../LICENSE"},
+		"TestOwnDirectory":        nil,
 	}
 	for name, paths := range want {
 		if !slices.Equal(got[name], paths) {

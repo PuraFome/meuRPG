@@ -23,4 +23,15 @@ func TestThroughAGlob(t *testing.T) { _, _ = filepath.Glob("../../migrations/*.s
 
 func TestThroughAJoin(t *testing.T) { _ = filepath.Join("..", "..", "docs", "x.md") }
 
+func TestThroughANonTestFile(t *testing.T) { _ = fromNonTestFile() }
+
 func TestOwnDirectory(t *testing.T) { _, _ = os.ReadFile("testdata/a.txt") }
+
+type reader struct{}
+
+func (reader) load() []byte {
+	b, _ := os.ReadFile("../../web/m.json")
+	return b
+}
+
+func TestThroughAMethod(t *testing.T) { _ = reader{}.load() }

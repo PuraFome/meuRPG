@@ -64,7 +64,7 @@ func plan(lines []Line, all bool, f Facts, ferr error) (run []Decision, skipped 
 		return All(lines, "BEFORE_READY_ALL is set"), nil, ""
 	case ferr != nil:
 		note = fmt.Sprintf("before-ready: cannot tell which lines the change affects: %v\nbefore-ready: running every line", ferr)
-		return All(lines, "the change could not be compared with the merge base"), nil, note
+		return All(lines, "the selection could not be computed"), nil, note
 	}
 	run, skipped = Select(lines, f)
 	return run, skipped, ""
@@ -177,18 +177,27 @@ func computeFacts(listFile, rev string) (Facts, error) {
 		}
 		base = strings.TrimSpace(mb)
 	}
-	diff, err := sh(root, "git", "diff", "--name-only", "--no-renames", base)
+	f.Changed, err = changedFiles(root, base)
 	if err != nil {
 		return f, err
 	}
-	untracked, err := sh(root, "git", "ls-files", "--others", "--exclude-standard")
-	if err != nil {
-		return f, err
-	}
-	f.Changed = append(fields(diff), fields(untracked)...)
 	f.NewLines = newLines(root, base, listFile)
 	f.PkgDirs, f.Deps, err = packageGraph(filepath.Join(root, backendDir))
 	return f, err
+}
+
+// changedFiles lists the paths that differ from base in the working tree, deleted and untracked
+// ones included, from the repository root.
+func changedFiles(root, base string) ([]string, error) {
+	diff, err := sh(root, "git", "diff", "--name-only", "-z", "--no-renames", base)
+	if err != nil {
+		return nil, err
+	}
+	untracked, err := sh(root, "git", "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil {
+		return nil, err
+	}
+	return append(nulSplit(diff), nulSplit(untracked)...), nil
 }
 
 // newLines returns the run lines of the list that the list of the merge base lacks, or nil.
@@ -228,11 +237,12 @@ func packageGraph(backend string) (dirs []string, deps map[string][]string, err 
 	return parseGraph(mod, text)
 }
 
-func fields(s string) []string {
+// nulSplit splits the NUL-terminated names of git -z, which are never quoted or escaped.
+func nulSplit(s string) []string {
 	var out []string
-	for _, l := range strings.Split(s, "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			out = append(out, l)
+	for _, n := range strings.Split(s, "\x00") {
+		if n != "" {
+			out = append(out, n)
 		}
 	}
 	return out
