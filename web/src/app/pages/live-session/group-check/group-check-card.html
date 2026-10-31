@@ -9,7 +9,7 @@
           } @else {
             <p><b>{{ heading() }}.</b> O mestre pede {{ asked() }}.</p>
           }
-          <button mat-flat-button type="button" class="card__btn" (click)="openSheet()">Rolar o teste</button>
+          <button matButton="filled" type="button" class="card__btn" (click)="openSheet()">Rolar o teste</button>
         </div>
       </section>
     }
@@ -25,7 +25,7 @@
           } @else {
             <p><b>Esperando o mestre.</b> Ele encerra {{ asked() }} quando quiser.</p>
           }
-          <button mat-stroked-button type="button" class="card__btn" (click)="openSheet()">Abrir a folha</button>
+          <button matButton="outlined" type="button" class="card__btn" (click)="openSheet()">Abrir a folha</button>
         </div>
       </section>
     }
@@ -34,7 +34,7 @@
         <mat-icon aria-hidden="true">{{ c.group ? 'groups' : 'casino' }}</mat-icon>
         <div class="card__body">
           <p><b>{{ heading() }}: {{ c.skillNamePt }}.</b> {{ line() }}</p>
-          <button mat-stroked-button type="button" class="card__btn" (click)="dismiss()">Dispensar</button>
+          <button matButton="outlined" type="button" class="card__btn" (click)="dismiss()">Dispensar</button>
         </div>
       </section>
     }

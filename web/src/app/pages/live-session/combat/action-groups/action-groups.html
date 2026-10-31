@@ -15,7 +15,7 @@
     <div class="mr-notice mr-notice--warning groups__pending">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
-      <button mat-stroked-button type="button" (click)="rollDamage.emit()">Rolar o dano</button>
+      <button matButton="outlined" type="button" (click)="rollDamage.emit()">Rolar o dano</button>
     </div>
   }
 
@@ -41,7 +41,7 @@
           {{ locked() || (movement().left > 0 ? 'Sem mapa, você diz quanto andou. O mestre decide se o caminho está livre.' : 'Você já gastou todo o movimento deste turno.') }}
         </p>
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="spend"
           [class.mr-button--off]="movement().left <= 0 || !!locked()"
@@ -217,7 +217,7 @@
           <div class="std" role="group" [attr.aria-label]="extra.labelPt">
             @for (a of extraStandards(); track a.key) {
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 class="std__btn"
                 [class.std__btn--off]="!extra.available || !!locked()"
@@ -316,10 +316,10 @@
       <div class="frenzy" role="group" aria-label="Entrar em frenesi?">
         <p class="frenzy__text">{{ frenzyText }}</p>
         <div class="frenzy__buttons">
-          <button mat-flat-button type="button" [disabled]="busy()" (click)="answerFrenzy(f.action?.key ?? '', true)">
+          <button matButton="filled" type="button" [disabled]="busy()" (click)="answerFrenzy(f.action?.key ?? '', true)">
             Fúria com frenesi
           </button>
-          <button mat-stroked-button type="button" [disabled]="busy()" (click)="answerFrenzy(f.action?.key ?? '', false)">
+          <button matButton="outlined" type="button" [disabled]="busy()" (click)="answerFrenzy(f.action?.key ?? '', false)">
             Só fúria
           </button>
         </div>
@@ -349,7 +349,7 @@
   <div class="std" role="group" aria-label="Ações padrão">
     @for (a of standard(); track a.action?.key) {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="std__btn"
         [class.std__btn--off]="!a.enabled || !!locked()"

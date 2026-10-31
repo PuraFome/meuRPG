@@ -37,8 +37,8 @@ import { formatInt } from '../../../core/format/text';
       }
       @if (footer()) {
         <div class="swap__actions">
-          <button type="button" mat-stroked-button class="no" (click)="cancel.emit()">Cancelar</button>
-          <button type="button" mat-flat-button class="go" [class.mr-button--off]="!pick() || busy()" [disabled]="!pick() || busy()" disabledInteractive (click)="confirm.emit()">
+          <button type="button" matButton="outlined" class="no" (click)="cancel.emit()">Cancelar</button>
+          <button type="button" matButton="filled" class="go" [class.mr-button--off]="!pick() || busy()" [disabled]="!pick() || busy()" disabledInteractive (click)="confirm.emit()">
             {{ pickName() ? 'Trocar por ' + pickName() : 'Trocar' }}
           </button>
         </div>

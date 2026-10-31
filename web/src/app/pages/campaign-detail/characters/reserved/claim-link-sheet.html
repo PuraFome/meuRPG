@@ -53,7 +53,7 @@
             (focus)="selectAll($event)"
           ></textarea>
         </label>
-        <button type="button" mat-stroked-button class="copy" data-copy (click)="copy(s.link)">
+        <button type="button" matButton="outlined" class="copy" data-copy (click)="copy(s.link)">
           <mat-icon aria-hidden="true">content_copy</mat-icon>
           Copiar link
         </button>
@@ -76,11 +76,11 @@
     <div class="actions">
       @if (step(); as s) {
         @if (s.status === 'shown') {
-          <button type="button" mat-flat-button class="go" (click)="close()">Fechar</button>
+          <button type="button" matButton="filled" class="go" (click)="close()">Fechar</button>
         } @else {
           <button
             type="button"
-            mat-flat-button
+            matButton="filled"
             class="go"
             data-initial-focus
             [disabled]="s.status === 'making'"
@@ -88,7 +88,7 @@
           >
             {{ s.status === 'making' ? 'Gerando...' : 'Gerar link' }}
           </button>
-          <button type="button" mat-stroked-button class="no" [disabled]="s.status === 'making'" (click)="close()">
+          <button type="button" matButton="outlined" class="no" [disabled]="s.status === 'making'" (click)="close()">
             Cancelar
           </button>
         }

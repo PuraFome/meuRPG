@@ -35,7 +35,7 @@ const LINES = 5;
           } @else if (state() === 'error' && treasures().length === 0) {
             <p class="strip__line">
               Não foi possível ler os tesouros.
-              <button mat-button type="button" class="strip__retry" (click)="retry.emit()">Tentar de novo</button>
+              <button matButton type="button" class="strip__retry" (click)="retry.emit()">Tentar de novo</button>
             </p>
           } @else if (treasures().length === 0) {
             <p class="strip__line">Nenhum tesouro esperando. Os que o grupo encontrar aparecem aqui.</p>
@@ -60,7 +60,7 @@ const LINES = 5;
           }
         </div>
         @if (button() && gold()) {
-          <button mat-stroked-button type="button" class="strip__go" (click)="town.emit()">
+          <button matButton="outlined" type="button" class="strip__go" (click)="town.emit()">
             <mat-icon aria-hidden="true">currency_exchange</mat-icon>Voltar à cidade
           </button>
         }

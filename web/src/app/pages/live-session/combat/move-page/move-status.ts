@@ -55,7 +55,7 @@ export interface MoveSummary {
             oportunidade. Gasta a sua ação ao saltar.
           </p>
         </div>
-        <button mat-button type="button" class="disengage" [disabled]="busy()" (click)="undo.emit()">
+        <button matButton type="button" class="disengage" [disabled]="busy()" (click)="undo.emit()">
           Voltar atrás (não desengajar)
         </button>
       } @else {
@@ -69,7 +69,7 @@ export interface MoveSummary {
           </p>
         </div>
         @if (canDisengage()) {
-          <button mat-button type="button" class="disengage" [disabled]="busy()" (click)="disengage.emit()">
+          <button matButton type="button" class="disengage" [disabled]="busy()" (click)="disengage.emit()">
             Desengajar (gasta a ação)
           </button>
         }

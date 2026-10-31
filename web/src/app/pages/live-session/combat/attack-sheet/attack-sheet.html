@@ -74,7 +74,7 @@
         </p>
       }
       <div class="sheet__foot">
-        <button mat-stroked-button type="button" class="sheet__done" [disabled]="s.busy()" (click)="close()">Cancelar</button>
+        <button matButton="outlined" type="button" class="sheet__done" [disabled]="s.busy()" (click)="close()">Cancelar</button>
       </div>
     }
     @case ('roll') {
@@ -244,7 +244,7 @@
           {{ spent() }}{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}
         </p>
         <div class="sheet__foot">
-          <button #back mat-flat-button type="button" class="sheet__done" (click)="close()">{{ doneLabel }}</button>
+          <button #back matButton="filled" type="button" class="sheet__done" (click)="close()">{{ doneLabel }}</button>
         </div>
       }
     }

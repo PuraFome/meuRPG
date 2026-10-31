@@ -157,14 +157,14 @@ export function openDoorSheet(
         @if (door.state === 5) {
           @if (stage() === 'ask') {
             <div class="pair">
-              <button #back mat-stroked-button type="button" class="pair__btn" data-ask-back [disabled]="busy()" disabledInteractive (click)="show('sheet', '[data-reveal]')">Voltar</button>
-              <button mat-flat-button type="button" class="pair__btn" [disabled]="busy()" disabledInteractive (click)="reveal()">Revelar</button>
+              <button #back matButton="outlined" type="button" class="pair__btn" data-ask-back [disabled]="busy()" disabledInteractive (click)="show('sheet', '[data-reveal]')">Voltar</button>
+              <button matButton="filled" type="button" class="pair__btn" [disabled]="busy()" disabledInteractive (click)="reveal()">Revelar</button>
             </div>
           } @else {
-            <button mat-flat-button type="button" class="pair__btn pair__btn--one" data-reveal (click)="show('ask', '[data-ask-back]')">Revelar a porta secreta</button>
+            <button matButton="filled" type="button" class="pair__btn pair__btn--one" data-reveal (click)="show('ask', '[data-ask-back]')">Revelar a porta secreta</button>
           }
         } @else {
-          <button mat-stroked-button type="button" class="pair__btn pair__btn--one" (click)="finish()">Pronto</button>
+          <button matButton="outlined" type="button" class="pair__btn pair__btn--one" (click)="finish()">Pronto</button>
         }
       </div>
     </app-sheet-frame>

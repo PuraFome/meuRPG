@@ -33,7 +33,7 @@
         <mat-icon aria-hidden="true">error</mat-icon>
         <p><strong>Não foi possível carregar a experiência.</strong> Confira a conexão e tente de novo.</p>
       </div>
-      <button mat-stroked-button type="button" class="exp__retry" (click)="retry()">Tentar de novo</button>
+      <button matButton="outlined" type="button" class="exp__retry" (click)="retry()">Tentar de novo</button>
     }
     @case ('ready') {
       @if (milestones()) {
@@ -68,7 +68,7 @@
             <p class="mr-muted" role="status">Carregando o histórico...</p>
           }
           @case ('error') {
-            <p class="mr-muted">Não foi possível carregar o histórico. <button mat-button type="button" class="exp__inline" (click)="retry()">Tentar de novo</button></p>
+            <p class="mr-muted">Não foi possível carregar o histórico. <button matButton type="button" class="exp__inline" (click)="retry()">Tentar de novo</button></p>
           }
           @default {
             @if (store.awards().length === 0) {

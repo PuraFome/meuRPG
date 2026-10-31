@@ -71,7 +71,7 @@ export interface RiderPick {
             }
             <div class="rider__btns rider__btns--row">
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 [disabled]="busy()"
                 [attr.aria-label]="'Aplicar ' + creatureTitle(o)"
@@ -80,7 +80,7 @@ export interface RiderPick {
               >
                 Aplicar
               </button>
-              <button mat-button type="button" [disabled]="busy()" [attr.aria-label]="'Dispensar ' + creatureTitle(o)" (click)="pick(o, choices.DECLINE)">Dispensar</button>
+              <button matButton type="button" [disabled]="busy()" [attr.aria-label]="'Dispensar ' + creatureTitle(o)" (click)="pick(o, choices.DECLINE)">Dispensar</button>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export interface RiderPick {
             @if (isOpenHand(o)) {
               <div class="rider__opt">
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   [disabled]="busy()"
                   [attr.aria-describedby]="hintId(o, 'prone')"
@@ -108,7 +108,7 @@ export interface RiderPick {
               </div>
               <div class="rider__opt">
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   [disabled]="busy()"
                   [attr.aria-describedby]="hintId(o, 'push')"
@@ -120,7 +120,7 @@ export interface RiderPick {
               </div>
               <div class="rider__opt">
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   [disabled]="busy()"
                   [attr.aria-describedby]="hintId(o, 'none')"
@@ -133,7 +133,7 @@ export interface RiderPick {
             } @else {
               <div class="rider__opt">
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   [disabled]="busy() || o.kiLeft < 1"
                   [attr.aria-describedby]="hintId(o, 'stun')"
@@ -144,7 +144,7 @@ export interface RiderPick {
                 <p class="rider__hint" [id]="hintId(o, 'stun')">{{ stunHint(o) }}</p>
               </div>
             }
-            <button mat-button type="button" [disabled]="busy()" (click)="pick(o, choices.DECLINE)">Dispensar</button>
+            <button matButton type="button" [disabled]="busy()" (click)="pick(o, choices.DECLINE)">Dispensar</button>
           </div>
         </div>
       </div>

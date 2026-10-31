@@ -225,7 +225,7 @@
                     [noun]="m.namePt"
                     (valueChange)="setPickedCount(m.key, $event)"
                   />
-                  <button type="button" mat-stroked-button (click)="removePicked(m.key)" [attr.aria-label]="'Tirar ' + m.namePt">
+                  <button type="button" matButton="outlined" (click)="removePicked(m.key)" [attr.aria-label]="'Tirar ' + m.namePt">
                     <mat-icon aria-hidden="true">close</mat-icon>Tirar
                   </button>
                 </li>
@@ -252,9 +252,9 @@
       <p id="start-why" class="dlg__why">{{ why }}</p>
     }
     <div class="dlg__actions">
-      <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
+      <button matButton="outlined" type="button" (click)="close()">Cancelar</button>
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="dlg__go"
         [class.dlg__go--off]="blocked() !== null"

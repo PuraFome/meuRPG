@@ -48,7 +48,7 @@
         <mat-icon aria-hidden="true">add</mat-icon>
         <p class="drop__lead">Arraste o arquivo .meurpg.zip aqui</p>
         <p class="drop__or">ou</p>
-        <button mat-flat-button type="button" class="drop__button" data-focus (click)="pick()">
+        <button matButton="filled" type="button" class="drop__button" data-focus (click)="pick()">
           Escolher o arquivo
         </button>
       </div>
@@ -128,7 +128,7 @@
         <p><strong>Tudo pode ser criado.</strong> Nenhum item foi recusado.</p>
       </div>
       <div class="actions">
-        <button mat-flat-button type="button" (click)="create()">
+        <button matButton="filled" type="button" (click)="create()">
           <mat-icon aria-hidden="true">check</mat-icon>Criar campanha
         </button>
         <button matButton="outlined" type="button" (click)="again()">Escolher outro arquivo</button>
@@ -244,7 +244,7 @@
         <p class="hint">“Tentar de novo” usa as partes que já foram enviadas.</p>
       }
       <div class="actions">
-        <button mat-flat-button type="button" (click)="retry()">
+        <button matButton="filled" type="button" (click)="retry()">
           <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
         </button>
         <a matButton="outlined" routerLink="/campaigns">Voltar às campanhas</a>
@@ -261,7 +261,7 @@
           >{{ createdTail(s.counts) }}
         </p>
       </div>
-      <a mat-flat-button class="open" [routerLink]="['/campaigns', s.campaignId]">
+      <a matButton="filled" class="open" [routerLink]="['/campaigns', s.campaignId]">
         <mat-icon aria-hidden="true">arrow_forward</mat-icon>Abrir a campanha
       </a>
       @if ((s.counts?.characters ?? 0) > 0) {

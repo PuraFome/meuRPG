@@ -60,19 +60,19 @@
   </div>
 
   <div foot class="foot">
-    <button mat-button type="button" class="quiet" [disabled]="busy()" (click)="close()">Cancelar</button>
+    <button matButton type="button" class="quiet" [disabled]="busy()" (click)="close()">Cancelar</button>
     @if (flow.step() === 'list') {
       @if (placement !== Placement.CASTER) {
-        <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="back()">
+        <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="back()">
           <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
         </button>
       }
-      <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="cast()">
+      <button matButton="filled" type="button" class="btn" [disabled]="busy()" (click)="cast()">
         <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ nobody() ? 'Conjurar mesmo assim' : 'Conjurar ' + data.name }}
       </button>
     } @else {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="btn"
         [class.mr-button--off]="!flow.ready()"

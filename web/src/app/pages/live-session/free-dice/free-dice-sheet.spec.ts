@@ -176,7 +176,7 @@ describe('FreeDiceSheet: the form', () => {
   it('has exactly one filled button', async () => {
     const { el } = await mount({ master: true });
     expect(
-      el.querySelectorAll('.mat-mdc-unelevated-button, [mat-flat-button], .mdc-button--unelevated'),
+      el.querySelectorAll('.mat-mdc-unelevated-button, .mdc-button--unelevated'),
     ).toHaveLength(1);
   });
 

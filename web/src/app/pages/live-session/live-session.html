@@ -44,7 +44,7 @@
         Confira a conexão e tente de novo.
       </p>
     </div>
-    <button mat-flat-button type="button" class="retry" (click)="retry()">Tentar de novo</button>
+    <button matButton="filled" type="button" class="retry" (click)="retry()">Tentar de novo</button>
   }
   @case ('live') {
     @if (state.session(); as s) {

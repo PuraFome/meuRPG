@@ -91,18 +91,18 @@
   <div foot>
     @if (swapping() && inSheet) {
       <div class="actions">
-        <button type="button" mat-stroked-button class="no" (click)="cancelSwap()">Cancelar</button>
-        <button type="button" mat-flat-button class="go" [class.mr-button--off]="!swapPick() || swapBusy()" [disabled]="!swapPick() || swapBusy()" disabledInteractive (click)="confirmSwap()">
+        <button type="button" matButton="outlined" class="no" (click)="cancelSwap()">Cancelar</button>
+        <button type="button" matButton="filled" class="go" [class.mr-button--off]="!swapPick() || swapBusy()" [disabled]="!swapPick() || swapBusy()" disabledInteractive (click)="confirmSwap()">
           {{ swapPick() ? 'Trocar por ' + swapPickName() : 'Trocar' }}
         </button>
       </div>
     } @else {
     <!-- The filled button comes first in the DOM (and in the phone's stack); the dialog draws it at the right. -->
     <div class="actions actions--gen">
-      <button type="button" mat-flat-button class="go" [disabled]="!result() || busy()" disabledInteractive [class.mr-button--off]="!result() || busy()" (click)="use()">
+      <button type="button" matButton="filled" class="go" [disabled]="!result() || busy()" disabledInteractive [class.mr-button--off]="!result() || busy()" (click)="use()">
         Usar este encontro
       </button>
-      <button type="button" mat-stroked-button class="no" [disabled]="busy()" disabledInteractive [class.mr-button--off]="busy()" (click)="generate()">
+      <button type="button" matButton="outlined" class="no" [disabled]="busy()" disabledInteractive [class.mr-button--off]="busy()" (click)="generate()">
         <mat-icon aria-hidden="true">shuffle</mat-icon>Gerar outro
       </button>
     </div>

@@ -45,7 +45,7 @@
     <div class="mr-notice mr-notice--warning owed">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <p><strong>Falta rolar o dano do ataque {{ ofCreature() }}.</strong> Role para poder encerrar a vez.</p>
-      <button mat-stroked-button type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>
+      <button matButton="outlined" type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>
     </div>
   }
 
@@ -86,7 +86,7 @@
 
   <button
     type="button"
-    mat-stroked-button
+    matButton="outlined"
     class="go"
     [class.go--off]="off() || c().movementLeftDft <= 0"
     [class.mr-button--off]="off() || c().movementLeftDft <= 0"
@@ -117,7 +117,7 @@
       @for (a of standard(); track a.action?.key) {
         <button
           type="button"
-          mat-stroked-button
+          matButton="outlined"
           class="std__btn"
           [class.std__btn--off]="!a.enabled || off()"
           [class.mr-button--off]="!a.enabled || off()"

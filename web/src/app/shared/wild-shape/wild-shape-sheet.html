@@ -44,7 +44,7 @@
     }
     <button
       type="button"
-      mat-flat-button
+      matButton="filled"
       class="go"
       [class.mr-button--off]="!beast()"
       [disabled]="!beast() || busy()"
@@ -53,6 +53,6 @@
     >
       <mat-icon aria-hidden="true">pets</mat-icon>{{ buttonLabel() }}
     </button>
-    <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+    <button type="button" matButton="outlined" class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
   </div>
 </app-sheet-frame>

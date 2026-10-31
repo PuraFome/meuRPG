@@ -23,7 +23,7 @@
     <div class="banner__end">
       @if (!theatre() && line().canMove) {
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="banner__move"
           [class.mr-button--off]="!!waiting()"

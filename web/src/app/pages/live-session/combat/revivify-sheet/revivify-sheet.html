@@ -106,17 +106,17 @@
   <div foot>
     @if (step() === 'target') {
       <div class="actions">
-        <button mat-stroked-button type="button" class="back" (click)="close()">Voltar</button>
-        <button mat-flat-button type="button" class="go" [class.go--off]="!hasTarget()" [disabled]="!hasTarget()" disabledInteractive (click)="next()">Próximo</button>
+        <button matButton="outlined" type="button" class="back" (click)="close()">Voltar</button>
+        <button matButton="filled" type="button" class="go" [class.go--off]="!hasTarget()" [disabled]="!hasTarget()" disabledInteractive (click)="next()">Próximo</button>
       </div>
     } @else if (step() === 'confirm') {
       @if (!diamonds()) {
         <p class="hint" id="revivify-hint"><mat-icon aria-hidden="true">block</mat-icon>{{ hint }}</p>
       }
       <div class="actions">
-        <button mat-stroked-button type="button" class="back" [disabled]="busy()" (click)="previous()">Voltar</button>
+        <button matButton="outlined" type="button" class="back" [disabled]="busy()" (click)="previous()">Voltar</button>
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="go"
           [class.go--off]="!ready()"
@@ -129,9 +129,9 @@
         </button>
       </div>
     } @else if (inCombat && lines()) {
-      <button mat-flat-button type="button" class="go go--one" [disabled]="busy()" (click)="endTurn()">Encerrar turno</button>
+      <button matButton="filled" type="button" class="go go--one" [disabled]="busy()" (click)="endTurn()">Encerrar turno</button>
     } @else {
-      <button mat-stroked-button type="button" class="back back--one" (click)="close()">Voltar à sessão</button>
+      <button matButton="outlined" type="button" class="back back--one" (click)="close()">Voltar à sessão</button>
     }
   </div>
 </app-sheet-frame>
