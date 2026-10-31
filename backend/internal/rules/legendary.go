@@ -78,7 +78,7 @@ func (p LegendaryProfile) IsLegendary() bool { return p.PerRound > 0 || p.Resist
 var (
 	costRe     = regexp.MustCompile(`\s*\(Costs (\d+) Actions?\)\s*$`)
 	parryACRe  = regexp.MustCompile(`adds (\d+) to its AC`)
-	makesOneRe = regexp.MustCompile(`makes one (\w+) attack`)
+	makesOneRe = regexp.MustCompile(`makes one (\w+) attack( or )?`)
 )
 
 // LegendaryProfile reads the stat block of a creature key; false when the key is
@@ -142,7 +142,8 @@ func legendaryOption(a CreatureAbility, actions []CreatureAction) LegendaryOptio
 
 // attackActionOf finds the attack-roll action of the stat block an option makes:
 // the one named like the option ("Bite"; "Claw Attack" is the Claw), or else the
-// one its text names ("makes one tail attack"). nil when none, which makes the
+// one its text names ("makes one tail attack"), unless the text offers another choice
+// ("makes one bite attack or uses its Swallow"). nil when none, which makes the
 // option text the master resolves (a choice between attacks, a spell, a gaze).
 func attackActionOf(opt LegendaryOption, actions []CreatureAction) *CreatureAction {
 	if act := attackActionNamed(actions, strings.TrimSuffix(strings.ToLower(opt.Name), " attack")); act != nil {
@@ -151,7 +152,7 @@ func attackActionOf(opt LegendaryOption, actions []CreatureAction) *CreatureActi
 	if strings.Contains(opt.Name, " or ") || opt.Name == "Attack" {
 		return nil
 	}
-	if m := makesOneRe.FindStringSubmatch(opt.Text); m != nil {
+	if m := makesOneRe.FindStringSubmatch(opt.Text); len(m) == 3 && m[2] == "" {
 		return attackActionNamed(actions, m[1])
 	}
 	return nil

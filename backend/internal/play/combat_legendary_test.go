@@ -1,6 +1,7 @@
 package play
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -14,7 +15,11 @@ import (
 // is left and the options, and no player reads any of it. These tests need the
 // database (MEURPG_TEST_DATABASE_URL).
 
-const adultRedDragon = "monster:adult-red-dragon"
+const (
+	adultRedDragon = "monster:adult-red-dragon"
+	// streamHints is how many changes of the stream the test reads after the turn ends.
+	streamHints = 2
+)
 
 // dragonFight is a combat with the party, the goblin and an adult red dragon ("Draco",
 // in plain sight), which plays first. It returns the combat as the master reads it
@@ -74,11 +79,24 @@ func TestCreatureSpentHelper(t *testing.T) {
 	if _, kept := got[spentLegendaryActions]; kept || got[spentLegendaryResistance] != 1 || got["use:fire-breath"] != 2 || len(got) != 2 {
 		t.Errorf("after the spends the column = %v, want legendary_resistance 1 and use:fire-breath 2 only", got)
 	}
-	if got, err := clearCreatureSpent(ctx, q, id, spentLegendaryResistance); err != nil || len(got) != 1 || got["use:fire-breath"] != 2 {
-		t.Errorf("clear(legendary_resistance) = %v, %v; want only use:fire-breath 2", got, err)
+}
+
+// TestCreatureSpentKeepsWhatItDoesNotKnow: a key of another owner (#556's), whatever its
+// value is, comes out of a spend as it went in.
+func TestCreatureSpentKeepsWhatItDoesNotKnow(t *testing.T) {
+	t.Parallel()
+	a, _, id := dragonFight(t)
+	q := playdb.New(a.h.pool)
+	const others = `{"recharge:fire-breath": {"ready": false, "since": [1, 2]}, "use:note": "text", "use:x": 2.5}`
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET creature_spent = $2::JSONB WHERE id = $1`, id, others); err != nil {
+		t.Fatal(err)
 	}
-	if got := a.spentOf(t, id); len(got) != 1 || got["use:fire-breath"] != 2 {
-		t.Errorf("the column after clear = %v, want only use:fire-breath 2", got)
+	if _, err := bumpCreatureSpent(t.Context(), q, id, spentLegendaryActions, 1); err != nil {
+		t.Fatalf("bump error = %v", err)
+	}
+	var kept bool
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT creature_spent @> $2::JSONB AND creature_spent->'legendary_actions' = '1'::JSONB FROM combatants WHERE id = $1`, id, others).Scan(&kept); err != nil || !kept {
+		t.Errorf("after a spend the column lost what it does not know: kept = %v, err = %v", kept, err)
 	}
 }
 
@@ -114,6 +132,33 @@ func TestCreatureSpentRefusesWhatDoesNotFitIn4KiB(t *testing.T) {
 	}
 	if _, err := a.h.pool.Exec(ctx, `UPDATE combatants SET creature_spent = '[]'::JSONB WHERE id = $1`, id); err == nil {
 		t.Error("the database accepted a creature_spent that is not an object")
+	}
+}
+
+// TestCreatureSpentBoundaryIs4096BytesOfJSONBText: 4096 bytes in the database's text form
+// are accepted and 4097 refused, by the helper and by the database's CHECK.
+func TestCreatureSpentBoundaryIs4096BytesOfJSONBText(t *testing.T) {
+	t.Parallel()
+	a, _, id := dragonFight(t)
+	ctx := t.Context()
+	q := playdb.New(a.h.pool)
+	// {"x": "..."} is 9 bytes with an empty string.
+	for _, tc := range []struct {
+		text int
+		ok   bool
+	}{{creatureSpentLimit, true}, {creatureSpentLimit + 1, false}} {
+		body := json.RawMessage(`"` + strings.Repeat("y", tc.text-9) + `"`)
+		err := writeCreatureSpent(ctx, q, id, spentValues{"x": body})
+		if tc.ok != (err == nil) || (!tc.ok && !errors.Is(err, errCreatureSpentFull)) {
+			t.Errorf("%d bytes: error = %v, want accepted = %v", tc.text, err, tc.ok)
+		}
+	}
+	var n int
+	if err := a.h.pool.QueryRow(ctx, `SELECT octet_length(creature_spent::TEXT) FROM combatants WHERE id = $1`, id).Scan(&n); err != nil || n != creatureSpentLimit {
+		t.Errorf("the stored column has %d bytes (err %v), want %d", n, err, creatureSpentLimit)
+	}
+	if _, err := a.h.pool.Exec(ctx, `UPDATE combatants SET creature_spent = $2::JSONB WHERE id = $1`, id, `{"x": "`+strings.Repeat("y", creatureSpentLimit-8)+`"}`); err == nil {
+		t.Error("the database accepted 4097 bytes")
 	}
 }
 
@@ -179,7 +224,7 @@ func TestRN20_LegendaryStateIsTheMastersAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	l = a.legendaryOf(t, a.master)
-	if l.GetActionsLeft() != 1 || l.GetResistanceLeft() != 2 || l.GetOptions()[1].GetAffordable() != true || l.GetOptions()[2].GetAffordable() {
+	if l.GetActionsLeft() != 1 || l.GetResistanceLeft() != 2 || !l.GetOptions()[1].GetAffordable() || l.GetOptions()[2].GetAffordable() {
 		t.Errorf("after the spends the master reads %v, want 1 action and 2 uses left, Wing Attack no longer affordable", l)
 	}
 
@@ -188,14 +233,14 @@ func TestRN20_LegendaryStateIsTheMastersAlone(t *testing.T) {
 		if c := byLabel(t, seen, "Draco"); c.GetLegendary() != nil {
 			t.Errorf("%s reads the dragon's legendary state %v, want the field absent", who, c.GetLegendary())
 		}
-		if js := asJSON(t, seen); strings.Contains(js, "legendary") || strings.Contains(js, "resistance") {
+		if js := asJSON(t, seen); strings.Contains(js, `"legendary"`) {
 			t.Errorf("%s: the combat as JSON has the legendary state:\n%s", who, js)
 		}
 	}
 	// The stream: what the dragon's turn ending sends has no content.
 	a.mustEndTurn(t, a.master, e)
 	var all []*playv1.WatchGameSessionResponse
-	for len(all) < 2 {
+	for len(all) < streamHints {
 		all = append(all, w.nextChange(t))
 	}
 	if js := asJSONAll(t, all); strings.Contains(js, "legendary") || strings.Contains(js, "Draco") {

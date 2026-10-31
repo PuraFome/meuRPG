@@ -3,8 +3,8 @@ package play
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -32,12 +32,29 @@ const (
 const creatureSpentLimit = 4096
 
 // errCreatureSpentFull is the refusal of a spend that would take the column over its limit.
-var errCreatureSpentFull = errors.New("what the creature spent does not fit in 4 KiB")
+var errCreatureSpentFull = fmt.Errorf("what the creature spent does not fit in %d bytes", creatureSpentLimit)
 
-// creatureSpentOf reads what a combatant spent: every key, the ones this package
-// does not know too.
+// spentValues is the column as stored: every key with its value as written, so a key
+// this package does not know (#556's) comes back out of a change as it went in, whatever
+// its value is.
+type spentValues map[string]json.RawMessage
+
+// creatureSpentOf reads what a combatant spent for the view: the whole numbers, every key
+// of them, the ones this package does not know too.
 func creatureSpentOf(raw []byte) map[string]int {
 	out := map[string]int{}
+	for k, v := range parseSpent(raw) {
+		var n int
+		if json.Unmarshal(v, &n) == nil {
+			out[k] = n
+		}
+	}
+	return out
+}
+
+// parseSpent reads the column's JSON as stored.
+func parseSpent(raw []byte) spentValues {
+	out := spentValues{}
 	if len(raw) > 0 {
 		_ = json.Unmarshal(raw, &out) // a value this package wrote
 	}
@@ -46,61 +63,67 @@ func creatureSpentOf(raw []byte) map[string]int {
 
 // bumpCreatureSpent adds delta to what the combatant spent under key, never below 0,
 // and returns what it spent now. A key that reaches 0 is dropped (only what was
-// spent is kept). A result over 4 KiB is refused with errCreatureSpentFull and
-// nothing changes.
+// spent is kept), and every other key stays as it is. A result over 4 KiB is refused
+// with errCreatureSpentFull and nothing changes.
 func bumpCreatureSpent(ctx context.Context, q *playdb.Queries, id, key string, delta int) (map[string]int, error) {
 	spent, err := readCreatureSpent(ctx, q, id)
 	if err != nil {
 		return nil, err
 	}
-	if next := max(spent[key]+delta, 0); next > 0 {
-		spent[key] = next
+	var cur int
+	_ = json.Unmarshal(spent[key], &cur) // a missing or odd value counts as 0
+	if next := max(cur+delta, 0); next > 0 {
+		spent[key] = json.RawMessage(strconv.Itoa(next))
 	} else {
 		delete(spent, key)
 	}
-	return spent, writeCreatureSpent(ctx, q, id, spent)
-}
-
-// clearCreatureSpent forgets key (the other keys stay) and returns what is left.
-func clearCreatureSpent(ctx context.Context, q *playdb.Queries, id, key string) (map[string]int, error) {
-	spent, err := readCreatureSpent(ctx, q, id)
-	if err != nil {
+	if err := writeCreatureSpent(ctx, q, id, spent); err != nil {
 		return nil, err
 	}
-	delete(spent, key)
-	return spent, writeCreatureSpent(ctx, q, id, spent)
-}
-
-// jsonbTextLen is the length of the text form of a JSON object of pairs pairs that
-// the database checks: JSONB writes ": " and ", " where compact JSON writes ":" and
-// ",", one byte more for each.
-func jsonbTextLen(compact []byte, pairs int) int {
-	if pairs == 0 {
-		return len(compact)
-	}
-	return len(compact) + 2*pairs - 1
+	body, _ := json.Marshal(spent)
+	return creatureSpentOf(body), nil
 }
 
 // readCreatureSpent reads the column now.
-func readCreatureSpent(ctx context.Context, q *playdb.Queries, id string) (map[string]int, error) {
+func readCreatureSpent(ctx context.Context, q *playdb.Queries, id string) (spentValues, error) {
 	raw, err := q.GetCombatantCreatureSpent(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("read what the creature spent: %w", err)
 	}
-	return creatureSpentOf(raw), nil
+	return parseSpent(raw), nil
 }
 
 // writeCreatureSpent saves spent, refusing what the column cannot hold.
-func writeCreatureSpent(ctx context.Context, q *playdb.Queries, id string, spent map[string]int) error {
+func writeCreatureSpent(ctx context.Context, q *playdb.Queries, id string, spent spentValues) error {
 	body, err := json.Marshal(spent)
 	if err != nil {
 		return fmt.Errorf("encode what the creature spent: %w", err)
 	}
-	if n := jsonbTextLen(body, len(spent)); n > creatureSpentLimit {
-		return fmt.Errorf("%w: %d bytes, the limit is %d", errCreatureSpentFull, n, creatureSpentLimit)
+	if n := jsonbTextLen(body); n > creatureSpentLimit {
+		return fmt.Errorf("%w: %d bytes", errCreatureSpentFull, n)
 	}
 	if err := q.SetCombatantCreatureSpent(ctx, playdb.SetCombatantCreatureSpentParams{ID: id, CreatureSpent: body}); err != nil {
 		return fmt.Errorf("save what the creature spent: %w", err)
 	}
 	return nil
+}
+
+// jsonbTextLen is the length of the text form of compact JSON that the database checks:
+// JSONB writes ": " and ", " where compact JSON writes ":" and ",", one byte more for
+// each one outside a string.
+func jsonbTextLen(compact []byte) int {
+	n, inString, escaped := len(compact), false, false
+	for _, b := range compact {
+		switch {
+		case escaped:
+			escaped = false
+		case inString && b == '\\':
+			escaped = true
+		case b == '"':
+			inString = !inString
+		case !inString && (b == ',' || b == ':'):
+			n++
+		}
+	}
+	return n
 }

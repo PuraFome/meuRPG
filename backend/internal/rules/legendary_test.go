@@ -22,7 +22,7 @@ var legendaryGolden = map[string]struct {
 	"monster:lich":            {3, []string{"Cantrip:1:text", "Paralyzing Touch:2:attack", "Frightening Gaze:2:text", "Disrupt Life:3:text"}},
 	"monster:mummy-lord":      {0, []string{"Attack:1:text", "Blinding Dust:1:text", "Blasphemous Word:2:text", "Channel Negative Energy:2:text", "Whirlwind of Sand:2:text"}},
 	"monster:solar":           {0, []string{"Teleport:1:text", "Searing Burst:2:text", "Blinding Gaze:3:text"}},
-	"monster:tarrasque":       {3, []string{"Attack:1:text", "Move:1:move", "Chomp:2:attack"}},
+	"monster:tarrasque":       {3, []string{"Attack:1:text", "Move:1:move", "Chomp:2:text"}},
 	"monster:unicorn":         {0, []string{"Hooves:1:attack", "Shimmering Shield:2:text", "Heal Self:3:text"}},
 	"monster:vampire-bat":     {3, []string{"Move:1:move", "Unarmed Strike:1:text", "Bite:2:attack"}},
 	"monster:vampire-mist":    {3, []string{"Move:1:move", "Unarmed Strike:1:text", "Bite:2:text"}},

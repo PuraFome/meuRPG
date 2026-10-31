@@ -15,14 +15,19 @@ func TestCreatureReactionStatsHoldTheStatBlocksReactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadSRD: %v", err)
 	}
-	content := srd
-	for key, want := range map[string]int{"monster:knight": 2, "monster:marilith": 5} {
-		got := creatureReactionStats(content, key).MonsterReactions
-		if len(got) != 1 || got[0] != (link.MonsterReaction{Key: "parry", Name: "Parry", Text: got[0].Text, Kind: "parry", ACBonus: want}) {
-			t.Errorf("%s reactions = %+v, want one Parry of +%d", key, got, want)
+	for key, want := range map[string]struct {
+		bonus int
+		text  string
+	}{
+		"monster:knight":   {2, "The knight adds 2 to its AC against one melee attack that would hit it. To do so, the knight must see the attacker and be wielding a melee weapon."},
+		"monster:marilith": {5, "The marilith adds 5 to its AC against one melee attack that would hit it. To do so, the marilith must see the attacker and be wielding a melee weapon."},
+	} {
+		got := creatureReactionStats(srd, key).MonsterReactions
+		if len(got) != 1 || got[0] != (link.MonsterReaction{Key: "parry", Name: "Parry", Text: want.text, Kind: "parry", ACBonus: want.bonus}) {
+			t.Errorf("%s reactions = %+v, want one Parry of +%d", key, got, want.bonus)
 		}
 	}
-	if got := creatureReactionStats(content, "monster:goblin").MonsterReactions; len(got) != 0 {
+	if got := creatureReactionStats(srd, "monster:goblin").MonsterReactions; len(got) != 0 {
 		t.Errorf("goblin reactions = %+v, want none", got)
 	}
 }
