@@ -71,7 +71,7 @@ export interface RevealAnswer {
           @if (q.none) {
             <div class="hr__pair">
               <button
-                mat-flat-button
+                matButton="filled"
                 type="button"
                 class="hr__btn"
                 data-reveal
@@ -87,7 +87,7 @@ export interface RevealAnswer {
           } @else {
           <div class="hr__pair">
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               class="hr__btn"
               data-reveal
@@ -100,7 +100,7 @@ export interface RevealAnswer {
               <mat-icon aria-hidden="true">visibility</mat-icon>Revelar
             </button>
             <button
-              mat-stroked-button
+              matButton="outlined"
               type="button"
               class="hr__btn"
               [class.hr__btn--off]="i > 0"

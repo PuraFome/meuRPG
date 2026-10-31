@@ -57,8 +57,8 @@ let nextId = 0;
           }
         </div>
         <div class="actions">
-          <button mat-stroked-button type="button" class="btn" (click)="close()">Cancelar</button>
-          <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="save(target)">Salvar cobertura</button>
+          <button matButton="outlined" type="button" class="btn" (click)="close()">Cancelar</button>
+          <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="save(target)">Salvar cobertura</button>
         </div>
       </section>
     } @else {
@@ -79,7 +79,7 @@ let nextId = 0;
                     {{ r.line }}
                   </span>
                 </span>
-                <button mat-button type="button" class="target__change" [attr.data-row]="r.c.id" [attr.aria-label]="'Mudar a cobertura de ' + r.c.label" (click)="open(r.c)">Mudar</button>
+                <button matButton type="button" class="target__change" [attr.data-row]="r.c.id" [attr.aria-label]="'Mudar a cobertura de ' + r.c.label" (click)="open(r.c)">Mudar</button>
               </li>
             }
           </ul>

@@ -39,8 +39,8 @@ import { MatIconModule } from '@angular/material/icon';
         </p>
         <!-- "Voltar" outlined, the answer filled: not the same button twice. -->
         <div class="ask__buttons">
-          <button #safe mat-stroked-button type="button" class="btn btn--back" (click)="back()">Voltar</button>
-          <button mat-flat-button type="button" class="btn btn--go" [disabled]="busy()" (click)="confirm()">
+          <button #safe matButton="outlined" type="button" class="btn btn--back" (click)="back()">Voltar</button>
+          <button matButton="filled" type="button" class="btn btn--go" [disabled]="busy()" (click)="confirm()">
             {{ confirmLabel() }}
           </button>
         </div>
@@ -49,7 +49,7 @@ import { MatIconModule } from '@angular/material/icon';
       @if (note()) {
         <p class="note">{{ note() }}</p>
       }
-      <button #open mat-stroked-button type="button" class="btn" [disabled]="busy()" disabledInteractive (click)="ask()">
+      <button #open matButton="outlined" type="button" class="btn" [disabled]="busy()" disabledInteractive (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>{{ label() }}
       </button>
     }

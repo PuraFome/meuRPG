@@ -16,7 +16,7 @@
       </div>
       <div class="pair">
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="pair__btn pair__btn--danger"
           [disabled]="busy()"
@@ -26,7 +26,7 @@
           Confirmar a morte
         </button>
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="pair__btn"
           data-initial-focus
@@ -67,7 +67,7 @@
     <div foot>
       <div class="pair">
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="pair__btn"
           [disabled]="busy() || !changed()"
@@ -78,7 +78,7 @@
           Salvar
         </button>
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="pair__btn"
           [disabled]="busy() || current() === 0"
@@ -87,7 +87,7 @@
         >
           Baixar 1 nível
         </button>
-        <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+        <button matButton="outlined" type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
       </div>
     </div>
   }

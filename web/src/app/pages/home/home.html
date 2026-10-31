@@ -6,7 +6,7 @@
       <p class="mr-page-lead welcome__lead">
         Suas campanhas guardam as fichas e as sessões da mesa.
       </p>
-      <a mat-flat-button class="welcome__action" routerLink="/campaigns">Ver minhas campanhas</a>
+      <a matButton="filled" class="welcome__action" routerLink="/campaigns">Ver minhas campanhas</a>
       @if (!hasDisplayName()) {
         <p class="welcome__note">
           Você ainda não escolheu o nome que a mesa vê.
@@ -27,7 +27,7 @@
         <!-- A link, not a button: signing in is a navigation to the server
              (AuthService.signIn does the same GET), and the app bar already
              has the "Entrar" button the e2e tests click. -->
-        <a mat-flat-button class="welcome__action" [href]="signInHref">Entrar</a>
+        <a matButton="filled" class="welcome__action" [href]="signInHref">Entrar</a>
         <p class="welcome__note">Recebeu um convite? Abra o link que o mestre mandou.</p>
       }
     }
@@ -57,7 +57,7 @@
           <mat-icon aria-hidden="true">cloud_off</mat-icon>
           <p><strong>Não foi possível falar com o servidor.</strong> {{ s.message }}</p>
         </div>
-        <button mat-stroked-button type="button" (click)="retry()">
+        <button matButton="outlined" type="button" (click)="retry()">
           Tentar de novo
         </button>
       }

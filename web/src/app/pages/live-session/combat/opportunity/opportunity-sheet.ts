@@ -99,24 +99,24 @@ export type OpportunityAnswer = {
       }
       <div foot>
         @if (gone()) {
-          <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="sheet.close(null)">Fechar</button>
+          <button matButton="outlined" type="button" class="btn" data-initial-focus (click)="sheet.close(null)">Fechar</button>
         } @else {
           <div class="stack">
-            <button #safe mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="decline()">
+            <button #safe matButton="outlined" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="decline()">
               Não atacar
             </button>
             @if (attacks(); as list) {
               @for (a of list; track a.key; let first = $first) {
                 @if (first) {
-                  <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
+                  <button matButton="filled" type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
                 } @else {
-                  <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
+                  <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="attack(a)">{{ label(a) }}</button>
                 }
               }
             } @else if (readFailed()) {
-              <button mat-stroked-button type="button" class="btn" (click)="read()">Tentar de novo</button>
+              <button matButton="outlined" type="button" class="btn" (click)="read()">Tentar de novo</button>
             } @else {
-              <button mat-flat-button type="button" class="btn btn--off" disabled disabledInteractive>Atacar</button>
+              <button matButton="filled" type="button" class="btn btn--off" disabled disabledInteractive>Atacar</button>
             }
           </div>
         }

@@ -30,12 +30,12 @@
             @if (z.canMove || z.canEnd) {
               <div class="zp__actions">
                 @if (z.canMove) {
-                  <button mat-stroked-button type="button" class="zp__btn" [disabled]="busy()" (click)="move.emit(z.id)">
+                  <button matButton="outlined" type="button" class="zp__btn" [disabled]="busy()" (click)="move.emit(z.id)">
                     <mat-icon aria-hidden="true">open_with</mat-icon>Mover
                   </button>
                 }
                 @if (z.canEnd) {
-                  <button mat-stroked-button type="button" class="zp__btn zp__end" [disabled]="busy()" (click)="ask(z.id)">
+                  <button matButton="outlined" type="button" class="zp__btn zp__end" [disabled]="busy()" (click)="ask(z.id)">
                     <mat-icon aria-hidden="true">close</mat-icon>Encerrar zona
                   </button>
                 }
@@ -54,8 +54,8 @@
                   <p class="mr-notice mr-notice--danger" role="alert">{{ error() }}</p>
                 }
                 <div class="zp__actions">
-                  <button mat-stroked-button type="button" class="zp__btn zp__no" (click)="cancel(z.id)">Não</button>
-                  <button mat-flat-button type="button" class="zp__btn zp__yes" [disabled]="busy()" (click)="end.emit(z.id)">
+                  <button matButton="outlined" type="button" class="zp__btn zp__no" (click)="cancel(z.id)">Não</button>
+                  <button matButton="filled" type="button" class="zp__btn zp__yes" [disabled]="busy()" (click)="end.emit(z.id)">
                     Sim, encerrar
                   </button>
                 </div>

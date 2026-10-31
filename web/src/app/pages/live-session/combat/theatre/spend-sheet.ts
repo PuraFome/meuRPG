@@ -63,8 +63,8 @@ export interface SpendSheetData {
         <p class="note" role="status">Esse combatente não está mais no combate.</p>
       }
       <div foot class="actions">
-        <button mat-stroked-button type="button" class="btn" (click)="cancel()">Cancelar</button>
-        <button mat-flat-button type="button" class="btn btn--go" [disabled]="!can() || busy()" disabledInteractive [class.btn--off]="!can()" (click)="spend()">
+        <button matButton="outlined" type="button" class="btn" (click)="cancel()">Cancelar</button>
+        <button matButton="filled" type="button" class="btn btn--go" [disabled]="!can() || busy()" disabledInteractive [class.btn--off]="!can()" (click)="spend()">
           {{ label() }}
         </button>
       </div>

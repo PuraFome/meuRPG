@@ -3,7 +3,7 @@
     @if (confirming()) {
       <ng-container *ngTemplateOutlet="endConfirm" />
     } @else {
-      <button mat-stroked-button type="button" class="end end--block" (click)="ask()">
+      <button matButton="outlined" type="button" class="end end--block" (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
       </button>
     }
@@ -38,8 +38,8 @@
         <p id="cancel-text">Ele acaba sem ter começado.</p>
       </div>
       <div class="confirm__buttons">
-        <button #safe mat-stroked-button type="button" (click)="cancel()">Voltar</button>
-        <button mat-stroked-button type="button" class="danger" (click)="confirmCancel()">Cancelar combate</button>
+        <button #safe matButton="outlined" type="button" (click)="cancel()">Voltar</button>
+        <button matButton="outlined" type="button" class="danger" (click)="confirmCancel()">Cancelar combate</button>
       </div>
     </div>
   } @else if (setup()) {
@@ -49,7 +49,7 @@
     </p>
     <div class="bar__actions">
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="next begin"
         [class.begin--blocked]="!ready()"
@@ -60,7 +60,7 @@
       >
         Começar o combate
       </button>
-      <button mat-stroked-button type="button" class="end" (click)="askCancel()">Cancelar combate</button>
+      <button matButton="outlined" type="button" class="end" (click)="askCancel()">Cancelar combate</button>
     </div>
   } @else if (confirming()) {
     <ng-container *ngTemplateOutlet="endConfirm" />
@@ -99,7 +99,7 @@
     <div class="bar__actions">
       <!-- A joint turn has no "end the group's turn" (it passes when the last part ends): the button stays, off, so "Encerrar combate" never takes its place. -->
       <app-next-turn class="next" [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy()" [waiting]="!!waitNote()" [why]="waitWhy()" [label]="nextLabel()" [idle]="idle()" [joint]="!!banner().joint" (next)="next.emit($event)" />
-      <button mat-stroked-button type="button" class="end" (click)="ask()">
+      <button matButton="outlined" type="button" class="end" (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
       </button>
     </div>
@@ -122,8 +122,8 @@
         </p>
       </div>
       <div class="confirm__buttons">
-        <button #safe mat-stroked-button type="button" (click)="cancel()">Cancelar</button>
-        <button mat-stroked-button type="button" class="danger" (click)="confirmEnd()">
+        <button #safe matButton="outlined" type="button" (click)="cancel()">Cancelar</button>
+        <button matButton="outlined" type="button" class="danger" (click)="confirmEnd()">
           Encerrar combate
         </button>
       </div>

@@ -30,7 +30,7 @@ import { isFrenzied, isRaging } from './rage';
           </span>
         </p>
         @if (canEnd()) {
-          <button mat-stroked-button type="button" class="rage__end" [disabled]="busy()" (click)="endRage.emit()">
+          <button matButton="outlined" type="button" class="rage__end" [disabled]="busy()" (click)="endRage.emit()">
             Encerrar fúria
           </button>
         }

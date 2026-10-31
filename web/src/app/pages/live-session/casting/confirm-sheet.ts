@@ -55,8 +55,8 @@ export function openCastConfirm(
         <p class="confirm__body">{{ data.body }}</p>
       </div>
       <div foot class="confirm__actions">
-        <button mat-stroked-button type="button" data-initial-focus (click)="sheet.close(false)">{{ data.cancel }}</button>
-        <button mat-stroked-button type="button" class="confirm__danger" (click)="sheet.close(true)">{{ data.confirm }}</button>
+        <button matButton="outlined" type="button" data-initial-focus (click)="sheet.close(false)">{{ data.cancel }}</button>
+        <button matButton="outlined" type="button" class="confirm__danger" (click)="sheet.close(true)">{{ data.confirm }}</button>
       </div>
     </app-sheet-frame>
   `,

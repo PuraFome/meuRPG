@@ -80,7 +80,7 @@
             </div>
             <p class="cast__wait" role="status">Esperando o mestre concluir. {{ c.ritual ? 'Um ritual não gasta espaço de magia.' : 'O espaço só é gasto quando ele concluir.' }}</p>
             @if (mine(c)) {
-              <button mat-stroked-button type="button" [disabled]="busy('stop', c.id)" disabledInteractive (click)="stop(c)">
+              <button matButton="outlined" type="button" [disabled]="busy('stop', c.id)" disabledInteractive (click)="stop(c)">
                 Parar a conjuração
               </button>
             }
@@ -101,7 +101,7 @@
             <span class="cast__chip">{{ chip(c) }}</span>
           </div>
           @if (mine(c)) {
-            <button mat-stroked-button type="button" class="cast__end" [disabled]="busy('end', c.id)" disabledInteractive (click)="end(c)">
+            <button matButton="outlined" type="button" class="cast__end" [disabled]="busy('end', c.id)" disabledInteractive (click)="end(c)">
               Encerrar
             </button>
           }

@@ -52,7 +52,7 @@
       } @else if (!showTyping()) {
         <div class="roll__buttons">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="roll__main"
             [class.roll__main--quiet]="!inApp() && canType()"
@@ -64,7 +64,7 @@
           </button>
           @if (canType()) {
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               class="roll__main"
               [class.roll__main--quiet]="inApp()"
@@ -113,7 +113,7 @@
           }
           <p id="face-sum" class="roll__sum" role="status">{{ sum() }}</p>
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="roll__main"
             [class.roll__main--off]="face() === null || dieMissing()"
@@ -124,7 +124,7 @@
             Confirmar{{ face() === null ? '' : ' ' + face() }}
           </button>
           @if (canApp()) {
-            <button mat-button type="button" class="roll__text" (click)="typing.set(false)">
+            <button matButton type="button" class="roll__text" (click)="typing.set(false)">
               Rolar no app
             </button>
           }
@@ -186,7 +186,7 @@
                 </p>
               }
               <button
-                mat-flat-button
+                matButton="filled"
                 type="button"
                 class="roll__main"
                 [disabled]="creatureFace() === null || busy()"
@@ -196,14 +196,14 @@
                 Confirmar{{ creatureFace() === null ? '' : ' ' + creatureFace() }}
               </button>
               @if (canApp()) {
-                <button mat-button type="button" class="roll__text" (click)="typingCreature.set(null)">
+                <button matButton type="button" class="roll__text" (click)="typingCreature.set(null)">
                   Rolar no app
                 </button>
               }
             } @else {
               <div class="roll__buttons">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   type="button"
                   class="roll__main"
                   [class.roll__main--quiet]="!inApp() && canType()"
@@ -215,7 +215,7 @@
                 </button>
                 @if (canType()) {
                   <button
-                    mat-flat-button
+                    matButton="filled"
                     type="button"
                     class="roll__main"
                     [class.roll__main--quiet]="inApp()"

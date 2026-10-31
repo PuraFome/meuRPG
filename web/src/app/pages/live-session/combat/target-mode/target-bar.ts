@@ -52,15 +52,15 @@ import type { TargetMode } from './target-mode';
           }
         </div>
         <div class="pair">
-          <button mat-stroked-button type="button" class="pair__btn" (click)="mode().cancel()">
+          <button matButton="outlined" type="button" class="pair__btn" (click)="mode().cancel()">
             <mat-icon aria-hidden="true">close</mat-icon>Cancelar
           </button>
           @if (mode().ready()) {
-            <button mat-flat-button type="button" class="pair__btn" (click)="mode().confirm()">
+            <button matButton="filled" type="button" class="pair__btn" (click)="mode().confirm()">
               <mat-icon aria-hidden="true">check</mat-icon>Confirmar
             </button>
           } @else if (variant() === 'bar') {
-            <button mat-stroked-button type="button" class="pair__btn mr-button--off" disabledInteractive [disabled]="true" aria-disabled="true">
+            <button matButton="outlined" type="button" class="pair__btn mr-button--off" disabledInteractive [disabled]="true" aria-disabled="true">
               <mat-icon aria-hidden="true">check</mat-icon>Confirmar
             </button>
           } @else {

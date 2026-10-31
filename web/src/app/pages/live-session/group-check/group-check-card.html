@@ -1,42 +1,47 @@
 @if (check(); as c) {
-  @switch (mode()) {
-    @case ('roll') {
-      <section class="card mr-notice mr-notice--warning" [attr.aria-label]="heading()">
-        <mat-icon aria-hidden="true">{{ c.group ? 'groups' : 'casino' }}</mat-icon>
-        <div class="card__body">
-          @if (c.group) {
-            <p><b>Teste em grupo.</b> O mestre pediu {{ asked() }} de todo o grupo.</p>
-          } @else {
-            <p><b>{{ heading() }}.</b> O mestre pede {{ asked() }}.</p>
+  <section
+    class="card mr-notice"
+    [class.mr-notice--warning]="mode() === 'roll'"
+    [class.mr-notice--neutral]="mode() !== 'roll'"
+    [attr.aria-label]="heading()"
+  >
+    <mat-icon aria-hidden="true">{{ mode() === 'wait' ? 'schedule' : c.group ? 'groups' : 'casino' }}</mat-icon>
+    <div class="card__body">
+      <div role="status">
+        @switch (mode()) {
+          @case ('roll') {
+            @if (c.group) {
+              <p><b>Teste em grupo.</b> O mestre pediu {{ asked() }} de todo o grupo.</p>
+            } @else {
+              <p><b>{{ heading() }}.</b> O mestre pede {{ asked() }}.</p>
+            }
           }
-          <button mat-flat-button type="button" class="card__btn" (click)="openSheet()">Rolar o teste</button>
-        </div>
-      </section>
-    }
-    @case ('wait') {
-      <section class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
-        <mat-icon aria-hidden="true">schedule</mat-icon>
-        <div class="card__body">
-          @if (c.group) {
-            <p>
-              <b>Esperando o mestre.</b> O resultado do grupo aparece quando ele encerrar o teste de
-              {{ c.skillNamePt }}.
-            </p>
-          } @else {
-            <p><b>Esperando o mestre.</b> Ele encerra {{ asked() }} quando quiser.</p>
+          @case ('wait') {
+            @if (c.group) {
+              <p>
+                <b>Esperando o mestre.</b> O resultado do grupo aparece quando ele encerrar o teste de
+                {{ c.skillNamePt }}.
+              </p>
+            } @else {
+              <p><b>Esperando o mestre.</b> Ele encerra {{ asked() }} quando quiser.</p>
+            }
           }
-          <button mat-stroked-button type="button" class="card__btn" (click)="openSheet()">Abrir a folha</button>
-        </div>
-      </section>
-    }
-    @case ('result') {
-      <section class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
-        <mat-icon aria-hidden="true">{{ c.group ? 'groups' : 'casino' }}</mat-icon>
-        <div class="card__body">
-          <p><b>{{ heading() }}: {{ c.skillNamePt }}.</b> {{ line() }}</p>
-          <button mat-stroked-button type="button" class="card__btn" (click)="dismiss()">Dispensar</button>
-        </div>
-      </section>
-    }
-  }
+          @case ('result') {
+            <p><b>{{ heading() }}: {{ c.skillNamePt }}.</b> {{ line() }}</p>
+          }
+        }
+      </div>
+      @switch (mode()) {
+        @case ('roll') {
+          <button matButton="filled" type="button" class="card__btn" (click)="openSheet()">Rolar o teste</button>
+        }
+        @case ('wait') {
+          <button matButton="outlined" type="button" class="card__btn" (click)="openSheet()">Abrir a folha</button>
+        }
+        @case ('result') {
+          <button matButton="outlined" type="button" class="card__btn" (click)="dismiss()">Dispensar</button>
+        }
+      }
+    </div>
+  </section>
 }
