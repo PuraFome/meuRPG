@@ -436,15 +436,27 @@ func markAssignedPackageVars(body ast.Node, pkgValues map[string]ast.Expr) {
 }
 
 // upwardReads returns, for each Test function of the package in dir, the paths that go up from
-// the package directory and that it reaches, and the paths it could not resolve. A path is
-// resolved from its base, as the file system would: the string literals of its body, the
-// constants and the variables assigned once (in the function or in the package), the
-// concatenations with +, and every argument of filepath.Join and path.Join; a Join whose tail
-// is only known at run time reaches its directory. It follows the functions and methods (by
-// name) the test calls, in test and non-test files, and the package-level names it uses. Its
-// limits: a path built by a function call, read in another package or through an embed, or in a
-// file a build tag leaves out, is not seen, unless it writes a `..` the guard cannot place: then
-// it is a problem.
+// the package directory and that it reaches, and the paths it could not resolve.
+//
+// A test reaches its own body and everything it calls: the functions and methods of the
+// package, by name, in test and non-test files and whatever their build tags, and the
+// package-level names it uses.
+//
+// A path is resolved from its base, as the file system would: string literals, constants and
+// package variables, local variables assigned once, concatenations with +, and every argument
+// of filepath.Join and path.Join (also through FromSlash, ToSlash and Clean). A Join whose
+// tail is only known at run time reaches the directory its known arguments give.
+//
+// A value is read where it is written when its name is not assigned exactly once: defined
+// twice, set through a field or an element, or set from another function (init, a test),
+// where it counts for every reader of that name.
+//
+// A `..` next to a base it cannot resolve (a function call, a parameter, a name assigned more
+// than once) is a problem, never a pass. Its limits: a path built at run time with no `..` in
+// it, a path built by a function call (only the `..` literals among its arguments are read), a
+// path read in another package through an import or through go:embed, and names that are
+// matched by spelling alone (a parameter named like a package variable, a package-level
+// function literal, a variable a closure defines and an outer scope reads).
 func upwardReads(t *testing.T, dir string) map[string]pathReads {
 	t.Helper()
 	pd := parseDir(t, dir)
