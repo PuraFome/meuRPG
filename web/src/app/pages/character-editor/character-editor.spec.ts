@@ -1111,7 +1111,7 @@ describe('CharacterEditor', () => {
     );
     expect(el.querySelector('[role="alert"]')).toBeNull();
     expect(el.querySelector('form')).toBeNull();
-    expect(el.querySelector('button.mat-mdc-unelevated-button')).toBeNull();
+    expect(el.querySelector('button.editor__primary')).toBeNull();
     const back = Array.from(el.querySelectorAll('a')).find((a) =>
       a.textContent?.includes('Voltar para a ficha'),
     );
@@ -1519,7 +1519,7 @@ describe('CharacterEditor', () => {
       );
       expect(cancel?.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-9');
       expect(el.querySelector('h1')?.textContent).toContain('Editar ficha');
-      expect(el.querySelector('button.mat-mdc-unelevated-button')?.textContent).toContain(
+      expect(el.querySelector('button.editor__primary')?.textContent).toContain(
         'Salvar ficha',
       );
     });
@@ -1530,7 +1530,7 @@ describe('CharacterEditor', () => {
 
       expect(el.querySelector('h1')?.textContent).toContain('Criar NPC');
       expect(el.querySelector('.mr-page-lead')?.textContent).toContain('Minion: ficha curta');
-      const primary = el.querySelector('button.mat-mdc-unelevated-button');
+      const primary = el.querySelector('button.editor__primary');
       expect(primary?.textContent).toContain('Criar NPC');
     });
 

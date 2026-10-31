@@ -155,7 +155,9 @@ describe('CampaignImportPage', () => {
     it('says a failure to read the kept upload and still lets the person choose', async () => {
       pkg.getImportResult = () => Promise.reject(new ConnectError('x', Code.Unavailable));
       const { el } = await render();
-      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain('Não foi possível falar');
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Não foi possível falar',
+      );
       expect(control(el, 'Escolher o arquivo')).toBeTruthy();
     });
 
@@ -534,6 +536,10 @@ describe('CampaignImportPage', () => {
       expect(alert).toContain('A importação falhou no meio e nada foi criado.');
       expect(alert).toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
       expect(alert).not.toContain('conn reset');
+      expect(el.querySelector('.mr-notice--danger')?.getAttribute('role')).toBeNull();
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toContain(
+        'A importação falhou no meio e nada foi criado.',
+      );
       expect(text(el)).toContain('“Tentar de novo” usa as partes que já foram enviadas.');
 
       pkg.createResult = () =>

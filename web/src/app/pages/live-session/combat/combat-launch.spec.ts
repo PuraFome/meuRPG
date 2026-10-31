@@ -107,6 +107,10 @@ describe('CombatLaunchNotice', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Não deu para ler o mapa atual');
+    // It stops the launch, so it is a danger notice that interrupts.
+    const notice = el.querySelector('.mr-notice');
+    expect(notice?.classList.contains('mr-notice--danger')).toBe(true);
+    expect(notice?.getAttribute('role')).toBe('alert');
     const button = Array.from(el.querySelectorAll('button')).find((b) =>
       b.textContent?.includes('Tentar de novo'),
     )!;

@@ -13,7 +13,7 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-panel`, `.mr-panel__title` | One section of a page: surface, 1 px `line` border, 12 px corners, `h2` title |
 | `.mr-list`, `.mr-list__row`, `__text`, `__name`, `__sub` | Rows in a panel (characters, NPCs, invites): at least 56 px high, a rule between rows; `<a class="mr-list__row">` highlights the name on hover |
 | `.mr-tag` (`--pending`, `--success`, `--danger`) | A state in one word, a pill with a border in its colour; a `mat-icon` inside is 14 px (Travada takes `lock`) |
-| `.mr-notice` (`--warning`, `--danger`, `--success`, `--neutral`) | A message with a `mat-icon` and a `<p>` that starts with `<strong>` naming the problem. A notice that appears or changes after the screen is shown is announced through a live role: `role="status"` for a result or an update, `role="alert"` for an error the user must act on now. The element with the role is on the page before its text arrives or changes: a wrapper with the role around the `@if`, as in `combat-view.html`. A notice that is there from the first render and does not change is content: it has no live role. A confirmation question is a `group` or an `alertdialog`, not a notice with a live role |
+| `.mr-notice` (`--warning`, `--danger`, `--success`, `--neutral`) | A message with a `mat-icon` and a `<p>` that starts with `<strong>` naming the problem. A notice that appears or changes after the screen is shown is announced through a live role: `role="status"` for a result or an update, `role="alert"` for an error the user must act on now. The element with the role is on the page before its text arrives or changes: a wrapper with the role around the `@if` (`<div class="mr-live" role="status">`, which draws no box), as in `combat-view.html`. A notice inside an element that receives focus, or on a screen that has its own live region, has no role. A notice that is there from the first render and does not change is content: it has no live role. A confirmation question is a `group` or an `alertdialog`, not a notice with a live role |
 | `.mr-muted`, `.mr-label` | Supporting text; a 13 px label |
 | `.mr-visually-hidden` | Text for screen readers only |
 | `.mr-button--off` | A button that cannot act yet: dashed, quiet, still focusable (use with `disabledInteractive`), with the reason in a line linked by `aria-describedby` |
@@ -21,6 +21,8 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-legend`, `.mr-swatch` (+ modifiers) | The legend under a map and its 22 px swatches; see [maps.md](maps.md#legend) |
 | `.mr-nudge`, `.mr-nudge--still` | The half-second shake of the turn panel (`SHAKE_MS` in `core/combat/turn-alert.ts`); `--still` is the static 2 px outline used under reduced motion |
 | `[data-ring]` | Gives the focus ring to an element the app focused (`core/creatures/focus-ring.ts`) |
+
+Colour and role go together. `--danger` with `role="alert"` stops what the person is doing: a save refused, a launch that cannot start. `--warning` and `--success` with `role="status"` inform and do not stop anything.
 
 ## Shell components
 

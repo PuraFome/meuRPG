@@ -170,6 +170,8 @@ describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () 
     expect(flat(el.querySelector('.made p'))).toBe(
       'Entrou no combate: Ogro. O combate “Combate: Ogro” foi criado agora. Os jogadores já os veem pelo estado.',
     );
+    // The box receives focus, so the confirmation is not also a live region.
+    expect(el.querySelector('.made [role="status"]')).toBeNull();
   });
 
   it('"Criar NPC" opens the dialog with the creature; with an NPC made, the page confirms and links to its sheet', async () => {
