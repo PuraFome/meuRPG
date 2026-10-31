@@ -176,7 +176,9 @@ type attackFlow struct {
 	caught           playdb.ReactionWindow
 	attack           link.Attack
 	attackKey        string
-	bonusKind        combat.BonusKind
+	// legendary is the option of a legendary attack, as checkLegendary found it.
+	legendary rules.LegendaryOption
+	bonusKind combat.BonusKind
 	// coverTarget is the target on the square the mode and the cover are read at: where an opportunity
 	// attack's mover left the reach.
 	coverTarget playdb.Combatant

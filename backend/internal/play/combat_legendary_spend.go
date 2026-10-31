@@ -41,7 +41,10 @@ func legendaryNow(enc playdb.Encounter, who playdb.Combatant, p rules.LegendaryP
 
 // legendaryAsk is what a spend names: the creature and the option, and the kind the call makes.
 type legendaryAsk struct {
-	who    playdb.Combatant
+	who playdb.Combatant
+	// master says the caller is the campaign's master: the one who asked, which a replay of a held attack keeps
+	// even though the player's answer released it.
+	master bool
 	option string
 	// kind is the kind of option the call makes (rules.LegendaryKind*).
 	kind string
@@ -56,17 +59,20 @@ func (s *Service) legendarySpend(ctx context.Context, c *combatTx, ask legendary
 	if err != nil {
 		return opt, err
 	}
-	if _, err := bumpCreatureSpent(ctx, c.q, ask.who.ID, spentLegendaryActions, opt.Cost); err != nil {
-		return rules.LegendaryOption{}, err
-	}
-	return opt, nil
+	return opt, legendaryPay(ctx, c, ask.who, opt)
 }
 
-// legendaryCheck is the rule of a spend, without the spend: an action checks it before it rolls, and
-// spends with legendarySpend, which checks it again in the same transaction.
+// legendaryPay spends the cost of an option that legendaryCheck allowed, in the same transaction.
+func legendaryPay(ctx context.Context, c *combatTx, who playdb.Combatant, opt rules.LegendaryOption) error {
+	_, err := bumpCreatureSpent(ctx, c.q, who.ID, spentLegendaryActions, opt.Cost)
+	return err
+}
+
+// legendaryCheck is the rule of a spend, without the spend: an action that rolls first (the attack)
+// checks it once, before the d20, and pays with legendaryPay in the same transaction.
 func (s *Service) legendaryCheck(ctx context.Context, c *combatTx, ask legendaryAsk) (rules.LegendaryOption, error) {
 	none := rules.LegendaryOption{}
-	if !c.master {
+	if !ask.master {
 		return none, connect.NewError(connect.CodePermissionDenied, errors.New("only the master spends legendary actions"))
 	}
 	p, err := s.legendaryProfileOf(ctx, c, ask.who)
@@ -93,13 +99,16 @@ func (s *Service) legendaryCheck(ctx context.Context, c *combatTx, ask legendary
 }
 
 // legendaryOptionOf finds the option the call names, of the kind it makes (and, for an attack, with the
-// action it attacks with).
+// action it attacks with). A move option of a creature with no square (a combat without a map, or a creature
+// not placed) cannot be walked: the engine cannot resolve it, so it is offered as text (SRD 5.1) and spent
+// as one.
 func legendaryOptionOf(p rules.LegendaryProfile, ask legendaryAsk) (rules.LegendaryOption, error) {
 	for _, o := range p.Options {
 		if o.Key != ask.option {
 			continue
 		}
-		if o.Kind != ask.kind || (ask.kind == rules.LegendaryKindAttack && o.ActionKey != ask.actionKey) {
+		unwalkable := o.Kind == rules.LegendaryKindMove && ask.kind == rules.LegendaryKindText && !placed(ask.who)
+		if (o.Kind != ask.kind && !unwalkable) || (ask.kind == rules.LegendaryKindAttack && o.ActionKey != ask.actionKey) {
 			return o, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND, "the option is not made this way")
 		}
 		return o, nil
@@ -160,8 +169,10 @@ func (s *Service) SpendLegendaryAction(
 		return nil, s.dbError(ctx, "spend a legendary action", err)
 	}
 	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false) // the master's line alone
+		// A text spend changes nothing a player sees: both hints are the master's alone, so the players
+		// cannot count the spends.
+		s.publishEncounterChangedToMaster(m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, false)
 	})
 	if err != nil {
 		return nil, err
@@ -179,7 +190,7 @@ func (s *Service) spendTextOption(ctx context.Context, c *combatTx, m authz.Memb
 	if err != nil {
 		return actionEvent{}, err
 	}
-	opt, err := s.legendarySpend(ctx, c, legendaryAsk{who: who, option: option, kind: rules.LegendaryKindText})
+	opt, err := s.legendarySpend(ctx, c, legendaryAsk{who: who, master: c.master, option: option, kind: rules.LegendaryKindText})
 	if err != nil {
 		return actionEvent{}, err
 	}
@@ -190,40 +201,27 @@ func (s *Service) spendTextOption(ctx context.Context, c *combatTx, m authz.Memb
 	return actionEvent{Round: c.enc.Round, Secret: true, Actor: who.ID, Key: option, SpendCost: conv.Int32(opt.Cost), SpendName: opt.Name}, nil
 }
 
-// legendaryAsk is what an attack names: the attacker and the option, with the stat block action the
+// checkLegendary refuses a legendary attack that the rule refuses, before the d20 rolls, and keeps the
+// option for spendLegendary. The ask names the attacker and the option, with the stat block action the
 // attack is (a roll of a sheet attack that is no action of the stat block is not an option's).
-func (f *attackFlow) legendaryAsk(ctx context.Context) (legendaryAsk, error) {
-	plan, _, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
-	if err != nil {
-		return legendaryAsk{}, err
-	}
-	return legendaryAsk{who: f.attacker, option: f.call.legendary, kind: rules.LegendaryKindAttack, actionKey: plan.Key}, nil
-}
-
-// checkLegendary refuses a legendary attack that the rule refuses, before the d20 rolls.
 func (f *attackFlow) checkLegendary(ctx context.Context) error {
 	if f.call.legendary == "" {
 		return nil
 	}
-	ask, err := f.legendaryAsk(ctx)
+	plan, _, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
 	if err != nil {
 		return err
 	}
-	_, err = f.s.legendaryCheck(ctx, f.c, ask)
+	f.legendary, err = f.s.legendaryCheck(ctx, f.c, legendaryAsk{who: f.attacker, master: f.m.Role == authz.RoleMaster, option: f.call.legendary, kind: rules.LegendaryKindAttack, actionKey: plan.Key})
 	return err
 }
 
-// spendLegendary pays the option's cost with the attack, and keeps it on the attack's event.
+// spendLegendary pays the cost of the option checkLegendary allowed, and keeps it on the attack's event.
 func (f *attackFlow) spendLegendary(ctx context.Context) error {
-	ask, err := f.legendaryAsk(ctx)
-	if err != nil {
+	if err := legendaryPay(ctx, f.c, f.attacker, f.legendary); err != nil {
 		return err
 	}
-	opt, err := f.s.legendarySpend(ctx, f.c, ask)
-	if err != nil {
-		return err
-	}
-	f.out.made.SpendCost = conv.Int32(opt.Cost)
+	f.out.made.SpendCost = conv.Int32(f.legendary.Cost)
 	return nil
 }
 
@@ -257,7 +255,7 @@ func (s *Service) spendLegendaryMove(ctx context.Context, a *moveAttempt) error 
 	if !placed(a.target) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "a legendary move starts from a square of the map")
 	}
-	opt, err := s.legendarySpend(ctx, a.c, legendaryAsk{who: a.target, option: a.req.legendary, kind: rules.LegendaryKindMove})
+	opt, err := s.legendarySpend(ctx, a.c, legendaryAsk{who: a.target, master: a.v.master, option: a.req.legendary, kind: rules.LegendaryKindMove})
 	if err != nil {
 		return err
 	}

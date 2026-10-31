@@ -62,7 +62,7 @@ Events, after `ready`:
 | `attack_hit` | The master applied the damage of an attack to a player's character (`ApplyPendingDamage`): the pending damage's id, the attacker's name (empty when it is hidden: the sheet says "Alguém acertou você"), the amount that landed and the type in Portuguese. To that character's player only. The sheet says it as the attack's ("A Armadura animada acertou você: 5 de dano de concussão.") and not as "O mestre ajustou", also when the attacker is hidden and its log line is the master's alone; a real adjustment keeps "O mestre ajustou". It carries no hit points: they come with `vitals_changed` |
 | `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed` | The map (see [Architecture](../maps/README.md#maps-points-and-tokens)) |
 | `shown_image_changed`, `left_images_changed` | The image on show and the list left with the players |
-| `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed` | Combat (see [Combat log and events](combat-log.md)) |
+| `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed` | Combat (see [Combat log and events](combat-log.md)); a master-only text spend of legendary actions sends `encounter_changed` and `combat_log_changed` to the master alone ([Combat](combat.md#legendary-actions)) |
 | `scene_changed`, `scene_check_rolled`, `stage_changed`, `notes_changed` | Scenes (see [Scenes and stage](scenes-and-stage.md)) |
 | `xp_changed` | The campaign's XP changed |
 | `spell_casts_changed` | A cast outside combat started, finished or ended |
@@ -70,7 +70,6 @@ Events, after `ready`:
 | `puzzle_changed` | A puzzle changed; only its id |
 | `calling_you` | The master's nudge, to one player's streams only |
 | `free_roll_rolled` | A table roll of the free dice roller, carried whole, to everyone; a secret roll is sent to nobody ([The free dice roller](free-dice-roller.md)) |
-| `legendary_action_spent` | The master's spend of legendary actions on a text option; `secret`, so it is sent to nobody but the master (an `encounter_changed` without content goes to the players) ([Combat](combat.md#legendary-actions-557)) |
 | `session_message_added` | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
 | `master_typing` | The master is typing: content-free, to the players |
 | `session_ended` | The session ended; the event carries the session id |

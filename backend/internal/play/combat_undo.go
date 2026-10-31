@@ -580,6 +580,10 @@ func (s *Service) followToSquare(ctx context.Context, campaignID string, d *enco
 // in it, whose own sheet it changes; the others would learn that something happened
 // out of their sight (RN-10).
 func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
+	if ev.UndoneKind == eventLegendarySpent { // the master's text spend: nothing a player sees
+		s.publishEncounterChangedToMaster(campaignID, d.enc)
+		return
+	}
 	f, err := s.fogSightOf(ctx, campaignID, d.enc)
 	if err != nil || f == nil || !ev.Fogged {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)

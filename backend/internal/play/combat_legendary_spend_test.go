@@ -254,10 +254,10 @@ func TestLegendarySpend_AttackRefusals(t *testing.T) {
 	wantBlockedBy(t, "a text option as an attack", err, blockedWrongKind)
 	_, err = a.legendaryAttack(t, e, "Draco", "nothing", dragonTail, "Toren", 20)
 	wantBlockedBy(t, "an unknown option as an attack", err, blockedUnknownOpt)
-	_, err = a.attack(t, a.caio, e, "Toren", "unarmed", "Draco", func(r *playv1.RollAttackRequest) { d20(10)(r); r.LegendaryOption = "tail-attack" })
-	if connect.CodeOf(err) == connect.CodeUnknown || err == nil {
-		t.Errorf("a player's legendary attack error = %v, want a refusal", err)
-	}
+	// Toren is his own player's and has the turn: only the master-only rule refuses him (a creature
+	// without legendary actions would otherwise be LEGENDARY_UNAVAILABLE).
+	_, err = a.attack(t, a.caio, e, "Toren", battleaxe, "Draco", func(r *playv1.RollAttackRequest) { d20(10)(r); r.LegendaryOption = "tail-attack" })
+	wantCode(t, "a player's legendary attack", err, connect.CodePermissionDenied)
 	if got := a.spentOn(t, "Draco"); got != 0 {
 		t.Errorf("the refusals left spent = %d, want 0", got)
 	}
@@ -270,18 +270,29 @@ func vampireFight(t *testing.T) (*armed, *playv1.Encounter, string) {
 }
 
 // The Move option walks by the usual rules with a budget of its own: a vampire (30 ft) that has used all of
-// its turn's movement still moves its full speed, and its turn's movement is not spent by it.
+// its turn's movement still moves its full speed, and its turn's movement is not spent by it. It leaves
+// the reach of an enemy and offers no opportunity attack, where the same step on its own turn does.
 func TestLegendarySpend_MoveHasABudgetOfItsOwn(t *testing.T) {
 	t.Parallel()
 	a, e, vamp := vampireFight(t)
-	if _, err := a.legendaryMove(t, a.master, e, vamp, "", 16, 5); err != nil { // 30 ft on its own turn: the whole speed
-		t.Fatalf("the vampire's own move: %v", err)
+	a.put(t, "Toren", 10, 6)                                     // beside the vampire at 10,5
+	own, err := a.legendaryMove(t, a.master, e, vamp, "", 16, 5) // 30 ft on its own turn: the whole speed, out of Toren's reach
+	if err != nil || !own.GetProvoked() {
+		t.Fatalf("the vampire's own move = provoked %v, %v; want it to provoke Toren (the control)", own.GetProvoked(), err)
+	}
+	for _, o := range own.GetEncounter().GetOpportunityOffers() {
+		if _, err := a.master.combat.SkipOpportunity(t.Context(), connect.NewRequest(&playv1.SkipOpportunityRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), OpportunityOfferId: o.GetId(), IdempotencyKey: newKey(),
+		})); err != nil {
+			t.Fatalf("SkipOpportunity() error = %v", err)
+		}
 	}
 	used := a.moveRowOf(t, vamp)
 	if used.UsedDft != 300 {
 		t.Fatalf("the vampire walked %d dft on its turn, want 300", used.UsedDft)
 	}
 	e = a.passTo(t, e, "Toren")
+	a.put(t, "Toren", 16, 6) // beside the vampire at 16,5 again
 
 	res, err := a.legendaryMove(t, a.master, e, vamp, "move", 10, 5)
 	if err != nil {
@@ -291,8 +302,8 @@ func TestLegendarySpend_MoveHasABudgetOfItsOwn(t *testing.T) {
 	if after.Col != 10 || after.Row != 5 || after.UsedDft != used.UsedDft || after.LastDft != used.LastDft {
 		t.Errorf("after the legendary move the row is %v, want (10, 5) with the turn's movement as it was (%v)", after, used)
 	}
-	if got := a.spentOn(t, vamp); got != 1 || res.GetProvoked() {
-		t.Errorf("spent = %d, provoked = %v; want 1 and no opportunity offer", got, res.GetProvoked())
+	if got := a.spentOn(t, vamp); got != 1 || res.GetProvoked() || len(res.GetEncounter().GetOpportunityOffers()) != 0 {
+		t.Errorf("spent = %d, provoked = %v, offers = %v; want 1 and no opportunity offer", got, res.GetProvoked(), res.GetEncounter().GetOpportunityOffers())
 	}
 	_, err = a.legendaryMove(t, a.master, e, vamp, "move", 17, 5) // 35 ft from (10, 5): more than the speed
 	wantBlockedBy(t, "a legendary move beyond the speed", err, reasonTooFar)

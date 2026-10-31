@@ -863,6 +863,12 @@ func (s *Service) publishEncounterChangedFor(ctx context.Context, campaignID str
 	s.publishEncounterChanged(ctx, campaignID, d.enc)
 }
 
+// publishEncounterChangedToMaster is publishEncounterChanged for a change the players cannot see at all:
+// the hint goes to the master alone, so the players cannot count it.
+func (s *Service) publishEncounterChangedToMaster(campaignID string, enc playdb.Encounter) {
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(enc)})
+}
+
 // allHidden says whether every id is a combatant of cs that is hidden now.
 func allHidden(cs []playdb.Combatant, ids []string) bool {
 	if len(ids) == 0 {
