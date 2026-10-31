@@ -13,7 +13,7 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-panel`, `.mr-panel__title` | One section of a page: surface, 1 px `line` border, 12 px corners, `h2` title |
 | `.mr-list`, `.mr-list__row`, `__text`, `__name`, `__sub` | Rows in a panel (characters, NPCs, invites): at least 56 px high, a rule between rows; `<a class="mr-list__row">` highlights the name on hover |
 | `.mr-tag` (`--pending`, `--success`, `--danger`) | A state in one word, a pill with a border in its colour; a `mat-icon` inside is 14 px (Travada takes `lock`) |
-| `.mr-notice` (`--warning`, `--danger`, `--success`, `--neutral`) | A message with a `mat-icon` and a `<p>` that starts with `<strong>` naming the problem. A notice that appears or changes after the screen is shown carries a live role: `role="status"` for a result or an update, `role="alert"` for an error the user must act on now. A notice that is there from the first render and does not change is content: it has no live role. A confirmation question is a `group` or an `alertdialog`, not a notice with a live role |
+| `.mr-notice` (`--warning`, `--danger`, `--success`, `--neutral`) | A message with a `mat-icon` and a `<p>` that starts with `<strong>` naming the problem. A notice that appears or changes after the screen is shown is announced through a live role: `role="status"` for a result or an update, `role="alert"` for an error the user must act on now. The element with the role is on the page before its text arrives or changes: a wrapper with the role around the `@if`, as in `combat-view.html`. A notice that is there from the first render and does not change is content: it has no live role. A confirmation question is a `group` or an `alertdialog`, not a notice with a live role |
 | `.mr-muted`, `.mr-label` | Supporting text; a 13 px label |
 | `.mr-visually-hidden` | Text for screen readers only |
 | `.mr-button--off` | A button that cannot act yet: dashed, quiet, still focusable (use with `disabledInteractive`), with the reason in a line linked by `aria-describedby` |
@@ -59,7 +59,7 @@ Defined in `web/src/styles/_ui.scss`.
 
 | Component | Use |
 | --- | --- |
-| `matButton`, `matIconButton` | The one way to write a Material button: `matButton="filled"`, `matButton="outlined"`, `matButton` (text) or `matIconButton`; the lint refuses the `mat-flat-button`, `mat-stroked-button`, `mat-button` and `mat-icon-button` attributes |
+| `matButton`, `matIconButton` | The one way to write a Material button: `matButton="filled"`, `matButton="outlined"`, `matButton` (text) or `matIconButton`; the lint refuses the `mat-flat-button`, `mat-stroked-button`, `mat-raised-button`, `mat-button` and `mat-icon-button` attributes |
 | `<app-text-field>`, `<app-select-field>`, `<app-switch-field>`, `<app-check-row>`, `<app-number-stepper>`, `<app-pick-list>` (`shared/form-fields`) | The content editors' fields: outlined, the refusal under the field, `data-field` for where a server refusal lands. A native `<select>` so the phone's picker opens. Switches carry "Ligado" / "Desligado". A pick list can be off: its chips stay, nothing is added or taken off and its hint says why. Rows are 44 px targets |
 | `<app-check-box>` (`shared/check-box`) | A 24 px box in a 44 px target for a list of choices (who joins the combat, who gets the XP) |
 | `<app-reveal-switch>`, `<app-hidden-switch>` (`shared/reveal-switch`, `shared/hidden-switch`) | A real `role="switch"`: an `ink` track with a check when on, a `control-line` outline when off (burgundy is for the main button only), always with the word |
