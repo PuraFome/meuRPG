@@ -86,6 +86,15 @@ export async function openSessionPage(page: Page, campaignId: string, tab: Maste
 }
 
 /**
+ * Opens `route` and waits for its heading (`heading`, else the h1). A page that keeps its stream open never goes idle,
+ * so the heading says it has loaded.
+ */
+export async function openLive(page: Page, route: string, heading?: string): Promise<void> {
+  await page.goto(route);
+  await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
+}
+
+/**
  * Waits for the notice of `campaignName`'s session 1 on the player's open
  * page and returns its "Entrar na sessão" link. Other tests start sessions
  * at the same time, so the page may show several notices (one per open

@@ -191,7 +191,7 @@ test(
       expect(own.deathFailures ?? 0).toBe(1);
 
       // Three successes on her next turns make her stable: the result is public, the road to it is not.
-      let rolled!: Encounter;
+      let rolled: Encounter | undefined;
       for (let i = 0; i < 3; i++) {
         const now = await getEncounterRPC(m, campaignId);
         await combatRPC(m, 'EndTurn', { campaignId, encounterId: now.id, expectedCombatantId: now.currentCombatantId, discardPendingDamage: true });
@@ -199,7 +199,8 @@ test(
         const turn = await getEncounterRPC(m, campaignId);
         rolled = await combatRPC(lia.page, 'RollDeathSave', { campaignId, encounterId: turn.id, combatantId: turn.combatants.find((c) => c.label === 'Brisa')!.id, d20Face: 15 });
       }
-      await waitForEncounterRevision(p, rolled);
+      expect(rolled, 'the loop rolled no death save').toBeDefined();
+      await waitForEncounterRevision(p, rolled!);
       const stable = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.label === 'Brisa')!;
       expect(stable.state).toBe('COMBATANT_STATE_STABLE');
       await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
