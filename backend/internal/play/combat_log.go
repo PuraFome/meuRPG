@@ -1005,7 +1005,7 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 		out.Damage = &playv1.CombatLogDamage{
 			Status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED, Healing: true, Amount: e.ev.Amount, TempHpGained: e.ev.TempGained,
 		}
-		if e.ev.Heal {
+		if e.ev.Heal && e.ev.DiceCount > 0 { // Integridade Corporal heals with no roll
 			out.Damage.Roll = diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		}
 	}
