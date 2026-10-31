@@ -25,9 +25,13 @@ import (
 //   - Web: a cube of sticky strands at a point. The cast puts its effect on who is inside, as it always
 //     did; the zone adds who comes in later: a Dexterity save on entering or beginning a turn there, and
 //     a failure restrains.
+//   - Grease: a 10-foot square at a point, with no concentration. Who stands in it at the cast, comes in
+//     or ends a turn there makes a Dexterity save or falls prone.
+//   - Entangle: a 20-foot square at a point. Only who stands in it at the cast makes a Strength save,
+//     and a failure restrains until the spell ends.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
-// inside. The cast itself hits nobody: a creature standing in the area when the spell is cast is hit
+// inside. For the first four the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
 // when it begins its turn there or comes back in.
 
 // zoneKind says what a zone does to the creature it catches.
@@ -36,7 +40,7 @@ type zoneKind int
 const (
 	// zoneDamage: a saving throw, damage on a failure and half of it on a pass.
 	zoneDamage zoneKind = iota
-	// zoneRestrain: a saving throw; a failure restrains the creature in the web.
+	// zoneRestrain: a saving throw; a failure restrains the creature (Web, Entangle).
 	zoneRestrain
 	// zoneProne: a saving throw; a failure knocks the creature prone (Grease).
 	zoneProne
@@ -68,7 +72,7 @@ type zoneDef struct {
 	// restrainKey is the effect a failed save puts on the creature of a restraining zone.
 	restrainKey string
 	// slows says a creature the zone catches moves at half speed for the turn (Spirit Guardians), and
-	// difficult says the squares are difficult terrain (Web).
+	// difficult says the squares are difficult terrain (Web, Grease, Entangle).
 	slows, difficult bool
 	// corners says the area spreads around corners: it is the part of the shape the origin reaches.
 	corners bool
