@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -117,8 +118,8 @@ type runCase struct {
 }
 
 // runCases are the configurations that take run down each of its branches:
-// each refusal before the server starts, and the servers it builds without a
-// database, with one that cannot be reached, and with a real one.
+// each refusal before the server starts (a missing DATABASE_URL among them), and the servers it builds with a
+// database that cannot be reached and with a real one.
 func runCases() []runCase {
 	listen := func(cfg config.Config) config.Config {
 		cfg.ListenHost, cfg.Port, cfg.LogLevel = "127.0.0.1", 0, config.DefaultLogLevel
@@ -142,7 +143,7 @@ func runCases() []runCase {
 			return listen(config.Config{DatabaseURL: "postgresql://h:99999999/x"})
 		}},
 		{"invalid bucket", func(*testing.T) config.Config {
-			return listen(config.Config{BlobBucket: "No Such Bucket", WebDir: "/nonexistent"})
+			return listen(config.Config{DatabaseURL: unreachable, BlobBucket: "No Such Bucket", WebDir: "/nonexistent"})
 		}},
 		{"blob dir under a file", func(t *testing.T) config.Config {
 			t.Helper()
@@ -150,24 +151,24 @@ func runCases() []runCase {
 			if err := os.WriteFile(file, nil, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			return listen(config.Config{BlobDir: filepath.Join(file, "blobs"), WebDir: "/nonexistent"})
+			return listen(config.Config{DatabaseURL: unreachable, BlobDir: filepath.Join(file, "blobs"), WebDir: "/nonexistent"})
 		}},
 		{"bad form-action origin", func(t *testing.T) config.Config {
 			t.Helper()
-			return listen(config.Config{OIDC: config.OIDC{IssuerURL: "ftp://idp"}, WebDir: web(t)})
+			return listen(config.Config{DatabaseURL: unreachable, OIDC: config.OIDC{IssuerURL: "ftp://idp"}, WebDir: web(t)})
 		}},
 		{"bad CA file", func(*testing.T) config.Config {
 			bad := oidc
 			bad.CAFile = "/nonexistent/ca.pem"
 			return listen(config.Config{DatabaseURL: unreachable, OIDC: bad, WebDir: "/nonexistent"})
 		}},
-		{"nothing configured", func(*testing.T) config.Config {
-			return listen(config.Config{WebDir: "/nonexistent"})
+		{"no database URL", func(*testing.T) config.Config {
+			return listen(config.Config{OIDC: oidc, BlobDir: "/nonexistent", WebDir: "/nonexistent"})
 		}},
-		{"sign-in without a database", func(t *testing.T) config.Config {
+		{"unreachable database, no sign-in, a blob dir", func(t *testing.T) config.Config {
 			t.Helper()
 			return listen(config.Config{
-				OIDC: oidc, BlobDir: t.TempDir(), WebDir: web(t), TrustedProxyHops: 1, TraceProject: "p",
+				DatabaseURL: unreachable, BlobDir: t.TempDir(), WebDir: web(t), TrustedProxyHops: 1, TraceProject: "p",
 				Images: config.Images{Fake: true},
 			})
 		}},
@@ -217,4 +218,18 @@ func TestRunConfigurations(t *testing.T) {
 		got[c.name] = out
 	}
 	goldentest.JSON(t, "testdata/golden/run.json", got)
+}
+
+// Without DATABASE_URL the process refuses to start and the error names the variable; with one, openDatabase
+// does not refuse (an unreachable database is only a warning: /readyz reports it).
+func TestOpenDatabaseNeedsTheURL(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	if _, err := openDatabase(t.Context(), logger, config.Config{}); err == nil || !strings.Contains(err.Error(), "DATABASE_URL") {
+		t.Fatalf("openDatabase without a URL = %v, want an error naming DATABASE_URL", err)
+	}
+	pool, err := openDatabase(t.Context(), logger, config.Config{DatabaseURL: "postgresql://root@127.0.0.1:1/none?sslmode=disable&connect_timeout=5"})
+	if err != nil {
+		t.Fatalf("openDatabase with a URL: %v", err)
+	}
+	pool.Close()
 }
