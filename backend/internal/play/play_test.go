@@ -815,15 +815,23 @@ func lazyPool(t *testing.T) *pgxpool.Pool {
 func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
-	for name, cfg := range map[string]Config{
-		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Maps":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Roster: noRoster{}, Dice: noDice{}},
-		"Roster":    {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Dice: noDice{}},
-		"Dice":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}},
-	} {
+	full := Config{Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}, Roller: dicetest.New()}
+	without := map[string]func(*Config){
+		"Pool":      func(c *Config) { c.Pool = nil },
+		"Sheets":    func(c *Config) { c.Sheets = nil },
+		"Vitals":    func(c *Config) { c.Vitals = nil },
+		"Campaigns": func(c *Config) { c.Campaigns = nil },
+		"Maps":      func(c *Config) { c.Maps = nil },
+		"Roster":    func(c *Config) { c.Roster = nil },
+		"Dice":      func(c *Config) { c.Dice = nil },
+		"Roller":    func(c *Config) { c.Roller = nil },
+	}
+	if _, err := New(full); err != nil {
+		t.Fatalf("New() with every field error = %v", err)
+	}
+	for name, drop := range without {
+		cfg := full
+		drop(&cfg)
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
 		}

@@ -498,8 +498,8 @@ type Config struct {
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
 	// exists (the two need each other); nil means open floor.
 	Terrain TerrainSource
-	// Roller rolls the NPCs' dice and the app's rolls. Nil means the
-	// operating system's random source (dice.Crypto); tests pass faces.
+	// Roller rolls the NPCs' dice and the app's rolls. Required:
+	// production passes dice.Crypto{}, tests pass dicetest or a scripted roller.
 	Roller dice.Roller
 	// Live sets the live stream's timing; the zero value is the defaults.
 	Live LiveConfig
@@ -610,6 +610,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("play: Roster is required")
 	case cfg.Dice == nil:
 		return nil, errors.New("play: Dice is required")
+	case cfg.Roller == nil:
+		return nil, errors.New("play: Roller is required")
 	}
 	s := &Service{
 		pool:      cfg.Pool,
@@ -643,9 +645,6 @@ func New(cfg Config) (*Service, error) {
 	s.free = freeRollDeps{limit: cfg.FreeRolls, hit: ratelimit.NewNotifier(s.logger, "free dice rolls by user")}
 	s.puzzles.hints.logger = s.logger
 	s.puzzles.hints.after = cfg.Live.HintAfter
-	if s.roller == nil {
-		s.roller = dice.Crypto{}
-	}
 	if s.live.Heartbeat <= 0 {
 		s.live.Heartbeat = DefaultHeartbeat
 	}
