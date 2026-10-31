@@ -66,9 +66,9 @@ function adoptedCard(o: LevelUpOptions, was: HpCard): HpCard {
   return o.hitPointsRule === LevelUpHitPointsRule.ROLL_ONLY ? 'roll' : was;
 }
 
-/** Whether a die result still stands for these options. An in-app roll is the server's own kept roll for this class and
- * level: it stands when the options show that roll, and also when they show none for the same class and level, because
- * they may have been read before the roll reached the server (the server keeps it and answers the same value again).
+/** Whether a die result still stands for these options.
+ * An in-app roll stands when the options show that roll.
+ * It also stands when they show none for the same class and level: they may have been read before the roll reached the server.
  * A typed roll stays only for the same level and a die it fits. */
 function rollStands(o: LevelUpOptions, was: Rolled, wasOptions: LevelUpOptions): boolean {
   const sameLevel = o.classKey === wasOptions.classKey && o.toLevel === wasOptions.toLevel;
