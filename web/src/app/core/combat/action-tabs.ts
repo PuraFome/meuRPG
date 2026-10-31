@@ -26,6 +26,7 @@ const CLASS_TAB_BY_FEATURE: readonly (readonly [prefix: string, tab: string])[] 
   ['feature:step-of-the-wind', 'Chi'],
   ['feature:deflect-missiles', 'Chi'],
   ['feature:slow-fall', 'Chi'],
+  ['feature:wholeness-of-body', 'Chi'],
   ['feature:divine-sense', 'Paladino'],
   ['feature:lay-on-hands', 'Paladino'],
   ['feature:fighting-style-protection', 'Paladino'],

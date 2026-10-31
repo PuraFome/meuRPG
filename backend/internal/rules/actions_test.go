@@ -247,6 +247,30 @@ func TestLimitedUseFeaturesHaveACounter(t *testing.T) {
 	}
 }
 
+// TestWholenessOfBodyIsAnActionOfTheOpenHandAtLevel6: the Open Hand monk of level 6 has the
+// action, once per long rest; a monk of another tradition, a monk below level 6 and a
+// fighter have none.
+func TestWholenessOfBodyIsAnActionOfTheOpenHandAtLevel6(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	const key = "feature:wholeness-of-body"
+	monk := func(level int, subclass string) Derived {
+		b := standard("class:monk", level)
+		b.Classes[0].Subclass = subclass
+		return Derive(b, c)
+	}
+	a, ok := actionOf(monk(6, "subclass:open-hand"), key)
+	if !ok || a.Economy != EconomyAction || a.Resource != "wholeness_of_body" || a.NamePT != "Integridade Corporal" {
+		t.Errorf("Open Hand monk 6: action = %+v (found %v), want an action that spends wholeness_of_body", a, ok)
+	}
+	if _, ok := actionOf(monk(5, "subclass:open-hand"), key); ok {
+		t.Error("an Open Hand monk of level 5 has Wholeness of Body")
+	}
+	if _, ok := actionOf(Derive(standard("class:fighter", 6), c), key); ok {
+		t.Error("a fighter has Wholeness of Body")
+	}
+}
+
 // TestUnlimitedUsesAreStoredAs99: a barbarian's Rage at level 20 is a counter of
 // 99 uses, which the screens show as "ilimitado".
 func TestUnlimitedUsesAreStoredAs99(t *testing.T) {

@@ -29,16 +29,21 @@ import { RollAnimator, showOfDie } from '../../../shared/roll-overlay/roll-anima
 import { type HitDieRoll, ResourceClient } from '../../../core/resources/resources-client';
 import { ResourceBlockedReason } from '../../../../gen/meurpg/play/v1/resources_pb';
 import {
-  arcaneRecoveryErrorMessage,
   hitDiceErrorMessage,
   resourceBlocked,
+  slotRecoveryErrorMessage,
 } from '../../../core/resources/resources-errors';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { RollPicker } from '../../../shared/roll-picker/roll-picker';
 import { toVitalsVm } from '../../../core/play/live-session-source.live';
 import type { VitalsVm } from '../../../core/play/live-session.types';
-import { arcaneRecoveryState, expendedSlots, levelsWords } from './arcane-recovery';
+import {
+  type SlotRecoveryDef,
+  expendedSlots,
+  levelsWords,
+  slotRecoveryStates,
+} from './slot-recovery';
 
 /** What the page hands "Gastar dados de vida". */
 export interface HitDiceSheetData {
@@ -241,80 +246,95 @@ export class HitDiceSheet {
     }
   }
 
-  // --- Recuperação Arcana (SRD 5.1, Wizard): after a short rest, expended slots up to half the wizard level. ---
+  // --- Recuperação Arcana and Natural (SRD 5.1): after a short rest, expended slots up to half the class level. ---
 
-  protected readonly arcane = computed(() => arcaneRecoveryState(this.vitals()));
-  protected readonly arcaneSlots = computed(() => expendedSlots(this.vitals()));
-  protected readonly arcaneHelp = computed(
-    () =>
-      `Recupere espaços de magia que somem até ${levelsWords(this.arcane()?.allowance ?? 0)}; nenhum de 6º nível ou mais.`,
-  );
-  /** How many slots of each spell level the player picked to recover. */
-  protected readonly arcanePicked = signal<Readonly<Record<number, number>>>({});
-  /** The combined level of the picked slots. */
-  protected readonly arcaneTotal = computed(() =>
-    Object.entries(this.arcanePicked()).reduce((sum, [level, n]) => sum + Number(level) * n, 0),
-  );
-  protected readonly arcaneBusy = signal(false);
-  protected readonly arcaneKey = new ActionKey();
+  /** The recoveries the character has: the section of each one. */
+  protected readonly recoveries = computed(() => slotRecoveryStates(this.vitals()));
+  protected readonly recoverySlots = computed(() => expendedSlots(this.vitals()));
+  protected recoveryHelp(allowance: number): string {
+    return `Recupere espaços de magia que somem até ${levelsWords(allowance)}; nenhum de 6º nível ou mais.`;
+  }
+  /** How many slots of each spell level the player picked to recover, by feature. */
+  private readonly recoveryPicked = signal<
+    Readonly<Record<string, Readonly<Record<number, number>>>>
+  >({});
+  private readonly recoveryKeys = new Map<string, ActionKey>();
 
-  protected arcaneCount(level: number): number {
-    return this.arcanePicked()[level] ?? 0;
+  protected recoveryCount(def: SlotRecoveryDef, level: number): number {
+    return this.recoveryPicked()[def.kind]?.[level] ?? 0;
   }
 
-  protected canAddArcane(slot: { level: number; expended: number }): boolean {
-    return (
-      this.arcaneCount(slot.level) < slot.expended &&
-      this.arcaneTotal() + slot.level <= (this.arcane()?.allowance ?? 0)
+  /** The combined level of the slots picked for the feature. */
+  protected recoveryTotal(def: SlotRecoveryDef): number {
+    return Object.entries(this.recoveryPicked()[def.kind] ?? {}).reduce(
+      (sum, [level, n]) => sum + Number(level) * n,
+      0,
     );
   }
 
-  protected stepArcane(level: number, by: 1 | -1): void {
-    const count = Math.max(this.arcaneCount(level) + by, 0);
-    this.arcanePicked.update((all) => ({ ...all, [level]: count }));
+  protected canAddRecovery(
+    def: SlotRecoveryDef,
+    allowance: number,
+    slot: { level: number; expended: number },
+  ): boolean {
+    return (
+      this.recoveryCount(def, slot.level) < slot.expended &&
+      this.recoveryTotal(def) + slot.level <= allowance
+    );
+  }
+
+  protected stepRecovery(def: SlotRecoveryDef, level: number, by: 1 | -1): void {
+    const count = Math.max(this.recoveryCount(def, level) + by, 0);
+    this.recoveryPicked.update((all) => ({
+      ...all,
+      [def.kind]: { ...all[def.kind], [level]: count },
+    }));
     this.error.set('');
   }
 
-  protected async recoverArcane(): Promise<void> {
-    const slots = Object.entries(this.arcanePicked())
+  protected async recover(def: SlotRecoveryDef): Promise<void> {
+    const slots = Object.entries(this.recoveryPicked()[def.kind] ?? {})
       .map(([level, count]) => ({ level: Number(level), count }))
       .filter((s) => s.count > 0);
     if (slots.length === 0 || this.busy()) {
       return;
     }
+    const key = this.recoveryKeys.get(def.kind) ?? new ActionKey();
+    this.recoveryKeys.set(def.kind, key);
     this.busy.set(true);
     this.error.set('');
     try {
-      const res = await this.api.useArcaneRecovery(
+      const res = await this.api[def.call](
         this.data.campaignId,
         this.vitals().characterId,
         slots,
-        this.arcaneKey.keyFor(slots),
+        key.keyFor(slots),
       );
-      this.arcaneKey.renew();
+      key.renew();
       if (res.vitals) {
         const vitals = toVitalsVm(res.vitals);
         this.answered.set(vitals);
         this.data.apply(vitals);
       }
-      this.arcanePicked.set({});
-      this.arcaneDone.set(
-        `Recuperou espaços de magia que somam ${levelsWords(res.recoveredLevels)}.`,
-      );
+      this.recoveryPicked.update((all) => ({ ...all, [def.kind]: {} }));
+      this.recoveryDone.set({
+        kind: def.kind,
+        text: `Recuperou espaços de magia que somam ${levelsWords(res.recoveredLevels)}.`,
+      });
     } catch (err) {
-      this.error.set(arcaneRecoveryErrorMessage(err));
+      this.error.set(slotRecoveryErrorMessage(err, def.title));
     } finally {
       this.busy.set(false);
     }
   }
 
-  /** What Recuperação Arcana just did, for the live region. */
-  protected readonly arcaneDone = signal('');
+  /** What a recovery just did, for the live region. */
+  protected readonly recoveryDone = signal<{ kind: string; text: string } | null>(null);
 
   protected close(): void {
     if (this.busy()) {
       return;
     }
-    this.sheet.close(this.rolls().length > 0 || this.arcaneDone() !== '');
+    this.sheet.close(this.rolls().length > 0 || this.recoveryDone() !== null);
   }
 }
