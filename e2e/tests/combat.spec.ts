@@ -27,6 +27,7 @@ import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { sq20, thirdPlayer, trapTable } from './trap-support';
 import { masterLog, openCombatPanel, openOrderRow } from './combat-layout';
+import { waitForEncounterRevision } from './revision-support';
 
 // The combat on screen (Etapa 6, slice 6.5a, MR-013, RN-18 to RN-22): the
 // master sets the grid and starts a combat, everybody rolls initiative, the
@@ -109,7 +110,9 @@ test(
       const pen = enc.combatants.find((c) => c.label === 'Pensantus')!;
       const cap = enc.combatants.find((c) => c.label === 'Capitão Goblin')!;
       if (pen.initiative === cap.initiative) {
-        await combatRPC(m, 'SetInitiativeOrder', { campaignId, encounterId: enc.id, combatantIds: [cap.id, pen.id] });
+        // eslint-disable-next-line meurpg/rpc-revision-wait -- the player acts only after the master's own clicks, and the player's "Sua vez" heading asserted before that is the wait
+        enc = await combatRPC(m, 'SetInitiativeOrder', { campaignId, encounterId: enc.id, combatantIds: [cap.id, pen.id] });
+        await waitForEncounterRevision(m, enc);
       }
       await expect(m.getByText(/Empate em 7: Goblin \d e Goblin \d\. Escolha a ordem com as setas\./)).toBeVisible();
       // The first of the group can't go up: the arrow is a dashed outline that says so and does nothing.
@@ -469,7 +472,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
 
     // The hidden Goblin 1 is on turn: the player sees "Vez do mestre", and its attack never reaches their log.
     await expect(p.getByRole('heading', { name: 'Vez do mestre' })).toBeVisible();
-    await combatRPC(m, 'RollAttack', {
+    const rolled = await combatRPC(m, 'RollAttack', {
       campaignId,
       encounterId: enc.id,
       attackerId: enc.combatants.find((c) => c.label === 'Goblin 1')!.id,
@@ -477,6 +480,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
       targetId: enc.combatants.find((c) => c.label === 'Pensantus')!.id,
       d20Face: 3,
     });
+    await waitForEncounterRevision([m, p], rolled);
     await expect(await masterLog(m)).toContainText('Goblin 1');
     await expect(await masterLog(m)).toContainText('Só o mestre vê');
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
@@ -710,6 +714,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     let enc = await getEncounterRPC(m, campaignId);
     enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(p, enc);
     expect(enc.combatants.find((c) => c.label === 'Pensantus')?.deathSaveDue).toBe(true);
 
     // Round 2: the hero says so, the marks are empty, and he can't end the turn before rolling.
@@ -731,12 +736,14 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
 
     // Round 3: a natural 1 counts two failures; round 4: a 5 is the third.
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision([m, p], enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('1');
     await p.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(p.getByText(/Teste contra a morte: 1 · dado físico\. Falha: um 1 conta duas falhas\./)).toBeVisible();
     await endTurnOf(p, m, campaignId, 'Pensantus');
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision([m, p], enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('5');
     await p.getByRole('button', { name: 'Confirmar 5' }).click();

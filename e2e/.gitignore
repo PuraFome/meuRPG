@@ -6,3 +6,4 @@ blob-report/
 # secrets, and machine/run-specific — see support.ts's `authStatePath`).
 .auth/
 kept/
+stack-logs/

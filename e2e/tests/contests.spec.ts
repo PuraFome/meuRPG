@@ -5,6 +5,7 @@ import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { newSignedInContext, openActionTab, viaTargetList } from './support';
+import { waitForEncounterRevision } from './revision-support';
 
 test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escapa: nunca lê o total do NPC', { tag: ['@RN-34', '@RN-10', '@RN-20'] }, async ({ browser }) => {
   test.setTimeout(180_000);
@@ -43,6 +44,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     // The player's end of turn lands first: passing the turns before it would end Grog's turn twice.
     await endTurnOf(p, m, campaignId, 'Grog');
     const enc = await passTurnsTo(m, campaignId, 'Goblin 1');
+    await waitForEncounterRevision([m, p], enc);
     await contestRPC(m, 'StartContest', {
       campaignId,
       encounterId: enc.id,
@@ -60,7 +62,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     await closeSheet(answer);
 
     // Grappled: on her turn the speed is 0 and "Escapar" is the first line of the action; the master answers for the Goblin.
-    await passTurnsTo(m, campaignId, 'Grog');
+    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Grog'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     await expect(p.getByText('Agarrado').first()).toBeVisible();
     await openActionTab(p, 'Ataques');
@@ -123,7 +125,7 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
       escapeDc: 16,
     });
     await expect(m.getByTestId('grapples')).toContainText('CD de escape 16');
-    await passTurnsTo(m, campaignId, 'Grog');
+    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Grog'));
     await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: 'Escapar do agarrão' }).click();
     const escape = p.getByRole('dialog');
@@ -215,6 +217,7 @@ test('o teste em grupo é encerrado pelo mestre sem mostrar a CD, e a surpresa m
 
     // The combat opens: the master marks who is surprised in the start screen, the player reads only her own state.
     let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 2, hidden: false }]);
+    await waitForEncounterRevision(m, enc);
     const card = m.getByTestId('surprise-card');
     await expect(card).toContainText('Quem está surpreso?');
     await card.locator('label:has(input[aria-label="Surpreso: Vex"])').click();

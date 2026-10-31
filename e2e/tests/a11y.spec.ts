@@ -81,6 +81,7 @@ import {
   lockAndMilestone,
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
+import { waitForEncounterRevision } from './revision-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -1001,7 +1002,8 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(p.getByRole('heading', { name: 'Vez do mestre' })).toBeVisible();
     await expectScreenPasses(p, `Combate do jogador, vez do mestre ${where}`);
     enc = await getEncounterRPC(m, campaignId);
-    await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: id('Capitão Goblin'), hidden: false });
+    enc = await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: id('Capitão Goblin'), hidden: false });
+    await waitForEncounterRevision([m, p], enc);
     await expect(p.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
     await expectScreenPasses(p, `Combate do jogador, fora da vez ${where}`);
 
@@ -1329,7 +1331,7 @@ async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Compacto, fora da vez ${where}`);
 
     // The player's turn: one "Mover" and one "Encerrar turno" in sight, the tab list, and "Ver mapa" as an icon at the map's top.
-    await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Pensantus'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveCount(1);
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
@@ -1609,7 +1611,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await card.getByRole('button', { name: 'Rolar dano' }).click();
     await card.getByRole('button', { name: 'Não aplicar' }).click();
     await card.getByRole('button', { name: 'Descartar' }).click();
-    await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
 
     // Round 2: Pensantus casts Teia (through the API) and concentrates; the line and its action are his.
     const enc2 = await getEncounterRPC(m, campaignId);
@@ -1630,7 +1632,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // Teia used the action, so "Encerrar turno" ends the turn without asking.
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await waitTurnLeaves(m, campaignId, 'Pensantus');
-    await passTurnsTo(m, campaignId, 'Capitão Goblin');
+    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Capitão Goblin'));
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
     await expect(p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ })).toBeVisible();
@@ -1665,7 +1667,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // The fallen, first stable: three successes.
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     for (let i = 0; i < 3; i++) {
-      await passTurnsTo(m, campaignId, 'Pensantus');
+      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
       await expect(p.getByRole('heading', { name: 'Pensantus está caído' })).toBeVisible();
       if (i === 0) {
         await expectScreenPasses(p, `Caído, antes de rolar ${where}`);
@@ -1698,7 +1700,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     for (let i = 0; i < 2; i++) {
       await passTurnsTo(m, campaignId, 'Capitão Goblin');
-      await passTurnsTo(m, campaignId, 'Pensantus');
+      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
       await p.getByRole('button', { name: 'Digitar o resultado' }).click();
       await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill(i === 0 ? '1' : '2');
       await p.getByRole('button', { name: i === 0 ? 'Confirmar 1' : 'Confirmar 2' }).click();
@@ -1772,6 +1774,7 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     enc = await getEncounterRPC(m, campaignId);
     await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.combatants.find((c) => c.label === 'Pensantus')!.id, discardPendingDamage: true });
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(m, enc);
     const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
     const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
       campaignId,
@@ -1904,6 +1907,7 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const combat = await tableForXpCombat(m, p, `Acessibilidade XP ${Date.now()}`, { experiencePoints: 2600 });
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
+    // eslint-disable-next-line meurpg/rpc-revision-wait -- openLive loads the page after the call: it reads the state itself.
     await winCombatRPC(m, combat);
     await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado');
     const block = m.getByRole('region', { name: 'Experiência do combate' });
@@ -4282,7 +4286,7 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await p.getByTestId('form-ended').getByRole('button', { name: 'Entendi' }).click();
     // Next round: her action is free again.
     await endTurnOf(p, m, campaignId, 'Sálvia');
-    await passTurnsTo(m, campaignId, 'Sálvia');
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Sálvia'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
 
     // Conjurar Animais: the sheet, then the result.
@@ -5717,7 +5721,8 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     }
     await openSessionPage(p, campaignId);
     await openSessionPage(lia.page, campaignId);
-    await beginTheatreRPC(m, table, enc, { Toren: 20, Brisa: 18, Goblin: 12, 'Capitão Goblin': 10 });
+    const begun = await beginTheatreRPC(m, table, enc, { Toren: 20, Brisa: 18, Goblin: 12, 'Capitão Goblin': 10 });
+    await waitForEncounterRevision([m, p], begun);
 
     // The master's screen, Toren on turn, and the cover's four rows.
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Toren$/ })).toBeVisible();
@@ -5756,7 +5761,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The master's turn for the Goblin: the offer's form, the wait and the player's question.
     enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
-    await passTurnsTo(m, campaignId, 'Goblin');
+    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Goblin'));
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Goblin$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um NPC ${where}`);
     await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
@@ -6178,6 +6183,7 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await sheet.getByRole('button', { name: 'Cancelar' }).click();
 
     // A combat in preparation: the sheet reads it.
+    // eslint-disable-next-line meurpg/rpc-revision-wait -- the master is on the bestiary, which has no combat view to show a revision: the sheet reads the combat when it opens.
     let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
     await m.getByRole('button', { name: 'Pôr no combate: Bandido' }).click();
     await expect(sheet.locator('.readonly')).toHaveText('Emboscada na estrada · em preparação');
@@ -7707,7 +7713,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await expect(gift.getByText('Você inspirou Aurora.')).toBeVisible();
     await expectScreenPasses(b, `Inspiração de Bardo, dado entregue ${where}`);
     await gift.locator('button', { hasText: 'Fechar' }).click();
-    await passTurnsTo(m, campaignId, 'Aurora');
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
 
     // Aurora's turn: the die card, and the touch on Orla (hurt).
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
@@ -7734,7 +7740,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
 
     // The next round: the attack with the die in hand asks before the result.
     await passTurnsTo(m, campaignId, 'Orla');
-    await passTurnsTo(m, campaignId, 'Aurora');
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
     await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
@@ -8252,6 +8258,7 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
     // The player's end of turn lands first: passing the turns before it would end Vex's turn twice.
     await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toHaveCount(0);
     const enc = await passTurnsTo(m, campaignId, 'Goblin 2');
+    await waitForEncounterRevision([m, p], enc);
     await contestRPC(m, 'StartContest', {
       campaignId,
       encounterId: enc.id,
@@ -8334,6 +8341,7 @@ async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'd
 
     // The combat's setup: "Quem está surpreso?", then the player's own state.
     let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 2, hidden: false }]);
+    await waitForEncounterRevision(m, enc);
     const card = m.getByTestId('surprise-card');
     await expect(card).toContainText('Quem está surpreso?');
     await expectScreenPasses(m, `Quem está surpreso? ${where}`);
@@ -9055,7 +9063,7 @@ async function scanMasterActs(browser: Browser, colorScheme: 'light' | 'dark', w
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     const enc = await getEncounterRPC(m, campaignId);
     await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
-    await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(m, await passTurnsTo(m, campaignId, 'Pensantus'));
     await expect(m.getByRole('heading', { name: 'Pensantus está caído: teste contra a morte' })).toBeVisible();
     await expectScreenPasses(m, `O mestre, o teste contra a morte de Pensantus ${where}`);
     await m.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -9132,7 +9140,9 @@ async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dar
     await m.getByTestId('hit-rider').first().getByRole('button', { name: /^Aplicar / }).click();
     // The apply settles before the part ends, as a master does it: the offer is gone once the answer is on screen.
     await expect(m.getByTestId('hit-rider')).toHaveCount(0);
-    await endPartRPC(m, campaignId, 'Carniçal');
+    // The page shows the server's latest combat (the rider's answer) before the part ends, so the end acts on what the page shows.
+    await waitForEncounterRevision(m, await getEncounterRPC(m, campaignId), 'the rider answer');
+    await waitForEncounterRevision(m, await endPartRPC(m, campaignId, 'Carniçal'), 'the end of the ghoul\'s part');
 
     // The hell hound's card: the actions area, then the result of the breath's saving throw.
     const card = m.getByRole('region', { name: 'Vez do Cão infernal' });
