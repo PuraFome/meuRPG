@@ -3,14 +3,15 @@
 //
 //   flake-targets.mjs --base <ref>      prints the targets as JSON, from `git diff <ref>...HEAD`
 //
-// Two kinds of target:
+// Three kinds of target:
 //   - the tests whose body changed: a Playwright `test(...)` of e2e/tests/*.spec.ts (each spec is parsed once), a Go `func TestX` of a _test.go;
 //   - for a changed helper (an exported function of an e2e/tests/*-support.ts, any function of
 //     backend/internal/leaktest), a sample of up to SAMPLE tests that call it.
-// A change outside any test body (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
+//   - for a changed `test.beforeEach` or `test.beforeAll`, a sample of up to SAMPLE of the tests it reaches.
+// A change outside any test body and any such hook (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
 //
 // Output: {playwright: [{file, title, grep, signins, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
-// for Playwright's --grep (the title with its metacharacters escaped); `why` is "changed" or "calls <helper>".
+// for Playwright's --grep (the title with its metacharacters escaped); `why` is "changed", "calls <helper>" or "reached by a changed hook".
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -235,8 +236,18 @@ export function mapDiff({ diff, read: readFile, files }) {
     const text = read(file);
     if (text === undefined) continue;
     if (SPEC.test(file)) {
-      // A change in a hook changes every test the hook reaches.
-      for (const t of testsOf(file)) if (touches(ranges, t.from, t.to) || t.hookLines.some(([from, to]) => touches(ranges, from, to))) addPlaywright(file, t, 'changed');
+      const specTests = testsOf(file);
+      for (const t of specTests) if (touches(ranges, t.from, t.to)) addPlaywright(file, t, 'changed');
+      // A changed hook maps to a sample of the tests it reaches, as a changed helper maps to its callers.
+      const hooks = new Map();
+      for (const t of specTests) {
+        for (const [from, to] of t.hookLines) if (touches(ranges, from, to)) hooks.set(`${from}-${to}`, [...(hooks.get(`${from}-${to}`) ?? []), t]);
+      }
+      for (const [key, reached] of hooks) {
+        const picked = sample(reached);
+        for (const t of picked) addPlaywright(file, t, 'reached by a changed hook');
+        if (reached.length > picked.length) notes.push(`${file}: the hook at lines ${key.replace('-', ' to ')} changed and reaches ${reached.length} tests; ${picked.length} run`);
+      }
     } else if (SUPPORT.test(file)) {
       for (const f of functionsOf('exported', file, exportedOf)) if (touches(ranges, f.from, f.to)) helpers.push({ kind: 'playwright', name: f.name, file });
     } else if (GO_TEST.test(file) || LEAKTEST.test(file)) {

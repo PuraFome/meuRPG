@@ -316,7 +316,7 @@ test('a test that reaches a changed helper only through a beforeEach is a caller
   assert.deepEqual(got.playwright.map((t) => [t.title, t.why]), [['through the hook', 'calls openThing']]);
 });
 
-test('a change inside a hook maps to every test the hook reaches, and only those', () => {
+test('a change inside a hook maps to the tests the hook reaches, and only those', () => {
   const files = {
     'e2e/tests/x.spec.ts': [
       "test.describe('with a hook', () => {",
@@ -333,5 +333,20 @@ test('a change inside a hook maps to every test the hook reaches, and only those
     ].join('\n'),
   };
   const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 3, 3), read: (f) => files[f], files: () => [] });
-  assert.deepEqual(got.playwright.map((t) => [t.title, t.why]), [['first', 'changed'], ['second', 'changed']]);
+  assert.deepEqual(got.playwright.map((t) => [t.title, t.why]), [['first', 'reached by a changed hook'], ['second', 'reached by a changed hook']]);
+});
+
+test('a changed hook that reaches many tests maps to a sample of them, with a note, and a test changed itself still runs', () => {
+  const tests = Array.from({ length: 12 }, (_, i) => `test('t${String(i).padStart(2, '0')}', async () => {});`);
+  const files = { 'e2e/tests/x.spec.ts': ['test.beforeEach(async ({ page }) => {', "  await page.goto('/a');", '});', ...tests, ''].join('\n') };
+  const read = (f) => files[f];
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 2, 2), read, files: () => [] });
+  assert.equal(got.playwright.length, 5);
+  assert.ok(got.playwright.every((t) => t.why === 'reached by a changed hook'));
+  assert.equal(got.notes.length, 1);
+  assert.match(got.notes[0], /hook at lines 1 to 3 changed and reaches 12 tests; 5 run/);
+  // A test changed in the same diff is a "changed" target whether or not the sample picks it.
+  const last = hunk('e2e/tests/x.spec.ts', 2, 2) + hunk('e2e/tests/x.spec.ts', 15, 15);
+  const both = mapDiff({ diff: last, read, files: () => [] });
+  assert.equal(both.playwright.find((t) => t.title === 't11').why, 'changed');
 });

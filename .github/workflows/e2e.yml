@@ -22,7 +22,8 @@ on:
       - "Makefile"
       - ".github/workflows/e2e.yml"
       - ".github/scripts/e2e-no-retries.sh"
-      - ".github/actions/**"
+      - ".github/actions/build-e2e-images/**"
+      - ".github/actions/start-e2e-stack/**"
       - ".node-version"
       - "!**/*.md"
   # The nightly run and a manual run test everything, with no path filter
@@ -82,7 +83,7 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/(build-e2e-images|start-e2e-stack)/|\.node-version$)'
           ignore-md: "true"
 
       - name: Are the accessibility shards selected
