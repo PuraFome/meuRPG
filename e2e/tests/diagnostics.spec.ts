@@ -192,8 +192,16 @@ function runNested(args: string[], env: NodeJS.ProcessEnv, deadlineMs: number): 
     child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString('utf8')));
     const timer = setTimeout(() => {
       timedOut = true;
-      if (child.pid) process.kill(-child.pid, 'SIGKILL');
+      try {
+        if (child.pid) process.kill(-child.pid, 'SIGKILL');
+      } catch {
+        // The group ended just before the deadline.
+      }
     }, deadlineMs);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr: `${stderr}${error.message}`, status: null, timedOut });
+    });
     child.on('close', (status) => {
       clearTimeout(timer);
       resolve({ stdout, stderr, status, timedOut });
