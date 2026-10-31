@@ -2,10 +2,12 @@ package play
 
 import (
 	"context"
-	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
-	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"testing"
 
+	"connectrpc.com/connect"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -64,7 +66,7 @@ func TestFogCloudGrowsWithTheSlotAndHitsNobody(t *testing.T) {
 	if len(zs) != 1 {
 		t.Fatalf("zones = %v, want one", zs)
 	}
-	if far := farthest(zs[0], 7, 7); far < 3 || far > 4 {
+	if far := farthest(zs[0], 7, 7); far != 4 {
 		t.Errorf("reach at the first slot = %d squares, want 4 (20 ft)", far)
 	}
 	if lines := c.zoneLines(t, c.master, fogCloudKey); len(lines) != 0 {
@@ -85,7 +87,7 @@ func TestFogCloudAtTheSecondSlotIsFortyFeet(t *testing.T) {
 	if len(zs) != 1 {
 		t.Fatalf("zones = %v, want one", zs)
 	}
-	if far := farthest(zs[0], 7, 7); far < 7 || far > 8 {
+	if far := farthest(zs[0], 7, 7); far != 8 {
 		t.Errorf("reach at the second slot = %d squares, want 8 (40 ft)", far)
 	}
 }
@@ -100,7 +102,7 @@ func TestDarknessIsMagicalDarknessHeldByConcentration(t *testing.T) {
 	if len(zs) != 1 {
 		t.Fatalf("zones = %v, want one", zs)
 	}
-	if far := farthest(zs[0], 7, 7); far < 2 || far > 3 {
+	if far := farthest(zs[0], 7, 7); far != 3 {
 		t.Errorf("reach = %d squares, want 3 (15 ft)", far)
 	}
 	clouds, dark := c.combatPositions(t)
@@ -120,9 +122,12 @@ func TestUndoOfTheCastTakesTheCloudAway(t *testing.T) {
 	c := obscureCave(t)
 	c.passTo(t, c.zoneFight(t), "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	if clouds, _ := c.combatPositions(t); len(clouds) == 0 || len(zonesOf(c.get(t, c.master), fogCloudKey)) != 1 {
+		t.Fatalf("before the undo: %d cloud squares, want some and one zone", len(clouds))
+	}
 	c.undoLast(t)
-	if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
-		t.Errorf("cloud squares after the undo = %d, want none", len(clouds))
+	if clouds, _ := c.combatPositions(t); len(clouds) != 0 || len(zonesOf(c.get(t, c.master), fogCloudKey)) != 0 {
+		t.Errorf("after the undo: %d cloud squares, want none, and no zone", len(clouds))
 	}
 }
 
@@ -147,6 +152,9 @@ func TestStinkingCloudSpendsTheActionOfWhoFailsAtTheStartOfItsTurn(t *testing.T)
 			if got := byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed(); got != tc.want {
 				t.Errorf("action used at the start of the ogre's turn = %v, want %v", got, tc.want)
 			}
+			if len(c.zoneLines(t, c.master, stinkingCloudKey)) == 0 {
+				t.Error("the cloud wrote no line for the save: it did not catch the ogre")
+			}
 		})
 	}
 }
@@ -157,6 +165,9 @@ func TestStinkingCloudDoesNotAskWhoBeginsItsTurnOutside(t *testing.T) {
 	c := obscureCave(t)
 	c.passTo(t, c.zoneFight(t), "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", stinkingCloudKey, slotOfLevel(3), at(7, 14), nil)
+	if z := c.oneZone(t, c.master, stinkingCloudKey); zoneHas(z, 7, 7) {
+		t.Fatal("the cloud covers the ogre's square, so the test proves nothing")
+	}
 	c.nextTurnOf(t, "Ogro")
 	if byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed() || len(c.zoneLines(t, c.master, stinkingCloudKey)) != 0 {
 		t.Error("the ogre outside the cloud was asked or lost its action")
@@ -223,5 +234,86 @@ func TestAPlayerIsAskedStinkingCloudsSaveAndLosesTheActionOnAFailure(t *testing.
 	}
 	if !byLabel(t, c.get(t, c.master), "Toren").GetActionUsed() {
 		t.Error("Toren kept his action after failing the save")
+	}
+}
+
+// A cloud or darkness that goes away tells the fog, whichever way it goes: the caster set to 0 hit points by the
+// master (the concentration ends), the combat ended by the master, and the session ended with the combat open.
+func TestTheFogHearsOfACloudThatEndsOutsideACombatWrite(t *testing.T) {
+	t.Parallel()
+	ends := []struct {
+		name string
+		end  func(t *testing.T, c *cave)
+	}{
+		{"the caster is set to 0 hit points", func(t *testing.T, c *cave) {
+			t.Helper()
+			var char string
+			for _, co := range c.get(t, c.master).GetCombatants() {
+				if co.GetId() == c.id(t, "Pensantus") {
+					char = co.GetCharacterId()
+				}
+			}
+			zero := int32(0)
+			if _, err := c.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
+				CampaignId: c.campaignID, CharacterId: char, IdempotencyKey: newKey(), HitPointsCurrent: &zero,
+			})); err != nil {
+				t.Fatalf("AdjustCharacterVitals() error = %v", err)
+			}
+		}},
+		{"the master ends the combat", func(t *testing.T, c *cave) {
+			t.Helper()
+			e := c.get(t, c.master)
+			if _, err := c.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: c.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
+				t.Fatalf("EndEncounter() error = %v", err)
+			}
+		}},
+		{"the session ends", func(t *testing.T, c *cave) {
+			t.Helper()
+			sessions, err := c.master.play.ListGameSessions(t.Context(), connect.NewRequest(&playv1.ListGameSessionsRequest{CampaignId: c.campaignID}))
+			if err != nil || len(sessions.Msg.GetGameSessions()) == 0 {
+				t.Fatalf("ListGameSessions() = %v, %v", sessions, err)
+			}
+			if _, err := c.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: c.campaignID, GameSessionId: sessions.Msg.GetGameSessions()[0].GetId()})); err != nil {
+				t.Fatalf("EndGameSession() error = %v", err)
+			}
+		}},
+	}
+	for _, tc := range ends {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := obscureCave(t)
+			c.passTo(t, c.zoneFight(t), "Pensantus")
+			c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+			if clouds, _ := c.combatPositions(t); len(clouds) == 0 {
+				t.Fatal("the cast put no cloud squares on the map")
+			}
+			before := c.h.vision.n.Load()
+			tc.end(t, c)
+			if got := c.h.vision.n.Load(); got <= before {
+				t.Errorf("fog refreshes after the cloud ended = %d, before %d: the fog was not told", got, before)
+			}
+			if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
+				t.Errorf("cloud squares after = %d, want none", len(clouds))
+			}
+		})
+	}
+}
+
+// A zone keeps up to 4,096 squares, enough for Fog Cloud at a 9th-level slot (a sphere of 36 squares of radius, about
+// 4,070); one more is refused by the table's check (migration 00288).
+func TestAZoneKeepsUpTo4096SquaresAndNoMore(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	set := func(n int) error {
+		_, err := c.h.pool.Exec(t.Context(), `UPDATE spell_zones SET squares = (SELECT jsonb_agg(jsonb_build_array(i % 64, i / 64)) FROM generate_series(0, $1::int - 1) AS i) WHERE spell_key = $2`, n, fogCloudKey)
+		return err
+	}
+	if err := set(4096); err != nil {
+		t.Errorf("4,096 squares: %v, want them kept", err)
+	}
+	if err := set(4097); err == nil {
+		t.Error("4,097 squares were kept, want the check to refuse them")
 	}
 }

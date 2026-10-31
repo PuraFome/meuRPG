@@ -42,7 +42,7 @@ The scene (grid, walls, base light, painted light, light points, carried lights,
 
 Fog Cloud, Stinking Cloud and Darkness are zones of `play` (RN-37).
 `CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscured` turns each list into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
-`play` tells `maps` that a zone changed through the same `VisionChanged` a move calls, so the revision of what the players see moves and the usual `vision_changed` goes out; there is no new RPC and no new event.
+`play` tells `maps` that a zone changed through the same `VisionChanged` a move calls, so the revision of what the players see moves and the usual `vision_changed` goes out; no RPC or event of its own carries it.
 In `rules/vision`:
 
 - A line that crosses a cloud square is blocked, as a wall blocks it, but the cloud square itself is not a wall.
@@ -52,7 +52,8 @@ In `rules/vision`:
 - A viewer in magical darkness with only darkvision is in the dark (`InTheDark`), which is what the master's light warning reads.
 
 A map without fog never builds a scene, so its zones change nothing about sight.
-The attack rules do not read these squares (issue 700).
+The attack rules do not read these squares.
+Whether an NPC attacks a player it cannot see with disadvantage, and what a map with the fog off does, are not ruled (issue #700).
 
 ## What was seen stays
 

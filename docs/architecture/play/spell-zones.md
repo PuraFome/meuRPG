@@ -79,7 +79,7 @@ Fog Cloud and Stinking Cloud are clouds (`sightCloud`); Darkness is magical dark
 The squares of these zones reach the fog through `CombatPositions` (`mapseam.go`, `sightZonesOn`): `Clouds` and `MagicDark`.
 `vision.Scene.Clouds` and `MagicDark` are layers of the map's grid; the rules are in [Fog of war](../maps/fog.md#zones-that-block-sight).
 The scene's cache key (`litKeyOf`) hashes both lists, so a new zone is a new scene.
-There is no new RPC and no new event: a change of a sight zone (`zoneChanged`, the cast, the end, the clock, the undo, a move) sets `zonesMoved`, and `tellEnded` calls the same `VisionChanged` a move of a token calls.
+No RPC or event of its own carries it: a change of a sight zone (`zoneChanged`, the cast, the end, the clock, the undo, a move) sets `zonesMoved`, and `tellEnded` calls the same `VisionChanged` a move of a token calls.
 A hidden caster's cloud still blocks sight.
 
 ## Stinking Cloud
@@ -94,7 +94,7 @@ The text a player reads when asked is in `zoneSaveText` (`zones_save.go`).
 
 A cloud or darkness changes what a viewer sees on the map.
 It does not give an attack advantage or disadvantage, and a creature inside is not "unseen" in an attack roll by it.
-An NPC attacking a player it cannot see, and a map with the fog off, have no rule yet (issue #700, under #640).
+Whether an NPC attacks a player it cannot see with disadvantage, and what a map with the fog off does, are not ruled (issue #700, under #640).
 
 ## The save question, the end and the other effects
 
@@ -127,7 +127,9 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast` and 
 
 ### The map, the panel and the end
 
-- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern (each of the first six catalog spells a fixed one; Fog Cloud, Darkness and Stinking Cloud and a table spell a hash of the key, which puts Fog Cloud on the pattern of Spirit Guardians, Darkness on Cloudkill's and Stinking Cloud on Web's; a table spell a hash of the key) and `zoneLegend` the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
+- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern: the first six catalog spells a fixed one, every other spell a hash of the key.
+  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's and Stinking Cloud on Web's.
+  `zoneLegend` gives the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
 - **Panel.** `pages/live-session/combat/zones-panel` (`app-zones-panel`) lists the zones: the master's column and the player's side column. Its live region (`zoneNotice`) compares the ids of the list with the last one it read. `details_hidden` cards render the name, the area and the caster only.
 - **End.** The panel asks in place and emits `end`; `ZoneFlow` (`zone-flow.ts`, built in `combat-view-parts.ts`) calls `endSpellZone` under the screen's one-call-at-a-time rule (`calls.busy`) and words a refusal with `zoneEndError`.
 - **Move.** "Mover" emits `move`; `ZoneFlow.move` (only for a zone whose view says `canMove`) sets `moving` and asks `CombatSheets.moveZone` to open `ZoneMoveSheet` (`pages/live-session/combat/zone-move`), a bottom sheet on a phone and a dialog from a tablet up (`openSheet`); a scene without a battle map opens nothing and says so in the panel. The sheet holds the picked square and wraps `app-zone-move-map` (`shared/area-picker`): `app-combat-map` in `pickSquares` mode (click, arrows from the zone's origin, Enter) with two `app-area-overlay` layers, the current footprint dimmed and the new one from `zoneMovePreview`. Past `ZONE_MOVE_RANGE_FT` a player's square is drawn refused with the `TARGET_OUT_OF_REACH` wording (`zoneOutOfReach`); the master has none. "Mover a zona" calls `moveSpellZone` once (the client's keyed helper), applies the encounter the server answers, closes on success and says `zoneMoveError` in place on a refusal; `moving` returns to `null` when the sheet closes.

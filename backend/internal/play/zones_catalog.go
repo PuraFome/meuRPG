@@ -46,7 +46,7 @@ const (
 	zoneProne
 	// zoneOpen: no save and no trigger; the zone only changes what is seen (Fog Cloud, Darkness).
 	zoneOpen
-	// zoneRetch: a saving throw at the start of a turn of a creature wholly inside; a failure spends its action
+	// zoneRetch: a saving throw at the start of a turn of a creature whose square is inside; a failure spends its action
 	// (Stinking Cloud).
 	zoneRetch
 )
@@ -161,13 +161,13 @@ var zoneDefs = map[string]zoneDef{
 	},
 }
 
-// zoneDefOf is the zone one of the SRD's six spells keeps.
+// zoneDefOf is the zone one of the SRD's nine spells keeps.
 func zoneDefOf(spellKey string) (zoneDef, bool) {
 	d, ok := zoneDefs[spellKey]
 	return d, ok
 }
 
-// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's six, or the table spell's own
+// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's nine, or the table spell's own
 // area, which the master wrote as the model says. Both are the same value, so the zone is made and worked the
 // same way from either.
 func zoneDefOfSpell(sp link.Spell) (zoneDef, bool) {
@@ -206,7 +206,7 @@ type zoneDefJSON struct {
 	Corners   bool   `json:"corners,omitempty"`
 }
 
-// storedDef is the definition as the zone row keeps it, nil for one of the SRD's six (the code's table is its truth).
+// storedDef is the definition as the zone row keeps it, nil for one of the SRD's nine (the code's table is its truth).
 func storedDef(spellKey string, d zoneDef) []byte {
 	if _, srd := zoneDefOf(spellKey); srd {
 		return nil

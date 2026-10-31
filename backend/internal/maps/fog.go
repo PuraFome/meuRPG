@@ -313,8 +313,8 @@ func pointsSig(points []mapsdb.MapPoint) uint64 {
 // obscured are the squares the combat's spell zones make heavily obscured (clouds) or magically dark.
 type obscured struct{ clouds, dark []grid.Square }
 
-// layer is the squares as a layer of the grid, nil for none; squares outside the grid are left out.
-func (obscured) layer(g grid.Grid, squares []grid.Square) *grid.Layer {
+// obscuredLayer is the squares as a layer of the grid, nil for none; squares outside the grid are left out.
+func obscuredLayer(g grid.Grid, squares []grid.Square) *grid.Layer {
 	if len(squares) == 0 {
 		return nil
 	}
@@ -327,11 +327,12 @@ func (obscured) layer(g grid.Grid, squares []grid.Square) *grid.Layer {
 	return l
 }
 
-// sortedSquares is the squares in row, column order, without changing the argument.
-func sortedSquares(in []grid.Square) []grid.Square {
-	out := slices.Clone(in)
+// sortedSquares is the squares of the grid in row, column order, each once, without changing the argument: what
+// the scene is made of, so two lists with the same scene have the same key.
+func sortedSquares(g grid.Grid, in []grid.Square) []grid.Square {
+	out := slices.DeleteFunc(slices.Clone(in), func(sq grid.Square) bool { return !g.Contains(sq) })
 	slices.SortFunc(out, func(a, b grid.Square) int { return cmpInts(a.Row, b.Row, a.Col, b.Col) })
-	return out
+	return slices.Compact(out)
 }
 
 // source is a light on the map, before it is a vision.Source.
@@ -404,7 +405,7 @@ func (s *Service) compileScene(ctx context.Context, tx pgx.Tx, in fogInput, sour
 		return
 	}
 	e.set = loadLayers(stored, in.g)
-	if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources, Clouds: ob.layer(in.g, ob.clouds), MagicDark: ob.layer(in.g, ob.dark)}); err != nil {
+	if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources, Clouds: obscuredLayer(in.g, ob.clouds), MagicDark: obscuredLayer(in.g, ob.dark)}); err != nil {
 		e.err = fmt.Errorf("compile the map's light: %w", err)
 	}
 }
@@ -634,8 +635,9 @@ func litKeyOf(in fogInput, sources []source, ob obscured) litKey {
 		put(src.DimFt)
 	}
 	for _, list := range [][]grid.Square{ob.clouds, ob.dark} {
-		put(-1) // where one list ends and the next begins
-		for _, sq := range sortedSquares(list) {
+		squares := sortedSquares(in.g, list)
+		put(len(squares)) // where one list ends and the next begins
+		for _, sq := range squares {
 			put(sq.Col)
 			put(sq.Row)
 		}

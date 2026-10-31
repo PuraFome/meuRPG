@@ -72,6 +72,9 @@ func TestAViewerInsideACloudSeesOnlyItsOwnSquare(t *testing.T) {
 func TestBlindsightSeesThroughACloudWithinItsRange(t *testing.T) {
 	t.Parallel()
 	lit := mustCompile(t, stripScene(column(3), nil))
+	if lit.See(vision.Viewer{At: viewer}).Seen(grid.Square{Col: 5, Row: 2}) {
+		t.Error("control: a square behind the cloud is seen without blindsight")
+	}
 	v := lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{BlindsightFt: 20}})
 	if !v.Seen(grid.Square{Col: 5, Row: 2}) {
 		t.Error("a square behind the cloud inside the blindsight is unseen")

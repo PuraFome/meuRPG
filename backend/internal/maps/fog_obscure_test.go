@@ -27,6 +27,7 @@ func TestSceneKeyHashesTheSquaresOfCloudsAndDarkness(t *testing.T) {
 		{"the same squares in another order are the same scene", litKeyOf(in, nil, obscured{clouds: reordered}), cloud, true},
 		{"darkness on the same squares is another scene", litKeyOf(in, nil, obscured{dark: a}), cloud, false},
 		{"one square more is another scene", litKeyOf(in, nil, obscured{clouds: append(append([]grid.Square{}, a...), grid.Square{Col: 9, Row: 9})}), cloud, false},
+		{"duplicates and squares off the grid are not part of the scene", litKeyOf(in, nil, obscured{clouds: append(append([]grid.Square{}, a...), a[0], grid.Square{Col: -1, Row: 5}, grid.Square{Col: 50, Row: 50})}), cloud, true},
 		{"a cloud and darkness are not one list of both", litKeyOf(in, nil, obscured{clouds: a[:1], dark: a[1:]}), litKeyOf(in, nil, obscured{clouds: a[:2], dark: a[2:]}), false},
 	}
 	for _, tc := range cases {
@@ -40,10 +41,10 @@ func TestSceneKeyHashesTheSquaresOfCloudsAndDarkness(t *testing.T) {
 func TestObscuredLayerKeepsOnlySquaresOfTheGrid(t *testing.T) {
 	t.Parallel()
 	g := grid.Grid{Columns: 4, Rows: 4}
-	if l := (obscured{}).layer(g, nil); l != nil {
+	if l := obscuredLayer(g, nil); l != nil {
 		t.Errorf("layer of no squares = %v, want nil", l)
 	}
-	l := (obscured{}).layer(g, []grid.Square{{Col: 1, Row: 1}, {Col: 9, Row: 9}, {Col: -1, Row: 0}})
+	l := obscuredLayer(g, []grid.Square{{Col: 1, Row: 1}, {Col: 9, Row: 9}, {Col: -1, Row: 0}})
 	if l == nil || l.Count() != 1 || !l.Get(1, 1) {
 		t.Errorf("layer = %v, want only (1,1)", l)
 	}
@@ -54,7 +55,7 @@ func TestObscuredLayerKeepsOnlySquaresOfTheGrid(t *testing.T) {
 func TestCompiledSceneBlocksALineThroughACloud(t *testing.T) {
 	t.Parallel()
 	g := grid.Grid{Columns: 12, Rows: 5}
-	cloud := (obscured{}).layer(g, []grid.Square{{Col: 5, Row: 2}})
+	cloud := obscuredLayer(g, []grid.Square{{Col: 5, Row: 2}})
 	lit, err := vision.Compile(vision.Scene{Grid: g, Base: grid.Bright, Clouds: cloud})
 	if err != nil {
 		t.Fatalf("Compile() error = %v", err)

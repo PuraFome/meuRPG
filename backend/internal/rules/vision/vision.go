@@ -25,7 +25,7 @@
 //   - A cloud (Fog Cloud, Stinking Cloud) is a heavily obscured area: a line that
 //     crosses a cloud square is blocked, a cloud square is not seen, and a viewer
 //     standing in a cloud sees only its own square. A cloud is no wall: it is never
-//     drawn as one. Blindsight sees through it, within its range.
+//     drawn as one. Blindsight sees through it, within its range; truesight does not.
 //   - Magical darkness (Darkness) forces the light of its squares to dark, whatever
 //     lights them. Darkvision does not see in it; blindsight and truesight do.
 //   - Seen in dim light or in grey is lightly obscured, so a passive check

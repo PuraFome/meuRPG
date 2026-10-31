@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -146,6 +147,13 @@ func (s *Service) closeEncounter(ctx context.Context, c *combatTx, cs []playdb.C
 	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("drop the hidden reveals: %w", err)
 	}
+	zs, err := listZones(ctx, c)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(zs, func(z *zone) bool { return z.def.sight != sightNone }) {
+		c.zonesMoved = true // the clouds and the darkness go with the combat: the fog is read again
+	}
 	ended := c.now
 	enc, err := c.q.SetEncounterState(ctx, playdb.SetEncounterStateParams{
 		ID: c.enc.ID, Status: statusEnded, Round: c.enc.Round, StartedAt: c.enc.StartedAt, EndedAt: &ended,
@@ -211,24 +219,27 @@ func (s *Service) moveTokensToTheirSquares(ctx context.Context, c *combatTx, cs 
 // endOpenEncounter ends the session's combat, if it has one, when the master
 // ends the session (EndGameSession), inside its transaction, with a session
 // event.
-func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) ([]playdb.Combatant, []*playv1.CharacterVitals, error) {
+func (s *Service) endOpenEncounter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, actorUserID string) (cs []playdb.Combatant, told []*playv1.CharacterVitals, visionMap string, err error) {
 	enc, err := q.GetOpenEncounter(ctx, session.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil, nil
+		return nil, nil, "", nil
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("find the open encounter: %w", err)
+		return nil, nil, "", fmt.Errorf("find the open encounter: %w", err)
 	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
+	cs, err = q.ListCombatants(ctx, enc.ID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, nil, "", fmt.Errorf("list the combatants: %w", err)
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), svc: s, actorUserID: actorUserID})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	if err := s.endEncounter(ctx, c, cs); err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
-	return cs, c.told, insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
+	if c.zonesMoved {
+		visionMap = conv.OrZero(c.enc.MapID)
+	}
+	return cs, c.told, visionMap, insertEvent(ctx, c, eventEncounterEnded, &actorUserID, nil, map[string]any{"round": c.enc.Round, "reason": "session_ended"})
 }
