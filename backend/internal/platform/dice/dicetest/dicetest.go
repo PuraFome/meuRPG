@@ -12,6 +12,8 @@ package dicetest
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -33,6 +35,7 @@ var d20Cycle = func() []int {
 
 // Roller gives the faces a test scripted with ScriptFor, in order, and then a default sequence that never runs out.
 // The zero value is ready to use.
+// A face scripted and never rolled fails the test when it ends, so a script cannot reach a roll it was not meant for.
 // A Roller is safe for concurrent use, and the order faces go out in is the order the rolls happen in.
 //
 // What it guarantees:
@@ -49,10 +52,11 @@ var d20Cycle = func() []int {
 //     A test that needs a strict order scripts the faces.
 //   - The default dice are not random and not fair, so do not test odds with them.
 type Roller struct {
-	mu     sync.Mutex
-	script map[int][]int // faces queued by ScriptFor, by die, used first
-	d20    int           // how many default d20 faces went out
-	other  uint64        // state of the default sequence of the other dice
+	mu      sync.Mutex
+	script  map[int][]int // faces queued by ScriptFor, by die, used first
+	watched testing.TB    // the test whose end checks for faces left over
+	d20     int           // how many default d20 faces went out
+	other   uint64        // state of the default sequence of the other dice
 }
 
 // New returns a Roller with nothing scripted.
@@ -62,6 +66,7 @@ func New() *Roller { return &Roller{} }
 // A roll of another die does not use them.
 // A face that does not fit the die fails the test at once.
 // When they are used up, the default sequence goes on where it was.
+// A face still queued when the test ends fails it, naming the die and the faces.
 func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
 	t.Helper()
 	if sides < 1 {
@@ -78,6 +83,22 @@ func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
 		r.script = map[int][]int{}
 	}
 	r.script[sides] = append(r.script[sides], faces...)
+	if r.watched != t {
+		r.watched = t
+		t.Cleanup(func() { r.failIfLeftOver(t) })
+	}
+}
+
+// failIfLeftOver fails t for each die whose scripted faces were not all rolled.
+func (r *Roller) failIfLeftOver(t testing.TB) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, sides := range slices.Sorted(maps.Keys(r.script)) {
+		if left := r.script[sides]; len(left) > 0 {
+			t.Errorf("dicetest: the faces %v scripted for the d%d were never rolled: script only the rolls the test makes", left, sides)
+		}
+	}
 }
 
 // Roll implements dice.Roller.

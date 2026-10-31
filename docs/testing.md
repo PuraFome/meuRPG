@@ -85,6 +85,8 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
 - **A test pins a roll with `ScriptFor(t, sides, faces...)`.**
   The faces go to the next rolls of that die only, and the default goes on after them.
   A face that does not fit its die fails the test at once.
+  A face still queued when the test ends fails it, naming the die and the faces, so a script never reaches a roll it was not meant for.
+  A test scripts only the rolls it makes.
 - **A creature added to a running combat is scripted and checked.**
   The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`).
   It then calls `requireOwnTotal` (`requireOwnTotals` in `progression`).

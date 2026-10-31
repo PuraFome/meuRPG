@@ -1,6 +1,7 @@
 package dicetest
 
 import (
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -179,4 +180,64 @@ func TestTheDefaultNeverRunsOutAndIsSafeToShare(t *testing.T) {
 		})
 	}
 	wg.Wait()
+}
+
+// recorder is a test that records what ScriptFor tells it, and runs its cleanups when finish is called.
+type recorder struct {
+	testing.TB
+	errors   []string
+	cleanups []func()
+}
+
+func (r *recorder) Helper() {}
+
+func (r *recorder) Errorf(format string, args ...any) {
+	r.errors = append(r.errors, fmt.Sprintf(format, args...))
+}
+
+func (r *recorder) Cleanup(f func()) { r.cleanups = append(r.cleanups, f) }
+
+func (r *recorder) finish() {
+	for i := len(r.cleanups) - 1; i >= 0; i-- {
+		r.cleanups[i]()
+	}
+}
+
+func TestAScriptedFaceNeverRolledFailsTheTestAtTheEnd(t *testing.T) {
+	t.Parallel()
+	rec := &recorder{TB: t}
+	r := New()
+	r.ScriptFor(rec, 20, 5, 6)
+	r.ScriptFor(rec, 6, 2)
+	if _, err := r.Roll(20); err != nil {
+		t.Fatalf("Roll() error = %v", err)
+	}
+	rec.finish()
+	if len(rec.cleanups) != 1 {
+		t.Errorf("%d cleanups registered, want one for the roller", len(rec.cleanups))
+	}
+	want := []string{
+		"dicetest: the faces [2] scripted for the d6 were never rolled: script only the rolls the test makes",
+		"dicetest: the faces [6] scripted for the d20 were never rolled: script only the rolls the test makes",
+	}
+	if !slices.Equal(rec.errors, want) {
+		t.Errorf("errors = %q, want %q", rec.errors, want)
+	}
+}
+
+func TestAFullyUsedScriptPassesTheEnd(t *testing.T) {
+	t.Parallel()
+	rec := &recorder{TB: t}
+	r := New()
+	r.ScriptFor(rec, 20, 5, 6)
+	r.ScriptFor(rec, 6, 2)
+	for _, sides := range []int{20, 6, 20} {
+		if _, err := r.Roll(sides); err != nil {
+			t.Fatalf("Roll() error = %v", err)
+		}
+	}
+	rec.finish()
+	if len(rec.errors) != 0 {
+		t.Errorf("errors = %q, want none", rec.errors)
+	}
 }
