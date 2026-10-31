@@ -136,6 +136,10 @@ jobs:
         working-directory: e2e
         run: npm run lint
 
+      - name: Test the lint rule (bad fixture fails, fixed one passes)
+        working-directory: e2e
+        run: npm run lint:test
+
       - name: Check that the tests are not retried
         # A retry hides a flaky test: the config keeps `retries: 0` (docs/ci.md, "Flaky tests").
         run: .github/scripts/e2e-no-retries.sh
@@ -237,6 +241,16 @@ jobs:
           # shellcheck disable=SC2086
           npx playwright test $PART_ARGS
 
+      - name: Save the stack logs
+        # The backend log (the api container) next to the report: a test that
+        # fails on a page that never showed a change needs the server's side of
+        # it (did the stream push the revision?). Kept as a file because the log
+        # printed below scrolls out of the job page.
+        if: failure()
+        run: |
+          mkdir -p e2e/stack-logs
+          docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color --timestamps > e2e/stack-logs/stack.log
+
       - name: Show the stack logs
         if: failure()
         run: docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color
@@ -249,6 +263,7 @@ jobs:
           path: |
             e2e/playwright-report/
             e2e/test-results/
+            e2e/stack-logs/
           retention-days: 7
           if-no-files-found: ignore
 
