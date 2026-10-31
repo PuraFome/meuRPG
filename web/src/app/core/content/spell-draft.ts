@@ -202,7 +202,7 @@ function targetInit(d: SpellDraft): NonNullable<SpellInit['target']> {
   const target: NonNullable<SpellInit['target']> = { kind: TARGET_KIND[d.target] };
   if (d.target === 'creatures') {
     target.count = d.count;
-    target.perSlotLevel = d.perSlot;
+    target.perSlotLevel = Number.isNaN(d.perSlot) ? 0 : d.perSlot;
   } else if (d.target === 'creature' && d.perSlot > 0) {
     target.perSlotLevel = d.perSlot;
   } else if (d.target === 'area') {
