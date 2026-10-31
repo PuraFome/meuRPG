@@ -62,6 +62,23 @@ describe('RaceEditor', () => {
       .find((b) => text(b).includes(label))!
       .click();
 
+  it('does not save a number that is no whole number in a trait, and lands on its field', async () => {
+    const { fixture, el } = setup();
+    const type_ = field(el, 'table_race.traits[0].effects[0].type') as HTMLSelectElement;
+    type_.value = 'choice';
+    type_.dispatchEvent(new Event('change'));
+    await settle(fixture, 3);
+    const count = field(el, 'table_race.traits[0].effects[0].count') as HTMLInputElement;
+    count.value = '1.5';
+    count.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    click(el, 'Salvar raça');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(count);
+    expect(count.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('draws the race of the artboard: the form from the entry and the traits with the effect picked', () => {
     const { el } = setup();
     expect((field(el, 'table_race.name_pt') as HTMLInputElement).value).toBe('Corujeiro');

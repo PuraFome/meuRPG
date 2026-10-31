@@ -108,6 +108,7 @@ describe('FeatEditor (MR-025)', () => {
     click(el, 'Salvar talento');
     await settle(fixture, 3);
     expect(save).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(count);
     expect(count.getAttribute('aria-invalid')).toBe('true');
     expect(text(el)).toContain('Escreva um número inteiro, como 2.');
     count.value = '2';
