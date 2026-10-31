@@ -141,7 +141,7 @@ Death saves and initiative are untouched.
   A spell attack is ranged when its range is beyond touch.
   A melee weapon is a thrown weapon when its long range is beyond its melee reach (a spear, a dagger, a javelin).
   A thrown weapon is a melee attack up to its melee reach, and a ranged attack made by throwing it beyond the reach, up to its throwing range.
-  The melee reach is 5 ft, or the longer reach the line has (`attackMeleeReach`, the one place that reads it).
+  The melee reach is 5 ft, or the longer reach the line has (`attackMeleeReach` reads it for a melee attack).
   A `weapon_rule`, a `pseudo_weapon` or a creature's stat block gives it as `link.Attack.ReachFt`.
   A melee weapon with the reach property (a glaive, a halberd, a whip) has it as its `RangeFt`, with no long range.
   On a creature's stat block, an attack that says "reach 10 ft. or range 20/60 ft." has both: `ReachFt` 10 and the throwing range 20/60.

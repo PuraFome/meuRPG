@@ -22,7 +22,8 @@ func reachFt(rangeFt, longRangeFt int32) int32 {
 // attackMeleeReach is the melee reach of an attack: 5 ft, or the longer reach its line has.
 // A weapon rule, a pseudo-weapon or a stat block gives it in ReachFt; a melee weapon with the
 // reach property (a glaive, a halberd, a whip) has it as its range, with no long range.
-// Every melee reach in the combat is read here.
+// A creature's stat block gives it in ReachFt too, but an NPC's basic sheet has it in RangeFt.
+// The melee reach of an attack line is read here.
 func attackMeleeReach(a link.Attack) int {
 	reach := max(meleeReachFt, a.ReachFt)
 	if a.Melee && a.LongRangeFt == 0 {
