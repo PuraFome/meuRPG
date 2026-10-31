@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // clock is a time the test moves.
@@ -65,7 +66,7 @@ func TestOnlyUnaryCallsCount(t *testing.T) {
 	called := false
 	unary := ic.WrapUnary(func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
 		called = true
-		return nil, nil //nolint:nilnil // the test only needs the call to go through
+		return connect.NewResponse(&emptypb.Empty{}), nil
 	})
 	if _, err := unary(t.Context(), nil); err != nil || !called {
 		t.Fatalf("the interceptor did not pass the call on: called=%v err=%v", called, err)

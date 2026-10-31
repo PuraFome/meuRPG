@@ -273,14 +273,20 @@ func (s *Service) watchLoop(ctx context.Context, stream *connect.ServerStream[pl
 				return nil
 			}
 		case <-recheck.C:
-			if s.live.Idle != nil && s.live.Idle() {
-				return errWatchIdle()
-			}
-			if done, err := s.recheckWatch(ctx, stream, m.CampaignID, session.ID); done {
+			if done, err := s.recheckTick(ctx, stream, m.CampaignID, session.ID); done {
 				return err
 			}
 		}
 	}
+}
+
+// recheckTick is the periodic check of the stream: an instance that no longer receives calls ends it, and
+// otherwise the login session and participation are read again.
+func (s *Service) recheckTick(ctx context.Context, stream *connect.ServerStream[playv1.WatchGameSessionResponse], campaignID, sessionID string) (bool, error) {
+	if s.live.Idle != nil && s.live.Idle() {
+		return true, errWatchIdle()
+	}
+	return s.recheckWatch(ctx, stream, campaignID, sessionID)
 }
 
 // forwardHubEvent sends an event of the hub to the app. It says whether the

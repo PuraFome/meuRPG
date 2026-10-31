@@ -39,7 +39,10 @@ var publicProcedures = map[string]string{
 // (mountModules), over a pool that never connects (pgxpool connects lazily).
 // A call with no session must be turned away before any query, so a gate that
 // is missing shows up as an error that is not "unauthenticated".
-func buildHandlerSet(t *testing.T) http.Handler { return buildHandlerSetWith(t, nil) }
+func buildHandlerSet(t *testing.T) http.Handler {
+	t.Helper()
+	return buildHandlerSetWith(t, nil)
+}
 
 // buildHandlerSetWith is buildHandlerSet with the traffic meter the options carry (nil: none).
 func buildHandlerSetWith(t *testing.T, meter *traffic.Meter) http.Handler {
