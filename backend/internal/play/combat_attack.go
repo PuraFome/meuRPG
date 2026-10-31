@@ -713,7 +713,7 @@ func (f *attackFlow) closeThrow(ctx context.Context) error {
 	if f.call.catchID == "" {
 		return nil
 	}
-	if _, err := f.s.spendReactionResource(ctx, f.c, f.attacker, resKi); err != nil {
+	if _, err := f.s.spendResourceOf(ctx, f.c, f.attacker, resKi); err != nil {
 		return err
 	}
 	ct := windowTriggerOf(f.caught)

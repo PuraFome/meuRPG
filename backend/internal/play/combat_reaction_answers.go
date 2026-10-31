@@ -220,7 +220,7 @@ func (s *Service) answerCuttingWords(ctx context.Context, c *combatTx, w playdb.
 // spendCuttingWords spends one use of Bardic Inspiration and the reaction, whether or not the cut
 // does anything.
 func (s *Service) spendCuttingWords(ctx context.Context, c *combatTx, reactor playdb.Combatant, got *answered) error {
-	vit, err := s.spendReactionResource(ctx, c, reactor, resBardic)
+	vit, err := s.spendResourceOf(ctx, c, reactor, resBardic)
 	if err != nil {
 		return err
 	}
@@ -335,9 +335,9 @@ func (s *Service) spendRebuke(ctx context.Context, c *combatTx, reactor playdb.C
 	var vit *playv1.CharacterVitals
 	var err error
 	if racial {
-		vit, err = s.spendReactionResource(ctx, c, reactor, resInfernalLegacy)
+		vit, err = s.spendResourceOf(ctx, c, reactor, resInfernalLegacy)
 	} else {
-		vit, err = s.spendReactionSlot(ctx, c, reactor, *slot)
+		vit, err = s.spendSlotOf(ctx, c, reactor, *slot)
 	}
 	if err != nil {
 		return err

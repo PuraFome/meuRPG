@@ -24,6 +24,9 @@ var greatWeaponFighting = []string{
 // ("monster:wolf#pack-tactics").
 const packTacticsSuffix = "#pack-tactics"
 
+// magicResistanceSuffix ends the key of a monster's Magic Resistance trait.
+const magicResistanceSuffix = "#magic-resistance"
+
 // evasionFeatures are the keys of Evasion for a character (the monk's and the rogue's, and the
 // ranger's Superior Hunter's Defense choice); evasionSuffix ends a monster's trait
 // ("monster:adult-blue-dragon#evasion").
@@ -144,6 +147,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	})
 	t.GreatWeaponFighting = slices.ContainsFunc(greatWeaponFighting, func(k string) bool { return rules.HasFeature(d, k) })
 	t.PackTactics = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, packTacticsSuffix) })
+	t.MagicResistance = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, magicResistanceSuffix) })
 	// The halfling's Lucky is a race trait, so every halfling has it, whichever its subrace.
 	t.Lucky = rules.HasFeature(d, link.LuckyTrait)
 	for _, f := range d.Features {

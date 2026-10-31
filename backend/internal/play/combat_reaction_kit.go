@@ -160,9 +160,9 @@ func (k kit) legacyLeft() int32 {
 	return k.resourceLeft(resInfernalLegacy)
 }
 
-// spendReactionSlot spends a slot of a reaction spell: a player's through its
+// spendSlotOf spends a slot of a spell (a reaction, a cast, Revivify): a player's through its
 // vitals, an NPC's on the combatant. It returns the player's vitals after.
-func (s *Service) spendReactionSlot(ctx context.Context, c *combatTx, who playdb.Combatant, slot slotRef) (*playv1.CharacterVitals, error) {
+func (s *Service) spendSlotOf(ctx context.Context, c *combatTx, who playdb.Combatant, slot slotRef) (*playv1.CharacterVitals, error) {
 	if who.Kind == kindPlayer {
 		return s.spendSlot(ctx, c, who.CharacterID, slot, 1)
 	}
@@ -200,9 +200,9 @@ func (s *Service) bumpUsed(ctx context.Context, c *combatTx, who playdb.Combatan
 	return nil
 }
 
-// spendReactionResource spends one use of a resource (the Infernal Legacy, Bardic
+// spendResourceOf spends one use of a resource (the Infernal Legacy, Bardic
 // Inspiration, ki): a player's through its vitals, an NPC's counted on the combatant.
-func (s *Service) spendReactionResource(ctx context.Context, c *combatTx, who playdb.Combatant, key string) (*playv1.CharacterVitals, error) {
+func (s *Service) spendResourceOf(ctx context.Context, c *combatTx, who playdb.Combatant, key string) (*playv1.CharacterVitals, error) {
 	if who.Kind == kindPlayer {
 		return s.spendResource(ctx, c, who.CharacterID, key, 1)
 	}
@@ -218,7 +218,7 @@ func pickSlot(in *playv1.SpellSlot, free []*rulesv1.SlotChoice) (slotRef, error)
 	return slotRef{Level: in.GetLevel(), Pact: in.GetPact()}, nil
 }
 
-// giveBackNPCSlot takes a slot an NPC spent back (the undo of its Shield).
+// giveBackNPCSlot takes a slot an NPC spent back (the undo of its Shield or of a cast).
 func (s *Service) giveBackNPCSlot(ctx context.Context, c *combatTx, who playdb.Combatant, slot slotRef) error {
 	key := strconv.Itoa(int(slot.Level))
 	if slot.Pact {

@@ -124,11 +124,19 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	// Its saving throws are the stat block's (the ability modifier plus the
 	// proficiency the creature lists); a basic sheet with no creature has none.
 	d.SavingThrows = creature.SavingThrows
+	d.StatBlockConditionImmunities = creature.StatBlockConditionImmunities
 	// Its skills, ability scores and passive Perception are the stat block's too: the
 	// contests (Athletics, Acrobatics) and hiding (Stealth, passive Perception) read them.
 	d.Skills, d.Abilities, d.PassivePerception = creature.Skills, creature.Abilities, creature.PassivePerception
 	// The traits of the stat block (Pack Tactics) are the NPC's too, and so is its type.
 	d.Features = withCreatureType(content, b.GetMonsterKey(), creature.Features)
+	// Its Spellcasting and Innate Spellcasting traits are the NPC's own spells (MR-042): prepared spells with
+	// slots, and innate ones at will or with uses a day, cast with the stat block's DC and attack bonus.
+	if caster, ok := content.MonsterCaster(b.GetMonsterKey()); ok {
+		d.Spellcasting, d.Spells, d.GrantedSpells, d.Resources = []rules.Spellcasting{caster.Spellcasting}, caster.Spells, caster.Granted, caster.Resources
+		d.SpellSlots = caster.Slots
+		d.TotalLevel = caster.Level // the level its cantrips scale with
+	}
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}
@@ -282,7 +290,7 @@ var poolResources = map[string]bool{"lay_on_hands": true}
 
 // CombatTurnOptions implements play.CombatRoster: what the character can do
 // now, from the sheet, what it used this turn and, for a player's character,
-// the spell slots already spent (its vitals).
+// the spell slots already spent (a player's character's vitals, the count on the combatant for an NPC).
 func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
 	kind, d, _, err := s.fighterOf(ctx, tx, campaignID, characterID, true)
 	if err != nil {
@@ -295,6 +303,9 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 			return nil, err
 		}
 		usage = usageOf(v)
+	} else {
+		// An NPC's slots and daily uses are counted on the combatant, not in vitals.
+		usage = combat.Usage{SlotsUsed: turn.Spent.SlotsUsed, PactSlotsUsed: turn.Spent.PactSlotsUsed, ResourcesUsed: turn.Spent.ResourcesUsed}
 	}
 	// The speed of this combat, copied when the combatant joined, rules.
 	d.SpeedWalkFt = turn.SpeedFt
