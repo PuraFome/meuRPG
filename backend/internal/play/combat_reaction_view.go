@@ -33,6 +33,8 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.MasterCheck:        playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
 	reaction.Contest:            playv1.ReactionKind_REACTION_KIND_CONTEST,
 	reaction.EffectSave:         playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
+
+	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
 }
 
 // windowView is what the builders of a caller's windows share.
@@ -333,6 +335,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.concentrationPrompt(w, reactor, out)
 	case reaction.EffectSave:
 		err = wv.effectSavePrompt(w, reactor, out)
+	case reaction.LegendaryResistance:
+		err = wv.resistancePrompt(w, out)
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}

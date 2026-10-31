@@ -210,6 +210,8 @@ type castFlow struct {
 	landing *grid.Square
 	// landed is the caster on the landing square once the teleport is written.
 	landed *playdb.Combatant
+	// resist is the savepoint of a cast that a creature's Legendary Resistance may hold; nil for any other.
+	resist *resistScope
 }
 
 func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, call castCall, out *castOut) *castFlow {
@@ -234,6 +236,17 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 	if err := f.holdForDie(ctx); err != nil || f.out.asked != nil {
 		return nil, err
 	}
+	// A saving throw of a creature with Legendary Resistance may hold the cast for the master (combat_legendary_hold.go).
+	var err error
+	if f.resist, err = f.guardResistance(ctx); err != nil {
+		return nil, err
+	}
+	payload, err := f.resolve(ctx)
+	return f.resist.settle(ctx, f, payload, err)
+}
+
+// resolve is what the cast spends and does.
+func (f *castFlow) resolve(ctx context.Context) (any, error) {
 	if err := f.spend(ctx); err != nil {
 		return nil, err
 	}
@@ -764,6 +777,9 @@ func (f *castFlow) affect(ctx context.Context) error {
 		if err := f.hitTarget(ctx, i, f.targs[i]); err != nil {
 			return err
 		}
+	}
+	if err := f.offerResistance(ctx); err != nil { // a creature with Legendary Resistance failed a save: the master decides first
+		return err
 	}
 	if err := f.pushFailedSaves(ctx); err != nil { // the forced move of a failed save (combat_forced.go)
 		return err

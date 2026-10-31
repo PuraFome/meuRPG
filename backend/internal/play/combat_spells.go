@@ -586,12 +586,8 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover { // Chama Sagrada: no benefit from cover (SRD)
 		save.Bonus += cover.bonus()
 	}
-	var saved bool
-	if combat.AutoFailsSave(creature, sp.SaveAbility) {
-		// Stunned, paralyzed, unconscious and petrified creatures fail Strength and
-		// Dexterity saves without rolling (SRD 5.1, Conditions).
-		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Auto: true, Unknown: !save.Known}
-	} else if saved, err = s.rollSpellSave(ctx, c, sp, target, save, targetSheet, sources, combat.Resolve(sources), hit, modes); err != nil {
+	saved, err := s.settleSpellSave(ctx, c, sp, target, save, creature, targetSheet, sources, hit, modes)
+	if err != nil {
 		return err
 	}
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
@@ -608,6 +604,24 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
 	return s.openSavePendings(ctx, c, sp, caster, target, share == combat.ShareHalf, hit)
+}
+
+// settleSpellSave is the outcome of the target's save against the spell, written into the hit: the roll (or
+// the automatic failure of a creature that cannot make the save), then the master's Legendary Resistance in
+// the replay of a held cast.
+func (s *Service) settleSpellSave(ctx context.Context, c *combatTx, sp link.Spell, target playdb.Combatant, save link.Save, creature combat.Creature, targetSheet link.Sheet, sources []combat.Source, hit *castHit, modes *spellModes) (bool, error) {
+	var saved bool
+	if combat.AutoFailsSave(creature, sp.SaveAbility) {
+		// Stunned, paralyzed, unconscious and petrified creatures fail Strength and
+		// Dexterity saves without rolling (SRD 5.1, Conditions).
+		hit.Save = &saveRoll{DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Auto: true, Unknown: !save.Known}
+	} else {
+		var err error
+		if saved, err = s.rollSpellSave(ctx, c, sp, target, save, targetSheet, sources, combat.Resolve(sources), hit, modes); err != nil {
+			return false, err
+		}
+	}
+	return s.resistSpellSave(ctx, c, target, hit, saved)
 }
 
 // sculptedSave is the save of a creature Sculpt Spells (SRD 5.1) spares: it succeeds on its own, with no
@@ -637,20 +651,11 @@ func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell,
 	if c.meta.disadvantaged(target.ID) { // Heightened Spell: disadvantage on its first save, which an advantage cancels
 		saveMode = combat.Resolve(append(slices.Clone(sources), combat.Source{Kind: "heightened-spell", Effect: combat.ModeDisadvantage}))
 	}
-	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, saveMode)
+	dice, err := s.saveDice(c, target, save, saveMode, targetSheet, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave))
 	if err != nil {
 		return false, err
 	}
-	// Nobody is asked about this save: a halfling player's 1 is rolled again by the app (combat_lucky.go).
-	d20, lucky, err := s.luckySave(d20, save.Bonus, saveMode, luckySaver(target, targetSheet.Traits))
-	if err != nil {
-		return false, err
-	}
-	// Bênção and Perdição: a d4 on the target's saving throw.
-	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effectDiceFor(modes.in.states, target.ID, rules.RollAppliesSave), nil)
-	if err != nil {
-		return false, err
-	}
+	d20, lucky, extra, extraTotal := dice.d20, dice.lucky, dice.extra, dice.extraTotal
 	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
 		return false, err
 	}

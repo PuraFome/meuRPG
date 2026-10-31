@@ -108,6 +108,11 @@ type saveRoll struct {
 	// Unknown says the target is a basic-sheet NPC with no saving throw bonus:
 	// the roll is d20 + 0 and the master may overrule it.
 	Unknown bool `json:"bonus_unknown,omitempty"`
+	// Resisted says the roll failed and the master made it a success with Legendary Resistance (Saved is
+	// then true), and ResistedLeft the uses the creature has left; the master reads both, a player reads a
+	// save that passed (combat_legendary_hold.go).
+	Resisted     bool  `json:"resisted,omitempty"`
+	ResistedLeft int32 `json:"resisted_left,omitempty"`
 }
 
 // castHit is what a cast did to one target.

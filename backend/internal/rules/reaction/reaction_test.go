@@ -94,6 +94,8 @@ func TestClosureReasonsAreTheReactorsOwnFirst(t *testing.T) {
 		{"a concentration save ignores the reaction", Concentration, Facts{ReactionUsed: true}, ReasonNone, false},
 		{"a concentration save ends when the concentration did", Concentration, Facts{TriggerGone: true}, ReasonTriggerGone, true},
 		{"the master's check never closes for a state", MasterCheck, Facts{ReactionUsed: true, Incapacitated: true}, ReasonNone, false},
+		{"Legendary Resistance never closes for a state", LegendaryResistance, Facts{ReactionUsed: true, Incapacitated: true}, ReasonNone, false},
+		{"Legendary Resistance closes when its action is gone", LegendaryResistance, Facts{TriggerGone: true}, ReasonTriggerGone, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -586,7 +586,7 @@ func (b *logBuilder) reactionAnswered(e playdb.ListEncounterEventsRow, entry *lo
 	// One line for each reaction used (PM-04c, 10); a "Deixar passar" and the
 	// master's one-tap check are no line.
 	re := entry.ev.Reaction
-	if re == nil || re.Kind == string(reaction.MasterCheck) || (!re.Used && e.Kind == eventReactionAnswered) {
+	if re == nil || re.Kind == string(reaction.MasterCheck) || re.Kind == string(reaction.LegendaryResistance) || (!re.Used && e.Kind == eventReactionAnswered) {
 		return false
 	}
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW

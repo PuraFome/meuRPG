@@ -51,6 +51,7 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 	}
 	if v.master {
 		out.BonusKnown = !sr.Unknown
+		out.Resisted, out.ResistedLeft = sr.Resisted, sr.ResistedLeft
 	}
 	if v.master || v.owns(caster) || v.saveDCFor(target) {
 		out.Dc = sr.DC

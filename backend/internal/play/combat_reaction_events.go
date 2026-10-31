@@ -76,17 +76,18 @@ const reactionHeldDropped = "held_dropped"
 // reactionNames are the Portuguese names of the reactions, as names_pt.json has them
 // (TestReactionNamesAreTheOfficialOnes keeps them equal).
 var reactionNames = map[reaction.Kind]string{
-	reaction.Shield:             "Escudo Arcano",
-	reaction.UncannyDodgeKind:   "Esquiva Sobrenatural",
-	reaction.HellishRebukeKind:  "Repreensão Infernal",
-	reaction.CounterspellKind:   "Contramágica",
-	reaction.CuttingWords:       "Palavras de Interrupção",
-	reaction.DeflectKind:        "Defletir Projéteis",
-	reaction.ManeuverReduceKind: "Manobra",
-	reaction.ProtectionKind:     "Estilo de Luta: Proteção",
-	reaction.FeatherFall:        "Queda Suave",
-	reaction.Concentration:      "Teste de concentração",
-	reaction.MasterCheck:        "Verificação do mestre",
+	reaction.Shield:              "Escudo Arcano",
+	reaction.UncannyDodgeKind:    "Esquiva Sobrenatural",
+	reaction.HellishRebukeKind:   "Repreensão Infernal",
+	reaction.CounterspellKind:    "Contramágica",
+	reaction.CuttingWords:        "Palavras de Interrupção",
+	reaction.DeflectKind:         "Defletir Projéteis",
+	reaction.ManeuverReduceKind:  "Manobra",
+	reaction.ProtectionKind:      "Estilo de Luta: Proteção",
+	reaction.FeatherFall:         "Queda Suave",
+	reaction.Concentration:       "Teste de concentração",
+	reaction.MasterCheck:         "Verificação do mestre",
+	reaction.LegendaryResistance: "Resistência Lendária",
 }
 
 // reactionNameKeys are the content keys of the reaction names.

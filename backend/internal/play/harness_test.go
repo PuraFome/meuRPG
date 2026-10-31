@@ -450,6 +450,14 @@ func (d testDice) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID 
 type scriptedRoller struct {
 	mu    sync.Mutex
 	faces []int
+	given int
+}
+
+// taken is how many dice the roller has given so far.
+func (r *scriptedRoller) taken() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.given
 }
 
 func (r *scriptedRoller) queue(faces ...int) {
@@ -461,6 +469,7 @@ func (r *scriptedRoller) queue(faces ...int) {
 func (r *scriptedRoller) Roll(sides int) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.given++
 	if len(r.faces) == 0 {
 		return min(10, sides), nil
 	}

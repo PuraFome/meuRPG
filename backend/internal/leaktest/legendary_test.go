@@ -2,8 +2,13 @@ package leaktest
 
 import (
 	"bytes"
+	"slices"
+	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
@@ -235,6 +240,164 @@ func TestALegendaryResistanceIsTheMastersAlone(t *testing.T) {
 	for _, e := range w.logOfPerson(w.ana) {
 		fx := e.GetEffect()
 		passed = passed || (fx.GetChange() == playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVED && fx.GetD20() == 0 && !fx.GetResisted())
+	}
+	if !passed {
+		t.Error("Ana's log has no line of a save that passed: the control is missing")
+	}
+}
+
+// Ana's Sacred Flame makes the adult red dragon fail its Dexterity save with a 1. The cast waits for the master
+// in a window of its own, and the master turns the failure into a success with Legendary Resistance. No player
+// reads the window, the offer, the failed roll, the count or the trait in the combat, the log, the answers they
+// hold or the stream: Ana reads a save that passed, and the hold sends the players no hint of its own. A player's
+// try to answer the window is refused as a window that does not exist. The master reads all of it (the positive
+// controls).
+func TestACastsLegendaryResistanceIsTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	m := w.master
+	for _, word := range append([]string{"REACTION_KIND_LEGENDARY_RESISTANCE", "legendaryResistance", "Usar Resistência Lendária"}, resistanceWords...) {
+		w.secrets.add(&canary{needle: word, kind: "legendary-resistance-window"})
+	}
+	// Ana's Pensantus is a cleric with Sacred Flame, next to the dragon, on her turn.
+	sheet := w.fullSheet("class:cleric", "race:gnome", 1)
+	sheet.GetFull().BaseScores.Wisdom = 16
+	sheet.GetFull().CantripKeys = []string{"spell:sacred-flame"}
+	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: w.pens.GetRevision(), Name: w.pens.GetName(), Sheet: sheet,
+	})))
+	var dragon *playv1.Combatant
+	for _, c := range m.currentEncounter(w).GetCombatants() {
+		if c.GetBestiaryCreatureKey() == dragonKey {
+			dragon = c
+		}
+	}
+	pens := w.combatant(w.pens)
+	for id, sq := range map[string][2]int32{pens.GetId(): {12, 13}, dragon.GetId(): {13, 13}} {
+		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
+	}
+	for range 40 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == pens.GetId() {
+			w.encounter = cur
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: cur.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	if w.encounter.GetCurrentCombatantId() != pens.GetId() {
+		t.Fatal("Pensantus's turn never came")
+	}
+	// The dragon stands beside Toren too, so both players see the creatures around the cast.
+	inSight := []string{"dragon-name", "seen-npc-name", "combatant-id"}
+	w.scriptD20(1)
+
+	var cast, answer, masterLog reply
+	var window *playv1.ReactionWindow
+	var asked, masterReads []reply
+	after := map[*person][]reply{}
+	var passed bool
+	got := w.hiddenOnlyEvents(func() {
+		cast = w.ana.call(playv1connect.CombatServiceCastSpellProcedure, &playv1.CastSpellRequest{
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CasterId: pens.GetId(), SpellKey: "spell:sacred-flame", IdempotencyKey: newKey(),
+			Targets: []*playv1.SpellTarget{{CombatantId: dragon.GetId()}},
+		})
+		if !cast.ok() {
+			t.Fatalf("Ana's cast: status %d %s", cast.status, cast.body)
+		}
+		enc := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		for _, rw := range enc.GetReactionWindows() {
+			if rw.GetKind() == playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE {
+				window = rw
+			}
+		}
+		if window == nil {
+			t.Fatalf("the master reads %v, want the Legendary Resistance window", enc.GetReactionWindows())
+		}
+		// While it waits, no player reads it, and a player's answer is refused like an invented window's.
+		asked = []reply{w.reads(w.ana)[0], w.reads(w.caio)[0]}
+		for _, p := range []*person{w.ana, w.caio} {
+			asks := p.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
+				CreatureIds: []string{dragon.GetId()}, IdempotencyKey: newKey(),
+			})
+			fake := p.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: newKey(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
+				CreatureIds: []string{dragon.GetId()}, IdempotencyKey: newKey(),
+			})
+			if asks.ok() || fake.ok() || asks.status != fake.status || !bytes.Equal(asks.body, fake.body) {
+				t.Errorf("%s: a real window is refused with %d %s, an invented one with %d %s: they must read the same", p.name, asks.status, asks.body, fake.status, fake.body)
+			}
+		}
+		answer = m.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
+			CreatureIds: []string{dragon.GetId()}, IdempotencyKey: newKey(),
+		})
+		if !answer.ok() {
+			t.Fatalf("the master's answer: status %d %s", answer.status, answer.body)
+		}
+		for _, p := range []*person{w.ana, w.caio} {
+			after[p] = w.reads(p)
+		}
+		masterReads = w.reads(m)
+		masterLog = m.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()})
+		for _, e := range w.logOfPerson(w.ana) {
+			for _, tg := range e.GetSpell().GetTargets() {
+				s := tg.GetSave()
+				passed = passed || (s.GetOutcome() == playv1.SaveOutcome_SAVE_OUTCOME_SAVED && s.GetRoll() == nil && !s.GetResisted())
+			}
+		}
+	})
+
+	for _, p := range []*person{w.ana, w.caio} {
+		reads := slices.Concat(after[p], asked)
+		reads = append(reads, cast)
+		for _, r := range reads {
+			for _, f := range w.inspect(p, r, inSight) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+	// The stream: the master hears the window open and close; the players hear neither, and nothing of the hold.
+	count := func(name string) (opened, closed int) {
+		for _, ev := range got[name] {
+			switch {
+			case strings.HasPrefix(ev, "reaction_window_opened"):
+				opened++
+			case strings.HasPrefix(ev, "reaction_window_closed"):
+				closed++
+			}
+		}
+		return opened, closed
+	}
+	if o, c := count(w.master.name); o != 1 || c != 1 {
+		t.Errorf("the master heard %d openings and %d closings, want one of each (%v)", o, c, got[w.master.name])
+	}
+	for _, p := range []*person{w.ana, w.caio} {
+		if o, c := count(p.name); o != 0 || c != 0 {
+			t.Errorf("%s heard %d openings and %d closings of the master's window", p.name, o, c)
+		}
+		for _, ev := range got[p.name] {
+			if strings.Contains(ev, "reaction") {
+				t.Errorf("%s heard %s: the hold sends the players no hint of its own", p.name, ev)
+			}
+		}
+	}
+	// The positive controls: the master's reads hold the offer, the choice and the count; Ana reads a save that passed.
+	master := slices.Concat(masterReads, []reply{answer})
+	for _, word := range []string{"resisted", "resistedLeft"} {
+		found := false
+		for _, r := range master {
+			found = found || contains(r.body, word)
+		}
+		if !found {
+			t.Errorf("the master's answers do not hold %q: the control is missing", word)
+		}
+	}
+	if offer := protojson.Format(window); !strings.Contains(offer, "legendaryResistance") || !strings.Contains(offer, "usesLeft") {
+		t.Errorf("the master's window holds %s: the offer is missing", offer)
+	}
+	if !contains(masterLog.body, "resisted") {
+		t.Error("the master's log does not hold the choice: the control is missing")
 	}
 	if !passed {
 		t.Error("Ana's log has no line of a save that passed: the control is missing")

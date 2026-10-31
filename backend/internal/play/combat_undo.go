@@ -117,6 +117,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainShapeAndSight,
 	chainHeld,
 	chainProtection,
+	chainResistance,
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
@@ -253,6 +254,15 @@ func chainHeld(c chainEvent) chainVerdict {
 // never closes the chain: the undo acts on the attack and gives the reaction back (ProtectedBy).
 func chainProtection(c chainEvent) chainVerdict {
 	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ProtectionKind) && ev.Reaction.Used {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
+// chainResistance: the master's answer to a Legendary Resistance window is written beside the cast it released
+// and never closes the chain: the undo acts on the cast and gives the uses back (resistedBack).
+func chainResistance(c chainEvent) chainVerdict {
+	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.LegendaryResistance) {
 		return chainSkip
 	}
 	return chainGoOn

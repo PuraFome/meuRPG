@@ -127,6 +127,9 @@ const (
 	Contest Kind = "contest"
 	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).
 	EffectSave Kind = "effect_save"
+	// LegendaryResistance is the master's question of a held action whose saving throw a creature with the
+	// trait failed: it has no reactor and uses nobody's reaction.
+	LegendaryResistance Kind = "legendary_resistance"
 )
 
 // Reason is why a window closed by itself.
@@ -159,7 +162,7 @@ type Facts struct {
 // ignores ReactionUsed. Incapacitated wins over a spent reaction, and both over a
 // gone trigger: the reason a reactor reads is about itself first.
 func Closure(kind Kind, f Facts) (Reason, bool) {
-	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave
+	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave && kind != LegendaryResistance
 	switch {
 	case f.Incapacitated && usesReaction:
 		return ReasonReactorIncapacitated, true

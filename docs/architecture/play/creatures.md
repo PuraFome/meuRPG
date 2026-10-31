@@ -116,7 +116,6 @@ The saves the master rolls for the creature take the choice with the roll (`lege
 | An effect's save, at the start or end of the turn or after damage | `RollEffectSave` | `use_legendary_resistance` |
 | The Constitution save to keep a concentration | `ResolveConcentrationSave` | `use_legendary_resistance` |
 
-The save a creature makes against a zone is not covered by this choice.
 The master does not need to guess before the dice.
 When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
 When the roll succeeds, nothing is spent and the choice is ignored; so it is for a save the master skips or keeps.
@@ -134,6 +133,23 @@ The line has no roll, no count and no name for the trait.
 The event is the ordinary save event, with `resisted` and `resist_left`, neutral names that no player-visible payload carries.
 The hints are those of a save that passed, so the stream tells a player nothing more.
 The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.
+
+**A player's action that makes the creature save** (`combat_legendary_hold.go`).
+A spell with a saving throw, on one target or many (`CastSpell`), asks the master first when a creature with the trait and a use left fails its save.
+The cast is held with the request, in a window of kind `legendary_resistance` that only the master reads and answers (`AnswerReaction`).
+The window offers one choice for each failed save of such a creature: "Usar Resistência Lendária (restam K)", with the d20, the total, the DC and the uses left.
+The master chooses the failures to turn (`creature_ids`) or declines (`PASS`).
+The hold keeps the d20 and the effect dice of every save of the cast, so the answer settles the cast with the same dice and rolls nothing again.
+A turned failure is a save that succeeded, and the cast writes the damage, the conditions and the effects of a success.
+Each turned failure spends one use, in the same change as the cast; an answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
+A request sent twice spends once.
+No window opens when no creature with the trait failed, when none has a use left, or when the spell has no saving throw.
+A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
+The players' line of the cast is a save that passed.
+A hold that is dropped (the combat ends, the cast is no longer possible) spends nothing and leaves no part of the cast.
+The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
+
+Not covered, so a failed save stays failed there: the save a creature makes against a spell zone, a trap's save, and the save of a weapon's hit rider.
 
 ## On screen
 
