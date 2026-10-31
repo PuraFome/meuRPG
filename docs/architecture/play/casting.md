@@ -39,7 +39,7 @@ What the casting does depends on what the spell is:
 | Reads HP (Sleep, Colour Spray, Power Word, Spare the Dying, Heal, False Life, Aid) | The server reads each target's HP and applies the effect at once, in the same transaction | None |
 | Revivify | See [Death and revival](death-and-revival.md) | None |
 | Teleport (Misty Step, with `destination`) | Spends the slot and the bonus action, then puts the caster on the chosen square; see below | None |
-| Zone spell (Web, Spirit Guardians, Moonbeam, Cloudkill, Grease, Entangle, or a table spell with a zone), cast at a point on the map | Spends and logs, lays the zone, and Web puts its effect on the creatures inside; Grease and Entangle make the creatures inside save at once (prone, restrained); the zone then makes the later saves and damage ([Spell zones](spell-zones.md)) | None at the cast; the zone's damage is pending damage of its own |
+| Zone spell (Web, Spirit Guardians, Moonbeam, Cloudkill, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, or a table spell with a zone), cast at a point on the map | Spends and logs, lays the zone, and Web puts its effect on the creatures inside; Grease and Entangle make the creatures inside save at once (prone, restrained); the zone then makes the later saves and damage ([Spell zones](spell-zones.md)) | None at the cast; the zone's damage is pending damage of its own |
 | The rest (Misty Step without a square, which only the master may send) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
 
 **A teleport on a map.** `CastSpellRequest.destination` is the square the caster lands on (`teleportReachFt` has the spells and their reach: Misty Step, 30 ft).
