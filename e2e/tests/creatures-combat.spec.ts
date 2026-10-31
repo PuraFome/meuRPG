@@ -259,7 +259,7 @@ test(
 
       // Next round her action is free again: back through the bonus action, with no notice for what she did herself.
       await endTurnOf(p, m, campaignId, 'Sálvia');
-      await waitForEncounterRevision(m, await passTurnsTo(m, campaignId, 'Sálvia'));
+      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Sálvia'));
       await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
       await openActionTab(p, 'Druida');
       await p.getByRole('button', { name: 'Transformar: Forma Selvagem' }).click();

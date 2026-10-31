@@ -1,6 +1,7 @@
 import { combatRPC, getEncounterRPC, rollSceneRPC, waitForEncounterRevision, type Page } from './support';
 
-// Three errors: a click straight after the call, a click in an outer block, and a wait that comes too late.
+// Four errors: a click straight after the call, a click in an outer block, a wait that comes too late, and a wait on
+// the master's page before a click on the player's.
 export async function clickRightAfter(m: Page): Promise<void> {
   await combatRPC(m, 'EndTurn');
   await m.getByRole('button').click();
@@ -17,6 +18,12 @@ export async function waitTooLate(m: Page): Promise<void> {
   const enc = await combatRPC(m, 'EndTurn');
   await m.getByRole('button').click();
   await waitForEncounterRevision(m, enc);
+}
+
+export async function waitsOnTheOtherPage(m: Page, p: Page): Promise<void> {
+  const enc = await combatRPC(m, 'EndTurn');
+  await waitForEncounterRevision(m, enc);
+  await p.getByRole('button').click();
 }
 
 // Not errors: a read, a void call (no revision to wait for), a load after the call.

@@ -46,6 +46,22 @@ const listOf = (parent) => {
   return null;
 };
 
+// A variable holds a locator (so it belongs to the page it was found on) when it is built by one of these methods;
+// anything else, such as `await context.newPage()`, is a page itself.
+const LOCATOR_METHODS = /^(getBy\w+|locator|filter|first|last|nth|and|or|frameLocator|contentFrame)$/;
+
+/** @param {any} node */
+const isLocatorExpression = (node) => {
+  let cur = node;
+  while (cur && (cur.type === 'AwaitExpression' || cur.type === 'TSNonNullExpression')) cur = cur.argument ?? cur.expression;
+  return (
+    cur?.type === 'CallExpression' &&
+    cur.callee.type === 'MemberExpression' &&
+    !cur.callee.computed &&
+    LOCATOR_METHODS.test(cur.callee.property.name)
+  );
+};
+
 /** @type {import('eslint').Rule.RuleModule} */
 module.exports = {
   meta: {
@@ -53,7 +69,7 @@ module.exports = {
     schema: [],
     docs: { description: 'Wait for the page to show the revision an RPC returned before acting on the page.' },
     messages: {
-      wait: '`{{name}}` returns a revision the page may not show yet: await `waitForEncounterRevision(page, ...)` before the next page action (docs/testing.md).',
+      wait: '`{{name}}` returns a revision the page may not show yet: await `waitForEncounterRevision(page, ...)` before the next page action, on the page that action uses (`{{page}}`; docs/testing.md).',
     },
   },
   create(context) {
@@ -83,28 +99,73 @@ module.exports = {
       );
     };
 
-    /** First action and first wait inside a statement, by source position (function bodies are not entered). @param {any} root */
+    /** The variable an identifier names, looked up from the node that uses it. @param {any} node @param {string} name */
+    const variableOf = (node, name) => {
+      for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+        const found = scope.set.get(name);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    /**
+     * The page an expression acts on: the leftmost identifier of `p.getByRole(..)`, `lia.page.locator(..)`, followed
+     * through `const card = m.getByTestId(..)`. null when it cannot be told (a parameter, a destructured name).
+     * @param {any} node @param {number} [depth]
+     * @returns {string | null}
+     */
+    const pageOf = (node, depth = 0) => {
+      let cur = node;
+      while (cur) {
+        // `lia.page`, `ctx.page`: the page is that member, whatever object holds it.
+        if (cur.type === 'MemberExpression' && !cur.computed && cur.property.name === 'page') return sourceCode.getText(cur);
+        if (cur.type === 'MemberExpression') cur = cur.object;
+        else if (cur.type === 'CallExpression') cur = cur.callee;
+        else if (cur.type === 'AwaitExpression') cur = cur.argument;
+        else if (cur.type === 'ChainExpression' || cur.type === 'TSNonNullExpression') cur = cur.expression;
+        else break;
+      }
+      if (!cur || cur.type !== 'Identifier') return null;
+      const typeName = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(cur)).symbol?.name;
+      if (typeName === 'Page') return cur.name;
+      // A locator belongs to the page it was found on, when we can see where it came from.
+      const def = variableOf(cur, cur.name)?.defs[0];
+      if (typeName === 'Locator' && def?.type === 'Variable' && def.node.id.type === 'Identifier' && def.node.init && depth < 6) {
+        return isLocatorExpression(def.node.init) ? pageOf(def.node.init, depth + 1) : null;
+      }
+      return null;
+    };
+
+    /** The pages a wait call waits for: its first argument, a page or an array of pages. @param {any} call */
+    const waitPages = (call) => {
+      const arg = call.arguments[0];
+      if (!arg) return [null];
+      return arg.type === 'ArrayExpression' ? arg.elements.map((/** @type {any} */ e) => pageOf(e)) : [pageOf(arg)];
+    };
+
+    /**
+     * What a statement does, in source order (function bodies are not entered): `action` on a page, `wait` for a page
+     * (a revision wait or a page load), or a later tracked `rpc`. @param {any} root
+     */
     const scan = (root) => {
-      let action = Infinity;
-      let wait = Infinity;
-      let rpc = Infinity;
+      /** @type {{ kind: 'action' | 'wait' | 'rpc', page: string | null, pages?: (string | null)[], at: number }[]} */
+      const events = [];
       /** @param {any} node */
       const walk = (node) => {
         if (!node || typeof node.type !== 'string') return;
         if (isFunction(node)) return;
         if (node.type === 'AwaitExpression' && isTracked(node)) {
-          rpc = Math.min(rpc, node.range[0]);
+          events.push({ kind: 'rpc', page: null, at: node.range[0] });
         }
         if (node.type === 'CallExpression') {
           const callee = node.callee;
           if (callee.type === 'MemberExpression' && !callee.computed && ACTIONS.has(callee.property.name)) {
-            action = Math.min(action, node.range[0]);
+            events.push({ kind: 'action', page: pageOf(callee.object), at: node.range[0] });
           }
-          if (
-            (callee.type === 'Identifier' && WAIT_NAMES.has(callee.name)) ||
-            (callee.type === 'MemberExpression' && !callee.computed && LOAD_METHODS.has(callee.property.name))
-          ) {
-            wait = Math.min(wait, node.range[0]);
+          if (callee.type === 'Identifier' && WAIT_NAMES.has(callee.name)) {
+            events.push({ kind: 'wait', page: null, pages: waitPages(node), at: node.range[0] });
+          } else if (callee.type === 'MemberExpression' && !callee.computed && LOAD_METHODS.has(callee.property.name)) {
+            events.push({ kind: 'wait', page: null, pages: [pageOf(callee.object)], at: node.range[0] });
           }
         }
         const keys = sourceCode.visitorKeys[node.type] ?? [];
@@ -115,7 +176,7 @@ module.exports = {
         }
       };
       walk(root);
-      return { action, wait, rpc };
+      return events.sort((a, b) => a.at - b.at);
     };
 
     return {
@@ -123,9 +184,15 @@ module.exports = {
       AwaitExpression(node) {
         if (!isTracked(node)) return;
         const call = node.argument;
+        // The pages the page waited for so far: a wait on one page does not clear an action on another.
+        /** @type {Set<string | null>} */
+        const waited = new Set();
         // `await waitForEncounterRevision(page, await someRPC(...))`: the call is waited on in the same breath.
         for (let up = node.parent; up; up = up.parent) {
-          if (up.type === 'CallExpression' && up.callee.type === 'Identifier' && WAIT_NAMES.has(up.callee.name)) return;
+          if (up.type === 'CallExpression' && up.callee.type === 'Identifier' && WAIT_NAMES.has(up.callee.name)) {
+            waitPages(up).forEach((page) => waited.add(page));
+            break;
+          }
           if (isFunction(up)) break;
         }
         /** @type {any} */
@@ -136,15 +203,16 @@ module.exports = {
           if (list) {
             const at = list.indexOf(cur);
             for (const next of list.slice(at + 1)) {
-              const { action, wait, rpc } = scan(next);
-              // A later call that changes the server before any action takes over: the wait it needs covers this one too.
-              if (rpc < action && rpc < wait) return;
-              if (wait < action) return;
-              if (action < Infinity) {
-                context.report({ node: call, messageId: 'wait', data: { name: call.callee.name } });
-                return;
+              for (const event of scan(next)) {
+                // A later call that changes the server takes over: the wait it needs covers this one too.
+                if (event.kind === 'rpc') return;
+                if (event.kind === 'wait') (event.pages ?? []).forEach((page) => waited.add(page));
+                // An action on a page the rule cannot name is judged by any wait.
+                else if (!waited.has(event.page) && !(event.page === null && waited.size > 0)) {
+                  context.report({ node: call, messageId: 'wait', data: { name: call.callee.name, page: event.page ?? 'the page' } });
+                  return;
+                }
               }
-              if (wait < Infinity) return;
             }
           }
           cur = parent;

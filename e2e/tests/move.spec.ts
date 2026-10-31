@@ -190,7 +190,7 @@ test(
       const start = await getEncounterRPC(m, campaignId);
       const g1 = start.combatants.find((c) => c.label === 'Goblin 1')!;
       const moved = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: g1.id, col: 9, row: 7 });
-      await waitForEncounterRevision(m, moved);
+      await waitForEncounterRevision([m, p], moved);
 
       // The player's `alertdialog`, like Escudo's: the safe answer has the focus, and no armor class.
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
@@ -239,7 +239,7 @@ test(
       await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       const start = await getEncounterRPC(m, campaignId);
       const moved = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Goblin 1')!.id, col: 9, row: 7 });
-      await waitForEncounterRevision(m, moved);
+      await waitForEncounterRevision([m, p], moved);
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
       await expect(prompt).toBeVisible();
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Pensantus' });

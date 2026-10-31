@@ -241,19 +241,14 @@ jobs:
           # shellcheck disable=SC2086
           npx playwright test $PART_ARGS
 
-      - name: Save the stack logs
-        # The backend log (the api container) next to the report: a test that
-        # fails on a page that never showed a change needs the server's side of
-        # it (did the stream push the revision?). Kept as a file because the log
-        # printed below scrolls out of the job page.
+      - name: Show and save the stack logs
+        # The backend log (the api container) next to the report: a test that fails on a page that never showed a
+        # change needs the server's side of it (did the stream push the revision?). One read feeds the job page
+        # and the file, which the report artifact keeps.
         if: failure()
         run: |
           mkdir -p e2e/stack-logs
-          docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color --timestamps > e2e/stack-logs/stack.log
-
-      - name: Show the stack logs
-        if: failure()
-        run: docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color
+          docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color --timestamps | tee e2e/stack-logs/stack.log
 
       - name: Upload the Playwright report
         if: failure()

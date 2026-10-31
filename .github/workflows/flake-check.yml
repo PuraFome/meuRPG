@@ -197,6 +197,15 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+      - name: Save the stack logs
+        # The backend log next to the traces: a repeat that fails because the page never showed a change needs the
+        # server's side of it. Saved on every run (a flaky test fails inside a green job), shown only on failure.
+        if: ${{ !cancelled() }}
+        working-directory: code
+        run: |
+          mkdir -p e2e/stack-logs
+          docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color --timestamps > e2e/stack-logs/stack.log
+
       - name: Keep the traces of the failures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -205,13 +214,14 @@ jobs:
           path: |
             code/e2e/test-results/
             code/e2e/playwright-report/
+            code/e2e/stack-logs/
           retention-days: 7
           if-no-files-found: ignore
 
       - name: Show the stack logs
         if: failure()
         working-directory: code
-        run: docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color
+        run: cat e2e/stack-logs/stack.log
 
   go:
     name: go ${{ matrix.side }} ${{ matrix.runner }}

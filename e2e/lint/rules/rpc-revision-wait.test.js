@@ -35,9 +35,10 @@ test('reports the call a page action follows without a revision wait', async () 
   assert.deepEqual(
     messages.map((m) => [m.ruleId, m.line]),
     [
-      ['meurpg/rpc-revision-wait', 5],
-      ['meurpg/rpc-revision-wait', 11],
-      ['meurpg/rpc-revision-wait', 17],
+      ['meurpg/rpc-revision-wait', 6],
+      ['meurpg/rpc-revision-wait', 12],
+      ['meurpg/rpc-revision-wait', 18],
+      ['meurpg/rpc-revision-wait', 24],
     ],
   );
 });

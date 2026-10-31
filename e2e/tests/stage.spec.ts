@@ -185,6 +185,7 @@ test(
 
       await openSessionPage(m, campaignId);
       await openSessionPage(p, campaignId);
+      // eslint-disable-next-line meurpg/rpc-revision-wait -- an ended combat leaves the player's combat view; the player's card asserted below is the wait
       const ended = await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
       await waitForEncounterRevision(m, ended);
 

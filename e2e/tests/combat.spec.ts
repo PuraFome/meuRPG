@@ -126,7 +126,7 @@ test(
       for (const [label, col, row] of [['Goblin 1', 9, 9], ['Goblin 2', 14, 10], ['Goblin 3', 15, 4], ['Capitão Goblin', 11, 5]] as const) {
         enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
       }
-      await waitForEncounterRevision(m, enc);
+      await waitForEncounterRevision([m, p], enc);
       await m.getByRole('button', { name: 'Começar o combate' }).click();
       await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
       await expect(m.getByText('Vez do Capitão Goblin').first()).toBeVisible();
@@ -480,7 +480,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
       targetId: enc.combatants.find((c) => c.label === 'Pensantus')!.id,
       d20Face: 3,
     });
-    await waitForEncounterRevision(m, rolled);
+    await waitForEncounterRevision([m, p], rolled);
     await expect(await masterLog(m)).toContainText('Goblin 1');
     await expect(await masterLog(m)).toContainText('Só o mestre vê');
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
@@ -736,14 +736,14 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
 
     // Round 3: a natural 1 counts two failures; round 4: a 5 is the third.
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
-    await waitForEncounterRevision(m, enc);
+    await waitForEncounterRevision([m, p], enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('1');
     await p.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(p.getByText(/Teste contra a morte: 1 · dado físico\. Falha: um 1 conta duas falhas\./)).toBeVisible();
     await endTurnOf(p, m, campaignId, 'Pensantus');
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
-    await waitForEncounterRevision(m, enc);
+    await waitForEncounterRevision([m, p], enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('5');
     await p.getByRole('button', { name: 'Confirmar 5' }).click();

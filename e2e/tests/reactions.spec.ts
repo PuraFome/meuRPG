@@ -173,7 +173,7 @@ for (const showDC of [false, true]) {
         });
         expect(cast.ok(), await cast.text()).toBeTruthy();
         enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus') });
-        await waitForEncounterRevision(m, enc);
+        await waitForEncounterRevision([m, p], enc);
         const hit = await callRPC(m, 'meurpg.play.v1.CombatService/RollAttack', {
           campaignId,
           encounterId: enc.id,

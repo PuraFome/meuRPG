@@ -22,3 +22,11 @@ export async function waitTooLate(m: Page): Promise<void> {
   await waitForEncounterRevision(m, enc);
   await m.getByRole('button').click();
 }
+
+// The page the next action uses is the page waited on; when both act, both are waited on.
+export async function waitsOnEachPage(m: Page, p: Page): Promise<void> {
+  const enc = await combatRPC(m, 'EndTurn');
+  await waitForEncounterRevision([m, p], enc);
+  await m.getByRole('button').click();
+  await p.getByRole('button').click();
+}

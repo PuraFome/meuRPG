@@ -138,7 +138,7 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 - `plan` chooses the shards: three plain shards (`--grep-invert @a11y`) always, and six accessibility shards (`--grep @a11y`) on `main`, nightly, manual runs, and pull requests that touch `web/`, `e2e/`, `deploy/local/` or the workflow.
 - `lint and typecheck` needs no Docker, so a mistake fails in about a minute.
 - `images` builds the production image and the devidp image once (with the GitHub Actions layer cache) and hands both over as an artifact; each shard runs `docker load`, so a broken Dockerfile fails before any shard.
-- Each shard starts the stack with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build` (`compose.ci.yaml` keeps the database in memory; `compose.ci-images.yaml` points at the loaded images), checks on one shard that the production image does not contain the devidp, and runs the tests on Chromium. A failed shard shows the stack logs and keeps its Playwright report as the artifact `playwright-report-<n>`.
+- Each shard starts the stack with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build` (`compose.ci.yaml` keeps the database in memory; `compose.ci-images.yaml` points at the loaded images), checks on one shard that the production image does not contain the devidp, and runs the tests on Chromium. A failed shard shows the stack logs and keeps them (`stack-logs/stack.log`, with timestamps) with its Playwright report in the artifact `playwright-report-<n>`.
 
 ## Vulnerability scans
 
@@ -232,7 +232,7 @@ Read it like this:
 
 `flake-check` runs refs that are not `main`'s, so it writes no cache (no `cache:` on `setup-node` or `setup-go`, no cache save, no `cache-to` on the image builds): a ref under test cannot poison a cache that `main`'s runs restore.
 
-The traces and the HTML report of the failures are kept as the artifacts `flake-traces-<side>-<runner>` (Playwright) and the log as `flake-log-<side>-<runner>` (Go).
+The traces, the HTML report and the stack logs (`stack-logs/stack.log`, saved on every run) are kept as the artifacts `flake-traces-<side>-<runner>` (Playwright) and the log as `flake-log-<side>-<runner>` (Go).
 
 ### Repeat of the changed tests
 

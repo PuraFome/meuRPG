@@ -132,7 +132,7 @@ test(
 
       // The next round: the pool shows what is left, and the touch on the undead spends the points and does nothing.
       await endTurnOf(p, m, campaignId, 'Aurora');
-      await waitForEncounterRevision(m, await passTurnsTo(m, campaignId, 'Aurora'));
+      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Aurora'));
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
       await openActionTab(p, 'Paladino');
       await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();

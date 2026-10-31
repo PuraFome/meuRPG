@@ -50,7 +50,7 @@ test(
       }
       await openSessionPage(p, campaignId);
       const begun = await beginTheatreRPC(m, table, started, { Toren: 20, 'Goblin': 12, 'Capitão Goblin': 10 });
-      await waitForEncounterRevision(m, begun);
+      await waitForEncounterRevision([m, p], begun);
 
       // The master: the pill, the card of whoever is on turn with the movement he may spend, the cover panel, no map.
       await expect(m.getByText('Vez do Toren', { exact: true }).first()).toBeVisible();
@@ -111,7 +111,7 @@ test(
 
       // Toren's turn ends; on the Goblin's turn the master offers the opportunity attack to Toren.
       await combatRPC(m, 'EndTurn', { campaignId, encounterId: started.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
-      await waitForEncounterRevision(m, await passTurnsTo(m, campaignId, 'Goblin'));
+      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Goblin'));
       await expect(m.getByRole('heading', { name: 'Vez do Goblin' })).toBeVisible();
       await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
       await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
@@ -163,7 +163,7 @@ test(
       let enc = await getEncounterRPC(m, campaignId);
       enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
       enc = await passTurnsTo(m, campaignId, 'Brisa');
-      await waitForEncounterRevision(lia.page, enc);
+      await waitForEncounterRevision([lia.page, p], enc);
       await lia.page.getByRole('button', { name: 'Digitar o resultado' }).click();
       await lia.page.getByLabel(/Role 1d20 para o teste contra a morte/).fill('4');
       await lia.page.getByRole('button', { name: 'Confirmar 4' }).click();
