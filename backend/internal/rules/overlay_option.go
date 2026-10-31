@@ -26,7 +26,6 @@ type optionSetDef struct {
 // optionSetDefs are the sets, in the menu's order. A set whose options are data the engine
 // reads by name (the Land druid's terrain, the draconic ancestry) is not here.
 var optionSetDefs = []optionSetDef{
-	{"table_feature", "Opção de característica da mesa", "As opções de uma característica de classe ou subclasse da mesa (as manobras de uma subclasse).", nil},
 	{"invocation", "Invocação mística", "As invocações do bruxo.", []string{invocationsFeature}},
 	{"pact_boon", "Dádiva do pacto", "A dádiva que o bruxo escolhe no 3º nível.", []string{pactBoonKey}},
 	{"metamagic", "Metamagia", "As opções de Metamagia do feiticeiro.", []string{"feature:metamagic-1", "feature:metamagic-2", "feature:metamagic-3"}},
@@ -37,6 +36,7 @@ var optionSetDefs = []optionSetDef{
 	{"defensive_tactics", "Táticas defensivas", "As opções de Táticas Defensivas do patrulheiro.", []string{"feature:defensive-tactics"}},
 	{"multiattack", "Ataque múltiplo", "As opções de Ataque Múltiplo do patrulheiro.", []string{"feature:multiattack"}},
 	{"superior_hunters_defense", "Defesa superior do caçador", "As opções de Defesa Superior do Caçador do patrulheiro.", []string{"feature:superior-hunters-defense"}},
+	{"table_feature", "Opção de característica da mesa", "As opções de uma característica de classe ou subclasse da mesa (as manobras de uma subclasse).", nil},
 }
 
 // optionSetOf is the set with this name.

@@ -206,12 +206,12 @@ The advantage is a source of the attack roll ("Name: vantagem neste ataque") and
 ## Table options
 
 `TableOption` (`rules/overlay_option.go`) adds an option to one of the SRD's option sets.
-Its key is `option:<set>:<slug>@mesa` and `Set` is the set the key names: `invocation` (the Eldritch Invocations), `pact_boon`, `metamagic` (the three Metamagic features), `fighting_style` (the fighter's, the additional one, the paladin's and the ranger's), `hunters_prey`, `defensive_tactics`, `multiattack` and `superior_hunters_defense` and `table_feature` (`optionSetDefs`; the menu's closed list `option_set_names` carries them with their Portuguese names).
+Its key is `option:<set>:<slug>@mesa` and `Set` is the set the key names: `invocation` (the Eldritch Invocations), `pact_boon`, `metamagic` (the three Metamagic features), `fighting_style` (the fighter's, the additional one, the paladin's and the ranger's), `hunters_prey`, `defensive_tactics`, `multiattack`, `superior_hunters_defense` and `table_feature` (`optionSetDefs`; the menu's closed list `option_set_names` carries them with their Portuguese names).
 `With` writes the option as a feature of the clone and appends its key to the `Options` of every SRD feature that offers the set (the offering features are copied first: the SRD's are shared), and to `offeredBy`.
 So the choice engine needs nothing of its own: the picks are dealt in the pool of the set, a set with table options is not bound by the 20 keys of a listed `from` (the pool is computed), the option is a feature once picked (its effects apply while the character owns an offering feature), and the same option cannot be taken twice by name.
 
 The set `table_feature` is for the option list of a class or subclass feature of the content (a table's maneuvers): `offered_by` is that feature's key (`feature:...@mesa`), and the option is appended to its `Options` and to `offeredBy`.
-It is checked at `.offered_by` (`dangling_reference`: empty, not a table feature key, missing from the content, or a feature with no inline `options` of its own to join; `bad_value` when another set carries it), and the builder adds classes and subclasses before options.
+It is checked at `.offered_by` (`dangling_reference`: empty, not a table feature key, missing from the content, or a feature with no choice of features to join (a class feature of kind `classfeature` is never one, since options are added before them); `bad_value` when another set carries it), and the builder adds classes and subclasses before options.
 A feature's own inline `options` and the options that name it share one pool, which the 60 of `MaxFeatureOptions` do not bound: the bounds are the table's (`MaxOverlayEntries`, 1,000 entries; 64 KiB an entry; `MaxOverlayEffects`, 6,000 effects) and 20 effects an option.
 The 20 keys of `maxEffectList` bind only an explicit `from` list.
 

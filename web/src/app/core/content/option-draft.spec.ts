@@ -29,6 +29,7 @@ describe('the option form (MR-025)', () => {
       namePt: 'Olhar do Corvo',
       descPt: ['Primeiro.', 'Segundo.'],
       set: 'invocation',
+      offeredBy: '',
       prerequisite: {
         classLevel: { classKey: 'class:warlock', level: 5 },
         requiresOptionKeys: ['option:agonizing-blast'],
@@ -37,6 +38,12 @@ describe('the option form (MR-025)', () => {
       },
       effects: [{ type: 'note', textPt: 'Enxerga pelos olhos de um corvo.' }],
     });
+  });
+
+  it('keeps the offering feature of an option of a table feature through an edit', () => {
+    const draft = optionToDraft({ ...stored(), set: 'table_feature', offeredBy: 'feature:postura@mesa' });
+    expect(draft.offeredBy).toBe('feature:postura@mesa');
+    expect(draftToOption(draft, menu()).offeredBy).toBe('feature:postura@mesa');
   });
 
   it('sends a prerequisite that asks nothing as empty, with no class level', () => {
