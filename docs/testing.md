@@ -81,12 +81,16 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
 - **The default is fixed.** The same calls give the same faces, and the roller never runs out.
 - **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
 - **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
-- **Script the d20 of an attack or a save rolled before the initiative.** Every unscripted d20 takes the next face of the default sequence, so the test scripts those rolls to keep the sequence where it expects.
+- **Script the d20 of an attack or a save rolled before the initiative.**
+  Every unscripted d20 takes the next face of the default sequence.
+  Scripting those rolls keeps the sequence where the test expects it.
 - **A test pins a roll with `ScriptFor(t, sides, faces...)`.**
   The faces go to the next rolls of that die only, and the default goes on after them.
   A face that does not fit its die fails the test at once.
-  A face still queued when the test ends fails it, naming the die and the faces, so a script never reaches a roll it was not meant for.
+  A scripted face that is never rolled fails the test at the end, naming the die and the faces.
+  The check belongs to the test that first scripts the roller.
   A test scripts only the rolls it makes.
+  It also asserts the roll a face was for, such as `requireOwnTotal`, because a later roll of that die can take a face its own roll left.
 - **A creature added to a running combat is scripted and checked.**
   The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`).
   It then calls `requireOwnTotal` (`requireOwnTotals` in `progression`).

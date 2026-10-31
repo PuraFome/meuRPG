@@ -35,7 +35,9 @@ var d20Cycle = func() []int {
 
 // Roller gives the faces a test scripted with ScriptFor, in order, and then a default sequence that never runs out.
 // The zero value is ready to use.
-// A face scripted and never rolled fails the test when it ends, so a script cannot reach a roll it was not meant for.
+// A scripted face that is never rolled fails the test at the end.
+// A Roller belongs to the test that first scripts it, and that test's end checks it.
+// A test scripts only the rolls it makes, and asserts the roll a face was for (the total it gave, say), because a later roll of that die can take a face its own roll left.
 // A Roller is safe for concurrent use, and the order faces go out in is the order the rolls happen in.
 //
 // What it guarantees:
@@ -54,7 +56,7 @@ var d20Cycle = func() []int {
 type Roller struct {
 	mu      sync.Mutex
 	script  map[int][]int // faces queued by ScriptFor, by die, used first
-	watched testing.TB    // the test whose end checks for faces left over
+	watched testing.TB    // the first test that scripted, whose end checks for faces left over
 	d20     int           // how many default d20 faces went out
 	other   uint64        // state of the default sequence of the other dice
 }
@@ -67,6 +69,7 @@ func New() *Roller { return &Roller{} }
 // A face that does not fit the die fails the test at once.
 // When they are used up, the default sequence goes on where it was.
 // A face still queued when the test ends fails it, naming the die and the faces.
+// The check belongs to the first test that scripts the Roller.
 func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
 	t.Helper()
 	if sides < 1 {
@@ -83,15 +86,19 @@ func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
 		r.script = map[int][]int{}
 	}
 	r.script[sides] = append(r.script[sides], faces...)
-	if r.watched != t {
+	if r.watched == nil {
 		r.watched = t
 		t.Cleanup(func() { r.failIfLeftOver(t) })
 	}
 }
 
 // failIfLeftOver fails t for each die whose scripted faces were not all rolled.
+// A test that already failed reports only its own failure.
 func (r *Roller) failIfLeftOver(t testing.TB) {
 	t.Helper()
+	if t.Failed() {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, sides := range slices.Sorted(maps.Keys(r.script)) {

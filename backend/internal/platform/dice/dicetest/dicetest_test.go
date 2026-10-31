@@ -187,7 +187,10 @@ type recorder struct {
 	testing.TB
 	errors   []string
 	cleanups []func()
+	failed   bool
 }
+
+func (r *recorder) Failed() bool { return r.failed }
 
 func (r *recorder) Helper() {}
 
@@ -239,5 +242,35 @@ func TestAFullyUsedScriptPassesTheEnd(t *testing.T) {
 	rec.finish()
 	if len(rec.errors) != 0 {
 		t.Errorf("errors = %q, want none", rec.errors)
+	}
+}
+
+func TestAFailedTestReportsNoLeftOverFaces(t *testing.T) {
+	t.Parallel()
+	rec := &recorder{TB: t}
+	New().ScriptFor(rec, 20, 5)
+	rec.failed = true // a Fatal before the roll
+	rec.finish()
+	if len(rec.errors) != 0 {
+		t.Errorf("errors = %q, want none beside the test's own failure", rec.errors)
+	}
+}
+
+func TestARollerBelongsToTheTestThatFirstScriptsIt(t *testing.T) {
+	t.Parallel()
+	parent, sub := &recorder{TB: t}, &recorder{TB: t}
+	r := New()
+	r.ScriptFor(parent, 20, 5)
+	r.ScriptFor(sub, 20, 6) // a subtest scripts too: the check stays with the parent
+	if len(sub.cleanups) != 0 || len(parent.cleanups) != 1 {
+		t.Fatalf("cleanups: parent %d, subtest %d; want 1 and 0", len(parent.cleanups), len(sub.cleanups))
+	}
+	sub.finish()
+	if len(sub.errors) != 0 {
+		t.Errorf("the subtest reported %q while the parent's faces were queued", sub.errors)
+	}
+	parent.finish()
+	if len(parent.errors) != 1 {
+		t.Errorf("the parent reported %q, want the faces [5 6] of the d20", parent.errors)
 	}
 }
