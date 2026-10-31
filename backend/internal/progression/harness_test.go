@@ -33,6 +33,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
@@ -201,7 +202,10 @@ func (c racingCampaigns) CampaignXPMode(ctx context.Context, tx pgx.Tx, campaign
 
 // newHarness serves the progression, play, campaigns and characters services
 // through the API's real HTTP stack, wired as cmd/api wires them.
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessRolling(t, dicetest.New()) }
+
+// newHarnessRolling is newHarness with the dice the play service rolls with.
+func newHarnessRolling(t *testing.T, roller dice.Roller) *harness {
 	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_progression_test")
 	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool)}
@@ -221,7 +225,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	pl, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars,
-		Dice: testDice{camps}, Roller: dicetest.New(), Logger: logger, Now: clock.Now,
+		Dice: testDice{camps}, Roller: roller, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)
