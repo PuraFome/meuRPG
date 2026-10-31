@@ -427,7 +427,8 @@ var inTxPCs sync.Map // uintptr -> bool
 // inlined) include the transaction's closure.
 func inTxClosureAt(pc uintptr) bool {
 	if v, ok := inTxPCs.Load(pc); ok {
-		return v.(bool)
+		hit, _ := v.(bool)
+		return hit
 	}
 	hit := false
 	frames := runtime.CallersFrames([]uintptr{pc})
