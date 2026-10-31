@@ -12,18 +12,18 @@ import (
 func TestAttackToProtoRangeIsAtLeastTheMeleeReach(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name string
-		in   rules.Attack
-		want int32
+		name        string
+		in          rules.Attack
+		want, reach int32
 	}{
-		{"a longsword with a 10 ft rule", rules.Attack{Melee: true, RangeFt: 0, ReachFt: 10}, 10},
-		{"a longsword with no rule", rules.Attack{Melee: true}, 0},
-		{"a dagger thrown 20/60 with a 30 ft rule", rules.Attack{Melee: true, RangeFt: 20, LongRangeFt: 60, ReachFt: 30}, 30},
-		{"a dagger thrown 20/60 with a 10 ft rule", rules.Attack{Melee: true, RangeFt: 20, LongRangeFt: 60, ReachFt: 10}, 20},
+		{"a longsword with a 10 ft rule", rules.Attack{Melee: true, RangeFt: 0, ReachFt: 10}, 10, 10},
+		{"a longsword with no rule", rules.Attack{Melee: true}, 0, 0},
+		{"a dagger thrown 20/60 with a 30 ft rule", rules.Attack{Melee: true, RangeFt: 20, LongRangeFt: 60, ReachFt: 30}, 30, 30},
+		{"a dagger thrown 20/60 with a 10 ft rule", rules.Attack{Melee: true, RangeFt: 20, LongRangeFt: 60, ReachFt: 10}, 20, 10},
 	} {
 		p := attackToProto(tc.in)
-		if p.GetRangeFt() != tc.want || p.GetReachFt() != int32(tc.in.ReachFt) {
-			t.Errorf("%s: range_ft %d, reach_ft %d, want %d and %d", tc.name, p.GetRangeFt(), p.GetReachFt(), tc.want, tc.in.ReachFt)
+		if p.GetRangeFt() != tc.want || p.GetReachFt() != tc.reach {
+			t.Errorf("%s: range_ft %d, reach_ft %d, want %d and %d", tc.name, p.GetRangeFt(), p.GetReachFt(), tc.want, tc.reach)
 		}
 	}
 }
