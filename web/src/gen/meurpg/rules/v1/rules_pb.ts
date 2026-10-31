@@ -2656,7 +2656,9 @@ export type Attack = Message<"meurpg.rules.v1.Attack"> & {
 
   /**
    * The melee reach in feet, when a weapon rule or a pseudo-weapon makes it longer than
-   * 5 ft; 0 otherwise. `range_ft` is at least this for a melee attack.
+   * 5 ft; 0 otherwise. A melee weapon with the reach property (a glaive, a halberd, a whip)
+   * keeps its reach in `range_ft`, with no long range. `range_ft` is at least this for a
+   * melee attack.
    *
    * @generated from field: int32 reach_ft = 21;
    */
