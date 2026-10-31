@@ -9,7 +9,7 @@ For the engine around it see [Rules module](rules.md).
 
 | Piece | What it does |
 | --- | --- |
-| `Overlay` | The revision, the keys switched off, the entries of eight kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`, `TableOption`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
+| `Overlay` | The revision, the keys switched off, the entries of ten kinds (`TableClass`, `TableSubclass`, `TableRace`, `TableSubrace`, `TableBackground`, `TableSpell`, `TableFeat`, `TableOption`, `TableClassFeature`, `TableCreature`) and `Strict`, the keys being written now. Each entry starts with a `TableEntry` (key, Portuguese name, `Archived`, the revision and date of its last change) and carries the features (`TableFeature`: key, name, text, effects). The fields follow what the editors fill in, so the protos map one to one. |
 | Keys | Every table key is `<kind>:<name>@mesa`, the name 1 to 60 characters of `[a-z0-9-]`; a feature's key starts `feature:`, `trait:` or `background-feature:`. `With` refuses a key without `@mesa`, of another kind, malformed or already taken (even by another entry's feature). Because the prefix is the SRD's, every place that decides by prefix works for table keys. |
 | Reserved words | `With` refuses (`reserved_key`) a key, of an entry or a feature, with `magical-secrets`, `wild-shape` or `ability-score-improvement` in the name, or ending in `-spellcasting`, because the engine, `play` and the web react to those words in SRD keys. The keys the engine writes carry the kind (`feature:class-<name>-spellcasting@mesa`, `feature:subclass-<name>-spellcasting@mesa`, `feature:class-<name>-ability-score-improvement-<n>@mesa`), so a class and a subclass of the same name never collide. |
 | Copy-on-write | The SRD is a singleton many requests read at once. `With` copies (shallowly) only the maps it changes, adds the entries, rebuilds the indexes and the catalogue, and leaves the values shared. A table subclass of an SRD class enters a copy of the class with the new subclass list; the same for a race's subraces. Two contents made from the same SRD do not see each other, and a `Content` that already has a table layer does not accept another. |
@@ -26,7 +26,7 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 | What | Limit |
 | --- | --- |
-| Entries (of the eight kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
+| Entries (of the ten kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
 | Features | 60 per class and 60 per subclass, counted apart (`MaxTableFeatures`); the features the engine writes do not count |
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
@@ -226,6 +226,35 @@ A switched-off entry is skipped entirely: the class reads as it did without it, 
 An archived entry still applies to the sheets that have the class.
 Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
 
+## Table creatures
+
+`TableCreature` (`rules/overlay_creature.go`) is an SRD creature with a few adjustments.
+Its key is `creature:<slug>@mesa`.
+It names a `BaseKey` (an SRD creature such as `monster:wolf`) and changes `HitPoints`, `ArmorClass`, `DamageBonus` and `Traits`; the rest of the stat block is the base's.
+`With` copies the base's stat block, applies the adjustments and registers the copy under the entry's key, so the creature resolves where an SRD creature does: `MonsterDerived`, `CreatureByKey`, `MonsterPlan`, `ListCreatures` and the combat.
+The base is never written: the SRD's maps are copied before the first table creature goes in.
+
+| Field | What it does | Limit |
+| --- | --- | --- |
+| `BaseKey` | The SRD creature it is made from. A table creature is never the base of another. It never changes after the entry is created (`immutable` at `table_creature.base_key`) | Must exist in the SRD (`dangling_reference` at `.base_key`) |
+| `HitPoints` | The creature's maximum hit points. 0 keeps the base's. The base's hit dice stay and its hit points roll is dropped | 1 to 9,999 (`MaxCreatureHitPoints`) |
+| `ArmorClass` | The creature's armor class. 0 keeps the base's. The kind and the notes of the base's armor class are dropped | 1 to 40 (`MaxCreatureArmorClass`) |
+| `DamageBonus` | A whole number added once to the first damage part of every attack action, so each attack of a Multiattack gets it. 0 adds nothing. A flat damage stops at 0, and dice that end in `+MOD` are left as they are. The text of the action stays the base's | -10 to 30 |
+| `Traits` | Traits added after the base's special abilities, as text only: a name and a text, no effects | At most 10 (`MaxCreatureTraits`); a name of 1 to 80 characters on one line; a text of 1 to 4,000 characters |
+
+A trait name is refused (`bad_name`) when it repeats a trait or an action of the base, compared by its letters `a` to `z` and digits, or when it is `Magic Weapons`, `Spellcasting` or `Innate Spellcasting`, ignoring case, because the engine reads those names.
+An adjustment out of its range is `bad_value` at its field, a trait text out of its length is `bad_text` and too many traits is `limit`.
+The checks run before anything is built, so a creature reports every refusal at once.
+
+A table creature is left out of every use that depends on the base's challenge rating and XP, which the adjustments may not keep:
+
+- The encounter evaluator, the generator and the swaps (`EvaluateEncounter`, `GenerateEncounter`, `EncounterSwaps`) read the SRD's creatures only.
+- The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only.
+- The Wild Shape forms (`WildShapeForms`) are SRD beasts only.
+
+An entry that is archived or switched off keeps resolving, so a creature already held, or an NPC made from it, keeps working; `Content.Creatures()` lists the table's creatures with the marks.
+`Content.Hidden` is true for it, so the server hides it from players as it hides any other kind (see [Switches](#switches-and-hidden-keys)).
+
 ## States
 
 A `state` effect defines a state; the character's player turns it on and off.
@@ -306,7 +335,7 @@ Combat uses `Spellcasting.SpellList`, the list the caster reads: the class's or,
 
 ## Switches and hidden keys
 
-The master switches classes, subclasses, races, subraces, backgrounds, spells and feats on or off per campaign, SRD and table alike; everything is on by default.
+The master switches classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures on or off per campaign, SRD and table alike; everything is on by default.
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.

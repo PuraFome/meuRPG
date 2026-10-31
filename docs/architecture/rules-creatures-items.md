@@ -22,6 +22,8 @@ A save that 5e-database leaves only in the text ("Força CD 11 ou cai Derrubado"
 | `SummonOptions(spell, level, build)`, `CheckSummon(...)` | What a summoning spell lets the caster pick with that slot, and the check of a choice (`ErrSummonCreature`, `ErrSummonCount`, `ErrSummonOption`, `ErrSummonCircle`, `ErrNotSummonSpell`). Casting time, ritual and concentration come from the spell's data. |
 | `WildShapeLimitFor(build)`, `WildShapeForms(build)`, `WildShapeAllows(build, beast)`, `WildShapeDerived(sheet, beast)`, `CastsInBeastForm(derived)` | See [Wild Shape](#wild-shape). |
 
+A table creature (`creature:<slug>@mesa`) is an SRD creature with the master's adjustments and resolves through the same functions; the encounter tools, the summon choices and Wild Shape leave it out ([Table creatures](rules-table-content.md#table-creatures)).
+
 **A creature's armor class** comes from the armor it uses, and the note says what it wears and the other values ("15 com Armadura Arcana").
 
 **Multiattack corrections.**

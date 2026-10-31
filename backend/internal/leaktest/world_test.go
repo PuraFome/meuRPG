@@ -3,6 +3,7 @@ package leaktest
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -618,6 +619,9 @@ func (w *world) buildTableContent() {
 		case *rulesv1.TableFeat:
 			b.NamePt = w.secrets.marker(kind, readers...)
 			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: b}}
+		case *rulesv1.TableCreature:
+			b.NamePt = w.secrets.marker(kind, readers...)
+			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: b}}
 		}
 		e := must(m.table.CreateTableEntry(ctx, rq(req))).GetEntry()
 		w.secrets.id(kind+"-key", e.GetKey(), readers...)
@@ -645,6 +649,14 @@ func (w *world) buildTableContent() {
 			Effects: []*rulesv1.TableEffect{{Type: "note", TextPt: w.secrets.marker("feat-effect", readers...)}},
 		}
 	}
+	// A table creature is a giant crab of the SRD with other numbers and one trait; the name of the trait and its
+	// text are markers too.
+	creature := func(hp, ac int32, readers ...*person) *rulesv1.TableCreature {
+		return &rulesv1.TableCreature{
+			BaseKey: "monster:giant-crab", HitPoints: hp, ArmorClass: ac, DamageBonus: 2,
+			Traits: []*rulesv1.TableCreatureTrait{{NamePt: w.secrets.marker("creature-trait-name", readers...), TextPt: w.secrets.marker("creature-trait-text", readers...)}},
+		}
+	}
 	// the table plays with feats, so the level-up offers them to the players who may read them
 	rules := must(m.campaigns.GetTableRules(ctx, rq(&campaignsv1.GetTableRulesRequest{CampaignId: w.campaign}))).GetRules()
 	rules.FeatsAllowed = true
@@ -661,11 +673,46 @@ func (w *world) buildTableContent() {
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
+	// Creatures (issue #578). The live one is the table's: every member reads it, and Ana's character holds one.
+	// The archived one and the one switched off are the master's alone, except to the player whose character was
+	// given the creature before: that player keeps reading the creature (its name, key, stat block with the trait, hit
+	// points and armor class). Their hit points and armor class are numbers no other answer has.
+	liveCreature := create("creature-live", creature(9, 17, w.ana, w.caio), w.ana, w.caio)
+	archivedCreature := create("creature-archived", creature(archivedCreatureHP, archivedCreatureAC, w.ana), w.ana)
+	offCreature := create("creature-off", creature(offCreatureHP, offCreatureAC, w.caio), w.caio)
+	w.giveTableCreature(w.pens, liveCreature.GetKey())
+	w.giveTableCreature(w.pens, archivedCreature.GetKey())
+	w.giveTableCreature(w.toren, offCreature.GetKey())
+	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedCreature.GetKey()})))
+	w.secrets.number("table-creature-hp", archivedCreatureHP)
+	w.secrets.number("table-creature-ac", archivedCreatureAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(archivedCreatureHP), w.ana)
+	w.secrets.allowNeedle(strconv.Itoa(archivedCreatureAC), w.ana)
+	w.secrets.number("table-creature-hp", offCreatureHP)
+	w.secrets.number("table-creature-ac", offCreatureAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(offCreatureHP), w.caio)
+	w.secrets.allowNeedle(strconv.Itoa(offCreatureAC), w.caio)
 	// and an option of the SRD, switched off in "Opções para os jogadores"
 	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{
-		{Key: offRace.GetKey(), Off: true}, {Key: offFeat.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
+		{Key: offRace.GetKey(), Off: true}, {Key: offFeat.GetKey(), Off: true}, {Key: offCreature.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},
 	}})))
 	w.secrets.add(&canary{needle: "race:tiefling", kind: "srd-race-off-key"})
+}
+
+// The numbers of the fixture's archived and switched off table creatures (buildTableContent): the SRD giant crab has
+// 13 hit points and armor class 15, so a player who reads one of these reads the creature of a table that is not theirs.
+const (
+	archivedCreatureHP = 4242
+	archivedCreatureAC = 36
+	offCreatureHP      = 4343
+	offCreatureAC      = 38
+)
+
+// giveTableCreature has the master give a table creature to a character. Its owner's player reads the creature
+// (its name, key, hit points and armor class) and the master does; no one else does.
+func (w *world) giveTableCreature(owner *charactersv1.Character, key string) {
+	w.t.Helper()
+	must(w.master.characters.GiveCreature(w.t.Context(), rq(&charactersv1.GiveCreatureRequest{CampaignId: w.campaign, CharacterId: owner.GetId(), MonsterKey: key})))
 }
 
 // buildGenerated makes what the tools made and the master has not shown: an image the

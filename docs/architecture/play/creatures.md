@@ -8,7 +8,7 @@ The two meet in two small interfaces wired in `cmd/api`: `play.CombatRoster` (wh
 
 | Who | What |
 | --- | --- |
-| `CharacterService` | `ListCharacterCreatures` (the master and the owning player; any other player gets `not_found`, and the HP never reaches them), `GiveCreature` (master only, any SRD creature, up to 40 per character; it takes the open session's lock before the character's, the order every combat write uses), `RenameCreature` (its combatant in an open combat gets the new name), `DismissCreature` (the owner or the master; dismissing one already dismissed changes nothing), `AdjustCreatureHitPoints` (master only, RN-02, only outside combat; at 0 HP the creature is dismissed), `GetSummonOptions`, `ListWildShapeForms`. The creature's sheet is `ContentService.GetCreature` |
+| `CharacterService` | `ListCharacterCreatures` (the master and the owning player; any other player gets `not_found`, and the HP never reaches them), `GiveCreature` (master only, any SRD or table creature, up to 40 per character; it takes the open session's lock before the character's, the order every combat write uses), `RenameCreature` (its combatant in an open combat gets the new name), `DismissCreature` (the owner or the master; dismissing one already dismissed changes nothing), `AdjustCreatureHitPoints` (master only, RN-02, only outside combat; at 0 HP the creature is dismissed), `GetSummonOptions`, `ListWildShapeForms`. The creature's sheet is `ContentService.GetCreature` |
 | `PlayService.CastSummon` | Casting outside combat what does not fit inside it (below) |
 | `CombatService.CastSpell` | Conjure Animals in combat (below) |
 | `CombatService.EndConcentration` | Ends concentration (the player or the master) and dismisses that casting's creatures, with a `creature_dismissed` for each. `SetCombatantConditions` with `end_concentration` and casting another concentration spell do the same (RN-22) |
@@ -31,6 +31,29 @@ The group's bonus is the first creature's of the summon, whichever member the pl
 For a player character it answers what the cast sheet draws: for each summoning spell it may cast (on the sheet, prepared or in the spellbook; the Pact of the Chain gives the Find Familiar ritual) the key, the Portuguese name, the level, the time, whether it is a ritual and needs concentration, `can_ritual` and `can_cast_with_slot`; for each level it can use, the options `rules.SummonOptions` gives (the count already with the level, and the forms or the type and maximum CR); the slots (`SummonSlot`, pact ones with `pact`); and per spell what a casting would send away (the living familiar; the creatures of the current concentration).
 It is the same code `CheckSummon` uses (`summonStanding`), so the read and the casting agree; `CastSummon` still checks every choice.
 Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
+
+## Table creatures
+
+A table creature is an SRD creature plus the master's adjustments: hit points, armor class, a damage bonus and extra text traits.
+It is a table entry of kind `creature`, with the key `creature:<slug>@mesa`; the fields and limits are in [Table creatures](../rules-table-content.md#table-creatures).
+The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the creature sheet (`GetCreature`) and the combat read it by its key.
+
+- **What is copied and what is read.** `GiveCreature` copies the entry's maximum HP into `character_creatures.hp_max` when the creature is given.
+  Editing the entry later changes no creature already held: it keeps the HP it was given.
+  The armor class (`CharacterCreature.armor_class`) and the actions come from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus.
+- **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
+  They stay in the owner's list and join combats.
+  Entries are never deleted, so a held creature never loses its key.
+- **Who sees what (RN-20, RN-23).** In combat the HP is a number for the owning player and the master and the armor class for the master alone; everyone else gets the state word, as for an SRD creature.
+  The owner's list (`ListCharacterCreatures`) carries both numbers to the owner and the master, and to nobody else.
+  The key of a table creature has no `monster` in it; the other players read it as the kind, as they read an SRD creature's.
+  A player's `ListCreatures` lacks an archived or switched-off table creature, and `GetCreature` answers `not_found` to a player none of whose characters holds one.
+  The master reads them all.
+  `TestRN20_TableCreatureHitPointsOnlyToOwnerAndMaster` and the leak matrix pin this.
+- **Where it is not used.** A table creature is not offered by the summoning spells (their choices are SRD creatures), is not a Wild Shape form and is not in the encounter generator, evaluator or swaps, because it has the challenge rating and XP of its base, which its adjustments may not keep.
+- **Limits today.** The web app has no editor yet: the master's creatures come from the API or from a pack.
+  A package battle encounter that names a table creature is refused on import as unknown content, because `play/package.go` checks the creatures against the bare SRD.
+  `characters_using` counts 0 for a held creature, since it is not part of a sheet.
 
 ## What the combat does with a creature
 

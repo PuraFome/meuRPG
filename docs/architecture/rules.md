@@ -12,7 +12,7 @@ Related pages:
 | Page | Subject |
 | --- | --- |
 | [Level-up](rules-level-up.md) | What a level gives and what a locked sheet may change. |
-| [Table content](rules-table-content.md) | `Content.With`: the master's own classes, races, spells and feats over the SRD. |
+| [Table content](rules-table-content.md) | `Content.With`: the master's own classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures over the SRD. |
 | [Creatures, items and presets](rules-creatures-items.md) | Creatures, summons, Wild Shape, magic items, trap and light presets. |
 | [Combat engine](rules-combat.md) | The pure arithmetic of the fight, spell details and reactions. |
 | [Grid, vision and dungeons](rules-maps.md) | Map geometry, fog of war and the dungeon generator. |

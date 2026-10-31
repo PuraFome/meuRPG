@@ -612,7 +612,7 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - Rules: RN-23, RN-24, RN-25
 - Modules: rules, characters, campaigns, play, maps
 
-The story covers own classes **and** subclasses, races and subraces, backgrounds, spells, feats, the content pack (export and import), the option switches, the table rules and the campaign's grid.
+The story covers own classes **and** subclasses, races and subraces, backgrounds, spells, feats, options, class features, creatures, the content pack (export and import), the option switches, the table rules and the campaign's grid.
 A player's proposal (MR-026) and reading rules from a PDF (MR-027) are separate, later stories.
 The data rules, limits and the server side are in [Table content: rules](../architecture/rules-table-content.md) and [Table content: characters](../architecture/characters-table-content.md).
 
@@ -716,6 +716,17 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a class feature that replaces another feature of the class (an invented Ranger feature at level 1 that replaces Favored Enemy), **then** characters of the class no longer have the replaced feature from that level on, **and** the replaced feature is not asked for in their choices; **when** I switch the entry off, **then** the class reads as before and the replaced feature is back.
 - **Given** the editor, **when** I save a class feature with a class that does not exist, a level outside 1 to 20, or a replaced feature the class does not have at that level or later (or that it already had before), **then** the server refuses each at its field.
 
+**Creatures.**
+
+- **Given** I am the game master of "Mirathel", **when** I register a creature of my own from an SRD creature (a wolf with 40 hit points, armor class 17, +2 on each attack's damage and a trait of text), **then** it resolves where an SRD creature does: I give it to a player's character, it joins the combats with those numbers, and I can make an NPC from it.
+  The SRD creature itself never changes, and the entry's base cannot be swapped for another one later.
+  There is no screen to register one yet: it comes through the API or a content pack.
+- **Given** I save a creature with a base the SRD does not have, hit points outside 1 to 9,999, armor class outside 1 to 40, a damage bonus outside -10 to 30, or more than 10 traits, **then** the server refuses each at its field, and a trait named like one of the base's traits or actions, or "Magic Weapons", "Spellcasting" or "Innate Spellcasting", is refused.
+- **Given** a creature already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
+- **Given** a creature entry that I archive or switch off, **then** the players no longer find it in the creature list and cannot read its sheet unless one of their characters holds it **and** the creatures already given keep working for their owners; nothing is deleted.
+- **Given** a creature of the table in a combat, **then** its hit points are a number only for the master and its owner's player, and its armor class only for the master; the other players read its state word.
+- **Given** the summoning spells, Wild Shape and the encounter tools (generator, evaluator and swaps), **then** they offer SRD creatures only, because a table creature does not keep its base's challenge rating.
+
 **Swapping a pick.**
 
 - **Given** the table rule "Trocar uma escolha no aumento de atributo" is on and a Fighter reaches level 4, **when** the level-up reaches the ability step, **then** it also offers to give up one earlier pick of one group (cantrip, fighting style, metamagic option, invocation, pact boon) for another of the same pool, with "Não trocar" as the default, **and** the sheet shows the new pick and not the old one; the new pick still needs the prerequisites of any pick.
@@ -727,7 +738,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The notice clears itself when the numbers match again.
 - **Given** table content that a sheet uses, **when** the game master archives it, **then** the sheet keeps it **and** it no longer appears as a new choice; nothing in the table content is ever deleted.
   An archived entry can still be edited and can be unarchived, and then it is a new choice again.
-- **Given** the "Opções para os jogadores" screen, **when** the game master switches off a class, subclass, race, subrace, background, spell or feat (SRD or table), **then** players no longer see or pick it; what is on, they see in full, with numbers and effects.
+- **Given** the "Opções para os jogadores" screen, **when** the game master switches off a class, subclass, race, subrace, background, spell, feat, option, class feature or creature (SRD or table), **then** players no longer see or pick it; what is on, they see in full, with numbers and effects.
   A switched-off class takes its subclasses with it, and a switched-off race its subraces.
 - **Given** a switched-off or archived option, **when** a player creates or edits a sheet or levels up, **then** the server refuses it as a new choice, **and** a sheet that already has it keeps working and an unrelated edit is never refused.
   The game master is never refused.

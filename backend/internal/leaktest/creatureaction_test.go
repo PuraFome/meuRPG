@@ -5,9 +5,13 @@ import (
 	"strconv"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 )
 
 // What the master does with a creature's full actions (UseCreatureAction, and the riders of its attacks) is
@@ -22,6 +26,9 @@ const (
 	crabDC   = 11 // the escape DC of the claw of monster:giant-crab
 	spiderDC = 11 // the bite of monster:giant-spider
 	creature = "creature-dc"
+
+	fightCreatureHP = 5151 // the hit points of the table creature that fights (TestATableCreatureInTheCombatShowsThePlayersNoStatBlock)
+	fightCreatureAC = 39   // and its armor class
 )
 
 // monsterOnTurn adds the creature next to Toren (it at 13,14, he at 12,14) and passes the turns until it is
@@ -332,6 +339,54 @@ func TestACreatureGrappleShowsThePlayersNeitherTheEscapeDCNorTheStatBlock(t *tes
 
 			ans := w.applyRider(rider)
 			w.checkNoStatBlock(t, []reply{ans}, nil, escape)
+		})
+	}
+}
+
+// A table creature (issue #578) is a giant crab of the master's with other hit points, armor class and a trait,
+// archived so that no player reads its entry. The master adds it to the combat and its claw grapples Toren: the
+// players read the hit, the damage and their own grapple, never the key of the table creature (its name's
+// slug), the key of its claw, the escape DC, the hit points, the armor class nor the trait.
+func TestATableCreatureInTheCombatShowsThePlayersNoStatBlock(t *testing.T) {
+	for _, hidden := range []bool{false, true} {
+		t.Run("hidden "+strconv.FormatBool(hidden), func(t *testing.T) {
+			w := newWorld(t)
+			name := w.secrets.public("table-crab-name")
+			if hidden {
+				name = w.secrets.marker("table-crab-name")
+			}
+			entry := must(w.master.table.CreateTableEntry(t.Context(), rq(&rulesv1.CreateTableEntryRequest{
+				CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
+					NamePt: w.secrets.marker("table-crab-entry"), BaseKey: "monster:giant-crab", HitPoints: fightCreatureHP, ArmorClass: fightCreatureAC,
+					Traits: []*rulesv1.TableCreatureTrait{{NamePt: w.secrets.marker("table-crab-trait-name"), TextPt: w.secrets.marker("table-crab-trait-text")}},
+				}},
+			}))).GetEntry()
+			w.secrets.id("table-crab-key", entry.GetKey())
+			must(w.master.table.ArchiveTableEntry(t.Context(), rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: entry.GetKey()})))
+			w.secrets.number("table-crab-hp", fightCreatureHP)
+			w.secrets.number("table-crab-ac", fightCreatureAC, "armor_class")
+			w.secrets.number("creature-escape-dc", crabDC, "escape_dc")
+			w.statBlockNeedles(entry.GetKey(), "claw")
+			crab := w.monsterOnTurn(entry.GetKey(), name, hidden)
+			rider := w.hitToren(crab, w.firstAttack(crab))
+			// The master reads the entry and every needle of it; a player's reads of the entries and of the creature are
+			// held to the same check (the bestiary is a read of the matrix, which ignores the SRD's keys).
+			entries := w.master.call(rulesv1connect.TableContentServiceListTableEntriesProcedure, &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign})
+			var held []reply
+			for _, c := range []struct {
+				procedure string
+				req       proto.Message
+			}{
+				{rulesv1connect.TableContentServiceListTableEntriesProcedure, &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign}},
+				{rulesv1connect.ContentServiceGetCreatureProcedure, &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: entry.GetKey()}},
+			} {
+				held = append(held, w.ana.call(c.procedure, c.req))
+			}
+			w.checkNoStatBlock(t, []reply{entries}, held, w.canaryOf("creature-escape-dc"), w.canaryOf("table-crab-hp"), w.canaryOf("table-crab-ac"),
+				w.canaryNamed("creature-action-key"), w.canaryNamed("creature-key"), w.canaryNamed("table-crab-trait-text"), w.canaryNamed("table-crab-trait-name"))
+
+			ans := w.applyRider(rider)
+			w.checkNoStatBlock(t, []reply{ans}, nil, w.canaryOf("creature-escape-dc"))
 		})
 	}
 }

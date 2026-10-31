@@ -612,7 +612,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - Regras: RN-23, RN-24, RN-25
 - Módulos: rules, characters, campaigns, play, maps
 
-A história cobre classes **e** subclasses próprias, raças e sub-raças, antecedentes, magias, talentos, o pacote de conteúdo (exportar e importar), os interruptores de opções, as regras da mesa e a grade da campanha.
+A história cobre classes **e** subclasses próprias, raças e sub-raças, antecedentes, magias, talentos, opções, características de classe, criaturas, o pacote de conteúdo (exportar e importar), os interruptores de opções, as regras da mesa e a grade da campanha.
 A proposta de um jogador (MR-026) e a leitura de regras de um PDF (MR-027) são histórias à parte, para depois.
 As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa: regras](../../architecture/rules-table-content.md) e [Conteúdo da mesa: personagens](../../architecture/characters-table-content.md).
 
@@ -716,6 +716,17 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma característica de classe que substitui outra da classe (uma característica inventada de Patrulheiro no nível 1 que substitui Inimigo Favorito), **então** os personagens da classe deixam de ter a substituída a partir desse nível, **e** ela não é pedida nas escolhas deles; **quando** desligo a entrada, **então** a classe volta a ser como antes e a característica substituída volta.
 - **Dado** o editor, **quando** salvo uma característica de classe com uma classe que não existe, um nível fora de 1 a 20 ou uma característica a substituir que a classe não tem nesse nível ou depois (ou que ela já tinha antes), **então** o servidor recusa cada um no seu campo.
 
+**Criaturas.**
+
+- **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma criatura própria a partir de uma criatura do SRD (um lobo com 40 pontos de vida, classe de armadura 17, +2 no dano de cada ataque e um traço de texto), **então** ela vale onde vale uma criatura do SRD: eu a dou a um personagem de jogador, ela entra nos combates com esses números, e posso criar um NPC a partir dela.
+  A criatura do SRD em si nunca muda, e a base da entrada não pode ser trocada por outra depois.
+  Ainda não há tela para cadastrar uma: ela vem pela API ou por um pacote de conteúdo.
+- **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
+- **Dado** uma criatura já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
+- **Dado** uma entrada de criatura que arquivo ou desligo, **então** os jogadores deixam de achá-la na lista de criaturas e de ler a ficha dela, a menos que um personagem deles a tenha, **e** as criaturas já dadas continuam funcionando para os donos; nada é apagado.
+- **Dado** uma criatura da mesa em combate, **então** os pontos de vida dela são um número só para o mestre e o jogador dono, e a classe de armadura só para o mestre; os outros jogadores leem a palavra de estado.
+- **Dado** as magias de invocação, a Forma Selvagem e as ferramentas de encontro (gerador, avaliador e trocas), **então** elas oferecem só criaturas do SRD, porque uma criatura da mesa não mantém o nível de desafio da base.
+
 **Trocar uma escolha.**
 
 - **Dado** que a regra da mesa "Trocar uma escolha no aumento de atributo" está ligada e um Guerreiro chega ao nível 4, **quando** a subida de nível chega à etapa de habilidades, **então** ela também oferece abrir mão de uma escolha anterior de um grupo (truque, estilo de luta, opção de Metamagia, invocação, Dádiva do Pacto) por outra do mesmo conjunto, com "Não trocar" como padrão, **e** a ficha mostra a escolha nova e não a antiga; a escolha nova ainda precisa dos pré-requisitos de qualquer escolha.
@@ -727,7 +738,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O aviso some sozinho quando os números voltam a bater.
 - **Dado** um conteúdo da mesa que uma ficha usa, **quando** o mestre o arquiva, **então** a ficha o mantém **e** ele deixa de aparecer como escolha nova; nada do conteúdo da mesa é apagado.
   Uma entrada arquivada ainda pode ser editada e pode ser desarquivada, e então volta a ser uma escolha nova.
-- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia ou talento (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
+- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção, característica de classe ou criatura (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
   Uma classe desligada leva as subclasses dela junto, e uma raça desligada, as sub-raças.
 - **Dado** uma opção desligada ou arquivada, **quando** um jogador cria ou edita uma ficha ou sobe de nível, **então** o servidor a recusa como escolha nova, **e** uma ficha que já a tem continua funcionando e uma edição que não tem relação nunca é recusada.
   O mestre nunca é recusado.

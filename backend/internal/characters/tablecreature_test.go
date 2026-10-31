@@ -248,3 +248,56 @@ func TestMR578_ATableCreatureGivenToACharacterHasTheAdjustedNumbers(t *testing.T
 		}
 	}
 }
+
+func TestMR578_AnArchivedTableCreatureIsNotInThePlayersBestiaryUnlessTheyHoldOne(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	tb.master.addEntry(t, tb.campaign, tableWolf())
+	inBestiary := func(u *user) bool {
+		res, err := u.content.ListCreatures(t.Context(), connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: tb.campaign, Query: "Lobo da Mesa", PageSize: 400}))
+		if err != nil {
+			t.Fatalf("ListCreatures() error = %v", err)
+		}
+		for _, c := range res.Msg.GetCreatures() {
+			if c.GetKey() == tableWolfKey {
+				return true
+			}
+		}
+		return false
+	}
+	get := func(u *user) error {
+		_, err := u.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: tb.campaign, Key: tableWolfKey}))
+		return err
+	}
+	if !inBestiary(tb.owner) || !inBestiary(tb.master) || get(tb.other) != nil {
+		t.Fatal("a live table creature must be in the bestiary and resolve for everyone")
+	}
+
+	given, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: tb.pc.GetId(), MonsterKey: tableWolfKey})
+	if err != nil || given.GetHitPointsMax() != 40 {
+		t.Fatalf("GiveCreature() = %v, %v; want the table wolf", given, err)
+	}
+	if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: tableWolfKey})); err != nil {
+		t.Fatalf("ArchiveTableEntry() error = %v", err)
+	}
+	if inBestiary(tb.owner) || inBestiary(tb.other) || !inBestiary(tb.master) {
+		t.Error("an archived table creature must be in the master's bestiary alone")
+	}
+	if err := get(tb.other); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("GetCreature(archived) by a player who holds none: error = %v, want not_found", err)
+	}
+	if err := get(tb.owner); err != nil {
+		t.Errorf("GetCreature(archived) by the player who holds one: error = %v, want the creature", err)
+	}
+	if err := get(tb.master); err != nil {
+		t.Errorf("GetCreature(archived) by the master: error = %v, want the creature", err)
+	}
+
+	// Dismissed, the creature is no longer held: it stops resolving for its player.
+	if err := tb.dismiss(tb.owner, given.GetId()); err != nil {
+		t.Fatalf("dismiss error = %v", err)
+	}
+	if err := get(tb.owner); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("GetCreature(archived) after the creature was dismissed: error = %v, want not_found", err)
+	}
+}

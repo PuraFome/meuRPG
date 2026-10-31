@@ -272,6 +272,24 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "a live table creature", allow: members,
+		req: func(w *world) proto.Message {
+			return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: w.keyOf("creature-live")}
+		},
+	},
+	{
+		procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "an archived table creature", allow: onlyAna, why: "an archived creature is unknown to a player (not_found), except to the player whose character holds one: it keeps resolving for Ana",
+		req: func(w *world) proto.Message {
+			return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: w.keyOf("creature-archived")}
+		},
+	},
+	{
+		procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "a table creature switched off", allow: onlyCaio, why: "a creature the master switched off is unknown to a player (not_found), except to the player whose character holds one: it keeps resolving for Caio",
+		req: func(w *world) proto.Message {
+			return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: w.keyOf("creature-off")}
+		},
+	},
+	{
 		procedure: rulesv1connect.ContentServiceListLightPresetsProcedure, allow: members,
 		req: func(w *world) proto.Message {
 			return &rulesv1.ListLightPresetsRequest{CampaignId: w.campaign}
