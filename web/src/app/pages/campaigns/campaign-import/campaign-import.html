@@ -19,7 +19,7 @@
     <section class="mr-panel card" aria-labelledby="import-heading">
       <h2 class="mr-panel__title" id="import-heading">Importar campanha</h2>
       @if (s.notice) {
-        <div class="mr-notice mr-notice--danger block" role="alert">
+        <div class="mr-notice mr-notice--danger block">
           <mat-icon aria-hidden="true">error</mat-icon>
           <p>{{ s.notice }}</p>
         </div>
@@ -191,7 +191,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div role="alert" class="mr-notice mr-notice--danger block">
+      <div class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           @if (s.max > 0) {
@@ -212,7 +212,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div role="alert" class="mr-notice mr-notice--danger block">
+      <div class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>{{ s.text }}</p>
       </div>
@@ -226,7 +226,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div class="mr-notice mr-notice--danger block" role="alert">
+      <div class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           <strong>{{ s.failure.title }}</strong>

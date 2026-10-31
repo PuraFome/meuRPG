@@ -183,7 +183,7 @@ export class CampaignImportPage {
   }
 
   /** Sets the state and moves the focus to the new card's `data-focus` element (the button, or the heading). */
-  private go(state: ImportState, announce = ''): void {
+  private go(state: ImportState, announce = spoken(state)): void {
     if (this.gone) {
       return;
     }
@@ -334,7 +334,7 @@ export class CampaignImportPage {
         notice = describeConnectError(err, {});
       }
     }
-    this.go({ status: 'choose', kept: '', notice }, notice === '' ? 'Envio cancelado.' : '');
+    this.go({ status: 'choose', kept: '', notice }, notice === '' ? 'Envio cancelado.' : undefined);
   }
 
   private async read(): Promise<void> {
@@ -425,6 +425,25 @@ export class CampaignImportPage {
 }
 
 /** The failure card for an issue that is not a refusal with its own card. */
+/** What a card that is a refusal says through the live region when it replaces the screen: its notices carry no live role, since the
+ * element would arrive with its text. */
+function spoken(state: ImportState): string {
+  switch (state.status) {
+    case 'choose':
+      return state.notice;
+    case 'cap':
+      return state.max > 0
+        ? `Você já tem ${state.max} campanhas. Este é o limite por conta.`
+        : 'Você já tem o máximo de campanhas. Este é o limite por conta.';
+    case 'not-allowed':
+      return state.text;
+    case 'failed':
+      return `${state.failure.title} ${state.failure.cause}`;
+    default:
+      return '';
+  }
+}
+
 function failureFor(issue: Extract<ImportIssue, { kind: 'text' | 'lost' }>, stage: Stage): Failure {
   if (issue.kind === 'lost') {
     return {
