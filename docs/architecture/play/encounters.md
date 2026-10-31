@@ -9,7 +9,7 @@
 **Monsters are copies, in the combat, of a single NPC per campaign and creature** (RN-29, "one per creature").
 `characters` makes it the first time and reuses it (`CombatRoster.MonsterNpc`, `characters/combatmonsters.go`).
 It is a minion with the basic sheet "Criar NPC" makes (`npcSheetFromCreature`, the same function), average HP and `BasicSheet.combat_only` on (a server-only field: `checkSheet` zeroes it on input and `keepCreatureLink` keeps it).
-The creation key is a fixed UUID v5 of the campaign and the creature (for a table creature, also of a digest of the sheet its entry makes, so an edit of the entry that changes the numbers makes another NPC; the combatants already in a fight keep the numbers they joined with), and `INSERT ...
+The creation key is a fixed UUID v5 of the campaign and the creature (for a table creature, also of a digest of the numbers of the sheet its entry makes: an edit that changes them makes another NPC, and the monsters already in a fight keep the numbers they joined with), and `INSERT ...
 ON CONFLICT (campaign_id, create_key) DO NOTHING` followed by a read in the same transaction makes a single NPC even with two adds at once (`GetOpenGameSessionForUpdate` already queues them).
 The NPC never appears in the master's list (`ListCharacters` filters it by `sheet->'basic'->>'combat_only'`; no column), and `participants()` (`StartEncounter`, `AddCombatants`) and the stage refuse it with `invalid_argument`: the only way in is `AddMonsters`.
 It is never deleted: combatants, XP and the summary point to it.

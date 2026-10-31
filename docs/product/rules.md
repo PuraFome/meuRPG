@@ -586,7 +586,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30) and up to 10 traits that are text only.
   The SRD creature it comes from never changes.
   A table creature is never the base of another.
-  It resolves where an SRD creature does.
+  The creature list and sheet, giving it to a character, combat and "Criar NPC" read it by key.
   The master gives it to a character, it joins combats with its numbers, and an NPC can be made from it.
   The hit points are copied when the creature is given, so editing the entry does not change a creature already given.
   The armor class and the attacks follow the entry.
@@ -596,7 +596,9 @@ Members read the campaign's content, except creatures (below); only the master w
   The creatures already given keep working for their owners.
   The master can give an archived creature.
   Everyone in a combat reads a creature's name and key, as for an SRD summon or an NPC.
-  A combatant keeps the numbers it joined with: editing the entry changes the creatures added to a combat afterwards, not the ones already in a fight.
+  A creature a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
+  A monster put in a combat keeps the numbers it joined with: an edit changes the monsters added afterwards, not the ones already in a fight.
+  An edit that changes none of the numbers, such as a rename, finds the same NPC.
   Its stat block, hit points and armor class stay with the master and, for the hit points, the owner.
   Summoning spells, Wild Shape and the encounter generator, evaluator and swaps offer SRD creatures only.
   A package battle encounter that names a table creature is refused as unknown content.
@@ -784,7 +786,7 @@ These limits stop one account from filling the server. The numbers are defaults 
 | --- | --- |
 | Campaigns one account is master of | 10 |
 | Invites that still work in a campaign (not revoked, not expired, with uses left) | 50 |
-| Characters and NPCs in a campaign, living or dead, pending included | 1,000 |
+| Characters and NPCs in a campaign, living or dead, pending included. The NPCs made for a creature in a combat do not count | 1,000 |
 | AI images per campaign per month (RN-28) | 20 |
 | AI images for the whole server per Brasília day | 100 |
 | AI image requests alive at once on the server | 5 (one being made, four waiting) |

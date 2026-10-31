@@ -181,7 +181,7 @@ A player's copy drops a hidden class, a hidden replaced feature and the effects'
 `TABLE_CONTENT_KIND_CREATURE` (`creature` rows of `campaign_content`, key `creature:<slug>@mesa`, migration 00289) is an SRD creature with adjustments: hit points, armor class, a damage bonus on its attacks and extra text traits.
 `TableCreature` has `base_key` (an SRD creature, which never changes: `immutable` at `table_creature.base_key`) and the adjustments; the limits and refusals are in [Table creatures](rules-table-content.md#table-creatures).
 A base the SRD lacks is refused as `dangling_reference` at `table_creature.base_key`, and an entry over 64 KiB as `size_limit`.
-It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches` lists it with the kind), pack as the other kinds.
+It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches` lists it with the kind) and pack as the other kinds.
 Its player view is the whole entry or none: `playerReads` lets a creature row through only for a player who holds its key.
 Nothing is deleted: the way out of an entry is the archive mark or the switch.
 
@@ -189,8 +189,10 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
   `GetCreature`, `ListCreatures`, `CreateNpcFromCreature` and the combat read it from the campaign's content.
   The NPC made from it has "criatura da mesa" in its description.
   "Pôr no combate" keeps one combat-only NPC per campaign and creature for the SRD's, whose stat blocks never change.
-  For a table creature the NPC's key also holds a digest of the sheet the entry makes, so an edit that changes the numbers makes another NPC.
-  A combatant added after the edit has the entry's current armor class and attacks, and the combatants already in a fight keep the ones they joined with.
+  For a table creature the NPC's key also holds a digest of the numbers of the sheet the entry makes (the description is left out).
+  An edit that changes the numbers makes another NPC.
+  An edit that changes only the name, or changes the numbers back, finds the NPC it had.
+  A monster added after the edit has the entry's current numbers, and the monsters already in a fight keep the ones they joined with.
 - **When a number is copied.** `character_creatures.hp_max` is copied from the entry when the creature is given.
   Editing the entry changes no creature already held.
   The armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time.

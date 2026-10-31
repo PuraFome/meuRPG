@@ -44,8 +44,9 @@ func monsterNpcKey(campaignID, monsterKey string) string {
 // monsterNpcKeyOf is the create_key of the NPC of the creature as the content has it now. The stat block of
 // an SRD creature never changes, so its NPC is one for the campaign. A table creature's entry can be
 // edited, and the combatants already in a fight keep their numbers, which they read from the NPC: its key
-// also holds a digest of the sheet the entry makes now, so an edit that changes the numbers makes another NPC
-// and an edit that does not, or one that changes them back, finds the one it had.
+// also holds a digest of the numbers of the sheet the entry makes now (the description, which only repeats the
+// name and notes, is left out), so an edit that changes the numbers makes another NPC and an edit that does
+// not, a rename for one, or one that changes them back, finds the one it had.
 func (s *Service) monsterNpcKeyOf(content *rules.Content, campaignID, monsterKey string) (string, error) {
 	if !rules.IsTableKey(monsterKey) {
 		return monsterNpcKey(campaignID, monsterKey), nil
@@ -54,7 +55,8 @@ func (s *Service) monsterNpcKeyOf(content *rules.Content, campaignID, monsterKey
 	if err != nil {
 		return "", err
 	}
-	// Deterministic encoding: the same sheet always has the same bytes.
+	// Deterministic encoding: the same numbers always have the same bytes.
+	basic.Description = ""
 	doc, err := proto.MarshalOptions{Deterministic: true}.Marshal(basic)
 	if err != nil {
 		return "", fmt.Errorf("encode a sheet: %w", err)
@@ -165,12 +167,13 @@ func monsterNpcParams(content *rules.Content, c rules.Creature, campaignID, mast
 	return params, nil
 }
 
-// insertMonsterNpc writes the NPC, inside the campaign's cap; when another
-// transaction made it first, it reads that one.
+// insertMonsterNpc writes the NPC; when another transaction made it first, it
+// reads that one. It does not check the campaign's cap: the NPC of a combat is
+// combat_only, which the count of RN-30 leaves out.
 func (s *Service) insertMonsterNpc(ctx context.Context, q *charactersdb.Queries, params charactersdb.InsertNpcFromCreatureParams) (charactersdb.Character, error) {
 	row, err := q.InsertNpcFromCreature(ctx, params)
 	if err == nil {
-		return row, s.checkRoom(ctx, q, params.CampaignID, true)
+		return row, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return row, wrap("insert the NPC of a monster", err)

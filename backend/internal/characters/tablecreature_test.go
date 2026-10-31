@@ -1,14 +1,17 @@
 package characters
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -325,5 +328,73 @@ func TestMR578_TheMasterCanGiveAnArchivedTableCreature(t *testing.T) {
 	given, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: tb.pc.GetId(), MonsterKey: tableWolfKey})
 	if err != nil || given.GetMonsterKey() != tableWolfKey || given.GetHitPointsMax() != 40 {
 		t.Fatalf("GiveCreature(archived table creature) = %v, %v; want the table wolf with 40 hit points", given, err)
+	}
+}
+
+// MonsterNpc keys the NPC of a table creature by the numbers of its sheet: an edit that changes them makes
+// another NPC, one that changes them back finds the first, and a rename changes none.
+func TestMR578_TheNpcOfATableCreatureFollowsItsNumbers(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	entry := master.addEntry(t, campaign, tableWolf())
+	revision := entry.GetRevision()
+	edit := func(c *rulesv1.TableCreature) {
+		t.Helper()
+		res, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, tableWolfKey, revision, c)))
+		if err != nil {
+			t.Fatalf("UpdateTableEntry() error = %v", err)
+		}
+		revision = res.Msg.GetEntry().GetRevision()
+	}
+	npc := func() string {
+		t.Helper()
+		var id string
+		err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+			got, ok, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, tableWolfKey, h.clock.Now())
+			id = got.ID
+			if err == nil && !ok {
+				err = errors.New("no NPC for the table creature")
+			}
+			return err
+		})
+		if err != nil {
+			t.Fatalf("MonsterNpc() error = %v", err)
+		}
+		return id
+	}
+	rows := func() int {
+		t.Helper()
+		var n int
+		if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1", campaign).Scan(&n); err != nil {
+			t.Fatalf("count the NPCs: %v", err)
+		}
+		return n
+	}
+
+	first := npc()
+	if again := npc(); again != first || rows() != 1 {
+		t.Fatalf("the same entry again = %s with %d rows, want %s and 1", again, rows(), first)
+	}
+
+	stronger := tableWolf()
+	stronger.HitPoints = 55
+	edit(stronger)
+	second := npc()
+	if second == first || rows() != 2 {
+		t.Fatalf("an edit of the hit points = %s with %d rows, want another NPC and 2 rows", second, rows())
+	}
+
+	renamed := tableWolf()
+	renamed.HitPoints, renamed.NamePt = 55, "Lobo de Prata"
+	edit(renamed)
+	if got := npc(); got != second || rows() != 2 {
+		t.Fatalf("a rename = %s with %d rows, want the same NPC %s and 2 rows", got, rows(), second)
+	}
+
+	edit(tableWolf()) // back to the earlier numbers
+	if got := npc(); got != first || rows() != 2 {
+		t.Fatalf("the numbers back = %s with %d rows, want the first NPC %s and 2 rows", got, rows(), first)
 	}
 }

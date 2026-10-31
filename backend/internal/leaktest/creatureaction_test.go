@@ -387,6 +387,13 @@ func TestATableCreatureInTheCombatShowsThePlayersNoStatBlock(t *testing.T) {
 			} {
 				held = append(held, w.ana.call(c.procedure, c.req))
 			}
+			// Positive control: Ana's characters hold the fixture's live and archived creatures, so her own list of
+			// entries holds their numbers (hers to read). Without it, leaving Caio out of the held answers would check nothing.
+			for _, kind := range []string{"live-creature-hp", "live-creature-ac", "archived-creature-hp", "archived-creature-ac"} {
+				if !holdsNumber(held[0], w.canaryOf(kind)) {
+					t.Errorf("Ana's list of entries does not hold %s: the check of her answers is vacuous", kind)
+				}
+			}
 			w.checkNoStatBlock(t, []reply{entries}, held, w.canaryOf("creature-escape-dc"), w.canaryOf("table-crab-hp"), w.canaryOf("table-crab-ac"),
 				w.canaryNamed("creature-action-key"), w.canaryNamed("creature-key"), w.canaryNamed("table-crab-trait-text"), w.canaryNamed("table-crab-trait-name"))
 

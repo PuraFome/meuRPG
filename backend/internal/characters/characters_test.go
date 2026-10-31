@@ -462,9 +462,10 @@ FROM generate_series(1, $3) AS n`, campaign, master.id, DefaultMaxCharactersPerC
 	wantCode(t, "the 1,001st character", err, connect.CodeResourceExhausted)
 }
 
-// RN-30: the NPC a combat makes for a monster counts too, and a monster
-// already made is found in a full campaign.
-func TestRN30_TheMonsterNpcOfACombatCountsInTheCap(t *testing.T) {
+// RN-30: the NPC a combat makes for a monster does not count in the cap, and a
+// character that does count still does, so the monsters of a combat never make a
+// full campaign and a full campaign still has monsters.
+func TestRN30_TheMonsterNpcOfACombatDoesNotCountInTheCap(t *testing.T) {
 	t.Parallel()
 	h := newHarnessWith(t, func(c *Config) { c.MaxCharactersPerCampaign = 1 })
 	master := h.newUser("Mestre")
@@ -475,12 +476,22 @@ func TestRN30_TheMonsterNpcOfACombatCountsInTheCap(t *testing.T) {
 			return err
 		})
 	}
-	if err := monsterNpc("monster:ogre"); err != nil {
-		t.Fatalf("the monster at the cap: %v", err)
+	for _, key := range []string{"monster:ogre", "monster:wolf", "monster:ogre"} {
+		if err := monsterNpc(key); err != nil {
+			t.Fatalf("the monster %s before any character: %v", key, err)
+		}
 	}
-	wantCode(t, "a second monster", monsterNpc("monster:wolf"), connect.CodeResourceExhausted)
-	if err := monsterNpc("monster:ogre"); err != nil {
-		t.Fatalf("the monster already made, in a full campaign: %v", err)
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet()) // the 1st that counts
+	_, err := master.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+		CampaignId: campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, Name: "Um a mais", Sheet: basicSheet(),
+	}))
+	wantCode(t, "CreateCharacter() over the cap, with two monsters' NPCs in the campaign", err, connect.CodeResourceExhausted)
+	if err := monsterNpc("monster:goblin"); err != nil {
+		t.Fatalf("a monster in a full campaign: %v", err)
+	}
+	var npcs int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1 AND sheet->'basic'->>'combat_only' = 'true'", campaign).Scan(&npcs); err != nil || npcs != 3 {
+		t.Fatalf("the campaign holds %d combat-only NPCs, %v; want 3", npcs, err)
 	}
 }
 

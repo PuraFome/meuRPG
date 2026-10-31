@@ -39,7 +39,7 @@ Related pages: [Table content](characters-table-content.md) (live content, switc
   The zero-width joiner stays legal because emoji sequences need it.
   The limits are in the `characters.proto` comments.
 - **Responses.** Every response, errors included, goes out with `Cache-Control: no-store`; every read carries an ID, so it is `IDEMPOTENT` and POST-only.
-- **A campaign holds at most 1,000 characters and NPCs**, living and dead (RN-30, `DefaultMaxCharactersPerCampaign`); a create past it is `resource_exhausted`, and a retry of a create that already went through is answered, not refused.
+- **A campaign holds at most 1,000 characters and NPCs**, living and dead, the combat-only NPCs of creatures in a combat not counted (RN-30, `DefaultMaxCharactersPerCampaign`); a create past it is `resource_exhausted`, and a retry of a create that already went through is answered, not refused.
 - **Create is idempotent by key.** `CreateCharacter` and `CreateNpcFromCreature` take an `idempotency_key` (a UUID the app makes once per action), scoped to the caller (`callerCreateKey`: a version 5 UUID of caller and key, stored as `create_key` with a unique index on campaign and key).
   A retry returns what the first call made; the same key with another request is `invalid_argument`.
 

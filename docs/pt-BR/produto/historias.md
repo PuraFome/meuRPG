@@ -723,10 +723,18 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O app web não tem editor de criaturas: elas são criadas pela API ou por um pacote de conteúdo.
 - **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
 - **Dado** uma criatura já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
-- **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem, com a entrada ativa, arquivada ou desligada, **e** o mestre lê todas as entradas; arquivar ou desligar não muda nada para as criaturas já dadas, e nada é apagado.
-- **Dado** uma criatura da mesa em combate, **quando** edito a entrada e ponho a criatura de novo no combate, **então** o novo combatente tem a classe de armadura e os ataques atuais da entrada **e** o combatente que já estava ali mantém os números com que entrou.
+- **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
+  Isso vale com a entrada ativa, arquivada ou desligada.
+  O mestre lê todas as entradas.
+  Arquivar ou desligar não muda nada para as criaturas já dadas, e nada é apagado.
+- **Dado** um monstro de uma criatura da mesa em combate, **quando** edito a entrada e ponho a criatura de novo no combate, **então** o novo combatente tem a classe de armadura e os ataques atuais da entrada.
+  O monstro que já estava ali mantém os números com que entrou.
+- **Dado** uma criatura da mesa que um personagem tem, em combate, **quando** edito a entrada, **então** a classe de armadura e os ataques dela acompanham a entrada na hora.
+  Os pontos de vida continuam os que ela recebeu.
 - **Dado** uma criatura da mesa em combate, **então** os pontos de vida dela são um número só para o mestre e o jogador dono, e a classe de armadura só para o mestre; os outros jogadores leem a palavra de estado.
-- **Dado** uma criatura da mesa em combate, **então** todo jogador ali lê o nome e a chave dela, como numa invocação do SRD ou num NPC, **e** a ficha de estatísticas, os pontos de vida e a classe de armadura ficam escondidos de quem não é o dono, mesmo com a entrada arquivada ou desligada.
+- **Dado** uma criatura da mesa em combate, **então** todo jogador ali lê o nome e a chave dela, como numa invocação do SRD ou num NPC.
+  A ficha de estatísticas, os pontos de vida e a classe de armadura ficam escondidos de quem não é o dono.
+  Isso vale mesmo com a entrada arquivada ou desligada.
 - **Dado** uma entrada de criatura arquivada, **quando** a dou a um personagem, **então** ela é dada.
 - **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso pela API, porque a tela "Opções para os jogadores" não tem grupo de criaturas.
 - **Dado** as magias de invocação, a Forma Selvagem e as ferramentas de encontro (gerador, avaliador e trocas), **então** elas oferecem só criaturas do SRD, porque uma criatura da mesa não mantém o nível de desafio da base.
@@ -1449,7 +1457,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - O arquivo sobe em partes, então uma conexão que cai recomeça de onde parou. O envio pertence à conta do mestre, uma pessoa tem um por vez, e as partes inacabadas são apagadas uma hora depois da última.
 - Uma prévia conta o que o pacote guarda e lista cada problema em palavras simples. Qualquer problema bloqueia "Criar campanha": tudo ou nada, e uma falha no meio não deixa nada para trás.
 - Um pacote é recusado quando vem de um MeuRPG mais novo ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), foi alterado, traz um campo que este servidor não conhece, passa de 200 MiB ou 2.000 entradas (10 MiB por entrada), está suspeitamente comprimido, tem um nome que sobe para fora de uma pasta, ou se refere a algo que lhe falta.
-- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 1.000 entradas de mesa, o limite de personagens e NPCs) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
+- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 1.000 entradas de mesa, o limite de personagens e NPCs, que não conta os NPCs feitos para criaturas num combate) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
 - Os ids nunca são reaproveitados: cada coisa ganha um id novo e toda referência, inclusive os links no documento, o acompanha.
 - Os personagens dos jogadores chegam reservados (MR-049): invisíveis aos jogadores até um deles assumir com o link do mestre.
 

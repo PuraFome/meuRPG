@@ -61,9 +61,15 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The encounter generator, evaluator and swaps leave it out, because it has the challenge rating and XP of its base, which its adjustments may not keep.
   The encounter tools refuse its key as unknown content: `encounterEntries` answers `failed_precondition` and `GetBattleEncounter` lists the key in `unknown_creature_keys`.
 - **Giving.** The master can give an archived table creature.
-- **Editing and combats.** A combatant made from a table creature keeps the armor class and attacks it joined with.
-  A creature put in a combat after an edit of the entry has the entry's current numbers.
-  The combat's NPC for the creature is keyed by the numbers the entry makes (`monsterNpcKeyOf`), so an edit that changes them makes another NPC and the combatants already in a fight keep reading the old one.
+- **Editing and combats.** A held creature in a combat reads its armor class, attacks and traits from the entry every time.
+  An edit of the entry during the fight changes them at once.
+  Its hit points are its own, copied when it was given.
+  A monster put in a combat with "Pôr no combate" is a combatant made from the combat's NPC for the creature.
+  Its hit points, armor class, speed, initiative and sheet attacks are the NPC's.
+  Its traits, saving throws, attacks per action and the actions beyond the sheet attacks are read from the entry as it is now.
+  The NPC is keyed by the numbers the entry makes (`monsterNpcKeyOf`).
+  An edit that changes them makes another NPC, and the monsters already in a fight keep reading the old one.
+  An edit that changes only the name finds the NPC it had.
 - **Other limits.** The web app has no editor for creatures: they are created through the API or a content pack.
   The master switches them on and off through the API only, because the options screen has no creature group.
   A package battle encounter that names a table creature is refused on import as unknown content.

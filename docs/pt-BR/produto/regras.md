@@ -586,7 +586,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30) e até 10 traços só de texto.
   A criatura do SRD de que ela parte nunca muda.
   Uma criatura da mesa nunca é a base de outra.
-  Ela vale onde vale uma criatura do SRD.
+  A lista e a ficha de criaturas, dá-la a um personagem, o combate e "Criar NPC" a leem pela chave.
   O mestre a dá a um personagem, ela entra nos combates com os seus números, e dá para criar um NPC a partir dela.
   Os pontos de vida são copiados quando a criatura é dada, então editar a entrada não muda uma criatura já dada.
   A classe de armadura e os ataques acompanham a entrada.
@@ -596,7 +596,9 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   As criaturas já dadas continuam funcionando para os donos.
   O mestre pode dar uma criatura arquivada.
   Todos no combate leem o nome e a chave de uma criatura, como numa invocação do SRD ou num NPC.
-  Um combatente mantém os números com que entrou: editar a entrada muda as criaturas postas no combate depois, não as que já estão na luta.
+  Uma criatura que um personagem tem acompanha a entrada na luta: editar muda a classe de armadura e os ataques dela na hora.
+  Um monstro posto no combate mantém os números com que entrou: editar muda os monstros postos depois, não os que já estão na luta.
+  Uma edição que não muda nenhum dos números, como trocar o nome, acha o mesmo NPC.
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam com o mestre e, no caso dos pontos de vida, com o dono.
   As magias de invocação, a Forma Selvagem e o gerador, o avaliador e as trocas de encontro oferecem só criaturas do SRD.
   Um encontro de pacote que cita uma criatura da mesa é recusado como conteúdo desconhecido.
@@ -784,7 +786,7 @@ Esses limites impedem que uma conta encha o servidor. Os números são padrões 
 | --- | --- |
 | Campanhas de que uma conta é mestre | 10 |
 | Convites que ainda funcionam numa campanha (não revogados, não expirados, com usos sobrando) | 50 |
-| Personagens e NPCs numa campanha, vivos ou mortos, pendentes incluídos | 1.000 |
+| Personagens e NPCs numa campanha, vivos ou mortos, pendentes incluídos. Os NPCs feitos para uma criatura num combate não contam | 1.000 |
 | Imagens de IA por campanha por mês (RN-28) | 20 |
 | Imagens de IA para o servidor inteiro por dia de Brasília | 100 |
 | Pedidos de imagem de IA vivos ao mesmo tempo no servidor | 5 (um sendo feito, quatro esperando) |

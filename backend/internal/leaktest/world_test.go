@@ -677,13 +677,17 @@ func (w *world) buildTableContent() {
 	// player whose character holds one: that player reads the creature (its name, key, stat block with the trait,
 	// hit points and armor class). Ana's character holds the live one and the archived one, Caio's the one switched
 	// off. Their hit points and armor class are numbers no other answer has.
-	liveCreature := create("creature-live", creature(9, 17, w.ana), w.ana)
+	liveCreature := create("creature-live", creature(liveCreatureHP, liveCreatureAC, w.ana), w.ana)
 	archivedCreature := create("creature-archived", creature(archivedCreatureHP, archivedCreatureAC, w.ana), w.ana)
 	offCreature := create("creature-off", creature(offCreatureHP, offCreatureAC, w.caio), w.caio)
 	w.giveTableCreature(w.pens, liveCreature.GetKey())
 	w.giveTableCreature(w.pens, archivedCreature.GetKey())
 	w.giveTableCreature(w.toren, offCreature.GetKey())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedCreature.GetKey()})))
+	w.secrets.number("live-creature-hp", liveCreatureHP)
+	w.secrets.number("live-creature-ac", liveCreatureAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(liveCreatureHP), w.ana)
+	w.secrets.allowNeedle(strconv.Itoa(liveCreatureAC), w.ana)
 	w.secrets.number("archived-creature-hp", archivedCreatureHP)
 	w.secrets.number("archived-creature-ac", archivedCreatureAC, "armor_class")
 	w.secrets.allowNeedle(strconv.Itoa(archivedCreatureHP), w.ana)
@@ -699,9 +703,11 @@ func (w *world) buildTableContent() {
 	w.secrets.add(&canary{needle: "race:tiefling", kind: "srd-race-off-key"})
 }
 
-// The numbers of the fixture's archived and switched off table creatures (buildTableContent): the SRD giant crab has
+// The numbers of the fixture's live, archived and switched off table creatures (buildTableContent): the SRD giant crab has
 // 13 hit points and armor class 15, so a player who reads one of these reads the creature of a table that is not theirs.
 const (
+	liveCreatureHP     = 4141
+	liveCreatureAC     = 35
 	archivedCreatureHP = 4242
 	archivedCreatureAC = 36
 	offCreatureHP      = 4343

@@ -723,10 +723,18 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The web app has no editor for creatures: they are created through the API or a content pack.
 - **Given** I save a creature with a base the SRD does not have, hit points outside 1 to 9,999, armor class outside 1 to 40, a damage bonus outside -10 to 30, or more than 10 traits, **then** the server refuses each at its field, and a trait named like one of the base's traits or actions, or "Magic Weapons", "Spellcasting" or "Innate Spellcasting", is refused.
 - **Given** a creature already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
-- **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it, whether the entry is live, archived or switched off, **and** the master reads every entry; archiving or switching it off changes nothing for the creatures already given, and nothing is deleted.
-- **Given** a table creature in a combat, **when** I edit its entry and put it in the combat again, **then** the new combatant has the entry's current armor class and attacks **and** the combatant already there keeps the numbers it joined with.
+- **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it.
+  This holds whether the entry is live, archived or switched off.
+  The master reads every entry.
+  Archiving or switching it off changes nothing for the creatures already given, and nothing is deleted.
+- **Given** a monster of a table creature in a combat, **when** I edit its entry and put it in the combat again, **then** the new combatant has the entry's current armor class and attacks.
+  The monster already there keeps the numbers it joined with.
+- **Given** a table creature that a character holds, in a combat, **when** I edit its entry, **then** its armor class and attacks follow the entry at once.
+  Its hit points stay the ones it was given.
 - **Given** a creature of the table in a combat, **then** its hit points are a number only for the master and its owner's player, and its armor class only for the master; the other players read its state word.
-- **Given** a table creature in a combat, **then** every player there reads its name and key, as for an SRD summon or an NPC, **and** its stat block, hit points and armor class stay hidden from a player who does not own it, even when the entry is archived or switched off.
+- **Given** a table creature in a combat, **then** every player there reads its name and key, as for an SRD summon or an NPC.
+  Its stat block, hit points and armor class stay hidden from a player who does not own it.
+  This holds even when the entry is archived or switched off.
 - **Given** an archived creature entry, **when** I give it to a character, **then** it is given.
 - **Given** a creature entry, **when** I switch it on or off, **then** I do it through the API, because the "Opções para os jogadores" screen has no creature group.
 - **Given** the summoning spells, Wild Shape and the encounter tools (generator, evaluator and swaps), **then** they offer SRD creatures only, because a table creature does not keep its base's challenge rating.
@@ -1449,7 +1457,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The file goes up in parts, so a dropped connection resumes. The upload belongs to the master's account, a person has one at a time, and unfinished parts are deleted an hour after the last one.
 - A preview counts what the package holds and lists every problem in plain words. Any problem blocks "Criar campanha": all or nothing, and a failure halfway leaves nothing behind.
 - A package is refused when it comes from a newer MeuRPG ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), was changed, holds a field this server does not know, is over 200 MiB or 2,000 entries (10 MiB for an entry), is suspiciously compressed, has a name that climbs out of a folder, or refers to something it lacks.
-- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 1,000 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
+- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 1,000 table entries, the characters and NPCs cap, which does not count the NPCs made for creatures in a combat) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
 - Ids are never reused: every thing gets a new id and every reference, including the links in the document, follows.
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 
