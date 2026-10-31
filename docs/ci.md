@@ -143,7 +143,7 @@ A new import in `app.ts`, `app.config.ts`, `app.routes.ts` or `shell/` is the us
 
 The `e2e` workflow runs the Playwright suite against the local stack.
 
-- `plan` chooses the shards: three plain shards (`--grep-invert @a11y`) always, and six accessibility shards (`--grep @a11y`) on `main`, nightly, manual runs, and pull requests that touch `web/`, `e2e/`, `deploy/local/` or the workflow.
+- `plan` chooses the shards: three plain shards (`--grep-invert @a11y`) always, and six accessibility shards (`--grep @a11y`) on `main`, nightly, manual runs, and pull requests that touch `web/`, `e2e/`, `deploy/local/`, the workflow, the split script or its reporter.
 - `lint and typecheck` needs no Docker, so a mistake fails in about a minute.
 - `images` builds the production image and the devidp image once (with the GitHub Actions layer cache) and hands both over as an artifact; each shard runs `docker load`, so a broken Dockerfile fails before any shard.
 - `database` migrates an empty CockroachDB once, beside `images`: it builds `migrate` from the checkout, runs it against the in-memory database of `compose.ci.yaml`, and backs the database up (`BACKUP DATABASE`, to the folder `compose.ci-db.yaml` mounts) as the artifact `e2e-database`.
@@ -158,19 +158,18 @@ The `e2e` workflow runs the Playwright suite against the local stack.
   `e2e-shards.mjs list <n>/<count> <grep flags>` (in `.github/scripts`) splits the tests the flags select, and the shard runs its list with `--test-list`.
   The split uses the durations in `e2e/timings.json`, so the shards of a group finish together.
   The counts (`PLAIN_SHARDS`, `A11Y_SHARDS`) and the fresh shard (`FRESH_SHARD`) are the workflow's `env`: the `plan` matrix and the check in `lint and typecheck` read the same values.
-  A `test.describe.configure({ mode: 'serial' })` group is placed whole in one shard, as one unit of the summed time, whatever its tests share.
-  The group is read from Playwright's suite tree by `e2e-list-reporter.mjs`; a Playwright that no longer has it fails the listing.
-  The fresh shard (`--fresh-shard=<n>`) starts with the cost of its setup already spent, so it gets fewer tests: the migrations and the devidp check take it about a minute longer than the others.
-  That cost is the entry `(extra setup of the fresh shard)` of `e2e/timings.json`.
+  A serial group (`test.describe.configure({ mode: 'serial' })`, in a describe or at the top of a file) runs whole in one shard, so its tests need not be independent.
+  `e2e-list-reporter.mjs` finds the groups, and `check` fails when a group is in two lists.
+  The fresh shard (`--fresh-shard=<n>`) gets less test time, because its migrations and the devidp check make its setup slower.
+  Its extra setup time is the entry `(extra setup of the fresh shard)` of `e2e/timings.json`.
   A test the file does not know runs too, in the shard with the least time, and the step prints a notice with how many are missing.
   The `setup` project runs ahead of every shard, so it is in one list and weighs nothing.
   `lint and typecheck` runs `e2e-shards.mjs check`, which fails unless every test is in exactly one list, read back through Playwright's `--test-list`.
   A change to the split script or the reporter runs all nine shards.
   `nightly-hunt` keeps Playwright's own `--shard`.
 - Refresh `e2e/timings.json` when the notice counts missing tests, or when the shards stop finishing together.
-  Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`: the Playwright report and `e2e-setup.json`, the seconds from the start of the job's setup to the choice of tests.
+  Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`: the Playwright report and `e2e-setup.json`, how long the shard's setup took.
   The upload never turns a shard red when its tests passed.
-  The cost of the fresh shard is its setup seconds minus the median of the other shards'.
   Download the artifacts of a run of all nine shards and run:
 
   ```bash

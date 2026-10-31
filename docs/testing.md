@@ -229,7 +229,7 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
   See [CI](ci.md#end-to-end).
 - In CI each shard runs a list of tests balanced by measured time (`e2e/timings.json`), not Playwright's own `--shard`.
   A new test needs no change to the file: it runs in the shard with the least time.
-  The tests of a `test.describe.configure({ mode: 'serial' })` group run together in one shard.
+  The tests of a serial group run together in one shard.
   The fresh shard gets less test time, to make up for its slower setup.
   The command that refreshes the file is in [CI](ci.md#end-to-end).
 - There are no retries (`retries: 0`, checked by the e2e lint job) and no `test.skip` or `test.fixme` (the e2e lint fails on both): a flaky acceptance test is a bug to fix. See [Reproducing a flaky test](#reproducing-a-flaky-test).

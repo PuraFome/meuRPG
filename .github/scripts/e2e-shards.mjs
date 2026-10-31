@@ -117,7 +117,7 @@ async function listTests(args, extra = []) {
     const { stdout } = await run('npx', ['playwright', 'test', '--list', `--reporter=${reporter}`, ...args, ...extra], { cwd: e2eDir, env, encoding: 'utf8', maxBuffer: 1 << 28 });
     return JSON.parse(stdout).tests.map((test) => ({ key: testKey(test.project, test.file, test.titles), group: test.group }));
   } catch (error) {
-    throw new Error(`playwright --list failed (${error.code}):\n${error.stderr ?? error.message}`);
+    throw new Error(`playwright --list failed (${error.code ?? error.name}):\n${error.stderr ?? error.message}`);
   }
 }
 
@@ -136,13 +136,13 @@ function parseShard(text) {
   return { index: Number(match[1]), count: Number(match[2]) };
 }
 
-// `--fresh-shard=<n>` first among the playwright args names the shard that migrates from zero.
+// `--fresh-shard=<n>` among the playwright args names the shard that migrates from zero.
 function takeFresh(args, count) {
-  const match = /^--fresh-shard=(\d+)$/.exec(args[0] ?? '');
-  if (!match) return { fresh: undefined, args };
-  const fresh = Number(match[1]);
-  if (fresh < 1 || fresh > count) throw new Usage(`--fresh-shard must be between 1 and ${count}, got ${fresh}`);
-  return { fresh, args: args.slice(1) };
+  const flags = args.filter((arg) => arg.startsWith('--fresh-shard'));
+  if (flags.length === 0) return { fresh: undefined, args };
+  const match = flags.length === 1 ? /^--fresh-shard=(\d+)$/.exec(flags[0]) : null;
+  if (!match || Number(match[1]) < 1 || Number(match[1]) > count) throw new Usage(`--fresh-shard must be given once, between 1 and ${count}: ${flags.join(' ')}`);
+  return { fresh: Number(match[1]), args: args.filter((arg) => !arg.startsWith('--fresh-shard')) };
 }
 
 async function shardsOf(args, count) {
@@ -150,6 +150,7 @@ async function shardsOf(args, count) {
   const tests = await listTests(playwrightArgs);
   const timings = readTimings();
   const missing = tests.filter((test) => !test.key.startsWith('[setup]') && !(test.key in timings)).length;
+  if (fresh && !(FRESH_KEY in timings)) console.error(`::notice::e2e/timings.json has no "${FRESH_KEY}": the fresh shard gets no less test time. Refresh the file (docs/ci.md).`);
   const startup = fresh ? Array.from({ length: count }, (_, i) => (i === fresh - 1 ? (timings[FRESH_KEY] ?? 0) : 0)) : [];
   return { tests, keys: tests.map((test) => test.key), args: playwrightArgs, missing, shards: split(tests, timings, count, startup) };
 }
@@ -163,7 +164,7 @@ async function main(argv) {
     process.stdout.write(shards[index - 1].join('\n') + '\n');
   } else if (command === 'check') {
     const count = parseCount(rest[0]);
-    const { keys, args, shards } = await shardsOf(rest.slice(1), count);
+    const { keys, tests, args, shards } = await shardsOf(rest.slice(1), count);
     // Playwright, not this script, decides what a list selects, so each list is read back through `--test-list`.
     // Without --no-deps every shard would list the setup project, which runs ahead of all of them.
     const dir = mkdtempSync(join(tmpdir(), 'e2e-shards-'));
@@ -186,6 +187,10 @@ async function main(argv) {
       for (const key of shards[i]) if (key.startsWith('[setup]')) seen.set(key, [...(seen.get(key) ?? []), i + 1]);
     });
     const problems = keys.filter((key) => (seen.get(key) ?? []).length !== 1).map((key) => `${key}: in shards [${(seen.get(key) ?? []).join(', ')}]`);
+    // A serial group runs whole in one shard.
+    const groups = new Map();
+    for (const { key, group } of tests) if (group) groups.set(group, new Set([...(groups.get(group) ?? []), ...(seen.get(key) ?? [])]));
+    for (const [group, inShards] of groups) if (inShards.size > 1) problems.push(`${group}: a serial group in shards [${[...inShards].join(', ')}]`);
     const unknown = [...seen.keys()].filter((key) => !keys.includes(key));
     if (problems.length > 0 || unknown.length > 0) {
       console.error(`::error::The ${count} lists do not hold every test exactly once.`);

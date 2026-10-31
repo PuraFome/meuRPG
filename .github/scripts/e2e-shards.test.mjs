@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { groupedTests } from './e2e-list-reporter.mjs';
 import { FRESH_KEY, freshOverhead, split as splitTests, testKey, testsOf, timingsOf } from './e2e-shards.mjs';
 
 // Invented tests: a file, a title and how long it takes.
@@ -140,4 +141,39 @@ test('unknown tests weigh the median of the known ones, and 1 second when nothin
   const shards = split([a, b, c, d, e], { [a]: 1, [b]: 2, [c]: 9 }, 3);
   assert.deepEqual(shards.map((shard) => shard.length), [1, 2, 2]);
   assert.deepEqual(split([d, e], {}, 2), [[d], [e]]);
+});
+
+test('the list reporter finds a serial group of a describe or of a whole file, and fails on a Playwright without the mode', () => {
+  const node = (type, title, mode, children = [], tests = []) => ({
+    type,
+    title,
+    _parallelMode: mode,
+    suites: children,
+    tests,
+    titlePath() {
+      return [...(this.parent?.titlePath() ?? []), this.title];
+    },
+  });
+  const leaf = (suite, title) => {
+    const test = { titlePath: () => [...suite.titlePath(), title] };
+    suite.tests.push(test);
+  };
+  const build = (fileMode, describeMode) => {
+    const root = node('root', '', undefined);
+    const project = node('project', 'chrome', 'parallel');
+    const file = node('file', 'a.spec.ts', fileMode);
+    const group = node('describe', 'group', describeMode);
+    for (const [parent, child] of [[root, project], [project, file], [file, group]]) {
+      child.parent = parent;
+      parent.suites.push(child);
+    }
+    leaf(file, 'alone');
+    leaf(group, 'inside');
+    return root;
+  };
+  assert.deepEqual(groupedTests(build('parallel', 'serial')).map((t) => t.group), [' › chrome › a.spec.ts › group', null]);
+  assert.deepEqual(groupedTests(build('serial', 'parallel')).map((t) => t.group), [' › chrome › a.spec.ts', ' › chrome › a.spec.ts']);
+  const old = build('parallel', 'parallel');
+  delete old.suites[0]._parallelMode;
+  assert.throws(() => groupedTests(old), /_parallelMode/);
 });
