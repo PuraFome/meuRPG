@@ -393,7 +393,7 @@ func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool
 		if !w.done {
 			w.t.Errorf("nested pool acquisition: a query went through the pool inside a db.InTx closure, "+
 				"which takes a second connection while the transaction holds the first and deadlocks under load "+
-				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(pcs))
+				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(slices.Clone(pcs)))
 		}
 		w.mu.Unlock()
 		// Fail the Acquire at once: nothing waits for a connection the
@@ -420,25 +420,16 @@ const maxStackDepth = 256
 // The stacks of a package's acquirers repeat the same counters, so each is resolved once.
 var inTxPCs sync.Map // uintptr -> bool
 
-// inTxClosureAt reports whether the frames at pc (several, when the call was
-// inlined) include the transaction's closure.
+// inTxClosureAt reports whether the frame at pc is the transaction's closure.
+// runtime.Callers returns a program counter for each frame, the outer frames of inlined calls included.
+// So one counter is one frame.
 func inTxClosureAt(pc uintptr) bool {
 	if v, ok := inTxPCs.Load(pc); ok {
 		hit, _ := v.(bool)
 		return hit
 	}
-	hit := false
-	frames := runtime.CallersFrames([]uintptr{pc})
-	for {
-		f, more := frames.Next()
-		if strings.Contains(f.Function, inTxClosure) {
-			hit = true
-			break
-		}
-		if !more {
-			break
-		}
-	}
+	f, _ := runtime.CallersFrames([]uintptr{pc}).Next()
+	hit := strings.Contains(f.Function, inTxClosure)
 	inTxPCs.Store(pc, hit)
 	return hit
 }
