@@ -87,6 +87,8 @@ func TestGuardCatchesANestedAcquisition(t *testing.T) {
 		t.Fatalf("the guard reported %q, want one nested pool acquisition that names this test in its stack", got)
 	}
 
+	t.Logf("the guard reported:\n%s", got[0])
+
 	// After the test ends, a late request must not touch the finished test.
 	for _, f := range rec.cleanup {
 		f()
