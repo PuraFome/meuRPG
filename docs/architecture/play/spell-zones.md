@@ -35,7 +35,9 @@ So the hidden-creature reveal and the cast's line treat a creature that passed l
 The answer of a player's character (`settleZoneSave`) puts the fall or the restraint on the creature after the cast's event is written.
 The undo of the cast puts it all back: the conditions from the recorded `castHit`, the restraint from the effects of the cast's group (`zoneEffectsBack`), and it closes the questions the zone opened (`closeCastZoneWindows`).
 The `spell_zone_triggered` lines of the cast and the `lasting_effect_saved` line of an answer to it never close the undo chain (`chainCastZoneCatch`).
-The cast keeps its place in the event as before (`placed`, `area_col`, `area_row`); the cast's `cast_id` is on the zone, and the undo of the cast deletes the zone with that id (`castEffectsBack`).
+The cast's event keeps its place (`placed`, `area_col`, `area_row`).
+The cast's `cast_id` is on the zone.
+The undo of the cast deletes the zone with that id (`castEffectsBack`).
 Without a grid (`isTheatre`) a spell is not placed, so there is no zone.
 
 ## When a zone looks
