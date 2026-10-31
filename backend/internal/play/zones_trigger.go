@@ -25,6 +25,8 @@ import (
 const (
 	zoneWhyEnter = "zone_enter"
 	zoneWhyStart = "zone_start"
+	zoneWhyCast  = "zone_cast" // standing in the area when the spell was cast
+	zoneWhyEnd   = "zone_end"  // ended its turn inside
 )
 
 // eventZoneTriggered is a creature caught by the area a spell keeps on the map, and eventZoneMoved
@@ -49,10 +51,16 @@ func (z *zone) spares(owner, who playdb.Combatant) bool {
 	return z.def.sparesAllies && (who.ID == owner.ID || who.Side == owner.Side)
 }
 
-// asks says the zone catches a creature for this reason: it came in, or began its turn inside.
+// asks says the zone catches a creature for this reason: it was inside at the cast, it came in, it began
+// its turn inside, or it ended its turn inside.
 func (z *zone) asks(why string) bool {
-	if why == zoneWhyStart {
+	switch why {
+	case zoneWhyStart:
 		return z.def.onStart
+	case zoneWhyCast:
+		return z.def.onCast
+	case zoneWhyEnd:
+		return z.def.onTurnEnd
 	}
 	return z.def.onEnter
 }
@@ -71,7 +79,7 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 		return nil
 	}
 	if k.z.def.kind == zoneRestrain {
-		held, err := s.heldByWeb(ctx, c, owner, k.who)
+		held, err := s.heldByZone(ctx, c, k.z, owner, k.who)
 		if err != nil || held {
 			return err // a creature the web holds or has a save for already is not asked twice
 		}
@@ -116,8 +124,11 @@ func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	switch {
 	case k.z.def.kind == zoneDamage:
 		return s.dealZoneDamage(ctx, c, k, saved)
-	case !saved:
-		return zoneDamageDealt{}, s.restrainInWeb(ctx, c, cs, k.z, owner, k.who)
+	case saved:
+	case k.z.def.kind == zoneProne:
+		return zoneDamageDealt{}, s.knockProne(ctx, c, k.who)
+	default:
+		return zoneDamageDealt{}, s.restrainInZone(ctx, c, cs, k.z, owner, k.who)
 	}
 	return zoneDamageDealt{}, nil
 }
@@ -203,45 +214,52 @@ func writeZoneCaught(c *combatTx, k zoneCatch, owner playdb.Combatant, hit castH
 	c.queueZone(eventZoneTriggered, ev)
 }
 
-// heldByWeb says the web already holds the creature or keeps a saving throw for it: it carries an
-// effect of this web.
-func (s *Service) heldByWeb(ctx context.Context, c *combatTx, owner, who playdb.Combatant) (bool, error) {
+// heldByZone says the zone's spell already holds the creature or keeps a saving throw for it: it carries an
+// effect of this spell.
+func (s *Service) heldByZone(ctx context.Context, c *combatTx, z *zone, owner, who playdb.Combatant) (bool, error) {
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return false, fmt.Errorf("list the effects: %w", err)
 	}
 	return slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
 		key := conv.OrZero(st.SourceKey)
-		return st.CombatantID == who.ID && conv.OrZero(st.SourceID) == owner.ID && (key == webSpellKey || key == webRestrainedKey)
+		return st.CombatantID == who.ID && conv.OrZero(st.SourceID) == owner.ID && (key == z.row.SpellKey || key == z.def.restrainKey)
 	}), nil
 }
 
 // The effects of the web (combat_effects.json).
 const (
-	webSpellKey      = "spell:web"
-	webRestrainedKey = "effect:web-restrained"
+	webRestrainedKey      = "effect:web-restrained"
+	entangleRestrainedKey = "effect:entangle-restrained"
 )
 
-// restrainInWeb restrains a creature that failed its save against the web, as the failed save at the
-// start of the turn of the web's effect does.
-func (s *Service) restrainInWeb(ctx context.Context, c *combatTx, cs []playdb.Combatant, z *zone, owner, who playdb.Combatant) error {
+// knockProne knocks a creature prone: it stays so until it stands up.
+func (s *Service) knockProne(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	var h castHit
+	return s.giveCondition(ctx, c, who, condProne, &h)
+}
+
+// restrainInZone restrains a creature that failed its save against the zone, with the zone's effect, as the
+// failed save at the start of the turn of the web's effect does.
+func (s *Service) restrainInZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, z *zone, owner, who playdb.Combatant) error {
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
 		return err
 	}
-	def, ok := content.CombatEffect(webRestrainedKey)
+	key := z.def.restrainKey
+	def, ok := content.CombatEffect(key)
 	if !ok {
 		return nil
 	}
 	dc := z.row.SaveDc
 	made, err := s.addEffects(ctx, c, cs, effectSpec{
-		key: webRestrainedKey, sourceKind: "spell", def: def, caster: &owner, group: z.row.CastID, targets: []playdb.Combatant{who},
+		key: key, sourceKind: "spell", def: def, caster: &owner, group: z.row.CastID, targets: []playdb.Combatant{who},
 		dur: durationSpec{Kind: def.Duration.Kind}, concentration: z.row.Concentration, dc: &dc,
 	})
 	if err != nil {
 		return err
 	}
-	return s.addedEvent(ctx, c, cs, made, webRestrainedKey)
+	return s.addedEvent(ctx, c, cs, made, key)
 }
 
 // zoneLine is an event a zone leaves, held until the change's own event is written.

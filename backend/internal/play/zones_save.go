@@ -152,6 +152,9 @@ func (wv *windowView) zoneSavePrompt(w playdb.ReactionWindow, reactor *playdb.Co
 // zoneSaveText says what the save asks, without a number.
 func zoneSaveText(z *zone, names func(string) string) string {
 	ability := names("ability:" + z.row.SaveAbility)
+	if z.def.kind == zoneProne {
+		return "Teste de resistência de " + ability + ". Se falhar, você cai no chão."
+	}
 	if z.def.kind == zoneRestrain {
 		return "Teste de resistência de " + ability + ". Se falhar, você fica contido até se soltar."
 	}
