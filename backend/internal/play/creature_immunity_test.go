@@ -10,7 +10,7 @@ import (
 
 // TestMR042_ACreatureTakesNoConditionItsStatBlockIsImmuneTo: the immunities of a creature's stat
 // block (SRD 5.1: the Black Pudding is immune to prone, not to poisoned) stop a condition where it is
-// given, and only the master reads that the stat block refused it and why.
+// given, and the hit says why (the view test checks who reads it).
 func TestMR042_ACreatureTakesNoConditionItsStatBlockIsImmuneTo(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
@@ -49,17 +49,6 @@ func TestMR042_ACreatureTakesNoConditionItsStatBlockIsImmuneTo(t *testing.T) {
 		}
 		if !given.CondSet || given.NoEffectWhy != "" { // the positive control
 			t.Errorf("poisoned on the pudding: set %v, why %q; want given", given.CondSet, given.NoEffectWhy)
-		}
-		// Who reads the refusal: the master does, a player never (RN-20, RN-29), and the positive
-		// control shows the master's field is the one that carries it.
-		caster := playdb.Combatant{}
-		master := targetResultProto(actionEvent{}, *refused, combatViewer{master: true}, caster, pudding)
-		player := targetResultProto(actionEvent{}, *refused, combatViewer{}, caster, pudding)
-		if master.GetNoEffectReasonMaster() != whyImmune {
-			t.Errorf("the master reads %q, want %q", master.GetNoEffectReasonMaster(), whyImmune)
-		}
-		if player.GetNoEffectReasonMaster() != "" || player.String() != targetResultProto(actionEvent{}, castHit{}, combatViewer{}, caster, pudding).String() {
-			t.Errorf("a player reads %v, want the same as a hit that was not refused", player)
 		}
 		return nil
 	})

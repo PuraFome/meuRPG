@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 
+	"connectrpc.com/connect"
+
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -37,6 +39,9 @@ func (c *combatTx) sheetImmunities(ctx context.Context, targets []playdb.Combata
 	out := make(map[string]link.Traits, len(targets))
 	for _, t := range targets {
 		sheet, err := c.svc.sheetOf(ctx, c.tx, c.session.CampaignID, t)
+		if isCreature(t) && connect.CodeOf(err) == connect.CodeNotFound {
+			continue // a creature the content does not know has no stat block to be immune by
+		}
 		if err != nil {
 			return nil, err
 		}
