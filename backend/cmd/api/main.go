@@ -287,9 +287,9 @@ func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (
 }
 
 // openBlobs opens where images live, and returns what closes it. The store
-// stays a nil interface without BLOB_DIR or BLOB_BUCKET (never a nil
-// *blob.FS: an interface holding a typed nil pointer is not == nil), and the maps module
-// then answers 503 for images.
+// stays a nil interface without BLOB_DIR or BLOB_BUCKET, never a nil
+// *blob.FS (an interface holding a typed nil pointer is not == nil), and the
+// maps module then answers 503 for images.
 func openBlobs(ctx context.Context, logger *slog.Logger, cfg config.Config) (blob.Store, func(), error) {
 	noClose := func() {}
 	switch {
@@ -371,8 +371,8 @@ type signInParts struct {
 
 // wireSignIn builds sign-in and the modules that come with it. Sign-in needs
 // a provider: without one, both results are nil, and the sign-in routes
-// answer 503. Campaigns, characters and game sessions need to
-// know who is calling, so they come with sign-in.
+// answer 503. Campaigns, characters and game sessions need to know who is
+// calling, so they come with sign-in.
 func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, parts signInParts) (*identity.Service, *modules, error) {
 	if !cfg.OIDC.Configured() {
 		logger.WarnContext(ctx, "OIDC_ISSUER is not set; sign-in is disabled")

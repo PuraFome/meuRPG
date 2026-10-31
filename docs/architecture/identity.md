@@ -127,6 +127,6 @@ The IP never goes to the log.
 
 ## No provider or no database
 
-The server starts without `OIDC_ISSUER` or `DATABASE_URL`: the startup log warns that sign-in is off, `/auth/login` and `/auth/callback` answer `503` and `IdentityService` answers `unavailable` (`identity.MountDisabled`).
+The server starts without `OIDC_ISSUER` (it exits without `DATABASE_URL`): the startup log warns that sign-in is off, `/auth/login` and `/auth/callback` answer `503` and `IdentityService` answers `unavailable` (`identity.MountDisabled`).
 Every module that needs a caller (campaigns, characters, play, maps, progression, notes, campaign package) is not mounted either.
 If the provider is down when the server starts, discovery is tried again at the next sign-in.

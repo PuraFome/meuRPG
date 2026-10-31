@@ -483,7 +483,7 @@ The contact address on `/terms` and `/privacy`, `privacidade@meurpg.app`, is an 
 In order; stop at the first failure and read the logs.
 
 - [ ] `curl -s $APP_URL/readyz` answers `200` with `{"status":"ready","database":"up"}`. `/healthz` answers `200` too.
-- [ ] The start-up log has `sign-in is enabled` and `images are stored in Cloud Storage`, and no `OIDC_ISSUER is not set` or `DATABASE_URL is not set` warning. A variable with a typo in its name does not stop the API: it only shows here.
+- [ ] The start-up log has `sign-in is enabled` and `images are stored in Cloud Storage`, and no `OIDC_ISSUER is not set` warning. A variable with a typo in its name does not stop the API: it only shows here.
 - [ ] `$APP_URL` loads the app.
 - [ ] Sign in with the master's Google account. Another account sees the campaign creation refused if `CAMPAIGN_CREATORS` is set.
 - [ ] Create a campaign. Upload an image to the gallery, see its thumbnail, and find its two objects with `gcloud storage ls -r gs://$BUCKET/campaigns/`.

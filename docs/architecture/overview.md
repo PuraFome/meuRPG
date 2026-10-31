@@ -96,7 +96,7 @@ The compiler cannot see a forgotten call, and a `nil` collaborator can fail sile
 So each module has a `CheckWired()` that lists the setters it needs (`platform/wiring`), and `wireModules` calls them all: a missing `Set...` stops the server from starting, with its name in the message.
 `TestTheRealWiringIsComplete` builds the real wiring without a database or a sign-in provider.
 
-Without `OIDC_ISSUER` or without `DATABASE_URL`, `wireModules` is never called: only the system service, the static app and the probes are served, and sign-in answers `503`.
+Without `OIDC_ISSUER`, `wireModules` is never called: only the system service, the static app and the probes are served, and sign-in answers `503`.
 
 ## A request's path
 

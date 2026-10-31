@@ -47,9 +47,8 @@ type Config struct {
 
 	// DatabaseURL is a PostgreSQL connection string for CockroachDB, e.g.
 	// postgresql://user:pass@host:26257/meurpg?sslmode=verify-full.
-	// Empty means "run without a database": the API still starts, and
-	// /readyz reports the database as disabled. It holds the password, so it is
-	// a Secret: a log line or an error that formats the whole Config shows
+	// The API needs it: the process that reads an empty value exits at startup
+	// (cmd/api). It holds the password, so it is a Secret: a log line or an error that formats the whole Config shows
 	// [REDACTED]. On Cloud Run, Load refuses a URL that does not verify the
 	// server's certificate (sslmode=verify-full or verify-ca).
 	DatabaseURL Secret

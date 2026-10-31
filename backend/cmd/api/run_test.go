@@ -118,8 +118,9 @@ type runCase struct {
 }
 
 // runCases are the configurations that take run down each of its branches:
-// each refusal before the server starts (a missing DATABASE_URL among them), and the servers it builds with a
-// database that cannot be reached and with a real one.
+// each refusal before the server starts (a missing DATABASE_URL among them),
+// and the servers it builds with a database that cannot be reached and with a
+// real one.
 func runCases() []runCase {
 	listen := func(cfg config.Config) config.Config {
 		cfg.ListenHost, cfg.Port, cfg.LogLevel = "127.0.0.1", 0, config.DefaultLogLevel
@@ -220,8 +221,8 @@ func TestRunConfigurations(t *testing.T) {
 	goldentest.JSON(t, "testdata/golden/run.json", got)
 }
 
-// Without DATABASE_URL the process refuses to start and the error names the variable; with one, openDatabase
-// does not refuse (an unreachable database is only a warning: /readyz reports it).
+// Without DATABASE_URL the process refuses to start, and the error names the variable.
+// With one, openDatabase does not refuse: an unreachable database is only a warning.
 func TestOpenDatabaseNeedsTheURL(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	if _, err := openDatabase(t.Context(), logger, config.Config{}); err == nil || !strings.Contains(err.Error(), "DATABASE_URL") {
