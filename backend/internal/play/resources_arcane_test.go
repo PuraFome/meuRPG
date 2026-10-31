@@ -13,9 +13,9 @@ import (
 // slots of a combined level up to half the WIZARD level (rounded up) come back, none of the
 // 6th level or higher. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
-// newArcaneTable is a campaign with a master, Ana (whose character the test makes) and Bia, a
+// newRecoveryTable (Arcane and Natural Recovery) is a campaign with a master, Ana (whose character the test makes) and Bia, a
 // fighter, with a session open.
-func newArcaneTable(t *testing.T) *restTable {
+func newRecoveryTable(t *testing.T) *restTable {
 	t.Helper()
 	h := newHarness(t)
 	r := &restTable{h: h, master: h.newUser("Mestre"), ana: h.newUser("Ana"), bia: h.newUser("Bia")}
@@ -79,7 +79,7 @@ func (r *restTable) shortRest(t *testing.T) {
 // 2nd-level slot. The use is then spent until a long rest gives it back.
 func TestArcaneRecoveryRecoversHalfTheWizardLevelOnceUntilALongRest(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 3)
 	if v := r.vitals(t, r.ana, mage); v.GetArcaneRecoveryAllowance() != 2 || usedOf(v, "arcane_recovery") != 0 {
 		t.Fatalf("allowance = %d, uses spent = %d; want 2 and 0", v.GetArcaneRecoveryAllowance(), usedOf(v, "arcane_recovery"))
@@ -126,7 +126,7 @@ func TestArcaneRecoveryRecoversHalfTheWizardLevelOnceUntilALongRest(t *testing.T
 // refusal spends nothing; the same wizard recovers 3 levels in a 2nd and a 1st.
 func TestArcaneRecoveryRefusesAnOverAllowanceTotal(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 5)
 	r.expend(t, mage, map[int32]int32{1: 2, 2: 1, 3: 1})
 	r.shortRest(t)
@@ -148,7 +148,7 @@ func TestArcaneRecoveryRefusesAnOverAllowanceTotal(t *testing.T) {
 // an allowance of 6, and still cannot recover it.
 func TestArcaneRecoveryRefusesASixthLevelSlot(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 11)
 	r.expend(t, mage, map[int32]int32{5: 1, 6: 1})
 	r.shortRest(t)
@@ -163,7 +163,7 @@ func TestArcaneRecoveryRefusesASixthLevelSlot(t *testing.T) {
 // Only expended slots come back; a character that is not a wizard has no feature.
 func TestArcaneRecoveryRefusesASlotThatIsNotExpendedAndANonWizard(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 3)
 	r.expend(t, mage, map[int32]int32{1: 1})
 	r.shortRest(t)
@@ -183,7 +183,7 @@ func TestArcaneRecoveryRefusesASlotThatIsNotExpendedAndANonWizard(t *testing.T) 
 // use stays; a malformed list of slots is invalid_argument.
 func TestArcaneRecoveryNeedsAShortRest(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 3)
 	r.expend(t, mage, map[int32]int32{1: 2})
 	_, err := r.recoverSlots(t, r.ana, mage, newKey(), map[int32]int32{1: 1})
@@ -212,7 +212,7 @@ func TestArcaneRecoveryNeedsAShortRest(t *testing.T) {
 // The character's player or the master; another player is refused.
 func TestArcaneRecoveryIsTheCharactersPlayersOrTheMasters(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	mage := r.wizard(t, r.ana, "Elora", 3)
 	r.expend(t, mage, map[int32]int32{1: 2})
 	r.shortRest(t)
@@ -230,7 +230,7 @@ func TestArcaneRecoveryIsTheCharactersPlayersOrTheMasters(t *testing.T) {
 // slots are the spellcasting slots.
 func TestArcaneRecoveryCountsOnlyTheWizardLevel(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	scores := abilities(14, 12, 14, 10, 10)
 	scores.Intelligence = 13
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
