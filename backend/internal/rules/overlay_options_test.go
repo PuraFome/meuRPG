@@ -264,3 +264,116 @@ func TestGrantActionResourceIsAcceptedWhenTheEntryDefinesIt(t *testing.T) {
 	}
 	t.Fatal("no grant_action in the menu")
 }
+
+// A table option joins the options of a table feature (the Battle Master's maneuvers of a table
+// subclass): `set` is "table_feature" and `offered_by` is the feature's key.
+const postureOwn = "option:table_feature:postura-da-raposa" + tableSuffix
+
+func postureFoxOption() TableOption {
+	return TableOption{
+		TableEntry: TableEntry{Key: postureOwn, NamePT: "Postura da Raposa"}, Set: "table_feature", OfferedBy: postureFeature,
+		DescPT:       []string{"Texto de teste da raposa."},
+		Prerequisite: TableOptionPrerequisite{ClassKey: "class:fighter", ClassLevel: 5},
+		Effects:      []Effect{{Type: "modifier", Target: "initiative", Mode: "add", Value: "3"}},
+	}
+}
+
+func TestATableOptionJoinsTheOptionsOfATableFeature(t *testing.T) {
+	o := postureOverlay()
+	o.Options = []TableOption{postureFoxOption()}
+	c := withOverlay(t, o)
+
+	ch := optionChoiceOf(t, c.Choices(postureBuild(3)), postureFeature)
+	if len(ch.Options) != 6 {
+		t.Fatalf("the feature offers %d options, want its 5 and the table option", len(ch.Options))
+	}
+	// The option asks for level 5 in Fighter: listed and blocked at level 3, free at level 5.
+	i := slices.IndexFunc(ch.Options, func(op ChoiceOption) bool { return op.Key == postureOwn })
+	if i < 0 || !ch.Options[i].Blocked() {
+		t.Fatalf("the option is %v at level 3, want listed and blocked by its level", i)
+	}
+	at5 := optionChoiceOf(t, c.Choices(postureBuild(5)), postureFeature)
+	if j := slices.IndexFunc(at5.Options, func(op ChoiceOption) bool { return op.Key == postureOwn }); j < 0 || at5.Options[j].Blocked() {
+		t.Errorf("the option at level 5 = %d, want listed and free", j)
+	}
+	// Picked, it applies under its parent and the later feature that lists the parent's options does not need it.
+	base := Derive(postureBuild(5, postureHeron, postureBull, postureWolf), c).Initiative
+	with := Derive(postureBuild(5, postureHeron, postureBull, postureOwn), c).Initiative
+	if with-base != 3 { // the Fox's +3 in place of the Wolf's nothing
+		t.Errorf("initiative with the table option = %d, without = %d, want the Fox's +3 to apply", with, base)
+	}
+	// The same overlay without the option keeps the five.
+	if got := optionChoiceOf(t, withOverlay(t, postureOverlay()).Choices(postureBuild(3)), postureFeature); len(got.Options) != 5 {
+		t.Errorf("without the option the feature offers %d, want 5", len(got.Options))
+	}
+}
+
+func TestATableFeatureOptionRefusalsNameTheirField(t *testing.T) {
+	srd := loadForTest(t)
+	for name, tc := range map[string]struct {
+		edit  func(*TableOption)
+		field string
+	}{
+		"no feature":                {func(o *TableOption) { o.OfferedBy = "" }, ".offered_by"},
+		"unknown feature":           {func(o *TableOption) { o.OfferedBy = "feature:nao-existe" + tableSuffix }, ".offered_by"},
+		"an SRD feature":            {func(o *TableOption) { o.OfferedBy = "feature:second-wind" }, ".offered_by"},
+		"a feature with no options": {func(o *TableOption) { o.OfferedBy = "feature:simples" + tableSuffix }, ".offered_by"},
+	} {
+		o := postureOverlay()
+		o.Subclasses[0].Levels = append(o.Subclasses[0].Levels, TableSubclassLevel{Level: 9, Features: []TableFeature{tf("simples", "Simples")}})
+		fox := postureFoxOption()
+		tc.edit(&fox)
+		o.Options = []TableOption{fox}
+		_, err := srd.With(o)
+		var oe *OverlayError
+		if !errors.As(err, &oe) || !strings.HasSuffix(oe.Field, tc.field) {
+			t.Errorf("%s: error = %v, want it at %s", name, err, tc.field)
+		}
+	}
+	// offered_by belongs to the set "table_feature" alone.
+	o := postureOverlay()
+	crow := crowGazeOption()
+	crow.OfferedBy = postureFeature
+	o.Options = []TableOption{crow}
+	if _, err := srd.With(o); err == nil {
+		t.Error("an SRD set with offered_by was accepted")
+	}
+}
+
+// foxSpending is the table option of the feature "Posturas" with the effects given.
+func foxSpending(effects ...Effect) Overlay {
+	o := postureOverlay()
+	fox := postureFoxOption()
+	fox.Prerequisite = TableOptionPrerequisite{}
+	fox.Effects = effects
+	o.Options = []TableOption{fox}
+	return o
+}
+
+func TestATableFeatureOptionSpendsAndReadsWhatItsFeatureDeclares(t *testing.T) {
+	srd := loadForTest(t)
+
+	// The feature declares the resource and a state; the option spends the one and reads the other.
+	spends := foxSpending(
+		Effect{Type: "grant_action", Economy: "bonus_action", Resource: postureDice},
+		Effect{Type: "modifier", Target: "initiative", Mode: "add", Value: "1", When: `active("foco")`},
+	)
+	spends.Subclasses[0].Levels[0].Features[0].Effects = append(spends.Subclasses[0].Levels[0].Features[0].Effects,
+		Effect{Type: "state", StateName: "foco", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree})
+	if _, err := srd.With(spends); err != nil {
+		t.Fatalf("an option that spends the dice and reads the state of its feature was refused: %v", err)
+	}
+
+	// A resource nobody declares is still refused, at the effect.
+	_, err := srd.With(foxSpending(Effect{Type: "grant_action", Economy: "bonus_action", Resource: "dados_que_nao_existem"}))
+	var oe *OverlayError
+	if !errors.As(err, &oe) || !strings.HasSuffix(oe.Field, ".effects[0].resource") {
+		t.Errorf("an unknown resource: error = %v, want it at .effects[0].resource", err)
+	}
+
+	// A state the feature does not declare is refused too.
+	_, err = srd.With(foxSpending(Effect{Type: "modifier", Target: "initiative", Mode: "add", Value: "1", When: `active("foco")`}))
+	if err == nil {
+		t.Error("an option reading a state no effect declares was accepted")
+	}
+}
