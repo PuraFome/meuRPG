@@ -2369,7 +2369,8 @@ message CombatLogHitRider {
   int32 dc = 5;
   bool numbers = 6;
   // A failed Strength save pushed the target this many feet away from the monk. 0 when
-  // it was not pushed, or could not move.
+  // it was not pushed, or could not move (then `push_stopped` says a wall or a creature
+  // was in the way).
   int32 pushed_ft = 7;
   // The save was failed but the combat has no map (theatre of the mind), so the push is
   // the table's to imagine.
@@ -5452,7 +5453,8 @@ message CombatLogSpellTarget {
   // it. A player's entry never has such a target (RN-10).
   bool hidden = 14;
   // A failed save pushed the creature this many feet away from the caster (5 ft a
-  // square). 0 when it was not pushed, or could not move.
+  // square). 0 when it was not pushed, or could not move (then `push_stopped` says
+  // a wall or a creature was in the way).
   int32 pushed_ft = 15;
   // The save was failed but the combat has no map (theatre of the mind), so the push is
   // the table's to imagine.

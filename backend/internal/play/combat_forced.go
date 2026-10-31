@@ -172,7 +172,10 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 	from := squareOfCombatant(target)
 	plan := planPush(p.terrain, pushBlockers(p.cs, target), moverOf(target), squareOfCombatant(p.source), from, p.rider.PushFeet)
 	if plan.to == from {
-		// Nowhere to go: the save failed, nothing moves, and the log says the push was stopped.
+		if !plan.short {
+			return nil, nil
+		}
+		// A wall or a creature leaves nowhere to go: the save failed, nothing moves, and the log says the push was stopped.
 		col, row := clamp32(from.Col, 0, math.MaxInt32), clamp32(from.Row, 0, math.MaxInt32)
 		return &forcedMove{Target: target.ID, From: moveStateOf(target), Col: col, Row: row, Short: true}, nil
 	}

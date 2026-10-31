@@ -25,8 +25,8 @@ export function ofSubject(label: string, ctx: LogContext): string {
 }
 
 /**
- * What the log says of a push after a failed save: "empurrado 3 m · 2 quadrados", "empurrado 1,5 m · 1 quadrado e parou
- * antes: parede, porta, borda do mapa ou criatura", "não saiu do lugar: parede, porta, borda do mapa ou criatura", or, in a
+ * What the log says of a push after a failed save: "empurrão de 3 m · 2 quadrados", "empurrão de 1,5 m · 1 quadrado, que
+ * parou antes: parede, porta, borda do mapa ou criatura", "não saiu do lugar: parede, porta, borda do mapa ou criatura", or, in a
  * combat with no map, that the table places the creature. Empty when nobody was pushed.
  */
 export function pushText(push: {
@@ -39,7 +39,7 @@ export function pushText(push: {
   }
   const blockers = 'parede, porta, borda do mapa ou criatura';
   if (push.pushedFt > 0) {
-    return `empurrado ${distanceText(push.pushedFt)}${push.pushStopped ? ` e parou antes: ${blockers}` : ''}`;
+    return `empurrão de ${distanceText(push.pushedFt)}${push.pushStopped ? `, que parou antes: ${blockers}` : ''}`;
   }
   return push.pushStopped ? `não saiu do lugar: ${blockers}` : '';
 }

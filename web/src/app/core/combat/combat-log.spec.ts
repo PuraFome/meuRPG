@@ -560,10 +560,10 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
         } as never),
       )?.text?.replace(/\u00a0/g, ' ');
     expect(wave({ pushedFt: 10 })).toContain(
-      'Goblin 1 falhou (CD 13); empurrado 3 m · 2 quadrados',
+      'Goblin 1 falhou (CD 13); empurrão de 3 m · 2 quadrados',
     );
     expect(wave({ pushedFt: 5, pushStopped: true })).toContain(
-      'empurrado 1,5 m · 1 quadrado e parou antes: parede, porta, borda do mapa ou criatura',
+      'empurrão de 1,5 m · 1 quadrado, que parou antes: parede, porta, borda do mapa ou criatura',
     );
     expect(wave({ pushedFt: 0, pushStopped: true })).toContain(
       'falhou (CD 13); não saiu do lugar: parede, porta, borda do mapa ou criatura',
@@ -571,7 +571,7 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     expect(wave({ pushNoMap: true })).toContain(
       'o mestre posiciona a criatura, porque o combate não tem mapa',
     );
-    expect(wave({ save: { outcome: SaveOutcome.SAVED, dc: 13 } })).not.toContain('empurrado');
+    expect(wave({ save: { outcome: SaveOutcome.SAVED, dc: 13 } })).not.toContain('empurrão');
   });
 
   it('writes a cast with its darts, a save and the concentration that ended', () => {

@@ -107,7 +107,12 @@ The geometry is pure and in `rules/grid/area.go` (`Area.FromPoint`, `Area.FromCa
 | Heights | The map has no heights, so a push never makes a creature fall |
 | Monk | `riderConsequence` calls `pushByRider` for the Open Hand push; the rider event keeps `pushed` |
 | No map | A combat in theatre mode (or a source with no square) moves nobody; the event keeps `no_map` and the log line (`CombatLogSpellTarget.push_no_map`, `CombatLogHitRider.push_no_map`) says the push is the table's to imagine |
-| Log and streams | `pushed_ft` and `push_stopped` (`short`: a wall, a door, the edge of the grid or a creature ended the push before its whole distance) on the same two log messages; a failed save that has nowhere to go is a stopped push of 0 ft, which moves nobody and publishes no move; the app writes "empurrado 3 m · 2 quadrados" (`pushText`, `combat-log-words.ts`), with "e parou antes" for a stopped push and "não saiu do lugar" for a blocked one; a creature that saves has no push in its line; after the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
+| Log | `pushed_ft` and `push_stopped` on the two log messages |
+| Stopped push | `push_stopped` is set when a wall, a door, the edge of the grid or a creature ended the push before its whole distance (`short`) |
+| Blocked push | A failed save with no free square is a stopped push of 0 ft: nobody moves and no move is published |
+| Log text | The app writes "empurrão de 3 m · 2 quadrados" (`pushText`, `combat-log-words.ts`), adds "que parou antes" for a stopped push and writes "não saiu do lugar" for a blocked one |
+| Saved | A creature that saves has no push in its line |
+| Streams | After the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
 | Undo | The undo of the cast puts each pushed creature back (`putPushedBack`) and the fog follows it. A rider answer is not undoable, so its push is not either |
 
 ## On screen

@@ -1047,7 +1047,8 @@ export type CombatLogHitRider = Message<"meurpg.play.v1.CombatLogHitRider"> & {
 
   /**
    * A failed Strength save pushed the target this many feet away from the monk. 0 when
-   * it was not pushed, or could not move.
+   * it was not pushed, or could not move (then `push_stopped` says a wall or a creature
+   * was in the way).
    *
    * @generated from field: int32 pushed_ft = 7;
    */
@@ -9316,7 +9317,8 @@ export type CombatLogSpellTarget = Message<"meurpg.play.v1.CombatLogSpellTarget"
 
   /**
    * A failed save pushed the creature this many feet away from the caster (5 ft a
-   * square). 0 when it was not pushed, or could not move.
+   * square). 0 when it was not pushed, or could not move (then `push_stopped` says
+   * a wall or a creature was in the way).
    *
    * @generated from field: int32 pushed_ft = 15;
    */

@@ -4750,7 +4750,8 @@ type CombatLogHitRider struct {
 	Dc        int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
 	Numbers   bool  `protobuf:"varint,6,opt,name=numbers,proto3" json:"numbers,omitempty"`
 	// A failed Strength save pushed the target this many feet away from the monk. 0 when
-	// it was not pushed, or could not move.
+	// it was not pushed, or could not move (then `push_stopped` says a wall or a creature
+	// was in the way).
 	PushedFt int32 `protobuf:"varint,7,opt,name=pushed_ft,json=pushedFt,proto3" json:"pushed_ft,omitempty"`
 	// The save was failed but the combat has no map (theatre of the mind), so the push is
 	// the table's to imagine.
@@ -18715,7 +18716,8 @@ type CombatLogSpellTarget struct {
 	// it. A player's entry never has such a target (RN-10).
 	Hidden bool `protobuf:"varint,14,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	// A failed save pushed the creature this many feet away from the caster (5 ft a
-	// square). 0 when it was not pushed, or could not move.
+	// square). 0 when it was not pushed, or could not move (then `push_stopped` says
+	// a wall or a creature was in the way).
 	PushedFt int32 `protobuf:"varint,15,opt,name=pushed_ft,json=pushedFt,proto3" json:"pushed_ft,omitempty"`
 	// The save was failed but the combat has no map (theatre of the mind), so the push is
 	// the table's to imagine.
