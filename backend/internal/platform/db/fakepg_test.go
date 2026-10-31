@@ -92,7 +92,6 @@ func (f *fakePG) serve(c net.Conn) {
 		}
 		switch msg.(type) {
 		case *pgproto3.Parse:
-			_ = 0
 			be.Send(&pgproto3.ParseComplete{})
 		case *pgproto3.Describe:
 			be.Send(&pgproto3.ParameterDescription{})
