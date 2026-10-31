@@ -306,15 +306,33 @@ A failed or timed-out test attaches `page-diagnostics` to its report.
 It covers the pages of the `page` and `context` fixtures and of every context made with `browser.newContext()`, including `newSignedInContext`.
 For each page it says whether the page crashed, the `pageerror` and `console.error` it reported, the requests that failed, and the requests still open with their age.
 For a page still open when the test fails it also says whether the page replied to a probe within 1.5 s.
-A page that really closed (the test closed its context) is not probed; the attachment lists the requests open when the test asked for the close.
+A page that really closed is not probed.
+When the test closed its context, the attachment lists the requests open when the test asked for the close.
+When the test closed the page with `page.close()`, the attachment says it closed and lists no requests, even if one was open.
 A page still open after the close was asked for is probed like any other.
 Requests made with `page.request` or `callRPC` are not page requests and are not listed.
-A page stuck in a loop makes Playwright's own trace and screenshot wait, and then no attachment is made.
+A page stuck in a CPU loop gets no attachment.
+Playwright's own screenshot and trace of the failed test wait for the page, and the test ends without `page-diagnostics`.
+`diagnostics-fixture/` runs such a page, and `diagnostics.spec.ts` checks it.
+A test must not read `message.args()` of a `console` event: the fixture releases the arguments of every message.
+Use `message.text()`.
 Read the attachment in the HTML report, or in the `playwright-report-*` artifact of a failed shard.
-`diagnostics.spec.ts` makes pages crash, hang and fail on purpose; its last test runs `diagnostics-fixture/` to see the attachment of a real failed test.
+`diagnostics.spec.ts` makes pages crash, hang and fail on purpose; its last test runs `diagnostics-fixture/` to see what a real failed test attaches.
 
 A failed CI run keeps `stack-logs/stack.log` (every container of the stack, with timestamps) in the `playwright-report-*` artifact.
 The `flake-check` traces artifact (`flake-traces-*`) holds the same file, one per job.
+
+## Texts the app bar can repeat
+
+A session that is open puts the campaign name on every page. The app bar link reads `Ao vivo: sessão N de <campaign>`. The live notice reads `A sessão N de <campaign> começou.` and has a link `Entrar na sessão N de <campaign>`.
+
+`getByLabel('Nome')` matches a substring. If a campaign is called `Nomes e legenda 123`, it matches the live link too, and `fill` fails on a strict mode violation.
+
+The rule `meurpg/exact-shared-text` reads the campaign names in `e2e/tests` (template names that end in `${Date.now()}` and the strings passed to the helpers that build them). It reports a `getByLabel` string, or a `getByRole('link', { name })` string, that is a substring of one of them, case ignored, unless the call has `exact: true`. There is no baseline and no suppression.
+
+The rule does not read `getByText`. `exact: true` there would weaken `toHaveCount(0)` checks, so scope a `getByText` to a region instead. It does not read names built at run time.
+
+A field that `exact` cannot match, such as a `mat-select` whose name also carries its value, is found by role: `getByRole('combobox', { name })`. The live link has the role `link`, so it does not collide.
 
 ## Reproducing a flaky test
 
