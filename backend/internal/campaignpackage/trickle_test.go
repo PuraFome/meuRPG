@@ -28,8 +28,26 @@ func TestAPartThatIsTooLongAndKeepsTricklingIsNotHeld(t *testing.T) {
 
 	head := "PUT " + campaignpackage.PartsPath + begun.GetUpload().GetId() + "/parts/1 HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + master.id + "\r\n"
 	line := slowtest.AnswerWhileTrickling(t, h.server.Listener.Addr().String(), head, strings.Repeat("a", 4096), 10*time.Second)
-	if strings.Contains(line, fmt.Sprint(http.StatusNoContent)) {
-		t.Fatalf("status line = %q, want a refusal of the long part", line)
+	if !strings.Contains(line, " 400 ") {
+		t.Fatalf("status line = %q, want 400 (the part is longer than the upload says)", line)
+	}
+}
+
+// A part sent to an upload that is not the caller's is refused before the body is read. A client that goes on trickling
+// does not hold the connection: the deadline is armed before the refusal. (A small first chunk: a body over the part's
+// length would overflow its limit, and net/http closes the connection after that whether or not a deadline is armed.)
+func TestARefusedPartThatKeepsTricklingIsNotHeld(t *testing.T) {
+	h := newHarness(t, func(o *options) {
+		o.configure = func(c *campaignpackage.Config) { c.PartReadTimeout = 300 * time.Millisecond }
+	})
+	master := h.newUser("Mestre")
+	stranger := h.newUser("Outro")
+	begun := must(master.pkg.BeginCampaignImport(t.Context(), connect.NewRequest(&pkgv1.BeginCampaignImportRequest{FileName: "g.meurpg.zip", TotalBytes: 100, Fingerprint: "g:refused"})))
+
+	head := "PUT " + campaignpackage.PartsPath + begun.GetUpload().GetId() + "/parts/1 HTTP/1.1\r\nHost: x\r\n" + testUserHeader + ": " + stranger.id + "\r\n"
+	line := slowtest.AnswerWhileTrickling(t, h.server.Listener.Addr().String(), head, "aaaa", 10*time.Second)
+	if !strings.Contains(line, " 404 ") {
+		t.Fatalf("status line = %q, want 404 (someone else's upload reads as one that does not exist)", line)
 	}
 }
 

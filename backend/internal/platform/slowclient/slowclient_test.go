@@ -162,7 +162,11 @@ func TestReadBodyDisarmsItselfAtTheEndOfTheBody(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	res, err := srv.Client().Post(srv.URL, "text/plain", strings.NewReader("a small body"))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, strings.NewReader("a small body"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := srv.Client().Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

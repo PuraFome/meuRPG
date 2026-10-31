@@ -97,8 +97,9 @@ func ReadBody(w http.ResponseWriter, r *http.Request, d time.Duration) {
 	r.Body = b
 }
 
-// readBody is the body ReadBody installs. Its Read is called by one goroutine,
-// the handler's.
+// readBody is the body ReadBody installs. It is read by one goroutine at a time
+// (the handler's, or the one a store hands the reader to), and ReadBody's
+// re-arm runs on the handler's, between reads.
 type readBody struct {
 	io.ReadCloser
 	rc    *http.ResponseController
