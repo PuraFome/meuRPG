@@ -162,3 +162,66 @@ func TestStinkingCloudDoesNotAskWhoBeginsItsTurnOutside(t *testing.T) {
 		t.Error("the ogre outside the cloud was asked or lost its action")
 	}
 }
+
+// A creature immune to poison damage is not asked by Stinking Cloud: the skeleton (immune to poison and to the
+// poisoned condition) keeps its action; the ogre beside it, in the same cloud, loses its.
+func TestStinkingCloudDoesNotAskWhoIsImmuneToPoison(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	e := c.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: c.ogre.GetId()}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 5},
+		reveal:   []string{"Ogro"},
+		at:       map[string][2]int32{"Toren": {5, 7}, "Pensantus": {12, 7}, "Brisa": {3, 7}, "Ogro": {7, 7}},
+		setup:    true,
+	})
+	c.h.roller.queue(1)
+	res := c.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = "monster:skeleton", 1, new(false)
+	})
+	var skeleton string
+	for _, co := range res.GetEncounter().GetCombatants() {
+		if co.GetId() == res.GetCombatantIds()[0] {
+			skeleton = co.GetLabel()
+		}
+	}
+	c.mustMove(t, c.master, skeleton, 8, 7)
+	e = c.begin(t, c.get(t, c.master))
+	c.passTo(t, e, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", stinkingCloudKey, slotOfLevel(3), at(7, 7), nil)
+	c.h.roller.queue(1, 1)
+	c.nextTurnOf(t, skeleton)
+	if byLabel(t, c.get(t, c.master), skeleton).GetActionUsed() {
+		t.Errorf("the skeleton lost its action to a gas it is immune to")
+	}
+	c.nextTurnOf(t, "Ogro")
+	if !byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed() {
+		t.Error("the ogre kept its action: it failed the save with a 1")
+	}
+}
+
+// A player's character caught at the start of its turn is asked the save (RN-37); a failure spends the action.
+func TestAPlayerIsAskedStinkingCloudsSaveAndLosesTheActionOnAFailure(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	e := c.zoneFight(t)
+	c.mustMove(t, c.master, "Toren", 9, 7)
+	c.passTo(t, e, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", stinkingCloudKey, slotOfLevel(3), at(10, 7), nil)
+	c.passRaw(t, "Toren")
+	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("Toren's player has no question: the cloud caught his character at the start of its turn")
+	}
+	p := w.GetEffectSave()
+	if p.GetZoneId() == "" || p.GetZoneReason() != "zone_start" || p.GetAbility() != "con" {
+		t.Errorf("prompt = %v, want a Constitution zone save with reason zone_start", p)
+	}
+	if res, err := c.rollEffectSave(t, c.caio, c.get(t, c.master), w.GetId(), effectSaveFace(2)); err != nil || res.GetResult().GetSaved() {
+		t.Fatalf("RollEffectSave() = %v, %v; want a failed save", res, err)
+	}
+	if !byLabel(t, c.get(t, c.master), "Toren").GetActionUsed() {
+		t.Error("Toren kept his action after failing the save")
+	}
+}
