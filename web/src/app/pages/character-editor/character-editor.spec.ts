@@ -1519,7 +1519,9 @@ describe('CharacterEditor', () => {
       );
       expect(cancel?.getAttribute('href')).toBe('/campaigns/camp-1/characters/char-9');
       expect(el.querySelector('h1')?.textContent).toContain('Editar ficha');
-      expect(el.querySelector('button.mat-mdc-unelevated-button')?.textContent).toContain('Salvar ficha');
+      expect(el.querySelector('button.mat-mdc-unelevated-button')?.textContent).toContain(
+        'Salvar ficha',
+      );
     });
 
     it('titles an NPC form "Criar NPC", and its primary action says the same', async () => {
