@@ -35,7 +35,7 @@ export interface DeathSaveRoll {
   imports: [CombatantToken, DeathMarks, MatButtonModule, MatIconModule, RollPicker],
   template: `
     @for (c of due(); track c.id) {
-      <section role="alert" class="due mr-notice mr-notice--danger" [attr.aria-label]="'Teste contra a morte de ' + c.label" data-testid="death-save-due">
+      <section class="due mr-notice mr-notice--danger" [attr.aria-label]="'Teste contra a morte de ' + c.label" data-testid="death-save-due">
         <div class="due__body">
           <div class="due__head">
             <app-combatant-token [initial]="initial(c)" [current]="true" [size]="44" />

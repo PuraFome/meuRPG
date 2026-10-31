@@ -21,7 +21,6 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-legend`, `.mr-swatch` (+ modifiers) | The legend under a map and its 22 px swatches; see [maps.md](maps.md#legend) |
 | `.mr-nudge`, `.mr-nudge--still` | The half-second shake of the turn panel (`SHAKE_MS` in `core/combat/turn-alert.ts`); `--still` is the static 2 px outline used under reduced motion |
 | `[data-ring]` | Gives the focus ring to an element the app focused (`core/creatures/focus-ring.ts`) |
-| `matButton`, `matIconButton` | The one way to write a Material button: `matButton="filled"`, `matButton="outlined"`, `matButton` (text) or `matIconButton`; the lint refuses the `mat-flat-button`, `mat-stroked-button`, `mat-button` and `mat-icon-button` attributes |
 
 ## Shell components
 
@@ -60,6 +59,7 @@ Defined in `web/src/styles/_ui.scss`.
 
 | Component | Use |
 | --- | --- |
+| `matButton`, `matIconButton` | The one way to write a Material button: `matButton="filled"`, `matButton="outlined"`, `matButton` (text) or `matIconButton`; the lint refuses the `mat-flat-button`, `mat-stroked-button`, `mat-button` and `mat-icon-button` attributes |
 | `<app-text-field>`, `<app-select-field>`, `<app-switch-field>`, `<app-check-row>`, `<app-number-stepper>`, `<app-pick-list>` (`shared/form-fields`) | The content editors' fields: outlined, the refusal under the field, `data-field` for where a server refusal lands. A native `<select>` so the phone's picker opens. Switches carry "Ligado" / "Desligado". A pick list can be off: its chips stay, nothing is added or taken off and its hint says why. Rows are 44 px targets |
 | `<app-check-box>` (`shared/check-box`) | A 24 px box in a 44 px target for a list of choices (who joins the combat, who gets the XP) |
 | `<app-reveal-switch>`, `<app-hidden-switch>` (`shared/reveal-switch`, `shared/hidden-switch`) | A real `role="switch"`: an `ink` track with a check when on, a `control-line` outline when off (burgundy is for the main button only), always with the word |

@@ -123,8 +123,8 @@ module.exports = tseslint.config(
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended, ...angular.configs.templateAccessibility],
     rules: {
-      // One way to write a Material button: `matButton` (with "filled" or "outlined") or `matIconButton`. The old attribute
-      // selectors render the same and stay in Material only for older code. Inline templates are linted as this file type too.
+      // One way to write a Material button: `matButton` (with "filled" or "outlined") or `matIconButton`, never the old attribute
+      // selectors. Inline templates are linted as this file type too.
       'no-restricted-syntax': [
         'error',
         {
