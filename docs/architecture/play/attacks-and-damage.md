@@ -142,11 +142,11 @@ Death saves and initiative are untouched.
   A melee weapon is a thrown weapon when its long range is beyond its melee reach (a spear, a dagger, a javelin).
   A thrown weapon is a melee attack up to its melee reach, and a ranged attack made by throwing it beyond the reach, up to its throwing range.
   The melee reach is 5 ft, or the longer reach a `weapon_rule` or a `pseudo_weapon` gives the line (`link.Attack.ReachFt`, read by `attackMeleeReach`).
-  A creature's attack that says "reach 10 ft. or range 20/60 ft." has both: `ReachFt` 10 and the throwing range 20/60.
+  On a creature's stat block, an attack that says "reach 10 ft. or range 20/60 ft." has both: `ReachFt` 10 and the throwing range 20/60.
   A `weapon_rule` leaves the `RangeFt` and `LongRangeFt` of a weapon from the SRD list alone: its reach is `ReachFt`.
   The unarmed strike and a `pseudo_weapon` keep `RangeFt` equal to their reach.
   The proto attack (`range_ft`) is at least the reach of a melee attack, so the screens that read `range_ft` as a reach and the list of targets keep working.
-  `thrownAtRange` asks the shape (`shapeOfAttack`, `rangedAt`); no other code decides "thrown at range".
+  `thrownAtRange` and the roll mode both ask the shape (`shapeOfAttack`, `rangedAt`).
   An opportunity attack is a melee attack at the line's melee reach.
   Cover, Rage and the other rules for a ranged attack follow the same reach.
   Without a map the distance is unknown, and a thrown weapon with the usual 5 ft reach is a melee attack within 5 ft.
