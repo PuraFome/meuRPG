@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -537,4 +538,58 @@ func TestHideCallsRefuseWhoIsNotInTheCampaign(t *testing.T) {
 		}))
 		return err
 	}, a.campaignID)
+}
+
+// hideRolling calls Hide as u with the roll the test gives, not the app's.
+func (c *cx) hideRolling(t *testing.T, u *user, label, actionKey string, roll *playv1.CheckRollInput) (*playv1.HideResponse, error) {
+	t.Helper()
+	res, err := u.contests.Hide(t.Context(), connect.NewRequest(&playv1.HideRequest{
+		CampaignId: c.campaignID, EncounterId: c.e.GetId(), IdempotencyKey: newKey(), CombatantId: c.id(t, label), ActionKey: actionKey, Roll: roll,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+// TestRN18_AHideFollowsTheCampaignsDice: a player hides with the d20 in the app or with the face of a
+// real die as the campaign's dice setting allows; the master is no player of the table and rolls
+// either way. A face is 1 to 20 and the server adds the Stealth bonus (RN-18).
+func TestRN18_AHideFollowsTheCampaignsDice(t *testing.T) {
+	t.Parallel()
+	a := newSneaks(t)
+	c := a.arena(t, arenaPlan{})
+
+	// The campaign has everyone roll real dice: one face, 1 to 20.
+	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	_, err := c.hideRolling(t, a.caio, "Toren", cunningHide, rollIn())
+	wantBlockedBy(t, "an app roll in a campaign that rolls physical dice", err, blockedWrongDice)
+	for name, in := range map[string]*playv1.CheckRollInput{"face 0": faces(0), "face 21": faces(21)} {
+		if _, err := c.hideRolling(t, a.caio, "Toren", cunningHide, in); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s = %v, want invalid_argument", name, err)
+		}
+	}
+	res, err := c.hideRolling(t, a.caio, "Toren", cunningHide, faces(9))
+	if err != nil {
+		t.Fatalf("Hide(physical) error = %v", err)
+	}
+	if got := res.GetAttempt().GetRoll(); got.GetTotal() != 12 || got.GetModifier() != 3 || !got.GetPhysical() {
+		t.Errorf("Toren's Hide roll = %v, want the typed 9 plus Stealth +3 = 12, physical", got)
+	}
+
+	// The campaign makes everyone roll in the app. The refusal spends nothing: the action is still free.
+	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
+	_, err = c.hideRolling(t, a.caio, "Toren", "", faces(9))
+	wantBlockedBy(t, "typed dice in a campaign that rolls in the app", err, blockedWrongDice)
+	if got := c.mustHide(t, a.caio, "Toren", "", 8).GetRoll(); got.GetTotal() != 11 || got.GetPhysical() {
+		t.Errorf("Toren's Hide roll = %v, want the app's 8 plus 3 = 11, not physical", got)
+	}
+
+	// The master hides the Hobgoblin whatever the campaign says: with the app's die while the table
+	// rolls real dice.
+	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	c.advance(t, c.hob)
+	if got := c.mustHide(t, a.master, c.hob, "", 15).GetRoll(); got.GetPhysical() {
+		t.Errorf("the master's app roll = %v, want it taken, not physical", got)
+	}
 }

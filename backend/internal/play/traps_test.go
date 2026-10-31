@@ -455,6 +455,28 @@ func TestMR035_APhysicalDieFollowsTheCampaign(t *testing.T) {
 	}
 }
 
+// TestRN18_ASearchFollowsTheCampaignsDice: in a campaign that rolls real dice the search takes the
+// typed face (1 to 20) and refuses the app's roll; the server adds the bonus (RN-18).
+func TestRN18_ASearchFollowsTheCampaignsDice(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.place(t, r.pens.GetId(), 8, 7)
+	r.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL) // everybody with real dice
+	_, err := r.ana.play.SearchForTraps(t.Context(), connect.NewRequest(&playv1.SearchForTrapsRequest{
+		CampaignId: r.campaignID, IdempotencyKey: newKey(), Skill: investigation, Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},
+	}))
+	wantSceneBlocked(t, err, playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_WRONG_DICE_MODE)
+	for _, face := range []int32{0, 21} {
+		if _, err := r.search(t, r.ana, investigation, face); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("face %d = %v, want invalid_argument", face, err)
+		}
+	}
+	res, err := r.search(t, r.ana, investigation, 12)
+	if err != nil || res.GetRoll().GetTotal() != 16 || !res.GetRoll().GetPhysical() {
+		t.Fatalf("a typed face = %v, %v; want 12 + 4 = 16, physical", res, err)
+	}
+}
+
 // TestMR035_SearchingInACombatCostsTheAction: while a combat runs, the search is the
 // SRD's Search action: only on the character's own turn, and it spends the action.
 func TestMR035_SearchingInACombatCostsTheAction(t *testing.T) {
