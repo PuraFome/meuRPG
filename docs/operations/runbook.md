@@ -33,7 +33,7 @@ flowchart LR
   G --> H[Check /readyz and<br/>GetServerInfo commit]
 ```
 
-1. **Check that nobody is playing.** A new revision does not cut the open streams: Cloud Run keeps the old instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. A page that was open before the release hears nothing new until its stream reaches its 10-minute life or the page is reloaded. So release between sessions (look for an open game session in the database first). When you cannot, ask everyone at the table to reload the session page once the new revision serves.
+1. **Check that nobody is playing.** Cloud Run keeps the old instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. The old instance ends its streams after 3 minutes without a call (checked every 60 s), and each page reconnects to the new revision. Until then a page that was open before the release hears nothing new. So release between sessions (look for an open game session in the database first). When you cannot, tell the table to wait a few minutes, or to reload the session page.
 2. **Build.** The source is a `git archive` of the commit, with only what `backend/Dockerfile` reads (`.dockerignore`, `LICENSE`, `NOTICE`, `third_party`, `backend`, `web`), so nothing local enters the image. Pass `--service-account` every time: without it Cloud Build uses the default account, which has no role, and the build fails.
 
    ```bash

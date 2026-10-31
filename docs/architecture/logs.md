@@ -32,13 +32,14 @@ The session interceptor records the user, `authz` and the log interceptor record
 | `message` | Level | Fields besides the common ones |
 | --- | --- | --- |
 | `http request` | `INFO`; `WARNING` for a 5xx status; `DEBUG` for `/healthz` and `/readyz` | `method`, `path` (without the query, cut at 256 bytes with `...[truncated]`), `proto`, `status`, `duration_ms` |
-| `rpc` | `DEBUG` for `ok` and for the outcomes a caller causes (`invalid_argument`, `not_found`, `permission_denied`, `failed_precondition`, `already_exists`, `aborted`, `unauthenticated`, `resource_exhausted`, `out_of_range`, `canceled`); `ERROR` for the rest | `procedure`, `code`, `duration_ms`, `stream`; and when the code is not `ok`: `error` and, when the error carries a typed detail, `reason` |
-| `stream opened`, `stream closed` | `DEBUG` | `procedure`; at the end `duration_ms`, `messages` (sent) and `close_reason` (`client_gone`, `server_ended`, `access_lost`, `error`) |
+| `rpc` | `DEBUG` for `ok` and for the outcomes a caller causes (`invalid_argument`, `not_found`, `permission_denied`, `failed_precondition`, `already_exists`, `aborted`, `unauthenticated`, `resource_exhausted`, `out_of_range`, `canceled`); `ERROR` for the rest, except the `unavailable` of an idle instance's stream (`INFO`) | `procedure`, `code`, `duration_ms`, `stream`; and when the code is not `ok`: `error` and, when the error carries a typed detail, `reason` |
+| `stream opened`, `stream closed` | `DEBUG` | `procedure`; at the end `duration_ms`, `messages` (sent) and `close_reason` (`client_gone`, `server_ended`, `access_lost`, `instance_idle`, `error`) |
 | `event` | `DEBUG` | `event` (`<area>.<past_verb>`), only IDs and closed enums |
 
 The `rpclog` interceptor is first in the chain, so it is outermost and sees the final error wherever it came from.
 `reason` is the reason enum of the error detail (`XPBlocked`, `CharacterBlocked`...), read by reflection from the field whose name contains `reason`, so a new detail appears without touching the interceptor.
 The `close_reason` of a stream the server ends by itself (the session ended, the lifetime cap, shutdown) is always `server_ended`: from inside, the three are the same fact.
+A stream an instance ends because it no longer receives calls (a deploy) has the close reason `instance_idle`, and its `rpc` line is `INFO`, not `ERROR`: the client gets `unavailable` and reconnects, and it is no failure of the release.
 
 The `error` text stays only in the log.
 A handler that returns a non-Connect error (a driver message, a file path) would have it sent to the client as `unknown`; the interceptor swaps it for `internal` with a fixed sentence and the real text goes to the `rpc` line.

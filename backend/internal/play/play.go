@@ -467,6 +467,10 @@ type LiveConfig struct {
 	// Buffer is how many events a stream may fall behind before it is
 	// dropped (live.DefaultBuffer).
 	Buffer int
+	// Idle says that this instance stopped receiving the app's calls (traffic.Meter.Idle): at its
+	// next recheck a stream ends with unavailable, and the app reconnects to the active revision. Nil
+	// means never.
+	Idle func() bool
 	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
 	// and the content hint's): after d, run f. Nil is time.AfterFunc. It exists for
 	// tests, which use it to know when no trailing hint is still waiting; the

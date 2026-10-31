@@ -208,6 +208,54 @@ func TestStreamLines(t *testing.T) {
 	}
 }
 
+// A stream an idle instance ends is a deploy, not a failure: the client gets unavailable and reconnects, and the
+// log stays below WARNING with its own close reason. Any other unavailable stays an ERROR.
+func TestIdleInstanceEndIsNotAnError(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		err          error
+		wantSeverity string
+		wantReason   string
+	}{
+		{"instance idle", connect.NewError(connect.CodeUnavailable, ErrInstanceIdle), "INFO", "instance_idle"},
+		{"fell behind", connect.NewError(connect.CodeUnavailable, errors.New("fell behind")), "ERROR", "error"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			r := newRig(t, nil, func(context.Context, *connect.ServerStream[playv1.WatchGameSessionResponse]) error { return tt.err })
+			c := connect.NewClient[playv1.WatchGameSessionRequest, playv1.WatchGameSessionResponse](r.server.Client(), r.server.URL+"/test.Svc/Stream")
+			stream, err := c.CallServerStream(t.Context(), connect.NewRequest(&playv1.WatchGameSessionRequest{CampaignId: campaign}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for stream.Receive() {
+			}
+			if connect.CodeOf(stream.Err()) != connect.CodeUnavailable {
+				t.Errorf("the client got %v, want unavailable", stream.Err())
+			}
+			_ = stream.Close()
+
+			var closed, rpc map[string]any
+			for _, l := range r.lines(t) {
+				switch l["message"] {
+				case "stream closed":
+					closed = l
+				case "rpc":
+					rpc = l
+				}
+			}
+			if closed["close_reason"] != tt.wantReason {
+				t.Errorf("close_reason = %v, want %s", closed["close_reason"], tt.wantReason)
+			}
+			if rpc["severity"] != tt.wantSeverity || rpc["code"] != "unavailable" {
+				t.Errorf("rpc = %v, want severity %s", rpc, tt.wantSeverity)
+			}
+		})
+	}
+}
+
 func TestStreamCloseReasons(t *testing.T) {
 	t.Parallel()
 	canceled, cancel := context.WithCancel(context.Background())
@@ -225,6 +273,7 @@ func TestStreamCloseReasons(t *testing.T) {
 		{"membership removed", context.Background(), connect.NewError(connect.CodeNotFound, errors.New("x")), false, "access_lost"},
 		{"session ended", context.Background(), connect.NewError(connect.CodeUnauthenticated, errors.New("x")), false, "access_lost"},
 		{"fell behind", context.Background(), connect.NewError(connect.CodeUnavailable, errors.New("x")), false, "error"},
+		{"instance idle", context.Background(), connect.NewError(connect.CodeUnavailable, ErrInstanceIdle), false, "instance_idle"},
 	}
 	for _, tt := range tests {
 		if got := closeReasonOf(tt.ctx, tt.err, tt.sendFailed); got != tt.want {
