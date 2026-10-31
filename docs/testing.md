@@ -85,7 +85,10 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
 - **`play` rolls with its own `scriptedRoller`.** It gives a 10 when no face is queued, so creatures with the same bonus tie by default in its tests. That is deterministic, and a test that needs one actor queues its faces.
 
 Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
-The end-to-end tests roll with `dice.Crypto`, so an e2e test must not assume a tie-free order.
+The end-to-end tests roll with `dice.Crypto`, so an NPC's initiative total can tie with another combatant's at random.
+An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins (`beginAttackCombatRPC`, and its `monsters` argument for an SRD creature).
+A creature added to a running combat is rolled by the app and cannot be typed, so a test that depends on who acts starts the combat with it.
+`beginAttackCombatRPC` fails when a creature added that way has the same total as another combatant.
 
 ### Leak tests (RN-10)
 
