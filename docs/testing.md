@@ -141,9 +141,10 @@ The output names each package that runs and the changed file or import that sele
 When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge.
 
 `BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change; any value but empty or `0` does the same.
-`ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
+`ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a Go (RE2) regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable; a pattern that RE2 cannot read, or that matches no package of the list, stops the run with exit 2), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
 `BEFORE_READY_BASE=<revision>` compares the working tree with that revision instead of the merge base (`HEAD`: only what is not committed yet).
 `BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
+`BEFORE_READY_LIST=<file>` runs another list in the same format, to try a few tests: every line of it runs, whatever the change, and the output says so.
 To measure a run, time it: `time make before-ready` for the default run, `time make before-ready ALL=1` for the whole list.
 
 Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.

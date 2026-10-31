@@ -1,7 +1,6 @@
 package archtest
 
 import (
-	"bufio"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,27 +14,19 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/archtest/beforereadylist"
 )
 
 // beforeReadyFile is the list `make before-ready` runs (docs/testing.md#before-ready).
 const beforeReadyFile = "before_ready.txt"
 
-// beforeReadyLine is one line of the list: `run` (tests to run) or `helper` (a function whose
-// callers pin a file).
-type beforeReadyLine struct {
-	kind  string // "run" or "helper"
-	pkg   string // directory under backend/
-	re    *regexp.Regexp
-	regex string
-	last  string // the regenerate command (run), or why the function pins (helper)
-	// inputs are what a run line's tests read outside their package: paths from the repository
-	// root, comma-separated, or "-" for none.
-	inputs []string
-	n      int // line number, for messages
-}
+// beforeReadyLine is one line of the list, as the parser the tool uses reads it.
+type beforeReadyLine = beforereadylist.Line
 
-// readBeforeReady parses the list: tab-separated `kind pkg regex last` lines, `#` comments and blank lines.
+// readBeforeReady parses the list with the parser `make before-ready` uses (beforereadylist).
 func readBeforeReady(t *testing.T) []beforeReadyLine {
 	t.Helper()
 	f, err := os.Open(beforeReadyFile)
@@ -43,37 +34,67 @@ func readBeforeReady(t *testing.T) []beforeReadyLine {
 		t.Fatalf("open the before-ready list: %v", err)
 	}
 	defer f.Close()
-	var lines []beforeReadyLine
-	sc := bufio.NewScanner(f)
-	for n := 1; sc.Scan(); n++ {
-		text := sc.Text()
-		if strings.TrimSpace(text) == "" || strings.HasPrefix(text, "#") {
-			continue
-		}
-		cols := strings.Split(text, "\t")
-		wantCols := 4
-		if cols[0] == "run" {
-			wantCols = 5
-		}
-		if len(cols) != wantCols || (cols[0] != "run" && cols[0] != "helper") || strings.TrimSpace(cols[3]) == "" {
-			t.Fatalf("%s:%d: want `run<TAB>package<TAB>regex<TAB>regenerate command<TAB>inputs` or `helper<TAB>package<TAB>function<TAB>reason`, got %q", beforeReadyFile, n, text)
-		}
-		var inputs []string
-		if cols[0] == "run" && strings.TrimSpace(cols[4]) != "-" {
-			for _, in := range strings.Split(cols[4], ",") {
-				inputs = append(inputs, strings.TrimSpace(in))
-			}
-		}
-		re, err := regexp.Compile(cols[2])
-		if err != nil {
-			t.Fatalf("%s:%d: regex %q: %v", beforeReadyFile, n, cols[2], err)
-		}
-		lines = append(lines, beforeReadyLine{kind: cols[0], pkg: cols[1], re: re, regex: cols[2], last: cols[3], n: n, inputs: inputs})
-	}
-	if err := sc.Err(); err != nil {
-		t.Fatalf("read the before-ready list: %v", err)
+	lines, err := beforereadylist.Parse(f)
+	if err != nil {
+		t.Fatalf("%s: %v", beforeReadyFile, err)
 	}
 	return lines
+}
+
+// parsedDir is the Go files of one directory, parsed once per run: three guards read each
+// package, and they run in parallel.
+type parsedDir struct {
+	names []string // file names, in the directory's order
+	files []*ast.File
+}
+
+var (
+	parseMu    sync.Mutex
+	parseCache = map[string]*parsedEntry{}
+)
+
+type parsedEntry struct {
+	once sync.Once
+	dir  *parsedDir
+	err  error
+}
+
+// parseDir parses the .go files of dir (comments skipped), or returns the cached result.
+func parseDir(t *testing.T, dir string) *parsedDir {
+	t.Helper()
+	parseMu.Lock()
+	e := parseCache[dir]
+	if e == nil {
+		e = &parsedEntry{}
+		parseCache[dir] = e
+	}
+	parseMu.Unlock()
+	e.once.Do(func() {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			e.err = fmt.Errorf("read %s: %w", dir, err)
+			return
+		}
+		fset := token.NewFileSet()
+		pd := &parsedDir{}
+		for _, ent := range entries {
+			if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".go") {
+				continue
+			}
+			file, err := parser.ParseFile(fset, filepath.Join(dir, ent.Name()), nil, 0)
+			if err != nil {
+				e.err = fmt.Errorf("parse %s: %w", ent.Name(), err)
+				return
+			}
+			pd.names = append(pd.names, ent.Name())
+			pd.files = append(pd.files, file)
+		}
+		e.dir = pd
+	})
+	if e.err != nil {
+		t.Fatal(e.err)
+	}
+	return e.dir
 }
 
 // pinSignal says whether a node on its own shows that a function compares its
@@ -150,22 +171,7 @@ func isFlagCall(n ast.Node) bool {
 // so those tests rely on the naming convention of the list), and every Test.
 func pinningTests(t *testing.T, dir string, helpers []beforeReadyLine) (pins, all []string) {
 	t.Helper()
-	fset := token.NewFileSet()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read %s: %v", dir, err)
-	}
-	var files []*ast.File
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
-			continue
-		}
-		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", e.Name(), err)
-		}
-		files = append(files, file)
-	}
+	files := parseDir(t, dir).files
 	names := pinNames(files)
 	direct := map[string]bool{}
 	calls := map[string][]string{}
@@ -194,7 +200,7 @@ func pinningTests(t *testing.T, dir string, helpers []beforeReadyLine) (pins, al
 		}
 	}
 	for _, h := range helpers {
-		direct[h.regex] = true
+		direct[h.Regex] = true
 	}
 	// A function pins when it has the signal or calls one that does.
 	for changed := true; changed; {
@@ -229,7 +235,7 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 	lines := readBeforeReady(t)
 	byPkg := map[string][]beforeReadyLine{}
 	for _, l := range lines {
-		byPkg[l.pkg] = append(byPkg[l.pkg], l)
+		byPkg[l.Pkg] = append(byPkg[l.Pkg], l)
 	}
 
 	var problems []string
@@ -243,12 +249,12 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 		dir := filepath.Join(backendRoot, pkg)
 		_, all := pinningTests(t, dir, nil)
 		for _, l := range ls {
-			if l.kind == "helper" {
+			if l.Kind == beforereadylist.Helper {
 				continue
 			}
-			for _, part := range alternatives(l.regex) {
+			for _, part := range alternatives(l.Regex) {
 				if !anyMatch(regexp.MustCompile(part), all) {
-					problems = append(problems, fmt.Sprintf("%s:%d: %s matches no test of %s: the test was renamed or removed, fix the line", beforeReadyFile, l.n, part, pkg))
+					problems = append(problems, fmt.Sprintf("%s:%d: %s matches no test of %s: the test was renamed or removed, fix the line", beforeReadyFile, l.N, part, pkg))
 				}
 			}
 		}
@@ -342,7 +348,7 @@ func anyMatch(re *regexp.Regexp, names []string) bool {
 func helpersOf(ls []beforeReadyLine) []beforeReadyLine {
 	var out []beforeReadyLine
 	for _, l := range ls {
-		if l.kind == "helper" {
+		if l.Kind == beforereadylist.Helper {
 			out = append(out, l)
 		}
 	}
@@ -351,7 +357,7 @@ func helpersOf(ls []beforeReadyLine) []beforeReadyLine {
 
 func listed(ls []beforeReadyLine, name string) bool {
 	for _, l := range ls {
-		if l.kind != "helper" && l.re.MatchString(name) {
+		if l.Kind != beforereadylist.Helper && l.Re.MatchString(name) {
 			return true
 		}
 	}
@@ -395,51 +401,40 @@ func TestBeforeReadyInputsAreComplete(t *testing.T) {
 	t.Parallel()
 	lines := readBeforeReady(t)
 	for _, l := range lines {
-		if l.kind != "run" {
+		if l.Kind != beforereadylist.Run {
 			continue
 		}
-		for _, in := range l.inputs {
+		for _, in := range l.Inputs {
 			if in == "" || strings.HasPrefix(in, "/") || strings.Contains(in, "..") {
-				t.Errorf("%s:%d: input %q must be a path from the repository root", beforeReadyFile, l.n, in)
+				t.Errorf("%s:%d: input %q must be a path from the repository root", beforeReadyFile, l.N, in)
 				continue
 			}
 			if _, err := os.Stat(filepath.Join(backendRoot, "..", filepath.FromSlash(in))); err != nil {
-				t.Errorf("%s:%d: input %q does not exist: %v", beforeReadyFile, l.n, in, err)
+				t.Errorf("%s:%d: input %q does not exist: %v", beforeReadyFile, l.N, in, err)
 			}
 		}
 	}
 	byPkg := map[string][]beforeReadyLine{}
 	for _, l := range lines {
-		if l.kind == "run" {
-			byPkg[l.pkg] = append(byPkg[l.pkg], l)
+		if l.Kind == beforereadylist.Run {
+			byPkg[l.Pkg] = append(byPkg[l.Pkg], l)
 		}
 	}
 	for pkg, ls := range byPkg {
 		reads := upwardPaths(t, filepath.Join(backendRoot, pkg))
 		for _, l := range ls {
 			for test, paths := range reads {
-				if !l.re.MatchString(test) {
+				if !l.Re.MatchString(test) {
 					continue
 				}
 				for _, p := range paths {
-					if resolved := path.Join("backend", pkg, p); !covered(resolved, l.inputs) {
-						t.Errorf("%s:%d: %s reads %q (%s from the repository root) but the line does not name it in its inputs: add it", beforeReadyFile, l.n, test, p, resolved)
+					if resolved := path.Join("backend", pkg, p); !beforereadylist.Covered(resolved, l.Inputs) {
+						t.Errorf("%s:%d: %s reads %q (%s from the repository root) but the line does not name it in its inputs: add it", beforeReadyFile, l.N, test, p, resolved)
 					}
 				}
 			}
 		}
 	}
-}
-
-// covered says whether a path is one of the inputs or inside one of them.
-func covered(p string, inputs []string) bool {
-	p = strings.TrimSuffix(p, "/")
-	for _, in := range inputs {
-		if p == in || strings.HasPrefix(p, strings.TrimSuffix(in, "/")+"/") {
-			return true
-		}
-	}
-	return false
 }
 
 // upwardPaths returns, for each Test function of the package in dir, the paths with a ".."
@@ -450,22 +445,12 @@ func covered(p string, inputs []string) bool {
 // embed, or in a file a build tag leaves out, is not seen.
 func upwardPaths(t *testing.T, dir string) map[string][]string {
 	t.Helper()
-	fset := token.NewFileSet()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read %s: %v", dir, err)
-	}
+	pd := parseDir(t, dir)
 	own := map[string][]string{}  // node -> the upward paths it holds itself
 	uses := map[string][]string{} // node -> the nodes (functions, package-level names) it mentions
 	var tests []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
-			continue
-		}
-		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", e.Name(), err)
-		}
+	for i, file := range pd.files {
+		fileName := pd.names[i]
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
@@ -474,7 +459,7 @@ func upwardPaths(t *testing.T, dir string) map[string][]string {
 				}
 				// A method is known by its name alone, whatever its receiver: two types
 				// with the same method name share a node, which attributes more, never less.
-				if d.Recv == nil && strings.HasPrefix(d.Name.Name, "Test") && strings.HasSuffix(e.Name(), "_test.go") {
+				if d.Recv == nil && strings.HasPrefix(d.Name.Name, "Test") && strings.HasSuffix(fileName, "_test.go") {
 					tests = append(tests, d.Name.Name)
 				}
 				o, u := scanUpward(d.Body)
@@ -593,7 +578,31 @@ func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
 			t.Errorf("%s reaches %q, want %q", name, got[name], paths)
 		}
 	}
-	if !covered("backend/migrations/0001.sql", []string{"backend/migrations"}) || covered("backend/migrations2/x", []string{"backend/migrations"}) {
+	if !beforereadylist.Covered("backend/migrations/0001.sql", []string{"backend/migrations"}) || beforereadylist.Covered("backend/migrations2/x", []string{"backend/migrations"}) {
 		t.Error("covered must take a directory and what is under it, not a name that starts the same")
+	}
+}
+
+// hintPath matches a repository path written in a regenerate command or a reason: under a
+// top-level directory of the backend module or of the repository.
+var hintPath = regexp.MustCompile(`(?:\./)?(?:internal|cmd|backend|proto|docs|migrations)/[A-Za-z0-9_./-]+`)
+
+// TestBeforeReadyHintsNamePathsThatExist keeps the hints honest: a failure prints the fourth
+// column next to the failed test, and a path in it that moved (a file named under a directory
+// it is not in) sends the reader to nothing. A path is read from backend/ or from the
+// repository root.
+func TestBeforeReadyHintsNamePathsThatExist(t *testing.T) {
+	t.Parallel()
+	for _, l := range readBeforeReady(t) {
+		for _, p := range hintPath.FindAllString(l.Last, -1) {
+			p = strings.TrimPrefix(strings.TrimRight(p, ".,)"), "./")
+			if _, err := os.Stat(filepath.Join(backendRoot, filepath.FromSlash(p))); err == nil {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(backendRoot, "..", filepath.FromSlash(p))); err == nil {
+				continue
+			}
+			t.Errorf("%s:%d: the hint names %q, which exists neither under backend/ nor at the repository root: fix the path", beforeReadyFile, l.N, p)
+		}
 	}
 }

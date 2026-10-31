@@ -126,7 +126,7 @@ test: ## Run backend Go tests with the race detector
 # the lists of methods, error reasons and event kinds), run against the test database like
 # `make test`. The list and the command that regenerates each file are in
 # backend/internal/archtest/before_ready.txt. It runs the lines the change can affect; ALL=1 runs
-# every line. ONLY='internal/play$' (a regex on the package directory) narrows the lines to the
+# every line. ONLY='internal/play$' (a Go regex on the package directory) narrows the lines to the
 # packages whose directory matches.
 before-ready: ## Run the golden, frozen, fixture and inventory tests the change can make stale, or all of them with ALL=1 (needs MEURPG_TEST_DATABASE_URL); run it before writing `ready:`
 	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY='$(or $(ONLY),$(BEFORE_READY_ONLY))' BEFORE_READY_ALL='$(or $(ALL),$(BEFORE_READY_ALL))' bash .github/scripts/before-ready.sh

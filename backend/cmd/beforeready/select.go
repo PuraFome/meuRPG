@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"io"
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/PuraFome/meuRPG/backend/internal/archtest/beforereadylist"
 )
 
 const (
@@ -18,8 +18,6 @@ const (
 	genDir = backendDir + "/gen"
 	// errorReasons is the one file under proto/ that the tests read as data, not as a schema.
 	errorReasons = "proto/error-reasons.json"
-	// noInputs marks a line whose tests read nothing outside their own package and its imports.
-	noInputs = "-"
 )
 
 // everythingFiles are the files whose change makes every line run: the tool that selects and
@@ -33,41 +31,17 @@ var everythingFiles = []string{
 // everythingDirs are the directories whose change makes every line run.
 var everythingDirs = []string{backendDir + "/cmd/beforeready"}
 
-// Line is one `run` line of the list.
-type Line struct {
-	N      int      // line number in the file, for messages
-	Raw    string   // the whole line, to tell a changed line from an unchanged one
-	Pkg    string   // directory under backend/
-	Regex  string   // the -run regex
-	Regen  string   // the regenerate command
-	Inputs []string // paths from the repository root that the tests read outside their package
-}
+// Line is one `run` line of the list, as the shared parser reads it.
+type Line = beforereadylist.Line
 
-// ParseList reads the `run` lines of the list: `run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`.
-// helper lines, comments and blank lines are skipped.
+// ParseList reads the `run` lines of the list (`run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`)
+// with the parser the guard in internal/archtest uses; the helper lines are left out.
 func ParseList(r io.Reader) ([]Line, error) {
-	var lines []Line
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
-	for n := 1; sc.Scan(); n++ {
-		text := sc.Text()
-		if strings.TrimSpace(text) == "" || strings.HasPrefix(text, "#") || !strings.HasPrefix(text, "run\t") {
-			continue
-		}
-		cols := strings.Split(text, "\t")
-		const wantCols = 5
-		if len(cols) != wantCols {
-			return nil, fmt.Errorf("line %d: want `run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`, got %d columns", n, len(cols))
-		}
-		l := Line{N: n, Raw: text, Pkg: cols[1], Regex: cols[2], Regen: cols[3]}
-		if in := strings.TrimSpace(cols[4]); in != noInputs {
-			for _, p := range strings.Split(in, ",") {
-				l.Inputs = append(l.Inputs, strings.TrimSpace(p))
-			}
-		}
-		lines = append(lines, l)
+	all, err := beforereadylist.Parse(r)
+	if err != nil {
+		return nil, err
 	}
-	return lines, sc.Err()
+	return beforereadylist.RunLines(all), nil
 }
 
 // Facts is what the selection knows about the change and the module.
@@ -163,7 +137,7 @@ func whyFile(l Line, f Facts, file, self string, deps map[string]bool, pkg strin
 	case isProtoSchema(file) && importsGenerated(deps):
 		return file + " is a proto file, and the package imports the code generated from proto/"
 	}
-	if in := inputOf(l, file); in != "" {
+	if in := beforereadylist.Covering(l.Inputs, file); in != "" {
 		return file + " is an input of the line (" + in + ")"
 	}
 	return ""
@@ -194,16 +168,6 @@ func importsGenerated(deps map[string]bool) bool {
 		}
 	}
 	return false
-}
-
-// inputOf returns the input of the line that contains the file, or "".
-func inputOf(l Line, file string) string {
-	for _, in := range l.Inputs {
-		if file == in || strings.HasPrefix(file, strings.TrimSuffix(in, "/")+"/") {
-			return in
-		}
-	}
-	return ""
 }
 
 func whyEverything(file string) string {

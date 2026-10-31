@@ -1,67 +1,192 @@
 // Command beforeready chooses which lines of the before-ready list a change can affect
-// (docs/testing.md#before-ready). It compares the working tree with the merge base on
-// origin/main, finds the packages each line's tests import, and writes the list of the
-// lines to run. When it cannot tell, it selects every line.
+// (docs/testing.md#before-ready) and answers what .github/scripts/before-ready.sh needs to run
+// them, so the list is parsed in Go alone (internal/archtest/beforereadylist). It compares the
+// working tree with the merge base on origin/main, finds the packages each line's tests
+// import, and writes the list of the lines to run. When it cannot tell, it selects every line.
 //
-//	beforeready -list FILE -out FILE [-all]
+//	beforeready -list FILE -out FILE [-all] [-custom] [-only REGEX] [-base REV]
+//	beforeready -list FILE -packages
+//	beforeready -list FILE -regex-of PACKAGE
+//	beforeready -list FILE -regen-of PACKAGE -test NAME
 //
-// stdout says what runs and why, and what is skipped. -out is the list file to run: the
-// selected `run` lines (and the `helper` lines), in the format of the input.
+// The first form prints on stdout what runs and why, and what is skipped. -out is the list file
+// to run: the selected `run` lines (and the `helper` lines), in the format of the input; -only
+// is an RE2 regex on the package directory that narrows them (an invalid one exits 2); -custom
+// says the list is not the project's own, so every line of it runs. The other forms read that
+// -out file: the packages to test, the -run regex of one package, and the command that
+// regenerates the file of a failed test.
 package main
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/PuraFome/meuRPG/backend/internal/archtest/beforereadylist"
 )
 
+// exitUsage is the exit code of a refusal: bad flags, a list or pattern that cannot be read.
+const exitUsage = 2
+
 func main() {
-	listFlag := flag.String("list", "", "the before-ready list")
-	out := flag.String("out", "", "where to write the list of the lines to run")
-	all := flag.Bool("all", false, "run every line")
-	base := flag.String("base", "", "compare with this revision instead of the merge base with origin/main")
-	only := flag.String("only", "", "a regex on the package directory: report only the packages it matches")
-	flag.Parse()
-	if *listFlag == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "beforeready: -list and -out are required")
-		os.Exit(2)
+	os.Exit(realMain(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// realMain is main with its arguments and streams, and returns the exit code.
+func realMain(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("beforeready", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	listFlag := fs.String("list", "", "the before-ready list")
+	out := fs.String("out", "", "where to write the list of the lines to run")
+	all := fs.Bool("all", false, "run every line")
+	custom := fs.Bool("custom", false, "the list is not the project's own (BEFORE_READY_LIST): run every line of it")
+	base := fs.String("base", "", "compare with this revision instead of the merge base with origin/main")
+	only := fs.String("only", "", "an RE2 regex on the package directory: run only the packages it matches")
+	packagesQ := fs.Bool("packages", false, "print the packages of the run lines of -list, one per line")
+	regexQ := fs.String("regex-of", "", "print the -run regex of this package: the regexes of its lines joined by `|`")
+	regenQ := fs.String("regen-of", "", "print the command that regenerates the file of the failed -test of this package")
+	test := fs.String("test", "", "with -regen-of: the name of the failed test")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	fail := func(err error) int {
+		fmt.Fprintln(stderr, "beforeready:", err)
+		return exitUsage
+	}
+	if *listFlag == "" {
+		return fail(errors.New("-list is required"))
 	}
 	raw, err := os.ReadFile(*listFlag)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "beforeready:", err)
-		os.Exit(2)
+		return fail(err)
 	}
-	lines, err := ParseList(bytes.NewReader(raw))
+	parsed, err := beforereadylist.Parse(bytes.NewReader(raw))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "beforeready:", err)
-		os.Exit(2)
+		return fail(err)
 	}
+	lines := beforereadylist.RunLines(parsed)
 
-	facts, ferr := computeFacts(*listFlag, *base)
-	run, skipped, note := plan(lines, *all, facts, ferr)
-	if note != "" {
-		fmt.Println(note)
+	switch {
+	case *packagesQ:
+		for _, p := range Packages(All(lines, "")) {
+			fmt.Fprintln(stdout, p)
+		}
+		return 0
+	case *regexQ != "":
+		re := regexOf(lines, *regexQ)
+		if re == "" {
+			return fail(fmt.Errorf("no line for the package %q", *regexQ))
+		}
+		fmt.Fprintln(stdout, re)
+		return 0
+	case *regenQ != "":
+		fmt.Fprintln(stdout, regenFor(lines, *regenQ, *test))
+		return 0
+	case *out == "":
+		return fail(errors.New("-out is required"))
 	}
-	if err := os.WriteFile(*out, []byte(filtered(string(raw), run)), 0o600); err != nil {
-		fmt.Fprintln(os.Stderr, "beforeready:", err)
-		os.Exit(2)
+	o := options{list: *listFlag, out: *out, only: *only, base: *base, all: *all, custom: *custom}
+	if err := selectLines(o, lines, raw, stdout); err != nil {
+		return fail(err)
 	}
-	report(run, skipped, *only)
+	return 0
 }
 
-// plan chooses the lines to run. It runs every line when all is set and when the facts could
-// not be computed (ferr): never nothing for lack of knowledge. note says so.
-func plan(lines []Line, all bool, f Facts, ferr error) (run []Decision, skipped []Line, note string) {
+// options are the flags of the selection.
+type options struct {
+	list, out, only, base string
+	all, custom           bool
+}
+
+// selectLines chooses the lines to run, writes them to o.out and says what runs and why.
+func selectLines(o options, lines []Line, raw []byte, stdout io.Writer) error {
+	onlyRe, err := compileOnly(o.only, lines)
+	if err != nil {
+		return err
+	}
+	customList := ""
+	if o.custom {
+		customList = o.list
+	}
+	var facts Facts
+	var ferr error
+	if !o.all && !o.custom {
+		facts, ferr = computeFacts(o.list, o.base)
+	}
+	run, skipped, note := plan(lines, o.all, customList, facts, ferr)
+	if note != "" {
+		fmt.Fprintln(stdout, note)
+	}
+	selected := len(run)
+	run, skipped = within(run, onlyRe), withinLines(skipped, onlyRe)
+	if err := os.WriteFile(o.out, []byte(filtered(string(raw), run)), 0o600); err != nil {
+		return err
+	}
+	report(stdout, run, skipped, selected, o.only)
+	return nil
+}
+
+// compileOnly compiles the BEFORE_READY_ONLY regex (RE2, like every regex of the Go tool: a
+// pattern it cannot read is an error, never a filter dropped in silence) and checks that it
+// matches a package of the list. An empty pattern is no filter: nil.
+func compileOnly(only string, lines []Line) (*regexp.Regexp, error) {
+	if only == "" {
+		return nil, nil
+	}
+	re, err := regexp.Compile(only)
+	if err != nil {
+		return nil, fmt.Errorf("BEFORE_READY_ONLY %q is not a valid regex (RE2 syntax): %w", only, err)
+	}
+	if len(within(All(lines, ""), re)) == 0 {
+		return nil, fmt.Errorf("BEFORE_READY_ONLY %q matches no package of the list", only)
+	}
+	return re, nil
+}
+
+// regexOf returns the -run regex of one package: the regexes of its lines, each in a group,
+// joined by `|`. "" when the package has no line.
+func regexOf(lines []Line, pkg string) string {
+	var parts []string
+	for _, l := range lines {
+		if l.Pkg == pkg {
+			parts = append(parts, "("+l.Regex+")")
+		}
+	}
+	return strings.Join(parts, "|")
+}
+
+// regenFor returns the command that rewrites the file of one failed test: the one of the first
+// line of its package whose regex matches the name, with {test} replaced by the name. "" when
+// no line matches.
+func regenFor(lines []Line, pkg, test string) string {
+	for _, l := range lines {
+		if l.Pkg == pkg && l.Re.MatchString(test) {
+			return strings.ReplaceAll(l.Last, "{test}", test)
+		}
+	}
+	return ""
+}
+
+// plan chooses the lines to run. It runs every line when all is set, when the list is a custom
+// one (custom is its file: the selection by change reads the project's own list, so a custom
+// list runs whole) and when the facts could not be computed (ferr): never nothing for lack of
+// knowledge. note says why when it is not the plain BEFORE_READY_ALL.
+func plan(lines []Line, all bool, custom string, f Facts, ferr error) (run []Decision, skipped []Line, note string) {
 	switch {
 	case all:
 		return All(lines, "BEFORE_READY_ALL is set"), nil, ""
+	case custom != "":
+		note = fmt.Sprintf("before-ready: BEFORE_READY_LIST is set: running every line of %s (the selection by change reads only the project's own list)", custom)
+		return All(lines, "BEFORE_READY_LIST is a custom list"), nil, note
 	case ferr != nil:
 		note = fmt.Sprintf("before-ready: cannot tell which lines the change affects: %v\nbefore-ready: running every line", ferr)
 		return All(lines, "the selection could not be computed"), nil, note
@@ -77,7 +202,7 @@ func filtered(raw string, run []Decision) string {
 		keep[d.Line.Raw] = true
 	}
 	var b strings.Builder
-	for _, text := range strings.Split(raw, "\n") {
+	for _, text := range strings.Split(strings.TrimSuffix(raw, "\n"), "\n") {
 		if strings.HasPrefix(text, "run\t") && !keep[text] {
 			continue
 		}
@@ -86,13 +211,14 @@ func filtered(raw string, run []Decision) string {
 	return b.String()
 }
 
-func report(run []Decision, skipped []Line, only string) {
-	none := len(run) == 0
-	if re, err := regexp.Compile(only); only != "" && err == nil {
-		run, skipped = within(run, re), withinLines(skipped, re)
-	}
-	if none {
-		fmt.Println("before-ready: the change touches no Go package, proto file, migration or input of the list: nothing to run")
+// report says what runs and why, and what is skipped. selected is how many lines the selection
+// chose before -only narrowed them (only is that pattern, for the message).
+func report(w io.Writer, run []Decision, skipped []Line, selected int, only string) {
+	switch {
+	case selected == 0:
+		fmt.Fprintln(w, "before-ready: the change touches no Go package, proto file, migration or input of the list: nothing to run")
+	case len(run) == 0:
+		fmt.Fprintf(w, "before-ready: nothing to run: BEFORE_READY_ONLY '%s' matches none of the selected packages (BEFORE_READY_ALL=1 selects every line)\n", only)
 	}
 	byPkg := map[string][]string{}
 	for _, d := range run {
@@ -100,7 +226,7 @@ func report(run []Decision, skipped []Line, only string) {
 	}
 	for _, pkg := range Packages(run) {
 		reasons := dedupe(byPkg[pkg])
-		fmt.Printf("  run   %-28s %d line(s): %s\n", pkg, len(byPkg[pkg]), strings.Join(firstN(reasons, 2), "; "))
+		fmt.Fprintf(w, "  run   %-28s %d line(s): %s\n", pkg, len(byPkg[pkg]), strings.Join(firstN(reasons, 2), "; "))
 	}
 	skippedPkgs := map[string]bool{}
 	ran := map[string]bool{}
@@ -118,11 +244,15 @@ func report(run []Decision, skipped []Line, only string) {
 	}
 	sort.Strings(names)
 	if len(names) > 0 {
-		fmt.Printf("  skip  %s: the change reaches none of their lines (BEFORE_READY_ALL=1 runs them)\n", strings.Join(names, ", "))
+		fmt.Fprintf(w, "  skip  %s: the change reaches none of their lines (BEFORE_READY_ALL=1 runs them)\n", strings.Join(names, ", "))
 	}
 }
 
+// within keeps the decisions whose package the pattern matches; a nil pattern keeps all.
 func within(ds []Decision, re *regexp.Regexp) []Decision {
+	if re == nil {
+		return ds
+	}
 	var out []Decision
 	for _, d := range ds {
 		if re.MatchString(d.Line.Pkg) {
@@ -133,6 +263,9 @@ func within(ds []Decision, re *regexp.Regexp) []Decision {
 }
 
 func withinLines(ls []Line, re *regexp.Regexp) []Line {
+	if re == nil {
+		return ls
+	}
 	var out []Line
 	for _, l := range ls {
 		if re.MatchString(l.Pkg) {

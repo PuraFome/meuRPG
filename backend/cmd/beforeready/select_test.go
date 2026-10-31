@@ -230,11 +230,11 @@ func TestFiltered(t *testing.T) {
 func TestPlanRunsEverythingWhenItCannotTell(t *testing.T) {
 	t.Parallel()
 	lines, _ := setup(t)
-	run, skipped, note := plan(lines, false, Facts{}, errors.New("no merge base with origin/main"))
+	run, skipped, note := plan(lines, false, "", Facts{}, errors.New("no merge base with origin/main"))
 	if len(run) != len(lines) || len(skipped) != 0 || !strings.Contains(note, "running every line") {
 		t.Errorf("run %d of %d, skipped %d, note %q", len(run), len(lines), len(skipped), note)
 	}
-	run, _, note = plan(lines, true, Facts{}, nil)
+	run, _, note = plan(lines, true, "", Facts{}, nil)
 	if len(run) != len(lines) || note != "" {
 		t.Errorf("ALL: run %d of %d, note %q", len(run), len(lines), note)
 	}

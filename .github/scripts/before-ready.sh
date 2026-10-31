@@ -18,33 +18,32 @@
 # Environment:
 #   MEURPG_TEST_DATABASE_URL  required: the tests that need a database fail without it
 #   BEFORE_READY_JOBS         packages tested at once (default 4)
-#   BEFORE_READY_LIST         another list file, to try a few tests (same format)
+#   BEFORE_READY_LIST         another list file, to try a few tests (same format). Every line of it
+#                             runs, whatever the change, and the output says so
 #   BEFORE_READY_ALL          any value but empty or 0: run every line of the list, whatever the change
 #   BEFORE_READY_BASE         a revision to compare the working tree with, instead of the merge
 #                             base with origin/main (HEAD: only what is not committed yet)
-#   BEFORE_READY_ONLY         an extended regex: test only the packages whose directory
+#   BEFORE_READY_ONLY         a Go (RE2) regex: test only the packages whose directory
 #                             matches it (a rerun of what failed, e.g. 'internal/rules$'). It
-#                             narrows the selected lines, or every line with BEFORE_READY_ALL set
+#                             narrows the selected lines, or every line with BEFORE_READY_ALL set.
+#                             An invalid one, or one that matches no package, exits 2
 #
 # Bash 3.2 compatible (macOS's /bin/bash): no associative arrays, no mapfile, no wait -n.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-list="${BEFORE_READY_LIST:-$root/backend/internal/archtest/before_ready.txt}"
-tab="$(printf '\t')"
-
-# The tab-separated `run` lines of the list: package, regex, regenerate command.
-run_lines() { awk -F'\t' '$1 == "run" { print $2 "\t" $3 "\t" $4 }' "$list"; }
-
-# The -run regex of one package: the regexes of its lines joined by `|`.
-regex_of() { run_lines | awk -F'\t' -v pkg="$1" '$1 == pkg { printf "%s(%s)", sep, $2; sep = "|" }'; }
+default_list="$root/backend/internal/archtest/before_ready.txt"
+list="${BEFORE_READY_LIST:-$default_list}"
+list_shown="${list#"$root"/}"
 
 # One package: the mode xargs calls, so the packages run side by side and each keeps its
-# own output.
+# own output. $2 is the package, $3 the directory of the logs (which holds the tool, built
+# by the parent, that reads the lines to run from BEFORE_READY_LIST).
 if [ "${1:-}" = "--one" ]; then
   out="$3/$(echo "$2" | tr '/' '_').out"
   cd "$root/backend"
-  if go test -count=1 -timeout 45m -run "$(regex_of "$2")" "./$2" >"$out" 2>&1; then
+  regex="$("$3/beforeready" -list "$BEFORE_READY_LIST" -regex-of "$2")"
+  if go test -count=1 -timeout 45m -run "$regex" "./$2" >"$out" 2>&1; then
     echo 0 >"$out.status"
   else
     echo 1 >"$out.status"
@@ -53,32 +52,31 @@ if [ "${1:-}" = "--one" ]; then
 fi
 
 [ -r "$list" ] || { echo "before-ready: cannot read $list" >&2; exit 2; }
-only="${BEFORE_READY_ONLY:-.}"
-echo | grep -E -- "$only" >/dev/null 2>&1 || [ $? -eq 1 ] || { echo "before-ready: BEFORE_READY_ONLY '$only' is not a valid regex" >&2; exit 2; }
-run_lines | cut -f1 | sort -u | grep -E -- "$only" >/dev/null || { echo "before-ready: BEFORE_READY_ONLY matches no package of the list" >&2; exit 2; }
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 started="$(date +%s)"
 
-# The lines to run: the change decides (see the header), and a BEFORE_READY_ALL that is set
-# (not empty, not 0) takes them all. The children of --one read the chosen list through BEFORE_READY_LIST.
-all_flag=""
-case "${BEFORE_READY_ALL:-}" in "" | 0) ;; *) all_flag="-all" ;; esac
-# go run starts in backend/, so a relative list is made absolute here.
+# The tool reads the list, chooses the lines to run (see the header) and answers the rest of
+# the script: the packages, the -run regex of each and the regenerate command of a failure. A
+# BEFORE_READY_ALL that is set (not empty, not 0) takes every line, and so does a custom
+# BEFORE_READY_LIST (the change is compared on the project's own list). BEFORE_READY_ONLY is
+# applied there, as an RE2 regex: an invalid one, or one that matches no package, exits 2. The
+# children of --one read the chosen list through BEFORE_READY_LIST.
+flags=""
+case "${BEFORE_READY_ALL:-}" in "" | 0) ;; *) flags="-all" ;; esac
+[ -z "${BEFORE_READY_LIST:-}" ] || flags="$flags -custom"
+# go build starts in backend/, so a relative list is made absolute here.
 case "$list" in /*) ;; *) list="$PWD/$list" ;; esac
-if (cd "$root/backend" && go run ./cmd/beforeready -list "$list" -out "$tmp/selected.txt" -only "${BEFORE_READY_ONLY:-}" -base "${BEFORE_READY_BASE:-}" $all_flag); then
-  list="$tmp/selected.txt"
-else
-  echo "before-ready: the selection of the lines failed: running every line" >&2
-fi
+tool="$tmp/beforeready"
+(cd "$root/backend" && go build -o "$tool" ./cmd/beforeready) || { echo "before-ready: cannot build backend/cmd/beforeready" >&2; exit 2; }
+# shellcheck disable=SC2086 # $flags are words on purpose
+(cd "$root/backend" && "$tool" -list "$list" -out "$tmp/selected.txt" -only "${BEFORE_READY_ONLY:-}" -base "${BEFORE_READY_BASE:-}" $flags) || exit $?
+list="$tmp/selected.txt"
 export BEFORE_READY_LIST="$list"
 
-packages="$(run_lines | cut -f1 | sort -u | grep -E -- "$only" || true)"
-if [ -z "$packages" ]; then
-  [ "$only" = . ] || echo "before-ready: nothing to run: BEFORE_READY_ONLY '$only' matches none of the selected packages (BEFORE_READY_ALL=1 selects every line)"
-  exit 0
-fi
+packages="$("$tool" -list "$list" -packages)"
+[ -n "$packages" ] || exit 0
 count="$(echo "$packages" | wc -l | tr -d ' ')"
 
 if [ -z "${MEURPG_TEST_DATABASE_URL:-}" ]; then
@@ -99,19 +97,13 @@ fi
 # A test that needs the database fails instead of skipping when it is missing.
 export MEURPG_REQUIRE_DB=1
 
-echo "before-ready: running the golden, frozen, fixture and inventory tests of $count packages (backend/internal/archtest/before_ready.txt)"
-echo "$packages" | xargs -P "${BEFORE_READY_JOBS:-4}" -I{} bash "${BASH_SOURCE[0]}" --one {} "$tmp"
-
-# regen_for prints the command that rewrites the file of one failed test: the one of the
-# first `run` line of its package whose regex matches the name.
-regen_for() {
-  run_lines | awk -F'\t' -v pkg="$1" '$1 == pkg { print $2 "\t" $3 }' | while IFS="$tab" read -r re cmd; do
-    if echo "$2" | grep -Eq -- "$re"; then
-      echo "${cmd//\{test\}/$2}"
-      break
-    fi
-  done
-}
+echo "before-ready: running the golden, frozen, fixture and inventory tests of $count packages ($list_shown)"
+# A child that dies (killed, out of memory, no backend/ to enter) makes xargs exit non-zero: the
+# summary runs whatever it returns, and the package of that child has no result, which the
+# summary reports as FAILED.
+xargs_status=0
+echo "$packages" | xargs -P "${BEFORE_READY_JOBS:-4}" -I{} bash "${BASH_SOURCE[0]}" --one {} "$tmp" || xargs_status=$?
+[ "$xargs_status" -eq 0 ] || echo "before-ready: a test run ended abnormally (xargs exit $xargs_status): the summary follows" >&2
 
 failed=0
 for pkg in $packages; do
@@ -131,13 +123,13 @@ for pkg in $packages; do
   echo
   echo "=== FAILED: $pkg"
   cat "$out"
-  names="$(grep -E '^--- FAIL: ' "$out" | awk '{print $3}' | sort -u || true)"
+  names="$(grep -E '^--- FAIL: ' "$out" | sed 's/^--- FAIL: \([^ ]*\).*/\1/' | sort -u || true)"
   if [ -z "$names" ]; then
     echo "--- $pkg failed without a failed test (it did not build, panicked or timed out): read the output above."
     continue
   fi
   for name in $names; do
-    cmd="$(regen_for "$pkg" "$name")"
+    cmd="$("$tool" -list "$list" -regen-of "$pkg" -test "$name")"
     echo "--- $pkg $name"
     if [ -n "$cmd" ]; then
       echo "    regenerate, only if the change is intended: $cmd"
