@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { changedLines, mapDiff, playwrightTests, sample, titleOf } from './flake-targets.mjs';
+import { changedLines, mapDiff, playwrightHooks, playwrightTests, sample, signinsOf } from './flake-targets.mjs';
 
 const spec = `import { test, expect } from '@playwright/test';
 import { openThing } from './thing-support';
@@ -112,11 +112,24 @@ test('changedLines reads the new-side ranges of a -U0 diff, a deletion as the li
   assert.deepEqual(changedLines(diff), { f: [[3, 3], [9, 9, true], [21, 23]] });
 });
 
-test('titleOf escapes a title and turns an interpolation into a wildcard', () => {
-  assert.deepEqual(titleOf("  test('first (1.5) test', async () => {"), { title: 'first (1.5) test', regex: 'first \\(1\\.5\\) test' });
-  assert.equal(titleOf('  test(`tema ${theme} passa`, async () => {').regex, 'tema .* passa');
-  assert.equal(titleOf('  test.describe(\'a group\', () => {'), null);
-  assert.equal(titleOf("  await expect(page).toHaveURL('/x');"), null);
+test('playwrightTests escapes a title and turns an interpolation into a wildcard, and skips groups and hooks', () => {
+  const [plain] = playwrightTests("test('first (1.5) test', async () => {});");
+  assert.deepEqual([plain.title, plain.regex], ['first (1.5) test', 'first \\(1\\.5\\) test']);
+  assert.equal(playwrightTests('test(`tema ${theme} passa`, async () => {});')[0].regex, 'tema .* passa');
+  assert.deepEqual(playwrightTests("test.describe('a group', () => { test.beforeEach(async () => {}); await expect(page).toHaveURL('/x'); });"), []);
+});
+
+test('a test header that Prettier wraps over several lines is found', () => {
+  const wrapped = "test(\n  'um título tão comprido que o Prettier quebra a chamada em várias linhas',\n  { tag: '@MR-001' },\n  async ({ page }) => {\n    await page.goto('/');\n  },\n);\n";
+  assert.deepEqual(playwrightTests(wrapped).map((t) => [t.title, t.from, t.to]), [['um título tão comprido que o Prettier quebra a chamada em várias linhas', 1, 7]]);
+});
+
+test('test.only counts as a test; test.skip, test.fixme and test.step do not', () => {
+  assert.deepEqual(playwrightTests("test.only('a', async () => {});\ntest.skip('b', async () => {});\ntest.step('c', async () => {});").map((t) => t.title), ['a']);
+});
+
+test('playwrightHooks finds beforeEach and beforeAll', () => {
+  assert.equal(playwrightHooks("test.describe('g', () => {\n  test.beforeEach(async ({ page }) => {\n    await signIn(page);\n  });\n});").length, 1);
 });
 
 test('playwrightTests finds each test, one-line ones too, and not the describe', () => {
@@ -224,4 +237,18 @@ test('signinsOf counts a closure that signs in, or /auth/login, as a heavy test'
   assert.equal(signinsOf(test3.body), 3);
   assert.equal(signinsOf("await page.goto('/auth/login?return_to=x');"), 3);
   assert.equal(signinsOf('await page.goto("/");'), 0);
+});
+
+test('signinsOf counts a sign-in through a helper, and a hook of the file reaches its tests', () => {
+  assert.equal(signinsOf('await asMaster(page);', ['signIn', 'asMaster']), 3);
+  assert.equal(signinsOf('await asMaster(page);', ['signIn']), 0);
+});
+
+test('a test whose file signs in through a helper in beforeEach, or whose helper signs in, is heavy', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': "test.beforeEach(async ({ page }) => {\n  await asMaster(page);\n});\n\ntest('uses the hook', async ({ page }) => {\n  await page.goto('/');\n});\n",
+    'e2e/tests/x-support.ts': "export async function asMaster(page: Page): Promise<void> {\n  await signIn(page);\n}\n\nexport async function signIn(page: Page): Promise<void> {\n  await page.goto('/auth/login');\n}\n",
+  };
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 5, 6), read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.equal(got.playwright[0].signins, 3);
 });

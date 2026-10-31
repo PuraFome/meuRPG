@@ -1,7 +1,8 @@
 # flake-check: does a test fail without the train, and does the train make it fail more often?
 #
-# Run by hand (workflow_dispatch) on the fork (vfraga/meuRPG), where the train branches and main are, so it never
-# competes with a train's gate for the upstream runners. It runs one test, many times, on the head ref and on the
+# Run by hand (workflow_dispatch) on the fork (vfraga/meuRPG), so it never competes with a train's gate for the
+# upstream runners. The fork holds a train branch only once it is pushed there: `git push fork refactor/train-<n>`
+# before the dispatch. It runs one test, many times, on the head ref and on the
 # base ref, each side on its own runners, and writes the counts and the first error line of each failure to the job
 # summary and to the `flake-check` artifact. See docs/ci.md, "Flaky tests", for how to dispatch it and read it.
 #

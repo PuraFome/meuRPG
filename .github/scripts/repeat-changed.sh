@@ -92,6 +92,7 @@ for chunk in "${chunks[@]}"; do
       fi
       spent=$(( spent + cost ))
     fi
+    started=$(date +%s)
     if [ "$kind" = playwright ]; then
       E2E_COLOR_SCHEME="$field" timeout --kill-after=15 "$left_s" \
         npx playwright test "$file" --grep "$regex" --repeat-each="$n" --max-failures=1
@@ -100,12 +101,15 @@ for chunk in "${chunks[@]}"; do
         go test -race -count="$n" -failfast -timeout 30m -run "$regex" "$field"
     fi
     code=$?
+    # Only a timeout is "cut off": 124, or 137 once the --kill-after had to kill the run at its time limit. A 137
+    # (SIGKILL) before the limit is something else, usually the kernel's out-of-memory kill: a failure.
+    if [ "$code" -eq 137 ] && [ $(( $(date +%s) - started )) -ge "$left_s" ]; then code=124; fi
     [ "$code" -ne 0 ] && break
   done
   echo "::endgroup::"
   case "$code" in
     0) passed+=("$label") ;;
-    124 | 137) cut+=("$label") ;;
+    124) cut+=("$label") ;;
     *)
       failed+=("$label")
       # The next chunk's run empties test-results/ and playwright-report/: keep this one's traces and report.

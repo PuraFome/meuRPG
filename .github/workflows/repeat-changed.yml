@@ -52,6 +52,10 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Install TypeScript (the compiler API reads the specs; no install scripts)
+        working-directory: e2e/lint
+        run: npm ci --ignore-scripts
+
       - name: Map the diff to tests
         id: map
         shell: bash

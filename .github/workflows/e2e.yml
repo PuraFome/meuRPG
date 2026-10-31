@@ -8,22 +8,8 @@
 name: e2e
 
 on:
+  # No paths filter: the `plan` job selects, so a train (refactor/train-*) always runs the full gate.
   pull_request:
-    # Everything that goes into the stack or the tests. Docs-only changes
-    # (docs/, any .md file) do not run the e2e tests.
-    paths:
-      - "backend/**"
-      - "proto/**"
-      - "web/**"
-      - "e2e/**"
-      - "deploy/local/**"
-      - ".dockerignore"
-      - "Makefile"
-      - ".github/workflows/e2e.yml"
-      - ".github/scripts/e2e-no-retries.sh"
-      - ".github/actions/**"
-      - ".node-version"
-      - "!**/*.md"
   push:
     branches: [main]
     paths:
@@ -58,15 +44,17 @@ permissions:
   contents: read
 
 jobs:
-  # Chooses the Playwright shards. The plain shards always run. The slow
-  # accessibility (@a11y) shards run on main, the nightly and manual runs, and
-  # on a pull request only when it touches what they scan: the web app, the
-  # tests or the stack. Other pull requests get the fast signal.
+  # Chooses what runs (docs/ci.md, "What runs when"). `run`: the workflow at all, for a change to what it judges. The
+  # plain shards then always run; the slow accessibility (@a11y) shards run on a train (refactor/train-*), main, the
+  # nightly and manual runs, and on a pull request only when it touches what they scan: the web app, the tests or the
+  # stack. Other pull requests get the fast signal. On a fork only pull requests and manual runs run.
   plan:
     name: plan (which shards run)
+    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
+      run: ${{ steps.run.outputs.run }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Checkout
@@ -76,21 +64,28 @@ jobs:
           # The whole history: the diff against the base branch needs it.
           fetch-depth: 0
 
-      - name: Choose the shards
-        id: plan
+      - name: Is this workflow selected
+        id: run
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh run '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/|\.node-version$)' --ignore-md
+
+      - name: Are the accessibility shards selected
+        id: a11y
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh a11y '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.node-version$)'
+
+      - name: Choose the shards
+        id: plan
+        env:
+          A11Y: ${{ steps.a11y.outputs.a11y }}
         run: |
-          a11y=true
-          if [ "$EVENT" = pull_request ]; then
-            changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if grep -Eq '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.node-version$)' <<<"$changed"; then
-              a11y=true
-            else
-              a11y=false
-            fi
-          fi
+          a11y="$A11Y"
           matrix=$(jq -nc --argjson a11y "$a11y" '
             [range(1; 4) | {part: "\(.)/3", args: "--grep-invert @a11y --shard=\(.)/3"}]
             + (if $a11y then [range(1; 7) | {part: "a11y \(.)/6", args: "--grep @a11y --shard=\(.)/6"}] else [] end)
@@ -105,6 +100,8 @@ jobs:
   # fails. It has its own small package (e2e/lint) because ESLint's TypeScript
   # support needs TypeScript 5.x, while the tests type-check with TypeScript 7.
   lint:
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
     name: lint and typecheck
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -150,6 +147,8 @@ jobs:
   # It also fails fast on a broken Dockerfile, before any shard starts, and it
   # is the Dockerfile smoke test the backend workflow's go job used to do.
   image:
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
     name: images (production image and devidp)
     runs-on: ubuntu-26.04
     timeout-minutes: 15
@@ -182,6 +181,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs: [image, plan]
+    if: ${{ needs.plan.outputs.run == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -274,9 +274,12 @@ jobs:
         run: |
           body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
           gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          # This workflow's own issue, by its exact title: another open ci-red issue is a different red.
+          title="CI vermelho: $WORKFLOW na main"
+          number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
           else
-            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+            gh issue create --label ci-red --title "$title" --body "$body"
           fi
