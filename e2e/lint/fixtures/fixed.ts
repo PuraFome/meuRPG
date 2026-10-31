@@ -66,7 +66,7 @@ export async function waitsInALaterStep(m: Page): Promise<void> {
   });
 }
 
-// Not Playwright's `Page`: an app type with the same name has no page to wait for.
+// Not Playwright's `Page`: an app type with the same name is not a Playwright action.
 export async function appTypeNamedPage(m: Page, results: AppPage): Promise<void> {
   await combatRPC(m, 'EndTurn');
   await results.click();
@@ -84,6 +84,7 @@ export async function registersAHandler(m: Page): Promise<void> {
   });
 }
 
+// A handler's own calls are a different moment from the test body.
 export async function callsInsideAHandler(m: Page): Promise<void> {
   await m.route('**/rpc', async () => {
     await combatRPC(m, 'EndTurn');
@@ -106,6 +107,7 @@ export async function exposesAFunction(m: Page): Promise<void> {
   });
 }
 
+// A step nobody awaits does not run before what follows it.
 export async function startsAStepWithoutAwaiting(m: Page): Promise<void> {
   void step('later', async () => {
     await combatRPC(m, 'EndTurn');
