@@ -344,6 +344,26 @@ describe('ClassEditor', () => {
     expect(save.mock.calls[0][2].value.casting.startLevel).toBe(3);
   });
 
+  it('keeps "Mais opções" open when the start level is typed wrong and then fixed, also when the person opened it', async () => {
+    const { fixture, el } = setup();
+    (
+      Array.from(el.querySelectorAll('app-segmented input')).find(
+        (i) => (i as HTMLInputElement).value === 'full',
+      ) as HTMLInputElement
+    ).dispatchEvent(new Event('change'));
+    await settle(fixture, 3);
+    const start = field(el, 'table_class.casting.start_level') as HTMLInputElement;
+    const more = start.closest('details') as HTMLDetailsElement;
+    more.open = true;
+    type(start, '1a');
+    await settle(fixture, 3);
+    expect(more.open).toBe(true);
+    type(start, '1');
+    await settle(fixture, 3);
+    expect(text(start.closest('app-text-field')!)).not.toContain('Escreva um número inteiro');
+    expect(more.open).toBe(true);
+  });
+
   it('says "Esta classe tem 61" when the server refuses the 61st feature', async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(refusal(['table_class.levels[0].features[0]', 'limit']));

@@ -4,6 +4,8 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
+  TableContentBlockedReason,
+  TableContentBlockedSchema,
   TableContentRefusalSchema,
   TableContentViolationSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -15,6 +17,18 @@ function refusal(field: string): ConnectError {
       desc: TableContentRefusalSchema,
       value: create(TableContentRefusalSchema, {
         violations: [create(TableContentViolationSchema, { field, reason: 'bad_formula' })],
+      }),
+    },
+  ]);
+}
+
+function staleError(): ConnectError {
+  return new ConnectError('x', Code.Aborted, undefined, [
+    {
+      desc: TableContentBlockedSchema,
+      value: create(TableContentBlockedSchema, {
+        reason: TableContentBlockedReason.STALE,
+        key: 'race:corujeiro@mesa',
       }),
     },
   ]);
@@ -51,6 +65,19 @@ describe('EntrySaver.blockOn', () => {
     expect(saver.issues('x.y')).toEqual([]);
     expect(saver.summary()).toBe('');
     expect(saver.placement().fields).toEqual([]);
+  });
+});
+
+describe('EntrySaver.blockOn and a stale entry', () => {
+  it('keeps the stale banner: the entry stays out of date until it is reloaded', async () => {
+    const saver = new EntrySaver({ aOne: 'uma raça' }, 'a raça');
+    await saver.run(
+      () => Promise.reject(staleError()),
+      () => true,
+    );
+    expect(saver.stale()).toBe(true);
+    expect(saver.blockOn(['a.b'], () => undefined)).toBe(true);
+    expect(saver.stale()).toBe(true);
   });
 });
 

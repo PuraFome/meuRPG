@@ -6,10 +6,11 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters } from '../units';
+import { feetToMeters, metersToFeet } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
 import { visibleFields } from './effect-visible';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
+import { WHOLE_MAX } from './whole-number';
 
 export type { EffectDraft, EffectInit } from './effect-draft.types';
 export { onlyProficientApplies, rangeFeet, splitTags } from './effect-writers';
@@ -289,14 +290,18 @@ export function rangeMeters(ft: number): string {
   return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
 }
 
-/** Whether a range field holds something that is not a number of metres (empty is fine: it means none). */
+/** Whether a range field holds something that is not a number of metres the server can store (empty is fine: it means none). The text is
+ * a plain decimal ("18", "4,5"), and its feet are a whole number within int32. */
 export function unreadableRange(text: string): boolean {
   const t = text.trim();
   if (t === '') {
     return false;
   }
-  const n = Number(t.replace(',', '.'));
-  return !Number.isFinite(n) || n < 0;
+  if (!/^\d+([.,]\d+)?$/.test(t)) {
+    return true;
+  }
+  const ft = metersToFeet(Number(t.replace(',', '.')));
+  return !Number.isSafeInteger(ft) || ft > WHOLE_MAX;
 }
 
 /** "text_pt" → "textPt": the draft's key for a proto field. */

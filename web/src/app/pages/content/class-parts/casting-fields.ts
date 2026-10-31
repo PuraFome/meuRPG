@@ -311,9 +311,16 @@ export class CastingFields {
       ? 'Elas se juntam às magias da mesa que citam esta classe.'
       : 'Esta classe usa a lista de outra classe. Para ter magias próprias, escolha "A própria lista da classe".',
   );
-  /** "Mais opções" starts open when something in it was refused or is not the default. */
+  /** Whether the start level's text was ever unreadable: once it opened the panel, fixing the text must not close it. */
+  private readonly startWasBad = signal(false);
+  /** "Mais opções" starts open when something in it was refused by the server, and opens when the start level's text cannot be read.
+   * It never closes a panel the person has open. */
   protected readonly moreOpen = computed(
-    () => this.startIssues().length + this.issuesOf()(this.basePath() + '.prepared_max').length > 0,
+    () =>
+      this.startWasBad() ||
+      this.issuesOf()(this.basePath() + '.start_level').length +
+        this.issuesOf()(this.basePath() + '.prepared_max').length >
+        0,
   );
 
   protected withoutSpell(key: string): string[] {
@@ -339,6 +346,9 @@ export class CastingFields {
   protected setStart(text: string): void {
     const n = readWhole(text, false);
     this.startTyped.set(text === wholeText(n) ? '' : text);
+    if (Number.isNaN(n)) {
+      this.startWasBad.set(true);
+    }
     this.patch.emit({ startLevel: n });
   }
 
