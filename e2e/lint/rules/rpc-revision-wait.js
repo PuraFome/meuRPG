@@ -32,10 +32,10 @@ const ACTIONS = new Set([
   'setInputFiles',
   'clear',
 ]);
-// A wait, or a load: a page that loads after the call reads the state itself.
 /** An RPC helper that waits on the pages in its last argument. */
 const WAITING_RPC = 'passTurnsToAndWait';
-const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab', 'openLive', 'passTurnsToAndWait']);
+// A wait, or a load: a page that loads after the call reads the state itself.
+const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab', 'openLive', WAITING_RPC]);
 // The receivers whose methods are page actions.
 const PLAYWRIGHT_TYPES = new Set(['Locator', 'Page', 'Keyboard', 'Mouse', 'Touchscreen']);
 // A read changes nothing on the server: there is no change for the page to show.

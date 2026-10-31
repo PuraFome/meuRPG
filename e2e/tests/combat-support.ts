@@ -312,6 +312,7 @@ export async function passTurnsTo(master: Page, campaignId: string, label: strin
 
 /**
  * `passTurnsTo`, then waits until `pages` show the change: the page the next action uses (both, `[m, p]`, if both act).
+ * `pages` are on the session; a page outside it throws.
  * Use it whenever a page acts next; `passTurnsTo` alone is for a spec that reads the state over RPC or looks at the moment before the page sees the change.
  */
 export async function passTurnsToAndWait(master: Page, campaignId: string, label: string, pages: Page | Page[]): Promise<Encounter> {
