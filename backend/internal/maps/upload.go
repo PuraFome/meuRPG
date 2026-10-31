@@ -123,9 +123,11 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request) (mapsdb.Gallery
 	// time to send the file starts when its turn does, and is shorter than
 	// the upload's whole: the slot is not held for a trickle.
 	//
-	// The upload's own deadline does not count the wait for the slot: the
-	// client's time to send the file starts with the slot's turn. If the wait
-	// fails, the deadline it had stays armed for the body that is left.
+	// The form's deadline, set on the first line, keeps running during this
+	// wait; the slot's ReadBody below replaces it once the slot is held, so the
+	// client's time for the file starts with the slot's turn (on a body that
+	// has already ended, it does nothing). If the wait fails, the form's
+	// deadline is the one left armed for the body that is unread.
 	release, err := s.acquireProcessing(ctx)
 	if err != nil {
 		return mapsdb.GalleryImage{}, err

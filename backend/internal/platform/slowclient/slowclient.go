@@ -59,10 +59,12 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 }
 
 // ReadBody gives the request body d to arrive, and the body disarms the
-// deadline itself: the first Read that returns io.EOF clears it. Call it before
-// reading the body, in a handler that is not a stream, as early as the
-// handler's first line: a path that returns with the body unread (a refusal, a
-// form that is wrong) leaves the deadline armed, with no call to remember.
+// deadline itself: the first Read that returns io.EOF ends it. Call it before
+// reading the body, in a handler that is not a stream, before any refusal that
+// returns with the body unread (a missing session, a rate limit, a wrong media
+// type, a form that is wrong): such a path leaves the deadline armed, with no
+// call to remember. A handler that limits the body wraps it first, so that the
+// deadline body stays the outermost one (see below).
 //
 // The deadline is what ends a client that goes on trickling after the handler
 // has answered: the server has no ReadTimeout, and when a handler returns with
@@ -74,10 +76,11 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 // At the end of the body the deadline has nothing left to bound, and it is
 // harmful: net/http starts a background read there (how it notices a client
 // that left), the deadline fires on that read, and the request's context is
-// canceled while the handler still decodes or stores what it read. That is why
-// the clearing belongs to the body and not to each handler. Only the end of the
-// body clears it: an error (a body over its limit, a deadline that fired) leaves
-// it armed.
+// canceled while the handler still decodes or stores what it read. net/http
+// itself clears the connection's deadline when it starts that read; what the
+// body adds is the record that it ended, which keeps a later ReadBody from
+// arming a deadline after that point. Only the end of the body ends it: an
+// error (a body over its limit, a deadline that fired) leaves it armed.
 //
 // Called again on the same request while the body is still unread, ReadBody
 // gives the rest of the body a new d, which a handler uses when a wait that is
@@ -116,6 +119,9 @@ func (b *readBody) Read(p []byte) (int, error) {
 	n, err := b.ReadCloser.Read(p)
 	if err == io.EOF && !b.ended {
 		b.ended = true
+		// Defensive: net/http has cleared the deadline in this same Read when
+		// it started its background read; this keeps the rule true should a
+		// server not do it.
 		_ = b.rc.SetReadDeadline(time.Time{})
 	}
 	return n, err
