@@ -243,7 +243,7 @@ func TestPlanRunsEverythingWhenItCannotTell(t *testing.T) {
 func TestComputeFactsOutsideAGitTreeFails(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("GIT_CEILING_DIRECTORIES", "/")
-	if _, err := computeFacts("none"); err == nil {
+	if _, err := computeFacts("none", ""); err == nil {
 		t.Error("computeFacts succeeded outside a git work tree")
 	}
 }

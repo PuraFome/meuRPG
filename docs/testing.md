@@ -142,6 +142,7 @@ When the selection cannot be computed (no merge base, no `origin/main`, `go list
 
 `BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change.
 `ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
+`BEFORE_READY_BASE=<revision>` compares the working tree with that revision instead of the merge base (`HEAD`: only what is not committed yet).
 `BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
 To measure a run, time it: `time make before-ready` for the default run, `time make before-ready ALL=1` for the whole list.
 

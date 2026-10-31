@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -24,6 +25,8 @@ func main() {
 	listFlag := flag.String("list", "", "the before-ready list")
 	out := flag.String("out", "", "where to write the list of the lines to run")
 	all := flag.Bool("all", false, "run every line")
+	base := flag.String("base", "", "compare with this revision instead of the merge base with origin/main")
+	only := flag.String("only", "", "a regex on the package directory: report only the packages it matches")
 	flag.Parse()
 	if *listFlag == "" || *out == "" {
 		fmt.Fprintln(os.Stderr, "beforeready: -list and -out are required")
@@ -40,7 +43,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	facts, ferr := computeFacts(*listFlag)
+	facts, ferr := computeFacts(*listFlag, *base)
 	run, skipped, note := plan(lines, *all, facts, ferr)
 	if note != "" {
 		fmt.Println(note)
@@ -49,7 +52,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "beforeready:", err)
 		os.Exit(2)
 	}
-	report(run, skipped)
+	report(run, skipped, *only)
 }
 
 // plan chooses the lines to run. It runs every line when all is set and when the facts could
@@ -82,8 +85,12 @@ func filtered(raw string, run []Decision) string {
 	return b.String()
 }
 
-func report(run []Decision, skipped []Line) {
-	if len(run) == 0 {
+func report(run []Decision, skipped []Line, only string) {
+	none := len(run) == 0
+	if re, err := regexp.Compile(only); only != "" && err == nil {
+		run, skipped = within(run, re), withinLines(skipped, re)
+	}
+	if none {
 		fmt.Println("before-ready: the change touches no Go package, proto file, migration or input of the list: nothing to run")
 	}
 	byPkg := map[string][]string{}
@@ -114,6 +121,26 @@ func report(run []Decision, skipped []Line) {
 	}
 }
 
+func within(ds []Decision, re *regexp.Regexp) []Decision {
+	var out []Decision
+	for _, d := range ds {
+		if re.MatchString(d.Line.Pkg) {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func withinLines(ls []Line, re *regexp.Regexp) []Line {
+	var out []Line
+	for _, l := range ls {
+		if re.MatchString(l.Pkg) {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
 func dedupe(in []string) []string {
 	seen := map[string]bool{}
 	var out []string
@@ -134,18 +161,21 @@ func firstN(in []string, n int) []string {
 }
 
 // computeFacts reads the change from git and the imports from go list.
-func computeFacts(listFile string) (Facts, error) {
+func computeFacts(listFile, rev string) (Facts, error) {
 	var f Facts
 	root, err := sh("", "git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return f, fmt.Errorf("not a git work tree: %w", err)
 	}
 	root = strings.TrimSpace(root)
-	base, err := sh(root, "git", "merge-base", "HEAD", "origin/main")
-	if err != nil {
-		return f, fmt.Errorf("no merge base with origin/main: %w", err)
+	base := rev
+	if base == "" {
+		mb, err := sh(root, "git", "merge-base", "HEAD", "origin/main")
+		if err != nil {
+			return f, fmt.Errorf("no merge base with origin/main: %w", err)
+		}
+		base = strings.TrimSpace(mb)
 	}
-	base = strings.TrimSpace(base)
 	diff, err := sh(root, "git", "diff", "--name-only", "--no-renames", base)
 	if err != nil {
 		return f, err

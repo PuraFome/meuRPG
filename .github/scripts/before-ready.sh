@@ -20,6 +20,8 @@
 #   BEFORE_READY_JOBS         packages tested at once (default 4)
 #   BEFORE_READY_LIST         another list file, to try a few tests (same format)
 #   BEFORE_READY_ALL          1: run every line of the list, whatever the change
+#   BEFORE_READY_BASE         a revision to compare the working tree with, instead of the merge
+#                             base with origin/main (HEAD: only what is not committed yet)
 #   BEFORE_READY_ONLY         an extended regex: test only the packages whose directory
 #                             matches it (a rerun of what failed, e.g. 'internal/rules$'). It
 #                             narrows the selected lines, or every line with BEFORE_READY_ALL=1
@@ -63,7 +65,7 @@ started="$(date +%s)"
 # children of --one read the chosen list through BEFORE_READY_LIST.
 all_flag=""
 [ "${BEFORE_READY_ALL:-}" = 1 ] && all_flag="-all"
-if (cd "$root/backend" && go run ./cmd/beforeready -list "$list" -out "$tmp/selected.txt" $all_flag); then
+if (cd "$root/backend" && go run ./cmd/beforeready -list "$list" -out "$tmp/selected.txt" -only "${BEFORE_READY_ONLY:-}" -base "${BEFORE_READY_BASE:-}" $all_flag); then
   list="$tmp/selected.txt"
 else
   echo "before-ready: the selection of the lines failed: running every line" >&2
