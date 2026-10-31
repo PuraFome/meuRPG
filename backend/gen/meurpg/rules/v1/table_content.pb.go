@@ -1725,14 +1725,19 @@ type TableOption struct {
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
 	// "metamagic", "fighting_style", "pact_boon", "hunters_prey", "defensive_tactics",
-	// "multiattack" or "superior_hunters_defense"). It never changes after the entry is
-	// created: it is in the key.
+	// "multiattack", "superior_hunters_defense" or "table_feature"). It never changes after the
+	// entry is created: it is in the key. The set "table_feature" joins the options of a table
+	// class or subclass feature (a table's maneuvers), named by `offered_by`.
 	Set string `protobuf:"bytes,3,opt,name=set,proto3" json:"set,omitempty"`
 	// What the option asks of the character; unset asks nothing. An option whose
 	// prerequisite is not met is listed in the choice, disabled, with what it lacks.
 	Prerequisite *OptionPrerequisite `protobuf:"bytes,4,opt,name=prerequisite,proto3" json:"prerequisite,omitempty"`
 	// At most 20.
-	Effects       []*TableEffect `protobuf:"bytes,5,rep,name=effects,proto3" json:"effects,omitempty"`
+	Effects []*TableEffect `protobuf:"bytes,5,rep,name=effects,proto3" json:"effects,omitempty"`
+	// The key of the table feature whose option list this option joins; required for the set
+	// "table_feature" and refused for any other. The feature is a class or subclass feature of
+	// the table that has options (its own list, so it has a choice of features).
+	OfferedBy     string `protobuf:"bytes,6,opt,name=offered_by,json=offeredBy,proto3" json:"offered_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1800,6 +1805,13 @@ func (x *TableOption) GetEffects() []*TableEffect {
 		return x.Effects
 	}
 	return nil
+}
+
+func (x *TableOption) GetOfferedBy() string {
+	if x != nil {
+		return x.OfferedBy
+	}
+	return ""
 }
 
 // OptionPrerequisite is what a table option asks for. Every one that is set must hold.
@@ -6880,13 +6892,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
 	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12E\n" +
 	"\fprerequisite\x18\x03 \x01(\v2!.meurpg.rules.v1.FeatPrerequisiteR\fprerequisite\x126\n" +
-	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xd2\x01\n" +
+	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf1\x01\n" +
 	"\vTableOption\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
 	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12\x10\n" +
 	"\x03set\x18\x03 \x01(\tR\x03set\x12G\n" +
 	"\fprerequisite\x18\x04 \x01(\v2#.meurpg.rules.v1.OptionPrerequisiteR\fprerequisite\x126\n" +
-	"\aeffects\x18\x05 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xdd\x01\n" +
+	"\aeffects\x18\x05 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\x12\x1d\n" +
+	"\n" +
+	"offered_by\x18\x06 \x01(\tR\tofferedBy\"\xdd\x01\n" +
 	"\x12OptionPrerequisite\x12B\n" +
 	"\vclass_level\x18\x01 \x01(\v2!.meurpg.rules.v1.OptionClassLevelR\n" +
 	"classLevel\x120\n" +

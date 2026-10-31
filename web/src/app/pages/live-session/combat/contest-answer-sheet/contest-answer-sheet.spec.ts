@@ -186,6 +186,31 @@ describe('ContestAnswerSheet (board W7-Xb 4)', () => {
     });
   });
 
+  it('follows the campaign’s dice mode: forced app offers only "Rolar no app" and sends no typed value', async () => {
+    const { el, button, settle } = setup(undefined, { diceMode: DiceMode.APP });
+    expect(button('Digitar o resultado')).toBeUndefined();
+    expect(el.querySelector('input[type="text"]')).toBeNull();
+    button('Rolar no app')!.click();
+    await settle();
+    expect(api.responded[0].input).toMatchObject({ die: { inApp: true } });
+  });
+
+  it('follows the campaign’s dice mode: forced physical offers only the typed entry and sends the face, never the total', async () => {
+    const { el, button, settle } = setup(undefined, { diceMode: DiceMode.PHYSICAL });
+    expect(button('Rolar no app')).toBeUndefined();
+    const field = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    field.value = '14';
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    button('Confirmar')!.click();
+    await settle();
+    // Acrobacia is +7, chosen first: 21 is never sent.
+    expect(api.responded[0].input).toMatchObject({
+      skill: ContestSkill.ACROBATICS,
+      die: { faces: [14] },
+    });
+  });
+
   it('asks for the two d20 when a skill rolls with advantage or disadvantage', async () => {
     const poisoned = skillOption({
       skill: ContestSkill.ACROBATICS,

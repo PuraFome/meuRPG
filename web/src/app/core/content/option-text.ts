@@ -17,6 +17,7 @@ export const OPTION_SET_WORDS: Readonly<Record<string, string>> = {
   defensive_tactics: 'Táticas defensivas',
   multiattack: 'Ataque múltiplo',
   superior_hunters_defense: 'Defesa superior do caçador',
+  table_feature: 'Opção de característica da mesa',
 };
 
 /** "Invocação mística", for a set's word; the word itself for one the app does not know. */

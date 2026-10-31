@@ -36,6 +36,7 @@ var optionSetDefs = []optionSetDef{
 	{"defensive_tactics", "Táticas defensivas", "As opções de Táticas Defensivas do patrulheiro.", []string{"feature:defensive-tactics"}},
 	{"multiattack", "Ataque múltiplo", "As opções de Ataque Múltiplo do patrulheiro.", []string{"feature:multiattack"}},
 	{"superior_hunters_defense", "Defesa superior do caçador", "As opções de Defesa Superior do Caçador do patrulheiro.", []string{"feature:superior-hunters-defense"}},
+	{"table_feature", "Opção de característica da mesa", "As opções de uma característica de classe ou subclasse da mesa (as manobras de uma subclasse).", nil},
 }
 
 // optionSetOf is the set with this name.
@@ -63,8 +64,10 @@ const MaxOptionRequires = 10
 // "option:<set>:<slug>@mesa" and Set is the same set the key names.
 type TableOption struct {
 	TableEntry
-	DescPT       []string
-	Set          string
+	DescPT []string
+	Set    string
+	// OfferedBy is the table feature whose options this one joins; only for the set "table_feature".
+	OfferedBy    string
 	Prerequisite TableOptionPrerequisite
 	Effects      []Effect
 }
@@ -123,6 +126,7 @@ func (b *overlayBuilder) addOption(o *TableOption, path string) error {
 	case keySet != o.Set:
 		c.at(key, path, ".set", ReasonValue, "the set is the one in the key (%q)", keySet)
 	}
+	b.checkOfferedBy(&c, o, path)
 	checkTextAt(&c, key, path, ".desc_pt", o.DescPT)
 	b.checkOptionPrerequisite(&c, o, path)
 	for i := range o.Effects {
@@ -134,10 +138,16 @@ func (b *overlayBuilder) addOption(o *TableOption, path string) error {
 		c.at(key, path, ".effects", ReasonLimit, "%d effects; the limit is %d per feature", len(o.Effects), MaxFeatureEffects)
 	}
 	if len(o.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: o.Effects, path: path, strict: b.strict[key]})
-		b.know(key, featureKind{owner: key})
-		b.declareResources(featureKind{owner: key}, o.Effects)
-		b.declareStates(key, key, o.Effects)
+		// An option of the set "table_feature" is read as an inline option of its feature is:
+		// it spends the resources and reads the states of the feature's entry and class.
+		home := featureKind{owner: key}
+		if o.Set == tableFeatureSet {
+			home = featureKind{owner: b.featureEntry[o.OfferedBy], class: b.featureClass[o.OfferedBy]}
+		}
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: home.owner, effects: o.Effects, path: path, strict: b.strict[key]})
+		b.know(key, home)
+		b.declareResources(home, o.Effects)
+		b.declareStates(key, home.owner, o.Effects)
 	}
 	if err := c.err(); err != nil {
 		return err
@@ -157,7 +167,11 @@ func (b *overlayBuilder) addOption(o *TableOption, path string) error {
 func (b *overlayBuilder) offerOption(o *TableOption, def optionSetDef) {
 	n := b.n
 	var offerers []string
-	for _, k := range def.Offerers {
+	candidates := def.Offerers
+	if o.Set == tableFeatureSet {
+		candidates = []string{o.OfferedBy}
+	}
+	for _, k := range candidates {
 		if n.features[k] != nil {
 			offerers = append(offerers, k)
 		}
@@ -179,6 +193,29 @@ func (b *overlayBuilder) offerOption(o *TableOption, def optionSetDef) {
 		}
 		n.features[k].Options = append(n.features[k].Options, o.Key)
 		n.offeredBy[o.Key] = append(n.offeredBy[o.Key], k)
+	}
+}
+
+// tableFeatureSet is the option set of the options of a table feature.
+const tableFeatureSet = "table_feature"
+
+// checkOfferedBy checks `offered_by`: the feature of the set "table_feature", a table class or subclass
+// feature that has an option list of its own, and nothing for any other set.
+func (b *overlayBuilder) checkOfferedBy(c *entryErrors, o *TableOption, path string) {
+	if o.Set != tableFeatureSet {
+		if o.OfferedBy != "" {
+			c.at(o.Key, path, ".offered_by", ReasonValue, "only the set %q has an offering feature", tableFeatureSet)
+		}
+		return
+	}
+	f := b.n.features[o.OfferedBy]
+	switch {
+	case o.OfferedBy == "":
+		c.at(o.Key, path, ".offered_by", ReasonReference, "the set %q needs the feature that offers the option", tableFeatureSet)
+	case !strings.HasPrefix(o.OfferedBy, featureKeyPrefix) || !strings.HasSuffix(o.OfferedBy, tableSuffix) || f == nil:
+		c.at(o.Key, path, ".offered_by", ReasonReference, "%q is not a class or subclass feature of the table", o.OfferedBy)
+	case len(f.Options) == 0:
+		c.at(o.Key, path, ".offered_by", ReasonReference, "%q has no choice of options to join", o.OfferedBy)
 	}
 }
 
