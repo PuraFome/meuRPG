@@ -119,6 +119,23 @@ func (s *Service) closeZoneWindows(ctx context.Context, c *combatTx, zoneID, rea
 	return nil
 }
 
+// closeCastZoneWindows closes the questions the zones of a cast had open: the cast is undone.
+func (s *Service) closeCastZoneWindows(ctx context.Context, c *combatTx, castID string) error {
+	zs, err := listZones(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, z := range zs {
+		if z.row.CastID != castID {
+			continue
+		}
+		if err := s.closeZoneWindows(ctx, c, z.row.ID, endByMaster); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // zoneSavePrompt is the question of a zone's saving throw for whoever answers it: the spell, the ability, what a
 // failure does (the type of the damage, never the dice) and the roll. The DC is the master's and the caster's own
 // player's.

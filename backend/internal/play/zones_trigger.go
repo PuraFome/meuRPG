@@ -43,6 +43,9 @@ type zoneCatch struct {
 	why   string
 	mark  string
 	round int32
+	// made is the event of the cast the catch belongs to (a catch at the cast): what the catch changes is
+	// written into it, so that the undo of the cast puts it back. nil for a catch outside a cast.
+	made *actionEvent
 }
 
 // spares says the zone leaves the creature alone: the caster and the caster's allies for the zones
@@ -126,9 +129,9 @@ func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 		return s.dealZoneDamage(ctx, c, k, saved)
 	case saved:
 	case k.z.def.kind == zoneProne:
-		return zoneDamageDealt{}, s.knockProne(ctx, c, k.who)
+		return zoneDamageDealt{}, s.knockProne(ctx, c, k)
 	default:
-		return zoneDamageDealt{}, s.restrainInZone(ctx, c, cs, k.z, owner, k.who)
+		return zoneDamageDealt{}, s.restrainInZone(ctx, c, cs, k, owner)
 	}
 	return zoneDamageDealt{}, nil
 }
@@ -234,14 +237,21 @@ const (
 )
 
 // knockProne knocks a creature prone: it stays so until it stands up.
-func (s *Service) knockProne(ctx context.Context, c *combatTx, who playdb.Combatant) error {
-	var h castHit
-	return s.giveCondition(ctx, c, who, condProne, &h)
+func (s *Service) knockProne(ctx context.Context, c *combatTx, k zoneCatch) error {
+	h := castHit{Target: k.who.ID}
+	if err := s.giveCondition(ctx, c, k.who, condProne, &h); err != nil {
+		return err
+	}
+	if k.made != nil && h.CondSet {
+		k.made.Hits = append(k.made.Hits, h)
+	}
+	return nil
 }
 
 // restrainInZone restrains a creature that failed its save against the zone, with the zone's effect, as the
 // failed save at the start of the turn of the web's effect does.
-func (s *Service) restrainInZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, z *zone, owner, who playdb.Combatant) error {
+func (s *Service) restrainInZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant) error {
+	z, who := k.z, k.who
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
 		return err
@@ -258,6 +268,10 @@ func (s *Service) restrainInZone(ctx context.Context, c *combatTx, cs []playdb.C
 	})
 	if err != nil {
 		return err
+	}
+	if k.made != nil { // in a cast: the cast's own event keeps the effects, for its undo
+		keepCastEffects(k.made, key, made)
+		return nil
 	}
 	return s.addedEvent(ctx, c, cs, made, key)
 }
@@ -316,4 +330,15 @@ func (s *Service) slowInZone(ctx context.Context, c *combatTx, cs []playdb.Comba
 		return err
 	}
 	return s.addedEvent(ctx, c, cs, made, spiritGuardiansSlowedKey)
+}
+
+// keepCastEffects writes the effects a catch at the cast put on creatures into the event of the cast.
+func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState) {
+	if made.Lasting == nil {
+		made.Lasting = &lastingEvent{Key: key, Change: "added"}
+	}
+	for _, r := range rows {
+		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
+		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
+	}
 }

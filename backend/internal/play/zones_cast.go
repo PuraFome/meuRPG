@@ -27,12 +27,12 @@ func (f *castFlow) affectZone(ctx context.Context, def zoneDef) error {
 	if err != nil || z == nil {
 		return err
 	}
-	return f.s.catchWhoIsInside(ctx, f.c, z)
+	return f.s.catchWhoIsInside(ctx, f.c, z, &f.out.made)
 }
 
 // catchWhoIsInside catches each creature standing in the area of a zone that has just been cast, when the zone
 // asks for it (Grease and Entangle): the ones that come in later are the business of the other triggers.
-func (s *Service) catchWhoIsInside(ctx context.Context, c *combatTx, z *zone) error {
+func (s *Service) catchWhoIsInside(ctx context.Context, c *combatTx, z *zone, made *actionEvent) error {
 	if !z.def.onCast {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (s *Service) catchWhoIsInside(ctx context.Context, c *combatTx, z *zone) er
 		if !placed(who) || !z.has(squareOfCombatant(who)) {
 			continue
 		}
-		if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyCast, mark: mark, round: c.enc.Round}, who.ID); err != nil {
+		if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyCast, mark: mark, round: c.enc.Round, made: made}, who.ID); err != nil {
 			return err
 		}
 	}
