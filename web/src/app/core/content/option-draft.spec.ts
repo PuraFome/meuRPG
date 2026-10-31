@@ -41,7 +41,11 @@ describe('the option form (MR-025)', () => {
   });
 
   it('keeps the offering feature of an option of a table feature through an edit', () => {
-    const draft = optionToDraft({ ...stored(), set: 'table_feature', offeredBy: 'feature:postura@mesa' });
+    const draft = optionToDraft({
+      ...stored(),
+      set: 'table_feature',
+      offeredBy: 'feature:postura@mesa',
+    });
     expect(draft.offeredBy).toBe('feature:postura@mesa');
     expect(draftToOption(draft, menu()).offeredBy).toBe('feature:postura@mesa');
   });
