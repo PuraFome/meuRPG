@@ -6,6 +6,8 @@ import {
   type CastingDraft,
   type ClassDraft,
   type GridColumns,
+  type LevelFeature,
+  classFeatureBase,
   LEVEL_COUNT,
   type RowDraft,
   classFeaturePaths,
@@ -15,7 +17,11 @@ import {
 } from '../../../core/content/class-draft';
 import type { ViolationContext } from '../../../core/content/content-violations';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
-import { ABILITY_FIELDS, type AbilityField } from '../../../core/content/feature-draft';
+import {
+  ABILITY_FIELDS,
+  type AbilityField,
+  unreadableFeaturePaths,
+} from '../../../core/content/feature-draft';
 import type { SelectOption } from '../../../shared/form-fields/select-field';
 import type { GridChip, GridEdit, GridRowVm } from '../../../shared/level-grid/level-grid';
 
@@ -325,4 +331,14 @@ export function subclassesOf(entries: readonly TableEntry[], classKey: string): 
   return classKey
     ? entries.filter((e) => e.body.case === 'tableSubclass' && e.body.value.classKey === classKey)
     : [];
+}
+
+/** The paths of the number fields, in every feature of a class, whose text is no whole number. */
+export function unreadableClassPaths(
+  features: readonly LevelFeature[],
+  menu: EffectMenuVm,
+): string[] {
+  return features.flatMap((f, i) =>
+    unreadableFeaturePaths(classFeatureBase(features, i), f.feature, menu),
+  );
 }
