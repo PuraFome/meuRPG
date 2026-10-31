@@ -79,6 +79,10 @@ export function openRevivifySheet(
   });
 }
 
+/** The notice of a target that waits for the master, as the live region says it. */
+const WAITS_MASTER_TEXT =
+  'O mestre confirma que faz menos de 1 minuto. Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.';
+
 /**
  * "Revivificar" (SRD 5.1, Revivify), the player's cast in three steps: **Alvo** (who died nearby and the spell can
  * still reach: nothing else is listed, and no reason for who is missing), **Confirmar** (the slot and the action it
@@ -89,10 +93,6 @@ export function openRevivifySheet(
  * A refused target is always the same sentence. Focus goes to the title at each step, so a screen reader reads where
  * it is; the results are `role="status"`.
  */
-/** The notice of a target that waits for the master, as the live region says it. */
-const WAITS_MASTER_TEXT =
-  'O mestre confirma que faz menos de 1 minuto. Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.';
-
 @Component({
   selector: 'app-revivify-sheet',
   imports: [MatButtonModule, MatIconModule, SheetFrame],

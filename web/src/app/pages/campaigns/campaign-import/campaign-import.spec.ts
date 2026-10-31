@@ -648,6 +648,9 @@ describe('CampaignImportPage', () => {
       expect(text(el)).toContain(
         'Você já tem 7 campanhas. Este é o limite por conta. Apague uma campanha que você não usa mais e envie o pacote de novo.',
       );
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toBe(
+        'Você já tem 7 campanhas. Este é o limite por conta. Apague uma campanha que você não usa mais e envie o pacote de novo.',
+      );
       expect(control(el, 'Voltar às campanhas')?.getAttribute('href')).toBe('/campaigns');
       expect(control(el, 'Tentar de novo')).toBeUndefined();
       expect(uploader.sent).toEqual([]);

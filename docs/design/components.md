@@ -22,7 +22,9 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-nudge`, `.mr-nudge--still` | The half-second shake of the turn panel (`SHAKE_MS` in `core/combat/turn-alert.ts`); `--still` is the static 2 px outline used under reduced motion |
 | `[data-ring]` | Gives the focus ring to an element the app focused (`core/creatures/focus-ring.ts`) |
 
-A notice that stops what the person is doing is `--danger` with `role="alert"` (the combat launch notice). A polite notice is said by a live region that is on the page before its text: the wrapper rule above, or the screen's own hidden live region, as the campaign import does.
+A notice that stops what the person is doing is `--danger` with `role="alert"` (the combat launch notice).
+A polite notice is said by a live region that is on the page before its text: the wrapper rule above, or the screen's own hidden live region.
+The campaign import says its `--danger` cards that way, because each card replaces the screen and moves the focus to its heading.
 
 ## Shell components
 
