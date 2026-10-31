@@ -25,7 +25,7 @@ func mageFight(t *testing.T) (*armed, *playv1.Encounter) {
 	return monsterFight(t, mageKey, "Mago")
 }
 
-// monsterFight is the fight with one stat block NPC of the key, labelled label, next to Toren.
+// monsterFight is the fight with one stat block NPC of the key, labeled label, next to Toren.
 func monsterFight(t *testing.T, key, label string) (*armed, *playv1.Encounter) {
 	t.Helper()
 	a := newCasters(t)

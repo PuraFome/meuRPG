@@ -39,14 +39,14 @@ func TestMonsterCasterReadsBothTraits(t *testing.T) {
 	if bless.AtWill || bless.Resource != "innate_3_day_bless" || bless.SaveDC != 14 {
 		t.Errorf("bless = %+v, want 3/day with its own resource and DC 14", bless)
 	}
-	var max int
+	var uses int
 	for _, r := range couatl.Resources {
 		if r.Key == bless.Resource {
-			max = r.Max
+			uses = r.Max
 		}
 	}
-	if max != 3 {
-		t.Errorf("bless resource max = %d, want 3", max)
+	if uses != 3 {
+		t.Errorf("bless resource max = %d, want 3", uses)
 	}
 
 	// The Cloud Giant lists no DC: 8 + proficiency bonus 4 + Charisma modifier +3.

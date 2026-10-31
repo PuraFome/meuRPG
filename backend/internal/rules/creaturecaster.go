@@ -108,37 +108,36 @@ func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int
 	source := key + innateSourceSuffix
 	// A text that runs its lists together on one line ("... major image 3/day each: ...") gets one list a line.
 	desc = innateBreakRe.ReplaceAllString(desc, "\n$1")
+	base := GrantedSpell{Source: source, SourcePT: "Conjuração inata", Ability: ability, AttackBonus: attack, SaveDC: dc}
 	for _, line := range innateLineRe.FindAllStringSubmatch(desc, -1) {
 		perDay, _ := strconv.Atoi(line[2])
-		shared := fmt.Sprintf("innate_%d_day", perDay)
 		for _, name := range strings.Split(line[4], ",") {
 			name = strings.Trim(strings.TrimSpace(parenthesisRe.ReplaceAllString(name, "")), ";. ")
-			entry, ok := c.spellEntries["spell:"+slugOf(name)]
-			if !ok {
-				continue
+			if entry, ok := c.spellEntries["spell:"+slugOf(name)]; ok {
+				g := base
+				g.Spell, g.AtWill = entry, line[1] == "At will"
+				grantInnate(out, g, perDay, line[3] != "")
 			}
-			g := GrantedSpell{
-				Spell: entry, Source: source, SourcePT: "Conjuração inata", Ability: ability, AttackBonus: attack, SaveDC: dc,
-				AtWill: line[1] == "At will",
-			}
-			if !g.AtWill {
-				g.Resource = shared
-				if line[3] != "" { // "each": the uses are the spell's own
-					g.Resource = fmt.Sprintf("innate_%d_day_%s", perDay, slugOf(name))
-				}
-				if !hasCasterResource(out.Resources, g.Resource) {
-					out.Resources = append(out.Resources, Resource{Key: g.Resource, NamePT: resourceName(entry.NamePT, perDay, line[3] != ""), Max: perDay, Recharge: RechargeLongRest, Source: source})
-				}
-			}
-			out.Granted = append(out.Granted, g)
 		}
 	}
 	if len(out.Granted) > 0 && out.Spellcasting.Class == "" {
-		if m := casterLevelRe.FindStringSubmatch(desc); m != nil {
-			out.Level, _ = strconv.Atoi(m[1])
-		}
 		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
 	}
+}
+
+// grantInnate adds an innate spell, with the resource of its uses a day when it is not at will: its own for "N/day
+// each", the list's shared one for "N/day".
+func grantInnate(out *MonsterCaster, g GrantedSpell, perDay int, each bool) {
+	if !g.AtWill {
+		g.Resource = fmt.Sprintf("innate_%d_day", perDay)
+		if each {
+			g.Resource = fmt.Sprintf("innate_%d_day_%s", perDay, strings.TrimPrefix(g.Spell.Key, "spell:"))
+		}
+		if !hasCasterResource(out.Resources, g.Resource) {
+			out.Resources = append(out.Resources, Resource{Key: g.Resource, NamePT: resourceName(g.Spell.NamePT, perDay, each), Max: perDay, Recharge: RechargeLongRest, Source: g.Source})
+		}
+	}
+	out.Granted = append(out.Granted, g)
 }
 
 func hasCasterResource(rs []Resource, key string) bool {
