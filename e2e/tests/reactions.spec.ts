@@ -11,7 +11,7 @@ import { waitForEncounterRevision } from './revision-support';
 // the save. The table and the NPCs come through the API; what is under test is what each screen reads (RN-10, RN-20).
 
 // The Mago joins at the start with the lowest face: its total differs from every other (beginAttackCombatRPC checks it)
-// and it acts last. It cannot be added to the running combat: the master cannot set its initiative then, and the app's
+// and it has a total of its own (23, 18, 5, 4 and 3 are distinct). It cannot be added to the running combat: the master cannot set its initiative then, and the app's
 // roll could tie with the actor.
 const playerFirst = { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4, Mago: 1 };
 

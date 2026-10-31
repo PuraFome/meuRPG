@@ -79,15 +79,25 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
 - **The default is fixed.** The same calls give the same faces, and the roller never runs out.
 - **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
 - **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
-- **Every unscripted d20 moves the sequence.** An attack or a save rolled first takes a face the initiative would have had.
-- **A test pins a roll with `ScriptFor(t, sides, faces...)`.** The faces go to the next rolls of that die only, and the default goes on after them. A face that does not fit its die fails the test at once.
-- **A creature added to a running combat is scripted and checked.** The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`) and calls `requireOwnTotal` (`requireOwnTotals` in `progression`). A tie fails with "script the faces with ScriptFor", on every run.
-- **`play` rolls with its own `scriptedRoller`.** It gives a 10 when no face is queued, so creatures with the same bonus tie by default in its tests. That is deterministic, and a test that needs one actor queues its faces.
+- **Script the d20 of an attack or a save rolled before the initiative.** Every unscripted d20 takes the next face of the default sequence, so the test scripts those rolls to keep the sequence where it expects.
+- **A test pins a roll with `ScriptFor(t, sides, faces...)`.**
+  The faces go to the next rolls of that die only, and the default goes on after them.
+  A face that does not fit its die fails the test at once.
+- **A creature added to a running combat is scripted and checked.**
+  The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`).
+  It then calls `requireOwnTotal` (`requireOwnTotals` in `progression`).
+  A tie fails with "script the faces with ScriptFor", on every run.
+- **`play` rolls with its own `scriptedRoller`.**
+  It gives the lower of 10 and the die's sides when no face is queued.
+  Creatures with the same bonus tie by default in its tests, and that is deterministic.
+  A test that needs one actor queues its faces.
 
 Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
 The end-to-end tests roll with `dice.Crypto`, so an NPC's initiative total can tie with another combatant's at random.
-An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins (`beginAttackCombatRPC`, and its `monsters` argument for an SRD creature).
-A creature added to a running combat is rolled by the app and cannot be typed, so a test that depends on who acts starts the combat with it.
+An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins.
+The helpers are `beginAttackCombatRPC` and its `monsters` argument for an SRD creature.
+A creature added to a running combat is rolled by the app and cannot be typed.
+A test that depends on who acts starts the combat with that creature.
 `beginAttackCombatRPC` fails when a creature added that way has the same total as another combatant.
 
 ### Leak tests (RN-10)
