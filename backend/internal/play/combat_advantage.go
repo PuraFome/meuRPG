@@ -148,14 +148,15 @@ func hasState(states map[string][]playdb.CombatantState, id, kind string) bool {
 func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState, traits link.Traits) combat.Creature {
 	attackDisadvantage, spares := effectAttackDisadvantage(states, c.ID)
 	return combat.Creature{
-		ID:          c.ID,
-		Conditions:  c.Conditions,
-		Dodging:     hasState(states, c.ID, stateDodging),
-		Reckless:    hasState(states, c.ID, stateReckless),
-		PackTactics: traits.PackTactics, MagicResistance: traits.MagicResistance,
-		Evasion:     traits.Evasion,
-		DangerSense: traits.DangerSense,
-		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
+		ID:              c.ID,
+		Conditions:      c.Conditions,
+		Dodging:         hasState(states, c.ID, stateDodging),
+		Reckless:        hasState(states, c.ID, stateReckless),
+		PackTactics:     traits.PackTactics,
+		MagicResistance: traits.MagicResistance,
+		Evasion:         traits.Evasion,
+		DangerSense:     traits.DangerSense,
+		Raging:          hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),

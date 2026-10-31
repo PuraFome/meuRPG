@@ -1,6 +1,8 @@
 package play
 
 import (
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -22,5 +24,24 @@ func TestMagicResistanceSaveModeIsTheMastersAlone(t *testing.T) {
 	stranger := saveView(sr, combatViewer{userID: "user-other"}, playdb.Combatant{}, creature)
 	if stranger.GetMode() != playv1.RollMode_ROLL_MODE_UNSPECIFIED || stranger.GetRoll() != nil || stranger.GetOutcome() != playv1.SaveOutcome_SAVE_OUTCOME_SAVED {
 		t.Errorf("another player reads %v, want the outcome alone", stranger)
+	}
+}
+
+// creatureFacts carries the trait to the engine, and a spell's save is against magic while a creature's
+// own action is not: the spell save has advantage, the breath weapon none.
+func TestMagicResistanceReachesTheSaveOfASpellNotOfABreath(t *testing.T) {
+	t.Parallel()
+	facts := creatureFacts(playdb.Combatant{ID: "imp"}, nil, link.Traits{MagicResistance: true})
+	for name, tc := range map[string]struct {
+		spell link.Spell
+		want  combat.RollMode
+	}{
+		"a spell":  {link.Spell{Key: "spell:burning-hands"}, combat.ModeAdvantage},
+		"a breath": {link.Spell{Key: "spell:burning-hands", Nonmagical: true}, combat.ModeNormal},
+	} {
+		got := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: facts, Ability: "dex", EffectVisible: true, Against: spellAgainst(tc.spell)}))
+		if got != tc.want {
+			t.Errorf("%s: mode = %v, want %v", name, got, tc.want)
+		}
 	}
 }
