@@ -15,6 +15,10 @@ With a few simultaneous requests every one holds a connection and waits for anot
 The pool opens at most 10 connections unless `pool_max_conns` is in `DATABASE_URL` (`db.defaultMaxConns`; why 10 is in [Operations](../operations/reference.md#database-connections)), and every statement has a 30 s `statement_timeout` (`db.defaultStatementTimeout`).
 The pool size is a safety net, not the fix: no path may hold a connection and ask for another, whatever the size.
 
+A call whose context ends is cancelled by a pgwire cancel request, not by expiring the connection's read deadline at once (`db.NewPoolWith`).
+The deadline is set 5 s ahead (`db.cancelDeadlineFallback`) as the fallback if the server does not answer the request, and cleared when the call ends.
+A cancelled call returns its connection to the pool after about 100 ms, the time pgx waits so the cancel cannot reach the next statement.
+
 ## Rules for a closure
 
 | Rule | How it is met |
