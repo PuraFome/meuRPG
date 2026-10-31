@@ -154,8 +154,8 @@ test(
       await player.goto('/');
       const table = await tableForCombat(master, player, `Bandidos ${Date.now()}`);
       const campaignId = table.campaignId;
-      // eslint-disable-next-line meurpg/rpc-revision-wait -- the bestiary page has no combat view to read a revision from; openPutSheet waits for the sheet itself
       let enc = await startEncounterRPC(master, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
+      // eslint-disable-next-line meurpg/rpc-revision-wait -- the bestiary page has no combat view to read a revision from; openPutSheet waits for the sheet itself
       enc = await beginCombat(master, table, enc);
 
       // Into a combat under way, rolled and revealed (the sheet's variants).

@@ -35,7 +35,7 @@ module.exports = tseslint.config(
     plugins: { meurpg: { rules: { 'rpc-revision-wait': rpcRevisionWait } } },
     rules: {
       // A call that changes the server is followed by a wait for the page to show it before the next page action
-      // (docs/testing.md, "Waiting for the page to show a change"). Old sites are in eslint-suppressions.json.
+      // (docs/testing.md, "Waiting for the page to show a change"). No baseline: do not add suppressions for it.
       'meurpg/rpc-revision-wait': 'error',
       // Most tests assert through helpers (support.ts, *-support.ts), so "no expect in the test body" is noise;
       // the spacing rule is style, which Prettier owns.

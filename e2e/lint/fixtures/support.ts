@@ -2,6 +2,7 @@
 export interface Encounter {
   id: string;
   revision: number;
+  combatants: unknown[];
 }
 interface Locator {
   click(): Promise<void>;

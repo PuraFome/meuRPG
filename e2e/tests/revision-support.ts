@@ -12,7 +12,7 @@ import type { Encounter } from './combat-support';
  * expected, so a stalled stream and a dropped push read differently from a slow page.
  *
  * Wait on the master's page. A player's copy on a fog-of-war map counts what the player saw, not the server's number,
- * so its revision is not comparable.
+ * so its revision is not comparable; with the fog off (or no map) a player's page works too.
  */
 export async function waitForEncounterRevision(page: Page, expected: Encounter, what = 'the combat'): Promise<void> {
   const view = page.locator('app-combat-view');

@@ -736,12 +736,14 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
 
     // Round 3: a natural 1 counts two failures; round 4: a 5 is the third.
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(m, enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('1');
     await p.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(p.getByText(/Teste contra a morte: 1 · dado físico\. Falha: um 1 conta duas falhas\./)).toBeVisible();
     await endTurnOf(p, m, campaignId, 'Pensantus');
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    await waitForEncounterRevision(m, enc);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill('5');
     await p.getByRole('button', { name: 'Confirmar 5' }).click();

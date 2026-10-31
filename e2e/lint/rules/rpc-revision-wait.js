@@ -3,7 +3,7 @@
 //
 // Several calls in a row need one wait, after the last: only the last call before an action is reported.
 //
-// The rule looks at `await <helper>RPC(...)` whose answer carries a numeric `revision` (an `Encounter`): the helper
+// The rule looks at `await <helper>(...)` whose answer is an `Encounter` (a numeric `revision` and `combatants`): the helper
 // says which revision the server reached. After it, in the same block or in the blocks around it, the first thing that
 // is either a page action (click, fill, press, ...), a revision wait (`waitForEncounterRevision`) or a page load (`goto`, `openSessionPage`) decides: an action
 // first is an error. `goto` and `reload` are not actions: a fresh load reads the state itself.
@@ -32,7 +32,7 @@ const ACTIONS = new Set([
 // A wait, or a load: a page that loads after the call reads the state itself.
 const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab']);
 // A read changes nothing on the server: there is no change for the page to show.
-const READS = /^(get|list|read)[A-Z]\w*RPC$/;
+const READS = /^(get|list|read)[A-Z]\w*$/;
 const LOAD_METHODS = new Set(['goto', 'reload']);
 
 /** @param {any} node */
@@ -66,9 +66,9 @@ module.exports = {
 
     /** Whether the awaited value has a numeric `revision`. @param {any} node */
     const hasRevision = (node) => {
-      const type = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node));
+      const type = checker.getNonNullableType(checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node)));
       const prop = type.getProperty('revision');
-      return Boolean(prop);
+      return Boolean(prop) && Boolean(type.getProperty('combatants')) && (checker.getTypeOfSymbol(prop).flags & 8 /* ts.TypeFlags.Number */) !== 0;
     };
 
     /** An awaited `*RPC` call whose answer carries a revision. @param {any} node */
@@ -77,8 +77,8 @@ module.exports = {
       return (
         call.type === 'CallExpression' &&
         call.callee.type === 'Identifier' &&
-        /RPC$/.test(call.callee.name) &&
         !READS.test(call.callee.name) &&
+        !WAIT_NAMES.has(call.callee.name) &&
         hasRevision(node)
       );
     };
