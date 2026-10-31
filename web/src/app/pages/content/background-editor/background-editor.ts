@@ -17,7 +17,7 @@ import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_p
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
 import {
   type BackgroundDraft,
   type FeatureDraft,
@@ -158,7 +158,7 @@ export class BackgroundEditor {
   };
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
       return;
     }
     const body: EntryBody = {

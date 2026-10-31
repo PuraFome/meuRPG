@@ -98,6 +98,26 @@ describe('FeatEditor (MR-025)', () => {
     expect(text(el.querySelector('.preview')!)).toContain('Você prende quem quiser.');
   });
 
+  it('does not save while a number of the effect is no whole number, and saves it once it reads', async () => {
+    const { fixture, el } = setup();
+    save.mockResolvedValue({ entry: stored(), affected: [] });
+    const count = field(el, 'table_feat.effects[0].count') as HTMLInputElement;
+    count.value = '1.5';
+    count.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    click(el, 'Salvar talento');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(count.getAttribute('aria-invalid')).toBe('true');
+    expect(text(el)).toContain('Escreva um número inteiro, como 2.');
+    count.value = '2';
+    count.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    click(el, 'Salvar talento');
+    await settle(fixture, 3);
+    expect(save.mock.calls[0][2].value.effects[0].count).toBe(2);
+  });
+
   it('sends the whole feat: the prerequisite as numbers, the effect and no key of its own', async () => {
     const { fixture, el } = setup();
     save.mockResolvedValue({ entry: stored(), affected: [] });

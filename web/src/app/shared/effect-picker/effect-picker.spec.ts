@@ -1,6 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import {
+  type EffectDraft,
+  type EffectMenuVm,
+  draftToEffect,
+  emptyEffect,
+  holdsUnreadableNumber,
+} from '../../core/content/effect-draft';
 import {
   conditionMenu,
   menu,
@@ -10,9 +16,6 @@ import {
 import { extraDamageMenu, spellModifierMenu } from '../../core/content/content-testing-menu-damage';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { stateMenu } from '../../core/content/content-testing-states';
-import { draftToEffect } from '../../core/content/effect-draft';
-import { create, toBinary } from '@bufbuild/protobuf';
-import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
@@ -711,9 +714,8 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
       expect(input.value).toBe(bad);
       expect(input.getAttribute('aria-invalid')).toBe('true');
       expect(text(el)).toContain('Escreva um número inteiro, como 2.');
-      // what a save would send: a request that does not exist, not a "not set"
-      const body = draftToEffect(emitted.at(-1)!, menu());
-      expect(() => toBinary(TableEffectSchema, create(TableEffectSchema, body))).toThrow();
+      // an editor does not save a draft that holds it
+      expect(holdsUnreadableNumber(emitted.at(-1))).toBe(true);
     });
   }
 
@@ -725,9 +727,8 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
     expect(emitted.at(-1)?.count).toBe(3);
     expect(input.getAttribute('aria-invalid')).toBeNull();
     expect(asked()).not.toContain('Escreva um número inteiro');
-    const body = draftToEffect(emitted.at(-1)!, menu());
-    expect(body.count).toBe(3);
-    expect(() => toBinary(TableEffectSchema, create(TableEffectSchema, body))).not.toThrow();
+    expect(holdsUnreadableNumber(emitted.at(-1))).toBe(false);
+    expect(draftToEffect(emitted.at(-1)!, menu()).count).toBe(3);
   });
 
   it('reads an empty field as "not set", and a bonus may be negative', () => {

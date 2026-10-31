@@ -42,7 +42,7 @@ import {
   sortedFeatures,
 } from '../../../core/content/class-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
 import {
   ABILITY_FIELDS,
@@ -440,7 +440,7 @@ export class ClassEditor {
     isKnownPath(path, this.draft(), this.columns(), this.menu());
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
       return;
     }
     const body: EntryBody = { case: 'tableClass', value: draftToClass(this.draft(), this.menu()) };

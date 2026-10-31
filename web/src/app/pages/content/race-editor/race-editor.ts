@@ -21,6 +21,7 @@ import { type EntryBody, TableContentClient } from '../../../core/content/conten
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
 import {
   type EffectMenuVm,
+  holdsUnreadableNumber,
   UNREADABLE_RANGE,
   unreadableRange,
 } from '../../../core/content/effect-draft';
@@ -313,7 +314,13 @@ export class RaceEditor {
   };
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked() || this.unreadable().length > 0) {
+    if (
+      this.saver.saving() ||
+      this.saveBlocked() ||
+      this.unreadable().length > 0 ||
+      holdsUnreadableNumber(this.race()) ||
+      holdsUnreadableNumber(this.sub())
+    ) {
       return;
     }
     const menu = this.menu();

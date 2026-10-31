@@ -45,7 +45,7 @@ import {
   subclassToDraft,
 } from '../../../core/content/subclass-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
 import { FieldNote } from '../../../shared/form-fields/field-note';
 import { PickList } from '../../../shared/form-fields/pick-list';
@@ -358,7 +358,7 @@ export class SubclassEditor {
   };
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
       return;
     }
     const body: EntryBody = {

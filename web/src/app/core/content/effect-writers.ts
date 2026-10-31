@@ -20,14 +20,13 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 type NumberKey =
   'count' | 'healPercentMax' | 'diceSides' | 'rangeMultiplier' | 'attackBonus' | 'damageBonus';
 
-/** A whole number that is sent when above 0. A NaN (the picker's mark for text that is no number) is sent as it is: the request
- * refuses it, so a save never turns it into "not set". */
+/** A whole number that is sent when above 0. */
 const positiveNumber =
   (key: NumberKey): EffectWriter =>
   (d) =>
-    Number.isNaN(d[key]) || d[key] > 0 ? ({ [key]: d[key] } as EffectInit) : {};
+    d[key] > 0 ? ({ [key]: d[key] } as EffectInit) : {};
 
-/** Like positiveNumber, for a field that may be negative (a bonus): any value but 0 is sent, a NaN included. */
+/** Like positiveNumber, for a field that may be negative (a bonus): any value but 0 is sent. */
 const signedNumber =
   (key: NumberKey): EffectWriter =>
   (d) =>

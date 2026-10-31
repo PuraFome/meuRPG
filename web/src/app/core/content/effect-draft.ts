@@ -299,6 +299,17 @@ export function unreadableRange(text: string): boolean {
   return !Number.isFinite(n) || n < 0;
 }
 
+/** Whether a draft holds a NaN anywhere: the picker's mark for a number field whose text is no whole number. An editor does not save then,
+ * since a NaN goes out as `null`, which the server reads as "not set". */
+export function holdsUnreadableNumber(draft: unknown): boolean {
+  if (typeof draft === 'number') {
+    return Number.isNaN(draft);
+  }
+  return typeof draft === 'object' && draft !== null
+    ? Object.values(draft).some(holdsUnreadableNumber)
+    : false;
+}
+
 /** What the editor says of a range field it cannot read. */
 export const UNREADABLE_RANGE = 'Escreva só o número de metros, como 18 ou 4,5.';
 

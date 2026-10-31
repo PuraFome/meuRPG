@@ -25,7 +25,7 @@ import {
 } from '../../../core/content/class-feature-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusField } from '../../../core/content/entry-saver';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import { type EffectMenuVm, holdsUnreadableNumber } from '../../../core/content/effect-draft';
 import type { FeatureDraft } from '../../../core/content/feature-draft';
 import { previewRead } from '../../../core/content/preview';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
@@ -131,7 +131,7 @@ export class ClassFeatureEditor {
     classFeaturePaths(this.draft(), this.menu()).includes(path);
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.saveBlocked() || holdsUnreadableNumber(this.draft())) {
       return;
     }
     const body: EntryBody = {
