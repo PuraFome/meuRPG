@@ -341,7 +341,7 @@ export function unreadableClassPaths(
   menu: EffectMenuVm,
 ): string[] {
   return [
-    ...unreadableCastingPaths('table_class.casting', casting),
+    ...(casting.kind !== '' ? unreadableCastingPaths('table_class.casting', casting) : []),
     ...features.flatMap((f, i) =>
       unreadableFeaturePaths(classFeatureBase(features, i), f.feature, menu),
     ),

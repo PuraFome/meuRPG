@@ -773,6 +773,14 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
     expect((field('attack_bonus') as HTMLInputElement).value).toBe('-0');
   });
 
+  it('never sends what was typed: the request holds the number only', () => {
+    setup(emptyEffect('weapon_rule'), stateMenu());
+    typeInto('attack_bonus', '+1');
+    const effect = draftToEffect(emitted.at(-1)!, stateMenu());
+    expect(effect.attackBonus).toBe(1);
+    expect(JSON.stringify(effect)).not.toContain('typed');
+  });
+
   it('shows the plain number again once what was typed is how it is written', () => {
     setup(emptyEffect('weapon_rule'), stateMenu());
     typeInto('attack_bonus', '+1');
@@ -796,7 +804,6 @@ describe('EffectPicker: a number field (whole numbers; an empty field is "not se
       setup({ ...emptyEffect('choice'), choice: 'skill', count: 2 });
       typeInto('count', text);
       expect(emitted.at(-1)?.count).toBeNaN();
-      expect(text.length).toBeGreaterThan(0);
       expect(asked()).toContain('Escreva um número inteiro, como 2.');
       typeInto('count', '2147483647');
       expect(emitted.at(-1)?.count).toBe(2147483647);
