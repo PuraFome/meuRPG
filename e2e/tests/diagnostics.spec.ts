@@ -1,7 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { expect, type Browser, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 
 import { PageDiagnostics, PROBE_DEADLINE_MS, test } from './diagnostics';
 import { newSignedInContext } from './support';
@@ -65,16 +67,21 @@ test('uma página que travou diz que não responde e lista o pedido que ficou ab
   }
 });
 
-test('uma página que caiu aparece como caiu', async ({ browser }) => {
+test('uma página que caiu aparece como caiu, com a idade dos pedidos que ficaram abertos', async ({ browser }) => {
   const diagnostics = new PageDiagnostics();
   const context = await openWatched(browser, diagnostics);
   try {
     const page = await context.newPage();
+    await page.route('**/nunca-responde', () => {});
+    await serve(page, '<script>fetch("/nunca-responde").catch(() => {});</script>');
+    await expect.poll(() => diagnostics.report() ?? '').toContain('/nunca-responde');
     const crashed = page.waitForEvent('crash');
     await page.goto('chrome://crash').catch(() => undefined);
     await crashed;
     await diagnostics.probe();
-    expect(diagnostics.report()).toContain('state: crashed');
+    const report = diagnostics.report() ?? '';
+    expect(report).toContain('state: crashed');
+    expect(report).toMatch(/GET \S+\/nunca-responde \(\d+ ms\)/);
   } finally {
     await context.close();
   }
@@ -130,13 +137,84 @@ test('o teste vê as páginas do fixture, de browser.newContext e de newSignedIn
   }
 });
 
+// A page and a context that do what the report needs, so that a close that never finishes can be staged.
+function fakeContext(pageClosed: () => boolean) {
+  const page = { on: () => page, url: () => 'http://diagnostics.test/', isClosed: pageClosed, evaluate: () => Promise.resolve('complete'), context: () => context } as unknown as Page;
+  const context = { pages: () => [page], on: () => context, close: () => new Promise<void>(() => {}) } as unknown as BrowserContext;
+  return context;
+}
+
+test('um fechamento que não terminou: a página ainda aberta é sondada e responde, não "fechada pelo teste"', async () => {
+  const diagnostics = new PageDiagnostics();
+  const context = fakeContext(() => false);
+  diagnostics.watchContext(context);
+  void context.close();
+  await diagnostics.probe();
+  const report = diagnostics.report() ?? '';
+  expect(report).toContain('state: answers (readyState complete)');
+  expect(report).not.toContain('closed by the test');
+});
+
+test('uma página que de fato fechou aparece como fechada pelo teste, sem sonda', async () => {
+  const diagnostics = new PageDiagnostics();
+  let closed = false;
+  const context = fakeContext(() => closed);
+  diagnostics.watchContext(context);
+  void context.close();
+  closed = true;
+  await diagnostics.probe();
+  expect(diagnostics.report()).toContain('state: closed by the test, not probed');
+});
+
+test('o browser volta ao protótipo: nenhuma camada de embrulho fica depois de cada teste', async ({ browser }) => {
+  const prototype = Object.getPrototypeOf(browser) as { newContext: unknown; newPage: unknown };
+  for (let i = 0; i < 3; i++) {
+    const restore = new PageDiagnostics().watchBrowser(browser);
+    expect(Object.hasOwn(browser, 'newContext')).toBe(true);
+    restore();
+  }
+  expect(Object.hasOwn(browser, 'newContext')).toBe(false);
+  expect(Object.hasOwn(browser, 'newPage')).toBe(false);
+  expect(browser.newContext).toBe(prototype.newContext);
+  expect(browser.newPage).toBe(prototype.newPage);
+});
+
+// Runs the Playwright CLI in its own process group and kills the group at the deadline, so a stalled run ends here with a
+// message instead of holding the worker (a blocking spawn would also stop the test's own timeout from firing).
+function runNested(args: string[], env: NodeJS.ProcessEnv, deadlineMs: number): Promise<{ stdout: string; stderr: string; status: number | null; timedOut: boolean }> {
+  const e2e = path.join(__dirname, '..');
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join(e2e, 'node_modules', '@playwright', 'test', 'cli.js'), ...args], { cwd: e2e, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString('utf8')));
+    child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString('utf8')));
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (child.pid) process.kill(-child.pid, 'SIGKILL');
+    }, deadlineMs);
+    child.on('close', (status) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, status, timedOut });
+    });
+  });
+}
+
 test('um teste que falha anexa o diagnóstico: o pedido que não voltou no fixture e a página que caiu num contexto fechado pelo teste', async () => {
   // A nested run of diagnostics-fixture, whose tests fail on purpose (the attachment is made after the test body,
   // so only a real failing test shows it). Two failures of a few seconds each, hence the longer timeout.
   test.setTimeout(90_000);
-  const e2e = path.join(__dirname, '..');
   const { PLAYWRIGHT_JSON_OUTPUT_NAME: _name, ...env } = process.env;
-  const run = spawnSync('npx', ['playwright', 'test', '-c', 'diagnostics-fixture/playwright.config.ts', '--reporter=json'], { cwd: e2e, env, encoding: 'utf8', maxBuffer: 1 << 26 });
+  // One folder for each run: the repeats of this test run side by side, and a run empties its output folder.
+  const output = mkdtempSync(path.join(tmpdir(), 'meurpg-diagnostics-'));
+  let run: Awaited<ReturnType<typeof runNested>>;
+  try {
+    run = await runNested(['test', '-c', 'diagnostics-fixture/playwright.config.ts', '--reporter=json', `--output=${output}`], env, 70_000);
+  } finally {
+    rmSync(output, { recursive: true, force: true });
+  }
+  expect(run.timedOut, `the nested run did not end in 70 s: ${run.stderr}`).toBe(false);
   type Result = { status: string; attachments: { name: string; body?: string }[] };
   type Suite = { specs?: { title: string; tests: { results: Result[] }[] }[]; suites?: Suite[] };
   const results = new Map<string, Result>();

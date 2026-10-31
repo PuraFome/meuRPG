@@ -297,7 +297,8 @@ A failed or timed-out test attaches `page-diagnostics` to its report.
 It covers the pages of the `page` and `context` fixtures and of every context made with `browser.newContext()`, including `newSignedInContext`.
 For each page it says whether the page crashed, the `pageerror` and `console.error` it reported, the requests that failed, and the requests still open with their age.
 For a page still open when the test fails it also says whether the page replied to a probe within 1.5 s.
-A page in a context the test closed itself is not probed; the attachment lists the requests open at the close.
+A page that really closed (the test closed its context) is not probed; the attachment lists the requests open when the test asked for the close.
+A page still open after the close was asked for is probed like any other.
 Requests made with `page.request` or `callRPC` are not page requests and are not listed.
 A page stuck in a loop makes Playwright's own trace and screenshot wait, and then no attachment is made.
 Read the attachment in the HTML report, or in the `playwright-report-*` artifact of a failed shard.

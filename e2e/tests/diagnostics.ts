@@ -26,7 +26,7 @@ type Probe = { answers: string; openRequests: string[] };
 
 type Watched = {
   label: string;
-  /** The requests that were open when the test closed the page's context, kept without asking the page anything. */
+  /** The requests open when the test called `context.close()`, kept without asking the page anything. */
   closedWith?: string[];
   page: Page;
   crashed: boolean;
@@ -40,6 +40,11 @@ function clip(text: string): string {
   return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}…` : text;
 }
 
+/** One line for each request still open, with how long it has been open. */
+function openRequestLines(open: Iterable<OpenRequest>, now: number): string[] {
+  return [...open].map((request) => `${request.description} (${now - request.since} ms)`);
+}
+
 function firstLine(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error);
   return clip(text.split('\n')[0] ?? '');
@@ -49,11 +54,13 @@ function firstLine(error: unknown): string {
 function describe(watched: Watched, now: number): string[] {
   const { page, label, probe } = watched;
   const lines = [`${label}  ${page.url() || '(no url yet)'}`];
-  const state = watched.crashed ? 'crashed' : watched.closedWith ? 'closed by the test, not probed' : (probe?.answers ?? 'not probed');
+  // A close the test asked for may not have finished: a page that is still open was probed and says what it answered.
+  const closed = page.isClosed();
+  const state = watched.crashed ? 'crashed' : probe ? probe.answers : closed ? 'closed by the test, not probed' : 'not probed';
   lines.push(`  state: ${state}`);
   for (const error of watched.errors) lines.push(`  ${error}`);
   for (const failed of watched.failedRequests) lines.push(`  ${failed}`);
-  const open = watched.closedWith ?? probe?.openRequests ?? [...watched.open.values()].map((request) => `${request.description} (${now - request.since} ms)`);
+  const open = probe?.openRequests ?? (closed ? watched.closedWith : undefined) ?? openRequestLines(watched.open.values(), now);
   if (open.length > 0) {
     lines.push(`  requests still open (${open.length}):`);
     for (const request of open.slice(0, MAX_LINES)) lines.push(`    ${request}`);
@@ -83,7 +90,7 @@ export class PageDiagnostics {
       const now = Date.now();
       for (const watched of this.pages) {
         if (watched.page.context() === context && !watched.page.isClosed()) {
-          watched.closedWith = [...watched.open.values()].map((request) => `${request.description} (${now - request.since} ms)`);
+          watched.closedWith = openRequestLines(watched.open.values(), now);
         }
       }
       return close(options);
@@ -125,9 +132,10 @@ export class PageDiagnostics {
       this.watchContext(page.context());
       return page;
     };
+    // The browser is the worker's, shared by its tests: the own properties go, and the prototype's methods are back.
     return () => {
-      browser.newContext = newContext;
-      browser.newPage = newPage;
+      delete (browser as Partial<Browser>).newContext;
+      delete (browser as Partial<Browser>).newPage;
     };
   }
 
@@ -141,7 +149,7 @@ export class PageDiagnostics {
         if (entry.probe || entry.page.isClosed()) return;
         // A crashed page has nothing to answer with.
         if (entry.crashed) {
-          entry.probe = { answers: 'crashed', openRequests: [...entry.open.values()].map((request) => request.description) };
+          entry.probe = { answers: 'crashed', openRequests: openRequestLines(entry.open.values(), Date.now()) };
           return;
         }
         const started = Date.now();
@@ -157,8 +165,7 @@ export class PageDiagnostics {
         );
         const answers = await Promise.race([answer, deadline]);
         clearTimeout(timer);
-        const now = Date.now();
-        entry.probe = { answers, openRequests: [...entry.open.values()].map((request) => `${request.description} (${now - request.since} ms)`) };
+        entry.probe = { answers, openRequests: openRequestLines(entry.open.values(), Date.now()) };
       }),
     );
   }
@@ -184,6 +191,8 @@ export class PageDiagnostics {
 export const test = base.extend<{ pageDiagnostics: PageDiagnostics }>({
   // Ends before Playwright closes the context, which is where the report has to be made (see the top of this file).
   context: async ({ context, pageDiagnostics }, use, testInfo) => {
+    // Playwright builds this context without `browser.newContext()` when it reuses contexts (UI mode, `reuseContext`).
+    pageDiagnostics.watchContext(context);
     await use(context);
     await pageDiagnostics.attachIfFailed(testInfo);
   },
