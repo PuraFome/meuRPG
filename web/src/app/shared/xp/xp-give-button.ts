@@ -98,18 +98,18 @@ export function openMilestone(
   host: { '[class.block]': 'blockOn()', '[class.neutral]': 'neutral()' },
   template: `
     @if (milestones()) {
-      <button #mark mat-stroked-button type="button" class="give" [class.give--block]="blockOn()" (click)="openMark()">
+      <button #mark matButton="outlined" type="button" class="give" [class.give--block]="blockOn()" (click)="openMark()">
         <mat-icon aria-hidden="true">flag</mat-icon>Registrar marco
       </button>
     } @else if (xpMode() !== Mode.UNSPECIFIED) {
-      <button #give mat-stroked-button type="button" class="give" [class.give--block]="blockOn()" (click)="openXp()">
+      <button #give matButton="outlined" type="button" class="give" [class.give--block]="blockOn()" (click)="openXp()">
         @if (neutral()) {
           <mat-icon aria-hidden="true">star</mat-icon>
         }
         Dar XP
       </button>
       @if (pair()) {
-        <button #town mat-stroked-button type="button" class="give give--block" (click)="openTownSheet()">
+        <button #town matButton="outlined" type="button" class="give give--block" (click)="openTownSheet()">
           <mat-icon aria-hidden="true">currency_exchange</mat-icon>Voltar à cidade
         </button>
       }

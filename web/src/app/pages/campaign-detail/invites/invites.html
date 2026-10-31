@@ -51,7 +51,7 @@
                 </span>
                 <span class="mr-tag invite__tag">{{ inviteStateTag(i.state) }}</span>
                 @if (i.state === InviteState.ACTIVE) {
-                  <button mat-stroked-button class="invite__revoke" type="button" [disabled]="revoking() !== null" (click)="revoke(i)">
+                  <button matButton="outlined" class="invite__revoke" type="button" [disabled]="revoking() !== null" (click)="revoke(i)">
                     Revogar
                   </button>
                 }
@@ -117,7 +117,7 @@
       }
 
       <button
-        mat-stroked-button
+        matButton="outlined"
         class="invite-form__submit"
         type="submit"
         [disabled]="createState().status === 'saving'"

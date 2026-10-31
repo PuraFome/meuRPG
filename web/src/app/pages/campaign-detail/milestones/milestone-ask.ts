@@ -23,8 +23,8 @@ import { MatIconModule } from '@angular/material/icon';
           <p class="ask__error" role="alert">{{ error() }}</p>
         }
         <div class="ask__btns">
-          <button #voltar mat-stroked-button type="button" class="ask__btn" (click)="back.emit()">Voltar</button>
-          <button mat-stroked-button type="button" class="ask__btn ask__go" [attr.aria-disabled]="busy()" (click)="go.emit()">
+          <button #voltar matButton="outlined" type="button" class="ask__btn" (click)="back.emit()">Voltar</button>
+          <button matButton="outlined" type="button" class="ask__btn ask__go" [attr.aria-disabled]="busy()" (click)="go.emit()">
             {{ goLabel() }}
           </button>
         </div>

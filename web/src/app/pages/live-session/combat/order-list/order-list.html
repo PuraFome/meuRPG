@@ -217,14 +217,14 @@
           @if (live() && dying(c) && deathDismissed().has(c.id)) {
             <div class="row__extra">
               <p class="row__hidden-note">O mestre ainda não confirmou a morte.</p>
-              <button mat-button type="button" class="row__reveal" (click)="askDeath.emit(c.id)">Confirmar a morte</button>
+              <button matButton type="button" class="row__reveal" (click)="askDeath.emit(c.id)">Confirmar a morte</button>
             </div>
           }
           @if (live() && c.hidden && removing() !== c.id) {
             <div class="row__extra">
               <p class="row__hidden-note">Só você vê este combatente.</p>
               <button
-                mat-button
+                matButton
                 type="button"
                 class="row__reveal"
                 [disabled]="busy()"
@@ -238,7 +238,7 @@
             <div class="row__extra">
               <p class="row__conc"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Concentração: <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
               @if (heldBy(c).length > 0) {
-                <button mat-stroked-button type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
+                <button matButton="outlined" type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
               }
             </div>
           }
@@ -264,8 +264,8 @@
           @if (removing() === c.id) {
             <div class="row__confirm" role="alertdialog" [attr.aria-label]="'Remover ' + c.label">
               <p>Remover {{ c.label }} do combate?</p>
-              <button mat-stroked-button type="button" #back (click)="removing.set(null)">Voltar</button>
-              <button mat-stroked-button type="button" class="danger" [disabled]="busy()" (click)="confirmRemove(c.id)">
+              <button matButton="outlined" type="button" #back (click)="removing.set(null)">Voltar</button>
+              <button matButton="outlined" type="button" class="danger" [disabled]="busy()" (click)="confirmRemove(c.id)">
                 Remover
               </button>
             </div>
@@ -275,7 +275,7 @@
             <span class="row__actions">
               @if (canAdjust(c)) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__adjust"
                   [attr.aria-label]="'Dano/Cura: ' + c.label"
@@ -286,7 +286,7 @@
               }
               @if (canAdjustNpc(c)) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__adjust"
                   [attr.aria-label]="'Dano/Cura: ' + c.label"
@@ -297,7 +297,7 @@
               }
               @if (npc(c) || !c.defeated) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__conditions"
                   [attr.aria-label]="'Condições de ' + c.label"
@@ -306,7 +306,7 @@
                   <mat-icon aria-hidden="true">task_alt</mat-icon>Condições
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__more"
                   [attr.aria-label]="'Mais ações para ' + c.label"

@@ -73,9 +73,9 @@
   <div foot class="foot">
     @if (stage() === 'result') {
       @if (open()) {
-        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+        <button matButton="outlined" type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
       } @else {
-        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+        <button #done matButton="filled" type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
       }
     }
   </div>

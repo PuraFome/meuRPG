@@ -12,7 +12,7 @@
       <div class="mr-notice mr-notice--neutral view-notice" data-testid="reaction-closed">
         <mat-icon aria-hidden="true">info</mat-icon>
         <p>{{ notice.text }}</p>
-        <button mat-button type="button" (click)="state().dismissReactionNotice()">Entendi</button>
+        <button matButton type="button" (click)="state().dismissReactionNotice()">Entendi</button>
       </div>
     }
     @if (vanish.notice(); as notice) {
@@ -20,7 +20,7 @@
       <div class="mr-notice mr-notice--neutral view-notice" data-testid="held-vanished">
         <mat-icon aria-hidden="true">info</mat-icon>
         <p>{{ notice }}</p>
-        <button mat-button type="button" (click)="vanish.dismiss()">Entendi</button>
+        <button matButton type="button" (click)="vanish.dismiss()">Entendi</button>
       </div>
     }
   </div>
@@ -66,7 +66,7 @@
                   <div class="unplaced">
                     <p><strong>Sem quadrado no mapa.</strong> Coloque cada um onde ele começa.</p>
                     @for (c of unplaced(); track c.id) {
-                      <button mat-stroked-button type="button" (click)="place(c.id)">
+                      <button matButton="outlined" type="button" (click)="place(c.id)">
                         Colocar {{ c.label }}
                       </button>
                     }
@@ -210,14 +210,14 @@
                 <div class="mr-notice mr-notice--warning notice" data-testid="form-ended">
                   <mat-icon aria-hidden="true">pets</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="notices.formEnded.set(null)">Entendi</button>
+                  <button matButton type="button" class="notice__ok" (click)="notices.formEnded.set(null)">Entendi</button>
                 </div>
               }
               @if (notices.lostNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="concentration-lost">
                   <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
                   <p>{{ text }}</p>
-                  <button mat-button type="button" class="notice__ok" (click)="notices.lostConcentration.set(null)">Entendi</button>
+                  <button matButton type="button" class="notice__ok" (click)="notices.lostConcentration.set(null)">Entendi</button>
                 </div>
               }
             </div>
@@ -280,31 +280,31 @@
             <div class="player__notes">
               @if (contest.pending().length > 0 && !contest.sheetOpen()) {
                 <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
-                <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
+                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
                   <mat-icon aria-hidden="true">pan_tool</mat-icon>
                   <p>Uma disputa espera a sua resposta.</p>
-                  <button mat-button type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                  <button matButton type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
                 </div>
               }
               @if (ownEffectSave(); as pending) {
-                <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
+                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
                   <mat-icon aria-hidden="true">casino</mat-icon>
                   <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
-                  <button mat-button type="button" class="notice__ok" (click)="sheets.reactions.effectSave(pending)">Rolar o teste</button>
+                  <button matButton type="button" class="notice__ok" (click)="sheets.reactions.effectSave(pending)">Rolar o teste</button>
                 </div>
               }
               @if (ownLucky()) {
-                <div class="mr-notice mr-notice--warning notice" data-testid="lucky-pending">
+                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="lucky-pending">
                   <mat-icon aria-hidden="true">casino</mat-icon>
                   <p>A sua rolagem espera a sua resposta: tirou 1, rolar de novo?</p>
-                  <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
                 </div>
               }
               @if (ownDieAsked()) {
-                <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
+                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
                   <mat-icon aria-hidden="true">music_note</mat-icon>
                   <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>
-                  <button mat-button type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
                 </div>
               }
               @if (ownDie(); as die) {
@@ -501,7 +501,7 @@
         <div class="unplaced">
           <p><strong>Sem quadrado no mapa.</strong> Coloque cada um onde ele entra.</p>
           @for (c of unplaced(); track c.id) {
-            <button mat-stroked-button type="button" (click)="place(c.id)">
+            <button matButton="outlined" type="button" (click)="place(c.id)">
               Colocar {{ c.label }}
             </button>
           }

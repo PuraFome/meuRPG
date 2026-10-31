@@ -231,9 +231,9 @@
           <p class="why" id="contest-why"><mat-icon aria-hidden="true">block</mat-icon>{{ why() }}</p>
         }
         <div class="foot__row">
-          <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Voltar</button>
+          <button matButton="outlined" type="button" class="foot__btn" (click)="close()">Voltar</button>
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="foot__btn foot__btn--main"
             [class.foot__btn--off]="!canRoll()"
@@ -247,7 +247,7 @@
         </div>
       }
       @case ('wait') {
-        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+        <button matButton="outlined" type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
         @if (waitingForMaster()) {
           <p class="foot__hint">
             “Fechar a folha” só a esconde: a disputa continua esperando o mestre, e a folha volta com o resultado.
@@ -257,7 +257,7 @@
       @case ('choice') {
         <button
           #done
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="foot__btn foot__btn--main"
           [disabled]="busy() || outcome() === null"
@@ -268,7 +268,7 @@
         </button>
       }
       @default {
-        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+        <button #done matButton="filled" type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
       }
     }
   </div>

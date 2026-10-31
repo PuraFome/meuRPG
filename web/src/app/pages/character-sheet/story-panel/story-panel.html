@@ -41,7 +41,7 @@
             <p class="story__note">O mestre liberou a edição da história até a próxima sessão.</p>
           }
         }
-        <button mat-stroked-button type="button" (click)="startEditing()">Editar história</button>
+        <button matButton="outlined" type="button" (click)="startEditing()">Editar história</button>
       } @else if (v.state !== 'dead') {
         <p class="story__note">
           A história está travada. O mestre pode liberar a edição até a próxima sessão.
@@ -111,10 +111,10 @@
         }
       }
       <div class="form__actions">
-        <button mat-flat-button type="submit" [disabled]="saveState().status === 'saving'">
+        <button matButton="filled" type="submit" [disabled]="saveState().status === 'saving'">
           Salvar história
         </button>
-        <button mat-button type="button" (click)="cancel()">Cancelar</button>
+        <button matButton type="button" (click)="cancel()">Cancelar</button>
       </div>
     </form>
   }

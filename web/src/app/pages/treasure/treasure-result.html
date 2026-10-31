@@ -122,13 +122,13 @@
 
   <div class="actions">
     @if (placedLink(); as link) {
-      <a mat-flat-button class="act act--go" [routerLink]="link"><mat-icon aria-hidden="true">map</mat-icon>Abrir o mapa</a>
+      <a matButton="filled" class="act act--go" [routerLink]="link"><mat-icon aria-hidden="true">map</mat-icon>Abrir o mapa</a>
     } @else {
-      <button type="button" mat-flat-button class="act act--go" [disabled]="busy()" disabledInteractive (click)="!busy() && place.emit()">
+      <button type="button" matButton="filled" class="act act--go" [disabled]="busy()" disabledInteractive (click)="!busy() && place.emit()">
         <mat-icon aria-hidden="true">add_location_alt</mat-icon>Pôr no mapa
       </button>
     }
-    <button type="button" mat-stroked-button class="act act--again" [disabled]="busy()" disabledInteractive (click)="!busy() && again.emit()">
+    <button type="button" matButton="outlined" class="act act--again" [disabled]="busy()" disabledInteractive (click)="!busy() && again.emit()">
       <mat-icon aria-hidden="true">casino</mat-icon>{{ busy() ? 'Gerando...' : 'Gerar outro' }}
     </button>
   </div>

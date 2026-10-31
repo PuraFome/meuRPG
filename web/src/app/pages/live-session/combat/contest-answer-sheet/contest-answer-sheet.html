@@ -91,10 +91,10 @@
   <div foot class="foot">
     @switch (stage()) {
       @case ('wait') {
-        <button mat-stroked-button type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
+        <button matButton="outlined" type="button" class="foot__btn" (click)="close()">Fechar a folha</button>
       }
       @case ('result') {
-        <button #done mat-flat-button type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
+        <button #done matButton="filled" type="button" class="foot__btn foot__btn--main" (click)="close()">Fechar</button>
       }
     }
   </div>

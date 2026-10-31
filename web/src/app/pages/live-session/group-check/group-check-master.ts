@@ -77,7 +77,7 @@ export interface AskPerson {
               }
               @if (!m.answered) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="btn btn--small"
                   [disabled]="busy()"
@@ -117,7 +117,7 @@ export interface AskPerson {
           </div>
         }
         <div class="btns">
-          <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="close(g.id)">
+          <button matButton="filled" type="button" class="btn" [disabled]="busy()" (click)="close(g.id)">
             Encerrar o teste
           </button>
         </div>
@@ -128,12 +128,12 @@ export interface AskPerson {
           <h2 class="card__title" [id]="uid + 'l'">{{ lastTitle() }}</h2>
           <p class="card__text">{{ lastVerdict() }}</p>
           <div class="btns">
-            <button mat-stroked-button type="button" class="btn" (click)="dismissed.set(g.id)">Dispensar</button>
+            <button matButton="outlined" type="button" class="btn" (click)="dismissed.set(g.id)">Dispensar</button>
           </div>
         </section>
       }
       @if (collapsible() && !asking() && askButton()) {
-        <button mat-stroked-button type="button" class="btn btn--ask" (click)="asking.set(true)">
+        <button matButton="outlined" type="button" class="btn btn--ask" (click)="asking.set(true)">
           <mat-icon aria-hidden="true">groups</mat-icon>Pedir teste em grupo
         </button>
       } @else if (!collapsible() || asking()) {
@@ -230,7 +230,7 @@ export interface AskPerson {
         }
         <div class="btns">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="btn"
             [disabled]="busy() || dc() === null"
@@ -239,7 +239,7 @@ export interface AskPerson {
             Pedir o teste
           </button>
           @if (collapsible()) {
-            <button mat-stroked-button type="button" class="btn" (click)="asking.set(false)">Cancelar</button>
+            <button matButton="outlined" type="button" class="btn" (click)="asking.set(false)">Cancelar</button>
           }
         </div>
       </section>

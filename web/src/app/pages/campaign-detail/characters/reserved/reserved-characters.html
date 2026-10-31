@@ -37,8 +37,8 @@
                 <p [id]="'ask-t-' + c.id"><strong>Revogar o link de {{ c.name }}?</strong></p>
                 <p>Quem abrir o link verá apenas “Este link não pode ser usado”. Você pode gerar outro depois.</p>
                 <div class="ask__buttons">
-                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Revogar o link</button>
-                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                  <button type="button" matButton="outlined" class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Revogar o link</button>
+                  <button type="button" matButton="outlined" data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
                 </div>
               </div>
             </div>
@@ -56,8 +56,8 @@
                   }
                 </p>
                 <div class="ask__buttons">
-                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Devolver à reserva</button>
-                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                  <button type="button" matButton="outlined" class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Devolver à reserva</button>
+                  <button type="button" matButton="outlined" data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
                 </div>
               </div>
             </div>
@@ -68,32 +68,32 @@
                 <p [id]="'ask-t-' + c.id"><strong>Excluir {{ c.name }}?</strong></p>
                 <p>O personagem é apagado e o link enviado deixa de valer. Isto não se desfaz.</p>
                 <div class="ask__buttons">
-                  <button type="button" mat-stroked-button class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Excluir {{ c.name }}</button>
-                  <button type="button" mat-stroked-button data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
+                  <button type="button" matButton="outlined" class="danger" [disabled]="busy() !== null" (click)="confirm(c)">Excluir {{ c.name }}</button>
+                  <button type="button" matButton="outlined" data-cancel [disabled]="busy() !== null" (click)="cancel(c)">Cancelar</button>
                 </div>
               </div>
             </div>
           } @else {
             <div class="row__actions">
               @if (isClaimed(c)) {
-                <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id]" [attr.aria-label]="'Ver ficha de ' + c.name">Ver ficha</a>
-                <button type="button" mat-stroked-button class="danger" data-opener="return" [attr.aria-label]="'Devolver à reserva: ' + c.name" (click)="ask(c, 'return')">Devolver à reserva</button>
+                <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]" [attr.aria-label]="'Ver ficha de ' + c.name">Ver ficha</a>
+                <button type="button" matButton="outlined" class="danger" data-opener="return" [attr.aria-label]="'Devolver à reserva: ' + c.name" (click)="ask(c, 'return')">Devolver à reserva</button>
               } @else {
                 @switch (c.claim?.state) {
                   @case ('sent') {
-                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
-                    <button type="button" mat-stroked-button data-opener="revoke" [attr.aria-label]="'Revogar o link de ' + c.name" (click)="ask(c, 'revoke')">Revogar o link</button>
+                    <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                    <button type="button" matButton="outlined" data-opener="revoke" [attr.aria-label]="'Revogar o link de ' + c.name" (click)="ask(c, 'revoke')">Revogar o link</button>
                   }
                   @case ('none') {
-                    <button type="button" mat-flat-button [attr.aria-label]="'Gerar link para o jogador: ' + c.name" (click)="openLinkDialog(c)">Gerar link para o jogador</button>
-                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                    <button type="button" matButton="filled" [attr.aria-label]="'Gerar link para o jogador: ' + c.name" (click)="openLinkDialog(c)">Gerar link para o jogador</button>
+                    <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
                   }
                   @default {
-                    <button type="button" mat-stroked-button [attr.aria-label]="'Gerar novo link: ' + c.name" (click)="openLinkDialog(c)">Gerar novo link</button>
-                    <a mat-stroked-button [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
+                    <button type="button" matButton="outlined" [attr.aria-label]="'Gerar novo link: ' + c.name" (click)="openLinkDialog(c)">Gerar novo link</button>
+                    <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'characters', c.id, 'edit']" [attr.aria-label]="'Editar ' + c.name">Editar</a>
                   }
                 }
-                <button type="button" mat-stroked-button class="danger" data-opener="delete" [attr.aria-label]="'Excluir ' + c.name" (click)="ask(c, 'delete')">Excluir</button>
+                <button type="button" matButton="outlined" class="danger" data-opener="delete" [attr.aria-label]="'Excluir ' + c.name" (click)="ask(c, 'delete')">Excluir</button>
               }
             </div>
           }
@@ -102,7 +102,7 @@
     </ul>
   }
 
-  <a mat-stroked-button class="reserved__create" [routerLink]="['/campaigns', campaignId(), 'reserved', 'new']">
+  <a matButton="outlined" class="reserved__create" [routerLink]="['/campaigns', campaignId(), 'reserved', 'new']">
     <mat-icon aria-hidden="true">add</mat-icon>
     Criar personagem para um jogador
   </a>

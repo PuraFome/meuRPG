@@ -98,7 +98,7 @@
 
   <div class="actions">
     <button
-      mat-flat-button
+      matButton="filled"
       type="button"
       class="actions__print"
       [class.actions__print--off]="invalid()"
@@ -107,6 +107,6 @@
     >
       <mat-icon aria-hidden="true">{{ invalid() ? 'block' : 'print' }}</mat-icon>Imprimir
     </button>
-    <a mat-stroked-button class="actions__back" [routerLink]="backLink()">Voltar ao mapa</a>
+    <a matButton="outlined" class="actions__back" [routerLink]="backLink()">Voltar ao mapa</a>
   </div>
 </section>

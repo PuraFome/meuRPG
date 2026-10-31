@@ -25,7 +25,7 @@
           }
         }
         <div class="notes__actions">
-          <button mat-stroked-button type="submit" [disabled]="saveState().status === 'saving'">
+          <button matButton="outlined" type="submit" [disabled]="saveState().status === 'saving'">
             Salvar notas
           </button>
           <span class="notes__saved" role="status">

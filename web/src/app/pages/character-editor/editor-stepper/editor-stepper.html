@@ -54,13 +54,13 @@
 
       <div class="stepper__nav">
         @if (!first) {
-          <button mat-stroked-button type="button" class="stepper__prev" (click)="goTo(i - 1)">
+          <button matButton="outlined" type="button" class="stepper__prev" (click)="goTo(i - 1)">
             <mat-icon aria-hidden="true">arrow_back</mat-icon>
             <span class="mr-visually-hidden">Passo anterior: </span>{{ labelAt(i - 1) }}
           </button>
         }
         @if (!last) {
-          <button mat-stroked-button type="button" class="stepper__next" (click)="goTo(i + 1)">
+          <button matButton="outlined" type="button" class="stepper__next" (click)="goTo(i + 1)">
             <span class="mr-visually-hidden">Próximo passo: </span>{{ labelAt(i + 1) }}
             <mat-icon iconPositionEnd aria-hidden="true">arrow_forward</mat-icon>
           </button>

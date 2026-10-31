@@ -23,7 +23,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
           <p class="band__sub">O que você fizer aqui é dele, como se ele fizesse.</p>
         </div>
       </div>
-      <button mat-stroked-button type="button" class="band__back" (click)="back.emit()">
+      <button matButton="outlined" type="button" class="band__back" (click)="back.emit()">
         <mat-icon aria-hidden="true">chevron_left</mat-icon>Voltar ao mestre
       </button>
     </section>
