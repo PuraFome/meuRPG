@@ -1,0 +1,164 @@
+package play
+
+import (
+	"context"
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+)
+
+// Fog Cloud, Darkness and Stinking Cloud (SRD 5.1) keep their sphere on the map and change what is seen. These
+// tests need the database (MEURPG_TEST_DATABASE_URL). The cave is the one of zones_test.go: the ogre (saving throws
+// +0) stands at (7,7), Pensantus the wizard (level 9) at (12,7), the goblin far to the east.
+
+const (
+	fogCloudKey      = "spell:fog-cloud"
+	darknessKey      = "spell:darkness"
+	stinkingCloudKey = "spell:stinking-cloud"
+)
+
+func obscureCave(t *testing.T) *cave {
+	t.Helper()
+	return newCaveOf(t, 9, []string{fogCloudKey, darknessKey, stinkingCloudKey, thunderwave}, func(a *armed) *charactersv1.Character {
+		return a.caio.caster(t, a.campaignID, "Toren", "class:cleric", "race:human", 7, abilities(14, 12, 14, 16, 10),
+			[]string{maceKey}, []string{sacredFlame}, nil, []string{blessKey})
+	})
+}
+
+// farthest is the largest distance, in squares, of a square of the zone from its origin.
+func farthest(z interface {
+	GetSquares() []*playv1.SpellOrigin
+}, col, row int32) int32 {
+	var far int32
+	for _, s := range z.GetSquares() {
+		far = max(far, abs32(s.GetCol()-col), abs32(s.GetRow()-row))
+	}
+	return far
+}
+
+func abs32(n int32) int32 {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+func (c *cave) combatPositions(t *testing.T) (clouds, dark []grid.Square) {
+	t.Helper()
+	pos, err := c.h.svc.CombatPositions(context.Background(), nil, c.campaignID, c.mapID)
+	if err != nil {
+		t.Fatalf("CombatPositions() error = %v", err)
+	}
+	return pos.Clouds, pos.MagicDark
+}
+
+// Fog Cloud is a sphere of 20 feet that grows by 20 feet for each slot above the first; it hits nobody.
+func TestFogCloudGrowsWithTheSlotAndHitsNobody(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	zs := zonesOf(c.get(t, c.master), fogCloudKey)
+	if len(zs) != 1 {
+		t.Fatalf("zones = %v, want one", zs)
+	}
+	if far := farthest(zs[0], 7, 7); far < 3 || far > 4 {
+		t.Errorf("reach at the first slot = %d squares, want 4 (20 ft)", far)
+	}
+	if lines := c.zoneLines(t, c.master, fogCloudKey); len(lines) != 0 {
+		t.Errorf("lines of the cloud = %v, want none: it hits nobody", lines)
+	}
+	clouds, dark := c.combatPositions(t)
+	if len(clouds) != len(zs[0].GetSquares()) || len(dark) != 0 {
+		t.Errorf("combat positions: %d cloud squares and %d dark, want %d and 0", len(clouds), len(dark), len(zs[0].GetSquares()))
+	}
+}
+
+func TestFogCloudAtTheSecondSlotIsFortyFeet(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(2), at(7, 7), nil)
+	zs := zonesOf(c.get(t, c.master), fogCloudKey)
+	if len(zs) != 1 {
+		t.Fatalf("zones = %v, want one", zs)
+	}
+	if far := farthest(zs[0], 7, 7); far < 7 || far > 8 {
+		t.Errorf("reach at the second slot = %d squares, want 8 (40 ft)", far)
+	}
+}
+
+// Darkness is magical darkness of 15 feet, held by concentration; the fog reads it as dark, not as a cloud.
+func TestDarknessIsMagicalDarknessHeldByConcentration(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", darknessKey, slotOfLevel(2), at(7, 7), nil)
+	zs := zonesOf(c.get(t, c.master), darknessKey)
+	if len(zs) != 1 {
+		t.Fatalf("zones = %v, want one", zs)
+	}
+	if far := farthest(zs[0], 7, 7); far < 2 || far > 3 {
+		t.Errorf("reach = %d squares, want 3 (15 ft)", far)
+	}
+	clouds, dark := c.combatPositions(t)
+	if len(clouds) != 0 || len(dark) != len(zs[0].GetSquares()) {
+		t.Errorf("combat positions: %d cloud squares and %d dark, want 0 and %d", len(clouds), len(dark), len(zs[0].GetSquares()))
+	}
+	c.nextTurnOf(t, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil) // another concentration spell
+	if zs := zonesOf(c.get(t, c.master), darknessKey); len(zs) != 0 {
+		t.Errorf("darkness after the caster concentrated on another spell = %v, want none", zs)
+	}
+}
+
+// The undo of the cast takes the cloud away, and with it the squares the fog reads.
+func TestUndoOfTheCastTakesTheCloudAway(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	c.undoLast(t)
+	if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
+		t.Errorf("cloud squares after the undo = %d, want none", len(clouds))
+	}
+}
+
+// Stinking Cloud: a creature that begins its turn inside makes a Constitution save, and on a failure spends its action.
+func TestStinkingCloudSpendsTheActionOfWhoFailsAtTheStartOfItsTurn(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		face int
+		want bool
+	}{{"fail", 1, true}, {"pass", 20, false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := obscureCave(t)
+			c.passTo(t, c.zoneFight(t), "Pensantus")
+			c.mustCastArea(t, c.ana, "Pensantus", stinkingCloudKey, slotOfLevel(3), at(7, 7), nil)
+			if byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed() {
+				t.Fatal("the ogre lost its action at the cast: the cloud hits nobody then")
+			}
+			c.h.roller.queue(tc.face)
+			c.nextTurnOf(t, "Ogro")
+			if got := byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed(); got != tc.want {
+				t.Errorf("action used at the start of the ogre's turn = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// A creature outside the cloud is not asked.
+func TestStinkingCloudDoesNotAskWhoBeginsItsTurnOutside(t *testing.T) {
+	t.Parallel()
+	c := obscureCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", stinkingCloudKey, slotOfLevel(3), at(7, 14), nil)
+	c.nextTurnOf(t, "Ogro")
+	if byLabel(t, c.get(t, c.master), "Ogro").GetActionUsed() || len(c.zoneLines(t, c.master, stinkingCloudKey)) != 0 {
+		t.Error("the ogre outside the cloud was asked or lost its action")
+	}
+}

@@ -16,9 +16,9 @@ import (
 // a zone catches their character, the order of two questions, a zone with no saving throw, how a zone
 // ends and what it does to the speed and the terrain.
 
-// noSaveSpell is a fixture: an SRD spell (Stinking Cloud) given the row of a zone with no saving throw, such as
+// noSaveSpell is a fixture: an SRD spell (Silence) given the row of a zone with no saving throw, such as
 // the board's Cloud of Daggers, which the SRD 5.1 does not have. Registered once, before any test runs.
-const noSaveSpell = "spell:stinking-cloud"
+const noSaveSpell = "spell:silence"
 
 func init() {
 	zoneDefs[noSaveSpell] = zoneDef{
@@ -27,7 +27,7 @@ func init() {
 	}
 }
 
-// cloudCave is the cave with Toren a druid of level 3 (Moonbeam) and Pensantus a wizard of level 9 (Cloudkill, Web, Stinking Cloud).
+// cloudCave is the cave with Toren a druid of level 3 (Moonbeam) and Pensantus a wizard of level 9 (Cloudkill, Web).
 func cloudCave(t *testing.T) *cave {
 	t.Helper()
 	return newCaveOf(t, 9, []string{cloudkillKey, webKey, noSaveSpell}, func(a *armed) *charactersv1.Character {
