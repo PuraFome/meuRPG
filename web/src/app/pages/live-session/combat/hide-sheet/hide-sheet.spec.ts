@@ -105,6 +105,28 @@ describe('HideSheet (board W7-Xc 8)', () => {
     ]);
   });
 
+  it('follows the campaign’s dice mode: forced app offers only "Rolar no app" and sends no typed value', async () => {
+    const { el, button, settle } = setup({ diceMode: DiceMode.APP });
+    expect(button('Digitar o resultado')).toBeUndefined();
+    expect(el.querySelector('input[type="text"]')).toBeNull();
+    button('Rolar no app')!.click();
+    await settle();
+    expect(api.hides.map((h) => h.die)).toEqual([{ inApp: true }]);
+  });
+
+  it('follows the campaign’s dice mode: forced physical offers only the typed entry and sends the face, never the total', async () => {
+    const { el, button, settle } = setup({ diceMode: DiceMode.PHYSICAL });
+    expect(button('Rolar no app')).toBeUndefined();
+    const field = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    field.value = '12';
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    button('Confirmar')!.click();
+    await settle();
+    // The +7 of Furtividade is not added: 19 is never sent.
+    expect(api.hides.map((h) => h.die)).toEqual([{ faces: [12] }]);
+  });
+
   it('says "Ação bônus" for the rogue’s Cunning Action, and "o vê" for a male character', () => {
     const { text } = setup({ economy: 'Ação bônus', combatantId: 't' });
     expect(text()).toContain('Ação bônus · Destreza (Furtividade)');

@@ -379,7 +379,7 @@ If it does not, everyone uses the type the master picks.
 
 - A change applies from the next roll. NPCs always roll in the app, and the master can type a value.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
-- The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, puzzle hints and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
 - The hit points rolled when a character is created are not part of this rule.
 - Screens: the master's "Dados" panel, the player's "Como você rola os dados", and the roll sheets, which show "Rolar no app" and "Digitar o resultado" in the order of the preference, or only the way a forced mode allows.
