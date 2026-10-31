@@ -77,6 +77,9 @@ A typed roll must send `typed_song_face`, or the call is refused with `ResourceB
 The answer and the event carry `song_of_rest_sides` and `song_of_rest_face`.
 Tests: `TestSongOfRest*`, `TestTheSongsDieRolledWithARealDieIsTyped` (`play`), `TestSongOfRestDieFollowsTheBardLevel` (`rules`).
 
+Wholeness of Body (`wholeness_of_body`, one use, recharge `long_rest`) is the resource of an action in a combat: `TakeAction` spends the use and heals (see [Attacks and damage](attacks-and-damage.md#standard-and-feature-actions)).
+A long rest gives the use back.
+
 ## Class resource flows
 
 Each flow below, except the two slot recoveries, is a `ResourceService` call and an `action_taken` event with a `resourceEvent`; the master's undo takes them back (see [Undo](undo.md)).
