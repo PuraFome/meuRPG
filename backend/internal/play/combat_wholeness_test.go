@@ -30,7 +30,8 @@ func wholenessFight(t *testing.T, classes ...*charactersv1.ClassLevel) (*armed, 
 		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, abilities(10, 14, 12, 16, 8), nil, []string{fireBolt})
 		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, abilities(10, 16, 14, 10, 8), []string{rapier}, nil)
 	})
-	return a, a.threeAndAGoblin(t)
+	e := a.threeAndAGoblin(t)
+	return a, e
 }
 
 func openHand(level int32) *charactersv1.ClassLevel {
@@ -82,14 +83,14 @@ func TestWholenessOfBodyHealsThreeTimesTheMonkLevel(t *testing.T) {
 func TestWholenessOfBodyIsCappedAtTheMaximum(t *testing.T) {
 	t.Parallel()
 	a, e := wholenessFight(t, openHand(6))
-	max := a.vitals(t, a.toren).GetHitPointsMax()
-	a.correct(t, a.toren, hpIs(max-5))
+	maxHP := a.vitals(t, a.toren).GetHitPointsMax()
+	a.correct(t, a.toren, hpIs(maxHP-5))
 	res, err := a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
 	if err != nil {
 		t.Fatalf("TakeAction(wholeness of body) error = %v", err)
 	}
-	if res.GetHealed() != 5 || a.vitals(t, a.toren).GetHitPointsCurrent() != max {
-		t.Errorf("healed %d, Toren at %d; want 5 healed up to %d", res.GetHealed(), a.vitals(t, a.toren).GetHitPointsCurrent(), max)
+	if res.GetHealed() != 5 || a.vitals(t, a.toren).GetHitPointsCurrent() != maxHP {
+		t.Errorf("healed %d, Toren at %d; want 5 healed up to %d", res.GetHealed(), a.vitals(t, a.toren).GetHitPointsCurrent(), maxHP)
 	}
 }
 
@@ -98,14 +99,14 @@ func TestWholenessOfBodyIsCappedAtTheMaximum(t *testing.T) {
 func TestWholenessOfBodyAtFullHitPointsSpendsTheUseAndHealsNothing(t *testing.T) {
 	t.Parallel()
 	a, e := wholenessFight(t, openHand(6))
-	max := a.vitals(t, a.toren).GetHitPointsMax()
-	a.correct(t, a.toren, hpIs(max))
+	maxHP := a.vitals(t, a.toren).GetHitPointsMax()
+	a.correct(t, a.toren, hpIs(maxHP))
 	res, err := a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
 	if err != nil {
 		t.Fatalf("TakeAction(wholeness of body) error = %v", err)
 	}
-	if res.GetHealed() != 0 || a.vitals(t, a.toren).GetHitPointsCurrent() != max {
-		t.Errorf("healed %d, Toren at %d; want nothing healed at %d", res.GetHealed(), a.vitals(t, a.toren).GetHitPointsCurrent(), max)
+	if res.GetHealed() != 0 || a.vitals(t, a.toren).GetHitPointsCurrent() != maxHP {
+		t.Errorf("healed %d, Toren at %d; want nothing healed at %d", res.GetHealed(), a.vitals(t, a.toren).GetHitPointsCurrent(), maxHP)
 	}
 	_, err = a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
 	wantBlockedBy(t, "a second Wholeness of Body in the turn", err, blockedActionUsed)
