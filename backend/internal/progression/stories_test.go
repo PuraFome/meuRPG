@@ -15,6 +15,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 )
 
 // The acceptance criteria of MR-016 (docs/product/stories.md): the master
@@ -38,7 +40,13 @@ type table struct {
 
 func newTable(t *testing.T, mode campaignsv1.XpMode, n int) *table {
 	t.Helper()
-	h := newHarness(t)
+	return newTableRolling(t, mode, n, dicetest.New())
+}
+
+// newTableRolling is newTable with the dice the play service rolls with.
+func newTableRolling(t *testing.T, mode campaignsv1.XpMode, n int, roller dice.Roller) *table {
+	t.Helper()
+	h := newHarnessRolling(t, roller)
 	tb := &table{h: h, master: h.newUser("Samuel")}
 	names := []string{"Pensantus", "Toren", "Brisa", "Lia"}
 	for i := range n {

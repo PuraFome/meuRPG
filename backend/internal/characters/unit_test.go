@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -80,7 +81,7 @@ func (noMembers) JoinAsPlayer(context.Context, pgx.Tx, string, string) (string, 
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()
-	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(loadRules(t)), SRD: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(loadRules(t)), SRD: loadRules(t), Roller: dicetest.New(), Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -90,15 +91,23 @@ func offlineService(t *testing.T) *Service {
 func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool, content := lazyPool(t), loadRules(t)
-	for name, cfg := range map[string]Config{
-		"no Pool":     {Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(content), SRD: content},
-		"no Profiles": {Pool: pool, Members: noMembers{}, Content: NewSRDSource(content), SRD: content},
-		"no Members":  {Pool: pool, Profiles: noProfiles{}, Content: NewSRDSource(content), SRD: content},
-		"no Content":  {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}, SRD: content},
-		"no SRD":      {Pool: pool, Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(content)},
-	} {
+	full := Config{Pool: pool, Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(content), SRD: content, Roller: dicetest.New()}
+	without := map[string]func(*Config){
+		"Pool":     func(c *Config) { c.Pool = nil },
+		"Profiles": func(c *Config) { c.Profiles = nil },
+		"Members":  func(c *Config) { c.Members = nil },
+		"Content":  func(c *Config) { c.Content = nil },
+		"SRD":      func(c *Config) { c.SRD = nil },
+		"Roller":   func(c *Config) { c.Roller = nil },
+	}
+	if _, err := New(full); err != nil {
+		t.Fatalf("New() with every field error = %v", err)
+	}
+	for name, drop := range without {
+		cfg := full
+		drop(&cfg)
 		if _, err := New(cfg); err == nil {
-			t.Errorf("New() with %s succeeded", name)
+			t.Errorf("New() without %s succeeded", name)
 		}
 	}
 }

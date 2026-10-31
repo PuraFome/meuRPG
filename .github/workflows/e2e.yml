@@ -22,6 +22,7 @@ on:
       - "Makefile"
       - ".github/workflows/e2e.yml"
       - ".github/scripts/e2e-no-retries.sh"
+      - ".github/scripts/e2e-shards.mjs"
       - ".github/actions/build-e2e-images/**"
       - ".github/actions/start-e2e-stack/**"
       - ".node-version"
@@ -82,7 +83,7 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/(build-e2e-images|start-e2e-stack)/|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/(e2e-no-retries\.sh|e2e-shards\.mjs)$|\.github/actions/(build-e2e-images|start-e2e-stack)/|\.node-version$)'
           ignore-md: "true"
 
       - name: Are the accessibility shards selected
@@ -99,8 +100,8 @@ jobs:
         run: |
           a11y="$A11Y"
           matrix=$(jq -nc --argjson a11y "$a11y" '
-            [range(1; 4) | {part: "\(.)/3", args: "--grep-invert @a11y --shard=\(.)/3"}]
-            + (if $a11y then [range(1; 7) | {part: "a11y \(.)/6", args: "--grep @a11y --shard=\(.)/6"}] else [] end)
+            [range(1; 4) | {part: "\(.)/3", grep: "--grep-invert @a11y", shard: "\(.)/3"}]
+            + (if $a11y then [range(1; 7) | {part: "a11y \(.)/6", grep: "--grep @a11y", shard: "\(.)/6"}] else [] end)
             | {include: .}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "$matrix"
@@ -155,6 +156,13 @@ jobs:
       - name: Check that the tests are not retried
         # A retry hides a flaky test: the config keeps `retries: 0` (docs/ci.md, "Flaky tests").
         run: .github/scripts/e2e-no-retries.sh
+
+      - name: Check that the shard lists hold every test once
+        # The counts are the matrix's (plan job). Each list is read back through Playwright's own --test-list.
+        working-directory: e2e
+        run: |
+          node ../.github/scripts/e2e-shards.mjs check 3 --grep-invert @a11y
+          node ../.github/scripts/e2e-shards.mjs check 6 --grep @a11y
 
   # Builds the two images once (the production image and devidp) and hands them
   # to the shards, which used to build them four times over (124 to 162 s each,
@@ -239,16 +247,9 @@ jobs:
           if-no-files-found: error
 
   e2e:
-    # The suite is split across nine runners, each with its own stack: on
-    # one runner the 171 tests took 13 minutes with 2 workers (04/10/2026).
-    # Playwright splits a shard by test count, not time, and the axe scans
-    # (@a11y) are the long ones: three plain shards took 522, 171 and 119
-    # seconds. So the @a11y tests get their own runners and the rest theirs:
-    # with two @a11y runners, a shard took 19 minutes and set every PR's wait
-    # (07/10/2026). On 10/10/2026 four @a11y shards took 7 to 13 minutes and
-    # two plain shards 11 minutes each (2 to 3 of them setup), so now it is
-    # six @a11y shards and three plain ones, aiming at 6 to 7 minutes of
-    # tests in the slowest.
+    # The suite is split across nine runners, each with its own stack: six for the @a11y tests, the axe scans
+    # being the long ones, and three for the rest. Each runner gets a list of tests balanced by measured time
+    # (docs/ci.md, "End to end").
     name: playwright ${{ matrix.part }} (local stack with devidp)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
@@ -299,17 +300,42 @@ jobs:
           echo "The production image has only:"
           grep -v '^app/web/.' <<<"$files"
 
+      - name: Choose this shard's tests
+        # The tests are split by measured time (e2e/timings.json), not by Playwright's own --shard, which counts
+        # tests: the accessibility scans are the long ones. Every shard computes the same split from the same
+        # files, so each test is in exactly one list. A test the file does not know still runs.
+        working-directory: e2e
+        env:
+          GREP: ${{ matrix.grep }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          # GREP holds several flags, so it is word-split on purpose.
+          # shellcheck disable=SC2086
+          node ../.github/scripts/e2e-shards.mjs list "$SHARD" $GREP > "$RUNNER_TEMP/tests.txt"
+          wc -l < "$RUNNER_TEMP/tests.txt"
+
       - name: Run the Playwright tests
         # CI=true makes the config use Playwright's Chromium instead of an
         # installed Google Chrome. The global setup waits for /readyz. Each
-        # runner runs its part (matrix.args: a grep and a shard).
+        # runner runs its list. The JSON report is the timing of this shard,
+        # for refreshing e2e/timings.json.
         working-directory: e2e
         env:
-          PART_ARGS: ${{ matrix.args }}
+          GREP: ${{ matrix.grep }}
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ runner.temp }}/e2e-timing.json
         run: |
-          # PART_ARGS holds several flags, so it is word-split on purpose.
+          # GREP holds several flags, so it is word-split on purpose.
           # shellcheck disable=SC2086
-          npx playwright test $PART_ARGS
+          npx playwright test $GREP --test-list "$RUNNER_TEMP/tests.txt"
+
+      - name: Upload the timing of the tests
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-timing-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/e2e-timing.json
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Show and save the stack logs
         # The backend log (the api container) next to the report: a test that fails on a page that never showed a
