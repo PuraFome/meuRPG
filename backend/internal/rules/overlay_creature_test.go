@@ -145,8 +145,11 @@ func TestACreatureResolvesWhereAnSRDCreatureDoes(t *testing.T) {
 	if !slices.IsSortedFunc(all, func(a, b CreatureEntry) int { return comparePT(a.NamePT, b.NamePT) }) {
 		t.Error("the list is not sorted by Portuguese name")
 	}
-	if !c.HasCreature(packLeader) {
-		t.Error("HasCreature = false")
+	if c.HasCreature(packLeader) {
+		t.Error("HasCreature = true for a table creature, want SRD creatures only")
+	}
+	if !c.HasCreature("monster:wolf") {
+		t.Error("HasCreature(monster:wolf) = false")
 	}
 	if err := c.c.checkSummonCreatures([]string{packLeader}, map[string]bool{}, func(f string, a ...any) error { return errors.New(f) }); err != nil {
 		t.Errorf("a summon refuses the table creature: %v", err)

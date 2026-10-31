@@ -235,8 +235,12 @@ func (c *Content) srdCreatureEntries() []CreatureEntry {
 	return slices.DeleteFunc(slices.Clone(c.c.monsterEntries), func(e CreatureEntry) bool { _, table := c.c.creatureOf[e.Key]; return table })
 }
 
-// HasCreature says whether the key is an SRD creature ("monster:ogre").
+// HasCreature says whether the key is an SRD creature ("monster:ogre"). A table creature is not: the
+// encounter tools measure with the SRD's challenge ratings.
 func (c *Content) HasCreature(key string) bool {
+	if _, table := c.c.creatureOf[key]; table {
+		return false
+	}
 	_, ok := c.c.monsters[key]
 	return ok
 }

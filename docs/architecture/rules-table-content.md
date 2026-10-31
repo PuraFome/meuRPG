@@ -251,8 +251,11 @@ A table creature is left out of every use that depends on the base's challenge r
 - The encounter evaluator, the generator and the swaps (`EvaluateEncounter`, `GenerateEncounter`, `EncounterSwaps`) read the SRD's creatures only.
 - The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only.
 - The Wild Shape forms (`WildShapeForms`) are SRD beasts only.
+- The encounter tools refuse a table creature's key as unknown content, because `HasCreature` is true for SRD creatures only.
 
-An entry that is archived or switched off keeps resolving, so a creature already held, or an NPC made from it, keeps working; `Content.Creatures()` lists the table's creatures with the marks.
+An archived or switched-off entry keeps resolving.
+A creature already held, or an NPC made from it, keeps working.
+`Content.Creatures()` lists the table's creatures with the marks.
 `Content.Hidden` is true for it, so the server hides it from players as it hides any other kind (see [Switches](#switches-and-hidden-keys)).
 
 ## States
@@ -336,6 +339,7 @@ Combat uses `Spellcasting.SpellList`, the list the caster reads: the class's or,
 ## Switches and hidden keys
 
 The master switches classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures on or off per campaign, SRD and table alike; everything is on by default.
+The options screen has no creature group, so creatures are switched through the API only.
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.

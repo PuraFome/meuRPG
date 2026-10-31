@@ -301,3 +301,16 @@ func TestMR578_AnArchivedTableCreatureIsNotInThePlayersBestiaryUnlessTheyHoldOne
 		t.Errorf("GetCreature(archived) after the creature was dismissed: error = %v, want not_found", err)
 	}
 }
+
+func TestMR578_TheMasterCanGiveAnArchivedTableCreature(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	tb.master.addEntry(t, tb.campaign, tableWolf())
+	if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: tableWolfKey})); err != nil {
+		t.Fatalf("ArchiveTableEntry() error = %v", err)
+	}
+	given, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: tb.pc.GetId(), MonsterKey: tableWolfKey})
+	if err != nil || given.GetMonsterKey() != tableWolfKey || given.GetHitPointsMax() != 40 {
+		t.Fatalf("GiveCreature(archived table creature) = %v, %v; want the table wolf with 40 hit points", given, err)
+	}
+}

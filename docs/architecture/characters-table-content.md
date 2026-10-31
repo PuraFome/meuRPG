@@ -94,6 +94,7 @@ This is what the server stores and shows:
 ## Player options and the live hint
 
 The master switches on and off, per campaign, each class, subclass, race, subrace, background, spell, feat, option, class feature and creature, from the SRD and the table (`campaign_content_off`, one row per switched-off option; no row means on).
+The options screen has no creature group, so creatures are switched through the API only.
 What is switched off never reaches a player, in any read; the master sees everything with the `off` mark.
 The engine side is [Switches and hidden keys](rules-table-content.md#switches-and-hidden-keys).
 
@@ -183,15 +184,27 @@ A base the SRD lacks is refused as `dangling_reference` at `table_creature.base_
 It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches` lists it with the kind), pack and player view as the other kinds.
 Nothing is deleted: the way out of an entry is the archive mark or the switch.
 
-| Piece | What it does |
-| --- | --- |
-| Where it resolves | `GiveCreature` accepts its key where it accepts an SRD creature, and `GetCreature`, `ListCreatures`, `CreateNpcFromCreature` (the NPC's description says "criatura da mesa") and the combat read it from the campaign's content. |
-| When a number is copied | `character_creatures.hp_max` is copied from the entry when the creature is given. Editing the entry later changes no creature already held. The armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus. |
-| Archived and switched off | An entry that is archived or switched off keeps resolving for the creatures already held: they stay in the owner's list and join combats. Players do not find it in `ListCreatures`, and `GetCreature` answers `not_found` to a player none of whose characters holds a live creature of it. The master reads it always. |
-| Who uses it | `characters_using` is 0 for a creature entry, because a held creature is not part of a sheet; no sheet gets the notice "A classe mudou" when a creature entry changes. |
-| What it is not | It is not offered by the SRD spells' summon choices, by Wild Shape, by the encounter generator, the evaluator or the swaps. |
-| Packages | A campaign package carries the creature entry with the rest of the table content. The link of an NPC made from a table creature is checked against the package's own content, so a package without the creature is refused as unknown content. A package battle encounter that names a table creature is refused on import as unknown content, because `play/package.go` checks the creatures against the bare SRD. |
-| No screen yet | The web app has no editor for it. A creature is created through the API or imported with a pack until a screen is designed. |
+- **Where it resolves.** `GiveCreature` accepts its key where it accepts an SRD creature.
+  `GetCreature`, `ListCreatures`, `CreateNpcFromCreature` and the combat read it from the campaign's content.
+  The NPC made from it has "criatura da mesa" in its description.
+- **When a number is copied.** `character_creatures.hp_max` is copied from the entry when the creature is given.
+  Editing the entry changes no creature already held.
+  The armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time.
+  A held creature shows the entry's current armor class and attacks with its current damage bonus.
+- **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
+  They stay in the owner's list and join combats.
+  Players do not find it in `ListCreatures`.
+  `GetCreature` answers `not_found` to a player none of whose characters holds a live creature of it.
+  The master reads it always and can give it.
+- **Who uses it.** `characters_using` is 0 for a creature entry, because a held creature is not part of a sheet.
+  No sheet gets the notice "A classe mudou" when a creature entry changes.
+- **What it is not.** The SRD spells' summon choices, Wild Shape, and the encounter generator, evaluator and swaps do not offer it.
+  The encounter tools refuse its key as unknown content.
+- **Packages.** A campaign package carries the creature entry with the rest of the table content.
+  A package without the creature of an NPC's link is refused as unknown content.
+  A package battle encounter that names a table creature is refused as unknown content.
+- **The web app.** It has no editor for creatures and no creature group in the options screen.
+  A creature is created and switched through the API or a content pack.
 
 ## Spell targets and the "Magias" page
 

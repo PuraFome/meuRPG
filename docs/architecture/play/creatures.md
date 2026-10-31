@@ -44,15 +44,24 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.
   Entries are never deleted, so a held creature never loses its key.
-- **Who sees what (RN-20, RN-23).** In combat the HP is a number for the owning player and the master and the armor class for the master alone; everyone else gets the state word, as for an SRD creature.
+- **Who sees what (RN-20, RN-23).** In combat the HP is a number for the owning player and the master and the armor class for the master alone.
+  Everyone else gets the state word, as for an SRD creature.
   The owner's list (`ListCharacterCreatures`) carries both numbers to the owner and the master, and to nobody else.
-  The key of a table creature has no `monster` in it; the other players read it as the kind, as they read an SRD creature's.
-  A player's `ListCreatures` lacks an archived or switched-off table creature, and `GetCreature` answers `not_found` to a player none of whose characters holds one.
+  The combatant's name and key are visible to everyone in the combat, as for SRD summons and NPCs.
+  The stat block, the HP and the armor class are not.
+  This holds when the entry is archived.
+  A player's `ListCreatures` lacks an archived or switched-off table creature.
+  `GetCreature` answers `not_found` to a player none of whose characters holds one.
   The master reads them all.
   `TestRN20_TableCreatureHitPointsOnlyToOwnerAndMaster` and the leak matrix pin this.
-- **Where it is not used.** A table creature is not offered by the summoning spells (their choices are SRD creatures), is not a Wild Shape form and is not in the encounter generator, evaluator or swaps, because it has the challenge rating and XP of its base, which its adjustments may not keep.
-- **Limits today.** The web app has no editor yet: the master's creatures come from the API or from a pack.
-  A package battle encounter that names a table creature is refused on import as unknown content, because `play/package.go` checks the creatures against the bare SRD.
+- **Where it is not used.** The summoning spells offer SRD creatures only.
+  A table creature is not a Wild Shape form.
+  The encounter generator, evaluator and swaps leave it out, because it has the challenge rating and XP of its base, which its adjustments may not keep.
+  The encounter tools refuse its key as unknown content: `encounterEntries` answers `failed_precondition` and `GetBattleEncounter` lists the key in `unknown_creature_keys`.
+- **Giving.** The master can give an archived table creature.
+- **Other limits.** The web app has no editor for creatures: they are created through the API or a content pack.
+  The master switches them on and off through the API only, because the options screen has no creature group.
+  A package battle encounter that names a table creature is refused on import as unknown content.
   `characters_using` counts 0 for a held creature, since it is not part of a sheet.
 
 ## What the combat does with a creature

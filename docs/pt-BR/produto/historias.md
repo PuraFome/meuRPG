@@ -720,11 +720,14 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 
 - **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma criatura própria a partir de uma criatura do SRD (um lobo com 40 pontos de vida, classe de armadura 17, +2 no dano de cada ataque e um traço de texto), **então** ela vale onde vale uma criatura do SRD: eu a dou a um personagem de jogador, ela entra nos combates com esses números, e posso criar um NPC a partir dela.
   A criatura do SRD em si nunca muda, e a base da entrada não pode ser trocada por outra depois.
-  Ainda não há tela para cadastrar uma: ela vem pela API ou por um pacote de conteúdo.
+  O app web não tem editor de criaturas: elas são criadas pela API ou por um pacote de conteúdo.
 - **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
 - **Dado** uma criatura já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
 - **Dado** uma entrada de criatura que arquivo ou desligo, **então** os jogadores deixam de achá-la na lista de criaturas e de ler a ficha dela, a menos que um personagem deles a tenha, **e** as criaturas já dadas continuam funcionando para os donos; nada é apagado.
 - **Dado** uma criatura da mesa em combate, **então** os pontos de vida dela são um número só para o mestre e o jogador dono, e a classe de armadura só para o mestre; os outros jogadores leem a palavra de estado.
+- **Dado** uma criatura da mesa em combate, **então** todo jogador ali lê o nome e a chave dela, como numa invocação do SRD ou num NPC, **e** a ficha de estatísticas, os pontos de vida e a classe de armadura ficam escondidos de quem não é o dono, mesmo com a entrada arquivada.
+- **Dado** uma entrada de criatura arquivada, **quando** a dou a um personagem, **então** ela é dada.
+- **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso pela API, porque a tela "Opções para os jogadores" não tem grupo de criaturas.
 - **Dado** as magias de invocação, a Forma Selvagem e as ferramentas de encontro (gerador, avaliador e trocas), **então** elas oferecem só criaturas do SRD, porque uma criatura da mesa não mantém o nível de desafio da base.
 
 **Trocar uma escolha.**
@@ -738,7 +741,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O aviso some sozinho quando os números voltam a bater.
 - **Dado** um conteúdo da mesa que uma ficha usa, **quando** o mestre o arquiva, **então** a ficha o mantém **e** ele deixa de aparecer como escolha nova; nada do conteúdo da mesa é apagado.
   Uma entrada arquivada ainda pode ser editada e pode ser desarquivada, e então volta a ser uma escolha nova.
-- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção, característica de classe ou criatura (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
+- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção ou característica de classe (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
   Uma classe desligada leva as subclasses dela junto, e uma raça desligada, as sub-raças.
 - **Dado** uma opção desligada ou arquivada, **quando** um jogador cria ou edita uma ficha ou sobe de nível, **então** o servidor a recusa como escolha nova, **e** uma ficha que já a tem continua funcionando e uma edição que não tem relação nunca é recusada.
   O mestre nunca é recusado.

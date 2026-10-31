@@ -2032,7 +2032,7 @@ func (x *TableClassFeature) GetEffects() []*TableEffect {
 // base has (abilities, speeds, senses, actions, reactions) except what is adjusted here.
 // Once the entry exists it is a creature like the SRD's, by its own key: the creature
 // list and sheet, summons, Wild Shape and combat read it where they read an SRD creature.
-// A later slice may add a full stat block of the master's own as another field.
+// The web app has no editor for creatures: they are created through the API or a content pack.
 type TableCreature struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
