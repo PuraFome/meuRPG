@@ -46,7 +46,7 @@ function selectIn(env, { base = [], files = [], moves = [] }, ...args) {
   }
 }
 
-const pr = { EVENT: 'pull_request', HEAD_REF: 'feat/x' };
+const pr = { EVENT: 'pull_request', HEAD_REF: 'feat/x', HEAD_REPO: 'o/r', BASE_REPO: 'o/r' };
 
 test('a push, a schedule or a dispatch is always selected', () => {
   for (const EVENT of ['push', 'schedule', 'workflow_dispatch']) {
@@ -65,12 +65,12 @@ test('--ignore-md drops markdown files from the match', () => {
 });
 
 test('a train is selected whatever it changes, docs-only included', () => {
-  const r = select({ EVENT: 'pull_request', HEAD_REF: 'refactor/train-69' }, ['docs/a.md'], 'run', '^backend/');
+  const r = select({ ...pr, HEAD_REF: 'refactor/train-69' }, ['docs/a.md'], 'run', '^backend/');
   assert.match(r.out, /run=true/);
 });
 
 test('a branch that only looks like a train is not one', () => {
-  assert.match(select({ EVENT: 'pull_request', HEAD_REF: 'feat/refactor/train-1' }, ['docs/a.md'], 'run', '^backend/').out, /run=false/);
+  assert.match(select({ ...pr, HEAD_REF: 'feat/refactor/train-1' }, ['docs/a.md'], 'run', '^backend/').out, /run=false/);
 });
 
 test('a non-ASCII path is seen', () => {
@@ -80,4 +80,15 @@ test('a non-ASCII path is seen', () => {
 test('a file moved out of the selected tree selects it: the old path counts too', () => {
   const got = selectIn(pr, { base: ['web/x.ts'], moves: [['web/x.ts', 'docs/x.ts']] }, 'run', '^web/');
   assert.match(got.out, /run=true/, got.err);
+});
+
+test('a branch named like a train, from another repository, is judged by its files', () => {
+  const fork = { ...pr, HEAD_REF: 'refactor/train-69', HEAD_REPO: 'someone/r' };
+  assert.match(select(fork, ['docs/a.txt'], 'run', '^backend/').out, /run=false/);
+  assert.match(select(fork, ['backend/a.go'], 'run', '^backend/').out, /run=true/);
+});
+
+test('a train needs both repositories to be named', () => {
+  assert.match(select({ ...pr, HEAD_REF: 'refactor/train-69', HEAD_REPO: '' }, ['docs/a.txt'], 'run', '^backend/').out, /run=false/);
+  assert.match(select({ ...pr, HEAD_REF: 'refactor/train-69', BASE_REPO: '' }, ['docs/a.txt'], 'run', '^backend/').out, /run=false/);
 });

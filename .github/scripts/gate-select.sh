@@ -7,11 +7,13 @@
 # on a pull request (the diff against the base branch).
 #
 #   - not a pull request (a push to main, the nightly, a manual run): true.
-#   - a pull request from a refactor/train-* branch: true, whatever it changes. A train runs the full gate, so a
-#     docs-only train is judged like any other.
+#   - a pull request from a refactor/train-* branch of this repository: true, whatever it changes. A train runs the full
+#     gate, so a docs-only train is judged like any other. A branch of that name in someone else's fork is no train: it
+#     is judged by its files like any other pull request.
 #   - any other pull request: true when a changed file matches <ERE> (--ignore-md: not counting *.md files).
 #
-# Environment: EVENT (github.event_name), BASE_REF (github.base_ref), HEAD_REF (github.head_ref).
+# Environment: EVENT (github.event_name), BASE_REF (github.base_ref), HEAD_REF (github.head_ref), HEAD_REPO
+# (github.event.pull_request.head.repo.full_name) and BASE_REPO (github.repository).
 set -euo pipefail
 
 output="${1:?the name of the output}"
@@ -22,7 +24,7 @@ out="${GITHUB_OUTPUT:-/dev/stdout}"
 
 selected=true
 if [ "${EVENT:-}" = pull_request ]; then
-  if [[ "${HEAD_REF:-}" == refactor/train-* ]]; then
+  if [[ "${HEAD_REF:-}" == refactor/train-* && -n "${BASE_REPO:-}" && "${HEAD_REPO:-}" == "$BASE_REPO" ]]; then
     selected=true
   else
     changed=$(git -c core.quotePath=false diff --name-only --no-renames "origin/${BASE_REF:?BASE_REF}...HEAD")

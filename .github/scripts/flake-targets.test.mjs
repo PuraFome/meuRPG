@@ -252,3 +252,55 @@ test('a test whose file signs in through a helper in beforeEach, or whose helper
   const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 5, 6), read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
   assert.equal(got.playwright[0].signins, 3);
 });
+
+test('a hook counts only for the tests inside its own describe', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': [
+      "test.describe('with a hook', () => {",
+      '  test.beforeEach(async ({ page }) => {',
+      '    await signIn(page);',
+      '  });',
+      "  test.describe('nested', () => {",
+      "    test('inherits the hook', async () => {});",
+      '  });',
+      '});',
+      "test.describe('without one', () => {",
+      "  test('outside the hook', async () => {});",
+      '});',
+      "test('at the top', async () => {});",
+      '',
+    ].join('\n'),
+    'e2e/tests/x-support.ts': "export async function signIn(page: Page): Promise<void> {\n  await page.goto('/auth/login');\n}\n",
+  };
+  const diff = hunk('e2e/tests/x.spec.ts', 1, 12);
+  const got = mapDiff({ diff, read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.deepEqual(
+    got.playwright.map((t) => [t.title, t.signins]),
+    [
+      ['at the top', 0],
+      ['inherits the hook', 3],
+      ['outside the hook', 0],
+    ],
+  );
+});
+
+test('a hook outside every describe reaches all the tests of the file', () => {
+  const [a, b] = playwrightTests("test.beforeEach(async () => {\n  await signIn();\n});\ntest.describe('g', () => {\n  test('in', async () => {});\n});\ntest('out', async () => {});");
+  assert.match(a.hooks, /signIn/);
+  assert.match(b.hooks, /signIn/);
+});
+
+test('mapDiff reads and parses each spec once, however many tests and callers ask for it', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': "test('a', async () => {\n  await openThing();\n});\n\ntest('b', async () => {\n  await openThing();\n});\n",
+    'e2e/tests/x-support.ts': 'export async function openThing(): Promise<void> {}\n',
+  };
+  const reads = [];
+  const read = (f) => {
+    reads.push(f);
+    return files[f];
+  };
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 1, 7) + hunk('e2e/tests/x-support.ts', 1, 1), read, files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.deepEqual(got.playwright.map((t) => t.title), ['a', 'b']);
+  assert.equal(reads.filter((f) => f === 'e2e/tests/x.spec.ts').length, 1);
+});
