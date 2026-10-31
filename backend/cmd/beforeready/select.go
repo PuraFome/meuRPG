@@ -20,15 +20,17 @@ const (
 )
 
 // everythingFiles are the files whose change makes every line run: the tool that selects and
-// runs the tests, and the module's dependencies.
+// runs the tests (the Makefile target passes it ONLY and ALL), and the module's dependencies.
 var everythingFiles = []string{
 	".github/scripts/before-ready.sh",
+	"Makefile",
 	backendDir + "/go.mod",
 	backendDir + "/go.sum",
 }
 
-// everythingDirs are the directories whose change makes every line run.
-var everythingDirs = []string{backendDir + "/cmd/beforeready"}
+// everythingDirs are the directories whose change makes every line run: the tool, and the
+// parser of the list with the function that decides which paths an input covers.
+var everythingDirs = []string{backendDir + "/cmd/beforeready", backendDir + "/internal/archtest/beforereadylist"}
 
 // Line is one `run` line of the list, as the shared parser reads it.
 type Line = beforereadylist.Line
@@ -123,6 +125,8 @@ func whyFile(l Line, f Facts, file, self string, deps map[string]bool, pkg strin
 		return file + " is in the package"
 	case pkg != "" && deps[pkg]:
 		return file + " is in " + strings.TrimPrefix(pkg, backendDir+"/") + ", which the package imports"
+	case strings.HasPrefix(file, self+"/"):
+		return file + " is under the package directory"
 	case isProtoSchema(file) && importsGenerated(deps):
 		return file + " is a proto file, and the package imports the code generated from proto/"
 	}

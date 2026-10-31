@@ -80,7 +80,7 @@ func TestSelect(t *testing.T) {
 		want    []string
 	}{
 		{"web only", []string{"web/src/app/app.ts", "web/package.json"}, nil},
-		{"docs only", []string{"docs/testing.md", "README.md", "Makefile"}, nil},
+		{"docs only", []string{"docs/testing.md", "README.md"}, nil},
 		{"nothing changed", nil, nil},
 		{
 			"a file in the play package selects its lines and the importers",
@@ -255,4 +255,46 @@ func TestComputeFactsOutsideAGitTreeFails(t *testing.T) {
 func parseRunLines(r io.Reader) ([]Line, error) {
 	all, err := beforereadylist.Parse(r)
 	return beforereadylist.RunLines(all), err
+}
+
+// A changed file anywhere under a line's package directory selects the line, also in a
+// sub-package the tests do not import (they read its data files by path).
+func TestSelectAFileUnderThePackageDirectory(t *testing.T) {
+	t.Parallel()
+	lines, f := setup(t)
+	f.PkgDirs = append(f.PkgDirs, "backend/internal/rules/srd51", "backend/internal/rules2")
+	f.Deps["backend/internal/rules/srd51"] = []string{"backend/internal/rules/srd51"}
+	f.Deps["backend/internal/rules2"] = []string{"backend/internal/rules2"}
+	pkgs := func(changed string) (got []string, reason string) {
+		f.Changed = []string{changed}
+		sel, _ := Select(lines, f)
+		for _, d := range sel {
+			if d.Line.Pkg == "internal/rules" {
+				reason = d.Reason
+			}
+			got = append(got, d.Line.Pkg)
+		}
+		return got, reason
+	}
+	got, reason := pkgs("backend/internal/rules/srd51/data/x.json")
+	if !slices.Contains(got, "internal/rules") || !strings.Contains(reason, "backend/internal/rules/srd51/data/x.json") {
+		t.Errorf("selected %v, reason %q: the rules line must run, naming the file", got, reason)
+	}
+	// A directory whose name only starts the same does not belong to the package.
+	if got, _ := pkgs("backend/internal/rules2/x.json"); slices.Contains(got, "internal/rules") {
+		t.Errorf("internal/rules2/x.json selected the internal/rules line: %v", got)
+	}
+}
+
+// The parser, Covering and the Makefile (it passes ONLY and ALL to the script) are the tool of every line.
+func TestSelectTheParserOrTheMakefileSelectEverything(t *testing.T) {
+	t.Parallel()
+	lines, f := setup(t)
+	for _, file := range []string{"Makefile", "backend/internal/archtest/beforereadylist/list.go", "backend/internal/archtest/beforereadylist/list_test.go"} {
+		f.Changed = []string{file}
+		sel, skipped := Select(lines, f)
+		if len(sel) != len(lines) || len(skipped) != 0 {
+			t.Errorf("%s selected %d of %d lines", file, len(sel), len(lines))
+		}
+	}
 }
