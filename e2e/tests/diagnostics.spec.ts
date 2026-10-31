@@ -144,6 +144,7 @@ test('um teste que falha anexa o diagnóstico: o pedido que não voltou no fixtu
     for (const spec of suite.specs ?? []) results.set(spec.title, spec.tests[0].results[0]);
     suite.suites?.forEach(walk);
   };
+  expect(run.stdout, `the nested run printed no report (status ${run.status}): ${run.stderr}`).toContain('"suites"');
   walk({ suites: (JSON.parse(run.stdout) as { suites: Suite[] }).suites });
   const attachment = (title: string) => {
     const result = results.get(title);
