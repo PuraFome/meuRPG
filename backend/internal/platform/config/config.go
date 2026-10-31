@@ -476,7 +476,8 @@ func loadLogLevel(getenv func(string) string) (slog.Level, error) {
 }
 
 // checkCloudRunDatabase applies checkDatabaseTLS to the database of a Cloud
-// Run instance; elsewhere (and without a database) anything goes.
+// Run instance; elsewhere anything goes. A missing URL is not refused here:
+// the server refuses it when it opens its database (cmd/api).
 func checkCloudRunDatabase(cfg Config) error {
 	if !cfg.CloudRun || cfg.DatabaseURL == "" {
 		return nil

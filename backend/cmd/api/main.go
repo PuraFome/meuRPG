@@ -28,7 +28,7 @@
 //	TASKS_TARGET_URL    the service's own https URL, where Cloud Tasks calls back
 //	TASKS_SERVICE_ACCOUNT the account that signs that call's OIDC token
 //
-// Sign-in needs the OIDC_* variables too. Without them the API still starts,
+// Sign-in needs the OIDC_* variables. Without them the API still starts,
 // and the sign-in routes answer 503. CampaignService,
 // CampaignDocumentService, CharacterService, ContentService,
 // TableContentService, PlayService,
