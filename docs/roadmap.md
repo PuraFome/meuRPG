@@ -1,7 +1,7 @@
 # Roadmap
 
 The app is built, hardened, rehearsed and running in production (see [Operations](operations/README.md)).
-The table's first full session through it waits for the whole rules engine.
+The MVP, the table's first full session through the app, waits for the whole rules engine.
 Two milestones come next, "Sessão zero" and "Antes de outra mesa", and then the English UI and the post-MVP stories.
 There are no dates: the pace depends on everyone's free time.
 
@@ -28,28 +28,28 @@ flowchart LR
 | Content and generation | The table's own content and rules, the dungeon generator, puzzles, AI-generated images, the bestiary, the encounter builder, the treasure generator, spell look-up, casting outside combat and the campaign package ([MR-025](product/stories.md#mr-025-register-table-content), [MR-010](product/stories.md#mr-010-generate-dungeons), [MR-038](product/stories.md#mr-038-puzzles), [MR-039](product/stories.md#mr-039-ai-generated-images-for-dungeons-and-scenes), [MR-042](product/stories.md#mr-042-bestiary) to [MR-045](product/stories.md#mr-045-look-up-spells), [MR-048](product/stories.md#mr-048-cast-spells-outside-combat), [MR-050](product/stories.md#mr-050-campaign-package-export-and-import)). |
 | MVP gate | Hardening, rehearsals and the production deploy. |
 
-Shipped since the MVP gate:
+Also built:
 
 | What | Where it is described |
 | --- | --- |
 | The dice roll in a 2D tray, under the campaign's dice rule | [MR-052](product/stories.md#mr-052-the-free-dice-roller), [Design: rolls](design/session.md#rolls) |
 | The map outside combat: the group on the map and the players moving their own characters | [MR-012](product/stories.md#mr-012-follow-the-session) |
-| The light warning: the master is told of a character that sees nothing where it stands on a fog map | [MR-036](product/stories.md#mr-036-fog-of-war-by-sight), [Fog](architecture/play/fog.md) |
+| The light warning: the master is told of a character that sees nothing where it stands on a fog map | [MR-036](product/stories.md#mr-036-fog-of-war-by-sight), [Fog](architecture/maps/fog.md#the-masters-light-warning) |
 | The master plays a character's turn for an absent player | [MR-053](product/stories.md#mr-053-the-master-acts-for-a-players-character) |
 | Spell zones: Spirit Guardians, Moonbeam, Cloudkill and Web keep their area on the map | [RN-37](product/rules.md#rn-37-areas-that-spells-keep-on-the-map), [Spell zones](architecture/play/spell-zones.md) |
 | Compact screens: the turn is a strip from 1024 px, and the session page has a one-row bar | [MR-014](product/stories.md#mr-014-your-turn), [MR-012](product/stories.md#mr-012-follow-the-session) |
 | A creature's actions from its turn, and answering its rider | [MR-054](product/stories.md#mr-054-use-a-creatures-action-from-its-turn), [MR-055](product/stories.md#mr-055-answer-a-creatures-rider) |
 | Held rolls: the master answers every question the app asks about a held roll | [Held rolls](architecture/play/held-rolls.md) |
 
-
 ## Next
 
-1. **"Sessão zero".** The table's first full session waits for the whole rules engine.
-   That means the remaining features of the last wave (monster stat blocks, items on the sheet, more lasting zones, [#640](https://github.com/PuraFome/meuRPG/issues/640)) and the gaps in the engine under that milestone.
+1. **"Sessão zero".** The MVP waits for it.
+   It is made of the remaining features of the last wave (monster stat blocks, items on the sheet, more lasting zones ([#640](https://github.com/PuraFome/meuRPG/issues/640))) and the gaps in the engine under that milestone.
    Its acceptance test is a level-up ladder from level 1 to 12.
    The issues are on the [milestone](https://github.com/PuraFome/meuRPG/milestones), grouped there; this page does not list them.
 2. **"Antes de outra mesa".** What must hold before a second table uses the app: [#657](https://github.com/PuraFome/meuRPG/issues/657), [#658](https://github.com/PuraFome/meuRPG/issues/658) and [#659](https://github.com/PuraFome/meuRPG/issues/659).
-3. **After that.** The English UI ([#656](https://github.com/PuraFome/meuRPG/issues/656)); the screens are in Portuguese until then.
+3. **English UI** ([#656](https://github.com/PuraFome/meuRPG/issues/656)).
+   The screens are in Portuguese until then.
    Then the post-MVP stories below.
 
 ## After that
