@@ -35,9 +35,9 @@ import { ActionKey } from '../../../../core/connect/idempotency';
               <span>{{ line(r) }}</span>
             </p>
             <div class="card__buttons">
-              <button mat-flat-button type="button" [disabled]="busy()" (click)="answer(r, r.requestedMode)">Aprovar</button>
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="answer(r, r.suggestedMode)">Recusar</button>
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="answer(r, disadvantage)">Desvantagem</button>
+              <button matButton="filled" type="button" [disabled]="busy()" (click)="answer(r, r.requestedMode)">Aprovar</button>
+              <button matButton="outlined" type="button" [disabled]="busy()" (click)="answer(r, r.suggestedMode)">Recusar</button>
+              <button matButton="outlined" type="button" [disabled]="busy()" (click)="answer(r, disadvantage)">Desvantagem</button>
             </div>
           </div>
         }

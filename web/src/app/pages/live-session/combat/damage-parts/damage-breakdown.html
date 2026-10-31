@@ -33,7 +33,7 @@
             <td class="act">
               @if (removable().has(r.partKey) && r.counted) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="take"
                   [attr.aria-label]="'Tirar o ' + r.labelPt"
@@ -66,8 +66,8 @@
         />
         <span class="ask__hint" [id]="id + '-h'">{{ reason().trim().length }}/120 · É ficção; não escreva dados reais de pessoas.</span>
         <div class="ask__buttons">
-          <button mat-stroked-button type="button" (click)="asking.set(null)">Voltar</button>
-          <button mat-stroked-button type="submit" class="ask__danger" [disabled]="!reasonOk() || busy()" disabledInteractive>
+          <button matButton="outlined" type="button" (click)="asking.set(null)">Voltar</button>
+          <button matButton="outlined" type="submit" class="ask__danger" [disabled]="!reasonOk() || busy()" disabledInteractive>
             Tirar
           </button>
         </div>

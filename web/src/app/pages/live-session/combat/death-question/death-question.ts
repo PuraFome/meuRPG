@@ -41,10 +41,10 @@ import { article } from '../../../../core/combat/combat-log';
             Se alguém curar {{ the(c.label) }} antes, {{ article(c.label) === 'a' ? 'ela' : 'ele' }} volta.
           </p>
           <div class="ask__btns">
-            <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm.emit(c.id)">
+            <button matButton="outlined" type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm.emit(c.id)">
               Confirmar a morte
             </button>
-            <button #safe mat-stroked-button type="button" class="ask__btn" (click)="later.emit(c.id)">Ainda não</button>
+            <button #safe matButton="outlined" type="button" class="ask__btn" (click)="later.emit(c.id)">Ainda não</button>
           </div>
         </div>
       </div>

@@ -90,9 +90,9 @@ export interface CreatureActionOutcome {
         }
       </div>
       <div foot class="foot">
-        <button mat-button type="button" class="quiet" [disabled]="busy()" (click)="close()">Cancelar</button>
+        <button matButton type="button" class="quiet" [disabled]="busy()" (click)="close()">Cancelar</button>
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="btn"
           [class.mr-button--off]="!flow.ready() || busy()"

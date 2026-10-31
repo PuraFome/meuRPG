@@ -6,7 +6,7 @@
       Envie a primeira para usar nos mapas e no documento da campanha: um mapa, a planta de um
       lugar, o retrato de um NPC.
     </p>
-    <button #pickButton mat-flat-button type="button" class="empty__button" (click)="open()">
+    <button #pickButton matButton="filled" type="button" class="empty__button" (click)="open()">
       <mat-icon aria-hidden="true">upload</mat-icon>Enviar imagem
     </button>
     <p class="hint"><span class="empty__drag">Ou arraste as imagens para cá. </span>{{ hint() }}</p>
@@ -20,7 +20,7 @@
       <p class="hint">{{ hint() }}</p>
       <app-image-privacy-note />
     </div>
-    <button #pickButton mat-flat-button type="button" class="zone__button" (click)="open()">
+    <button #pickButton matButton="filled" type="button" class="zone__button" (click)="open()">
       <mat-icon aria-hidden="true">upload</mat-icon>Enviar imagem
     </button>
   </div>

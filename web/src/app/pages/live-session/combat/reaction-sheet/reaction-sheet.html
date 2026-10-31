@@ -169,7 +169,7 @@
             } @else if (isConcentration()) {
               <div class="stack">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   type="button"
                   class="pair__btn"
                   data-initial-focus
@@ -179,7 +179,7 @@
                   <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="pair__btn"
                   [disabled]="busy()"
@@ -188,7 +188,7 @@
                   Digitar o resultado
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="pair__btn"
                   [disabled]="busy()"
@@ -200,7 +200,7 @@
             } @else {
               <div class="pair">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   type="button"
                   class="pair__btn"
                   [disabled]="busy() || !canUse()"
@@ -210,7 +210,7 @@
                   {{ view()?.useLabel }}
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="pair__btn"
                   data-initial-focus
@@ -231,7 +231,7 @@
             }
           }
           @case ('roll') {
-            <button mat-stroked-button type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="back()">
+            <button matButton="outlined" type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="back()">
               Voltar
             </button>
             @if (rollingAt() !== null) {
@@ -244,7 +244,7 @@
             @if (stage() === 'result' && shown()?.throwBack) {
               <div class="pair">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   type="button"
                   class="pair__btn"
                   [disabled]="busy()"
@@ -254,7 +254,7 @@
                 </button>
                 <button
                   #keep
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="pair__btn"
                   data-initial-focus
@@ -265,7 +265,7 @@
                 </button>
               </div>
             } @else {
-              <button #close mat-stroked-button type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="done()">
+              <button #close matButton="outlined" type="button" class="pair__btn pair__btn--one" data-initial-focus (click)="done()">
                 Fechar
               </button>
             }

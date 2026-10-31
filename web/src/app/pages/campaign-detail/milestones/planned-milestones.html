@@ -48,7 +48,7 @@
       } @else {
         <span class="row__name">{{ m.text }}</span>
         <button
-          mat-stroked-button
+          matButton="outlined"
           type="button"
           class="row__reach"
           [attr.data-id]="m.id"
@@ -131,7 +131,7 @@
 } @else if (full()) {
   <p class="mr-muted full">A campanha já tem 100 marcos. Remova um marco planejado para escrever outro.</p>
 } @else {
-  <button mat-stroked-button type="button" class="add" data-add (click)="openAdd()">
+  <button matButton="outlined" type="button" class="add" data-add (click)="openAdd()">
     <mat-icon aria-hidden="true">add</mat-icon>Adicionar marco
   </button>
 }

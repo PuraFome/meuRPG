@@ -374,3 +374,111 @@ func TestGreaseUndoOfTheCastClosesThePlayersQuestion(t *testing.T) {
 		t.Errorf("zones after the undo = %v, want none", zs)
 	}
 }
+
+// castHitsOf are the targets the last spell_cast event of the session recorded, in order, with their saving throws.
+func (c *cave) castHitsOf(t *testing.T) []castHit {
+	t.Helper()
+	var payload []byte
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT payload FROM session_events WHERE kind = $1 ORDER BY seq DESC LIMIT 1`, eventSpellCast).Scan(&payload); err != nil {
+		t.Fatalf("read the last cast: %v", err)
+	}
+	ev, err := readEvent(payload)
+	if err != nil {
+		t.Fatalf("decode the cast: %v", err)
+	}
+	return ev.Hits
+}
+
+// A player answers the save of a zone at the cast and fails it; the master's undo still finds the cast, and takes
+// the fall back with the zone, the NPC's too.
+func TestGreaseUndoOfTheCastAfterThePlayerAnswersAndFails(t *testing.T) {
+	t.Parallel()
+	c := greaseCave(t)
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustMove(t, c.master, "Ogro", 13, 7)
+	c.h.roller.queue(5) // the ogre's save
+	c.mustCastArea(t, c.ana, "Pensantus", greaseKey, slotOfLevel(1), at(12, 7), nil)
+	w := c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("the wizard is not asked the save")
+	}
+	c.h.roller.queue(1)
+	if _, err := c.rollEffectSave(t, c.ana, c.get(t, c.master), w.GetId(), effectSaveFace(1)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if !c.isProne(t, "Pensantus") || !c.isProne(t, "Ogro") {
+		t.Fatalf("prone after the answer: wizard %v, ogre %v, want both", c.isProne(t, "Pensantus"), c.isProne(t, "Ogro"))
+	}
+	c.undoLast(t)
+	if c.isProne(t, "Pensantus") || c.isProne(t, "Ogro") {
+		t.Errorf("prone after the undo: wizard %v, ogre %v, want neither", c.isProne(t, "Pensantus"), c.isProne(t, "Ogro"))
+	}
+	if zs := c.get(t, c.master).GetZones(); len(zs) != 0 {
+		t.Errorf("zones after the undo = %v, want none", zs)
+	}
+}
+
+// The same for Entangle: the restraint the answer added goes with the cast.
+func TestEntangleUndoOfTheCastAfterThePlayerAnswersAndFails(t *testing.T) {
+	t.Parallel()
+	c := entangleCave(t)
+	c.entangleFight(t)
+	c.mustMove(t, c.master, "Ogro", 18, 7)
+	c.h.roller.queue(5) // the ogre's save
+	c.mustCastArea(t, c.caio, "Toren", entangleKey, slotOfLevel(1), at(17, 7), nil)
+	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("the druid is not asked the save")
+	}
+	c.h.roller.queue(1)
+	if _, err := c.rollEffectSave(t, c.caio, c.get(t, c.master), w.GetId(), effectSaveFace(1)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if cardOf(t, byLabel(t, c.get(t, c.master), "Toren"), entangleFx) == nil {
+		t.Fatal("the druid is not restrained after the failed answer")
+	}
+	c.undoLast(t)
+	for _, label := range []string{"Toren", "Ogro"} {
+		cb := byLabel(t, c.get(t, c.master), label)
+		if cardOf(t, cb, entangleFx) != nil || slices.Contains(cb.GetConditions(), restrainedC) {
+			t.Errorf("%s after the undo = %v, want free", label, cb)
+		}
+	}
+	if zs := c.get(t, c.master).GetZones(); len(zs) != 0 {
+		t.Errorf("zones after the undo = %v, want none", zs)
+	}
+}
+
+// The cast records every creature it caught, whatever its save: the one that passed is there as the one that
+// failed, so what the cast reveals or lists does not tell the saves apart.
+func TestTheCastRecordsEveryCreatureItCaughtWhateverTheSave(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		build func(*testing.T) *cave
+		cast  func(*testing.T, *cave, int)
+	}{
+		{"grease", greaseCave, func(t *testing.T, c *cave, face int) {
+			c.passTo(t, c.zoneFight(t), "Pensantus")
+			c.h.roller.queue(face)
+			c.mustCastArea(t, c.ana, "Pensantus", greaseKey, slotOfLevel(1), at(7, 7), nil)
+		}},
+		{"entangle", entangleCave, func(t *testing.T, c *cave, face int) {
+			c.entangleFight(t)
+			c.h.roller.queue(face)
+			c.mustCastArea(t, c.caio, "Toren", entangleKey, slotOfLevel(1), at(18, 3), nil)
+		}},
+	} {
+		for _, face := range []int{1, 20} { // fail, pass
+			t.Run(tc.name+"/"+map[int]string{1: "fail", 20: "pass"}[face], func(t *testing.T) {
+				t.Parallel()
+				c := tc.build(t)
+				tc.cast(t, c, face)
+				hits := c.castHitsOf(t)
+				if len(hits) != 1 || hits[0].Target != c.id(t, "Ogro") || hits[0].Save == nil {
+					t.Errorf("hits = %+v, want the ogre alone, with its save", hits)
+				}
+			})
+		}
+	}
+}

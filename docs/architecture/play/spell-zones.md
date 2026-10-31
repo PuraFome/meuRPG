@@ -22,13 +22,22 @@ A table spell with `TableSpell.zone` (`rules/v1/table_content.proto`: a trigger 
 
 ## The cast
 
-A zone is laid only when the request chooses a point (`origin`): `placeArea` then sets `Spell.ZoneLaid`, which makes `placementOf` and `areaOf` read the zone's own layout (a cube at a distance, Spirit Guardians around the caster, whose point only says the cast lays the zone). Without a point the cast is the spell as it was before the zones (its targets and effects, no zone). Moonbeam and Cloudkill are placed at a point by their own data, so without one they are refused as they always were. `PreviewSpellArea` and the drawing of the cast read the same flag.
+A zone is laid only when the request chooses a point (`origin`): `placeArea` then sets `Spell.ZoneLaid`, which makes `placementOf` and `areaOf` read the zone's own layout (a cube at a distance, Spirit Guardians around the caster, whose point only says the cast lays the zone). Without a point the cast is the spell with its targets and effects, and no zone. Moonbeam and Cloudkill are placed at a point by their own data, so without one they are refused. `PreviewSpellArea` and the drawing of the cast read the same flag.
 
 `castFlow.affect` hands a placed cast of a zone spell to `affectZone`.
-Moonbeam, Spirit Guardians and Cloudkill hit nobody at the cast; Grease and Entangle catch the creatures standing in the area once the zone exists (`catchWhoIsInside`, reason `zone_cast`). Web still runs `hitTarget` and `applyLastingSpell`, so the creatures inside get the effect they always got.
+Moonbeam, Spirit Guardians and Cloudkill hit nobody at the cast.
+Grease and Entangle catch the creatures standing in the area once the zone exists (`catchWhoIsInside`, reason `zone_cast`).
+Web runs `hitTarget` and `applyLastingSpell`, so the creatures inside get the web's effect.
 `createZone` keeps `plan.origin` and `plan.squares` (what `planArea` worked out, walls included), the caster's DC, the damage at the cast's slot level and the end round (`SpellEffectRounds`).
-What a catch at the cast changes (the prone condition, the restraint effect) is written into the cast's own event, so the undo of the cast puts it back and closes the questions the zone opened (`closeCastZoneWindows`); the `spell_zone_triggered` lines of the cast never close the undo chain (`chainCastZoneCatch`).
-The cast keeps its place in the event as before (`placed`, `area_col`, `area_row`); the cast's `cast_id` is on the zone, and the undo of the cast deletes the zone with that id (`castEffectsBack`).
+The cast's event records every creature a catch at the cast caught, whatever its save: `made.Hits` holds one `castHit` for each, with the save of an NPC, and the conditions a player's character had before for Grease.
+The restraint of an NPC is in the cast's `Lasting.Effects`.
+So the hidden-creature reveal and the cast's line treat a creature that passed like one that failed.
+The answer of a player's character (`settleZoneSave`) puts the fall or the restraint on the creature after the cast's event is written.
+The undo of the cast puts it all back: the conditions from the recorded `castHit`, the restraint from the effects of the cast's group (`zoneEffectsBack`), and it closes the questions the zone opened (`closeCastZoneWindows`).
+The `spell_zone_triggered` lines of the cast and the `lasting_effect_saved` line of an answer to it never close the undo chain (`chainCastZoneCatch`).
+The cast's event keeps its place (`placed`, `area_col`, `area_row`).
+The cast's `cast_id` is on the zone.
+The undo of the cast deletes the zone with that id (`castEffectsBack`).
 Without a grid (`isTheatre`) a spell is not placed, so there is no zone.
 
 ## When a zone looks
@@ -37,7 +46,7 @@ Without a grid (`isTheatre`) a spell is not placed, so there is no zone.
 | --- | --- |
 | `zonesAfterSteps` (`zones_hooks.go`) | Called with the creatures that changed square: `moveInTx` (the mover and the creature it dragged; this also covers the master's move and a placement), `castFlow.teleport` (Misty Step's landing, `combat_teleport.go`), `pusher.enterZones` (a push by a cast or by the Open Hand technique) and the shove outcome (`shovePushes`). A step has where the creature stood and the squares it went through (the straight line for a walk, only the end for a jump, a push or a forced move). A zone catches a step that comes into it: one square inside whose predecessor is outside |
 | `zonesAtTurnStart` | Called at the end of `startOfTurnEffects`: ends the zones whose round is out, moves the zones that drift, then catches every creature that starts its turn inside |
-| `zonesAtTurnEnd` | Called when a member's part of the turn ends (`closeTurnPart`), before the saves of the effects open: catches the creature if it stands in a zone that asks at the end of the turn (Grease). Its hit mark is `"<round>:<leader>:end"`, so the entry and the end of one turn each ask once |
+| `zonesAtTurnEnd` | Called when a member's part of the turn ends (`closeTurnPart`), right before the saves of the effects open: both questions are then open together, in no order. It catches the creature if it stands in a zone that asks at the end of the turn (Grease). Its hit mark is `"<round>:<leader>:end"`, so the entry and the end of one turn each ask once |
 | `followCaster` | Part of `zonesAfterSteps`: when the creature that moved owns a zone centred on it, the zone is placed on its square and the creatures the new area covers and the old one did not are caught as if they had come in |
 
 The undo of a move, of a push or of a shove puts the creature back and re-evaluates nothing.
@@ -93,7 +102,7 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast` and 
 
 ### The map, the panel and the end
 
-- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern (the first four catalog spells a fixed one; Grease, Entangle and a table spell a hash of the key) and `zoneLegend` the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
+- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern (each of the six catalog spells a fixed one; a table spell a hash of the key) and `zoneLegend` the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
 - **Panel.** `pages/live-session/combat/zones-panel` (`app-zones-panel`) lists the zones: the master's column and the player's side column. Its live region (`zoneNotice`) compares the ids of the list with the last one it read. `details_hidden` cards render the name, the area and the caster only.
 - **End.** The panel asks in place and emits `end`; `ZoneFlow` (`zone-flow.ts`, built in `combat-view-parts.ts`) calls `endSpellZone` under the screen's one-call-at-a-time rule (`calls.busy`) and words a refusal with `zoneEndError`.
 - **Move.** "Mover" emits `move`; `ZoneFlow.move` (only for a zone whose view says `canMove`) sets `moving` and asks `CombatSheets.moveZone` to open `ZoneMoveSheet` (`pages/live-session/combat/zone-move`), a bottom sheet on a phone and a dialog from a tablet up (`openSheet`); a scene without a battle map opens nothing and says so in the panel. The sheet holds the picked square and wraps `app-zone-move-map` (`shared/area-picker`): `app-combat-map` in `pickSquares` mode (click, arrows from the zone's origin, Enter) with two `app-area-overlay` layers, the current footprint dimmed and the new one from `zoneMovePreview`. Past `ZONE_MOVE_RANGE_FT` a player's square is drawn refused with the `TARGET_OUT_OF_REACH` wording (`zoneOutOfReach`); the master has none. "Mover a zona" calls `moveSpellZone` once (the client's keyed helper), applies the encounter the server answers, closes on success and says `zoneMoveError` in place on a refusal; `moving` returns to `null` when the sheet closes.

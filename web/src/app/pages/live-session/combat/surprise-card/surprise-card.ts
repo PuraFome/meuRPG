@@ -73,7 +73,7 @@ let nextId = 0;
       }
       @if (toSuggest().length > 0) {
         <div class="btns">
-          <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="markSuggested()">
+          <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="markSuggested()">
             Marcar os sugeridos
           </button>
         </div>

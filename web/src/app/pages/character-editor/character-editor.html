@@ -36,7 +36,7 @@
             <p>{{ s.message }}</p>
           </div>
         }
-        <a mat-stroked-button class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
+        <a matButton="outlined" class="editor__back" [routerLink]="s.backLink">{{ s.backLabel }}</a>
       }
       @case ('ready') {
         @if (contentNote(); as note) {
@@ -836,7 +836,7 @@
 
         <div class="editor__actions">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="editor__primary"
             [disabled]="saving.state().status === 'saving'"
@@ -850,7 +850,7 @@
               {{ s.mode === 'create' ? views.createLabel() : 'Salvar ficha' }}
             }
           </button>
-          <a mat-button class="editor__cancel" [routerLink]="views.cancelLink()">Cancelar</a>
+          <a matButton class="editor__cancel" [routerLink]="views.cancelLink()">Cancelar</a>
           @if (server.choicesBlocked()) {
             <p class="editor__note editor__missing" id="choices-missing">
               {{ server.missingText() }}

@@ -109,7 +109,7 @@
   <div foot>
     <div class="pair">
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="pair__btn"
         [disabled]="busy() || !valid()"
@@ -119,7 +119,7 @@
       >
         Dar efeito
       </button>
-      <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button matButton="outlined" type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
     </div>
   </div>
 </app-sheet-frame>

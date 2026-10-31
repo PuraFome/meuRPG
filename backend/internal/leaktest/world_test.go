@@ -761,8 +761,8 @@ func (w *world) buildStreamTargets() {
 }
 
 // pinNPCInitiatives replaces the d20 the app rolled for every NPC and creature with a fixed face, so the turn order the
-// script assumes holds on every run: the app rolls an NPC's initiative at random, and a total that equals another
-// combatant's makes them take one joint turn (groupRuns), in which an NPC that "reacts" to the other's move is acting.
+// script assumes: a total that equals another combatant's makes them take one joint turn (groupRuns), in which an NPC
+// that "reacts" to the other's move is acting. The dice are fixed, but the players' 12s are not the NPCs' to share.
 // Each one takes the highest face that leaves its total different from everybody else's, in the order of the list.
 func (w *world) pinNPCInitiatives(encounterID string) *playv1.Encounter {
 	ctx := w.t.Context()

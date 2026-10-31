@@ -133,8 +133,8 @@ type Config struct {
 	// Dice tells what the campaign's dice setting makes a player do with the
 	// hit die of a level-up (RN-18). Nil means every player chooses.
 	Dice DiceRules
-	// Roller rolls the level-up's hit die in the app. Nil means the operating
-	// system's random source (dice.Crypto); tests pass faces.
+	// Roller rolls the level-up's hit die in the app. Required:
+	// production passes dice.Crypto{}, tests pass dicetest or a scripted roller.
 	Roller dice.Roller
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
@@ -212,6 +212,8 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("characters: SRD is required")
 	case cfg.Content == nil:
 		return nil, errors.New("characters: Content is required")
+	case cfg.Roller == nil:
+		return nil, errors.New("characters: Roller is required")
 	}
 	s := &Service{
 		pool:     cfg.Pool,
@@ -231,9 +233,6 @@ func New(cfg Config) (*Service, error) {
 	}
 	if s.maxCharacters == 0 {
 		s.maxCharacters = DefaultMaxCharactersPerCampaign
-	}
-	if s.roller == nil {
-		s.roller = dice.Crypto{}
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()

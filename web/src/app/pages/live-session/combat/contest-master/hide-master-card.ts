@@ -89,17 +89,17 @@ let nextId = 0;
 
       <div class="btns">
         @if (refusing()) {
-          <button mat-flat-button type="button" class="btn" [disabled]="busy()" (click)="decide(true)">
+          <button matButton="filled" type="button" class="btn" [disabled]="busy()" (click)="decide(true)">
             Recusar o esconderijo
           </button>
-          <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="refusing.set(false)">
+          <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="refusing.set(false)">
             Voltar
           </button>
         } @else {
-          <button mat-flat-button type="button" class="btn" data-initial [disabled]="busy()" (click)="decide(false)">
+          <button matButton="filled" type="button" class="btn" data-initial [disabled]="busy()" (click)="decide(false)">
             {{ applyText() }}
           </button>
-          <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="refusing.set(true)">
+          <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="refusing.set(true)">
             Recusar: não há onde se esconder
           </button>
         }

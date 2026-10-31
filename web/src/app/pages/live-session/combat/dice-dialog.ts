@@ -25,7 +25,7 @@ export interface DiceDialogData {
         [mode]="data.mode"
         [savedPreference]="data.preference"
       />
-      <button mat-stroked-button type="button" class="close" (click)="ref.close(true)">Fechar</button>
+      <button matButton="outlined" type="button" class="close" (click)="ref.close(true)">Fechar</button>
     </div>
   `,
   styles: `

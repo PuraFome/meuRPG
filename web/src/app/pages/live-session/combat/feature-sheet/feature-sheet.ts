@@ -75,7 +75,7 @@ export interface FeatureSheetData {
       }
       @if (used()) {
         <div foot>
-          <button #back mat-flat-button type="button" class="done" (click)="close()">Voltar à sua vez</button>
+          <button #back matButton="filled" type="button" class="done" (click)="close()">Voltar à sua vez</button>
         </div>
       }
     </app-sheet-frame>

@@ -16,7 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import { EntrySaver, focusAfterRender, focusField } from '../../../core/content/entry-saver';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import {
   type BackgroundDraft,
@@ -25,6 +25,7 @@ import {
   draftToBackground,
   emptyBackground,
   featurePaths,
+  unreadableFeaturePaths,
 } from '../../../core/content/feature-draft';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { PickList } from '../../../shared/form-fields/pick-list';
@@ -159,6 +160,15 @@ export class BackgroundEditor {
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
+      return;
+    }
+    const unreadable = unreadableFeaturePaths(
+      'table_background.feature',
+      this.draft().feature,
+      this.menu(),
+    );
+    if (unreadable.length > 0) {
+      focusAfterRender(this.host.nativeElement, this.injector, unreadable[0]);
       return;
     }
     const body: EntryBody = {

@@ -116,7 +116,7 @@
 
   <div foot>
     @if (result()) {
-      <button #back type="button" mat-stroked-button class="no" (click)="close()">Fechar</button>
+      <button #back type="button" matButton="outlined" class="no" (click)="close()">Fechar</button>
     } @else {
       @if (spell()) {
         @if (concentrationLine(); as c) {
@@ -156,7 +156,7 @@
       }
       <button
         type="button"
-        mat-flat-button
+        matButton="filled"
         class="go"
         [class.mr-button--off]="!ready()"
         [disabled]="!ready()"
@@ -165,7 +165,7 @@
       >
         <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ buttonLabel() }}
       </button>
-      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button type="button" matButton="outlined" class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
     }
   </div>
 </app-sheet-frame>

@@ -4,7 +4,12 @@ import {
   type TableOption,
   type TableOptionSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { type EffectMenuVm, draftToEffect, effectToDraft } from './effect-draft';
+import {
+  type EffectMenuVm,
+  draftToEffect,
+  effectToDraft,
+  unreadableNumberPaths,
+} from './effect-draft';
 import { type FeatureDraft, emptyFeature } from './feature-draft';
 import { paragraphs } from './spell-draft';
 
@@ -125,3 +130,8 @@ export const OFFERERS: Readonly<Record<string, readonly string[]>> = {
   multiattack: ['feature:multiattack'],
   superior_hunters_defense: ['feature:superior-hunters-defense'],
 };
+
+/** The paths of the option's number fields whose text is no whole number. */
+export function unreadableOptionPaths(d: OptionDraft, menu: EffectMenuVm): string[] {
+  return unreadableNumberPaths('table_option.effects', d.feature.effects, menu);
+}

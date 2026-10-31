@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 )
@@ -58,11 +59,11 @@ func TestAddMilestoneRetriesASerializationConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	chars, err := characters.New(characters.Config{Pool: pool, Profiles: users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Logger: logger, Now: clock.Now})
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Roller: dicetest.New(), Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	pl, err := play.New(play.Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars, Dice: testDice{camps}, Logger: logger, Now: clock.Now})
+	pl, err := play.New(play.Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars, Dice: testDice{camps}, Roller: dicetest.New(), Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
