@@ -35,10 +35,14 @@ The `Runs on` column above is what each workflow judges. Whether it runs for an 
 | Any other pull request | The workflows whose files it changes (the `Runs on` column), and within `backend` and `e2e` the Go jobs and the `@a11y` shards only when it touches what they judge. The fork's draft pull requests, the preflights, rely on this |
 | Nightly and manual runs | Everything, with no path selection |
 
-A branch named `refactor/train-*` in someone else's fork is not a train: `gate-select.sh` compares the head repository of the pull request with the base one, and that pull request is judged by its files like any other.
+A branch named `refactor/train-*` in someone else's fork is not a train: the rule compares the head repository of the pull request with the base one, and that pull request is judged by its files like any other.
 
-The `changes`, `plan` and `select` jobs make the choice. Only a pull request that is not a train needs the files it changes, so only it checks out the whole history and calls the composite action `.github/actions/select`, which runs `.github/scripts/gate-select.sh` (its tests: `gate-select.test.mjs`). For a push to `main`, the nightly, a manual run and a train, an expression in the job (`DIFF`) answers `true` with no checkout; it states the train rule a second time, which `gate-select.sh` keeps for the cases that do reach it. A pull request that touches no file of a workflow still starts it, and its jobs are skipped.
-In `e2e`, `lint and typecheck` and `images` do not wait for `plan`: they start with the workflow (on a fork only for a pull request or a manual run), and on a pull request that selects nothing they still run; the shards wait for both and are the part that is skipped.
+The `changes`, `plan` and `select` jobs make the choice.
+The rule lives in one expression, `DIFF`, in the `env` of each of those jobs (`backend`, `codeql`, `e2e`, `osv-scan`, `web` and `workflows-lint`): it is `true` only for a pull request that is not a train.
+It is copied because a local composite action needs a checkout first; `select-workflows.test.mjs` compares the six copies exactly.
+When `DIFF` is `false` (a push to `main`, the nightly, a manual run, a train) a step answers that everything is selected, with no checkout.
+When it is `true` the job checks out the whole history and calls the composite action `.github/actions/select`, which runs `.github/scripts/gate-select.sh` (its tests: `gate-select.test.mjs`) to match the changed files.
+A pull request that touches no file of a workflow still starts it, and its jobs are skipped.
 `nightly-hunt` runs only in `PuraFome/meuRPG`. `flake-check` is manual only. `repeat-changed` keeps a `paths` filter, train or not: with no test changed there is nothing to repeat. All three are described below.
 
 ## Backend

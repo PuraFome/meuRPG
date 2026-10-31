@@ -92,9 +92,9 @@ const isDescribe = (ts, callee) => {
 };
 
 /**
- * Reads a spec once: its tests ({title, regex, from, to, body, hooks}) and its `test.beforeEach/beforeAll` hooks
- * ({from, to, body}). A hook runs for the tests inside its own `test.describe` (nested ones too), or for every test of
- * the file when it is outside any; `hooks` is the text of the hooks that reach a test.
+ * Reads a spec once: its tests, {title, regex, from, to, body, hooks, hookLines}. A `test.beforeEach/beforeAll` hook runs
+ * for the tests inside its own `test.describe` (nested ones too), or for every test of the file when it is outside any:
+ * `hooks` is the text of the hooks that reach a test and `hookLines` their [from, to] lines.
  */
 export function parseSpec(text) {
   const ts = typescript();
@@ -120,27 +120,23 @@ export function parseSpec(text) {
     ts.forEachChild(node, (child) => visit(child, inner));
   };
   visit(source, []);
-  const reaches = (hook, t) => hook.groups.every((g) => t.groups.includes(g));
   return {
-    tests: tests.map(({ groups, ...t }) => ({ ...t, hooks: hooks.filter((h) => reaches(h, { groups })).map((h) => h.body).join('\n') })),
-    hooks: hooks.map(({ groups, ...h }) => h),
+    tests: tests.map(({ groups, ...t }) => {
+      const reaching = hooks.filter((h) => h.groups.every((g) => groups.includes(g)));
+      return { ...t, hooks: reaching.map((h) => h.body).join('\n'), hookLines: reaching.map((h) => [h.from, h.to]) };
+    }),
   };
 }
 
-/** The tests of a spec: {title, regex, from, to, body, hooks}, in file order. */
+/** The tests of a spec, as parseSpec gives them. */
 export function playwrightTests(text) {
   return parseSpec(text).tests;
-}
-
-/** The `test.beforeEach` and `test.beforeAll` hooks of a spec: {from, to, body}. */
-export function playwrightHooks(text) {
-  return parseSpec(text).hooks;
 }
 
 /**
  * How many sign-ins one run of a test may make, for the login rate limit. A textual count misses a closure called
  * several times (login.spec.ts "cada pessoa tem uma conta": one `signIn(` in `accountOf`, called 3 times), a loop, a
- * hook and a helper, so a test that signs in at all counts as at least 3: `body` is the test and the hooks of its file,
+ * hook and a helper, so a test that signs in at all counts as at least 3: `body` is the test and the hooks that reach it,
  * `signers` the names of the functions that sign in (signIn itself, and the helpers that call it), and a test that
  * opens /auth/login itself counts too.
  */
@@ -239,7 +235,8 @@ export function mapDiff({ diff, read: readFile, files }) {
     const text = read(file);
     if (text === undefined) continue;
     if (SPEC.test(file)) {
-      for (const t of testsOf(file)) if (touches(ranges, t.from, t.to)) addPlaywright(file, t, 'changed');
+      // A change in a hook changes every test the hook reaches.
+      for (const t of testsOf(file)) if (touches(ranges, t.from, t.to) || t.hookLines.some(([from, to]) => touches(ranges, from, to))) addPlaywright(file, t, 'changed');
     } else if (SUPPORT.test(file)) {
       for (const f of functionsOf('exported', file, exportedOf)) if (touches(ranges, f.from, f.to)) helpers.push({ kind: 'playwright', name: f.name, file });
     } else if (GO_TEST.test(file) || LEAKTEST.test(file)) {
@@ -260,7 +257,7 @@ export function mapDiff({ diff, read: readFile, files }) {
       for (const file of tsFiles.filter((f) => SPEC.test(f))) {
         const text = read(file);
         if (text === undefined) continue;
-        for (const t of testsOf(file)) if (callsAny(t.body, names)) callers.push({ file, t });
+        for (const t of testsOf(file)) if (callsAny(`${t.body}\n${t.hooks}`, names)) callers.push({ file, t });
       }
       const picked = sample(callers);
       for (const c of picked) addPlaywright(c.file, c.t, `calls ${h.name}`);

@@ -19,9 +19,10 @@ if [ -z "$body_file" ]; then
 fi
 
 gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-# Exact title, not a prefix or the first ci-red issue: [.[] | select(...)][0] is the first match, or none.
-number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
-  --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+# The exact title (read by jq from the environment, so a quote or a backslash in it cannot break the filter), not a
+# prefix or the first ci-red issue: [.[] | select(...)][0] is the first match, or none.
+number=$(TITLE="$title" gh issue list --label ci-red --state open --limit 200 --json number,title \
+  --jq '[.[] | select(.title == env.TITLE)][0].number // empty')
 if [ -n "$number" ]; then
   gh issue comment "$number" --body-file "$body_file"
 else

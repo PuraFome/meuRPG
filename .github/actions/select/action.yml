@@ -2,7 +2,7 @@ name: Is it selected
 description: >-
   Decides whether a part of the gate runs on a pull request, from the files it changes (docs/ci.md, "What runs when").
   Needs a checkout of the whole history. Only for a pull request that is not a train: the workflows answer every
-  other event without a checkout.
+  other event with their `DIFF` expression, without a checkout.
 inputs:
   pattern:
     description: Extended regular expression of the changed files that select it.
@@ -22,11 +22,7 @@ runs:
       id: select
       shell: bash
       env:
-        EVENT: ${{ github.event_name }}
         BASE_REF: ${{ github.base_ref }}
-        HEAD_REF: ${{ github.head_ref }}
-        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-        BASE_REPO: ${{ github.repository }}
         PATTERN: ${{ inputs.pattern }}
         IGNORE_MD: ${{ inputs.ignore-md }}
       run: |

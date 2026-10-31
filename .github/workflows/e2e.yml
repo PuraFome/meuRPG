@@ -112,7 +112,8 @@ jobs:
   # fails. It has its own small package (e2e/lint) because ESLint's TypeScript
   # support needs TypeScript 5.x, while the tests type-check with TypeScript 7.
   lint:
-    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
     name: lint and typecheck
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -158,7 +159,8 @@ jobs:
   # It also fails fast on a broken Dockerfile, before any shard starts, and it
   # is the Dockerfile smoke test the backend workflow's go job used to do.
   image:
-    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
     name: images (production image and devidp)
     runs-on: ubuntu-26.04
     timeout-minutes: 15
