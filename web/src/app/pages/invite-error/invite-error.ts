@@ -16,6 +16,9 @@ import { describeInviteErrorCode } from '../../core/campaigns/invite-errors';
  */
 const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable']);
 
+/** The reasons of a link that is wrong or old: a character set aside for the visitor is taken with another link. */
+const WRONG_LINK_REASONS = new Set(['expired', 'invalid']);
+
 /**
  * "/invite/error?reason=<code>" (public): where the server redirects after
  * the sign-in-through-invite flow when the invite could not be accepted —
@@ -37,6 +40,12 @@ export class InviteError {
   );
 
   protected readonly message = computed(() => describeInviteErrorCode(this.reason()));
+
+  protected readonly claimHint = computed(() =>
+    WRONG_LINK_REASONS.has(this.reason() ?? '')
+      ? 'Se o mestre separou um personagem para você, peça o link de assumir.'
+      : '',
+  );
 
   protected readonly nextStep = computed(() =>
     REASONS_WITH_OWN_ADVICE.has(this.reason() ?? '')

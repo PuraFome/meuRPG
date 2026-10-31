@@ -251,6 +251,9 @@ describe('ClaimPage (MR-049)', () => {
       expect(text(fixture)).toContain('Este link não pode ser usado');
       expect(text(fixture)).toContain('Este link não existe ou não vale mais.');
       expect(text(fixture)).toContain('Peça ao mestre um link novo.');
+      expect(text(fixture)).toContain(
+        'Se o mestre separou um personagem para você, peça o link de assumir.',
+      );
       expect(button(fixture, 'Ir para minhas campanhas').getAttribute('href')).toBe('/campaigns');
     });
 

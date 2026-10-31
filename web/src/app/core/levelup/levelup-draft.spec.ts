@@ -363,7 +363,7 @@ describe('LevelUpDraft: adopt after the sheet is read again', () => {
     expect(fresh.choices().hitPoints?.method).toBe(LevelUpHitPointsMethod.AVERAGE);
   });
 
-  it('keeps an in-app roll only when it is the one the server kept for this class and level', () => {
+  it('keeps an in-app roll only when the server kept it, or shows none, for this class and level', () => {
     const old = wizard();
     old.setHpCard('roll');
     old.rolled.set({ kind: 'app', value: 5 });

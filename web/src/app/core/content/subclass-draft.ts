@@ -1,4 +1,3 @@
-import { unreadableCastingPaths } from './whole-number';
 import type {
   GetClassTableDefaultsResponse,
   TableSubclass,
@@ -17,6 +16,7 @@ import {
   newLevelFeatureId,
   rowOf,
   slotsOf,
+  unreadableCastingPaths,
 } from './class-draft';
 import type { EffectMenuVm } from './effect-draft';
 import { featureOwnPaths, featureToDraft, unreadableFeaturePaths } from './feature-draft';

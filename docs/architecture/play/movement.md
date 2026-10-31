@@ -104,9 +104,15 @@ The geometry is pure and in `rules/grid/area.go` (`Area.FromPoint`, `Area.FromCa
 | Path | `planPush` takes the squares of `grid.Line` from the target outwards whose distance (`grid.LengthDFt`, 5 ft a square) is within the feet, and enters them one at a time with `Terrain.Move`. A wall, a three-quarters cover square, a locked or barred door, a closed door (a push opens none), the edge of the grid or any other creature (all as large as the pushed one, so none can be passed or shared) ends the push in the last free square |
 | Effects | One `SetCombatantPlace` write: no movement spent, no opportunity offer, no damage, the master's cover mark cleared. Cover and fog follow the new square because both read the combatant's square |
 | Casts | `castFlow.pushFailedSaves` runs after the hits, for the hits whose save failed (an automatic failure included), the farthest from the caster first; each hit keeps `pushed` in the event (`forcedMove`: target, `from` as a `moveState`, end square, feet, `short`) |
+| Heights | The map has no heights, so a push never makes a creature fall |
 | Monk | `riderConsequence` calls `pushByRider` for the Open Hand push; the rider event keeps `pushed` |
 | No map | A combat in theatre mode (or a source with no square) moves nobody; the event keeps `no_map` and the log line (`CombatLogSpellTarget.push_no_map`, `CombatLogHitRider.push_no_map`) says the push is the table's to imagine |
-| Log and streams | `pushed_ft` on the same two log messages; after the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
+| Log | `pushed_ft` and `push_stopped` on the two log messages |
+| Stopped push | `push_stopped` is set when a wall, a door, the edge of the grid or a creature ended the push before its whole distance (`short`) |
+| Blocked push | A failed save with no free square is a stopped push of 0 ft: nobody moves and no move is published |
+| Log text | The app writes "empurrão de 3 m · 2 quadrados" (`pushText`, `combat-log-words.ts`), adds "que parou antes" for a stopped push and writes "não saiu do lugar" for a blocked one |
+| Saved | A creature that saves has no push in its line |
+| Streams | After the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
 | Undo | The undo of the cast puts each pushed creature back (`putPushedBack`) and the fog follows it. A rider answer is not undoable, so its push is not either |
 
 ## On screen

@@ -49,6 +49,15 @@ export class FeatureEditor {
    * lista do SRD" choice, whose empty list offers them.
    */
   readonly allowOptions = input(false);
+  /** The feature is one of a list of options: an option with no name is not sent. */
+  readonly isOption = input(false);
+  /** An option that has content but no name: the save leaves it out, and the screen says so. */
+  protected readonly unsaved = computed(() => {
+    const f = this.feature();
+    return (
+      this.isOption() && f.name.trim() === '' && (f.text.trim() !== '' || f.effects.length > 0)
+    );
+  });
 
   readonly featureChange = output<FeatureDraft>();
   readonly removed = output<void>();

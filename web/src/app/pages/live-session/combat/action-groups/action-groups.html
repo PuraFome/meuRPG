@@ -1,23 +1,25 @@
 <section class="groups" aria-labelledby="groups-title">
   <h2 class="groups__title" id="groups-title">O que você pode fazer</h2>
 
-  @if (note()) {
-    <p class="groups__note" role="status"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
-  }
+  <div class="mr-live" role="status">
+    @if (note()) {
+      <p class="groups__note"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
+    }
 
-  @if (own().disengaged) {
-    <p class="groups__note" role="status">
-      <mat-icon aria-hidden="true">check_circle</mat-icon>Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.
-    </p>
-  }
+    @if (own().disengaged) {
+      <p class="groups__note">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.
+      </p>
+    }
 
-  @if (pendingRoll()) {
-    <div role="status" class="mr-notice mr-notice--warning groups__pending">
-      <mat-icon aria-hidden="true">warning</mat-icon>
-      <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
-      <button matButton="outlined" type="button" (click)="rollDamage.emit()">Rolar o dano</button>
-    </div>
-  }
+    @if (pendingRoll()) {
+      <div class="mr-notice mr-notice--warning groups__pending">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>Falta rolar o dano do seu ataque.</strong> Role para poder encerrar o turno.</p>
+        <button matButton="outlined" type="button" (click)="rollDamage.emit()">Rolar o dano</button>
+      </div>
+    }
+  </div>
 
   @if (surprised()) {
     <!-- W7-X board 11: a surprised character does not move, act or react until the turn ends; the four groups say so and nothing else. -->

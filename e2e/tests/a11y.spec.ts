@@ -6870,7 +6870,8 @@ async function scanPackage(browser: Browser, colorScheme: 'light' | 'dark', widt
     await expectScreenPasses(page, `Importar campanha, escolher o arquivo ${where}`);
 
     await input.setInputFiles({ name: 'notas.txt', mimeType: 'text/plain', buffer: Buffer.from('não é um pacote') });
-    await expect(page.getByRole('alert').filter({ hasText: 'Esse arquivo não parece um pacote de campanha.' })).toBeVisible();
+    await expect(page.locator('.mr-notice--danger').filter({ hasText: 'Esse arquivo não parece um pacote de campanha.' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Esse arquivo não parece um pacote de campanha.' })).toHaveCount(1);
     await expectScreenPasses(page, `Importar campanha, arquivo recusado ${where}`);
 
     await input.setInputFiles({ name: 'falso.meurpg.zip', mimeType: 'application/zip', buffer: Buffer.from('só tem o nome') });

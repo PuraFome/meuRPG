@@ -304,6 +304,18 @@ export function unreadableRange(text: string): boolean {
   return !Number.isSafeInteger(ft) || ft > WHOLE_MAX;
 }
 
+/** The number fields the editor shows in metres (the server stores feet), and the draft key that holds their text: the one place that
+ * says which they are. */
+const METER_KEYS: Readonly<Record<string, 'rangeM' | 'reachM'>> = {
+  range_ft: 'rangeM',
+  reach_ft: 'reachM',
+};
+
+/** The draft key of the metres text of a number field, or `undefined` when the field is not in metres. */
+export function meterKey(name: string): 'rangeM' | 'reachM' | undefined {
+  return METER_KEYS[name];
+}
+
 /** "text_pt" → "textPt": the draft's key for a proto field. */
 export function draftKey(name: string): keyof EffectDraft {
   return name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft;
@@ -312,13 +324,8 @@ export function draftKey(name: string): keyof EffectDraft {
 /** Whether a number field of an effect holds text it cannot read: a NaN in the draft (the picker's mark for a count or a bonus), or a range
  * or reach in metres that is no number. */
 export function unreadableNumber(e: EffectDraft, name: string): boolean {
-  if (name === 'range_ft') {
-    return unreadableRange(e.rangeM);
-  }
-  if (name === 'reach_ft') {
-    return unreadableRange(e.reachM);
-  }
-  return Number.isNaN(e[draftKey(name)]);
+  const m = meterKey(name);
+  return m ? unreadableRange(e[m]) : Number.isNaN(e[draftKey(name)]);
 }
 
 /** The paths of the number fields of `effects` whose text is no number the save can send, `base` being the path of the list
