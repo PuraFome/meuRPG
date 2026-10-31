@@ -100,6 +100,18 @@ describe('CombatView calls: run', () => {
     expect(view.busy()).toBe(false);
   });
 
+  it('shows the combat and its revision on its host, for the e2e specs to wait on', () => {
+    const { fixture, el, state } = mountCombatView({
+      enc: encounter({ id: 'enc-1', revision: 7, combatants: [goblin()] }),
+      master: true,
+    });
+    expect(el.getAttribute('data-encounter-id')).toBe('enc-1');
+    expect(el.getAttribute('data-encounter-revision')).toBe('7');
+    state.apply(encounter({ id: 'enc-1', revision: 8, combatants: [goblin()] }));
+    fixture.detectChanges();
+    expect(el.getAttribute('data-encounter-revision')).toBe('8');
+  });
+
   it('applies the combat the call answers and clears an earlier error', async () => {
     const next = encounter({ round: 5, combatants: [goblin()] });
     const { view, state } = mountCombatView({
