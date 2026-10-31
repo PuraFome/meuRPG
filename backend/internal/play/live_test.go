@@ -861,6 +861,9 @@ func TestWatchGameSessionEndsOnAnInstanceThatStoppedReceivingCalls(t *testing.T)
 		meter.Note()
 		clock.advance(limit - time.Second)
 		stays(t, stream, userID)
+		// The calls stop: a second later the same stream ends, so what kept it was the second call.
+		clock.advance(time.Second)
+		wantCode(t, "the stream once the calls stopped", stream.end(t), connect.CodeUnavailable)
 	})
 }
 

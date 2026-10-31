@@ -59,9 +59,13 @@ Nothing here is created from the repository by automation: the GCP resources are
 | `max-instances` | **1** | The live-session fan-out (`play/live` hub) and the rate-limit counters are in process memory, so a second instance would split a table in two ([architecture](../architecture/play/live-session.md#live-session)) |
 | `concurrency` | 50 | Each live stream counts; a table has about 14 at once. At Cloud Run's default of 80 the worst case of stalled request bodies passes `GOMEMLIMIT` |
 | Request timeout | `--timeout=2100` (35 minutes) | Streams live up to 10 minutes and a campaign package download up to 30 |
-| Old revision after a deploy | Its streams end by themselves | An instance that received unary calls and then goes 3 minutes without one ends its streams at their next check (60 s), and each page reconnects to the active revision. A cold instance never does |
 | Ingress | `internal-and-cloud-load-balancing` | Only the load balancer reaches the service; with it `TRUSTED_PROXY_HOPS=2` |
 | Authentication | `--allow-unauthenticated` | The app does its own sign-in |
+
+After a deploy, the old instance ends its live streams by itself.
+An instance that received unary calls and then goes 3 minutes without one ends them at their next check, every 60 seconds.
+Each page then reconnects to the active revision.
+A cold instance never does this.
 
 When one instance stops being enough, the hub gives way to a shared channel (see [roadmap](../roadmap.md#infrastructure-not-built-yet)), and `max-instances` can go up. Re-read [the abuse limits](reference.md#abuse-limits) when it does.
 
