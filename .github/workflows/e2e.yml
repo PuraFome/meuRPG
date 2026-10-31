@@ -60,7 +60,6 @@ jobs:
       DIFF: ${{ github.event_name == 'pull_request' && !(startsWith(github.head_ref, 'refactor/train-') && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
       run: ${{ steps.all.outputs.run || steps.run.outputs.selected }}
-      a11y: ${{ steps.all.outputs.a11y || steps.a11y.outputs.selected }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Everything is selected
