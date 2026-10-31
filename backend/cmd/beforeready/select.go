@@ -43,7 +43,7 @@ type Facts struct {
 	// PkgDirs are the directories of all the module's packages, from the repository root.
 	PkgDirs []string
 	// Deps maps a package directory to the module packages its tests need, itself included
-	// (go list -deps -test), as directories from the repository root.
+	// (go list -test, the .Deps field), as directories from the repository root.
 	Deps map[string][]string
 	// NewLines are the lines of the list that are not in the list of the merge base. Nil
 	// when that list could not be read.
