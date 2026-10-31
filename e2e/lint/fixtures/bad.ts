@@ -1,4 +1,4 @@
-import { combatRPC, getEncounterRPC, rollSceneRPC, waitForEncounterRevision, type Page } from './support';
+import { combatRPC, getEncounterRPC, rollSceneRPC, step, waitForEncounterRevision, type Page } from './support';
 
 // Four errors: a click straight after the call, a click in an outer block, a wait that comes too late, and a wait on
 // the master's page before a click on the player's.
@@ -37,5 +37,13 @@ export async function notTracked(m: Page): Promise<void> {
   await m.getByRole('button').click();
   // A move is patched into the page with no new revision: there is nothing to wait for.
   await combatRPC(m, 'MoveCombatant');
+  await m.getByRole('button').click();
+}
+
+// An error: the call ends a callback's body and a click follows the callback.
+export async function endsACallback(m: Page): Promise<void> {
+  await step('end the turn', async () => {
+    await combatRPC(m, 'EndTurn');
+  });
   await m.getByRole('button').click();
 }

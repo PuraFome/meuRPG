@@ -255,7 +255,9 @@ await m.getByRole('button', { name: 'Próximo turno' }).click();
 - A page with no combat view (the bestiary, a player after the combat ended) cannot show a revision: disable the rule on that call with the reason.
 - `meurpg/rpc-revision-wait` (`e2e/lint/rules`) is an error when an awaited helper that returns an `Encounter` is followed by a page action with no wait on that action's page.
   A wait that comes after the action, or on another page, does not count.
-  `goto`, `reload`, `openSessionPage`, `openPlayerMap` and `gotoCampaignTab` count as a wait, because the page then reads the state itself.
+  A page action is a call on a Playwright `Locator`, `Page`, or the page's keyboard, mouse or touchscreen, so `Set.clear()` is not one.
+  A call that ends the body of an awaited callback (`test.step`) is judged with what follows the call.
+  `goto`, `reload`, `openSessionPage`, `openPlayerMap`, `gotoCampaignTab` and `openLive` count as a wait, because the page then reads the state itself.
   Reads (`get*`, `list*`, `read*`) and moves (`MoveCombatant`, `movePensantus`) need none.
   The rule asks for a wait on every page that acts, because it cannot tell which pages show the session.
   It does not see calls that answer with nothing (a scene roll), helpers that click inside, or the next turn of a loop.

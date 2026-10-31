@@ -7,7 +7,7 @@
 //   - the tests whose body changed: a Playwright `test(...)` of e2e/tests/*.spec.ts (each spec is parsed once), a Go `func TestX` of a _test.go;
 //   - for a changed helper (an exported function of an e2e/tests/*-support.ts, any function of
 //     backend/internal/leaktest), a sample of up to SAMPLE tests that call it.
-//   - for a changed `test.beforeEach` or `test.beforeAll`, a sample of up to SAMPLE of the tests it reaches.
+//   - for a changed `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, a sample of up to SAMPLE of the tests it reaches.
 // A change outside any test body and any such hook (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
 //
 // Output: {playwright: [{file, title, grep, signins, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
@@ -93,7 +93,7 @@ const isDescribe = (ts, callee) => {
 };
 
 /**
- * Reads a spec once: its tests, {title, regex, from, to, body, hooks, hookLines}. A `test.beforeEach/beforeAll` hook runs
+ * Reads a spec once: its tests, {title, regex, from, to, body, hooks, hookLines}. A `test.beforeEach/beforeAll/afterEach/afterAll` hook runs
  * for the tests inside its own `test.describe` (nested ones too), or for every test of the file when it is outside any:
  * `hooks` is the text of the hooks that reach a test and `hookLines` their [from, to] lines.
  */
@@ -110,7 +110,7 @@ export function parseSpec(text) {
       const member = ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'test' ? callee.name.text : null;
       const [from, to] = lines(node);
       const body = text.slice(node.getStart(source), node.getEnd());
-      if (member === 'beforeEach' || member === 'beforeAll') hooks.push({ from, to, body, groups });
+      if (member === 'beforeEach' || member === 'beforeAll' || member === 'afterEach' || member === 'afterAll') hooks.push({ from, to, body, groups });
       else if ((ts.isIdentifier(callee) && callee.text === 'test') || (member !== null && !NOT_A_TEST.has(member))) {
         const title = node.arguments.length > 0 ? titleOfNode(ts, node.arguments[0]) : null;
         if (title) tests.push({ ...title, from, to, body, groups });
@@ -210,8 +210,12 @@ export function mapDiff({ diff, read: readFile, files }) {
   const go = new Map();
   const notes = [];
   const addPlaywright = (file, t, why) => {
+    // Two tests of a file with the same title (in two describe blocks) share a target, since --grep cannot tell them apart:
+    // it keeps the larger sign-in count and the first reason, except that "changed" wins.
     const key = `${file}\t${t.title}`;
-    if (!playwright.has(key) || why === 'changed') playwright.set(key, { file, title: t.title, grep: t.regex, signins: signinsOf(`${t.body}\n${t.hooks}`, signersOf()), why });
+    const before = playwright.get(key);
+    const signins = Math.max(before?.signins ?? 0, signinsOf(`${t.body}\n${t.hooks}`, signersOf()));
+    playwright.set(key, { file, title: t.title, grep: t.regex, signins, why: !before || why === 'changed' ? why : before.why });
   };
   const addGo = (pkg, test, why) => {
     const key = `${pkg}\t${test}`;

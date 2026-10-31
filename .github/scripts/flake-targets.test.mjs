@@ -350,3 +350,24 @@ test('a changed hook that reaches many tests maps to a sample of them, with a no
   const both = mapDiff({ diff: last, read, files: () => [] });
   assert.equal(both.playwright.find((t) => t.title === 't11').why, 'changed');
 });
+
+test('two tests with the same title in different describe blocks keep the larger sign-in count, whichever comes last', () => {
+  const heavy = ["test.describe('a', () => {", '  test.beforeEach(async ({ page }) => {', '    await signIn(page);', '  });', "  test('same title', async () => {});", '});'];
+  const light = ["test.describe('b', () => {", "  test('same title', async () => {});", '});'];
+  for (const [name, lines] of [['heavy first', [...heavy, ...light]], ['light first', [...light, ...heavy]]]) {
+    const files = { 'e2e/tests/x.spec.ts': [...lines, ''].join('\n') };
+    const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 1, lines.length), read: (f) => files[f], files: () => [] });
+    assert.deepEqual(got.playwright.map((t) => [t.title, t.signins]), [['same title', 3]], name);
+  }
+});
+
+test('a change inside an afterEach or afterAll maps to a sample of the tests it reaches', () => {
+  for (const hook of ['afterEach', 'afterAll']) {
+    const tests = Array.from({ length: 12 }, (_, i) => `test('t${String(i).padStart(2, '0')}', async () => {});`);
+    const files = { 'e2e/tests/x.spec.ts': [`test.${hook}(async ({ page }) => {`, "  await page.goto('/a');", '});', ...tests, ''].join('\n') };
+    const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 2, 2), read: (f) => files[f], files: () => [] });
+    assert.equal(got.playwright.length, 5, hook);
+    assert.ok(got.playwright.every((t) => t.why === 'reached by a changed hook'), hook);
+    assert.match(got.notes[0], /reaches 12 tests; 5 run/, hook);
+  }
+});

@@ -46,27 +46,25 @@ function selectIn(env, { base = [], files = [], moves = [] }, ...args) {
   }
 }
 
-const pr = {};
-
 test('a pull request is selected only by a matching file', () => {
-  assert.match(select(pr, ['backend/a.go'], 'run', '^backend/').out, /run=true/);
-  assert.match(select(pr, ['docs/a.txt'], 'run', '^backend/').out, /run=false/);
+  assert.match(select({}, ['backend/a.go'], 'run', '^backend/').out, /run=true/);
+  assert.match(select({}, ['docs/a.txt'], 'run', '^backend/').out, /run=false/);
 });
 
 test('--ignore-md drops markdown files from the match', () => {
-  assert.match(select(pr, ['web/readme.md'], 'run', '^web/', '--ignore-md').out, /run=false/);
-  assert.match(select(pr, ['web/readme.md', 'web/a.ts'], 'run', '^web/', '--ignore-md').out, /run=true/);
+  assert.match(select({}, ['web/readme.md'], 'run', '^web/', '--ignore-md').out, /run=false/);
+  assert.match(select({}, ['web/readme.md', 'web/a.ts'], 'run', '^web/', '--ignore-md').out, /run=true/);
 });
 
 test('a non-ASCII path is seen', () => {
-  assert.match(select(pr, ['web/ação.ts'], 'run', '^web/').out, /run=true/);
+  assert.match(select({}, ['web/ação.ts'], 'run', '^web/').out, /run=true/);
 });
 
 test('a file moved out of the selected tree selects it: the old path counts too', () => {
-  const got = selectIn(pr, { base: ['web/x.ts'], moves: [['web/x.ts', 'docs/x.ts']] }, 'run', '^web/');
+  const got = selectIn({}, { base: ['web/x.ts'], moves: [['web/x.ts', 'docs/x.ts']] }, 'run', '^web/');
   assert.match(got.out, /run=true/, got.err);
 });
 
 test('it needs the base branch', () => {
-  assert.notEqual(select({ ...pr, BASE_REF: '' }, ['web/a.ts'], 'run', '^web/').code, 0);
+  assert.notEqual(select({ BASE_REF: '' }, ['web/a.ts'], 'run', '^web/').code, 0);
 });
