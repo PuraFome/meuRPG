@@ -62,7 +62,7 @@ func TestFourCreaturesWithBonusesWithinFiveNeverTie(t *testing.T) {
 func TestScriptedFacesAreUsedFirstThenTheDefault(t *testing.T) {
 	t.Parallel()
 	plain, scripted := New(), New()
-	scripted.Script(7, 3)
+	scripted.ScriptFor(t, 20, 7, 3)
 	want := []int{7, 3}
 	for range 5 {
 		face, err := plain.Roll(20)
@@ -78,21 +78,60 @@ func TestScriptedFacesAreUsedFirstThenTheDefault(t *testing.T) {
 		}
 	}
 	// Faces scripted later come out next, before the default goes on.
-	scripted.Script(20)
+	scripted.ScriptFor(t, 20, 20)
 	if got, err := scripted.Roll(20); err != nil || got != 20 {
 		t.Errorf("a face scripted later = %d, %v; want 20", got, err)
 	}
 }
 
-func TestAScriptedFaceThatDoesNotFitFails(t *testing.T) {
+func TestAScriptedFaceIsForItsDieOnly(t *testing.T) {
 	t.Parallel()
-	r := New()
-	r.Script(9)
-	if _, err := r.Roll(6); err == nil {
-		t.Error("a scripted 9 on a d6 did not fail")
+	plain, r := New(), New()
+	r.ScriptFor(t, 6, 3)
+	// A d20 roll leaves the d6 script alone and takes the default.
+	want, _ := plain.Roll(20)
+	if got, err := r.Roll(20); err != nil || got != want {
+		t.Fatalf("a d20 after a script for the d6 = %d, %v; want the default %d", got, err, want)
 	}
-	if _, err := r.Roll(0); err == nil {
-		t.Error("a d0 did not fail")
+	if got, err := r.Roll(6); err != nil || got != 3 {
+		t.Errorf("the d6 = %d, %v; want the scripted 3", got, err)
+	}
+	if got, err := r.Roll(6); err != nil || got < 1 || got > 6 {
+		t.Errorf("the d6 after the script = %d, %v; want the default", got, err)
+	}
+}
+
+// spy records what a failed ScriptFor tells the test.
+type spy struct {
+	testing.TB
+	failed bool
+}
+
+func (s *spy) Helper() {}
+
+func (s *spy) Fatalf(string, ...any) {
+	s.failed = true
+	panic(s) // a real Fatalf stops the test
+}
+
+func TestAScriptedFaceThatDoesNotFitFailsAtOnce(t *testing.T) {
+	t.Parallel()
+	for name, call := range map[string]func(*Roller, testing.TB){
+		"9 on a d6":  func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 6, 2, 9) },
+		"0 on a d20": func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 20, 0) },
+		"a d0":       func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 0, 1) },
+	} {
+		s := &spy{TB: t}
+		func() {
+			defer func() { _ = recover() }()
+			call(New(), s)
+		}()
+		if !s.failed {
+			t.Errorf("%s: ScriptFor did not fail the test", name)
+		}
+	}
+	if _, err := New().Roll(0); err == nil {
+		t.Error("a d0 roll did not fail")
 	}
 }
 

@@ -1,20 +1,19 @@
-// Package dicetest is the dice a test hands to a service that rolls (play,
-// characters): the same dice.Roller as production's dice.Crypto, but
-// deterministic, so a test never meets a roll it did not ask for.
+// Package dicetest is the dice a test hands to a service that rolls (play, characters).
+// It is a dice.Roller like production's dice.Crypto, but deterministic, so a test never meets a roll it did not ask for.
 //
-// It exists because the app rolls an NPC's initiative itself (RN-19) and two
-// creatures with the same total take one joint turn (MR-013): with random
-// dice, a test that assumes one creature acts fails about one run in twenty
-// for every pair of creatures with the same bonus.
+// It exists because the app rolls an NPC's initiative itself (RN-19).
+// Two creatures with the same total take one joint turn (MR-013).
+// With random dice, a test that assumes one creature acts fails about one run in twenty for every pair with the same bonus.
 //
-// Only test files and test harnesses import this package. Production wires
-// dice.Crypto, and the archtest suite fails the build of any non-test file
-// outside this package that imports it.
+// Only test files import this package.
+// Production wires dice.Crypto.
+// The archtest suite fails for any non-test file outside this package that imports it.
 package dicetest
 
 import (
 	"fmt"
 	"sync"
+	"testing"
 )
 
 const d20Sides = 20
@@ -32,48 +31,53 @@ var d20Cycle = func() []int {
 	return out
 }()
 
-// Roller gives the faces a test scripted, in order, and then a default
-// sequence that never runs out. The zero value is ready to use, and a Roller
-// is safe for concurrent use (the order faces go out in is the order the
-// rolls happen in).
+// Roller gives the faces a test scripted with ScriptFor, in order, and then a default sequence that never runs out.
+// The zero value is ready to use.
+// A Roller is safe for concurrent use, and the order faces go out in is the order the rolls happen in.
 //
 // What it guarantees:
-//   - It is deterministic: two Rollers given the same calls give the same
-//     faces, whatever the clock or the machine.
-//   - It never fails because it ran out (unlike dice.Fixed).
-//   - Default d20 faces repeat only after 20 d20 rolls, so up to 20 creatures
-//     with the same initiative bonus never tie.
-//   - The first four default d20 faces are at least 6 apart, so four
-//     creatures whose bonuses are within 5 of one another never tie either.
+//   - It is deterministic: the same calls give the same faces, whatever the clock or the machine.
+//   - It never fails because it ran out, unlike dice.Fixed.
+//   - On a Roller that has rolled no other d20 yet, up to 20 creatures with the same initiative bonus never tie.
+//   - On such a Roller, four creatures whose bonuses are within 5 of one another never tie either.
 //
-// What it does not:
-//   - Creatures with different bonuses can tie. With faces limited to 1..20,
-//     no sequence can stop that for eight creatures with bonuses from -5 to
-//     +10: it would need faces further apart than the 19 a d20 has room for.
-//     A test that adds creatures with very different bonuses and needs a
-//     strict order scripts their faces.
-//   - Every default d20 roll takes the next face of the sequence, not only
-//     the initiative's: an attack or a save rolled before the initiative moves
-//     it. A test that needs a particular d20 scripts it.
-//   - The default dice are not random and not fair: do not test odds with it.
+// What it does not guarantee:
+//   - Every default d20 roll takes the next face of the sequence, not only the initiative's.
+//     An attack or a save rolled before the initiative moves the sequence and voids the two guarantees above.
+//   - Creatures with different bonuses can tie.
+//     Faces run from 1 to 20, so for arbitrary bonuses from -5 to +10 no sequence keeps eight creatures apart.
+//     A test that needs a strict order scripts the faces.
+//   - The default dice are not random and not fair, so do not test odds with them.
 type Roller struct {
 	mu     sync.Mutex
-	script []int  // faces queued by Script, used first
-	d20    int    // how many default d20 faces went out
-	other  uint64 // state of the default sequence of the other dice
+	script map[int][]int // faces queued by ScriptFor, by die, used first
+	d20    int           // how many default d20 faces went out
+	other  uint64        // state of the default sequence of the other dice
 }
 
 // New returns a Roller with nothing scripted.
 func New() *Roller { return &Roller{} }
 
-// Script queues faces to come out next, in order, for whatever dice are rolled
-// next: a face that does not fit its die makes that roll fail, as dice.Fixed
-// does, so a test that scripts the wrong roll notices. Once they are used, the
-// default sequence goes on where it was.
-func (r *Roller) Script(faces ...int) {
+// ScriptFor queues faces for the next rolls of a die with that many sides, in order.
+// A roll of another die does not use them.
+// A face that does not fit the die fails the test at once.
+// When they are used up, the default sequence goes on where it was.
+func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
+	t.Helper()
+	if sides < 1 {
+		t.Fatalf("dicetest: a d%d does not exist", sides)
+	}
+	for _, face := range faces {
+		if face < 1 || face > sides {
+			t.Fatalf("dicetest: face %d does not fit a d%d", face, sides)
+		}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.script = append(r.script, faces...)
+	if r.script == nil {
+		r.script = map[int][]int{}
+	}
+	r.script[sides] = append(r.script[sides], faces...)
 }
 
 // Roll implements dice.Roller.
@@ -83,13 +87,9 @@ func (r *Roller) Roll(sides int) (int, error) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.script) > 0 {
-		face := r.script[0]
-		r.script = r.script[1:]
-		if face < 1 || face > sides {
-			return 0, fmt.Errorf("dicetest: scripted face %d does not fit a d%d", face, sides)
-		}
-		return face, nil
+	if queue := r.script[sides]; len(queue) > 0 {
+		r.script[sides] = queue[1:]
+		return queue[0], nil
 	}
 	if sides == d20Sides {
 		face := d20Cycle[r.d20%len(d20Cycle)]
