@@ -100,7 +100,15 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   - A sheet that is immune to a condition takes none of the effects that give it (a spell's, a rider's, a trap's, a grapple or a shove that knocks prone); the master's own change of the conditions is not blocked.
   - A character's creature has its own hit points. Its damage lands at once, and at 0 it is dismissed.
   - A trap's damage follows the same path. Outside a combat, what waits for the master survives until they apply or discard it.
-- **Wholeness of Body of the Open Hand monk (level 6).** The monk's own action heals three times the monk level in hit points, with no roll and no dice to type, up to the maximum, and raises the monk from 0. It has one use per long rest, a multiclass character counts only the monk levels, and it is used in a combat on the monk's turn: there is no way to use it outside a combat. Only the owner and the master read the number in the log, and the master's undo gives back the hit points, the use and the action.
+- **Wholeness of Body of the Open Hand monk (level 6).**
+  The monk's own action heals three times the monk level in hit points, up to the maximum.
+  It has no roll and no dice to type.
+  It has one use per long rest.
+  A multiclass character counts only the monk levels.
+  It is used in a combat on the monk's turn, and there is no way to use it outside a combat.
+  A monk at 0 hit points is down and cannot use it.
+  Only the owner and the master read the number in the log.
+  The master's undo gives back the hit points, the use and the action.
 - **Channel Divinity of the cleric.** Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names (when the cleric names no one, the app shares the points among the party, the most hurt first), up to five times the cleric's level in all, each to no more than half of its maximum; it cannot restore an undead or a construct. Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute (the master sees each save and who was turned, in the log and on the response; the turned creature carries the effect "Expulso"). Both spend the action and a use.
 - **Spells and resources.** A spell spends its slot (or pact slot) when it is cast, and a resend does not spend twice. A healing spell heals at once, up to the maximum, and raises whoever was at 0. Class and race uses (Second Wind, Action Surge, Rage...) are counted too. A resource without a limit shows "ilimitado".
 - **The master's "Desfazer última ação"** undoes the last action; each undo is itself recorded.

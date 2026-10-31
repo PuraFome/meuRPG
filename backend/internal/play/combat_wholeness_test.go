@@ -93,16 +93,34 @@ func TestWholenessOfBodyIsCappedAtTheMaximum(t *testing.T) {
 	}
 }
 
-// TestWholenessOfBodyLiftsAMonkAtZeroHitPoints: a heal from 0 gets the monk up with the death saves reset.
-func TestWholenessOfBodyLiftsAMonkAtZeroHitPoints(t *testing.T) {
+// TestWholenessOfBodyAtFullHitPointsSpendsTheUseAndHealsNothing: as Second Wind does, the use and the action go and
+// no hit point is healed.
+func TestWholenessOfBodyAtFullHitPointsSpendsTheUseAndHealsNothing(t *testing.T) {
+	t.Parallel()
+	a, e := wholenessFight(t, openHand(6))
+	max := a.vitals(t, a.toren).GetHitPointsMax()
+	a.correct(t, a.toren, hpIs(max))
+	res, err := a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
+	if err != nil {
+		t.Fatalf("TakeAction(wholeness of body) error = %v", err)
+	}
+	if res.GetHealed() != 0 || a.vitals(t, a.toren).GetHitPointsCurrent() != max {
+		t.Errorf("healed %d, Toren at %d; want nothing healed at %d", res.GetHealed(), a.vitals(t, a.toren).GetHitPointsCurrent(), max)
+	}
+	_, err = a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
+	wantBlockedBy(t, "a second Wholeness of Body in the turn", err, blockedActionUsed)
+}
+
+// TestWholenessOfBodyIsRefusedAtZeroHitPoints: a character at 0 hit points is down and takes no action (as for
+// Second Wind), so the use and the action stay and the hit points do not change.
+func TestWholenessOfBodyIsRefusedAtZeroHitPoints(t *testing.T) {
 	t.Parallel()
 	a, e := wholenessFight(t, openHand(6))
 	a.correct(t, a.toren, hpIs(0))
-	if _, err := a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll); err != nil {
-		t.Fatalf("TakeAction(wholeness of body) error = %v", err)
-	}
-	if cur, _, defeated := a.hp(t, "Toren"); cur != 18 || defeated {
-		t.Errorf("Toren = %d PV, defeated %v; want 18 and up", cur, defeated)
+	_, err := a.feature(t, a.caio, e, "Toren", wholenessKey, noTakeRoll)
+	wantBlockedBy(t, "Wholeness of Body at 0 hit points", err, blockedDown)
+	if cur := a.vitals(t, a.toren).GetHitPointsCurrent(); cur != 0 {
+		t.Errorf("Toren = %d PV, want 0 (nothing healed)", cur)
 	}
 }
 
