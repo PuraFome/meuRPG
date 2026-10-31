@@ -248,7 +248,7 @@ It lives in `characters` and not in `campaigns` so that `characters` never write
 
 - **`campaign_content`**: one row per entry.
   The key is `<kind>:<name>@mesa`, built by the server at creation and never changed (`CHECK`).
-  `kind` is one of ten: `class`, `subclass`, `race`, `subrace`, `background`, `spell`, `feat`, `option`, `classfeature` and `creature` (the `campaign_content_kind_valid` `CHECK`; migration 00288 added `creature`).
+  `kind` is one of ten: `class`, `subclass`, `race`, `subrace`, `background`, `spell`, `feat`, `option`, `classfeature` and `creature` (the `campaign_content_kind_valid` `CHECK`; migration 00289 added `creature`).
   `name_pt` is the Portuguese name, `data` the protojson of the kind's message (`rules/v1/table_content.proto`), `revision` the campaign revision at the entry's last change.
   **Nothing is deleted**: what a sheet already uses must keep working, so the way out is `archived_at`.
   Archiving and unarchiving change only `archived_at` and the campaign revision (for the cache), not the entry's `revision` and `updated_at`; `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.
