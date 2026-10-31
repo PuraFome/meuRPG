@@ -70,7 +70,9 @@ describe('the log lines of spell zones', () => {
       targetLabels: ['Tor'],
       abilityNamePt: 'Destreza',
     });
-    expect(text(end)).toBe('Tor terminou o turno na Área Escorregadia e passou no teste de Destreza');
+    expect(text(end)).toBe(
+      'Tor terminou o turno na Área Escorregadia e passou no teste de Destreza',
+    );
   });
 
   it('says a creature came into a zone, with the numbers only for the master', () => {

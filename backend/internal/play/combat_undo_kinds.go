@@ -705,16 +705,8 @@ func (u *undoer) castDieBack(ctx context.Context, who playdb.Combatant, ev actio
 // castEffectsBack takes away the effects the cast put on its targets and the mark of
 // Hunter's Mark, and puts back the marks the cast took off.
 func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	if ev.CastID != "" { // the area the cast kept on the map
-		if err := u.s.closeCastZoneWindows(ctx, u.c, ev.CastID); err != nil {
-			return err
-		}
-		if err := u.c.q.DeleteSpellZonesOfCast(ctx, playdb.DeleteSpellZonesOfCastParams{EncounterID: u.c.enc.ID, CastID: ev.CastID}); err != nil {
-			return fmt.Errorf("take the spell zone of the cast away: %w", err)
-		}
-	}
-	if ev.CastID != "" { // the effects a player's answer to a zone of the cast put on its character
-		if err := u.zoneEffectsBack(ctx, ev.CastID); err != nil {
+	if ev.CastID != "" { // the area the cast kept on the map, and what the answers to it put on the players' characters
+		if err := u.castZonesBack(ctx, ev.CastID); err != nil {
 			return err
 		}
 	}
@@ -734,6 +726,17 @@ func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev a
 		}
 	}
 	return u.marksBack(ctx, ev.MarksBefore)
+}
+
+// castZonesBack takes the zones of a cast away, with the questions they had open and the effects their answers added.
+func (u *undoer) castZonesBack(ctx context.Context, castID string) error {
+	if err := u.s.closeCastZoneWindows(ctx, u.c, castID); err != nil {
+		return err
+	}
+	if err := u.c.q.DeleteSpellZonesOfCast(ctx, playdb.DeleteSpellZonesOfCastParams{EncounterID: u.c.enc.ID, CastID: castID}); err != nil {
+		return fmt.Errorf("take the spell zone of the cast away: %w", err)
+	}
+	return u.zoneEffectsBack(ctx, castID)
 }
 
 // zoneEffectsBack takes away the effects of the cast's group, which a player's answer to a zone of the cast added.
