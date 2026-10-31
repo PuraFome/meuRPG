@@ -152,6 +152,22 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 - Every shard but plain 1/3 restores that backup (`RESTORE DATABASE`) instead of running the migrations; `migrate` then finds every migration applied and changes nothing.
   Plain 1/3 starts from an empty database and runs every migration, so a broken migration still fails `e2e`.
   The other workflows that start the stack (`repeat-changed`, `flake-check`, `nightly-hunt`) migrate from an empty database.
+- Each shard runs a list of tests balanced by measured time, not Playwright's own `--shard`, which counts tests.
+  `e2e-shards.mjs list <n>/<count> <grep flags>` (in `.github/scripts`) splits the tests the flags select, and the shard runs its list with `--test-list`.
+  The split puts the longest tests first, each in the shard with the least time so far, from the durations in `e2e/timings.json`.
+  A test the file does not know runs too, in the shard with the least time, and the step prints a notice with how many are missing.
+  The `setup` project runs ahead of every shard, so it is in one list and weighs nothing.
+  `lint and typecheck` runs `e2e-shards.mjs check`, which fails unless every test is in exactly one list, read back through Playwright's `--test-list`.
+  `nightly-hunt` keeps Playwright's own `--shard`, because it shuffles.
+- Refresh `e2e/timings.json` when the notice counts missing tests, or when the shards stop finishing together.
+  Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`.
+  Download the artifacts of a run of all nine shards and run:
+
+  ```bash
+  gh run download <run id> --pattern 'e2e-timing-*' --dir /tmp/e2e-timing
+  node .github/scripts/e2e-shards.mjs timings /tmp/e2e-timing/*/e2e-timing.json > e2e/timings.json
+  ```
+
 - Each shard starts the stack in the background (the composite action `start-e2e-stack`) while it installs Node, the e2e dependencies and Chromium, which the stack does not need.
   The stack starts with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build --detach` (`compose.ci.yaml` keeps the database in memory and lets it BACKUP and RESTORE to a folder; `compose.ci-images.yaml` points at the loaded images).
   The last step of the action waits for it, and a stack that fails to start fails the job with its log.

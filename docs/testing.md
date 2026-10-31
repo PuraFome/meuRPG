@@ -186,6 +186,9 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 - In CI every shard but plain 1/3 restores the backup the `database` job of `e2e` made (seed rows included) once CockroachDB is up, before `migrate` and the API start.
   Plain 1/3 migrates an empty database, so a broken migration fails e2e.
   See [CI](ci.md#end-to-end).
+- In CI each shard runs a list of tests balanced by measured time (`e2e/timings.json`), not Playwright's own `--shard`.
+  A new test needs no change to the file: it runs in the shard with the least time.
+  The command that refreshes the file is in [CI](ci.md#end-to-end).
 - There are no retries (`retries: 0`, checked by the e2e lint job) and no `test.skip` or `test.fixme` (the e2e lint fails on both): a flaky acceptance test is a bug to fix. See [Reproducing a flaky test](#reproducing-a-flaky-test).
 - Each test that proves an acceptance criterion carries the story's or rule's tag, such as `@MR-001`; `npx playwright test --grep @MR-001` runs only that story's.
 - RPCs from a test go through `page.request` (same cookies as the page) with `Connect-Protocol-Version: 1`.
