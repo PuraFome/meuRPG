@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -80,7 +81,7 @@ func (noMembers) JoinAsPlayer(context.Context, pgx.Tx, string, string) (string, 
 // offlineService is a Service whose database cannot be reached.
 func offlineService(t *testing.T) *Service {
 	t.Helper()
-	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(loadRules(t)), SRD: loadRules(t), Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Profiles: noProfiles{}, Members: noMembers{}, Content: NewSRDSource(loadRules(t)), SRD: loadRules(t), Roller: dicetest.New(), Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

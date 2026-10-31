@@ -2,6 +2,7 @@ package archtest
 
 import (
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -123,4 +124,138 @@ func importersOf(root fs.FS, target string) ([]string, error) {
 		return nil
 	})
 	return found, err
+}
+
+// rollerServices are the packages whose Config has a Roller field that, when nil, falls back to dice.Crypto, by directory.
+var rollerServices = []string{"internal/play", "internal/characters"}
+
+// TestEveryTestConfigOfAServiceSetsItsRoller reads every _test.go file and fails for a play.Config or characters.Config literal without a Roller.
+// A harness that forgets it silently rolls random dice, and the tie it meets is a flaky test.
+func TestEveryTestConfigOfAServiceSetsItsRoller(t *testing.T) {
+	root := os.DirFS(backendRoot)
+	module := modulePath(t, root)
+	got, err := configsWithoutRoller(root, module)
+	if err != nil {
+		t.Fatalf("reading the backend's source: %v", err)
+	}
+	for _, f := range got {
+		t.Errorf("%s: set Roller (dicetest.New(), or the test's own scripted roller) so the service never rolls with dice.Crypto", f)
+	}
+}
+
+// TestTheRollerRuleSeesAConfigWithoutOne proves the rule can fail.
+func TestTheRollerRuleSeesAConfigWithoutOne(t *testing.T) {
+	const module = "example.test/backend"
+	file := func(pkg, imports, body string) *fstest.MapFile {
+		return &fstest.MapFile{Data: []byte("package " + pkg + "\n\n" + imports + "\n\nvar _ = " + body + "\n")}
+	}
+	playImport := `import "example.test/backend/internal/play"`
+	aliased := `import pl "example.test/backend/internal/play"`
+	charsImport := `import "example.test/backend/internal/characters"`
+	fsys := fstest.MapFS{
+		"internal/leaktest/a_test.go":          file("leaktest", playImport, "play.Config{Pool: 1}"),
+		"internal/leaktest/b_test.go":          file("leaktest", aliased, "pl.Config{Pool: 1}"),
+		"internal/maps/c_test.go":              file("maps", charsImport, "characters.Config{Pool: 1}"),
+		"internal/play/d_test.go":              file("play", "", "Config{Pool: 1}"),
+		"internal/characters/e_test.go":        file("characters", "", "&Config{}"),
+		"internal/leaktest/ok_test.go":         file("leaktest", playImport, "play.Config{Pool: 1, Roller: nil}"),
+		"internal/play/ok_test.go":             file("play", "", "Config{Roller: nil}"),
+		"internal/play/other_test.go":          file("play", "", "LiveConfig{Heartbeat: 1}"),
+		"internal/maps/other_test.go":          file("maps", "", "Config{Pool: 1}"),
+		"internal/leaktest/production.go":      file("leaktest", playImport, "play.Config{Pool: 1}"),
+		"internal/leaktest/testdata/x_test.go": file("leaktest", playImport, "play.Config{Pool: 1}"),
+	}
+	got, err := configsWithoutRoller(fsys, module)
+	if err != nil {
+		t.Fatalf("configsWithoutRoller() error = %v", err)
+	}
+	want := []string{
+		"internal/characters/e_test.go:5",
+		"internal/leaktest/a_test.go:5",
+		"internal/leaktest/b_test.go:5",
+		"internal/maps/c_test.go:5",
+		"internal/play/d_test.go:5",
+	}
+	slices.Sort(got)
+	if !slices.Equal(got, want) {
+		t.Errorf("configsWithoutRoller() = %v, want %v", got, want)
+	}
+}
+
+// configsWithoutRoller returns "file:line" for each Config literal of a service in rollerServices, in a _test.go file, that has no Roller key.
+// A literal is the package's own Config inside the package's directory, or Config of the package imported by its path elsewhere.
+func configsWithoutRoller(root fs.FS, module string) ([]string, error) {
+	fset := token.NewFileSet()
+	var found []string
+	err := fs.WalkDir(root, ".", func(file string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if name := d.Name(); file != "." && (name == "testdata" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(file, "_test.go") {
+			return nil
+		}
+		src, err := fs.ReadFile(root, file)
+		if err != nil {
+			return err
+		}
+		f, err := parser.ParseFile(fset, file, src, 0)
+		if err != nil {
+			return err
+		}
+		own := slices.Contains(rollerServices, path.Dir(file))
+		names := map[string]bool{} // the names this file gives the services' packages
+		for _, imp := range f.Imports {
+			p, _ := strconv.Unquote(imp.Path.Value)
+			for _, dir := range rollerServices {
+				if p != module+"/"+dir {
+					continue
+				}
+				name := path.Base(dir)
+				if imp.Name != nil {
+					name = imp.Name.Name
+				}
+				names[name] = true
+			}
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			lit, ok := n.(*ast.CompositeLit)
+			if !ok || !isServiceConfig(lit.Type, own, names) || setsRoller(lit) {
+				return true
+			}
+			found = append(found, fmt.Sprintf("%s:%d", file, fset.Position(lit.Pos()).Line))
+			return true
+		})
+		return nil
+	})
+	return found, err
+}
+
+// isServiceConfig says whether a literal's type is a service's Config: Config inside its package, or pkg.Config of an imported one.
+func isServiceConfig(typ ast.Expr, own bool, names map[string]bool) bool {
+	switch x := typ.(type) {
+	case *ast.Ident:
+		return own && x.Name == "Config"
+	case *ast.SelectorExpr:
+		pkg, ok := x.X.(*ast.Ident)
+		return ok && x.Sel.Name == "Config" && names[pkg.Name]
+	}
+	return false
+}
+
+// setsRoller says whether a literal has a Roller key.
+func setsRoller(lit *ast.CompositeLit) bool {
+	return slices.ContainsFunc(lit.Elts, func(e ast.Expr) bool {
+		kv, ok := e.(*ast.KeyValueExpr)
+		if !ok {
+			return false
+		}
+		key, ok := kv.Key.(*ast.Ident)
+		return ok && key.Name == "Roller"
+	})
 }
