@@ -89,6 +89,10 @@ export function openRevivifySheet(
  * A refused target is always the same sentence. Focus goes to the title at each step, so a screen reader reads where
  * it is; the results are `role="status"`.
  */
+/** The notice of a target that waits for the master, as the live region says it. */
+const WAITS_MASTER_TEXT =
+  'O mestre confirma que faz menos de 1 minuto. Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.';
+
 @Component({
   selector: 'app-revivify-sheet',
   imports: [MatButtonModule, MatIconModule, SheetFrame],
@@ -108,6 +112,13 @@ export class RevivifySheet {
 
   protected readonly nobody = NOBODY_TEXT;
   protected readonly noSlot = NO_SLOT_TEXT;
+  /** What the polite live region says: the two notices that arrive with their step, so the text changes in a region that is already there. */
+  protected readonly said = computed(() => {
+    if (this.step() === 'target' && this.waitsMaster()) {
+      return WAITS_MASTER_TEXT;
+    }
+    return this.step() === 'confirm' && !this.slot() ? NO_SLOT_TEXT : '';
+  });
   protected readonly note = DIAMONDS_NOTE;
   protected readonly hint = DIAMONDS_HINT;
   protected readonly deniedText = DENIED_TEXT;

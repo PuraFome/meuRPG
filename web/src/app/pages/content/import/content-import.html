@@ -1,3 +1,4 @@
+<p class="mr-visually-hidden" role="status">{{ said() }}</p>
 @let a = access();
 @if (a.status !== 'not-found') {
   <a class="back" [routerLink]="back()">
@@ -80,33 +81,31 @@
           <li><strong>{{ res.totals?.updated ?? 0 }}</strong> {{ res.totals?.updated === 1 ? 'atualizada' : 'atualizadas' }}</li>
           <li><strong>{{ res.totals?.unchanged ?? 0 }}</strong> sem mudança</li>
         </ul>
-        <div class="mr-live" role="status">
-          @if (res.affectedCharacters.length > 0) {
-            <div class="mr-notice mr-notice--warning">
-              <mat-icon aria-hidden="true">warning</mat-icon>
-              <div>
-                <p>
-                  @if (res.affectedCharacters.length === 1) {
-                    <strong>1 ficha ficou com aviso.</strong> Ela usa uma entrada atualizada e não fecha mais com a regra nova:
-                  } @else {
-                    <strong>{{ res.affectedCharacters.length }} fichas ficaram com aviso.</strong> Elas usam entradas atualizadas e não fecham mais com a regra nova:
-                  }
-                </p>
-                <ul class="affected">
-                  @for (c of res.affectedCharacters; track c.characterId) {
-                    <li>
-                      <a [routerLink]="characterLink(c)">{{ c.name }}</a>
-                      @if (c.playerDisplayName) {
-                        <span class="mr-muted"> · {{ c.playerDisplayName }}</span>
-                      }
-                      · {{ c.issues === 1 ? '1 aviso' : c.issues + ' avisos' }}
-                    </li>
-                  }
-                </ul>
-              </div>
+        @if (res.affectedCharacters.length > 0) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <div>
+              <p>
+                @if (res.affectedCharacters.length === 1) {
+                  <strong>1 ficha ficou com aviso.</strong> Ela usa uma entrada atualizada e não fecha mais com a regra nova:
+                } @else {
+                  <strong>{{ res.affectedCharacters.length }} fichas ficaram com aviso.</strong> Elas usam entradas atualizadas e não fecham mais com a regra nova:
+                }
+              </p>
+              <ul class="affected">
+                @for (c of res.affectedCharacters; track c.characterId) {
+                  <li>
+                    <a [routerLink]="characterLink(c)">{{ c.name }}</a>
+                    @if (c.playerDisplayName) {
+                      <span class="mr-muted"> · {{ c.playerDisplayName }}</span>
+                    }
+                    · {{ c.issues === 1 ? '1 aviso' : c.issues + ' avisos' }}
+                  </li>
+                }
+              </ul>
             </div>
-          }
-        </div>
+          </div>
+        }
         <div class="actions">
           <a matButton="filled" [routerLink]="back()">Ver o conteúdo da mesa</a>
           <button matButton="outlined" type="button" (click)="again()">Importar outro pacote</button>
@@ -153,14 +152,12 @@
         </section>
       }
 
-      <div class="mr-live" role="status">
-        @if (refused() > 0) {
-          <div class="mr-notice mr-notice--warning">
-            <mat-icon aria-hidden="true">warning</mat-icon>
-            <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
-          </div>
-        }
-      </div>
+      @if (refused() > 0) {
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
+        </div>
+      }
       <div class="actions">
         <button matButton="filled" type="button" [disabled]="refused() > 0 || writes() === 0 || busy()" (click)="apply()">{{ applyLabel() }}</button>
         <button matButton="outlined" type="button" [disabled]="busy()" (click)="picker.click()">Escolher outro arquivo</button>

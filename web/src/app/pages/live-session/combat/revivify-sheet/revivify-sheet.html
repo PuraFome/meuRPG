@@ -1,5 +1,6 @@
 <app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" [focusableBody]="step() === 'result'" (closed)="close()">
   <div class="body">
+    <p class="mr-visually-hidden" role="status">{{ said() }}</p>
     <ol class="steps" aria-label="Passos">
       @for (m of marks(); track m.n) {
         <li class="steps__item" [class.steps__item--done]="m.state === 'done'" [class.steps__item--now]="m.state === 'current'" [attr.aria-current]="m.state === 'current' ? 'step' : null">
@@ -45,17 +46,15 @@
             </label>
           }
         </div>
-        <div class="mr-live" role="status">
-          @if (waitsMaster()) {
-            <div class="mr-notice mr-notice--warning">
-              <mat-icon aria-hidden="true">schedule</mat-icon>
-              <p>
-                <strong>O mestre confirma que faz menos de 1 minuto.</strong>
-                Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.
-              </p>
-            </div>
-          }
-        </div>
+        @if (waitsMaster()) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <p>
+              <strong>O mestre confirma que faz menos de 1 minuto.</strong>
+              Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.
+            </p>
+          </div>
+        }
         @if (!waitsMaster()) {
           <p class="small">Só aparece quem a magia pode alcançar agora.</p>
         }
@@ -69,14 +68,12 @@
           <p>{{ cost() }}</p>
         </div>
       }
-      <div class="mr-live" role="status">
-        @if (!slot()) {
-          <div class="mr-notice mr-notice--warning">
-            <mat-icon aria-hidden="true">block</mat-icon>
-            <p>{{ noSlot }}</p>
-          </div>
-        }
-      </div>
+      @if (!slot()) {
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">block</mat-icon>
+          <p>{{ noSlot }}</p>
+        </div>
+      }
       <label class="diamonds">
         <input type="checkbox" class="mr-visually-hidden" [checked]="diamonds()" (change)="diamonds.set(!diamonds())" />
         <span class="diamonds__box" aria-hidden="true"><mat-icon>check</mat-icon></span>

@@ -42,6 +42,7 @@ import { hasNewerVersion, problemSentence } from '../../../core/campaign-package
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { formatBytes } from '../../../core/images/image-format';
+import { capSentence, failureSentence, SPEECH } from './campaign-import-speech';
 import { UploadFailed } from '../../../core/images/upload-errors';
 import { creationRefusalText } from '../../../core/campaigns/campaign-copy';
 
@@ -122,6 +123,7 @@ export class CampaignImportPage {
   protected readonly dragging = signal(false);
   /** The polite live region for what the cards do not say themselves (the preview is ready, the campaign made). */
   protected readonly announcement = signal('');
+  protected readonly speech = SPEECH;
 
   protected readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
@@ -424,19 +426,17 @@ export class CampaignImportPage {
   }
 }
 
-/** What a card says through the live region when it replaces the screen: its notices have no live role of their own. */
+/** What a card says through the live region when it replaces the screen. */
 function spoken(state: ImportState): string {
   switch (state.status) {
     case 'choose':
       return state.notice;
     case 'cap':
-      return state.max > 0
-        ? `Você já tem ${state.max} campanhas. Este é o limite por conta.`
-        : 'Você já tem o máximo de campanhas. Este é o limite por conta.';
+      return capSentence(state.max);
     case 'not-allowed':
       return state.text;
     case 'failed':
-      return `${state.failure.title} ${state.failure.cause}`;
+      return failureSentence(state.failure);
     default:
       return '';
   }

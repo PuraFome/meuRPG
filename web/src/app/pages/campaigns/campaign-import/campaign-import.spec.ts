@@ -540,6 +540,9 @@ describe('CampaignImportPage', () => {
       expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toContain(
         'A importação falhou no meio e nada foi criado.',
       );
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toContain(
+        'Nenhuma campanha, imagem ou personagem ficou para trás. “Tentar de novo” usa as partes que já foram enviadas.',
+      );
       expect(text(el)).toContain('“Tentar de novo” usa as partes que já foram enviadas.');
 
       pkg.createResult = () =>
@@ -597,6 +600,10 @@ describe('CampaignImportPage', () => {
       expect(alert).toContain('Não deu para confirmar se a campanha foi criada.');
       expect(alert).toContain(OUTCOME_UNKNOWN);
       expect(alert).not.toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
+      const said = el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent ?? '';
+      expect(said).toContain(OUTCOME_UNKNOWN);
+      expect(said).not.toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
+      expect(said).toContain('“Tentar de novo” é seguro');
       expect(text(el)).toContain('“Tentar de novo” é seguro');
     });
 

@@ -17,6 +17,16 @@ const createNpc = (el: HTMLElement) =>
     (b) => flat(b) === 'Criar NPC',
   )!;
 
+/** What a screen reader reads when the box takes focus after its name: the text its aria-describedby points at. */
+function described(box: Element): string {
+  return (box.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .map((id) => box.ownerDocument.getElementById(id)?.textContent ?? '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () => {
   let api: FakeCreaturesClient;
   let access: BestiaryAccess;
@@ -172,6 +182,9 @@ describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () 
     );
     // The box receives focus, so the confirmation is not also a live region.
     expect(el.querySelector('.made [role="status"]')).toBeNull();
+    expect(described(el.querySelector('.made')!)).toBe(
+      'Entrou no combate: Ogro. O combate “Combate: Ogro” foi criado agora. Os jogadores já os veem pelo estado.',
+    );
   });
 
   it('"Criar NPC" opens the dialog with the creature; with an NPC made, the page confirms and links to its sheet', async () => {
@@ -197,6 +210,7 @@ describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () 
     expect(flat(made.querySelectorAll('p')[0])).toBe(
       'NPC criado: Capitão bandido. Já está na lista de NPCs.',
     );
+    expect(described(made)).toBe('NPC criado: Capitão bandido. Já está na lista de NPCs.');
     // The attacks are the ones the NPC really got, from the server's answer.
     expect(flat(made.querySelectorAll('p')[1])).toBe('Ataques da ficha: Clava grande e Azagaia.');
     // One live region only: the confirmation is focused, not announced twice.

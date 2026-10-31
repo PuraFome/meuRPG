@@ -232,16 +232,14 @@
           <strong>{{ s.failure.title }}</strong>
           {{ s.failure.cause }}
           @if (s.failure.createdNothing) {
-            Nenhuma campanha, imagem ou personagem ficou para trás.
+            {{ speech.nothingLeft }}
           }
         </p>
       </div>
       @if (s.failure.unknown) {
-        <p class="hint">
-          “Tentar de novo” é seguro: se a campanha já foi criada, você recebe a mesma, sem repetir.
-        </p>
+        <p class="hint">{{ speech.retryUnknown }}</p>
       } @else {
-        <p class="hint">“Tentar de novo” usa as partes que já foram enviadas.</p>
+        <p class="hint">{{ speech.retryKnown }}</p>
       }
       <div class="actions">
         <button matButton="filled" type="button" (click)="retry()">
