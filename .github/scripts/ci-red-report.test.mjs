@@ -7,6 +7,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+// The fake `gh` filters with the real jq, as the runners' gh does.
+if (spawnSync('jq', ['--version']).status !== 0) throw new Error('ci-red-report.test.mjs needs jq on PATH: install it (apt-get install jq, brew install jq) and run the tests again');
+
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'ci-red-report.sh');
 
 // Runs the script with a `gh` whose `issue list` prints `listed` (the number the jq filter would give), and returns the calls.
