@@ -713,6 +713,11 @@ func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev a
 			return fmt.Errorf("take the spell zone of the cast away: %w", err)
 		}
 	}
+	if ev.CastID != "" { // the effects a player's answer to a zone of the cast put on its character
+		if err := u.zoneEffectsBack(ctx, ev.CastID); err != nil {
+			return err
+		}
+	}
 	if ev.Lasting != nil { // the effects the cast put on its targets
 		for _, id := range ev.Lasting.Effects {
 			if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
@@ -729,6 +734,25 @@ func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev a
 		}
 	}
 	return u.marksBack(ctx, ev.MarksBefore)
+}
+
+// zoneEffectsBack takes away the effects of the cast's group, which a player's answer to a zone of the cast added.
+func (u *undoer) zoneEffectsBack(ctx context.Context, castID string) error {
+	rows, err := u.c.q.ListLastingEffects(ctx, u.c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	var who []string
+	for _, st := range rows {
+		if conv.OrZero(st.GroupID) != castID {
+			continue
+		}
+		if err := u.c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+			return fmt.Errorf("take the effects of the cast away: %w", err)
+		}
+		who = append(who, st.CombatantID)
+	}
+	return u.s.refreshCombatants(ctx, u.c, who...)
 }
 
 // marksBack puts back, with their IDs and rounds, the Hunter's Marks a cast took off: the

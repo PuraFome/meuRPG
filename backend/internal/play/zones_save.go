@@ -30,6 +30,13 @@ func zoneWindowGroup(encounterID, reactorID, mark string) string {
 // askZoneSave opens the question of the saving throw to the creature's player.
 func (s *Service) askZoneSave(ctx context.Context, c *combatTx, k zoneCatch, owner playdb.Combatant) error {
 	trigger := windowTrigger{Actor: owner.ID, Target: k.who.ID, Key: k.z.row.SpellKey, Zone: k.z.row.ID, Phase: k.why}
+	if k.made != nil { // a catch at the cast: the cast records the creature, with the conditions the answer may change
+		h := castHit{Target: k.who.ID}
+		if k.z.def.kind == zoneProne {
+			h.CondSet, h.CondBefore = true, slices.Clone(k.who.Conditions)
+		}
+		k.made.Hits = append(k.made.Hits, h)
+	}
 	_, err := s.openWindows(ctx, c, zoneWindowGroup(c.enc.ID, k.who.ID, k.mark), nil, []windowSpec{{kind: reaction.EffectSave, reactor: &k.who, trigger: trigger}})
 	return err
 }
@@ -88,7 +95,7 @@ func (s *Service) settleZoneSave(ctx context.Context, c *combatTx, x *effectSave
 		return nil
 	}
 	k := zoneCatch{z: x.zone.z, who: x.reactor, why: x.t.Phase, round: c.enc.Round}
-	dealt, err := s.applyZone(ctx, c, x.cs, k, x.zone.owner, saved)
+	dealt, err := s.applyZone(ctx, c, x.cs, k, x.zone.owner, saved, &castHit{Target: x.reactor.ID})
 	if err != nil {
 		return err
 	}

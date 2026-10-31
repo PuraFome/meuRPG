@@ -110,9 +110,12 @@ func (s *Service) resolveCatch(ctx context.Context, c *combatTx, cs []playdb.Com
 	if err != nil {
 		return err
 	}
-	dealt, err := s.applyZone(ctx, c, cs, k, owner, hit.Save != nil && hit.Save.Saved)
+	dealt, err := s.applyZone(ctx, c, cs, k, owner, hit.Save != nil && hit.Save.Saved, &hit)
 	if err != nil {
 		return err
+	}
+	if k.made != nil { // a catch at the cast: the cast records every creature it caught, whatever its save
+		k.made.Hits = append(k.made.Hits, hit)
 	}
 	writeZoneCaught(c, k, owner, hit, dealt)
 	if dealt.landed {
@@ -123,13 +126,13 @@ func (s *Service) resolveCatch(ctx context.Context, c *combatTx, cs []playdb.Com
 
 // applyZone does what the zone does to a creature that made its save or did not: the damage of the
 // spells that burn, the restraint of the web.
-func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant, saved bool) (zoneDamageDealt, error) {
+func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant, saved bool, h *castHit) (zoneDamageDealt, error) {
 	switch {
 	case k.z.def.kind == zoneDamage:
 		return s.dealZoneDamage(ctx, c, k, saved)
 	case saved:
 	case k.z.def.kind == zoneProne:
-		return zoneDamageDealt{}, s.knockProne(ctx, c, k)
+		return zoneDamageDealt{}, s.knockProne(ctx, c, k, h)
 	default:
 		return zoneDamageDealt{}, s.restrainInZone(ctx, c, cs, k, owner)
 	}
@@ -236,16 +239,10 @@ const (
 	entangleRestrainedKey = "effect:entangle-restrained"
 )
 
-// knockProne knocks a creature prone: it stays so until it stands up.
-func (s *Service) knockProne(ctx context.Context, c *combatTx, k zoneCatch) error {
-	h := castHit{Target: k.who.ID}
-	if err := s.giveCondition(ctx, c, k.who, condProne, &h); err != nil {
-		return err
-	}
-	if k.made != nil && h.CondSet {
-		k.made.Hits = append(k.made.Hits, h)
-	}
-	return nil
+// knockProne knocks a creature prone: it stays so until it stands up. The condition it had before goes into h,
+// for the undo.
+func (s *Service) knockProne(ctx context.Context, c *combatTx, k zoneCatch, h *castHit) error {
+	return s.giveCondition(ctx, c, k.who, condProne, h)
 }
 
 // restrainInZone restrains a creature that failed its save against the zone, with the zone's effect, as the
@@ -271,6 +268,9 @@ func (s *Service) restrainInZone(ctx context.Context, c *combatTx, cs []playdb.C
 	}
 	if k.made != nil { // in a cast: the cast's own event keeps the effects, for its undo
 		keepCastEffects(k.made, key, made)
+		return nil
+	}
+	if k.why == zoneWhyCast { // the answer of a creature caught at the cast: the cast's undo takes the effect away by its group
 		return nil
 	}
 	return s.addedEvent(ctx, c, cs, made, key)

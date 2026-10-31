@@ -158,9 +158,9 @@ func chainStateEndedByVitals(c chainEvent) chainVerdict {
 
 // chainCastZoneCatch: a creature caught by a zone at the cast (Grease, Entangle) is written after the cast's own
 // event, which is what an undo acts on: the line stays, what it changed goes with the cast, and it never closes
-// the undo chain.
+// the undo chain. The same holds for the answer of a player's character to that catch.
 func chainCastZoneCatch(c chainEvent) chainVerdict {
-	if c.row.Kind != eventZoneTriggered {
+	if c.row.Kind != eventZoneTriggered && c.row.Kind != eventLastingSaved {
 		return chainGoOn
 	}
 	if ev, ok := c.payload(); ok && ev.Lasting != nil && ev.Lasting.Reason == zoneWhyCast {
