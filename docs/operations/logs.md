@@ -14,7 +14,7 @@ The load balancer's own request log (client IP, user agent, URL, Cloud Armor dec
 
 `LOG_LEVEL` is `info` normally (one line per request) and can be raised to `debug` (every request, RPC, stream and game event); `debug` makes the log 5 to 10 times bigger. Change it with `gcloud run services update meurpg --region southamerica-east1 --update-env-vars LOG_LEVEL=info` (a new revision; secrets and other variables stay).
 
-The startup lines to look for after a deploy: `starting api` (with the commit), `client ip source` (with `trusted_proxy_hops`), `rules content loaded`, `sign-in is enabled`, `images are stored in Cloud Storage`, `the images bucket is reachable`, and `image generation is on` (with the model). The warnings `DATABASE_URL is not set`, `OIDC_ISSUER is not set`, `GEMINI_API_KEY is not set` and `the images bucket could not be reached at start` each name a missing or wrong setting.
+The startup lines to look for after a deploy: `starting api` (with the commit), `client ip source` (with `trusted_proxy_hops`), `rules content loaded`, `sign-in is enabled`, `images are stored in Cloud Storage`, `the images bucket is reachable`, and `image generation is on` (with the model). The warnings `OIDC_ISSUER is not set`, `GEMINI_API_KEY is not set` and `the images bucket could not be reached at start` each name a missing or wrong setting.
 
 ### Queries
 

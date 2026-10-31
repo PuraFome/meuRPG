@@ -6,7 +6,7 @@
 //	PORT                listen port (default 8080)
 //	LISTEN_HOST         interface to listen on, e.g. 127.0.0.1 (default: all, what Cloud Run needs)
 //	GOOGLE_CLOUD_PROJECT the project id, set by the deploy (Cloud Run doesn't): log lines then carry the trace
-//	DATABASE_URL        CockroachDB connection string (optional)
+//	DATABASE_URL        CockroachDB connection string (required: without it the process exits at startup)
 //	LOG_LEVEL           debug, info, warn or error (default info)
 //	OIDC_ISSUER         sign-in provider, e.g. https://accounts.google.com (optional)
 //	OIDC_CLIENT_ID      this app's client ID at the provider
@@ -28,8 +28,8 @@
 //	TASKS_TARGET_URL    the service's own https URL, where Cloud Tasks calls back
 //	TASKS_SERVICE_ACCOUNT the account that signs that call's OIDC token
 //
-// Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
-// the API still starts, and the sign-in routes answer 503. CampaignService,
+// Sign-in needs the OIDC_* variables. Without them the API still starts,
+// and the sign-in routes answer 503. CampaignService,
 // CampaignDocumentService, CharacterService, ContentService,
 // TableContentService, PlayService,
 // ProgressionService,
@@ -176,14 +176,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	// database stays a nil interface when DATABASE_URL is empty. It must not
-	// hold a nil *pgxpool.Pool: an interface holding a typed nil pointer is
-	// not == nil, and /readyz would then call Ping on it.
-	var database httpserver.Pinger
-	if pool != nil {
-		defer pool.Close()
-		database = pool
-	}
+	defer pool.Close()
+	var database httpserver.Pinger = pool
 
 	blobs, closeBlobs, err := openBlobs(ctx, logger, cfg)
 	if err != nil {
@@ -273,12 +267,12 @@ func taskCancel(r tasks.Runner) func() {
 	return func() {}
 }
 
-// openDatabase opens the pool, or returns nil when DATABASE_URL is empty.
+// openDatabase opens the pool. Without DATABASE_URL it fails, so the process
+// exits at startup naming the variable instead of serving without a database.
 // The caller closes it.
 func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (*pgxpool.Pool, error) {
 	if cfg.DatabaseURL == "" {
-		logger.WarnContext(ctx, "DATABASE_URL is not set; running without a database")
-		return nil, nil
+		return nil, errors.New("DATABASE_URL is required")
 	}
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL.Reveal())
 	if err != nil {
@@ -293,9 +287,9 @@ func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (
 }
 
 // openBlobs opens where images live, and returns what closes it. The store
-// stays a nil interface without BLOB_DIR or BLOB_BUCKET (never a nil
-// *blob.FS, for the reason given for database in run), and the maps module
-// then answers 503 for images.
+// stays a nil interface without BLOB_DIR or BLOB_BUCKET, never a nil
+// *blob.FS (an interface holding a typed nil pointer is not == nil), and the
+// maps module then answers 503 for images.
 func openBlobs(ctx context.Context, logger *slog.Logger, cfg config.Config) (blob.Store, func(), error) {
 	noClose := func() {}
 	switch {
@@ -376,16 +370,12 @@ type signInParts struct {
 }
 
 // wireSignIn builds sign-in and the modules that come with it. Sign-in needs
-// a provider and a database: without either, both results are nil, and the
-// sign-in routes answer 503. Campaigns, characters and game sessions need to
-// know who is calling, so they come with sign-in.
+// a provider: without one, both results are nil, and the sign-in routes
+// answer 503. Campaigns, characters and game sessions need to know who is
+// calling, so they come with sign-in.
 func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, parts signInParts) (*identity.Service, *modules, error) {
-	switch {
-	case !cfg.OIDC.Configured():
+	if !cfg.OIDC.Configured() {
 		logger.WarnContext(ctx, "OIDC_ISSUER is not set; sign-in is disabled")
-		return nil, nil, nil
-	case pool == nil:
-		logger.WarnContext(ctx, "sign-in is disabled: it needs DATABASE_URL")
 		return nil, nil, nil
 	}
 	m, err := wireModules(logger, pool, parts.rules, parts.blobs, parts.images, wireOptions{
