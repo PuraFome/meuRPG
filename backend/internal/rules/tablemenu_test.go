@@ -281,6 +281,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
+		"wild_shape":         {Type: "wild_shape", MaxCR: "1"},
 		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
 		"on_event":           {Type: "on_event", Event: EventLongRest, TempHP: "level()"},
 		"resistance":         {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},

@@ -346,6 +346,20 @@ message TableEffect {
   int32 reach_ft = 64;
   string attack_name = 65;
   string damage_dice = 66;
+  // wild_shape: changes the druid's Wild Shape. `max_cr` is the highest challenge rating of
+  // the beasts ("0", "1/8", "1/4", "1/2" or a whole number up to 30) or `max_cr_from` an Int
+  // formula for a whole one from the level (such as "floor(level() / 3)"); not both.
+  // `no_fly` and `no_swim` leave out the beasts with those speeds. `form_cost` is an Int
+  // formula for the uses of the Wild Shape resource one change of form costs (empty is 1)
+  // and `magical_attacks` makes the beast form's attacks count as magical. The effect must
+  // set one of the four. The character takes the highest rating (with the limits of the
+  // effect that gives it), the lowest cost, and magical attacks if any effect gives them.
+  string max_cr = 67;
+  string max_cr_from = 68;
+  string form_cost = 69;
+  bool magical_attacks = 70;
+  bool no_fly = 71;
+  bool no_swim = 72;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

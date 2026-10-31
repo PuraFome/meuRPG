@@ -74,6 +74,10 @@ type Character struct {
 	// CastsInBeastForm says the character keeps its spells in a beast shape
 	// (a druid of level 18, Beast Spells); every other character has none there.
 	CastsInBeastForm bool
+	// WildShapeCost is how many uses of the Wild Shape resource one change of form spends
+	// (the cheapest of the character's wild_shape effects: 1 for the SRD druid, less or 0
+	// for a table feature that makes it cheaper).
+	WildShapeCost int32
 	// ArmorUntrained says the character wears armor or a shield it is not proficient with,
 	// and so cannot cast spells (rules.ArmorUntrained).
 	ArmorUntrained bool

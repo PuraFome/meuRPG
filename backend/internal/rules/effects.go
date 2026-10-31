@@ -199,9 +199,18 @@ type Effect struct {
 	// out the beasts with a fly or a swim speed. The druid's features of
 	// levels 2, 4 and 8 each carry one; the most permissive one the
 	// character has wins.
-	MaxCR  string `json:"max_cr,omitempty"`
-	NoFly  bool   `json:"no_fly,omitempty"`
-	NoSwim bool   `json:"no_swim,omitempty"`
+	// MaxCRFrom is an Int formula for the highest whole challenge rating, from the
+	// character's level (such as "floor(level() / 3)"); it replaces MaxCR. FormCost is
+	// an Int formula for the uses of the Wild Shape resource one change of form costs
+	// (empty is 1), and MagicalAttacks makes the beast form's attacks count as magical.
+	// The character takes the highest rating, the lowest cost, and magical attacks from
+	// any effect.
+	MaxCR          string `json:"max_cr,omitempty"`
+	MaxCRFrom      string `json:"max_cr_from,omitempty"`
+	FormCost       string `json:"form_cost,omitempty"`
+	MagicalAttacks bool   `json:"magical_attacks,omitempty"`
+	NoFly          bool   `json:"no_fly,omitempty"`
+	NoSwim         bool   `json:"no_swim,omitempty"`
 
 	// song_of_rest: the die of the bard's Song of Rest (6, 8, 10 or 12 sides),
 	// which the character's short rest adds to the hit points the party regains
@@ -265,7 +274,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost *formula.Program
 
 	// What the overlay resolves for the state gate (gate.go), on the copy of the effect
 	// that is compiled: entry is the table entry the effect belongs to; stateKey is,
@@ -440,8 +449,8 @@ func (x effectCompiler) compileWhen(src string) (*formula.Program, error) {
 // strayFields refuses the fields of one type on an effect of another.
 func (x effectCompiler) strayFields() error {
 	e := x.e
-	if e.Type != "wild_shape" && (e.MaxCR != "" || e.NoFly || e.NoSwim) {
-		return x.fail("max_cr, no_fly and no_swim belong to wild_shape")
+	if e.Type != "wild_shape" && (e.MaxCR != "" || e.MaxCRFrom != "" || e.FormCost != "" || e.MagicalAttacks || e.NoFly || e.NoSwim) {
+		return x.fail("max_cr, max_cr_from, form_cost, magical_attacks, no_fly and no_swim belong to wild_shape")
 	}
 	if e.Type != "song_of_rest" && e.Sides != 0 {
 		return x.fail("sides belongs to song_of_rest")
@@ -823,13 +832,33 @@ func (x effectCompiler) extraAttack() error {
 }
 
 func (x effectCompiler) wildShape() error {
-	if !x.takesOnly(func(o *Effect) { o.Type, o.MaxCR, o.NoFly, o.NoSwim = "", "", false, false }) {
-		return x.fail("wild_shape takes max_cr, no_fly and no_swim only")
+	if !x.takesOnly(func(o *Effect) {
+		o.Type, o.MaxCR, o.MaxCRFrom, o.FormCost, o.MagicalAttacks, o.NoFly, o.NoSwim = "", "", "", "", false, false, false
+		o.maxCRFrom, o.formCost = nil, nil
+	}) {
+		return x.fail("wild_shape takes max_cr, max_cr_from, form_cost, magical_attacks, no_fly and no_swim only")
 	}
-	if _, ok := crEighths(x.e.MaxCR); !ok {
-		return x.fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+	e := x.e
+	if e.MaxCR != "" && e.MaxCRFrom != "" {
+		return x.fail("wild_shape takes max_cr or max_cr_from, not both")
 	}
-	return nil
+	if e.MaxCR == "" && e.MaxCRFrom == "" && e.FormCost == "" && !e.MagicalAttacks {
+		return x.fail("wild_shape needs a max_cr, a max_cr_from, a form_cost or magical_attacks")
+	}
+	if e.MaxCR != "" {
+		if _, ok := crEighths(e.MaxCR); !ok {
+			return x.fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+		}
+	}
+	if e.MaxCR == "" && e.MaxCRFrom == "" && (e.NoFly || e.NoSwim) {
+		return x.fail("no_fly and no_swim go with a max_cr or a max_cr_from")
+	}
+	var err error
+	if e.maxCRFrom, err = x.compile(e.MaxCRFrom, formula.Int); err != nil {
+		return err
+	}
+	e.formCost, err = x.compile(e.FormCost, formula.Int)
+	return err
 }
 
 // otherSpeedTargets are the modifier targets whose formulas may read speedwalk().

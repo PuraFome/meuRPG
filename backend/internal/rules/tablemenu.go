@@ -236,6 +236,14 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "wild_shape", NamePT: "Forma Selvagem", HintPT: "Muda a Forma Selvagem do druida: o maior nível de desafio das feras (um fixo ou tirado do nível, como o nível dividido por 3), quantos usos do recurso Forma Selvagem cada mudança de forma gasta, e se os ataques da fera contam como mágicos. Vale o mais permissivo entre os efeitos que o personagem tem: o maior nível de desafio, o menor custo e ataques mágicos se algum efeito der.", Fields: []MenuField{
+		{Name: "max_cr", Kind: "text", AlwaysShown: true},
+		{Name: "max_cr_from", Kind: "formula", AlwaysShown: true},
+		{Name: "no_fly", Kind: "yes_no"},
+		{Name: "no_swim", Kind: "yes_no"},
+		{Name: "form_cost", Kind: "formula", AlwaysShown: true},
+		{Name: "magical_attacks", Kind: "yes_no", AlwaysShown: true},
+	}},
 	{Type: "ranged_attack", NamePT: "Ataque à distância", HintPT: "Muda os ataques de longe do personagem: os de magias que pedem jogada de ataque ou os com arma à distância (e a arma arremessada de longe). Pode tirar o bônus de meia cobertura e de três quartos do alvo, multiplicar o alcance dessas magias ou tirar a desvantagem de atirar no alcance longo da arma.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListRangedAttacks},
 		{Name: "ignore_cover", Kind: "yes_no", AlwaysShown: true},

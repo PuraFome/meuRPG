@@ -13,11 +13,11 @@ import (
 // (ADR-0018, section 4): the effect types of the SRD minus the ones that need
 // code or the engine's own tables. There is no "handler" (the table never runs
 // code, not even a handler that exists), no "spellcasting" (the engine writes it
-// from the class's casting) and no "wild_shape". "ranged_attack" is the table's own:
+// from the class's casting). "ranged_attack" is the table's own:
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
 	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
 }
 
@@ -533,7 +533,8 @@ var ownFields = map[string][]string{
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
 	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling", "while"},
 	// An ambush gives an edge against a target, by its applies alone.
-	"ambush": {"applies"},
+	"ambush":     {"applies"},
+	"wild_shape": {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage types it covers (or the one it leaves out), its kind and when it holds.
@@ -616,6 +617,9 @@ var effectFields = []effectField{
 	{"ritual", func(e *Effect) bool { return e.Ritual }, func(e *Effect) { e.Ritual = false }},
 	{"handler", func(e *Effect) bool { return e.Handler != "" }, func(e *Effect) { e.Handler = "" }},
 	{"max_cr", func(e *Effect) bool { return e.MaxCR != "" }, func(e *Effect) { e.MaxCR = "" }},
+	{"max_cr_from", func(e *Effect) bool { return e.MaxCRFrom != "" }, func(e *Effect) { e.MaxCRFrom = "" }},
+	{"form_cost", func(e *Effect) bool { return e.FormCost != "" }, func(e *Effect) { e.FormCost = "" }},
+	{"magical_attacks", func(e *Effect) bool { return e.MagicalAttacks }, func(e *Effect) { e.MagicalAttacks = false }},
 	{"spell", func(e *Effect) bool { return e.Spell != "" }, func(e *Effect) { e.Spell = "" }},
 	{"from_level", func(e *Effect) bool { return e.FromLevel != "" }, func(e *Effect) { e.FromLevel = "" }},
 	{"uses", func(e *Effect) bool { return e.Uses != "" }, func(e *Effect) { e.Uses = "" }},

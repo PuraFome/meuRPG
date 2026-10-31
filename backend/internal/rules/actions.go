@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -133,6 +134,7 @@ func (x *deriver) resourcesAndActions() {
 	x.d.StandardActions = slices.Clone(x.c.standardActions)
 	x.d.AttacksPerAction = 1
 	x.criticalAndStyles()
+	x.wildShapeRule()
 	x.extraAttacks()
 	// Two classes may share a resource name (Channel Divinity of the cleric and
 	// the paladin); the session counts them as one pool, which has the larger
@@ -344,4 +346,75 @@ func (x *deriver) criticalAndStyles() {
 			x.d.TwoWeaponFighting = true
 		}
 	}
+}
+
+// wildShapeRule fills Derived.WildShape from the wild_shape effects the character has: the
+// highest challenge rating (the effect that gives it brings its no_fly and no_swim; on a tie
+// the one with fewer limits), the lowest cost in uses and magical attacks if any effect gives them.
+func (x *deriver) wildShapeRule() {
+	var rule *WildShapeRule
+	var from *Effect
+	best := -1
+	for _, a := range x.active {
+		if a.effect.Type != "wild_shape" || !x.applies(a) {
+			continue
+		}
+		if rule == nil {
+			rule = &WildShapeRule{Cost: 1}
+		}
+		e := a.effect
+		if e.FormCost != "" {
+			if n, ok := x.evalInt(e.formCost, a); ok {
+				rule.Cost = min(rule.Cost, max(n, 0))
+			}
+		}
+		rule.Magical = rule.Magical || e.MagicalAttacks
+		eighths, ok := -1, false
+		switch {
+		case e.MaxCR != "":
+			eighths, ok = crEighths(e.MaxCR)
+		case e.MaxCRFrom != "":
+			if n, good := x.evalInt(e.maxCRFrom, a); good {
+				eighths, ok = 8*min(max(n, 0), 30), true
+			}
+		}
+		if !ok {
+			continue
+		}
+		if eighths > best || (eighths == best && limits(e) < limits(from)) {
+			best, from = eighths, e
+			rule.MaxCR, rule.NoFly, rule.NoSwim = crString(eighths), e.NoFly, e.NoSwim
+		}
+	}
+	if rule != nil && best >= 0 {
+		x.d.WildShape = rule
+	}
+}
+
+// limits counts the restrictions a wild_shape effect puts on the forms.
+func limits(e *Effect) int {
+	if e == nil {
+		return 3
+	}
+	n := 0
+	if e.NoFly {
+		n++
+	}
+	if e.NoSwim {
+		n++
+	}
+	return n
+}
+
+// crString is a challenge rating in eighths as the content writes it: "0", "1/8", "1/4", "1/2", "1"...
+func crString(eighths int) string {
+	switch eighths {
+	case 1:
+		return "1/8"
+	case 2:
+		return "1/4"
+	case 4:
+		return "1/2"
+	}
+	return strconv.Itoa(eighths / 8)
 }

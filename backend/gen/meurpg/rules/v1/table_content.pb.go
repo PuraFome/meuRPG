@@ -1027,8 +1027,22 @@ type TableEffect struct {
 	ReachFt       int32  `protobuf:"varint,64,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
 	AttackName    string `protobuf:"bytes,65,opt,name=attack_name,json=attackName,proto3" json:"attack_name,omitempty"`
 	DamageDice    string `protobuf:"bytes,66,opt,name=damage_dice,json=damageDice,proto3" json:"damage_dice,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// wild_shape: changes the druid's Wild Shape. `max_cr` is the highest challenge rating of
+	// the beasts ("0", "1/8", "1/4", "1/2" or a whole number up to 30) or `max_cr_from` an Int
+	// formula for a whole one from the level (such as "floor(level() / 3)"); not both.
+	// `no_fly` and `no_swim` leave out the beasts with those speeds. `form_cost` is an Int
+	// formula for the uses of the Wild Shape resource one change of form costs (empty is 1)
+	// and `magical_attacks` makes the beast form's attacks count as magical. The effect must
+	// set one of the four. The character takes the highest rating (with the limits of the
+	// effect that gives it), the lowest cost, and magical attacks if any effect gives them.
+	MaxCr          string `protobuf:"bytes,67,opt,name=max_cr,json=maxCr,proto3" json:"max_cr,omitempty"`
+	MaxCrFrom      string `protobuf:"bytes,68,opt,name=max_cr_from,json=maxCrFrom,proto3" json:"max_cr_from,omitempty"`
+	FormCost       string `protobuf:"bytes,69,opt,name=form_cost,json=formCost,proto3" json:"form_cost,omitempty"`
+	MagicalAttacks bool   `protobuf:"varint,70,opt,name=magical_attacks,json=magicalAttacks,proto3" json:"magical_attacks,omitempty"`
+	NoFly          bool   `protobuf:"varint,71,opt,name=no_fly,json=noFly,proto3" json:"no_fly,omitempty"`
+	NoSwim         bool   `protobuf:"varint,72,opt,name=no_swim,json=noSwim,proto3" json:"no_swim,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1521,6 +1535,48 @@ func (x *TableEffect) GetDamageDice() string {
 		return x.DamageDice
 	}
 	return ""
+}
+
+func (x *TableEffect) GetMaxCr() string {
+	if x != nil {
+		return x.MaxCr
+	}
+	return ""
+}
+
+func (x *TableEffect) GetMaxCrFrom() string {
+	if x != nil {
+		return x.MaxCrFrom
+	}
+	return ""
+}
+
+func (x *TableEffect) GetFormCost() string {
+	if x != nil {
+		return x.FormCost
+	}
+	return ""
+}
+
+func (x *TableEffect) GetMagicalAttacks() bool {
+	if x != nil {
+		return x.MagicalAttacks
+	}
+	return false
+}
+
+func (x *TableEffect) GetNoFly() bool {
+	if x != nil {
+		return x.NoFly
+	}
+	return false
+}
+
+func (x *TableEffect) GetNoSwim() bool {
+	if x != nil {
+		return x.NoSwim
+	}
+	return false
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -6575,7 +6631,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\x92\x0f\n" +
+	"\x04body\"\xbf\x10\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6654,7 +6710,13 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\vattack_name\x18A \x01(\tR\n" +
 	"attackName\x12\x1f\n" +
 	"\vdamage_dice\x18B \x01(\tR\n" +
-	"damageDice\"\xc3\x01\n" +
+	"damageDice\x12\x15\n" +
+	"\x06max_cr\x18C \x01(\tR\x05maxCr\x12\x1e\n" +
+	"\vmax_cr_from\x18D \x01(\tR\tmaxCrFrom\x12\x1b\n" +
+	"\tform_cost\x18E \x01(\tR\bformCost\x12'\n" +
+	"\x0fmagical_attacks\x18F \x01(\bR\x0emagicalAttacks\x12\x15\n" +
+	"\x06no_fly\x18G \x01(\bR\x05noFly\x12\x17\n" +
+	"\ano_swim\x18H \x01(\bR\x06noSwim\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
