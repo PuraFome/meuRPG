@@ -177,11 +177,11 @@ func checkPackEntry(field string, e *rulesv1.TableEntry, seen map[string]bool) *
 	if prefix == "" {
 		return packViolation(field+".kind", rules.ReasonValue, "the kind of an entry is one of the kinds of table content")
 	}
-	check := func() (string, string) { return rules.CheckEntryKey(prefix, e.GetKey()) }
+	reason, msg := rules.CheckEntryKey(prefix, e.GetKey())
 	if e.GetKind() == rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION {
-		check = func() (string, string) { return rules.CheckOptionKey(e.GetKey()) }
+		reason, msg = rules.CheckOptionKey(e.GetKey())
 	}
-	if reason, msg := check(); reason != "" {
+	if reason != "" {
 		return packViolation(field+".key", reason, "%s", msg)
 	}
 	if seen[e.GetKey()] {

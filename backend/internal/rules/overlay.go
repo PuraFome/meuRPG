@@ -870,7 +870,7 @@ const (
 	claimClassFeatures
 )
 
-// overlayKinds lists the seven kinds in the order addEntries adds them.
+// overlayKinds lists the kinds in the order addEntries adds them.
 func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 	return []overlayKind{
 		{
