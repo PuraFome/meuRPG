@@ -74,10 +74,12 @@ runs:
         # Returns when the background start has exited, whichever way.
         tail --pid="$(cat "$STACK_DIR/pid")" --follow /dev/null
         status=$(cat "$STACK_DIR/status" 2>/dev/null || echo 1)
-        echo "::group::Start of the stack"
-        cat "$STACK_DIR/log"
-        echo "::endgroup::"
-        if [ "$status" != 0 ]; then
+        if [ "$status" = 0 ]; then
+          echo "::group::Start of the stack"
+          cat "$STACK_DIR/log"
+          echo "::endgroup::"
+        else
+          cat "$STACK_DIR/log"
           echo "::error::The stack did not start (exit code $status)."
           docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml logs --no-color || true
           exit "$status"
