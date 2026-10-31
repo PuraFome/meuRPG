@@ -28,7 +28,7 @@ The pinned versions and where each one lives are in [docs/development.md](docs/d
 | `make sqlc` | Generates the Go code of the SQL queries (`backend/internal/<module>/<module>db`) from each module's `queries.sql`. Commit the result |
 | `make migrate` | Applies the goose migrations to the local database |
 | `make test` | `go test -race ./...` in `backend/`. Integration tests need `MEURPG_TEST_DATABASE_URL`, see [docs/testing.md](docs/testing.md#integration-tests) |
-| `make before-ready` | The golden, frozen, fixture and inventory tests a change makes stale, against the test database (`MEURPG_TEST_DATABASE_URL`): run it before you write `ready:`. It prints the command that regenerates a failed file; a test that turns a second train round red is added to `backend/internal/archtest/before_ready.txt`. See [docs/testing.md](docs/testing.md#before-ready) |
+| `make before-ready` | The golden, frozen, fixture and inventory tests a change makes stale, against the test database (`MEURPG_TEST_DATABASE_URL`): run it before you write `ready:`. It runs the lines of the list that the change can affect (`make before-ready ALL=1` runs all of them; `time make before-ready` measures a run). It prints the command that regenerates a failed file; a test that turns a second train round red is added to `backend/internal/archtest/before_ready.txt`. See [docs/testing.md](docs/testing.md#before-ready) |
 | `make db-test-start` / `make db-test-stop` | An in-memory test CockroachDB on port 26258 |
 | `make lint` | `buf lint`, `buf format` and `golangci-lint` on what your branch added since `origin/main` (run `git fetch origin main` first) |
 | `make lint-all` | The same linters on the whole backend, to pick what to clean up |

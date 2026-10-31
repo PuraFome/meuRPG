@@ -129,9 +129,21 @@ export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?ssl
 make before-ready
 ```
 
-A full run takes about 20 minutes on 4 vCPUs against the on-disk database (20m19s measured, four packages at once). `internal/play` is the longest group, about 13 minutes, because each scenario of its seven `runGolden` goldens builds a database of its own and the database is the limit: raising `go test -parallel` to 16 made the play group slower (about 22 minutes against 12.7).
-While you work, run the groups your change touches: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and the whole list before `ready:`.
+By default it runs only the lines of the list that the change can affect. It compares the working tree (committed, staged, unstaged and untracked files) with the merge base on `origin/main`, and a line runs when the change touches:
+
+- a file of the line's package directory, `testdata/` and embedded data included;
+- a package the line's tests import, directly or not (`go list -deps -test`): a change in `internal/rules/combat` runs the `internal/play` goldens, and a change in `internal/play` runs the lines of the packages that import it;
+- a file under `proto/` (the lines of the packages that import the generated code), or one of the line's `inputs`, the fifth column of the list: the files its tests read outside their package, such as `proto/error-reasons.json`, `backend/migrations`, `NOTICE` or `web/src/app/pages/credits/credits.ts`. `TestBeforeReadyInputsAreComplete` fails for a `../` path that a listed test reads and its line does not name;
+- the tool itself (`.github/scripts/before-ready.sh`, `backend/cmd/beforeready`) or the dependencies (`backend/go.mod`, `backend/go.sum`): every line runs. A change to `backend/internal/archtest/before_ready.txt` runs the lines it adds or edits, and the `internal/archtest` line.
+
+A change that touches none of this (web, docs, the `Makefile`) runs nothing, says so and exits 0, without asking for the database.
+The output names each package that runs and the changed file or import that selected it, then the packages it skipped.
+When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge.
+
+`BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change.
+`ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
 `BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
+To measure a run, time it: `time make before-ready` for the default run, `time make before-ready ALL=1` for the whole list.
 
 Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.
 On a failure it prints the command that rewrites the failed test's file (`-update`, `UPDATE_GOLDEN=1` or the package's own flag), or says to edit the expected values by hand when there is no generator.
@@ -139,6 +151,7 @@ Rewrite a file only when the change is intended, read the diff of every rewritte
 
 The tests, grouped by package, and the command that regenerates each group are in `backend/internal/archtest/before_ready.txt`: one place, one tab-separated line for each group.
 A test that turns a second train round red (a train round is one CI run of the merge train) is added to it.
+The list says, for each line, its package, the `-run` regex, the regenerate command and the inputs.
 `TestBeforeReadyListIsWhole` keeps it whole: a test that reads a `.golden`, `.sha256` or `testdata` file (or a constant that holds one), calls `goldentest.Compare` or `goldentest.JSON`, reads a `flag.Bool` or a variable named for the frozen digests or the goldens, and is on no line of its package, fails it; so does a line that matches no test.
 It follows plain function calls of the same package, not method calls (names collide between types), so a test that compares through a method keeps to a naming convention in its line, for example `TestLasting(Core|RPC)` in `internal/play`, and `Frozen|Golden` names are on the list by their name.
 
