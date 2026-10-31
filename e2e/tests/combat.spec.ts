@@ -110,6 +110,7 @@ test(
       const pen = enc.combatants.find((c) => c.label === 'Pensantus')!;
       const cap = enc.combatants.find((c) => c.label === 'Capitão Goblin')!;
       if (pen.initiative === cap.initiative) {
+        // eslint-disable-next-line meurpg/rpc-revision-wait -- the player acts only after the master's own clicks, and the player's "Sua vez" heading asserted before that is the wait (a reorder of hidden goblins may not reach the player's revision)
         enc = await combatRPC(m, 'SetInitiativeOrder', { campaignId, encounterId: enc.id, combatantIds: [cap.id, pen.id] });
         await waitForEncounterRevision(m, enc);
       }
@@ -124,7 +125,6 @@ test(
 
       // Put the goblins on squares, then begin.
       for (const [label, col, row] of [['Goblin 1', 9, 9], ['Goblin 2', 14, 10], ['Goblin 3', 15, 4], ['Capitão Goblin', 11, 5]] as const) {
-        // eslint-disable-next-line meurpg/rpc-revision-wait -- a move is patched into the page with no new revision (CombatState.applyMove), and these goblins are hidden from the player: the page never shows this revision
         enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
       }
       await m.getByRole('button', { name: 'Começar o combate' }).click();

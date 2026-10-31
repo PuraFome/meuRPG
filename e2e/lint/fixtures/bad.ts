@@ -35,4 +35,7 @@ export async function notTracked(m: Page): Promise<void> {
   await combatRPC(m, 'EndTurn');
   await m.goto('/');
   await m.getByRole('button').click();
+  // A move is patched into the page with no new revision: there is nothing to wait for.
+  await combatRPC(m, 'MoveCombatant');
+  await m.getByRole('button').click();
 }

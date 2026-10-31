@@ -994,7 +994,6 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
       enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
     }
 
-    await waitForEncounterRevision(m, enc);
     // The combat runs: the master's screen, the player out of turn (the captain is hidden: "Vez do mestre").
     await m.getByRole('button', { name: 'Começar o combate' }).click();
     await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
@@ -1332,7 +1331,7 @@ async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Compacto, fora da vez ${where}`);
 
     // The player's turn: one "Mover" and one "Encerrar turno" in sight, the tab list, and "Ver mapa" as an icon at the map's top.
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Pensantus'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveCount(1);
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
@@ -4289,7 +4288,7 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await p.getByTestId('form-ended').getByRole('button', { name: 'Entendi' }).click();
     // Next round: her action is free again.
     await endTurnOf(p, m, campaignId, 'Sálvia');
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Sálvia'));
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Sálvia'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
 
     // Conjurar Animais: the sheet, then the result.
@@ -7716,7 +7715,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await expect(gift.getByText('Você inspirou Aurora.')).toBeVisible();
     await expectScreenPasses(b, `Inspiração de Bardo, dado entregue ${where}`);
     await gift.locator('button', { hasText: 'Fechar' }).click();
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Aurora'));
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
 
     // Aurora's turn: the die card, and the touch on Orla (hurt).
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
@@ -7743,7 +7742,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
 
     // The next round: the attack with the die in hand asks before the result.
     await passTurnsTo(m, campaignId, 'Orla');
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Aurora'));
+    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
     await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();

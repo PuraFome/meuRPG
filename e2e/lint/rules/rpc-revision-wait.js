@@ -88,6 +88,10 @@ module.exports = {
     };
 
     /** An awaited `*RPC` call whose answer carries a revision. @param {any} node */
+    /** A move is patched into the page with no new revision (CombatState.applyMove): there is nothing to wait for. @param {any} call */
+    const isMove = (call) =>
+      call.callee.name === 'movePensantus' || call.arguments.some((/** @type {any} */ a) => a.type === 'Literal' && a.value === 'MoveCombatant');
+
     const isTracked = (node) => {
       const call = node.argument;
       return (
@@ -95,6 +99,7 @@ module.exports = {
         call.callee.type === 'Identifier' &&
         !READS.test(call.callee.name) &&
         !WAIT_NAMES.has(call.callee.name) &&
+        !isMove(call) &&
         hasRevision(node)
       );
     };

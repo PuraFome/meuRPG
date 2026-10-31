@@ -21,6 +21,10 @@ export async function waitForEncounterRevision(pages: Page | Page[], expected: E
 }
 
 async function waitOnePage(page: Page, expected: Encounter, what: string): Promise<void> {
+  // A page outside the session has no combat view to read, and reads the state itself when it opens: fail at once, not at the timeout.
+  if (!/\/session\b/.test(new URL(page.url(), 'http://localhost').pathname)) {
+    throw new Error(`${what}: the page is at ${page.url()}, not on the session, so it has no combat view to wait on (wait on the pages that show the session)`);
+  }
   // A revision of 0 is left out of the protobuf JSON, so it arrives as undefined.
   const want = expected.revision ?? 0;
   // -1: no combat view on the page, or a view showing another combat (its number means nothing here). Both

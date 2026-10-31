@@ -6,7 +6,6 @@ import { dalila, dalilaSheet, toren } from './combat-support';
 import { sessionRoute, squareBp, tableForFog } from './fog-support';
 import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
 import { openCombatPanel } from './combat-layout';
-import { waitForEncounterRevision } from './revision-support';
 
 // Traps and treasure in the session, on screen (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02,
 // question 71). The table, the traps and the combat come through the API; what is under test is what
@@ -111,7 +110,6 @@ test(
       await openSessionPage(p, campaignId);
 
       const moved = await movePensantus(p, table, 9, 7);
-      await waitForEncounterRevision(m, moved);
       expect(moved.combatants.find((c) => c.label === 'Pensantus')!.col).toBe(7);
 
       await expect(p.getByText('Você caiu na armadilha Fosso escondido.')).toBeVisible();
@@ -254,7 +252,6 @@ test(
       await pensantusFirst(m, table);
       await openSessionPage(p, campaignId);
       expect(await pointNames(p, table)).not.toContain('Fosso escondido');
-      // eslint-disable-next-line meurpg/rpc-revision-wait -- a move is patched into the page with no new revision (CombatState.applyMove); the notice toast asserted next is the wait
       await movePensantus(p, table, 8, 7);
       const toast = p.getByRole('status').filter({ hasText: 'Você notou uma armadilha.' });
       await expect(toast).toBeVisible();
