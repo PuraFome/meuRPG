@@ -38,7 +38,7 @@ const KNOWN: Readonly<Record<string, number>> = {
 
 const HASH_BASE = 31;
 
-/** The pattern of a spell's zone: fixed for the four spells of the catalog, a hash of the key for a table spell. */
+/** The pattern of a spell's zone: fixed for the first four spells of the catalog, a hash of the key for the others (Grease, Entangle, a table spell). */
 export function zonePattern(spellKey: string): number {
   const known = KNOWN[spellKey];
   if (known !== undefined) {
