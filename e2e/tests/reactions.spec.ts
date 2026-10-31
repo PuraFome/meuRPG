@@ -4,6 +4,7 @@ import { beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tab
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC, newSignedInContext, viaTargetList } from './support';
 import { setTableRulesRPC } from './table-rules-support';
+import { waitForEncounterRevision } from './revision-support';
 
 // The reaction window (PM-04): an NPC's Escudo holds a player's turn and the player reads only "Esperando o mestre",
 // a Contramágica asks the master about a player's cast, and a damage on a concentrating character asks its owner for
@@ -172,6 +173,7 @@ for (const showDC of [false, true]) {
         });
         expect(cast.ok(), await cast.text()).toBeTruthy();
         enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus') });
+        await waitForEncounterRevision([m, p], enc);
         const hit = await callRPC(m, 'meurpg.play.v1.CombatService/RollAttack', {
           campaignId,
           encounterId: enc.id,

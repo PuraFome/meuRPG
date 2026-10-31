@@ -55,6 +55,11 @@ import { type RiderPick } from './hit-rider/hit-rider-card';
   imports: COMBAT_VIEW_IMPORTS,
   templateUrl: './combat-view.html',
   styleUrl: './combat-view.scss',
+  // The combat the page shows and its revision, for the e2e specs to wait on (docs/testing.md, "Waiting for the page to show a change").
+  host: {
+    '[attr.data-encounter-id]': 'encounter()?.id ?? null',
+    '[attr.data-encounter-revision]': 'encounter()?.revision ?? null',
+  },
 })
 export class CombatView extends CombatViewPartsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */

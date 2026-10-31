@@ -207,6 +207,43 @@ On the same screens it runs the alignment checks of `e2e/tests/layout.ts`: an ic
 `e2e/lint/` is its own small package because typescript-eslint needs an older TypeScript than the one `e2e/` type-checks with.
 See [CI](ci.md#web-and-e2e-linters).
 
+**Waiting for the page to show a change.**
+A call that changes the server over RPC (`combatRPC`, `startEncounterRPC`, `passTurnsTo`, ...) answers at once, but the page learns of it a moment later.
+A click in that gap acts on the old screen.
+So a spec waits until the page shows the change before its next page action:
+
+```ts
+const enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId, expectedCombatantId });
+await waitForEncounterRevision(m, enc);
+await m.getByRole('button', { name: 'Próximo turno' }).click();
+```
+
+- `waitForEncounterRevision(pages, encounter)` is in `e2e/tests/revision-support.ts`.
+  Its failure names the combat, the revision expected and the one shown (`-1` means no combat view, or another combat).
+- Wait on the page the next action uses.
+  If the master and a player both act next, wait on both: `waitForEncounterRevision([m, p], enc)`.
+- Wait only on a page that shows the session (`/campaigns/<id>/session`).
+  A page elsewhere has no combat view and reads the state itself when it opens, so the helper fails at once for it.
+- A player's revision on a fog-of-war map is not the server's number, so it cannot be waited on.
+  Wait for the player's screen to show the change itself.
+  Without fog (no map, or a map with the fog off) the player's page works.
+- A move on a map gives the page no new revision, so the rule ignores it: wait for what the page shows.
+  A change that touches only hidden combatants reaches the master alone.
+  Wait for what the page shows there too, and put `// eslint-disable-next-line meurpg/rpc-revision-wait -- why` on the call.
+- A page with no combat view (the bestiary, a player after the combat ended) cannot show a revision: disable the rule on that call with the reason.
+- `meurpg/rpc-revision-wait` (`e2e/lint/rules`) is an error when an awaited helper that returns an `Encounter` is followed by a page action with no wait on that action's page.
+  A wait that comes after the action, or on another page, does not count.
+  `goto`, `reload`, `openSessionPage`, `openPlayerMap` and `gotoCampaignTab` count as a wait, because the page then reads the state itself.
+  Reads (`get*`, `list*`, `read*`) and moves (`MoveCombatant`, `movePensantus`) need none.
+  The rule asks for a wait on every page that acts, because it cannot tell which pages show the session.
+  It does not see calls that answer with nothing (a scene roll), helpers that click inside, or the next turn of a loop.
+- The rule has no baseline: do not add suppressions for it.
+  `npm run lint:test` runs it on `e2e/lint/fixtures`: `bad.ts` must fail and `fixed.ts` must pass.
+- The combat view carries `data-encounter-id` and `data-encounter-revision` for the specs; nothing in the app reads them.
+
+A failed CI run keeps `stack-logs/stack.log` (every container of the stack, with timestamps) in the `playwright-report-*` artifact.
+The `flake-check` traces artifact (`flake-traces-*`) holds the same file, one per job.
+
 ## Reproducing a flaky test
 
 A red test is a bug in the test or in the app until the evidence says which ([CI](ci.md#flaky-tests) has the rule and the banned fixes). Read the artifacts first, then reproduce before you fix.
