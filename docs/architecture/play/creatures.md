@@ -65,8 +65,9 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   An edit of the entry during the fight changes them at once.
   Its hit points are its own, copied when it was given.
   A monster put in a combat with "Pôr no combate" is a combatant made from the combat's NPC for the creature.
-  Its hit points, armor class, speed, initiative and sheet attacks are the NPC's.
-  Its traits, saving throws, attacks per action and the actions beyond the sheet attacks are read from the entry as it is now.
+  Its armor class, speed, initiative and sheet attacks are the NPC's.
+  Its hit points are the creature's at the time it is added.
+  Its traits, saving throws, skills, ability scores, passive Perception, attacks per action and the actions beyond the sheet attacks are read from the entry as it is now.
   The NPC is keyed by the numbers the entry makes (`monsterNpcKeyOf`).
   An edit that changes them makes another NPC, and the monsters already in a fight keep reading the old one.
   An edit that changes only the name finds the NPC it had.

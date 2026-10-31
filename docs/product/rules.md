@@ -786,7 +786,8 @@ These limits stop one account from filling the server. The numbers are defaults 
 | --- | --- |
 | Campaigns one account is master of | 10 |
 | Invites that still work in a campaign (not revoked, not expired, with uses left) | 50 |
-| Characters and NPCs in a campaign, living or dead, pending included. The NPCs made for a creature in a combat do not count | 1,000 |
+| Characters and NPCs in a campaign, living or dead, pending included. The NPCs made for a creature in a combat do not count toward it; they have their own cap | 1,000 |
+| NPCs made for the creatures of a combat in a campaign | 1,000 |
 | AI images per campaign per month (RN-28) | 20 |
 | AI images for the whole server per Brasília day | 100 |
 | AI image requests alive at once on the server | 5 (one being made, four waiting) |

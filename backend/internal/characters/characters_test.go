@@ -495,6 +495,41 @@ func TestRN30_TheMonsterNpcOfACombatDoesNotCountInTheCap(t *testing.T) {
 	}
 }
 
+// RN-30: the NPCs of a combat have a cap of their own: the 1,001st distinct one is refused, one that
+// exists is still found at the cap, and the characters are not affected by them.
+func TestRN30_TheMonsterNpcsOfACombatHaveTheirOwnCap(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Mestre")
+	campaign := h.newCampaign(master, "Mirathel")
+	monsterNpc := func(key string) error {
+		return db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+			_, _, err := h.svc.MonsterNpc(t.Context(), tx, campaign, master.id, key, h.clock.Now())
+			return err
+		})
+	}
+	if err := monsterNpc("monster:ogre"); err != nil { // one real combat-only NPC, among the 1,000
+		t.Fatalf("the ogre's NPC: %v", err)
+	}
+	if _, err := h.pool.Exec(t.Context(), `
+INSERT INTO characters (campaign_id, kind, master_user_id, status, name, sheet, story, created_at, updated_at)
+SELECT $1, 'minion', $2, 'active', 'Criatura ' || n::STRING, '{"basic": {"combat_only": true}}', '{}', now(), now()
+FROM generate_series(1, $3) AS n`, campaign, master.id, DefaultMaxCombatOnlyNpcsPerCampaign-1); err != nil {
+		t.Fatalf("seed the campaign: %v", err)
+	}
+
+	err := monsterNpc("monster:wolf")
+	wantCode(t, "the 1,001st combat-only NPC", err, connect.CodeResourceExhausted)
+	if err := monsterNpc("monster:ogre"); err != nil {
+		t.Fatalf("the ogre's NPC at the cap: %v", err)
+	}
+	var npcs int
+	if err := h.pool.QueryRow(t.Context(), "SELECT count(*) FROM characters WHERE campaign_id = $1 AND sheet->'basic'->>'combat_only' = 'true'", campaign).Scan(&npcs); err != nil || npcs != DefaultMaxCombatOnlyNpcsPerCampaign {
+		t.Fatalf("the campaign holds %d combat-only NPCs, %v; want %d", npcs, err, DefaultMaxCombatOnlyNpcsPerCampaign)
+	}
+	master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_STORY, "Taverneiro", basicSheet()) // characters are unaffected
+}
+
 // hillDwarfSheet is a Hill Dwarf fighter of the given level, who takes the
 // average at every level: the sheet whose maximum depends on Dwarven Toughness.
 func hillDwarfSheet(level int32) *charactersv1.CharacterSheet {

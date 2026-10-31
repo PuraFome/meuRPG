@@ -397,4 +397,22 @@ func TestMR578_TheNpcOfATableCreatureFollowsItsNumbers(t *testing.T) {
 	if got := npc(); got != first || rows() != 2 {
 		t.Fatalf("the numbers back = %s with %d rows, want the first NPC %s and 2 rows", got, rows(), first)
 	}
+
+	// The damage bonus is part of the numbers: an edit of it makes another NPC.
+	sharper := tableWolf()
+	sharper.DamageBonus = 5
+	edit(sharper)
+	third := npc()
+	if third == first || third == second || rows() != 3 {
+		t.Fatalf("an edit of the damage bonus = %s with %d rows, want a third NPC and 3 rows", third, rows())
+	}
+
+	// A trait only adds text: it finds the NPC it had.
+	withTrait := tableWolf()
+	withTrait.DamageBonus = 5
+	withTrait.Traits = append(withTrait.Traits, &rulesv1.TableCreatureTrait{NamePt: "Uivo", TextPt: "Ecoa na floresta."})
+	edit(withTrait)
+	if got := npc(); got != third || rows() != 3 {
+		t.Fatalf("a trait added = %s with %d rows, want the same NPC %s and 3 rows", got, rows(), third)
+	}
 }

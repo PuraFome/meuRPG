@@ -786,7 +786,8 @@ Esses limites impedem que uma conta encha o servidor. Os números são padrões 
 | --- | --- |
 | Campanhas de que uma conta é mestre | 10 |
 | Convites que ainda funcionam numa campanha (não revogados, não expirados, com usos sobrando) | 50 |
-| Personagens e NPCs numa campanha, vivos ou mortos, pendentes incluídos. Os NPCs feitos para uma criatura num combate não contam | 1.000 |
+| Personagens e NPCs numa campanha, vivos ou mortos, pendentes incluídos. Os NPCs feitos para uma criatura num combate não contam para esse limite; eles têm um limite próprio | 1.000 |
+| NPCs feitos para as criaturas de um combate numa campanha | 1.000 |
 | Imagens de IA por campanha por mês (RN-28) | 20 |
 | Imagens de IA para o servidor inteiro por dia de Brasília | 100 |
 | Pedidos de imagem de IA vivos ao mesmo tempo no servidor | 5 (um sendo feito, quatro esperando) |

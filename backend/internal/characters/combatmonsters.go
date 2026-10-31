@@ -168,11 +168,19 @@ func monsterNpcParams(content *rules.Content, c rules.Creature, campaignID, mast
 }
 
 // insertMonsterNpc writes the NPC; when another transaction made it first, it
-// reads that one. It does not check the campaign's cap: the NPC of a combat is
-// combat_only, which the count of RN-30 leaves out.
+// reads that one. A new NPC is refused when the campaign then holds more than
+// DefaultMaxCombatOnlyNpcsPerCampaign of them (RN-30): the count is after the insert, in the same
+// SERIALIZABLE transaction, so a reuse is never refused and two racing for the last place do not both pass.
 func (s *Service) insertMonsterNpc(ctx context.Context, q *charactersdb.Queries, params charactersdb.InsertNpcFromCreatureParams) (charactersdb.Character, error) {
 	row, err := q.InsertNpcFromCreature(ctx, params)
 	if err == nil {
+		n, err := q.CountCampaignCombatOnlyNpcs(ctx, params.CampaignID)
+		if err != nil {
+			return row, wrap("count the NPCs of the monsters", err)
+		}
+		if n > DefaultMaxCombatOnlyNpcsPerCampaign {
+			return row, errCombatOnlyNpcCapReached(DefaultMaxCombatOnlyNpcsPerCampaign)
+		}
 		return row, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {

@@ -137,7 +137,7 @@ An NPC stays in the campaign where it was created.
   `sheet_schema` marks the sheet document's version.
 - **Sheet fields that are not columns.** The NPC's `initiative_bonus`, `attacks`, `monster_key`, `ability_scores`, `challenge_rating`, `xp_value`, `portrait_image_id` (a gallery image of the campaign; deleting the image removes the field from the sheets and raises their `revision` in the same transaction), the XP (`FullSheet.experience_points`, which `progression` adds to), the content revision a sheet was saved with and its `known_issues` live inside the JSON.
   `combat_only` marks the NPC the app keeps for each creature put in combat (RN-29): one per campaign and creature (for a table creature, one per set of numbers), reused by every combat, never shown in `ListCharacters` to the master and never deleted.
-  The cap on characters (RN-30) does not count it.
+  The cap on characters (RN-30) does not count it; combat-only NPCs have their own cap of 1,000 per campaign.
 - **`active_states`** (JSONB, `'[]'`) is the list of temporary states that are on, `{"key": "<feature key>#<state name>", "rounds_left": N}` in the order they began, with `rounds_left` absent for a state that lasts until it ends.
   A `CHECK` allows an array of at most 32 items. It is on the character, not on `character_vitals`, because the sheet's numbers depend on it (see [Characters](../architecture/characters.md#temporary-states)).
 - **`story_editing_allowed`** is the master's story release, character by character (RN-01); the start of each session turns off all the campaign's releases.
