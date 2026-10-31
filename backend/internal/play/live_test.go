@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/traffic"
 )
 
 // The live session: the notice (RN-06), the vitals and the
@@ -782,6 +783,88 @@ func TestWatchGameSessionChecksAgain(t *testing.T) {
 		t.Fatalf("a member's stream ended: %v", err)
 	default:
 	}
+}
+
+// idleClock is the time the idle tests move.
+type idleClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *idleClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *idleClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+// TestWatchGameSessionEndsOnAnInstanceThatStoppedReceivingCalls: an instance that received unary calls and then
+// went the whole limit without one is the old revision after a deploy, so at its next recheck its streams end
+// with unavailable and the app reconnects to the active revision. An instance that never received a call (a cold
+// start) and one that still does never end them this way. The idle limit runs on a clock the test moves.
+func TestWatchGameSessionEndsOnAnInstanceThatStoppedReceivingCalls(t *testing.T) {
+	t.Parallel()
+	const limit = 3 * time.Minute
+	open := func(t *testing.T) (*traffic.Meter, *idleClock, *watcher, string) {
+		t.Helper()
+		clock := &idleClock{now: time.Unix(1_000_000, 0)}
+		meter := traffic.New(limit, clock.Now)
+		h := newHarness(t, LiveConfig{Recheck: 50 * time.Millisecond, Idle: meter.Idle})
+		master, player := h.newUser("Mestre"), h.newUser("Jogadora")
+		campaign := h.newCampaign(master, "Mirathel", player)
+		master.start(t, campaign)
+		stream := player.watch(t, campaign)
+		stream.ready(t)
+		return meter, clock, stream, player.id
+	}
+	// stays waits until the stream has started eight more rechecks, watching for it to end meanwhile.
+	stays := func(t *testing.T, stream *watcher, userID string) {
+		t.Helper()
+		const survived = 8
+		until := recheckCount(userID) + survived + 1
+		deadline := time.After(waitLimit)
+		for recheckCount(userID) < until {
+			select {
+			case err := <-stream.done:
+				t.Fatalf("the stream ended: %v", err)
+			case <-deadline:
+				t.Fatalf("the stream was not rechecked %d more times in %v", survived, waitLimit)
+			case <-time.After(5 * time.Millisecond):
+			}
+		}
+	}
+
+	t.Run("stopped receiving calls", func(t *testing.T) {
+		t.Parallel()
+		meter, clock, stream, userID := open(t)
+		meter.Note()
+		stays(t, stream, userID) // the last call is recent: the stream stays
+		clock.advance(limit)
+		wantCode(t, "the stream of an idle instance", stream.end(t), connect.CodeUnavailable)
+	})
+	t.Run("never received a call", func(t *testing.T) {
+		t.Parallel()
+		_, clock, stream, userID := open(t)
+		clock.advance(24 * time.Hour)
+		stays(t, stream, userID)
+	})
+	t.Run("still receives calls", func(t *testing.T) {
+		t.Parallel()
+		meter, clock, stream, userID := open(t)
+		meter.Note()
+		clock.advance(limit - time.Second)
+		meter.Note()
+		clock.advance(limit - time.Second)
+		stays(t, stream, userID)
+		// The calls stop: a second later the same stream ends, so what kept it was the second call.
+		clock.advance(time.Second)
+		wantCode(t, "the stream once the calls stopped", stream.end(t), connect.CodeUnavailable)
+	})
 }
 
 // TestWatchGameSessionNoticesAnEndItMissed: if a session ends without the
