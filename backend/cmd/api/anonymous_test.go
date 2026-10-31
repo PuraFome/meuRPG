@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/traffic"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
 )
@@ -39,6 +40,12 @@ var publicProcedures = map[string]string{
 // A call with no session must be turned away before any query, so a gate that
 // is missing shows up as an error that is not "unauthenticated".
 func buildHandlerSet(t *testing.T) http.Handler {
+	t.Helper()
+	return buildHandlerSetWith(t, nil)
+}
+
+// buildHandlerSetWith is buildHandlerSet with the traffic meter the options carry (nil: none).
+func buildHandlerSetWith(t *testing.T, meter *traffic.Meter) http.Handler {
 	t.Helper()
 	ctx := t.Context()
 	logger := slog.New(slog.DiscardHandler)
@@ -69,7 +76,7 @@ func buildHandlerSet(t *testing.T) http.Handler {
 	must(t, err)
 
 	mux := http.NewServeMux()
-	opts := connectOptions(logger)
+	opts := connectOptions(logger, meter)
 	mux.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), opts...))
 	mountModules(mux.Handle, m, identityService, opts, ratelimit.NewPolicy(1).RPC, logger)
 	return mux

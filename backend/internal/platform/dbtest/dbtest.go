@@ -383,29 +383,17 @@ func (w *acquireWatch) finish() {
 type acquireWait struct{ timer *time.Timer }
 
 func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, _ pgxpool.TraceAcquireStartData) context.Context {
-	// Only the program counters are taken, and the frames are scanned for the
-	// transaction's closure: the stack is formatted only when it is flagged, or
-	// when the backstop timer fires. The normal path pays for the scan alone.
-	pcs := make([]uintptr, 256)
-	pcs = pcs[:runtime.Callers(2, pcs)]
-	nested := false
-	frames := runtime.CallersFrames(pcs)
-	for {
-		f, more := frames.Next()
-		if strings.Contains(f.Function, inTxClosure) {
-			nested = true
-			break
-		}
-		if !more {
-			break
-		}
-	}
-	if nested {
+	// Only the program counters are taken.
+	// Each is looked up in a cache that says whether it lies in the transaction's closure.
+	// The stack is formatted only when it is flagged or the backstop timer fires.
+	var buf [maxStackDepth]uintptr
+	pcs := buf[:runtime.Callers(2, buf[:])]
+	if slices.ContainsFunc(pcs, inTxClosureAt) {
 		w.mu.Lock()
 		if !w.done {
 			w.t.Errorf("nested pool acquisition: a query went through the pool inside a db.InTx closure, "+
 				"which takes a second connection while the transaction holds the first and deadlocks under load "+
-				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(pcs))
+				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(slices.Clone(pcs)))
 		}
 		w.mu.Unlock()
 		// Fail the Acquire at once: nothing waits for a connection the
@@ -414,13 +402,36 @@ func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool
 		cancel(errNestedAcquire)
 		return ctx
 	}
+	stack := slices.Clone(pcs)
 	wait := &acquireWait{}
 	wait.timer = time.AfterFunc(nestedAcquireTimeout, func() {
 		panic(fmt.Sprintf("dbtest: no pool connection for %v (pool of %d): a read through the pool "+
 			"inside a db.InTx closure, probably. The goroutine that waits:\n%s",
-			nestedAcquireTimeout, pool.Config().MaxConns, formatStack(pcs)))
+			nestedAcquireTimeout, pool.Config().MaxConns, formatStack(stack)))
 	})
 	return context.WithValue(ctx, acquireWatchKey{}, wait)
+}
+
+// maxStackDepth is how many frames of an acquirer's stack are kept.
+const maxStackDepth = 256
+
+// inTxPCs remembers, for each program counter seen on an acquirer's stack,
+// whether it lies in the transaction's closure.
+// The stacks of a package's acquirers repeat the same counters, so each is resolved once.
+var inTxPCs sync.Map // uintptr -> bool
+
+// inTxClosureAt reports whether the frame at pc is the transaction's closure.
+// runtime.Callers returns a program counter for each frame, the outer frames of inlined calls included.
+// So one counter is one frame.
+func inTxClosureAt(pc uintptr) bool {
+	if v, ok := inTxPCs.Load(pc); ok {
+		hit, _ := v.(bool)
+		return hit
+	}
+	f, _ := runtime.CallersFrames([]uintptr{pc}).Next()
+	hit := strings.Contains(f.Function, inTxClosure)
+	inTxPCs.Store(pc, hit)
+	return hit
 }
 
 // formatStack prints the frames of a captured stack, one function and one

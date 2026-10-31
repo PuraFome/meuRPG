@@ -12,7 +12,7 @@ The process reads them in `backend/internal/platform/config/config.go` (`config.
 | `LISTEN_HOST` | No | empty (all interfaces) | Leave unset on Cloud Run. The native local stack sets `127.0.0.1` |
 | `WEB_DIR` | No | `/app/web` | The Angular build; if the folder is missing the server runs API-only |
 | `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn` or `error`, case-insensitive. `debug` makes the log 5 to 10 times bigger |
-| `DATABASE_URL` | **Yes** | empty | CockroachDB connection string. Empty: the API starts without a database, `/readyz` answers `"database":"disabled"` and sign-in is off. **On Cloud Run it must use `sslmode=verify-full` or `verify-ca`**; any other mode (`disable`, `allow`, `prefer`, `require`) stops the server, and the error never repeats the URL |
+| `DATABASE_URL` | **Yes** | none | CockroachDB connection string. Empty or unset: the API exits at startup with an error that names the variable. **On Cloud Run it must use `sslmode=verify-full` or `verify-ca`**; any other mode (`disable`, `allow`, `prefer`, `require`) stops the server, and the error never repeats the URL |
 | `OIDC_ISSUER` | No | empty | Sign-in is on only with the four `OIDC_*` variables below set together. `https`, no query or fragment; `http` only on loopback or `*.localhost`. `https://accounts.google.com` in production |
 | `OIDC_CLIENT_ID` | No | empty | The app's client id at the provider |
 | `OIDC_CLIENT_SECRET` | **Yes** | empty | The client secret |
@@ -107,6 +107,7 @@ The limits are not a defence against a volume attack: that is the job of the [ed
 | Server heartbeat | 25 s | `play.DefaultHeartbeat` |
 | Re-check of the login session and participation | 60 s | `play.DefaultRecheck` |
 | Maximum life of a stream | 10 minutes, then the server ends it without an error and the app opens another. Kept short because behind the load balancer the server is not told when a page went away | `play.DefaultMaxLifetime` |
+| Idle limit of the instance | 3 minutes without a unary call; the next re-check ends its streams with `unavailable` (`instance_idle`) and the app reconnects to the active revision | `instanceIdleLimit` in `cmd/api/main.go` |
 | Deadline of each message sent | 30 s; then the stream ends (`client_gone`) | `streamSendTimeout` in `cmd/api/main.go` |
 | Streams per person per campaign | 4; a fifth replaces the oldest, which ends with `unavailable` | `live.DefaultMaxPerUser` |
 | Dead stream, app side | The app reconnects after about 60 s of silence, with a growing wait (1 s up to 30 s, jittered), only with the tab visible | App |

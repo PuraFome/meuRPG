@@ -33,7 +33,7 @@ flowchart LR
   G --> H[Check /readyz and<br/>GetServerInfo commit]
 ```
 
-1. **Check that nobody is playing.** A new revision does not cut the open streams: Cloud Run keeps the old instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. A page that was open before the release hears nothing new until its stream reaches its 10-minute life or the page is reloaded. So release between sessions (look for an open game session in the database first). When you cannot, ask everyone at the table to reload the session page once the new revision serves.
+1. **Check that nobody is playing.** Cloud Run keeps the old instance until its requests end, while every new call, the master's included, reaches the new revision, whose in-memory hub those streams are not in. The old instance ends its streams after 3 minutes without a call (checked every 60 s), and each page reconnects to the new revision. Until then a page that was open before the release hears nothing new. So release between sessions (look for an open game session in the database first). When you cannot, tell the table to wait a few minutes, or to reload the session page.
 2. **Build.** The source is a `git archive` of the commit, with only what `backend/Dockerfile` reads (`.dockerignore`, `LICENSE`, `NOTICE`, `third_party`, `backend`, `web`), so nothing local enters the image. Pass `--service-account` every time: without it Cloud Build uses the default account, which has no role, and the build fails.
 
    ```bash
@@ -482,8 +482,8 @@ The contact address on `/terms` and `/privacy`, `privacidade@meurpg.app`, is an 
 
 In order; stop at the first failure and read the logs.
 
-- [ ] `curl -s $APP_URL/readyz` answers `200` with `{"status":"ready","database":"up"}`. `"database":"disabled"` means `DATABASE_URL` was not set. `/healthz` answers `200` too.
-- [ ] The start-up log has `sign-in is enabled` and `images are stored in Cloud Storage`, and no `OIDC_ISSUER is not set` or `DATABASE_URL is not set` warning. A variable with a typo in its name does not stop the API: it only shows here.
+- [ ] `curl -s $APP_URL/readyz` answers `200` with `{"status":"ready","database":"up"}`. `/healthz` answers `200` too.
+- [ ] The start-up log has `sign-in is enabled` and `images are stored in Cloud Storage`, and no `OIDC_ISSUER is not set` warning. A variable with a typo in its name does not stop the API: it only shows here.
 - [ ] `$APP_URL` loads the app.
 - [ ] Sign in with the master's Google account. Another account sees the campaign creation refused if `CAMPAIGN_CREATORS` is set.
 - [ ] Create a campaign. Upload an image to the gallery, see its thumbnail, and find its two objects with `gcloud storage ls -r gs://$BUCKET/campaigns/`.
