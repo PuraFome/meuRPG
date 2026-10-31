@@ -158,8 +158,10 @@ func TestTheRollerRuleSeesAConfigWithoutOne(t *testing.T) {
 		"internal/maps/c_test.go":              file("maps", charsImport, "characters.Config{Pool: 1}"),
 		"internal/play/d_test.go":              file("play", "", "Config{Pool: 1}"),
 		"internal/characters/e_test.go":        file("characters", "", "&Config{}"),
-		"internal/leaktest/ok_test.go":         file("leaktest", playImport, "play.Config{Pool: 1, Roller: nil}"),
-		"internal/play/ok_test.go":             file("play", "", "Config{Roller: nil}"),
+		"internal/leaktest/nil_test.go":        file("leaktest", playImport, "play.Config{Pool: 1, Roller: nil}"),
+		"internal/leaktest/dot_test.go":        file("leaktest", `import . "example.test/backend/internal/play"`, "Config{Pool: 1}"),
+		"internal/leaktest/ok_test.go":         file("leaktest", playImport, "play.Config{Pool: 1, Roller: crypto{}}"),
+		"internal/play/ok_test.go":             file("play", "", "Config{Roller: crypto{}}"),
 		"internal/play/other_test.go":          file("play", "", "LiveConfig{Heartbeat: 1}"),
 		"internal/maps/other_test.go":          file("maps", "", "Config{Pool: 1}"),
 		"internal/leaktest/production.go":      file("leaktest", playImport, "play.Config{Pool: 1}"),
@@ -172,11 +174,14 @@ func TestTheRollerRuleSeesAConfigWithoutOne(t *testing.T) {
 	want := []string{
 		"internal/characters/e_test.go:5",
 		"internal/leaktest/a_test.go:5",
+		"internal/leaktest/dot_test.go:5",
+		"internal/leaktest/nil_test.go:5",
 		"internal/leaktest/b_test.go:5",
 		"internal/maps/c_test.go:5",
 		"internal/play/d_test.go:5",
 	}
 	slices.Sort(got)
+	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Errorf("configsWithoutRoller() = %v, want %v", got, want)
 	}
@@ -210,6 +215,7 @@ func configsWithoutRoller(root fs.FS, module string) ([]string, error) {
 		}
 		own := slices.Contains(rollerServices, path.Dir(file))
 		names := map[string]bool{} // the names this file gives the services' packages
+		dotted := false
 		for _, imp := range f.Imports {
 			p, _ := strconv.Unquote(imp.Path.Value)
 			for _, dir := range rollerServices {
@@ -220,12 +226,16 @@ func configsWithoutRoller(root fs.FS, module string) ([]string, error) {
 				if imp.Name != nil {
 					name = imp.Name.Name
 				}
+				if name == "." {
+					dotted = true // Config{} is the service's, as inside its package
+					continue
+				}
 				names[name] = true
 			}
 		}
 		ast.Inspect(f, func(n ast.Node) bool {
 			lit, ok := n.(*ast.CompositeLit)
-			if !ok || !isServiceConfig(lit.Type, own, names) || setsRoller(lit) {
+			if !ok || !isServiceConfig(lit.Type, own || dotted, names) || setsRoller(lit) {
 				return true
 			}
 			found = append(found, fmt.Sprintf("%s:%d", file, fset.Position(lit.Pos()).Line))
@@ -256,6 +266,9 @@ func setsRoller(lit *ast.CompositeLit) bool {
 			return false
 		}
 		key, ok := kv.Key.(*ast.Ident)
+		if val, isIdent := kv.Value.(*ast.Ident); isIdent && val.Name == "nil" {
+			return false // Roller: nil is the fallback to dice.Crypto spelled out
+		}
 		return ok && key.Name == "Roller"
 	})
 }
