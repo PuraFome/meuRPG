@@ -5,6 +5,7 @@ import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { openSceneRPC, tableForScenes } from './scene-support';
 import { createCapitaoRPC, createMiraRPC, getStageRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { callRPC, newSignedInContext } from './support';
+import { waitForEncounterRevision } from './revision-support';
 
 // MR-031 (NPC portraits and the stage) and MR-032 (the combat highlights),
 // through the screens. Setup (campaigns, maps, sessions, NPCs) goes through
@@ -184,7 +185,8 @@ test(
 
       await openSessionPage(m, campaignId);
       await openSessionPage(p, campaignId);
-      await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
+      const ended = await combatRPC(m, 'EndEncounter', { campaignId, encounterId: enc.id });
+      await waitForEncounterRevision(m, ended);
 
       // The master: the panel, with the table of every player.
       const panel = m.getByRole('region', { name: 'Destaques do combate' });

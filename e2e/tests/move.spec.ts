@@ -5,6 +5,7 @@ import { openSessionPage } from './live-session-support';
 import { boxOf, layoutSize, viaTargetList } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { masterLog, openOrderRow } from './combat-layout';
+import { waitForEncounterRevision } from './revision-support';
 
 // Movement, jumps, cover, "Aliado" and the opportunity attacks on screen (Etapa 9,
 // slice 9.15, MR-034, RN-21, questions 68 to 70). The table, the layers and the
@@ -188,7 +189,8 @@ test(
       // The master drags the goblin on turn out of the reach: a move like any, which provokes.
       const start = await getEncounterRPC(m, campaignId);
       const g1 = start.combatants.find((c) => c.label === 'Goblin 1')!;
-      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: g1.id, col: 9, row: 7 });
+      const moved = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: g1.id, col: 9, row: 7 });
+      await waitForEncounterRevision(m, moved);
 
       // The player's `alertdialog`, like Escudo's: the safe answer has the focus, and no armor class.
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
@@ -236,7 +238,8 @@ test(
       await openSessionPage(m, campaignId);
       await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       const start = await getEncounterRPC(m, campaignId);
-      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Goblin 1')!.id, col: 9, row: 7 });
+      const moved = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Goblin 1')!.id, col: 9, row: 7 });
+      await waitForEncounterRevision(m, moved);
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
       await expect(prompt).toBeVisible();
       const card = m.getByRole('group', { name: 'Ataque de oportunidade de Pensantus' });

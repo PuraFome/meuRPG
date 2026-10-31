@@ -5,6 +5,7 @@ import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { newSignedInContext, openActionTab, viaTargetList } from './support';
+import { waitForEncounterRevision } from './revision-support';
 
 test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escapa: nunca lê o total do NPC', { tag: ['@RN-34', '@RN-10', '@RN-20'] }, async ({ browser }) => {
   test.setTimeout(180_000);
@@ -215,6 +216,7 @@ test('o teste em grupo é encerrado pelo mestre sem mostrar a CD, e a surpresa m
 
     // The combat opens: the master marks who is surprised in the start screen, the player reads only her own state.
     let enc = await startEncounterRPC(m, table, [{ characterId: table.goblinId, count: 2, hidden: false }]);
+    await waitForEncounterRevision(m, enc);
     const card = m.getByTestId('surprise-card');
     await expect(card).toContainText('Quem está surpreso?');
     await card.locator('label:has(input[aria-label="Surpreso: Vex"])').click();

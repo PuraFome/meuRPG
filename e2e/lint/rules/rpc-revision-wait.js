@@ -31,6 +31,8 @@ const ACTIONS = new Set([
 ]);
 // A wait, or a load: a page that loads after the call reads the state itself.
 const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab']);
+// A read changes nothing on the server: there is no change for the page to show.
+const READS = /^(get|list|read)[A-Z]\w*RPC$/;
 const LOAD_METHODS = new Set(['goto', 'reload']);
 
 /** @param {any} node */
@@ -76,6 +78,7 @@ module.exports = {
         call.type === 'CallExpression' &&
         call.callee.type === 'Identifier' &&
         /RPC$/.test(call.callee.name) &&
+        !READS.test(call.callee.name) &&
         hasRevision(node)
       );
     };
@@ -120,6 +123,11 @@ module.exports = {
       AwaitExpression(node) {
         if (!isTracked(node)) return;
         const call = node.argument;
+        // `await waitForEncounterRevision(page, await someRPC(...))`: the call is waited on in the same breath.
+        for (let up = node.parent; up; up = up.parent) {
+          if (up.type === 'CallExpression' && up.callee.type === 'Identifier' && WAIT_NAMES.has(up.callee.name)) return;
+          if (isFunction(up)) break;
+        }
         /** @type {any} */
         let cur = node;
         while (cur.parent && !isFunction(cur.parent)) {

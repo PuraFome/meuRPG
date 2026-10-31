@@ -51,6 +51,7 @@ test(
       const table = await tableForCombat(master, player, `Mirathel ${Date.now()}`);
       const campaignId = table.campaignId;
       // A combat being set up, with the Goblin of the table in it.
+      // eslint-disable-next-line meurpg/rpc-revision-wait -- the bestiary page has no combat view to read a revision from; openPutSheet waits for the sheet itself
       let enc = await startEncounterRPC(master, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
 
       // "Pôr no combate" from the bestiary: three, the average, hidden.
@@ -153,6 +154,7 @@ test(
       await player.goto('/');
       const table = await tableForCombat(master, player, `Bandidos ${Date.now()}`);
       const campaignId = table.campaignId;
+      // eslint-disable-next-line meurpg/rpc-revision-wait -- the bestiary page has no combat view to read a revision from; openPutSheet waits for the sheet itself
       let enc = await startEncounterRPC(master, table, [{ characterId: table.goblinId, count: 1, hidden: false }]);
       enc = await beginCombat(master, table, enc);
 
