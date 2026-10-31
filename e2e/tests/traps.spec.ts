@@ -254,7 +254,8 @@ test(
       await pensantusFirst(m, table);
       await openSessionPage(p, campaignId);
       expect(await pointNames(p, table)).not.toContain('Fosso escondido');
-      await waitForEncounterRevision(p, await movePensantus(p, table, 8, 7));
+      // eslint-disable-next-line meurpg/rpc-revision-wait -- a move is patched into the page with no new revision (CombatState.applyMove); the notice toast asserted next is the wait
+      await movePensantus(p, table, 8, 7);
       const toast = p.getByRole('status').filter({ hasText: 'Você notou uma armadilha.' });
       await expect(toast).toBeVisible();
       await expect(toast).toContainText('Fosso escondido');

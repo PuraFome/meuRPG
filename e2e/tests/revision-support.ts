@@ -16,7 +16,8 @@ import type { Encounter } from './combat-support';
  * there: wait for that player's screen to show the change itself. With the fog off (or no map) a player's page works.
  */
 export async function waitForEncounterRevision(pages: Page | Page[], expected: Encounter, what = 'the combat'): Promise<void> {
-  await Promise.all([pages].flat().map((page) => waitOnePage(page, expected, what)));
+  const list = [pages].flat();
+  await Promise.all(list.map((page, i) => waitOnePage(page, expected, list.length > 1 ? `${what}, page ${i + 1} of ${list.length}` : what)));
 }
 
 async function waitOnePage(page: Page, expected: Encounter, what: string): Promise<void> {
@@ -34,7 +35,7 @@ async function waitOnePage(page: Page, expected: Encounter, what: string): Promi
   };
   await expect
     .poll(shown, {
-      message: `${what}: the page should show combat ${expected.id} at revision ${want} or later (-1 means no combat view, or another combat)`,
+      message: `${what}: the page (${page.url()}) should show combat ${expected.id} at revision ${want} or later (-1 means no combat view, or another combat)`,
     })
     .toBeGreaterThanOrEqual(want);
 }

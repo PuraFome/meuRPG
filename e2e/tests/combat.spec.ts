@@ -124,9 +124,9 @@ test(
 
       // Put the goblins on squares, then begin.
       for (const [label, col, row] of [['Goblin 1', 9, 9], ['Goblin 2', 14, 10], ['Goblin 3', 15, 4], ['Capitão Goblin', 11, 5]] as const) {
+        // eslint-disable-next-line meurpg/rpc-revision-wait -- a move is patched into the page with no new revision (CombatState.applyMove), and these goblins are hidden from the player: the page never shows this revision
         enc = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id(label), col, row });
       }
-      await waitForEncounterRevision([m, p], enc);
       await m.getByRole('button', { name: 'Começar o combate' }).click();
       await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
       await expect(m.getByText('Vez do Capitão Goblin').first()).toBeVisible();
