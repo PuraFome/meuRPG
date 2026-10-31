@@ -383,20 +383,17 @@ func (w *acquireWatch) finish() {
 type acquireWait struct{ timer *time.Timer }
 
 func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, _ pgxpool.TraceAcquireStartData) context.Context {
-	// Only the program counters are taken, and each is looked up in a cache of
-	// the ones that lie in the transaction's closure: a counter is turned into
-	// frames the first time it is seen, and the whole stack is formatted only
-	// when it is flagged or when the backstop timer fires. The normal path pays
-	// for the unwinding and a lookup per counter.
+	// Only the program counters are taken.
+	// Each is looked up in a cache that says whether it lies in the transaction's closure.
+	// The stack is formatted only when it is flagged or the backstop timer fires.
 	var buf [maxStackDepth]uintptr
 	pcs := buf[:runtime.Callers(2, buf[:])]
 	if slices.ContainsFunc(pcs, inTxClosureAt) {
-		stack := slices.Clone(pcs)
 		w.mu.Lock()
 		if !w.done {
 			w.t.Errorf("nested pool acquisition: a query went through the pool inside a db.InTx closure, "+
 				"which takes a second connection while the transaction holds the first and deadlocks under load "+
-				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(stack))
+				"(inside a transaction use only queries.WithTx(tx), or a function that takes the pgx.Tx). The stack:\n%s", formatStack(pcs))
 		}
 		w.mu.Unlock()
 		// Fail the Acquire at once: nothing waits for a connection the
@@ -419,8 +416,8 @@ func (w *acquireWatch) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool
 const maxStackDepth = 256
 
 // inTxPCs remembers, for each program counter seen on an acquirer's stack,
-// whether it lies in the transaction's closure. The stacks of a package's
-// acquirers repeat the same few hundred counters, so each is resolved once.
+// whether it lies in the transaction's closure.
+// The stacks of a package's acquirers repeat the same counters, so each is resolved once.
 var inTxPCs sync.Map // uintptr -> bool
 
 // inTxClosureAt reports whether the frames at pc (several, when the call was
