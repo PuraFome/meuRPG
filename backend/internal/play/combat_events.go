@@ -289,6 +289,10 @@ type actionEvent struct {
 	// D20, D20B and Counted are the dice after it, and this keeps the 1 it replaced and where,
 	// so the log says "Sortudo: 1 → 14". Nil when there was no Lucky question or the 1 was kept.
 	Lucky *luckyReroll `json:"lucky,omitempty"`
+	// Indomitable is the saving throw the fighter rolled again (held_indomitable.go): D20 and the dice after it are
+	// the new roll, and this keeps the d20 it replaced, so the log says "Indomitável: 4 → 15". One use of the
+	// feature was spent; the undo of a death save gives it back. Nil when the save was not rerolled.
+	Indomitable *indomitableUse `json:"indomitable,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`

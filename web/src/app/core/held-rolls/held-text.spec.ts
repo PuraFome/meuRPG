@@ -10,9 +10,34 @@ import {
   questionTitle,
   questionWhat,
 } from './held-text';
-import { heldDie, heldLucky } from './held-roll-testing';
+import { heldDie, heldIndomitable, heldLucky } from './held-roll-testing';
 
 describe('the words of the master’s pending questions', () => {
+  it('words Indomitable’s question: the save failed only when the roller may know it', () => {
+    expect(questionTitle(heldIndomitable())).toBe(
+      'Falhou na salvaguarda. Usar Indomitável para rolar de novo?',
+    );
+    expect(questionTitle(heldIndomitable(5, 0, false))).toBe(
+      'Usar Indomitável para rolar a salvaguarda de novo?',
+    );
+    expect(questionRule(heldIndomitable())).toEqual({
+      lead: 'Indomitável:',
+      text: 'Brisa pode rolar a salvaguarda de novo, mas precisa ficar com o novo resultado, mesmo que seja pior.',
+    });
+    expect(d20Chip(heldIndomitable(5, 2))).toBe('5');
+    expect(d20Line(heldIndomitable(5, 2))).toBe('d20 · bônus +2 · total 7');
+    const offer = heldIndomitable();
+    expect(askingText({ kind: 'indomitable', reroll: true, roll: { inApp: true } }, offer)).toBe(
+      'Rolando a salvaguarda de novo…',
+    );
+    expect(askingText({ kind: 'indomitable', reroll: true, roll: { face: 9 } }, offer)).toBe(
+      'Enviando o resultado…',
+    );
+    expect(askingText({ kind: 'indomitable', reroll: false, roll: null }, offer)).toBe(
+      'Mantendo a salvaguarda…',
+    );
+  });
+
   it('titles the question as the roller reads it', () => {
     expect(questionTitle(heldLucky())).toBe('Tirou 1: rolar de novo?');
     expect(questionTitle(heldDie(8, 2, 6))).toBe('Usar a Inspiração de Bardo (d6)?');

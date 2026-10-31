@@ -1019,6 +1019,11 @@ func (u *undoer) deathSaveRolled(ctx context.Context, ev actionEvent) error {
 	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
 		return err
 	}
+	if ev.Indomitable != nil { // the use of Indomitable the new roll spent
+		if err := u.spendResourceBack(ctx, who, indomitableResource); err != nil {
+			return err
+		}
+	}
 	if ev.Before != nil { // a natural 20 brought it back with 1 hit point, or a hook gave hit points
 		after, err := u.putVitals(ctx, who, *ev.Before)
 		if err != nil {

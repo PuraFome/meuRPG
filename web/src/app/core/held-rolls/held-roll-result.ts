@@ -2,7 +2,7 @@ import type { AnswerHeldRollResponse } from '../../../gen/meurpg/play/v1/resourc
 import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { WithRerolls } from '../combat/lucky';
 import { inspirationDieName } from '../resources/bardic-inspiration';
-import { type HeldAnswer, dieOf, luckyReroll } from './held-roll-offer';
+import { type HeldAnswer, dieOf, indomitableReroll, luckyReroll } from './held-roll-offer';
 
 /** A d20 an answer settled, with what is known of its total where the path's roll carries it. */
 export type SettledRoll = WithRerolls & { readonly modifier?: number; readonly total?: number };
@@ -65,10 +65,12 @@ function whatAnswered(
       : 'guardou o dado';
   }
   if (!answer.reroll) {
-    return `ficou com o ${countedFace(asked)}`;
+    return answer.kind === 'indomitable'
+      ? `manteve a salvaguarda (${countedFace(asked)})`
+      : `ficou com o ${countedFace(asked)}`;
   }
   const roll = settledRoll(res);
-  const again = luckyReroll(roll);
+  const again = answer.kind === 'indomitable' ? indomitableReroll(roll) : luckyReroll(roll);
   if (!again) {
     return 'rolou de novo';
   }

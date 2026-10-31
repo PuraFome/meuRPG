@@ -336,6 +336,9 @@ enum ResourceBlockedReason {
   // it. `wait_seconds` says how long is left; the app disables the master's controls for that time and says "Ainda é
   // a vez de [nome] responder". It is not refused for the master's own rolls or for a roll whose player has left.
   RESOURCE_BLOCKED_REASON_PLAYER_FIRST = 17;
+  // A roll is held, waiting for the fighter's answer to Indomitable ("Usar Indomitável para rolar de novo?",
+  // AnswerHeldRoll): the character rolls nothing else that could ask until it is answered.
+  RESOURCE_BLOCKED_REASON_INDOMITABLE_PENDING = 18;
 }
 
 // RestKind is the kind of a rest.
@@ -758,6 +761,7 @@ message AnswerHeldRollRequest {
   oneof answer {
     LuckyAnswer lucky = 4;
     DieAnswer die = 5;
+    IndomitableAnswer indomitable = 6;
   }
 }
 
@@ -783,6 +787,21 @@ message DieAnswer {
     bool roll_in_app = 2;
     int32 typed_face = 3;
   }
+}
+
+// IndomitableAnswer answers the fighter's question after a saving throw that failed (SRD 5.1, Fighter,
+// Indomitable): roll the saving throw again and use the new roll, even when it is worse.
+message IndomitableAnswer {
+  // True: roll the saving throw again, spending one use of Indomitable. False: keep the roll.
+  bool reroll = 1;
+  // How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player typed the face of a real
+  // die (1 to 20). Required then, one way or the other. With advantage or disadvantage on the save the new roll
+  // takes both dice: type them in `typed_faces`, in the order rolled, instead of `typed_face`.
+  oneof roll {
+    bool roll_in_app = 2;
+    int32 typed_face = 3;
+  }
+  repeated int32 typed_faces = 4;
 }
 
 message AnswerHeldRollResponse {

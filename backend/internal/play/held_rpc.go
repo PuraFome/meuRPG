@@ -62,9 +62,15 @@ func heldRollOfferOf(o heldOffer, who offerRoller) *playv1.HeldRollOffer {
 	if who.Character {
 		out.CharacterId = h.CharacterID
 	}
-	if o.Asks == askLucky {
+	switch {
+	case o.Asks == askLucky:
 		out.Question = &playv1.HeldRollOffer_Lucky{Lucky: &playv1.LuckyQuestion{LuckyIndex: derefInt32(h.LuckyIndex)}}
-	} else {
+	case o.Asks == askIndomitable:
+		out.Question = &playv1.HeldRollOffer_Indomitable{Indomitable: &playv1.IndomitableQuestion{Failed: h.IndomFailed}}
+		if h.DieUsed != nil { // the total the roller sees counts the die already added
+			out.D20.Total += h.DieUsed.Face
+		}
+	default:
 		out.Question = &playv1.HeldRollOffer_Die{Die: &playv1.DieQuestion{Sides: o.State.Die.Sides, FromName: who.Giver}}
 	}
 	return out
@@ -157,8 +163,12 @@ func answerOfHeldRoll(msg *playv1.AnswerHeldRollRequest) (answerRequest, error) 
 	case *playv1.AnswerHeldRollRequest_Die:
 		ans.question, ans.yes = askDie, a.Die.GetUse()
 		p = rollPickOf(a.Die.GetRoll())
+	case *playv1.AnswerHeldRollRequest_Indomitable:
+		ans.question, ans.yes = askIndomitable, a.Indomitable.GetReroll()
+		p = rollPickOf(a.Indomitable.GetRoll())
+		p.faces = a.Indomitable.GetTypedFaces()
 	default:
-		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky or a die answer"))
+		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die or an indomitable answer"))
 	}
 	if !ans.yes {
 		return ans, nil
@@ -179,6 +189,10 @@ func rollPickOf(roll any) rollPick {
 	case *playv1.DieAnswer_RollInApp:
 		p.app = &r.RollInApp
 	case *playv1.DieAnswer_TypedFace:
+		p.face = &r.TypedFace
+	case *playv1.IndomitableAnswer_RollInApp:
+		p.app = &r.RollInApp
+	case *playv1.IndomitableAnswer_TypedFace:
 		p.face = &r.TypedFace
 	}
 	return p

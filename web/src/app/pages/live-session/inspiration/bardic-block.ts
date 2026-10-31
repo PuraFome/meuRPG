@@ -273,7 +273,7 @@ export class BardicBlock {
 
   /** What the block says once an answer got through. */
   private say(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
-    if (answer.kind === 'lucky') {
+    if (answer.kind !== 'die') {
       this.luckyAnswered.set(luckyAnswerText(res, answer.reroll));
       return;
     }

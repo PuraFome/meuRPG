@@ -85,6 +85,23 @@ export function heldDie(
   });
 }
 
+/** The fighter's question (Indomitável) for specs: a failed d20 of `face` with the save's bonus; `failed` false is the
+ * table that hides the result, which asks on every save. */
+export function heldIndomitable(
+  face = 5,
+  modifier = 0,
+  failed = true,
+  over: HeldOfferOver = {},
+): HeldRollOffer {
+  return create(HeldRollOfferSchema, {
+    holdId: 'h1',
+    rollerLabel: 'Brisa',
+    d20: held20([face], modifier),
+    question: { case: 'indomitable', value: { failed } },
+    ...over,
+  });
+}
+
 /** When a question was asked, for the master's wait. */
 export function askedAt(ms: number): { createdAt: ReturnType<typeof timestampFromMs> } {
   return { createdAt: timestampFromMs(ms) };

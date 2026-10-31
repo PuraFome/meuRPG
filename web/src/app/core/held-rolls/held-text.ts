@@ -1,12 +1,32 @@
 import { type HeldRollOffer, HeldRollKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { LUCKY_TITLE } from '../combat/lucky';
 import { inspirationDieName, promptTitle } from '../resources/bardic-inspiration';
-import { type HeldAnswer, asksLucky, dieOf } from './held-roll-offer';
+import {
+  type HeldAnswer,
+  asksIndomitable,
+  asksLucky,
+  dieOf,
+  indomitableFailed,
+} from './held-roll-offer';
 
 /** The words of a question the master reads about someone else's roll. */
 
-/** The title the roller reads: "Tirou 1: rolar de novo?" or "Usar a Inspiração de Bardo (d8)?". */
+/** The title of the fighter's question: it says the save failed only when the roller may know it. */
+export function indomitableTitle(offer: HeldRollOffer | null | undefined): string {
+  return indomitableFailed(offer)
+    ? 'Falhou na salvaguarda. Usar Indomitável para rolar de novo?'
+    : 'Usar Indomitável para rolar a salvaguarda de novo?';
+}
+
+/** The line under Indomitable's title: the new roll must be used. */
+export const INDOMITABLE_WHAT =
+  'Indomitável: você rola a salvaguarda de novo e precisa ficar com o novo resultado, mesmo que seja pior. Gasta um uso, que volta depois de um descanso longo.';
+
+/** The title the roller reads: "Tirou 1: rolar de novo?", "Usar a Inspiração de Bardo (d8)?" or Indomitable's. */
 export function questionTitle(offer: HeldRollOffer): string {
+  if (asksIndomitable(offer)) {
+    return indomitableTitle(offer);
+  }
   return asksLucky(offer) ? LUCKY_TITLE : promptTitle(dieOf(offer)?.sides ?? 0);
 }
 
@@ -42,6 +62,12 @@ export function questionRule(offer: HeldRollOffer): {
   readonly lead: string;
   readonly text: string;
 } {
+  if (asksIndomitable(offer)) {
+    return {
+      lead: 'Indomitável:',
+      text: `${offer.rollerLabel || 'Quem rolou'} pode rolar a salvaguarda de novo, mas precisa ficar com o novo resultado, mesmo que seja pior.`,
+    };
+  }
   if (asksLucky(offer)) {
     const roller = offer.rollerLabel || 'Quem rolou';
     const pair = (offer.d20?.faces.length ?? 0) > 1;
@@ -96,6 +122,14 @@ export function pendingCountText(count: number): string {
 
 /** What the master's answer is doing while it is on the way: "Rolando o d20 de novo…". */
 export function askingText(answer: HeldAnswer, offer: HeldRollOffer): string {
+  if (answer.kind === 'indomitable') {
+    if (!answer.reroll) {
+      return 'Mantendo a salvaguarda…';
+    }
+    return answer.roll && 'face' in answer.roll
+      ? 'Enviando o resultado…'
+      : 'Rolando a salvaguarda de novo…';
+  }
   if (answer.kind === 'lucky') {
     if (!answer.reroll) {
       return 'Ficando com o resultado do d20…';

@@ -128,6 +128,14 @@ The `superiority_die` effects of applies `check`, `save` and `initiative` ([Rule
 
 Not covered: the trap search, the puzzle hint, the group check, the checks of a contest, Hide and the Counterspell check, the death save, and the rolls made on someone else's call. Another creature's roll (an ally's) takes no die of the character.
 
+### Indomitable (fighter 9)
+
+The resource `indomitable` has 1, 2 or 3 uses (levels 9, 13 and 17) and recharges on a long rest.
+It is spent when the player rerolls a failed saving throw (the held-roll question in [held rolls](held-rolls.md#indomitable-fighter-9-13-and-17)), through `spendResource` on the vitals.
+Keeping the roll spends nothing.
+The undo of a death save gives the use back (`spendResourceBack`).
+A saving throw rolled inside someone else's call never offers it.
+
 ### Metamagic (sorcerer 3)
 
 `CastSpellRequest.metamagic` carries the options of a casting with their parameters.

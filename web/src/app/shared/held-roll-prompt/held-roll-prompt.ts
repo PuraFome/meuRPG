@@ -16,11 +16,14 @@ import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import { LUCKY_TITLE, luckyText, luckyWhat } from '../../core/combat/lucky';
 import {
   type HeldAnswer,
+  asksIndomitable,
   asksLucky,
   dieOf,
   luckyHeldLine,
 } from '../../core/held-rolls/held-roll-offer';
+import { INDOMITABLE_WHAT, indomitableTitle } from '../../core/held-rolls/held-text';
 import { inspirationDieName, promptTitle, useLabel } from '../../core/resources/bardic-inspiration';
+import { MultiRoll, type RollField } from '../../pages/live-session/combat/multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 /** Each prompt's own heading id: a sheet and the session panel may both ask on the page. */
@@ -47,7 +50,7 @@ export type HeldRollLook = 'attack' | 'sheet' | 'card';
 @Component({
   selector: 'app-held-roll-prompt',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, RollPicker],
+  imports: [MatButtonModule, MatIconModule, MultiRoll, RollPicker],
   templateUrl: './held-roll-prompt.html',
   styleUrl: './held-roll-prompt.scss',
 })
@@ -68,8 +71,20 @@ export class HeldRollPrompt {
   protected readonly lucky = computed(() => asksLucky(this.offer()));
   protected readonly luckyTitle = LUCKY_TITLE;
   protected readonly luckyWhat = computed(() => luckyWhat(this.offer()));
+  /** The fighter's question, after the result of a saving throw: Indomitable rolls it again and the new roll stands. */
+  protected readonly indomitable = computed(() => asksIndomitable(this.offer()));
+  protected readonly indomitableTitle = computed(() => indomitableTitle(this.offer()));
+  protected readonly indomitableWhat = INDOMITABLE_WHAT;
+  /** With advantage or disadvantage the new roll takes both dice: a typed one is the two faces (`app-multi-roll`). */
+  protected readonly indomitablePair = computed(() => (this.offer().d20?.faces.length ?? 1) > 1);
+  protected readonly indomitableFields: readonly RollField[] = [
+    { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },
+    { key: 'd20-2', label: 'Segundo d20', min: 1, max: 20 },
+  ];
   /** Which question of which roll: it changes when Lucky's answer brings the die's. */
-  private readonly question = computed(() => `${this.offer().holdId}:${this.lucky()}`);
+  private readonly question = computed(
+    () => `${this.offer().holdId}:${this.lucky()}:${this.indomitable()}`,
+  );
   protected readonly die = computed(() => dieOf(this.offer()) ?? { sides: 0, fromName: '' });
   protected readonly dieName = computed(() => inspirationDieName(this.die().sides));
   protected readonly dieTitle = computed(() => promptTitle(this.die().sides));

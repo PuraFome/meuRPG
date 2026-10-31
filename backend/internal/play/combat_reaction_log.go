@@ -317,7 +317,7 @@ func (f *reactionFacts) concentration() (string, bool) {
 	if !f.seesReactor {
 		return "", false
 	}
-	lucky := luckyNote(f.e.ev.Lucky) // the d20 the halfling's Lucky rolled again, with the numbers
+	lucky := luckyNote(f.e.ev.Lucky) + indomitableNote(f.e.ev.Indomitable) // the d20 Lucky or Indomitable rolled again, with the numbers
 	if re.Kept {
 		if f.numbers && re.SaveD20 > 0 {
 			return fmt.Sprintf("%s manteve a concentração em %s: %s.%s%s", f.who, spell, f.concentrationRoll(), lucky, f.by), true

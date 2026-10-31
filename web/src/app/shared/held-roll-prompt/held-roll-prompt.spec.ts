@@ -2,7 +2,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 
 import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { HeldAnswer } from '../../core/held-rolls/held-roll-offer';
-import { heldDie, heldLucky } from '../../core/held-rolls/held-roll-testing';
+import { heldDie, heldIndomitable, heldLucky } from '../../core/held-rolls/held-roll-testing';
 import { HeldRollPrompt, type HeldRollLook } from './held-roll-prompt';
 
 describe('HeldRollPrompt', () => {
@@ -30,6 +30,77 @@ describe('HeldRollPrompt', () => {
 
   beforeEach(() => {
     answers = [];
+  });
+
+  describe('Indomitable’s question', () => {
+    it('asks "Falhou na salvaguarda" with the rule that the new roll must be used', () => {
+      const { el, text, button } = show(heldIndomitable(), { look: 'sheet' });
+      expect(el.querySelector('h3')?.textContent).toBe(
+        'Falhou na salvaguarda. Usar Indomitável para rolar de novo?',
+      );
+      expect(text()).toContain('precisa ficar com o novo resultado, mesmo que seja pior');
+      expect(button('Rolar de novo')).toBeTruthy();
+      expect(button('Digitar o resultado')).toBeTruthy();
+      expect(button('Manter')).toBeTruthy();
+    });
+
+    it('says nothing of the result when the table hides it', () => {
+      const { el, text } = show(heldIndomitable(5, 0, false));
+      expect(el.querySelector('h3')?.textContent).toBe(
+        'Usar Indomitável para rolar a salvaguarda de novo?',
+      );
+      expect(text()).not.toContain('Falhou');
+    });
+
+    it('answers "Rolar de novo" with the save rolled in the app and "Manter" with no roll', () => {
+      const { button } = show(heldIndomitable());
+      button('Rolar de novo')!.click();
+      button('Manter')!.click();
+      expect(answers).toEqual([
+        { kind: 'indomitable', reroll: true, roll: { inApp: true } },
+        { kind: 'indomitable', reroll: false, roll: null },
+      ]);
+    });
+
+    it('answers with the typed face, 1 to 20, when the table rolls real dice', () => {
+      const { fixture, el, button } = show(heldIndomitable(), { canApp: false });
+      expect(button('Rolar de novo')).toBeUndefined();
+      const field = el.querySelector<HTMLInputElement>('input')!;
+      field.value = '15';
+      field.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      button('Confirmar 15')!.click();
+      expect(answers).toEqual([{ kind: 'indomitable', reroll: true, roll: { face: 15 } }]);
+    });
+
+    it('types both faces for a save rolled with two dice and answers them as `faces`', () => {
+      const pair = heldIndomitable();
+      pair.d20!.faces = [5, 8];
+      const { fixture, el, button } = show(pair);
+      expect(button('Rolar de novo')).toBeTruthy();
+      button('Digitar o resultado')!.click();
+      fixture.detectChanges();
+      const fields = el.querySelectorAll<HTMLInputElement>('input');
+      expect(fields).toHaveLength(2);
+      [
+        ['4', fields[0]],
+        ['15', fields[1]],
+      ].forEach(([v, f]) => {
+        (f as HTMLInputElement).value = v as string;
+        (f as HTMLInputElement).dispatchEvent(new Event('input'));
+      });
+      fixture.detectChanges();
+      el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      expect(answers).toEqual([{ kind: 'indomitable', reroll: true, roll: { faces: [4, 15] } }]);
+    });
+
+    it('rolls a pair again in the app too', () => {
+      const pair = heldIndomitable();
+      pair.d20!.faces = [5, 8];
+      const { button } = show(pair);
+      button('Rolar de novo')!.click();
+      expect(answers).toEqual([{ kind: 'indomitable', reroll: true, roll: { inApp: true } }]);
+    });
   });
 
   describe('Lucky’s question', () => {

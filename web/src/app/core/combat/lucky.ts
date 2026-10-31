@@ -29,10 +29,14 @@ export function luckyWhat(offer: { readonly d20?: DiceRoll } | null | undefined)
     : 'Sortudo: você pode rolar esse d20 de novo e fica com o novo resultado.';
 }
 
-/** "Sortudo: 1 → 14", beside the d20 Lucky rolled again; `''` when it rolled nothing (no 1, or the 1 kept). */
+/** The content key of the fighter's feature: a save it rolled again names it in `DiceRoll.rerolled`. */
+export const INDOMITABLE_FEATURE = 'feature:indomitable-1-use';
+
+/** "Sortudo: 1 → 14" or "Indomitável: 4 → 15", beside the d20 Lucky or Indomitable rolled again; `''` when it rolled
+ * nothing (no 1, the 1 kept, the failed save kept). */
 export function luckyText(roll: WithRerolls | undefined): string {
   return (roll?.rerolled ?? [])
-    .filter((r) => r.sourceKey === LUCKY_TRAIT)
-    .map((r) => `Sortudo: ${r.from} → ${r.to}`)
+    .filter((r) => r.sourceKey === LUCKY_TRAIT || r.sourceKey === INDOMITABLE_FEATURE)
+    .map((r) => `${r.sourceKey === LUCKY_TRAIT ? 'Sortudo' : 'Indomitável'}: ${r.from} → ${r.to}`)
     .join(', ');
 }
