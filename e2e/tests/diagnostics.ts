@@ -11,8 +11,8 @@ import { test as base, type Browser, type BrowserContext, type ConsoleMessage, t
  * runs only after the test failed, in the `context` fixture, which ends before Playwright closes the contexts (a stuck
  * page makes that close overrun the teardown, and the attachment would be lost). A context the test closed itself has
  * no page left to ask; for its pages the report keeps what the browser had seen and the requests open at the close.
- * A page in a CPU loop is out of reach: Playwright's screenshot and trace of a failed test run before any fixture ends,
- * wait for that page, and the test ends without the attachment.
+ * A page in a CPU loop is out of reach: Playwright's own screenshot and trace of the failed test wait for it, and the
+ * test ends without the attachment.
  */
 
 /** How long a page gets to answer the probe; the probe never keeps a test or its teardown waiting longer. */
