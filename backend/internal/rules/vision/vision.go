@@ -22,6 +22,12 @@
 //     darkness and dim light as bright. A viewer always knows
 //     its own square. A wall is seen when a seen square touches it (the eight
 //     neighbors).
+//   - A cloud (Fog Cloud, Stinking Cloud) is a heavily obscured area: a line that
+//     crosses a cloud square is blocked, a cloud square is not seen, and a viewer
+//     standing in a cloud sees only its own square. A cloud is no wall: it is never
+//     drawn as one. Blindsight sees through it, within its range.
+//   - Magical darkness (Darkness) forces the light of its squares to dark, whatever
+//     lights them. Darkvision does not see in it; blindsight and truesight do.
 //   - Seen in dim light or in grey is lightly obscured, so a passive check
 //     there is 5 lower (PassivePenalty).
 package vision
@@ -69,6 +75,10 @@ type Scene struct {
 	Painted *grid.LightLayer
 	// Sources are the lights on the map, and the ones the characters carry.
 	Sources []Source
+	// Clouds are the squares of heavy obscurement. May be nil.
+	Clouds *grid.Layer
+	// MagicDark are the squares of magical darkness. May be nil.
+	MagicDark *grid.Layer
 }
 
 // State is how a viewer sees a square.
@@ -106,6 +116,10 @@ type Lit struct {
 	sight *grid.Sight
 	// level[n] is the light of square n: grid.Dark, grid.Dim or grid.Bright.
 	level []grid.Light
+	// cloud answers the lines that cross a cloud; nil when the scene has none.
+	cloud *grid.Sight
+	// magicDark[n] says square n is in magical darkness; nil when the scene has none.
+	magicDark []bool
 }
 
 // MaxLightFt is the largest radius, in feet, of the bright light and of the
@@ -121,6 +135,9 @@ func Compile(s Scene) (*Lit, error) {
 		return nil, grid.ErrBadGrid
 	}
 	if s.Doors != nil && s.Doors.Grid() != s.Grid {
+		return nil, grid.ErrBadGrid
+	}
+	if (s.Clouds != nil && s.Clouds.Grid() != s.Grid) || (s.MagicDark != nil && s.MagicDark.Grid() != s.Grid) {
 		return nil, grid.ErrBadGrid
 	}
 	sight, err := grid.NewSight(s.Grid, grid.SightWalls(s.Walls, s.Doors))
@@ -144,7 +161,44 @@ func Compile(s Scene) (*Lit, error) {
 	for _, src := range s.Sources {
 		l.shine(src)
 	}
+	if err := l.obscure(s); err != nil {
+		return nil, err
+	}
 	return l, nil
+}
+
+// obscure adds the clouds and the magical darkness: the darkness forces its squares to dark
+// after every light has shone.
+func (l *Lit) obscure(s Scene) error {
+	if s.Clouds.Count() > 0 {
+		cloud, err := grid.NewSight(s.Grid, s.Clouds)
+		if err != nil {
+			return err
+		}
+		l.cloud = cloud
+	}
+	if s.MagicDark.Count() > 0 {
+		l.magicDark = make([]bool, len(l.level))
+		for row := range s.Grid.Rows {
+			for col := range s.Grid.Columns {
+				if s.MagicDark.Get(col, row) {
+					n := row*s.Grid.Columns + col
+					l.magicDark[n], l.level[n] = true, grid.Dark
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// inMagicDark says whether the square is in magical darkness.
+func (l *Lit) inMagicDark(sq grid.Square) bool {
+	return l.magicDark != nil && l.g.Contains(sq) && l.magicDark[sq.Row*l.g.Columns+sq.Col]
+}
+
+// inCloud says whether the square is in a cloud.
+func (l *Lit) inCloud(sq grid.Square) bool {
+	return l.cloud != nil && l.g.Contains(sq) && l.cloud.Wall(sq)
 }
 
 // shine adds a light source: every square within its radius that its line
@@ -253,9 +307,14 @@ func (l *Lit) squareState(v Viewer, sq grid.Square) State {
 	}
 	s := v.Senses
 	n := sq.Row*l.g.Columns + sq.Col
-	state := Unseen
 	d2 := dist2Ft(v.At, sq)
-	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt
+	blindsight := s.BlindsightFt > 0 && d2 <= s.BlindsightFt*s.BlindsightFt
+	if l.cloud != nil && !blindsight && (l.inCloud(sq) || l.inCloud(v.At) || !l.cloud.Clear(v.At, sq)) {
+		return Unseen // heavily obscured: what is in a cloud, behind it, or seen from inside it
+	}
+	state := Unseen
+	magic := l.inMagicDark(sq)
+	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt && !magic
 	switch light := l.level[n]; {
 	case s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt:
 		state = SeenBright
@@ -266,7 +325,7 @@ func (l *Lit) squareState(v Viewer, sq grid.Square) State {
 		state = SeenBright
 	case light == grid.Dim:
 		state = SeenDim
-	case darkvision, s.BlindsightFt > 0 && d2 <= s.BlindsightFt*s.BlindsightFt:
+	case darkvision, blindsight:
 		state = SeenGrey
 	}
 	if state != Unseen && l.sight.Clear(v.At, sq) {
@@ -301,7 +360,7 @@ func (l *Lit) InTheDark(v Viewer) bool {
 		return false
 	}
 	s := v.Senses
-	return s.DarkvisionFt <= 0 && s.BlindsightFt <= 0 && s.TruesightFt <= 0
+	return (s.DarkvisionFt <= 0 || l.inMagicDark(v.At)) && s.BlindsightFt <= 0 && s.TruesightFt <= 0
 }
 
 // ownState is how a viewer sees the square it stands on: it always knows it,
