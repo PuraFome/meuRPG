@@ -88,7 +88,7 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
   The faces go to the next rolls of that die only, and the default goes on after them.
   A face that does not fit its die fails the test at once.
   A scripted face that is never rolled fails the test at the end, naming the die and the faces.
-  The check belongs to the test that first scripts the roller.
+  The check belongs to the test that first scripts the roller: script through the test that built it.
   A test scripts only the rolls it makes.
   It also asserts the roll a face was for, such as `requireOwnTotal`, because a later roll of that die can take a face its own roll left.
 - **A creature added to a running combat is scripted and checked.**

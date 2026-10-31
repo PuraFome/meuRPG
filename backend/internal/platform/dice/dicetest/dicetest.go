@@ -1,5 +1,5 @@
 // Package dicetest is the dice a test hands to a service that rolls (play, characters).
-// It is a dice.Roller like production's dice.Crypto, but deterministic, so a test never meets a roll it did not ask for.
+// It is a dice.Roller like production's dice.Crypto, but deterministic, so a test meets the same roll on every run.
 //
 // It exists because the app rolls an NPC's initiative itself (RN-19).
 // Two creatures with the same total take one joint turn (MR-013).
@@ -68,7 +68,7 @@ func New() *Roller { return &Roller{} }
 // A roll of another die does not use them.
 // A face that does not fit the die fails the test at once.
 // When they are used up, the default sequence goes on where it was.
-// A face still queued when the test ends fails it, naming the die and the faces.
+// A face still queued when the test ends fails it, naming the die and the faces, unless the test already failed.
 // The check belongs to the first test that scripts the Roller.
 func (r *Roller) ScriptFor(t testing.TB, sides int, faces ...int) {
 	t.Helper()
