@@ -182,7 +182,7 @@ func npcSheetFromCreature(content *rules.Content, key string) (*charactersv1.Bas
 		basic.Description += "\n" + strings.Join(extras, "\n")
 	}
 	// The multiattack count the turn already follows (through MonsterKey) and the
-	// creature's spellcasting, written for the master: the sheet has no spell engine.
+	// creature's spellcasting, written for the master as a note: the NPC's own spells in combat come from rules.Content.MonsterCaster.
 	if d.AttacksPerAction > 1 {
 		basic.Description += fmt.Sprintf("\nAtaques por ação: %d (ataque múltiplo).", d.AttacksPerAction)
 	}
