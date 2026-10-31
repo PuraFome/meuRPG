@@ -409,13 +409,17 @@ func (x *deriver) wildShapeRating(a activeEffect) (eighths int, ok bool) {
 		return crEighths(e.MaxCR)
 	case e.MaxCRFrom != "":
 		n, good := x.evalInt(e.maxCRFrom, a)
-		return 8 * min(max(n, 0), maxChallengeRating), good
+		return eighthsPerRating * min(max(n, 0), maxChallengeRating), good
 	}
 	return 0, false
 }
 
-// maxChallengeRating is the highest challenge rating of a creature.
-const maxChallengeRating = 30
+const (
+	// maxChallengeRating is the highest challenge rating of a creature.
+	maxChallengeRating = 30
+	// eighthsPerRating is how many eighths make one challenge rating.
+	eighthsPerRating = 8
+)
 
 // noLimitsKnown ranks an effect that is not there after one with any limit, in limits.
 const noLimitsKnown = 3
