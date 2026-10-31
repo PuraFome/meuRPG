@@ -26,7 +26,7 @@ import (
 
 // reasonsFile is the closed list of everything the server can tell a client
 // about why it refused (docs/architecture/api.md#error-reasons).
-const reasonsFile = backendRoot + "/../proto/error-reasons.json"
+const reasonsFile = "../../../proto/error-reasons.json"
 
 type reasonList struct {
 	Details    []detailEntry    `json:"details"`

@@ -8,10 +8,12 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -27,7 +29,10 @@ type beforeReadyLine struct {
 	re    *regexp.Regexp
 	regex string
 	last  string // the regenerate command (run), or why the function pins (helper)
-	n     int    // line number, for messages
+	// inputs are what a run line's tests read outside their package: paths from the repository
+	// root, comma-separated, or "-" for none.
+	inputs []string
+	n      int // line number, for messages
 }
 
 // readBeforeReady parses the list: tab-separated `kind pkg regex last` lines, `#` comments and blank lines.
@@ -46,15 +51,24 @@ func readBeforeReady(t *testing.T) []beforeReadyLine {
 			continue
 		}
 		cols := strings.Split(text, "\t")
-		const wantCols = 4
+		wantCols := 4
+		if cols[0] == "run" {
+			wantCols = 5
+		}
 		if len(cols) != wantCols || (cols[0] != "run" && cols[0] != "helper") || strings.TrimSpace(cols[3]) == "" {
-			t.Fatalf("%s:%d: want `run|helper<TAB>package<TAB>regex<TAB>regenerate command (run) or reason (helper)`, got %q", beforeReadyFile, n, text)
+			t.Fatalf("%s:%d: want `run<TAB>package<TAB>regex<TAB>regenerate command<TAB>inputs` or `helper<TAB>package<TAB>function<TAB>reason`, got %q", beforeReadyFile, n, text)
+		}
+		var inputs []string
+		if cols[0] == "run" && strings.TrimSpace(cols[4]) != "-" {
+			for _, in := range strings.Split(cols[4], ",") {
+				inputs = append(inputs, strings.TrimSpace(in))
+			}
 		}
 		re, err := regexp.Compile(cols[2])
 		if err != nil {
 			t.Fatalf("%s:%d: regex %q: %v", beforeReadyFile, n, cols[2], err)
 		}
-		lines = append(lines, beforeReadyLine{kind: cols[0], pkg: cols[1], re: re, regex: cols[2], last: cols[3], n: n})
+		lines = append(lines, beforeReadyLine{kind: cols[0], pkg: cols[1], re: re, regex: cols[2], last: cols[3], n: n, inputs: inputs})
 	}
 	if err := sc.Err(); err != nil {
 		t.Fatalf("read the before-ready list: %v", err)
@@ -368,5 +382,210 @@ func TestBeforeReadyDetector(t *testing.T) {
 	want = []string{`Frozen`, `^TestLastingCore`, `^TestLastingRPC`, `^TestA$`, `^TestB$`}
 	if got := alternatives(`Frozen|^TestLasting(Core|RPC)|^(TestA|TestB)$`); !slices.Equal(got, want) {
 		t.Errorf("alternatives = %q, want %q", got, want)
+	}
+}
+
+// TestBeforeReadyInputsAreComplete keeps the inputs column honest: the default run of
+// `make before-ready` runs a line when the change touches its package, a package it imports or
+// one of its inputs, so a listed test that reads a file outside those must name it. Every path
+// with a ".." segment that a listed test reaches (in its body, through the functions of its
+// package it calls, and through the package-level names it uses) must be inside an input of
+// the line, and every input must exist.
+func TestBeforeReadyInputsAreComplete(t *testing.T) {
+	t.Parallel()
+	lines := readBeforeReady(t)
+	for _, l := range lines {
+		if l.kind != "run" {
+			continue
+		}
+		for _, in := range l.inputs {
+			if in == "" || strings.HasPrefix(in, "/") || strings.Contains(in, "..") {
+				t.Errorf("%s:%d: input %q must be a path from the repository root", beforeReadyFile, l.n, in)
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(backendRoot, "..", filepath.FromSlash(in))); err != nil {
+				t.Errorf("%s:%d: input %q does not exist: %v", beforeReadyFile, l.n, in, err)
+			}
+		}
+	}
+	byPkg := map[string][]beforeReadyLine{}
+	for _, l := range lines {
+		if l.kind == "run" {
+			byPkg[l.pkg] = append(byPkg[l.pkg], l)
+		}
+	}
+	for pkg, ls := range byPkg {
+		reads := upwardPaths(t, filepath.Join(backendRoot, pkg))
+		for _, l := range ls {
+			for test, paths := range reads {
+				if !l.re.MatchString(test) {
+					continue
+				}
+				for _, p := range paths {
+					if resolved := path.Join("backend", pkg, p); !covered(resolved, l.inputs) {
+						t.Errorf("%s:%d: %s reads %q (%s from the repository root) but the line does not name it in its inputs: add it", beforeReadyFile, l.n, test, p, resolved)
+					}
+				}
+			}
+		}
+	}
+}
+
+// covered says whether a path is one of the inputs or inside one of them.
+func covered(p string, inputs []string) bool {
+	p = strings.TrimSuffix(p, "/")
+	for _, in := range inputs {
+		if p == in || strings.HasPrefix(p, strings.TrimSuffix(in, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// upwardPaths returns, for each Test function of the package in dir, the paths with a ".."
+// segment that it reaches, as written (relative to dir) and cut before a wildcard: the string
+// literals of its body, of the functions it calls and of the package-level names it uses, and a
+// filepath.Join("..", ...) as one path.
+func upwardPaths(t *testing.T, dir string) map[string][]string {
+	t.Helper()
+	fset := token.NewFileSet()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read %s: %v", dir, err)
+	}
+	own := map[string][]string{}  // node -> the upward paths it holds itself
+	uses := map[string][]string{} // node -> the nodes (functions, package-level names) it mentions
+	var tests []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", e.Name(), err)
+		}
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.FuncDecl:
+				if d.Body == nil || d.Recv != nil {
+					continue
+				}
+				if strings.HasPrefix(d.Name.Name, "Test") {
+					tests = append(tests, d.Name.Name)
+				}
+				own[d.Name.Name], uses[d.Name.Name] = scanUpward(d.Body)
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					if vs, ok := spec.(*ast.ValueSpec); ok {
+						for _, id := range vs.Names {
+							for _, v := range vs.Values {
+								o, u := scanUpward(v)
+								own[id.Name] = append(own[id.Name], o...)
+								uses[id.Name] = append(uses[id.Name], u...)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	out := map[string][]string{}
+	for _, test := range tests {
+		seen := map[string]bool{}
+		for stack := []string{test}; len(stack) > 0; {
+			n := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if seen[n] {
+				continue
+			}
+			seen[n] = true
+			out[test] = append(out[test], own[n]...)
+			stack = append(stack, uses[n]...)
+		}
+		sort.Strings(out[test])
+		out[test] = slices.Compact(out[test])
+	}
+	return out
+}
+
+// upSegment matches a path that goes up: "..", "../x", "a/../b", "/../x".
+var upSegment = regexp.MustCompile(`(^|/)\.\.(/|$)`)
+
+// scanUpward returns the upward paths written in a node and the identifiers it mentions.
+func scanUpward(n ast.Node) (paths, idents []string) {
+	joined := map[ast.Node]bool{} // the ".." arguments of a Join, already counted as one path
+	ast.Inspect(n, func(x ast.Node) bool {
+		switch v := x.(type) {
+		case *ast.Ident:
+			idents = append(idents, v.Name)
+		case *ast.CallExpr:
+			if p := joinedUpward(v); p != "" {
+				paths = append(paths, p)
+				for _, a := range v.Args[:strings.Count(p, "..")] {
+					joined[a] = true
+				}
+			}
+		case *ast.BasicLit:
+			if v.Kind != token.STRING || joined[v] {
+				return true
+			}
+			if s, err := strconv.Unquote(v.Value); err == nil && upSegment.MatchString(s) {
+				paths = append(paths, cutAtWildcard(s))
+			}
+		}
+		return true
+	})
+	return paths, idents
+}
+
+// joinedUpward returns "../.." for filepath.Join("..", "..", "x"): the leading ".." arguments
+// as the directory they reach, which is what the rest is read under. "" for any other call.
+func joinedUpward(c *ast.CallExpr) string {
+	sel, ok := c.Fun.(*ast.SelectorExpr)
+	if !ok || sel.Sel.Name != "Join" {
+		return ""
+	}
+	var ups []string
+	for _, a := range c.Args {
+		lit, ok := a.(*ast.BasicLit)
+		if !ok || lit.Value != `".."` {
+			break
+		}
+		ups = append(ups, "..")
+	}
+	return strings.Join(ups, "/")
+}
+
+// cutAtWildcard keeps the directories of a pattern before the first wildcard.
+func cutAtWildcard(p string) string {
+	i := strings.IndexAny(p, "*?[")
+	if i < 0 {
+		return p
+	}
+	return path.Dir(p[:i] + "x")
+}
+
+// TestBeforeReadyUpwardPathsDetector keeps the eyes of TestBeforeReadyInputsAreComplete honest
+// on a fixture package (testdata/upfixture): a path that goes up is found written in the test,
+// through a constant, through a helper, cut before a wildcard and as the arguments of Join, and
+// a path inside the package's own directory is not one.
+func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
+	t.Parallel()
+	got := upwardPaths(t, filepath.Join("testdata", "upfixture"))
+	want := map[string][]string{
+		"TestDirect":         {"../data/a.txt"},
+		"TestThroughAConst":  {"../../proto/x.json"},
+		"TestThroughAHelper": {"../../NOTICE"},
+		"TestThroughAGlob":   {"../../migrations"},
+		"TestThroughAJoin":   {"../.."},
+		"TestOwnDirectory":   nil,
+	}
+	for name, paths := range want {
+		if !slices.Equal(got[name], paths) {
+			t.Errorf("%s reaches %q, want %q", name, got[name], paths)
+		}
+	}
+	if !covered("backend/migrations/0001.sql", []string{"backend/migrations"}) || covered("backend/migrations2/x", []string{"backend/migrations"}) {
+		t.Error("covered must take a directory and what is under it, not a name that starts the same")
 	}
 }
