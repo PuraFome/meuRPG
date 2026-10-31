@@ -431,3 +431,14 @@ test('mapDiff carries serial into the target, and leaves it out for a plain one'
     ],
   );
 });
+
+test('two tests with the same title keep serial if either is serial, whichever comes last', () => {
+  const serial = ["test.describe.serial('a', () => {", "  test('same title', async () => {});", '});'];
+  const plain = ["test.describe('b', () => {", "  test('same title', async () => {});", '});'];
+  for (const [name, lines] of [['serial first', [...serial, ...plain]], ['plain first', [...plain, ...serial]]]) {
+    const text = lines.join('\n');
+    const diff = ['+++ b/e2e/tests/a.spec.ts', '@@ -0,0 +1,6 @@'].join('\n');
+    const got = mapDiff({ diff, read: (f) => (f === 'e2e/tests/a.spec.ts' ? text : undefined), files: () => ['e2e/tests/a.spec.ts'] });
+    assert.deepEqual(got.playwright.map((t) => [t.title, t.serial]), [['same title', true]], name);
+  }
+});
