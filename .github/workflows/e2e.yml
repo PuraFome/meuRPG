@@ -353,7 +353,8 @@ jobs:
         # The backend log (the api container) next to the report: a test that fails on a page that never showed a
         # change needs the server's side of it (did the stream push the revision?). One read feeds the job page
         # and the file, which the report artifact keeps.
-        if: failure()
+        # Not when the action failed before it started the stack: it prints its own log, and there are no files to name.
+        if: ${{ failure() && steps.stack.outputs.compose-file != '' }}
         env:
           COMPOSE_FILE: ${{ steps.stack.outputs.compose-file }}
           E2E_DB_DIR: ${{ steps.stack.outputs.database-dir }}
