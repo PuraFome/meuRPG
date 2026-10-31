@@ -1,4 +1,4 @@
-import { Component, Injector } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -56,7 +56,10 @@ describe('EntrySaver.blockOn', () => {
 
 describe('EntrySaver.focusRefusal', () => {
   it('focuses the first field the refusal landed on, once it is drawn', async () => {
-    @Component({ template: '<input data-field="x.y" />', standalone: true })
+    @Component({
+      template: '<input data-field="x.y" />',
+      changeDetection: ChangeDetectionStrategy.OnPush,
+    })
     class Host {}
     TestBed.configureTestingModule({});
     const fixture = TestBed.createComponent(Host);

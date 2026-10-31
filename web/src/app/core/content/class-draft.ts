@@ -62,11 +62,6 @@ export interface CastingDraft {
   srdSpells: string[];
 }
 
-/** The path of the casting's start level while its text is no whole number (a NaN in the draft), at `base` ("table_class.casting"). */
-export function unreadableCastingPaths(base: string, casting: CastingDraft): string[] {
-  return Number.isNaN(casting.startLevel) ? [`${base}.start_level`] : [];
-}
-
 export interface LevelFeature {
   /** A stable id the screen tracks the row by. */
   id: string;

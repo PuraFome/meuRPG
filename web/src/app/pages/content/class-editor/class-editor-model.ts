@@ -1,10 +1,10 @@
+import { unreadableCastingPaths } from '../../../core/content/whole-number';
 import type {
   GetClassTableDefaultsResponse,
   TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import {
   type CastingDraft,
-  unreadableCastingPaths,
   type ClassDraft,
   type GridColumns,
   type LevelFeature,
