@@ -17,11 +17,17 @@ import { LUCKY_TITLE, luckyText, luckyWhat } from '../../core/combat/lucky';
 import {
   type HeldAnswer,
   asksIndomitable,
+  asksStroke,
   asksLucky,
   dieOf,
   luckyHeldLine,
 } from '../../core/held-rolls/held-roll-offer';
-import { INDOMITABLE_WHAT, indomitableTitle } from '../../core/held-rolls/held-text';
+import {
+  INDOMITABLE_WHAT,
+  STROKE_WHAT,
+  indomitableTitle,
+  strokeTitle,
+} from '../../core/held-rolls/held-text';
 import { inspirationDieName, promptTitle, useLabel } from '../../core/resources/bardic-inspiration';
 import { MultiRoll, type RollField } from '../../pages/live-session/combat/multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
@@ -71,6 +77,11 @@ export class HeldRollPrompt {
   protected readonly lucky = computed(() => asksLucky(this.offer()));
   protected readonly luckyTitle = LUCKY_TITLE;
   protected readonly luckyWhat = computed(() => luckyWhat(this.offer()));
+  /** The rogue's question, after the result of an attack or a check: Stroke of Luck turns the miss into a hit or counts the
+   * d20 as 20. Nothing is rolled, so there is no picker. */
+  protected readonly stroke = computed(() => asksStroke(this.offer()));
+  protected readonly strokeTitle = computed(() => strokeTitle(this.offer()));
+  protected readonly strokeWhat = STROKE_WHAT;
   /** The fighter's question, after the result of a saving throw: Indomitable rolls it again and the new roll stands. */
   protected readonly indomitable = computed(() => asksIndomitable(this.offer()));
   protected readonly indomitableTitle = computed(() => indomitableTitle(this.offer()));
@@ -83,7 +94,7 @@ export class HeldRollPrompt {
   ];
   /** Which question of which roll: it changes when Lucky's answer brings the die's. */
   private readonly question = computed(
-    () => `${this.offer().holdId}:${this.lucky()}:${this.indomitable()}`,
+    () => `${this.offer().holdId}:${this.lucky()}:${this.indomitable()}:${this.stroke()}`,
   );
   protected readonly die = computed(() => dieOf(this.offer()) ?? { sides: 0, fromName: '' });
   protected readonly dieName = computed(() => inspirationDieName(this.die().sides));

@@ -71,6 +71,11 @@ type heldRoll struct {
 	IndomFrom, IndomTo    *int32
 	DieAnswerKey          *string
 	DieUsed               *bonusUse
+	// Stroke of Luck's question (held_stroke.go): asked, whether it may say the roll missed or failed, its answer's key
+	// and the d20 that counted when the player used the feature.
+	StrokeAsk, StrokeFailed bool
+	StrokeAnswerKey         *string
+	StrokeFrom              *int32
 	// CreatedAt is when the roll was held.
 	CreatedAt time.Time
 }
@@ -188,6 +193,7 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 		AnswerKey: row.AnswerKey, CreatedAt: row.CreatedAt,
 		IndomAsk: row.IndomitableAsk, IndomFailed: row.IndomitableFailed, IndomAnswerKey: row.IndomitableAnswerKey,
 		IndomFrom: row.IndomitableFrom, IndomTo: row.IndomitableTo, DieAnswerKey: row.DieAnswerKey, DieUsed: dieUsedOf(row.DieUsed),
+		StrokeAsk: row.StrokeAsk, StrokeFailed: row.StrokeFailed, StrokeAnswerKey: row.StrokeAnswerKey, StrokeFrom: row.StrokeFrom,
 	}
 }
 
@@ -265,7 +271,7 @@ func (st inspirationHoldStore) insert(ctx context.Context, env gateEnv, h heldRo
 		Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit), Counted: clamp32(h.Counted, 0, 1), Physical: h.Physical,
 		CreatedAt: env.now, Round: h.Round, LuckyIndex: h.LuckyIndex,
 		CombatantID: nilIfEmpty(h.CombatantID), EncounterID: nilIfEmpty(h.EncounterID), WindowHold: h.Window && h.Kind == heldWeaponAttack,
-		IndomitableAsk: h.IndomAsk, IndomitableFailed: h.IndomFailed,
+		IndomitableAsk: h.IndomAsk, IndomitableFailed: h.IndomFailed, StrokeAsk: h.StrokeAsk, StrokeFailed: h.StrokeFailed,
 	})
 	if err != nil {
 		return heldRoll{}, fmt.Errorf("hold the roll: %w", err)

@@ -233,6 +233,9 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
 		}
+		if err := u.strokeBack(ctx, who, ev); err != nil {
+			return err
+		}
 		if err := u.meleeHitBack(ctx, who, ev); err != nil {
 			return err
 		}
@@ -662,7 +665,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
+		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {
@@ -975,6 +978,11 @@ func (u *undoer) reactionSpentBack(ctx context.Context, who playdb.Combatant, ev
 	}
 	if who.Kind != kindPlayer {
 		return nil
+	}
+	if ev.Reaction != nil && ev.Reaction.Stroke != nil { // the use of Stroke of Luck on a Counterspell check
+		if err := u.spendResourceBack(ctx, who, strokeResource); err != nil {
+			return err
+		}
 	}
 	for _, key := range ev.ManeuverSpent { // a table maneuver's use
 		if err := u.spendResourceBack(ctx, who, key); err != nil {

@@ -12,7 +12,12 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Reroll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { rollText } from '../combat/combat-dice';
-import { INDOMITABLE_FEATURE, LUCKY_TRAIT, type WithRerolls } from '../combat/lucky';
+import {
+  INDOMITABLE_FEATURE,
+  LUCKY_TRAIT,
+  STROKE_FEATURE,
+  type WithRerolls,
+} from '../combat/lucky';
 
 /**
  * The question a roll that waits asks, in the one shape every held roll has (`HeldRollOffer`): the halfling's Lucky
@@ -35,7 +40,10 @@ export type HeldRolled =
 export type HeldAnswer =
   | { readonly kind: 'lucky'; readonly reroll: boolean; readonly roll: HeldRolled | null }
   | { readonly kind: 'die'; readonly use: boolean; readonly roll: HeldRolled | null }
-  | { readonly kind: 'indomitable'; readonly reroll: boolean; readonly roll: HeldRolled | null };
+  | { readonly kind: 'indomitable'; readonly reroll: boolean; readonly roll: HeldRolled | null }
+  /** The rogue's Stroke of Luck: use it (the miss is a hit, the d20 of the check counts as 20) or keep the roll. Nothing is
+   * rolled. */
+  | { readonly kind: 'stroke'; readonly use: boolean };
 
 /** The ways a response carries a question: the new offer, or the two older ones. */
 export interface HeldOfferSource {
@@ -124,7 +132,18 @@ export function indomitableFailed(offer: HeldRollOffer | null | undefined): bool
   return offer?.question.case === 'indomitable' && offer.question.value.failed;
 }
 
-/** The size and giver of the die the question offers, or `undefined` when it is Lucky's or Indomitable's. */
+/** Whether the question is the rogue's Stroke of Luck, asked after the result of an attack or of an ability check. */
+export function asksStroke(offer: HeldRollOffer | null | undefined): boolean {
+  return offer?.question.case === 'strokeOfLuck';
+}
+
+/** Whether the attack missed or the check failed, when the question may say so; `false` when the table hides the result
+ * from the roller until the answer (the question then comes on every roll). */
+export function strokeFailed(offer: HeldRollOffer | null | undefined): boolean {
+  return offer?.question.case === 'strokeOfLuck' && offer.question.value.failed;
+}
+
+/** The size and giver of the die the question offers, or `undefined` when it is Lucky's, Indomitable's or Stroke of Luck's. */
 export function dieOf(
   offer: HeldRollOffer | null | undefined,
 ): { readonly sides: number; readonly fromName: string } | undefined {
@@ -143,6 +162,11 @@ export function luckyHeldLine(offer: { readonly d20?: DiceRoll } | null | undefi
  * nothing. */
 export function indomitableReroll(roll: WithRerolls | undefined): Reroll | undefined {
   return roll?.rerolled.find((r) => r.sourceKey === INDOMITABLE_FEATURE);
+}
+
+/** What Stroke of Luck did to a roll; `undefined` when it did nothing. */
+export function strokeReroll(roll: WithRerolls | undefined): Reroll | undefined {
+  return roll?.rerolled.find((r) => r.sourceKey === STROKE_FEATURE);
 }
 
 /** The d20 Lucky rolled again on a roll (the faces already hold the new one), for the die that tumbles after an answer

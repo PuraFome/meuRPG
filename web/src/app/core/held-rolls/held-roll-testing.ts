@@ -3,6 +3,7 @@ import { timestampFromMs } from '@bufbuild/protobuf/wkt';
 
 import {
   type HeldRollOffer,
+  HeldRollKind,
   HeldRollOfferSchema,
   RollAttackResponseSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -98,6 +99,24 @@ export function heldIndomitable(
     rollerLabel: 'Brisa',
     d20: held20([face], modifier),
     question: { case: 'indomitable', value: { failed } },
+    ...over,
+  });
+}
+
+/** The rogue's question (Golpe de Sorte) for specs: a d20 of `face` with the roll's bonus; `failed` false is the table that
+ * hides the result, which asks on every roll. */
+export function heldStroke(
+  face = 2,
+  modifier = 0,
+  failed = true,
+  over: HeldOfferOver = {},
+): HeldRollOffer {
+  return create(HeldRollOfferSchema, {
+    holdId: 'h1',
+    rollerLabel: 'Brisa',
+    kind: HeldRollKind.WEAPON_ATTACK,
+    d20: held20([face], modifier),
+    question: { case: 'strokeOfLuck', value: { failed } },
     ...over,
   });
 }

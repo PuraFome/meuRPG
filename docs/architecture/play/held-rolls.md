@@ -1,7 +1,8 @@
 # Held rolls
 
 A d20 that may wait for a question is rolled, kept, asked about and settled in one place: the held-roll gate.
-The questions are the halfling's Lucky (RN-35) and a Bardic Inspiration die, asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
+The questions are the halfling's Lucky (RN-35), a Bardic Inspiration die, and, after the result, the fighter's Indomitable and the rogue's Stroke of Luck (RN-35).
+Lucky and the die are asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
 The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
 ## The thirteen kinds
@@ -91,7 +92,7 @@ A hold made in a combat records its `round`; one of an earlier round, or whose c
 
 ## The questions are a chain
 
-`chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `dieQuestion` after it and `indomitableQuestion` last (the result is known only then).
+`chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `dieQuestion` after it, then `indomitableQuestion` and `strokeQuestion` (the result is known only then).
 Each says when it waits (`pending`), what it asks (`offer`) and what its answer writes (`apply`).
 
 - **Lucky** waits while `lucky_index` is set and neither it nor the roll was answered.
@@ -102,6 +103,10 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 - **Indomitable** waits while `indomitable_ask` is set and neither it nor the roll was answered.
   It is asked only after the result of the save is known, with the Lucky reroll and the die already in the total.
   Its answer is final: a reroll rolls the d20 again by the save's mode, spends the use and closes the row; keeping the roll spends nothing.
+
+- **Stroke of Luck** waits while `stroke_ask` is set and neither it nor the roll was answered.
+  It is asked only after the result is known, with the Lucky reroll and the die already in the total.
+  Its answer is final: using it spends the use and closes the row; keeping the roll spends nothing.
 
 A later question, such as a master's reroll, would be one more link with its own columns and rule for who answers. Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
@@ -125,7 +130,7 @@ When the owner and the master answer at once, the first answer wins; the other, 
 
 ## The wire
 
-Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it) and when the roll was held. The nine answers of the paths carry it as `held_roll_offer` beside the deprecated `inspiration_offer` and `lucky_offer` (and the lists `offers` and `lucky_offers` of the state out of a combat), which are still filled for a tab opened before the one question existed, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
+Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it, then `IndomitableQuestion` or `StrokeOfLuckQuestion`) and when the roll was held. The nine answers of the paths carry it as `held_roll_offer` beside the deprecated `inspiration_offer` and `lucky_offer` (and the lists `offers` and `lucky_offers` of the state out of a combat), which are still filled for a tab opened before the one question existed, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
 
 The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
 
@@ -246,3 +251,47 @@ It is offered after the result, a new link of the chain (`held_indomitable.go`).
   The master answers after the player's first 10 seconds, as for Lucky.
 - **Columns** of `inspiration_holds` (migration 00289): `indomitable_ask`, `indomitable_failed`, `indomitable_answer_key`, `indomitable_from`, `indomitable_to`, `die_answer_key`, `die_used`.
 - **Wire.** `IndomitableQuestion` in `HeldRollOffer.question`, `IndomitableAnswer` in `AnswerHeldRollRequest`.
+
+## Stroke of Luck (rogue 20)
+
+SRD 5.1: a missed attack hits instead, or a failed ability check counts the d20 as a 20, once per short or long rest.
+The resource is `stroke_of_luck` (1 use, short rest, `effects/rogue.json`).
+It is offered after the result, a new link of the chain (`held_stroke.go`, `combat_attack_stroke.go`).
+
+- **Covered.**
+  - The weapon attack (`RollAttack`) and the spell attack against one target (`CastSpell`) of a player's character.
+  - The scene check, the group check, the contest check and the Hide check.
+  - The ability check of a Counterspell.
+- **Not offered.**
+  - The trap search: it rolls two dice of Perception and its outcome depends on the trap's DC.
+  - The puzzle hint try: its row has no column for the use, and a retry compares the typed faces with the stored ones.
+  - The saving throws and the death save: the feature is for attacks and ability checks.
+  - A cast with several attacks or targets, the initiative and the rolls inside someone else's call.
+  - The rolls of the master and of NPCs never ask.
+- **Held only with a use left.** `heldGate` reads the vitals (`strokeAvailable`) only for a roll that may ask. A rogue with no use left, or a character without the feature, is never held.
+- **Miss or failure is the server's.** `strokeRule` (`rollSpec.Stroke`) decides.
+  - An attack misses when `combat.ResolveAttackFrom` says so with the armor class read lazily (`Prepare`); a natural 1 misses whatever the bonus.
+  - A check fails when the total is below the DC.
+  - A check with no DC is never asked, and a natural 20 on the d20 never asks, since nothing changes.
+  - The question says "Errou o ataque" or "Falhou no teste" only when the roller may know it.
+- **Hidden outcome.** The question is blind (it comes on every eligible roll and says nothing) when the table hides what it would tell.
+  - A scene whose DC is hidden, a group check whose DC is hidden, and a contest or Hide, whose result depends on the other side.
+  - An attack with dice of effects (Bless, Bane) after the gate, which move the total.
+  - The Counterspell check is not blind, since its DC is known.
+- **The answer.** "Usar" spends the use through the vitals (`spendUse`: the combat's resources in a combat, the vitals outside one) and settles the roll.
+  - An attack becomes a hit, not a critical hit, a natural 1 included. The d20 stays as it fell, and the `Reroll` lists the same face in `from` and `to`.
+  - A check gets d20 = 20 and a total of 20 plus the modifier, replacing the roll for everything after.
+  - "Manter" keeps the result and spends nothing.
+  - It is never asked about again.
+- **Order.** Lucky, then the Bardic Inspiration die, then Indomitable or Stroke of Luck. Indomitable asks about saves and Stroke of Luck about attacks and checks, so a roll never meets both.
+- **Log and undo.** The event keeps `Stroke` (`actionEvent`, `castHit`, `sceneRollEvent`, `reactionEvent`) and the result lists a `Reroll` with source `feature:stroke-of-luck`.
+  The log reads "Golpe de Sorte" for the owner and the master only (RN-10).
+  - The undo of an attack, of a spell attack and of a Counterspell gives the use back (`strokeBack`, `spendResourceBack`).
+  - The scene, group, contest and Hide checks are not undoable events, so the use they spent is not given back. A short or a long rest returns it.
+- **Refusals.** While the question waits, the character's other rolls are refused with `STROKE_OF_LUCK_PENDING`.
+  The master answers after the player's first 10 seconds, as for Lucky.
+- **Columns** of `inspiration_holds` (migration 00290): `stroke_ask`, `stroke_failed`, `stroke_answer_key`, `stroke_from`.
+  `DeleteOrphanInspirationHolds` keeps a hold with `stroke_ask` set, since a question outside a combat has no die.
+- **Wire.** `StrokeOfLuckQuestion` in `HeldRollOffer.question`, `StrokeOfLuckAnswer` in `AnswerHeldRollRequest`.
+- **Web.** The Lucky and Indomitable card, with "Usar" and "Manter" and no roll picker.
+  A player outside a combat reads the question again from `ListHeldRolls`, since the older lists of the outside state do not carry it.

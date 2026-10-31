@@ -106,6 +106,19 @@ describe('ResourceClient', () => {
     expect(typed.healed).toBe(6);
   });
 
+  it('answers Stroke of Luck with use or keep and no roll', async () => {
+    const client = clientWith(calls);
+    await client.answerHeldRoll('camp', 'h1', { kind: 'stroke', use: true }, 'k1');
+    await client.answerHeldRoll('camp', 'h1', { kind: 'stroke', use: false }, 'k2');
+    const answers = calls.answers.map(
+      (c) => (c as { answer: { case: string; value: unknown } }).answer,
+    );
+    expect(answers).toEqual([
+      { case: 'strokeOfLuck', value: { use: true } },
+      { case: 'strokeOfLuck', value: { use: false } },
+    ]);
+  });
+
   it('answers Indomitable with a typed face, the two typed faces of a pair, or the app', async () => {
     const client = clientWith(calls);
     await client.answerHeldRoll(

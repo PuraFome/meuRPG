@@ -185,7 +185,7 @@ export class AttackRolls {
     this.play(
       answer.kind === 'die'
         ? inspirationShow(attack.roll, answer.use, answer.roll)
-        : rerollShow(attack.roll.d20, answer.roll),
+        : rerollShow(attack.roll.d20, answer.kind === 'stroke' ? null : answer.roll),
     );
   }
 

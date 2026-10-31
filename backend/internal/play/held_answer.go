@@ -238,6 +238,9 @@ func (h heldRoll) replyTo(req answerRequest) (heldReply, answerState, error) {
 	if req.question == askIndomitable {
 		return h.indomitableReplyTo(a)
 	}
+	if req.question == askStroke {
+		return h.strokeReplyTo(a)
+	}
 	switch {
 	case h.DieAnswerKey != nil && *h.DieAnswerKey == req.key && h.AnswerKey != nil:
 		// The die's answer again, once Indomitable's question was answered too: the roll as it was resolved.
@@ -262,6 +265,20 @@ func (h heldRoll) indomitableReplyTo(a heldReply) (heldReply, answerState, error
 	switch {
 	case !h.IndomAsk:
 		return a, answerOpen, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll asks no Indomitable question"))
+	case h.AnswerKey != nil && *h.AnswerKey != a.key:
+		return a, answerOpen, errAnsweredAlready()
+	case h.AnswerKey != nil:
+		return a, answerSettled, nil
+	}
+	return a, answerOpen, nil
+}
+
+// strokeReplyTo is replyTo for the Stroke of Luck question: it must have been asked, and an answer already given is
+// answered again, never twice with another key.
+func (h heldRoll) strokeReplyTo(a heldReply) (heldReply, answerState, error) {
+	switch {
+	case !h.StrokeAsk:
+		return a, answerOpen, connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll asks no Stroke of Luck question"))
 	case h.AnswerKey != nil && *h.AnswerKey != a.key:
 		return a, answerOpen, errAnsweredAlready()
 	case h.AnswerKey != nil:
@@ -303,6 +320,10 @@ func errAnsweredAlready() error {
 func (s *Service) rollAnswer(ctx context.Context, m authz.Membership, h heldRoll, req answerRequest, a *heldReply) error {
 	if req.question == askDie {
 		return s.rollDieAnswer(ctx, m, h, req, a)
+	}
+	if req.question == askStroke { // nothing is rolled: the answer is only use or keep
+		a.stroke = req.yes
+		return nil
 	}
 	if req.question == askIndomitable { // the gate rolls the d20 the way the save is rolled: only the way is kept here
 		if !req.yes {

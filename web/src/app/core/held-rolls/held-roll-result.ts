@@ -64,6 +64,9 @@ function whatAnswered(
       ? `somou o ${inspirationDieName(dieOf(asked)?.sides ?? 0)}`
       : 'guardou o dado';
   }
+  if (answer.kind === 'stroke') {
+    return answer.use ? 'usou o Golpe de Sorte' : 'manteve o resultado';
+  }
   if (!answer.reroll) {
     return answer.kind === 'indomitable'
       ? `manteve a salvaguarda (${countedFace(asked)})`

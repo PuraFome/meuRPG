@@ -54,7 +54,9 @@ export function heldRollErrorMessage(
           ? 'responder ao Sortudo'
           : answer.kind === 'indomitable'
             ? 'responder ao Indomitável'
-            : 'responder sobre a Inspiração de Bardo',
+            : answer.kind === 'stroke'
+              ? 'responder ao Golpe de Sorte'
+              : 'responder sobre a Inspiração de Bardo',
       );
   }
 }

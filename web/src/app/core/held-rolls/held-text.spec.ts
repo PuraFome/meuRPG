@@ -10,7 +10,7 @@ import {
   questionTitle,
   questionWhat,
 } from './held-text';
-import { heldDie, heldIndomitable, heldLucky } from './held-roll-testing';
+import { heldDie, heldIndomitable, heldLucky, heldStroke } from './held-roll-testing';
 
 describe('the words of the master’s pending questions', () => {
   it('words Indomitable’s question: the save failed only when the roller may know it', () => {
@@ -36,6 +36,30 @@ describe('the words of the master’s pending questions', () => {
     expect(askingText({ kind: 'indomitable', reroll: false, roll: null }, offer)).toBe(
       'Mantendo a salvaguarda…',
     );
+  });
+
+  it('words Stroke of Luck’s question: the miss or the failure is told only when the roller may know it', () => {
+    expect(questionTitle(heldStroke())).toBe('Errou o ataque. Usar Golpe de Sorte para acertar?');
+    expect(questionTitle(heldStroke(2, 0, false))).toBe(
+      'Usar Golpe de Sorte para acertar o ataque?',
+    );
+    const check = { kind: HeldRollKind.SCENE_CHECK };
+    expect(questionTitle(heldStroke(2, 0, true, check))).toBe(
+      'Falhou no teste. Usar Golpe de Sorte para contar o d20 como 20?',
+    );
+    expect(questionTitle(heldStroke(2, 0, false, check))).toBe(
+      'Usar Golpe de Sorte para contar o d20 como 20?',
+    );
+    expect(questionTitle(heldStroke(2, 0, false, { kind: HeldRollKind.SPELL_ATTACK }))).toBe(
+      'Usar Golpe de Sorte para acertar o ataque?',
+    );
+    expect(questionRule(heldStroke()).lead).toBe('Golpe de Sorte:');
+    expect(questionRule(heldStroke()).text).toContain('Brisa');
+    expect(d20Chip(heldStroke(2, 5))).toBe('2');
+    expect(d20Line(heldStroke(2, 5))).toBe('d20 · bônus +5 · total 7');
+    const offer = heldStroke();
+    expect(askingText({ kind: 'stroke', use: true }, offer)).toBe('Usando o Golpe de Sorte…');
+    expect(askingText({ kind: 'stroke', use: false }, offer)).toBe('Mantendo o resultado…');
   });
 
   it('titles the question as the roller reads it', () => {

@@ -49,7 +49,16 @@
         <p>{{ failure() }}</p>
       </div>
     }
-    @if (typing() && pair()) {
+    @if (stroke()) {
+      <div class="q__buttons">
+        <button matButton="outlined" type="button" class="q__btn q__btn--primary" [disabled]="waiting()" (click)="useStroke()">
+          Usar
+        </button>
+        <button matButton="outlined" type="button" class="q__btn q__btn--primary" [disabled]="waiting()" (click)="keep()">
+          Manter
+        </button>
+      </div>
+    } @else if (typing() && pair()) {
       <app-multi-roll
         [fields]="pairFields"
         [canApp]="false"

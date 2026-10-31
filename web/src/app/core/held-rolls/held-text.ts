@@ -5,8 +5,10 @@ import {
   type HeldAnswer,
   asksIndomitable,
   asksLucky,
+  asksStroke,
   dieOf,
   indomitableFailed,
+  strokeFailed,
 } from './held-roll-offer';
 
 /** The words of a question the master reads about someone else's roll. */
@@ -22,8 +24,29 @@ export function indomitableTitle(offer: HeldRollOffer | null | undefined): strin
 export const INDOMITABLE_WHAT =
   'Indomitável: você rola a salvaguarda de novo e precisa ficar com o novo resultado, mesmo que seja pior. Gasta um uso, que volta depois de um descanso longo.';
 
+/** The title of the rogue's question: it says the attack missed or the check failed only when the roller may know it. */
+export function strokeTitle(offer: HeldRollOffer | null | undefined): string {
+  const attack =
+    offer?.kind === HeldRollKind.WEAPON_ATTACK || offer?.kind === HeldRollKind.SPELL_ATTACK;
+  if (attack) {
+    return strokeFailed(offer)
+      ? 'Errou o ataque. Usar Golpe de Sorte para acertar?'
+      : 'Usar Golpe de Sorte para acertar o ataque?';
+  }
+  return strokeFailed(offer)
+    ? 'Falhou no teste. Usar Golpe de Sorte para contar o d20 como 20?'
+    : 'Usar Golpe de Sorte para contar o d20 como 20?';
+}
+
+/** The line under Stroke of Luck's title. */
+export const STROKE_WHAT =
+  'Golpe de Sorte: um ataque que erra vira um acerto, ou um teste de habilidade conta o d20 como 20. Gasta o uso, que volta depois de um descanso curto ou longo.';
+
 /** The title the roller reads: "Tirou 1: rolar de novo?", "Usar a Inspiração de Bardo (d8)?" or Indomitable's. */
 export function questionTitle(offer: HeldRollOffer): string {
+  if (asksStroke(offer)) {
+    return strokeTitle(offer);
+  }
   if (asksIndomitable(offer)) {
     return indomitableTitle(offer);
   }
@@ -62,6 +85,12 @@ export function questionRule(offer: HeldRollOffer): {
   readonly lead: string;
   readonly text: string;
 } {
+  if (asksStroke(offer)) {
+    return {
+      lead: 'Golpe de Sorte:',
+      text: `${offer.rollerLabel || 'Quem rolou'} pode transformar o erro em acerto ou contar o d20 do teste como 20. Gasta o uso.`,
+    };
+  }
   if (asksIndomitable(offer)) {
     return {
       lead: 'Indomitável:',
@@ -122,6 +151,17 @@ export function pendingCountText(count: number): string {
 
 /** What the master's answer is doing while it is on the way: "Rolando o d20 de novo…". */
 export function askingText(answer: HeldAnswer, offer: HeldRollOffer): string {
+  return answer.kind === 'stroke' ? strokeAskingText(answer.use) : rollAskingText(answer, offer);
+}
+
+function strokeAskingText(use: boolean): string {
+  return use ? 'Usando o Golpe de Sorte…' : 'Mantendo o resultado…';
+}
+
+function rollAskingText(
+  answer: Exclude<HeldAnswer, { readonly kind: 'stroke' }>,
+  offer: HeldRollOffer,
+): string {
   if (answer.kind === 'indomitable') {
     if (!answer.reroll) {
       return 'Mantendo a salvaguarda…';

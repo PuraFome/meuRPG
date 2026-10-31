@@ -38,6 +38,40 @@
       </button>
     </section>
   </div>
+} @else if (stroke()) {
+  <div class="offer">
+    @if (look() === 'sheet') {
+      <p class="held">{{ heldLine() }}</p>
+    } @else if (look() === 'card') {
+      <p class="d20">
+        <span class="d20__face">{{ counted() }}</span>
+        <span class="d20__text">Seu d20{{ bonusText() }}. O resultado só aparece depois da sua escolha.</span>
+      </p>
+    }
+    <section class="ask" [attr.aria-labelledby]="titleId">
+      <h3 class="ask__title" [id]="titleId">{{ strokeTitle() }}</h3>
+      <p class="ask__what">{{ strokeWhat }}</p>
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="busy()"
+        disabledInteractive
+        (click)="answer.emit({ kind: 'stroke', use: true })"
+      >
+        Usar
+      </button>
+      <button
+        matButton="outlined"
+        type="button"
+        class="ask__keep"
+        [disabled]="busy()"
+        disabledInteractive
+        (click)="answer.emit({ kind: 'stroke', use: false })"
+      >
+        Manter
+      </button>
+    </section>
+  </div>
 } @else if (indomitable()) {
   <div class="offer">
     @if (look() === 'sheet') {

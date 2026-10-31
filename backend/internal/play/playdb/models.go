@@ -367,6 +367,10 @@ type InspirationHold struct {
 	IndomitableTo        *int32
 	DieAnswerKey         *string
 	DieUsed              []byte
+	StrokeAsk            bool
+	StrokeFailed         bool
+	StrokeAnswerKey      *string
+	StrokeFrom           *int32
 }
 
 type OpportunityOffer struct {

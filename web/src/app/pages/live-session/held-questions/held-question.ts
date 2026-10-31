@@ -3,7 +3,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
-import { asksIndomitable, asksLucky, dieOf } from '../../../core/held-rolls/held-roll-offer';
+import {
+  asksIndomitable,
+  asksLucky,
+  asksStroke,
+  dieOf,
+} from '../../../core/held-rolls/held-roll-offer';
 import {
   d20Chip,
   d20Line,
@@ -72,6 +77,8 @@ export class HeldQuestion {
   protected readonly lucky = computed(() => asksLucky(this.offer()));
   /** The fighter's question: roll the failed saving throw again, or keep it. */
   protected readonly indomitable = computed(() => asksIndomitable(this.offer()));
+  /** The rogue's Stroke of Luck: use it or keep the roll; nothing is rolled, so there is no typed face. */
+  protected readonly stroke = computed(() => asksStroke(this.offer()));
   /** The question rolls a d20 again (Lucky's or Indomitable's), not the Bardic Inspiration die. */
   protected readonly rerolls = computed(() => this.lucky() || this.indomitable());
   /** With advantage or disadvantage Indomitable's new roll takes both dice, and a typed one is both faces. */
@@ -104,6 +111,10 @@ export class HeldQuestion {
     return q.controller.refusal() ? '' : q.controller.error();
   });
 
+  protected useStroke(): void {
+    void this.question().answer({ kind: 'stroke', use: true });
+  }
+
   protected rollAgain(): void {
     const roll = { inApp: true } as const;
     void this.question().answer(
@@ -117,11 +128,13 @@ export class HeldQuestion {
 
   protected keep(): void {
     void this.question().answer(
-      this.lucky()
-        ? { kind: 'lucky', reroll: false, roll: null }
-        : this.indomitable()
-          ? { kind: 'indomitable', reroll: false, roll: null }
-          : { kind: 'die', use: false, roll: null },
+      this.stroke()
+        ? { kind: 'stroke', use: false }
+        : this.lucky()
+          ? { kind: 'lucky', reroll: false, roll: null }
+          : this.indomitable()
+            ? { kind: 'indomitable', reroll: false, roll: null }
+            : { kind: 'die', use: false, roll: null },
     );
   }
 

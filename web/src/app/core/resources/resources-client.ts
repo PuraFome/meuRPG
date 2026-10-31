@@ -31,7 +31,7 @@ export type HitDieRoll =
 export type LayOnHandsEffect =
   { readonly amount: number } | { readonly cure: 'disease' | 'poison' };
 
-/** The oneof of the request for each question: Lucky's, the die's and Indomitable's. */
+/** The oneof of the request for each question: Lucky's, the die's, Indomitable's and Stroke of Luck's. */
 function answerOf(answer: HeldAnswer) {
   switch (answer.kind) {
     case 'lucky':
@@ -52,6 +52,8 @@ function answerOf(answer: HeldAnswer) {
             answer.reroll && answer.roll && 'faces' in answer.roll ? [...answer.roll.faces] : [],
         },
       } as const;
+    case 'stroke':
+      return { case: 'strokeOfLuck', value: { use: answer.use } } as const;
     case 'die':
       return {
         case: 'die',

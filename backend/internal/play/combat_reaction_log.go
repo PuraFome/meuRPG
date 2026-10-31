@@ -150,6 +150,9 @@ func (f *reactionFacts) counterspell() (string, bool) {
 		owner = " de " + f.other.Label
 	}
 	who, by := f.who, f.by
+	if f.numbers { // the use of Stroke of Luck on the check is the reactor's player's and the master's to read
+		by = strokeNote(re.Stroke) + by
+	}
 	switch {
 	case re.Countered && f.seesReactor && f.v.master:
 		how := "sem teste"

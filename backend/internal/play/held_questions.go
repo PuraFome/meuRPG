@@ -28,6 +28,7 @@ const (
 	askLucky questionKind = iota + 1
 	askDie
 	askIndomitable
+	askStroke
 )
 
 // question is one link of the chain.
@@ -42,7 +43,7 @@ type question interface {
 }
 
 // chain is every question a held roll may ask, first to last.
-var chain = []question{luckyQuestion{}, dieQuestion{}, indomitableQuestion{}}
+var chain = []question{luckyQuestion{}, dieQuestion{}, indomitableQuestion{}, strokeQuestion{}}
 
 // askedBy is the question a roll asks now: the first of the chain that waits. A roll that waits for
 // none (the die ran out before a retry read it) still gets the die's: the path decides what to say.
@@ -214,7 +215,7 @@ func (s *Service) outsideOffers(ctx context.Context, tx pgx.Tx, o *heldOffer) (*
 	if o.Asks == askLucky {
 		return nil, o.luckyOffer(), held
 	}
-	if o.Asks == askIndomitable { // only the one question, which has no older field
+	if o.Asks == askIndomitable || o.Asks == askStroke { // only the one question, which has no older field
 		return nil, nil, held
 	}
 	return s.outsideDieOffer(ctx, tx, *o), nil, held

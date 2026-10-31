@@ -19,7 +19,14 @@ import {
 } from './held-roll-controller';
 import { HELD_ROLL_ANSWERED_TEXT, MASTER_TOO_EARLY_REASON } from './held-roll-errors';
 import type { HeldAnswer } from './held-roll-offer';
-import { askedAt, heldAnswer, heldDie, heldIndomitable, heldLucky } from './held-roll-testing';
+import {
+  askedAt,
+  heldAnswer,
+  heldDie,
+  heldIndomitable,
+  heldLucky,
+  heldStroke,
+} from './held-roll-testing';
 
 const failed = (code: Code, detail?: ConstructorParameters<typeof ConnectError>[3]) =>
   new ConnectError('x', code, undefined, detail);
@@ -117,6 +124,26 @@ describe('HeldRollController', () => {
     const pair: HeldAnswer = { kind: 'indomitable', reroll: true, roll: { faces: [4, 15] } };
     await held.answer(pair);
     expect(sent.map((s) => s.answer)).toEqual([pair]);
+  });
+
+  it('sends the Stroke of Luck answer and the result closes the question', async () => {
+    const held = build();
+    held.ask(heldStroke());
+    const use: HeldAnswer = { kind: 'stroke', use: true };
+    await held.answer(use);
+    expect(sent.map((s) => s.answer)).toEqual([use]);
+    expect(settled).toHaveLength(1);
+    expect(held.offer()).toBeNull();
+  });
+
+  it('words the Stroke of Luck question that blocks the next roll', async () => {
+    const held = build({
+      send: () => Promise.reject(blockedBy(ResourceBlockedReason.STROKE_OF_LUCK_PENDING)),
+    });
+    held.ask(heldStroke());
+    await held.answer({ kind: 'stroke', use: false });
+    expect(held.error()).toContain('Golpe de Sorte');
+    expect(held.offer()).not.toBeNull();
   });
 
   it('words the Indomitable question that blocks the next roll', async () => {

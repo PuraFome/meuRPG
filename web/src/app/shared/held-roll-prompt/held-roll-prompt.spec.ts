@@ -1,8 +1,13 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 
-import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type HeldRollOffer, HeldRollKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { HeldAnswer } from '../../core/held-rolls/held-roll-offer';
-import { heldDie, heldIndomitable, heldLucky } from '../../core/held-rolls/held-roll-testing';
+import {
+  heldDie,
+  heldIndomitable,
+  heldLucky,
+  heldStroke,
+} from '../../core/held-rolls/held-roll-testing';
 import { HeldRollPrompt, type HeldRollLook } from './held-roll-prompt';
 
 describe('HeldRollPrompt', () => {
@@ -30,6 +35,46 @@ describe('HeldRollPrompt', () => {
 
   beforeEach(() => {
     answers = [];
+  });
+
+  describe('Stroke of Luck’s question', () => {
+    it('asks "Errou o ataque" with "Usar" and "Manter" and no roll picker', () => {
+      const { el, text, button } = show(heldStroke(), { look: 'sheet' });
+      expect(el.querySelector('h3')?.textContent).toBe(
+        'Errou o ataque. Usar Golpe de Sorte para acertar?',
+      );
+      expect(text()).toContain('Gasta o uso');
+      expect(button('Usar')).toBeTruthy();
+      expect(button('Manter')).toBeTruthy();
+      expect(button('Digitar')).toBeUndefined();
+      expect(el.querySelector('input')).toBeNull();
+    });
+
+    it('says nothing of the result when the table hides it', () => {
+      const { el, text } = show(heldStroke(2, 0, false));
+      expect(el.querySelector('h3')?.textContent).toBe(
+        'Usar Golpe de Sorte para acertar o ataque?',
+      );
+      expect(text()).not.toContain('Errou');
+      expect(text()).not.toContain('Falhou');
+    });
+
+    it('asks about a failed check as a check', () => {
+      const { el } = show(heldStroke(2, 0, true, { kind: HeldRollKind.SCENE_CHECK }));
+      expect(el.querySelector('h3')?.textContent).toBe(
+        'Falhou no teste. Usar Golpe de Sorte para contar o d20 como 20?',
+      );
+    });
+
+    it('answers "Usar" and "Manter" with no roll', () => {
+      const { button } = show(heldStroke());
+      button('Usar')!.click();
+      button('Manter')!.click();
+      expect(answers).toEqual([
+        { kind: 'stroke', use: true },
+        { kind: 'stroke', use: false },
+      ]);
+    });
   });
 
   describe('Indomitable’s question', () => {
