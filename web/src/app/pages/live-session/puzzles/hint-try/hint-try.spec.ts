@@ -48,6 +48,38 @@ describe('HintTryControl: the d20 pair', () => {
     expect(sent).toEqual([{ face: 9 }]);
   });
 
+  it('follows the campaign’s dice mode: forced app rolls in the app and offers no typing', () => {
+    const { fixture, el, sent } = setup({
+      diceMode: DiceMode.APP,
+      dicePreference: DicePreference.APP,
+    });
+    const rolled: HintDie[] = [];
+    fixture.componentInstance.rolled.subscribe((d) => rolled.push(d));
+    expect(el.textContent).toContain('A rolagem é no app.');
+    expect(el.textContent).not.toContain('Digitar o resultado');
+    button(el, 'Tentar uma dica').click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('input')).toHaveLength(0);
+    expect(rolled).toEqual([{ inApp: true }]);
+    expect(sent).toEqual([]);
+  });
+
+  it('follows the campaign’s dice mode: forced physical types the face and never offers the app', () => {
+    const { fixture, el, sent } = setup({ diceMode: DiceMode.PHYSICAL });
+    const rolled: HintDie[] = [];
+    fixture.componentInstance.rolled.subscribe((d) => rolled.push(d));
+    expect(el.textContent).toContain('A mesa usa dados físicos: você digita o resultado.');
+    button(el, 'Tentar uma dica').click();
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('button'), (b) => b.textContent)).not.toContain(
+      'Rolar no app',
+    );
+    fill(fixture, el, 0, '9');
+    button(el, 'Confirmar').click();
+    expect(sent).toEqual([{ face: 9 }]);
+    expect(rolled).toEqual([]);
+  });
+
   it('asks for the d4 of an effect the server said the try takes, with the d20 in the same form', () => {
     const { fixture, el, sent } = setup({
       extraFields: dieFields([{ name: 'Outra fonte', faces: 4, sign: 1 }]),
