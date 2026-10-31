@@ -247,3 +247,16 @@ describe('the spell editor form (E10-01 states 4, 4b)', () => {
     expect(targetText({ ...lamina(), target: 'self' })).toBe('Só quem conjura');
   });
 });
+
+describe('a count the text does not read as a number', () => {
+  it('never goes out as NaN, even when its field is hidden at level 0', () => {
+    const d = {
+      ...emptySpell(),
+      name: 'Teste',
+      level: 0,
+      target: 'creatures' as const,
+      perSlot: Number.NaN,
+    };
+    expect(draftToSpell(d).target?.perSlotLevel).toBe(0);
+  });
+});

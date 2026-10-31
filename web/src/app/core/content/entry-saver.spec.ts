@@ -53,7 +53,7 @@ describe('EntrySaver.blockOn', () => {
     expect(saver.summary()).not.toBe('');
   });
 
-  it("takes the server's earlier refusal off the screen before the client's errors", async () => {
+  it("takes the server's earlier refusal of a field off the screen when the client has its own error there", async () => {
     const saver = new EntrySaver({ aOne: 'uma raça' }, 'a raça');
     await saver.run(
       () => Promise.reject(refusal('x.y')),
@@ -61,10 +61,22 @@ describe('EntrySaver.blockOn', () => {
     );
     expect(saver.issues('x.y').length).toBeGreaterThan(0);
     expect(saver.summary()).not.toBe('');
-    saver.blockOn(['a.b'], () => undefined);
+    saver.blockOn(['x.y'], () => undefined);
     expect(saver.issues('x.y')).toEqual([]);
     expect(saver.summary()).toBe('');
     expect(saver.placement().fields).toEqual([]);
+  });
+
+  it("keeps the server's refusal of a field the client has nothing to say about, and counts it", async () => {
+    const saver = new EntrySaver({ aOne: 'uma raça' }, 'a raça');
+    await saver.run(
+      () => Promise.reject(refusal('x.y')),
+      () => true,
+    );
+    saver.blockOn(['a.b'], () => undefined);
+    expect(saver.issues('x.y').length).toBeGreaterThan(0);
+    expect(saver.placement().fields).toEqual(['x.y']);
+    expect(saver.summary()).toContain('1 campo');
   });
 });
 

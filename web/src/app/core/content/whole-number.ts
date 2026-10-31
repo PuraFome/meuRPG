@@ -26,7 +26,13 @@ export function wholeText(n: number): string {
   return n !== 0 && !Number.isNaN(n) ? String(n) : '';
 }
 
-/** The path of a casting's start level while its text is no whole number (a NaN in the draft), at `base` ("table_class.casting"). */
-export function unreadableCastingPaths(base: string, casting: { startLevel: number }): string[] {
-  return Number.isNaN(casting.startLevel) ? [`${base}.start_level`] : [];
+/** What a count field shows: the text the person typed while it still reads as the number the draft holds, else the number. */
+export function shownWhole(n: number, typed: string | undefined, signed = false): string {
+  return typed && Object.is(readWhole(typed, signed), n) ? typed : wholeText(n);
+}
+
+/** What the draft keeps of a typed text: the text itself when it is not how the number is written back ("+3", "007", text no number),
+ * else nothing. It is never sent; a reloaded draft has none, so the field shows the stored number. */
+export function keptTyped(text: string, n: number): string | undefined {
+  return text === wholeText(n) ? undefined : text;
 }
