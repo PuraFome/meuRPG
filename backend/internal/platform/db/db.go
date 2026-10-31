@@ -104,13 +104,14 @@ func NewPoolWith(ctx context.Context, databaseURL string, tweak func(*pgxpool.Co
 	setSessionDefault(cfg, "statement_timeout", defaultStatementTimeout)
 	setSessionDefault(cfg, "idle_in_transaction_session_timeout", defaultIdleInTransactionTimeout)
 
-	// A canceled call must not touch the connection's read deadline. pgx's
+	// A canceled call must not expire the connection's read deadline. pgx's
 	// default handler cancels by setting the deadline to now; when that
 	// lands while the background reader of a slow write is parked on the
 	// socket, its timeout error stays queued and the NEXT call on that pooled
 	// connection fails at once with "timeout: read tcp ...: i/o timeout"
 	// although its own context is alive (issue #710). Asking the server to
-	// cancel leaves the deadline alone; it is only the fallback.
+	// cancel sets the deadline only DeadlineDelay ahead, as a fallback, and
+	// clears it when the call ends.
 	cfg.ConnConfig.BuildContextWatcherHandler = func(c *pgconn.PgConn) ctxwatch.Handler {
 		return &pgconn.CancelRequestContextWatcherHandler{
 			Conn:               c,

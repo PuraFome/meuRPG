@@ -15,23 +15,20 @@ import (
 
 // fakePG is a PostgreSQL server that answers one query, "SELECT 1", on any number of connections, over the
 // extended protocol the pool uses (Parse, Describe, Bind, Execute, Sync) and the simple one (a ping). It lets
-// the pool's behavior with canceled contexts be tested without a database; delay is how long each Execute
-// takes, so that a cancel can land while the client waits for the answer.
+// the pool's behavior with canceled contexts be tested without a database. Each Execute takes a few
+// milliseconds, so that a cancel can land while the client waits for the answer.
 type fakePG struct {
-	ln    net.Listener
-	delay time.Duration
-	// readDelay is how long the server waits before it reads the next message, so that a big write blocks.
-	readDelay time.Duration
-	wg        sync.WaitGroup
+	ln net.Listener
+	wg sync.WaitGroup
 }
 
-func newFakePG(t *testing.T, delay time.Duration) *fakePG {
+func newFakePG(t *testing.T) *fakePG {
 	t.Helper()
 	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
-	f := &fakePG{ln: ln, delay: delay}
+	f := &fakePG{ln: ln}
 	f.wg.Add(1)
 	go func() {
 		defer f.wg.Done()
@@ -85,7 +82,6 @@ func (f *fakePG) serve(c net.Conn) {
 		return
 	}
 	for {
-		time.Sleep(f.readDelay)
 		msg, err := be.Receive()
 		if err != nil {
 			return
@@ -100,7 +96,7 @@ func (f *fakePG) serve(c net.Conn) {
 			be.Send(&pgproto3.BindComplete{})
 		case *pgproto3.Execute:
 			jitter := time.Duration(rand.IntN(6000)) * time.Microsecond //nolint:gosec // test jitter
-			time.Sleep(f.delay + jitter)
+			time.Sleep(jitter)
 			be.Send(&pgproto3.DataRow{Values: [][]byte{{0, 0, 0, 1}}})
 			be.Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")})
 		case *pgproto3.Close:

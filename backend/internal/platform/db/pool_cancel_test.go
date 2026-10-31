@@ -29,7 +29,7 @@ func (c slowWriteConn) Write(p []byte) (int, error) {
 // that read fail, and the error must not wait on the connection for the next call (issue 710).
 func TestACallCanceledAsItEndsLeavesNoStaleErrorOnTheConnection(t *testing.T) {
 	t.Parallel()
-	fake := newFakePG(t, 0)
+	fake := newFakePG(t)
 	pool, err := NewPoolWith(t.Context(), fake.URL(), func(c *pgxpool.Config) {
 		c.MaxConns = 4
 		dial := c.ConnConfig.DialFunc
