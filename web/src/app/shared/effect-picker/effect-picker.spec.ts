@@ -9,6 +9,10 @@ import {
 } from '../../core/content/content-testing-menu';
 import { extraDamageMenu, spellModifierMenu } from '../../core/content/content-testing-menu-damage';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
+import { stateMenu } from '../../core/content/content-testing-states';
+import { draftToEffect } from '../../core/content/effect-draft';
+import { create, toBinary } from '@bufbuild/protobuf';
+import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
@@ -661,5 +665,80 @@ describe("EffectPicker: costs, healing, hooks and recharge variants (the server'
       { [`${BASE}.recharge`]: ['Esse retorno não existe.'] },
     );
     expect(text(field('recharge')!.closest('.frow')!)).toContain('Esse retorno não existe.');
+  });
+});
+
+describe('EffectPicker: a number field (whole numbers; an empty field is "not set")', () => {
+  const emitted: EffectDraft[] = [];
+  let fixture: ComponentFixture<EffectPicker>;
+  let el: HTMLElement;
+
+  function setup(effect: EffectDraft, over: EffectMenuVm = menu()) {
+    emitted.length = 0;
+    TestBed.resetTestingModule();
+    fixture = TestBed.createComponent(EffectPicker);
+    fixture.componentRef.setInput('effect', effect);
+    fixture.componentRef.setInput('menu', over);
+    fixture.componentRef.setInput('basePath', 'table_race.traits[0].effects[0]');
+    fixture.componentRef.setInput('allowTextOnly', false);
+    fixture.componentRef.setInput('issuesOf', () => []);
+    // The parent owns the draft: what the picker says comes back as its input.
+    fixture.componentInstance.effectChange.subscribe((e) => {
+      emitted.push(e);
+      fixture.componentRef.setInput('effect', e);
+    });
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  }
+
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const field = (path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
+  const typeInto = (path: string, value: string) => {
+    const input = field(path) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    return input;
+  };
+  const asked = () => text(field('count')!.closest('.frow') ?? el);
+
+  for (const bad of ['abc', '1.5', '-']) {
+    it(`shows the field's error for "${bad}", keeps it as typed and never turns it into 0`, () => {
+      setup({ ...emptyEffect('choice'), choice: 'skill', count: 2 });
+      const input = typeInto('count', bad);
+      expect(emitted.at(-1)?.count).toBeNaN();
+      expect(input.value).toBe(bad);
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(text(el)).toContain('Escreva um número inteiro, como 2.');
+      // what a save would send: a request that does not exist, not a "not set"
+      const body = draftToEffect(emitted.at(-1)!, menu());
+      expect(() => toBinary(TableEffectSchema, create(TableEffectSchema, body))).toThrow();
+    });
+  }
+
+  it('saves a valid number, and takes the error away once the text reads', () => {
+    setup({ ...emptyEffect('choice'), choice: 'skill', count: 2 });
+    typeInto('count', 'abc');
+    expect(text(el)).toContain('Escreva um número inteiro');
+    const input = typeInto('count', '3');
+    expect(emitted.at(-1)?.count).toBe(3);
+    expect(input.getAttribute('aria-invalid')).toBeNull();
+    expect(asked()).not.toContain('Escreva um número inteiro');
+    const body = draftToEffect(emitted.at(-1)!, menu());
+    expect(body.count).toBe(3);
+    expect(() => toBinary(TableEffectSchema, create(TableEffectSchema, body))).not.toThrow();
+  });
+
+  it('reads an empty field as "not set", and a bonus may be negative', () => {
+    setup({ ...emptyEffect('choice'), choice: 'skill', count: 2 });
+    typeInto('count', '  ');
+    expect(emitted.at(-1)?.count).toBe(0);
+    setup(emptyEffect('weapon_rule'), stateMenu());
+    typeInto('attack_bonus', '-1');
+    expect(emitted.at(-1)?.attackBonus).toBe(-1);
+    typeInto('attack_bonus', '-');
+    expect(emitted.at(-1)?.attackBonus).toBeNaN();
+    expect(text(el)).toContain('Escreva um número inteiro, como 2 ou -1.');
   });
 });

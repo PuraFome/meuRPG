@@ -17,6 +17,22 @@ export function rangeFeet(text: string): number {
 
 type EffectWriter = (d: EffectDraft) => EffectInit;
 
+type NumberKey =
+  'count' | 'healPercentMax' | 'diceSides' | 'rangeMultiplier' | 'attackBonus' | 'damageBonus';
+
+/** A whole number that is sent when above 0. A NaN (the picker's mark for text that is no number) is sent as it is: the request
+ * refuses it, so a save never turns it into "not set". */
+const positiveNumber =
+  (key: NumberKey): EffectWriter =>
+  (d) =>
+    Number.isNaN(d[key]) || d[key] > 0 ? ({ [key]: d[key] } as EffectInit) : {};
+
+/** Like positiveNumber, for a field that may be negative (a bonus): any value but 0 is sent, a NaN included. */
+const signedNumber =
+  (key: NumberKey): EffectWriter =>
+  (d) =>
+    d[key] !== 0 ? ({ [key]: d[key] } as EffectInit) : {};
+
 /** A text the server reads trimmed; an empty one is not sent. */
 const trimmedText =
   (
@@ -108,7 +124,7 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['max', trimmedText('max')],
   ['recharge', pickedText('recharge')],
   ['choice', pickedText('choice')],
-  ['count', (d) => (d.count > 0 ? { count: d.count } : {})],
+  ['count', positiveNumber('count')],
   ['from', pickedList('from')],
   ['economy', pickedText('economy')],
   ['applies', pickedText('applies')],
@@ -124,7 +140,7 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['temp_hp', trimmedText('tempHp')],
   ['event', pickedText('event')],
   ['restore', trimmedText('restore')],
-  ['heal_percent_max', (d) => (d.healPercentMax > 0 ? { healPercentMax: d.healPercentMax } : {})],
+  ['heal_percent_max', positiveNumber('healPercentMax')],
   ['spell', pickedText('spell')],
   ['from_level', trimmedText('fromLevel')],
   ['uses', trimmedText('uses')],
@@ -136,7 +152,7 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['conditions', pickedList('conditions')],
   ['against_condition', pickedText('againstCondition')],
   ['dice', trimmedText('dice')],
-  ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
+  ['dice_sides', positiveNumber('diceSides')],
   ['damage_type', pickedText('damageType')],
   ['weapon', pickedText('weapon')],
   ['frequency', pickedText('frequency')],
@@ -149,8 +165,8 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['weapon_name', trimmedText('weaponName')],
   ['attack_ability', pickedText('attackAbility')],
   ['damage_ability', pickedText('damageAbility')],
-  ['attack_bonus', (d) => (d.attackBonus !== 0 ? { attackBonus: d.attackBonus } : {})],
-  ['damage_bonus', (d) => (d.damageBonus !== 0 ? { damageBonus: d.damageBonus } : {})],
+  ['attack_bonus', signedNumber('attackBonus')],
+  ['damage_bonus', signedNumber('damageBonus')],
   ['reach_ft', (d) => (rangeFeet(d.reachM) > 0 ? { reachFt: rangeFeet(d.reachM) } : {})],
   ['attack_name', trimmedText('attackName')],
   ['damage_dice', trimmedText('damageDice')],
@@ -159,10 +175,7 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
     'only_proficient',
     (d) => (onlyProficientApplies(d) && d.onlyProficient ? { onlyProficient: true } : {}),
   ],
-  [
-    'range_multiplier',
-    (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
-  ],
+  ['range_multiplier', positiveNumber('rangeMultiplier')],
   [
     'no_long_range_disadvantage',
     (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),

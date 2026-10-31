@@ -219,7 +219,15 @@ export class EffectPicker {
   /** What the draft holds for a field of the menu, by its proto name. */
   protected read(name: string): string {
     const v = this.effect()[camel(name)];
-    return typeof v === 'string' ? v : typeof v === 'number' ? (v !== 0 ? String(v) : '') : '';
+    return typeof v === 'string'
+      ? v
+      : typeof v === 'number'
+        ? Number.isNaN(v)
+          ? (this.unreadable()[name] ?? '')
+          : v !== 0
+            ? String(v)
+            : ''
+        : '';
   }
 
   protected list(name: string): readonly string[] {
@@ -252,11 +260,27 @@ export class EffectPicker {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: text });
   }
 
-  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. */
+  /** What was typed in a number field the draft cannot hold (a NaN there), by field name: the field shows it with its error. */
+  private readonly unreadable = signal<Readonly<Record<string, string>>>({});
+
+  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. An empty field is 0, "not set".
+   * Anything else is kept as typed and the draft holds a NaN, so a save is refused instead of sending 0. */
   protected setNumber(f: EffectMenuField, text: string): void {
-    const n = Number(text.trim());
-    const ok = Number.isInteger(n) && (n > 0 || (n < 0 && f.min < 0));
-    this.effectChange.emit({ ...this.effect(), [camel(f.name)]: ok ? n : 0 });
+    const t = text.trim();
+    const ok = (f.min < 0 ? /^-?\d+$/ : /^\d+$/).test(t);
+    const { [f.name]: _, ...rest } = this.unreadable();
+    this.unreadable.set(t === '' || ok ? rest : { ...rest, [f.name]: text });
+    this.effectChange.emit({
+      ...this.effect(),
+      [camel(f.name)]: t === '' ? 0 : ok ? Number(t) : Number.NaN,
+    });
+  }
+
+  /** The refusal of a number field whose text is no whole number; empty when it is one. */
+  protected numberIssues(f: EffectMenuField): readonly string[] {
+    return Number.isNaN(this.effect()[camel(f.name)])
+      ? [f.min < 0 ? UNREADABLE_BONUS : UNREADABLE_COUNT]
+      : [];
   }
 
   protected setFlag(name: string, on: boolean): void {
@@ -284,6 +308,9 @@ export class EffectPicker {
     });
   }
 }
+
+const UNREADABLE_COUNT = 'Escreva um número inteiro, como 2.';
+const UNREADABLE_BONUS = 'Escreva um número inteiro, como 2 ou -1.';
 
 /** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
 const OWN_HINT_REFS: ReadonlySet<string> = new Set(['restore', 'uses']);
