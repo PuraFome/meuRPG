@@ -90,10 +90,10 @@ func (x effectCompiler) slotRecovery() error {
 	return err
 }
 
-// SlotRecovery is a table feature's way of taking expended spell slots back (a slot_recovery effect), for
+// TableSlotRecovery is a table feature's way of taking expended spell slots back (a slot_recovery effect), for
 // the character's level: the resource a recovery spends a use of, the highest level of a slot it takes back
 // and the combined level of the slots it takes back. The SRD's own Arcane Recovery is not one.
-type SlotRecovery struct {
+type TableSlotRecovery struct {
 	// Source is the key of the feature that has it.
 	Source   string
 	Resource string
@@ -104,7 +104,7 @@ type SlotRecovery struct {
 
 // Check checks the slots a recovery takes back, by spell level and count: each level within MaxLevel and the
 // combined level within Levels. It returns the combined level.
-func (r SlotRecovery) Check(slots map[int]int) (int, error) {
+func (r TableSlotRecovery) Check(slots map[int]int) (int, error) {
 	total := 0
 	for level, count := range slots {
 		if level < 1 || level > r.MaxLevel {
@@ -121,7 +121,7 @@ func (r SlotRecovery) Check(slots map[int]int) (int, error) {
 	return total, nil
 }
 
-// slotRecoveries fills Derived.SlotRecoveries from the slot_recovery effects the character has. The
+// slotRecoveries fills Derived.TableRecoveries from the slot_recovery effects the character has. The
 // highest limits of two effects on one resource do not merge: each stays its own way to recover.
 func (x *deriver) slotRecoveries() {
 	for _, a := range x.active {
@@ -133,7 +133,7 @@ func (x *deriver) slotRecoveries() {
 		if !ok || !ok2 {
 			continue
 		}
-		x.d.SlotRecoveries = append(x.d.SlotRecoveries, SlotRecovery{
+		x.d.TableRecoveries = append(x.d.TableRecoveries, TableSlotRecovery{
 			Source: a.owner, Resource: a.effect.Resource, MaxLevel: min(max(maxLevel, 0), MaxSlotLevel), Levels: max(levels, 0),
 		})
 	}
@@ -160,8 +160,8 @@ func (x *deriver) slotAction(act *Action, a activeEffect) bool {
 	return true
 }
 
-// errSlotRecovery is a refusal of the slots a recovery takes back; it wraps ErrArcaneRecovery, the base
+// errSlotRecovery is a refusal of the slots a recovery takes back; it wraps ErrSlotRecovery, the base
 // of the recovery refusals.
 func errSlotRecovery(format string, args ...any) error {
-	return fmt.Errorf("%w: "+format, append([]any{ErrArcaneRecovery}, args...)...)
+	return fmt.Errorf("%w: "+format, append([]any{ErrSlotRecovery}, args...)...)
 }

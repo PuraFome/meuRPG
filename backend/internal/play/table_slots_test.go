@@ -148,7 +148,7 @@ func (r *restTable) recoverFeature(t *testing.T, u *user, c *charactersv1.Charac
 // (3), once until a long rest. The wizard's own Arcane Recovery is a different resource and does not change.
 func TestMR025_ATableFeatureRecoversSpellSlotsWithinItsLimits(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	res, err := r.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 		CampaignId: r.campaign, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
 			NamePt: "Escola do Retorno", ClassKey: "class:wizard", DescPt: []string{"Espaços de volta."},

@@ -198,6 +198,7 @@ Dodge adds the `dodging` state until the start of the dodger's next turn.
 | Feature action | Economy | How combat treats it |
 | --- | --- | --- |
 | Second Wind (fighter) | Bonus action, 1 use per short rest | Heals 1d10 + level through the HP path |
+| Wholeness of Body (Open Hand monk 6) | Action, 1 use per long rest | Heals 3 times the monk level with no roll through the HP path (`wholenessOfBodyHeal`, `link.Sheet.MonkLevel`: a multiclass character counts its monk levels only); spends the use even at full hit points, like Second Wind. The event keeps the heal (`heal`, `amount`, hit points before and after), which the undo puts back with the use and the action; the owner and the master read the number in the log. There is no flow outside a combat |
 | Action Surge (fighter 2) | Free; 2 uses from level 17 but once per turn (`combatants.action_surged`, `ALREADY_USED_THIS_TURN`, which the master may override) | Returns the action and the attacks |
 | Rage (barbarian) | Bonus action; unlimited at level 20 (99 uses, shown "ilimitado") | Spends the use; the effects are the states above |
 | Bardic Inspiration (bard) | Bonus action | `GiveBardicInspiration` (see [Vitals, rests and class resources](rests-and-resources.md)) |
@@ -217,7 +218,7 @@ Dodge adds the `dodging` state until the start of the dodger's next turn.
 | Hunter's Prey: Giant Killer (ranger); Fighting Style: Protection (fighter, paladin) | Reaction | Spends the reaction and logs; usable off turn |
 | Breath Weapon (dragonborn) | Action | Spends the action and a use and logs |
 
-Second Wind, Action Surge, Preserve Life and Turn Undead change numbers; the rest spend and log, and the effect is the table's.
+Second Wind, Wholeness of Body, Action Surge, Preserve Life and Turn Undead change numbers; the rest spend and log, and the effect is the table's.
 
 ### The table's actions that spend, heal and give (MR-025)
 

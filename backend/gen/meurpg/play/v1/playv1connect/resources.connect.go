@@ -52,6 +52,9 @@ const (
 	// ResourceServiceUseArcaneRecoveryProcedure is the fully-qualified name of the ResourceService's
 	// UseArcaneRecovery RPC.
 	ResourceServiceUseArcaneRecoveryProcedure = "/meurpg.play.v1.ResourceService/UseArcaneRecovery"
+	// ResourceServiceUseNaturalRecoveryProcedure is the fully-qualified name of the ResourceService's
+	// UseNaturalRecovery RPC.
+	ResourceServiceUseNaturalRecoveryProcedure = "/meurpg.play.v1.ResourceService/UseNaturalRecovery"
 	// ResourceServiceUseLayOnHandsProcedure is the fully-qualified name of the ResourceService's
 	// UseLayOnHands RPC.
 	ResourceServiceUseLayOnHandsProcedure = "/meurpg.play.v1.ResourceService/UseLayOnHands"
@@ -153,6 +156,16 @@ type ResourceServiceClient interface {
 	// OVER_ALLOWANCE (the combined level is above the allowance; needed is the
 	// combined level asked and available the allowance).
 	UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error)
+	// UseNaturalRecovery is the Circle of the Land druid's Natural Recovery (SRD 5.1,
+	// Druid 2), the same recovery as UseArcaneRecovery with the DRUID level: expended
+	// spell slots of a combined level up to half the druid level (rounded up) come back
+	// after a short rest, none of the 6th level or higher, once per long rest (the
+	// `natural_recovery` resource). The pact slots never count. The character's player
+	// or the master.
+	//
+	// Errors: as UseArcaneRecovery, with NOT_AVAILABLE for a character that has no
+	// Natural Recovery (not a druid of the Circle of the Land).
+	UseNaturalRecovery(context.Context, *connect.Request[v1.UseNaturalRecoveryRequest]) (*connect.Response[v1.UseNaturalRecoveryResponse], error)
 	// UseLayOnHands touches a creature and draws from the pool: heals up to the
 	// amount, or spends 5 points to cure a disease or neutralize a poison (SRD
 	// 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -354,6 +367,12 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("UseArcaneRecovery")),
 			connect.WithClientOptions(opts...),
 		),
+		useNaturalRecovery: connect.NewClient[v1.UseNaturalRecoveryRequest, v1.UseNaturalRecoveryResponse](
+			httpClient,
+			baseURL+ResourceServiceUseNaturalRecoveryProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("UseNaturalRecovery")),
+			connect.WithClientOptions(opts...),
+		),
 		useLayOnHands: connect.NewClient[v1.UseLayOnHandsRequest, v1.UseLayOnHandsResponse](
 			httpClient,
 			baseURL+ResourceServiceUseLayOnHandsProcedure,
@@ -435,6 +454,7 @@ type resourceServiceClient struct {
 	takeRest                     *connect.Client[v1.TakeRestRequest, v1.TakeRestResponse]
 	spendHitDice                 *connect.Client[v1.SpendHitDiceRequest, v1.SpendHitDiceResponse]
 	useArcaneRecovery            *connect.Client[v1.UseArcaneRecoveryRequest, v1.UseArcaneRecoveryResponse]
+	useNaturalRecovery           *connect.Client[v1.UseNaturalRecoveryRequest, v1.UseNaturalRecoveryResponse]
 	useLayOnHands                *connect.Client[v1.UseLayOnHandsRequest, v1.UseLayOnHandsResponse]
 	createSpellSlot              *connect.Client[v1.CreateSpellSlotRequest, v1.CreateSpellSlotResponse]
 	convertSpellSlot             *connect.Client[v1.ConvertSpellSlotRequest, v1.ConvertSpellSlotResponse]
@@ -467,6 +487,11 @@ func (c *resourceServiceClient) SpendHitDice(ctx context.Context, req *connect.R
 // UseArcaneRecovery calls meurpg.play.v1.ResourceService.UseArcaneRecovery.
 func (c *resourceServiceClient) UseArcaneRecovery(ctx context.Context, req *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error) {
 	return c.useArcaneRecovery.CallUnary(ctx, req)
+}
+
+// UseNaturalRecovery calls meurpg.play.v1.ResourceService.UseNaturalRecovery.
+func (c *resourceServiceClient) UseNaturalRecovery(ctx context.Context, req *connect.Request[v1.UseNaturalRecoveryRequest]) (*connect.Response[v1.UseNaturalRecoveryResponse], error) {
+	return c.useNaturalRecovery.CallUnary(ctx, req)
 }
 
 // UseLayOnHands calls meurpg.play.v1.ResourceService.UseLayOnHands.
@@ -600,6 +625,16 @@ type ResourceServiceHandler interface {
 	// OVER_ALLOWANCE (the combined level is above the allowance; needed is the
 	// combined level asked and available the allowance).
 	UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error)
+	// UseNaturalRecovery is the Circle of the Land druid's Natural Recovery (SRD 5.1,
+	// Druid 2), the same recovery as UseArcaneRecovery with the DRUID level: expended
+	// spell slots of a combined level up to half the druid level (rounded up) come back
+	// after a short rest, none of the 6th level or higher, once per long rest (the
+	// `natural_recovery` resource). The pact slots never count. The character's player
+	// or the master.
+	//
+	// Errors: as UseArcaneRecovery, with NOT_AVAILABLE for a character that has no
+	// Natural Recovery (not a druid of the Circle of the Land).
+	UseNaturalRecovery(context.Context, *connect.Request[v1.UseNaturalRecoveryRequest]) (*connect.Response[v1.UseNaturalRecoveryResponse], error)
 	// UseLayOnHands touches a creature and draws from the pool: heals up to the
 	// amount, or spends 5 points to cure a disease or neutralize a poison (SRD
 	// 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -797,6 +832,12 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("UseArcaneRecovery")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceUseNaturalRecoveryHandler := connect.NewUnaryHandler(
+		ResourceServiceUseNaturalRecoveryProcedure,
+		svc.UseNaturalRecovery,
+		connect.WithSchema(resourceServiceMethods.ByName("UseNaturalRecovery")),
+		connect.WithHandlerOptions(opts...),
+	)
 	resourceServiceUseLayOnHandsHandler := connect.NewUnaryHandler(
 		ResourceServiceUseLayOnHandsProcedure,
 		svc.UseLayOnHands,
@@ -879,6 +920,8 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceSpendHitDiceHandler.ServeHTTP(w, r)
 		case ResourceServiceUseArcaneRecoveryProcedure:
 			resourceServiceUseArcaneRecoveryHandler.ServeHTTP(w, r)
+		case ResourceServiceUseNaturalRecoveryProcedure:
+			resourceServiceUseNaturalRecoveryHandler.ServeHTTP(w, r)
 		case ResourceServiceUseLayOnHandsProcedure:
 			resourceServiceUseLayOnHandsHandler.ServeHTTP(w, r)
 		case ResourceServiceCreateSpellSlotProcedure:
@@ -926,6 +969,10 @@ func (UnimplementedResourceServiceHandler) SpendHitDice(context.Context, *connec
 
 func (UnimplementedResourceServiceHandler) UseArcaneRecovery(context.Context, *connect.Request[v1.UseArcaneRecoveryRequest]) (*connect.Response[v1.UseArcaneRecoveryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.UseArcaneRecovery is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) UseNaturalRecovery(context.Context, *connect.Request[v1.UseNaturalRecoveryRequest]) (*connect.Response[v1.UseNaturalRecoveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.UseNaturalRecovery is not implemented"))
 }
 
 func (UnimplementedResourceServiceHandler) UseLayOnHands(context.Context, *connect.Request[v1.UseLayOnHandsRequest]) (*connect.Response[v1.UseLayOnHandsResponse], error) {

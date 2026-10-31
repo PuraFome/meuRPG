@@ -732,9 +732,9 @@ type Derived struct {
 	// WildShape is what the character's Wild Shape allows, nil without it
 	// (the most permissive of its wild_shape effects).
 	WildShape *WildShapeRule
-	// SlotRecoveries are the ways the character takes expended spell slots back after a
+	// TableRecoveries are the ways the character takes expended spell slots back after a
 	// rest, from its slot_recovery effects (the SRD's own Arcane Recovery is not one).
-	SlotRecoveries []SlotRecovery `json:",omitempty"`
+	TableRecoveries []TableSlotRecovery `json:",omitempty"`
 	// SavageAttacks says the character has the half-orc's Savage Attacks: a critical
 	// hit with a melee weapon attack rolls one more of the weapon's damage dice.
 	SavageAttacks bool

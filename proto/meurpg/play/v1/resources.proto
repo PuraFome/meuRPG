@@ -96,6 +96,17 @@ service ResourceService {
   // combined level asked and available the allowance).
   rpc UseArcaneRecovery(UseArcaneRecoveryRequest) returns (UseArcaneRecoveryResponse);
 
+  // UseNaturalRecovery is the Circle of the Land druid's Natural Recovery (SRD 5.1,
+  // Druid 2), the same recovery as UseArcaneRecovery with the DRUID level: expended
+  // spell slots of a combined level up to half the druid level (rounded up) come back
+  // after a short rest, none of the 6th level or higher, once per long rest (the
+  // `natural_recovery` resource). The pact slots never count. The character's player
+  // or the master.
+  //
+  // Errors: as UseArcaneRecovery, with NOT_AVAILABLE for a character that has no
+  // Natural Recovery (not a druid of the Circle of the Land).
+  rpc UseNaturalRecovery(UseNaturalRecoveryRequest) returns (UseNaturalRecoveryResponse);
+
   // UseLayOnHands touches a creature and draws from the pool: heals up to the
   // amount, or spends 5 points to cure a disease or neutralize a poison (SRD
   // 5.1, Paladin). The touch is an action of the paladin's turn. Whatever the
@@ -310,11 +321,11 @@ enum ResourceBlockedReason {
   // A roll is held, waiting for the player's answer about a Bardic Inspiration
   // die: the combatant does nothing else until it is answered.
   RESOURCE_BLOCKED_REASON_INSPIRATION_PENDING = 11;
-  // UseArcaneRecovery: the latest rest of the open session is not a short rest.
+  // UseArcaneRecovery, UseNaturalRecovery: the latest rest of the open session is not a short rest.
   RESOURCE_BLOCKED_REASON_NO_SHORT_REST = 12;
-  // UseArcaneRecovery: fewer expended slots of a level than the call asks to recover.
+  // UseArcaneRecovery, UseNaturalRecovery: fewer expended slots of a level than the call asks to recover.
   RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED = 13;
-  // UseArcaneRecovery: the combined level of the slots is above the allowance.
+  // UseArcaneRecovery, UseNaturalRecovery: the combined level of the slots is above the allowance.
   RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE = 14;
   // SpendHitDice with a typed face: the party hears a bard's Song of Rest and this
   // character has not had its extra die in this rest, so the face of that die
@@ -475,6 +486,20 @@ message UseArcaneRecoveryRequest {
 }
 
 message UseArcaneRecoveryResponse {
+  CharacterVitals vitals = 1;
+  // The combined level recovered.
+  int32 recovered_levels = 2;
+}
+
+message UseNaturalRecoveryRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The slots to recover: how many of each spell level, one entry per level.
+  repeated SpellSlotBack slots = 3;
+  string idempotency_key = 4;
+}
+
+message UseNaturalRecoveryResponse {
   CharacterVitals vitals = 1;
   // The combined level recovered.
   int32 recovered_levels = 2;

@@ -151,7 +151,9 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	}
 	resp := &playv1.TakeActionResponse{Encounter: enc}
 	if ev.Heal {
-		resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
+		if ev.DiceCount > 0 {
+			resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
+		}
 		resp.Healed = &ev.Amount
 	}
 	if ev.PointsSpent > 0 {
@@ -532,6 +534,8 @@ func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet, fa l
 		return f.flurry(ctx, sheet)
 	case secondWind:
 		return f.healFighter(ctx, sheet)
+	case wholenessOfBody:
+		return f.healMonk(ctx, sheet)
 	case preserveLifeAction:
 		return f.preserveLife(ctx, sheet)
 	case turnUndeadAction:
@@ -579,6 +583,18 @@ func (f *takeActionFlow) healFighter(ctx context.Context, sheet link.Sheet) erro
 	return nil
 }
 
+// healMonk is Integridade Corporal: it heals the monk three times its monk level and keeps the vitals for the answer.
+func (f *takeActionFlow) healMonk(ctx context.Context, sheet link.Sheet) error {
+	vit, err := f.s.wholenessOfBodyHeal(ctx, f.c, f.who, sheet.MonkLevel, &f.made)
+	if err != nil {
+		return err
+	}
+	if vit != nil {
+		f.out.vitals = vit
+	}
+	return nil
+}
+
 // The standard actions that are not taken through TakeAction.
 const (
 	standardAttack = "standard:attack"
@@ -589,8 +605,9 @@ const (
 // spend the economy and a use and go to the log). The keys are the SRD feature
 // keys ("feature:second-wind").
 const (
-	secondWind  = "feature:second-wind"
-	actionSurge = "feature:action-surge-1-use"
+	secondWind      = "feature:second-wind"
+	actionSurge     = "feature:action-surge-1-use"
+	wholenessOfBody = "feature:wholeness-of-body"
 )
 
 // featureError is the failed_precondition for a reason a feature action is
@@ -657,6 +674,22 @@ func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membershi
 	}
 	ev.Heal, ev.DiceCount, ev.DiceSides, ev.Faces = true, 1, 10, faces32(roll.Faces)
 	ev.Modifier, ev.Total, ev.Physical = clamp32(fighterLevel, 0, 100), clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
+	ev.Amount, ev.Before, ev.After, ev.DeathBefore = hit.Amount, hit.Before, hit.After, hit.DeathBefore
+	return vit, nil
+}
+
+// wholenessOfBodyHealPerLevel is the hit points Wholeness of Body gives for each monk level.
+const wholenessOfBodyHealPerLevel = 3
+
+// wholenessOfBodyHeal is Integridade Corporal: three times the monk level of hit points, with no roll, healed through
+// the vitals like Second Wind. It fills the event with what changed and returns the character's vitals.
+func (s *Service) wholenessOfBodyHeal(ctx context.Context, c *combatTx, who playdb.Combatant, monkLevel int, ev *actionEvent) (*playv1.CharacterVitals, error) {
+	amount := clamp32(max(monkLevel, 0)*wholenessOfBodyHealPerLevel, 0, math.MaxInt32)
+	hit, vit, err := s.healCombatant(ctx, c, who, amount)
+	if err != nil {
+		return nil, err
+	}
+	ev.Heal = true
 	ev.Amount, ev.Before, ev.After, ev.DeathBefore = hit.Amount, hit.Before, hit.After, hit.DeathBefore
 	return vit, nil
 }

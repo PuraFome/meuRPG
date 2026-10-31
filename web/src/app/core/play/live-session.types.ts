@@ -39,6 +39,8 @@ export interface VitalsVm {
   readonly armorClassBase?: number;
   /** The combined level of slots Recuperação Arcana gives back (half the wizard level, rounded up); absent or 0 for no wizard level. */
   readonly arcaneRecoveryAllowance?: number;
+  /** The combined level of slots Recuperação Natural gives back (half the druid level, rounded up); absent or 0 without the feature. */
+  readonly naturalRecoveryAllowance?: number;
   /** Only the levels with slots, lowest first. */
   readonly spellSlots: readonly SlotUsageVm[];
   readonly pactSlots: PactSlotsVm | null;

@@ -56,10 +56,11 @@ type vitalsMax struct {
 	pactSlots    int
 	hitDice      []rules.HitDice
 	hitDiceTotal int
-	// wizardLevel is the WIZARD level alone (Arcane Recovery counts no other class).
-	wizardLevel int
+	// classLevels are the levels of the character in each class, by class key (the slot
+	// recoveries count one class alone).
+	classLevels map[string]int
 	// recoveries are the slot_recovery effects of the sheet, for its level.
-	recoveries []rules.SlotRecovery
+	recoveries []rules.TableSlotRecovery
 	// songSides is the die of the character's Song of Rest (0 without the feature).
 	songSides int
 	// conMod is the Constitution modifier: what a spent hit die adds to its roll.
@@ -79,6 +80,22 @@ type vitalsMax struct {
 	beastMax    int
 }
 
+// recoveryLevel is the level that sets the recovery's allowance: the levels of its class,
+// and 0 when the sheet lacks the feature (its resource), such as a druid of another circle.
+func (m vitalsMax) recoveryLevel(rec rules.SlotRecovery) int {
+	for _, r := range m.resources {
+		if r.Key == rec.ResourceKey {
+			return m.classLevels[rec.ClassKey]
+		}
+	}
+	return 0
+}
+
+// recoveryAllowance is the combined level of slots the recovery gives back to the sheet.
+func (m vitalsMax) recoveryAllowance(rec rules.SlotRecovery) int {
+	return rules.SlotRecoveryAllowance(m.recoveryLevel(rec))
+}
+
 // maxima derives the maximums from a stored sheet. A player character
 // always has a full sheet; anything else has no hit points, slots or dice.
 func maxima(content *rules.Content, characterID string, doc []byte, beast *string, active []byte) (vitalsMax, error) {
@@ -91,7 +108,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 		return vitalsMax{}, nil
 	}
 	d := rules.Derive(buildWithStates(full, stateKeysOf(active)), content)
-	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States, hooks: d.Hooks, recoveries: d.SlotRecoveries, hookNames: hookNamesOf(content, d.Hooks)}
+	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States, hooks: d.Hooks, recoveries: d.TableRecoveries, hookNames: hookNamesOf(content, d.Hooks)}
 	if b, ok := content.MonsterDerived(conv.OrZero(beast)); ok && beast != nil {
 		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}
@@ -106,10 +123,9 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	for _, hd := range d.HitDice {
 		m.hitDiceTotal += hd.Count
 	}
+	m.classLevels = map[string]int{}
 	for _, c := range full.GetClasses() {
-		if c.GetClassKey() == "class:wizard" {
-			m.wizardLevel += int(c.GetLevel())
-		}
+		m.classLevels[c.GetClassKey()] += int(c.GetLevel())
 	}
 	for _, a := range d.Abilities {
 		if a.Ability == rules.CON {
@@ -160,19 +176,20 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 	level := min(max(conv.OrZero(row.ExhaustionLevel), 0), combat.MaxExhaustion)
 	maxHP := i32(combat.ExhaustedMaxHP(m.hitPoints+int(bonus), int(level)))
 	v := &playv1.CharacterVitals{
-		CharacterId:             row.ID,
-		Name:                    row.Name,
-		PlayerUserId:            conv.OrZero(row.PlayerUserID),
-		HitPointsCurrent:        maxHP, // fresh: full hit points
-		HitPointsMax:            maxHP,
-		ExhaustionLevel:         level,
-		ArmorClassBase:          conv.OrZero(row.ArmorClassBase),
-		ArcaneRecoveryAllowance: i32(rules.ArcaneRecoveryAllowance(m.wizardLevel)),
-		HitPointsMaxBonus:       bonus,
-		HitPointsTemporary:      conv.OrZero(row.HitPointsTemporary),
-		HitDiceTotal:            i32(m.hitDiceTotal),
-		Revision:                conv.OrZero(row.Revision),
-		UpdatedAt:               timestamp(row.UpdatedAt),
+		CharacterId:              row.ID,
+		Name:                     row.Name,
+		PlayerUserId:             conv.OrZero(row.PlayerUserID),
+		HitPointsCurrent:         maxHP, // fresh: full hit points
+		HitPointsMax:             maxHP,
+		ExhaustionLevel:          level,
+		ArmorClassBase:           conv.OrZero(row.ArmorClassBase),
+		ArcaneRecoveryAllowance:  i32(m.recoveryAllowance(rules.ArcaneRecovery)),
+		NaturalRecoveryAllowance: i32(m.recoveryAllowance(rules.NaturalRecovery)),
+		HitPointsMaxBonus:        bonus,
+		HitPointsTemporary:       conv.OrZero(row.HitPointsTemporary),
+		HitDiceTotal:             i32(m.hitDiceTotal),
+		Revision:                 conv.OrZero(row.Revision),
+		UpdatedAt:                timestamp(row.UpdatedAt),
 	}
 	if row.HitPointsCurrent != nil {
 		v.HitPointsCurrent = min(*row.HitPointsCurrent, v.HitPointsMax)

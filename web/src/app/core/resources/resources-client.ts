@@ -17,6 +17,7 @@ import {
   ResourceService,
   type SpendHitDiceResponse,
   type UseArcaneRecoveryResponse,
+  type UseNaturalRecoveryResponse,
 } from '../../../gen/meurpg/play/v1/resources_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import type { HeldAnswer, HeldRolled } from '../held-rolls/held-roll-offer';
@@ -117,6 +118,21 @@ export class ResourceClient {
     idempotencyKey: string,
   ): Promise<UseArcaneRecoveryResponse> {
     return this.client.useArcaneRecovery({
+      campaignId,
+      characterId,
+      idempotencyKey,
+      slots: slots.map((s) => ({ level: s.level, count: s.count })),
+    });
+  }
+
+  /** Recuperação Natural (druid, Circle of the Land): the same request as Recuperação Arcana. */
+  useNaturalRecovery(
+    campaignId: string,
+    characterId: string,
+    slots: readonly { readonly level: number; readonly count: number }[],
+    idempotencyKey: string,
+  ): Promise<UseNaturalRecoveryResponse> {
+    return this.client.useNaturalRecovery({
       campaignId,
       characterId,
       idempotencyKey,

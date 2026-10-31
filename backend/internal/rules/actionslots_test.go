@@ -54,10 +54,10 @@ func TestASlotRecoveryTakesTheLimitsOfTheCharacter(t *testing.T) {
 	d := deriveWithOverlay(t, slotFeatOverlay(Effect{
 		Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "3", RecoverLevels: "ceil(level() / 2)",
 	}))
-	if len(d.SlotRecoveries) != 1 {
-		t.Fatalf("SlotRecoveries = %+v, want one", d.SlotRecoveries)
+	if len(d.TableRecoveries) != 1 {
+		t.Fatalf("TableRecoveries = %+v, want one", d.TableRecoveries)
 	}
-	rec := d.SlotRecoveries[0]
+	rec := d.TableRecoveries[0]
 	if rec.Source != slotFeat || rec.Resource != "centelha" || rec.MaxLevel != 3 || rec.Levels != 2 {
 		t.Fatalf("recovery = %+v, want centelha, up to level 3, combined level 2 (level 3 wizard)", rec)
 	}
@@ -79,20 +79,10 @@ func TestASlotRecoveryTakesTheLimitsOfTheCharacter(t *testing.T) {
 			if tc.ok != (err == nil) || (tc.ok && got != tc.levels) {
 				t.Fatalf("Check(%v) = %d, %v; want %d, ok=%v", tc.slots, got, err, tc.levels, tc.ok)
 			}
-			if err != nil && !errors.Is(err, ErrArcaneRecovery) {
-				t.Errorf("error = %v, want ErrArcaneRecovery", err)
+			if err != nil && !errors.Is(err, ErrSlotRecovery) {
+				t.Errorf("error = %v, want ErrSlotRecovery", err)
 			}
 		})
-	}
-}
-
-func TestTheSRDArcaneRecoveryUsesTheSameCheck(t *testing.T) {
-	t.Parallel()
-	if got, err := ArcaneRecoveryCheck(map[int]int{2: 1, 1: 1}, 5); err != nil || got != 3 {
-		t.Errorf("ArcaneRecoveryCheck(2+1, 5) = %d, %v, want 3", got, err)
-	}
-	if _, err := ArcaneRecoveryCheck(map[int]int{6: 1}, 20); !errors.Is(err, ErrArcaneRecovery) {
-		t.Errorf("a slot of level 6: error = %v, want ErrArcaneRecovery", err)
 	}
 }
 

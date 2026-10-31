@@ -33,8 +33,10 @@ import (
 const (
 	eventRestTaken    = "rest_taken"
 	eventHitDiceSpent = "hit_dice_spent"
-	// eventArcaneRecovery is the wizard's Arcane Recovery (session_event_kinds).
-	eventArcaneRecovery = "arcane_recovery_used"
+	// eventArcaneRecovery is the wizard's Arcane Recovery; eventNaturalRecovery the Land
+	// druid's Natural Recovery (session_event_kinds).
+	eventArcaneRecovery  = "arcane_recovery_used"
+	eventNaturalRecovery = "natural_recovery_used"
 )
 
 // RestKeeper is what the characters module does for the rests and the resources
@@ -53,11 +55,12 @@ type RestKeeper interface {
 	SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face, extra int) (before, after *playv1.CharacterVitals, conMod, healed int, err error)
 	// SongOfRest is the die of the Song of Rest the party hears (0: nobody sings).
 	SongOfRest(ctx context.Context, tx pgx.Tx, campaignID string) (int, error)
-	// UseArcaneRecovery spends the use of a recovery and gives back the expended slots (a map
-	// of spell level to count), and returns the vitals before and after and the combined
-	// level recovered. The feature is the table feature whose slot_recovery effect it is, ""
-	// for the wizard's own Arcane Recovery.
-	UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID, feature string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
+	// UseSlotRecovery spends the use of the recovery (Arcane or Natural Recovery) and gives
+	// back the expended slots (a map of spell level to count), and returns the vitals before
+	// and after and the combined level recovered.
+	UseSlotRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, rec rules.SlotRecovery, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
+	// UseTableSlotRecovery is the same for a table feature's slot_recovery effect, by the feature's key.
+	UseTableSlotRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID, feature string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
 	// CreateSpellSlot is Flexible Casting's creation of a slot; ConvertSpellSlot its
 	// conversion into sorcery points.
 	CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, cost int, err error)
@@ -116,7 +119,7 @@ func resourceError(err error) error {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT, "the feature was used since the last long rest")
 	case errors.Is(err, link.ErrSlotNotExpended):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED, "there are not that many expended spell slots of that level")
-	case errors.Is(err, link.ErrArcaneOver):
+	case errors.Is(err, link.ErrSlotRecoveryOver):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE, "the slots add up to more than the feature allows", points)
 	case errors.Is(err, link.ErrNoResource):
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
