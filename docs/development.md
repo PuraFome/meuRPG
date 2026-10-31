@@ -90,7 +90,8 @@ The issuer must be the same string for the browser and for the API container, be
 ## Sign-in with another OIDC provider
 
 Master sign-in works with any OpenID Connect provider.
-Without `OIDC_ISSUER` or without `DATABASE_URL` the backend still starts, warns that sign-in is off, and `/auth/login` answers 503.
+Without `DATABASE_URL` the backend exits at startup with an error that names the variable.
+Without `OIDC_ISSUER` it still starts, warns that sign-in is off, and `/auth/login` answers 503.
 
 | Variable | Required | What it is |
 | --- | --- | --- |

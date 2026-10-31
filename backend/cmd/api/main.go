@@ -6,7 +6,7 @@
 //	PORT                listen port (default 8080)
 //	LISTEN_HOST         interface to listen on, e.g. 127.0.0.1 (default: all, what Cloud Run needs)
 //	GOOGLE_CLOUD_PROJECT the project id, set by the deploy (Cloud Run doesn't): log lines then carry the trace
-//	DATABASE_URL        CockroachDB connection string (optional)
+//	DATABASE_URL        CockroachDB connection string (required: without it the process exits at startup)
 //	LOG_LEVEL           debug, info, warn or error (default info)
 //	OIDC_ISSUER         sign-in provider, e.g. https://accounts.google.com (optional)
 //	OIDC_CLIENT_ID      this app's client ID at the provider
@@ -28,8 +28,8 @@
 //	TASKS_TARGET_URL    the service's own https URL, where Cloud Tasks calls back
 //	TASKS_SERVICE_ACCOUNT the account that signs that call's OIDC token
 //
-// Sign-in needs both the OIDC_* variables and DATABASE_URL. Without them
-// the API still starts, and the sign-in routes answer 503. CampaignService,
+// Sign-in needs the OIDC_* variables. Without them the API still starts,
+// and the sign-in routes answer 503. CampaignService,
 // CampaignDocumentService, CharacterService, ContentService,
 // TableContentService, PlayService,
 // ProgressionService,
@@ -103,6 +103,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/traffic"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
@@ -134,6 +135,11 @@ const maxRequestBytes = 4 << 20 // 4 MiB
 // written. A message is a few kilobytes; 30 s is generous for a bad mobile
 // connection and short next to the 30-minute stream.
 const streamSendTimeout = 30 * time.Second
+
+// instanceIdleLimit is how long a server that has received unary calls may go without one before it ends its
+// live streams, at their next recheck, so that the apps reconnect to the active revision (platform/traffic).
+// A visible page calls the server every 30 s, so the active instance never reaches it.
+const instanceIdleLimit = 3 * time.Minute
 
 func main() {
 	cfg, err := config.Load(os.Getenv)
@@ -176,14 +182,8 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	if err != nil {
 		return err
 	}
-	// database stays a nil interface when DATABASE_URL is empty. It must not
-	// hold a nil *pgxpool.Pool: an interface holding a typed nil pointer is
-	// not == nil, and /readyz would then call Ping on it.
-	var database httpserver.Pinger
-	if pool != nil {
-		defer pool.Close()
-		database = pool
-	}
+	defer pool.Close()
+	var database httpserver.Pinger = pool
 
 	blobs, closeBlobs, err := openBlobs(ctx, logger, cfg)
 	if err != nil {
@@ -201,9 +201,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		return err
 	}
 
+	// What tells an instance that stopped receiving calls (after a deploy) from the active one.
+	meter := traffic.New(instanceIdleLimit, time.Now)
+
 	identityService, m, err := wireSignIn(ctx, logger, cfg, pool, signInParts{
 		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), voice: newVoiceGenerator(ctx, logger, cfg), policy: policy,
-		tasks: runner,
+		tasks: runner, idle: meter.Idle,
 	})
 	if err != nil {
 		return err
@@ -218,7 +221,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// The per-IP limit on every API request, before a session is looked up.
 		Limit: ratelimit.Middleware(policy.IP, cfg.TrustedProxyHops, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
-	mountServices(ctx, logger, srv, m, identityService, policy)
+	mountServices(ctx, logger, srv, m, identityService, policy, meter)
 	if taskEndpoint != nil {
 		// Cloud Tasks calls back here. The load balancer sends every path to the service,
 		// so the endpoint's own OIDC check is the only gate. No rate limit applies:
@@ -273,12 +276,12 @@ func taskCancel(r tasks.Runner) func() {
 	return func() {}
 }
 
-// openDatabase opens the pool, or returns nil when DATABASE_URL is empty.
+// openDatabase opens the pool. Without DATABASE_URL it fails, so the process
+// exits at startup naming the variable instead of serving without a database.
 // The caller closes it.
 func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (*pgxpool.Pool, error) {
 	if cfg.DatabaseURL == "" {
-		logger.WarnContext(ctx, "DATABASE_URL is not set; running without a database")
-		return nil, nil
+		return nil, errors.New("DATABASE_URL is required")
 	}
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL.Reveal())
 	if err != nil {
@@ -293,9 +296,9 @@ func openDatabase(ctx context.Context, logger *slog.Logger, cfg config.Config) (
 }
 
 // openBlobs opens where images live, and returns what closes it. The store
-// stays a nil interface without BLOB_DIR or BLOB_BUCKET (never a nil
-// *blob.FS, for the reason given for database in run), and the maps module
-// then answers 503 for images.
+// stays a nil interface without BLOB_DIR or BLOB_BUCKET, never a nil
+// *blob.FS (an interface holding a typed nil pointer is not == nil), and the
+// maps module then answers 503 for images.
 func openBlobs(ctx context.Context, logger *slog.Logger, cfg config.Config) (blob.Store, func(), error) {
 	noClose := func() {}
 	switch {
@@ -373,19 +376,17 @@ type signInParts struct {
 	voice  voice.Generator
 	policy ratelimit.Policy
 	tasks  tasks.Runner
+	// idle says that the instance stopped receiving calls: its live streams end (play.LiveConfig.Idle). Nil: never.
+	idle func() bool
 }
 
 // wireSignIn builds sign-in and the modules that come with it. Sign-in needs
-// a provider and a database: without either, both results are nil, and the
-// sign-in routes answer 503. Campaigns, characters and game sessions need to
-// know who is calling, so they come with sign-in.
+// a provider: without one, both results are nil, and the sign-in routes
+// answer 503. Campaigns, characters and game sessions need to know who is
+// calling, so they come with sign-in.
 func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, pool *pgxpool.Pool, parts signInParts) (*identity.Service, *modules, error) {
-	switch {
-	case !cfg.OIDC.Configured():
+	if !cfg.OIDC.Configured() {
 		logger.WarnContext(ctx, "OIDC_ISSUER is not set; sign-in is disabled")
-		return nil, nil, nil
-	case pool == nil:
-		logger.WarnContext(ctx, "sign-in is disabled: it needs DATABASE_URL")
 		return nil, nil, nil
 	}
 	m, err := wireModules(logger, pool, parts.rules, parts.blobs, parts.images, wireOptions{
@@ -398,6 +399,7 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 		Policy:              parts.policy,
 		TrustedProxyHops:    cfg.TrustedProxyHops,
 		Tasks:               parts.tasks,
+		Idle:                parts.idle,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -431,8 +433,8 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 // mountServices mounts the system service, and the signed-in modules when
 // sign-in is on (identityService and m are set together), else the disabled
 // sign-in routes.
-func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, m *modules, identityService *identity.Service, policy ratelimit.Policy) {
-	connectOpts := connectOptions(logger)
+func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, m *modules, identityService *identity.Service, policy ratelimit.Policy, meter *traffic.Meter) {
+	connectOpts := connectOptions(logger, meter)
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService == nil {
 		identity.MountDisabled(srv.Handle, connectOpts...)
@@ -562,6 +564,8 @@ type wireOptions struct {
 	// Tasks runs the detached work of maps and campaignpackage (nil: each uses an in-process
 	// runner of its own, as the tests do).
 	Tasks tasks.Runner
+	// Idle is play.LiveConfig.Idle (nil: never).
+	Idle func() bool
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -649,6 +653,7 @@ func wireModules(
 			Logger:          logger,
 		},
 		FreeRolls: opts.Policy.FreeRoll, // the free dice roller's limit per user (MR-052)
+		Live:      play.LiveConfig{Idle: opts.Idle},
 		Logger:    logger,
 	})
 	if err != nil {
@@ -768,8 +773,9 @@ func wireModules(
 }
 
 // connectOptions are the options every Connect handler gets.
-func connectOptions(logger *slog.Logger) []connect.HandlerOption {
-	return []connect.HandlerOption{
+// meter notes every unary call (the live streams end on an instance that stops receiving them); nil notes none.
+func connectOptions(logger *slog.Logger, meter *traffic.Meter) []connect.HandlerOption {
+	opts := []connect.HandlerOption{
 		// First, so it is the outermost interceptor: it logs the final outcome
 		// of every RPC and stream, after the session and authz interceptors
 		// the services add have recorded the user and the campaign.
@@ -791,6 +797,10 @@ func connectOptions(logger *slog.Logger) []connect.HandlerOption {
 		// SameSite cookies and http.CrossOriginProtection.
 		connect.WithRequireConnectProtocolHeader(),
 	}
+	if meter != nil {
+		opts = append(opts, connect.WithInterceptors(meter.Interceptor()))
+	}
+	return opts
 }
 
 // recoverRPC logs a handler's panic with its stack, through the request's

@@ -36,7 +36,7 @@ flowchart LR
 | --- | --- | --- |
 | Cloud Run service `meurpg` | The `api` binary of `backend/Dockerfile`: it serves the Connect API, the uploads and downloads, the live-session streams and the Angular build (`/app/web`) | One image carries `/app/api`, `/app/migrate` and the web build, on a distroless `static` base running as `nonroot` |
 | Cloud Run job `meurpg-migrate` | The same image, with `/app/migrate up` as the command | Runs before each new revision gets traffic; the API never migrates by itself |
-| CockroachDB | Managed CockroachDB in the same region | `DATABASE_URL` is a secret and must verify the server certificate on Cloud Run |
+| CockroachDB | Managed CockroachDB in the same region | `DATABASE_URL` is a secret and must verify the server certificate on Cloud Run; without it the API exits at startup |
 | Cloud Storage | One private bucket for gallery images, thumbnails and campaign packages | Reached by the service account's token; no public or signed URL ([reference](reference.md#images-and-the-bucket)) |
 | Cloud Tasks | One queue, `meurpg-tasks`, in the same region: the detached work (images, exports, sweeps) is a task that calls the service back, so it runs inside a request and has CPU | Free for this volume (the first million operations a month); [reference](reference.md#cloud-tasks), [first deploy](runbook.md#11-cloud-tasks). The service's own `run.app` URL is the target, see [Ingress](#ingress-and-cloud-tasks) |
 | Secret Manager | `database-url`, `oidc-client-secret`, `gemini-api-key` (optional) | Delivered to Cloud Run as environment variables |
@@ -61,6 +61,11 @@ Nothing here is created from the repository by automation: the GCP resources are
 | Request timeout | `--timeout=2100` (35 minutes) | Streams live up to 10 minutes and a campaign package download up to 30 |
 | Ingress | `internal-and-cloud-load-balancing` | Only the load balancer reaches the service; with it `TRUSTED_PROXY_HOPS=2` |
 | Authentication | `--allow-unauthenticated` | The app does its own sign-in |
+
+After a deploy, the old instance ends its live streams by itself.
+An instance that received unary calls and then goes 3 minutes without one ends them at their next check, every 60 seconds.
+Each page then reconnects to the active revision.
+A cold instance never does this.
 
 When one instance stops being enough, the hub gives way to a shared channel (see [roadmap](../roadmap.md#infrastructure-not-built-yet)), and `max-instances` can go up. Re-read [the abuse limits](reference.md#abuse-limits) when it does.
 

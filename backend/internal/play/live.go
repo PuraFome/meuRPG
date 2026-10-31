@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -42,6 +43,12 @@ func errWatchSlow() error {
 // after any transient end.
 func errWatchReplaced() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("replaced by a newer stream of this user; reconnect"))
+}
+
+// errWatchIdle ends a stream of an instance that no longer receives calls (LiveConfig.Idle): after a deploy it is
+// the old revision, whose hub hears nothing of what the table does. The app reconnects to the active revision.
+func errWatchIdle() error {
+	return connect.NewError(connect.CodeUnavailable, rpclog.ErrInstanceIdle)
 }
 
 // ListOpenGameSessions implements playv1connect.PlayServiceHandler.
@@ -266,11 +273,20 @@ func (s *Service) watchLoop(ctx context.Context, stream *connect.ServerStream[pl
 				return nil
 			}
 		case <-recheck.C:
-			if done, err := s.recheckWatch(ctx, stream, m.CampaignID, session.ID); done {
+			if done, err := s.recheckTick(ctx, stream, m.CampaignID, session.ID); done {
 				return err
 			}
 		}
 	}
+}
+
+// recheckTick is the periodic check of the stream: an instance that no longer receives calls ends it, and
+// otherwise the login session and participation are read again.
+func (s *Service) recheckTick(ctx context.Context, stream *connect.ServerStream[playv1.WatchGameSessionResponse], campaignID, sessionID string) (bool, error) {
+	if s.live.Idle != nil && s.live.Idle() {
+		return true, errWatchIdle()
+	}
+	return s.recheckWatch(ctx, stream, campaignID, sessionID)
 }
 
 // forwardHubEvent sends an event of the hub to the app. It says whether the

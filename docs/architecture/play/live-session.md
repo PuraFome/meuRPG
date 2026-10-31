@@ -118,6 +118,7 @@ sequenceDiagram
 | The app fell 16 events behind (`DefaultBuffer`)                        | `unavailable`                                                                              | Reconnects and reads the snapshot again                                                                                                                       |
 | A message goes 30 s without arriving                                   | `Send` fails; `close_reason` `client_gone`                                                 | Reconnects                                                                                                                                                    |
 | The person already has 4 streams in the campaign (`DefaultMaxPerUser`) | The new stream is served; the person's oldest ends with `unavailable` (`live.ErrReplaced`) | The old page, if still open, reconnects with backoff. Behind the load balancer the server is not told when a page goes away, so the old ones are usually dead |
+| No unary call for 3 minutes (`instanceIdleLimit`)                      | `unavailable` at the next check (every 60 s)                                               | Reconnects, now to the active revision, and reads the snapshot again                                                                                          |
 | The login session ended (sign-out, revoked, idle, 30 days)             | `unauthenticated` at the next check (every 60 s)                                           | Sends to sign-in                                                                                                                                              |
 | The person left the campaign                                           | `not_found` at the next check                                                              | "Peça um convite ao mestre"                                                                                                                                   |
 
@@ -144,7 +145,12 @@ The hub keeps each campaign's subscriptions in server memory (`play/live`).
 Publishing never waits: each subscription has a 16-event buffer, and the one that fills is dropped instead of delaying the master's change.
 With two instances, a change on one would not reach streams on the other, so the service runs with `max-instances = 1` while fan-out is in memory (see [Operations](../../operations/README.md)).
 When one instance is not enough, a shared channel (a CockroachDB changefeed or Pub/Sub) takes the hub's place and nothing above changes.
-During a release the old revision keeps its open streams while new calls reach the new revision, so those streams hear nothing until they end or the page reloads: release between sessions ([Operations](../../operations/runbook.md#release-a-new-version)).
+During a release the old revision keeps its open streams while new calls reach the new revision.
+An instance that received unary calls and then goes 3 minutes without one ends its streams at their next check (`platform/traffic`).
+Each app reconnects to the active revision.
+A visible page calls the server every 30 seconds, so the active instance never meets that condition.
+An instance that never received a call (a cold start) never ends its streams this way.
+Until the old instance ends them, those streams hear nothing: release between sessions ([Operations](../../operations/runbook.md#release-a-new-version)).
 
 The stream goes through the same HTTP stack as everything else.
 The request log wraps the response in a `statusRecorder` that passes `Flush` through, `CrossOriginProtection` refuses a POST from another origin (the stream is a POST with `Content-Type: application/connect+json`), the server speaks HTTP/1.1 and h2c, and there is no `WriteTimeout`.
