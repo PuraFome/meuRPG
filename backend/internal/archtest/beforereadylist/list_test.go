@@ -110,6 +110,12 @@ func TestCovering(t *testing.T) {
 			t.Errorf("the repository root is covered by %q", in)
 		}
 	}
+	// A path that escapes the repository is covered by nothing, the root input included.
+	for _, p := range []string{"..", "../x", "../../NOTICE", "a/../../x"} {
+		if Covered(p, []string{".", "NOTICE", "backend"}) {
+			t.Errorf("the path %q leaves the repository and is covered", p)
+		}
+	}
 	if Covered("NOTICE", []string{""}) || Covered("", []string{"."}) {
 		t.Error("an empty input or an empty path covers nothing")
 	}

@@ -94,12 +94,17 @@ func RunLines(lines []Line) []Line {
 
 // Covering returns the input that contains the path (the path itself, or a directory above it),
 // or "". Inputs and path are slash paths from the repository root; "." is the root itself, so
-// an input "." covers every path and the path "." is covered by that input alone.
+// an input "." covers every path inside the repository and the path "." is covered by that
+// input alone. A path that leaves the repository (a cleaned path starting with "..") is covered
+// by nothing.
 func Covering(inputs []string, p string) string {
 	if p == "" {
 		return ""
 	}
 	p = path.Clean(p)
+	if p == ".." || strings.HasPrefix(p, "../") {
+		return "" // it leaves the repository
+	}
 	for _, in := range inputs {
 		if in == "" {
 			continue
@@ -113,6 +118,6 @@ func Covering(inputs []string, p string) string {
 }
 
 // Covered says whether the path is one of the inputs or inside one of them.
-func Covered(path string, inputs []string) bool {
-	return Covering(inputs, path) != ""
+func Covered(p string, inputs []string) bool {
+	return Covering(inputs, p) != ""
 }

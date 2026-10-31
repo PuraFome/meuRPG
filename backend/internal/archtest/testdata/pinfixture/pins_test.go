@@ -28,3 +28,8 @@ func TestThroughAHelper(t *testing.T) { readIt(t) }
 func TestPlain(t *testing.T) {}
 
 func TestNotAFlag(t *testing.T) { *counter = 1 }
+
+type loader struct{}
+
+// load is a method: a helper line cannot name it, because the guard follows plain calls only.
+func (loader) load() { _, _ = os.ReadFile(goldenPath) }

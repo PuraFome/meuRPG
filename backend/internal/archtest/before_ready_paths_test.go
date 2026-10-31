@@ -20,7 +20,7 @@ import (
 // TestBeforeReadyUpwardPathForms keeps the eyes of TestBeforeReadyInputsAreComplete honest on a
 // fixture package (testdata/pathfixture), one test for each form in which a path that leaves
 // the package directory is written: a literal, a constant, a concatenation with a base, a Join
-// with a base and a later up(1, ""), a Join of several arguments, a Join whose tail is only known at
+// with a base and a later `..`, a Join of several arguments, a Join whose tail is only known at
 // run time, a path that resolves to the repository root, a package variable and a local one.
 // Each is resolved from its base, as the file system would.
 func TestBeforeReadyUpwardPathForms(t *testing.T) {
@@ -48,7 +48,9 @@ func TestBeforeReadyUpwardPathForms(t *testing.T) {
 		}
 	}
 	// From a package two levels under backend/, up(3, "") is the repository root.
-	if root := resolveFromRepo("internal/x", got["TestAPathResolvingToTheRoot"].paths[0]); root != "." {
+	if rootPaths := got["TestAPathResolvingToTheRoot"].paths; len(rootPaths) != 1 {
+		t.Errorf("TestAPathResolvingToTheRoot reaches %q, want one path", rootPaths)
+	} else if root := resolveFromRepo("internal/x", rootPaths[0]); root != "." {
 		t.Errorf("the root path resolves to %q, want %q", root, ".")
 	}
 }
@@ -79,7 +81,7 @@ type pathReads struct {
 // slash path from the repository root ("." is the root itself).
 func resolveFromRepo(pkg, p string) string { return path.Join("backend", pkg, p) }
 
-// upSegment matches a path that goes up: up(1, ""), up(1, "x"), "a/../b", "/../x".
+// upSegment matches a path that goes up: "..", "../x", "a/../b", "/../x".
 var upSegment = regexp.MustCompile(`(^|/)\.\.(/|$)`)
 
 // pathVal is a path expression read as far as it is known: the string it starts with, and
@@ -100,6 +102,21 @@ type pathEval struct {
 }
 
 const maxEvalDepth = 12
+
+// single returns the value a name was defined with exactly once, in the function or in the
+// package, or nil.
+func (e *pathEval) single(name string) ast.Expr {
+	if v, ok := e.local[name]; ok {
+		return v
+	}
+	return e.pkg[name]
+}
+
+// isLocal says whether the function defines the name.
+func (e *pathEval) isLocal(name string) bool {
+	_, ok := e.local[name]
+	return ok
+}
 
 func (e *pathEval) eval(x ast.Expr) (pathVal, bool) {
 	if e.depth++; e.depth > maxEvalDepth {
@@ -201,9 +218,9 @@ func joinPath(a, b string) string {
 }
 
 // goesUp says whether a cleaned path leaves its directory.
-func goesUp(p string) bool { return p == up(1, "") || strings.HasPrefix(p, up(1, "")) }
+func goesUp(p string) bool { return p == ".." || strings.HasPrefix(p, "../") }
 
-// hasUpLiteral says whether a node holds a string literal with a up(1, "") segment.
+// hasUpLiteral says whether a node holds a string literal with a `..` segment.
 func hasUpLiteral(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(x ast.Node) bool {
@@ -231,14 +248,14 @@ func cutAtWildcard(p string) string {
 type pathScan struct {
 	ev       *pathEval
 	fset     *token.FileSet
-	file     string
+	route    func(name string) *pathScan // the node of a name, to hand it what is assigned to it
 	paths    []string
 	problems []string
 	uses     []string
 }
 
 // pathExpr handles a path expression and says whether it did: the caller does not look inside.
-// An expression it cannot resolve that writes a up(1, "") is a problem, never a pass.
+// An expression it cannot resolve that writes a `..` is a problem, never a pass.
 func (sc *pathScan) pathExpr(x ast.Expr) bool {
 	v, ok := sc.ev.eval(x)
 	if !ok || v.dyn {
@@ -271,10 +288,14 @@ func (sc *pathScan) walk(root ast.Node) {
 	ast.Inspect(root, func(n ast.Node) bool {
 		switch v := n.(type) {
 		case *ast.AssignStmt:
-			sc.assign(v.Lhs, v.Rhs)
+			sc.assign(v.Lhs, v.Rhs, v.Tok == token.DEFINE)
 			return false
 		case *ast.ValueSpec:
-			sc.assign(nil, v.Values)
+			lhs := make([]ast.Expr, len(v.Names))
+			for i, id := range v.Names {
+				lhs[i] = id
+			}
+			sc.assign(lhs, v.Values, true)
 			return false
 		case *ast.SelectorExpr:
 			sc.uses = append(sc.uses, v.Sel.Name)
@@ -293,7 +314,7 @@ func (sc *pathScan) walk(root ast.Node) {
 				sc.pathExpr(v)
 			}
 		case *ast.Ident:
-			if !sc.pathExpr(v) {
+			if !sc.pathExpr(v) && !sc.ev.isLocal(v.Name) {
 				sc.uses = append(sc.uses, v.Name)
 			}
 		}
@@ -301,24 +322,41 @@ func (sc *pathScan) walk(root ast.Node) {
 	})
 }
 
-// assign visits the values of an assignment or declaration. A value that resolves is not a path
-// by itself (it may be only the base of one), so it is read where it is used.
-func (sc *pathScan) assign(lhs, rhs []ast.Expr) {
+// assign visits the values of an assignment or declaration (decl: it defines its names). A name
+// defined once, whose value resolves, is not a path by itself (it may be only the base of one):
+// it is read where it is used. Every other value is read where it is written, so that a path
+// assigned to a name that is defined twice, to a field or an element, or to a package variable
+// from another function, is never dropped. What is assigned to a package variable (or a
+// parameter) from a function is handed to the node of that name, which every user of the name
+// reaches.
+func (sc *pathScan) assign(lhs, rhs []ast.Expr, decl bool) {
 	for _, l := range lhs {
 		if _, ok := l.(*ast.Ident); !ok {
 			sc.walk(l)
 		}
 	}
 	for i, r := range rhs {
-		blank := false
-		if i < len(lhs) {
-			id, isID := lhs[i].(*ast.Ident)
-			blank = isID && id.Name == "_"
+		var id *ast.Ident
+		if len(lhs) == len(rhs) {
+			id, _ = lhs[i].(*ast.Ident)
 		}
-		if v, ok := sc.ev.eval(r); ok && !v.dyn && !blank {
+		if id == nil || id.Name == "_" {
+			sc.walk(r)
 			continue
 		}
-		sc.walk(r)
+		switch v, ok := sc.ev.eval(r); {
+		case decl && ok && !v.dyn && sc.ev.single(id.Name) == r:
+			// read where the name is used
+		case !decl && !sc.ev.isLocal(id.Name):
+			sub := &pathScan{ev: sc.ev, fset: sc.fset, route: sc.route}
+			sub.walk(r)
+			target := sc.route(id.Name)
+			target.paths = append(target.paths, sub.paths...)
+			target.problems = append(target.problems, sub.problems...)
+			target.uses = append(target.uses, sub.uses...)
+		default:
+			sc.walk(r)
+		}
 	}
 }
 
@@ -342,9 +380,16 @@ func localValues(body ast.Node) map[string]ast.Expr {
 				if !ok || id.Name == "_" {
 					continue
 				}
-				if (v.Tok == token.DEFINE || v.Tok == token.ASSIGN) && len(v.Lhs) == len(v.Rhs) {
+				switch {
+				case v.Tok != token.DEFINE:
+					// An assignment to a name the function defined makes it several; to one
+					// it did not define (a package variable, a parameter) it defines nothing.
+					if _, defined := out[id.Name]; defined {
+						out[id.Name] = nil
+					}
+				case len(v.Lhs) == len(v.Rhs):
 					singleValues(out, id.Name, v.Rhs[i])
-				} else {
+				default:
 					out[id.Name] = nil
 				}
 			}
@@ -368,6 +413,28 @@ func localValues(body ast.Node) map[string]ast.Expr {
 	return out
 }
 
+// markAssignedPackageVars sets to "several" (nil) the package variables a function body assigns
+// without having defined them itself.
+func markAssignedPackageVars(body ast.Node, pkgValues map[string]ast.Expr) {
+	locals := localValues(body)
+	ast.Inspect(body, func(n ast.Node) bool {
+		if as, ok := n.(*ast.AssignStmt); ok && as.Tok != token.DEFINE {
+			for _, l := range as.Lhs {
+				id, isID := l.(*ast.Ident)
+				if !isID {
+					continue
+				}
+				if _, local := locals[id.Name]; !local {
+					if _, pkg := pkgValues[id.Name]; pkg {
+						pkgValues[id.Name] = nil
+					}
+				}
+			}
+		}
+		return true
+	})
+}
+
 // upwardReads returns, for each Test function of the package in dir, the paths that go up from
 // the package directory and that it reaches, and the paths it could not resolve. A path is
 // resolved from its base, as the file system would: the string literals of its body, the
@@ -376,7 +443,7 @@ func localValues(body ast.Node) map[string]ast.Expr {
 // is only known at run time reaches its directory. It follows the functions and methods (by
 // name) the test calls, in test and non-test files, and the package-level names it uses. Its
 // limits: a path built by a function call, read in another package or through an embed, or in a
-// file a build tag leaves out, is not seen, unless it writes a up(1, "") the guard cannot place: then
+// file a build tag leaves out, is not seen, unless it writes a `..` the guard cannot place: then
 // it is a problem.
 func upwardReads(t *testing.T, dir string) map[string]pathReads {
 	t.Helper()
@@ -400,10 +467,19 @@ func upwardReads(t *testing.T, dir string) map[string]pathReads {
 			}
 		}
 	}
+	// A package variable that a function assigns is several values, not the one it was declared with.
+	for _, file := range pd.files {
+		for _, decl := range file.Decls {
+			if fd, ok := decl.(*ast.FuncDecl); ok && fd.Body != nil {
+				markAssignedPackageVars(fd.Body, pkgValues)
+			}
+		}
+	}
 	nodes := map[string]*pathScan{} // node name -> what it holds
-	scanOf := func(name, file string) *pathScan {
+	var scanOf func(name string) *pathScan
+	scanOf = func(name string) *pathScan {
 		if nodes[name] == nil {
-			nodes[name] = &pathScan{fset: pd.fset, file: file}
+			nodes[name] = &pathScan{fset: pd.fset, route: scanOf}
 		}
 		return nodes[name]
 	}
@@ -421,7 +497,7 @@ func upwardReads(t *testing.T, dir string) map[string]pathReads {
 				if d.Recv == nil && strings.HasPrefix(d.Name.Name, "Test") && strings.HasSuffix(fileName, "_test.go") {
 					tests = append(tests, d.Name.Name)
 				}
-				sc := scanOf(d.Name.Name, fileName)
+				sc := scanOf(d.Name.Name)
 				sc.ev = &pathEval{pkg: pkgValues, local: localValues(d.Body)}
 				sc.walk(d.Body)
 			case *ast.GenDecl:
@@ -430,10 +506,14 @@ func upwardReads(t *testing.T, dir string) map[string]pathReads {
 					if !ok {
 						continue
 					}
-					for _, id := range vs.Names {
-						sc := scanOf(id.Name, fileName)
+					for j, id := range vs.Names {
+						sc := scanOf(id.Name)
 						sc.ev = &pathEval{pkg: pkgValues}
-						sc.assign(nil, vs.Values)
+						if len(vs.Names) == len(vs.Values) {
+							sc.assign([]ast.Expr{id}, []ast.Expr{vs.Values[j]}, true)
+						} else {
+							sc.assign(nil, vs.Values, true)
+						}
 					}
 				}
 			}
@@ -494,4 +574,34 @@ func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
 func up(n int, rest string) string {
 	parts := slices.Repeat([]string{".."}, n)
 	return path.Join(append(parts, rest)...)
+}
+
+// A path written in an assignment is read even when the name it is assigned to is assigned more
+// than once, defined in two subtests, set through a field or an element, set in init or
+// reassigned in a test (testdata/assignfixture): the value is a path where it is written, not
+// only where one name stands for it.
+func TestBeforeReadyUpwardPathsAssignedMoreThanOnce(t *testing.T) {
+	t.Parallel()
+	got := upwardReads(t, filepath.Join("testdata", "assignfixture"))
+	want := map[string][]string{
+		"TestTwoSubtestsDefineTheSameName": {up(2, "docs"), up(2, "proto")},
+		"TestAssignedToAFieldOrAnElement":  {up(2, "web"), up(1, "x")},
+		"TestReadsWhatInitSet":             {up(2, "")},
+		"TestReassignsAPackageVariable":    {up(1, "x")},
+		"TestOnlyOwnDirectory":             nil,
+	}
+	for name, paths := range want {
+		if !slices.Equal(got[name].paths, paths) {
+			t.Errorf("%s reaches %q, want %q", name, got[name].paths, paths)
+		}
+	}
+}
+
+func TestGoesUpOnlyForWholeSegments(t *testing.T) {
+	t.Parallel()
+	for p, want := range map[string]bool{"..": true, "../x": true, "../../x": true, "..x": false, "..a/b": false, "a/b": false, ".": false, "": false} {
+		if got := goesUp(p); got != want {
+			t.Errorf("goesUp(%q) = %v, want %v", p, got, want)
+		}
+	}
 }

@@ -353,12 +353,13 @@ func anyMatch(re *regexp.Regexp, names []string) bool {
 	return false
 }
 
-// declaredFuncs returns the names of the functions and methods the files declare.
+// declaredFuncs returns the names of the plain functions the files declare: pinningTests follows
+// plain calls only (names of methods collide between types), so a helper line cannot name a method.
 func declaredFuncs(files []*ast.File) map[string]bool {
 	out := map[string]bool{}
 	for _, file := range files {
 		for _, decl := range file.Decls {
-			if fd, ok := decl.(*ast.FuncDecl); ok {
+			if fd, ok := decl.(*ast.FuncDecl); ok && fd.Recv == nil {
 				out[fd.Name.Name] = true
 			}
 		}
@@ -366,14 +367,14 @@ func declaredFuncs(files []*ast.File) map[string]bool {
 	return out
 }
 
-// undeclaredHelpers returns a message for each helper line whose function or method no file of
+// undeclaredHelpers returns a message for each helper line whose plain function no file of
 // its package declares: a helper that was renamed marks nothing, and the tests that call it
 // would silently leave the guard.
 func undeclaredHelpers(lines []beforeReadyLine, declared map[string]bool) []string {
 	var out []string
 	for _, l := range lines {
 		if l.Kind == beforereadylist.Helper && !declared[l.Regex] {
-			out = append(out, fmt.Sprintf("%s:%d: the helper %s is declared by no function or method of %s: it was renamed or removed, fix the line", beforeReadyFile, l.N, l.Regex, l.Pkg))
+			out = append(out, fmt.Sprintf("%s:%d: the helper %s is declared by no plain function of %s (a method cannot be a helper): it was renamed or removed, fix the line", beforeReadyFile, l.N, l.Regex, l.Pkg))
 		}
 	}
 	return out
@@ -486,7 +487,7 @@ func TestBeforeReadyWalkSkipRule(t *testing.T) {
 	}
 }
 
-// TestBeforeReadyHelpersMustExist: a helper line names a function or method the package
+// TestBeforeReadyHelpersMustExist: a helper line names a plain function the package
 // declares, as a run line names a test that exists. The fixture (testdata/pinfixture) declares
 // readIt; a helper line that still says the old name after a rename must fail the guard.
 func TestBeforeReadyHelpersMustExist(t *testing.T) {
@@ -499,5 +500,13 @@ func TestBeforeReadyHelpersMustExist(t *testing.T) {
 	got := undeclaredHelpers(lines, declared)
 	if len(got) != 1 || !strings.Contains(got[0], "readItOldName") || !strings.Contains(got[0], "before_ready.txt:2") {
 		t.Errorf("problems = %q, want one naming readItOldName at line 2", got)
+	}
+	// A method is declared, but the guard follows plain calls only, so the line would mark nothing.
+	lines, err = beforereadylist.Parse(strings.NewReader("helper\ttestdata/pinfixture\tload\tpins\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := undeclaredHelpers(lines, declared); len(got) != 1 || !strings.Contains(got[0], "load") {
+		t.Errorf("a helper line naming a method: problems = %q, want one", got)
 	}
 }
