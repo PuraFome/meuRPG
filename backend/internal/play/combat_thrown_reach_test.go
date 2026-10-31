@@ -177,3 +177,42 @@ func TestThrownAtRangeFollowsTheShapeOfTheAttack(t *testing.T) {
 		t.Error("a spear is not thrown at 15 ft")
 	}
 }
+
+// A weapon with the reach property and no weapon rule (a glaive: range 10 ft, no long range) provokes where the
+// target leaves 10 ft, and its opportunity attack at 10 ft is a normal melee attack: in reach, not at range, with no
+// disadvantage.
+func TestAGlaiveMakesItsOpportunityAttackAtItsReach(t *testing.T) {
+	t.Parallel()
+	glaive := link.Attack{Key: "weapon:glaive", Weapon: true, Melee: true, Ability: "str", RangeFt: 10}
+	if got := attackMeleeReach(glaive); got != 10 {
+		t.Errorf("attackMeleeReach(glaive) = %d, want 10", got)
+	}
+	if got := meleeReachOf(link.Sheet{Attacks: []link.Attack{glaive}}); got != 10 {
+		t.Errorf("meleeReachOf = %d, want 10", got)
+	}
+	if got := attackReach(glaive, true); got != 10 {
+		t.Errorf("attackReach of the opportunity attack = %d, want 10: the target 10 ft away is in reach", got)
+	}
+	f := &attackFlow{attack: glaive, call: attackCall{asReaction: true}}
+	shape := f.modeShape()
+	if shape.Thrown || shape.MeleeReachFt != 10 || shape.RangeFt != 10 || shape.rangedAt(10, true) {
+		t.Errorf("the opportunity attack's shape = %+v, want melee at a reach of 10", shape)
+	}
+	at := func(id string, col int32, side string) playdb.Combatant {
+		row := int32(0)
+		return playdb.Combatant{ID: id, Side: side, GridCol: &col, GridRow: &row}
+	}
+	attacker, target, foe := at("a", 0, "party"), at("t", 2, "foes"), at("f", 1, "foes")
+	s := modeFacts{cs: []playdb.Combatant{attacker, target, foe}}.scene(attacker, target, link.Traits{}, shape, false, nil)
+	if s.Ranged || s.HostileNearAttacker {
+		t.Errorf("scene at 10 ft: ranged %v, hostile near %v, want a melee attack with no ranged disadvantage", s.Ranged, s.HostileNearAttacker)
+	}
+	if mode := combat.Resolve(combat.AttackMode(s).Sources); mode != combat.ModeNormal {
+		t.Errorf("the mode at 10 ft = %v, want normal", mode)
+	}
+	zero := int32(0)
+	cands := []candidate{{who: playdb.Combatant{ID: "r", GridCol: &zero, GridRow: &zero}, reachFt: meleeReachOf(link.Sheet{Attacks: []link.Attack{glaive}})}}
+	if got := provokedBy(cands, grid.Square{Col: 2, Row: 0}, grid.Square{Col: 3, Row: 0}); len(got) != 1 {
+		t.Errorf("a target leaving 10 ft of a glaive provokes %d, want 1", len(got))
+	}
+}
