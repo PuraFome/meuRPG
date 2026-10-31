@@ -750,7 +750,8 @@ A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que a 
 Quando a magia de um jogador faz o monstro falhar numa salvaguarda (num alvo ou em vários), o lançamento espera o mestre (RN-31).
 Ele vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, ou deixa como estão.
 Os mesmos dados resolvem o lançamento.
-Nenhuma outra salvaguarda que o app rola pela criatura oferece a característica: nem a contra uma zona de magia, uma armadilha, o efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
+A característica não é oferecida em nenhuma outra salvaguarda: a de uma armadilha, a do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
+Uma criatura que uma zona de magia pega faz a salvaguarda na hora, sem escolha do mestre.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria

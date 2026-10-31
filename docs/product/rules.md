@@ -750,7 +750,8 @@ The master's log line says the roll and the choice; the player's line says the s
 When a player's spell makes it fail a saving throw (on one target or many), the cast waits for the master (RN-31).
 He sees the failed roll and turns the failures he chooses, one use each, or lets them stand.
 The same dice settle the cast.
-No other save the app rolls for the creature offers the trait: not the save against a spell zone, a trap, a weapon's rider, Turn Undead or Hellish Rebuke.
+The trait is not offered on any other save: a trap's, a weapon's rider, Turn Undead or Hellish Rebuke.
+A creature a spell zone catches saves at once, with no choice for the master.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates

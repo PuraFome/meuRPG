@@ -216,7 +216,7 @@ func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save,
 	if k := c.replay.keptSave(target.ID); k != nil {
 		out, ok := keptDice(k, save.Bonus, mode, effects)
 		if !ok {
-			return savedDice{}, fmt.Errorf("the held save of %s does not fit the save as it stands: %w", target.ID, errKeptDiceMismatch)
+			return savedDice{}, errKeptDiceMismatch(target.ID)
 		}
 		return out, nil
 	}
@@ -237,8 +237,11 @@ func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save,
 	return savedDice{d20: d20, lucky: lucky, extra: extra, extraTotal: extraTotal}, nil
 }
 
-// errKeptDiceMismatch is the replay of a held save whose kept dice no longer fit it.
-var errKeptDiceMismatch = errors.New("kept dice mismatch")
+// errKeptDiceMismatch is the refusal of the replay of a held save whose kept dice no longer fit it: the hold
+// is dropped, with nothing spent, like any held action that cannot happen any more.
+func errKeptDiceMismatch(target string) error {
+	return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("the held save of %s does not fit the save as it stands", target))
+}
 
 // keptDice rebuilds the dice of a save from the roll the hold kept: the faces in the order they were rolled,
 // the die that counted, the die Lucky rolled again and the faces of the effects' dice (which the state still

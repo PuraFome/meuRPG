@@ -146,11 +146,14 @@ A request sent twice spends once.
 No window opens when no creature with the trait failed, when none has a use left, or when the spell has no saving throw.
 A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
 The players' line of the cast is a save that passed.
-A hold that is dropped (the combat ends, the cast is no longer possible) spends nothing and leaves no part of the cast.
+A hold that is dropped (the combat ends, the cast is no longer possible, the kept dice no longer fit the save) spends nothing and leaves no part of the cast.
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
 
-Only a player's spell offers the trait to a save the app rolls.
-Not covered, so a failed save stays failed there: the save against a spell zone, a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead, and the Dexterity save against Hellish Rebuke.
+Only the saves of a player's spell are held for the choice.
+Not offered, so a failed save stands there: a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead and the Dexterity save against Hellish Rebuke.
+The save of a creature a spell zone catches is rolled by the server at once, with no choice for the master; the cast that lays the zone holds nothing.
+A player's character caught by a zone is asked in a window of its own, and has no such trait.
+The choice the master has with the roll of an effect's save does not reach the saves of a zone.
 A spell cast for an NPC is not offered either.
 
 ## On screen
