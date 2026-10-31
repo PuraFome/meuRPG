@@ -10,8 +10,8 @@ import (
 
 // A character's sheet can make it immune to conditions (a table's condition_immunity effect): no
 // spell, rider, trap or hold puts the condition on it. A creature's or an NPC's immunities come from
-// its stat block and are read where the condition is applied (noEffectWhy); the immunity a lasting
-// effect gives (Heroism) is read from the states (combat.ImmuneTo).
+// its stat block and ride on its traits the same way (rules.Content.ConditionImmunities); the immunity
+// a lasting effect gives (Heroism) is read from the states (combat.ImmuneTo).
 
 // sheetImmuneTo says the traits make the sheet immune to the condition.
 func sheetImmuneTo(t link.Traits, condition string) bool {
@@ -20,10 +20,9 @@ func sheetImmuneTo(t link.Traits, condition string) bool {
 	})
 }
 
-// immuneToCondition says the combatant's sheet makes it immune to the condition. A creature or an NPC
-// with a stat block has no sheet immunity.
+// immuneToCondition says the combatant's sheet, or its stat block, makes it immune to the condition.
 func (c *combatTx) immuneToCondition(ctx context.Context, who playdb.Combatant, condition string) (bool, error) {
-	if isCreature(who) || condition == "" {
+	if condition == "" {
 		return false, nil
 	}
 	sheet, err := c.svc.sheetOf(ctx, c.tx, c.session.CampaignID, who)
@@ -37,9 +36,6 @@ func (c *combatTx) immuneToCondition(ctx context.Context, who playdb.Combatant, 
 func (c *combatTx) sheetImmunities(ctx context.Context, targets []playdb.Combatant) (map[string]link.Traits, error) {
 	out := make(map[string]link.Traits, len(targets))
 	for _, t := range targets {
-		if isCreature(t) {
-			continue
-		}
 		sheet, err := c.svc.sheetOf(ctx, c.tx, c.session.CampaignID, t)
 		if err != nil {
 			return nil, err
