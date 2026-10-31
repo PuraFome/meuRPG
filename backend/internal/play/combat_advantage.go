@@ -224,7 +224,7 @@ func shapeOfAttack(a link.Attack) attackShape {
 	case a.Spell:
 		shape.Melee = a.RangeFt <= meleeReachFt
 		shape.Weapon = false
-	case a.Melee && a.RangeFt > shape.MeleeReachFt && a.LongRangeFt > 0:
+	case a.Melee && a.LongRangeFt > shape.MeleeReachFt:
 		shape.Thrown = true
 	}
 	if shape.Melee && !shape.Thrown {

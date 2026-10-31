@@ -248,7 +248,7 @@ func (h hitFacts) thrownAtRange() bool {
 // thrownAtRange is hitFacts.thrownAtRange for any attack: an opportunity attack is a melee
 // attack whatever the distance, and theatre of the mind has no distances.
 func thrownAtRange(enc playdb.Encounter, attack link.Attack, attacker, target playdb.Combatant, opportunity bool) bool {
-	if opportunity || !attack.Melee || attack.RangeFt <= attackMeleeReach(attack) || attack.LongRangeFt <= 0 || isTheatre(enc) {
+	if opportunity || !attack.Melee || attack.LongRangeFt <= attackMeleeReach(attack) || isTheatre(enc) {
 		return false
 	}
 	d, ok := distanceFt(attacker, target)

@@ -13,7 +13,7 @@ import (
 
 // spear is a spear as the sheet derives it: thrown 20/60 ft, with the reach a weapon rule gives it, if any.
 func spear(reachFt int) link.Attack {
-	return link.Attack{Key: "weapon:spear", Name: "Lança", Weapon: true, Melee: true, Ability: "str", RangeFt: 20, LongRangeFt: 60, ReachFt: reachFt}
+	return link.Attack{Key: "weapon:spear", Name: "Lança", Weapon: true, Melee: true, Ability: "str", RangeFt: max(20, reachFt), LongRangeFt: 60, ReachFt: reachFt}
 }
 
 func TestAThrownWeaponIsMeleeUpToTheReachOfItsAttackLine(t *testing.T) {
@@ -29,6 +29,8 @@ func TestAThrownWeaponIsMeleeUpToTheReachOfItsAttackLine(t *testing.T) {
 		{"10 ft reach, target at 15 ft", spear(10), 15, true},
 		{"no rule, target at 5 ft", spear(0), 5, false},
 		{"no rule, target at 10 ft", spear(0), 10, true},
+		{"20 ft reach, target at 20 ft", spear(20), 20, false},
+		{"20 ft reach, target at 25 ft", spear(20), 25, true},
 	} {
 		shape := shapeOfAttack(tc.attack)
 		if !shape.Thrown {
@@ -56,6 +58,8 @@ func TestAThrownWeaponReachDecidesTheHitFacts(t *testing.T) {
 		{"10 ft reach, target at 15 ft", spear(10), 3, true},
 		{"no rule, target at 5 ft", spear(0), 1, false},
 		{"no rule, target at 10 ft", spear(0), 2, true},
+		{"20 ft reach, target at 20 ft", spear(20), 4, false},
+		{"20 ft reach, target at 25 ft", spear(20), 5, true},
 	} {
 		if got := thrownAtRange(playdb.Encounter{}, tc.attack, at("a", 0), at("t", tc.col), false); got != tc.want {
 			t.Errorf("%s: thrownAtRange = %v, want %v", tc.name, got, tc.want)
