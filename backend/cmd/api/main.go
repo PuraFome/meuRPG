@@ -103,6 +103,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/traffic"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
@@ -134,6 +135,11 @@ const maxRequestBytes = 4 << 20 // 4 MiB
 // written. A message is a few kilobytes; 30 s is generous for a bad mobile
 // connection and short next to the 30-minute stream.
 const streamSendTimeout = 30 * time.Second
+
+// instanceIdleLimit is how long a server that has received unary calls may go without one before it ends its
+// live streams, at their next recheck, so that the apps reconnect to the active revision (platform/traffic).
+// A visible page calls the server every 30 s, so the active instance never reaches it.
+const instanceIdleLimit = 3 * time.Minute
 
 func main() {
 	cfg, err := config.Load(os.Getenv)
@@ -201,9 +207,12 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		return err
 	}
 
+	// What tells an instance that stopped receiving calls (after a deploy) from the active one.
+	meter := traffic.New(instanceIdleLimit, time.Now)
+
 	identityService, m, err := wireSignIn(ctx, logger, cfg, pool, signInParts{
 		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), voice: newVoiceGenerator(ctx, logger, cfg), policy: policy,
-		tasks: runner,
+		tasks: runner, idle: meter.Idle,
 	})
 	if err != nil {
 		return err
@@ -218,7 +227,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 		// The per-IP limit on every API request, before a session is looked up.
 		Limit: ratelimit.Middleware(policy.IP, cfg.TrustedProxyHops, ratelimit.NewNotifier(logger, "api requests by ip")),
 	})
-	mountServices(ctx, logger, srv, m, identityService, policy)
+	mountServices(ctx, logger, srv, m, identityService, policy, meter)
 	if taskEndpoint != nil {
 		// Cloud Tasks calls back here. The load balancer sends every path to the service,
 		// so the endpoint's own OIDC check is the only gate. No rate limit applies:
@@ -373,6 +382,8 @@ type signInParts struct {
 	voice  voice.Generator
 	policy ratelimit.Policy
 	tasks  tasks.Runner
+	// idle says that the instance stopped receiving calls: its live streams end (play.LiveConfig.Idle). Nil: never.
+	idle func() bool
 }
 
 // wireSignIn builds sign-in and the modules that come with it. Sign-in needs
@@ -398,6 +409,7 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 		Policy:              parts.policy,
 		TrustedProxyHops:    cfg.TrustedProxyHops,
 		Tasks:               parts.tasks,
+		Idle:                parts.idle,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -431,8 +443,8 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 // mountServices mounts the system service, and the signed-in modules when
 // sign-in is on (identityService and m are set together), else the disabled
 // sign-in routes.
-func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, m *modules, identityService *identity.Service, policy ratelimit.Policy) {
-	connectOpts := connectOptions(logger)
+func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Server, m *modules, identityService *identity.Service, policy ratelimit.Policy, meter *traffic.Meter) {
+	connectOpts := connectOptions(logger, meter)
 	srv.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), connectOpts...))
 	if identityService == nil {
 		identity.MountDisabled(srv.Handle, connectOpts...)
@@ -562,6 +574,8 @@ type wireOptions struct {
 	// Tasks runs the detached work of maps and campaignpackage (nil: each uses an in-process
 	// runner of its own, as the tests do).
 	Tasks tasks.Runner
+	// Idle is play.LiveConfig.Idle (nil: never).
+	Idle func() bool
 }
 
 // wireModules builds the five modules that need each other, connects them in
@@ -649,6 +663,7 @@ func wireModules(
 			Logger:          logger,
 		},
 		FreeRolls: opts.Policy.FreeRoll, // the free dice roller's limit per user (MR-052)
+		Live:      play.LiveConfig{Idle: opts.Idle},
 		Logger:    logger,
 	})
 	if err != nil {
@@ -768,8 +783,9 @@ func wireModules(
 }
 
 // connectOptions are the options every Connect handler gets.
-func connectOptions(logger *slog.Logger) []connect.HandlerOption {
-	return []connect.HandlerOption{
+// meter notes every unary call (the live streams end on an instance that stops receiving them); nil notes none.
+func connectOptions(logger *slog.Logger, meter *traffic.Meter) []connect.HandlerOption {
+	opts := []connect.HandlerOption{
 		// First, so it is the outermost interceptor: it logs the final outcome
 		// of every RPC and stream, after the session and authz interceptors
 		// the services add have recorded the user and the campaign.
@@ -791,6 +807,10 @@ func connectOptions(logger *slog.Logger) []connect.HandlerOption {
 		// SameSite cookies and http.CrossOriginProtection.
 		connect.WithRequireConnectProtocolHeader(),
 	}
+	if meter != nil {
+		opts = append(opts, connect.WithInterceptors(meter.Interceptor()))
+	}
+	return opts
 }
 
 // recoverRPC logs a handler's panic with its stack, through the request's

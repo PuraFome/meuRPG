@@ -69,7 +69,7 @@ func buildHandlerSet(t *testing.T) http.Handler {
 	must(t, err)
 
 	mux := http.NewServeMux()
-	opts := connectOptions(logger)
+	opts := connectOptions(logger, nil)
 	mux.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), opts...))
 	mountModules(mux.Handle, m, identityService, opts, ratelimit.NewPolicy(1).RPC, logger)
 	return mux

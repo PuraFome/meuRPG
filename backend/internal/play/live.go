@@ -44,6 +44,12 @@ func errWatchReplaced() error {
 	return connect.NewError(connect.CodeUnavailable, errors.New("replaced by a newer stream of this user; reconnect"))
 }
 
+// errWatchIdle ends a stream of an instance that no longer receives calls (LiveConfig.Idle): after a deploy it is
+// the old revision, whose hub hears nothing of what the table does. The app reconnects to the active revision.
+func errWatchIdle() error {
+	return connect.NewError(connect.CodeUnavailable, errors.New("this server no longer receives the table's calls; reconnect"))
+}
+
 // ListOpenGameSessions implements playv1connect.PlayServiceHandler.
 func (s *Service) ListOpenGameSessions(
 	ctx context.Context,
@@ -266,6 +272,9 @@ func (s *Service) watchLoop(ctx context.Context, stream *connect.ServerStream[pl
 				return nil
 			}
 		case <-recheck.C:
+			if s.live.Idle != nil && s.live.Idle() {
+				return errWatchIdle()
+			}
 			if done, err := s.recheckWatch(ctx, stream, m.CampaignID, session.ID); done {
 				return err
 			}
