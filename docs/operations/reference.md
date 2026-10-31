@@ -12,7 +12,7 @@ The process reads them in `backend/internal/platform/config/config.go` (`config.
 | `LISTEN_HOST` | No | empty (all interfaces) | Leave unset on Cloud Run. The native local stack sets `127.0.0.1` |
 | `WEB_DIR` | No | `/app/web` | The Angular build; if the folder is missing the server runs API-only |
 | `LOG_LEVEL` | No | `info` | `debug`, `info`, `warn` or `error`, case-insensitive. `debug` makes the log 5 to 10 times bigger |
-| `DATABASE_URL` | **Yes** | empty | CockroachDB connection string. Empty: the API starts without a database, `/readyz` answers `"database":"disabled"` and sign-in is off. **On Cloud Run it must use `sslmode=verify-full` or `verify-ca`**; any other mode (`disable`, `allow`, `prefer`, `require`) stops the server, and the error never repeats the URL |
+| `DATABASE_URL` | **Yes** | none | CockroachDB connection string. Empty or unset: the API exits at startup with an error that names the variable. **On Cloud Run it must use `sslmode=verify-full` or `verify-ca`**; any other mode (`disable`, `allow`, `prefer`, `require`) stops the server, and the error never repeats the URL |
 | `OIDC_ISSUER` | No | empty | Sign-in is on only with the four `OIDC_*` variables below set together. `https`, no query or fragment; `http` only on loopback or `*.localhost`. `https://accounts.google.com` in production |
 | `OIDC_CLIENT_ID` | No | empty | The app's client id at the provider |
 | `OIDC_CLIENT_SECRET` | **Yes** | empty | The client secret |
