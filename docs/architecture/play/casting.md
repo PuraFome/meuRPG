@@ -39,7 +39,8 @@ What the casting does depends on what the spell is:
 | Reads HP (Sleep, Colour Spray, Power Word, Spare the Dying, Heal, False Life, Aid) | The server reads each target's HP and applies the effect at once, in the same transaction | None |
 | Revivify | See [Death and revival](death-and-revival.md) | None |
 | Teleport (Misty Step, with `destination`) | Spends the slot and the bonus action, then puts the caster on the chosen square; see below | None |
-| The rest (Web, and Misty Step without a square, which only the master may send) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
+| Zone spell (Web, Spirit Guardians, Moonbeam, Cloudkill, placed on the map) | Spends and logs, lays the zone, and Web puts its effect on the creatures inside; the zone then makes the later saves and damage ([Spell zones](spell-zones.md)) | None at the cast; the zone's damage is pending damage of its own |
+| The rest (Misty Step without a square, which only the master may send) | Spends and logs; the effect is the table's, and the master marks conditions afterwards | None |
 
 **A teleport on a map.** `CastSpellRequest.destination` is the square the caster lands on (`teleportReachFt` has the spells and their reach: Misty Step, 30 ft).
 `checkTeleport` runs with the other checks, before anything is spent: a square outside the grid or sent for another spell or in a combat without a map is `invalid_argument`; a square farther than the reach by `grid.RangeFt` is `TELEPORT_TOO_FAR`.
@@ -52,7 +53,8 @@ A player's character must send `destination` on a map with a grid: without it `r
 A trap armed on the landing square fires through the move's own hook (`trapHook.fire`, after the teleport is written): the cast's event is written first and the firing is the change's own event, carrying the cast's fields so a retry under the same key still answers the cast. An undo takes the firing back, then the cast.
 
 **What a casting rolls at once and what stays with the master (RN-22).** A casting opens the saving throw and damage the spell asks for when it is cast.
-Saves that come later, when a creature enters the area or ends its turn in it (Flaming Sphere, Web, Sleet Storm, Earthquake), are not automated: the data records their dice without a saving throw, so a casting spends the slot, logs and rolls nothing, and the master calls for each save as creatures move.
+Saves that come later, when a creature enters the area or begins its turn in it, are automated for the four spells that keep a zone on the map (Web, Spirit Guardians, Moonbeam, Cloudkill): see [Spell zones](spell-zones.md).
+For the others (Flaming Sphere, Sleet Storm, Earthquake) they are not: the data records their dice without a saving throw, so a casting spends the slot, logs and rolls nothing, and the master calls for each save as creatures move.
 A lasting effect with an end-of-turn save uses the reaction window (see [Lasting effects](lasting-effects.md)).
 
 **Damage types a spell lets the caster pick.** A spell that lists more than one damage type either deals them all (Ice Storm, Meteor Swarm, Flame Strike) or lets the caster pick: `damage_type_key` of `CastSpellRequest` names the type, and `SpellDetails.damage_choice` says how.

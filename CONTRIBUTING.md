@@ -65,7 +65,9 @@ A red test is a bug in the test or in the app, never noise: there are no retries
 2. Write the code, the tests and the documentation in the same PR.
 3. Commit in English with [Conventional Commits](https://www.conventionalcommits.org/), for example `feat(characters): lock sheet on first session`.
 4. Open the PR citing the story (`MR-006`) and the rule (`RN-01`) it fulfils, and the issue it closes (`Closes #N`), or `Refs #N` for an issue it only advances, with the [PR template](.github/pull_request_template.md).
-5. CI must be green. A single PR is squash-merged. A merge train (stacked PR branches, each opened against the previous one) is merged with merge commits, in order, so each branch keeps its history.
+5. CI must be green. Every PR is squash-merged, with an English subject.
+   A train is one PR from `refactor/train-N`, built from `main` out of the member branches.
+   The member branches keep their own history in their closed preflight PRs on the fork.
 6. Never force-push a branch that others build on.
 
 What CI checks, and how failures are read, is in [docs/ci.md](docs/ci.md).
