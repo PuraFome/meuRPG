@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTurnsTo } from './combat-support';
+import { type Encounter, adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTurnsTo } from './combat-support';
 import { openSessionPage } from './live-session-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
@@ -191,7 +191,7 @@ test(
       expect(own.deathFailures ?? 0).toBe(1);
 
       // Three successes on her next turns make her stable: the result is public, the road to it is not.
-      let rolled = await getEncounterRPC(m, campaignId);
+      let rolled!: Encounter;
       for (let i = 0; i < 3; i++) {
         const now = await getEncounterRPC(m, campaignId);
         await combatRPC(m, 'EndTurn', { campaignId, encounterId: now.id, expectedCombatantId: now.currentCombatantId, discardPendingDamage: true });

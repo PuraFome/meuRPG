@@ -11,6 +11,8 @@
 // Limits, on purpose: only Playwright's own action methods count as actions (a helper that clicks inside is not seen);
 // a loop's next turn is not followed; a page the rule cannot name is judged by any wait.
 
+const ts = require('typescript');
+
 const ACTIONS = new Set([
   'click',
   'dblclick',
@@ -30,7 +32,9 @@ const ACTIONS = new Set([
   'clear',
 ]);
 // A wait, or a load: a page that loads after the call reads the state itself.
-const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab']);
+const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab', 'openLive']);
+// The receivers whose methods are page actions.
+const PLAYWRIGHT_TYPES = new Set(['Locator', 'Page', 'FrameLocator', 'Keyboard', 'Mouse', 'Touchscreen']);
 // A read changes nothing on the server: there is no change for the page to show.
 const READS = /^(get|list|read)[A-Z]\w*$/;
 const LOAD_METHODS = new Set(['goto', 'reload']);
@@ -84,7 +88,13 @@ module.exports = {
     const hasRevision = (node) => {
       const type = checker.getNonNullableType(checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node)));
       const prop = type.getProperty('revision');
-      return Boolean(prop) && Boolean(type.getProperty('combatants')) && (checker.getTypeOfSymbol(prop).flags & 8 /* ts.TypeFlags.Number */) !== 0;
+      return Boolean(prop) && Boolean(type.getProperty('combatants')) && (checker.getTypeOfSymbol(prop).flags & ts.TypeFlags.Number) !== 0;
+    };
+
+    /** Whether a receiver is a Playwright `Locator`, `Page` or the page's keyboard, mouse or touchscreen: `Set.clear()` is no action. @param {any} node */
+    const isPlaywrightObject = (node) => {
+      const type = checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node));
+      return PLAYWRIGHT_TYPES.has(checker.getNonNullableType(type).symbol?.name ?? '');
     };
 
     /** A move is patched into the page with no new revision (CombatState.applyMove): there is nothing to wait for. @param {any} call */
@@ -164,7 +174,7 @@ module.exports = {
         }
         if (node.type === 'CallExpression') {
           const callee = node.callee;
-          if (callee.type === 'MemberExpression' && !callee.computed && ACTIONS.has(callee.property.name)) {
+          if (callee.type === 'MemberExpression' && !callee.computed && ACTIONS.has(callee.property.name) && isPlaywrightObject(callee.object)) {
             events.push({ kind: 'action', page: pageOf(callee.object), at: node.range[0] });
           }
           if (callee.type === 'Identifier' && WAIT_NAMES.has(callee.name)) {
@@ -202,8 +212,14 @@ module.exports = {
         }
         /** @type {any} */
         let cur = node;
-        while (cur.parent && !isFunction(cur.parent)) {
+        while (cur.parent) {
           const parent = cur.parent;
+          // The call ends a callback's body (`test.step(..)`): what follows the callback is judged too.
+          if (isFunction(parent)) {
+            if (parent.parent?.type !== 'CallExpression' || !parent.parent.arguments.includes(parent)) break;
+            cur = parent.parent;
+            continue;
+          }
           const list = listOf(parent);
           if (list) {
             const at = list.indexOf(cur);
