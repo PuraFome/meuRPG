@@ -125,6 +125,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
 	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
 	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
+	combat.SourceMagicResistance:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_MAGIC_RESISTANCE,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -151,7 +152,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Conditions:  c.Conditions,
 		Dodging:     hasState(states, c.ID, stateDodging),
 		Reckless:    hasState(states, c.ID, stateReckless),
-		PackTactics: traits.PackTactics,
+		PackTactics: traits.PackTactics, MagicResistance: traits.MagicResistance,
 		Evasion:     traits.Evasion,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
@@ -531,6 +532,7 @@ func (c textContext) situationSentence(src combat.Source) (string, bool) {
 var staticSentences = map[string]string{
 	combat.SourceDodgingSave:      "Esquivando: vantagem em testes de resistência de Destreza",
 	combat.SourceRageStrength:     "Em fúria: vantagem em testes e testes de resistência de Força",
+	combat.SourceMagicResistance:  "Resistência à Magia: vantagem em testes de resistência contra magias e outros efeitos mágicos",
 	combat.SourcePerceptionDim:    "Você vê o chão em penumbra: desvantagem na Percepção",
 	combat.SourceExhaustionAttack: "Exaustão: desvantagem em jogadas de ataque",
 	combat.SourceExhaustionSave:   "Exaustão: desvantagem em testes de resistência",
