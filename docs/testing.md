@@ -69,6 +69,24 @@ How `backend/internal/platform/dbtest` shapes the tests:
   - `MEURPG_TEST_POOL_MAX_CONNS=8` applies to the whole process and lists all the violations at once.
 - **Migrations are tested from scratch** by `backend/migrations`. `TestMigrationsAreSafeToRerun` requires every migration to run twice without error, and `TestEveryEventKindOfTheCodeIsInTheTable` requires every session event kind of the code to have a row in `session_event_kinds`. The rules for writing a migration are in [Data](data/README.md).
 
+### Dice in tests
+
+The services roll with `backend/internal/platform/dice/dicetest`, never with random dice.
+The app rolls an NPC's initiative, and two combatants with the same total take one joint turn, so a random tie makes a test that assumes one actor fail by chance.
+Every `play.Config` and `characters.Config` in a test file sets `Roller`, and `archtest` fails for one that does not.
+The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `characters` hand the services a `dicetest.New()`.
+
+- **The default is fixed.** The same calls give the same faces, and the roller never runs out.
+- **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
+- **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
+- **Every d20 moves the sequence.** An attack or a save rolled first takes a face the initiative would have had.
+- **A test pins a roll with `ScriptFor(t, sides, faces...)`.** The faces go to the next rolls of that die only, and the default goes on after them. A face that does not fit its die fails the test at once.
+- **A creature added to a running combat is scripted and checked.** The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`) and calls `requireOwnTotal` (`requireOwnTotals` in `progression`). A tie fails with "script the faces with ScriptFor", on every run.
+- **`play` rolls with its own `scriptedRoller`.** It gives a 10 when no face is queued, so creatures with the same bonus tie by default in its tests. That is deterministic, and a test that needs one actor queues its faces.
+
+Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
+The end-to-end tests do not roll through this roller.
+
 ### Leak tests (RN-10)
 
 `TestLeakMatrix` (`backend/internal/leaktest`) proves in one test that a player never receives what the master hid, on every read and every stream event.
@@ -114,6 +132,7 @@ Every test that looks for something absent needs a positive control that shows t
 ### Architecture tests
 
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
+It also holds the dice rules of [Dice in tests](#dice-in-tests).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
 ## Before ready
