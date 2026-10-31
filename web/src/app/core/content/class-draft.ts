@@ -17,7 +17,6 @@ import {
   type FeatureDraft,
   draftToFeature,
   featureOwnPaths,
-  unreadableFeaturePaths,
   featureToDraft,
 } from './feature-draft';
 
@@ -390,16 +389,6 @@ export function classFeatureBase(features: readonly LevelFeature[], index: numbe
 export function classFeaturePaths(features: readonly LevelFeature[], menu: EffectMenuVm): string[] {
   return features.flatMap((f, i) =>
     featureOwnPaths(classFeatureBase(features, i), f.feature, menu),
-  );
-}
-
-/** The paths of the number fields, in every feature of a class, whose text is no whole number. */
-export function unreadableClassPaths(
-  features: readonly LevelFeature[],
-  menu: EffectMenuVm,
-): string[] {
-  return features.flatMap((f, i) =>
-    unreadableFeaturePaths(classFeatureBase(features, i), f.feature, menu),
   );
 }
 

@@ -39,7 +39,6 @@ import {
   rowsEdited,
   rowsOfTable,
   sortedFeatures,
-  unreadableClassPaths,
 } from '../../../core/content/class-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
@@ -89,6 +88,7 @@ import {
   tableNoteOf,
   toggled,
   typedRequirement,
+  unreadableClassPaths,
   withProficiency,
 } from './class-editor-model';
 
