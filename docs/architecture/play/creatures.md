@@ -44,6 +44,11 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
 - **Whose row it is.** `combatants.character_id` is the owner (the column stays `NOT NULL` and the creature disappears with the character, in cascade) and `user_id` the owner's player, so the usual `mayAct` works: the player acts for the creature, and only they and the master.
   `Combatant.mine` stays true only for the player's own character; `controlled_by_me` also covers the creatures, and `owner_character_id` says whose it is.
   `character_id` is empty on a creature, even for the master.
+- **Spells of a stat block.** An NPC made from a creature with a Spellcasting or Innate Spellcasting trait casts through `CastSpell`, like an NPC with a full sheet.
+  `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
+  `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
+  When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.
+  The NPC's slots and uses are not counted yet: the master tracks them.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.
   On entering combat the creature copies, like the character, the side (`party`), the size, the flying speed (`size`, `speed_fly_ft`) and the jump (`combat.JumpLimits` from its Strength).

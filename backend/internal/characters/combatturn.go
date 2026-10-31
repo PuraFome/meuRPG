@@ -129,6 +129,12 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	d.Skills, d.Abilities, d.PassivePerception = creature.Skills, creature.Abilities, creature.PassivePerception
 	// The traits of the stat block (Pack Tactics) are the NPC's too, and so is its type.
 	d.Features = withCreatureType(content, b.GetMonsterKey(), creature.Features)
+	// Its Spellcasting and Innate Spellcasting traits are the NPC's own spells (MR-042): prepared spells with
+	// slots, and innate ones at will or with uses a day, cast with the stat block's DC and attack bonus.
+	if caster, ok := content.MonsterCaster(b.GetMonsterKey()); ok {
+		d.Spellcasting, d.Spells, d.GrantedSpells, d.Resources = []rules.Spellcasting{caster.Spellcasting}, caster.Spells, caster.Granted, caster.Resources
+		d.SpellSlots = caster.Slots
+	}
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
 		dice := rules.DiceFormula{Count: int(a.GetDamageDiceCount()), Sides: int(a.GetDamageDiceSides()), Bonus: int(a.GetDamageBonus())}
