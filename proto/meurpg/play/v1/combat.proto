@@ -2394,6 +2394,9 @@ message CombatLogHitRider {
   // they read a cast's damage: the amount as rolled unless the target is theirs, never the stat block.
   CombatLogDamage damage = 16;
   repeated CombatLogDamage more_damages = 17;
+  // The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
+  // grid or another creature stopped it.
+  bool push_stopped = 18;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -5454,6 +5457,9 @@ message CombatLogSpellTarget {
   // The save was failed but the combat has no map (theatre of the mind), so the push is
   // the table's to imagine.
   bool push_no_map = 16;
+  // The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
+  // grid or another creature stopped it.
+  bool push_stopped = 17;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death

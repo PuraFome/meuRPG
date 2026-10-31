@@ -69,6 +69,10 @@ func pushedFt(m *forcedMove) int32 {
 	return m.DistanceFt
 }
 
+// pushedStopped says a wall, a door, the edge of the grid or a creature stopped the push before its
+// whole distance.
+func pushedStopped(m *forcedMove) bool { return m != nil && m.Short }
+
 // pushedNoMap says the push was left to the table: there is no map.
 func pushedNoMap(m *forcedMove) bool { return m != nil && m.NoMap }
 
@@ -155,7 +159,8 @@ func (s *Service) pusherFor(c *combatTx, cs []playdb.Combatant, terrain grid.Ter
 }
 
 // push moves the target and writes its square. It returns nil when the creature is too large
-// for the rider, has no square, or has nowhere to go.
+// for the rider or has no square; a push with nowhere to go answers with no distance and
+// `Short`.
 func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove, error) {
 	if p.noMap {
 		return &forcedMove{Target: target.ID, NoMap: true}, nil
@@ -167,7 +172,9 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 	from := squareOfCombatant(target)
 	plan := planPush(p.terrain, pushBlockers(p.cs, target), moverOf(target), squareOfCombatant(p.source), from, p.rider.PushFeet)
 	if plan.to == from {
-		return nil, nil
+		// Nowhere to go: the save failed, nothing moves, and the log says the push was stopped.
+		col, row := clamp32(from.Col, 0, math.MaxInt32), clamp32(from.Row, 0, math.MaxInt32)
+		return &forcedMove{Target: target.ID, From: moveStateOf(target), Col: col, Row: row, Short: true}, nil
 	}
 	col, row := clamp32(plan.to.Col, 0, math.MaxInt32), clamp32(plan.to.Row, 0, math.MaxInt32)
 	if err := p.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: target.ID, GridCol: &col, GridRow: &row, CoverMark: "none"}); err != nil {
@@ -264,7 +271,7 @@ func putPushedBack(ctx context.Context, c *combatTx, m *forcedMove) error {
 // publishPushed tells the streams and the fog that the creatures moved, after the commit.
 func (s *Service) publishPushed(ctx context.Context, campaignID string, d *encounterData, moves []*forcedMove) {
 	for _, m := range moves {
-		if m == nil || m.NoMap {
+		if m == nil || m.NoMap || m.DistanceFt == 0 {
 			continue
 		}
 		if who, ok := combatantByID(d.cs, m.Target); ok {

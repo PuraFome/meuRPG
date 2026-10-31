@@ -470,7 +470,7 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 	default:
 		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
 	}
-	out.PushedFt, out.PushNoMap = pushedFt(r.Pushed), pushedNoMap(r.Pushed)
+	out.PushedFt, out.PushNoMap, out.PushStopped = pushedFt(r.Pushed), pushedNoMap(r.Pushed), pushedStopped(r.Pushed)
 	if r.ActionKey != "" {
 		out.ActionKey, out.ActionNamePt, out.DurationText, out.RepeatSave = r.ActionKey, r.ActionName, r.Duration, r.RepeatSave
 		if r.Given {

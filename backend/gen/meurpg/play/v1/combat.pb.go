@@ -4773,8 +4773,11 @@ type CombatLogHitRider struct {
 	// cast's target carries, AWAITING_ROLL until the damage is rolled, then rolled and applied. The first
 	// damage type, then the others in more_damages. Unset when the rider opened none. A player reads it as
 	// they read a cast's damage: the amount as rolled unless the target is theirs, never the stat block.
-	Damage        *CombatLogDamage   `protobuf:"bytes,16,opt,name=damage,proto3" json:"damage,omitempty"`
-	MoreDamages   []*CombatLogDamage `protobuf:"bytes,17,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
+	Damage      *CombatLogDamage   `protobuf:"bytes,16,opt,name=damage,proto3" json:"damage,omitempty"`
+	MoreDamages []*CombatLogDamage `protobuf:"bytes,17,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
+	// The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
+	// grid or another creature stopped it.
+	PushStopped   bool `protobuf:"varint,18,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4926,6 +4929,13 @@ func (x *CombatLogHitRider) GetMoreDamages() []*CombatLogDamage {
 		return x.MoreDamages
 	}
 	return nil
+}
+
+func (x *CombatLogHitRider) GetPushStopped() bool {
+	if x != nil {
+		return x.PushStopped
+	}
+	return false
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -18709,7 +18719,10 @@ type CombatLogSpellTarget struct {
 	PushedFt int32 `protobuf:"varint,15,opt,name=pushed_ft,json=pushedFt,proto3" json:"pushed_ft,omitempty"`
 	// The save was failed but the combat has no map (theatre of the mind), so the push is
 	// the table's to imagine.
-	PushNoMap     bool `protobuf:"varint,16,opt,name=push_no_map,json=pushNoMap,proto3" json:"push_no_map,omitempty"`
+	PushNoMap bool `protobuf:"varint,16,opt,name=push_no_map,json=pushNoMap,proto3" json:"push_no_map,omitempty"`
+	// The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
+	// grid or another creature stopped it.
+	PushStopped   bool `protobuf:"varint,17,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18852,6 +18865,13 @@ func (x *CombatLogSpellTarget) GetPushedFt() int32 {
 func (x *CombatLogSpellTarget) GetPushNoMap() bool {
 	if x != nil {
 		return x.PushNoMap
+	}
+	return false
+}
+
+func (x *CombatLogSpellTarget) GetPushStopped() bool {
+	if x != nil {
+		return x.PushStopped
 	}
 	return false
 }
@@ -24517,7 +24537,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\x94\x05\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\xb7\x05\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -24539,7 +24559,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vrepeat_save\x18\x0f \x01(\bR\n" +
 	"repeatSave\x127\n" +
 	"\x06damage\x18\x10 \x01(\v2\x1f.meurpg.play.v1.CombatLogDamageR\x06damage\x12B\n" +
-	"\fmore_damages\x18\x11 \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\"\xb4\x01\n" +
+	"\fmore_damages\x18\x11 \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12!\n" +
+	"\fpush_stopped\x18\x12 \x01(\bR\vpushStopped\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tcaster_id\x18\x02 \x01(\tR\bcasterId\x12\x1b\n" +
@@ -25750,7 +25771,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0emetamagic_keys\x18\x1e \x03(\tR\rmetamagicKeys\x120\n" +
 	"\x14sorcery_points_spent\x18\x1f \x01(\x05R\x12sorceryPointsSpentB\x13\n" +
 	"\x11_effect_thresholdB\x16\n" +
-	"\x14_revived_death_round\"\xfb\x05\n" +
+	"\x14_revived_death_round\"\x9e\x06\n" +
 	"\x14CombatLogSpellTarget\x12\x1b\n" +
 	"\ttarget_id\x18\x01 \x01(\tR\btargetId\x12!\n" +
 	"\ftarget_label\x18\x02 \x01(\tR\vtargetLabel\x12\x14\n" +
@@ -25770,7 +25791,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fmore_damages\x18\r \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12\x16\n" +
 	"\x06hidden\x18\x0e \x01(\bR\x06hidden\x12\x1b\n" +
 	"\tpushed_ft\x18\x0f \x01(\x05R\bpushedFt\x12\x1e\n" +
-	"\vpush_no_map\x18\x10 \x01(\bR\tpushNoMapB\x15\n" +
+	"\vpush_no_map\x18\x10 \x01(\bR\tpushNoMap\x12!\n" +
+	"\fpush_stopped\x18\x11 \x01(\bR\vpushStoppedB\x15\n" +
 	"\x13_target_armor_class\"\x96\x02\n" +
 	"\x12CombatLogDeathSave\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12:\n" +
