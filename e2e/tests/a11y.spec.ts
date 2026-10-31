@@ -1907,7 +1907,6 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const combat = await tableForXpCombat(m, p, `Acessibilidade XP ${Date.now()}`, { experiencePoints: 2600 });
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
-    // eslint-disable-next-line meurpg/rpc-revision-wait -- openLive loads the page after the call: it reads the state itself.
     await winCombatRPC(m, combat);
     await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado');
     const block = m.getByRole('region', { name: 'Experiência do combate' });
