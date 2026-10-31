@@ -154,11 +154,11 @@ The `e2e` workflow runs the Playwright suite against the local stack.
   The other workflows that start the stack (`repeat-changed`, `flake-check`, `nightly-hunt`) migrate from an empty database.
 - Each shard runs a list of tests balanced by measured time, not Playwright's own `--shard`, which counts tests.
   `e2e-shards.mjs list <n>/<count> <grep flags>` (in `.github/scripts`) splits the tests the flags select, and the shard runs its list with `--test-list`.
-  The split puts the longest tests first, each in the shard with the least time so far, from the durations in `e2e/timings.json`.
+  The split uses the durations in `e2e/timings.json`, so the shards of a group finish together.
   A test the file does not know runs too, in the shard with the least time, and the step prints a notice with how many are missing.
   The `setup` project runs ahead of every shard, so it is in one list and weighs nothing.
   `lint and typecheck` runs `e2e-shards.mjs check`, which fails unless every test is in exactly one list, read back through Playwright's `--test-list`.
-  `nightly-hunt` keeps Playwright's own `--shard`, because it shuffles.
+  `nightly-hunt` keeps Playwright's own `--shard`.
 - Refresh `e2e/timings.json` when the notice counts missing tests, or when the shards stop finishing together.
   Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`.
   Download the artifacts of a run of all nine shards and run:

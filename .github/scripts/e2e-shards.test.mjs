@@ -84,3 +84,12 @@ test('timingsOf keeps the longest passed run in seconds and drops the tests that
   const timings = timingsOf([suite(['a.spec.ts', 'one', 'passed', 1234], ['b.spec.ts', 'two', 'failed', 9000]), suite(['a.spec.ts', 'one', 'passed', 2051])]);
   assert.deepEqual(timings, { '[chrome] › a.spec.ts › one': 2.1 });
 });
+
+test('unknown tests weigh the median of the known ones, and 1 second when nothing is known', () => {
+  const [a, b, c] = ['a', 'b', 'c'].map((t) => key('a.spec.ts', t));
+  const [d, e] = ['d', 'e'].map((t) => key('b.spec.ts', t));
+  // Known: 1, 2, 9 (median 2). Two unknown tests of weight 2 each go to the two shards that hold 1 and 2.
+  const shards = split([a, b, c, d, e], { [a]: 1, [b]: 2, [c]: 9 }, 3);
+  assert.deepEqual(shards.map((shard) => shard.length), [1, 2, 2]);
+  assert.deepEqual(split([d, e], {}, 2), [[d], [e]]);
+});

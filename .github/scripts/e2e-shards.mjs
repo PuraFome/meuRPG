@@ -8,7 +8,8 @@
 // The playwright args (a --grep, a --grep-invert) select the tests to split, as they select the tests to run.
 // The timing file is e2e/timings.json: one duration in seconds per test, keyed by the line of the test list.
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -102,8 +103,7 @@ function shardsOf(args, count) {
   const keys = listTests(args);
   const timings = readTimings();
   const missing = keys.filter((key) => !key.startsWith('[setup]') && !(key in timings)).length;
-  const stale = Object.keys(timings).filter((key) => !keys.includes(key)).length;
-  return { keys, missing, stale, shards: split(keys, timings, count) };
+  return { keys, missing, shards: split(keys, timings, count) };
 }
 
 function parseShard(text) {
@@ -116,9 +116,8 @@ function main(argv) {
   const [command, ...rest] = argv;
   if (command === 'list') {
     const { index, count } = parseShard(rest[0]);
-    const { keys, missing, stale, shards } = shardsOf(rest.slice(1), count);
+    const { keys, missing, shards } = shardsOf(rest.slice(1), count);
     if (missing > 0) console.error(`::notice::${missing} of ${keys.length} tests are not in e2e/timings.json; they ran in the shard with the least time. Refresh the file (docs/ci.md).`);
-    if (stale > 0) console.error(`${stale} entries of e2e/timings.json name no test any more.`);
     process.stdout.write(shards[index - 1].join('\n') + '\n');
   } else if (command === 'check') {
     const count = Number(rest[0]);
@@ -127,8 +126,9 @@ function main(argv) {
     // Playwright, not this script, decides what a list selects, so each list is read back through `--test-list`.
     // Without --no-deps every shard would list the setup project, which runs ahead of all of them.
     const seen = new Map();
+    const dir = mkdtempSync(join(tmpdir(), 'e2e-shards-'));
     shards.forEach((shard, i) => {
-      const file = join(process.env.RUNNER_TEMP ?? '/tmp', `e2e-shard-${process.pid}-${i + 1}.txt`);
+      const file = join(dir, `${i + 1}.txt`);
       writeFileSync(file, shard.join('\n') + '\n');
       for (const key of listTests(args, ['--no-deps', '--test-list', file])) {
         if (!key.startsWith('[setup]')) seen.set(key, [...(seen.get(key) ?? []), i + 1]);
@@ -136,6 +136,7 @@ function main(argv) {
       // The setup project is never listed back: it runs ahead of every shard whatever the list says.
       for (const key of shard) if (key.startsWith('[setup]')) seen.set(key, [...(seen.get(key) ?? []), i + 1]);
     });
+    rmSync(dir, { recursive: true });
     const problems = keys.filter((key) => (seen.get(key) ?? []).length !== 1).map((key) => `${key}: in shards [${(seen.get(key) ?? []).join(', ')}]`);
     const unknown = [...seen.keys()].filter((key) => !keys.includes(key));
     if (problems.length > 0 || unknown.length > 0) {
