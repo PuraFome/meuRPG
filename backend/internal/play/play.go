@@ -104,9 +104,8 @@ type VitalsKeeper interface {
 	// for anything but a living, active player character of the campaign. The caller decides
 	// when a state starts and ends, spends what it costs and writes the history.
 	SetActiveStates(ctx context.Context, tx pgx.Tx, campaignID, characterID string, states []*playv1.ActiveState) (before, after *playv1.CharacterVitals, err error)
-	// HasActiveStates says the character has a temporary state on, from the stored list
-	// alone: it derives no sheet. False for anything but a living, active character of the
-	// campaign.
+	// HasActiveStates says the character has a temporary state stored, without deriving
+	// its sheet. False for a character that is not living and active in the campaign.
 	HasActiveStates(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (bool, error)
 
 	// SetHitPointsMaxBonus puts Aid's bonus to the character's maximum hit points

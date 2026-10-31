@@ -41,8 +41,8 @@ func calledBy(name string) bool {
 	}
 }
 
-// The start of a turn reads the stored states before it derives a character's sheet: a character with no
-// state stored costs no sheet.
+// The states of a turn start (the clock, the ends) are read from the stored list before a character's sheet
+// is derived: a character with no state stored costs no sheet to them.
 func TestTheTurnStartDerivesNoSheetForACharacterWithoutStates(t *testing.T) {
 	t.Parallel()
 	r := newStanceRig(t, stanceEffects("10", "dismiss"))

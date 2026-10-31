@@ -92,10 +92,10 @@ func storedFrom(states []*playv1.ActiveState) []storedState {
 	return out
 }
 
-// HasActiveStates says the character has a state on, from the column alone: no sheet is
-// derived. It is false for anything but a living, active character of the campaign. It
-// implements play.VitalsKeeper, so the combat reads the vitals only for a character that
-// has states.
+// HasActiveStates says the character has a state stored, without deriving its sheet. It
+// is false for a character that is not living and active in the campaign. It implements
+// play.VitalsKeeper, so the combat reads the vitals of a player's character for its states
+// only when it has some.
 func (s *Service) HasActiveStates(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (bool, error) {
 	id, ok := uid.Canonical(characterID)
 	if !ok {
