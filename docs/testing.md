@@ -180,12 +180,14 @@ await m.getByRole('button', { name: 'Próximo turno' }).click();
 - A player's revision on a fog-of-war map is not the server's number, so it cannot be waited on.
   Wait for the player's screen to show the change itself.
   Without fog (no map, or a map with the fog off) the player's page works.
-- A move (`MoveCombatant`) gives the page no new revision, and a change that touches only hidden combatants reaches the master alone.
-  Wait for what the page shows, and put `// eslint-disable-next-line meurpg/rpc-revision-wait -- why` on the call when the rule asks anyway.
+- A move on a map gives the page no new revision, so the rule ignores it: wait for what the page shows.
+  A change that touches only hidden combatants reaches the master alone.
+  Wait for what the page shows there too, and put `// eslint-disable-next-line meurpg/rpc-revision-wait -- why` on the call.
 - A page with no combat view (the bestiary, a player after the combat ended) cannot show a revision: disable the rule on that call with the reason.
 - `meurpg/rpc-revision-wait` (`e2e/lint/rules`) is an error when an awaited helper that returns an `Encounter` is followed by a page action with no wait on that action's page.
   A wait that comes after the action, or on another page, does not count.
-  Reads (`get*`, `list*`, `read*`), `goto`, `reload` and `openSessionPage` count as a wait.
+  `goto`, `reload`, `openSessionPage`, `openPlayerMap` and `gotoCampaignTab` count as a wait, because the page then reads the state itself.
+  Reads (`get*`, `list*`, `read*`) and moves (`MoveCombatant`, `movePensantus`) need none.
   The rule asks for a wait on every page that acts, because it cannot tell which pages show the session.
   It does not see calls that answer with nothing (a scene roll), helpers that click inside, or the next turn of a loop.
 - The rule has no baseline: do not add suppressions for it.
@@ -193,7 +195,7 @@ await m.getByRole('button', { name: 'Próximo turno' }).click();
 - The combat view carries `data-encounter-id` and `data-encounter-revision` for the specs; nothing in the app reads them.
 
 A failed CI run keeps `stack-logs/stack.log` (every container of the stack, with timestamps) in the `playwright-report-*` artifact.
-The `flake-check` traces artifact (`flake-traces-*`) holds the same file for every repeat run.
+The `flake-check` traces artifact (`flake-traces-*`) holds the same file, one per job.
 
 ## Reproducing a flaky test
 

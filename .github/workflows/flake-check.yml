@@ -221,7 +221,7 @@ jobs:
       - name: Show the stack logs
         if: failure()
         working-directory: code
-        run: cat e2e/stack-logs/stack.log
+        run: cat e2e/stack-logs/stack.log || true
 
   go:
     name: go ${{ matrix.side }} ${{ matrix.runner }}

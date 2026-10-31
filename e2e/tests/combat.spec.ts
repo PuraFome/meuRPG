@@ -110,7 +110,7 @@ test(
       const pen = enc.combatants.find((c) => c.label === 'Pensantus')!;
       const cap = enc.combatants.find((c) => c.label === 'Capitão Goblin')!;
       if (pen.initiative === cap.initiative) {
-        // eslint-disable-next-line meurpg/rpc-revision-wait -- the player acts only after the master's own clicks, and the player's "Sua vez" heading asserted before that is the wait (a reorder of hidden goblins may not reach the player's revision)
+        // eslint-disable-next-line meurpg/rpc-revision-wait -- the player acts only after the master's own clicks, and the player's "Sua vez" heading asserted before that is the wait
         enc = await combatRPC(m, 'SetInitiativeOrder', { campaignId, encounterId: enc.id, combatantIds: [cap.id, pen.id] });
         await waitForEncounterRevision(m, enc);
       }

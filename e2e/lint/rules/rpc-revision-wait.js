@@ -9,7 +9,7 @@
 // first is an error. `goto` and `reload` are not actions: a fresh load reads the state itself.
 //
 // Limits, on purpose: only Playwright's own action methods count as actions (a helper that clicks inside is not seen);
-// a loop's next turn is not followed; the wait is not matched to the page it waits on.
+// a loop's next turn is not followed; a page the rule cannot name is judged by any wait.
 
 const ACTIONS = new Set([
   'click',
@@ -87,11 +87,11 @@ module.exports = {
       return Boolean(prop) && Boolean(type.getProperty('combatants')) && (checker.getTypeOfSymbol(prop).flags & 8 /* ts.TypeFlags.Number */) !== 0;
     };
 
-    /** An awaited `*RPC` call whose answer carries a revision. @param {any} node */
     /** A move is patched into the page with no new revision (CombatState.applyMove): there is nothing to wait for. @param {any} call */
     const isMove = (call) =>
       call.callee.name === 'movePensantus' || call.arguments.some((/** @type {any} */ a) => a.type === 'Literal' && a.value === 'MoveCombatant');
 
+    /** An awaited call of a helper whose answer is an `Encounter`, other than a read, a wait or a move. @param {any} node */
     const isTracked = (node) => {
       const call = node.argument;
       return (

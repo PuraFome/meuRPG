@@ -1472,11 +1472,9 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // It steps next to Pensantus (who moved away), then out of his reach again.
     const now = await getEncounterRPC(m, campaignId);
     const goblin = now.combatants.find((c) => c.label === 'Goblin 1')!.id;
-    let moved = now;
     for (const col of [5, 9]) {
-      moved = await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: now.id, combatantId: goblin, col, row: 7 });
+      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: now.id, combatantId: goblin, col, row: 7 });
     }
-    await waitForEncounterRevision(p, moved);
     const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
     await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
     await expectScreenPasses(p, `Ataque de oportunidade, o aviso do jogador ${where}`);
