@@ -5,8 +5,12 @@ import { test as base, type Browser, type BrowserContext, type ConsoleMessage, t
  * watches every page of every context the test opens (the `page` and `context` fixtures, `browser.newContext()`,
  * `newSignedInContext` and the other helpers that call it) and, when the test fails, attaches `page-diagnostics`: what
  * each page reported (a crash, `pageerror`, console errors, failed requests), whether it still answers, and which
- * requests the browser still has open. A click that waits 20 s on a blank page then says whether the page was dead,
- * busy or waiting for an answer that never came (docs/testing.md, "A page that hangs").
+ * requests the browser still has open (docs/testing.md, "A page that hangs").
+ *
+ * The probe is an evaluation, which Playwright records as a step of the test and which can wait for a stuck page: it
+ * runs only after the test failed, in the `context` fixture, which ends before Playwright closes the contexts (a stuck
+ * page makes that close overrun the teardown, and the attachment would be lost). A context the test closed itself has
+ * no page left to ask; for its pages the report keeps what the browser had seen and the requests open at the close.
  */
 
 /** How long a page gets to answer the probe; the probe never keeps a test or its teardown waiting longer. */
@@ -22,6 +26,8 @@ type Probe = { answers: string; openRequests: string[] };
 
 type Watched = {
   label: string;
+  /** The requests that were open when the test closed the page's context, kept without asking the page anything. */
+  closedWith?: string[];
   page: Page;
   crashed: boolean;
   errors: string[];
@@ -43,11 +49,11 @@ function firstLine(error: unknown): string {
 function describe(watched: Watched, now: number): string[] {
   const { page, label, probe } = watched;
   const lines = [`${label}  ${page.url() || '(no url yet)'}`];
-  const state = watched.crashed ? 'crashed' : page.isClosed() && !probe ? 'closed before it was probed' : (probe?.answers ?? 'not probed');
+  const state = watched.crashed ? 'crashed' : watched.closedWith ? 'closed by the test, not probed' : (probe?.answers ?? 'not probed');
   lines.push(`  state: ${state}`);
   for (const error of watched.errors) lines.push(`  ${error}`);
   for (const failed of watched.failedRequests) lines.push(`  ${failed}`);
-  const open = probe?.openRequests ?? [...watched.open.values()].map((request) => `${request.description} (${now - request.since} ms)`);
+  const open = watched.closedWith ?? probe?.openRequests ?? [...watched.open.values()].map((request) => `${request.description} (${now - request.since} ms)`);
   if (open.length > 0) {
     lines.push(`  requests still open (${open.length}):`);
     for (const request of open.slice(0, MAX_LINES)) lines.push(`    ${request}`);
@@ -58,6 +64,7 @@ function describe(watched: Watched, now: number): string[] {
 export class PageDiagnostics {
   private readonly pages: Watched[] = [];
   private readonly contexts = new WeakSet<BrowserContext>();
+  private attached = false;
   private contextCount = 0;
 
   /** Watches the pages the context has and the ones it opens later, and probes its pages before it closes. */
@@ -69,11 +76,16 @@ export class PageDiagnostics {
     const watch = (page: Page) => this.watchPage(page, `${name}, page ${++pageCount}`);
     context.pages().forEach(watch);
     context.on('page', watch);
-    // The test body usually closes its contexts itself, in a `finally`, before anything knows that it failed:
-    // the evidence is taken while the pages are still there.
+    // The test body usually closes its contexts itself, in a `finally`, before anything knows that it failed.
+    // Nothing is asked of the pages there: only what the browser already told is kept.
     const close = context.close.bind(context);
-    context.close = async (options) => {
-      await this.probe(this.pages.filter((watched) => watched.page.context() === context));
+    context.close = (options) => {
+      const now = Date.now();
+      for (const watched of this.pages) {
+        if (watched.page.context() === context && !watched.page.isClosed()) {
+          watched.closedWith = [...watched.open.values()].map((request) => `${request.description} (${now - request.since} ms)`);
+        }
+      }
       return close(options);
     };
   }
@@ -161,7 +173,8 @@ export class PageDiagnostics {
 
   /** Probes what is still open and attaches the report when the test failed. */
   async attachIfFailed(testInfo: TestInfo): Promise<void> {
-    if (testInfo.status !== 'failed' && testInfo.status !== 'timedOut') return;
+    if (this.attached || (testInfo.status !== 'failed' && testInfo.status !== 'timedOut')) return;
+    this.attached = true;
     await this.probe();
     const body = this.report();
     if (body) await testInfo.attach('page-diagnostics', { body, contentType: 'text/plain' });
@@ -169,6 +182,11 @@ export class PageDiagnostics {
 }
 
 export const test = base.extend<{ pageDiagnostics: PageDiagnostics }>({
+  // Ends before Playwright closes the context, which is where the report has to be made (see the top of this file).
+  context: async ({ context, pageDiagnostics }, use, testInfo) => {
+    await use(context);
+    await pageDiagnostics.attachIfFailed(testInfo);
+  },
   pageDiagnostics: [
     async ({ browser }, use, testInfo) => {
       const diagnostics = new PageDiagnostics();
@@ -177,6 +195,7 @@ export const test = base.extend<{ pageDiagnostics: PageDiagnostics }>({
         await use(diagnostics);
       } finally {
         restore();
+        // The test used no `context` or `page` fixture: its own contexts are all that was watched.
         await diagnostics.attachIfFailed(testInfo);
       }
     },

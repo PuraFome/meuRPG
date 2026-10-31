@@ -49,11 +49,11 @@ module.exports = tseslint.config(
         'error',
         {
           paths: [
-            {
-              name: '@playwright/test',
+            ...['@playwright/test', 'playwright/test'].map((name) => ({
+              name,
               importNames: ['test'],
               message: "Import `test` from './diagnostics': it attaches the pages' diagnostics to a failed test.",
-            },
+            })),
           ],
         },
       ],

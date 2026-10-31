@@ -293,13 +293,15 @@ await m.getByRole('button', { name: 'Próximo turno' }).click();
 ### A page that hangs
 
 Every spec imports `test` from `./diagnostics`, not from `@playwright/test`; the lint rejects the other import.
-It watches every page of every context the test opens, including those from `browser.newContext()` and `newSignedInContext`.
 A failed or timed-out test attaches `page-diagnostics` to its report.
-For each page it says whether the page crashed, answers or does not answer, what the page and its console reported (`pageerror`, `console.error`), the requests that failed, and the requests still open with their age.
-A page that does not answer is a busy or dead page.
-A page that answers with a request still open is waiting for a reply the browser never saw.
+It covers the pages of the `page` and `context` fixtures and of every context made with `browser.newContext()`, including `newSignedInContext`.
+For each page it says whether the page crashed, the `pageerror` and `console.error` it reported, the requests that failed, and the requests still open with their age.
+For a page still open when the test fails it also says whether the page replied to a probe within 1.5 s.
+A page in a context the test closed itself is not probed; the attachment lists the requests open at the close.
+Requests made with `page.request` or `callRPC` are not page requests and are not listed.
+A page stuck in a loop makes Playwright's own trace and screenshot wait, and then no attachment is made.
 Read the attachment in the HTML report, or in the `playwright-report-*` artifact of a failed shard.
-`diagnostics.spec.ts` makes pages crash, hang and fail on purpose.
+`diagnostics.spec.ts` makes pages crash, hang and fail on purpose; its last test runs `diagnostics-fixture/` to see the attachment of a real failed test.
 
 A failed CI run keeps `stack-logs/stack.log` (every container of the stack, with timestamps) in the `playwright-report-*` artifact.
 The `flake-check` traces artifact (`flake-traces-*`) holds the same file, one per job.
