@@ -19,7 +19,7 @@
       <mat-icon aria-hidden="true">error</mat-icon>
       <p>Não foi possível ler os tesouros encontrados. Confira a conexão e tente de novo.</p>
     </div>
-    <button mat-stroked-button type="button" class="again" (click)="retry()">Tentar de novo</button>
+    <button matButton="outlined" type="button" class="again" (click)="retry()">Tentar de novo</button>
   } @else if (treasures().length === 0) {
     <p class="none">
       Nenhum tesouro encontrado para converter. Quando o grupo achar um, marque no mapa e ele aparece aqui.

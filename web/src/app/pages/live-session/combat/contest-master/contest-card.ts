@@ -124,7 +124,7 @@ let nextId = 0;
           </div>
           <div class="btns">
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               class="btn"
               data-initial
@@ -186,7 +186,7 @@ let nextId = 0;
       <div class="btns">
         @if (stage() === 'shove') {
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="btn"
             data-initial
@@ -196,7 +196,7 @@ let nextId = 0;
             Confirmar
           </button>
         }
-        <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="close()">
+        <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="close()">
           Encerrar disputa
         </button>
       </div>

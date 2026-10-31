@@ -94,7 +94,7 @@ let nextId = 0;
                   }
                 </span>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="btn btn--small"
                   [attr.aria-label]="'Soltar ' + g.grappledLabel"
@@ -109,7 +109,7 @@ let nextId = 0;
         }
         @if (npcTurn()) {
           <div class="btns">
-            <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="openNpcGrapple()">
+            <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="openNpcGrapple()">
               Agarrar ou empurrar por um NPC
             </button>
           </div>
@@ -127,7 +127,7 @@ let nextId = 0;
                 <span class="row__sub">{{ h.sub }}</span>
               </span>
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 class="btn btn--small"
                 [attr.aria-label]="'Revelar ' + h.label"

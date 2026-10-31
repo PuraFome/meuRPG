@@ -29,10 +29,10 @@
         <div class="ask" role="alertdialog" data-confirm [attr.aria-label]="'Descartar o dano de ' + it.total">
           <p class="ask__text">Descartar o dano de {{ it.total }}?</p>
           <!-- "Voltar" sits where "Não aplicar" was (the right column), so a second click of a double-click lands on the safe choice. -->
-          <button mat-stroked-button type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">
+          <button matButton="outlined" type="button" class="ask__danger" [disabled]="busy()" (click)="discard(it.p)">
             Descartar
           </button>
-          <button #safe mat-stroked-button type="button" (click)="discarding.set(null)">Voltar</button>
+          <button #safe matButton="outlined" type="button" (click)="discarding.set(null)">Voltar</button>
         </div>
       } @else if (other() === it.p.id) {
         <div class="other">
@@ -60,7 +60,7 @@
           </mat-form-field>
           <div class="dmg__buttons">
             <button
-              mat-stroked-button
+              matButton="outlined"
               type="button"
               class="dmg__apply"
               [disabled]="busy() || otherValue() === null"
@@ -68,21 +68,21 @@
             >
               Aplicar {{ otherValue() ?? '' }} de dano
             </button>
-            <button mat-stroked-button type="button" class="dmg__skip" (click)="closeOther(it.p.id)">Voltar</button>
+            <button matButton="outlined" type="button" class="dmg__skip" (click)="closeOther(it.p.id)">Voltar</button>
           </div>
         </div>
       } @else {
         <div class="dmg__buttons">
-          <button mat-stroked-button type="button" class="dmg__apply" [disabled]="busy()" (click)="apply(it.p)">
+          <button matButton="outlined" type="button" class="dmg__apply" [disabled]="busy()" (click)="apply(it.p)">
             Aplicar {{ it.total }} de dano
           </button>
-          <button mat-stroked-button type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
+          <button matButton="outlined" type="button" class="dmg__skip" (click)="askDiscard(it.p.id)">Não aplicar</button>
         </div>
-        <button #otherLink mat-button type="button" class="dmg__other" [attr.data-pending]="it.p.id" (click)="askOther(it.p)">Aplicar outro valor</button>
+        <button #otherLink matButton type="button" class="dmg__other" [attr.data-pending]="it.p.id" (click)="askOther(it.p)">Aplicar outro valor</button>
       }
     } @else if (it.held) {
       <!-- A window waits for an answer (Escudo, Contramágica, the "Sem reação" check): the damage is not rolled yet. -->
-      <button mat-stroked-button type="button" class="dmg__off" disabled disabledInteractive [attr.aria-describedby]="'wait-' + it.p.id">
+      <button matButton="outlined" type="button" class="dmg__off" disabled disabledInteractive [attr.aria-describedby]="'wait-' + it.p.id">
         Rolar dano
       </button>
       <p class="dmg__why" [id]="'wait-' + it.p.id"><mat-icon aria-hidden="true">block</mat-icon>{{ it.held }}</p>

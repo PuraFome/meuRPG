@@ -25,7 +25,7 @@ import { FogMap } from './fog-map';
         Você está vendo o mapa como <strong>{{ name() }}</strong
         >. Para voltar {{ backTo() }}, escolha “Todos”.
       </p>
-      <button mat-stroked-button type="button" class="band__back" (click)="back.emit()">Voltar {{ backTo() }}</button>
+      <button matButton="outlined" type="button" class="band__back" (click)="back.emit()">Voltar {{ backTo() }}</button>
     </div>
     <app-fog-map
       [mapName]="mapName()"

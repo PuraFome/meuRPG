@@ -2,7 +2,7 @@
   <div class="pick" [class.foot]="sticky()">
     @if (canApp()) {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="pick__main"
         [class.pick__main--quiet]="outlined() || (!preferApp() && canType())"
@@ -15,7 +15,7 @@
     }
     @if (canType()) {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="pick__main"
         [class.pick__main--quiet]="preferApp() && canApp()"
@@ -76,7 +76,7 @@
       <ng-container *ngTemplateOutlet="alertTpl" />
     }
     <button
-      mat-flat-button
+      matButton="filled"
       type="button"
       class="pick__main"
       [class.pick__main--quiet]="outlined() && value() !== null"

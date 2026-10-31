@@ -26,6 +26,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -136,7 +137,7 @@ func newHarnessWith(t *testing.T, tweak func(*Config)) *harness {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
 	srd := loadRules(t)
-	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: NewTableSource(pool, srd, camps), SRD: srd, Logger: logger, Now: h.clock.Now}
+	cfg := Config{Pool: pool, Profiles: h.users, Members: camps, Content: NewTableSource(pool, srd, camps), SRD: srd, Roller: dicetest.New(), Logger: logger, Now: h.clock.Now}
 	if tweak != nil {
 		tweak(&cfg)
 	}

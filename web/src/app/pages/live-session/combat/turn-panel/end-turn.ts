@@ -38,14 +38,14 @@ let nextId = 0;
     @if (asking()) {
       <div class="ask" role="alertdialog" aria-labelledby="end-ask">
         <p class="ask__text" id="end-ask">{{ question() }}</p>
-        <button #safe mat-stroked-button type="button" class="ask__btn" (click)="asking.set(false)">Voltar</button>
-        <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm()">
+        <button #safe matButton="outlined" type="button" class="ask__btn" (click)="asking.set(false)">Voltar</button>
+        <button matButton="outlined" type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="confirm()">
           {{ label() }}
         </button>
       </div>
     } @else {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="end"
         [class.end--filled]="primary()"

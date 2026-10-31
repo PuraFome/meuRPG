@@ -27,7 +27,7 @@
           }
           @if (r.give) {
             <button
-              mat-button
+              matButton
               type="button"
               class="item__give"
               [attr.aria-label]="'Dar a mais alguém: ' + r.m.text"
@@ -39,7 +39,7 @@
         </div>
         @if (r.last) {
           <button
-            mat-button
+            matButton
             type="button"
             class="item__undo"
             [attr.data-undo]="r.m.id"

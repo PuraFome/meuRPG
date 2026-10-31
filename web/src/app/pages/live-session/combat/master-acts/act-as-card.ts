@@ -56,7 +56,7 @@ import type { OwnHitPoints } from '../turn-panel/own-numbers';
       <p class="card__wait">
         Esperando {{ who().label }}. Se o jogador não estiver, jogue este turno por ele.
       </p>
-      <button mat-stroked-button type="button" class="card__act" [disabled]="busy()" (click)="act.emit()">
+      <button matButton="outlined" type="button" class="card__act" [disabled]="busy()" (click)="act.emit()">
         <mat-icon aria-hidden="true">person</mat-icon>Agir por {{ who().label }}
       </button>
     </section>

@@ -2,6 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { canvasPng, createMapRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC, type MapsTable } from './maps-support';
 import { startSessionRPC } from './live-session-support';
+import { waitForEncounterRevision } from './revision-support';
 import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
 
 // Setup for the combat specs (Etapa 6, MR-013), through the API: these tests
@@ -70,24 +71,40 @@ export const pensantusAttacks = {
   preparedSpellKeys: ['spell:magic-missile', 'spell:sleep', 'spell:shield', 'spell:web', 'spell:misty-step'],
 };
 
+/** Where `beginAttackCombatRPC` puts the NPCs when the caller names no squares. */
+export const attackCombatSquares: Record<string, [number, number]> = { 'Capitão Goblin': [11, 5], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] };
+
 /**
  * Starts a combat with the Capitão and two Goblins in plain sight, rolls
  * everyone's initiative with the given d20 faces (by label; the master may
  * type them) and places them, then begins. Returns the combat on turn 1.
+ *
+ * A creature the combat needs besides those (an SRD creature key in `monsters`, in plain sight) joins at the start,
+ * never later: the master can set an initiative only while the combat is in SETUP, and the app rolls the initiative
+ * of a creature added to a running combat with `dice.Crypto`, where a tie with the actor is a joint turn. Give its
+ * label a face in `faces`; the call fails when that creature's total equals another combatant's, so a tie cannot
+ * reach the test by chance.
  */
 export async function beginAttackCombatRPC(
   master: Page,
   table: CombatTable,
   faces: Record<string, number>,
-  at: Record<string, [number, number]> = { 'Capitão Goblin': [11, 5], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] },
+  at: Record<string, [number, number]> = attackCombatSquares,
   hidden: string[] = [],
+  monsters: string[] = [],
 ): Promise<Encounter> {
-  let enc = await startEncounterRPC(master, table, [
-    { characterId: table.captainId, count: 1, hidden: false },
-    { characterId: table.goblinId, count: 2, hidden: false },
-  ]);
+  let enc = monsters.length
+    ? await startEncounterWithMonstersRPC(master, table, monsters)
+    : await startEncounterRPC(master, table, [
+        { characterId: table.captainId, count: 1, hidden: false },
+        { characterId: table.goblinId, count: 2, hidden: false },
+      ]);
   for (const c of enc.combatants) {
     enc = await combatRPC(master, 'SubmitInitiative', { campaignId: table.campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces[c.label] ?? 1 });
+  }
+  for (const added of enc.combatants.filter((c) => (c as { bestiaryCreatureKey?: string }).bestiaryCreatureKey)) {
+    const same = enc.combatants.filter((c) => c.id !== added.id && c.initiative === added.initiative).map((c) => c.label);
+    expect(same, `${added.label} total ${added.initiative} must differ from every other combatant's: give its label another face in faces`).toEqual([]);
   }
   for (const [label, [col, row]] of Object.entries(at)) {
     const id = enc.combatants.find((c) => c.label === label)!.id;
@@ -117,6 +134,23 @@ export async function startEncounterRPC(
     idempotencyKey: crypto.randomUUID(),
     name,
     participants: npcs,
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return (await res.json()).encounter as Encounter;
+}
+
+/** `StartEncounter` for the whole party, the Capitão, two Goblins and SRD creatures (`monsters`, one each), all in plain sight. */
+async function startEncounterWithMonstersRPC(page: Page, table: CombatTable, monsters: string[]): Promise<Encounter> {
+  const res = await callRPC(page, 'meurpg.play.v1.CombatService/StartEncounter', {
+    campaignId: table.campaignId,
+    idempotencyKey: crypto.randomUUID(),
+    name: 'Emboscada na estrada',
+    participants: [
+      { characterId: table.captainId, count: 1, hidden: false },
+      { characterId: table.goblinId, count: 2, hidden: false },
+    ],
+    monsters: monsters.map((creatureKey) => ({ creatureKey, count: 1 })),
+    monstersHidden: false,
   });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).encounter as Encounter;
@@ -274,6 +308,17 @@ export async function passTurnsTo(master: Page, campaignId: string, label: strin
     });
   }
   throw new Error(`the turn never reached ${label}`);
+}
+
+/**
+ * `passTurnsTo`, then waits until `pages` show the change: the page the next action uses (both, `[m, p]`, if both act).
+ * `pages` are on the session; a page outside it throws.
+ * Use it whenever a page acts next; `passTurnsTo` alone is for a spec that reads the state over RPC or looks at the moment before the page sees the change.
+ */
+export async function passTurnsToAndWait(master: Page, campaignId: string, label: string, pages: Page | Page[]): Promise<Encounter> {
+  const enc = await passTurnsTo(master, campaignId, label);
+  await waitForEncounterRevision(pages, enc);
+  return enc;
 }
 
 /** Brisa, a human Cleric 3 of the Life domain, who prepares Curar Ferimentos. */

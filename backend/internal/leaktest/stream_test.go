@@ -316,7 +316,9 @@ func (w *world) streamScript() {
 	must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: w.combatant(w.toren).GetId(), IdempotencyKey: newKey(), Col: 12, Row: 14, Forced: true})))
 	must(m.combat.AdjustCombatantHitPoints(ctx, rq(&playv1.AdjustCombatantHitPointsRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: boss.GetId(), IdempotencyKey: newKey(), Change: &playv1.AdjustCombatantHitPointsRequest_Damage{Damage: 50}})))
 	must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: boss.GetId(), IdempotencyKey: newKey(), Hidden: true})))
-	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:bandit", Count: 1, Name: w.secrets.marker("mon-stream")})))
+	w.scriptD20(ownFace)
+	added := must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:bandit", Count: 1, Name: w.secrets.marker("mon-stream")})))
+	w.requireOwnTotal(added.GetCombatantIds()[0])
 	// the hidden bandit hits Toren and the master applies the damage: Caio's stream alone hears an attack_hit, with no name
 	// for the attacker (it is hidden, and its line in the log is the master's); Ana's stream and the master's hear none
 	w.hiddenBanditHitsToren(bandit, w.combatant(w.toren))

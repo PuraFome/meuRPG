@@ -19,6 +19,7 @@ import {
   newRowId,
   strictRangeFeet,
   rangeMeters,
+  unreadableNumberPaths,
 } from './effect-draft';
 import { paragraphs } from './spell-draft';
 
@@ -307,6 +308,18 @@ export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuV
     }
   });
   return out;
+}
+
+/** The paths of the number fields of one feature (and of its options) whose text is no whole number, at `base`. */
+export function unreadableFeaturePaths(
+  base: string,
+  f: FeatureDraft,
+  menu: EffectMenuVm,
+): string[] {
+  return [
+    ...unreadableNumberPaths(`${base}.effects`, f.effects, menu),
+    ...f.options.flatMap((o, k) => unreadableFeaturePaths(`${base}.options[${k}]`, o, menu)),
+  ];
 }
 
 /** The paths of the inputs a list of features draws. A violation at a path with no input lands on the nearest one above (`inputFor`). */

@@ -97,6 +97,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
@@ -613,6 +614,7 @@ func wireModules(
 		Content: characters.NewTableSource(pool, rulesContent, campaignsService),
 		SRD:     rulesContent,
 		Dice:    levelUpDice{campaignsService}, // how a player rolls the hit die of a level-up (RN-18)
+		Roller:  dice.Crypto{},                 // production rolls with the operating system's random source
 		Logger:  logger,
 		// The claim links' limit per address (MR-049).
 		TrustedProxyHops: opts.TrustedProxyHops,
@@ -642,6 +644,7 @@ func wireModules(
 		Maps:      sessionMaps,                 // the current map (RN-10), the shown image (MR-028), the grid and tokens (MR-013)
 		Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 		Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
+		Roller:    dice.Crypto{},               // production rolls with the operating system's random source
 		Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
 		Messages: play.MessagesConfig{
 			Profiles:        users, // the name shown on an out-of-character line

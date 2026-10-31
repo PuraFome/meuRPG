@@ -1,25 +1,27 @@
 <section class="mr-panel side" aria-labelledby="side-title">
   <h2 class="mr-panel__title" id="side-title">{{ title() }}</h2>
 
-  @if (ready()) {
-    <div class="mr-notice mr-notice--success">
-      <mat-icon aria-hidden="true">check_circle</mat-icon>
-      <p><strong>Todos rolaram.</strong> Confira a ordem e comece o combate.</p>
-    </div>
-  } @else {
-    <div class="mr-notice mr-notice--warning">
-      <mat-icon aria-hidden="true">warning</mat-icon>
-      <p>
-        <strong>
-          {{ missing().length === 1 ? names() + ' ainda não rolou.' : names() + ' ainda não rolaram.' }}
-        </strong>
-        @if (waiting(); as line) {
-          {{ line }}
-        }
-        Espere ou digite o resultado por {{ missing().length === 1 ? 'ele' : 'eles' }}.
-      </p>
-    </div>
-  }
+  <div role="status">
+    @if (ready()) {
+      <div class="mr-notice mr-notice--success">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>
+        <p><strong>Todos rolaram.</strong> Confira a ordem e comece o combate.</p>
+      </div>
+    } @else {
+      <div class="mr-notice mr-notice--warning">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p>
+          <strong>
+            {{ missing().length === 1 ? names() + ' ainda não rolou.' : names() + ' ainda não rolaram.' }}
+          </strong>
+          @if (waiting(); as line) {
+            {{ line }}
+          }
+          Espere ou digite o resultado por {{ missing().length === 1 ? 'ele' : 'eles' }}.
+        </p>
+      </div>
+    }
+  </div>
 
   <ul class="side__facts">
     <li><mat-icon aria-hidden="true">check</mat-icon>{{ rolled() }} de {{ total() }} rolaram</li>

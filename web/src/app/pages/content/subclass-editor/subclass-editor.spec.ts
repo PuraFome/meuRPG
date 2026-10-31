@@ -284,6 +284,30 @@ describe('SubclassEditor', () => {
     expect(group3.contains(document.activeElement)).toBe(true);
   });
 
+  it('does not save a number that is no whole number in a closed feature: it opens that feature and lands on the field', async () => {
+    const { fixture, el } = setup();
+    click(el, 'Adicionar característica');
+    await settle(fixture, 3);
+    const first = Array.from(
+      el.querySelectorAll<HTMLElement>('[data-field$=".effects[0].type"]'),
+    )[0];
+    const base = first.getAttribute('data-field')!.replace('.effects[0].type', '');
+    (first as HTMLSelectElement).value = 'choice';
+    first.dispatchEvent(new Event('change'));
+    await settle(fixture, 3);
+    const count = field(el, `${base}.effects[0].count`) as HTMLInputElement;
+    count.value = '1.5';
+    count.dispatchEvent(new Event('input'));
+    await settle(fixture, 3);
+    click(el, 'Adicionar característica');
+    await settle(fixture, 3);
+    expect(el.querySelector(`[data-field="${base}.effects[0].count"]`)).toBeNull();
+    click(el, 'Salvar subclasse');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field(el, `${base}.effects[0].count`));
+  });
+
   it('the 61st feature refusal goes to the panel head', async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(

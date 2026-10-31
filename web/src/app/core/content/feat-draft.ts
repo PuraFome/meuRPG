@@ -5,7 +5,12 @@ import {
   type TableFeat,
   type TableFeatSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { type EffectMenuVm, draftToEffect, effectToDraft } from './effect-draft';
+import {
+  type EffectMenuVm,
+  draftToEffect,
+  effectToDraft,
+  unreadableNumberPaths,
+} from './effect-draft';
 import {
   type FeatureDraft,
   ABILITY_FIELDS,
@@ -144,4 +149,9 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
     }
   });
   return out;
+}
+
+/** The paths of the feat's number fields whose text is no whole number. */
+export function unreadableFeatPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
+  return unreadableNumberPaths('table_feat.effects', d.feature.effects, menu);
 }

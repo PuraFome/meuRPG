@@ -1,7 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './diagnostics';
 
-import { type Encounter, adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTurnsTo } from './combat-support';
+import { type Encounter, adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTurnsTo, passTurnsToAndWait } from './combat-support';
 import { openSessionPage } from './live-session-support';
+import { required } from './support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
 import { masterLog, openOrderRow } from './combat-layout';
@@ -111,7 +113,7 @@ test(
 
       // Toren's turn ends; on the Goblin's turn the master offers the opportunity attack to Toren.
       await combatRPC(m, 'EndTurn', { campaignId, encounterId: started.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
-      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Goblin'));
+      await passTurnsToAndWait(m, campaignId, 'Goblin', [m, p]);
       await expect(m.getByRole('heading', { name: 'Vez do Goblin' })).toBeVisible();
       await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
       await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
@@ -160,10 +162,9 @@ test(
       await openSessionPage(lia.page, campaignId);
       // Brisa falls with her turn on: she rolls her death saves.
       await adjustVitalsRPC(m, campaignId, lia.characterId, { hitPointsCurrent: 0 });
-      let enc = await getEncounterRPC(m, campaignId);
-      enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
-      enc = await passTurnsTo(m, campaignId, 'Brisa');
-      await waitForEncounterRevision([lia.page, p], enc);
+      const enc = await getEncounterRPC(m, campaignId);
+      await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
+      await passTurnsToAndWait(m, campaignId, 'Brisa', [lia.page, p]);
       await lia.page.getByRole('button', { name: 'Digitar o resultado' }).click();
       await lia.page.getByLabel(/Role 1d20 para o teste contra a morte/).fill('4');
       await lia.page.getByRole('button', { name: 'Confirmar 4' }).click();
@@ -191,7 +192,7 @@ test(
       expect(own.deathFailures ?? 0).toBe(1);
 
       // Three successes on her next turns make her stable: the result is public, the road to it is not.
-      let rolled!: Encounter;
+      let rolled: Encounter | undefined;
       for (let i = 0; i < 3; i++) {
         const now = await getEncounterRPC(m, campaignId);
         await combatRPC(m, 'EndTurn', { campaignId, encounterId: now.id, expectedCombatantId: now.currentCombatantId, discardPendingDamage: true });
@@ -199,7 +200,7 @@ test(
         const turn = await getEncounterRPC(m, campaignId);
         rolled = await combatRPC(lia.page, 'RollDeathSave', { campaignId, encounterId: turn.id, combatantId: turn.combatants.find((c) => c.label === 'Brisa')!.id, d20Face: 15 });
       }
-      await waitForEncounterRevision(p, rolled);
+      await waitForEncounterRevision(p, required(rolled, 'the death save the loop rolled'));
       const stable = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.label === 'Brisa')!;
       expect(stable.state).toBe('COMBATANT_STATE_STABLE');
       await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();

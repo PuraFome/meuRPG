@@ -4,7 +4,12 @@ import {
   type TableClassFeature,
   type TableClassFeatureSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { type EffectMenuVm, draftToEffect, effectToDraft } from './effect-draft';
+import {
+  type EffectMenuVm,
+  draftToEffect,
+  effectToDraft,
+  unreadableNumberPaths,
+} from './effect-draft';
 import { type FeatureDraft, emptyFeature } from './feature-draft';
 import { paragraphs } from './spell-draft';
 
@@ -75,4 +80,9 @@ export function classFeaturePaths(d: ClassFeatureDraft, menu: EffectMenuVm): str
     }
   });
   return out;
+}
+
+/** The paths of the class feature's number fields whose text is no whole number. */
+export function unreadableClassFeaturePaths(d: ClassFeatureDraft, menu: EffectMenuVm): string[] {
+  return unreadableNumberPaths('table_class_feature.effects', d.feature.effects, menu);
 }
