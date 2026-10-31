@@ -139,10 +139,12 @@ Death saves and initiative are untouched.
 - **What the player sees.** Only the sources they can see are listed; the mode counts all of them.
 - **The shape of an attack** (`shapeOfAttack`, `attackShape`) says whether it is melee or ranged.
   A spell attack is ranged when its range is beyond touch.
-  A weapon with a throwing range and a melee line (a spear, a dagger, a javelin) is a thrown weapon.
+  A melee weapon is a thrown weapon when its long range is beyond its melee reach (a spear, a dagger, a javelin).
   A thrown weapon is a melee attack up to its melee reach, and a ranged attack made by throwing it beyond the reach, up to its throwing range.
-  The melee reach is 5 ft, or the longer reach a `weapon_rule` gives the line (`link.Attack.ReachFt`, read by `attackMeleeReach`).
-  Without a map the distance is unknown, and a thrown weapon is a melee attack.
+  The melee reach is 5 ft, or the longer reach a `weapon_rule` or a `pseudo_weapon` gives the line (`link.Attack.ReachFt`, read by `attackMeleeReach`).
+  Cover, Rage and the other rules for a ranged attack follow the same reach.
+  Without a map the distance is unknown, and a thrown weapon with the usual 5 ft reach is a melee attack within 5 ft.
+  A thrown weapon with a longer reach has no known "within 5 ft" there, like any reach weapon: a hit on a paralyzed or unconscious target is not a critical hit by itself, and a prone target gives no advantage.
   An opportunity attack is melee at any distance.
 - **Spell attacks.** `GetTurnOptions` writes the same `roll_mode`, `sources` and `critical_on_hit` on each target of a spell that makes an attack roll (`turnModes.annotateShape` with `shapeOfSpell`), so the cast sheet suggests the mode `CastSpell` will roll and asks for the right number of typed d20.
   A spell attack of the `half_on_miss` kind (Acid Arrow) that misses opens a pending damage with `half` set: the dice are rolled as usual and the amount is half of the total, rounded down, taken through the target's resistance like any damage.

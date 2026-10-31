@@ -207,7 +207,7 @@ type attackShape struct {
 // a target beyond its melee reach (SRD 5.1, "Ranged Attacks"). known says dist is a real distance
 // (both on the map, not theatre of the mind): without it a thrown weapon is in melee.
 func (s attackShape) rangedAt(dist int32, known bool) bool {
-	return !s.Melee || (s.Thrown && known && dist > int32(s.MeleeReachFt))
+	return !s.Melee || (s.Thrown && known && dist > conv.Int32(s.MeleeReachFt))
 }
 
 // physical says the attack is made with Strength or Dexterity.
@@ -734,7 +734,7 @@ func (t turnModes) annotate(attackKey string, targets []*playv1.TargetInReach) {
 
 // dropIgnoredCover takes off an attack's targets the half and three-quarters cover the
 // attacker's own feature ignores for it (a table feat's ranged_attack effect), as
-// RollAttack does: a thrown weapon only on the targets it is thrown at, beyond 5 ft.
+// RollAttack does: a thrown weapon only on the targets it is thrown at, beyond its melee reach.
 func (t turnModes) dropIgnoredCover(attackKey string, targets []*playv1.TargetInReach) {
 	i := slices.IndexFunc(t.sheet.Attacks, func(a link.Attack) bool { return a.Key == attackKey })
 	if i < 0 {

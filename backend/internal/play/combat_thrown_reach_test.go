@@ -5,6 +5,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // A thrown melee weapon against a target within the attacker's melee reach is a melee attack; beyond the
@@ -93,6 +94,31 @@ func TestAThrownWeaponWithALongReachIsRolledAsMeleeInTheScene(t *testing.T) {
 		}
 		if s.HostileNearAttacker != tc.wantRanged {
 			t.Errorf("%s: the enemy within 5 ft counts = %v, want %v (only a throw is disadvantaged by it)", tc.name, s.HostileNearAttacker, tc.wantRanged)
+		}
+	}
+}
+
+// Without a map the distance is unknown. A thrown weapon with the usual reach is in melee, so a hit on a
+// paralyzed target is a critical hit; one with a longer reach has no known "within 5 ft", like any reach
+// weapon, and is not.
+func TestAThrownWeaponWithALongReachHasNoKnownDistanceWithoutAMap(t *testing.T) {
+	t.Parallel()
+	attacker := playdb.Combatant{ID: "a", Side: "party"}
+	target := playdb.Combatant{ID: "t", Side: "foes", Conditions: []string{"condition:paralyzed"}}
+	for _, tc := range []struct {
+		name   string
+		attack link.Attack
+		want   bool
+	}{
+		{"no rule", spear(0), true},
+		{"10 ft reach", spear(10), false},
+	} {
+		s := modeFacts{cs: []playdb.Combatant{attacker, target}, theatre: true}.scene(attacker, target, link.Traits{}, shapeOfAttack(tc.attack), true, nil)
+		if s.Ranged {
+			t.Errorf("%s: a thrown weapon without a map is ranged", tc.name)
+		}
+		if got := combat.AttackMode(s).CriticalOnHit; got != tc.want {
+			t.Errorf("%s: critical on hit = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 }
