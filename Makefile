@@ -78,7 +78,7 @@ SQLC := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
 # together. The first run compiles it (a minute or two); Go caches it after.
 GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
-.PHONY: help proto sqlc proto-lint lint lint-all test run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop elk-up elk-down elk-logs
+.PHONY: help proto sqlc proto-lint lint lint-all test before-ready run migrate up down logs docker-build web-install web-test web-build e2e db-native-start db-native-stop db-test-start db-test-stop elk-up elk-down elk-logs
 
 help: ## Show this help message
 	@echo "MeuRPG - available targets:"
@@ -121,6 +121,20 @@ lint-all: proto-lint ## Run all linters on the whole code, including the backlog
 
 test: ## Run backend Go tests with the race detector
 	cd backend && go test -race ./...
+
+# shell-quote puts its argument in single quotes for the shell. It is called with $(value VAR), the
+# text of the variable as it was typed: make would otherwise read a `$` of a regex as a variable
+# ('^a$|^b$' would become '^a^b$').
+shell-quote = '$(subst ','\'',$(1))'
+
+# The tests a branch's own change makes stale (goldens, hashes, frozen tables, stored fixtures,
+# the lists of methods, error reasons and event kinds), run against the test database like
+# `make test`. The list and the command that regenerates each file are in
+# backend/internal/archtest/before_ready.txt. It runs the lines the change can affect; ALL=1 runs
+# every line. ONLY='internal/play$' (a Go regex on the package directory) narrows the lines to the
+# packages whose directory matches.
+before-ready: ## Run the golden, frozen, fixture and inventory tests the change can affect (all of them with ALL=1) (needs MEURPG_TEST_DATABASE_URL); run it before writing `ready:`
+	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY=$(call shell-quote,$(or $(value ONLY),$(value BEFORE_READY_ONLY))) BEFORE_READY_ALL=$(call shell-quote,$(or $(value ALL),$(value BEFORE_READY_ALL))) bash .github/scripts/before-ready.sh
 
 run: ## Run the API server on the host (needs `make up` for the DB)
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/api

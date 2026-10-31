@@ -100,6 +100,10 @@ type Service struct {
 
 	// idleTimeout is how long a session may go unused (see Config).
 	idleTimeout time.Duration
+
+	// loginFormReadTimeout is how long a client has to send POST /auth/login's
+	// form (loginFormReadTimeout; tests shorten it).
+	loginFormReadTimeout time.Duration
 }
 
 // The compiler checks that Service implements the generated interface.
@@ -127,6 +131,8 @@ func New(ctx context.Context, cfg Config) (*Service, error) {
 		logger:  cfg.Logger,
 		now:     cfg.Now,
 		intents: intents,
+
+		loginFormReadTimeout: loginFormReadTimeout,
 	}
 	if s.logger == nil {
 		s.logger = slog.Default()

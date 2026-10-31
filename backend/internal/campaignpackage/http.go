@@ -58,6 +58,9 @@ func errImagesOffHTTP() *httpError {
 
 func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
+	// Armed before any refusal, so a client that trickles a part this route will
+	// not read does not hold the connection; the body clears it at its end.
+	slowclient.ReadBody(w, r, s.partReadTimeout)
 	userID, err := authz.RequireSignedIn(ctx)
 	if err != nil {
 		return err
@@ -79,7 +82,6 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 		return rateLimited(err)
 	}
 	want := partLength(imp.TotalBytes, n)
-	doneReading := slowclient.ReadBody(w, s.partReadTimeout)
 	// One byte past the length is enough to know the body is too long.
 	body := http.MaxBytesReader(w, r.Body, want+1)
 	counter := &countingReader{r: body}
@@ -95,7 +97,6 @@ func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
 		_ = s.blobs.Delete(ctx, partKey(imp.ID, n))
 		return wrongLength()
 	}
-	doneReading() // the body is read to its end: the rest of the request must not run under its deadline
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)

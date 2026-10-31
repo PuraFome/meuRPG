@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { changedLines, mapDiff, playwrightHooks, playwrightTests, sample, signinsOf } from './flake-targets.mjs';
+import { changedLines, mapDiff, parseSpec, playwrightTests, sample, signinsOf } from './flake-targets.mjs';
 
 const spec = `import { test, expect } from '@playwright/test';
 import { openThing } from './thing-support';
@@ -128,8 +128,10 @@ test('test.only counts as a test; test.skip, test.fixme and test.step do not', (
   assert.deepEqual(playwrightTests("test.only('a', async () => {});\ntest.skip('b', async () => {});\ntest.step('c', async () => {});").map((t) => t.title), ['a']);
 });
 
-test('playwrightHooks finds beforeEach and beforeAll', () => {
-  assert.equal(playwrightHooks("test.describe('g', () => {\n  test.beforeEach(async ({ page }) => {\n    await signIn(page);\n  });\n});").length, 1);
+test('parseSpec gives a test the beforeEach and beforeAll hooks that reach it', () => {
+  const [inside] = parseSpec("test.describe('g', () => {\n  test.beforeEach(async ({ page }) => {\n    await signIn(page);\n  });\n  test('t', async () => {});\n});").tests;
+  assert.match(inside.hooks, /signIn/);
+  assert.deepEqual(inside.hookLines, [[2, 4]]);
 });
 
 test('playwrightTests finds each test, one-line ones too, and not the describe', () => {
@@ -251,4 +253,100 @@ test('a test whose file signs in through a helper in beforeEach, or whose helper
   };
   const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 5, 6), read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
   assert.equal(got.playwright[0].signins, 3);
+});
+
+test('a hook counts only for the tests inside its own describe', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': [
+      "test.describe('with a hook', () => {",
+      '  test.beforeEach(async ({ page }) => {',
+      '    await signIn(page);',
+      '  });',
+      "  test.describe('nested', () => {",
+      "    test('inherits the hook', async () => {});",
+      '  });',
+      '});',
+      "test.describe('without one', () => {",
+      "  test('outside the hook', async () => {});",
+      '});',
+      "test('at the top', async () => {});",
+      '',
+    ].join('\n'),
+    'e2e/tests/x-support.ts': "export async function signIn(page: Page): Promise<void> {\n  await page.goto('/auth/login');\n}\n",
+  };
+  const diff = hunk('e2e/tests/x.spec.ts', 1, 12);
+  const got = mapDiff({ diff, read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.deepEqual(
+    got.playwright.map((t) => [t.title, t.signins]),
+    [
+      ['at the top', 0],
+      ['inherits the hook', 3],
+      ['outside the hook', 0],
+    ],
+  );
+});
+
+test('a hook outside every describe reaches all the tests of the file', () => {
+  const [a, b] = playwrightTests("test.beforeEach(async () => {\n  await signIn();\n});\ntest.describe('g', () => {\n  test('in', async () => {});\n});\ntest('out', async () => {});");
+  assert.match(a.hooks, /signIn/);
+  assert.match(b.hooks, /signIn/);
+});
+
+test('mapDiff reads and parses each spec once, however many tests and callers ask for it', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': "test('a', async () => {\n  await openThing();\n});\n\ntest('b', async () => {\n  await openThing();\n});\n",
+    'e2e/tests/x-support.ts': 'export async function openThing(): Promise<void> {}\n',
+  };
+  const reads = [];
+  const read = (f) => {
+    reads.push(f);
+    return files[f];
+  };
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 1, 7) + hunk('e2e/tests/x-support.ts', 1, 1), read, files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.deepEqual(got.playwright.map((t) => t.title), ['a', 'b']);
+  assert.equal(reads.filter((f) => f === 'e2e/tests/x.spec.ts').length, 1);
+});
+
+test('a test that reaches a changed helper only through a beforeEach is a caller', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': "test.beforeEach(async ({ page }) => {\n  await openThing(page);\n});\n\ntest('through the hook', async ({ page }) => {\n  await page.goto('/');\n});\n",
+    'e2e/tests/x-support.ts': 'export async function openThing(page: Page): Promise<void> {}\n',
+  };
+  const got = mapDiff({ diff: hunk('e2e/tests/x-support.ts', 1, 1), read: (f) => files[f], files: (prefix) => Object.keys(files).filter((f) => f.startsWith(prefix)) });
+  assert.deepEqual(got.playwright.map((t) => [t.title, t.why]), [['through the hook', 'calls openThing']]);
+});
+
+test('a change inside a hook maps to the tests the hook reaches, and only those', () => {
+  const files = {
+    'e2e/tests/x.spec.ts': [
+      "test.describe('with a hook', () => {",
+      '  test.beforeEach(async ({ page }) => {',
+      "    await page.goto('/a');",
+      '  });',
+      "  test('first', async () => {});",
+      "  test('second', async () => {});",
+      '});',
+      "test.describe('without one', () => {",
+      "  test('third', async () => {});",
+      '});',
+      '',
+    ].join('\n'),
+  };
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 3, 3), read: (f) => files[f], files: () => [] });
+  assert.deepEqual(got.playwright.map((t) => [t.title, t.why]), [['first', 'reached by a changed hook'], ['second', 'reached by a changed hook']]);
+});
+
+test('a changed hook that reaches many tests maps to a sample of them, with a note, and a test changed itself still runs', () => {
+  const tests = Array.from({ length: 12 }, (_, i) => `test('t${String(i).padStart(2, '0')}', async () => {});`);
+  const files = { 'e2e/tests/x.spec.ts': ['test.beforeEach(async ({ page }) => {', "  await page.goto('/a');", '});', ...tests, ''].join('\n') };
+  const read = (f) => files[f];
+  const got = mapDiff({ diff: hunk('e2e/tests/x.spec.ts', 2, 2), read, files: () => [] });
+  assert.equal(got.playwright.length, 5);
+  assert.ok(got.playwright.every((t) => t.why === 'reached by a changed hook'));
+  assert.equal(got.notes.length, 1);
+  assert.match(got.notes[0], /hook at lines 1 to 3 changed and reaches 12 tests; 5 run/);
+  // A test changed in the same diff is a "changed" target whether or not the sample picks it.
+  const last = hunk('e2e/tests/x.spec.ts', 2, 2) + hunk('e2e/tests/x.spec.ts', 15, 15);
+  const both = mapDiff({ diff: last, read, files: () => [] });
+  assert.equal(both.playwright.find((t) => t.title === 't11').why, 'changed');
 });

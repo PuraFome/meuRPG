@@ -22,7 +22,8 @@ on:
       - "Makefile"
       - ".github/workflows/e2e.yml"
       - ".github/scripts/e2e-no-retries.sh"
-      - ".github/actions/**"
+      - ".github/actions/build-e2e-images/**"
+      - ".github/actions/start-e2e-stack/**"
       - ".node-version"
       - "!**/*.md"
   # The nightly run and a manual run test everything, with no path filter
@@ -53,11 +54,24 @@ jobs:
     if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
+    env:
+      # Only a pull request that is not a train is judged by its files, so only it needs the history and the diff.
+      # Main, the schedule, a manual run and a train (a branch of this repository) are answered here, without a checkout.
+      DIFF: ${{ github.event_name == 'pull_request' && !(startsWith(github.head_ref, 'refactor/train-') && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
-      run: ${{ steps.run.outputs.run }}
+      run: ${{ steps.all.outputs.run || steps.run.outputs.selected }}
+      a11y: ${{ steps.all.outputs.a11y || steps.a11y.outputs.selected }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
+      - name: Everything is selected
+        id: all
+        if: env.DIFF != 'true'
+        run: |
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "a11y=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: env.DIFF == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -66,24 +80,23 @@ jobs:
 
       - name: Is this workflow selected
         id: run
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: .github/scripts/gate-select.sh run '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/|\.node-version$)' --ignore-md
+        if: env.DIFF == 'true'
+        uses: ./.github/actions/select
+        with:
+          pattern: '^(backend/|proto/|web/|e2e/|deploy/local/|\.dockerignore$|Makefile$|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-no-retries\.sh$|\.github/actions/(build-e2e-images|start-e2e-stack)/|\.node-version$)'
+          ignore-md: "true"
 
       - name: Are the accessibility shards selected
         id: a11y
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: .github/scripts/gate-select.sh a11y '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.node-version$)'
+        if: env.DIFF == 'true'
+        uses: ./.github/actions/select
+        with:
+          pattern: '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.node-version$)'
 
       - name: Choose the shards
         id: plan
         env:
-          A11Y: ${{ steps.a11y.outputs.a11y }}
+          A11Y: ${{ steps.all.outputs.a11y || steps.a11y.outputs.selected }}
         run: |
           a11y="$A11Y"
           matrix=$(jq -nc --argjson a11y "$a11y" '
@@ -262,8 +275,14 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
+      contents: read
       issues: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Open or update the issue
         env:
           GH_TOKEN: ${{ github.token }}
@@ -271,15 +290,4 @@ jobs:
           WORKFLOW: ${{ github.workflow }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
-          gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-          # This workflow's own issue, by its exact title: another open ci-red issue is a different red.
-          title="CI vermelho: $WORKFLOW na main"
-          number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
-            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
-          if [ -n "$number" ]; then
-            gh issue comment "$number" --body "$body"
-          else
-            gh issue create --label ci-red --title "$title" --body "$body"
-          fi
+        run: .github/scripts/ci-red-report.sh

@@ -116,6 +116,53 @@ Every test that looks for something absent needs a positive control that shows t
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
+## Before ready
+
+`make before-ready` runs only the lines of the list that your change can affect (a line runs when the change reaches its package, what it imports or what it reads; `make before-ready ALL=1`, or `BEFORE_READY_ALL=1`, runs every line), against the test database like `make test`.
+It exists because a change often makes stale a test that nobody thought to run: a golden file, a hash, a frozen table or refusal message, a stored event fixture, or a list that must name every service method, error reason or event kind.
+Run it before you write `ready:` (the status commit a session pushes when its branch is final) and before you open a pull request.
+The rule for what belongs in it: the tests that compare against a stored file or against literals the project froze (names with `Frozen` or `Golden`), and the inventory tests.
+
+```bash
+make db-test-start
+export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+make before-ready
+```
+
+By default it runs only the lines of the list that the change can affect. It compares the working tree (committed, staged, unstaged and untracked files) with the merge base on `origin/main`, and a line runs when the change touches:
+
+- any file under the line's package directory, at any depth: sub-packages, `testdata/` and embedded data included;
+- a package the line's tests import, directly or not (the dependencies that `go list -test` reports for the package and its tests): a change in `internal/rules/combat` runs the `internal/play` goldens, and a change in `internal/play` runs the lines of the packages that import it;
+- a file under `proto/` (the lines of the packages that import the generated code), or one of the line's `inputs`, the fifth column of the list: the files its tests read outside their package, such as `proto/error-reasons.json`, `backend/migrations`, `NOTICE` or `web/src/app/pages/credits/credits.ts`.
+  `TestBeforeReadyInputsAreComplete` fails for a path that goes up from the package, that a listed test reads, and that no input of its line covers.
+  An input `.` covers the whole repository, so it selects its line for every changed file; the `internal/archtest` line avoids it.
+  The test also fails for a `..` next to a base it cannot resolve, naming the file and line.
+  It cannot see a path built at run time with no `..` in it, or one read in another package.
+  How a path is resolved is in the comment of `upwardReads` in `backend/internal/archtest/before_ready_paths_test.go`, and its cases are the fixtures under `backend/internal/archtest/testdata/`.
+  That every input exists is checked by the tests of `backend/internal/archtest/beforereadylist`, which read the whole repository and are on no line;
+- the tool itself (`.github/scripts/before-ready.sh`, the `Makefile`, `backend/cmd/beforeready`, `backend/internal/archtest/beforereadylist`) or the dependencies (`backend/go.mod`, `backend/go.sum`): every line runs. A change to `backend/internal/archtest/before_ready.txt` runs the lines it adds or edits, and the `internal/archtest` line.
+
+A change that touches none of this (web, docs) runs nothing, says so and exits 0, without asking for the database.
+The output names each package that runs and the changed file or import that selected it, then the packages it skipped.
+When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge. A failure of the selection step itself (an unreadable list, an unwritable output file, an invalid `ONLY`) is different: it exits 2 and runs nothing.
+
+`BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change; any value but empty or `0` does the same.
+To measure a run, time it: `time make before-ready` for the default run, `time make before-ready ALL=1` for the whole list.
+`ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a Go (RE2) regex on the package directory, written as typed, `$` and quotes included; `BEFORE_READY_ONLY` is the same variable; a pattern that RE2 cannot read, or that matches no package of the list, stops the run with exit 2; the packages the change selected but `ONLY` left out are listed as skipped, and when nothing is left the output says that nothing ran), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.
+`BEFORE_READY_BASE=<revision>` compares the working tree with that revision instead of the merge base (`HEAD`: only what is not committed yet).
+`BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
+`BEFORE_READY_LIST=<file>` runs another list in the same format, to try a few tests: every line of it runs, whatever the change, and the output says so.
+
+Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.
+On a failure it prints the command that rewrites the failed test's file (`-update`, `UPDATE_GOLDEN=1` or the package's own flag), or says to edit the expected values by hand when there is no generator.
+Rewrite a file only when the change is intended, read the diff of every rewritten file before you commit it, and run a new golden test with `-count=5` once, because a Go map's order is random.
+
+The tests, grouped by package, and the command that regenerates each group are in `backend/internal/archtest/before_ready.txt`: one place, one tab-separated line for each group.
+A test that turns a second train round red (a train round is one CI run of the merge train) is added to it.
+The list says, for each line, its package, the `-run` regex, the regenerate command and the inputs.
+`TestBeforeReadyListIsWhole` keeps it whole. It fails for a test that reads a `.golden`, `.sha256` or `testdata` file (or a constant that holds one), calls `goldentest.Compare` or `goldentest.JSON`, reads a `flag.Bool` or a variable named for the frozen digests or the goldens, and is on no line of its package; for a line that matches no test; and for a `helper` line whose plain function its package does not declare (a method cannot be a helper: the guard follows plain calls only). It looks at every package under `backend/` that has tests, skipping only `testdata`, hidden directories and the generated protobuf package `backend/gen`. The list is read by the same parser, `backend/internal/archtest/beforereadylist`, that the tool uses, and a path is covered by an input by the same function.
+It follows plain function calls of the same package, not method calls (names collide between types), so a test that compares through a method keeps to a naming convention in its line, for example `TestLasting(Core|RPC)` in `internal/play`, and `Frozen|Golden` names are on the list by their name.
+
 ## Web unit tests
 
 `make web-test` runs `cd web && npm test` (Vitest through the Angular `unit-test` builder).

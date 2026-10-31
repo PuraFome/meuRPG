@@ -46,13 +46,7 @@ function selectIn(env, { base = [], files = [], moves = [] }, ...args) {
   }
 }
 
-const pr = { EVENT: 'pull_request', HEAD_REF: 'feat/x' };
-
-test('a push, a schedule or a dispatch is always selected', () => {
-  for (const EVENT of ['push', 'schedule', 'workflow_dispatch']) {
-    assert.match(select({ EVENT, HEAD_REF: '' }, ['docs/a.md'], 'run', '^backend/').out, /run=true/);
-  }
-});
+const pr = {};
 
 test('a pull request is selected only by a matching file', () => {
   assert.match(select(pr, ['backend/a.go'], 'run', '^backend/').out, /run=true/);
@@ -64,15 +58,6 @@ test('--ignore-md drops markdown files from the match', () => {
   assert.match(select(pr, ['web/readme.md', 'web/a.ts'], 'run', '^web/', '--ignore-md').out, /run=true/);
 });
 
-test('a train is selected whatever it changes, docs-only included', () => {
-  const r = select({ EVENT: 'pull_request', HEAD_REF: 'refactor/train-69' }, ['docs/a.md'], 'run', '^backend/');
-  assert.match(r.out, /run=true/);
-});
-
-test('a branch that only looks like a train is not one', () => {
-  assert.match(select({ EVENT: 'pull_request', HEAD_REF: 'feat/refactor/train-1' }, ['docs/a.md'], 'run', '^backend/').out, /run=false/);
-});
-
 test('a non-ASCII path is seen', () => {
   assert.match(select(pr, ['web/ação.ts'], 'run', '^web/').out, /run=true/);
 });
@@ -80,4 +65,8 @@ test('a non-ASCII path is seen', () => {
 test('a file moved out of the selected tree selects it: the old path counts too', () => {
   const got = selectIn(pr, { base: ['web/x.ts'], moves: [['web/x.ts', 'docs/x.ts']] }, 'run', '^web/');
   assert.match(got.out, /run=true/, got.err);
+});
+
+test('it needs the base branch', () => {
+  assert.notEqual(select({ ...pr, BASE_REF: '' }, ['web/a.ts'], 'run', '^web/').code, 0);
 });
