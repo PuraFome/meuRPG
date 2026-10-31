@@ -218,3 +218,12 @@ test('the serial groups: one must exist, none may be cut by the flags or spread 
   assert.deepEqual(groupProblems(whole, [keys[2]], seen), []);
   assert.match(groupProblems(whole, keys, new Map([[keys[0], [1]], [keys[1], [2]]]))[0], /in shards \[1, 2\]/);
 });
+
+test('the split of a serial group does not depend on the order its tests are listed in either', () => {
+  const group = ['b', 'y'].map((title) => ({ key: key('g.spec.ts', title), group: 'g' }));
+  const solo = ['c', 'd', 'e'].map((title) => ({ key: key('s.spec.ts', title) }));
+  const timings = { ...Object.fromEntries(group.map((test) => [test.key, 5])), ...Object.fromEntries(solo.map((test) => [test.key, 10])) };
+  const sorted = (tests) => split(tests, timings, 2).map((shard) => [...shard].sort());
+  assert.deepEqual(sorted([...group, ...solo]), sorted([...group].reverse().concat(solo)));
+  assert.deepEqual(sorted([...group, ...solo]), sorted([...solo].reverse().concat(group)));
+});

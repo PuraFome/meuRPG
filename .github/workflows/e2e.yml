@@ -101,7 +101,7 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.github/scripts/e2e-(shards|list-reporter)\.mjs$|\.node-version$)'
+          pattern: '^(web/|e2e/|deploy/local/|\.github/workflows/e2e\.yml$|\.github/scripts/(e2e-shards|e2e-list-reporter|playwright-report)\.mjs$|\.node-version$)'
 
       - name: Choose the shards
         id: plan

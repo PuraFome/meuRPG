@@ -172,7 +172,7 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 - Refresh `e2e/timings.json` when the notice counts missing tests, or when the shards stop finishing together.
   Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`: the Playwright report and `e2e-setup.json`, how long the shard's setup took and how many workers the run uses.
   The upload never turns a shard red when its tests passed.
-  `timings` refuses a run in which the fresh shard did not pass, and one in which the fresh shard took over three minutes longer than the others to set up: use another run.
+  `timings` refuses a run without the setup file of the fresh shard or of the others, and a run in which the fresh shard stalled during setup: use another run.
   Download the artifacts of a run of all nine shards and run:
 
   ```bash

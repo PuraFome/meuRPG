@@ -57,7 +57,7 @@ export function split(tests, timings, count, startup = []) {
   const units = new Map();
   for (const test of tests.filter((test) => !isSetup(test))) {
     const id = test.group ?? test.key;
-    const unit = units.get(id) ?? { keys: [], seconds: 0, known: true };
+    const unit = units.get(id) ?? { id, keys: [], seconds: 0, known: true };
     unit.keys.push(test.key);
     unit.seconds += timings[test.key] ?? guess;
     unit.known &&= test.key in timings;
@@ -72,7 +72,7 @@ export function split(tests, timings, count, startup = []) {
     for (const key of unit.keys) shardOf.set(key, least);
   };
   // Ties go by key, so the split does not depend on the order the tests are listed in.
-  const byKey = (a, b) => (a.keys[0] < b.keys[0] ? -1 : a.keys[0] > b.keys[0] ? 1 : 0);
+  const byKey = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const all = [...units.values()];
   for (const unit of all.filter((unit) => unit.known).sort((a, b) => b.seconds - a.seconds || byKey(a, b))) place(unit);
   for (const unit of all.filter((unit) => !unit.known).sort(byKey)) place(unit);
@@ -152,7 +152,7 @@ async function listTests(args, extra = []) {
   try {
     listed = JSON.parse(output.stdout);
   } catch {
-    throw new Error(`playwright --list printed no JSON.\nstdout: ${output.stdout.slice(0, 500)}\nstderr: ${output.stderr.slice(0, 500)}`);
+    throw new Error(`playwright --list printed no JSON.\nstdout: ${output.stdout.slice(0, 500)}\nstderr: ${output.stderr.slice(-500)}`);
   }
   return { workers: listed.workers, tests: listed.tests.map((test) => ({ key: testKey(test.project, test.file, test.titles), group: test.group })) };
 }
@@ -209,10 +209,10 @@ async function main(argv) {
     try {
       settled = await Promise.allSettled([
         listTests([]),
-        ...shards.map((shard, i) => {
+        ...shards.map(async (shard, i) => {
           const file = join(dir, `${i + 1}.txt`);
           writeFileSync(file, shard.join('\n') + '\n');
-          return listTests(args, ['--no-deps', '--test-list', file]).then((listed) => listed.tests);
+          return (await listTests(args, ['--no-deps', '--test-list', file])).tests;
         }),
       ]);
     } finally {
