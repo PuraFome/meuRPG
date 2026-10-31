@@ -29,3 +29,23 @@ test('e2e names the folders of its own composite actions, so the shared selector
   const paths = [...text.matchAll(/^ {6}- "(\.github\/actions\/[^"]+)"$/gm)].map((m) => m[1]);
   assert.deepEqual(paths, ['.github/actions/build-e2e-images/**', '.github/actions/start-e2e-stack/**']);
 });
+
+// Evaluates a workflow expression of the one shape DIFF has: ==, &&, !, parentheses, startsWith, string literals and github.* paths.
+const evaluate = (expression, github) => {
+  const js = expression.replace(/^\$\{\{\s*|\s*\}\}$/g, '').replace(/==/g, '===');
+  return new Function('github', 'startsWith', `return ${js};`)(github, (s, prefix) => String(s).startsWith(prefix));
+};
+
+test('DIFF is true only for a pull request that is not a train of this repository', () => {
+  const repo = 'o/meuRPG';
+  const pull = (headRef, headRepo) => ({ event_name: 'pull_request', head_ref: headRef, repository: repo, event: { pull_request: { head: { repo: { full_name: headRepo } } } } });
+  const cases = [
+    ['a push to main', { event_name: 'push', head_ref: '', repository: repo, event: {} }, false],
+    ['the nightly', { event_name: 'schedule', head_ref: '', repository: repo, event: {} }, false],
+    ['a dispatch', { event_name: 'workflow_dispatch', head_ref: '', repository: repo, event: {} }, false],
+    ['a train from this repository', pull('refactor/train-70', repo), false],
+    ['a branch named like a train, from a fork', pull('refactor/train-70', 'someone/meuRPG'), true],
+    ['an ordinary pull request', pull('feat/x', repo), true],
+  ];
+  for (const [name, github, want] of cases) assert.equal(evaluate(DIFF, github), want, name);
+});

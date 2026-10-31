@@ -60,7 +60,6 @@ jobs:
       DIFF: ${{ github.event_name == 'pull_request' && !(startsWith(github.head_ref, 'refactor/train-') && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
       run: ${{ steps.all.outputs.run || steps.run.outputs.selected }}
-      a11y: ${{ steps.all.outputs.a11y || steps.a11y.outputs.selected }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Everything is selected
@@ -208,9 +207,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Node, the e2e dependencies (no install scripts), Chromium for the exact @playwright/test version the lockfile
-      # pins, the images, and the local stack (compose.ci.yaml keeps CockroachDB in memory; compose.ci-images.yaml
-      # points the services at the loaded images, --no-build).
+      # The images and the local stack (compose.ci.yaml keeps CockroachDB in memory; compose.ci-images.yaml points the
+      # services at the loaded images, --no-build), started in the background while Node, the e2e dependencies (no
+      # install scripts) and Chromium for the exact @playwright/test version the lockfile pins install.
       - name: Start the local stack (CockroachDB, migrations, devidp, API)
         uses: ./.github/actions/start-e2e-stack
         with:
