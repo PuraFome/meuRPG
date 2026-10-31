@@ -62,6 +62,30 @@
     },
     "jsdom": {
       "undici": "^8.12.2"
+    },
+    "eslint": {
+      "minimatch": "^11.0.1"
+    },
+    "@eslint/config-array": {
+      "minimatch": "^11.0.1"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    },
+    "glob": {
+      "minimatch": "^11.0.1"
+    },
+    "ignore-walk": {
+      "minimatch": "^11.0.1"
+    },
+    "@tufjs/models": {
+      "minimatch": "^11.0.1"
+    },
+    "@npmcli/package-json": {
+      "glob": "^14.0.2"
+    },
+    "cacache": {
+      "glob": "^14.0.2"
     }
   }
 }

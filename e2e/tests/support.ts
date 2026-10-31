@@ -66,7 +66,10 @@ export function authStatePath(user: TestUser): string {
  * of them (see `signIn`'s doc comment for the exceptions).
  */
 export function newSignedInContext(browser: Browser, user: TestUser, options: BrowserContextOptions = {}): Promise<BrowserContext> {
-  return browser.newContext({ ...options, storageState: authStatePath(user) });
+  // An option that is explicitly `undefined` (a `look.colorScheme` nobody set) would override the project's `use`
+  // (E2E_COLOR_SCHEME, see playwright.config.ts): leave out the keys with no value.
+  const given = Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined));
+  return browser.newContext({ ...given, storageState: authStatePath(user) });
 }
 
 /**

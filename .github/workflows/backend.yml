@@ -7,19 +7,8 @@
 name: backend
 
 on:
+  # No paths filter: the `changes` job selects, so a train (refactor/train-*) always runs the full gate.
   pull_request:
-    paths:
-      - "backend/**"
-      - "proto/**"
-      - "web/**"
-      - "Makefile"
-      - ".github/workflows/backend.yml"
-      - ".github/scripts/go-db-shard.sh"
-      - ".github/scripts/go-coverage.sh"
-      - ".github/scripts/go-complexity.sh"
-      - ".github/scripts/nolint-cap.sh"
-      - ".github/nolint-cap"
-      - ".node-version"
   push:
     branches: [main]
     paths:
@@ -53,16 +42,18 @@ permissions:
   contents: read
 
 jobs:
-  # Decides whether the Go jobs run. A pull request that touches no Go, proto
-  # or Go-CI file (a web-only change, which still reaches this workflow for
-  # the proto job's generated TypeScript) skips them; main, the nightly and
-  # manual runs always run them.
+  # Decides what runs (docs/ci.md, "What runs when"). `run`: the workflow at all, for a change to what it judges; `go`:
+  # the Go jobs, which a web-only change (that still reaches the proto job for its generated TypeScript) skips. A
+  # train (refactor/train-*), main, the nightly and manual runs always run everything. On a fork only pull requests
+  # and manual runs run.
   changes:
-    name: changes (do the Go jobs run)
+    name: changes (what runs)
+    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
-      go: ${{ steps.changes.outputs.go }}
+      run: ${{ steps.run.outputs.run }}
+      go: ${{ steps.go.outputs.go }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,26 +62,26 @@ jobs:
           # The whole history: the diff against the base branch needs it.
           fetch-depth: 0
 
-      - name: Look at the changed files
-        id: changes
+      - name: Is this workflow selected
+        id: run
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
-        run: |
-          go=true
-          if [ "$EVENT" = pull_request ]; then
-            changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$)' <<<"$changed"; then
-              go=true
-            else
-              go=false
-            fi
-          fi
-          echo "go=$go" >> "$GITHUB_OUTPUT"
-          echo "go=$go"
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh run '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$|\.node-version$)'
+
+      - name: Do the Go jobs run
+        id: go
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh go '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$)'
 
   proto:
     name: proto (lint, breaking, generate)
+    needs: changes
+    if: ${{ needs.changes.outputs.run == 'true' }}
     timeout-minutes: 10
     runs-on: ubuntu-26.04
     steps:
@@ -391,7 +382,8 @@ jobs:
   go-db:
     name: go (integration tests against CockroachDB)
     needs: [changes, go-db-shard]
-    if: ${{ always() }}
+    # Not on a fork's push: `changes` is skipped there, and a skipped `changes` would fail the check below.
+    if: ${{ always() && (github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
@@ -469,9 +461,12 @@ jobs:
         run: |
           body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
           gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          # This workflow's own issue, by its exact title: another open ci-red issue is a different red.
+          title="CI vermelho: $WORKFLOW na main"
+          number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
           else
-            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+            gh issue create --label ci-red --title "$title" --body "$body"
           fi

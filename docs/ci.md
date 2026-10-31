@@ -8,21 +8,35 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 
 | Workflow | Runs on | Jobs |
 | --- | --- | --- |
-| `backend` | PRs and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
-| `web` | `web/`, `.node-version`, the workflow | `test and build`, `coverage` |
-| `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change; nightly; manual | `plan`, `lint and typecheck`, `images`, `playwright` shards, `report` |
-| `codeql` | PRs touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
-| `osv-scan` | Changes to a lockfile (`backend/go.mod`, `backend/go.sum`, the `package-lock.json` of `web/`, `e2e/` and `e2e/lint/`), `osv-scanner.toml` or the workflow; pushes to `main`; nightly; manual | `osv-scanner (lockfiles)`, `report` |
-| `workflows-lint` | Changes under `.github/` | `actionlint` and `zizmor`, at versions pinned by number and sha256; the unit tests of the CI scripts (`node --test`) |
+| `backend` | PRs (all of a train) and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
+| `web` | `web/`, `.node-version`, the workflow; every pull request of a train | `test and build`, `coverage` |
+| `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change, except in a train; nightly; manual | `plan`, `lint and typecheck`, `images`, `playwright` shards, `report` |
+| `codeql` | PRs (all of a train) touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
+| `osv-scan` | Every pull request of a train; changes to a lockfile (`backend/go.mod`, `backend/go.sum`, the `package-lock.json` of `web/`, `e2e/` and `e2e/lint/`), `osv-scanner.toml` or the workflow; pushes to `main`; nightly; manual | `osv-scanner (lockfiles)`, `report` |
+| `workflows-lint` | Changes under `.github/` or to `e2e/lint/package-lock.json`; every pull request of a train | `actionlint` and `zizmor`, at versions pinned by number and sha256; the unit tests of the CI scripts (`node --test`) |
 | `repeat-changed` | PRs touching `e2e/`, `backend/` or its own files | `targets`, `images`, `playwright`, `go`: [the repeat of the changed tests](#repeat-of-the-changed-tests) |
 | `nightly-hunt` | Nightly, only in `PuraFome/meuRPG`; manual | `plan`, `image`, `playwright` shards, `go` groups, `report`: [the nightly hunt](#the-nightly-hunt) |
 | `flake-check` | Manual only | `plan`, `images`, `playwright` or `go` runners, `summary`: [flake-check](#flake-check) |
 
 - A new run of the same PR cancels the previous one. A push to `main` never cancels a run in progress, but GitHub keeps only one waiting run per workflow, so in a burst of merges an intermediate commit may get no run of its own. Deploy only a commit whose own run passed.
-- The nightly and manual runs ignore the path filters and test everything. The `backend` workflow's `changes` job lets a pull request that touches no Go, proto or Go-CI file skip the Go jobs.
 - Every job has a `timeout-minutes`, so a stuck test cannot burn the six-hour default.
-- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend`, `e2e` and `osv-scan` opens a GitHub issue labelled `ci-red`, or comments on the one already open.
+- **When a run outside a pull request fails** (`main` or the nightly), the `report` job of `backend`, `e2e` and `osv-scan` opens a GitHub issue labelled `ci-red`, or comments on the one it opened: each job finds its own issue by its exact title (`CI vermelho: <workflow> na main`) and never writes into another one.
   It runs only in `PuraFome/meuRPG`: a fork has no issues to report to.
+
+### What runs when
+
+The `Runs on` column above is what each workflow judges. Whether it runs for an event is decided in the jobs, not by a `paths` filter on the pull request, so that a train can run everything:
+
+| Where and what | Runs |
+| --- | --- |
+| `PuraFome/meuRPG`, any trigger | Everything the workflow lists: pushes to `main`, the schedules, pull requests, manual runs |
+| Any other repository (the fork `vfraga/meuRPG`) | Only `pull_request` and `workflow_dispatch`. A push to the fork (a train branch pushed there for `flake-check`, or a sync of `main`) and a schedule start nothing: every job is skipped by a job-level `if` |
+| A pull request from `refactor/train-*` | The full gate, whatever it changes (a docs-only train included): `e2e` runs every `@a11y` shard, `backend` every `go-db` group and the Go jobs, and `web`, `workflows-lint`, `osv-scan` and `codeql` run |
+| Any other pull request | The workflows whose files it changes (the `Runs on` column), and within `backend` and `e2e` the Go jobs and the `@a11y` shards only when it touches what they judge. The fork's draft pull requests, the preflights, rely on this |
+| Nightly and manual runs | Everything, with no path selection |
+
+`.github/scripts/gate-select.sh` makes the choice (its tests: `gate-select.test.mjs`); the `changes`, `plan` and `select` jobs call it. A pull request that touches no file of a workflow still starts it, and its jobs are skipped.
+`nightly-hunt` runs only in `PuraFome/meuRPG`. `flake-check` is manual only. `repeat-changed` keeps a `paths` filter, train or not: with no test changed there is nothing to repeat. All three are described below.
 
 ## Backend
 
@@ -133,9 +147,11 @@ Two scans look for known vulnerabilities, and they answer different questions.
 - **`govulncheck`** (a job of `backend`, so it runs with the other Go jobs: on pull requests that touch Go, on pushes to `main` and nightly) reports only the vulnerabilities in code the backend **calls**, in a module or in the standard library of the Go version in `go.mod`. Any finding fails the job. The fix is to bump the module (or the Go version).
 - **`osv-scan`** (its own workflow) reads the lockfiles (`backend/go.mod`, `web/package-lock.json`, `e2e/package-lock.json`, `e2e/lint/package-lock.json`) and lists every vulnerable **version** installed, called or not, dev-only or not. Any finding fails the job. It reads `go.mod` because OSV-Scanner does not support `go.sum`. The nightly run exists because a vulnerability is published against a version we already have, with no change on our side. OSV-Scanner is a release binary pinned by version and sha256, like the tools of `workflows-lint`.
 
-A finding is fixed by a dependency bump. When a transitive package is pinned exactly by its parent, `web/package.json` forces a fixed version with `overrides` (the ones there now are listed below); remove an override once the parent ships the fix. Only a finding with no installable fix goes in `osv-scanner.toml`, with its `id`, a `reason` and an `ignoreUntil` date, so the finding returns for a decision when the date passes. Nothing is accepted today.
+A finding is fixed by a dependency bump. When the parent pins the package exactly, or the parent's range has no fixed version, `overrides` in `web/package.json` or `e2e/lint/package.json` force a fixed one (the ones there now are listed below); remove an override once the parent ships the fix, and regenerate the lockfile with `npm install`, never by hand. An override that crosses a major version is kept only while lint, format, depcruise, tests and the build still pass with it. Only a finding with no installable fix goes in `osv-scanner.toml`, with its `id`, a `reason` and an `ignoreUntil` date, so the finding returns for a decision when the date passes. Nothing is accepted today.
 
-`web/package.json` overrides: `vite` and `undici` under `@angular/build`; `@modelcontextprotocol/sdk` and `zod` under `@angular/cli`; `undici` under `jsdom`.
+`web/package.json` overrides: `vite` and `undici` under `@angular/build`; `@modelcontextprotocol/sdk` and `zod` under `@angular/cli`; `undici` under `jsdom`; `minimatch` `^11.0.1` under `eslint`, `@eslint/config-array`, `@typescript-eslint/typescript-estree`, `glob`, `ignore-walk` and `@tufjs/models`; `glob` `^14.0.2` under `@npmcli/package-json` and `cacache`.
+
+`e2e/lint/package.json` overrides: `minimatch` `^11.0.1` under `eslint`, `@eslint/config-array` and `@typescript-eslint/typescript-estree`.
 
 ## Pinning and dependencies
 
@@ -192,7 +208,7 @@ The fix is in the test (wait for the condition that matters, own the state it ne
 
 ### flake-check
 
-`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), where the train branches and `main` are, so it never takes the gate's runners.
+`flake-check` answers two questions about one test: does it fail without the train, and does the train make it fail more often? It is dispatched by hand and runs on the fork (`vfraga/meuRPG`), so it never takes the gate's runners. The fork holds a train branch only once it is pushed there: run `git push fork refactor/train-<n>` before the dispatch.
 
 Dispatch it from the fork's Actions tab (workflow `flake-check`, "Run workflow") or with `gh workflow run flake-check.yml --repo vfraga/meuRPG --ref <train branch> -f kind=playwright -f test='<title>'`. `--ref` names the train branch: it is the head, and the run's caches are scoped to that branch. The base is always the repository's default branch (`main`). There are no ref inputs: the run never checks out a ref it was given as text, so a dispatch cannot run code from a ref of its choosing in the default branch's context.
 
@@ -227,7 +243,7 @@ The `repeat-changed` job runs next to the gate on every pull request that touche
 - the Playwright `test(...)` blocks and the Go `func TestX` whose body changed (a change outside any test maps to nothing);
 - for a changed helper, a sample of up to 5 of the tests that call it, directly or through other helpers: an exported function of an `e2e/tests/*-support.ts`, or a function or method of `backend/internal/leaktest`.
 
-`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which the page and the contexts made with no `colorScheme` option follow; a helper that passes its own, even `undefined`, keeps it, and a test that names its theme in its title is covered by that title); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. All the Playwright chunks share one stack and one client address, and `/auth/login` allows that address 40 requests at once (20 sign-ins) and one more every 3 seconds. Each `playwright test` spends 6 of them in the global setup, and a test that signs in itself spends 2 per `signIn(` in its body, per run: ten runs of a test with three of them would be 66 requests and get a 429. So a chunk whose sign-ins do not fit runs its repeats in batches (`flake-targets.mjs` counts the `signIn(` calls of the test body; a sign-in made inside a helper is not counted), and the workflow recreates the `api` container (an empty rate-limit bucket) before every run but the first. The traces and the report of a failed chunk are kept in `e2e/kept/` for the artifact. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
+`.github/scripts/repeat-changed.sh` runs them within a time budget (`BUDGET_SECONDS`, 900 in the workflow, so the job ends about when the gate does): Playwright with `--grep` (the title, escaped) on its spec file and `--repeat-each=10`, once in each colour scheme (`E2E_COLOR_SCHEME=light|dark`, which the page and the contexts made with no `colorScheme` option follow; a context made with `newSignedInContext` follows it unless the test names a scheme of its own (an option left `undefined` counts as not named), and a test that names its theme in its title is covered by that title); Go with `-run`, `-count=10` and `-race`. Each test or package is a chunk that stops at its first failure. All the Playwright chunks share one stack and one client address, and `/auth/login` allows that address 40 requests at once (20 sign-ins) and one more every 3 seconds. Each `playwright test` spends 6 of them in the global setup, and a test that signs in itself spends 2 per sign-in, per run: ten runs of a test with three of them would be 66 requests and get a 429. So a chunk whose sign-ins do not fit runs its repeats in batches. `flake-targets.mjs` reads the specs with the TypeScript compiler API and gives a test a `signins` count of at least 3 when its body, a `test.beforeEach`/`beforeAll` hook of its file or a helper that calls `signIn` (through up to three levels) signs in, or it opens `/auth/login` itself; a sign-in passed by reference (`xs.map(loginAs)`) is not seen. The batches only work because the workflow gives each one a fresh bucket: it recreates the `api` container (the limit lives in that container's memory) before any run that would not fit what is left of the 40 requests, counted as if nothing refilled. The traces and the report of a failed chunk are kept in `e2e/kept/` for the artifact. A failure fails the job. Running out of time passes, and the job summary lists what was cut off and what did not run.
 
 The summary of `targets` lists the tests it found and why (`changed`, or `calls <helper>`). The scripts have unit tests, run by `workflows-lint` (`node --test .github/scripts/*.test.mjs`).
 

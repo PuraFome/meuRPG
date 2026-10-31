@@ -14,15 +14,8 @@
 name: osv-scan
 
 on:
+  # No paths filter: the `select` job chooses, so a train (refactor/train-*) always runs the full gate.
   pull_request:
-    paths:
-      - "backend/go.mod"
-      - "backend/go.sum"
-      - "web/package-lock.json"
-      - "e2e/package-lock.json"
-      - "e2e/lint/package-lock.json"
-      - "osv-scanner.toml"
-      - ".github/workflows/osv-scan.yml"
   push:
     branches: [main]
     paths:
@@ -52,7 +45,34 @@ env:
   OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
 
 jobs:
+  # Is this workflow selected (docs/ci.md, "What runs when"): a train, main, the schedule and a manual run always
+  # run it; any other pull request only when it changes what it judges. On a fork only pull requests and manual runs.
+  select:
+    name: select (is this workflow selected)
+    if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.run.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history: the diff against the base branch needs it.
+          fetch-depth: 0
+
+      - name: Is this workflow selected
+        id: run
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: .github/scripts/gate-select.sh run '^(backend/go\.(mod|sum)$|web/package-lock\.json$|e2e/package-lock\.json$|e2e/lint/package-lock\.json$|osv-scanner\.toml$|\.github/workflows/osv-scan\.yml$)'
+
   osv-scan:
+    needs: select
+    if: ${{ needs.select.outputs.run == 'true' }}
     name: osv-scanner (lockfiles)
     runs-on: ubuntu-26.04
     timeout-minutes: 10
@@ -81,7 +101,7 @@ jobs:
 
   report:
     name: report (issue when main is red)
-    needs: [osv-scan]
+    needs: [select, osv-scan]
     # Only the upstream repository has issues: a fork's red main (synced from upstream) has nowhere to report.
     if: ${{ always() && github.repository == 'PuraFome/meuRPG' && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-26.04
@@ -99,9 +119,12 @@ jobs:
         run: |
           body=$(printf 'O workflow %s falhou na main.\n\nCommit: %s\nExecução: %s' "$WORKFLOW" "$SHA" "$RUN_URL")
           gh label create ci-red --force --color B60205 --description "CI vermelho na main" || true
-          number=$(gh issue list --label ci-red --state open --json number --jq '.[0].number // empty')
+          # This workflow's own issue, by its exact title: another open ci-red issue is a different red.
+          title="CI vermelho: $WORKFLOW na main"
+          number=$(gh issue list --label ci-red --state open --limit 200 --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
           else
-            gh issue create --label ci-red --title "CI vermelho: $WORKFLOW na main" --body "$body"
+            gh issue create --label ci-red --title "$title" --body "$body"
           fi
