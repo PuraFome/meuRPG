@@ -37,7 +37,7 @@ import { type EffectCardView, exhaustionLabel } from '../../../core/effects/effe
 import { EffectCards } from '../effects/effect-cards/effect-cards';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { hitDiceLeftWords, totalDiceLeft } from '../../../core/resources/hit-dice-text';
-import { arcaneRecoveryState } from '../hit-dice-sheet/arcane-recovery';
+import { slotRecoveryStates } from '../hit-dice-sheet/slot-recovery';
 import { openHitDice } from '../hit-dice-sheet/hit-dice-sheet';
 import { WildPools } from '../../../shared/wild-shape/wild-pools';
 import { PlayerSheetVm, VitalsVm } from '../../../core/play/live-session.types';
@@ -224,13 +224,12 @@ export class PlayerVitals {
   protected readonly freeWords = freeWords;
   /** "Gastar dados de vida" has nothing to spend when every die is used. */
   protected readonly noDiceLeft = computed(
-    () => totalDiceLeft(this.vitals().hitDiceSizes) === 0 && !this.arcaneOpen(),
+    () => totalDiceLeft(this.vitals().hitDiceSizes) === 0 && !this.recoveryOpen(),
   );
-  /** A wizard whose Recuperação Arcana is not spent keeps the short rest sheet open even without a die. */
-  private readonly arcaneOpen = computed(() => {
-    const state = arcaneRecoveryState(this.vitals());
-    return state !== null && !state.spent;
-  });
+  /** A character whose Recuperação Arcana or Natural is not spent keeps the short rest sheet open even without a die. */
+  private readonly recoveryOpen = computed(() =>
+    slotRecoveryStates(this.vitals()).some((state) => !state.spent),
+  );
 
   /** "Gastar dados de vida": the sheet where a short rest's dice are spent one by one. */
   protected spendHitDice(): void {

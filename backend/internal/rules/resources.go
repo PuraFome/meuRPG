@@ -178,46 +178,61 @@ func BardicInspirationRefusal(t BardicInspirationTarget) string {
 // lasts 10 minutes.
 func BardicInspirationExpiry(round int) int { return round + BardicInspirationRounds }
 
-// ArcaneRecoveryKey is the resource of the wizard's once-a-day Arcane Recovery.
-const ArcaneRecoveryKey = "arcane_recovery"
-
-// ArcaneRecoveryMaxSlotLevel is the highest level of a slot Arcane Recovery gives
-// back: "none of the slots can be 6th level or higher" (SRD 5.1, Wizard).
-const ArcaneRecoveryMaxSlotLevel = 5
-
-// ErrArcaneRecovery is the base of the Arcane Recovery refusals.
-var ErrArcaneRecovery = errors.New("arcane recovery")
-
-// ArcaneRecoveryAllowance is the combined level of the slots a wizard of the level
-// recovers: "a combined level that is equal to or less than half your wizard level
-// (rounded up)" (SRD 5.1, Wizard). Only the WIZARD level counts in a multiclass
-// character. 0 for no wizard level.
-func ArcaneRecoveryAllowance(wizardLevel int) int {
-	if wizardLevel < 1 {
-		return 0
-	}
-	return (wizardLevel + 1) / arcaneRecoveryDivisor
+// SlotRecovery is a once-a-long-rest recovery of expended spell slots after a short rest:
+// the combined level of the slots is up to half the level of one class (rounded up) and
+// none is 6th level or higher. Only the levels of that class count in a multiclass
+// character.
+type SlotRecovery struct {
+	// ResourceKey is the once-a-day use, a resource of the sheet; a character that lacks it
+	// does not have the feature.
+	ResourceKey string
+	// ClassKey is the class whose level sets the allowance.
+	ClassKey string
 }
 
-// arcaneRecoveryDivisor halves the wizard level for the allowance.
-const arcaneRecoveryDivisor = 2
+var (
+	// ArcaneRecovery is the wizard's Arcane Recovery (SRD 5.1, Wizard).
+	ArcaneRecovery = SlotRecovery{ResourceKey: "arcane_recovery", ClassKey: "class:wizard"}
+	// NaturalRecovery is the Circle of the Land druid's Natural Recovery (SRD 5.1, Druid 2).
+	NaturalRecovery = SlotRecovery{ResourceKey: "natural_recovery", ClassKey: "class:druid"}
+)
 
-// ArcaneRecoveryCheck checks the slots a wizard recovers, by spell level and count:
-// every level from 1 to 5 and the combined level (level times count, summed) within
-// the allowance. It returns the combined level.
-func ArcaneRecoveryCheck(slots map[int]int, wizardLevel int) (int, error) {
+// SlotRecoveryMaxSlotLevel is the highest level of a slot the recovery gives back:
+// "none of the slots can be 6th level or higher" (SRD 5.1).
+const SlotRecoveryMaxSlotLevel = 5
+
+// ErrSlotRecovery is the base of the slot recovery refusals.
+var ErrSlotRecovery = errors.New("slot recovery")
+
+// SlotRecoveryAllowance is the combined level of the slots a character with the class
+// level recovers: "a combined level that is equal to or less than half your [class]
+// level (rounded up)" (SRD 5.1). 0 for no level of the class.
+func SlotRecoveryAllowance(classLevel int) int {
+	if classLevel < 1 {
+		return 0
+	}
+	return (classLevel + 1) / slotRecoveryDivisor
+}
+
+// slotRecoveryDivisor halves the class level for the allowance.
+const slotRecoveryDivisor = 2
+
+// SlotRecoveryCheck checks the slots recovered, by spell level and count: every level from
+// 1 to 5 and the combined level (level times count, summed) within the allowance of the
+// class level. It returns the combined level.
+func SlotRecoveryCheck(slots map[int]int, classLevel int) (int, error) {
 	total := 0
 	for level, count := range slots {
-		if level < 1 || level > ArcaneRecoveryMaxSlotLevel {
-			return 0, fmt.Errorf("%w: a slot of level %d cannot be recovered", ErrArcaneRecovery, level)
+		if level < 1 || level > SlotRecoveryMaxSlotLevel {
+			return 0, fmt.Errorf("%w: a slot of level %d cannot be recovered", ErrSlotRecovery, level)
 		}
 		if count < 1 {
-			return 0, fmt.Errorf("%w: the count of the level %d slots must be at least 1", ErrArcaneRecovery, level)
+			return 0, fmt.Errorf("%w: the count of the level %d slots must be at least 1", ErrSlotRecovery, level)
 		}
 		total += level * count
 	}
-	if allowance := ArcaneRecoveryAllowance(wizardLevel); total > allowance {
-		return total, fmt.Errorf("%w: the slots add up to level %d and the most is %d", ErrArcaneRecovery, total, allowance)
+	if allowance := SlotRecoveryAllowance(classLevel); total > allowance {
+		return total, fmt.Errorf("%w: the slots add up to level %d and the most is %d", ErrSlotRecovery, total, allowance)
 	}
 	return total, nil
 }

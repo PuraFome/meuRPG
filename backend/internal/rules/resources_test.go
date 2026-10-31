@@ -173,3 +173,38 @@ func TestBardicInspirationRefusals(t *testing.T) {
 		t.Errorf("theatre of the mind: %q", r)
 	}
 }
+
+func TestSlotRecoveryAllowanceIsHalfTheClassLevelRoundedUp(t *testing.T) {
+	t.Parallel()
+	for level, want := range map[int]int{-1: 0, 0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 11: 6, 20: 10} {
+		if got := SlotRecoveryAllowance(level); got != want {
+			t.Errorf("level %d: allowance = %d, want %d", level, got, want)
+		}
+	}
+}
+
+func TestSlotRecoveryCheckRefusesSixthLevelAndOverAllowance(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		slots map[int]int
+		level int
+		total int
+		ok    bool
+	}{
+		{"two 1st at level 3", map[int]int{1: 2}, 3, 2, true},
+		{"a 2nd at level 3", map[int]int{2: 1}, 3, 2, true},
+		{"over the allowance", map[int]int{3: 1, 1: 1}, 5, 4, false},
+		{"a 6th-level slot", map[int]int{6: 1}, 11, 0, false},
+		{"a count of 0", map[int]int{1: 0}, 5, 0, false},
+		{"no class level", map[int]int{1: 1}, 0, 1, false},
+	} {
+		got, err := SlotRecoveryCheck(tc.slots, tc.level)
+		if (err == nil) != tc.ok || got != tc.total || (err != nil && !errors.Is(err, ErrSlotRecovery)) {
+			t.Errorf("%s: total = %d, err = %v; want %d and ok=%v", tc.name, got, err, tc.total, tc.ok)
+		}
+	}
+	if NaturalRecovery.ClassKey != "class:druid" || NaturalRecovery.ResourceKey != "natural_recovery" {
+		t.Errorf("NaturalRecovery = %+v", NaturalRecovery)
+	}
+}
