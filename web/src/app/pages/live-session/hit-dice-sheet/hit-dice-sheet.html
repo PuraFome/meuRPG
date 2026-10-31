@@ -22,7 +22,7 @@
     </ol>
   }
 
-  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}{{ arcaneDone() }}</p>
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}{{ recoveryDone()?.text }}</p>
 
   @if (anyLeft()) {
     <fieldset class="which">
@@ -78,24 +78,26 @@
     </div>
   }
 
-  @if (arcane(); as arcane) {
-    <section class="arcane" aria-labelledby="arcane-t">
-      <h3 class="arcane__title" id="arcane-t">Recuperação Arcana</h3>
-      @if (arcane.spent) {
-        @if (arcaneDone()) {
-          <p class="arcane__done" role="status">
-            <mat-icon aria-hidden="true">check_circle</mat-icon>{{ arcaneDone() }}
+  @for (rec of recoveries(); track rec.def.kind) {
+    <section class="recovery" [attr.aria-labelledby]="'recovery-t-' + rec.def.kind">
+      <h3 class="recovery__title" [id]="'recovery-t-' + rec.def.kind">{{ rec.def.title }}</h3>
+      @if (rec.spent) {
+        @if (recoveryDone(); as done) {
+          @if (done.kind === rec.def.kind) {
+          <p class="recovery__done" role="status">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>{{ done.text }}
           </p>
+          }
         }
         <p class="note">
-          <mat-icon aria-hidden="true">info</mat-icon>Recuperação Arcana: usada; volta no descanso longo.
+          <mat-icon aria-hidden="true">info</mat-icon>{{ rec.def.title }}: usada; volta no descanso longo.
         </p>
       } @else {
         <p class="note">
-          <mat-icon aria-hidden="true">info</mat-icon>{{ arcaneHelp() }}
+          <mat-icon aria-hidden="true">info</mat-icon>{{ recoveryHelp(rec.allowance) }}
         </p>
-        @if (arcaneSlots().length > 0) {
-          @for (slot of arcaneSlots(); track slot.level) {
+        @if (recoverySlots().length > 0) {
+          @for (slot of recoverySlots(); track slot.level) {
             <div class="step" role="group" [attr.aria-label]="'Espaços de ' + slot.level + 'º nível'">
               <span class="step__text">
                 <b>{{ slot.level }}º nível</b>
@@ -104,38 +106,38 @@
               <button
                 matIconButton
                 type="button"
-                class="js-arcane-less"
+                class="js-recovery-less"
                 [attr.aria-label]="'Recuperar menos um espaço de ' + slot.level + 'º nível'"
-                [disabled]="arcaneCount(slot.level) === 0 || busy()"
-                (click)="stepArcane(slot.level, -1)"
+                [disabled]="recoveryCount(rec.def, slot.level) === 0 || busy()"
+                (click)="stepRecovery(rec.def, slot.level, -1)"
               >
                 <mat-icon aria-hidden="true">remove</mat-icon>
               </button>
-              <output class="step__count" [attr.aria-label]="arcaneCount(slot.level) + ' a recuperar'">{{
-                arcaneCount(slot.level)
+              <output class="step__count" [attr.aria-label]="recoveryCount(rec.def, slot.level) + ' a recuperar'">{{
+                recoveryCount(rec.def, slot.level)
               }}</output>
               <button
                 matIconButton
                 type="button"
-                class="js-arcane-more"
+                class="js-recovery-more"
                 [attr.aria-label]="'Recuperar mais um espaço de ' + slot.level + 'º nível'"
-                [disabled]="!canAddArcane(slot) || busy()"
-                (click)="stepArcane(slot.level, 1)"
+                [disabled]="!canAddRecovery(rec.def, rec.allowance, slot) || busy()"
+                (click)="stepRecovery(rec.def, slot.level, 1)"
               >
                 <mat-icon aria-hidden="true">add</mat-icon>
               </button>
             </div>
           }
-          <p class="arcane__sum">
-            Total: {{ arcaneTotal() }} de {{ arcane.allowance }}
-            {{ arcane.allowance === 1 ? 'nível' : 'níveis' }}
+          <p class="recovery__sum">
+            Total: {{ recoveryTotal(rec.def) }} de {{ rec.allowance }}
+            {{ rec.allowance === 1 ? 'nível' : 'níveis' }}
           </p>
           <button
             matButton="filled"
             type="button"
-            class="js-arcane-recover"
-            [attr.aria-disabled]="arcaneTotal() === 0 || busy()"
-            (click)="recoverArcane()"
+            class="js-recovery-recover"
+            [attr.aria-disabled]="recoveryTotal(rec.def) === 0 || busy()"
+            (click)="recover(rec.def)"
           >
             Recuperar
           </button>

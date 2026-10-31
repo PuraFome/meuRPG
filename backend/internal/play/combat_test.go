@@ -1150,7 +1150,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventCharacterRevived,
 		eventCharacterChoicesCompleted,
 		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged, eventHitRider,
-		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventInspirationGiven,
+		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventNaturalRecovery, eventInspirationGiven,
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
 		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced, eventFreeRoll,
 		eventZoneTriggered, eventZoneMoved,
