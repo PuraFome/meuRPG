@@ -1902,7 +1902,8 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
     await winCombatRPC(m, combat);
-    await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado');
+    // Going live takes several calls in a row, as in `openSessionPage`: wait up to 30 s.
+    await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado', 30_000);
     const block = m.getByRole('region', { name: 'Experiência do combate' });
     await expect(block.getByRole('button', { name: /^Dar 350 XP/ })).toBeVisible();
     await expectScreenPasses(m, `Fim do combate com Dar XP ${where}`);

@@ -3,6 +3,8 @@
 export interface Locator {
   click(): Promise<void>;
   clear(): Promise<void>;
+  dispatchEvent(type: string): Promise<void>;
+  selectText(): Promise<void>;
 }
 export interface ElementHandle {
   click(): Promise<void>;
@@ -12,13 +14,21 @@ export interface Frame {
 }
 export interface Keyboard {
   press(key: string): Promise<void>;
+  down(key: string): Promise<void>;
+  up(key: string): Promise<void>;
+  insertText(text: string): Promise<void>;
 }
 export interface Mouse {
   click(x: number, y: number): Promise<void>;
+  down(): Promise<void>;
+  up(): Promise<void>;
+  move(x: number, y: number): Promise<void>;
+  wheel(dx: number, dy: number): Promise<void>;
 }
 export interface Page {
   getByRole(role: string): Locator;
   goto(url: string): Promise<void>;
+  dragAndDrop(source: string, target: string): Promise<void>;
   frame(): Frame;
   keyboard: Keyboard;
   mouse: Mouse;

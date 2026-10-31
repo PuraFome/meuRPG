@@ -39,6 +39,14 @@ const ACTIONS = new Set([
   'dragTo',
   'setInputFiles',
   'clear',
+  'dragAndDrop',
+  'dispatchEvent',
+  'selectText',
+  'down',
+  'up',
+  'insertText',
+  'move',
+  'wheel',
 ]);
 // A wait, or a load: a page that loads after the call reads the state itself.
 const WAIT_NAMES = new Set(['waitForEncounterRevision', 'openSessionPage', 'openPlayerMap', 'gotoCampaignTab', 'openLive']);
@@ -232,7 +240,7 @@ module.exports = {
     const scans = new WeakMap();
 
     /**
-     * What a statement does, in source order (function bodies are not entered): `action` on a page, `wait` for a page
+     * What a statement does, in source order (a callback is entered only where `runsNow` says it runs where it is written): `action` on a page, `wait` for a page
      * (a revision wait or a page load), or a later tracked `rpc`. @param {any} root
      */
     const scan = (root) => {

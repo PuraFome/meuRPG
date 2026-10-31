@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { type Encounter, adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTurnsTo } from './combat-support';
 import { openSessionPage } from './live-session-support';
+import { required } from './support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
 import { masterLog, openOrderRow } from './combat-layout';
@@ -199,8 +200,7 @@ test(
         const turn = await getEncounterRPC(m, campaignId);
         rolled = await combatRPC(lia.page, 'RollDeathSave', { campaignId, encounterId: turn.id, combatantId: turn.combatants.find((c) => c.label === 'Brisa')!.id, d20Face: 15 });
       }
-      expect(rolled, 'the loop rolled no death save').toBeDefined();
-      await waitForEncounterRevision(p, rolled!);
+      await waitForEncounterRevision(p, required(rolled, 'the death save the loop rolled'));
       const stable = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.label === 'Brisa')!;
       expect(stable.state).toBe('COMBATANT_STATE_STABLE');
       await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();

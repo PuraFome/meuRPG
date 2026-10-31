@@ -110,3 +110,54 @@ export async function waitsOnTheOtherPageOfAUnion(m: Page, p: Page | undefined):
   await waitForEncounterRevision(m, enc);
   await p!.getByRole('button').click();
 }
+
+// Errors: each of these is a page action too.
+export async function keyboardDownAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.keyboard.down('a');
+}
+
+export async function keyboardUpAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.keyboard.up('a');
+}
+
+export async function keyboardInsertTextAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.keyboard.insertText('a');
+}
+
+export async function mouseDownAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.mouse.down();
+}
+
+export async function mouseUpAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.mouse.up();
+}
+
+export async function mouseMoveAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.mouse.move(1, 2);
+}
+
+export async function mouseWheelAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.mouse.wheel(0, 9);
+}
+
+export async function dragAndDropAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.dragAndDrop('a', 'b');
+}
+
+export async function dispatchEventAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.getByRole('button').dispatchEvent('click');
+}
+
+export async function selectTextAfter(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn'); // error
+  await m.getByRole('button').selectText();
+}

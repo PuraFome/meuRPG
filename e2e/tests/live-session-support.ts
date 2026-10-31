@@ -86,12 +86,13 @@ export async function openSessionPage(page: Page, campaignId: string, tab: Maste
 }
 
 /**
- * Opens `route` and waits for its heading (`heading`, else the h1). A page that keeps its stream open never goes idle,
- * so the heading says it has loaded.
+ * Opens `route` and waits for its heading (`heading`, else the h1) to be visible: the page has started to render, not
+ * that it has finished loading. A page that keeps its stream open never goes idle, so the load event cannot be waited on.
+ * `timeout` is the expect default unless a page needs more.
  */
-export async function openLive(page: Page, route: string, heading?: string): Promise<void> {
+export async function openLive(page: Page, route: string, heading?: string, timeout?: number): Promise<void> {
   await page.goto(route);
-  await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
+  await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout });
 }
 
 /**
