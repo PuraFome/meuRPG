@@ -240,7 +240,8 @@ module.exports = {
     const scans = new WeakMap();
 
     /**
-     * What a statement does, in source order (a callback is entered only where `runsNow` says it runs where it is written): `action` on a page, `wait` for a page
+     * What a statement does, in source order (a callback is entered only where `runsNow` says
+     * it runs where it is written): `action` on a page, `wait` for a page
      * (a revision wait or a page load), or a later tracked `rpc`. @param {any} root
      */
     const scan = (root) => {
