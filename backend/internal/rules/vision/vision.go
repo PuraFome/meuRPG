@@ -131,13 +131,7 @@ const MaxLightFt = 120
 // grid.ErrBadGrid for an invalid grid or for walls or painted light sized for
 // another grid, and never panics on a scene it is given.
 func Compile(s Scene) (*Lit, error) {
-	if s.Painted != nil && s.Painted.Grid() != s.Grid {
-		return nil, grid.ErrBadGrid
-	}
-	if s.Doors != nil && s.Doors.Grid() != s.Grid {
-		return nil, grid.ErrBadGrid
-	}
-	if (s.Clouds != nil && s.Clouds.Grid() != s.Grid) || (s.MagicDark != nil && s.MagicDark.Grid() != s.Grid) {
+	if !s.layersFit() {
 		return nil, grid.ErrBadGrid
 	}
 	sight, err := grid.NewSight(s.Grid, grid.SightWalls(s.Walls, s.Doors))
@@ -165,6 +159,16 @@ func Compile(s Scene) (*Lit, error) {
 		return nil, err
 	}
 	return l, nil
+}
+
+// layersFit says whether every layer of the scene is sized for its grid.
+func (s Scene) layersFit() bool {
+	for _, l := range []*grid.Layer{s.Clouds, s.MagicDark} {
+		if l != nil && l.Grid() != s.Grid {
+			return false
+		}
+	}
+	return (s.Painted == nil || s.Painted.Grid() == s.Grid) && (s.Doors == nil || s.Doors.Grid() == s.Grid)
 }
 
 // obscure adds the clouds and the magical darkness: the darkness forces its squares to dark
@@ -309,27 +313,34 @@ func (l *Lit) squareState(v Viewer, sq grid.Square) State {
 	n := sq.Row*l.g.Columns + sq.Col
 	d2 := dist2Ft(v.At, sq)
 	blindsight := s.BlindsightFt > 0 && d2 <= s.BlindsightFt*s.BlindsightFt
-	if l.cloud != nil && !blindsight && (l.inCloud(sq) || l.inCloud(v.At) || !l.cloud.Clear(v.At, sq)) {
+	if !blindsight && l.clouded(v.At, sq) {
 		return Unseen // heavily obscured: what is in a cloud, behind it, or seen from inside it
 	}
-	state := Unseen
-	magic := l.inMagicDark(sq)
-	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt && !magic
-	switch light := l.level[n]; {
-	case s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt:
-		state = SeenBright
-	case light == grid.Bright:
-		state = SeenBright
+	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt && !l.inMagicDark(sq)
+	truesight := s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt
+	if state := lightSeen(l.level[n], truesight, darkvision, blindsight); state != Unseen && l.sight.Clear(v.At, sq) {
+		return state
+	}
+	return Unseen
+}
+
+// clouded says whether a cloud keeps the viewer's square from seeing the square.
+func (l *Lit) clouded(from, sq grid.Square) bool {
+	return l.cloud != nil && (l.inCloud(sq) || l.inCloud(from) || !l.cloud.Clear(from, sq))
+}
+
+// lightSeen is how a square of the light is seen with the senses that reach it.
+func lightSeen(light grid.Light, truesight, darkvision, blindsight bool) State {
+	switch {
+	case truesight, light == grid.Bright:
+		return SeenBright
 	case light == grid.Dim && darkvision:
 		// SRD: within its range darkvision sees dim light as if it were bright.
-		state = SeenBright
+		return SeenBright
 	case light == grid.Dim:
-		state = SeenDim
+		return SeenDim
 	case darkvision, blindsight:
-		state = SeenGrey
-	}
-	if state != Unseen && l.sight.Clear(v.At, sq) {
-		return state
+		return SeenGrey
 	}
 	return Unseen
 }
