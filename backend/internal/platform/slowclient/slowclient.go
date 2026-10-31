@@ -10,7 +10,8 @@
 //     connection that never closed) ends the stream instead of blocking inside
 //     Send until the platform closes the connection;
 //   - the read of a request body that a client can trickle: ReadBody, for the
-//     image upload, the sign-in form and the campaign package's parts, and
+//     image upload, the sign-in form and the campaign package's parts (the
+//     body clears the deadline itself when it ends), and
 //     Middleware, for every unary RPC (UnaryBodyTimeout);
 //   - the write of a large response on a plain route: WriteBody, for the
 //     image, thumbnail and tile downloads and the app's files.
@@ -57,13 +58,11 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
-// ReadBody gives the rest of the request body d to arrive. Call it before
-// reading the body, in a handler that is not a stream. Call the function it
-// returns only once the body has been read to its end, and never on a path that
-// returns with the body unread. (A return before the call, such as a refusal for
-// a missing session or a rate limit, has no deadline yet: handlers that can
-// refuse a client before they read call ReadBody as late as their checks allow,
-// not earlier.)
+// ReadBody gives the request body d to arrive, and the body disarms the
+// deadline itself: the first Read that returns io.EOF clears it. Call it before
+// reading the body, in a handler that is not a stream, as early as the
+// handler's first line: a path that returns with the body unread (a refusal, a
+// form that is wrong) leaves the deadline armed, with no call to remember.
 //
 // The deadline is what ends a client that goes on trickling after the handler
 // has answered: the server has no ReadTimeout, and when a handler returns with
@@ -72,17 +71,53 @@ func MiddlewareWith(unaryBody time.Duration) func(http.Handler) http.Handler {
 // a trickler would hold the connection and the goroutine for as long as Cloud
 // Run lets a request live. Armed, the discard ends with the deadline.
 //
-// Once the body is at its end the deadline has nothing left to bound, and it is
-// harmful: net/http starts a background read at the end of the body (how it
-// notices a client that left), the deadline fires on that read, and the
-// request's context is canceled while the handler still decodes or stores what
-// it read. A body small enough to arrive whole with an earlier read is already
-// at its end when the handler calls ReadBody. A writer that cannot set
-// deadlines (a test's recorder) is left alone.
-func ReadBody(w http.ResponseWriter, d time.Duration) (done func()) {
-	rc := http.NewResponseController(w)
-	_ = rc.SetReadDeadline(time.Now().Add(d))
-	return func() { _ = rc.SetReadDeadline(time.Time{}) }
+// At the end of the body the deadline has nothing left to bound, and it is
+// harmful: net/http starts a background read there (how it notices a client
+// that left), the deadline fires on that read, and the request's context is
+// canceled while the handler still decodes or stores what it read. That is why
+// the clearing belongs to the body and not to each handler. Only the end of the
+// body clears it: an error (a body over its limit, a deadline that fired) leaves
+// it armed.
+//
+// Called again on the same request while the body is still unread, ReadBody
+// gives the rest of the body a new d, which a handler uses when a wait that is
+// not the client's (a queue for a shared slot) must not count against it; once
+// the body has ended, a second call does nothing. A request with no body, and a
+// writer that cannot set deadlines (a test's recorder), are left alone.
+func ReadBody(w http.ResponseWriter, r *http.Request, d time.Duration) {
+	if r.Body == nil || r.Body == http.NoBody {
+		return
+	}
+	if b, ok := r.Body.(*readBody); ok {
+		b.arm(d)
+		return
+	}
+	b := &readBody{ReadCloser: r.Body, rc: http.NewResponseController(w)}
+	b.arm(d)
+	r.Body = b
+}
+
+// readBody is the body ReadBody installs. Its Read is called by one goroutine,
+// the handler's.
+type readBody struct {
+	io.ReadCloser
+	rc    *http.ResponseController
+	ended bool
+}
+
+func (b *readBody) arm(d time.Duration) {
+	if !b.ended {
+		_ = b.rc.SetReadDeadline(time.Now().Add(d))
+	}
+}
+
+func (b *readBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err == io.EOF && !b.ended {
+		b.ended = true
+		_ = b.rc.SetReadDeadline(time.Time{})
+	}
+	return n, err
 }
 
 // WriteBody gives the response body d to be written: a client that stops

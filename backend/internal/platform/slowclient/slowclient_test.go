@@ -111,7 +111,7 @@ func TestReadBodyEndsATrickledBody(t *testing.T) {
 	t.Parallel()
 	done := make(chan error, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer slowclient.ReadBody(w, 300*time.Millisecond)()
+		slowclient.ReadBody(w, r, 300*time.Millisecond)
 		buf := make([]byte, 1024)
 		for {
 			if _, err := r.Body.Read(buf); err != nil {
@@ -137,6 +137,38 @@ func TestReadBodyEndsATrickledBody(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the handler is still waiting for the body")
+	}
+}
+
+// The body clears the deadline itself when it reaches its end. net/http then waits on the connection for a client that
+// left, and a deadline that outlived the body would fire on that read and cancel the request while the handler works.
+// A second ReadBody after the end, as a handler makes when it waits for a slot, arms nothing.
+func TestReadBodyDisarmsItselfAtTheEndOfTheBody(t *testing.T) {
+	t.Parallel()
+	const d = 50 * time.Millisecond
+	canceled := make(chan bool, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slowclient.ReadBody(w, r, d)
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			t.Errorf("reading the body: %v", err)
+		}
+		slowclient.ReadBody(w, r, d)
+		select {
+		case <-r.Context().Done():
+			canceled <- true
+		case <-time.After(4 * d):
+			canceled <- false
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	res, err := srv.Client().Post(srv.URL, "text/plain", strings.NewReader("a small body"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	if <-canceled {
+		t.Error("the request was canceled by a deadline that outlived the body")
 	}
 }
 
