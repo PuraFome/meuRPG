@@ -6016,7 +6016,9 @@ type Attack struct {
 	// Luta: Duelismo (sem outra arma na mão)". Empty when the damage holds no such bonus.
 	DamageNotePt string `protobuf:"bytes,20,opt,name=damage_note_pt,json=damageNotePt,proto3" json:"damage_note_pt,omitempty"`
 	// The melee reach in feet, when a weapon rule or a pseudo-weapon makes it longer than
-	// 5 ft; 0 otherwise. `range_ft` is at least this for a melee attack.
+	// 5 ft; 0 otherwise. A melee weapon with the reach property (a glaive, a halberd, a whip)
+	// keeps its reach in `range_ft`, with no long range. `range_ft` is at least this for a
+	// melee attack.
 	ReachFt       int32 `protobuf:"varint,21,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

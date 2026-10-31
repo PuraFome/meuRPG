@@ -256,6 +256,8 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
+	// MagicResistance is a monster's trait.
+	MagicResistance bool
 	// Evasion says the sheet has Evasion: the monk's, the rogue's, the ranger's Superior
 	// Hunter's Defense choice, or a stat block's trait (combat.HalfSaveShare).
 	Evasion bool
@@ -348,8 +350,9 @@ type Attack struct {
 	// opportunity attack can use, with the melee reach.
 	Melee bool
 	// ReachFt is the melee reach a weapon rule, a pseudo-weapon or a creature's stat
-	// block gives the attack line, in feet; 0 when none does (a melee attack reaches 5 ft). A melee weapon with a
-	// throwing range is a melee attack up to this reach and a throw beyond it.
+	// block gives the attack line, in feet; 0 when none does (a melee attack reaches 5 ft; a
+	// weapon with the reach property has it in RangeFt). A melee weapon with a throwing range
+	// is a melee attack up to its melee reach and a throw beyond it.
 	ReachFt int
 	// Beams is how many attack rolls the cantrip makes in one action (Eldritch
 	// Blast: 2, 3 and 4 beams from character levels 5, 11 and 17); 0 or 1 for
@@ -624,10 +627,21 @@ type Named struct {
 	Key, NamePT string
 }
 
+// Spent is the slots and uses a combatant spent in one combat.
+type Spent struct {
+	SlotsUsed     [9]int
+	PactSlotsUsed int
+	ResourcesUsed map[string]int
+}
+
 // Turn is what a combatant used in the current turn, for working out what it
 // can still do.
 type Turn struct {
 	ActionUsed, BonusActionUsed, ReactionUsed bool
+	// Spent is what a combatant that has no vitals (an NPC) spent of its spell slots and daily uses in this
+	// combat, counted on the combatant: SlotsUsed[l-1] slots of level l, the pact slots, and the uses of each
+	// resource by key. A player's character leaves it empty: its vitals keep the count.
+	Spent Spent
 	// AttacksMade is how many attacks the Attack action made this turn.
 	AttacksMade int
 	// AttackKey is the attack the Attack action made last this turn ("" if none)

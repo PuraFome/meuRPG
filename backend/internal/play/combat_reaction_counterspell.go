@@ -232,7 +232,7 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 		got.held = check.held
 		return nil
 	}
-	vitals, err := s.spendReactionSlot(ctx, c, reactor, slot)
+	vitals, err := s.spendSlotOf(ctx, c, reactor, slot)
 	if err != nil {
 		return err
 	}

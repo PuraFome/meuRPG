@@ -11,9 +11,9 @@ import (
 // The NPC made from a spellcaster (MR-042) carries the creature's Spellcasting as
 // text in the sheet's description, in Portuguese: the ability, the spell save DC,
 // the spell attack bonus and the spells by level with their slots, with the
-// spells' official Portuguese names. It is a note for the master: the basic sheet
-// has no spell engine, so the NPC casts nothing by itself and the master reads
-// the DC and rolls (the spell's own save or attack is on the spell's page).
+// spells' official Portuguese names. It is a note for the master: the NPC's own
+// spells in combat come from rules.Content.MonsterCaster (basicDerived), not from
+// this text.
 
 var (
 	spellDCRe     = regexp.MustCompile(`spell save DC (\d+)`)
