@@ -572,7 +572,8 @@ func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
 // up writes a path that goes up n directories and then down rest, as the cleaned form the
 // detector reports. The expected values of the detector tests are written with it so that they
 // hold no ".." literal that reaches outside backend/ (the guard reads this file too); the few
-// literals that remain (goesUp and its table, upSegment) stay inside backend/.
+// literals that remain (goesUp and its table, upSegment) are map keys and values, not arguments of a
+// path function, so the guard does not read them as paths.
 func up(n int, rest string) string {
 	parts := slices.Repeat([]string{".."}, n)
 	return path.Join(append(parts, rest)...)
