@@ -606,31 +606,37 @@ func (f *castFlow) spend(ctx context.Context) error {
 	return nil
 }
 
-// spendCastSlot spends the slot of a player's character.
+// spendCastSlot spends the slot of the caster.
 func (f *castFlow) spendCastSlot(ctx context.Context) error {
-	if f.slot == nil || f.caster.Kind != kindPlayer {
+	if f.slot == nil {
 		return nil
 	}
-	slotVitals, err := f.s.spendSlot(ctx, f.c, f.caster.CharacterID, *f.slot, 1)
+	// A player's slot is spent from its vitals, an NPC's is counted on the combatant (one rule for both).
+	slotVitals, err := f.s.spendSlotOf(ctx, f.c, f.caster, *f.slot)
 	if err != nil {
 		return err
 	}
-	f.out.vitals = append(f.out.vitals, slotVitals)
+	if slotVitals != nil {
+		f.out.vitals = append(f.out.vitals, slotVitals)
+	}
 	return nil
 }
 
 // spendGrantUse spends the use a spell cast through a limited grant costs: one of the grant's
-// resource, kept in the event for the undo. A cast with a slot, an at-will grant and an NPC spend none.
+// resource, kept in the event for the undo. A cast with a slot and an at-will grant spend none. An NPC's use is
+// counted on the combatant.
 func (f *castFlow) spendGrantUse(ctx context.Context) error {
 	g := f.cast.grant
-	if g == nil || f.slot != nil || g.GetAtWill() || f.caster.Kind != kindPlayer {
+	if g == nil || f.slot != nil || g.GetAtWill() {
 		return nil
 	}
-	v, err := f.s.spendResource(ctx, f.c, f.caster.CharacterID, g.GetResource(), 1)
+	v, err := f.s.spendResourceOf(ctx, f.c, f.caster, g.GetResource())
 	if err != nil {
 		return err
 	}
-	f.out.vitals = append(f.out.vitals, v)
+	if v != nil {
+		f.out.vitals = append(f.out.vitals, v)
+	}
 	f.out.made.GrantUse = g.GetResource()
 	return nil
 }

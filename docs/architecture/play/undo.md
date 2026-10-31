@@ -27,7 +27,7 @@ The walk over those events is `chainRules`, a list of rules read in order, the f
 An event that a new change writes beside its own is a new rule there.
 
 Each event stores the before (HP and `defeated`, the economy, the attacks made, the damage state, the death counts, the concentration, the conditions, the AC bonus, the form) and what it spent (the slot, the resource use).
-Undo writes it back through the same paths (`character_vitals` for slots, uses and HP) and stores an `action_undone` event with the undone event's id.
+Undo writes it back through the same paths (`character_vitals` for slots, uses and HP; `combatants.slots_used` for an NPC's slots and uses) and stores an `action_undone` event with the undone event's id.
 `takeBack` reads the combatants once and hands the event to the function of its kind in the `undoers` map (`combat_undo_kinds.go`); a new undoable kind needs an entry there and in `undoableKinds`.
 `expected_event_id` is the log's `undoable_event_id`; if it is already another, the call is `aborted`, and two masters never undo two things.
 The undone line disappears from the log.

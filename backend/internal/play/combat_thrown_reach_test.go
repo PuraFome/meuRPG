@@ -6,6 +6,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // A thrown melee weapon against a target within the attacker's melee reach is a melee attack; beyond the
@@ -14,7 +15,7 @@ import (
 
 // spear is a spear as the sheet derives it: thrown 20/60 ft, with the reach a weapon rule gives it, if any.
 func spear(reachFt int) link.Attack {
-	return link.Attack{Key: "weapon:spear", Name: "Lança", Weapon: true, Melee: true, Ability: "str", RangeFt: max(20, reachFt), LongRangeFt: 60, ReachFt: reachFt}
+	return link.Attack{Key: "weapon:spear", Name: "Lança", Weapon: true, Melee: true, Ability: "str", RangeFt: 20, LongRangeFt: 60, ReachFt: reachFt}
 }
 
 func TestAThrownWeaponIsMeleeUpToTheReachOfItsAttackLine(t *testing.T) {
@@ -120,5 +121,98 @@ func TestAThrownWeaponWithALongReachHasNoKnownDistanceWithoutAMap(t *testing.T) 
 		if got := combat.AttackMode(s).CriticalOnHit; got != tc.want {
 			t.Errorf("%s: critical on hit = %v, want %v", tc.name, got, tc.want)
 		}
+	}
+}
+
+// A weapon rule's reach is the reach of an opportunity attack too (SRD 5.1: it happens when a creature
+// leaves the attacker's reach): a spear with 10 ft provokes when the target leaves 10 ft, as a glaive does.
+func TestAThrownWeaponWithALongReachProvokesWhereItLeavesTheReach(t *testing.T) {
+	t.Parallel()
+	glaive := link.Attack{Key: "weapon:glaive", Weapon: true, Melee: true, RangeFt: 10}
+	for _, tc := range []struct {
+		name   string
+		attack link.Attack
+		reach  int
+	}{
+		{"a spear with a 10 ft reach", spear(10), 10},
+		{"a spear with no rule", spear(0), 5},
+		{"a glaive", glaive, 10},
+	} {
+		if got := meleeReachOf(link.Sheet{Attacks: []link.Attack{tc.attack}}); got != tc.reach {
+			t.Errorf("%s: meleeReachOf = %d, want %d", tc.name, got, tc.reach)
+		}
+	}
+	reach := meleeReachOf(link.Sheet{Attacks: []link.Attack{spear(10)}})
+	from, to := grid.Square{Col: 2, Row: 0}, grid.Square{Col: 3, Row: 0} // 10 ft to 15 ft from the spear at 0,0
+	zero := int32(0)
+	cands := []candidate{{who: playdb.Combatant{ID: "r", GridCol: &zero, GridRow: &zero}, reachFt: reach}}
+	if got := provokedBy(cands, from, to); len(got) != 1 {
+		t.Errorf("a target leaving 10 ft of a 10 ft spear provokes %d, want 1", len(got))
+	}
+	if got := attackReach(spear(10), true); got != 10 {
+		t.Errorf("attackReach of the opportunity attack = %d, want 10", got)
+	}
+	if got := attackReach(spear(0), true); got != 5 {
+		t.Errorf("attackReach of the opportunity attack with no rule = %d, want 5", got)
+	}
+	// The opportunity attack is melee at the reach, not back at 5 ft.
+	f := &attackFlow{attack: spear(10), call: attackCall{asReaction: true}}
+	if s := f.modeShape(); s.Thrown || s.RangeFt != 10 || s.MeleeReachFt != 10 || s.rangedAt(10, true) {
+		t.Errorf("the opportunity attack's shape = %+v, want melee with a reach of 10", s)
+	}
+}
+
+// One rule decides "thrown at range": the attack's shape. A spell attack is never a thrown weapon.
+func TestThrownAtRangeFollowsTheShapeOfTheAttack(t *testing.T) {
+	t.Parallel()
+	at := func(col int32) playdb.Combatant {
+		row := int32(0)
+		return playdb.Combatant{GridCol: &col, GridRow: &row}
+	}
+	spell := link.Attack{Key: "spell:test", Spell: true, Melee: true, RangeFt: 20, LongRangeFt: 60}
+	if thrownAtRange(playdb.Encounter{}, spell, at(0), at(3), false) {
+		t.Error("a spell attack is a thrown weapon at 15 ft")
+	}
+	if !thrownAtRange(playdb.Encounter{}, spear(0), at(0), at(3), false) {
+		t.Error("a spear is not thrown at 15 ft")
+	}
+}
+
+// A weapon with the reach property and no weapon rule (a glaive: range 10 ft, no long range) provokes where the
+// target leaves 10 ft, and its opportunity attack at 10 ft is a normal melee attack: in reach, not at range, with no
+// disadvantage.
+func TestAGlaiveMakesItsOpportunityAttackAtItsReach(t *testing.T) {
+	t.Parallel()
+	glaive := link.Attack{Key: "weapon:glaive", Weapon: true, Melee: true, Ability: "str", RangeFt: 10}
+	if got := attackMeleeReach(glaive); got != 10 {
+		t.Errorf("attackMeleeReach(glaive) = %d, want 10", got)
+	}
+	if got := meleeReachOf(link.Sheet{Attacks: []link.Attack{glaive}}); got != 10 {
+		t.Errorf("meleeReachOf = %d, want 10", got)
+	}
+	if got := attackReach(glaive, true); got != 10 {
+		t.Errorf("attackReach of the opportunity attack = %d, want 10: the target 10 ft away is in reach", got)
+	}
+	f := &attackFlow{attack: glaive, call: attackCall{asReaction: true}}
+	shape := f.modeShape()
+	if shape.Thrown || shape.MeleeReachFt != 10 || shape.RangeFt != 10 || shape.rangedAt(10, true) {
+		t.Errorf("the opportunity attack's shape = %+v, want melee at a reach of 10", shape)
+	}
+	at := func(id string, col int32, side string) playdb.Combatant {
+		row := int32(0)
+		return playdb.Combatant{ID: id, Side: side, GridCol: &col, GridRow: &row}
+	}
+	attacker, target, foe := at("a", 0, "party"), at("t", 2, "foes"), at("f", 1, "foes")
+	s := modeFacts{cs: []playdb.Combatant{attacker, target, foe}}.scene(attacker, target, link.Traits{}, shape, false, nil)
+	if s.Ranged || s.HostileNearAttacker {
+		t.Errorf("scene at 10 ft: ranged %v, hostile near %v, want a melee attack with no ranged disadvantage", s.Ranged, s.HostileNearAttacker)
+	}
+	if mode := combat.Resolve(combat.AttackMode(s).Sources); mode != combat.ModeNormal {
+		t.Errorf("the mode at 10 ft = %v, want normal", mode)
+	}
+	zero := int32(0)
+	cands := []candidate{{who: playdb.Combatant{ID: "r", GridCol: &zero, GridRow: &zero}, reachFt: meleeReachOf(link.Sheet{Attacks: []link.Attack{glaive}})}}
+	if got := provokedBy(cands, grid.Square{Col: 2, Row: 0}, grid.Square{Col: 3, Row: 0}); len(got) != 1 {
+		t.Errorf("a target leaving 10 ft of a glaive provokes %d, want 1", len(got))
 	}
 }

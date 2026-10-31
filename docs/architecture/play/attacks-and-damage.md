@@ -94,6 +94,7 @@ The step is the usual resistance or immunity step with `combat.Step.Qualifier` s
 The steps are kept per type with their sources (`pending_damages.steps`) and shown to the master and the target's player as `DamageStep[]`.
 The master may leave a source out when applying (`ignore_modifiers`, at most `maxIgnoredSources`).
 An NPC's resistances reach the master alone (RN-20).
+The conditions a stat block is immune to do not go through these modifiers: they ride on the traits and `immuneToCondition` reads them when a condition is given (see [Creatures](creatures.md#what-the-combat-does-with-a-creature)).
 A trap's damage on an NPC or creature goes through the same adjustment.
 
 ### Damage by parts
@@ -134,18 +135,25 @@ Death saves and initiative are untouched.
 - **Physical dice.** With a real die the player types both faces (`d20_faces`, in the order rolled); the server picks the one that counts (`counted_index`).
   A call with the wrong number of faces is refused with a message saying how many.
   `RollSceneCheck`, `SearchForTraps` and `TryPuzzleHint` take the same field.
-- **What counts as a source.** Conditions of attacker and target (Blinded, Frightened, Invisible, Paralyzed, Poisoned, Prone with the 5 ft rule, Restrained, Stunned, Unconscious, Petrified); an attacker or target the other cannot see (a fog map hides it from the player; the master's own "hidden" mark changes no roll); long range (not for a weapon attack whose attacker has a `ranged_attack` with `no_long_range_disadvantage`) and a hostile within 5 ft for ranged attacks; Reckless Attack; Danger Sense (only against an effect the character sees); Dodge; Pack Tactics; Rage on Strength checks and saves; armor or a shield without proficiency (`armor_untrained`, a player's character only: `armorTrainingOf` in `characters` gives it to no NPC, creature or beast form, and `combat.ArmorSpoilsAbility` says which rolls, Strength and Dexterity checks, saves and weapon attacks, never a Constitution save such as concentration nor a spell attack; see [Casting](casting.md#casting-in-combat) for the spells it stops); Frightened and Poisoned on ability checks; the racial advantages on saves against one kind of source (`TaggedSave`: Brave, Fey Ancestry, Gnome Cunning, Dwarven Resilience, read from the sheet's `against:` hints by `taggedSavesOf`), which apply only when the save lists what it is against (`SaveScene.Against`, worked out in `combat_against.go` for a spell's save, an effect's and a trap's; a save with no known source keeps the sheet's reminder) and read "Bravura: vantagem no teste de resistência contra ficar amedrontado" on the roll card; the Help; lasting effects (see [Lasting effects](lasting-effects.md)).
+- **What counts as a source.** Conditions of attacker and target (Blinded, Frightened, Invisible, Paralyzed, Poisoned, Prone with the 5 ft rule, Restrained, Stunned, Unconscious, Petrified); an attacker or target the other cannot see (a fog map hides it from the player; the master's own "hidden" mark changes no roll); long range (not for a weapon attack whose attacker has a `ranged_attack` with `no_long_range_disadvantage`) and a hostile within 5 ft for ranged attacks; Reckless Attack; Danger Sense (only against an effect the character sees); Dodge; Pack Tactics; Magic Resistance (`Creature.MagicResistance`, from a stat block's trait; advantage on a save whose `Against` holds magic, never on a check; Turn Undead's and a rider's saves list no source, so it does not apply to them); Rage on Strength checks and saves; armor or a shield without proficiency (`armor_untrained`, a player's character only: `armorTrainingOf` in `characters` gives it to no NPC, creature or beast form, and `combat.ArmorSpoilsAbility` says which rolls, Strength and Dexterity checks, saves and weapon attacks, never a Constitution save such as concentration nor a spell attack; see [Casting](casting.md#casting-in-combat) for the spells it stops); Frightened and Poisoned on ability checks; the racial advantages on saves against one kind of source (`TaggedSave`: Brave, Fey Ancestry, Gnome Cunning, Dwarven Resilience, read from the sheet's `against:` hints by `taggedSavesOf`), which apply only when the save lists what it is against (`SaveScene.Against`, worked out in `combat_against.go` for a spell's save, an effect's and a trap's; a save with no known source keeps the sheet's reminder) and read "Bravura: vantagem no teste de resistência contra ficar amedrontado" on the roll card; the Help; lasting effects (see [Lasting effects](lasting-effects.md)).
   A hit within 5 ft against a Paralyzed or Unconscious target is a critical hit (`critical_on_hit`).
 - **What the player sees.** Only the sources they can see are listed; the mode counts all of them.
 - **The shape of an attack** (`shapeOfAttack`, `attackShape`) says whether it is melee or ranged.
   A spell attack is ranged when its range is beyond touch.
   A melee weapon is a thrown weapon when its long range is beyond its melee reach (a spear, a dagger, a javelin).
   A thrown weapon is a melee attack up to its melee reach, and a ranged attack made by throwing it beyond the reach, up to its throwing range.
-  The melee reach is 5 ft, or the longer reach a `weapon_rule` or a `pseudo_weapon` gives the line (`link.Attack.ReachFt`, read by `attackMeleeReach`).
+  The melee reach is 5 ft, or the longer reach the line has (`attackMeleeReach` reads it for a melee attack).
+  A `weapon_rule`, a `pseudo_weapon` or a creature's stat block gives it as `link.Attack.ReachFt`.
+  A melee weapon with the reach property (a glaive, a halberd, a whip) has it as its `RangeFt`, with no long range.
+  On a creature's stat block, an attack that says "reach 10 ft. or range 20/60 ft." has both: `ReachFt` 10 and the throwing range 20/60.
+  A `weapon_rule` leaves the `RangeFt` and `LongRangeFt` of a weapon from the SRD list alone: its reach is `ReachFt`.
+  The unarmed strike and a `pseudo_weapon` keep `RangeFt` equal to their reach.
+  The proto attack (`range_ft`) is at least the reach of a melee attack, so the screens that read `range_ft` as a reach and the list of targets keep working.
+  `thrownAtRange` and the roll mode both ask the shape (`shapeOfAttack`, `rangedAt`).
+  An opportunity attack is a melee attack at the line's melee reach.
   Cover, Rage and the other rules for a ranged attack follow the same reach.
   Without a map the distance is unknown, and a thrown weapon with the usual 5 ft reach is a melee attack within 5 ft.
   A thrown weapon with a longer reach has no known "within 5 ft" there, like any reach weapon: a hit on a paralyzed or unconscious target is not a critical hit by itself, and a prone target gives no advantage.
-  An opportunity attack is melee at any distance.
 - **Spell attacks.** `GetTurnOptions` writes the same `roll_mode`, `sources` and `critical_on_hit` on each target of a spell that makes an attack roll (`turnModes.annotateShape` with `shapeOfSpell`), so the cast sheet suggests the mode `CastSpell` will roll and asks for the right number of typed d20.
   A spell attack of the `half_on_miss` kind (Acid Arrow) that misses opens a pending damage with `half` set: the dice are rolled as usual and the amount is half of the total, rounded down, taken through the target's resistance like any damage.
 

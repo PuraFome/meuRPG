@@ -228,7 +228,7 @@ func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionW
 	if err != nil {
 		return none, nil, err
 	}
-	vitals, err := s.spendReactionSlot(ctx, c, target, *slot)
+	vitals, err := s.spendSlotOf(ctx, c, target, *slot)
 	if err != nil {
 		return none, nil, err
 	}
