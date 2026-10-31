@@ -378,6 +378,10 @@ type PlayServiceClient interface {
 	//     away and was not noticed yet; if the page is still open, the app
 	//     reconnects with its backoff, as after any transient end. Opening a
 	//     stream is never refused for the count.
+	//   - `unavailable` on an open stream: the server instance stopped
+	//     receiving calls (a deploy moved the traffic to another revision).
+	//     It is transient: the app reconnects, now to the active revision, and
+	//     reads the snapshot again.
 	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest]) (*connect.ServerStreamForClient[v1.WatchGameSessionResponse], error)
 	// AdjustCharacterVitals is the master's correction of a player
 	// character's vitals during the session (RN-02: the master has the final
@@ -1825,6 +1829,10 @@ type PlayServiceHandler interface {
 	//     away and was not noticed yet; if the page is still open, the app
 	//     reconnects with its backoff, as after any transient end. Opening a
 	//     stream is never refused for the count.
+	//   - `unavailable` on an open stream: the server instance stopped
+	//     receiving calls (a deploy moved the traffic to another revision).
+	//     It is transient: the app reconnects, now to the active revision, and
+	//     reads the snapshot again.
 	WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest], *connect.ServerStream[v1.WatchGameSessionResponse]) error
 	// AdjustCharacterVitals is the master's correction of a player
 	// character's vitals during the session (RN-02: the master has the final

@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -47,7 +48,7 @@ func errWatchReplaced() error {
 // errWatchIdle ends a stream of an instance that no longer receives calls (LiveConfig.Idle): after a deploy it is
 // the old revision, whose hub hears nothing of what the table does. The app reconnects to the active revision.
 func errWatchIdle() error {
-	return connect.NewError(connect.CodeUnavailable, errors.New("this server no longer receives the table's calls; reconnect"))
+	return connect.NewError(connect.CodeUnavailable, rpclog.ErrInstanceIdle)
 }
 
 // ListOpenGameSessions implements playv1connect.PlayServiceHandler.
