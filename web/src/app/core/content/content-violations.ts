@@ -30,6 +30,14 @@ export interface Placement {
 
 export const NO_PLACEMENT: Placement = { byField: new Map(), top: [], fields: [], count: 0 };
 
+/** The placement without the messages on `paths`: the fields the client now says something about itself. The rest stays. */
+export function withoutFields(placement: Placement, paths: readonly string[]): Placement {
+  const gone = new Set(paths);
+  const byField = new Map([...placement.byField].filter(([path]) => !gone.has(path)));
+  const fields = placement.fields.filter((path) => !gone.has(path));
+  return { byField, top: placement.top, fields, count: fields.length + placement.top.length };
+}
+
 /** "table_race.traits[1].effects[0].value" without its indexes: "table_race.traits[].effects[].value". */
 export function shapeOf(path: string): string {
   return path.replace(/\[\d+\]/g, '[]');

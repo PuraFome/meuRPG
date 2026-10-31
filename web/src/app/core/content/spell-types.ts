@@ -18,6 +18,9 @@ export type TargetChoice = 'creature' | 'creatures' | 'area' | 'self';
 export type MechanicChoice = 'text' | 'attack' | 'save' | 'heal';
 export type TimeChoice = 'action' | 'bonus_action' | 'reaction' | 'minute' | 'hour';
 
+/** The number fields typed as whole numbers: a NaN in the draft marks text that is no whole number. */
+export type SpellCountField = 'count' | 'perSlot' | 'timeAmount' | 'durationAmount';
+
 export interface SpellDraft {
   name: string;
   /** 0 is a truque. */
@@ -59,6 +62,8 @@ export interface SpellDraft {
   healModifier: boolean;
   /** Damage entries after the first, kept as they are (the form edits one). */
   otherDamage: readonly OtherDamage[];
+  /** What was typed in a count field when it is not how the number is written back ("+2", "007", text no number); never sent. */
+  typed?: Partial<Record<SpellCountField, string>>;
 }
 
 export interface OtherDamage {

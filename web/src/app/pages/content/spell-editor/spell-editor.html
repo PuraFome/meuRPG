@@ -12,7 +12,7 @@
         <app-select-field label="Escola" [options]="schools()" [value]="d.schoolKey" path="table_spell.school_key" [issues]="saver.issues('table_spell.school_key')" (valueChange)="patch({ schoolKey: $event })" />
         <app-select-field label="Tempo de conjuração" [options]="timeSelect" [value]="d.time" path="table_spell.casting_time.unit" [issues]="saver.issues('table_spell.casting_time.unit')" (valueChange)="patch({ time: $any($event) })" />
         @if (d.time === 'minute' || d.time === 'hour') {
-          <app-text-field label="Quantos" [value]="numberText(d.timeAmount)" inputmode="numeric" path="table_spell.casting_time.amount" [issues]="saver.issues('table_spell.casting_time.amount')" hint="De 1 a 60." (valueChange)="setCount($event, 'timeAmount')" />
+          <app-text-field label="Quantos" [value]="numberText('timeAmount')" inputmode="numeric" path="table_spell.casting_time.amount" [issues]="countIssues('table_spell.casting_time.amount')" hint="De 1 a 60." (valueChange)="setCount($event, 'timeAmount')" />
         }
       </div>
       @if (d.time === 'reaction') {
@@ -27,7 +27,7 @@
       </div>
       @if (d.duration === 'timed') {
         <div class="grid grid--3">
-          <app-text-field label="Duração: quantos" [value]="numberText(d.durationAmount)" inputmode="numeric" path="table_spell.duration.amount" [issues]="saver.issues('table_spell.duration.amount')" (valueChange)="setCount($event, 'durationAmount')" />
+          <app-text-field label="Duração: quantos" [value]="numberText('durationAmount')" inputmode="numeric" path="table_spell.duration.amount" [issues]="countIssues('table_spell.duration.amount')" (valueChange)="setCount($event, 'durationAmount')" />
           <app-select-field label="Unidade" [options]="durationUnits" [value]="d.durationUnit" path="table_spell.duration.unit" [issues]="saver.issues('table_spell.duration.unit')" (valueChange)="patch({ durationUnit: $any($event) })" />
           <app-check-row label="Até esse tempo" [checked]="d.upTo || d.concentration" [disabled]="d.concentration" path="table_spell.duration.up_to" (toggled)="patch({ upTo: $event })" />
         </div>
@@ -69,16 +69,16 @@
       @switch (d.target) {
         @case ('creatures') {
           <div class="grid grid--3">
-            <app-text-field label="Quantas criaturas" [value]="numberText(d.count)" inputmode="numeric" path="table_spell.target.count" [issues]="saver.issues('table_spell.target.count')" hint="2 ou mais." (valueChange)="setCount($event, 'count')" />
+            <app-text-field label="Quantas criaturas" [value]="numberText('count')" inputmode="numeric" path="table_spell.target.count" [issues]="countIssues('table_spell.target.count')" hint="2 ou mais." (valueChange)="setCount($event, 'count')" />
             @if (d.level > 0) {
-              <app-text-field class="span-2" label="Mais por nível de espaço" [value]="numberText(d.perSlot)" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="saver.issues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada nível de espaço acima do ' + d.level + 'º. Vazio: nenhuma.'" (valueChange)="setCount($event, 'perSlot')" />
+              <app-text-field class="span-2" label="Mais por nível de espaço" [value]="numberText('perSlot')" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="countIssues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada nível de espaço acima do ' + d.level + 'º. Vazio: nenhuma.'" (valueChange)="setCount($event, 'perSlot')" />
             }
           </div>
         }
         @case ('creature') {
-          @if (d.level > 0 && (morePerCircle() || d.perSlot > 0 || saver.issues('table_spell.target.per_slot_level').length > 0)) {
+          @if (d.level > 0 && (morePerCircle() || d.perSlot !== 0 || saver.issues('table_spell.target.per_slot_level').length > 0)) {
             <div class="grid grid--3">
-              <app-text-field class="span-2" label="Mais por nível de espaço" [value]="numberText(d.perSlot)" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="saver.issues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada nível de espaço acima do ' + d.level + 'º. Vazio: só uma.'" (valueChange)="setCount($event, 'perSlot')" />
+              <app-text-field class="span-2" label="Mais por nível de espaço" [value]="numberText('perSlot')" inputmode="numeric" path="table_spell.target.per_slot_level" [issues]="countIssues('table_spell.target.per_slot_level')" [hint]="'Criaturas a mais a cada nível de espaço acima do ' + d.level + 'º. Vazio: só uma.'" (valueChange)="setCount($event, 'perSlot')" />
             </div>
           } @else if (d.level > 0) {
             <button type="button" class="link" (click)="morePerCircle.set(true)"><mat-icon aria-hidden="true">add</mat-icon>Mais criaturas por nível de espaço</button>

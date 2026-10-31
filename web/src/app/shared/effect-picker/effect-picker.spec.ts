@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import {
   type EffectDraft,
-  type EffectMenuVm,
+  EffectMenuVm,
   draftToEffect,
   emptyEffect,
   unreadableNumberPaths,
@@ -10,6 +10,7 @@ import {
 import {
   conditionMenu,
   menu,
+  menuResponse,
   rangedAttackMenu,
   resistanceMenu,
 } from '../../core/content/content-testing-menu';
@@ -141,6 +142,17 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     range.value = '9';
     range.dispatchEvent(new Event('input'));
     expect(emitted.at(-1)?.rangeM).toBe('9');
+  });
+
+  it('does not fold a range that holds something, and folds an empty one under "Mais opções"', () => {
+    const res = menuResponse();
+    res.types.find((t) => t.type === 'sense')!.fields.find((f) => f.name === 'range_ft')!.required =
+      false;
+    const optional = new EffectMenuVm(res);
+    setup({ ...emptyEffect('sense'), sense: 'darkvision' }, { menu: optional });
+    expect(field('range_ft')).toBeNull();
+    setup({ ...emptyEffect('sense'), sense: 'darkvision', rangeM: '18' }, { menu: optional });
+    expect((field('range_ft') as HTMLInputElement).value).toBe('18');
   });
 
   it('offers "Só onde já tem proficiência" for the level Especialização on a skill, and turns it on', () => {

@@ -30,6 +30,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       removeLabel?: string;
       index?: number;
       count?: number;
+      isOption?: boolean;
     } = {},
   ) {
     emitted.length = 0;
@@ -43,6 +44,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     fixture.componentRef.setInput('removeLabel', over.removeLabel ?? 'Remover traço');
     fixture.componentRef.setInput('index', over.index ?? 1);
     fixture.componentRef.setInput('count', over.count ?? 3);
+    fixture.componentRef.setInput('isOption', over.isOption ?? false);
     fixture.componentInstance.featureChange.subscribe((f) => emitted.push(f));
     fixture.componentInstance.removed.subscribe(removed);
     fixture.detectChanges();
@@ -127,6 +129,19 @@ describe('FeatureEditor (a trait, a feature)', () => {
     expect((field('effects[1].type') as HTMLSelectElement).selectedOptions[0].text).toBe(
       'Proficiência',
     );
+  });
+
+  it('says an option with content and no name is not saved, and nothing for a named one, an empty one or a trait', () => {
+    const say = 'Sem nome, esta opção não é salva.';
+    const withText = { ...two(), name: '', text: 'Escolha uma.' };
+    setup(withText, { isOption: true });
+    expect(el.textContent).toContain(say);
+    setup({ ...withText, name: 'Primeira' }, { isOption: true });
+    expect(el.textContent).not.toContain(say);
+    setup({ ...withText, text: '', effects: [] }, { isOption: true });
+    expect(el.textContent).not.toContain(say);
+    setup(withText);
+    expect(el.textContent).not.toContain(say);
   });
 
   it('moves the trait up or down and offers no move for the only one', () => {

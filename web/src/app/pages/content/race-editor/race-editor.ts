@@ -18,7 +18,12 @@ import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_p
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
-import { UNREADABLE_COUNT, readWhole, wholeText } from '../../../core/content/whole-number';
+import {
+  UNREADABLE_COUNT,
+  keptTyped,
+  readWhole,
+  shownWhole,
+} from '../../../core/content/whole-number';
 import {
   type EffectMenuVm,
   UNREADABLE_RANGE,
@@ -245,20 +250,14 @@ export class RaceEditor {
     );
   }
 
-  /** What was typed in "Idiomas à escolha" when it is not how the number is written back ("+1", "007", text no number). */
-  private readonly countTyped = signal('');
-
   /** The text of "Idiomas à escolha": what was typed while it still reads as the number, else the number. */
-  protected readonly countText = computed(() => {
-    const n = this.race().languageChoices;
-    const typed = this.countTyped();
-    return typed !== '' && Object.is(readWhole(typed, false), n) ? typed : wholeText(n);
-  });
+  protected readonly countText = computed(() =>
+    shownWhole(this.race().languageChoices, this.race().languageChoicesTyped),
+  );
 
   protected setCount(text: string): void {
     const n = readWhole(text, false);
-    this.countTyped.set(text === wholeText(n) ? '' : text);
-    this.patchRace({ languageChoices: n });
+    this.patchRace({ languageChoices: n, languageChoicesTyped: keptTyped(text, n) });
   }
 
   protected newSubraceLink(): string[] {

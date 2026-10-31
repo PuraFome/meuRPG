@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { CastingTimeUnit } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableContentBlockedReason,
   TableContentBlockedSchema,
@@ -230,6 +231,58 @@ describe('SpellEditor', () => {
     await settle(fixture, 3);
     expect(el.querySelector('[data-field="table_spell.target.per_slot_level"]')).toBeNull();
     expect(text(el)).not.toContain('acima do 0º');
+  });
+
+  const type = (input: HTMLElement, value: string) => {
+    (input as HTMLInputElement).value = value;
+    input.dispatchEvent(new Event('input'));
+  };
+
+  it('does not save a count whose text is no whole number: it says so on the field and lands on it', async () => {
+    const { fixture, el } = setup(true);
+    click(el, 'Mais criaturas por nível de espaço');
+    await settle(fixture, 3);
+    const more = field(el, 'table_spell.target.per_slot_level');
+    type(more, 'dois');
+    await settle(fixture, 3);
+    expect(text(more.closest('app-text-field')!)).toContain('Escreva um número inteiro');
+    save.mockClear();
+    click(el, 'Salvar magia');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(more);
+    type(more, '+2');
+    await settle(fixture, 3);
+    expect((more as HTMLInputElement).value).toBe('+2');
+    save.mockResolvedValue({
+      entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+      affected: [],
+    });
+    click(el, 'Salvar magia');
+    await settle(fixture, 3);
+    expect(save.mock.calls[0][2].value.target.perSlotLevel).toBe(2);
+  });
+
+  it('blocks a minutes amount that is no whole number, and shows the stored number again after a reload', async () => {
+    const { fixture, el } = setup(true, {
+      castingTime: { unit: CastingTimeUnit.MINUTE, amount: 10 },
+    });
+    const amount = field(el, 'table_spell.casting_time.amount') as HTMLInputElement;
+    expect(amount.value).toBe('10');
+    type(amount, '1e1');
+    await settle(fixture, 3);
+    save.mockClear();
+    click(el, 'Salvar magia');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(text(amount.closest('app-text-field')!)).toContain('Escreva um número inteiro');
+    type(amount, '010');
+    await settle(fixture, 3);
+    expect(amount.value).toBe('010');
+    const current = fixture.componentInstance.entry()!;
+    fixture.componentRef.setInput('entry', { ...current, revision: current.revision + 1 });
+    await settle(fixture, 3);
+    expect((field(el, 'table_spell.casting_time.amount') as HTMLInputElement).value).toBe('10');
   });
 
   it('keeps "Pessoal" when the target moves to an area', async () => {
