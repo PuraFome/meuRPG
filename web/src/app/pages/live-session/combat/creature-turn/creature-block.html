@@ -28,26 +28,28 @@
     <p class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ why() }}</p>
   }
 
-  @if (trapNote(); as fall) {
-    <div class="mr-notice mr-notice--warning trapped" role="status">
-      <mat-icon aria-hidden="true">arrow_downward</mat-icon>
-      <p>
-        <strong>{{ fall.title }}</strong>
-        {{ fall.detail }}
-      </p>
-    </div>
-    @if (fall.waiting) {
-      <span class="mr-tag mr-tag--pending trapped__wait"><mat-icon aria-hidden="true">info</mat-icon>Esperando o mestre aplicar o dano</span>
+  <div class="mr-live" role="status">
+    @if (trapNote(); as fall) {
+      <div class="mr-notice mr-notice--warning trapped">
+        <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+        <p>
+          <strong>{{ fall.title }}</strong>
+          {{ fall.detail }}
+        </p>
+      </div>
+      @if (fall.waiting) {
+        <span class="mr-tag mr-tag--pending trapped__wait"><mat-icon aria-hidden="true">info</mat-icon>Esperando o mestre aplicar o dano</span>
+      }
     }
-  }
 
-  @if (pending()) {
-    <div role="status" class="mr-notice mr-notice--warning owed">
-      <mat-icon aria-hidden="true">warning</mat-icon>
-      <p><strong>Falta rolar o dano do ataque {{ ofCreature() }}.</strong> Role para poder encerrar a vez.</p>
-      <button matButton="outlined" type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>
-    </div>
-  }
+    @if (pending()) {
+      <div class="mr-notice mr-notice--warning owed">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <p><strong>Falta rolar o dano do ataque {{ ofCreature() }}.</strong> Role para poder encerrar a vez.</p>
+        <button matButton="outlined" type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>
+      </div>
+    }
+  </div>
 
   @for (a of attacks(); track a.attack?.key) {
     @if (a.attack; as atk) {

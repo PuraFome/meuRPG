@@ -21,7 +21,7 @@ import { pointsText } from '../resources/pools';
 import { countsSentence } from './death-saves';
 import { article } from '../format/article';
 import { dcLabel } from '../format/save-dc';
-import { the } from './combat-log-words';
+import { pushText, the } from './combat-log-words';
 import { durationPt } from './creature-action';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
@@ -333,7 +333,7 @@ export function hitRiderText(e: CombatLogEntry): string {
   } else if (r.result === HitRiderLogResult.FAILED) {
     result = `: ${target} falhou no teste${roll}`;
     if (r.choice === HitRiderChoice.PUSH) {
-      result += '; o mestre posiciona a criatura até 4,5 m mais longe';
+      result += `; ${pushText(r) || 'o mestre posiciona a criatura até 4,5 m mais longe'}`;
     }
   }
   return ` usou ${names[r.choice] ?? 'a técnica'} em ${target}${result}`;

@@ -1,4 +1,3 @@
-import { unreadableCastingPaths } from '../../../core/content/whole-number';
 import type {
   GetClassTableDefaultsResponse,
   TableEntry,
@@ -15,6 +14,7 @@ import {
   defaultTableOf,
   rowsOfTable,
   isGridPath,
+  unreadableCastingPaths,
 } from '../../../core/content/class-draft';
 import type { ViolationContext } from '../../../core/content/content-violations';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';

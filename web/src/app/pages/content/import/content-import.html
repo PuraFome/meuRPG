@@ -1,3 +1,4 @@
+<p class="mr-visually-hidden" role="status">{{ said() }}</p>
 @let a = access();
 @if (a.status !== 'not-found') {
   <a class="back" [routerLink]="back()">
@@ -81,7 +82,7 @@
           <li><strong>{{ res.totals?.unchanged ?? 0 }}</strong> sem mudança</li>
         </ul>
         @if (res.affectedCharacters.length > 0) {
-          <div role="status" class="mr-notice mr-notice--warning">
+          <div class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">warning</mat-icon>
             <div>
               <p>
@@ -152,7 +153,7 @@
       }
 
       @if (refused() > 0) {
-        <div class="mr-notice mr-notice--warning" role="status">
+        <div class="mr-notice mr-notice--warning">
           <mat-icon aria-hidden="true">warning</mat-icon>
           <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
         </div>

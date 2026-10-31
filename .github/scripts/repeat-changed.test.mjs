@@ -105,3 +105,18 @@ test('an exit 137 before the time limit (an out-of-memory kill) is a failure, no
   assert.match(r.summary, /Failed: 2/);
   assert.match(r.summary, /Cut off by the time budget, no failure before it: 0/);
 });
+
+test('a serial target repeats with one worker, a plain one leaves the workers alone, and the sign-in batches still apply', () => {
+  const t = (title, extra) => ({ file: 'e2e/tests/a.spec.ts', title, grep: title, why: 'changed', ...extra });
+  const targets = { playwright: [t('plain'), t('serial one', { serial: true }), t('serial three', { serial: true, signins: 3 })], go: [], notes: [] };
+  const r = run('playwright', targets, { BUDGET_SECONDS: '60' });
+  assert.equal(r.code, 0, r.out);
+  const lines = r.calls.trim().split('\n');
+  assert.ok(lines.filter((l) => l.includes('--grep plain ')).every((l) => !l.includes('--workers')), r.calls);
+  const serial = lines.filter((l) => l.includes('--grep serial one '));
+  assert.equal(serial.length, 2);
+  assert.ok(serial.every((l) => l.endsWith('--workers=1')), r.calls);
+  const batched = lines.filter((l) => l.includes('--grep serial three '));
+  assert.equal(batched.length, 4);
+  assert.ok(batched.every((l) => l.includes('--repeat-each=5') && l.endsWith('--workers=1')), r.calls);
+});

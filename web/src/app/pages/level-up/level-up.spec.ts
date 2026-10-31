@@ -945,6 +945,27 @@ describe('LevelUpPage', () => {
         expect(client.preview.mock.calls.some((c) => c[2].hitPoints.value === 5)).toBe(true);
       });
 
+      it('keeps a roll the server answered before the re-read, whose options were read before that roll existed', async () => {
+        const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY);
+        let answer!: (v: { die: number; value: number; alreadyRolled: boolean }) => void;
+        client.rollHitPoints.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+        await click(f, button(f, /Rolar no app/));
+        let read!: (o: LevelUpOptions) => void;
+        client.options
+          .mockReset()
+          .mockReturnValueOnce(new Promise<LevelUpOptions>((resolve) => (read = resolve)));
+        // The content change starts a re-read; the roll's answer comes in while it waits for the options.
+        watcher.hint();
+        await load(f);
+        answer({ die: 6, value: 4, alreadyRolled: false });
+        await load(f);
+        read(wizardOptions({ preparedMaxAfter: 3, hitPointsRule: LevelUpHitPointsRule.ROLL_ONLY }));
+        await load(f);
+        expect(text(f)).toContain('Rolado no app: 4 no d6');
+        expect(button(f, /Rolar no app/)).toBeUndefined();
+        expect(text(f)).not.toContain('Falta rolar o dado de vida.');
+      });
+
       it('keeps a roll the server answers after a content change read the level again (the click was on the old reading)', async () => {
         const f = await atVidaWith(LevelUpHitPointsRule.ROLL_ONLY);
         let answer!: (v: { die: number; value: number; alreadyRolled: boolean }) => void;
