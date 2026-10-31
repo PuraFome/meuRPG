@@ -44,6 +44,22 @@ const (
 	zoneRestrain
 	// zoneProne: a saving throw; a failure knocks the creature prone (Grease).
 	zoneProne
+	// zoneOpen: no save and no trigger; the zone only changes what is seen (Fog Cloud, Darkness).
+	zoneOpen
+	// zoneRetch: a saving throw at the start of a turn of a creature wholly inside; a failure spends its action
+	// (Stinking Cloud).
+	zoneRetch
+)
+
+// zoneSight says how a zone changes what is seen on the map.
+type zoneSight int
+
+const (
+	sightNone zoneSight = iota
+	// sightCloud: heavily obscured; a line that crosses it is blocked (Fog Cloud, Stinking Cloud).
+	sightCloud
+	// sightDark: magical darkness; light does not light it and darkvision does not see in it (Darkness).
+	sightDark
 )
 
 // zoneDef is what a spell's zone is.
@@ -69,6 +85,10 @@ type zoneDef struct {
 	// onCast says the zone catches the creatures standing in the area when the spell is cast, and onTurnEnd the
 	// creature that ends its turn inside (Grease).
 	onCast, onTurnEnd bool
+	// sight is what the zone does to what is seen (rules/vision).
+	sight zoneSight
+	// growsFt is how much the size grows for each slot level above the spell's own (Fog Cloud).
+	growsFt int
 	// restrainKey is the effect a failed save puts on the creature of a restraining zone.
 	restrainKey string
 	// slows says a creature the zone catches moves at half speed for the turn (Spirit Guardians), and
@@ -89,6 +109,9 @@ const (
 	webFt             = 20
 	greaseFt          = 10
 	entangleFt        = 20
+	fogCloudFt        = 20
+	darknessFt        = 15
+	stinkingCloudFt   = 20
 )
 
 // moveRangeFt is how far the caster moves an area with an action (Moonbeam), and driftFt how far a
@@ -99,6 +122,18 @@ const (
 )
 
 var zoneDefs = map[string]zoneDef{
+	"spell:fog-cloud": {
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: fogCloudFt, growsFt: fogCloudFt, corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:darkness": {
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: darknessFt, corners: true, sight: sightDark,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:stinking-cloud": {
+		kind: zoneRetch, onStart: true, shape: grid.ShapeSphere, sizeFt: stinkingCloudFt, save: "con", corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
 	"spell:spirit-guardians": {
 		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true, slows: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_CASTER, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER,
@@ -197,6 +232,19 @@ func defOfStored(raw []byte) (zoneDef, bool) {
 
 // area is the zone's shape and size for the geometry of the map.
 func (d zoneDef) area() grid.Area { return grid.Area{Shape: d.shape, SizeFt: d.sizeFt} }
+
+// sizeAt is the size of the zone cast with a slot: the catalog's, plus growsFt for each level above the spell's own.
+func (d zoneDef) sizeAt(spellLevel, slotLevel int) int {
+	return d.sizeFt + d.growsFt*max(slotLevel-spellLevel, 0)
+}
+
+// withZoneSize gives the spell the size its zone has at the slot of the cast.
+func withZoneSize(sp link.Spell, slotLevel int) link.Spell {
+	if d, ok := zoneDefOfSpell(sp); ok && d.growsFt > 0 {
+		sp.ZoneSizeFt = d.sizeAt(sp.Level, slotLevel)
+	}
+	return sp
+}
 
 // notes are the keys of what else the zone does, for the screens.
 func (d zoneDef) notes() []string {

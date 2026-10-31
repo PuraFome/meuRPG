@@ -520,6 +520,9 @@ type Spell struct {
 	AreaSizeFt           int
 	AreaWidthFt          int
 	SpreadsAroundCorners bool
+	// ZoneSizeFt is the size of the zone this cast lays when it differs from the catalog's: the radius of a Fog Cloud
+	// cast with a higher slot. 0: the catalog's.
+	ZoneSizeFt int
 	// Zone is the area a table spell keeps on the map while it lasts: nil for an SRD spell (the combat knows
 	// the SRD's four) and for a table spell that keeps none.
 	Zone *ZoneRule

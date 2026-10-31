@@ -78,6 +78,9 @@ type CombatPositions struct {
 	// Creatures are where the character's creatures stand, by creature ID (MR-037):
 	// the ones that are combatants and have a square, never a dismissed one.
 	Creatures map[string]grid.Square
+	// Clouds and MagicDark are the squares the spell zones of the combat make heavily obscured (Fog Cloud,
+	// Stinking Cloud) or magically dark (Darkness). They block sight whoever cast them, hidden or not.
+	Clouds, MagicDark []grid.Square
 }
 
 // CombatSight is what the players of a map with the fog of war on see at one

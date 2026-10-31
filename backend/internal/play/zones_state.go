@@ -49,6 +49,14 @@ func readZone(row playdb.SpellZone) (*zone, bool) {
 	return z, true
 }
 
+// zoneChanged notes that the change put, moved or took away the zone: when it changes what is seen, write tells the
+// fog after the commit.
+func (c *combatTx) zoneChanged(z *zone) {
+	if z != nil && z.def.sight != sightNone {
+		c.zonesMoved = true
+	}
+}
+
 func (z *zone) setSquares(sq []grid.Square) {
 	z.squares, z.in = sq, make(map[grid.Square]bool, len(sq))
 	for _, s := range sq {

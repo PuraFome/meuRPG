@@ -68,7 +68,11 @@ func placementOf(sp link.Spell) playv1.AreaPlacement {
 // areaOf is the grid shape of a spell's area.
 func areaOf(sp link.Spell) grid.Area {
 	if z, ok := zoneDefOfSpell(sp); ok && sp.ZoneLaid {
-		return z.area()
+		a := z.area()
+		if sp.ZoneSizeFt > 0 {
+			a.SizeFt = sp.ZoneSizeFt
+		}
+		return a
 	}
 	return grid.Area{Shape: grid.Shape(sp.AreaShape), SizeFt: sp.AreaSizeFt, WidthFt: sp.AreaWidthFt}
 }
@@ -381,6 +385,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	}
 	if _, ok := zoneDefOfSpell(sp); ok && msg.GetOrigin() != nil {
 		sp.ZoneLaid = true // the preview of a cast that would lay the area as a zone
+		sp = withZoneSize(sp, slotLevel)
 	}
 	return sp, nil
 }
@@ -457,6 +462,7 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 	}
 	if _, ok := zoneDefOfSpell(sp); ok && ev.Placed {
 		sp.ZoneLaid = true // a placed cast of a spell that keeps its area laid it out as the zone says
+		sp = withZoneSize(sp, slotLevelOf(ev))
 	}
 	terrain, err := s.terrainOf(ctx, nil, res.session.CampaignID, enc)
 	if err != nil {

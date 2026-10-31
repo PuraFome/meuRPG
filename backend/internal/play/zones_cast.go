@@ -88,6 +88,7 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 		return nil, fmt.Errorf("put the spell zone on the map: %w", err)
 	}
 	z, _ := readZone(row) // the spell's own definition: always known
+	c.zoneChanged(z)
 	return z, nil
 }
 
@@ -114,6 +115,7 @@ func (s *Service) endZonesOf(ctx context.Context, c *combatTx, owner playdb.Comb
 		return fmt.Errorf("end the spell zones: %w", err)
 	}
 	for _, z := range zonesOfRows(rows) {
+		c.zoneChanged(z)
 		if err := s.closeZoneWindows(ctx, c, z.row.ID, endConcentration); err != nil {
 			return err
 		}

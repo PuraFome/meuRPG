@@ -101,5 +101,42 @@ func (s *Service) CombatPositions(ctx context.Context, tx pgx.Tx, campaignID, ma
 	if err := rows.Err(); err != nil {
 		return link.CombatPositions{}, fmt.Errorf("read the combatants' squares: %w", err)
 	}
+	if err := sightZonesOn(ctx, conn, campaignID, mapID, &out); err != nil {
+		return link.CombatPositions{}, err
+	}
 	return out, nil
+}
+
+// sightZonesOn adds to the answer the squares of the combat's zones that change what is seen: the clouds and the
+// magical darkness, whoever cast them (a hidden caster's cloud blocks sight all the same).
+func sightZonesOn(ctx context.Context, conn playdb.DBTX, campaignID, mapID string, out *link.CombatPositions) error {
+	var keys []string
+	for key, def := range zoneDefs {
+		if def.sight != sightNone {
+			keys = append(keys, key)
+		}
+	}
+	rows, err := conn.Query(ctx, `
+		SELECT z.spell_key, z.squares
+		FROM spell_zones AS z
+		JOIN encounters AS e ON e.id = z.encounter_id
+		JOIN game_sessions AS g ON g.id = e.game_session_id
+		WHERE g.campaign_id = $1 AND e.map_id = $2 AND e.status <> 'ended' AND z.spell_key = ANY($3)`, campaignID, mapID, keys)
+	if err != nil {
+		return fmt.Errorf("read the zones that change what is seen: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		var squares []byte
+		if err := rows.Scan(&key, &squares); err != nil {
+			return fmt.Errorf("read a zone's squares: %w", err)
+		}
+		if zoneDefs[key].sight == sightDark {
+			out.MagicDark = append(out.MagicDark, squaresOfJSON(squares)...)
+		} else {
+			out.Clouds = append(out.Clouds, squaresOfJSON(squares)...)
+		}
+	}
+	return rows.Err()
 }
