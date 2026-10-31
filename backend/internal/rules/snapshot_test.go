@@ -293,32 +293,20 @@ func TestAttackNamesPT(t *testing.T) {
 	}
 }
 
-// lowChallenge are the challenge ratings 0 to 5, the creatures a table meets while it plays at levels 1 to 5.
-var lowChallenge = map[string]bool{"0": true, "1/8": true, "1/4": true, "1/2": true, "1": true, "2": true, "3": true, "4": true, "5": true}
-
-// TestActionNamesPT: every action of a creature of challenge rating 5 or less has a
-// Portuguese name, attack or not (Fire Breath, Multiattack, Change Shape...): the
-// master's card and the combat log show it. The actions of the creatures above
-// rating 5 are the backlog (the test logs how many are left); an action without a
-// name there shows the SRD's English name.
+// TestActionNamesPT: every action of every creature has a Portuguese name, attack or not
+// (Fire Breath, Multiattack, Frightful Presence, Haste...): the master's card and the combat log
+// show it, and the table reads one language.
 func TestActionNamesPT(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t).c
-	missing := map[string]bool{}
 	for _, key := range sortedKeys(c.monsters) {
 		m := c.monsters[key]
 		for _, a := range m.Actions {
-			if _, ok := c.namesPT["attack:"+slugOf(a.Name)]; ok {
-				continue
-			}
-			if lowChallenge[m.ChallengeRating] {
+			if _, ok := c.namesPT["attack:"+slugOf(a.Name)]; !ok {
 				t.Errorf("%s (rating %s): action %q (attack:%s) has no Portuguese name in effects/names_pt.json", key, m.ChallengeRating, a.Name, slugOf(a.Name))
-				continue
 			}
-			missing[a.Name] = true
 		}
 	}
-	t.Logf("backlog: %d action names of creatures above rating 5 have no Portuguese name: %v", len(missing), sortedKeys(missing))
 }
 
 func keySet[T any](m map[string]T) map[string]bool {
