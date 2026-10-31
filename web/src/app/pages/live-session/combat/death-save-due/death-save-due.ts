@@ -57,12 +57,12 @@ export interface DeathSaveRoll {
           <p class="due__rule">1d20 sem modificador: 10 ou mais é sucesso; 1 conta duas falhas; 20 levanta {{ c.label }} com 1 PV.</p>
           <div class="due__btns">
             @if (canApp()) {
-              <button mat-flat-button type="button" class="due__btn" [disabled]="busy()" disabledInteractive (click)="roll.emit({ id: c.id, die: { inApp: true } })">
+              <button matButton="filled" type="button" class="due__btn" [disabled]="busy()" disabledInteractive (click)="roll.emit({ id: c.id, die: { inApp: true } })">
                 <mat-icon aria-hidden="true">casino</mat-icon>Rolar por {{ c.label }}
               </button>
             }
             @if (canType()) {
-              <button mat-stroked-button type="button" class="due__btn" [attr.aria-expanded]="typing()" (click)="typing.set(!typing())">
+              <button matButton="outlined" type="button" class="due__btn" [attr.aria-expanded]="typing()" (click)="typing.set(!typing())">
                 <mat-icon aria-hidden="true">edit</mat-icon>Digitar o resultado
               </button>
             }

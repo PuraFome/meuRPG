@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
-import { combatRPC, endTurnOf, passTurnsTo, startEncounterRPC, tableForCombat } from './combat-support';
+import { combatRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, startEncounterRPC, tableForCombat } from './combat-support';
 import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
@@ -44,8 +44,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     await expect(holds).toBeHidden();
     // The player's end of turn lands first: passing the turns before it would end Grog's turn twice.
     await endTurnOf(p, m, campaignId, 'Grog');
-    const enc = await passTurnsTo(m, campaignId, 'Goblin 1');
-    await waitForEncounterRevision([m, p], enc);
+    const enc = await passTurnsToAndWait(m, campaignId, 'Goblin 1', [m, p]);
     await contestRPC(m, 'StartContest', {
       campaignId,
       encounterId: enc.id,
@@ -63,7 +62,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     await closeSheet(answer);
 
     // Grappled: on her turn the speed is 0 and "Escapar" is the first line of the action; the master answers for the Goblin.
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Grog'));
+    await passTurnsToAndWait(m, campaignId, 'Grog', [m, p]);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     await expect(p.getByText('Agarrado').first()).toBeVisible();
     await openActionTab(p, 'Ataques');
@@ -126,7 +125,7 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
       escapeDc: 16,
     });
     await expect(m.getByTestId('grapples')).toContainText('CD de escape 16');
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Grog'));
+    await passTurnsToAndWait(m, campaignId, 'Grog', [m, p]);
     await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: 'Escapar do agarrão' }).click();
     const escape = p.getByRole('dialog');

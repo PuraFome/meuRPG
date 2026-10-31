@@ -148,7 +148,7 @@
 
           <div class="size__actions">
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               class="size__save"
               [class.size__save--off]="invalid()"
@@ -158,7 +158,7 @@
             >
               Salvar grade
             </button>
-            <a mat-stroked-button class="size__cancel" [routerLink]="backLink().path">Cancelar</a>
+            <a matButton="outlined" class="size__cancel" [routerLink]="backLink().path">Cancelar</a>
           </div>
         </section>
       </div>

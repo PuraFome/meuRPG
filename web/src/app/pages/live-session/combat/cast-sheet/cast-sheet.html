@@ -324,7 +324,7 @@
         }
         <div class="actions actions--stack">
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="cast"
             [class.cast--off]="!f.ready() || !!ch.missing()"
@@ -334,7 +334,7 @@
           >
             {{ ar.confirmText }}
           </button>
-          <button mat-button type="button" class="quiet" [disabled]="f.busy()" (click)="close()">Cancelar</button>
+          <button matButton type="button" class="quiet" [disabled]="f.busy()" (click)="close()">Cancelar</button>
         </div>
       } @else {
         @if (tx.endsConcentration(); as ends) {
@@ -342,12 +342,12 @@
         }
         <div class="actions actions--stack">
           @if (ar.asks()) {
-            <button mat-flat-button type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
+            <button matButton="filled" type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
               <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
             </button>
           } @else if (!ch.usesPicker()) {
             <button
-              mat-flat-button
+              matButton="filled"
               type="button"
               class="cast"
               [class.cast--off]="!ch.ready()"
@@ -359,9 +359,9 @@
             </button>
           }
           @if (ar.placement === Placement.CASTER) {
-            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
+            <button #changePlace matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
           } @else {
-            <button #changePlace mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="changeArea()">
+            <button #changePlace matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="changeArea()">
               <mat-icon aria-hidden="true">arrow_back</mat-icon>Mudar o local
             </button>
           }
@@ -382,16 +382,16 @@
       }
       @if (s.listAsking()) {
         <div class="actions actions--stack">
-          <button mat-flat-button type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
+          <button matButton="filled" type="button" class="cast" [disabled]="s.busy()" (click)="caller.castAnyway()">
             <mat-icon aria-hidden="true">auto_awesome</mat-icon>Conjurar mesmo assim
           </button>
-          <button #backToList mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="s.listAsking.set(false)">Voltar à lista</button>
+          <button #backToList matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="s.listAsking.set(false)">Voltar à lista</button>
         </div>
       } @else {
       <!-- Two real buttons of the same width side by side; stacked under 480px, "Conjurar" on top. -->
       <div class="actions">
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="cast"
           [class.cast--off]="!ch.ready()"
@@ -401,14 +401,14 @@
         >
           <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ castText() }}
         </button>
-        <button mat-stroked-button type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
+        <button matButton="outlined" type="button" class="cancel" [disabled]="s.busy()" (click)="close()">Cancelar</button>
       </div>
       }
     </div>
   }
   @if (s.done() && !damage.owed()) {
     <div foot>
-      <button #back mat-flat-button type="button" class="cast" (click)="close()">Voltar à sua vez</button>
+      <button #back matButton="filled" type="button" class="cast" (click)="close()">Voltar à sua vez</button>
     </div>
   }
 </app-sheet-frame>

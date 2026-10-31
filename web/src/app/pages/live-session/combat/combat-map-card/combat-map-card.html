@@ -22,7 +22,7 @@
       @if (pick()) {
         <span class="card__pick" role="status"><mat-icon aria-hidden="true">my_location</mat-icon>Toque no alvo · por {{ actingFor() }}</span>
       } @else {
-        <button mat-stroked-button type="button" class="card__move" (click)="move.emit()">
+        <button matButton="outlined" type="button" class="card__move" (click)="move.emit()">
           <mat-icon aria-hidden="true">open_with</mat-icon>Mover
         </button>
       }
@@ -30,7 +30,7 @@
     @if (isMaster() && !preview()) {
       <!-- C7-02: "Ver mapa" is in the header, with its icon: the browser's full screen, or the map's own screen where it has none. -->
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="card__full"
         [attr.aria-pressed]="fullscreen.available ? fullscreen.active() : null"
@@ -42,7 +42,7 @@
       </button>
     } @else if (fullscreen.available && !preview()) {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="card__full"
         [attr.aria-pressed]="fullscreen.active()"
@@ -106,7 +106,7 @@
         </app-combat-map>
       </div>
     </div>
-    <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
+    <button matButton="outlined" type="button" class="card__open" (click)="openMap.emit()">
       <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
     </button>
   } @else {
@@ -166,8 +166,8 @@
         </p>
       </div>
       <div class="card__ask-actions">
-        <button mat-stroked-button type="button" (click)="overAskConfirm.emit()">Mover mesmo assim</button>
-        <button mat-button type="button" (click)="overAskCancel.emit()">Cancelar</button>
+        <button matButton="outlined" type="button" (click)="overAskConfirm.emit()">Mover mesmo assim</button>
+        <button matButton type="button" (click)="overAskCancel.emit()">Cancelar</button>
       </div>
     }
     <div class="card__result" role="status">
@@ -180,7 +180,7 @@
   }
 
   @if (!isMaster() && !compact()) {
-    <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
+    <button matButton="outlined" type="button" class="card__open" (click)="openMap.emit()">
       <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
     </button>
   }

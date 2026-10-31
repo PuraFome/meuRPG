@@ -54,7 +54,7 @@
   @case ('later') {
     <section class="mr-panel" aria-labelledby="xp-title">
       <h2 class="mr-panel__title" id="xp-title">Experiência do combate</h2>
-      <button #later mat-button type="button" class="later" (click)="openLater()">
+      <button #later matButton type="button" class="later" (click)="openLater()">
         XP do combate ainda não dado<mat-icon iconPositionEnd aria-hidden="true">chevron_right</mat-icon>
       </button>
     </section>
@@ -90,7 +90,7 @@
         <p class="lead">
           Para desfazer este XP, use "Experiência" na página da campanha.
         </p>
-        <a mat-button class="see" [routerLink]="['/campaigns', campaignId()]">Ver Experiência da campanha</a>
+        <a matButton class="see" [routerLink]="['/campaigns', campaignId()]">Ver Experiência da campanha</a>
       </section>
     }
   }

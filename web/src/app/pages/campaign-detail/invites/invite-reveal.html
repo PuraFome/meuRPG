@@ -12,11 +12,11 @@
     </p>
   }
   <div class="reveal__actions">
-    <button mat-stroked-button type="button" (click)="copy.emit()">
+    <button matButton="outlined" type="button" (click)="copy.emit()">
       <mat-icon aria-hidden="true">content_copy</mat-icon>
       Copiar link
     </button>
-    <button mat-button type="button" (click)="dismiss.emit()">Ok, guardei o link</button>
+    <button matButton type="button" (click)="dismiss.emit()">Ok, guardei o link</button>
   </div>
   @if (copyStatus() === 'copied') {
     <p class="reveal__feedback" role="status">

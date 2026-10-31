@@ -23,11 +23,11 @@
               <p class="ask__error" role="alert">{{ error() }}</p>
             }
             <div class="ask__btns">
-              <button #voltar mat-stroked-button type="button" class="ask__btn" (click)="back(a.id)">
+              <button #voltar matButton="outlined" type="button" class="ask__btn" (click)="back(a.id)">
                 Voltar
               </button>
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 class="ask__btn ask__go"
                 [disabled]="busy()"
@@ -56,7 +56,7 @@
           }
           @if (a.canUndo) {
             <button
-              mat-button
+              matButton
               type="button"
               class="undo"
               [attr.data-undo]="a.id"
@@ -79,7 +79,7 @@
 </ul>
 
 @if (hasMore()) {
-  <button mat-button type="button" class="more" [disabled]="loadingMore()" (click)="more()">
+  <button matButton type="button" class="more" [disabled]="loadingMore()" (click)="more()">
     Mostrar mais
   </button>
 }

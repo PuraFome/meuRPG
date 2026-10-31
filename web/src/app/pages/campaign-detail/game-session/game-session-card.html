@@ -28,7 +28,7 @@
               </p>
               <div class="session__actions">
                 <ng-template #enter>
-                  <a mat-flat-button class="session__enter" [routerLink]="['/campaigns', campaignId(), 'session']">
+                  <a matButton="filled" class="session__enter" [routerLink]="['/campaigns', campaignId(), 'session']">
                     Entrar na sessão
                   </a>
                 </ng-template>
@@ -38,7 +38,7 @@
                   <!-- A phone: "Entrar na sessão" and a menu with the two rarer actions. -->
                   <ng-container [ngTemplateOutlet]="enter" />
                   <button
-                    mat-stroked-button
+                    matButton="outlined"
                     class="session__more js-end"
                     type="button"
                     aria-label="Mais ações da sessão"
@@ -57,7 +57,7 @@
                 } @else {
                   @if (!confirmingEnd()) {
                     <button
-                      mat-stroked-button
+                      matButton="outlined"
                       class="session__end js-end"
                       type="button"
                       (click)="askToEnd()"
@@ -66,7 +66,7 @@
                     </button>
                     <span class="session__rule" aria-hidden="true"></span>
                   }
-                  <button mat-stroked-button class="session__copy" type="button" (click)="copyLink()">
+                  <button matButton="outlined" class="session__copy" type="button" (click)="copyLink()">
                     <mat-icon aria-hidden="true">{{
                       copyState() === 'copied' ? 'check' : 'content_copy'
                     }}</mat-icon>
@@ -93,7 +93,7 @@
                   Encerrar a sessão {{ session.sessionNumber }}? Ela não reabre depois.
                 </p>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   class="session__end session__end--confirm js-confirm-end"
                   type="button"
                   [disabled]="actionState().status === 'saving'"
@@ -101,7 +101,7 @@
                 >
                   Confirmar encerramento
                 </button>
-                <button mat-button type="button" (click)="cancelEnd()">Cancelar</button>
+                <button matButton type="button" (click)="cancelEnd()">Cancelar</button>
               </div>
             }
             @if (copyState() === 'manual') {
@@ -130,7 +130,7 @@
               @if (!confirmingStart()) {
                 <div class="session__actions">
                   <button
-                    mat-flat-button
+                    matButton="filled"
                     class="session__action js-start"
                     type="button"
                     [disabled]="actionState().status === 'saving'"
@@ -153,7 +153,7 @@
                 </ul>
                 <p class="session__confirm-text">Iniciar mesmo assim?</p>
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   class="session__action js-confirm-start"
                   type="button"
                   [disabled]="actionState().status === 'saving'"
@@ -161,7 +161,7 @@
                 >
                   Iniciar mesmo assim
                 </button>
-                <button mat-button type="button" (click)="cancelStart()">Cancelar</button>
+                <button matButton type="button" (click)="cancelStart()">Cancelar</button>
               </div>
             }
           }

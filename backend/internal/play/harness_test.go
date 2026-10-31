@@ -220,7 +220,9 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	if err != nil {
 		t.Fatalf("blob.NewFS() error = %v", err)
 	}
-	t.Cleanup(func() { _ = blobs.Close() })
+	rel := &releaser{}
+	t.Cleanup(rel.run)
+	rel.add(func() { _ = blobs.Close() })
 	h.voice = &voice.Fake{}
 	messages := MessagesConfig{Profiles: h.users, Voice: h.voice, Blobs: blobs}
 	svc, err := New(Config{Messages: messages, Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Defaults: camps, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
@@ -237,9 +239,24 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	chars.Mount(srv.Handle, testSessions, camps, opt)
 	svc.Mount(srv.Handle, testSessions, camps, opt)
 	h.server = httptest.NewServer(srv.Handler())
-	t.Cleanup(h.server.Close)
-	t.Cleanup(svc.Close) // end the streams first, so the server can close
+	rel.add(h.server.Close)
+	rel.add(svc.Close) // end the streams first, so the server can close
 	return h
+}
+
+// releaser runs the cleanups of a harness once, the last added first.
+// Add a cleanup that holds the services with rel.add, never with t.Cleanup.
+// A finished parallel subtest stays reachable from its parent until the parent returns, and so does every function it gave to t.Cleanup.
+type releaser struct{ fns []func() }
+
+func (r *releaser) add(f func()) { r.fns = append(r.fns, f) }
+
+func (r *releaser) run() {
+	fns := r.fns
+	r.fns = nil
+	for i := len(fns) - 1; i >= 0; i-- {
+		fns[i]()
+	}
 }
 
 type user struct {

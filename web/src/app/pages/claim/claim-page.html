@@ -13,7 +13,7 @@
         Um link como este é de um personagem que o mestre de uma campanha preparou para um jogador. Entre com
         a sua conta Google para ver de quem é e decidir se é seu.
       </p>
-      <button mat-flat-button type="button" class="claim__action" data-initial-focus (click)="signIn()">
+      <button matButton="filled" type="button" class="claim__action" data-initial-focus (click)="signIn()">
         Entrar com Google
       </button>
       <p class="mr-muted claim__note">
@@ -64,12 +64,12 @@
             }
           </p>
           <div class="claim__actions">
-            <button mat-flat-button type="button" class="claim__action" data-initial-focus (click)="claim()">
+            <button matButton="filled" type="button" class="claim__action" data-initial-focus (click)="claim()">
               Assumir este personagem
             </button>
-            <a mat-stroked-button class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
+            <a matButton="outlined" class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
           </div>
-          <button mat-button type="button" class="claim__other" (click)="signInAsAnother()">
+          <button matButton type="button" class="claim__other" (click)="signInAsAnother()">
             Não é você? Entrar com outra conta
           </button>
         </section>
@@ -91,14 +91,14 @@
           </div>
           <div class="claim__actions">
             <a
-              mat-flat-button
+              matButton="filled"
               class="claim__action"
               data-initial-focus
               [routerLink]="['/campaigns', s.result.campaignId, 'characters', s.result.characterId]"
             >
               Abrir a ficha de {{ s.result.characterName }}
             </a>
-            <a mat-stroked-button class="claim__action" [routerLink]="['/campaigns', s.result.campaignId]">
+            <a matButton="outlined" class="claim__action" [routerLink]="['/campaigns', s.result.campaignId]">
               Ir para a campanha
             </a>
           </div>
@@ -111,14 +111,14 @@
     <section class="mr-panel claim">
       <p>Este link não existe ou não vale mais.</p>
       <p>Peça ao mestre um link novo.</p>
-      <a mat-flat-button class="claim__action" data-initial-focus routerLink="/campaigns">Ir para minhas campanhas</a>
+      <a matButton="filled" class="claim__action" data-initial-focus routerLink="/campaigns">Ir para minhas campanhas</a>
     </section>
   }
   @case ('own-link') {
     <h1 class="mr-page-title" tabindex="-1">Este link é para um jogador</h1>
     <section class="mr-panel claim">
       <p>Este link é para um jogador. Copie e envie para ele.</p>
-      <a mat-flat-button class="claim__action" data-initial-focus routerLink="/campaigns">Voltar para minhas campanhas</a>
+      <a matButton="filled" class="claim__action" data-initial-focus routerLink="/campaigns">Voltar para minhas campanhas</a>
     </section>
   }
   @case ('living') {
@@ -147,7 +147,7 @@
           <div class="claim__actions">
             @if (s.campaignId && s.characterId) {
               <a
-                mat-flat-button
+                matButton="filled"
                 class="claim__action"
                 data-initial-focus
                 [routerLink]="['/campaigns', s.campaignId, 'characters', s.characterId]"
@@ -155,7 +155,7 @@
                 Abrir a ficha{{ s.characterName ? ' de ' + s.characterName : '' }}
               </a>
             }
-            <a mat-stroked-button class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
+            <a matButton="outlined" class="claim__action" routerLink="/campaigns">Voltar para minhas campanhas</a>
           </div>
         </section>
       }
@@ -170,7 +170,7 @@
             <mat-icon aria-hidden="true">error</mat-icon>
             <p>{{ s.message }}</p>
           </div>
-          <button mat-stroked-button type="button" class="claim__action" data-initial-focus (click)="retry()">
+          <button matButton="outlined" type="button" class="claim__action" data-initial-focus (click)="retry()">
             Tentar de novo
           </button>
         </div>

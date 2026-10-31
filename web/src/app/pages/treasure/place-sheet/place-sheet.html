@@ -186,8 +186,8 @@
   </div>
 
   <div foot class="actions">
-    <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="cancel()">Cancelar</button>
-    <button type="button" mat-flat-button class="go" [class.mr-button--off]="!canPlace()" [disabled]="!canPlace()" disabledInteractive (click)="place()">
+    <button type="button" matButton="outlined" class="no" [disabled]="busy()" (click)="cancel()">Cancelar</button>
+    <button type="button" matButton="filled" class="go" [class.mr-button--off]="!canPlace()" [disabled]="!canPlace()" disabledInteractive (click)="place()">
       <mat-icon aria-hidden="true">add_location_alt</mat-icon>{{ busy() ? 'Pondo...' : 'Pôr no mapa' }}
     </button>
   </div>

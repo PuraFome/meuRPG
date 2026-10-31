@@ -17,8 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
         <p class="ask__q">{{ question() }}</p>
         <p class="ask__text">{{ text() }}</p>
         <div class="ask__buttons">
-          <button #back mat-stroked-button type="button" (click)="cancel.emit()">Voltar</button>
-          <button mat-stroked-button type="button" class="danger" (click)="confirm.emit()">{{ answer() }}</button>
+          <button #back matButton="outlined" type="button" (click)="cancel.emit()">Voltar</button>
+          <button matButton="outlined" type="button" class="danger" (click)="confirm.emit()">{{ answer() }}</button>
         </div>
       </div>
     </div>

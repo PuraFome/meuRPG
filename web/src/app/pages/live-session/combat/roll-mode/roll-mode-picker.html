@@ -46,7 +46,7 @@
     <div class="notice notice--wait">
       <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
       <span role="status" aria-live="polite">Aguardando o mestre…</span>
-      <button mat-stroked-button type="button" class="notice__cancel" [disabled]="busy()" (click)="cancelAsk.emit()">
+      <button matButton="outlined" type="button" class="notice__cancel" [disabled]="busy()" (click)="cancelAsk.emit()">
         Cancelar pedido
       </button>
     </div>
@@ -76,7 +76,7 @@
       </p>
     } @else if (better() && approval() === 'request') {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="ask"
         [disabled]="busy() || status() !== 'needs-request'"

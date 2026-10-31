@@ -32,21 +32,21 @@ let nextWhy = 0;
         <p class="ask__title" id="next-title">Há dano sem aplicar. Passar o turno mesmo assim?</p>
         <p class="ask__text">O dano que ficou esperando é descartado.</p>
         <div class="ask__buttons">
-          <button #safe mat-stroked-button type="button" (click)="asking.set(false)">Voltar</button>
-          <button mat-stroked-button type="button" class="ask__go" (click)="confirm()">Passar o turno</button>
+          <button #safe matButton="outlined" type="button" (click)="asking.set(false)">Voltar</button>
+          <button matButton="outlined" type="button" class="ask__go" (click)="confirm()">Passar o turno</button>
         </div>
       </div>
     } @else if (passing()) {
       <div class="ask" role="alertdialog" aria-labelledby="idle-title" (keydown.escape)="passing.set(false)">
         <p class="ask__title" id="idle-title">Passar a vez de {{ idle() }}, que ainda não agiu?</p>
         <div class="ask__buttons">
-          <button #safe mat-stroked-button type="button" (click)="passing.set(false)">Cancelar</button>
-          <button mat-flat-button type="button" class="ask__pass" (click)="pass()">Passar a vez</button>
+          <button #safe matButton="outlined" type="button" (click)="passing.set(false)">Cancelar</button>
+          <button matButton="filled" type="button" class="ask__pass" (click)="pass()">Passar a vez</button>
         </div>
       </div>
     } @else {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="next"
         [class.next--off]="off()"

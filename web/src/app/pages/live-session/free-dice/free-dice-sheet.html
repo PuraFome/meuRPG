@@ -139,7 +139,7 @@
             <strong>Não deu para carregar as suas últimas rolagens.</strong> Você ainda pode rolar.
           </p>
         </div>
-        <button mat-button type="button" (click)="state.refresh()">Tentar de novo</button>
+        <button matButton type="button" (click)="state.refresh()">Tentar de novo</button>
       } @else {
         <p class="mr-muted">Você ainda não rolou nesta sessão. As rolagens aparecem aqui.</p>
       }
@@ -170,9 +170,9 @@
     }
     @if (state.result() && !state.rolling()) {
       <div class="foot__pair">
-        <button mat-stroked-button type="button" (click)="state.backToForm()">Mudar dados</button>
+        <button matButton="outlined" type="button" (click)="state.backToForm()">Mudar dados</button>
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="roll"
           [class.mr-button--off]="blocked()"
@@ -189,7 +189,7 @@
       </div>
     } @else {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="roll"
         [class.mr-button--off]="blocked()"
