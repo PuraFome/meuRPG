@@ -9,7 +9,7 @@ This page says what each layer proves, how to run it and what CI runs; the CI jo
 | Unit                      | `go test`, case tables                                 | The `rules` maths and each business rule alone, with no database   |
 | Characterization (golden) | `go test`, golden files under `testdata/`              | What a function answers, refuses and writes stays as reviewed      |
 | Integration               | `go test` with `MEURPG_TEST_DATABASE_URL`              | Queries, migrations, the retry on error `40001`, who may do what   |
-| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries and the dice rules (it reads the source with `go/parser`) |
+| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries and no production import of the test dice (it reads the source with `go/parser`) |
 | Leak (RN-10)              | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player                         |
 | Web unit                  | Vitest through `ng test`                               | Components and services                                            |
 | End to end                | Playwright in `e2e/`, against the local stack          | Acceptance criteria through the screen                             |
@@ -73,7 +73,9 @@ How `backend/internal/platform/dbtest` shapes the tests:
 
 The services roll with deterministic dice in tests: `backend/internal/platform/dice/dicetest`, or `play`'s `scriptedRoller`.
 The app rolls an NPC's initiative, and two combatants with the same total take one joint turn, so a random tie makes a test that assumes one actor fail by chance.
-Every `play.Config` and `characters.Config` in a test file sets `Roller`, and `archtest` fails for one that does not.
+`play.New` and `characters.New` reject a nil `Roller`.
+Production passes `dice.Crypto{}` explicitly.
+Tests pass `dicetest.New()` or a scripted roller.
 The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `characters` hand the services a `dicetest.New()`.
 
 - **The default is fixed.** The same calls give the same faces, and the roller never runs out.
@@ -93,6 +95,7 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
   A test that needs one actor queues its faces.
 
 Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
+That rule also fails when it finds no test file that imports `dicetest`, so a walk of the wrong tree cannot pass.
 The end-to-end tests roll with `dice.Crypto`, so an NPC's initiative total can tie with another combatant's at random.
 An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins.
 The helpers are `beginAttackCombatRPC` and its `monsters` argument for an SRD creature.
@@ -145,7 +148,7 @@ Every test that looks for something absent needs a positive control that shows t
 ### Architecture tests
 
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
-It also holds the dice rules of [Dice in tests](#dice-in-tests).
+It also holds the import rule of [Dice in tests](#dice-in-tests).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
 ## Before ready
