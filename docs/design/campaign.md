@@ -8,12 +8,12 @@ The code is `web/src/app/pages/campaign-detail`; the routes and the shared servi
 
 The first sentence of each part says what it is for.
 
-| Part          | What it holds                                                                                                                                  |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Header        | The back link "Minhas campanhas", the `h1` with the campaign's name and the lead ("Você é mestre nesta campanha. XP por inimigos derrotados.") |
-| Session strip | The session, on every tab                                                                                                                      |
-| Tabs          | A nav named "Seções da campanha" with "Mesa", "Preparação" and "Regras"                                                                        |
-| The open tab  | Panels in two columns (3fr and 2fr) from 1024 px, one column below                                                                             |
+| Part | What it holds |
+| --- | --- |
+| Header | The back link "Minhas campanhas", the `h1` with the campaign's name and the lead ("Você é mestre nesta campanha. XP por inimigos derrotados.") |
+| Session strip | The session, on every tab |
+| Tabs | A nav named "Seções da campanha" with "Mesa", "Preparação" and "Regras" |
+| The open tab | Panels in two columns (3fr and 2fr) from 1024 px, one column below |
 
 ### The session strip
 
@@ -36,11 +36,11 @@ The number also goes into the link's name in words ("Mesa, 1 esperando aprovaç�
 On a phone the three tabs share the row; when the names do not fit, the row scrolls sideways, the open tab is scrolled into view, and a soft fade at the edge says there is more.
 The tabs have no count of other kinds, no tab that disappears and no ARIA-tab arrow keys, so those states do not apply; the loading, error and empty states belong to each panel.
 
-| Tab        | Route                  | Panels                                                                                                                                                                 |
-| ---------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mesa       | `/campaigns/:id`       | "Personagens dos jogadores" (with the amber banner of each character that waits), "Personagens reservados", "Experiência", "Sessões anteriores", "Membros", "Convites" |
-| Preparação | `/campaigns/:id/prep`  | "Mapas", "Encontros", "Quebra-cabeças", "NPCs", "Galeria", "Bestiário", "Documento da campanha"                                                                        |
-| Regras     | `/campaigns/:id/setup` | "Dados", "Regras da mesa", "Conteúdo da mesa", "Magias", "Pacote da campanha"                                                                                          |
+| Tab | Route | Panels |
+| --- | --- | --- |
+| Mesa | `/campaigns/:id` | "Personagens dos jogadores" (with the amber banner of each character that waits), "Personagens reservados", "Experiência", "Sessões anteriores", "Membros", "Convites" |
+| Preparação | `/campaigns/:id/prep` | "Mapas", "Encontros", "Quebra-cabeças", "NPCs", "Galeria", "Bestiário", "Documento da campanha" |
+| Regras | `/campaigns/:id/setup` | "Dados", "Regras da mesa", "Conteúdo da mesa", "Magias", "Pacote da campanha" |
 
 ### A panel's head
 
