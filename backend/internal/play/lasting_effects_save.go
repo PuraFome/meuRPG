@@ -330,7 +330,7 @@ func (s *Service) writeEffectSave(ctx context.Context, c *combatTx, call effectS
 	if err := s.loadEffectSave(ctx, c, x); err != nil {
 		return nil, err
 	}
-	if x.legendary, err = s.legendaryResistOpen(ctx, c, x.reactor, msg.GetUseLegendaryResistance()); err != nil {
+	if x.legendary, err = s.legendaryResistOpen(ctx, c, x.reactor, msg.GetUseLegendaryResistance() && !call.skip); err != nil {
 		return nil, err
 	}
 	saved, held, err := s.answerEffectSave(ctx, c, x)

@@ -186,6 +186,11 @@ func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentration
 	return call, err
 }
 
+// wantsResistance says the master asked for Legendary Resistance on a save that has a roll to resist.
+func (c concentrationCall) wantsResistance() bool {
+	return c.msg.GetUseLegendaryResistance() && !c.keep
+}
+
 // concentrationRun is what a try of the change leaves for the answer. A retry starts it over.
 type concentrationRun struct {
 	made   actionEvent
@@ -256,7 +261,7 @@ func concentrationResultOfRetry(payload []byte) *playv1.ConcentrationSaveResult 
 // the d20 was rolled, the dice with the Bardic Inspiration die and the d20 Lucky rolled again.
 func concentrationResultOf(ev actionEvent) *playv1.ConcentrationSaveResult {
 	re := ev.Reaction
-	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell}
+	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell, Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
 	if ev.D20 == 0 { // kept with no roll
 		return out
 	}
@@ -295,7 +300,7 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if call.handOver {
 		return nil, s.handSaveToMaster(ctx, c, w, t)
 	}
-	legendary, err := s.legendaryResistOpen(ctx, c, reactor, call.msg.GetUseLegendaryResistance())
+	legendary, err := s.legendaryResistOpen(ctx, c, reactor, call.wantsResistance())
 	if err != nil {
 		return nil, err
 	}

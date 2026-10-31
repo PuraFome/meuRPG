@@ -113,18 +113,24 @@ The saves the master rolls for the creature take the choice with the roll (`lege
 
 | Save | Call | Field |
 | --- | --- | --- |
-| An effect's save, at the start or end of the turn or after damage, and a zone's | `RollEffectSave` | `use_legendary_resistance` |
+| An effect's save, at the start or end of the turn or after damage | `RollEffectSave` | `use_legendary_resistance` |
 | The Constitution save to keep a concentration | `ResolveConcentrationSave` | `use_legendary_resistance` |
 
+The save a creature makes against a zone is not covered by this choice.
 The master does not need to guess before the dice.
 When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
 When the roll succeeds, nothing is spent and the choice is ignored; so it is for a save the master skips or keeps.
 The refusals change nothing: `permission_denied` for a player, `LEGENDARY_RESISTANCE_UNAVAILABLE` for a combatant without the trait (before the roll), and `LEGENDARY_RESISTANCE_NONE_LEFT` for a failed save with no use left.
-A request sent twice spends once.
+A refusal for no uses left comes after the roll, so the master may roll that window again.
+A request sent twice spends once, and its retry answers the same.
 
 **Who sees what (RN-20, RN-29).**
-The master reads the roll that failed, the choice and the uses left, in the result of the call, in `Combatant.legendary.resistance_left` and in a log line of his own: "falhou no teste (…) e usou Resistência Lendária: sucesso (restam 2)".
-A player reads the line of a save that succeeded, the same one a roll that passed writes: the effect ends or the concentration is kept, with no roll, no count and no name for the trait.
+The master reads the roll that failed, the choice and the uses left in the result of the call.
+He reads the uses left in `Combatant.legendary.resistance_left` too.
+His log line says it: "falhou no teste (…) e usou Resistência Lendária: sucesso (restam 2)".
+A player reads the line of a save that succeeded, the same one a roll that passed writes.
+The effect ends or the concentration is kept.
+The line has no roll, no count and no name for the trait.
 The event is the ordinary save event, with `resisted` and `resist_left`, neutral names that no player-visible payload carries.
 The hints are those of a save that passed, so the stream tells a player nothing more.
 The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.

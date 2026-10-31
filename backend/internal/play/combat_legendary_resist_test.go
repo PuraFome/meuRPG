@@ -443,3 +443,65 @@ func TestRN20_AResistedSaveHintsThePlayersAsAPassedSaveDoes(t *testing.T) {
 		t.Errorf("the player's stream carries the trait: %s", js)
 	}
 }
+
+// A concentration save sent twice spends once, and the retry answers what the first did: the failed roll made a
+// success, with the uses left.
+func TestLegendaryResistance_AConcentrationRetrySpendsOnceAndAnswersTheSame(t *testing.T) {
+	t.Parallel()
+	a, e, w := concentratingDragon(t)
+	req := &playv1.ResolveConcentrationSaveRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), WindowId: w.GetId(), IdempotencyKey: newKey(), UseLegendaryResistance: true,
+		Roll: &playv1.ResolveConcentrationSaveRequest_D20Face{D20Face: 1},
+	}
+	var results []*playv1.ConcentrationSaveResult
+	for range 2 {
+		res, err := a.master.combat.ResolveConcentrationSave(t.Context(), connect.NewRequest(req))
+		if err != nil {
+			t.Fatalf("ResolveConcentrationSave() error = %v", err)
+		}
+		results = append(results, res.Msg.GetResult())
+	}
+	if got := a.resistanceSpent(t); got != 1 {
+		t.Errorf("after the same request twice the dragon spent %d uses, want 1", got)
+	}
+	if r := results[1]; !r.GetKept() || !r.GetResisted() || r.GetResistedLeft() != 2 {
+		t.Errorf("the retry answers %v, want the first answer (kept by the trait, 2 left)", r)
+	}
+}
+
+// A save the creature fails without a roll (a paralyzed creature fails Strength and Dexterity saves) is turned
+// into a success too.
+func TestLegendaryResistance_AnAutoFailedSaveBecomesASuccess(t *testing.T) {
+	t.Parallel()
+	a, e, w := heldDragon(t)
+	a.execSQL(t, `UPDATE combatant_states SET end_save_ability = 'dex' WHERE encounter_id = $1 AND kind = 'effect'`, e.GetId())
+	res, err := a.rollEffectSave(t, a.master, e, w.GetId(), resisting(effectSaveFace(20)))
+	if err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if r := res.GetResult(); !r.GetAutoFail() || !r.GetSaved() || !r.GetResisted() || r.GetResistedLeft() != 2 {
+		t.Errorf("the result = %v, want an automatic failure made a success with 2 left", r)
+	}
+	if got := a.resistanceSpent(t); got != 1 || a.holdsTheDragon(t) {
+		t.Errorf("spent = %d, held = %v; want 1 use and the hold ended", got, a.holdsTheDragon(t))
+	}
+}
+
+// With no roll to resist (a skipped effect save, a concentration the master keeps) the choice is ignored, also
+// for a creature without the trait: nothing is refused and nothing is spent.
+func TestLegendaryResistance_TheChoiceIsIgnoredWhereThereIsNoRoll(t *testing.T) {
+	t.Parallel()
+	a, e, w := effectSaveWindow(t) // Toren has no trait
+	skip := func(r *playv1.RollEffectSaveRequest) { r.Roll = &playv1.RollEffectSaveRequest_Skip{Skip: true} }
+	if _, err := a.rollEffectSave(t, a.master, e, w.GetId(), resisting(skip)); err != nil {
+		t.Errorf("a skipped save with the choice error = %v, want it ignored", err)
+	}
+	b, f := concentratingHit(t, 6)
+	cw := b.windowOf(t, b.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	if cw == nil {
+		t.Fatal("no concentration window")
+	}
+	if _, err := b.resolveConcentration(t, b.master, f, cw.GetId(), resistingConcentration(keepConcentration)); err != nil {
+		t.Errorf("a kept concentration with the choice error = %v, want it ignored", err)
+	}
+}
