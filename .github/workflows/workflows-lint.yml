@@ -38,10 +38,21 @@ jobs:
     if: ${{ github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
+    env:
+      # Only a pull request that is not a train is judged by its files, so only it needs the history and the diff.
+      # Main, the schedule, a manual run and a train (a branch of this repository) are answered here, without a checkout.
+      DIFF: ${{ github.event_name == 'pull_request' && !(startsWith(github.head_ref, 'refactor/train-') && github.event.pull_request.head.repo.full_name == github.repository) }}
     outputs:
-      run: ${{ steps.run.outputs.run }}
+      run: ${{ steps.all.outputs.run || steps.run.outputs.selected }}
     steps:
+      - name: Everything is selected
+        id: all
+        if: env.DIFF != 'true'
+        run: |
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: env.DIFF == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -50,11 +61,10 @@ jobs:
 
       - name: Is this workflow selected
         id: run
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: .github/scripts/gate-select.sh run '^(\.github/|e2e/lint/package-lock\.json$)'
+        if: env.DIFF == 'true'
+        uses: ./.github/actions/select
+        with:
+          pattern: '^(\.github/|e2e/lint/package-lock\.json$)'
 
   lint:
     needs: select
