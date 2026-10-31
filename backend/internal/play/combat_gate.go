@@ -3,6 +3,8 @@ package play
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -152,12 +154,36 @@ const dftPerFt = 10
 // turnOf is the economy and the movement a combatant has used this turn, as the rules read them.
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
+		Spent:      spentOf(c),
 		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), AttackKey: conv.OrZero(c.ActionAttackKey), FlurryLeft: int(c.BonusAttacksLeft), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / dftPerFt,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
 		JumpLongBonusDFt: int(c.JumpLongBonusDft), JumpDoubled: c.JumpDoubled,
 	}
+}
+
+// spentOf is what an NPC spent of its slots and daily uses in this combat (combatants.slots_used); a
+// player's character has none here, its vitals keep the count.
+func spentOf(c playdb.Combatant) link.Spent {
+	var out link.Spent
+	if c.Kind == kindPlayer {
+		return out
+	}
+	for key, n := range slotsUsedOf(c) {
+		switch level, err := strconv.Atoi(key); {
+		case key == usedPact:
+			out.PactSlotsUsed = n
+		case strings.HasPrefix(key, usedResource):
+			if out.ResourcesUsed == nil {
+				out.ResourcesUsed = map[string]int{}
+			}
+			out.ResourcesUsed[strings.TrimPrefix(key, usedResource)] = n
+		case err == nil && level >= 1 && level <= len(out.SlotsUsed):
+			out.SlotsUsed[level-1] = n
+		}
+	}
+	return out
 }
 
 // mustReactNow checks, inside a write, that the combatant may spend its

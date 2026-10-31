@@ -762,15 +762,22 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 		}
 		u.keep(v)
 	}
-	if ev.GrantUse != "" && who.Kind == kindPlayer {
-		if err := u.spendResourceBack(ctx, who, ev.GrantUse); err != nil {
+	if ev.GrantUse != "" {
+		if who.Kind == kindPlayer {
+			if err := u.spendResourceBack(ctx, who, ev.GrantUse); err != nil {
+				return err
+			}
+		} else if err := u.s.bumpUsed(ctx, u.c, who, usedResource+ev.GrantUse, -1); err != nil { // an NPC's use is counted on the combatant
 			return err
 		}
 	}
-	if ev.Slot != nil && who.Kind == kindPlayer {
+	if ev.Slot == nil {
+		return nil
+	}
+	if who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
 	}
-	return nil
+	return u.s.giveBackNPCSlot(ctx, u.c, who, *ev.Slot)
 }
 
 // castConcentrationBack puts back the spell the caster concentrated on before.

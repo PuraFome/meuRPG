@@ -301,6 +301,9 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 			return nil, err
 		}
 		usage = usageOf(v)
+	} else {
+		// An NPC's slots and daily uses are counted on the combatant, not in vitals.
+		usage = combat.Usage{SlotsUsed: turn.Spent.SlotsUsed, PactSlotsUsed: turn.Spent.PactSlotsUsed, ResourcesUsed: turn.Spent.ResourcesUsed}
 	}
 	// The speed of this combat, copied when the combatant joined, rules.
 	d.SpeedWalkFt = turn.SpeedFt

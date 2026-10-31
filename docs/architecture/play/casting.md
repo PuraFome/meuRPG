@@ -7,7 +7,7 @@ Summoning spells are described in [Creatures](creatures.md#casting-summons).
 ## Casting in combat
 
 `CastSpell` spends the slot and the action (or bonus action) on casting.
-Who casts: the player on their own character on their turn (a prepared spell or a save cantrip from the options list); the master on any combatant on turn (an NPC with a full sheet casts from the sheet; NPC slots are not counted, only player characters').
+Who casts: the player on their own character on their turn (a prepared spell or a save cantrip from the options list); the master on any combatant on turn (an NPC with a full sheet casts from the sheet; an NPC's slots and daily uses are counted on its combatant, a player's character's in its vitals; the options the master gets for an NPC show the slots and uses left, a player's never do (RN-20, RN-29)').
 The spell, the level (`slot`: level or pact, none for a cantrip) and the targets are checked against the character's `TurnOptions`; the targets against what they see, the range and how many targets the spell accepts:
 
 - **Range.** Self only the caster, Touch 5 ft, otherwise the spell's range; multiplied for a spell attack when the caster's table feat has a `ranged_attack` with `range_multiplier`.
