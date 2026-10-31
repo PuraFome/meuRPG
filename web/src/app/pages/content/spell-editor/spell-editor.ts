@@ -2,7 +2,6 @@ import {
   Component,
   ElementRef,
   Injector,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -20,10 +19,16 @@ import type {
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
 import { navOfKind } from '../../../core/content/content-kinds';
 import { TableContentKind } from '../../../../gen/meurpg/rules/v1/table_content_pb';
-import { draftToSpell, spellToDraft, withTarget } from '../../../core/content/spell-draft';
+import {
+  draftToSpell,
+  readableSpell,
+  spellToDraft,
+  unreadableSpellPaths,
+  withTarget,
+} from '../../../core/content/spell-draft';
 import {
   ATTACK_OPTIONS,
   DURATION_OPTIONS,
@@ -39,7 +44,17 @@ import {
   moreLabel,
   sizeLabel,
 } from '../../../core/content/spell-options';
-import { type SpellDraft, emptySpell } from '../../../core/content/spell-types';
+import {
+  type SpellCountField,
+  type SpellDraft,
+  emptySpell,
+} from '../../../core/content/spell-types';
+import {
+  UNREADABLE_COUNT,
+  keptTyped,
+  readWhole,
+  shownWhole,
+} from '../../../core/content/whole-number';
 import { spellFieldPaths } from '../../../core/content/spell-preview';
 import { UNAPPLIED_DAMAGE_PT, unappliedDamage } from '../../../core/content/spell-warnings';
 import { CheckRow } from '../../../shared/form-fields/check-row';
@@ -143,7 +158,10 @@ export class SpellEditor {
   });
   /** What a player reads, written by the same function as the player's page, from the entry the form would send. */
   protected readonly preview = computed(() =>
-    previewRead({ case: 'tableSpell', value: draftToSpell(this.draft()) }, this.catalog().nameOf),
+    previewRead(
+      { case: 'tableSpell', value: draftToSpell(readableSpell(this.draft())) },
+      this.catalog().nameOf,
+    ),
   );
   protected readonly previewName = computed(() => this.draft().name.trim() || 'Nova magia');
   protected readonly sizeText = computed(() => sizeLabel(this.draft().shape));
@@ -199,22 +217,44 @@ export class SpellEditor {
     this.patch({ classKeys: on ? [...d.classKeys, key] : d.classKeys.filter((k) => k !== key) });
   }
 
-  protected setCount(
-    text: string,
-    field: 'count' | 'perSlot' | 'timeAmount' | 'durationAmount',
-  ): void {
-    const n = Number(text.trim());
-    this.patch({ [field]: Number.isInteger(n) && n >= 0 ? n : 0 } as Partial<SpellDraft>);
+  /** The text of a count field: what was typed while it still reads as the number, else the number. */
+  protected numberText(field: SpellCountField): string {
+    const d = this.draft();
+    return shownWhole(d[field], d.typed?.[field]);
   }
 
-  protected numberText(n: number): string {
-    return n > 0 ? String(n) : '';
+  protected setCount(text: string, field: SpellCountField): void {
+    const n = readWhole(text, false);
+    const { [field]: _, ...rest } = this.draft().typed ?? {};
+    const kept = keptTyped(text, n);
+    const typed = kept === undefined ? rest : { ...rest, [field]: kept };
+    this.patch({
+      [field]: n,
+      typed: Object.keys(typed).length > 0 ? typed : undefined,
+    } as Partial<SpellDraft>);
   }
+
+  /** The refusals of a count field: the server's, and the client's while its text is no whole number. */
+  protected countIssues(path: string): readonly string[] {
+    return [
+      ...this.saver.issues(path),
+      ...(this.unreadable().includes(path) ? [UNREADABLE_COUNT] : []),
+    ];
+  }
+
+  private readonly unreadable = computed(() => unreadableSpellPaths(this.draft()));
 
   protected readonly known = (path: string): boolean => spellFieldPaths(this.draft()).has(path);
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
+      return;
+    }
+    if (
+      this.saver.blockOn(this.unreadable(), (path) =>
+        focusAfterRender(this.host.nativeElement, this.injector, path),
+      )
+    ) {
       return;
     }
     const body: EntryBody = { case: 'tableSpell', value: draftToSpell(this.draft()) };
@@ -227,18 +267,6 @@ export class SpellEditor {
       this.saved.emit(res);
       return;
     }
-    afterNextRender(
-      () => {
-        const first = this.saver.placement().fields[0];
-        if (first) {
-          focusField(this.host.nativeElement, first);
-        } else {
-          this.host.nativeElement
-            .querySelector<HTMLElement>('[role="alert"]')
-            ?.scrollIntoView({ block: 'center' });
-        }
-      },
-      { injector: this.injector },
-    );
+    this.saver.focusRefusal(this.host.nativeElement, this.injector);
   }
 }

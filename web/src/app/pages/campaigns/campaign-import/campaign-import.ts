@@ -42,6 +42,7 @@ import { hasNewerVersion, problemSentence } from '../../../core/campaign-package
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { formatBytes } from '../../../core/images/image-format';
+import { capSentence, failureSentence, SPEECH } from './campaign-import-speech';
 import { UploadFailed } from '../../../core/images/upload-errors';
 import { creationRefusalText } from '../../../core/campaigns/campaign-copy';
 
@@ -122,6 +123,7 @@ export class CampaignImportPage {
   protected readonly dragging = signal(false);
   /** The polite live region for what the cards do not say themselves (the preview is ready, the campaign made). */
   protected readonly announcement = signal('');
+  protected readonly speech = SPEECH;
 
   protected readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
 
@@ -183,7 +185,7 @@ export class CampaignImportPage {
   }
 
   /** Sets the state and moves the focus to the new card's `data-focus` element (the button, or the heading). */
-  private go(state: ImportState, announce = ''): void {
+  private go(state: ImportState, announce = spoken(state)): void {
     if (this.gone) {
       return;
     }
@@ -334,7 +336,7 @@ export class CampaignImportPage {
         notice = describeConnectError(err, {});
       }
     }
-    this.go({ status: 'choose', kept: '', notice }, notice === '' ? 'Envio cancelado.' : '');
+    this.go({ status: 'choose', kept: '', notice }, notice === '' ? 'Envio cancelado.' : undefined);
   }
 
   private async read(): Promise<void> {
@@ -421,6 +423,22 @@ export class CampaignImportPage {
         }
         this.go({ status: 'failed', failure: failureFor(issue, stage) });
     }
+  }
+}
+
+/** What a card says through the live region when it replaces the screen. */
+function spoken(state: ImportState): string {
+  switch (state.status) {
+    case 'choose':
+      return state.notice;
+    case 'cap':
+      return capSentence(state.max);
+    case 'not-allowed':
+      return state.text;
+    case 'failed':
+      return failureSentence(state.failure);
+    default:
+      return '';
   }
 }
 

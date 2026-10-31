@@ -660,3 +660,32 @@ func TestMR025_ImportPreviewReportsEveryViolationOfAnEntry(t *testing.T) {
 		t.Errorf("the second entry's violations = %v", got)
 	}
 }
+
+// TestMR025_APackWithOptionsPreviewsAndImports: a pack carries options of two SRD sets under
+// their own keys ("option:<set>:<slug>@mesa"), and both the preview and the import accept them.
+func TestMR025_APackWithOptionsPreviewsAndImports(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	guard := &rulesv1.TableOption{
+		NamePt: "Guarda Dupla", DescPt: []string{"Escudo e arma na mão."}, Set: "fighting_style",
+		Effects: []*rulesv1.TableEffect{{Type: "modifier", Target: "ac", Mode: "add", Value: "1", When: "shield()"}},
+	}
+	pack := &rulesv1.TableContentPack{Format: "meurpg.table-content", Version: 1, Entries: []*rulesv1.TableEntry{
+		{Key: "option:invocation:olhar-do-corvo@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, NamePt: "Olhar do Corvo", Body: &rulesv1.TableEntry_TableOption{TableOption: crowGaze()}},
+		{Key: "option:fighting_style:guarda-dupla@mesa", Kind: rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, NamePt: "Guarda Dupla", Body: &rulesv1.TableEntry_TableOption{TableOption: guard}},
+	}}
+	pv := pt.preview(t, pt.to, pack)
+	if pv.GetTotals().GetNew() != 2 || pv.GetTotals().GetRefused() != 0 {
+		t.Fatalf("preview totals = %v, entries %v; want two new entries and no refusal", pv.GetTotals(), pv.GetEntries())
+	}
+	res := pt.apply(t, pt.to, pack, "options-1")
+	if res.GetTotals().GetNew() != 2 {
+		t.Fatalf("import totals = %v, want two new entries", res.GetTotals())
+	}
+	got := pt.entries(t, pt.to)
+	for _, key := range []string{"option:invocation:olhar-do-corvo@mesa", "option:fighting_style:guarda-dupla@mesa"} {
+		if got[key] == nil {
+			t.Errorf("the campaign has no %s after the import; it has %d entries", key, len(got))
+		}
+	}
+}

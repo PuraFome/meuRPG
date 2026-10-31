@@ -232,6 +232,18 @@ describe('the small kinds', () => {
     expect(rider({ choice: HitRiderChoice.DECLINE })).toMatchInlineSnapshot(
       `" dispensou a técnica em Goblin"`,
     );
+    const failedPush = (over: object) =>
+      rider({ choice: HitRiderChoice.PUSH, result: HitRiderLogResult.FAILED, ...over })?.replace(
+        /\u00a0/g,
+        ' ',
+      );
+    expect(failedPush({ pushedFt: 15 })).toContain('; empurrão de 4,5 m · 3 quadrados');
+    expect(failedPush({ pushedFt: 5, pushStopped: true })).toContain(
+      '; empurrão de 1,5 m · 1 quadrado, que parou antes: parede, porta, borda do mapa ou criatura',
+    );
+    expect(failedPush({ pushNoMap: true })).toContain(
+      '; o mestre posiciona a criatura, porque o combate não tem mapa',
+    );
     const choices = [
       HitRiderChoice.PRONE,
       HitRiderChoice.PUSH,

@@ -10,8 +10,8 @@
 //   - for a changed `test.beforeEach`, `test.beforeAll`, `test.afterEach` or `test.afterAll`, a sample of up to SAMPLE of the tests it reaches.
 // A change outside any test body and any such hook (a comment above a test, an import, a helper that is not one of the above) maps to nothing.
 //
-// Output: {playwright: [{file, title, grep, signins, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
-// for Playwright's --grep (the title with its metacharacters escaped); `why` is "changed", "calls <helper>" or "reached by a changed hook".
+// Output: {playwright: [{file, title, grep, signins, serial?, why}], go: [{pkg, test, why}], notes: [string]}. `grep` is a regular expression
+// for Playwright's --grep (the title with its metacharacters escaped); `serial` is present (true) for a test of a serial describe, which must not run in parallel with its own copies; `why` is "changed", "calls <helper>" or "reached by a changed hook".
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -92,8 +92,22 @@ const isDescribe = (ts, callee) => {
   return false;
 };
 
+/** `test.describe.serial(...)` (also `.serial.only` and so on): the group runs its tests in order, in one worker. */
+const isSerialCall = (ts, callee) => {
+  for (let node = callee; ts.isPropertyAccessExpression(node); node = node.expression) if (node.name.text === 'serial') return isDescribe(ts, callee);
+  return false;
+};
+
+/** `test.describe.configure({ mode: 'serial' })`: the same, for the group it is in, or for the whole file outside any group. */
+const isSerialConfigure = (ts, node) =>
+  ts.isPropertyAccessExpression(node.expression) &&
+  node.expression.name.text === 'configure' &&
+  isDescribe(ts, node.expression) &&
+  node.arguments.some((a) => ts.isObjectLiteralExpression(a) && a.properties.some((p) => ts.isPropertyAssignment(p) && p.name.getText() === 'mode' && ts.isStringLiteralLike(p.initializer) && p.initializer.text === 'serial'));
+
 /**
- * Reads a spec once: its tests, {title, regex, from, to, body, hooks, hookLines}. A `test.beforeEach/beforeAll/afterEach/afterAll` hook runs
+ * Reads a spec once: its tests, {title, regex, from, to, body, hooks, hookLines, serial}. `serial` is true when a `test.describe.serial` or a
+ * `test.describe.configure({ mode: 'serial' })` of a group the test is in (nested ones too), or of the file, makes its tests share one worker. A `test.beforeEach/beforeAll/afterEach/afterAll` hook runs
  * for the tests inside its own `test.describe` (nested ones too), or for every test of the file when it is outside any:
  * `hooks` is the text of the hooks that reach a test and `hookLines` their [from, to] lines.
  */
@@ -103,6 +117,7 @@ export function parseSpec(text) {
   const lines = (node) => [source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, source.getLineAndCharacterOfPosition(node.getEnd()).line + 1];
   const tests = [];
   const hooks = [];
+  const serialGroups = new Set(); // the start positions of the serial groups; -1 is the whole file
   const visit = (node, groups) => {
     let inner = groups;
     if (ts.isCallExpression(node)) {
@@ -110,12 +125,15 @@ export function parseSpec(text) {
       const member = ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'test' ? callee.name.text : null;
       const [from, to] = lines(node);
       const body = text.slice(node.getStart(source), node.getEnd());
-      if (member === 'beforeEach' || member === 'beforeAll' || member === 'afterEach' || member === 'afterAll') hooks.push({ from, to, body, groups });
+      if (isSerialConfigure(ts, node)) {
+        serialGroups.add(groups.length > 0 ? groups[groups.length - 1] : -1);
+      } else if (member === 'beforeEach' || member === 'beforeAll' || member === 'afterEach' || member === 'afterAll') hooks.push({ from, to, body, groups });
       else if ((ts.isIdentifier(callee) && callee.text === 'test') || (member !== null && !NOT_A_TEST.has(member))) {
         const title = node.arguments.length > 0 ? titleOfNode(ts, node.arguments[0]) : null;
         if (title) tests.push({ ...title, from, to, body, groups });
       } else if (isDescribe(ts, callee)) {
         inner = [...groups, node.getStart(source)];
+        if (isSerialCall(ts, callee)) serialGroups.add(node.getStart(source));
       }
     }
     ts.forEachChild(node, (child) => visit(child, inner));
@@ -124,7 +142,7 @@ export function parseSpec(text) {
   return {
     tests: tests.map(({ groups, ...t }) => {
       const reaching = hooks.filter((h) => h.groups.every((g) => groups.includes(g)));
-      return { ...t, hooks: reaching.map((h) => h.body).join('\n'), hookLines: reaching.map((h) => [h.from, h.to]) };
+      return { ...t, hooks: reaching.map((h) => h.body).join('\n'), hookLines: reaching.map((h) => [h.from, h.to]), serial: serialGroups.has(-1) || groups.some((g) => serialGroups.has(g)) };
     }),
   };
 }
@@ -215,7 +233,8 @@ export function mapDiff({ diff, read: readFile, files }) {
     const key = `${file}\t${t.title}`;
     const before = playwright.get(key);
     const signins = Math.max(before?.signins ?? 0, signinsOf(`${t.body}\n${t.hooks}`, signersOf()));
-    playwright.set(key, { file, title: t.title, grep: t.regex, signins, why: !before || why === 'changed' ? why : before.why });
+    const serial = Boolean(before?.serial || t.serial);
+    playwright.set(key, { file, title: t.title, grep: t.regex, signins, ...(serial && { serial }), why: !before || why === 'changed' ? why : before.why });
   };
   const addGo = (pkg, test, why) => {
     const key = `${pkg}\t${test}`;

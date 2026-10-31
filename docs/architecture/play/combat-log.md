@@ -16,6 +16,10 @@ What a table feature's `on_event` hook gave (the hit points, the temporary hit p
 Movement lines carry `distance_ft`, `distance_dft` and, for a walk, `spent_dft` with `move_dragging` and `move_crawling`: what the movement really spent (the path's cost doubled again by a drag and by a crawl).
 The line says the second number only when it differs from the distance, with the reason in words (another creature's space and difficult terrain, "arrastando", "rastejando").
 The master's free move, a jump, and the no-map combat's "gastou 6,0 m de movimento" carry no `spent_dft` and say the distance; the numbers are those the panel already shows every player.
+A failed save that pushes a creature (Thunderwave, the Open Hand push) shows in the line of the cast or of the rider.
+`pushed_ft` is the distance and `push_stopped` says something ended the push early.
+`push_no_map` says the combat has no map.
+A creature that saves has none of them.
 Initiative, turn order and reinforcements are not log lines.
 
 | What | The master | The player |

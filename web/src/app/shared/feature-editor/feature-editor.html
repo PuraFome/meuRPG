@@ -27,6 +27,9 @@
       [issues]="issuesOf()(path('name_pt'))"
       (valueChange)="patch({ name: $event })"
     />
+    @if (unsaved()) {
+      <p class="options__hint grid__wide" role="note">Sem nome, esta opção não é salva.</p>
+    }
     <ng-content select="[lead]" />
     @if (feature().effects.length === 0) {
       <app-effect-picker
@@ -93,6 +96,7 @@
           [basePath]="path('options[' + k + ']')"
           [issuesOf]="issuesOf()"
           [spellOptions]="spellOptions()"
+          [isOption]="true"
           nameLabel="Nome da opção"
           textLabel="Texto da opção"
           removeLabel="Remover opção"

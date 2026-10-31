@@ -57,6 +57,8 @@ export interface CastingDraft {
   preparedMax: string;
   /** 0 is the kind's default. */
   startLevel: number;
+  /** What was typed in the start level when it is not how the number is written back; never sent. */
+  startLevelTyped?: string;
   ritual: boolean;
   /** SRD spells on the class's own list (`srd_spell_keys`); sent only while the list is the class's own. */
   srdSpells: string[];
@@ -446,12 +448,8 @@ export function circleLabel(i: number): string {
 
 /** "4 de 1º, 2 de 2º": the slots of a row in words; '' when there are none. */
 export function slotsText(r: RowDraft, pact: boolean): string {
-  const parts = r.slots
-    .map((n, i) =>
-      n > 0 ? (pact ? `${n} de ${circleLabel(i)} (pacto)` : `${n} de ${circleLabel(i)}`) : '',
-    )
-    .filter((p) => p !== '');
-  return parts.join(', ');
+  const of = (n: number, i: number): string => `${n} de ${circleLabel(i)}${pact ? ' (pacto)' : ''}`;
+  return r.slots.flatMap((n, i) => (n > 0 ? [of(n, i)] : [])).join(', ');
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -498,4 +496,9 @@ export function featureIdOfPath(
     return path === base || path.startsWith(base + '.') || path.startsWith(base + '[');
   });
   return i < 0 ? '' : features[i].id;
+}
+
+/** The path of a casting's start level while its text is no whole number (a NaN in the draft), at `base` ("table_class.casting"). */
+export function unreadableCastingPaths(base: string, casting: { startLevel: number }): string[] {
+  return Number.isNaN(casting.startLevel) ? [`${base}.start_level`] : [];
 }
