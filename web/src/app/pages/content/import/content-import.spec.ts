@@ -184,7 +184,12 @@ describe('ContentImport (MR-025)', () => {
         totals: { new: 1, updated: 1, unchanged: 1, refused: 1 },
       }),
     );
+    const region = el.querySelector<HTMLElement>('p.mr-visually-hidden[role="status"]')!;
+    expect(region.textContent).toBe('');
     await choose(fixture, el, PACK);
+    expect(el.querySelector('p.mr-visually-hidden[role="status"]')).toBe(region);
+    expect(text(region)).toContain('Uma entrada foi recusada, então nada pode ser importado.');
+    expect(el.querySelector('.mr-notice--warning')?.hasAttribute('role')).toBe(false);
     expect(button(el, 'Importar 2 entradas').disabled).toBe(true);
     const page = text(el);
     expect(page).toContain('Recusadas · 1');
@@ -234,8 +239,12 @@ describe('ContentImport (MR-025)', () => {
         TableImportMode.APPLY,
       ),
     );
+    const region = el.querySelector<HTMLElement>('p.mr-visually-hidden[role="status"]')!;
+    expect(region.textContent).toBe('');
     button(el, 'Importar 1 entrada').click();
     await settle(fixture, 4);
+    expect(el.querySelector('p.mr-visually-hidden[role="status"]')).toBe(region);
+    expect(text(region)).toContain('1 ficha ficou com aviso.');
     const warn = text(el.querySelector('.mr-notice--warning')!);
     expect(warn).toContain('1 ficha ficou com aviso.');
     expect(warn).toContain('Pensantus');

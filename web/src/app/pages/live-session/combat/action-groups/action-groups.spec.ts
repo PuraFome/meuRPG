@@ -166,6 +166,13 @@ describe('ActionGroups: the movement belongs to the row under the map (E9-13)', 
     expect(plain(el.textContent)).not.toContain('Restam');
   });
 
+  it('has its live region on the page when no note is shown', () => {
+    const el = setup({ speedDft: 300, movementLeftDft: 300, movementLeftFt: 30 });
+    const region = el.querySelector('.mr-live[role="status"]');
+    expect(region).not.toBeNull();
+    expect(region?.querySelector('.groups__note')).toBeNull();
+  });
+
   it('says Desengajar in a notice, once', () => {
     const el = setup({
       speedDft: 300,
@@ -177,6 +184,9 @@ describe('ActionGroups: the movement belongs to the row under the map (E9-13)', 
     expect(plain(el.textContent)).toContain(
       'Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.',
     );
+    const note = el.querySelector('.groups__note');
+    expect(note?.closest('.mr-live[role="status"]')).not.toBeNull();
+    expect(note?.hasAttribute('role')).toBe(false);
   });
 });
 

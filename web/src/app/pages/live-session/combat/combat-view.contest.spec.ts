@@ -332,12 +332,17 @@ describe('CombatView, the contests of the player (W7-X)', () => {
     });
     await settle(fixture);
     expect(el.querySelector('[data-testid="contest-pending"]')).toBeNull();
+    const region = el.querySelector('.player__notes > .mr-live[role="status"]');
+    expect(region).not.toBeNull();
     closes[0].next({ contestId: 'ct1' });
     closes[0].complete();
     await settle(fixture);
     expect(textOf(el.querySelector('[data-testid="contest-pending"]')!)).toBe(
       'Uma disputa espera a sua resposta. Responder',
     );
+    expect(el.querySelector('.player__notes > .mr-live[role="status"]')).toBe(region);
+    expect(region?.contains(el.querySelector('[data-testid="contest-pending"]'))).toBe(true);
+    expect(el.querySelector('[data-testid="contest-pending"]')?.hasAttribute('role')).toBe(false);
     el.querySelector<HTMLButtonElement>('[data-testid="contest-pending"] button')!.click();
     await settle(fixture);
     expect(opened.filter((o) => o.component === ContestAnswerSheet)).toHaveLength(2);

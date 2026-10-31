@@ -113,6 +113,21 @@ export class ContentImport {
     ].filter((g) => g.rows.length > 0);
   });
   protected readonly kinds = computed(() => countsByKind(this.preview()?.res.entries ?? []));
+  /** What the polite live region says: the warnings that arrive with their panel, so the text changes in a region that is already there. */
+  protected readonly said = computed(() => {
+    const res = this.done();
+    const n = res?.affectedCharacters.length ?? 0;
+    if (n > 0) {
+      return n === 1
+        ? '1 ficha ficou com aviso. Ela usa uma entrada atualizada e não fecha mais com a regra nova.'
+        : `${n} fichas ficaram com aviso. Elas usam entradas atualizadas e não fecham mais com a regra nova.`;
+    }
+    const r = this.refused();
+    if (r > 0 && this.preview()) {
+      return `${r === 1 ? 'Uma entrada foi recusada' : r + ' entradas foram recusadas'}, então nada pode ser importado. Edite o arquivo para corrigir o que está acima e escolha-o de novo.`;
+    }
+    return '';
+  });
   protected readonly refused = computed(() => this.preview()?.res.totals?.refused ?? 0);
   /** What "Importar N entradas" writes: the new and the updated ones (the unchanged write nothing). */
   protected readonly writes = computed(() => {

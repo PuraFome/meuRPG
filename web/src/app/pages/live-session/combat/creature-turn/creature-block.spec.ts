@@ -166,6 +166,22 @@ describe('CreatureBlock (E9-12 states 3 and 6)', () => {
     expect(rolled).toBe(1);
   });
 
+  it('has its live region on the page when no damage is owed', () => {
+    const { el } = setup({}, options(['monster:dire-wolf#bite']));
+    const region = el.querySelector('.mr-live[role="status"]');
+    expect(region).not.toBeNull();
+    expect(region?.querySelector('.owed')).toBeNull();
+  });
+
+  it('says the owed damage inside that live region, and the notice has no role of its own', () => {
+    const { el } = setup({}, options(['monster:dire-wolf#bite']), {
+      pending: { id: 'p1', attackKey: 'monster:dire-wolf#bite', attackerId: 'w1' },
+    });
+    const notice = el.querySelector('.owed');
+    expect(notice?.closest('.mr-live[role="status"]')).not.toBeNull();
+    expect(notice?.hasAttribute('role')).toBe(false);
+  });
+
   it('the reaction row of the chain familiar follows what the server says: off when it says so', () => {
     const base = options(['monster:imp#sting']) as { options: { attacks: { enabled: boolean }[] } };
     base.options.attacks[0].enabled = false;
