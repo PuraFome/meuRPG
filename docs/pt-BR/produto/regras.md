@@ -411,6 +411,7 @@ O mestre vê tudo.
 - O mesmo vale para o dano num personagem depois que o mestre o aplica (de magia, de ação de criatura ou de efeito): o dono do alvo e o mestre leem o valor sofrido, os demais jogadores leem o valor como rolado, então a linha nunca diz a que o alvo resiste.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
+- **A característica de uma criatura que transforma uma salvaguarda falhada em sucesso** (Resistência Lendária) é do mestre: o jogador lê que a salvaguarda da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.
 
 **Turnos conjuntos.**
@@ -743,6 +744,9 @@ O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.
 O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe seus monstros salvos pelo mesmo caminho com "Começar este combate", e um jogador nunca recebe o encontro salvo.
 No teatro da mente (RN-25) os monstros não têm quadrado.
+Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso numa salvaguarda que falha, por escolha do mestre: nas salvaguardas que o mestre rola por ele (a de um efeito e a de concentração) ele pede a característica junto com a rolagem, e uma rolagem que falha vira sucesso e gasta um uso.
+Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
+A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que a salvaguarda teve sucesso (RN-20).
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria

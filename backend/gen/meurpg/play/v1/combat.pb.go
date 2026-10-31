@@ -965,6 +965,12 @@ const (
 	// The same: the combatant is no creature with legendary actions, or it is defeated or
 	// incapacitated.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE EncounterBlockedReason = 120
+	// RollEffectSave and ResolveConcentrationSave with `use_legendary_resistance`: the saving throw
+	// failed and every use of the creature's trait is spent. Nothing changes.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT EncounterBlockedReason = 121
+	// The same: the creature is no creature with the trait (the combatant is a player's character
+	// or its stat block does not have it). Refused before the roll; nothing changes.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE EncounterBlockedReason = 122
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1071,109 +1077,113 @@ var (
 		118: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN",
 		119: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND",
 		120: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE",
+		121: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT",
+		122: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE",
 	}
 	EncounterBlockedReason_value = map[string]int32{
-		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
-		"ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN":       1,
-		"ENCOUNTER_BLOCKED_REASON_NO_CURRENT_MAP":               2,
-		"ENCOUNTER_BLOCKED_REASON_MAP_HAS_NO_GRID":              3,
-		"ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP":                 4,
-		"ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE":                   5,
-		"ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED":              6,
-		"ENCOUNTER_BLOCKED_REASON_INITIATIVE_MISSING":           7,
-		"ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET":       8,
-		"ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE":              9,
-		"ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN":                10,
-		"ENCOUNTER_BLOCKED_REASON_NOT_PLACED":                   11,
-		"ENCOUNTER_BLOCKED_REASON_TOO_FAR":                      12,
-		"ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED":              13,
-		"ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT":             14,
-		"ENCOUNTER_BLOCKED_REASON_ACTION_USED":                  15,
-		"ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH":          16,
-		"ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED":              17,
-		"ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE":               18,
-		"ENCOUNTER_BLOCKED_REASON_DAMAGE_ALREADY_ROLLED":        19,
-		"ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED":            20,
-		"ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED":              21,
-		"ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO":              22,
-		"ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN":               23,
-		"ENCOUNTER_BLOCKED_REASON_REACTION_PENDING":             24,
-		"ENCOUNTER_BLOCKED_REASON_NO_SLOT":                      25,
-		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED":            26,
-		"ENCOUNTER_BLOCKED_REASON_REACTION_USED":                27,
-		"ENCOUNTER_BLOCKED_REASON_ATTACKS_USED":                 28,
-		"ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE":               29,
-		"ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_NOT_DUE":           30,
-		"ENCOUNTER_BLOCKED_REASON_NOT_DYING":                    31,
-		"ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION":        32,
-		"ENCOUNTER_BLOCKED_REASON_NO_USES":                      33,
-		"ENCOUNTER_BLOCKED_REASON_NOT_ENDED":                    34,
-		"ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED":                 35,
-		"ENCOUNTER_BLOCKED_REASON_ENEMY_IN_THE_WAY":             36,
-		"ENCOUNTER_BLOCKED_REASON_TARGET_COVER_TOTAL":           37,
-		"ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG":        40,
-		"ENCOUNTER_BLOCKED_REASON_SUMMON_CHOICE_INVALID":        41,
-		"ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE":      42,
-		"ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK":       43,
-		"ENCOUNTER_BLOCKED_REASON_SUMMON_IN_COMBAT":             44,
-		"ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS":          45,
-		"ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING":          46,
-		"ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING":        47,
-		"ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ON_MAP":              50,
-		"ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ARMED":               51,
-		"ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW":          52,
-		"ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE":        53,
-		"ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_BEAST_NOT_ALLOWED": 55,
-		"ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE":        56,
-		"ENCOUNTER_BLOCKED_REASON_NOT_IN_WILD_SHAPE":            57,
-		"ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS":         58,
-		"ENCOUNTER_BLOCKED_REASON_FAMILIAR_SIGHT_BLOCKED":       59,
-		"ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED":                  60,
-		"ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY":                 61,
-		"ENCOUNTER_BLOCKED_REASON_NEEDS_A_MAP":                  62,
-		"ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP":           63,
-		"ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY":               64,
-		"ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN":       65,
-		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT":     66,
-		"ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST":          67,
-		"ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE":               68,
-		"ENCOUNTER_BLOCKED_REASON_TARGET_DEAD":                  69,
-		"ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE":               70,
-		"ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING":   71,
-		"ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER":      72,
-		"ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL":          73,
-		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL":     74,
-		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING":    75,
-		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED":     76,
-		"ENCOUNTER_BLOCKED_REASON_RAGE_END_PENDING":             77,
-		"ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING":         78,
-		"ENCOUNTER_BLOCKED_REASON_RAGING_CANNOT_CAST":           79,
-		"ENCOUNTER_BLOCKED_REASON_NOT_RAGING":                   80,
-		"ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE":          81,
-		"ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE":    82,
-		"ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE":            83,
-		"ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED":           84,
-		"ENCOUNTER_BLOCKED_REASON_CANNOT_ACT":                   100,
-		"ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE":     101,
-		"ENCOUNTER_BLOCKED_REASON_NOT_PRONE":                    102,
-		"ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP":              103,
-		"ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE":           104,
-		"ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT":                 105,
-		"ENCOUNTER_BLOCKED_REASON_TELEPORT_TOO_FAR":             106,
-		"ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE":      107,
-		"ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED":         108,
-		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET":      109,
-		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH":    110,
-		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":         111,
-		"ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED":    112,
-		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE":  113,
-		"ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON":             114,
-		"ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON":                 115,
-		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_OWN_TURN":           116,
-		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT":          117,
-		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN":     118,
-		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND":         119,
-		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE":        120,
+		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
+		"ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN":           1,
+		"ENCOUNTER_BLOCKED_REASON_NO_CURRENT_MAP":                   2,
+		"ENCOUNTER_BLOCKED_REASON_MAP_HAS_NO_GRID":                  3,
+		"ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP":                     4,
+		"ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE":                       5,
+		"ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED":                  6,
+		"ENCOUNTER_BLOCKED_REASON_INITIATIVE_MISSING":               7,
+		"ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET":           8,
+		"ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE":                  9,
+		"ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN":                    10,
+		"ENCOUNTER_BLOCKED_REASON_NOT_PLACED":                       11,
+		"ENCOUNTER_BLOCKED_REASON_TOO_FAR":                          12,
+		"ENCOUNTER_BLOCKED_REASON_SQUARE_OCCUPIED":                  13,
+		"ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT":                 14,
+		"ENCOUNTER_BLOCKED_REASON_ACTION_USED":                      15,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_OUT_OF_REACH":              16,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED":                  17,
+		"ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE":                   18,
+		"ENCOUNTER_BLOCKED_REASON_DAMAGE_ALREADY_ROLLED":            19,
+		"ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED":                20,
+		"ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED":                  21,
+		"ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO":                  22,
+		"ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN":                   23,
+		"ENCOUNTER_BLOCKED_REASON_REACTION_PENDING":                 24,
+		"ENCOUNTER_BLOCKED_REASON_NO_SLOT":                          25,
+		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED":                26,
+		"ENCOUNTER_BLOCKED_REASON_REACTION_USED":                    27,
+		"ENCOUNTER_BLOCKED_REASON_ATTACKS_USED":                     28,
+		"ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE":                   29,
+		"ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_NOT_DUE":               30,
+		"ENCOUNTER_BLOCKED_REASON_NOT_DYING":                        31,
+		"ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION":            32,
+		"ENCOUNTER_BLOCKED_REASON_NO_USES":                          33,
+		"ENCOUNTER_BLOCKED_REASON_NOT_ENDED":                        34,
+		"ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED":                     35,
+		"ENCOUNTER_BLOCKED_REASON_ENEMY_IN_THE_WAY":                 36,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_COVER_TOTAL":               37,
+		"ENCOUNTER_BLOCKED_REASON_CASTING_TIME_TOO_LONG":            40,
+		"ENCOUNTER_BLOCKED_REASON_SUMMON_CHOICE_INVALID":            41,
+		"ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE":          42,
+		"ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK":           43,
+		"ENCOUNTER_BLOCKED_REASON_SUMMON_IN_COMBAT":                 44,
+		"ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS":              45,
+		"ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING":              46,
+		"ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING":            47,
+		"ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ON_MAP":                  50,
+		"ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ARMED":                   51,
+		"ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW":              52,
+		"ENCOUNTER_BLOCKED_REASON_SEARCH_NEEDS_TWO_DICE":            53,
+		"ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_BEAST_NOT_ALLOWED":     55,
+		"ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE":            56,
+		"ENCOUNTER_BLOCKED_REASON_NOT_IN_WILD_SHAPE":                57,
+		"ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_NO_SPELLS":             58,
+		"ENCOUNTER_BLOCKED_REASON_FAMILIAR_SIGHT_BLOCKED":           59,
+		"ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED":                      60,
+		"ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY":                     61,
+		"ENCOUNTER_BLOCKED_REASON_NEEDS_A_MAP":                      62,
+		"ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP":               63,
+		"ENCOUNTER_BLOCKED_REASON_NO_OPPORTUNITY":                   64,
+		"ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN":           65,
+		"ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT":         66,
+		"ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST":              67,
+		"ENCOUNTER_BLOCKED_REASON_WALL_ON_SQUARE":                   68,
+		"ENCOUNTER_BLOCKED_REASON_TARGET_DEAD":                      69,
+		"ENCOUNTER_BLOCKED_REASON_NO_FREE_SQUARE":                   70,
+		"ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING":       71,
+		"ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER":          72,
+		"ENCOUNTER_BLOCKED_REASON_REACTION_NEEDS_ROLL":              73,
+		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_NEEDS_APPROVAL":         74,
+		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_PENDING":        75,
+		"ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED":         76,
+		"ENCOUNTER_BLOCKED_REASON_RAGE_END_PENDING":                 77,
+		"ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING":             78,
+		"ENCOUNTER_BLOCKED_REASON_RAGING_CANNOT_CAST":               79,
+		"ENCOUNTER_BLOCKED_REASON_NOT_RAGING":                       80,
+		"ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE":              81,
+		"ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE":        82,
+		"ENCOUNTER_BLOCKED_REASON_RECKLESS_TOO_LATE":                83,
+		"ENCOUNTER_BLOCKED_REASON_CHARACTER_RESERVED":               84,
+		"ENCOUNTER_BLOCKED_REASON_CANNOT_ACT":                       100,
+		"ENCOUNTER_BLOCKED_REASON_EXTRA_ACTION_UNAVAILABLE":         101,
+		"ENCOUNTER_BLOCKED_REASON_NOT_PRONE":                        102,
+		"ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP":                  103,
+		"ENCOUNTER_BLOCKED_REASON_FRENZY_UNAVAILABLE":               104,
+		"ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT":                     105,
+		"ENCOUNTER_BLOCKED_REASON_TELEPORT_TOO_FAR":                 106,
+		"ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE":          107,
+		"ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED":             108,
+		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET":          109,
+		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH":        110,
+		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":             111,
+		"ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED":        112,
+		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE":      113,
+		"ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON":                 114,
+		"ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON":                     115,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_OWN_TURN":               116,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT":              117,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN":         118,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND":             119,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE":            120,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT":   121,
+		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE": 122,
 	}
 )
 
@@ -18633,7 +18643,11 @@ type CombatLogEffect struct {
 	ExhaustionBefore int32 `protobuf:"varint,13,opt,name=exhaustion_before,json=exhaustionBefore,proto3" json:"exhaustion_before,omitempty"`
 	// ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
 	// EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
-	Reason        string `protobuf:"bytes,14,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,14,opt,name=reason,proto3" json:"reason,omitempty"`
+	// SAVED, the master's line alone: the save failed and the master turned it into a success (`d20`,
+	// `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
+	Resisted      bool  `protobuf:"varint,16,opt,name=resisted,proto3" json:"resisted,omitempty"`
+	ResistedLeft  int32 `protobuf:"varint,17,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18771,6 +18785,20 @@ func (x *CombatLogEffect) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *CombatLogEffect) GetResisted() bool {
+	if x != nil {
+		return x.Resisted
+	}
+	return false
+}
+
+func (x *CombatLogEffect) GetResistedLeft() int32 {
+	if x != nil {
+		return x.ResistedLeft
+	}
+	return 0
 }
 
 // CombatLogLegendarySpent is the master's line of a spend of legendary actions.
@@ -23691,9 +23719,17 @@ type ResolveConcentrationSaveRequest struct {
 	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
 	// maneuver the character has not or that does not go on this roll, and with a resource
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
-	ManeuverKey   string `protobuf:"bytes,102,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ManeuverKey string `protobuf:"bytes,102,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// The master's choice, made with the roll: when the saving throw of a creature whose stat block has
+	// Legendary Resistance fails, it succeeds instead and one use is spent, in the same change (SRD 5.1).
+	// A save that succeeds spends nothing and the flag is ignored, as it is on a skipped or kept one. The
+	// master only: a player gets `permission_denied`. Refused with EncounterBlocked
+	// LEGENDARY_RESISTANCE_UNAVAILABLE for a combatant without the trait (before the roll) and
+	// LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
+	// the creature is incapacitated.
+	UseLegendaryResistance bool `protobuf:"varint,103,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ResolveConcentrationSaveRequest) Reset() {
@@ -23816,6 +23852,13 @@ func (x *ResolveConcentrationSaveRequest) GetManeuverKey() string {
 		return x.ManeuverKey
 	}
 	return ""
+}
+
+func (x *ResolveConcentrationSaveRequest) GetUseLegendaryResistance() bool {
+	if x != nil {
+		return x.UseLegendaryResistance
+	}
+	return false
 }
 
 type isResolveConcentrationSaveRequest_Roll interface {
@@ -23958,7 +24001,11 @@ type ConcentrationSaveResult struct {
 	SpellKey    string `protobuf:"bytes,4,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
 	SpellNamePt string `protobuf:"bytes,5,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	// The Bardic Inspiration die the player added after the d20, already in the total of `save`.
-	BonusDice     []*BonusDie `protobuf:"bytes,6,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
+	BonusDice []*BonusDie `protobuf:"bytes,6,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
+	// The master's answer only: the save failed and `use_legendary_resistance` turned it into a success
+	// (`kept` is true, `save` and `dc` are the roll that failed), and the uses the creature has left.
+	Resisted      bool  `protobuf:"varint,7,opt,name=resisted,proto3" json:"resisted,omitempty"`
+	ResistedLeft  int32 `protobuf:"varint,8,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -24033,6 +24080,20 @@ func (x *ConcentrationSaveResult) GetBonusDice() []*BonusDie {
 		return x.BonusDice
 	}
 	return nil
+}
+
+func (x *ConcentrationSaveResult) GetResisted() bool {
+	if x != nil {
+		return x.Resisted
+	}
+	return false
+}
+
+func (x *ConcentrationSaveResult) GetResistedLeft() int32 {
+	if x != nil {
+		return x.ResistedLeft
+	}
+	return 0
 }
 
 // RequestRollModeRequest asks the master for a better mode for an attack.
@@ -26180,7 +26241,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10expires_at_round\x18\n" +
 	" \x01(\x05R\x0eexpiresAtRoundB\t\n" +
 	"\a_healedB\x11\n" +
-	"\x0f_nothing_reason\"\xbe\x04\n" +
+	"\x0f_nothing_reason\"\xff\x04\n" +
 	"\x0fCombatLogEffect\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -26198,7 +26259,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06amount\x18\v \x01(\x05R\x06amount\x12)\n" +
 	"\x10exhaustion_level\x18\f \x01(\x05R\x0fexhaustionLevel\x12+\n" +
 	"\x11exhaustion_before\x18\r \x01(\x05R\x10exhaustionBefore\x12\x16\n" +
-	"\x06reason\x18\x0e \x01(\tR\x06reasonB\x06\n" +
+	"\x06reason\x18\x0e \x01(\tR\x06reason\x12\x1a\n" +
+	"\bresisted\x18\x10 \x01(\bR\bresisted\x12#\n" +
+	"\rresisted_left\x18\x11 \x01(\x05R\fresistedLeftB\x06\n" +
 	"\x04_d20B\b\n" +
 	"\x06_totalB\x05\n" +
 	"\x03_dc\"N\n" +
@@ -26643,7 +26706,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xbc\x03\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xf6\x03\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -26656,7 +26719,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12&\n" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
-	"\fmaneuver_key\x18f \x01(\tR\vmaneuverKeyB\x06\n" +
+	"\fmaneuver_key\x18f \x01(\tR\vmaneuverKey\x128\n" +
+	"\x18use_legendary_resistance\x18g \x01(\bR\x16useLegendaryResistanceB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xfe\x02\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +
@@ -26665,7 +26729,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11inspiration_offer\x18\x03 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
 	"\vlucky_offer\x18\x04 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
-	"\x0fheld_roll_offer\x18\x05 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xe5\x01\n" +
+	"\x0fheld_roll_offer\x18\x05 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xa6\x02\n" +
 	"\x17ConcentrationSaveResult\x12,\n" +
 	"\x04save\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04save\x12\x0e\n" +
 	"\x02dc\x18\x02 \x01(\x05R\x02dc\x12\x12\n" +
@@ -26673,7 +26737,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tspell_key\x18\x04 \x01(\tR\bspellKey\x12\"\n" +
 	"\rspell_name_pt\x18\x05 \x01(\tR\vspellNamePt\x127\n" +
 	"\n" +
-	"bonus_dice\x18\x06 \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice\"\xb1\x02\n" +
+	"bonus_dice\x18\x06 \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice\x12\x1a\n" +
+	"\bresisted\x18\a \x01(\bR\bresisted\x12#\n" +
+	"\rresisted_left\x18\b \x01(\x05R\fresistedLeft\"\xb1\x02\n" +
 	"\x16RequestRollModeRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -26789,7 +26855,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\x9a&\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\x96'\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -26892,7 +26958,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	",ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT\x10u\x125\n" +
 	"1ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN\x10v\x121\n" +
 	"-ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND\x10w\x122\n" +
-	".ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE\x10x*\x91\x03\n" +
+	".ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE\x10x\x12;\n" +
+	"7ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT\x10y\x12=\n" +
+	"9ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE\x10z*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

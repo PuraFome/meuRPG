@@ -474,6 +474,12 @@ type actionEvent struct {
 	// carries the word (RN-20, RN-29).
 	SpendCost int32  `json:"spend_cost,omitempty"`
 	SpendName string `json:"spend_name,omitempty"`
+	// Resisted says the actor's saving throw failed and the master made it a success, and ResistLeft
+	// how many uses of the trait the creature had left then. The event keeps the roll that failed and
+	// says "succeeded" in everything a player reads; the master's line alone tells the rest. Neutral
+	// names on purpose, as above.
+	Resisted   bool  `json:"resisted,omitempty"`
+	ResistLeft int32 `json:"resist_left,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`

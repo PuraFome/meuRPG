@@ -11,6 +11,8 @@ describe('combat errors', () => {
       EncounterBlockedReason.LEGENDARY_OPTION_UNKNOWN,
       EncounterBlockedReason.LEGENDARY_WRONG_KIND,
       EncounterBlockedReason.LEGENDARY_UNAVAILABLE,
+      EncounterBlockedReason.LEGENDARY_RESISTANCE_NONE_LEFT,
+      EncounterBlockedReason.LEGENDARY_RESISTANCE_UNAVAILABLE,
     ]) {
       expect(blockedMessage({ reason } as never)).toMatch(/[Nn]ada foi gasto\./);
     }

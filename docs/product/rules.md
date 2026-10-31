@@ -411,6 +411,7 @@ The master sees everything.
 - The same holds for damage on a character after the master applies it (a spell's, a creature action's or a rider's): the target's owner and the master read the amount taken, every other player reads the amount as rolled, so the line never tells what the target resists.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
+- **A creature's trait that turns a failed saving throw into a success** (Legendary Resistance) is the master's: a player reads that the creature's save succeeded, never the roll that failed, how many uses are left or the name of the trait.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.
 
 **Joint turns.**
@@ -743,6 +744,9 @@ The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 X
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
 In theatre of the mind (RN-25) monsters have no square.
+A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice: for the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll, and a roll that fails becomes a success that spends one use.
+A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and the uses are the combat's (a new combat starts with all of them).
+The master's log line says the roll and the choice; the player's line says the save succeeded (RN-20).
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates

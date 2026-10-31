@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -90,9 +89,7 @@ func (s *Service) legendaryCheck(ctx context.Context, c *combatTx, ask legendary
 	if err != nil {
 		return none, err
 	}
-	var used int
-	_ = json.Unmarshal(spent[spentLegendaryActions], &used) // a missing value counts as 0
-	if opt.Cost > p.PerRound-used {
+	if opt.Cost > p.PerRound-spent.count(spentLegendaryActions) {
 		return none, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT, "the creature has fewer legendary actions left than the option costs")
 	}
 	return opt, nil

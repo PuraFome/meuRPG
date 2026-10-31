@@ -68,6 +68,27 @@ describe('the lasting effect lines of the log', () => {
     ).toBe('Brisa falhou no teste de Sabedoria contra Heroísmo');
   });
 
+  it('tells the master a save he made a success, and tells nobody else', () => {
+    const resisted = effect({
+      change: CombatLogEffectChange.SAVED,
+      sourceNamePt: 'Imobilizar Pessoa',
+      targetLabels: ['Draco'],
+      abilityNamePt: 'Sabedoria',
+      d20: 3,
+      total: 10,
+      dc: 15,
+      resisted: true,
+      resistedLeft: 2,
+    });
+    expect(logLine(resisted, '', { master: true, players: new Set() })?.text).toBe(
+      'O Draco falhou no teste de Sabedoria contra Imobilizar Pessoa (d20 3, total 10 contra CD 15) e usou Resistência Lendária: sucesso (restam 2)',
+    );
+    // A player's entry never has the flag; read as a player it is the line of a save that passed.
+    expect(text(effect({ change: CombatLogEffectChange.SAVED, targetLabels: ['Draco'] }))).toBe(
+      'O Draco passou no teste contra Heroísmo',
+    );
+  });
+
   it('tags a natural 20 or 1 on a save, for the master only, and never as a result', () => {
     const save = (d20: number) =>
       effect({

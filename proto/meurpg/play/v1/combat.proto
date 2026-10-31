@@ -1969,6 +1969,12 @@ enum EncounterBlockedReason {
   // The same: the combatant is no creature with legendary actions, or it is defeated or
   // incapacitated.
   ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE = 120;
+  // RollEffectSave and ResolveConcentrationSave with `use_legendary_resistance`: the saving throw
+  // failed and every use of the creature's trait is spent. Nothing changes.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT = 121;
+  // The same: the creature is no creature with the trait (the combatant is a player's character
+  // or its stat block does not have it). Refused before the roll; nothing changes.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -5466,6 +5472,10 @@ message CombatLogEffect {
   // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
   // EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
   string reason = 14;
+  // SAVED, the master's line alone: the save failed and the master turned it into a success (`d20`,
+  // `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
+  bool resisted = 16;
+  int32 resisted_left = 17;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -6401,6 +6411,14 @@ message ResolveConcentrationSaveRequest {
   // maneuver the character has not or that does not go on this roll, and with a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 102;
+  // The master's choice, made with the roll: when the saving throw of a creature whose stat block has
+  // Legendary Resistance fails, it succeeds instead and one use is spent, in the same change (SRD 5.1).
+  // A save that succeeds spends nothing and the flag is ignored, as it is on a skipped or kept one. The
+  // master only: a player gets `permission_denied`. Refused with EncounterBlocked
+  // LEGENDARY_RESISTANCE_UNAVAILABLE for a combatant without the trait (before the roll) and
+  // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
+  // the creature is incapacitated.
+  bool use_legendary_resistance = 103;
 }
 
 message ResolveConcentrationSaveResponse {
@@ -6437,6 +6455,10 @@ message ConcentrationSaveResult {
   string spell_name_pt = 5;
   // The Bardic Inspiration die the player added after the d20, already in the total of `save`.
   repeated BonusDie bonus_dice = 6;
+  // The master's answer only: the save failed and `use_legendary_resistance` turned it into a success
+  // (`kept` is true, `save` and `dc` are the roll that failed), and the uses the creature has left.
+  bool resisted = 7;
+  int32 resisted_left = 8;
 }
 
 // RequestRollModeRequest asks the master for a better mode for an attack.

@@ -39,6 +39,13 @@ var errCreatureSpentFull = fmt.Errorf("what the creature spent does not fit in %
 // its value is.
 type spentValues map[string]json.RawMessage
 
+// count is what was spent under key: 0 when it is absent or not a whole number.
+func (v spentValues) count(key string) int {
+	var n int
+	_ = json.Unmarshal(v[key], &n)
+	return n
+}
+
 // creatureSpentOf reads what a combatant spent for the view: the whole numbers, every key
 // of them, the ones this package does not know too.
 func creatureSpentOf(raw []byte) map[string]int {

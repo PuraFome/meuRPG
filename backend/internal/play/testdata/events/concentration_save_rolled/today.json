@@ -454,6 +454,8 @@
   "extra_used": true,
   "spend_cost": 1,
   "spend_name": "x",
+  "resisted": true,
+  "resist_left": 1,
   "action_before": true,
   "bonus_before": true,
   "reaction_before": true,

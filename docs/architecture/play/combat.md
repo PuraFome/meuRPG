@@ -119,6 +119,7 @@ Its stream hints, `encounter_changed` and `combat_log_changed`, go to the master
 An attack and a move are the ordinary lines every player reads, with the ordinary hints.
 Their event keeps the cost as `spend_cost`, a name that does not say what paid it (RN-20, RN-29).
 A legendary attack that a reaction window holds spends nothing while it waits; the replay the last answer releases spends its cost once, as the master that asked.
+Legendary Resistance is a trait of the same stat block: see [Legendary Resistance](creatures.md#legendary-resistance).
 
 ## How `play` reads the other modules
 

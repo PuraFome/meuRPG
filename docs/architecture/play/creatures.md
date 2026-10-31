@@ -100,6 +100,35 @@ Some combat paths ask "does it hold HP on the combatant?" (`holdsHP`: NPC or cre
 Creatures never "fall" (`isDown`), have no death saves or confirmation, cast no Shield, spend no slots, never get `ApplyPendingDamage`, are never hidden, give no XP (only a defeated NPC does), and are not in the highlights for the owner.
 Tests: `TestMR037_TheKindAudit`, `TestMR037_ACreatureAtZeroLeavesAndTheHitPointsGoBack`, `TestRN20_CreatureHitPointsOnlyToOwnerAndMaster`, `TestMR037_ACreatureMovesLikeAnyCombatant`, `TestMR037_ADismissedCreatureBlocksNoSquare`, `TestMR037_SummonOptions`, `TestRN20_SummonOptionsCarryNoHitPoints`.
 
+## Legendary Resistance
+
+A creature whose stat block has the Legendary Resistance trait (SRD 5.1, "3/Day") can choose to succeed on a saving throw it fails.
+The number of uses a day is the trait's own, read from the stat block (`LegendaryProfile.ResistancePerDay`).
+The uses spent are kept on the combatant as `creature_spent.legendary_resistance` ([Data](../../data/combat.md)).
+A combat row starts with none spent, so the "day" is the rest between combats at the table: the app carries no use from one combat to the next.
+It is a trait, not an action: it works on the creature's own turn, on another's, and while the creature is incapacitated.
+Only the master chooses it, and only for a creature that has the trait: a player's character and a creature without it never do.
+
+The saves the master rolls for the creature take the choice with the roll (`legendaryResistOpen`, `legendaryResist.resists`, `combat_legendary_resist.go`):
+
+| Save | Call | Field |
+| --- | --- | --- |
+| An effect's save, at the start or end of the turn or after damage, and a zone's | `RollEffectSave` | `use_legendary_resistance` |
+| The Constitution save to keep a concentration | `ResolveConcentrationSave` | `use_legendary_resistance` |
+
+The master does not need to guess before the dice.
+When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
+When the roll succeeds, nothing is spent and the choice is ignored; so it is for a save the master skips or keeps.
+The refusals change nothing: `permission_denied` for a player, `LEGENDARY_RESISTANCE_UNAVAILABLE` for a combatant without the trait (before the roll), and `LEGENDARY_RESISTANCE_NONE_LEFT` for a failed save with no use left.
+A request sent twice spends once.
+
+**Who sees what (RN-20, RN-29).**
+The master reads the roll that failed, the choice and the uses left, in the result of the call, in `Combatant.legendary.resistance_left` and in a log line of his own: "falhou no teste (…) e usou Resistência Lendária: sucesso (restam 2)".
+A player reads the line of a save that succeeded, the same one a roll that passed writes: the effect ends or the concentration is kept, with no roll, no count and no name for the trait.
+The event is the ordinary save event, with `resisted` and `resist_left`, neutral names that no player-visible payload carries.
+The hints are those of a save that passed, so the stream tells a player nothing more.
+The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.
+
 ## On screen
 
 The browser reads the list with `ListCharacterCreatures`, the sheets with `ContentService.GetCreature` (kept in memory; public rules), the master's catalogue with `ListCreatures` and what the sheet can summon with `GetSummonOptions`, and casts with `CastSummon`.

@@ -173,6 +173,9 @@ func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentration
 	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
 		return call, err
 	}
+	if err := refuseResistance(call.m, msg.GetUseLegendaryResistance()); err != nil {
+		return call, err
+	}
 	if call.key, call.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
@@ -292,6 +295,10 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if call.handOver {
 		return nil, s.handSaveToMaster(ctx, c, w, t)
 	}
+	legendary, err := s.legendaryResistOpen(ctx, c, reactor, call.msg.GetUseLegendaryResistance())
+	if err != nil {
+		return nil, err
+	}
 	dc := clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 	ev := actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Key: t.Key, Pending: t.Pending}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.Concentration), Window: w.ID, ByMaster: master, Spell: t.Spell, SaveDC: dc}
@@ -301,6 +308,9 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	}
 	if run.offer != nil || run.lucky != nil { // the d20 is kept for a question: nothing is written
 		return nil, nil
+	}
+	if kept, err = legendary.resistConcentration(ctx, c, reactor, kept, &ev, run); err != nil {
+		return nil, err
 	}
 	if !kept {
 		if err := s.loseConcentration(ctx, c, reactor); err != nil {
