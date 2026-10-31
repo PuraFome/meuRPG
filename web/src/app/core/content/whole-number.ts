@@ -17,7 +17,8 @@ export function readWhole(text: string, signed: boolean): number {
     return Number.NaN;
   }
   const n = Number(t);
-  return Number.isSafeInteger(n) && n >= WHOLE_MIN && n <= WHOLE_MAX ? n : Number.NaN;
+  // "-0" is 0, not the negative zero Number() reads
+  return Number.isSafeInteger(n) && n >= WHOLE_MIN && n <= WHOLE_MAX ? n + 0 : Number.NaN;
 }
 
 /** The text a stored count shows: empty for 0 ("not set"). */
