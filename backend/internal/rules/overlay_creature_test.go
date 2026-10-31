@@ -20,7 +20,7 @@ func packLeaderCreature() TableCreature {
 	return TableCreature{
 		TableEntry: TableEntry{Key: packLeader, NamePT: "Lobo Alfa"}, BaseKey: wolfKey,
 		HitPoints: 30, ArmorClass: 15, DamageBonus: 3,
-		Traits: []TableCreatureTrait{{NamePT: "Uivo de Comando", TextPT: "Aliados a 30 pés ouvem o uivo."}},
+		Traits: []TableCreatureTrait{{NamePT: "Uivo do Alfa", TextPT: "Aliados a 30 pés ouvem o uivo."}},
 	}
 }
 
@@ -58,11 +58,11 @@ func TestACreatureHasTheAdjustmentsInItsDerived(t *testing.T) {
 	for _, f := range d.Features {
 		names = append(names, f.Name)
 	}
-	if want := append(featureNames(base), "Uivo de Comando"); !slices.Equal(names, want) {
+	if want := append(featureNames(base), "Uivo do Alfa"); !slices.Equal(names, want) {
 		t.Errorf("features = %v, want %v", names, want)
 	}
 	last := d.Features[len(d.Features)-1]
-	if last.Key != packLeader+"#uivo-de-comando" || last.Description[0] != "Aliados a 30 pés ouvem o uivo." || last.SourcePT != "Lobo Alfa" {
+	if last.Key != packLeader+"#uivo-do-alfa" || last.Description[0] != "Aliados a 30 pés ouvem o uivo." || last.SourcePT != "Lobo Alfa" {
 		t.Errorf("trait = %+v", last)
 	}
 	// The plan reads the adjusted damage too.
@@ -124,7 +124,7 @@ func TestACreatureResolvesWhereAnSRDCreatureDoes(t *testing.T) {
 	if !ok || cr.NamePT != "Lobo Alfa" || cr.HitPoints != 30 || cr.ArmorClass != 15 || cr.Size != "Medium" || cr.Type != "beast" {
 		t.Errorf("CreatureByKey = %+v, %v", cr.CreatureEntry, ok)
 	}
-	if len(cr.Traits) == 0 || cr.Traits[len(cr.Traits)-1].Name != "Uivo de Comando" {
+	if len(cr.Traits) == 0 || cr.Traits[len(cr.Traits)-1].Name != "Uivo do Alfa" {
 		t.Errorf("traits = %+v, want the table's last", cr.Traits)
 	}
 	if len(cr.Actions) == 0 || cr.Actions[0].Plan == nil {
@@ -151,7 +151,7 @@ func TestACreatureResolvesWhereAnSRDCreatureDoes(t *testing.T) {
 	if !c.HasCreature("monster:wolf") {
 		t.Error("HasCreature(monster:wolf) = false")
 	}
-	if err := c.c.checkSummonCreatures([]string{packLeader}, map[string]bool{}, func(f string, a ...any) error { return errors.New(f) }); err != nil {
+	if err := c.c.checkSummonCreatures([]string{packLeader}, map[string]bool{}, func(f string, _ ...any) error { return errors.New(f) }); err != nil {
 		t.Errorf("a summon refuses the table creature: %v", err)
 	}
 	if got := c.Creatures(); len(got) != 1 || got[0].Key != packLeader || got[0].BaseKey != wolfKey || got[0].NamePT != "Lobo Alfa" {
@@ -360,14 +360,22 @@ func TestATraitMayNotTakeANameTheEngineUsesOrTheBaseHas(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
 	cases := []struct{ base, name string }{
-		{wolfKey, "Bite"}, {wolfKey, "bite"}, {wolfKey, "Keen Hearing and Smell"},
-		{"monster:brown-bear", "Multiattack"}, {"monster:brown-bear", "Claws"},
-		{wolfKey, "Magic Weapons"}, {wolfKey, "magic weapons"}, {wolfKey, "Spellcasting"},
-		{wolfKey, "SPELLCASTING"}, {wolfKey, "Innate Spellcasting"},
+		{wolfKey, "Bite"},
+		{wolfKey, "bite"},
+		{wolfKey, "Keen Hearing and Smell"},
+		{"monster:brown-bear", "Multiattack"},
+		{"monster:brown-bear", "Claws"},
+		{wolfKey, "Magic Weapons"},
+		{wolfKey, "magic weapons"},
+		{wolfKey, "Spellcasting"},
+		{wolfKey, "SPELLCASTING"},
+		{wolfKey, "Innate Spellcasting"},
 	}
 	for _, tc := range cases {
-		cr := TableCreature{TableEntry: TableEntry{Key: packLeader, NamePT: "Lobo Alfa"}, BaseKey: tc.base,
-			Traits: []TableCreatureTrait{{NamePT: tc.name, TextPT: "x"}}}
+		cr := TableCreature{
+			TableEntry: TableEntry{Key: packLeader, NamePT: "Lobo Alfa"}, BaseKey: tc.base,
+			Traits: []TableCreatureTrait{{NamePT: tc.name, TextPT: "x"}},
+		}
 		_, err := srd.With(creatureOverlay(cr))
 		oe, ok := errors.AsType[*OverlayError](err)
 		if !ok || oe.Reason != ReasonName || !strings.HasSuffix(oe.Field, ".traits[0].name_pt") {
@@ -523,8 +531,15 @@ func TestTheDamageBonusReadsEveryShapeOfAction(t *testing.T) {
 		dice, want string
 		n          int
 	}{
-		{"2d4+2", "2d4+5", 3}, {"1d6", "1d6+1", 1}, {"1d6", "1d6-2", -2}, {"2d6-1", "2d6", 1},
-		{"5", "8", 3}, {"1", "0", -10}, {"0", "0", -1}, {"1d8 + MOD", "1d8 + MOD", 5}, {"4d6 OR 5d6", "4d6 OR 5d6", 2},
+		{"2d4+2", "2d4+5", 3},
+		{"1d6", "1d6+1", 1},
+		{"1d6", "1d6-2", -2},
+		{"2d6-1", "2d6", 1},
+		{"5", "8", 3},
+		{"1", "0", -10},
+		{"0", "0", -1},
+		{"1d8 + MOD", "1d8 + MOD", 5},
+		{"4d6 OR 5d6", "4d6 OR 5d6", 2},
 	} {
 		if got := addDiceBonus(tc.dice, tc.n); got != tc.want {
 			t.Errorf("addDiceBonus(%q, %d) = %q, want %q", tc.dice, tc.n, got, tc.want)
