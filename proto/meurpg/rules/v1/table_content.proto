@@ -1,8 +1,8 @@
 syntax = "proto3";
 
 // The table's own rules content (MR-025, MR-025, RN-23, ADR-0018): the classes,
-// subclasses, races, subraces, backgrounds, spells and feats that the master writes
-// for one campaign, and the content pack that carries them from one campaign to
+// subclasses, races, subraces, backgrounds, spells, feats, options, class features
+// and creatures that the master writes for one campaign, and the content pack that carries them from one campaign to
 // another (ExportTableContent, ImportTableContent). The RPCs are TableContentService's, below; the catalog the
 // character editor builds from is ContentService.ListContent (rules.proto).
 //
@@ -54,6 +54,10 @@ enum TableContentKind {
   // character of the class has it from that level, and it may take the place of a
   // feature the class has (MR-025).
   TABLE_CONTENT_KIND_CLASS_FEATURE = 9;
+  // A creature: an SRD creature with a few adjustments (hit points, armor class, a
+  // damage bonus, extra traits). Wherever an SRD creature is used (summons, Wild Shape,
+  // the creature list), the table's creature is used the same way, by its own key.
+  TABLE_CONTENT_KIND_CREATURE = 10;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -96,6 +100,7 @@ message TableEntry {
     TableFeat table_feat = 17;
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
+    TableCreature table_creature = 20;
   }
 }
 
@@ -448,6 +453,39 @@ message TableClassFeature {
   string replaces_feature_key = 5;
   // At most 20. A `choice` effect asks the player at the level, like any feature's.
   repeated TableEffect effects = 6;
+}
+
+// TableCreature is a creature the master adds as a table entry "creature:<slug>@mesa":
+// an SRD creature (`base_key`) with a few adjustments. The creature has everything the
+// base has (abilities, speeds, senses, actions, reactions) except what is adjusted here.
+// Once the entry exists it is a creature like the SRD's, by its own key: the creature
+// list and sheet, summons, Wild Shape and combat read it where they read an SRD creature.
+// A later slice may add a full stat block of the master's own as another field.
+message TableCreature {
+  string name_pt = 1;
+  // The SRD creature it is made from ("monster:wolf"). It must exist, and it is always an
+  // SRD creature: a table creature is never the base of another. Never changes.
+  string base_key = 2;
+  // The creature's maximum hit points, 1 to 9999. 0 keeps the base's. The hit dice of the
+  // base stay as they are.
+  int32 hit_points = 3;
+  // The creature's armor class, 1 to 40. 0 keeps the base's. The notes the SRD gives for
+  // the base's armor class (worn armor, a spell) are left out.
+  int32 armor_class = 4;
+  // A whole number from -10 to 30 added once to the damage of every attack action of the
+  // creature (to the first damage part of each). 0 adds nothing. The text of the action
+  // is the base's and does not show it.
+  int32 damage_bonus = 5;
+  // Traits added after the base's special abilities, as text only: at most 10.
+  repeated TableCreatureTrait traits = 6;
+}
+
+// TableCreatureTrait is a trait of a table creature: a name and a text, no effects.
+message TableCreatureTrait {
+  // 1 to 80 characters, on one line.
+  string name_pt = 1;
+  // 1 to 4000 characters.
+  string text_pt = 2;
 }
 
 // TableCasting is how a class, or a third caster's subclass, casts.
@@ -1076,6 +1114,7 @@ message CreateTableEntryRequest {
     TableFeat table_feat = 17;
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
+    TableCreature table_creature = 20;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -1111,6 +1150,7 @@ message UpdateTableEntryRequest {
     TableFeat table_feat = 17;
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
+    TableCreature table_creature = 20;
   }
 }
 
@@ -1273,7 +1313,8 @@ message ListOptionSwitchesRequest {
 // OptionSwitchEntry is one option in the master's list.
 message OptionSwitchEntry {
   string key = 1;
-  // The kind of the option (class, subclass, race, subrace, background, spell, feat).
+  // The kind of the option (class, subclass, race, subrace, background, spell, feat,
+  // option, class feature, creature).
   TableContentKind kind = 2;
   string name_pt = 3;
   // True for the table's own entry ("@mesa"), false for the SRD's.
