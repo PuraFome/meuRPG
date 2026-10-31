@@ -339,7 +339,9 @@ jobs:
           FRESH: ${{ matrix.fresh || false }}
           STARTED: ${{ steps.setup.outputs.started }}
         run: |
-          echo "{\"fresh\": $FRESH, \"seconds\": $(( $(date +%s) - STARTED ))}" | tee "$RUNNER_TEMP/e2e-setup.json"
+          # GREP holds several flags, so it is word-split on purpose.
+          # shellcheck disable=SC2086
+          node ../.github/scripts/e2e-shards.mjs setup "$FRESH" "$STARTED" $GREP | tee "$RUNNER_TEMP/e2e-setup.json"
           # FRESH_FLAG and GREP hold flags, so they are word-split on purpose.
           # shellcheck disable=SC2086
           node ../.github/scripts/e2e-shards.mjs list "$SHARD" $FRESH_FLAG $GREP > "$RUNNER_TEMP/tests.txt"

@@ -162,13 +162,14 @@ The `e2e` workflow runs the Playwright suite against the local stack.
   `e2e-list-reporter.mjs` finds the groups, and `check` fails when a group is in two lists.
   The fresh shard (`--fresh-shard=<n>`) gets less test time, because its migrations and the devidp check make its setup slower.
   Its extra setup time is the entry `(extra setup of the fresh shard)` of `e2e/timings.json`.
+  The durations are summed over a shard's workers, so the entry is the extra wall-clock seconds times the workers of the run (Playwright's default is half the CPUs).
   A test the file does not know runs too, in the shard with the least time, and the step prints a notice with how many are missing.
   The `setup` project runs ahead of every shard, so it is in one list and weighs nothing.
   `lint and typecheck` runs `e2e-shards.mjs check`, which fails unless every test is in exactly one list, read back through Playwright's `--test-list`.
   A change to the split script or the reporter runs all nine shards.
   `nightly-hunt` keeps Playwright's own `--shard`.
 - Refresh `e2e/timings.json` when the notice counts missing tests, or when the shards stop finishing together.
-  Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`: the Playwright report and `e2e-setup.json`, how long the shard's setup took.
+  Every shard of a green run uploads its timing as the artifact `e2e-timing-<n>`: the Playwright report and `e2e-setup.json`, how long the shard's setup took and how many workers the run uses.
   The upload never turns a shard red when its tests passed.
   Download the artifacts of a run of all nine shards and run:
 

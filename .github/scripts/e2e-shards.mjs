@@ -3,11 +3,12 @@
 //
 //   e2e-shards.mjs list <index>/<count> [--fresh-shard=<n>] [playwright args]   the --test-list file of one shard, on stdout
 //   e2e-shards.mjs check <count> [--fresh-shard=<n>] [playwright args]          fails unless every test is in exactly one of the shards
+//   e2e-shards.mjs setup <true|false> <started> [playwright args]                the setup file of a shard (seconds since <started>, workers), on stdout
 //   e2e-shards.mjs timings <file.json>...                                       the timing file, from the files a shard uploads, on stdout
 //
 // The playwright args (a --grep, a --grep-invert) select the tests to split, as they select the tests to run.
 // The timing file is e2e/timings.json: one duration in seconds per test, keyed by the line of the test list, and the
-// seconds the fresh shard spends on its setup beyond the others' (FRESH_KEY).
+// load the fresh shard's slower setup stands for (FRESH_KEY), in the unit of the durations.
 // A `test.describe.configure({ mode: 'serial' })` group is placed whole in one shard, as one unit of the summed time.
 import { execFile } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -80,12 +81,15 @@ export function split(tests, timings, count, startup = []) {
   return shards;
 }
 
-// What the fresh shard's setup costs beyond the others': the files are {fresh, seconds} of every shard of a run.
+// What the fresh shard's setup costs beyond the others', in the unit of the test durations: those are summed over a
+// shard's workers, and the setup is wall-clock time in which every worker would have run tests, so the extra seconds
+// are multiplied by the workers. The files are {fresh, seconds, workers} of every shard of a run.
 export function freshOverhead(setups) {
   const fresh = setups.filter((setup) => setup.fresh);
   const others = setups.filter((setup) => !setup.fresh).map((setup) => setup.seconds);
   if (fresh.length === 0 || others.length === 0) return undefined;
-  return Math.max(0, Math.round(Math.max(...fresh.map((setup) => setup.seconds)) - median(others)));
+  const slowest = fresh.reduce((a, b) => (b.seconds > a.seconds ? b : a));
+  return Math.max(0, Math.round((slowest.seconds - median(others)) * (slowest.workers ?? 1)));
 }
 
 // Durations in seconds of the passed tests of Playwright JSON reports; a test that several reports hold keeps its longest.
@@ -109,13 +113,12 @@ export function timingsOf(files) {
 const e2eDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'e2e');
 const reporter = join(dirname(fileURLToPath(import.meta.url)), 'e2e-list-reporter.mjs');
 
-// The tests `playwright test --list` selects, as {key, group}.
+// The tests `playwright test --list` selects, as {key, group}, and the workers a run would use.
 async function listTests(args, extra = []) {
-  // With a report file named in the environment the json reporter writes there and prints nothing.
-  const { PLAYWRIGHT_JSON_OUTPUT_NAME: _unused, ...env } = process.env;
   try {
-    const { stdout } = await run('npx', ['playwright', 'test', '--list', `--reporter=${reporter}`, ...args, ...extra], { cwd: e2eDir, env, encoding: 'utf8', maxBuffer: 1 << 28 });
-    return JSON.parse(stdout).tests.map((test) => ({ key: testKey(test.project, test.file, test.titles), group: test.group }));
+    const { stdout } = await run('npx', ['playwright', 'test', '--list', `--reporter=${reporter}`, ...args, ...extra], { cwd: e2eDir, env: process.env, encoding: 'utf8', maxBuffer: 1 << 28 });
+    const listed = JSON.parse(stdout);
+    return { workers: listed.workers, tests: listed.tests.map((test) => ({ key: testKey(test.project, test.file, test.titles), group: test.group })) };
   } catch (error) {
     throw new Error(`playwright --list failed (${error.code ?? error.name}):\n${error.stderr ?? error.message}`);
   }
@@ -147,7 +150,7 @@ function takeFresh(args, count) {
 
 async function shardsOf(args, count) {
   const { fresh, args: playwrightArgs } = takeFresh(args, count);
-  const tests = await listTests(playwrightArgs);
+  const { tests } = await listTests(playwrightArgs);
   const timings = readTimings();
   const missing = tests.filter((test) => !test.key.startsWith('[setup]') && !(test.key in timings)).length;
   if (fresh && !(FRESH_KEY in timings)) console.error(`::notice::e2e/timings.json has no "${FRESH_KEY}": the fresh shard gets no less test time. Refresh the file (docs/ci.md).`);
@@ -174,7 +177,7 @@ async function main(argv) {
         shards.map((shard, i) => {
           const file = join(dir, `${i + 1}.txt`);
           writeFileSync(file, shard.join('\n') + '\n');
-          return listTests(args, ['--no-deps', '--test-list', file]);
+          return listTests(args, ['--no-deps', '--test-list', file]).then((listed) => listed.tests);
         }),
       );
     } finally {
@@ -198,6 +201,11 @@ async function main(argv) {
       process.exit(1);
     }
     console.log(`${keys.length} tests, each in exactly one of ${count} lists.`);
+  } else if (command === 'setup') {
+    // The file a shard uploads next to its timing: how long its setup took (started is the epoch second it began).
+    const seconds = Math.round(Date.now() / 1000) - Number(rest[1]);
+    const { workers } = await listTests(rest.slice(2));
+    process.stdout.write(JSON.stringify({ fresh: rest[0] === 'true', seconds, workers }) + '\n');
   } else if (command === 'timings') {
     process.stdout.write(JSON.stringify(timingsOf(rest.map((file) => JSON.parse(readFileSync(file, 'utf8')))), null, 1) + '\n');
   } else {

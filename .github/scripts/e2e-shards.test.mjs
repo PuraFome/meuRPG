@@ -101,15 +101,28 @@ test('the startup of a shard counts as time already spent', () => {
   assert.deepEqual(shards.map((shard) => shard.length), [1, 3]);
 });
 
-test('the fresh shard costs what it spends beyond the median of the others', () => {
-  assert.equal(freshOverhead([{ fresh: true, seconds: 94 }, { fresh: false, seconds: 28 }, { fresh: false, seconds: 30 }, { fresh: false, seconds: 29 }]), 65);
-  assert.equal(freshOverhead([{ fresh: true, seconds: 20 }, { fresh: false, seconds: 30 }]), 0);
-  assert.equal(freshOverhead([{ fresh: false, seconds: 30 }]), undefined);
+test('the fresh shard costs its extra setup seconds times the workers, because durations are summed over the workers', () => {
+  const others = [28, 30, 29].map((seconds) => ({ fresh: false, seconds, workers: 2 }));
+  assert.equal(freshOverhead([{ fresh: true, seconds: 94, workers: 2 }, ...others]), 130);
+  assert.equal(freshOverhead([{ fresh: true, seconds: 94, workers: 4 }, ...others]), 260);
+  assert.equal(freshOverhead([{ fresh: true, seconds: 20, workers: 2 }, { fresh: false, seconds: 30, workers: 2 }]), 0);
+  assert.equal(freshOverhead([{ fresh: false, seconds: 30, workers: 2 }]), undefined);
+});
+
+test('a shard that loses the overhead in wall time ends with the others once the workers are counted', () => {
+  // 2 workers: a shard of load L takes L / 2 s. The fresh shard needs 65 s more setup, which is 130 s of load.
+  const keys = Array.from({ length: 29 }, (_, i) => key('f.spec.ts', `t${i}`));
+  const timings = Object.fromEntries(keys.map((k) => [k, 10]));
+  const wall = (shards, startup) => shards.map((shard, i) => (shard.length * 10) / 2 + startup[i]);
+  const shards = split(keys, timings, 3, [130, 0, 0]);
+  assert.deepEqual(wall(shards, [65, 0, 0]), [70, 70, 70]);
+  const unweighted = split(keys, timings, 3, [65, 0, 0]);
+  assert.notDeepEqual(wall(unweighted, [65, 0, 0]), [70, 70, 70]);
 });
 
 test('timingsOf writes the fresh shard entry from the setup files', () => {
-  const files = [suite(['a.spec.ts', 'one', 'passed', 1000]), { fresh: true, seconds: 90 }, { fresh: false, seconds: 30 }];
-  assert.deepEqual(timingsOf(files), { '[chrome] › a.spec.ts › one': 1, [FRESH_KEY]: 60 });
+  const files = [suite(['a.spec.ts', 'one', 'passed', 1000]), { fresh: true, seconds: 90, workers: 2 }, { fresh: false, seconds: 30, workers: 2 }];
+  assert.deepEqual(timingsOf(files), { '[chrome] › a.spec.ts › one': 1, [FRESH_KEY]: 120 });
 });
 
 test('a timing file with stale entries and no tests at all still splits', () => {

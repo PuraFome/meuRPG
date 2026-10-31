@@ -1,4 +1,4 @@
-// A Playwright reporter for `playwright test --list`: prints the tests as JSON, with the serial group of each one.
+// A Playwright reporter for `playwright test --list`: prints the tests as JSON, with the serial group of each one, and the number of workers.
 //
 //   playwright test --list --reporter=<this file>
 //
@@ -32,7 +32,8 @@ export default class ListReporter {
     return true;
   }
 
-  onBegin(_config, root) {
-    process.stdout.write(JSON.stringify({ tests: groupedTests(root) }) + '\n');
+  onBegin(config, root) {
+    // `workers` is what the config resolved to (Playwright's default is half the CPUs), so it is the run's own.
+    process.stdout.write(JSON.stringify({ workers: config.workers, tests: groupedTests(root) }) + '\n');
   }
 }
