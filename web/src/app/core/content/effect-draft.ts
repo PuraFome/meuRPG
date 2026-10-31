@@ -304,9 +304,21 @@ export function draftKey(name: string): keyof EffectDraft {
   return name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft;
 }
 
-/** The paths of the number fields of `effects` whose text is no whole number (the picker's mark is a NaN in the draft), `base` being
- * the path of the list ("table_feat.effects"). An editor does not save while there is one, since a NaN goes out as `null`, which the
- * server reads as "not set"; it opens the feature that holds the first and focuses its field. */
+/** Whether a number field of an effect holds text it cannot read: a NaN in the draft (the picker's mark for a count or a bonus), or a range
+ * or reach in metres that is no number. */
+export function unreadableNumber(e: EffectDraft, name: string): boolean {
+  if (name === 'range_ft') {
+    return unreadableRange(e.rangeM);
+  }
+  if (name === 'reach_ft') {
+    return unreadableRange(e.reachM);
+  }
+  return Number.isNaN(e[draftKey(name)]);
+}
+
+/** The paths of the number fields of `effects` whose text is no number the save can send, `base` being the path of the list
+ * ("table_feat.effects"). An editor does not save while there is one, since a NaN goes out as `null`, which the server reads as "not set",
+ * and an unreadable range as 0; it opens the feature that holds the first and focuses its field. */
 export function unreadableNumberPaths(
   base: string,
   effects: readonly EffectDraft[],
@@ -314,7 +326,7 @@ export function unreadableNumberPaths(
 ): string[] {
   return effects.flatMap((e, k) =>
     visibleFields(menu.fieldsOf(e.type), e)
-      .filter((f) => f.kind === 'number' && Number.isNaN(e[draftKey(f.name)]))
+      .filter((f) => f.kind === 'number' && unreadableNumber(e, f.name))
       .map((f) => `${base}[${k}].${f.name}`),
   );
 }
@@ -347,7 +359,7 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
   if (own) {
     return own(d);
   }
-  const v = d[name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft];
+  const v = d[draftKey(name)];
   return typeof v === 'string' && v.trim() === '';
 }
 

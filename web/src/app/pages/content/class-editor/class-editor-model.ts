@@ -4,6 +4,7 @@ import type {
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import {
   type CastingDraft,
+  unreadableCastingPaths,
   type ClassDraft,
   type GridColumns,
   type LevelFeature,
@@ -333,12 +334,16 @@ export function subclassesOf(entries: readonly TableEntry[], classKey: string): 
     : [];
 }
 
-/** The paths of the number fields, in every feature of a class, whose text is no whole number. */
+/** The paths of the casting's start level and of the number fields, in every feature of a class, whose text is no whole number. */
 export function unreadableClassPaths(
+  casting: CastingDraft,
   features: readonly LevelFeature[],
   menu: EffectMenuVm,
 ): string[] {
-  return features.flatMap((f, i) =>
-    unreadableFeaturePaths(classFeatureBase(features, i), f.feature, menu),
-  );
+  return [
+    ...unreadableCastingPaths('table_class.casting', casting),
+    ...features.flatMap((f, i) =>
+      unreadableFeaturePaths(classFeatureBase(features, i), f.feature, menu),
+    ),
+  ];
 }
