@@ -372,21 +372,9 @@ func (x *deriver) wildShapeRule() {
 			rule = &WildShapeRule{Cost: 1}
 		}
 		e := a.effect
-		if e.FormCost != "" {
-			if n, ok := x.evalInt(e.formCost, a); ok {
-				rule.Cost = min(rule.Cost, max(n, 0))
-			}
-		}
+		rule.Cost = min(rule.Cost, x.wildShapeCost(a))
 		rule.Magical = rule.Magical || e.MagicalAttacks
-		eighths, ok := -1, false
-		switch {
-		case e.MaxCR != "":
-			eighths, ok = crEighths(e.MaxCR)
-		case e.MaxCRFrom != "":
-			if n, good := x.evalInt(e.maxCRFrom, a); good {
-				eighths, ok = 8*min(max(n, 0), 30), true
-			}
-		}
+		eighths, ok := x.wildShapeRating(a)
 		if !ok {
 			continue
 		}
@@ -400,10 +388,42 @@ func (x *deriver) wildShapeRule() {
 	}
 }
 
+// wildShapeCost is the uses one change of form costs under the effect: its form_cost (at least 0), or the
+// standard cost of 1 when it sets none (or its formula failed).
+func (x *deriver) wildShapeCost(a activeEffect) int {
+	if a.effect.FormCost == "" {
+		return 1
+	}
+	n, ok := x.evalInt(a.effect.formCost, a)
+	if !ok {
+		return 1
+	}
+	return max(n, 0)
+}
+
+// wildShapeRating is the highest challenge rating the effect allows, in eighths; ok is false when it sets none.
+func (x *deriver) wildShapeRating(a activeEffect) (eighths int, ok bool) {
+	e := a.effect
+	switch {
+	case e.MaxCR != "":
+		return crEighths(e.MaxCR)
+	case e.MaxCRFrom != "":
+		n, good := x.evalInt(e.maxCRFrom, a)
+		return 8 * min(max(n, 0), maxChallengeRating), good
+	}
+	return 0, false
+}
+
+// maxChallengeRating is the highest challenge rating of a creature.
+const maxChallengeRating = 30
+
+// noLimitsKnown ranks an effect that is not there after one with any limit, in limits.
+const noLimitsKnown = 3
+
 // limits counts the restrictions a wild_shape effect puts on the forms.
 func limits(e *Effect) int {
 	if e == nil {
-		return 3
+		return noLimitsKnown
 	}
 	n := 0
 	if e.NoFly {
@@ -415,15 +435,13 @@ func limits(e *Effect) int {
 	return n
 }
 
+// crFractions are the challenge ratings under 1, by their eighths.
+var crFractions = map[int]string{1: "1/8", 2: "1/4", 4: "1/2"}
+
 // crString is a challenge rating in eighths as the content writes it: "0", "1/8", "1/4", "1/2", "1"...
 func crString(eighths int) string {
-	switch eighths {
-	case 1:
-		return "1/8"
-	case 2:
-		return "1/4"
-	case 4:
-		return "1/2"
+	if s, ok := crFractions[eighths]; ok {
+		return s
 	}
 	return strconv.Itoa(eighths / 8)
 }

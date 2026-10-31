@@ -710,6 +710,14 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the "Opções para os jogadores" screen, **when** the master switches a table option off, **then** players are not offered it and the server refuses it as a new pick; a sheet that already has it keeps it.
 - **Given** the option editor, **when** I save an option with an unknown set, a class or option or Pact Boon or spell that does not exist, a level outside 1 to 20, or another choice among its effects, **then** the server refuses each at its field, **and** the set of an option never changes after it is created.
 
+**Wild Shape and spell slots.**
+
+- **Given** a table feature that changes Wild Shape, **when** a druid with it opens the list of forms, **then** the list and the choice use the highest challenge rating, the lowest cost in uses and magical attacks if any of its features gives them; a beast above the rating is refused ("WILD_SHAPE_BEAST_NOT_ALLOWED").
+  A cost of 0 spends no use, and the undo gives back exactly what the change spent.
+- **Given** a table action that turns uses into a spell slot, **when** a character takes it, **then** its uses are spent and a free slot of that level exists until the next long rest; the combat log reads the uses and the slot's level, and the undo takes the slot away and gives the uses back.
+- **Given** a table action that spends a spell slot to heal, **when** the player picks a level, **then** that slot is expended and the heal grows by the dice of each level above the first; a level with no free slot is refused and nothing is spent.
+- **Given** a table feature that recovers spell slots, **when** the character recovers slots after a short rest, **then** one use of its resource is spent and the slots come back; a slot above its highest level, a combined level above its limit, a rest that is not short and a resource with no use left are refused and nothing changes.
+
 **Class features.**
 
 - **Given** I am the game master of "Mirathel", **when** I register a feature for a class (the SRD's or one of the table) at a class level, with its text and effects, **then** every character of that class reads it from that level on, in "Mirathel" only, like any feature of the class.

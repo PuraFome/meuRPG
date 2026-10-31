@@ -88,8 +88,7 @@ func (c *Content) WildShapeDerived(character Derived, beast string) (Derived, er
 	d := character
 	d.ArmorClass, d.ArmorClassDescription = b.ArmorClass, b.ArmorClassDescription
 	d.HitPointsMax, d.HitPointsFromEffects, d.HitDice = b.HitPointsMax, 0, b.HitDice
-	d.SpeedWalkFt, d.SpeedFlyFt, d.SpeedSwimFt, d.SpeedClimbFt, d.SpeedBurrowFt, d.Hover =
-		b.SpeedWalkFt, b.SpeedFlyFt, b.SpeedSwimFt, b.SpeedClimbFt, b.SpeedBurrowFt, b.Hover
+	d.SpeedWalkFt, d.SpeedFlyFt, d.SpeedSwimFt, d.SpeedClimbFt, d.SpeedBurrowFt, d.Hover = b.SpeedWalkFt, b.SpeedFlyFt, b.SpeedSwimFt, b.SpeedClimbFt, b.SpeedBurrowFt, b.Hover
 	d.Attacks, d.AttacksPerAction, d.SaveActions = b.Attacks, b.AttacksPerAction, b.SaveActions
 	if character.WildShape != nil && character.WildShape.Magical {
 		d.Attacks = slices.Clone(d.Attacks)

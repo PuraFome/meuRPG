@@ -710,6 +710,14 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma opção da mesa, **então** os jogadores não a recebem como oferta e o servidor a recusa como escolha nova; a ficha que já a tem a mantém.
 - **Dado** o editor de opção, **quando** salvo uma opção com um conjunto desconhecido, uma classe, opção, Dádiva do Pacto ou magia que não existe, um nível fora de 1 a 20 ou outra escolha entre os efeitos, **então** o servidor recusa cada um no seu campo, **e** o conjunto de uma opção nunca muda depois de criada.
 
+**Forma Selvagem e espaços de magia.**
+
+- **Dado** uma característica da mesa que muda a Forma Selvagem, **quando** um druida com ela abre a lista de formas, **então** a lista e a escolha usam o maior nível de desafio, o menor custo em usos e ataques mágicos se alguma de suas características der; uma fera acima do nível é recusada ("WILD_SHAPE_BEAST_NOT_ALLOWED").
+  Um custo 0 não gasta uso, e o desfazer devolve exatamente o que a mudança gastou.
+- **Dado** uma ação da mesa que transforma usos em espaço de magia, **quando** um personagem a usa, **então** os usos são gastos e existe um espaço livre desse nível até o próximo descanso longo; o registro do combate lê os usos e o nível do espaço, e o desfazer tira o espaço e devolve os usos.
+- **Dado** uma ação da mesa que gasta um espaço de magia para curar, **quando** o jogador escolhe um nível, **então** esse espaço é gasto e a cura cresce com os dados de cada nível acima do primeiro; um nível sem espaço livre é recusado e nada é gasto.
+- **Dado** uma característica da mesa que recupera espaços de magia, **quando** o personagem recupera espaços depois de um descanso curto, **então** um uso do recurso dela é gasto e os espaços voltam; um espaço acima do nível máximo dela, um nível combinado acima do limite, um descanso que não é curto e um recurso sem uso são recusados e nada muda.
+
 **Características de classe.**
 
 - **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma característica para uma classe (a do SRD ou uma da mesa) num nível de classe, com o texto e os efeitos, **então** todo personagem dessa classe a tem a partir desse nível, só em "Mirathel", como qualquer característica da classe.

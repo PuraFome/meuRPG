@@ -16,26 +16,35 @@ import (
 // a resource and needs the heal it scales by level; the player picks the level, so it takes no cost.
 func (x effectCompiler) checkSlotAction() error {
 	e := x.e
-	if e.GivesSlot == "" && !e.SpendsSlot {
+	switch {
+	case e.GivesSlot == "" && !e.SpendsSlot:
 		return nil
-	}
-	if e.GivesSlot != "" && e.SpendsSlot {
+	case e.GivesSlot != "" && e.SpendsSlot:
 		return x.fail("gives_slot and spends_slot are not both set")
+	case e.GivesSlot != "":
+		return x.checkGivesSlot()
 	}
-	if e.GivesSlot != "" {
-		if e.Resource == "" {
-			return x.fail("gives_slot needs the resource whose uses it turns into a slot")
-		}
-		if e.CostMax != "" || e.Heal != "" || e.TempHP != "" || e.ValuePerPoint != "" {
-			return x.fail("gives_slot takes no cost_max, heal, temp_hp or value_per_point")
-		}
-		if err := x.slotLevelLiteral(e.GivesSlot, "gives_slot"); err != nil {
-			return err
-		}
-		var err error
-		e.givesSlot, err = x.compile(e.GivesSlot, formula.Int)
+	return x.checkSpendsSlot()
+}
+
+func (x effectCompiler) checkGivesSlot() error {
+	e := x.e
+	if e.Resource == "" {
+		return x.fail("gives_slot needs the resource whose uses it turns into a slot")
+	}
+	if e.CostMax != "" || e.Heal != "" || e.TempHP != "" || e.ValuePerPoint != "" {
+		return x.fail("gives_slot takes no cost_max, heal, temp_hp or value_per_point")
+	}
+	if err := x.slotLevelLiteral(e.GivesSlot, "gives_slot"); err != nil {
 		return err
 	}
+	var err error
+	e.givesSlot, err = x.compile(e.GivesSlot, formula.Int)
+	return err
+}
+
+func (x effectCompiler) checkSpendsSlot() error {
+	e := x.e
 	switch {
 	case e.Resource != "" || e.Cost != "" || e.CostMax != "":
 		return x.fail("spends_slot spends a spell slot: it takes no resource, cost or cost_max")

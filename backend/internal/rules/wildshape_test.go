@@ -301,24 +301,39 @@ func TestATableFeatureChangesWildShape(t *testing.T) {
 		want    WildShapeLimit
 	}{
 		"the SRD alone": {2, nil, WildShapeLimit{MaxCR: "1/4", NoFly: true, NoSwim: true, Cost: 1}},
-		"a fixed rating": {2, [][]Effect{{{Type: "wild_shape", MaxCR: "2"}}},
-			WildShapeLimit{MaxCR: "2", Cost: 1}},
-		"a rating from the level": {9, [][]Effect{{{Type: "wild_shape", MaxCRFrom: "floor(level() / 3)"}}},
-			WildShapeLimit{MaxCR: "3", Cost: 1}},
+		"a fixed rating": {
+			2,
+			[][]Effect{{{Type: "wild_shape", MaxCR: "2"}}},
+			WildShapeLimit{MaxCR: "2", Cost: 1},
+		},
+		"a rating from the level": {
+			9,
+			[][]Effect{{{Type: "wild_shape", MaxCRFrom: "floor(level() / 3)"}}},
+			WildShapeLimit{MaxCR: "3", Cost: 1},
+		},
 		"the highest of two effects, with the limits of the one that gives it": {6, [][]Effect{
 			{{Type: "wild_shape", MaxCR: "1", NoFly: true}},
 			{{Type: "wild_shape", MaxCRFrom: "floor(level() / 3)", NoSwim: true}},
 		}, WildShapeLimit{MaxCR: "2", NoSwim: true, Cost: 1}},
-		"a table rating under the SRD's does not lower it": {8, [][]Effect{{{Type: "wild_shape", MaxCR: "1/2"}}},
-			WildShapeLimit{MaxCR: "1", Cost: 1}},
+		"a table rating under the SRD's does not lower it": {
+			8,
+			[][]Effect{{{Type: "wild_shape", MaxCR: "1/2"}}},
+			WildShapeLimit{MaxCR: "1", Cost: 1},
+		},
 		"the cheapest cost": {2, [][]Effect{
 			{{Type: "wild_shape", MaxCR: "1/4", FormCost: "3"}},
 			{{Type: "wild_shape", FormCost: "0"}},
 		}, WildShapeLimit{MaxCR: "1/4", Cost: 0}},
-		"a dearer cost does not raise the SRD's": {2, [][]Effect{{{Type: "wild_shape", FormCost: "2"}}},
-			WildShapeLimit{MaxCR: "1/4", NoFly: true, NoSwim: true, Cost: 1}},
-		"magical attacks from any effect": {2, [][]Effect{{{Type: "wild_shape", MagicalAttacks: true}}},
-			WildShapeLimit{MaxCR: "1/4", NoFly: true, NoSwim: true, Cost: 1, Magical: true}},
+		"a dearer cost does not raise the SRD's": {
+			2,
+			[][]Effect{{{Type: "wild_shape", FormCost: "2"}}},
+			WildShapeLimit{MaxCR: "1/4", NoFly: true, NoSwim: true, Cost: 1},
+		},
+		"magical attacks from any effect": {
+			2,
+			[][]Effect{{{Type: "wild_shape", MagicalAttacks: true}}},
+			WildShapeLimit{MaxCR: "1/4", NoFly: true, NoSwim: true, Cost: 1, Magical: true},
+		},
 	} {
 		c := withOverlay(t, wildOverlay(tc.effects...))
 		got, ok := c.WildShapeLimitFor(wildDruid(tc.level))

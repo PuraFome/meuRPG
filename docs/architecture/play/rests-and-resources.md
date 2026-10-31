@@ -96,6 +96,9 @@ The rules are `rules.ArcaneRecoveryAllowance` (half the wizard level, rounded up
 The character checks are `characters`'; their refusals are `ResourceBlocked` reasons: `NOT_AVAILABLE`, `NO_USES_LEFT`, `SLOT_LEVEL_TOO_HIGH`, `SLOT_NOT_EXPENDED`, `OVER_ALLOWANCE` (with the level asked and the allowance).
 The call needs the latest `rest_taken` of the open session to be a short rest (`NO_SHORT_REST` otherwise) and no combat open.
 `CharacterVitals.arcane_recovery_allowance` lets the sheet word the allowance.
+With `feature_key` the same call is a table feature's `slot_recovery` effect: it spends a use of the effect's resource and keeps to the effect's highest slot level and combined level (`rules.SlotRecovery.Check`, which `ArcaneRecoveryCheck` uses too), with the same refusals; a key the character does not have is `NOT_AVAILABLE`.
+The `arcane_recovery_used` event carries the feature key.
+Neither recovery is undone: the master adjusts the slots by hand.
 
 ### Lay on Hands (paladin 1)
 
