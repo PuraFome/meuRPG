@@ -132,7 +132,7 @@ event spell_cast {"combatant_id": "Mago Sombrio", "key": "spell:fireball", "reac
 event spell_cast {"cast_id": "?", "combatant_id": "Mago Sombrio", "key": "spell:fireball", "reaction": {"countered": true, "kind": "counterspell", "level": 3, "spell": "spell:fireball"}, "round": 1, "slot": {"level": 3}}
 event reaction_answered {"combatant_id": "Pensantus", "reaction": {"countered": true, "kind": "counterspell", "level": 3, "slot": {"level": 3}, "spell": "spell:fireball", "used": true, "window": "?"}, "round": 1, "slot": {"level": 3}, "target_id": "Mago Sombrio"}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {"3": 1} | false | false
 combatant Pensantus | false | false | true | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
@@ -151,7 +151,7 @@ event spell_cast {"combatant_id": "Mago Sombrio", "key": "spell:fireball", "reac
 event spell_cast {"area_col": 6, "area_row": 5, "cast_id": "?", "combatant_id": "Mago Sombrio", "hits": [{"cover": "half", "cover_bonus": 2, "cover_source": "map", "pending_id": "?", "save": {"bonus": 4, "d20": 4, "dc": 15, "roll_mode": "normal", "total": 8}, "target_id": "Mago Sombrio"}, {"pending_id": "?", "save": {"bonus": 2, "d20": 11, "dc": 15, "roll_mode": "normal", "total": 13}, "target_id": "Pensantus"}, {"pending_id": "?", "save": {"bonus": 3, "d20": 7, "dc": 15, "roll_mode": "normal", "total": 10}, "target_id": "Brisa"}, {"pending_id": "?", "save": {"bonus": 2, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Toren"}], "key": "spell:fireball", "placed": true, "round": 1, "slot": {"level": 3}}
 event reaction_answered {"combatant_id": "Pensantus", "reaction": {"kind": "counterspell", "level": 3, "spell": "spell:fireball", "window": "?"}, "round": 1, "target_id": "Mago Sombrio"}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {"3": 1} | false | false
 combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 damage Mago Sombrio | Brisa | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | damage-type:fire | false | false | 0 | 0 | true | 0 | 0
@@ -712,7 +712,7 @@ held false
 event combatant_hidden_set {"combatant_id": "Mago Sombrio", "hidden": true, "round": 1}
 event spell_cast {"cast_id": "?", "combatant_id": "Mago Sombrio", "hits": [{"darts": 3, "pending_id": "?", "target_id": "Toren"}], "key": "spell:magic-missile", "round": 1, "secret": true, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | true | false | false | false | true | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Mago Sombrio | true | false | false | false | true | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {"1": 1} | false | false
 combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 damage Mago Sombrio | Toren | spell:magic-missile | awaiting_roll | false | 3 | 4 | 3 | damage-type:force | false | false | 0 | 0 | false | 0 | 0
@@ -2509,7 +2509,7 @@ event spell_cast {"combatant_id": "Mago Sombrio", "key": "spell:magic-missile", 
 event spell_cast {"cast_id": "?", "combatant_id": "Mago Sombrio", "key": "spell:magic-missile", "reaction": {"countered": true, "kind": "counterspell", "level": 1, "spell": "spell:magic-missile"}, "round": 1, "slot": {"level": 1}}
 event reaction_answered {"combatant_id": "Pensantus", "reaction": {"countered": true, "kind": "counterspell", "level": 1, "slot": {"level": 3}, "spell": "spell:magic-missile", "used": true, "window": "?"}, "round": 1, "slot": {"level": 3}, "target_id": "Mago Sombrio"}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {"1": 1} | false | false
 combatant Pensantus | false | false | true | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
@@ -2528,7 +2528,7 @@ event spell_cast {"combatant_id": "Mago Sombrio", "key": "spell:magic-missile", 
 event spell_cast {"cast_id": "?", "combatant_id": "Mago Sombrio", "hits": [{"darts": 3, "pending_id": "?", "target_id": "Toren"}], "key": "spell:magic-missile", "round": 1, "slot": {"level": 1}}
 event reaction_answered {"combatant_id": "Pensantus", "reaction": {"kind": "counterspell", "level": 1, "spell": "spell:magic-missile", "window": "?"}, "round": 1, "target_id": "Mago Sombrio"}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Mago Sombrio | true | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | true | false | false | {"1": 1} | false | false
 combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 damage Mago Sombrio | Toren | spell:magic-missile | awaiting_roll | false | 3 | 4 | 3 | damage-type:force | false | false | 0 | 0 | false | 0 | 0

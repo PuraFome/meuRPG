@@ -185,7 +185,7 @@ func (s *Service) spendFeatherFall(ctx context.Context, c *combatTx, reactor pla
 	if err != nil {
 		return sl, err
 	}
-	vit, err := s.spendReactionSlot(ctx, c, reactor, sl)
+	vit, err := s.spendSlotOf(ctx, c, reactor, sl)
 	if err != nil {
 		return sl, err
 	}

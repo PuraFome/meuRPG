@@ -626,10 +626,21 @@ type Named struct {
 	Key, NamePT string
 }
 
+// Spent is the slots and uses a combatant spent in one combat.
+type Spent struct {
+	SlotsUsed     [9]int
+	PactSlotsUsed int
+	ResourcesUsed map[string]int
+}
+
 // Turn is what a combatant used in the current turn, for working out what it
 // can still do.
 type Turn struct {
 	ActionUsed, BonusActionUsed, ReactionUsed bool
+	// Spent is what a combatant that has no vitals (an NPC) spent of its spell slots and daily uses in this
+	// combat, counted on the combatant: SlotsUsed[l-1] slots of level l, the pact slots, and the uses of each
+	// resource by key. A player's character leaves it empty: its vitals keep the count.
+	Spent Spent
 	// AttacksMade is how many attacks the Attack action made this turn.
 	AttacksMade int
 	// AttackKey is the attack the Attack action made last this turn ("" if none)

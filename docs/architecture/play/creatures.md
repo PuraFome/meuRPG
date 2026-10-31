@@ -55,6 +55,16 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
   Magic Resistance gives advantage on a saving throw against a spell or another magical effect; a creature's own non-spell action is not magic.
   Only the master and the owner of the creature read the mode of its save; any other player reads the outcome.
   Sunlight Sensitivity and Sunlight Weakness are not read: the engine has no sunlight, so they stay a trait the master reads on the creature's sheet.
+- **Spells of a stat block** (an NPC, not a summoned creature: a creature has no "Cast a spell", see the next bullet). An NPC made from a creature with a Spellcasting or Innate Spellcasting trait casts through `CastSpell`, like an NPC with a full sheet.
+  A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), which lists no frequency in the data.
+  They keep only the description note, and the master casts for them.
+  `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
+  `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
+  When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.
+  The NPC's slots and uses are counted on the combatant (`combatants.slots_used`, the count a reaction's Shield uses), whatever its sheet.
+  A cast spends them, the undo gives them back, and an at-will spell spends nothing.
+  The count lives on the combatant, so a new combat starts fresh.
+  The master reads the slots and uses left in the options; a player never does.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.
   On entering combat the creature copies, like the character, the side (`party`), the size, the flying speed (`size`, `speed_fly_ft`) and the jump (`combat.JumpLimits` from its Strength).

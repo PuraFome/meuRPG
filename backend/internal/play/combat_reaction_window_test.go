@@ -22,23 +22,29 @@ const mageKey = "monster:mage"
 // (who is first), with the goblin the setup brings out of the way.
 func mageFight(t *testing.T) (*armed, *playv1.Encounter) {
 	t.Helper()
+	return monsterFight(t, mageKey, "Mago")
+}
+
+// monsterFight is the fight with one stat block NPC of the key, labeled label, next to Toren.
+func monsterFight(t *testing.T, key, label string) (*armed, *playv1.Encounter) {
+	t.Helper()
 	a := newCasters(t)
 	e := a.monsterSetup(t, false)
 	a.h.roller.queue(1)
-	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = mageKey, 1 })
+	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = key, 1 })
 	e = a.get(t, a.master)
-	for label, sq := range map[string][2]int32{"Toren": {6, 5}, "Pensantus": {5, 5}, "Brisa": {5, 6}, "Goblin": {12, 8}, "Mago": {7, 5}} {
+	for label, sq := range map[string][2]int32{"Toren": {6, 5}, "Pensantus": {5, 5}, "Brisa": {5, 6}, "Goblin": {12, 8}, label: {7, 5}} {
 		if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
 			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Col: sq[0], Row: sq[1],
 		})); err != nil {
 			t.Fatalf("MoveCombatant(%s) error = %v", label, err)
 		}
 	}
-	for _, label := range []string{"Mago", "Goblin"} {
+	for _, shown := range []string{label, "Goblin"} {
 		if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
-			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Hidden: false,
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, shown), IdempotencyKey: newKey(), Hidden: false,
 		})); err != nil {
-			t.Fatalf("SetCombatantHidden(%s) error = %v", label, err)
+			t.Fatalf("SetCombatantHidden(%s) error = %v", shown, err)
 		}
 	}
 	e = a.begin(t, e)
