@@ -371,3 +371,74 @@ test('a change inside an afterEach or afterAll maps to a sample of the tests it 
     assert.match(got.notes[0], /reaches 12 tests; 5 run/, hook);
   }
 });
+
+test('a test of a serial describe is marked serial: describe.serial, configure({ mode: "serial" }), a nested one, and not a plain describe', () => {
+  const spec = [
+    "test.describe.serial('serial form', () => {",
+    "  test('in serial', async () => {});",
+    '});',
+    "test.describe('configured', () => {",
+    "  test.describe.configure({ mode: 'serial' });",
+    "  test('in configured', async () => {});",
+    "  test.describe('nested in configured', () => {",
+    "    test('deep in configured', async () => {});",
+    '  });',
+    '});',
+    "test.describe('plain', () => {",
+    "  test.describe.configure({ mode: 'parallel' });",
+    "  test('in plain', async () => {});",
+    "  test.describe('nested plain', () => {",
+    "    test('deep in plain', async () => {});",
+    '  });',
+    '});',
+    "test.describe('sibling of a serial one', () => {",
+    "  test.describe.serial('inner serial', () => {",
+    "    test('in inner serial', async () => {});",
+    '  });',
+    "  test('beside inner serial', async () => {});",
+    '});',
+    "test('top level', async () => {});",
+  ].join('\n');
+  assert.deepEqual(
+    playwrightTests(spec).map((t) => [t.title, t.serial]),
+    [
+      ['in serial', true],
+      ['in configured', true],
+      ['deep in configured', true],
+      ['in plain', false],
+      ['deep in plain', false],
+      ['in inner serial', true],
+      ['beside inner serial', false],
+      ['top level', false],
+    ],
+  );
+});
+
+test('a configure outside every describe makes the whole file serial', () => {
+  const tests = playwrightTests("test.describe.configure({ mode: 'serial' });\ntest.describe('g', () => {\n  test('in', async () => {});\n});\ntest('out', async () => {});");
+  assert.deepEqual(tests.map((t) => t.serial), [true, true]);
+});
+
+test('mapDiff carries serial into the target, and leaves it out for a plain one', () => {
+  const text = ["test.describe.serial('s', () => {", "  test('a serial test', async () => {});", '});', "test('a plain test', async () => {});"].join('\n');
+  const diff = ['+++ b/e2e/tests/a.spec.ts', '@@ -0,0 +1,4 @@'].join('\n');
+  const got = mapDiff({ diff, read: (f) => (f === 'e2e/tests/a.spec.ts' ? text : undefined), files: () => ['e2e/tests/a.spec.ts'] });
+  assert.deepEqual(
+    got.playwright.map((t) => [t.title, t.serial]),
+    [
+      ['a plain test', undefined],
+      ['a serial test', true],
+    ],
+  );
+});
+
+test('two tests with the same title keep serial if either is serial, whichever comes last', () => {
+  const serial = ["test.describe.serial('a', () => {", "  test('same title', async () => {});", '});'];
+  const plain = ["test.describe('b', () => {", "  test('same title', async () => {});", '});'];
+  for (const [name, lines] of [['serial first', [...serial, ...plain]], ['plain first', [...plain, ...serial]]]) {
+    const text = lines.join('\n');
+    const diff = ['+++ b/e2e/tests/a.spec.ts', '@@ -0,0 +1,6 @@'].join('\n');
+    const got = mapDiff({ diff, read: (f) => (f === 'e2e/tests/a.spec.ts' ? text : undefined), files: () => ['e2e/tests/a.spec.ts'] });
+    assert.deepEqual(got.playwright.map((t) => [t.title, t.serial]), [['same title', true]], name);
+  }
+});

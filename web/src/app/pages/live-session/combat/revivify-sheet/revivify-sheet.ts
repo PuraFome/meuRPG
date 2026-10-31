@@ -79,6 +79,10 @@ export function openRevivifySheet(
   });
 }
 
+/** The notice of a target that waits for the master, as the live region says it. */
+const WAITS_MASTER_TEXT =
+  'O mestre confirma que faz menos de 1 minuto. Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.';
+
 /**
  * "Revivificar" (SRD 5.1, Revivify), the player's cast in three steps: **Alvo** (who died nearby and the spell can
  * still reach: nothing else is listed, and no reason for who is missing), **Confirmar** (the slot and the action it
@@ -108,6 +112,13 @@ export class RevivifySheet {
 
   protected readonly nobody = NOBODY_TEXT;
   protected readonly noSlot = NO_SLOT_TEXT;
+  /** What the polite live region says: the two notices that arrive with their step, so the text changes in a region that is already there. */
+  protected readonly said = computed(() => {
+    if (this.step() === 'target' && this.waitsMaster()) {
+      return WAITS_MASTER_TEXT;
+    }
+    return this.step() === 'confirm' && !this.slot() ? NO_SLOT_TEXT : '';
+  });
   protected readonly note = DIAMONDS_NOTE;
   protected readonly hint = DIAMONDS_HINT;
   protected readonly deniedText = DENIED_TEXT;

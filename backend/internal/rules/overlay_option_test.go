@@ -290,3 +290,21 @@ func TestAWarlockSeesEveryInvocationWhenTheTableAddsItsOwn(t *testing.T) {
 		t.Errorf("problems = %+v, want none for the 30th table invocation", problems)
 	}
 }
+
+func TestCheckOptionKeyGivesTheReasonOfTheOverlay(t *testing.T) {
+	t.Parallel()
+	for key, want := range map[string]string{
+		"option:fighting_style:guarda-dupla@mesa": "",
+		"option:invocation:olhar-do-corvo@mesa":   "",
+		"option:guarda-dupla@mesa":                ReasonKey,
+		"option:nenhum:guarda@mesa":               ReasonKey,
+		"option:invocation:Guarda@mesa":           ReasonKey,
+		"option:invocation:guarda":                ReasonKey,
+		"feat:guarda@mesa":                        ReasonKey,
+		"option:invocation:wild-shape@mesa":       ReasonReservedKey,
+	} {
+		if reason, msg := CheckOptionKey(key); reason != want || (want != "" && msg == "") {
+			t.Errorf("CheckOptionKey(%q) = %q, %q; want reason %q", key, reason, msg, want)
+		}
+	}
+}

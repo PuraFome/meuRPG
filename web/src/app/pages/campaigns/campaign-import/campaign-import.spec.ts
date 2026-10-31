@@ -155,14 +155,16 @@ describe('CampaignImportPage', () => {
     it('says a failure to read the kept upload and still lets the person choose', async () => {
       pkg.getImportResult = () => Promise.reject(new ConnectError('x', Code.Unavailable));
       const { el } = await render();
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível falar');
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain(
+        'Não foi possível falar',
+      );
       expect(control(el, 'Escolher o arquivo')).toBeTruthy();
     });
 
     it('refuses a file that is not a zip, with a friendly message and no call', async () => {
       const { el, fixture } = await render();
       await chooseAndSettle(fixture, packageFile('Mirathel.pdf'));
-      expect(text(el.querySelector('[role="alert"]') as HTMLElement)).toContain(
+      expect(text(el.querySelector('.mr-notice--danger') as HTMLElement)).toContain(
         'Esse arquivo não parece um pacote de campanha. Ele precisa terminar em .meurpg.zip (ou .zip).',
       );
       expect(pkg.callsOf('beginImport')).toEqual([]);
@@ -183,7 +185,7 @@ describe('CampaignImportPage', () => {
       } as never);
       await settle(fixture);
       const el = fixture.nativeElement as HTMLElement;
-      expect(el.querySelector('[role="alert"]')?.textContent).toContain('não parece um pacote');
+      expect(el.querySelector('.mr-notice--danger')?.textContent).toContain('não parece um pacote');
     });
 
     it('refuses a file over 200 MiB before any byte is sent', async () => {
@@ -191,7 +193,7 @@ describe('CampaignImportPage', () => {
       const big = packageFile();
       Object.defineProperty(big, 'size', { value: 200 * MIB + 1 });
       await chooseAndSettle(fixture, big);
-      expect(text(el.querySelector('[role="alert"]') as HTMLElement)).toBe(
+      expect(text(el.querySelector('.mr-notice--danger') as HTMLElement)).toBe(
         'Esse arquivo passa de 200 MB, o limite de um pacote.',
       );
       expect(pkg.callsOf('beginImport')).toEqual([]);
@@ -281,7 +283,7 @@ describe('CampaignImportPage', () => {
       await vi.advanceTimersByTimeAsync(800 + 1600);
       fixture.detectChanges();
 
-      expect(text(el.querySelector('[role="alert"]') as HTMLElement)).toBe(
+      expect(text(el.querySelector('.mr-notice--danger') as HTMLElement)).toBe(
         'O envio não terminou. A conexão caiu durante o envio.',
       );
       expect(text(el)).toContain('“Tentar de novo” usa as partes que já foram enviadas.');
@@ -323,7 +325,7 @@ describe('CampaignImportPage', () => {
       expect(pkg.callsOf('cancelImport')).toEqual([['imp-1']]);
       expect(uploader.partNumbers).toEqual([1]);
       expect(control(el, 'Escolher o arquivo')).toBeTruthy();
-      expect(el.querySelector('[role="alert"]')).toBeNull();
+      expect(el.querySelector('.mr-notice--danger')).toBeNull();
       expect(pkg.callsOf('previewImport')).toEqual([]);
       expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toBe(
         'Envio cancelado.',
@@ -347,7 +349,7 @@ describe('CampaignImportPage', () => {
       pkg.beginResult = () => Promise.reject(new ConnectError('too big', Code.InvalidArgument));
       const { el, fixture } = await render();
       await chooseAndSettle(fixture);
-      expect(text(el.querySelector('[role="alert"]') as HTMLElement)).toContain(
+      expect(text(el.querySelector('.mr-notice--danger') as HTMLElement)).toContain(
         'Esse arquivo não pôde ser enviado',
       );
       expect(control(el, 'Escolher o arquivo')).toBeTruthy();
@@ -530,10 +532,17 @@ describe('CampaignImportPage', () => {
       press(el, 'Criar campanha');
       await settle(fixture);
 
-      const alert = text(el.querySelector('[role="alert"]') as HTMLElement);
+      const alert = text(el.querySelector('.mr-notice--danger') as HTMLElement);
       expect(alert).toContain('A importação falhou no meio e nada foi criado.');
       expect(alert).toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
       expect(alert).not.toContain('conn reset');
+      expect(el.querySelector('.mr-notice--danger')?.getAttribute('role')).toBeNull();
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toContain(
+        'A importação falhou no meio e nada foi criado.',
+      );
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toContain(
+        'Nenhuma campanha, imagem ou personagem ficou para trás. “Tentar de novo” usa as partes que já foram enviadas.',
+      );
       expect(text(el)).toContain('“Tentar de novo” usa as partes que já foram enviadas.');
 
       pkg.createResult = () =>
@@ -587,10 +596,14 @@ describe('CampaignImportPage', () => {
       pkg.createResult = () => Promise.reject(new ConnectError('tx', Code.Unknown));
       press(el, 'Criar campanha');
       await settle(fixture);
-      const alert = text(el.querySelector('[role="alert"]') as HTMLElement);
+      const alert = text(el.querySelector('.mr-notice--danger') as HTMLElement);
       expect(alert).toContain('Não deu para confirmar se a campanha foi criada.');
       expect(alert).toContain(OUTCOME_UNKNOWN);
       expect(alert).not.toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
+      const said = el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent ?? '';
+      expect(said).toContain(OUTCOME_UNKNOWN);
+      expect(said).not.toContain('Nenhuma campanha, imagem ou personagem ficou para trás.');
+      expect(said).toContain('“Tentar de novo” é seguro');
       expect(text(el)).toContain('“Tentar de novo” é seguro');
     });
 
@@ -633,6 +646,9 @@ describe('CampaignImportPage', () => {
       const { el, fixture } = await render();
       await chooseAndSettle(fixture);
       expect(text(el)).toContain(
+        'Você já tem 7 campanhas. Este é o limite por conta. Apague uma campanha que você não usa mais e envie o pacote de novo.',
+      );
+      expect(el.querySelector('p.mr-visually-hidden[role="status"]')?.textContent).toBe(
         'Você já tem 7 campanhas. Este é o limite por conta. Apague uma campanha que você não usa mais e envie o pacote de novo.',
       );
       expect(control(el, 'Voltar às campanhas')?.getAttribute('href')).toBe('/campaigns');

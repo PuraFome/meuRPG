@@ -21,11 +21,11 @@ SETUP_REQUESTS=6
 summary="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 deadline=$(( $(date +%s) + budget ))
 
-# One chunk per line, as compact JSON (a regex keeps its backslashes that way): {label, field, regex, file, signins}.
+# One chunk per line, as compact JSON (a regex keeps its backslashes that way): {label, field, regex, file, signins, serial}.
 # For Playwright `field` is the colour scheme and `file` the spec, relative to e2e/; for Go `field` is the package.
 case "$kind" in
   playwright)
-    mapfile -t chunks < <(jq -c '.playwright[] | . as $t | ("light", "dark") | {label: ($t.title + " (" + . + ")"), field: ., regex: $t.grep, signins: ($t.signins // 0), file: ($t.file | sub("^e2e/"; ""))}' "$targets")
+    mapfile -t chunks < <(jq -c '.playwright[] | . as $t | ("light", "dark") | {label: ($t.title + " (" + . + ")"), field: ., regex: $t.grep, signins: ($t.signins // 0), serial: ($t.serial // false), file: ($t.file | sub("^e2e/"; ""))}' "$targets")
     ;;
   go)
     mapfile -t chunks < <(jq -c '.go | group_by(.pkg)[] | {label: (.[0].pkg + ": " + (map(.test) | join(", "))), field: .[0].pkg, regex: ("^(" + (map(.test) | join("|")) + ")$"), file: ""}' "$targets")
@@ -46,6 +46,7 @@ for chunk in "${chunks[@]}"; do
   regex=$(jq -r .regex <<<"$chunk")
   file=$(jq -r .file <<<"$chunk")
   signins=$(jq -r .signins <<<"$chunk")
+  serial=$(jq -r '.serial // false' <<<"$chunk")
   now=$(date +%s)
   remaining=$(( deadline - now ))
   if [ "$remaining" -lt "${MIN_SECONDS:-20}" ]; then
@@ -94,8 +95,11 @@ for chunk in "${chunks[@]}"; do
     fi
     started=$(date +%s)
     if [ "$kind" = playwright ]; then
+      # A serial describe shares state between its tests (one account, one upload): its copies must not run in parallel.
+      workers=()
+      [ "$serial" = true ] && workers=(--workers=1)
       E2E_COLOR_SCHEME="$field" timeout --kill-after=15 "$left_s" \
-        npx playwright test "$file" --grep "$regex" --repeat-each="$n" --max-failures=1
+        npx playwright test "$file" --grep "$regex" --repeat-each="$n" --max-failures=1 ${workers[@]+"${workers[@]}"}
     else
       timeout --kill-after=15 "$left_s" \
         go test -race -count="$n" -failfast -timeout 30m -run "$regex" "$field"

@@ -243,12 +243,12 @@ Cascades with the campaign and the character.
 
 ## Table content
 
-The content the master adds to a campaign (MR-025, RN-23, ADR-0018): classes, subclasses, races, subraces, backgrounds, spells and feats.
+The content the master adds to a campaign (MR-025, RN-23, ADR-0018): classes, subclasses, races, subraces, backgrounds, spells, feats, options and class features.
 It lives in `characters` and not in `campaigns` so that `characters` never writes another module's table.
 
 - **`campaign_content`**: one row per entry.
   The key is `<kind>:<name>@mesa`, built by the server at creation and never changed (`CHECK`).
-  `kind` is one of the seven above.
+  `kind` is one of the kinds above.
   `name_pt` is the Portuguese name, `data` the protojson of the kind's message (`rules/v1/table_content.proto`), `revision` the campaign revision at the entry's last change.
   **Nothing is deleted**: what a sheet already uses must keep working, so the way out is `archived_at`.
   Archiving and unarchiving change only `archived_at` and the campaign revision (for the cache), not the entry's `revision` and `updated_at`; `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.

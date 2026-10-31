@@ -281,7 +281,7 @@ func charBlocked(t *testing.T, err error) *charactersv1.CharacterBlocked {
 }
 
 // TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack walks the four
-// writes for each of the seven kinds, and checks that the key and the feature keys
+// writes for each kind, and checks that the key and the feature keys
 // stay through a rename.
 func TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack(t *testing.T) {
 	t.Parallel()

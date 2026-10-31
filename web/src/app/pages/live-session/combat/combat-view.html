@@ -278,35 +278,38 @@
             }
           </div>
             <div class="player__notes">
-              @if (contest.pending().length > 0 && !contest.sheetOpen()) {
-                <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
-                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
-                  <mat-icon aria-hidden="true">pan_tool</mat-icon>
-                  <p>Uma disputa espera a sua resposta.</p>
-                  <button matButton type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
-                </div>
-              }
-              @if (ownEffectSave(); as pending) {
-                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
-                  <mat-icon aria-hidden="true">casino</mat-icon>
-                  <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
-                  <button matButton type="button" class="notice__ok" (click)="sheets.reactions.effectSave(pending)">Rolar o teste</button>
-                </div>
-              }
-              @if (ownLucky()) {
-                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="lucky-pending">
-                  <mat-icon aria-hidden="true">casino</mat-icon>
-                  <p>A sua rolagem espera a sua resposta: tirou 1, rolar de novo?</p>
-                  <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
-                </div>
-              }
-              @if (ownDieAsked()) {
-                <div role="status" class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
-                  <mat-icon aria-hidden="true">music_note</mat-icon>
-                  <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>
-                  <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
-                </div>
-              }
+              <!-- The wrapper is on the page before a notice arrives, so a screen reader announces it. -->
+              <div class="mr-live" role="status">
+                @if (contest.pending().length > 0 && !contest.sheetOpen()) {
+                  <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
+                  <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
+                    <mat-icon aria-hidden="true">pan_tool</mat-icon>
+                    <p>Uma disputa espera a sua resposta.</p>
+                    <button matButton type="button" class="notice__ok" (click)="contest.answerPending()">Responder</button>
+                  </div>
+                }
+                @if (ownEffectSave(); as pending) {
+                  <div class="mr-notice mr-notice--warning notice" data-testid="effect-save-pending">
+                    <mat-icon aria-hidden="true">casino</mat-icon>
+                    <p>O teste de resistência do fim do turno espera a sua rolagem.</p>
+                    <button matButton type="button" class="notice__ok" (click)="sheets.reactions.effectSave(pending)">Rolar o teste</button>
+                  </div>
+                }
+                @if (ownLucky()) {
+                  <div class="mr-notice mr-notice--warning notice" data-testid="lucky-pending">
+                    <mat-icon aria-hidden="true">casino</mat-icon>
+                    <p>A sua rolagem espera a sua resposta: tirou 1, rolar de novo?</p>
+                    <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  </div>
+                }
+                @if (ownDieAsked()) {
+                  <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
+                    <mat-icon aria-hidden="true">music_note</mat-icon>
+                    <p>A sua rolagem espera a sua resposta: usar a Inspiração de Bardo?</p>
+                    <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  </div>
+                }
+              </div>
               @if (ownDie(); as die) {
                 <app-inspiration-card class="player__die" [die]="die" [round]="e.round" />
               }
