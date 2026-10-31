@@ -20,7 +20,7 @@ import {
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import { EntrySaver, focusAfterRender, focusField } from '../../../core/content/entry-saver';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import type { FeatureDraft } from '../../../core/content/feature-draft';
 import {
@@ -30,6 +30,7 @@ import {
   emptyOption,
   optionPaths,
   optionToDraft,
+  unreadableOptionPaths,
 } from '../../../core/content/option-draft';
 import { optionSetName } from '../../../core/content/option-text';
 import { previewRead } from '../../../core/content/preview';
@@ -192,6 +193,11 @@ export class OptionEditor {
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked()) {
+      return;
+    }
+    const unreadable = unreadableOptionPaths(this.draft(), this.menu());
+    if (unreadable.length > 0) {
+      focusAfterRender(this.host.nativeElement, this.injector, unreadable[0]);
       return;
     }
     const body: EntryBody = {

@@ -18,7 +18,7 @@ import { RouterLink } from '@angular/router';
 import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import { EntrySaver, focusAfterRender, focusField } from '../../../core/content/entry-saver';
 import {
   type EffectMenuVm,
   UNREADABLE_RANGE,
@@ -41,6 +41,7 @@ import {
   raceToDraft,
   SIZE_OPTIONS,
   subraceToDraft,
+  unreadableFeaturePaths,
 } from '../../../core/content/feature-draft';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { NumberStepper } from '../../../shared/form-fields/number-stepper';
@@ -314,6 +315,13 @@ export class RaceEditor {
 
   protected async save(): Promise<void> {
     if (this.saver.saving() || this.saveBlocked() || this.unreadable().length > 0) {
+      return;
+    }
+    const unreadableNumber = this.traits().flatMap((t, i) =>
+      unreadableFeaturePaths(`${this.prefix()}.traits[${i}]`, t, this.menu()),
+    );
+    if (unreadableNumber.length > 0) {
+      focusAfterRender(this.host.nativeElement, this.injector, unreadableNumber[0]);
       return;
     }
     const menu = this.menu();

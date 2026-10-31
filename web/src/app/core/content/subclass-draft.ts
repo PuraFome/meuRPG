@@ -18,7 +18,7 @@ import {
   slotsOf,
 } from './class-draft';
 import type { EffectMenuVm } from './effect-draft';
-import { featureOwnPaths, featureToDraft } from './feature-draft';
+import { featureOwnPaths, featureToDraft, unreadableFeaturePaths } from './feature-draft';
 
 // The subclass form's conversions and the paths of its inputs; the class form's are in class-draft.
 
@@ -43,6 +43,13 @@ export function subclassFeatureBase(d: SubclassDraft, index: number): string {
 
 export function subclassFeaturePaths(d: SubclassDraft, menu: EffectMenuVm): string[] {
   return d.features.flatMap((f, i) => featureOwnPaths(subclassFeatureBase(d, i), f.feature, menu));
+}
+
+/** The paths of the number fields, in every feature, whose text is no whole number. */
+export function unreadableSubclassPaths(d: SubclassDraft, menu: EffectMenuVm): string[] {
+  return d.features.flatMap((f, i) =>
+    unreadableFeaturePaths(subclassFeatureBase(d, i), f.feature, menu),
+  );
 }
 
 /** "table_subclass.levels[2]": the row of a class level of a third caster, or '' when the request has none for it. */
