@@ -459,11 +459,13 @@ func TestTheCastRecordsEveryCreatureItCaughtWhateverTheSave(t *testing.T) {
 		cast  func(*testing.T, *cave, int)
 	}{
 		{"grease", greaseCave, func(t *testing.T, c *cave, face int) {
+			t.Helper()
 			c.passTo(t, c.zoneFight(t), "Pensantus")
 			c.h.roller.queue(face)
 			c.mustCastArea(t, c.ana, "Pensantus", greaseKey, slotOfLevel(1), at(7, 7), nil)
 		}},
 		{"entangle", entangleCave, func(t *testing.T, c *cave, face int) {
+			t.Helper()
 			c.entangleFight(t)
 			c.h.roller.queue(face)
 			c.mustCastArea(t, c.caio, "Toren", entangleKey, slotOfLevel(1), at(18, 3), nil)
