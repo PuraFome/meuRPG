@@ -331,3 +331,42 @@ func TestReadTxStaysReadOnlyAfterRetry(t *testing.T) {
 		t.Errorf("rows committed by ReadTx = %d, want 0", c)
 	}
 }
+
+// TestACanceledCallFreesItsConnectionAtOnce checks against the real database
+// that the server honors the cancel request the pool sends (issue 710). If it
+// did not, a canceled call would hold its only connection until the
+// cancelDeadlineFallback.
+func TestACanceledCallFreesItsConnectionAtOnce(t *testing.T) {
+	t.Parallel()
+	url := testenv.DatabaseURL(t)
+
+	pool, err := NewPoolWith(t.Context(), url, func(cfg *pgxpool.Config) { cfg.MaxConns = 1 })
+	if err != nil {
+		t.Fatalf("NewPoolWith() error = %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err = pool.Exec(ctx, "SELECT pg_sleep(10)")
+	took := time.Since(start)
+	if err == nil {
+		t.Fatal("pg_sleep(10) returned without an error")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) && !strings.Contains(err.Error(), "cancel") {
+		t.Errorf("error = %v, want a cancellation", err)
+	}
+	if took >= 2*time.Second {
+		t.Fatalf("the canceled call took %v, want well under the %v fallback", took, cancelDeadlineFallback)
+	}
+
+	start = time.Now()
+	var one int
+	if err := pool.QueryRow(t.Context(), "SELECT 1").Scan(&one); err != nil {
+		t.Fatalf("the call after the cancel failed: %v", err)
+	}
+	if next := time.Since(start); next >= 2*time.Second {
+		t.Errorf("the call after the cancel took %v, want it at once", next)
+	}
+}

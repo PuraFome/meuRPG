@@ -26,6 +26,8 @@ export interface OptionDraft {
   feature: FeatureDraft;
   /** The set's word ("invocation"); empty until the master picks one. It never changes after the first save. */
   set: string;
+  /** The key of the table feature whose option list the option joins; only the set "table_feature" has one. Kept as it came so an edit does not drop it. */
+  offeredBy: string;
   /** A class and a level in it, both or neither. */
   classKey: string;
   classLevel: string;
@@ -41,6 +43,7 @@ export function emptyOption(set = ''): OptionDraft {
   return {
     feature: emptyFeature(),
     set,
+    offeredBy: '',
     classKey: '',
     classLevel: '',
     requiresOptions: [],
@@ -59,6 +62,7 @@ export function optionToDraft(o: TableOption): OptionDraft {
       effects: o.effects.map(effectToDraft),
     },
     set: o.set,
+    offeredBy: o.offeredBy,
     classKey: p?.classLevel?.classKey ?? '',
     classLevel: p?.classLevel && p.classLevel.level > 0 ? String(p.classLevel.level) : '',
     requiresOptions: [...(p?.requiresOptionKeys ?? [])],
@@ -77,6 +81,7 @@ export function draftToOption(d: OptionDraft, menu: EffectMenuVm): OptionInit {
     namePt: d.feature.name.trim(),
     descPt: paragraphs(d.feature.text),
     set: d.set,
+    offeredBy: d.offeredBy,
     prerequisite: {
       ...(classLevel ? { classLevel } : {}),
       requiresOptionKeys: [...d.requiresOptions],
