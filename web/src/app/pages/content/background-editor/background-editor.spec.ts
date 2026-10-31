@@ -70,6 +70,23 @@ describe('BackgroundEditor (E10-01 state 7)', () => {
       .find((b) => text(b).includes(label))!
       .click();
 
+  it('does not save a number that is no whole number in the feature, and lands on its field', async () => {
+    const { fixture, el } = setup();
+    const type_ = field(el, 'table_background.feature.effects[0].type') as HTMLSelectElement;
+    type_.value = 'choice';
+    type_.dispatchEvent(new Event('change'));
+    await settle(fixture, 3);
+    const count = field(el, 'table_background.feature.effects[0].count') as HTMLInputElement;
+    count.value = 'abc';
+    count.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    click(el, 'Salvar antecedente');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(count);
+    expect(count.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('draws the form from the entry: two skills, the tools as chips, the equipment and the one feature', () => {
     const { el } = setup();
     expect((field(el, 'table_background.name_pt') as HTMLInputElement).value).toBe(

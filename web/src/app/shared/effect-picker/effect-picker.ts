@@ -7,7 +7,12 @@ import {
   EFFECT_TYPE_FIELD_HINTS,
   EFFECT_TYPE_FIELD_LABELS,
 } from '../../core/content/effect-field-copy';
-import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import {
+  type EffectDraft,
+  type EffectMenuVm,
+  draftKey,
+  emptyEffect,
+} from '../../core/content/effect-draft';
 import { visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
@@ -83,7 +88,7 @@ export class EffectPicker {
   protected readonly typeIssues = computed(() => this.issuesOf()(`${this.basePath()}.type`));
 
   private filled(f: EffectMenuField): boolean {
-    const v = this.effect()[camel(f.name)];
+    const v = this.effect()[draftKey(f.name)];
     return Array.isArray(v)
       ? v.length > 0
       : typeof v === 'number'
@@ -218,12 +223,20 @@ export class EffectPicker {
 
   /** What the draft holds for a field of the menu, by its proto name. */
   protected read(name: string): string {
-    const v = this.effect()[camel(name)];
-    return typeof v === 'string' ? v : typeof v === 'number' ? (v !== 0 ? String(v) : '') : '';
+    const v = this.effect()[draftKey(name)];
+    return typeof v === 'string'
+      ? v
+      : typeof v === 'number'
+        ? Number.isNaN(v)
+          ? (this.unreadable()[this.typedKey(name)] ?? '')
+          : v !== 0
+            ? String(v)
+            : ''
+        : '';
   }
 
   protected list(name: string): readonly string[] {
-    const v = this.effect()[camel(name)];
+    const v = this.effect()[draftKey(name)];
     return Array.isArray(v) ? v : [];
   }
 
@@ -238,7 +251,7 @@ export class EffectPicker {
 
   /** Whether a yes-or-no field is on. */
   protected flag(name: string): boolean {
-    return this.effect()[camel(name)] === true;
+    return this.effect()[draftKey(name)] === true;
   }
 
   protected setType(type: string): void {
@@ -249,18 +262,40 @@ export class EffectPicker {
   }
 
   protected setText(name: string, text: string): void {
-    this.effectChange.emit({ ...this.effect(), [camel(name)]: text });
+    this.effectChange.emit({ ...this.effect(), [draftKey(name)]: text });
   }
 
-  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. */
+  /** What was typed in a number field of the effect shown that the draft cannot hold (a NaN there), by the effect's id and the field.
+   * It lives as long as this picker: a picker made new for the same effect, or reused for another, shows the error on an empty field. */
+  private readonly unreadable = signal<Readonly<Record<string, string>>>({});
+
+  private typedKey(name: string): string {
+    return `${this.effect().id}:${name}`;
+  }
+
+  /** A whole number, with a sign where the menu allows one (a bonus may be negative, and "+1" reads as 1). An empty field is 0, "not set".
+   * Anything else is kept as typed and the draft holds a NaN, so an editor does not save instead of sending 0. */
   protected setNumber(f: EffectMenuField, text: string): void {
-    const n = Number(text.trim());
-    const ok = Number.isInteger(n) && (n > 0 || (n < 0 && f.min < 0));
-    this.effectChange.emit({ ...this.effect(), [camel(f.name)]: ok ? n : 0 });
+    const t = text.trim();
+    const ok = (f.min < 0 ? /^[+-]?\d+$/ : /^\+?\d+$/).test(t);
+    const key = this.typedKey(f.name);
+    const { [key]: _, ...rest } = this.unreadable();
+    this.unreadable.set(t === '' || ok ? rest : { ...rest, [key]: text });
+    this.effectChange.emit({
+      ...this.effect(),
+      [draftKey(f.name)]: t === '' ? 0 : ok ? Number(t) : Number.NaN,
+    });
+  }
+
+  /** The refusal of a number field whose text is no whole number; empty when it is one. */
+  protected numberIssues(f: EffectMenuField): readonly string[] {
+    return Number.isNaN(this.effect()[draftKey(f.name)])
+      ? [f.min < 0 ? UNREADABLE_BONUS : UNREADABLE_COUNT]
+      : [];
   }
 
   protected setFlag(name: string, on: boolean): void {
-    this.effectChange.emit({ ...this.effect(), [camel(name)]: on });
+    this.effectChange.emit({ ...this.effect(), [draftKey(name)]: on });
   }
 
   protected setMeters(name: string, text: string): void {
@@ -269,21 +304,24 @@ export class EffectPicker {
 
   protected setChoice(f: EffectMenuField, value: string): void {
     // A new kind of choice has its own `from` list: what was picked for another kind goes.
-    const next = { ...this.effect(), [camel(f.name)]: value } as EffectDraft;
+    const next = { ...this.effect(), [draftKey(f.name)]: value } as EffectDraft;
     this.effectChange.emit(f.name === 'choice' ? { ...next, from: [] } : next);
   }
 
   protected add(name: string, key: string): void {
-    this.effectChange.emit({ ...this.effect(), [camel(name)]: [...this.list(name), key] });
+    this.effectChange.emit({ ...this.effect(), [draftKey(name)]: [...this.list(name), key] });
   }
 
   protected remove(name: string, key: string): void {
     this.effectChange.emit({
       ...this.effect(),
-      [camel(name)]: this.list(name).filter((k) => k !== key),
+      [draftKey(name)]: this.list(name).filter((k) => k !== key),
     });
   }
 }
+
+const UNREADABLE_COUNT = 'Escreva um número inteiro, como 2.';
+const UNREADABLE_BONUS = 'Escreva um número inteiro, como 2 ou -1.';
 
 /** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
 const OWN_HINT_REFS: ReadonlySet<string> = new Set(['restore', 'uses']);
@@ -298,8 +336,3 @@ const STATE_RESOURCE_HINT =
 
 const RESOURCE_REF_HINT =
   'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';
-
-/** "text_pt" → "textPt": the draft's key for a proto field. */
-function camel(name: string): keyof EffectDraft {
-  return name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft;
-}

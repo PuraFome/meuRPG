@@ -64,7 +64,7 @@
                 [value]="read(f.name)"
                 [inputmode]="f.min < 0 ? 'text' : 'numeric'"
                 [path]="path(f.name)"
-                [issues]="issues(f.name)"
+                [issues]="[...issues(f.name), ...numberIssues(f)]"
                 (valueChange)="setNumber(f, $event)"
               />
             }

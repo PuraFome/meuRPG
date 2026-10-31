@@ -294,6 +294,30 @@ describe('ClassEditor', () => {
     );
   });
 
+  it('does not save a number that is no whole number in a closed feature: it opens that feature and lands on the field', async () => {
+    const { fixture, el } = setup();
+    click(el, 'Adicionar característica');
+    await settle(fixture, 3);
+    const base = 'table_class.levels[0].features[1]';
+    type(field(el, `${base}.name_pt`) as HTMLInputElement, 'Escolha do vale');
+    await settle(fixture, 3);
+    const type_ = field(el, `${base}.effects[0].type`) as HTMLSelectElement;
+    type_.value = 'choice';
+    type_.dispatchEvent(new Event('change'));
+    await settle(fixture, 3);
+    type(field(el, `${base}.effects[0].count`) as HTMLInputElement, '1.5');
+    await settle(fixture, 3);
+    click(el, 'Vigília');
+    await settle(fixture, 3);
+    expect(el.querySelector(`[data-field="${base}.effects[0].count"]`)).toBeNull();
+    click(el, 'Salvar classe');
+    await settle(fixture, 3);
+    expect(save).not.toHaveBeenCalled();
+    const count = field(el, `${base}.effects[0].count`);
+    expect(document.activeElement).toBe(count);
+    expect(text(count.closest('app-text-field')!)).toContain('Escreva um número inteiro');
+  });
+
   it('says "Esta classe tem 61" when the server refuses the 61st feature', async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(refusal(['table_class.levels[0].features[0]', 'limit']));

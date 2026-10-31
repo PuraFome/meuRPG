@@ -9,7 +9,7 @@ This page says what each layer proves, how to run it and what CI runs; the CI jo
 | Unit                      | `go test`, case tables                                 | The `rules` maths and each business rule alone, with no database   |
 | Characterization (golden) | `go test`, golden files under `testdata/`              | What a function answers, refuses and writes stays as reviewed      |
 | Integration               | `go test` with `MEURPG_TEST_DATABASE_URL`              | Queries, migrations, the retry on error `40001`, who may do what   |
-| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries (it reads imports with `go/parser`)              |
+| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries and no production import of the test dice (it reads the source with `go/parser`) |
 | Leak (RN-10)              | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player                         |
 | Web unit                  | Vitest through `ng test`                               | Components and services                                            |
 | End to end                | Playwright in `e2e/`, against the local stack          | Acceptance criteria through the screen                             |
@@ -69,6 +69,46 @@ How `backend/internal/platform/dbtest` shapes the tests:
   - `MEURPG_TEST_POOL_MAX_CONNS=8` applies to the whole process and lists all the violations at once.
 - **Migrations are tested from scratch** by `backend/migrations`. `TestMigrationsAreSafeToRerun` requires every migration to run twice without error, and `TestEveryEventKindOfTheCodeIsInTheTable` requires every session event kind of the code to have a row in `session_event_kinds`. The rules for writing a migration are in [Data](data/README.md).
 
+### Dice in tests
+
+The services roll with deterministic dice in tests: `backend/internal/platform/dice/dicetest`, or `play`'s `scriptedRoller`.
+The app rolls an NPC's initiative, and two combatants with the same total take one joint turn, so a random tie makes a test that assumes one actor fail by chance.
+`play.New` and `characters.New` reject a nil `Roller`.
+Production passes `dice.Crypto{}` explicitly.
+Tests pass `dicetest.New()` or a scripted roller.
+The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `characters` hand the services a `dicetest.New()`.
+
+- **The default is fixed.** The same calls give the same faces, and the roller never runs out.
+- **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
+- **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
+- **Script the d20 of an attack or a save rolled before the initiative.**
+  Every unscripted d20 takes the next face of the default sequence.
+  Scripting those rolls keeps the sequence where the test expects it.
+- **A test pins a roll with `ScriptFor(t, sides, faces...)`.**
+  The faces go to the next rolls of that die only, and the default goes on after them.
+  A face that does not fit its die fails the test at once.
+  A scripted face that is never rolled fails the test at the end, naming the die and the faces.
+  The check belongs to the test that first scripts the roller: script through the test that built it.
+  A test scripts only the rolls it makes.
+  It also asserts the roll a face was for, such as `requireOwnTotal`, because a later roll of that die can take a face its own roll left.
+- **A creature added to a running combat is scripted and checked.**
+  The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`).
+  It then calls `requireOwnTotal` (`requireOwnTotals` in `progression`).
+  A tie fails with "script the faces with ScriptFor", on every run.
+- **`play` rolls with its own `scriptedRoller`.**
+  It gives the lower of 10 and the die's sides when no face is queued.
+  Creatures with the same bonus tie by default in its tests, and that is deterministic.
+  A test that needs one actor queues its faces.
+
+Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
+That rule also fails when it finds no test file that imports `dicetest`, so a walk of the wrong tree cannot pass.
+The end-to-end tests roll with `dice.Crypto`, so an NPC's initiative total can tie with another combatant's at random.
+An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins.
+The helpers are `beginAttackCombatRPC` and its `monsters` argument for an SRD creature.
+A creature added to a running combat is rolled by the app and cannot be typed.
+A test that depends on who acts starts the combat with that creature.
+`beginAttackCombatRPC` fails when a creature added that way has the same total as another combatant.
+
 ### Leak tests (RN-10)
 
 `TestLeakMatrix` (`backend/internal/leaktest`) proves in one test that a player never receives what the master hid, on every read and every stream event.
@@ -114,6 +154,7 @@ Every test that looks for something absent needs a positive control that shows t
 ### Architecture tests
 
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
+It also holds the import rule of [Dice in tests](#dice-in-tests).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
 ## Before ready
@@ -186,6 +227,9 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 - In CI every shard but plain 1/3 restores the backup the `database` job of `e2e` made (seed rows included) once CockroachDB is up, before `migrate` and the API start.
   Plain 1/3 migrates an empty database, so a broken migration fails e2e.
   See [CI](ci.md#end-to-end).
+- In CI each shard runs a list of tests balanced by measured time (`e2e/timings.json`), not Playwright's own `--shard`.
+  A new test needs no change to the file: it runs in the shard with the least time.
+  The command that refreshes the file is in [CI](ci.md#end-to-end).
 - There are no retries (`retries: 0`, checked by the e2e lint job) and no `test.skip` or `test.fixme` (the e2e lint fails on both): a flaky acceptance test is a bug to fix. See [Reproducing a flaky test](#reproducing-a-flaky-test).
 - Each test that proves an acceptance criterion carries the story's or rule's tag, such as `@MR-001`; `npx playwright test --grep @MR-001` runs only that story's.
 - RPCs from a test go through `page.request` (same cookies as the page) with `Connect-Protocol-Version: 1`.
