@@ -22,7 +22,7 @@ Defined in `web/src/styles/_ui.scss`.
 | `.mr-nudge`, `.mr-nudge--still` | The half-second shake of the turn panel (`SHAKE_MS` in `core/combat/turn-alert.ts`); `--still` is the static 2 px outline used under reduced motion |
 | `[data-ring]` | Gives the focus ring to an element the app focused (`core/creatures/focus-ring.ts`) |
 
-Colour and role go together. `--danger` with `role="alert"` stops what the person is doing: a save refused, a launch that cannot start. `--warning` and `--success` with `role="status"` inform and do not stop anything.
+Colour and role go together. `--danger` with `role="alert"` stops what the person is doing: a save refused, a launch that cannot start. `--warning` and `--success` with `role="status"` inform and do not stop anything. A `--danger` notice on a screen with its own live region (the campaign import) is said there, as a polite message, and has no role.
 
 ## Shell components
 

@@ -153,12 +153,14 @@
         </section>
       }
 
-      @if (refused() > 0) {
-        <div class="mr-notice mr-notice--warning" role="status">
-          <mat-icon aria-hidden="true">warning</mat-icon>
-          <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
-        </div>
-      }
+      <div class="mr-live" role="status">
+        @if (refused() > 0) {
+          <div class="mr-notice mr-notice--warning">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <p><strong>{{ refused() === 1 ? 'Uma entrada foi recusada' : refused() + ' entradas foram recusadas' }}, então nada pode ser importado.</strong> Edite o arquivo para corrigir o que está acima e escolha-o de novo.</p>
+          </div>
+        }
+      </div>
       <div class="actions">
         <button matButton="filled" type="button" [disabled]="refused() > 0 || writes() === 0 || busy()" (click)="apply()">{{ applyLabel() }}</button>
         <button matButton="outlined" type="button" [disabled]="busy()" (click)="picker.click()">Escolher outro arquivo</button>

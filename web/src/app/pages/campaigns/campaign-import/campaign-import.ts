@@ -424,9 +424,7 @@ export class CampaignImportPage {
   }
 }
 
-/** The failure card for an issue that is not a refusal with its own card. */
-/** What a card that is a refusal says through the live region when it replaces the screen: its notices carry no live role, since the
- * element would arrive with its text. */
+/** What a card says through the live region when it replaces the screen: its notices have no live role of their own. */
 function spoken(state: ImportState): string {
   switch (state.status) {
     case 'choose':
@@ -444,6 +442,7 @@ function spoken(state: ImportState): string {
   }
 }
 
+/** The failure card for an issue that is not a refusal with its own card. */
 function failureFor(issue: Extract<ImportIssue, { kind: 'text' | 'lost' }>, stage: Stage): Failure {
   if (issue.kind === 'lost') {
     return {
