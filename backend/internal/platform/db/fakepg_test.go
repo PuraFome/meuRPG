@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"io"
-	"math/rand/v2"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,8 +18,9 @@ import (
 // the pool's behavior with canceled contexts be tested without a database. Each Execute takes a few
 // milliseconds, so that a cancel can land while the client waits for the answer.
 type fakePG struct {
-	ln net.Listener
-	wg sync.WaitGroup
+	ln       net.Listener
+	wg       sync.WaitGroup
+	executes atomic.Int64
 }
 
 func newFakePG(t *testing.T) *fakePG {
@@ -95,8 +96,8 @@ func (f *fakePG) serve(c net.Conn) {
 		case *pgproto3.Bind:
 			be.Send(&pgproto3.BindComplete{})
 		case *pgproto3.Execute:
-			jitter := time.Duration(rand.IntN(6000)) * time.Microsecond //nolint:gosec // test jitter
-			time.Sleep(jitter)
+			// A spread of 0 to 6 ms that repeats from run to run.
+			time.Sleep(time.Duration(f.executes.Add(1)*7919%6000) * time.Microsecond)
 			be.Send(&pgproto3.DataRow{Values: [][]byte{{0, 0, 0, 1}}})
 			be.Send(&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")})
 		case *pgproto3.Close:

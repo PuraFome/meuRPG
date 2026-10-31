@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"math/rand/v2"
 	"net"
 	"sync"
 	"testing"
@@ -49,9 +48,10 @@ func TestACallCanceledAsItEndsLeavesNoStaleErrorOnTheConnection(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r := rand.New(rand.NewPCG(uint64(w), 11)) //nolint:gosec // seeded test jitter
-			for range 250 {
-				ctx, cancel := context.WithTimeout(context.Background(), 16*time.Millisecond+time.Duration(r.IntN(2500))*time.Microsecond)
+			for i := range 250 {
+				// 16 ms plus 0 to 2.5 ms, spread over the calls and the workers.
+				spread := time.Duration((w*251+i)*997%2500) * time.Microsecond
+				ctx, cancel := context.WithTimeout(context.Background(), 16*time.Millisecond+spread)
 				var n int
 				_ = pool.QueryRow(ctx, "SELECT 1").Scan(&n)
 				cancel()
