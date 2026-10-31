@@ -32,7 +32,8 @@ func obscureCave(t *testing.T) *cave {
 // farthest is the largest distance, in squares, of a square of the zone from its origin.
 func farthest(z interface {
 	GetSquares() []*playv1.SpellOrigin
-}, col, row int32) int32 {
+}, col, row int32,
+) int32 {
 	var far int32
 	for _, s := range z.GetSquares() {
 		far = max(far, abs32(s.GetCol()-col), abs32(s.GetRow()-row))
