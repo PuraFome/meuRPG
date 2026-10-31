@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"path"
 	"sort"
 	"strings"
@@ -33,16 +32,6 @@ var everythingDirs = []string{backendDir + "/cmd/beforeready"}
 
 // Line is one `run` line of the list, as the shared parser reads it.
 type Line = beforereadylist.Line
-
-// ParseList reads the `run` lines of the list (`run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`)
-// with the parser the guard in internal/archtest uses; the helper lines are left out.
-func ParseList(r io.Reader) ([]Line, error) {
-	all, err := beforereadylist.Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	return beforereadylist.RunLines(all), nil
-}
 
 // Facts is what the selection knows about the change and the module.
 type Facts struct {

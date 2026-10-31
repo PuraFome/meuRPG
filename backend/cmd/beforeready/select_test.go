@@ -2,9 +2,12 @@ package main
 
 import (
 	"errors"
+	"io"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/archtest/beforereadylist"
 )
 
 const mod = "github.com/PuraFome/meuRPG/backend"
@@ -41,7 +44,7 @@ run	migrations	^TestKinds$	regen kinds	backend/internal
 
 func setup(t *testing.T) ([]Line, Facts) {
 	t.Helper()
-	lines, err := ParseList(strings.NewReader(list))
+	lines, err := parseRunLines(strings.NewReader(list))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,9 +197,9 @@ func TestAllNamesTheReason(t *testing.T) {
 	}
 }
 
-func TestParseListRefusesAShortLine(t *testing.T) {
+func TestParseRefusesAShortLine(t *testing.T) {
 	t.Parallel()
-	if _, err := ParseList(strings.NewReader("run\tinternal/x\t^T$\tregen\n")); err == nil {
+	if _, err := parseRunLines(strings.NewReader("run\tinternal/x\t^T$\tregen\n")); err == nil {
 		t.Error("a run line with no inputs column was accepted")
 	}
 }
@@ -246,4 +249,10 @@ func TestComputeFactsOutsideAGitTreeFails(t *testing.T) {
 	if _, err := computeFacts("none", ""); err == nil {
 		t.Error("computeFacts succeeded outside a git work tree")
 	}
+}
+
+// parseRunLines reads the run lines of a list with the shared parser.
+func parseRunLines(r io.Reader) ([]Line, error) {
+	all, err := beforereadylist.Parse(r)
+	return beforereadylist.RunLines(all), err
 }

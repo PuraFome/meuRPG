@@ -85,7 +85,7 @@ func TestBeforeReadyFactsWithoutMergeBase(t *testing.T) {
 	if _, err := computeFacts(filepath.Join(root, "list.txt"), ""); err == nil || !strings.Contains(err.Error(), "merge base") {
 		t.Errorf("err = %v, want a merge base error", err)
 	}
-	lines, _ := ParseList(strings.NewReader("run\tinternal/x\t^TestX$\tregen\t-\n"))
+	lines, _ := parseRunLines(strings.NewReader("run\tinternal/x\t^TestX$\tregen\t-\n"))
 	run, skipped, note := plan(lines, false, "", Facts{}, os.ErrNotExist)
 	if len(run) != 1 || len(skipped) != 0 || !strings.Contains(note, "running every line") || run[0].Reason != "the selection could not be computed" {
 		t.Errorf("plan = %v %v %q", run, skipped, note)
@@ -209,7 +209,7 @@ func TestBeforeReadyQueries(t *testing.T) {
 
 func TestRegenForReplacesTheTestName(t *testing.T) {
 	t.Parallel()
-	lines, err := ParseList(strings.NewReader("run\tinternal/x\t^TestA$\tgo test -run '^{test}$' -update\t-\nrun\tinternal/x\t^Test\tby hand\t-\n"))
+	lines, err := parseRunLines(strings.NewReader("run\tinternal/x\t^TestA$\tgo test -run '^{test}$' -update\t-\nrun\tinternal/x\t^Test\tby hand\t-\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

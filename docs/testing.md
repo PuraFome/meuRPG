@@ -138,7 +138,7 @@ By default it runs only the lines of the list that the change can affect. It com
 
 A change that touches none of this (web, docs, the `Makefile`) runs nothing, says so and exits 0, without asking for the database.
 The output names each package that runs and the changed file or import that selected it, then the packages it skipped.
-When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge.
+When the selection cannot be computed (no merge base, no `origin/main`, `go list` fails) it runs every line and says why: it never runs nothing for lack of knowledge. A failure of the selection step itself (an unreadable list, an unwritable output file, an invalid `ONLY`) is different: it exits 2 and runs nothing.
 
 `BEFORE_READY_ALL=1` (or `make before-ready ALL=1`) runs every line, whatever the change; any value but empty or `0` does the same.
 `ONLY` narrows the lines that would run, or every line with `ALL=1`: `make before-ready ONLY='internal/play$'` (a Go (RE2) regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable; a pattern that RE2 cannot read, or that matches no package of the list, stops the run with exit 2), and `make before-ready ALL=1 ONLY='internal/play$'` runs that group whatever the change.

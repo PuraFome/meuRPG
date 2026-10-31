@@ -41,6 +41,7 @@ list_shown="${list#"$root"/}"
 # by the parent, that reads the lines to run from BEFORE_READY_LIST).
 if [ "${1:-}" = "--one" ]; then
   out="$3/$(echo "$2" | tr '/' '_').out"
+  echo $$ >"$out.pid"
   cd "$root/backend"
   regex="$("$3/beforeready" -list "$BEFORE_READY_LIST" -regex-of "$2")"
   if go test -count=1 -timeout 45m -run "$regex" "./$2" >"$out" 2>&1; then
@@ -103,7 +104,16 @@ echo "before-ready: running the golden, frozen, fixture and inventory tests of $
 # summary reports as FAILED.
 xargs_status=0
 echo "$packages" | xargs -P "${BEFORE_READY_JOBS:-4}" -I{} bash "${BASH_SOURCE[0]}" --one {} "$tmp" || xargs_status=$?
-[ "$xargs_status" -eq 0 ] || echo "before-ready: a test run ended abnormally (xargs exit $xargs_status): the summary follows" >&2
+if [ "$xargs_status" -ne 0 ]; then
+  echo "before-ready: a test run ended abnormally (xargs exit $xargs_status): waiting for the others to end" >&2
+  # xargs gives up at once when a child is killed, while the others still run: the summary
+  # (and the removal of the logs) waits for every child that has started and left no result.
+  for pkg in $packages; do
+    out="$tmp/$(echo "$pkg" | tr '/' '_').out"
+    pid="$(cat "$out.pid" 2>/dev/null || true)"
+    while [ -n "$pid" ] && [ ! -e "$out.status" ] && kill -0 "$pid" 2>/dev/null; do sleep 1; done
+  done
+fi
 
 failed=0
 for pkg in $packages; do
@@ -113,6 +123,7 @@ for pkg in $packages; do
     failed=1
     echo
     echo "=== FAILED: $pkg: the test run left no result (the script was interrupted, or go could not start): run it again."
+    [ ! -s "$out" ] || { echo "--- the output it left:"; cat "$out"; }
     continue
   fi
   if [ "$status" = 0 ]; then
@@ -129,7 +140,7 @@ for pkg in $packages; do
     continue
   fi
   for name in $names; do
-    cmd="$("$tool" -list "$list" -regen-of "$pkg" -test "$name")"
+    cmd="$("$tool" -list "$list" -regen-of "$pkg" -test "$name" 2>/dev/null || true)"
     echo "--- $pkg $name"
     if [ -n "$cmd" ]; then
       echo "    regenerate, only if the change is intended: $cmd"
