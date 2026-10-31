@@ -9,7 +9,7 @@ This page says what each layer proves, how to run it and what CI runs; the CI jo
 | Unit                      | `go test`, case tables                                 | The `rules` maths and each business rule alone, with no database   |
 | Characterization (golden) | `go test`, golden files under `testdata/`              | What a function answers, refuses and writes stays as reviewed      |
 | Integration               | `go test` with `MEURPG_TEST_DATABASE_URL`              | Queries, migrations, the retry on error `40001`, who may do what   |
-| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries (it reads imports with `go/parser`)              |
+| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries and the dice rules (it reads the source with `go/parser`) |
 | Leak (RN-10)              | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player                         |
 | Web unit                  | Vitest through `ng test`                               | Components and services                                            |
 | End to end                | Playwright in `e2e/`, against the local stack          | Acceptance criteria through the screen                             |
@@ -71,7 +71,7 @@ How `backend/internal/platform/dbtest` shapes the tests:
 
 ### Dice in tests
 
-The services roll with `backend/internal/platform/dice/dicetest`, never with random dice.
+The services roll with deterministic dice in tests: `backend/internal/platform/dice/dicetest`, or `play`'s `scriptedRoller`.
 The app rolls an NPC's initiative, and two combatants with the same total take one joint turn, so a random tie makes a test that assumes one actor fail by chance.
 Every `play.Config` and `characters.Config` in a test file sets `Roller`, and `archtest` fails for one that does not.
 The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `characters` hand the services a `dicetest.New()`.
@@ -79,13 +79,13 @@ The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `chara
 - **The default is fixed.** The same calls give the same faces, and the roller never runs out.
 - **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
 - **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
-- **Every d20 moves the sequence.** An attack or a save rolled first takes a face the initiative would have had.
+- **Every unscripted d20 moves the sequence.** An attack or a save rolled first takes a face the initiative would have had.
 - **A test pins a roll with `ScriptFor(t, sides, faces...)`.** The faces go to the next rolls of that die only, and the default goes on after them. A face that does not fit its die fails the test at once.
 - **A creature added to a running combat is scripted and checked.** The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`) and calls `requireOwnTotal` (`requireOwnTotals` in `progression`). A tie fails with "script the faces with ScriptFor", on every run.
 - **`play` rolls with its own `scriptedRoller`.** It gives a 10 when no face is queued, so creatures with the same bonus tie by default in its tests. That is deterministic, and a test that needs one actor queues its faces.
 
 Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
-The end-to-end tests do not roll through this roller.
+The end-to-end tests roll with `dice.Crypto`, so an e2e test must not assume a tie-free order.
 
 ### Leak tests (RN-10)
 
