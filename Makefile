@@ -125,10 +125,11 @@ test: ## Run backend Go tests with the race detector
 # The tests a branch's own change makes stale (goldens, hashes, frozen tables, stored fixtures,
 # the lists of methods, error reasons and event kinds), run against the test database like
 # `make test`. The list and the command that regenerates each file are in
-# backend/internal/archtest/before_ready.txt. ONLY='internal/play$' (a regex on the package directory)
-# runs only the packages whose directory matches.
-before-ready: ## Run the golden, frozen, fixture and inventory tests a change makes stale (needs MEURPG_TEST_DATABASE_URL); run it before writing `ready:`
-	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY='$(or $(ONLY),$(BEFORE_READY_ONLY))' bash .github/scripts/before-ready.sh
+# backend/internal/archtest/before_ready.txt. It runs the lines the change can affect; ALL=1 runs
+# every line. ONLY='internal/play$' (a regex on the package directory) narrows the lines to the
+# packages whose directory matches.
+before-ready: ## Run the golden, frozen, fixture and inventory tests the change can make stale, or all of them with ALL=1 (needs MEURPG_TEST_DATABASE_URL); run it before writing `ready:`
+	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY='$(or $(ONLY),$(BEFORE_READY_ONLY))' BEFORE_READY_ALL='$(or $(ALL),$(BEFORE_READY_ALL))' bash .github/scripts/before-ready.sh
 
 run: ## Run the API server on the host (needs `make up` for the DB)
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/api
