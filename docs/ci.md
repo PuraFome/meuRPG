@@ -146,7 +146,11 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 - `plan` chooses the shards: three plain shards (`--grep-invert @a11y`) always, and six accessibility shards (`--grep @a11y`) on `main`, nightly, manual runs, and pull requests that touch `web/`, `e2e/`, `deploy/local/` or the workflow.
 - `lint and typecheck` needs no Docker, so a mistake fails in about a minute.
 - `images` builds the production image and the devidp image once (with the GitHub Actions layer cache) and hands both over as an artifact; each shard runs `docker load`, so a broken Dockerfile fails before any shard.
-- Each shard starts the stack with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build` (`compose.ci.yaml` keeps the database in memory; `compose.ci-images.yaml` points at the loaded images), checks on one shard that the production image does not contain the devidp, and runs the tests on Chromium. A failed shard shows the stack logs and keeps them (`stack-logs/stack.log`, with timestamps) with its Playwright report in the artifact `playwright-report-<n>`.
+- Each shard starts the stack in the background (the composite action `start-e2e-stack`) while it installs Node, the e2e dependencies and Chromium, which the stack does not need.
+  The stack starts with `docker compose -f deploy/local/compose.yaml -f deploy/local/compose.ci.yaml -f deploy/local/compose.ci-images.yaml up --no-build --detach` (`compose.ci.yaml` keeps the database in memory; `compose.ci-images.yaml` points at the loaded images).
+  The last step of the action waits for it, and a stack that fails to start fails the job with its log.
+  One shard then checks that the production image does not contain the devidp, and every shard runs the tests on Chromium.
+  A failed shard shows the stack logs and keeps them (`stack-logs/stack.log`, with timestamps) with its Playwright report in the artifact `playwright-report-<n>`.
 
 ## Vulnerability scans
 
