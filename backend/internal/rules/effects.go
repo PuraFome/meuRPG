@@ -461,14 +461,8 @@ func (x effectCompiler) compileWhen(src string) (*formula.Program, error) {
 // strayFields refuses the fields of one type on an effect of another.
 func (x effectCompiler) strayFields() error {
 	e := x.e
-	if e.Type != "wild_shape" && (e.MaxCR != "" || e.MaxCRFrom != "" || e.FormCost != "" || e.MagicalAttacks || e.NoFly || e.NoSwim) {
-		return x.fail("max_cr, max_cr_from, form_cost, magical_attacks, no_fly and no_swim belong to wild_shape")
-	}
-	if e.Type != "grant_action" && (e.GivesSlot != "" || e.SpendsSlot) {
-		return x.fail("gives_slot and spends_slot belong to grant_action")
-	}
-	if e.Type != "slot_recovery" && (e.RecoverMaxLevel != "" || e.RecoverLevels != "") {
-		return x.fail("recover_max_level and recover_levels belong to slot_recovery")
+	if err := x.strayShapeAndSlots(); err != nil {
+		return err
 	}
 	if e.Type != "song_of_rest" && e.Sides != 0 {
 		return x.fail("sides belongs to song_of_rest")
@@ -492,6 +486,22 @@ func (x effectCompiler) strayFields() error {
 		return err
 	}
 	return x.straySpellAndRangeFields()
+}
+
+// strayShapeAndSlots refuses the fields of wild_shape, of the slots of grant_action
+// and of slot_recovery on an effect of another type.
+func (x effectCompiler) strayShapeAndSlots() error {
+	e := x.e
+	if e.Type != "wild_shape" && (e.MaxCR != "" || e.MaxCRFrom != "" || e.FormCost != "" || e.MagicalAttacks || e.NoFly || e.NoSwim) {
+		return x.fail("max_cr, max_cr_from, form_cost, magical_attacks, no_fly and no_swim belong to wild_shape")
+	}
+	if e.Type != "grant_action" && (e.GivesSlot != "" || e.SpendsSlot) {
+		return x.fail("gives_slot and spends_slot belong to grant_action")
+	}
+	if e.Type != "slot_recovery" && (e.RecoverMaxLevel != "" || e.RecoverLevels != "") {
+		return x.fail("recover_max_level and recover_levels belong to slot_recovery")
+	}
+	return nil
 }
 
 // straySpellAndRangeFields refuses the fields of granted_spell and of
