@@ -95,6 +95,7 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "portrait_url", "a player sees a portrait only on the stage", nil},
 	{"meurpg.play.v1.Combatant", "bestiary_creature_key", "which creature an NPC is", nil},
 	{"meurpg.play.v1.Combatant", "challenge_rating", "which creature an NPC is", nil},
+	{"meurpg.play.v1.Combatant", "legendary", "a creature's legendary actions, resistance and options are the master's (RN-20, RN-29)", nil},
 	{"meurpg.play.v1.Combatant", "character_id", "an NPC's character id is the master's", func(w *world, p *person, m protoreflect.Message) bool { return playerCharacter(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "hit_points_current", "an NPC's numbers", func(w *world, p *person, m protoreflect.Message) bool { return ownOrAnyPlayerCharacter(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "hit_points_max", "an NPC's numbers", func(w *world, p *person, m protoreflect.Message) bool { return ownOrAnyPlayerCharacter(w, p, m) }},

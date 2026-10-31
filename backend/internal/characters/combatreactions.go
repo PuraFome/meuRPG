@@ -53,6 +53,11 @@ func creatureReactionStats(content *rules.Content, monsterKey string) link.React
 	if c, ok := content.MonsterSpellcasting(monsterKey); ok {
 		out.Spells, out.SlotsTotal, out.CastingMod, out.SaveDC = c.Spells, c.Slots, c.AbilityMod, c.SaveDC
 	}
+	if p, ok := content.LegendaryProfile(monsterKey); ok {
+		for _, r := range p.Reactions {
+			out.MonsterReactions = append(out.MonsterReactions, link.MonsterReaction{Key: r.Key, Name: r.Name, Text: r.Text, Kind: r.Kind, ACBonus: r.ACBonus})
+		}
+	}
 	return out
 }
 

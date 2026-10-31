@@ -2754,6 +2754,45 @@ message Combatant {
   // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
   // weapon attack.
   HeldRollOffer held_roll_offer = 104;
+
+  // The legendary actions and Legendary Resistance of a creature whose stat block has them
+  // (SRD 5.1, "Legendary Actions"): what it has left and the options the master can spend
+  // them on. Only the master gets it, and only for such a combatant; a player's copy never
+  // has the field, not even empty (RN-20, RN-29).
+  LegendaryState legendary = 105;
+}
+
+// LegendaryState is what a legendary creature has left of its legendary actions this
+// round and of its Legendary Resistance, and the options of its stat block. The master's
+// alone.
+message LegendaryState {
+  // How many legendary actions the creature has a round (3 in the SRD), and how many are
+  // left until its own turn starts.
+  int32 actions_per_round = 1;
+  int32 actions_left = 2;
+  // The uses of Legendary Resistance a day (0: the stat block has none) and how many are
+  // left; a long rest brings them back.
+  int32 resistance_per_day = 3;
+  int32 resistance_left = 4;
+  // The stat block's legendary actions, in its order.
+  repeated LegendaryOption options = 5;
+}
+
+// LegendaryOption is one of the legendary actions of a stat block.
+message LegendaryOption {
+  // A stable key of the option in its stat block ("tail-attack").
+  string key = 1;
+  // The SRD's name without the "(Costs 2 Actions)" suffix, in English.
+  string name = 2;
+  // How many of the creature's legendary actions it takes, 1 to 3.
+  int32 cost = 3;
+  // "attack" (resolved by the attack flow), "move" (by movement) or "text" (the master
+  // resolves it; the spend is still counted).
+  string kind = 4;
+  // The SRD's text of the option, in English.
+  string text = 5;
+  // Whether `cost` fits in the actions left now.
+  bool affordable = 6;
 }
 
 // Participant is who joins a combat: a character of the campaign.

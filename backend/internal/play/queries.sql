@@ -226,9 +226,10 @@ WHERE id = $1;
 -- The start of a combatant's own turn (every living member of a joint turn
 -- gets it): movement, action, bonus action, dash, reaction and the attacks
 -- made come back, the Escudo bonus ends, a death save is due again, and the
--- combatant acts ('acting') in the turn that starts.
+-- combatant acts ('acting') in the turn that starts. The legendary actions it
+-- spent come back (creature_spent keeps every other key).
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -1830,3 +1831,12 @@ LIMIT $3;
 UPDATE combatants
 SET table_once_turns = $2
 WHERE id = $1;
+
+-- name: SetCombatantCreatureSpent :exec
+-- What the combatant's stat block has spent: JSON {"<key>": N}.
+UPDATE combatants SET creature_spent = $2 WHERE id = $1;
+
+-- name: GetCombatantCreatureSpent :one
+-- What the combatant's stat block has spent now (JSON), read inside the change's
+-- transaction so two spends in one change add up.
+SELECT creature_spent FROM combatants WHERE id = $1;

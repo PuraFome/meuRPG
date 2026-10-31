@@ -613,6 +613,16 @@ type ReactionStats struct {
 	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
 	// spent; a player's character spends from its vitals.
 	ResourceMax map[string]int
+	// MonsterReactions are the reactions a stat block lists (SRD 5.1, "Reactions"):
+	// Parry changes the armor class, any other one is text for the master.
+	MonsterReactions []MonsterReaction
+}
+
+// MonsterReaction is a reaction of a stat block. Kind is "parry" (ACBonus is what it
+// adds to the armor class against one melee attack that would hit) or "text".
+type MonsterReaction struct {
+	Key, Name, Text, Kind string
+	ACBonus               int
 }
 
 // ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage
