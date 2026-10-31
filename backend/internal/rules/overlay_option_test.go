@@ -265,3 +265,28 @@ func TestATableOptionOfAPactCanBeRequired(t *testing.T) {
 		t.Errorf("the pact boons = %v, want the table's pact too", optionKeys(boons))
 	}
 }
+
+// TestAWarlockSeesEveryInvocationWhenTheTableAddsItsOwn: the Eldritch Invocations choice lists the SRD's
+// and all the table's invocations, past 20 keys.
+func TestAWarlockSeesEveryInvocationWhenTheTableAddsItsOwn(t *testing.T) {
+	t.Parallel()
+	var opts []TableOption
+	for i := range 30 {
+		o := doubleGuardOption()
+		o.Key = fmt.Sprintf("option:invocation:invocacao-%d@mesa", i)
+		o.NamePT = fmt.Sprintf("Invocação %d", i)
+		o.Set = "invocation"
+		opts = append(opts, o)
+	}
+	c := withOverlay(t, optionsOverlay(opts...))
+	srd := choiceOf(t, loadForTest(t).Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 2})), invocationsFeature)
+	got := choiceOf(t, c.Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 2})), invocationsFeature)
+	if len(got.Options) != len(srd.Options)+30 || len(got.Options) <= 20 {
+		t.Errorf("the warlock sees %d invocations, want the SRD's %d and the table's 30", len(got.Options), len(srd.Options))
+	}
+	// An invocation past the 20th key is a valid pick, with no problem on the sheet.
+	last := "option:invocation:invocacao-29@mesa"
+	if problems := c.Choices(warlock(2, "", last)).ChoiceProblems(false); slices.ContainsFunc(problems, func(p ChoiceProblem) bool { return p.OptionKey == last }) {
+		t.Errorf("problems = %+v, want none for the 30th table invocation", problems)
+	}
+}
