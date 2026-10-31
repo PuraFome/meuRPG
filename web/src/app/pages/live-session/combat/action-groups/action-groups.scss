@@ -19,7 +19,8 @@
   }
 }
 
-.groups > :not(app-tab-list):not(.panel) {
+.groups > :not(app-tab-list):not(.panel):not(.mr-live),
+.groups > .mr-live > * {
   margin-inline: 12px;
 }
 

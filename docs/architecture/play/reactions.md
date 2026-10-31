@@ -91,6 +91,9 @@ A spell attack from a slot is held in `holdCast` beside the Counterspell windows
 The window opens before the roll, so it names the roller and never a total; a roller the bard's player does not see opens none, and in "Sempre" a player's check against an enemy waits for the master's check when no bard could cut it.
 The rolls with no window: a check outside a combat (a group check, a scene check, a trap search, a puzzle hint) has no encounter to hold a window in, and a roll the player leaves to the master (`defer_to_master`) is held when the master rolls it.
 The Help action rolls nothing.
+A damage roll opens its window in `damageWindows`, for every damage that is not healing: a weapon's, a cantrip's and a spell's.
+The window is the same for a player's creature and for an NPC.
+The log line of the cut names the die, what it came off (the attack, the test or the damage) and the roll before and after; a player's line says only whether the attack still hit.
 
 ## The settle step and the gate
 

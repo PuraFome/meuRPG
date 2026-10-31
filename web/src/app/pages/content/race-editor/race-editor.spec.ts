@@ -79,6 +79,20 @@ describe('RaceEditor', () => {
     expect(count.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('shows the stored number of "Idiomas à escolha" again when the entry reloads', async () => {
+    const { fixture, el } = setup();
+    const input = field(el, 'table_race.language_choices') as HTMLInputElement;
+    const stored = input.value;
+    input.value = '+2';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(input.value).toBe('+2');
+    const current = fixture.componentInstance.entry()!;
+    fixture.componentRef.setInput('entry', { ...current, revision: current.revision + 1 });
+    await settle(fixture, 3);
+    expect((field(el, 'table_race.language_choices') as HTMLInputElement).value).toBe(stored);
+  });
+
   it('does not save "Idiomas à escolha" with text that is no whole number, and sends a "+2" as 2', async () => {
     const { fixture, el } = setup();
     const input = field(el, 'table_race.language_choices') as HTMLInputElement;
@@ -122,7 +136,7 @@ describe('RaceEditor', () => {
     expect(count.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it("takes the server's earlier refusal off the screen when the client's own check stops the next save", async () => {
+  it("keeps the server's refusal of a field the client does not check when its own check stops the next save", async () => {
     const { fixture, el } = setup();
     save.mockRejectedValue(
       new ConnectError('refused', Code.InvalidArgument, undefined, [
@@ -150,8 +164,8 @@ describe('RaceEditor', () => {
     click(el, 'Salvar raça');
     await settle(fixture, 3);
     expect(save).not.toHaveBeenCalled();
-    expect(text(el)).not.toContain('Esta fórmula não funciona.');
-    expect(text(el)).not.toContain('Não foi possível salvar');
+    expect(text(el)).toContain('Esta fórmula não funciona.');
+    expect(text(el)).toContain('Escreva só o número de metros');
   });
 
   it('draws the race of the artboard: the form from the entry and the traits with the effect picked', () => {

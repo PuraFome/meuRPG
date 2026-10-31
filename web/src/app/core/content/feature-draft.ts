@@ -139,6 +139,8 @@ export interface RaceDraft {
   sizes: string[];
   languages: string[];
   languageChoices: number;
+  /** What was typed in "Idiomas à escolha" when it is not how the number is written back; never sent. */
+  languageChoicesTyped?: string;
   traits: FeatureDraft[];
 }
 
@@ -258,6 +260,8 @@ export interface BackgroundDraft {
   skills: string[];
   tools: string[];
   languageChoices: number;
+  /** What was typed in "Idiomas à escolha" when it is not how the number is written back; never sent. */
+  languageChoicesTyped?: string;
   equipment: string;
   feature: FeatureDraft;
 }

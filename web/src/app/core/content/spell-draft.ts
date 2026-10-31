@@ -202,7 +202,7 @@ function targetInit(d: SpellDraft): NonNullable<SpellInit['target']> {
   const target: NonNullable<SpellInit['target']> = { kind: TARGET_KIND[d.target] };
   if (d.target === 'creatures') {
     target.count = d.count;
-    target.perSlotLevel = d.perSlot;
+    target.perSlotLevel = Number.isNaN(d.perSlot) ? 0 : d.perSlot;
   } else if (d.target === 'creature' && d.perSlot > 0) {
     target.perSlotLevel = d.perSlot;
   } else if (d.target === 'area') {
@@ -293,4 +293,31 @@ export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
     next.range = 'ranged';
   }
   return next;
+}
+
+/** The paths of the count fields on screen whose text is no whole number the save can send (a NaN in the draft), in the order of the form. */
+export function unreadableSpellPaths(d: SpellDraft): string[] {
+  const bad = (n: number) => Number.isNaN(n);
+  return [
+    ...(bad(d.timeAmount) && (d.time === 'minute' || d.time === 'hour')
+      ? ['table_spell.casting_time.amount']
+      : []),
+    ...(bad(d.durationAmount) && d.duration === 'timed' ? ['table_spell.duration.amount'] : []),
+    ...(bad(d.count) && d.target === 'creatures' ? ['table_spell.target.count'] : []),
+    ...(bad(d.perSlot) && d.level > 0 && (d.target === 'creatures' || d.target === 'creature')
+      ? ['table_spell.target.per_slot_level']
+      : []),
+  ];
+}
+
+/** The draft with a NaN count read as not set: what the preview draws while the form says the text is unreadable. */
+export function readableSpell(d: SpellDraft): SpellDraft {
+  const n = (v: number) => (Number.isNaN(v) ? 0 : v);
+  return {
+    ...d,
+    timeAmount: n(d.timeAmount),
+    durationAmount: n(d.durationAmount),
+    count: n(d.count),
+    perSlot: n(d.perSlot),
+  };
 }

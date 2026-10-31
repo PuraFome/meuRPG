@@ -9,7 +9,12 @@ import {
   type CastingKind,
   type Preparation,
 } from '../../../core/content/class-draft';
-import { UNREADABLE_COUNT, readWhole, wholeText } from '../../../core/content/whole-number';
+import {
+  UNREADABLE_COUNT,
+  keptTyped,
+  readWhole,
+  shownWhole,
+} from '../../../core/content/whole-number';
 import { FieldNote } from '../../../shared/form-fields/field-note';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
@@ -327,15 +332,10 @@ export class CastingFields {
     return this.casting().srdSpells.filter((k) => k !== key);
   }
 
-  /** What was typed in "A conjuração começa no nível" when it is not how the number is written back ("+3", "007", text no number). */
-  private readonly startTyped = signal('');
-
   /** The text of the start level: what was typed while it still reads as the number, else the number. */
-  protected readonly startText = computed(() => {
-    const n = this.casting().startLevel;
-    const typed = this.startTyped();
-    return typed !== '' && Object.is(readWhole(typed, false), n) ? typed : wholeText(n);
-  });
+  protected readonly startText = computed(() =>
+    shownWhole(this.casting().startLevel, this.casting().startLevelTyped),
+  );
 
   /** The start level's refusals: the server's, and the client's while the text is no whole number. */
   protected readonly startIssues = computed(() => [
@@ -345,11 +345,10 @@ export class CastingFields {
 
   protected setStart(text: string): void {
     const n = readWhole(text, false);
-    this.startTyped.set(text === wholeText(n) ? '' : text);
     if (Number.isNaN(n)) {
       this.startWasBad.set(true);
     }
-    this.patch.emit({ startLevel: n });
+    this.patch.emit({ startLevel: n, startLevelTyped: keptTyped(text, n) });
   }
 
   protected readonly None = Ability.UNSPECIFIED as number;

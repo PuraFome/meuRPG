@@ -39,7 +39,7 @@ const (
 	reasonSizeLimit = "size_limit"
 )
 
-// tableKinds describes the seven kinds: the key prefix, the proto kind and the
+// tableKinds describes the kinds of table content: the key prefix, the proto kind and the
 // feature prefix of what the kind holds.
 var tableKinds = []struct {
 	prefix string

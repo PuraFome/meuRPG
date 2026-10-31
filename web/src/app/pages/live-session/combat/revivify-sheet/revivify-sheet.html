@@ -1,5 +1,6 @@
 <app-sheet-frame [title]="title()" [subtitle]="subtitle()" [phone]="inSheet" [focusableBody]="step() === 'result'" (closed)="close()">
   <div class="body">
+    <p class="mr-visually-hidden" role="status">{{ said() }}</p>
     <ol class="steps" aria-label="Passos">
       @for (m of marks(); track m.n) {
         <li class="steps__item" [class.steps__item--done]="m.state === 'done'" [class.steps__item--now]="m.state === 'current'" [attr.aria-current]="m.state === 'current' ? 'step' : null">
@@ -46,14 +47,15 @@
           }
         </div>
         @if (waitsMaster()) {
-          <div role="status" class="mr-notice mr-notice--warning">
+          <div class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">schedule</mat-icon>
             <p>
               <strong>O mestre confirma que faz menos de 1 minuto.</strong>
               Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.
             </p>
           </div>
-        } @else {
+        }
+        @if (!waitsMaster()) {
           <p class="small">Só aparece quem a magia pode alcançar agora.</p>
         }
       }
@@ -65,8 +67,9 @@
           <mat-icon aria-hidden="true">info</mat-icon>
           <p>{{ cost() }}</p>
         </div>
-      } @else {
-        <div class="mr-notice mr-notice--warning" role="status">
+      }
+      @if (!slot()) {
+        <div class="mr-notice mr-notice--warning">
           <mat-icon aria-hidden="true">block</mat-icon>
           <p>{{ noSlot }}</p>
         </div>

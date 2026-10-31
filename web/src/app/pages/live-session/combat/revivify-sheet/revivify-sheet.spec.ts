@@ -81,6 +81,7 @@ async function mount(
   over: {
     cast?: () => Promise<unknown>;
     list?: () => Promise<unknown>;
+    noSlot?: boolean;
   } = {},
 ): Promise<Harness> {
   const reload = signal(0);
@@ -123,7 +124,12 @@ async function mount(
       }),
     ),
   );
-  const preview = vi.fn(() => Promise.resolve(inCombat ? combatPreview : outsidePreview));
+  const base = inCombat ? combatPreview : outsidePreview;
+  const preview = vi.fn(() =>
+    Promise.resolve(
+      over.noSlot ? create(PreviewRevivifyResponseSchema, { ...base, slot: undefined }) : base,
+    ),
+  );
   const request = vi.fn(() =>
     Promise.resolve(
       create(RevivifyRequestSchema, { id: 'r1', status: RevivifyRequestStatus.PENDING }),
@@ -225,6 +231,25 @@ describe('RevivifySheet in a combat', () => {
     expect(button(h, 'Encerrar turno')).toBeDefined();
   });
 
+  it('has its live region on the page, empty, while no notice is due', async () => {
+    const h = await mount(true);
+    const region = h.el.querySelector('p.mr-visually-hidden[role="status"]');
+    expect(region).not.toBeNull();
+    expect(region?.textContent).toBe('');
+  });
+
+  it('says the missing slot through the live region that was already there', async () => {
+    const h = await mount(true, { noSlot: true });
+    const region = h.el.querySelector('p.mr-visually-hidden[role="status"]')!;
+    expect(region.textContent).toBe('');
+    await click(h, 'Próximo');
+    await tick(h);
+    expect(h.el.querySelector('p.mr-visually-hidden[role="status"]')).toBe(region);
+    expect(text(region)).not.toBe('');
+    expect(text(h.el.querySelector('.mr-notice--warning p')!)).toBe(text(region));
+    expect(h.el.querySelector('.mr-notice--warning')?.hasAttribute('role')).toBe(false);
+  });
+
   it('"Voltar" goes back a step and keeps the target', async () => {
     const h = await mount(true);
     await click(h, 'Próximo');
@@ -283,6 +308,10 @@ describe('RevivifySheet outside a combat', () => {
     const h = await mount(false);
     expect(h.preview).toHaveBeenCalledWith('c', { casterCharacterId: 'ilaria' });
     expect(text(h.el)).toContain('O mestre confirma que faz menos de 1 minuto.');
+    expect(text(h.el.querySelector('p.mr-visually-hidden[role="status"]')!)).toContain(
+      'O mestre confirma que faz menos de 1 minuto.',
+    );
+    expect(h.el.querySelector('.mr-notice--warning')?.hasAttribute('role')).toBe(false);
     expect(text(h.el)).toContain(
       'Fora de combate o app não conta o tempo: ao conjurar, o mestre responde.',
     );

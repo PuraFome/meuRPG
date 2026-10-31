@@ -35,6 +35,22 @@ describe('InviteError', () => {
     expect(renderWithReason(reason).textContent).toContain(fragment);
   });
 
+  it.each(['expired', 'invalid'])(
+    'tells a visitor with a reserved character to ask for the claim link, for reason=%s',
+    (reason) => {
+      expect(renderWithReason(reason).textContent).toContain(
+        'Se o mestre separou um personagem para você, peça o link de assumir.',
+      );
+    },
+  );
+
+  it.each(['revoked', 'used_up', 'not_found', 'unavailable'])(
+    'does not say it for reason=%s',
+    (reason) => {
+      expect(renderWithReason(reason).textContent).not.toContain('link de assumir');
+    },
+  );
+
   it('shows a link back to the home page', () => {
     const el = renderWithReason('expired');
     expect(el.querySelector('a[href="/"]')).toBeTruthy();

@@ -144,9 +144,9 @@ test.describe('importar um pacote', () => {
       buffer: Buffer.from('isto não é um pacote'),
     });
 
-    await expect(
-      page.getByRole('alert').filter({ hasText: 'Esse arquivo não parece um pacote de campanha. Ele precisa terminar em .meurpg.zip (ou .zip).' }),
-    ).toBeVisible();
+    const refusal = 'Esse arquivo não parece um pacote de campanha. Ele precisa terminar em .meurpg.zip (ou .zip).';
+    await expect(page.locator('.mr-notice--danger').filter({ hasText: refusal })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: refusal })).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'Criar campanha' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Escolher o arquivo' })).toBeVisible();
 

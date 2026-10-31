@@ -104,7 +104,28 @@ describe('what a re-read of the sheet keeps of the hit points', () => {
     expect(adoptedHitPoints(other, was, 'roll', roll).rolled).toBeNull();
   });
 
-  it('keeps an app roll only when it is the one the server kept', () => {
+  it('keeps an app roll when the options show no kept roll for the same class and level (read before the roll)', () => {
+    const none = fighterOptions({ keptHitPointRoll: 0 });
+    const app = { kind: 'app', value: 6 } as const;
+    expect(adoptedHitPoints(none, was, 'roll', app).rolled).toEqual(app);
+    expect(
+      adoptedHitPoints(fighterOptions({ toLevel: 6, keptHitPointRoll: 0 }), was, 'roll', app)
+        .rolled,
+    ).toBeNull();
+    expect(
+      adoptedHitPoints(
+        fighterOptions({ classKey: 'class:rogue', keptHitPointRoll: 0 }),
+        was,
+        'roll',
+        app,
+      ).rolled,
+    ).toBeNull();
+    expect(
+      adoptedHitPoints(fighterOptions({ keptHitPointRoll: 4 }), was, 'roll', app).rolled,
+    ).toBeNull();
+  });
+
+  it('keeps an app roll only when the server kept it or shows none', () => {
     const kept = fighterOptions({ keptHitPointRoll: 6, keptHitPointRollClassKey: 'class:fighter' });
     const app = { kind: 'app', value: 6 } as const;
     expect(adoptedHitPoints(kept, was, 'roll', app).rolled).toEqual(app);
