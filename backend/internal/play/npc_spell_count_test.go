@@ -54,3 +54,44 @@ func TestAnNPCMagesCastSpendsASlotAndTheUndoGivesItBack(t *testing.T) {
 		t.Errorf("the Mage's count after the undo = %s, want the slot back", used)
 	}
 }
+
+// freeSlotsOf reads the free slots of a level a spell is offered with.
+func freeSlotsOf(res *playv1.GetTurnOptionsResponse, spell string, level int32) (free, total int32, ok bool) {
+	for _, sp := range res.GetOptions().GetSpells() {
+		if sp.GetSpell().GetKey() != spell {
+			continue
+		}
+		for _, s := range sp.GetSlots() {
+			if s.GetLevel() == level {
+				return s.GetFree(), s.GetTotal(), true
+			}
+		}
+	}
+	return 0, 0, false
+}
+
+// TestAnNPCMagesSlotsLeftAreTheMastersAlone (RN-20, RN-29): the master's options for the Mage
+// show its 1st-level slots, one less after a cast, and the options the cast sheet already
+// carries need no screen change; a player asking for the same options is refused, so the
+// slots, the spells and the uses left never reach the table. Needs the database.
+func TestAnNPCMagesSlotsLeftAreTheMastersAlone(t *testing.T) {
+	t.Parallel()
+	a, e := mageFight(t)
+	e = a.passTo(t, e, "Mago")
+	before := a.mustOptions(t, a.master, e, "Mago")
+	free, total, ok := freeSlotsOf(before, magicMissileSpell, 1) // positive control: the master reads them
+	if !ok || total != 4 || free != 4 {
+		t.Fatalf("the master reads %d of %d 1st-level slots (offered %v), want 4 of 4", free, total, ok)
+	}
+	a.mustCast(t, a.master, e, "Mago", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{darts(a, t, "Toren", 3)}, noCastRoll)
+	after := a.mustOptions(t, a.master, a.get(t, a.master), "Mago")
+	if free, _, _ := freeSlotsOf(after, magicMissileSpell, 1); free != 3 {
+		t.Errorf("the master reads %d free 1st-level slots after a cast, want 3", free)
+	}
+	for _, player := range []*user{a.caio, a.ana} {
+		res, err := a.options(t, player, a.get(t, a.master), "Mago")
+		if err == nil {
+			t.Errorf("a player reads the Mage's options = %v, want them refused", res)
+		}
+	}
+}
