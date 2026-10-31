@@ -32,6 +32,7 @@ func (w *world) reactionFightNamed(name string) *playv1.Combatant {
 		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
 	})))
 	hidden := false
+	w.scriptD20(ownFace)
 	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{
 		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:mage", Count: 1, Name: name, Hidden: &hidden,
 	})))
@@ -45,6 +46,7 @@ func (w *world) reactionFightNamed(name string) *playv1.Combatant {
 	if mage == nil {
 		w.t.Fatal("the Mago is not in the combat")
 	}
+	w.requireOwnTotal(mage.GetId())
 	for id, sq := range map[string][2]int32{w.combatant(w.toren).GetId(): {12, 14}, mage.GetId(): {13, 14}} {
 		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
 	}

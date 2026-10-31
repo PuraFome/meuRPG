@@ -4,6 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
@@ -45,5 +47,38 @@ func TestEightCopiesOfACreatureNeverTieOnInitiative(t *testing.T) {
 	sorted := slices.Sorted(slices.Values(totals))
 	if got := slices.Compact(slices.Clone(sorted)); len(got) != 8 {
 		t.Errorf("totals = %v: copies with the same total would take one joint turn", totals)
+	}
+}
+
+// scriptD20 makes the next d20s the app rolls come out as faces, on a table with the default dice.
+func (tb *table) scriptD20(faces ...int) {
+	tb.h.t.Helper()
+	roller, ok := tb.h.roller.(*dicetest.Roller)
+	if !ok {
+		tb.h.t.Fatalf("the table rolls with %T, which cannot be scripted", tb.h.roller)
+	}
+	roller.ScriptFor(tb.h.t, 20, faces...)
+}
+
+// requireOwnTotals fails when two combatants of the combat, one of them among ids, have the same initiative total.
+// The rolls are deterministic, so a tie here is a tie on every run: script the faces with ScriptFor (scriptD20).
+func (tb *table) requireOwnTotals(t *testing.T, encounterID string, ids ...string) {
+	t.Helper()
+	res, err := tb.master.combat.GetEncounter(t.Context(), connect.NewRequest(&playv1.GetEncounterRequest{CampaignId: tb.campaign}))
+	if err != nil {
+		t.Fatalf("GetEncounter() error = %v", err)
+	}
+	if res.Msg.GetEncounter().GetId() != encounterID {
+		t.Fatalf("the open combat is %s, want %s", res.Msg.GetEncounter().GetId(), encounterID)
+	}
+	for _, own := range res.Msg.GetEncounter().GetCombatants() {
+		if !slices.Contains(ids, own.GetId()) || own.Initiative == nil {
+			continue
+		}
+		for _, c := range res.Msg.GetEncounter().GetCombatants() {
+			if c.GetId() != own.GetId() && c.Initiative != nil && c.GetInitiative() == own.GetInitiative() {
+				t.Fatalf("%s and %s tie on initiative %d and would take one joint turn: script the faces with ScriptFor (scriptD20)", own.GetLabel(), c.GetLabel(), own.GetInitiative())
+			}
+		}
 	}
 }

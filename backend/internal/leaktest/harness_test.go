@@ -212,7 +212,8 @@ type stack struct {
 	play   *play.Service
 	maps   *maps.Service
 	hints  *hintTracker
-	clock  *fakeClock // the services' clock, which a test moves on instead of waiting
+	clock  *fakeClock       // the services' clock, which a test moves on instead of waiting
+	dice   *dicetest.Roller // the dice play rolls with: a test scripts a creature's initiative here
 }
 
 // heartbeat is how often a stream says it is alive. The stream test reads every event
@@ -222,7 +223,7 @@ const heartbeat = 100 * time.Millisecond
 func newStack(t *testing.T) *stack {
 	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_leaktest_test")
-	s := &stack{t: t, pool: pool, users: identity.NewPostgresStore(pool), hints: &hintTracker{}}
+	s := &stack{t: t, pool: pool, users: identity.NewPostgresStore(pool), hints: &hintTracker{}, dice: dicetest.New()}
 	logger := slog.New(slog.DiscardHandler)
 	if os.Getenv("LEAKTEST_LOG") != "" { // the servers' own log lines, to find out why a call went wrong
 		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
@@ -255,7 +256,7 @@ func newStack(t *testing.T) *stack {
 	chars.SetGallery(sessionMaps)
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
-		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Roller: dicetest.New(), Logger: logger, Now: clock.Now,
+		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Roller: s.dice, Logger: logger, Now: clock.Now,
 		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
