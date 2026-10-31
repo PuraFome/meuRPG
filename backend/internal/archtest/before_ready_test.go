@@ -7,12 +7,10 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -44,6 +42,7 @@ func readBeforeReady(t *testing.T) []beforeReadyLine {
 // parsedDir is the Go files of one directory, parsed once per run: three guards read each
 // package, and they run in parallel.
 type parsedDir struct {
+	fset  *token.FileSet
 	names []string // file names, in the directory's order
 	files []*ast.File
 }
@@ -76,7 +75,7 @@ func parseDir(t *testing.T, dir string) *parsedDir {
 			return
 		}
 		fset := token.NewFileSet()
-		pd := &parsedDir{}
+		pd := &parsedDir{fset: fset}
 		for _, ent := range entries {
 			if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".go") {
 				continue
@@ -248,6 +247,7 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 		ls := byPkg[pkg]
 		dir := filepath.Join(backendRoot, pkg)
 		_, all := pinningTests(t, dir, nil)
+		problems = append(problems, undeclaredHelpers(ls, declaredFuncs(parseDir(t, dir).files))...)
 		for _, l := range ls {
 			if l.Kind == beforereadylist.Helper {
 				continue
@@ -260,19 +260,7 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 		}
 	}
 
-	var dirs []string
-	err := filepath.WalkDir(backendRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() && path != backendRoot && (d.Name() == "testdata" || d.Name() == "gen" || strings.HasPrefix(d.Name(), ".")) {
-			return filepath.SkipDir
-		}
-		if !d.IsDir() && strings.HasSuffix(path, "_test.go") {
-			dirs = append(dirs, filepath.Dir(path))
-		}
-		return nil
-	})
+	dirs, err := testDirs(backendRoot)
 	if err != nil {
 		t.Fatalf("walk %s: %v", backendRoot, err)
 	}
@@ -297,6 +285,26 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 	for _, p := range problems {
 		t.Error(p)
 	}
+}
+
+// testDirs returns the directories under root that hold a _test.go file, with repeats. It skips
+// testdata, hidden directories and the generated protobuf package (root/gen) only: a directory
+// named gen elsewhere (internal/maps/images/gen) holds code and tests of its own.
+func testDirs(root string) ([]string, error) {
+	var dirs []string
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && p != root && (d.Name() == "testdata" || p == filepath.Join(root, "gen") || strings.HasPrefix(d.Name(), ".")) {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() && strings.HasSuffix(p, "_test.go") {
+			dirs = append(dirs, filepath.Dir(p))
+		}
+		return nil
+	})
+	return dirs, err
 }
 
 // groupRegex is a part with one group of plain names: ^TestLasting(Core|RPC), ^(TestA|TestB)$.
@@ -343,6 +351,32 @@ func anyMatch(re *regexp.Regexp, names []string) bool {
 		}
 	}
 	return false
+}
+
+// declaredFuncs returns the names of the functions and methods the files declare.
+func declaredFuncs(files []*ast.File) map[string]bool {
+	out := map[string]bool{}
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			if fd, ok := decl.(*ast.FuncDecl); ok {
+				out[fd.Name.Name] = true
+			}
+		}
+	}
+	return out
+}
+
+// undeclaredHelpers returns a message for each helper line whose function or method no file of
+// its package declares: a helper that was renamed marks nothing, and the tests that call it
+// would silently leave the guard.
+func undeclaredHelpers(lines []beforeReadyLine, declared map[string]bool) []string {
+	var out []string
+	for _, l := range lines {
+		if l.Kind == beforereadylist.Helper && !declared[l.Regex] {
+			out = append(out, fmt.Sprintf("%s:%d: the helper %s is declared by no function or method of %s: it was renamed or removed, fix the line", beforeReadyFile, l.N, l.Regex, l.Pkg))
+		}
+	}
+	return out
 }
 
 func helpersOf(ls []beforeReadyLine) []beforeReadyLine {
@@ -396,24 +430,11 @@ func TestBeforeReadyDetector(t *testing.T) {
 // one of its inputs, so a listed test that reads a file outside those must name it. Every path
 // with a ".." segment that a listed test reaches (in its body, through the functions of its
 // package it calls, and through the package-level names it uses) must be inside an input of
-// the line, and every input must exist.
+// the line, or a path the guard cannot resolve fails it. That every input exists is checked by
+// beforereadylist's tests, which read the whole repository.
 func TestBeforeReadyInputsAreComplete(t *testing.T) {
 	t.Parallel()
 	lines := readBeforeReady(t)
-	for _, l := range lines {
-		if l.Kind != beforereadylist.Run {
-			continue
-		}
-		for _, in := range l.Inputs {
-			if in == "" || strings.HasPrefix(in, "/") || strings.Contains(in, "..") {
-				t.Errorf("%s:%d: input %q must be a path from the repository root", beforeReadyFile, l.N, in)
-				continue
-			}
-			if _, err := os.Stat(filepath.Join(backendRoot, "..", filepath.FromSlash(in))); err != nil {
-				t.Errorf("%s:%d: input %q does not exist: %v", beforeReadyFile, l.N, in, err)
-			}
-		}
-	}
 	byPkg := map[string][]beforeReadyLine{}
 	for _, l := range lines {
 		if l.Kind == beforereadylist.Run {
@@ -421,14 +442,21 @@ func TestBeforeReadyInputsAreComplete(t *testing.T) {
 		}
 	}
 	for pkg, ls := range byPkg {
-		reads := upwardPaths(t, filepath.Join(backendRoot, pkg))
+		reads := upwardReads(t, filepath.Join(backendRoot, pkg))
 		for _, l := range ls {
-			for test, paths := range reads {
+			for test, r := range reads {
 				if !l.Re.MatchString(test) {
 					continue
 				}
-				for _, p := range paths {
-					if resolved := path.Join("backend", pkg, p); !beforereadylist.Covered(resolved, l.Inputs) {
+				for _, problem := range r.problems {
+					t.Errorf("%s:%d: %s: %s", beforeReadyFile, l.N, test, problem)
+				}
+				for _, p := range r.paths {
+					resolved := resolveFromRepo(pkg, p)
+					if inside := "backend/" + pkg; resolved == inside || strings.HasPrefix(resolved, inside+"/") {
+						continue // it comes back into the package
+					}
+					if !beforereadylist.Covered(resolved, l.Inputs) {
 						t.Errorf("%s:%d: %s reads %q (%s from the repository root) but the line does not name it in its inputs: add it", beforeReadyFile, l.N, test, p, resolved)
 					}
 				}
@@ -437,172 +465,39 @@ func TestBeforeReadyInputsAreComplete(t *testing.T) {
 	}
 }
 
-// upwardPaths returns, for each Test function of the package in dir, the paths with a ".."
-// segment that it reaches, as written (relative to dir) and cut before a wildcard: the string
-// literals of its body, of the functions and methods (by name) it calls, in test and non-test
-// files of the package, and of the package-level names it uses, and a filepath.Join("..", ...)
-// as one path. Its limits: a path built at run time, read in another package or through an
-// embed, or in a file a build tag leaves out, is not seen.
-func upwardPaths(t *testing.T, dir string) map[string][]string {
-	t.Helper()
-	pd := parseDir(t, dir)
-	own := map[string][]string{}  // node -> the upward paths it holds itself
-	uses := map[string][]string{} // node -> the nodes (functions, package-level names) it mentions
-	var tests []string
-	for i, file := range pd.files {
-		fileName := pd.names[i]
-		for _, decl := range file.Decls {
-			switch d := decl.(type) {
-			case *ast.FuncDecl:
-				if d.Body == nil {
-					continue
-				}
-				// A method is known by its name alone, whatever its receiver: two types
-				// with the same method name share a node, which attributes more, never less.
-				if d.Recv == nil && strings.HasPrefix(d.Name.Name, "Test") && strings.HasSuffix(fileName, "_test.go") {
-					tests = append(tests, d.Name.Name)
-				}
-				o, u := scanUpward(d.Body)
-				own[d.Name.Name] = append(own[d.Name.Name], o...)
-				uses[d.Name.Name] = append(uses[d.Name.Name], u...)
-			case *ast.GenDecl:
-				for _, spec := range d.Specs {
-					if vs, ok := spec.(*ast.ValueSpec); ok {
-						for _, id := range vs.Names {
-							for _, v := range vs.Values {
-								o, u := scanUpward(v)
-								own[id.Name] = append(own[id.Name], o...)
-								uses[id.Name] = append(uses[id.Name], u...)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	out := map[string][]string{}
-	for _, test := range tests {
-		seen := map[string]bool{}
-		for stack := []string{test}; len(stack) > 0; {
-			n := stack[len(stack)-1]
-			stack = stack[:len(stack)-1]
-			if seen[n] {
-				continue
-			}
-			seen[n] = true
-			out[test] = append(out[test], own[n]...)
-			stack = append(stack, uses[n]...)
-		}
-		sort.Strings(out[test])
-		out[test] = slices.Compact(out[test])
-	}
-	return out
-}
-
-// upSegment matches a path that goes up: "..", "../x", "a/../b", "/../x".
-var upSegment = regexp.MustCompile(`(^|/)\.\.(/|$)`)
-
-// scanUpward returns the upward paths written in a node and the identifiers it mentions.
-func scanUpward(n ast.Node) (paths, idents []string) {
-	joined := map[ast.Node]bool{} // the ".." arguments of a Join, already counted as one path
-	ast.Inspect(n, func(x ast.Node) bool {
-		switch v := x.(type) {
-		case *ast.Ident:
-			idents = append(idents, v.Name)
-		case *ast.CallExpr:
-			if p := joinedUpward(v); p != "" {
-				paths = append(paths, p)
-				for _, a := range v.Args[:strings.Count(p, "..")] {
-					joined[a] = true
-				}
-			}
-		case *ast.BasicLit:
-			if v.Kind != token.STRING || joined[v] {
-				return true
-			}
-			if s, err := strconv.Unquote(v.Value); err == nil && upSegment.MatchString(s) {
-				paths = append(paths, cutAtWildcard(s))
-			}
-		}
-		return true
-	})
-	return paths, idents
-}
-
-// joinedUpward returns "../.." for filepath.Join("..", "..", "x"): the leading ".." arguments
-// as the directory they reach, which is what the rest is read under. "" for any other call.
-func joinedUpward(c *ast.CallExpr) string {
-	sel, ok := c.Fun.(*ast.SelectorExpr)
-	if !ok || sel.Sel.Name != "Join" {
-		return ""
-	}
-	var ups []string
-	for _, a := range c.Args {
-		lit, ok := a.(*ast.BasicLit)
-		if !ok || lit.Value != `".."` {
-			break
-		}
-		ups = append(ups, "..")
-	}
-	return strings.Join(ups, "/")
-}
-
-// cutAtWildcard keeps the directories of a pattern before the first wildcard.
-func cutAtWildcard(p string) string {
-	i := strings.IndexAny(p, "*?[")
-	if i < 0 {
-		return p
-	}
-	return path.Dir(p[:i] + "x")
-}
-
-// TestBeforeReadyUpwardPathsDetector keeps the eyes of TestBeforeReadyInputsAreComplete honest
-// on a fixture package (testdata/upfixture): a path that goes up is found written in the test,
-// through a constant, through a helper, cut before a wildcard and as the arguments of Join, and
-// a path inside the package's own directory is not one.
-func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
+// TestBeforeReadyWalkSkipRule exercises the walk of TestBeforeReadyListIsWhole on a fixture tree
+// (testdata/walkfixture): the generated package at the root (gen), testdata and hidden
+// directories are skipped, and a directory named gen deeper down is not.
+func TestBeforeReadyWalkSkipRule(t *testing.T) {
 	t.Parallel()
-	got := upwardPaths(t, filepath.Join("testdata", "upfixture"))
-	want := map[string][]string{
-		"TestDirect":              {"../data/a.txt"},
-		"TestThroughAConst":       {"../../proto/x.json"},
-		"TestThroughAHelper":      {"../../NOTICE"},
-		"TestThroughAGlob":        {"../../migrations"},
-		"TestThroughAJoin":        {"../.."},
-		"TestThroughAMethod":      {"../../web/m.json"},
-		"TestThroughANonTestFile": {"../../LICENSE"},
-		"TestOwnDirectory":        nil,
+	root := filepath.Join("testdata", "walkfixture")
+	dirs, err := testDirs(root)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for name, paths := range want {
-		if !slices.Equal(got[name], paths) {
-			t.Errorf("%s reaches %q, want %q", name, got[name], paths)
-		}
+	var got []string
+	for _, d := range dirs {
+		rel, _ := filepath.Rel(root, d)
+		got = append(got, filepath.ToSlash(rel))
 	}
-	if !beforereadylist.Covered("backend/migrations/0001.sql", []string{"backend/migrations"}) || beforereadylist.Covered("backend/migrations2/x", []string{"backend/migrations"}) {
-		t.Error("covered must take a directory and what is under it, not a name that starts the same")
+	sort.Strings(got)
+	if want := []string{".", "a/gen", "plain"}; !slices.Equal(got, want) {
+		t.Errorf("directories with tests = %q, want %q", got, want)
 	}
 }
 
-// hintPath matches a repository path written in a regenerate command or a reason: under a
-// top-level directory of the backend module or of the repository.
-var hintPath = regexp.MustCompile(`(?:\./)?(?:internal|cmd|backend|proto|docs|migrations)/[A-Za-z0-9_./-]+`)
-
-// TestBeforeReadyHintsNamePathsThatExist keeps the hints honest: a failure prints the fourth
-// column next to the failed test, and a path in it that moved (a file named under a directory
-// it is not in) sends the reader to nothing. A path is read from backend/ or from the
-// repository root.
-func TestBeforeReadyHintsNamePathsThatExist(t *testing.T) {
+// TestBeforeReadyHelpersMustExist: a helper line names a function or method the package
+// declares, as a run line names a test that exists. The fixture (testdata/pinfixture) declares
+// readIt; a helper line that still says the old name after a rename must fail the guard.
+func TestBeforeReadyHelpersMustExist(t *testing.T) {
 	t.Parallel()
-	for _, l := range readBeforeReady(t) {
-		for _, p := range hintPath.FindAllString(l.Last, -1) {
-			p = strings.TrimPrefix(strings.TrimRight(p, ".,)"), "./")
-			if _, err := os.Stat(filepath.Join(backendRoot, filepath.FromSlash(p))); err == nil {
-				continue
-			}
-			if _, err := os.Stat(filepath.Join(backendRoot, "..", filepath.FromSlash(p))); err == nil {
-				continue
-			}
-			t.Errorf("%s:%d: the hint names %q, which exists neither under backend/ nor at the repository root: fix the path", beforeReadyFile, l.N, p)
-		}
+	declared := declaredFuncs(parseDir(t, filepath.Join("testdata", "pinfixture")).files)
+	lines, err := beforereadylist.Parse(strings.NewReader("helper\ttestdata/pinfixture\treadIt\tpins\nhelper\ttestdata/pinfixture\treadItOldName\tpins\nrun\ttestdata/pinfixture\t^TestPlain$\tregen\t-\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := undeclaredHelpers(lines, declared)
+	if len(got) != 1 || !strings.Contains(got[0], "readItOldName") || !strings.Contains(got[0], "before_ready.txt:2") {
+		t.Errorf("problems = %q, want one naming readItOldName at line 2", got)
 	}
 }

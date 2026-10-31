@@ -2,6 +2,8 @@ package beforereadylist
 
 import (
 	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -84,7 +86,7 @@ func TestCovering(t *testing.T) {
 		{"backend/migrations2/x", ""},
 		{"backend", ""},
 		{"proto/play/v1/play.proto", "proto/"},
-		{"proto", ""},
+		{"proto", "proto/"},
 		{"web/a.ts", ""},
 	}
 	for _, c := range cases {
@@ -95,7 +97,82 @@ func TestCovering(t *testing.T) {
 			t.Errorf("Covered(%q) = %v", c.path, got)
 		}
 	}
+	// The repository root: an input "." covers every path, and the root itself is covered by
+	// "." alone.
+	root := []string{"."}
+	for _, p := range []string{".", "NOTICE", "backend/migrations/0001.sql"} {
+		if got := Covering(root, p); got != "." {
+			t.Errorf("Covering(%q, %q) = %q, want the root input", root, p, got)
+		}
+	}
+	for _, in := range []string{"backend", "NOTICE", "proto/"} {
+		if Covered(".", []string{in}) {
+			t.Errorf("the repository root is covered by %q", in)
+		}
+	}
+	if Covered("NOTICE", []string{""}) || Covered("", []string{"."}) {
+		t.Error("an empty input or an empty path covers nothing")
+	}
 	if Covered("x", nil) {
 		t.Error("no inputs cover nothing")
+	}
+}
+
+// repoRoot is the repository root seen from this package's directory.
+const repoRoot = "../../../.."
+
+// parseRealList parses backend/internal/archtest/before_ready.txt.
+func parseRealList(t *testing.T) []Line {
+	t.Helper()
+	f, err := os.Open("../before_ready.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	lines, err := Parse(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return lines
+}
+
+// Every input is a path from the repository root that exists. These tests read the whole
+// repository, so they live here, in a package no line of the list runs, not in the archtest
+// package whose line would then have to name the root.
+func TestRealListInputsExist(t *testing.T) {
+	t.Parallel()
+	for _, l := range RunLines(parseRealList(t)) {
+		for _, in := range l.Inputs {
+			if in == "" || strings.HasPrefix(in, "/") || strings.Contains(in, "..") {
+				t.Errorf("before_ready.txt:%d: input %q must be a path from the repository root", l.N, in)
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(repoRoot, filepath.FromSlash(in))); err != nil {
+				t.Errorf("before_ready.txt:%d: input %q does not exist: %v", l.N, in, err)
+			}
+		}
+	}
+}
+
+// hintPath matches a repository path written in a regenerate command or a reason: under a
+// top-level directory of the backend module or of the repository.
+var hintPath = regexp.MustCompile(`(?:\./)?(?:internal|cmd|backend|proto|docs|migrations)/[A-Za-z0-9_./-]+`)
+
+// A failure prints the fourth column next to the failed test, and a path in it that moved (a
+// file named under a directory it is not in) sends the reader to nothing. A path is read from
+// backend/ or from the repository root.
+func TestRealListHintsNamePathsThatExist(t *testing.T) {
+	t.Parallel()
+	for _, l := range parseRealList(t) {
+		for _, p := range hintPath.FindAllString(l.Last, -1) {
+			p = strings.TrimPrefix(strings.TrimRight(p, ".,)"), "./")
+			if _, err := os.Stat(filepath.Join(repoRoot, "backend", filepath.FromSlash(p))); err == nil {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(repoRoot, filepath.FromSlash(p))); err == nil {
+				continue
+			}
+			t.Errorf("before_ready.txt:%d: the hint names %q, which exists neither under backend/ nor at the repository root: fix the path", l.N, p)
+		}
 	}
 }

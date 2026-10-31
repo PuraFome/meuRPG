@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"path"
 	"regexp"
 	"strings"
 )
@@ -92,11 +93,19 @@ func RunLines(lines []Line) []Line {
 }
 
 // Covering returns the input that contains the path (the path itself, or a directory above it),
-// or "". Inputs and path are slash paths from the repository root.
-func Covering(inputs []string, path string) string {
-	path = strings.TrimSuffix(path, "/")
+// or "". Inputs and path are slash paths from the repository root; "." is the root itself, so
+// an input "." covers every path and the path "." is covered by that input alone.
+func Covering(inputs []string, p string) string {
+	if p == "" {
+		return ""
+	}
+	p = path.Clean(p)
 	for _, in := range inputs {
-		if path == in || strings.HasPrefix(path, strings.TrimSuffix(in, "/")+"/") {
+		if in == "" {
+			continue
+		}
+		c := path.Clean(in)
+		if c == "." || p == c || strings.HasPrefix(p, c+"/") {
 			return in
 		}
 	}
