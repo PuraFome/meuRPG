@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgconn/ctxwatch"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -20,6 +22,10 @@ const (
 	// Fail fast when the database is unreachable instead of hanging a
 	// request for pgx's default of two minutes.
 	defaultConnectTimeout = 5 * time.Second
+
+	// How long a canceled call waits for the server to honor the cancel
+	// request before the connection's deadline is forced.
+	cancelDeadlineFallback = 5 * time.Second
 
 	// Connections are recycled after MaxConnLifetime (pgx default: 1h). The
 	// jitter spreads those reconnects out in time, so a CockroachDB node
@@ -97,6 +103,22 @@ func NewPoolWith(ctx context.Context, databaseURL string, tweak func(*pgxpool.Co
 	// the URL already sets (...&statement_timeout=60000) wins, as for the rest.
 	setSessionDefault(cfg, "statement_timeout", defaultStatementTimeout)
 	setSessionDefault(cfg, "idle_in_transaction_session_timeout", defaultIdleInTransactionTimeout)
+
+	// A canceled call must not expire the connection's read deadline. pgx's
+	// default handler cancels by setting the deadline to now; when that
+	// lands while the background reader of a slow write is parked on the
+	// socket, its timeout error stays queued and the NEXT call on that pooled
+	// connection fails at once with "timeout: read tcp ...: i/o timeout"
+	// although its own context is alive (issue #710). Asking the server to
+	// cancel sets the deadline only DeadlineDelay ahead, as a fallback, and
+	// clears it when the call ends.
+	cfg.ConnConfig.BuildContextWatcherHandler = func(c *pgconn.PgConn) ctxwatch.Handler {
+		return &pgconn.CancelRequestContextWatcherHandler{
+			Conn:               c,
+			CancelRequestDelay: 0,
+			DeadlineDelay:      cancelDeadlineFallback,
+		}
+	}
 
 	if tweak != nil {
 		tweak(cfg)

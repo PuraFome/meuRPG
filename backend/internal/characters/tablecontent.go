@@ -434,7 +434,7 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 func tableOptionOf(te rules.TableEntry, b *rulesv1.TableOption) rules.TableOption {
 	p := b.GetPrerequisite()
 	return rules.TableOption{
-		TableEntry: te, DescPT: b.GetDescPt(), Set: b.GetSet(), Effects: tableEffectsOf(b.GetEffects()),
+		TableEntry: te, DescPT: b.GetDescPt(), Set: b.GetSet(), OfferedBy: b.GetOfferedBy(), Effects: tableEffectsOf(b.GetEffects()),
 		Prerequisite: rules.TableOptionPrerequisite{
 			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
 			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),

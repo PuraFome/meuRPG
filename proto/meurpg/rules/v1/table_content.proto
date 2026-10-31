@@ -430,14 +430,19 @@ message TableOption {
   repeated string desc_pt = 2;
   // The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
   // "metamagic", "fighting_style", "pact_boon", "hunters_prey", "defensive_tactics",
-  // "multiattack" or "superior_hunters_defense"). It never changes after the entry is
-  // created: it is in the key.
+  // "multiattack", "superior_hunters_defense" or "table_feature"). It never changes after the
+  // entry is created: it is in the key. The set "table_feature" joins the options of a table
+  // class or subclass feature (a table's maneuvers), named by `offered_by`.
   string set = 3;
   // What the option asks of the character; unset asks nothing. An option whose
   // prerequisite is not met is listed in the choice, disabled, with what it lacks.
   OptionPrerequisite prerequisite = 4;
   // At most 20.
   repeated TableEffect effects = 5;
+  // The key of the table feature whose option list this option joins; required for the set
+  // "table_feature" and refused for any other. The feature is a class or subclass feature of
+  // the table that has options (its own list, so it has a choice of features).
+  string offered_by = 6;
 }
 
 // OptionPrerequisite is what a table option asks for. Every one that is set must hold.
