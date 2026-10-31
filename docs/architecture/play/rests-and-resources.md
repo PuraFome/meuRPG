@@ -79,7 +79,8 @@ Tests: `TestSongOfRest*`, `TestTheSongsDieRolledWithARealDieIsTyped` (`play`), `
 
 ## Class resource flows
 
-Each flow is a `ResourceService` call and an `action_taken` event with a `resourceEvent`; the master's undo takes them back (see [Undo](undo.md)).
+Each flow below, except the two slot recoveries, is a `ResourceService` call and an `action_taken` event with a `resourceEvent`; the master's undo takes them back (see [Undo](undo.md)).
+Arcane Recovery and Natural Recovery are their own keyed events and have no undo.
 The pure rules are in `rules` (`rest.go`, `resources.go`, `metamagic.go`); the numbers that change are `characters`' (`rests.go`), reached through `RestKeeper`.
 The code is `resources.go` (rests), `combat_resources.go`, `combat_metamagic.go` and `combat_inspiration.go` (flows) and `resources_slot_recovery.go`.
 
