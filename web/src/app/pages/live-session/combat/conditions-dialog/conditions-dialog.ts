@@ -66,7 +66,7 @@ export interface ConditionsData {
         <div class="conc__row">
           @if (current().concentrationSpell) {
             <span>Concentrado em <b>{{ spell() }}</b></span>
-            <button mat-button type="button" class="conc__end" [disabled]="busy()" (click)="endConcentration()">
+            <button matButton type="button" class="conc__end" [disabled]="busy()" (click)="endConcentration()">
               Encerrar concentração
             </button>
           } @else {
@@ -76,9 +76,9 @@ export interface ConditionsData {
       </section>
       <div foot>
         <div class="pair">
-          <button mat-stroked-button type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
+          <button matButton="outlined" type="button" class="pair__btn" [disabled]="busy()" (click)="close()">Cancelar</button>
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="pair__btn"
             [disabled]="busy() || !changed()"

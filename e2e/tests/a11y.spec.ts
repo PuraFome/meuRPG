@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
+import { test } from './diagnostics';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
 import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
@@ -8,9 +9,9 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
-import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
+import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, openLive, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { type Encounter, adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, passTurnsToAndWait, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -1331,7 +1332,7 @@ async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Compacto, fora da vez ${where}`);
 
     // The player's turn: one "Mover" and one "Encerrar turno" in sight, the tab list, and "Ver mapa" as an icon at the map's top.
-    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Pensantus'));
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveCount(1);
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
@@ -1611,7 +1612,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await card.getByRole('button', { name: 'Rolar dano' }).click();
     await card.getByRole('button', { name: 'Não aplicar' }).click();
     await card.getByRole('button', { name: 'Descartar' }).click();
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
 
     // Round 2: Pensantus casts Teia (through the API) and concentrates; the line and its action are his.
     const enc2 = await getEncounterRPC(m, campaignId);
@@ -1632,7 +1633,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // Teia used the action, so "Encerrar turno" ends the turn without asking.
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await waitTurnLeaves(m, campaignId, 'Pensantus');
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Capitão Goblin'));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
 
     // Off turn: "Ataque de oportunidade" opens the attack sheet with the dagger (a melee weapon).
     await expect(p.getByRole('button', { name: /^Ataque de oportunidade (com |\()Adaga\)?$/ })).toBeVisible();
@@ -1667,7 +1668,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // The fallen, first stable: three successes.
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     for (let i = 0; i < 3; i++) {
-      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
+      await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
       await expect(p.getByRole('heading', { name: 'Pensantus está caído' })).toBeVisible();
       if (i === 0) {
         await expectScreenPasses(p, `Caído, antes de rolar ${where}`);
@@ -1700,7 +1701,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     for (let i = 0; i < 2; i++) {
       await passTurnsTo(m, campaignId, 'Capitão Goblin');
-      await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Pensantus'));
+      await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
       await p.getByRole('button', { name: 'Digitar o resultado' }).click();
       await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill(i === 0 ? '1' : '2');
       await p.getByRole('button', { name: i === 0 ? 'Confirmar 1' : 'Confirmar 2' }).click();
@@ -1744,11 +1745,10 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade reações ${Date.now()}`, true, true, { sheet: pensantusCasting });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
-    let enc = await getEncounterRPC(m, campaignId);
-    const added = await combatRPC(m, 'AddMonsters', { campaignId, encounterId: enc.id, creatureKey: 'monster:mage', count: 1, hidden: false });
-    const mage = added.combatants.find((c) => c.label.startsWith('Mago'))!;
-    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: mage.id, col: 8, row: 8, forced: true });
+    // The Mago joins at the start with the lowest face (the master cannot set an initiative once the combat runs).
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4, Mago: 1 }, { ...attackCombatSquares, Mago: [8, 8] }, [], ['monster:mage']);
+    const mage = begun.combatants.find((c) => c.label.startsWith('Mago'))!;
+    let enc = begun;
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
@@ -1773,8 +1773,7 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     // Contramágica of the Mago against Pensantus's cast, on his next turn.
     enc = await getEncounterRPC(m, campaignId);
     await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.combatants.find((c) => c.label === 'Pensantus')!.id, discardPendingDamage: true });
-    enc = await passTurnsTo(m, campaignId, 'Pensantus');
-    await waitForEncounterRevision(m, enc);
+    enc = await passTurnsToAndWait(m, campaignId, 'Pensantus', m);
     const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
     const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
       campaignId,
@@ -1894,11 +1893,6 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
   const p = await player.newPage();
   const where = `(${colorScheme}, ${width}px)`;
   const campaigns: string[] = [];
-  /** A page that keeps its stream open never goes idle: wait for its h1 instead. */
-  const openLive = async (page: Page, route: string, heading?: string) => {
-    await page.goto(route);
-    await expect(heading ? page.getByRole('heading', { name: heading }) : page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
-  };
   try {
     await m.goto('/');
     await p.goto('/');
@@ -1908,7 +1902,8 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     const campaignId = combat.table.campaignId;
     campaigns.push(campaignId);
     await winCombatRPC(m, combat);
-    await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado');
+    // Going live takes several calls in a row, as in `openSessionPage`: wait up to 30 s.
+    await openLive(m, `/campaigns/${campaignId}/session`, 'Combate encerrado', 30_000);
     const block = m.getByRole('region', { name: 'Experiência do combate' });
     await expect(block.getByRole('button', { name: /^Dar 350 XP/ })).toBeVisible();
     await expectScreenPasses(m, `Fim do combate com Dar XP ${where}`);
@@ -4285,7 +4280,7 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await p.getByTestId('form-ended').getByRole('button', { name: 'Entendi' }).click();
     // Next round: her action is free again.
     await endTurnOf(p, m, campaignId, 'Sálvia');
-    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Sálvia'));
+    await passTurnsToAndWait(m, campaignId, 'Sálvia', p);
     await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
 
     // Conjurar Animais: the sheet, then the result.
@@ -5760,7 +5755,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The master's turn for the Goblin: the offer's form, the wait and the player's question.
     enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
-    await waitForEncounterRevision([m, p], await passTurnsTo(m, campaignId, 'Goblin'));
+    await passTurnsToAndWait(m, campaignId, 'Goblin', [m, p]);
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Goblin$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um NPC ${where}`);
     await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
@@ -6637,11 +6632,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     // The level-up with the table class: the session locks the sheet. An open session keeps a stream going, so
     // the screens from here on are loaded by their heading, not by a quiet network.
     await lockAndMilestone(m, campaignId, characterId);
-    const openLive = async (route: string) => {
-      await page.goto(route);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    };
-    await openLive(`/campaigns/${campaignId}/characters/${characterId}/level-up`);
+    await openLive(page, `/campaigns/${campaignId}/characters/${characterId}/level-up`);
     await passClassStep(page);
     await expect(page.getByText(/Passo 2 de \d · Vida/)).toBeVisible();
     await expectScreenPasses(page, `Subir de nível, a vida ${where}`);
@@ -6675,7 +6666,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
     (fighter.sheet as any).full.skillProficiencyKeys = ['skill:athletics', 'skill:perception'];
     const runico = await createSheetRPC(page, campaignD, fighter);
     await lockAndMilestone(m, campaignD, runico);
-    await openLive(`/campaigns/${campaignD}/characters/${runico}/level-up`);
+    await openLive(page, `/campaigns/${campaignD}/characters/${runico}/level-up`);
     await passClassStep(page);
     await page.getByRole('button', { name: 'Próximo' }).click();
     await page.locator('#pick-subclass').getByRole('radio', { name: /Lâmina de Tinta/ }).click();
@@ -6698,7 +6689,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
         preparedSpellKeys: ['spell:bless'],
       } },
     });
-    await openLive(`/campaigns/${campaignB}/characters/${cleric}/edit`);
+    await openLive(page, `/campaigns/${campaignB}/characters/${cleric}/edit`);
     await page.getByRole('tab', { name: 'Magias' }).click();
     await expect(page.locator('.granted')).toContainText('Sempre preparada');
     await expect(page.getByText(/Preparadas \d+ de \d+/)).toBeVisible();
@@ -6706,7 +6697,7 @@ async function scanTableSheetScreens(browser: Browser, colorScheme: 'light' | 'd
 
     // "A classe mudou" on the sheet, and its sheet.
     await changeGuardianSkillsRPC(m, campaignId, guardian, 1);
-    await openLive(`/campaigns/${campaignId}/characters/${characterId}`);
+    await openLive(page, `/campaigns/${campaignId}/characters/${characterId}`);
     await expect(page.getByText('A classe mudou.')).toBeVisible();
     await expectScreenPasses(page, `Ficha com "A classe mudou" ${where}`);
     await page.getByRole('button', { name: 'Ver o que mudou' }).click();
@@ -7712,7 +7703,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await expect(gift.getByText('Você inspirou Aurora.')).toBeVisible();
     await expectScreenPasses(b, `Inspiração de Bardo, dado entregue ${where}`);
     await gift.locator('button', { hasText: 'Fechar' }).click();
-    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
+    await passTurnsToAndWait(m, campaignId, 'Aurora', p);
 
     // Aurora's turn: the die card, and the touch on Orla (hurt).
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
@@ -7739,7 +7730,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
 
     // The next round: the attack with the die in hand asks before the result.
     await passTurnsTo(m, campaignId, 'Orla');
-    await waitForEncounterRevision(p, await passTurnsTo(m, campaignId, 'Aurora'));
+    await passTurnsToAndWait(m, campaignId, 'Aurora', p);
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
     await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
@@ -8256,8 +8247,7 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
     // The player's end of turn lands first: passing the turns before it would end Vex's turn twice.
     await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toHaveCount(0);
-    const enc = await passTurnsTo(m, campaignId, 'Goblin 2');
-    await waitForEncounterRevision([m, p], enc);
+    const enc = await passTurnsToAndWait(m, campaignId, 'Goblin 2', [m, p]);
     await contestRPC(m, 'StartContest', {
       campaignId,
       encounterId: enc.id,
@@ -9062,7 +9052,7 @@ async function scanMasterActs(browser: Browser, colorScheme: 'light' | 'dark', w
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
     const enc = await getEncounterRPC(m, campaignId);
     await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
-    await waitForEncounterRevision(m, await passTurnsTo(m, campaignId, 'Pensantus'));
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', m);
     await expect(m.getByRole('heading', { name: 'Pensantus está caído: teste contra a morte' })).toBeVisible();
     await expectScreenPasses(m, `O mestre, o teste contra a morte de Pensantus ${where}`);
     await m.getByRole('button', { name: 'Digitar o resultado' }).click();

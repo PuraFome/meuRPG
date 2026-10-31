@@ -47,6 +47,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
@@ -187,7 +188,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
 	}
-	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Logger: logger, Now: clock.Now})
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Roller: dicetest.New(), Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
@@ -198,7 +199,7 @@ func newHarness(t *testing.T, configure ...func(*Config)) *harness {
 	sessionMaps := NewSessionMaps(pool)
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars, Dice: testDice{camps},
-		Live: play.LiveConfig{Heartbeat: noHeartbeat}, Logger: logger, Now: clock.Now,
+		Live: play.LiveConfig{Heartbeat: noHeartbeat}, Roller: dicetest.New(), Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)

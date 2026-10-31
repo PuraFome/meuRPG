@@ -107,6 +107,7 @@ The limits are not a defence against a volume attack: that is the job of the [ed
 | Server heartbeat | 25 s | `play.DefaultHeartbeat` |
 | Re-check of the login session and participation | 60 s | `play.DefaultRecheck` |
 | Maximum life of a stream | 10 minutes, then the server ends it without an error and the app opens another. Kept short because behind the load balancer the server is not told when a page went away | `play.DefaultMaxLifetime` |
+| Idle limit of the instance | 3 minutes without a unary call; the next re-check ends its streams with `unavailable` (`instance_idle`) and the app reconnects to the active revision | `instanceIdleLimit` in `cmd/api/main.go` |
 | Deadline of each message sent | 30 s; then the stream ends (`client_gone`) | `streamSendTimeout` in `cmd/api/main.go` |
 | Streams per person per campaign | 4; a fifth replaces the oldest, which ends with `unavailable` | `live.DefaultMaxPerUser` |
 | Dead stream, app side | The app reconnects after about 60 s of silence, with a growing wait (1 s up to 30 s, jittered), only with the tab visible | App |

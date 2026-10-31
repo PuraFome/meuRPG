@@ -17,7 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
       <div class="opp">
         @for (o of opportunities(); track o.key) {
           <button
-            mat-button
+            matButton
             type="button"
             class="opp__btn"
             [attr.aria-label]="opportunities().length > 1 ? 'Ataque de oportunidade (' + o.name + ')' : 'Ataque de oportunidade com ' + o.name"
@@ -76,7 +76,7 @@ export class TurnReaction {
         <mat-icon aria-hidden="true">self_improvement</mat-icon>
         <span>Concentrado em <b>{{ spell() }}</b></span>
       </p>
-      <button mat-button type="button" class="conc__end" [disabled]="busy()" (click)="end.emit()">Encerrar concentração</button>
+      <button matButton type="button" class="conc__end" [disabled]="busy()" (click)="end.emit()">Encerrar concentração</button>
     </div>
   `,
   styles: `

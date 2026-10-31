@@ -29,11 +29,11 @@ func TestAPanickingHandlerAnswersInternalAndTheServerLives(t *testing.T) {
 	mux.Handle("/test.Svc/Boom", connect.NewUnaryHandler("/test.Svc/Boom",
 		func(context.Context, *connect.Request[campaignsv1.GetCampaignRequest]) (*connect.Response[campaignsv1.GetCampaignRequest], error) {
 			panic("the secret inside the panic")
-		}, connectOptions(logger)...))
+		}, connectOptions(logger, nil)...))
 	mux.Handle("/test.Svc/Fine", connect.NewUnaryHandler("/test.Svc/Fine",
 		func(context.Context, *connect.Request[campaignsv1.GetCampaignRequest]) (*connect.Response[campaignsv1.GetCampaignRequest], error) {
 			return connect.NewResponse(&campaignsv1.GetCampaignRequest{}), nil
-		}, connectOptions(logger)...))
+		}, connectOptions(logger, nil)...))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mux.ServeHTTP(w, r.WithContext(logging.WithRequest(r.Context(), "0123456789abcdef0123456789abcdef", "")))
 	}))
@@ -72,7 +72,7 @@ func TestEveryFailureOfAnRPCIsNoStore(t *testing.T) {
 	t.Parallel()
 	logger := slog.New(slog.DiscardHandler)
 	handle := func(mux *http.ServeMux, name string, fn func() (*connect.Response[campaignsv1.GetCampaignRequest], error)) {
-		opts := append(connectOptions(logger), connect.WithInterceptors(nostore.Interceptor()))
+		opts := append(connectOptions(logger, nil), connect.WithInterceptors(nostore.Interceptor()))
 		mux.Handle("/test.Svc/"+name, connect.NewUnaryHandler("/test.Svc/"+name,
 			func(context.Context, *connect.Request[campaignsv1.GetCampaignRequest]) (*connect.Response[campaignsv1.GetCampaignRequest], error) {
 				return fn()

@@ -2,7 +2,6 @@ import {
   Component,
   ElementRef,
   Injector,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -43,10 +42,11 @@ import {
   subclassFeaturePaths,
   subclassRowBase,
   subclassToDraft,
+  unreadableSubclassPaths,
 } from '../../../core/content/subclass-draft';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
-import { EntrySaver, focusField } from '../../../core/content/entry-saver';
+import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
 import { FieldNote } from '../../../shared/form-fields/field-note';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
@@ -361,6 +361,11 @@ export class SubclassEditor {
     if (this.saver.saving() || this.saveBlocked()) {
       return;
     }
+    const unreadable = unreadableSubclassPaths(this.draft(), this.menu());
+    if (unreadable.length > 0) {
+      this.reveal(unreadable[0]);
+      return;
+    }
     const body: EntryBody = {
       case: 'tableSubclass',
       value: draftToSubclass(this.draft(), this.menu()),
@@ -374,19 +379,21 @@ export class SubclassEditor {
       return;
     }
     const first = this.saver.placement().fields[0];
-    const feature = first
-      ? featureIdOfPath(this.draft().features, (k) => subclassFeatureBase(this.draft(), k), first)
-      : '';
+    if (first) {
+      this.reveal(first);
+    }
+  }
+
+  /** Opens the feature that holds the path, so its input exists, and focuses the input. */
+  private reveal(path: string): void {
+    const feature = featureIdOfPath(
+      this.draft().features,
+      (k) => subclassFeatureBase(this.draft(), k),
+      path,
+    );
     if (feature) {
       this.openFeature.set(feature);
     }
-    afterNextRender(
-      () => {
-        if (first) {
-          focusField(this.host.nativeElement, first);
-        }
-      },
-      { injector: this.injector },
-    );
+    focusAfterRender(this.host.nativeElement, this.injector, path);
   }
 }

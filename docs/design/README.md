@@ -34,8 +34,9 @@ The UI text is Portuguese until i18n lands, so these English pages quote UI stri
 
 ## Rules every screen follows
 
-- **One filled button per screen.** `mat-flat-button` is the main action.
-  Supporting actions are `mat-stroked-button`, text actions are `mat-button`.
+- **One filled button per screen.** `matButton="filled"` is the main action.
+  Supporting actions are `matButton="outlined"`, text actions are `matButton`, icon-only actions are `matIconButton`.
+  The lint refuses the `mat-flat-button`, `mat-stroked-button`, `mat-raised-button`, `mat-button` and `mat-icon-button` attributes.
   When two actions matter (the master looking at a pending character), the main one ("Aprovar personagem") is filled and the others ("Pedir ajustes", "Recusar personagem") are outlined.
   A screen whose actions repeat per row has none: the filled button sits where the decision is made ("Salvar ajuste").
   A destructive confirmation is outlined in `--mr-danger-ink`, so it never becomes a second filled button.

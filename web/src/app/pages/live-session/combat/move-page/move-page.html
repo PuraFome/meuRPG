@@ -91,7 +91,7 @@
 
   <div class="move__side">
     @if (readOnly()) {
-      <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
+      <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
         Voltar à sessão
       </button>
     } @else {
@@ -147,8 +147,8 @@
       @if (trapAsk()) {
         <p class="move__ask" role="alert">{{ trapText() }}</p>
         <div class="move__buttons">
-          <button #safe mat-stroked-button type="button" class="move__cancel" (click)="closeTrapAsk()">Voltar</button>
-          <button mat-flat-button type="button" class="move__go" [disabled]="busy()" disabledInteractive (click)="commit()">
+          <button #safe matButton="outlined" type="button" class="move__cancel" (click)="closeTrapAsk()">Voltar</button>
+          <button matButton="filled" type="button" class="move__go" [disabled]="busy()" disabledInteractive (click)="commit()">
             <mat-icon aria-hidden="true">{{ jumping() ? 'north_east' : 'arrow_forward' }}</mat-icon>{{ jumping() ? 'Saltar assim mesmo' : 'Mover assim mesmo' }}
           </button>
         </div>
@@ -156,7 +156,7 @@
         <div class="move__buttons">
           <button
             #goButton
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="move__go"
             [class.move__go--off]="!canMove()"
@@ -166,7 +166,7 @@
           >
             <mat-icon aria-hidden="true">{{ goIcon() }}</mat-icon>{{ goLabel() }}
           </button>
-          <button mat-stroked-button type="button" class="move__cancel" (click)="back.emit()">
+          <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
             Cancelar
           </button>
         </div>

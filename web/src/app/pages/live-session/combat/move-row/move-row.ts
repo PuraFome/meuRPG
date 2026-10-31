@@ -31,7 +31,7 @@ import { moveLine } from '../../../../core/combat/move-line';
     </div>
     @if (button() && line().canMove) {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="row__btn"
         [class.row__btn--off]="!!locked()"

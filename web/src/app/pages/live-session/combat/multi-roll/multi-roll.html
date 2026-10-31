@@ -2,7 +2,7 @@
   <div class="pick">
     @if (canApp()) {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="pick__main"
         [class.pick__main--quiet]="!preferApp() && canType()"
@@ -15,7 +15,7 @@
     }
     @if (canType()) {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="pick__main"
         [class.pick__main--quiet]="preferApp() && canApp()"
@@ -70,7 +70,7 @@
     }
     <div class="actions">
       <button
-        mat-flat-button
+        matButton="filled"
         type="submit"
         class="pick__main"
         [class.pick__main--off]="!complete()"

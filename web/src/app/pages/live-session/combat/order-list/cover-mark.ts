@@ -55,7 +55,7 @@ let nextId = 0;
           </label>
         }
       </div>
-      <button mat-stroked-button type="button" class="mark__close" (click)="close.emit()">Fechar</button>
+      <button matButton="outlined" type="button" class="mark__close" (click)="close.emit()">Fechar</button>
     </div>
   `,
   styleUrl: './cover-mark.scss',

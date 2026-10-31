@@ -46,7 +46,7 @@
     </mat-form-field>
     <p class="defeat__hint" id="xp-hint">{{ xpHint() }}</p>
     @if (tableXp() !== null && !isTable()) {
-      <button mat-button type="button" class="defeat__use" (click)="useTable()">
+      <button matButton type="button" class="defeat__use" (click)="useTable()">
         Usar {{ tableText() }}
       </button>
     }

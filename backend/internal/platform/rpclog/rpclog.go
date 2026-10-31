@@ -142,6 +142,11 @@ func (c *streamConn) Send(msg any) error {
 	return err
 }
 
+// ErrInstanceIdle is the cause of the error that ends a stream of an instance that no longer receives calls (a
+// deploy moved the traffic away). The client gets its text with the code `unavailable` and reconnects; the log
+// keeps the end below WARNING, with the close reason `instance_idle`.
+var ErrInstanceIdle = errors.New("this server no longer receives the table's calls; reconnect")
+
 // closeReasonOf says why a stream ended, from what the server can see. A
 // stream the handler ended by returning nil while the client was still there
 // (session over, maximum lifetime, shutdown: it can't tell which) is the
@@ -154,6 +159,9 @@ func closeReasonOf(ctx context.Context, err error, sendFailed bool) string {
 		return "client_gone"
 	case err == nil:
 		return "server_ended"
+	}
+	if errors.Is(err, ErrInstanceIdle) {
+		return "instance_idle"
 	}
 	switch codeOf(err) {
 	case connect.CodeCanceled:
@@ -186,6 +194,10 @@ func (i *interceptor) finish(ctx context.Context, procedure string, stream bool,
 		connectErr.Meta().Set("Cache-Control", "no-store")
 		out, code = connectErr, connect.CodeInternal
 	}
+	level := levelOf(code)
+	if errors.Is(err, ErrInstanceIdle) {
+		level = slog.LevelInfo // an ordinary deploy, not a failure
+	}
 	attrs := []slog.Attr{
 		slog.String("procedure", procedure),
 		slog.String("code", code.String()),
@@ -198,7 +210,7 @@ func (i *interceptor) finish(ctx context.Context, procedure string, stream bool,
 			attrs = append(attrs, slog.String("reason", reason))
 		}
 	}
-	i.logger.LogAttrs(ctx, levelOf(code), "rpc", attrs...)
+	i.logger.LogAttrs(ctx, level, "rpc", attrs...)
 	return out
 }
 

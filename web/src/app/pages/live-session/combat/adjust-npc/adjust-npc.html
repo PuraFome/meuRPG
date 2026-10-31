@@ -48,9 +48,9 @@
   </div>
 
   <div class="adj__buttons">
-    <button mat-flat-button type="button" [disabled]="busy() || !valid()" disabledInteractive (click)="save()">
+    <button matButton="filled" type="button" [disabled]="busy() || !valid()" disabledInteractive (click)="save()">
       Salvar ajuste
     </button>
-    <button mat-button type="button" (click)="close()">Cancelar</button>
+    <button matButton type="button" (click)="close()">Cancelar</button>
   </div>
 </div>

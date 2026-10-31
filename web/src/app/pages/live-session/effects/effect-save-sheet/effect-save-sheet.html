@@ -142,33 +142,33 @@
     @switch (stage()) {
       @case ('ask') {
         @if (view().autoFail) {
-          <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
+          <button matButton="filled" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
             Continuar
           </button>
         } @else if (held.offer()) {
-          <button mat-stroked-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
+          <button matButton="outlined" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
         } @else if (!view().handed) {
           <div class="stack">
             @if (canApp) {
-              <button mat-flat-button type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
+              <button matButton="filled" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
                 <mat-icon aria-hidden="true">casino</mat-icon>Rolar no app
               </button>
             }
             @if (canType && !typingNow()) {
-              <button mat-stroked-button type="button" class="btn" [attr.data-initial-focus]="canApp ? null : ''" [disabled]="busy()" (click)="typing.set(true)">
+              <button matButton="outlined" type="button" class="btn" [attr.data-initial-focus]="canApp ? null : ''" [disabled]="busy()" (click)="typing.set(true)">
                 Digitar o resultado
               </button>
             }
-            <button mat-button type="button" class="btn btn--link" [disabled]="busy()" (click)="answer({ kind: 'hand' })">
+            <button matButton type="button" class="btn btn--link" [disabled]="busy()" (click)="answer({ kind: 'hand' })">
               Deixar o mestre rolar por mim
             </button>
           </div>
         } @else {
-          <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
+          <button matButton="outlined" type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
         }
       }
       @default {
-        <button mat-stroked-button type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
+        <button matButton="outlined" type="button" class="btn" data-initial-focus (click)="close()">Fechar</button>
       }
     }
   </div>

@@ -65,7 +65,7 @@ func TestIdentityRPCsAreRateLimitedPerUser(t *testing.T) {
 		MaxClients: 100,
 	})
 	mux := http.NewServeMux()
-	opts := connectOptions(logger)
+	opts := connectOptions(logger, nil)
 	mux.Handle(systemv1connect.NewSystemServiceHandler(system.NewService(version, commit), opts...))
 	mountModules(mux.Handle, m, svc, opts, limiter, logger)
 
