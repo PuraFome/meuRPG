@@ -534,11 +534,11 @@ func (s *Service) spendForRevivify(ctx context.Context, c *combatTx, caster play
 		FxKind: rules.SpellKindRevive, Material: true,
 	}
 	var vitals []*playv1.CharacterVitals
-	if caster.Kind == kindPlayer {
-		slotVitals, err := s.spendSlot(ctx, c, caster.CharacterID, *slot, 1)
-		if err != nil {
-			return actionEvent{}, nil, err
-		}
+	slotVitals, err := s.spendReactionSlot(ctx, c, caster, *slot)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	if slotVitals != nil {
 		vitals = append(vitals, slotVitals)
 	}
 	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{

@@ -331,7 +331,7 @@ Master only; the kind is `MINION` (the default) or `STORY`, since the full sheet
 
 - The sheet is built from `Content.CreatureByKey` and `MonsterDerived` and passes through the same checks as a typed basic sheet (`cleanBasicSheet`): armor class, average hit points, speed (the walking one, or the largest), initiative (the Dexterity modifier), size, CR, XP, the abilities and up to three weapon or spell attacks with the bonus, the reach and the first damage.
 - `BasicAttack` holds a single damage: the other parts go in the description ("Mordida: +2d6 fogo."); the save and other effects stay in the SRD sheet; an attack without damage or with a die the sheet lacks is left out.
-- The description also carries, for the master, the Multiattack count in words and the creature's Spellcasting or Innate Spellcasting in Portuguese (`npcspellcasting.go`: ability, DC, attack bonus, and the spells by level with their slots, cut to 1,500 characters): a note only, since the basic sheet has no spell engine.
+- The description also carries, for the master, the Multiattack count in words and the creature's Spellcasting or Innate Spellcasting in Portuguese (`npcspellcasting.go`: ability, DC, attack bonus, and the spells by level with their slots, cut to 1,500 characters): also the NPC's own spells in combat (`rules.Content.MonsterCaster`, see `play/creatures.md`).
 - Attack names come out in Portuguese (`attack:<name>`), plus `monster_key`, the link to the creature.
   Both are server-only: `checkSheet` zeroes them on input and `UpdateCharacter` keeps the saved ones (`keepCreatureLink`).
 - It is a copy: the numbers do not follow the creature afterwards.

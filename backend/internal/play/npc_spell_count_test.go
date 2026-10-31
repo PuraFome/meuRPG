@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -39,8 +40,8 @@ func (a *armed) usedOf(t *testing.T, label string) string {
 }
 
 // TestAnNPCMagesCastSpendsASlotAndTheUndoGivesItBack: the Mage casts Mísseis Mágicos with a
-// 1st-level slot as the master; the count on the combatant takes it, the options show one
-// slot less to the master, and the undo restores both. Needs the database.
+// 1st-level slot as the master; the count on the combatant takes it, and the undo
+// gives it back. Needs the database.
 func TestAnNPCMagesCastSpendsASlotAndTheUndoGivesItBack(t *testing.T) {
 	t.Parallel()
 	a, e := mageFight(t)
@@ -50,8 +51,8 @@ func TestAnNPCMagesCastSpendsASlotAndTheUndoGivesItBack(t *testing.T) {
 		t.Fatalf("the Mage's count after the cast = %s, want one 1st-level slot", used)
 	}
 	a.undoLast(t, e)
-	if used := a.usedOf(t, "Mago"); strings.Contains(used, `"1": 1`) {
-		t.Errorf("the Mage's count after the undo = %s, want the slot back", used)
+	if used := a.usedOf(t, "Mago"); used != `{"1": 0}` {
+		t.Errorf("the Mage's count after the undo = %s, want the level kept with no use", used)
 	}
 }
 
@@ -93,5 +94,40 @@ func TestAnNPCMagesSlotsLeftAreTheMastersAlone(t *testing.T) {
 		if err == nil {
 			t.Errorf("a player reads the Mage's options = %v, want them refused", res)
 		}
+	}
+}
+
+// grantOf reads the grant a spell is offered with.
+func grantOf(res *playv1.GetTurnOptionsResponse, spell string) *rulesv1.SpellGrantOption {
+	for _, sp := range res.GetOptions().GetSpells() {
+		if sp.GetSpell().GetKey() == spell && sp.GetGrant() != nil {
+			return sp.GetGrant()
+		}
+	}
+	return nil
+}
+
+// TestAnNPCsInnateSpellsCountTheirUses: the Couatl casts Bless 3/day with the stat block's
+// numbers; the use is counted on the combatant, the master's options show one less, the undo gives
+// it back, and Detect Magic at will spends nothing. Needs the database.
+func TestAnNPCsInnateSpellsCountTheirUses(t *testing.T) {
+	t.Parallel()
+	a, e := monsterFight(t, "monster:couatl", "Couatl")
+	e = a.passTo(t, e, "Couatl")
+	first := grantOf(a.mustOptions(t, a.master, e, "Couatl"), "spell:bless")
+	if first == nil || first.GetUsesLeft() != 3 { // positive control: the master reads the uses
+		t.Fatalf("the master reads the Bless grant = %v, want 3 uses left", first)
+	}
+	byGrant := func(r *playv1.CastSpellRequest) { r.GrantedBy = first.GetSourceKey() }
+	a.mustCast(t, a.master, e, "Couatl", "spell:bless", nil, a.at(t, "Toren"), byGrant)
+	if used := a.usedOf(t, "Couatl"); used != `{"res:innate_3_day_bless": 1}` {
+		t.Fatalf("the Couatl's count after Bless = %s, want one use of the resource", used)
+	}
+	if g := grantOf(a.mustOptions(t, a.master, a.get(t, a.master), "Couatl"), "spell:bless"); g.GetUsesLeft() != 2 {
+		t.Errorf("the master reads %d uses left after Bless, want 2", g.GetUsesLeft())
+	}
+	a.undoLast(t, a.get(t, a.master))
+	if used := a.usedOf(t, "Couatl"); used != `{"res:innate_3_day_bless": 0}` {
+		t.Errorf("the Couatl's count after the undo = %s, want the use back", used)
 	}
 }

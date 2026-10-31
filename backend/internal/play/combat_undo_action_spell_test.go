@@ -905,7 +905,7 @@ func TestUndoKindSpellCastByAnNPC(t *testing.T) {
 	})
 	w := newUndoWatch(t, a)
 
-	w.run(t, "the Mago Sombrio's Mísseis Mágicos", nil, func() {
+	w.run(t, "the Mago Sombrio's Mísseis Mágicos", deltaNPCSlotsZero, func() {
 		a.mustCast(t, a.master, e, "Mago Sombrio", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{darts(a, t, "Toren", 3)}, noCastRoll)
 	})
 }

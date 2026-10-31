@@ -24,7 +24,8 @@ type MonsterCaster struct {
 }
 
 var (
-	casterAbilityRe = regexp.MustCompile(`(?i)spellcasting ability is (Intelligence|Wisdom|Charisma)`)
+	casterAbilityRe = regexp.MustCompile(`(?i)spell ?casting ability (?:is )?(Intelligence|Wisdom|Charisma)`)
+	innateBreakRe   = regexp.MustCompile(`[\s;]+(\d+/day(?: each)?:)`)
 	innateLineRe    = regexp.MustCompile(`(?m)^(?:[^\n]*\. )?(At will|(\d+)/day( each)?): (.+)$`)
 	parenthesisRe   = regexp.MustCompile(`\s*\([^)]*\)`)
 )
@@ -98,11 +99,13 @@ func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, 
 func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string) {
 	ability, dc, attack := numbersOf(profBonus, scores, desc)
 	source := key + innateSourceSuffix
+	// A text that runs its lists together on one line ("... major image 3/day each: ...") gets one list a line.
+	desc = innateBreakRe.ReplaceAllString(desc, "\n$1")
 	for _, line := range innateLineRe.FindAllStringSubmatch(desc, -1) {
 		perDay, _ := strconv.Atoi(line[2])
 		shared := fmt.Sprintf("innate_%d_day", perDay)
 		for _, name := range strings.Split(line[4], ",") {
-			name = strings.TrimSpace(parenthesisRe.ReplaceAllString(name, ""))
+			name = strings.Trim(strings.TrimSpace(parenthesisRe.ReplaceAllString(name, "")), ";. ")
 			entry, ok := c.spellEntries["spell:"+slugOf(name)]
 			if !ok {
 				continue
@@ -117,7 +120,7 @@ func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int
 					g.Resource = fmt.Sprintf("innate_%d_day_%s", perDay, slugOf(name))
 				}
 				if !hasCasterResource(out.Resources, g.Resource) {
-					out.Resources = append(out.Resources, Resource{Key: g.Resource, NamePT: entry.NamePT, Max: perDay, Recharge: RechargeLongRest, Source: source})
+					out.Resources = append(out.Resources, Resource{Key: g.Resource, NamePT: resourceName(entry.NamePT, perDay, line[3] != ""), Max: perDay, Recharge: RechargeLongRest, Source: source})
 				}
 			}
 			out.Granted = append(out.Granted, g)
@@ -135,4 +138,12 @@ func hasCasterResource(rs []Resource, key string) bool {
 		}
 	}
 	return false
+}
+
+// resourceName names the uses of an innate spell: the spell's own, or the list's shared pool.
+func resourceName(spellPT string, perDay int, each bool) string {
+	if each {
+		return spellPT
+	}
+	return fmt.Sprintf("Magias inatas (%d/dia)", perDay)
 }
