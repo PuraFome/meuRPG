@@ -490,7 +490,9 @@ func (s *Service) gateSettle(ctx context.Context, ae answering, h heldRoll, a he
 		out.Lucky = nil
 	}
 	if die != nil {
-		out.Roll.Total += int(die.Face)
+		if out.Indomitable == nil { // a reroll leaves the die with the roll it was added to: it is spent, not added again
+			out.Roll.Total += int(die.Face)
+		}
 		out.Bonus = &playv1.BonusDie{SourceKey: bardicInspirationFt, Sides: die.Sides, Face: die.Face, Used: true}
 		if h.DieUsed != nil {
 			out.Used = h.DieUsed

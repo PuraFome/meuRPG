@@ -884,14 +884,27 @@ Esses traços do SRD 5.1 mudam os números de um combate (Meio-orc, Halfling, Mo
   - **Onde pergunta:** o teste de habilidade de uma Contramágica acima do nível do espaço, o teste de Furtividade de um Esconder-se, a jogada de qualquer lado de uma disputa (agarrar, empurrar, escapar; um dado de Inspiração de Bardo move o total), uma iniciativa (o personagem de um jogador, antes de o combate começar; o dado soma ao total), um teste contra a morte (o 1 de um halfling, e um dado de Inspiração de Bardo que o personagem tenha, que move o total em relação ao 10 mas nunca um 1 ou um 20 natural), ataques com arma e truques de ataque (o mestre que rola pelo personagem também recebe a pergunta), um teste de cena, um teste de grupo, uma busca de armadilha (fora de um combate, ou a ação Procurar de um combate, que só gasta a ação depois que a pergunta é respondida), uma tentativa de dica de quebra-cabeça e, em combate, um ataque de magia contra um alvo, o teste de resistência de um efeito e um teste de concentração. Uma jogada que o mestre faz pelo personagem de um jogador pergunta também (a pergunta vai para o jogador e para o mestre, e a resposta do mestre espera os 10 s do jogador).
   - **Onde ninguém pode ser perguntado** (o teste de resistência de uma magia, o de uma armadilha, o teste de resistência de Destreza contra a Repreensão Infernal, rolados pelo app dentro da ação de outra pessoa), o app rola o 1 de novo sozinho, já que repetir um 1 nunca baixa o resultado. A linha diz "Sortudo: 1 → 14" a quem vê os dados daquele teste.
   - **Não coberto:** um NPC nunca o tem, mesmo com a ficha de um halfling.
-- **Indomitável (guerreiro 9, 13 e 17).** Um guerreiro que falha num teste de resistência pode rolá-lo de novo e precisa ficar com o novo resultado, mesmo que seja pior. Gasta um uso, e os usos voltam com um descanso longo (1, 2 ou 3 usos por nível).
-  - **O app pergunta** "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" só quando o teste falhou e o personagem tem um uso. "Rolar de novo" rola no app ou usa um dado real (RN-18); "Manter" fica com a rolagem e não gasta nada. A nova rolagem nunca é perguntada de novo. O resultado e o registro dizem "Indomitável: 4 → 15", para o jogador e para o mestre (RN-10).
+- **Indomitável (guerreiro 9, 13 e 17).**
+  Um guerreiro que falha num teste de resistência pode rolá-lo de novo e precisa ficar com o novo resultado, mesmo que seja pior.
+  Gasta um uso, e os usos voltam com um descanso longo (1, 2 ou 3 usos por nível).
+  - **O app pergunta** "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" só quando o teste falhou e o personagem tem um uso.
+    "Rolar de novo" rola no app ou usa um dado real (RN-18); "Manter" fica com a rolagem e não gasta nada.
+    Um teste rolado com vantagem ou desvantagem leva os dois dados novos.
+    A nova rolagem nunca é perguntada de novo.
+    O resultado e o registro dizem "Indomitável: 4 → 15", para o jogador e para o mestre (RN-10).
   - **Ordem.** Primeiro o Sortudo, depois o dado de Inspiração de Bardo, depois o Indomitável, sobre o total que resulta.
-  - **Onde pergunta:** o teste de resistência de um efeito duradouro, o de concentração e o de morte (um 1 natural ou um total abaixo de 10 falha; um 20 natural nunca falha) que o jogador rola, ou que o mestre rola pelo personagem do jogador.
+  - **O dado.** Um dado de Inspiração de Bardo somado à rolagem fica com essa rolagem.
+    Quando o jogador rola de novo, o dado continua gasto e não é somado à nova rolagem.
+    Quando o jogador mantém a rolagem, o dado continua no total.
+  - **Onde pergunta:** o teste de resistência de um efeito duradouro, o de concentração e o de morte (um 1 natural ou um total abaixo de 10 falha; um 20 natural nunca falha).
+    O jogador rola, ou o mestre rola pelo personagem do jogador.
   - **CD escondida.** Quando a mesa esconde a CD do teste, a pergunta vem em todo teste em que o guerreiro tem um uso e não diz nada do resultado.
+    Ela também vem em todo teste quando dados de um efeito (Bênção, Praga, uma manobra) são somados depois da rolagem.
   - **Quem responde** é o mesmo do Sortudo: o jogador da rolagem, e o mestre depois de 10 segundos.
   - **Desfazer.** Desfazer um teste de morte devolve o uso.
-  - **Fora do alcance:** um teste de resistência rolado dentro da ação de outra pessoa (de uma magia, de uma armadilha, de um efeito de acerto, da Repreensão Infernal) nunca é retido, então não pergunta. Um NPC e as criaturas do mestre nunca perguntam.
+    O teste de um efeito e o de concentração não se desfazem, então o uso deles continua gasto.
+  - **Fora do alcance:** um teste de resistência rolado dentro da ação de outra pessoa (de uma magia, de uma armadilha, de um efeito de acerto, da Repreensão Infernal) nunca é retido, então não pergunta.
+    Um NPC e as criaturas do mestre nunca perguntam.
 
 Como é construído: [Arquitetura](../../architecture/play/held-rolls.md) e [ataques e dano](../../architecture/play/attacks-and-damage.md).
 Testes: `combat-rolls.spec.ts` e `scenes.spec.ts` (`@RN-35`).

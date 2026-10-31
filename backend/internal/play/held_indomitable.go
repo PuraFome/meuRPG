@@ -25,8 +25,6 @@ const (
 	indomitableResource = "indomitable"
 	// indomitableSourceKey names the feature in the Reroll a log line or a result carries.
 	indomitableSourceKey = "feature:indomitable-1-use"
-	// deathSaveDC is the number a death save has to reach (SRD 5.1).
-	deathSaveDC = 10
 )
 
 // saveRule tells the gate how a saving throw is told to have failed, for the paths whose d20 is a saving throw.
@@ -37,7 +35,7 @@ type saveRule struct {
 	// 20 never fails.
 	Death bool
 	// Blind says the roller may not know the result yet, so the question comes on every save and says nothing:
-	// the table hides the DC (or the death saves), or dice of effects come after the gate and move the total.
+	// the table hides the DC of a save, or dice of effects come after the gate and move the total.
 	Blind bool
 }
 
@@ -46,7 +44,8 @@ type saveRule struct {
 func (r saveRule) decide(face, total int) (ask, told bool) {
 	failed := !combat.SaveSucceeded(total, r.DC)
 	if r.Death {
-		failed = face == 1 || (face != 20 && total < deathSaveDC)
+		out := deathOutcomeOf(face, total-face)
+		failed = out == deathFailure || out == deathCritical
 	}
 	return r.Blind || failed, failed && !r.Blind
 }
@@ -184,7 +183,7 @@ func (q indomitableQuestion) apply(ctx context.Context, ae answering, h heldRoll
 // indomitableLeft says the roller has the feature with a use left: only a save of a player's character that may
 // ask is looked at, so the vitals of the others are never read.
 func (s *Service) indomitableLeft(ctx context.Context, env gateEnv, spec rollSpec) (bool, error) {
-	if spec.Save == nil || !spec.MayAsk || spec.Roller.CharacterID == "" {
+	if spec.Save == nil || !spec.MayAsk || spec.Roller.CharacterID == "" || env.c == nil {
 		return false, nil
 	}
 	v, err := s.vitals.GetVitalsTx(ctx, env.tx, spec.Roller.CampaignID, spec.Roller.CharacterID)

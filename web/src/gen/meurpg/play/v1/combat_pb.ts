@@ -5143,8 +5143,8 @@ export const DieQuestionSchema: GenMessage<DieQuestion> = /*@__PURE__*/
 export type IndomitableQuestion = Message<"meurpg.play.v1.IndomitableQuestion"> & {
   /**
    * True when the saving throw failed. Set only when the roller may know it (the table shows the DC of a
-   * save, and the death saves are not hidden); otherwise the question comes on every save the roller could
-   * use Indomitable on, and says nothing about the result.
+   * save, or it is a death save, whose result the owner always sees); otherwise the question comes on every
+   * save the roller could use Indomitable on, and says nothing about the result.
    *
    * @generated from field: bool failed = 1;
    */

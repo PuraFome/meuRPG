@@ -42,7 +42,8 @@ type answerState int
 const (
 	// answerOpen: the question waits, and the answer is the first.
 	answerOpen answerState = iota
-	// answerRepeated: the Lucky answer again, while the die's question waits: nothing is rolled.
+	// answerRepeated: the Lucky answer again while the die's question waits, or the die's answer again while
+	// Indomitable's waits: nothing is rolled.
 	answerRepeated
 	// answerSettled: the roll is resolved already; the same answer again gives the result.
 	answerSettled
@@ -419,13 +420,16 @@ type rollPick struct {
 // die it is held.
 func rollOfAnswer(p rollPick, q questionKind) (rollInput, error) {
 	var in rollInput
+	if len(p.faces) > 0 && (q != askIndomitable || p.app != nil || p.face != nil) {
+		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_faces is only for Indomitable and excludes roll_in_app and typed_face"))
+	}
 	switch {
 	case p.app != nil:
 		if !*p.app {
 			return in, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
 		}
 		in.inApp = true
-	case len(p.faces) > 0 && q == askIndomitable && p.face == nil:
+	case len(p.faces) > 0:
 		for _, f := range p.faces {
 			if f < 1 || f > d20Sides {
 				return in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_faces must be 1 to 20"))

@@ -1,6 +1,10 @@
 package play
 
-import "testing"
+import (
+	"testing"
+
+	"connectrpc.com/connect"
+)
 
 func TestASaveRuleTellsWhenTheQuestionIsAskedAndWhatTheRollerMayKnow(t *testing.T) {
 	t.Parallel()
@@ -35,5 +39,30 @@ func TestAnIndomitableRerollIsListedByTheFeatureThatMadeIt(t *testing.T) {
 	}
 	if rerollsOf(nil, nil) != nil {
 		t.Error("rerollsOf(nil, nil) is not empty")
+	}
+}
+
+// typed_faces belongs to Indomitable's answer alone and excludes the other ways to roll.
+func TestRollOfAnswerRefusesConflictingWaysToRoll(t *testing.T) {
+	t.Parallel()
+	yes, face := true, int32(9)
+	for name, tc := range map[string]struct {
+		pick rollPick
+		q    questionKind
+		ok   bool
+	}{
+		"a pair for Indomitable":         {rollPick{faces: []int32{4, 15}}, askIndomitable, true},
+		"a pair with the app":            {rollPick{faces: []int32{4, 15}, app: &yes}, askIndomitable, false},
+		"a pair with a typed face":       {rollPick{faces: []int32{4, 15}, face: &face}, askIndomitable, false},
+		"a pair for Lucky":               {rollPick{faces: []int32{4, 15}}, askLucky, false},
+		"a pair for the die":             {rollPick{faces: []int32{4, 15}}, askDie, false},
+		"a pair with a face out of 1-20": {rollPick{faces: []int32{4, 21}}, askIndomitable, false},
+	} {
+		_, err := rollOfAnswer(tc.pick, tc.q)
+		if (err == nil) != tc.ok {
+			t.Errorf("%s: error = %v, want ok = %v", name, err, tc.ok)
+		} else if err != nil && connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: code = %v, want invalid_argument", name, connect.CodeOf(err))
+		}
 	}
 }

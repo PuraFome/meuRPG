@@ -7,6 +7,7 @@ import {
   CombatLogKind,
   CombatantState,
   ConcentrationSaveResultSchema,
+  DeathSaveOutcome,
   DiceRollSchema,
   LuckyOfferSchema,
   SpellCastSchema,
@@ -14,7 +15,7 @@ import {
 import { EffectSaveResultSchema } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { castRows } from './cast-flow';
 import { logLine } from './combat-log';
-import { LUCKY_TRAIT, luckyText, luckyWhat } from './lucky';
+import { INDOMITABLE_FEATURE, LUCKY_TRAIT, luckyText, luckyWhat } from './lucky';
 import { concentrationResultView } from './reactions';
 
 const d20 = (faces: number[], rerolled: MessageInitShape<typeof DiceRollSchema>['rerolled'] = []) =>
@@ -87,6 +88,27 @@ describe('the words of the halfling’s Lucky (Sortudo)', () => {
     expect(line?.text).toContain('passou no teste de Sabedoria contra Imobilizar Pessoa');
     expect(line?.notes).toEqual(['Sortudo: 1 → 14']);
     expect(logLine(entry([]))?.notes).toBeUndefined();
+  });
+
+  it('words a death save that Indomitable rolled again after the counts', () => {
+    const entry = (rerolled: { index: number; from: number; to: number; sourceKey: string }[]) =>
+      create(CombatLogEntrySchema, {
+        id: 'x',
+        kind: CombatLogKind.DEATH_SAVE,
+        actorLabel: 'Toren',
+        deathSave: {
+          roll: d20([14], rerolled),
+          outcome: DeathSaveOutcome.SUCCESS,
+          successes: 1,
+          failures: 0,
+        },
+      });
+    const text = logLine(
+      entry([{ index: 0, from: 5, to: 14, sourceKey: INDOMITABLE_FEATURE }]),
+    )?.text;
+    expect(text).toContain('sucesso');
+    expect(text).toContain('Indomitável: 5 → 14');
+    expect(logLine(entry([]))?.text).not.toContain('Indomitável');
   });
 
   it('puts the reroll of a spell attack’s d20 under the cast line', () => {

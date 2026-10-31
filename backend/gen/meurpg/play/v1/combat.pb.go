@@ -11617,8 +11617,8 @@ func (x *DieQuestion) GetFromName() string {
 type IndomitableQuestion struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// True when the saving throw failed. Set only when the roller may know it (the table shows the DC of a
-	// save, and the death saves are not hidden); otherwise the question comes on every save the roller could
-	// use Indomitable on, and says nothing about the result.
+	// save, or it is a death save, whose result the owner always sees); otherwise the question comes on every
+	// save the roller could use Indomitable on, and says nothing about the result.
 	Failed        bool `protobuf:"varint,1,opt,name=failed,proto3" json:"failed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -884,14 +884,27 @@ These SRD 5.1 traits change the numbers of a combat (Half-Orc, Halfling, Monk, R
   - **Where it asks:** the ability check of a Counterspell above the slot's level, the Stealth check of a Hide, either side's roll of a contest (a grapple, a shove, an escape; a Bardic Inspiration die moves the total), an initiative (a player's character, before the combat begins; the die adds to the total), a death save (a halfling's 1, and a Bardic Inspiration die the character holds, which moves the total across 10 but never a natural 1 or 20), weapon attacks and attack cantrips (the master rolling for the character gets the question too), a scene check, a group check, a trap search (out of a combat, or the Search action of a combat, which spends the action only once the question is answered), a puzzle hint try, and in a combat a spell attack against one target, an effect's saving throw and a concentration save. A roll the master makes for a player's character asks too (the question goes to the player and to the master, and the master's answer waits for the player's first 10 s).
   - **Where nobody can be asked** (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke, rolled by the app inside someone else's action), the app rolls the 1 again by itself, since a reroll of a 1 never lowers the result. The line says "Sortudo: 1 → 14" to whoever sees that save's dice.
   - **Not covered:** an NPC never gets it, even with a halfling's sheet.
-- **Indomitable (fighter 9, 13 and 17).** A fighter who fails a saving throw may roll it again and must use the new roll, even when it is worse. It spends one use, and the uses come back with a long rest (1, 2 or 3 uses by level).
-  - **The app asks** "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" only when the save failed and the character has a use left. "Rolar de novo" rolls in the app or takes a real die (RN-18); "Manter" keeps the roll and spends nothing. The new roll is never asked about again. The result and the log say "Indomitável: 4 → 15", for the roller's player and the master (RN-10).
+- **Indomitable (fighter 9, 13 and 17).**
+  A fighter who fails a saving throw may roll it again and must use the new roll, even when it is worse.
+  It spends one use, and the uses come back with a long rest (1, 2 or 3 uses by level).
+  - **The app asks** "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" only when the save failed and the character has a use left.
+    "Rolar de novo" rolls in the app or takes a real die (RN-18); "Manter" keeps the roll and spends nothing.
+    A save rolled with advantage or disadvantage takes both new dice.
+    The new roll is never asked about again.
+    The result and the log say "Indomitável: 4 → 15", for the roller's player and the master (RN-10).
   - **Order.** Lucky first, then the Bardic Inspiration die, then Indomitable, on the total that results.
-  - **Where it asks:** the saving throw of a lasting effect, the concentration save and the death save (a natural 1 or a total below 10 fails; a natural 20 never does) that the player rolls, or the master rolls for the player's character.
+  - **The die.** A Bardic Inspiration die added to the roll goes with that roll.
+    When the player rerolls, the die stays spent and is not added to the new roll.
+    When the player keeps the roll, the die stays in the total.
+  - **Where it asks:** the saving throw of a lasting effect, the concentration save and the death save (a natural 1 or a total below 10 fails; a natural 20 never does).
+    The player rolls it, or the master rolls it for the player's character.
   - **Hidden DC.** When the table hides the saving throw DC, the question comes on every save the fighter has a use for and says nothing of the result.
+    It also comes on every save when dice of an effect (Bless, Bane, a maneuver) are added after the roll.
   - **Who answers** is the same as Lucky: the roller's player, and the master after 10 seconds.
   - **Undo.** Undoing a death save gives the use back.
-  - **Not covered:** a saving throw rolled inside someone else's action (a spell's, a trap's, a hit rider's, a Hellish Rebuke's) is never held, so it does not ask. An NPC and the master's own creatures never ask.
+    The effect save and the concentration save cannot be undone, so their use stays spent.
+  - **Not covered:** a saving throw rolled inside someone else's action (a spell's, a trap's, a hit rider's, a Hellish Rebuke's) is never held, so it does not ask.
+    An NPC and the master's own creatures never ask.
 
 How it is built: [Architecture](../architecture/play/held-rolls.md) and [attacks and damage](../architecture/play/attacks-and-damage.md).
 Tests: `combat-rolls.spec.ts` and `scenes.spec.ts` (`@RN-35`).

@@ -431,8 +431,42 @@ func TestTheBardicDieComesBeforeIndomitable(t *testing.T) {
 		t.Fatalf("AnswerHeldRoll(indomitable) error = %v", err)
 	}
 	r := out.GetEffectSave().GetResult()
-	if !r.GetSaved() || r.GetD20() != 12 || r.GetTotal() != 16 || r.GetInspirationFace() != 4 {
-		t.Errorf("the save = %v; want the new 12 with the die's 4 = 16", r)
+	if !r.GetSaved() || r.GetD20() != 12 || r.GetTotal() != 12 || r.GetInspirationFace() != 4 {
+		t.Errorf("the save = %v; want the new 12 alone: the die went with the roll it was added to", r)
+	}
+}
+
+// The die added to a roll that is rerolled is spent and not added to the new roll; keeping the roll keeps the die in
+// the total.
+func TestTheDieStaysWithTheRollItWasAddedTo(t *testing.T) {
+	t.Parallel()
+	for _, reroll := range []bool{true, false} {
+		a, e, w := indomitableTable(t, "")
+		a.giveCombatantDie(t, "Toren", e)
+		res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), effectSaveFace(5))
+		if err != nil || res.GetHeldRollOffer().GetDie() == nil {
+			t.Fatalf("RollEffectSave(5) = %v, %v; want the die's question", res, err)
+		}
+		hold := res.GetHeldRollOffer().GetHoldId()
+		a.h.roller.queue(4) // 5 + 4 = 9: still a failure
+		if _, err := a.answerHeldRoll(t, a.caio, hold, dieAnswer(true)); err != nil {
+			t.Fatalf("AnswerHeldRoll(die) error = %v", err)
+		}
+		answer, want := indomitableAnswer(false, 0), int32(9)
+		if reroll {
+			answer, want = indomitableAnswer(true, 8), 8
+		}
+		out, err := a.answerHeldRoll(t, a.caio, hold, answer)
+		if err != nil {
+			t.Fatalf("AnswerHeldRoll(indomitable, reroll=%v) error = %v", reroll, err)
+		}
+		r := out.GetEffectSave().GetResult()
+		if r.GetTotal() != want || r.GetInspirationFace() != 4 || r.GetSaved() {
+			t.Errorf("reroll=%v: the save = %v; want the total %d (the 4 spent, still a failure)", reroll, r, want)
+		}
+		if got := byLabel(t, a.get(t, a.master), "Toren").GetInspirationDie(); got != nil {
+			t.Errorf("reroll=%v: Toren still holds the die", reroll)
+		}
 	}
 }
 
@@ -605,5 +639,169 @@ func TestIndomitableTakesTheTypedPairOfASaveWithAdvantage(t *testing.T) {
 	}
 	if used := a.indomitableUsed(t); used != 1 {
 		t.Errorf("indomitable used = %d, want 1", used)
+	}
+}
+
+// The log line "Indomitável: 5 → 17" is read by the roller's player and the master, and by nobody else (RN-10).
+func TestTheLogSaysIndomitableToTheOwnerAndTheMasterOnly(t *testing.T) {
+	t.Parallel()
+	const words = "Indomitável: 5 → 17"
+	a, e, w := indomitableTable(t, "")
+	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), effectSaveFace(5))
+	if err != nil {
+		t.Fatalf("RollEffectSave(5) error = %v", err)
+	}
+	if _, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), indomitableAnswer(true, 17)); err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	// The effect's line carries the reroll as data, which the screen words as "Indomitável: 5 → 17".
+	reads := func(u *user) bool {
+		for _, l := range logEntries(a.log(t, u, e)) {
+			for _, r := range l.GetEffect().GetRerolled() {
+				if r.GetSourceKey() == indomitableSourceKey && r.GetFrom() == 5 && r.GetTo() == 17 {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for name, u := range map[string]*user{"the owner": a.caio, "the master": a.master} {
+		if !reads(u) {
+			t.Errorf("the effect save: %s reads no Indomitable 5 -> 17", name)
+		}
+	}
+	for name, u := range map[string]*user{"Pensantus's player": a.ana, "Brisa's player": a.bia} {
+		if reads(u) || a.logSays(t, u, e, "Indomitável") {
+			t.Errorf("the effect save: %s reads Indomitable", name)
+		}
+	}
+
+	c, ce := concentratingHitOn(t, multiclassTable(t), 6)
+	cw := c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	cres, err := c.resolveConcentration(t, c.ana, ce, cw.GetId(), concentrationFace(5))
+	if err != nil {
+		t.Fatalf("ResolveConcentrationSave(5) error = %v", err)
+	}
+	if _, err := c.answerHeldRoll(t, c.ana, cres.GetHeldRollOffer().GetHoldId(), indomitableAnswer(true, 17)); err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	for name, u := range map[string]*user{"the owner": c.ana, "the master": c.master} {
+		if !c.logSays(t, u, ce, words) {
+			t.Errorf("the concentration save: %s reads no %q", name, words)
+		}
+	}
+	for name, u := range map[string]*user{"Toren's player": c.caio, "Brisa's player": c.bia} {
+		if c.logSays(t, u, ce, "Indomitável") {
+			t.Errorf("the concentration save: %s reads Indomitable", name)
+		}
+	}
+}
+
+// A table that hides the DC of a save asks about a concentration save that would have been kept too, tells nothing
+// of the result, and shows nothing of the question or of the reroll to the other players.
+func TestAHiddenDCConcentrationSaveLeaksNothing(t *testing.T) {
+	t.Parallel()
+	a := multiclassTable(t)
+	a.setRules(t, func(r *campaignsv1.TableRules) { r.ShowSaveDc = false })
+	a, e := concentratingHitOn(t, a, 6)
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	res, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(20))
+	offer := res.GetHeldRollOffer()
+	if err != nil || offer.GetIndomitable() == nil || offer.GetIndomitable().GetFailed() {
+		t.Fatalf("ResolveConcentrationSave(20) = %v, %v; want the question with nothing said of the result", res, err)
+	}
+	for name, u := range map[string]*user{"Toren's player": a.caio, "Brisa's player": a.bia} {
+		if list := a.listHeldRolls(t, u); len(list) != 0 {
+			t.Errorf("%s reads %v, want nothing", name, list)
+		}
+		if byLabel(t, a.get(t, u), "Pensantus").GetHeldRollOffer() != nil {
+			t.Errorf("%s reads Pensantus's question in the combat", name)
+		}
+	}
+	if _, err := a.answerHeldRoll(t, a.ana, offer.GetHoldId(), indomitableAnswer(true, 2)); err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	for name, u := range map[string]*user{"Toren's player": a.caio, "Brisa's player": a.bia} {
+		if a.logSays(t, u, e, "Indomitável") {
+			t.Errorf("%s reads Indomitable in the log", name)
+		}
+	}
+}
+
+// Dice an effect adds after the gate (Bless) move the total, so the question comes blind even when the DC is shown:
+// it does not say the save failed.
+func TestEffectDiceAfterTheGateMakeTheQuestionBlind(t *testing.T) {
+	t.Parallel()
+	a := fighterTable(t, "")
+	a.setRules(t, showSaveDC)
+	e := a.closeFight(t)
+	a.mustAddEffect(t, e, "spell:bless", []string{"Toren"}, a.rounds(t, 10, "Pensantus"))
+	a.mustAddEffect(t, e, holdPerson, []string{"Toren"}, a.rounds(t, 10, "Toren"))
+	a.passTo(t, e, "Toren")
+	if _, err := a.endTurnRaw(t, a.master, e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	w := a.windowOf(t, a.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatalf("Toren's windows = %v, want the save of Hold Person", a.windows(t, a.caio))
+	}
+	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), effectSaveFace(5))
+	offer := res.GetHeldRollOffer()
+	if err != nil || offer.GetIndomitable() == nil || offer.GetIndomitable().GetFailed() {
+		t.Fatalf("RollEffectSave(5) = %v, %v; want the question with nothing said of the result", res, err)
+	}
+}
+
+// The master rolls a save for a player's character: the player is asked, the master reads the question too, and the
+// player's answer spends the player's use.
+func TestAMasterRolledSaveAsksThePlayer(t *testing.T) {
+	t.Parallel()
+	a, e, w := indomitableTable(t, "")
+	res, err := a.rollEffectSave(t, a.master, e, w.GetId(), effectSaveFace(5))
+	offer := res.GetHeldRollOffer()
+	if err != nil || offer.GetIndomitable() == nil || !offer.GetIndomitable().GetFailed() {
+		t.Fatalf("RollEffectSave(master, 5) = %v, %v; want Indomitable's question", res, err)
+	}
+	if list := a.listHeldRolls(t, a.caio); len(list) != 1 {
+		t.Errorf("the player's list = %v, want the one question", list)
+	}
+	if list := a.listHeldRolls(t, a.master); len(list) != 1 {
+		t.Errorf("the master's list = %v, want the one question", list)
+	}
+	out, err := a.answerHeldRoll(t, a.caio, offer.GetHoldId(), indomitableAnswer(true, 16))
+	if err != nil || !out.GetEffectSave().GetResult().GetSaved() || a.indomitableUsed(t) != 1 {
+		t.Errorf("the player's answer = %v, %v; want the save passed and the use spent", out, err)
+	}
+}
+
+// A save with advantage takes both faces: a single typed face is refused, and so is a mix of ways to roll.
+func TestIndomitableRefusesWrongWaysToRollAPair(t *testing.T) {
+	t.Parallel()
+	a, e, w := indomitableTable(t, "race:gnome")
+	a.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+		r.Roll = &playv1.RollEffectSaveRequest_D20Face{D20Face: 3}
+		r.SecondD20Face = new(int32(5))
+	})
+	if err != nil || res.GetHeldRollOffer().GetIndomitable() == nil {
+		t.Fatalf("RollEffectSave(3, 5) = %v, %v; want the question", res, err)
+	}
+	hold := res.GetHeldRollOffer().GetHoldId()
+	_, err = a.answerHeldRoll(t, a.caio, hold, indomitableAnswer(true, 15))
+	wantCode(t, "one typed face for a pair", err, connect.CodeInvalidArgument)
+	_, err = a.answerHeldRoll(t, a.caio, hold, func(r *playv1.AnswerHeldRollRequest) {
+		r.Answer = &playv1.AnswerHeldRollRequest_Indomitable{Indomitable: &playv1.IndomitableAnswer{
+			Reroll: true, Roll: &playv1.IndomitableAnswer_TypedFace{TypedFace: 9}, TypedFaces: []int32{4, 15},
+		}}
+	})
+	wantCode(t, "typed_faces with typed_face", err, connect.CodeInvalidArgument)
+	_, err = a.answerHeldRoll(t, a.caio, hold, func(r *playv1.AnswerHeldRollRequest) {
+		r.Answer = &playv1.AnswerHeldRollRequest_Indomitable{Indomitable: &playv1.IndomitableAnswer{
+			Reroll: true, Roll: &playv1.IndomitableAnswer_RollInApp{RollInApp: true}, TypedFaces: []int32{4, 15},
+		}}
+	})
+	wantCode(t, "typed_faces with roll_in_app", err, connect.CodeInvalidArgument)
+	if used := a.indomitableUsed(t); used != 0 {
+		t.Errorf("indomitable used = %d after the refusals, want 0", used)
 	}
 }

@@ -134,6 +134,7 @@ The resource `indomitable` has 1, 2 or 3 uses (levels 9, 13 and 17) and recharge
 It is spent when the player rerolls a failed saving throw (the held-roll question in [held rolls](held-rolls.md#indomitable-fighter-9-13-and-17)), through `spendResource` on the vitals.
 Keeping the roll spends nothing.
 The undo of a death save gives the use back (`spendResourceBack`).
+The effect save and the concentration save cannot be undone, so the use they spent stays spent.
 A saving throw rolled inside someone else's call never offers it.
 
 ### Metamagic (sorcerer 3)

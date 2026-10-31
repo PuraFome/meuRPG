@@ -417,8 +417,8 @@ func (s *Service) rollConcentration(
 func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateResult, bonus, delta int, dc int32, spell string) bool {
 	roll := gate.Roll
 	bonusFace := 0
-	if gate.Bonus != nil {
-		bonusFace = int(gate.Bonus.Face) // the die the player added after rolling
+	if gate.Bonus != nil && gate.Indomitable == nil {
+		bonusFace = int(gate.Bonus.Face) // the die the player added after rolling (a reroll leaves it out of the total)
 	}
 	total := roll.Total + delta
 	kept := total >= int(dc)
