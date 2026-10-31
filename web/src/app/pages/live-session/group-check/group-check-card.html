@@ -1,7 +1,7 @@
 @if (check(); as c) {
   @switch (mode()) {
     @case ('roll') {
-      <section class="card mr-notice mr-notice--warning" [attr.aria-label]="heading()">
+      <section role="status" class="card mr-notice mr-notice--warning" [attr.aria-label]="heading()">
         <mat-icon aria-hidden="true">{{ c.group ? 'groups' : 'casino' }}</mat-icon>
         <div class="card__body">
           @if (c.group) {
@@ -14,7 +14,7 @@
       </section>
     }
     @case ('wait') {
-      <section class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
+      <section role="status" class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
         <mat-icon aria-hidden="true">schedule</mat-icon>
         <div class="card__body">
           @if (c.group) {
@@ -30,7 +30,7 @@
       </section>
     }
     @case ('result') {
-      <section class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
+      <section role="status" class="card mr-notice mr-notice--neutral" [attr.aria-label]="heading()">
         <mat-icon aria-hidden="true">{{ c.group ? 'groups' : 'casino' }}</mat-icon>
         <div class="card__body">
           <p><b>{{ heading() }}: {{ c.skillNamePt }}.</b> {{ line() }}</p>

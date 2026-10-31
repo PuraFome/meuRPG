@@ -123,7 +123,7 @@
           </div>
         }
       </dl>
-      <div class="mr-notice mr-notice--success block">
+      <div role="status" class="mr-notice mr-notice--success block">
         <mat-icon aria-hidden="true">check_circle</mat-icon>
         <p><strong>Tudo pode ser criado.</strong> Nenhum item foi recusado.</p>
       </div>
@@ -143,7 +143,7 @@
       @if (headline()) {
         <p class="hint headline">{{ headline() }}</p>
       }
-      <div class="mr-notice mr-notice--danger block">
+      <div role="alert" class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           <strong>Este pacote não pode ser criado.</strong>
@@ -171,7 +171,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div class="mr-notice mr-notice--danger block">
+      <div role="alert" class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           <strong
@@ -191,7 +191,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div class="mr-notice mr-notice--danger block">
+      <div role="alert" class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           @if (s.max > 0) {
@@ -212,7 +212,7 @@
       <h2 class="mr-panel__title" id="import-heading" tabindex="-1" data-focus>
         Importar campanha
       </h2>
-      <div class="mr-notice mr-notice--danger block">
+      <div role="alert" class="mr-notice mr-notice--danger block">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>{{ s.text }}</p>
       </div>
@@ -254,7 +254,7 @@
   @case ('done') {
     <section class="mr-panel card" aria-labelledby="done-heading">
       <h2 class="mr-panel__title" id="done-heading" tabindex="-1" data-focus>Campanha criada</h2>
-      <div class="mr-notice mr-notice--success block">
+      <div role="status" class="mr-notice mr-notice--success block">
         <mat-icon aria-hidden="true">check_circle</mat-icon>
         <p>
           <strong>{{ s.name }}</strong

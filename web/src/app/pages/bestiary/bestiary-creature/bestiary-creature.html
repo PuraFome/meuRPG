@@ -92,7 +92,7 @@
 
         <div class="made" #madeBox tabindex="-1" role="group" aria-label="Confirmação">
           @if (put(); as p) {
-            <div class="mr-notice mr-notice--success">
+            <div role="status" class="mr-notice mr-notice--success">
               <mat-icon aria-hidden="true">check</mat-icon>
               <div class="made__text">
                 <p>
@@ -108,7 +108,7 @@
             </div>
           }
           @if (made(); as m) {
-            <div class="mr-notice mr-notice--success">
+            <div role="status" class="mr-notice mr-notice--success">
               <mat-icon aria-hidden="true">check</mat-icon>
               <div class="made__text">
                 @if (m.existed) {

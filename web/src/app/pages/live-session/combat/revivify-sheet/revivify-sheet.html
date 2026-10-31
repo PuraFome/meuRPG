@@ -46,7 +46,7 @@
           }
         </div>
         @if (waitsMaster()) {
-          <div class="mr-notice mr-notice--warning">
+          <div role="status" class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">schedule</mat-icon>
             <p>
               <strong>O mestre confirma que faz menos de 1 minuto.</strong>
@@ -87,12 +87,12 @@
           <p class="plain"><mat-icon aria-hidden="true">hourglass_top</mat-icon><b>Esperando o mestre</b></p>
           <p class="small">Nada foi gasto até o mestre responder.</p>
         } @else if (denied()) {
-          <div class="mr-notice mr-notice--warning">
+          <div role="alert" class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">block</mat-icon>
             <p>{{ deniedText }}</p>
           </div>
         } @else if (lines(); as l) {
-          <div class="mr-notice mr-notice--success">
+          <div role="status" class="mr-notice mr-notice--success">
             <mat-icon aria-hidden="true">check_circle</mat-icon>
             <p><strong>{{ l.lead }}</strong> {{ l.rest }}</p>
           </div>

@@ -126,7 +126,7 @@
             }
           }
           @if (r.textPt) {
-            <div class="mr-notice" [class.mr-notice--success]="r.effectEnded" [class.mr-notice--neutral]="!r.effectEnded">
+            <div role="status" class="mr-notice" [class.mr-notice--success]="r.effectEnded" [class.mr-notice--neutral]="!r.effectEnded">
               <mat-icon aria-hidden="true">{{ r.effectEnded ? 'check_circle' : 'info' }}</mat-icon>
               <p>{{ r.textPt }}</p>
             </div>

@@ -42,7 +42,7 @@
   }
 
   @if (pending()) {
-    <div class="mr-notice mr-notice--warning owed">
+    <div role="status" class="mr-notice mr-notice--warning owed">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <p><strong>Falta rolar o dano do ataque {{ ofCreature() }}.</strong> Role para poder encerrar a vez.</p>
       <button matButton="outlined" type="button" [disabled]="busy()" [attr.aria-label]="'Rolar o dano: ' + c().label" (click)="rollDamage.emit()">Rolar o dano</button>

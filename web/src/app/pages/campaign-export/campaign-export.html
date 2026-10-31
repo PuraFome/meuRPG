@@ -158,7 +158,7 @@
             @case (State.DONE) {
               <section class="mr-panel" aria-labelledby="last-heading">
                 <h2 class="mr-panel__title" id="last-heading">Último pacote</h2>
-                <div class="mr-notice mr-notice--success">
+                <div role="status" class="mr-notice mr-notice--success">
                   <mat-icon aria-hidden="true">check_circle</mat-icon>
                   <p class="notice__text">
                     <strong>{{ exp.fileName }}</strong> · {{ lastDetails() }}
@@ -173,7 +173,7 @@
             @case (State.FAILED) {
               <section class="mr-panel" aria-labelledby="failed-heading">
                 <h2 class="mr-panel__title" id="failed-heading">Exportação não concluída</h2>
-                <div class="mr-notice mr-notice--danger">
+                <div role="alert" class="mr-notice mr-notice--danger">
                   <mat-icon aria-hidden="true">error</mat-icon>
                   @if (exp.failure === Failure.TOO_BIG) {
                     <p>
@@ -203,7 +203,7 @@
             @case (State.CANCELED) {
               <section class="mr-panel" aria-labelledby="canceled-heading">
                 <h2 class="mr-panel__title" id="canceled-heading">Exportação cancelada</h2>
-                <div class="mr-notice mr-notice--neutral">
+                <div role="status" class="mr-notice mr-notice--neutral">
                   <mat-icon aria-hidden="true">info</mat-icon>
                   <p>
                     <strong>Nenhum arquivo foi guardado.</strong>

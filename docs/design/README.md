@@ -3,16 +3,16 @@
 MeuRPG looks like a paper sheet ("ficha de papel"): the official D&D 5e character sheet, with the same order and the same shapes (ability medallions, the AC shield, the proficiency dots), clean on a screen, with a real light theme and a real dark theme.
 This folder is the reference for anyone who touches a screen in `web/`.
 
-| Page                           | What it holds                                                                                                |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| This page                      | Principles, the rules every screen follows, text on screen, accessibility, how a screen is made and reviewed |
-| [tokens.md](tokens.md)         | Every `--mr-*` token, the fonts, the Material mapping                                                        |
-| [components.md](components.md) | The shared classes and components, and when to use each                                                      |
-| [sheet.md](sheet.md)           | The character sheet and the editors                                                                          |
-| [session.md](session.md)       | The live session: shown image, scenes, the conversation, rolls, resources, puzzles                           |
-| [combat.md](combat.md)         | The combat screens                                                                                           |
-| [campaign.md](campaign.md)     | The campaign page: the master's session strip and three tabs, the player's single page                       |
-| [maps.md](maps.md)             | Maps, layers, fog of war, the map editor and printing                                                        |
+| Page | What it holds |
+| --- | --- |
+| This page | Principles, the rules every screen follows, text on screen, accessibility, how a screen is made and reviewed |
+| [tokens.md](tokens.md) | Every `--mr-*` token, the fonts, the Material mapping |
+| [components.md](components.md) | The shared classes and components, and when to use each |
+| [sheet.md](sheet.md) | The character sheet and the editors |
+| [session.md](session.md) | The live session: shown image, scenes, the conversation, rolls, resources, puzzles |
+| [combat.md](combat.md) | The combat screens |
+| [campaign.md](campaign.md) | The campaign page: the master's session strip and three tabs, the player's single page |
+| [maps.md](maps.md) | Maps, layers, fog of war, the map editor and printing |
 
 The same system is drawn in Claude Design, to design a new screen before the code: "MeuRPG — sistema visual" (the components) and "MeuRPG — direções visuais" (the explored directions).
 Both are private links the project owner shares.
