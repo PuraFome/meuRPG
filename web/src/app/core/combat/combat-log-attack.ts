@@ -21,7 +21,7 @@ import { pointsText } from '../resources/pools';
 import { degreeWord, sourceWord } from './cover';
 import { hpCastText } from './combat-log-hp-cast';
 import { LogContext, LogRoll, PoolCard } from './combat-log-types';
-import { inThe, the } from './combat-log-words';
+import { inThe, pushText, the } from './combat-log-words';
 
 /** Whether the attack is made from afar, so the sentence says "atira". */
 function isShot(key: string): boolean {
@@ -178,7 +178,8 @@ export function castTargetText(t: CombatLogSpellTarget, ctx: LogContext): string
       : t.save.outcome === SaveOutcome.SAVED
         ? 'resistiu'
         : 'falhou';
-    out = `${the(who)} ${verb}${dc}${damage}`;
+    const push = pushText(t);
+    out = `${the(who)} ${verb}${dc}${damage}${push === '' ? '' : `; ${push}`}`;
   } else if (t.outcome !== AttackOutcome.UNSPECIFIED) {
     out = `${inThe(who)}: ${t.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : t.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}${coverNote(t)}${t.outcome === AttackOutcome.MISS ? '' : damage}`;
   } else if (t.damage?.healing) {
