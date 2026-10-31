@@ -12,7 +12,7 @@ For the engine around it see [Rules module](rules.md).
 | `turn.go`, `usage.go` | `Options` (the "Sua vez" menu), the turn economy, the reason codes, `Usage` (what is spent since the last rest). |
 | `rolls.go`, `vitals.go` | Attack resolution, critical rules, damage dice, concentration DC, `ApplyDamage`, `ApplyHeal`, death saves, `SpendSlot`, `SpendPactSlot`, `SpendResource`. |
 | `bonusattack.go` | Which rule lets an attack be made with the bonus action (off hand, Martial Arts, Flurry of Blows). |
-| `advantage.go` | Advantage and disadvantage from circumstances; both cancel. The play module works out the facts and writes the sentence of each source. |
+| `advantage.go` | Advantage and disadvantage from circumstances (Pack Tactics and Magic Resistance among them); both cancel. The play module works out the facts and writes the sentence of each source. |
 | `damagetype.go`, `steps.go` | Resistance, vulnerability and immunity; the order damage steps apply in (resistance first, then vulnerability, immunity last; several instances of the same count once). A resistance or immunity can be limited to nonmagical attacks (`Modifier.Qualifier`); `Origin` says whether a damage is an attack and whether it is magical. |
 | `extras.go` | What is added to a hit: the extras a player chooses (Sneak Attack, Divine Smite, Hunter's Mark, Colossus Slayer) with the condition that makes each valid, and the automatic lines (Rage, Improved Divine Smite, Great Weapon Fighting). |
 | `healing.go` | What the Life Domain features add to a healing spell. |

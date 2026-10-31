@@ -46,6 +46,8 @@ const (
 	SourceDodgingTarget = "dodging_target"
 	// A monster's Pack Tactics.
 	SourcePackTactics = "pack_tactics"
+	// A monster's Magic Resistance: advantage on a saving throw against a spell or another magical effect.
+	SourceMagicResistance = "magic_resistance"
 	// Unseen Attackers and Targets.
 	SourceUnseenAttacker = "unseen_attacker"
 	SourceUnseenTarget   = "unseen_target"
@@ -220,6 +222,8 @@ type Creature struct {
 	Reckless bool
 	// PackTactics says the monster it is has the Pack Tactics trait.
 	PackTactics bool
+	// MagicResistance says the creature has the Magic Resistance trait.
+	MagicResistance bool
 	// DangerSense says it has the barbarian's Danger Sense.
 	DangerSense bool
 	// Evasion says it has the feature of that name (monk or rogue level 7, or a
@@ -534,6 +538,7 @@ func SaveMode(s SaveScene) []Source {
 	rs = append(rs, sourceRule{s.Creature.ArmorUntrained && ArmorSpoilsAbility(s.Ability), SourceArmorUntrained, ModeDisadvantage, ""})
 	rs = append(rs, saveRules(s)...)
 	rs = append(rs, checkRules(s)...)
+	rs = append(rs, sourceRule{!s.Check && s.Creature.MagicResistance && slices.Contains(s.Against, AgainstMagic), SourceMagicResistance, ModeAdvantage, ""})
 	return append(appendRules(nil, rs), taggedSaveSources(s)...)
 }
 

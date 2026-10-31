@@ -256,6 +256,8 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
+	// MagicResistance is a monster's trait.
+	MagicResistance bool
 	// Evasion says the sheet has Evasion: the monk's, the rogue's, the ranger's Superior
 	// Hunter's Defense choice, or a stat block's trait (combat.HalfSaveShare).
 	Evasion bool

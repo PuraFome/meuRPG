@@ -108,6 +108,7 @@ func TestAdvantageSentencesFreezeEachSource(t *testing.T) {
 		{"reckless attacker", third, combat.Source{Kind: combat.SourceRecklessAttacker}, "<feature:reckless-attack>: vantagem nos ataques corpo a corpo com Força neste turno"},
 		{"reckless target", third, combat.Source{Kind: combat.SourceRecklessTarget}, "Alvo em <feature:reckless-attack>: vantagem nos ataques contra ele"},
 		{"dodging target", third, combat.Source{Kind: combat.SourceDodgingTarget}, "Alvo Esquivando e vendo o atacante: desvantagem"},
+		{"magic resistance", self, combat.Source{Kind: combat.SourceMagicResistance}, "Resistência à Magia: vantagem em testes de resistência contra magias e outros efeitos mágicos"},
 		{"pack tactics names the ally to the master", third, combat.Source{Kind: combat.SourcePackTactics}, "Táticas de Matilha: um aliado (Lobo) está a 1,5 m de Orc e não está incapacitado"},
 		{"pack tactics hides the ally from the roller", self, combat.Source{Kind: combat.SourcePackTactics}, "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado"},
 		{"pack tactics without an ally label", bare, combat.Source{Kind: combat.SourcePackTactics}, "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado"},

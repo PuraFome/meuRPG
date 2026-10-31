@@ -51,6 +51,10 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
   When the stat block refuses a condition of a spell's effect (`giveCondition`), the hit carries `no_effect_why`.
   Only the master reads it, as `SpellTargetResult.no_effect_reason_master` (RN-20, RN-29); a player's view is that of a hit nothing refused.
   A rider, a hold or a trap refused by an immunity keeps its public outcome and carries no reason line.
+- **Traits that change rolls.** Pack Tactics and Magic Resistance are read from the stat block's traits and become advantage sources (`combat.SourcePackTactics`, `combat.SourceMagicResistance`).
+  Magic Resistance gives advantage on a saving throw against a spell or another magical effect; a creature's own non-spell action is not magic.
+  Only the master and the owner of the creature read the mode of its save; any other player reads the outcome.
+  Sunlight Sensitivity and Sunlight Weakness are not read: the engine has no sunlight, so they stay a trait the master reads on the creature's sheet.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.
   On entering combat the creature copies, like the character, the side (`party`), the size, the flying speed (`size`, `speed_fly_ft`) and the jump (`combat.JumpLimits` from its Strength).
