@@ -339,3 +339,41 @@ func TestATableFeatureOptionRefusalsNameTheirField(t *testing.T) {
 		t.Error("an SRD set with offered_by was accepted")
 	}
 }
+
+// foxSpending is the table option of the feature "Posturas" with the effects given.
+func foxSpending(effects ...Effect) Overlay {
+	o := postureOverlay()
+	fox := postureFoxOption()
+	fox.Prerequisite = TableOptionPrerequisite{}
+	fox.Effects = effects
+	o.Options = []TableOption{fox}
+	return o
+}
+
+func TestATableFeatureOptionSpendsAndReadsWhatItsFeatureDeclares(t *testing.T) {
+	srd := loadForTest(t)
+
+	// The feature declares the resource and a state; the option spends the one and reads the other.
+	spends := foxSpending(
+		Effect{Type: "grant_action", Economy: "bonus_action", Resource: postureDice},
+		Effect{Type: "modifier", Target: "initiative", Mode: "add", Value: "1", When: `active("foco")`},
+	)
+	spends.Subclasses[0].Levels[0].Features[0].Effects = append(spends.Subclasses[0].Levels[0].Features[0].Effects,
+		Effect{Type: "state", StateName: "foco", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree})
+	if _, err := srd.With(spends); err != nil {
+		t.Fatalf("an option that spends the dice and reads the state of its feature was refused: %v", err)
+	}
+
+	// A resource nobody declares is still refused, at the effect.
+	_, err := srd.With(foxSpending(Effect{Type: "grant_action", Economy: "bonus_action", Resource: "dados_que_nao_existem"}))
+	var oe *OverlayError
+	if !errors.As(err, &oe) || !strings.HasSuffix(oe.Field, ".effects[0].resource") {
+		t.Errorf("an unknown resource: error = %v, want it at .effects[0].resource", err)
+	}
+
+	// A state the feature does not declare is refused too.
+	_, err = srd.With(foxSpending(Effect{Type: "modifier", Target: "initiative", Mode: "add", Value: "1", When: `active("foco")`}))
+	if err == nil {
+		t.Error("an option reading a state no effect declares was accepted")
+	}
+}

@@ -138,10 +138,16 @@ func (b *overlayBuilder) addOption(o *TableOption, path string) error {
 		c.at(key, path, ".effects", ReasonLimit, "%d effects; the limit is %d per feature", len(o.Effects), MaxFeatureEffects)
 	}
 	if len(o.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: o.Effects, path: path, strict: b.strict[key]})
-		b.know(key, featureKind{owner: key})
-		b.declareResources(featureKind{owner: key}, o.Effects)
-		b.declareStates(key, key, o.Effects)
+		// An option of the set "table_feature" is read as an inline option of its feature is:
+		// it spends the resources and reads the states of the feature's entry and class.
+		home := featureKind{owner: key}
+		if o.Set == tableFeatureSet {
+			home = featureKind{owner: b.featureEntry[o.OfferedBy], class: b.featureClass[o.OfferedBy]}
+		}
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: home.owner, effects: o.Effects, path: path, strict: b.strict[key]})
+		b.know(key, home)
+		b.declareResources(home, o.Effects)
+		b.declareStates(key, home.owner, o.Effects)
 	}
 	if err := c.err(); err != nil {
 		return err
