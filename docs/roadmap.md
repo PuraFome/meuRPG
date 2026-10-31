@@ -45,7 +45,7 @@ Also built:
 
 1. **"Sessão zero".** The MVP waits for it.
    It is made of the remaining features of the last wave (monster stat blocks, items on the sheet, more lasting zones ([#640](https://github.com/PuraFome/meuRPG/issues/640))) and the gaps in the engine under that milestone.
-   Its acceptance test is a level-up ladder from level 1 to 12.
+   Its acceptance test is a level-up ladder from level 4 to 12.
    The issues are on the [milestone](https://github.com/PuraFome/meuRPG/milestones), grouped there; this page does not list them.
 2. **"Antes de outra mesa".** What must hold before a second table uses the app: [#657](https://github.com/PuraFome/meuRPG/issues/657), [#658](https://github.com/PuraFome/meuRPG/issues/658) and [#659](https://github.com/PuraFome/meuRPG/issues/659).
 3. **English UI** ([#656](https://github.com/PuraFome/meuRPG/issues/656)).
