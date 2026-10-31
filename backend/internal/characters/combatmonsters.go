@@ -3,6 +3,8 @@ package characters
 import (
 	"context"
 	"crypto/sha1" //nolint:gosec // a name-based UUID (RFC 9562, version 5), not a security hash
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
@@ -11,6 +13,7 @@ import (
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
@@ -36,6 +39,28 @@ var monsterNamespace = uuid.MustParse("6f1d6a52-3c1e-4d0b-9a57-0c7b5e1f2a43")
 // unique index (campaign_id, create_key) makes the NPC one, whoever creates it.
 func monsterNpcKey(campaignID, monsterKey string) string {
 	return nameUUID(monsterNamespace, campaignID+"|"+monsterKey)
+}
+
+// monsterNpcKeyOf is the create_key of the NPC of the creature as the content has it now. The stat block of
+// an SRD creature never changes, so its NPC is one for the campaign. A table creature's entry can be
+// edited, and the combatants already in a fight keep their numbers, which they read from the NPC: its key
+// also holds a digest of the sheet the entry makes now, so an edit that changes the numbers makes another NPC
+// and an edit that does not, or one that changes them back, finds the one it had.
+func (s *Service) monsterNpcKeyOf(content *rules.Content, campaignID, monsterKey string) (string, error) {
+	if !rules.IsTableKey(monsterKey) {
+		return monsterNpcKey(campaignID, monsterKey), nil
+	}
+	basic, err := npcSheetFromCreature(content, monsterKey)
+	if err != nil {
+		return "", err
+	}
+	// Deterministic encoding: the same sheet always has the same bytes.
+	doc, err := proto.MarshalOptions{Deterministic: true}.Marshal(basic)
+	if err != nil {
+		return "", fmt.Errorf("encode a sheet: %w", err)
+	}
+	sum := sha256.Sum256(doc)
+	return monsterNpcKey(campaignID, monsterKey+"|"+hex.EncodeToString(sum[:])), nil
 }
 
 // nameUUID is the version 5 UUID (RFC 9562) of name in namespace.
@@ -95,7 +120,10 @@ func (s *Service) MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterU
 		return link.Character{}, false, nil
 	}
 	q := s.queriesIn(tx)
-	key := monsterNpcKey(campaignID, monsterKey)
+	key, err := s.monsterNpcKeyOf(content, campaignID, monsterKey)
+	if err != nil {
+		return link.Character{}, false, err
+	}
 	row, err := q.GetCharacterByCreateKey(ctx, charactersdb.GetCharacterByCreateKeyParams{CampaignID: campaignID, CreateKey: key})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return link.Character{}, false, wrap("read the NPC of a monster", err)

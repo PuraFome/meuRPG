@@ -1051,8 +1051,10 @@ export const TableClassFeatureSchema: GenMessage<TableClassFeature> = /*@__PURE_
  * TableCreature is a creature the master adds as a table entry "creature:<slug>@mesa":
  * an SRD creature (`base_key`) with a few adjustments. The creature has everything the
  * base has (abilities, speeds, senses, actions, reactions) except what is adjusted here.
- * Once the entry exists it is a creature like the SRD's, by its own key: the creature
- * list and sheet, summons, Wild Shape and combat read it where they read an SRD creature.
+ * Once the entry exists it has a creature's key: the creature list and sheet (for the
+ * master and for a player whose character holds it), giving it to a character, combat and
+ * "Criar NPC" read it by that key. Summoning spells, Wild Shape and the encounter tools
+ * offer SRD creatures only.
  * The web app has no editor for creatures: they are created through the API or a content pack.
  *
  * @generated from message meurpg.rules.v1.TableCreature
@@ -3726,8 +3728,10 @@ export enum TableContentKind {
 
   /**
    * A creature: an SRD creature with a few adjustments (hit points, armor class, a
-   * damage bonus, extra traits). Wherever an SRD creature is used (summons, Wild Shape,
-   * the creature list), the table's creature is used the same way, by its own key.
+   * damage bonus, extra traits). The creature list and sheet (for the master and for a
+   * player whose character holds it), giving it to a character, combat and "Criar NPC"
+   * read it by its own key. Summoning spells, Wild Shape and the encounter tools offer
+   * SRD creatures only.
    *
    * @generated from enum value: TABLE_CONTENT_KIND_CREATURE = 10;
    */

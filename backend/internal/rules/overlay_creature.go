@@ -13,9 +13,10 @@ import (
 
 // The table's creatures (issue #578): an entry "creature:<slug>@mesa" is an SRD creature with a few
 // adjustments: its hit points, its armor class, a damage bonus on its attacks and extra traits (text
-// only). The entry becomes a creature of the clone, by its own key, so it resolves wherever an SRD
-// creature does (MonsterDerived, CreatureByKey, the creature list, summons, Wild Shape). The base is
-// never written: the adjusted stat block is a copy.
+// only). The entry becomes a creature of the clone, by its own key, so the creature list and sheet,
+// giving it to a character, combat and "Criar NPC" read it where they read an SRD creature
+// (MonsterDerived, CreatureByKey). Summoning spells, Wild Shape and the encounter tools offer SRD
+// creatures only. The base is never written: the adjusted stat block is a copy.
 
 // CreatureKeyPrefix starts the key of a table creature.
 const CreatureKeyPrefix = "creature:"

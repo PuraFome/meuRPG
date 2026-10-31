@@ -96,10 +96,15 @@ func (w *world) statBlockNeedles(monster, action string) {
 
 // checkNoStatBlock fails when a player's reads (and the answers they hold) have a finding of the matrix,
 // and fails when the master's do not hold every needle given (the needle is unreachable).
+// held are Ana's answers, checked as hers.
 func (w *world) checkNoStatBlock(t *testing.T, master []reply, held []reply, positive ...*canary) {
 	t.Helper()
 	for _, p := range []*person{w.ana, w.caio} {
-		for _, r := range w.readsOf(p, held...) {
+		mine := held
+		if p != w.ana {
+			mine = nil // held are Ana's answers: what the fixture's creatures she holds put in them is hers to read
+		}
+		for _, r := range w.readsOf(p, mine...) {
 			for _, f := range w.inspect(p, r, nil) {
 				t.Errorf("%s: %s", p.name, f)
 			}

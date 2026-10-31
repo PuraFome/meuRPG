@@ -673,11 +673,11 @@ func (w *world) buildTableContent() {
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
-	// Creatures (issue #578). The live one is the table's: every member reads it, and Ana's character holds one.
-	// The archived one and the one switched off are the master's alone, except to the player whose character was
-	// given the creature before: that player keeps reading the creature (its name, key, stat block with the trait, hit
-	// points and armor class). Their hit points and armor class are numbers no other answer has.
-	liveCreature := create("creature-live", creature(9, 17, w.ana, w.caio), w.ana, w.caio)
+	// Creatures (issue #578). A table creature is the master's alone, whatever its state (RN-23), except to the
+	// player whose character holds one: that player reads the creature (its name, key, stat block with the trait,
+	// hit points and armor class). Ana's character holds the live one and the archived one, Caio's the one switched
+	// off. Their hit points and armor class are numbers no other answer has.
+	liveCreature := create("creature-live", creature(9, 17, w.ana), w.ana)
 	archivedCreature := create("creature-archived", creature(archivedCreatureHP, archivedCreatureAC, w.ana), w.ana)
 	offCreature := create("creature-off", creature(offCreatureHP, offCreatureAC, w.caio), w.caio)
 	w.giveTableCreature(w.pens, liveCreature.GetKey())

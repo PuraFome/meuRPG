@@ -44,14 +44,16 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.
   Entries are never deleted, so a held creature never loses its key.
+  A player who holds none of an archived or switched-off entry's creatures does not find it.
 - **Who sees what (RN-20, RN-23).** In combat the HP is a number for the owning player and the master and the armor class for the master alone.
   Everyone else gets the state word, as for an SRD creature.
   The owner's list (`ListCharacterCreatures`) carries both numbers to the owner and the master, and to nobody else.
   The combatant's name and key are visible to everyone in the combat, as for SRD summons and NPCs.
   The stat block, the HP and the armor class are not.
   This holds when the entry is archived.
-  A player's `ListCreatures` lacks an archived or switched-off table creature.
-  `GetCreature` answers `not_found` to a player none of whose characters holds one.
+  A table creature is the master's, live, archived or switched off.
+  A player's `ListCreatures` and `ListTableEntries` lack it, and `GetCreature` answers `not_found`, unless a character of theirs holds a live creature of its key.
+  The holder reads it whatever the entry's state.
   The master reads them all.
   `TestRN20_TableCreatureHitPointsOnlyToOwnerAndMaster` and the leak matrix pin this.
 - **Where it is not used.** The summoning spells offer SRD creatures only.
@@ -59,6 +61,9 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The encounter generator, evaluator and swaps leave it out, because it has the challenge rating and XP of its base, which its adjustments may not keep.
   The encounter tools refuse its key as unknown content: `encounterEntries` answers `failed_precondition` and `GetBattleEncounter` lists the key in `unknown_creature_keys`.
 - **Giving.** The master can give an archived table creature.
+- **Editing and combats.** A combatant made from a table creature keeps the armor class and attacks it joined with.
+  A creature put in a combat after an edit of the entry has the entry's current numbers.
+  The combat's NPC for the creature is keyed by the numbers the entry makes (`monsterNpcKeyOf`), so an edit that changes them makes another NPC and the combatants already in a fight keep reading the old one.
 - **Other limits.** The web app has no editor for creatures: they are created through the API or a content pack.
   The master switches them on and off through the API only, because the options screen has no creature group.
   A package battle encounter that names a table creature is refused on import as unknown content.

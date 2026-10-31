@@ -104,11 +104,11 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 			},
 		},
 		{
-			procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "the archived table creature", allow: onlyAna, why: "an archived creature is not found by a player who holds none; Ana's character holds it",
+			procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "the archived table creature", allow: onlyAna, why: "a table creature is not found by a player who holds none, archived or not; Ana's character holds it",
 			req: func(w *world) proto.Message { return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: key} },
 		},
 		{
-			procedure: rulesv1connect.ContentServiceListCreaturesProcedure, allow: members, ignore: []string{"fight-creature-base-key", "monster-key"}, why: "the SRD's list names the base crab; the table creature is not in it",
+			procedure: rulesv1connect.ContentServiceListCreaturesProcedure, allow: members, ignore: []string{"fight-creature-base-key", "monster-key"}, why: "the SRD's list names the base crab; the table creature is in the list of the master and of Ana, who holds it, and of no one else",
 			req: func(w *world) proto.Message {
 				return &rulesv1.ListCreaturesRequest{CampaignId: w.campaign, PageSize: 400}
 			},
@@ -120,7 +120,7 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 			},
 		},
 		{
-			procedure: rulesv1connect.TableContentServiceListTableEntriesProcedure, allow: members, why: "the entry is archived: its body is the master's, and a player's list leaves it out",
+			procedure: rulesv1connect.TableContentServiceListTableEntriesProcedure, allow: members, ignore: []string{"fight-creature-base-key"}, why: "the entry is a table creature: its body, base key included, is the master's and its holder's, and Caio's list leaves it out",
 			req: func(w *world) proto.Message { return &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign} },
 		},
 	}

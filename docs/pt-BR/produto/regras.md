@@ -31,7 +31,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-20 | **O que o jogador vê dos inimigos no combate.** Os jogadores não veem os PV dos inimigos como número. Veem uma palavra: "Ileso", "Ferido", "Muito ferido" ou "Derrotado". | [Detalhes](#rn-20-o-que-o-jogador-vê-dos-inimigos-no-combate) |
 | RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. | [Detalhes](#rn-21-movimento-na-grade) |
 | RN-22 | **Condições e concentração.** O app marca condições (derrubado, envenenado...) e concentração, e avisa: quando um personagem concentrado sofre dano, o jogo pede ao dono dele o teste de resistência de concentração (RN-31). | [Detalhes](#rn-22-condições-e-concentração) |
-| RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
+| RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
 | RN-24 | **Regras da mesa.** No topo da página "Regras da mesa" fica o **estilo da mesa**: "Tudo no app" (dados no app, combate com mapa, névoa ligada nos mapas novos), "Mesa física" (dados físicos, combate sem mapa por padrão, névoa desligada) ou "Teatro da mente" (cada jogador escolhe os dados, combate sem mapa, sem névoa), e "Personalizado" quando as escolhas não batem com nenhum. | [Detalhes](#rn-24-regras-da-mesa) |
 | RN-25 | **A grade e o combate sem grade.** As regras contam em quadrados de 1,5 m em todo mapa (RN-21). Um mapa desenhado com quadrados maiores é calibrado: "cada quadrado deste desenho vale 3 m" faz o app contar quatro quadrados de 1,5 m em cada um, e um alcance de 1,5 m continua sendo o vizinho. | [Detalhes](#rn-25-a-grade-e-o-combate-sem-grade) |
 | RN-26 | **Portas.** Uma porta fechada bloqueia movimento, visão e luz, como uma parede, e conta como parede para cobertura. Quem anda até ela a abre, a menos que esteja trancada; o mestre abre, fecha e tranca qualquer porta, no editor e na sessão. | [Detalhes](#rn-26-portas) |
@@ -556,7 +556,7 @@ Como é construído: [Arquitetura](../../architecture/play/lasting-effects.md) e
 ## RN-23: Conteúdo da mesa
 
 O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe e criaturas que valem só na campanha dele, ao lado do SRD 5.1.
-Os membros leem o conteúdo da campanha; só o mestre escreve.
+Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve.
 
 - **Uma mudança vale na hora, inclusive nas fichas travadas.** A ficha recalcula, e o que ficou fora das regras aparece nela como um aviso ("A classe mudou") com as frases exatas, sem bloquear outras edições. Só o dono e o mestre o leem. Ele some sozinho quando o que diz é corrigido. Só os donos das fichas que usam a entrada alterada são avisados.
 - **Nada é apagado.** O mestre arquiva e desarquiva; não existe "Apagar". Uma entrada arquivada continua funcionando nas fichas que já a usam e deixa de ser oferecida como nova escolha. O mestre também nunca recebe uma entrada arquivada como nova escolha: a tela nomeia a recusa.
@@ -580,10 +580,13 @@ Os membros leem o conteúdo da campanha; só o mestre escreve.
   O mestre a dá a um personagem, ela entra nos combates com os seus números, e dá para criar um NPC a partir dela.
   Os pontos de vida são copiados quando a criatura é dada, então editar a entrada não muda uma criatura já dada.
   A classe de armadura e os ataques acompanham a entrada.
-  Uma criatura arquivada ou desligada não aparece na lista de criaturas que os jogadores leem.
+  Uma entrada de criatura é do mestre: um jogador a lê, na lista de criaturas e na ficha dela, só enquanto um personagem dele a tem.
+  Quem a tem a lê com a entrada ativa, arquivada ou desligada.
+  Um jogador que não tem nenhuma não a encontra.
   As criaturas já dadas continuam funcionando para os donos.
   O mestre pode dar uma criatura arquivada.
   Todos no combate leem o nome e a chave de uma criatura, como numa invocação do SRD ou num NPC.
+  Um combatente mantém os números com que entrou: editar a entrada muda as criaturas postas no combate depois, não as que já estão na luta.
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam com o mestre e, no caso dos pontos de vida, com o dono.
   As magias de invocação, a Forma Selvagem e o gerador, o avaliador e as trocas de encontro oferecem só criaturas do SRD.
   Um encontro de pacote que cita uma criatura da mesa é recusado como conteúdo desconhecido.

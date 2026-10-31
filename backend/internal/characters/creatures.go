@@ -55,9 +55,11 @@ func (s *Service) ListCreatures(
 		return nil, s.creatureListError(ctx, err)
 	}
 	if !isMaster(m) {
-		// A table creature the master archived or switched off is no one's but the master's (RN-23): the list
-		// is a choice, and it is not offered. A creature a character holds is read in the character's list.
-		list = slices.DeleteFunc(list, func(e rules.CreatureEntry) bool { return content.Hidden(e.Key) })
+		// A table creature is the master's, whatever its state (RN-23): the list is a choice, and a player is
+		// offered none. A creature a character of the caller holds is read by its key, and it is in the list.
+		if list, err = s.withoutUnheldTableCreatures(ctx, m, list); err != nil {
+			return nil, s.dbError(ctx, "read the caller's creatures", err)
+		}
 	}
 	res, err := page.of(list, req.Msg)
 	if err != nil {
@@ -158,9 +160,9 @@ func (s *Service) GetCreature(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownCreature)
 	}
-	// A table creature the master archived or switched off answers as an unknown creature (RN-23), unless a
-	// character of the caller holds one: it keeps resolving for its owner's player.
-	if content.Hidden(req.Msg.GetKey()) && !isMaster(m) {
+	// A table creature answers a player as an unknown creature (RN-23), unless a character of the caller
+	// holds one: it resolves for its owner's player, whatever its state.
+	if rules.IsTableKey(req.Msg.GetKey()) && !isMaster(m) {
 		holds, err := s.callerHoldsCreature(ctx, m, req.Msg.GetKey())
 		if err != nil {
 			return nil, s.dbError(ctx, "read the caller's creatures", err)
@@ -181,9 +183,28 @@ func (s *Service) GetCreature(
 
 // callerHoldsCreature says whether a character of the caller's holds a live creature of the key.
 func (s *Service) callerHoldsCreature(ctx context.Context, m authz.Membership, key string) (bool, error) {
-	sheets, err := s.queries.ListCampaignSheets(ctx, m.CampaignID)
+	held, err := callerHeldCreatures(ctx, s.queries, m)
+	return held[key], err
+}
+
+// withoutUnheldTableCreatures is the list without the table creatures the caller holds none of.
+func (s *Service) withoutUnheldTableCreatures(ctx context.Context, m authz.Membership, list []rules.CreatureEntry) ([]rules.CreatureEntry, error) {
+	if !slices.ContainsFunc(list, func(e rules.CreatureEntry) bool { return rules.IsTableKey(e.Key) }) {
+		return list, nil // nothing to hide: no query
+	}
+	held, err := callerHeldCreatures(ctx, s.queries, m)
 	if err != nil {
-		return false, err
+		return nil, err
+	}
+	return slices.DeleteFunc(list, func(e rules.CreatureEntry) bool { return rules.IsTableKey(e.Key) && !held[e.Key] }), nil
+}
+
+// callerHeldCreatures is the set of keys of the live creatures the caller's characters hold, in two
+// queries however many there are.
+func callerHeldCreatures(ctx context.Context, q *charactersdb.Queries, m authz.Membership) (map[string]bool, error) {
+	sheets, err := q.ListCampaignSheets(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
 	}
 	var mine []string
 	for _, row := range sheets {
@@ -191,16 +212,18 @@ func (s *Service) callerHoldsCreature(ctx context.Context, m authz.Membership, k
 			mine = append(mine, row.ID)
 		}
 	}
+	out := map[string]bool{}
 	if len(mine) == 0 {
-		return false, nil
+		return out, nil
 	}
-	held, err := s.queries.ListLiveCreaturesOfCharacters(ctx, charactersdb.ListLiveCreaturesOfCharactersParams{CampaignID: m.CampaignID, CharacterIds: mine})
+	held, err := q.ListLiveCreaturesOfCharacters(ctx, charactersdb.ListLiveCreaturesOfCharactersParams{CampaignID: m.CampaignID, CharacterIds: mine})
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return slices.ContainsFunc(held, func(r charactersdb.ListLiveCreaturesOfCharactersRow) bool {
-		return r.CharacterCreature.MonsterKey == key
-	}), nil
+	for _, r := range held {
+		out[r.CharacterCreature.MonsterKey] = true
+	}
+	return out, nil
 }
 
 // creaturesFilterID is a short fingerprint of the filters, so a page token only

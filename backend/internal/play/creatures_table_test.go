@@ -56,3 +56,57 @@ func TestMR578_ATableCreatureOfACharacterFightsWithItsAdjustments(t *testing.T) 
 		t.Errorf("the goblin has %d hit points, want 7 - 6 = 1 (the SRD skeleton would leave 4)", cur)
 	}
 }
+
+// TestMR578_ATableCreatureAddedAfterItsEditFightsWithTheNewNumbers: the master puts a table creature (armor
+// class 20) in a combat, edits the entry (armor class 15, damage bonus +5) and puts it in again. The new combatant
+// has the entry's current numbers; the first keeps the ones it joined with.
+func TestMR578_ATableCreatureAddedAfterItsEditFightsWithTheNewNumbers(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	created, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+		CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
+			NamePt: "Guarda Ossuda", BaseKey: "monster:skeleton", HitPoints: 30, ArmorClass: 20,
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("CreateTableEntry(creature) error = %v", err)
+	}
+	entry := created.Msg.GetEntry()
+	e := a.monsterSetup(t, true)
+	first := a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = tableSkeletonKey, 1 })
+
+	if _, err := a.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(&rulesv1.UpdateTableEntryRequest{
+		CampaignId: a.campaignID, Key: entry.GetKey(), ExpectedRevision: entry.GetRevision(),
+		Body: &rulesv1.UpdateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
+			NamePt: "Guarda Ossuda", BaseKey: "monster:skeleton", HitPoints: 30, ArmorClass: 15, DamageBonus: 5,
+		}},
+	})); err != nil {
+		t.Fatalf("UpdateTableEntry(creature) error = %v", err)
+	}
+	second := a.mustAddMonsters(t, first.GetEncounter(), func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = tableSkeletonKey, 1 })
+
+	// numbers reads a combatant's armor class and the damage bonus of its attack, as the master does.
+	numbers := func(id string) (armorClass, damageBonus int32) {
+		t.Helper()
+		enc := a.get(t, a.master)
+		for _, c := range enc.GetCombatants() {
+			if c.GetId() != id {
+				continue
+			}
+			opt := attackOption(a.mustOptions(t, a.master, enc, c.GetLabel()), sword)
+			if opt == nil {
+				t.Fatalf("the combatant %s has no attack %s", c.GetLabel(), sword)
+			}
+			return c.GetArmorClass(), opt.GetAttack().GetDamageDice().GetBonus()
+		}
+		t.Fatalf("combatant %s is not in the combat", id)
+		return 0, 0
+	}
+	// The skeleton's shortsword is 1d6 + 2.
+	if ac, bonus := numbers(second.GetCombatantIds()[0]); ac != 15 || bonus != 7 {
+		t.Errorf("the combatant added after the edit = armor class %d, damage bonus %d; want the entry's 15 and 2 + 5", ac, bonus)
+	}
+	if ac, bonus := numbers(first.GetCombatantIds()[0]); ac != 20 || bonus != 2 {
+		t.Errorf("the combatant added before the edit = armor class %d, damage bonus %d; want the 20 and 2 it joined with", ac, bonus)
+	}
+}

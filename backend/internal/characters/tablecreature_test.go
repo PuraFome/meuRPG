@@ -47,7 +47,7 @@ func TestMR578_ATableCreatureHasItsLifeCycleAndItsRefusals(t *testing.T) {
 		t.Fatalf("created = %q kind %v, want %q of the creature kind", created.GetKey(), created.GetKind(), tableWolfKey)
 	}
 	// The creature is a creature of the campaign's content, with the adjustments; the SRD's wolf is not touched.
-	got, err := player.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: campaign, Key: tableWolfKey}))
+	got, err := master.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: campaign, Key: tableWolfKey}))
 	if err != nil || got.Msg.GetCreature().GetHitPoints() != 40 || got.Msg.GetCreature().GetArmorClass() != 17 {
 		t.Fatalf("GetCreature(table creature) = %v, %v; want 40 hit points and armor class 17", got, err)
 	}
@@ -64,7 +64,11 @@ func TestMR578_ATableCreatureHasItsLifeCycleAndItsRefusals(t *testing.T) {
 		t.Errorf("changing the base: violations = %v, want immutable at table_creature.base_key", v)
 	}
 
-	// Archived, the players do not see it; the master does; unarchived, it is back.
+	// A player holding none never reads it, live or archived (the holder's reads are in the test of the holders);
+	// the master does, archived or not.
+	if player.entries(t, campaign)[tableWolfKey] != nil {
+		t.Error("a player who holds none reads a live creature")
+	}
 	if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: tableWolfKey})); err != nil {
 		t.Fatalf("ArchiveTableEntry() error = %v", err)
 	}
@@ -77,8 +81,8 @@ func TestMR578_ATableCreatureHasItsLifeCycleAndItsRefusals(t *testing.T) {
 	if _, err := master.table.UnarchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: campaign, Key: tableWolfKey})); err != nil {
 		t.Fatalf("UnarchiveTableEntry() error = %v", err)
 	}
-	if player.entries(t, campaign)[tableWolfKey] == nil {
-		t.Error("a player does not read the creature once it is back")
+	if e := master.entries(t, campaign)[tableWolfKey]; e == nil || e.GetArchived() {
+		t.Errorf("the master reads %v once the creature is back, want it live", e)
 	}
 
 	// A base the SRD does not have, and an entry over 64 KiB, are refused with the field of the creature.
@@ -249,7 +253,7 @@ func TestMR578_ATableCreatureGivenToACharacterHasTheAdjustedNumbers(t *testing.T
 	}
 }
 
-func TestMR578_AnArchivedTableCreatureIsNotInThePlayersBestiaryUnlessTheyHoldOne(t *testing.T) {
+func TestMR578_ATableCreatureIsReadOnlyByTheMasterAndByWhoHoldsIt(t *testing.T) {
 	t.Parallel()
 	tb := newCreatureTable(t)
 	tb.master.addEntry(t, tb.campaign, tableWolf())
@@ -269,37 +273,46 @@ func TestMR578_AnArchivedTableCreatureIsNotInThePlayersBestiaryUnlessTheyHoldOne
 		_, err := u.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: tb.campaign, Key: tableWolfKey}))
 		return err
 	}
-	if !inBestiary(tb.owner) || !inBestiary(tb.master) || get(tb.other) != nil {
-		t.Fatal("a live table creature must be in the bestiary and resolve for everyone")
+	// reads is what each of the three reads of the creature answers: the list, the sheet and the table's entries.
+	reads := func(u *user) (listed bool, got error, entry bool) {
+		return inBestiary(u), get(u), u.entries(t, tb.campaign)[tableWolfKey] != nil
 	}
+	check := func(when string, u *user, who string, want bool) {
+		t.Helper()
+		listed, got, entry := reads(u)
+		if listed != want || (got == nil) != want || entry != want {
+			t.Errorf("%s, %s: listed = %v, GetCreature error = %v, in the table's entries = %v; want all %v", when, who, listed, got, entry, want)
+		}
+		if !want && connect.CodeOf(got) != connect.CodeNotFound {
+			t.Errorf("%s, %s: GetCreature error = %v, want not_found", when, who, got)
+		}
+	}
+	// A live creature nobody holds is the master's alone: a player does not browse the table's creatures.
+	check("live, held by no one", tb.master, "the master", true)
+	check("live, held by no one", tb.owner, "the player", false)
+	check("live, held by no one", tb.other, "another player", false)
 
 	given, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: tb.pc.GetId(), MonsterKey: tableWolfKey})
 	if err != nil || given.GetHitPointsMax() != 40 {
 		t.Fatalf("GiveCreature() = %v, %v; want the table wolf", given, err)
 	}
+	check("live, held", tb.master, "the master", true)
+	check("live, held", tb.owner, "the holder", true)
+	check("live, held", tb.other, "a player who holds none", false)
+
 	if _, err := tb.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: tableWolfKey})); err != nil {
 		t.Fatalf("ArchiveTableEntry() error = %v", err)
 	}
-	if inBestiary(tb.owner) || inBestiary(tb.other) || !inBestiary(tb.master) {
-		t.Error("an archived table creature must be in the master's bestiary alone")
-	}
-	if err := get(tb.other); connect.CodeOf(err) != connect.CodeNotFound {
-		t.Errorf("GetCreature(archived) by a player who holds none: error = %v, want not_found", err)
-	}
-	if err := get(tb.owner); err != nil {
-		t.Errorf("GetCreature(archived) by the player who holds one: error = %v, want the creature", err)
-	}
-	if err := get(tb.master); err != nil {
-		t.Errorf("GetCreature(archived) by the master: error = %v, want the creature", err)
-	}
+	check("archived, held", tb.master, "the master", true)
+	check("archived, held", tb.owner, "the holder", true)
+	check("archived, held", tb.other, "a player who holds none", false)
 
 	// Dismissed, the creature is no longer held: it stops resolving for its player.
 	if err := tb.dismiss(tb.owner, given.GetId()); err != nil {
 		t.Fatalf("dismiss error = %v", err)
 	}
-	if err := get(tb.owner); connect.CodeOf(err) != connect.CodeNotFound {
-		t.Errorf("GetCreature(archived) after the creature was dismissed: error = %v, want not_found", err)
-	}
+	check("archived, dismissed", tb.master, "the master", true)
+	check("archived, dismissed", tb.owner, "the former holder", false)
 }
 
 func TestMR578_TheMasterCanGiveAnArchivedTableCreature(t *testing.T) {

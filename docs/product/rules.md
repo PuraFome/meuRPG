@@ -31,7 +31,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-20 | **What players see of enemies in combat.** Players do not see enemy hit points as a number. They see one word: "Ileso", "Ferido", "Muito ferido" or "Derrotado". | [Detail](#rn-20-what-players-see-of-enemies-in-combat) |
 | RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. | [Detail](#rn-21-grid-movement) |
 | RN-22 | **Conditions and concentration.** The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). | [Detail](#rn-22-conditions-and-concentration) |
-| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content; only the master writes. | [Detail](#rn-23-table-content) |
+| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
 | RN-24 | **Table rules.** At the top of the "Regras da mesa" page is the **table style**: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. | [Detail](#rn-24-table-rules) |
 | RN-25 | **The grid and combat without a grid.** The rules count in 1.5 m squares on every map (RN-21). A map drawn with bigger squares is calibrated: "each square of this drawing is worth 3 m" makes the app count four 1.5 m squares in each one, and a 1.5 m reach stays the neighbour. | [Detail](#rn-25-the-grid-and-combat-without-a-grid) |
 | RN-26 | **Doors.** A closed door blocks movement, sight and light, like a wall, and counts as a wall for cover. A character who walks into it opens it, unless it is locked; the master opens, closes and locks any door, in the editor and in the session. | [Detail](#rn-26-doors) |
@@ -556,7 +556,7 @@ How it is built: [Architecture](../architecture/play/lasting-effects.md) and [ru
 ## RN-23: Table content
 
 The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1.
-Members read the campaign's content; only the master writes.
+Members read the campaign's content, except creatures (below); only the master writes.
 
 - **A change takes effect at once, locked sheets included.** The sheet recalculates, and whatever fell outside the rules shows on it as a notice ("A classe mudou") with the exact sentences, without blocking other edits. Only the owner and the master read it. It disappears by itself when what it says is fixed. Only the owners of the sheets that use the changed entry are notified.
 - **Nothing is deleted.** The master archives and unarchives; there is no "Apagar". An archived entry keeps working on the sheets that already use it, and is no longer offered as a new choice. The master is never given an archived entry as a new choice either: the screen names the refusal.
@@ -580,10 +580,13 @@ Members read the campaign's content; only the master writes.
   The master gives it to a character, it joins combats with its numbers, and an NPC can be made from it.
   The hit points are copied when the creature is given, so editing the entry does not change a creature already given.
   The armor class and the attacks follow the entry.
-  An archived or switched-off creature is not in the creature list the players read.
+  A creature entry is the master's: a player reads it, in the creature list and on its sheet, only while one of their characters holds it.
+  A holder reads it whether the entry is live, archived or switched off.
+  A player who holds none does not find it.
   The creatures already given keep working for their owners.
   The master can give an archived creature.
   Everyone in a combat reads a creature's name and key, as for an SRD summon or an NPC.
+  A combatant keeps the numbers it joined with: editing the entry changes the creatures added to a combat afterwards, not the ones already in a fight.
   Its stat block, hit points and armor class stay with the master and, for the hit points, the owner.
   Summoning spells, Wild Shape and the encounter generator, evaluator and swaps offer SRD creatures only.
   A package battle encounter that names a table creature is refused as unknown content.

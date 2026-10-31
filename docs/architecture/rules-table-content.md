@@ -262,7 +262,8 @@ A table creature is left out of every use that depends on the base's challenge r
 An archived or switched-off entry keeps resolving.
 A creature already held, or an NPC made from it, keeps working.
 `Content.Creatures()` lists the table's creatures with the marks.
-`Content.Hidden` is true for it, so the server hides it from players as it hides any other kind (see [Switches](#switches-and-hidden-keys)).
+`Content.Hidden` is true for it, as for any other kind (see [Switches](#switches-and-hidden-keys)).
+The server does not use that predicate for a table creature: a player reads one only when a character of theirs holds a live creature of its key, whatever the entry's state ([characters](characters-table-content.md#table-creatures)).
 
 ## States
 
