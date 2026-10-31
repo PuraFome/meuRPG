@@ -153,7 +153,9 @@ func (s *Service) EndGameSession(
 			s.publishVitals(m.CampaignID, v)
 		}
 		if out.visionMap != "" {
-			s.maps.VisionChanged(ctx, m.CampaignID, out.visionMap)
+			pctx, stop := afterCommit(ctx)
+			defer stop()
+			s.maps.VisionChanged(pctx, m.CampaignID, out.visionMap)
 		}
 		// Every stream of the session ends (WatchGameSession).
 		s.hub.Publish(m.CampaignID, live.Event{

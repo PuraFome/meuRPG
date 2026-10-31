@@ -10,7 +10,7 @@ import (
 )
 
 // The spells that keep an area on the map while they last (SRD 5.1): Spirit Guardians, Moonbeam,
-// Cloudkill, Web, Grease and Entangle. The cast puts a zone on the map (the spell_zones table); what the zone does,
+// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud. The cast puts a zone on the map (the spell_zones table); what the zone does,
 // where it stands and how it moves is written here, one row for each spell, in our own words:
 //
 //   - Spirit Guardians: an aura around the caster that goes where the caster goes. A creature that
@@ -22,16 +22,22 @@ import (
 //     turn to move it.
 //   - Cloudkill: a fog sphere at a point, which creeps away from the caster by two squares at the start
 //     of each of the caster's turns. A Constitution save for poison damage, half on a pass.
-//   - Web: a cube of sticky strands at a point. The cast puts its effect on who is inside, as it always
-//     did; the zone adds who comes in later: a Dexterity save on entering or beginning a turn there, and
+//   - Web: a cube of sticky strands at a point. The cast puts its effect on who is inside;
+//     the zone adds who comes in later: a Dexterity save on entering or beginning a turn there, and
 //     a failure restrains.
 //   - Grease: a 10-foot square at a point, with no concentration. Who stands in it at the cast, comes in
 //     or ends a turn there makes a Dexterity save or falls prone.
 //   - Entangle: a 20-foot square at a point. Only who stands in it at the cast makes a Strength save,
 //     and a failure restrains until the spell ends.
+//   - Fog Cloud: a sphere of 20 feet of radius at a point, heavily obscured, 20 feet more for each slot above
+//     the 1st. It asks nobody; it blocks the sight of the players on a fog map.
+//   - Darkness: a sphere of 15 feet of radius at a point, magical darkness. It asks nobody; no light and no
+//     darkvision see into it.
+//   - Stinking Cloud: a sphere of 20 feet of radius at a point, heavily obscured. A creature whose square is in
+//     it at the start of its turn makes a Constitution save, and a failure spends its action.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
-// inside. For the first four the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
+// inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
 // when it begins its turn there or comes back in.
 
 // zoneKind says what a zone does to the creature it catches.
@@ -89,6 +95,8 @@ type zoneDef struct {
 	sight zoneSight
 	// growsFt is how much the size grows for each slot level above the spell's own (Fog Cloud).
 	growsFt int
+	// level is the spell's own level, the first slot level that adds growsFt.
+	level int
 	// restrainKey is the effect a failed save puts on the creature of a restraining zone.
 	restrainKey string
 	// slows says a creature the zone catches moves at half speed for the turn (Spirit Guardians), and
@@ -123,7 +131,7 @@ const (
 
 var zoneDefs = map[string]zoneDef{
 	"spell:fog-cloud": {
-		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: fogCloudFt, growsFt: fogCloudFt, corners: true, sight: sightCloud,
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: fogCloudFt, growsFt: fogCloudFt, level: 1, corners: true, sight: sightCloud,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:darkness": {

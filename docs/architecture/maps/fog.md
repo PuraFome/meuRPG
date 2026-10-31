@@ -41,7 +41,7 @@ The scene (grid, walls, base light, painted light, light points, carried lights,
 ## Zones that block sight
 
 Fog Cloud, Stinking Cloud and Darkness are zones of `play` (RN-37).
-`CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscured` turns each list into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
+`CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscuredLayer` turns each list of `obscured` into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
 `play` tells `maps` that a zone changed through the same `VisionChanged` a move calls, so the revision of what the players see moves and the usual `vision_changed` goes out; no RPC or event of its own carries it.
 In `rules/vision`:
 

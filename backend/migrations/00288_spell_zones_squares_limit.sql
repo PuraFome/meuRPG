@@ -1,7 +1,6 @@
 -- +goose Up
--- A zone keeps the squares it covers. Fog Cloud cast with a 9th-level slot is a sphere of 180 feet of radius
--- (20 feet, and 20 more for each slot above the 1st): about 4,070 squares of 5 feet, past the 1,024 the first
--- check allowed. The limit is 4,096 now. The check is dropped when present and added again, so running it
+-- A zone keeps the squares it covers, at most 4,096. Fog Cloud cast with a 9th-level slot is a sphere of 180 feet
+-- of radius (20 feet, and 20 more for each slot above the 1st): about 4,070 squares of 5 feet. The check is dropped when present and added again, so running it
 -- twice is safe on PostgreSQL and on CockroachDB.
 ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_squares_valid;
 ALTER TABLE spell_zones ADD CONSTRAINT spell_zones_squares_valid

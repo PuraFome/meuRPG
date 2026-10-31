@@ -13,7 +13,7 @@ import (
 // A cloud on a fog map hides what stands in it (RN-10, RN-37). Fog Cloud lands on a creature the players saw a moment
 // before: from then on nothing a player receives of the combat names, counts or places it, as for any creature the
 // players do not see. The master's own copies are the positive control: the scan finds the needles there. The cast
-// is the one the wizard's player makes, and it needs no new call, so the matrix (reads_test.go) has nothing to add.
+// is the one the wizard's player makes, and it uses no call of its own, so the matrix (reads_test.go) has nothing to add.
 func TestAFogCloudOnACreatureTakesItOutOfWhatThePlayersRead(t *testing.T) {
 	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	defer func() {

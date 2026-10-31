@@ -496,7 +496,9 @@ func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *comba
 		s.publishVitals(campaignID, v)
 	}
 	if len(ended.told) > 0 || ended.zonesMoved {
-		s.maps.VisionChanged(ctx, campaignID, conv.OrZero(ended.enc.MapID))
+		pctx, stop := afterCommit(ctx) // committed: a caller that hangs up must not leave the fog unheard
+		defer stop()
+		s.maps.VisionChanged(pctx, campaignID, conv.OrZero(ended.enc.MapID))
 	}
 }
 

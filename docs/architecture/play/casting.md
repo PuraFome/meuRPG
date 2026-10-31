@@ -53,7 +53,7 @@ A player's character must send `destination` on a map with a grid: without it `r
 A trap armed on the landing square fires through the move's own hook (`trapHook.fire`, after the teleport is written): the cast's event is written first and the firing is the change's own event, carrying the cast's fields so a retry under the same key still answers the cast. An undo takes the firing back, then the cast.
 
 **What a casting rolls at once and what stays with the master (RN-22).** A casting opens the saving throw and damage the spell asks for when it is cast.
-Saves that come later, when a creature enters the area or begins its turn in it, are automated for the spells that keep a zone on the map (Web, Spirit Guardians, Moonbeam, Cloudkill, Grease, Entangle, and a table spell with a zone), when the cast chose a point: see [Spell zones](spell-zones.md).
+Saves that come later, when a creature enters the area or begins its turn in it, are automated for the spells that keep a zone on the map (Web, Spirit Guardians, Moonbeam, Cloudkill, Grease, Entangle, Stinking Cloud, and a table spell with a zone), when the cast chose a point: see [Spell zones](spell-zones.md).
 For the others (Flaming Sphere, Sleet Storm, Earthquake) they are not: the data records their dice without a saving throw, so a casting spends the slot, logs and rolls nothing, and the master calls for each save as creatures move.
 A lasting effect with an end-of-turn save uses the reaction window (see [Lasting effects](lasting-effects.md)).
 

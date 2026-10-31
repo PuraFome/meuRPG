@@ -7,7 +7,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// The scene's key hashes the squares of the clouds and of the magical darkness (RN-37): a new cloud is a new scene,
+// The scene's key hashes the squares of the clouds and of the magical darkness (RN-37): a cloud makes another scene,
 // the same squares in another order are the same scene, and a cloud is not the same scene as darkness on the same
 // squares.
 func TestSceneKeyHashesTheSquaresOfCloudsAndDarkness(t *testing.T) {

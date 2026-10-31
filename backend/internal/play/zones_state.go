@@ -57,6 +57,21 @@ func (c *combatTx) zoneChanged(z *zone) {
 	}
 }
 
+// sizeFt is the size of the zone as it was cast: the catalog's, grown by the slot.
+func (z *zone) sizeFt() int { return z.def.sizeAt(z.def.level, int(z.row.SlotLevel)) }
+
+// ownerGone tells the fog that the zones of a combatant that leaves the combat go with it.
+func (c *combatTx) ownerGone(ctx context.Context, ownerID string) error {
+	zs, err := listZones(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, z := range owned(zs, ownerID) {
+		c.zoneChanged(z)
+	}
+	return nil
+}
+
 func (z *zone) setSquares(sq []grid.Square) {
 	z.squares, z.in = sq, make(map[grid.Square]bool, len(sq))
 	for _, s := range sq {

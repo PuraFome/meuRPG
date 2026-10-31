@@ -69,6 +69,9 @@ func TestFogCloudGrowsWithTheSlotAndHitsNobody(t *testing.T) {
 	if far := farthest(zs[0], 7, 7); far != 4 {
 		t.Errorf("reach at the first slot = %d squares, want 4 (20 ft)", far)
 	}
+	if zs[0].GetSizeFt() != 20 {
+		t.Errorf("size read at the first slot = %d ft, want 20", zs[0].GetSizeFt())
+	}
 	if lines := c.zoneLines(t, c.master, fogCloudKey); len(lines) != 0 {
 		t.Errorf("lines of the cloud = %v, want none: it hits nobody", lines)
 	}
@@ -89,6 +92,9 @@ func TestFogCloudAtTheSecondSlotIsFortyFeet(t *testing.T) {
 	}
 	if far := farthest(zs[0], 7, 7); far != 8 {
 		t.Errorf("reach at the second slot = %d squares, want 8 (40 ft)", far)
+	}
+	if zs[0].GetSizeFt() != 40 {
+		t.Errorf("size read at the second slot = %d ft, want 40", zs[0].GetSizeFt())
 	}
 }
 
@@ -315,5 +321,28 @@ func TestAZoneKeepsUpTo4096SquaresAndNoMore(t *testing.T) {
 	}
 	if err := set(4097); err == nil {
 		t.Error("4,097 squares were kept, want the check to refuse them")
+	}
+}
+
+// An NPC caster the master removes from the combat takes its cloud with it, and the fog hears of it.
+func TestTheFogHearsOfACloudWhoseCasterLeavesTheCombat(t *testing.T) {
+	t.Parallel()
+	c := newCaveWith(t, 5, []string{fogCloudKey})
+	c.druidFightWith(t, []string{fogCloudKey}, "Druida")
+	c.mustCastArea(t, c.master, "Druida", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	if clouds, _ := c.combatPositions(t); len(clouds) == 0 {
+		t.Fatal("the cast put no cloud squares on the map")
+	}
+	before := c.h.vision.n.Load()
+	if _, err := c.master.combat.RemoveCombatant(t.Context(), connect.NewRequest(&playv1.RemoveCombatantRequest{
+		CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), CombatantId: c.id(t, "Druida"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("RemoveCombatant() error = %v", err)
+	}
+	if got := c.h.vision.n.Load(); got <= before {
+		t.Errorf("fog refreshes after the caster left = %d, before %d: the fog was not told", got, before)
+	}
+	if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
+		t.Errorf("cloud squares after = %d, want none", len(clouds))
 	}
 }
