@@ -17,6 +17,7 @@ import {
   DeathSaveOutcome,
   JumpKind,
   PendingDamageStatus,
+  SaveOutcome,
   SpellEffectKind,
   WildShapeEndReason,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -533,6 +534,45 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
       total: faces.reduce((a, b) => a + b, 0) + modifier,
       physical: false,
     }) as never;
+
+  it('says how far a failed save pushed a target, and when something stopped the push', () => {
+    const wave = (target: object) =>
+      logLine(
+        entry({
+          kind: CombatLogKind.SPELL_CAST,
+          actorLabel: 'Pensantus',
+          keyNamePt: 'Onda Trovejante',
+          spell: {
+            slot: { level: 1, pact: false },
+            concentrating: false,
+            concentrationEndedKey: '',
+            targets: [
+              {
+                targetId: 'g',
+                targetLabel: 'Goblin 1',
+                darts: 0,
+                outcome: AttackOutcome.UNSPECIFIED,
+                save: { outcome: SaveOutcome.FAILED, dc: 13 },
+                ...target,
+              },
+            ],
+          },
+        } as never),
+      )?.text?.replace(/\u00a0/g, ' ');
+    expect(wave({ pushedFt: 10 })).toContain(
+      'Goblin 1 falhou (CD 13); empurrão de 3 m · 2 quadrados',
+    );
+    expect(wave({ pushedFt: 5, pushStopped: true })).toContain(
+      'empurrão de 1,5 m · 1 quadrado, que parou antes: parede, porta, borda do mapa ou criatura',
+    );
+    expect(wave({ pushedFt: 0, pushStopped: true })).toContain(
+      'falhou (CD 13); não saiu do lugar: parede, porta, borda do mapa ou criatura',
+    );
+    expect(wave({ pushNoMap: true })).toContain(
+      'o mestre posiciona a criatura, porque o combate não tem mapa',
+    );
+    expect(wave({ save: { outcome: SaveOutcome.SAVED, dc: 13 } })).not.toContain('empurrão');
+  });
 
   it('writes a cast with its darts, a save and the concentration that ended', () => {
     const darts = entry({
