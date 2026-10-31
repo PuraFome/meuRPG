@@ -325,7 +325,7 @@ func (s *Service) spendStunKi(ctx context.Context, c *combatTx, m authz.Membersh
 	if !ok || k.resourceLeft(resKi) < 1 {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED, "no ki point left")
 	}
-	_, err = s.spendReactionResource(ctx, c, attacker, resKi)
+	_, err = s.spendResourceOf(ctx, c, attacker, resKi)
 	return err
 }
 

@@ -611,7 +611,7 @@ func (f *castFlow) spendCastSlot(ctx context.Context) error {
 		return nil
 	}
 	// A player's slot is spent from its vitals, an NPC's is counted on the combatant (one rule for both).
-	slotVitals, err := f.s.spendReactionSlot(ctx, f.c, f.caster, *f.slot)
+	slotVitals, err := f.s.spendSlotOf(ctx, f.c, f.caster, *f.slot)
 	if err != nil {
 		return err
 	}
@@ -629,7 +629,7 @@ func (f *castFlow) spendGrantUse(ctx context.Context) error {
 	if g == nil || f.slot != nil || g.GetAtWill() {
 		return nil
 	}
-	v, err := f.s.spendReactionResource(ctx, f.c, f.caster, g.GetResource())
+	v, err := f.s.spendResourceOf(ctx, f.c, f.caster, g.GetResource())
 	if err != nil {
 		return err
 	}

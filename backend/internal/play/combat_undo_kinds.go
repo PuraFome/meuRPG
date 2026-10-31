@@ -750,7 +750,7 @@ func (u *undoer) marksBack(ctx context.Context, marks []markState) error {
 	return nil
 }
 
-// castSpentBack gives back the sorcery points, the uses of the table's options and the slot of a player's cast.
+// castSpentBack gives back what a cast spent: the sorcery points, the uses of the table's options and the slot or use of a granted spell (a player's through its vitals, an NPC's on its combatant).
 func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if err := u.tableUsesBack(ctx, who, ev); err != nil {
 		return err

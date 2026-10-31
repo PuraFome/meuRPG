@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -66,6 +67,31 @@ func TestNPCSpellNumbersAreTheStatBlocks(t *testing.T) {
 		spellCasterNumbers(&got, d, det, nil)
 		if got.ToHit != tc.toHit || got.SaveDC != tc.dc {
 			t.Errorf("%s casts %s with +%d to hit and DC %d, want +%d and DC %d", tc.monster, tc.spell, got.ToHit, got.SaveDC, tc.toHit, tc.dc)
+		}
+	}
+}
+
+// A stat-block caster's cantrips scale with its caster level, the "Nth-level spellcaster" of its Spellcasting trait:
+// the 9th-level Mage's Fire Bolt rolls 2d10 and the 1st-level Acolyte's Sacred Flame 1d8, not nothing.
+func TestNPCCantripsRollTheirDiceAtTheStatBlocksCasterLevel(t *testing.T) {
+	t.Parallel()
+	srd, err := rules.LoadSRD()
+	if err != nil {
+		t.Fatalf("LoadSRD: %v", err)
+	}
+	for _, tc := range []struct {
+		monster, spell string
+		count, sides   int
+	}{{"monster:mage", "spell:fire-bolt", 2, 10}, {"monster:acolyte", "spell:sacred-flame", 1, 8}} {
+		det, ok := srd.SpellDetails(tc.spell)
+		if !ok {
+			t.Fatalf("no details for %s", tc.spell)
+		}
+		d := basicDerived(srd, &charactersv1.BasicSheet{MonsterKey: tc.monster})
+		var got link.Spell
+		spellRolls(&got, d, det, 0, "", 0)
+		if len(got.Damages) != 1 || got.Damages[0].Count != tc.count || got.Damages[0].Sides != tc.sides {
+			t.Errorf("%s casts %s for %v, want %dd%d", tc.monster, tc.spell, got.Damages, tc.count, tc.sides)
 		}
 	}
 }

@@ -534,7 +534,7 @@ func (s *Service) spendForRevivify(ctx context.Context, c *combatTx, caster play
 		FxKind: rules.SpellKindRevive, Material: true,
 	}
 	var vitals []*playv1.CharacterVitals
-	slotVitals, err := s.spendReactionSlot(ctx, c, caster, *slot)
+	slotVitals, err := s.spendSlotOf(ctx, c, caster, *slot)
 	if err != nil {
 		return actionEvent{}, nil, err
 	}

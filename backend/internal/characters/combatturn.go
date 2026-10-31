@@ -134,6 +134,7 @@ func basicDerived(content *rules.Content, b *charactersv1.BasicSheet) rules.Deri
 	if caster, ok := content.MonsterCaster(b.GetMonsterKey()); ok {
 		d.Spellcasting, d.Spells, d.GrantedSpells, d.Resources = []rules.Spellcasting{caster.Spellcasting}, caster.Spells, caster.Granted, caster.Resources
 		d.SpellSlots = caster.Slots
+		d.TotalLevel = caster.Level // the level its cantrips scale with
 	}
 	for i, a := range b.GetAttacks() {
 		typeKey := "damage-type:" + strings.ToLower(strings.TrimPrefix(a.GetDamageType().String(), "DAMAGE_TYPE_"))
@@ -288,7 +289,7 @@ var poolResources = map[string]bool{"lay_on_hands": true}
 
 // CombatTurnOptions implements play.CombatRoster: what the character can do
 // now, from the sheet, what it used this turn and, for a player's character,
-// the spell slots already spent (its vitals).
+// the spell slots already spent (a player's character's vitals, the count on the combatant for an NPC).
 func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, characterID string, turn link.Turn) (*rulesv1.TurnOptions, error) {
 	kind, d, _, err := s.fighterOf(ctx, tx, campaignID, characterID, true)
 	if err != nil {

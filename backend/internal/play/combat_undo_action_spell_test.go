@@ -739,7 +739,7 @@ func TestUndoKindSpellCastFromHiding(t *testing.T) {
 var deltaNPCSlotsZero = undoDelta{"+ db/combatants[#].slots_used.1=0", "- db/combatants[#].slots_used={}"}
 
 // TestUndoKindReactionUsedByAnNPC: the Mage's Escudo, answered by the master, counts the NPC's
-// slot on the combatant (spendReactionSlot), and the undo gives it back (giveBackNPCSlot).
+// slot on the combatant (spendSlotOf), and the undo gives it back (giveBackNPCSlot).
 func TestUndoKindReactionUsedByAnNPC(t *testing.T) {
 	t.Parallel()
 	a, e, window := shieldedHit(t)

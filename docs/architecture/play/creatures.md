@@ -45,6 +45,7 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
   `Combatant.mine` stays true only for the player's own character; `controlled_by_me` also covers the creatures, and `owner_character_id` says whose it is.
   `character_id` is empty on a creature, even for the master.
 - **Spells of a stat block** (an NPC, not a summoned creature: a creature has no "Cast a spell", see the next bullet). An NPC made from a creature with a Spellcasting or Innate Spellcasting trait casts through `CastSpell`, like an NPC with a full sheet.
+  A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), whose 1/day is in the trait's name in the SRD and not in the data.
   `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
   `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
   When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.

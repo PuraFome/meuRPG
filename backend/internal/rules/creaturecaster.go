@@ -12,6 +12,9 @@ import (
 // trait (at will, N/day), read from the SRD text. Innate spells are granted spells: at will, or
 // with a resource that holds the uses a day.
 type MonsterCaster struct {
+	// Level is the caster level the cantrips scale with: the "Nth-level spellcaster" of the Spellcasting trait,
+	// and 1 for a creature that only casts innately (the SRD data gives no caster level to a monster's innate cantrips).
+	Level int
 	// Spellcasting is the creature's casting; its Class is the creature's key.
 	Spellcasting Spellcasting
 	// Slots are the slots of each level, index 0 the 1st level; nil without a Spellcasting trait.
@@ -27,6 +30,7 @@ var (
 	casterAbilityRe = regexp.MustCompile(`(?i)spell ?casting ability (?:is )?(Intelligence|Wisdom|Charisma)`)
 	innateBreakRe   = regexp.MustCompile(`[\s;]+(\d+/day(?: each)?:)`)
 	innateLineRe    = regexp.MustCompile(`(?m)^(?:[^\n]*\. )?(At will|(\d+)/day( each)?): (.+)$`)
+	casterLevelRe   = regexp.MustCompile(`(?i)is an? (\d+)(?:st|nd|rd|th)-level spellcaster`)
 	parenthesisRe   = regexp.MustCompile(`\s*\([^)]*\)`)
 )
 
@@ -43,7 +47,7 @@ func (c *Content) MonsterCaster(key string) (MonsterCaster, bool) {
 		return MonsterCaster{}, false
 	}
 	scores := monsterScores(m)
-	var out MonsterCaster
+	out := MonsterCaster{Level: 1}
 	for _, a := range m.SpecialAbilities {
 		switch a.Name {
 		case "Spellcasting":
@@ -84,6 +88,9 @@ func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, 
 	ability, dc, attack := numbersOf(profBonus, scores, desc)
 	if sc.SaveDC > 0 {
 		dc, attack = sc.SaveDC, sc.AttackBonus
+	}
+	if m := casterLevelRe.FindStringSubmatch(desc); m != nil {
+		out.Level, _ = strconv.Atoi(m[1])
 	}
 	out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
 	out.Slots = sc.Slots[:]
@@ -127,6 +134,9 @@ func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int
 		}
 	}
 	if len(out.Granted) > 0 && out.Spellcasting.Class == "" {
+		if m := casterLevelRe.FindStringSubmatch(desc); m != nil {
+			out.Level, _ = strconv.Atoi(m[1])
+		}
 		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
 	}
 }
