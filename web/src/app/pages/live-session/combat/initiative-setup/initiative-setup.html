@@ -58,11 +58,11 @@
               ) {{ bonus(c) }} = {{ total(c) }}
             </label>
             <span class="row__actions">
-              <button mat-button type="button" class="row__cancel" (click)="editing.set(null)">
+              <button matButton type="button" class="row__cancel" (click)="editing.set(null)">
                 Cancelar
               </button>
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 [disabled]="face() === null || busy()"
                 (click)="save(c)"
@@ -83,7 +83,7 @@
             <span class="row__actions">
               @if (item.tie; as group) {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__arrow"
                   [attr.aria-label]="'Subir ' + c.label + ' na ordem'"
@@ -95,7 +95,7 @@
                   <mat-icon aria-hidden="true">arrow_upward</mat-icon>
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="row__arrow"
                   [attr.aria-label]="'Descer ' + c.label + ' na ordem'"
@@ -110,15 +110,15 @@
               @if (c.initiative === undefined) {
                 @if (canRoll() && isPlayerRow(c)) {
                   <!-- C8-05: the master rolls for the one still missing, with the character's own bonus. -->
-                  <button mat-stroked-button type="button" [disabled]="busy()" (click)="rollFor.emit(c.id)">
+                  <button matButton="outlined" type="button" [disabled]="busy()" (click)="rollFor.emit(c.id)">
                     <mat-icon aria-hidden="true">casino</mat-icon>Rolar por {{ c.label }}
                   </button>
                 }
-                <button mat-stroked-button type="button" (click)="edit(c)">
+                <button matButton="outlined" type="button" (click)="edit(c)">
                   Digitar pelo jogador
                 </button>
               } @else {
-                <button mat-button type="button" class="row__edit" (click)="edit(c)">
+                <button matButton type="button" class="row__edit" (click)="edit(c)">
                   Editar<span class="mr-visually-hidden"> a iniciativa de {{ c.label }}</span>
                 </button>
               }

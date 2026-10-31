@@ -9,7 +9,7 @@ This page says what each layer proves, how to run it and what CI runs; the CI jo
 | Unit                      | `go test`, case tables                                 | The `rules` maths and each business rule alone, with no database   |
 | Characterization (golden) | `go test`, golden files under `testdata/`              | What a function answers, refuses and writes stays as reviewed      |
 | Integration               | `go test` with `MEURPG_TEST_DATABASE_URL`              | Queries, migrations, the retry on error `40001`, who may do what   |
-| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries (it reads imports with `go/parser`)              |
+| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries and no production import of the test dice (it reads the source with `go/parser`) |
 | Leak (RN-10)              | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player                         |
 | Web unit                  | Vitest through `ng test`                               | Components and services                                            |
 | End to end                | Playwright in `e2e/`, against the local stack          | Acceptance criteria through the screen                             |
@@ -69,6 +69,46 @@ How `backend/internal/platform/dbtest` shapes the tests:
   - `MEURPG_TEST_POOL_MAX_CONNS=8` applies to the whole process and lists all the violations at once.
 - **Migrations are tested from scratch** by `backend/migrations`. `TestMigrationsAreSafeToRerun` requires every migration to run twice without error, and `TestEveryEventKindOfTheCodeIsInTheTable` requires every session event kind of the code to have a row in `session_event_kinds`. The rules for writing a migration are in [Data](data/README.md).
 
+### Dice in tests
+
+The services roll with deterministic dice in tests: `backend/internal/platform/dice/dicetest`, or `play`'s `scriptedRoller`.
+The app rolls an NPC's initiative, and two combatants with the same total take one joint turn, so a random tie makes a test that assumes one actor fail by chance.
+`play.New` and `characters.New` reject a nil `Roller`.
+Production passes `dice.Crypto{}` explicitly.
+Tests pass `dicetest.New()` or a scripted roller.
+The harnesses of `leaktest`, `progression`, `maps`, `campaignpackage` and `characters` hand the services a `dicetest.New()`.
+
+- **The default is fixed.** The same calls give the same faces, and the roller never runs out.
+- **Same bonus never ties.** On a roller that has rolled no other d20, up to 20 creatures with the same initiative bonus get 20 different totals.
+- **Different bonuses can tie.** Only four creatures whose bonuses are within 5 of each other are safe, on such a roller.
+- **Script the d20 of an attack or a save rolled before the initiative.**
+  Every unscripted d20 takes the next face of the default sequence.
+  Scripting those rolls keeps the sequence where the test expects it.
+- **A test pins a roll with `ScriptFor(t, sides, faces...)`.**
+  The faces go to the next rolls of that die only, and the default goes on after them.
+  A face that does not fit its die fails the test at once.
+  A scripted face that is never rolled fails the test at the end, naming the die and the faces.
+  The check belongs to the test that first scripts the roller: script through the test that built it.
+  A test scripts only the rolls it makes.
+  It also asserts the roll a face was for, such as `requireOwnTotal`, because a later roll of that die can take a face its own roll left.
+- **A creature added to a running combat is scripted and checked.**
+  The master cannot set its initiative after the combat began, so the test scripts the d20 (`scriptD20`).
+  It then calls `requireOwnTotal` (`requireOwnTotals` in `progression`).
+  A tie fails with "script the faces with ScriptFor", on every run.
+- **`play` rolls with its own `scriptedRoller`.**
+  It gives the lower of 10 and the die's sides when no face is queued.
+  Creatures with the same bonus tie by default in its tests, and that is deterministic.
+  A test that needs one actor queues its faces.
+
+Production keeps `dice.Crypto`: nothing in a production build selects the test roller, and `archtest` fails for any non-test file that imports `dicetest` or a package under it.
+That rule also fails when it finds no test file that imports `dicetest`, so a walk of the wrong tree cannot pass.
+The end-to-end tests roll with `dice.Crypto`, so an NPC's initiative total can tie with another combatant's at random.
+An e2e helper types the initiative of every creature it adds, with `SubmitInitiative` and `d20Face`, before the combat begins.
+The helpers are `beginAttackCombatRPC` and its `monsters` argument for an SRD creature.
+A creature added to a running combat is rolled by the app and cannot be typed.
+A test that depends on who acts starts the combat with that creature.
+`beginAttackCombatRPC` fails when a creature added that way has the same total as another combatant.
+
 ### Leak tests (RN-10)
 
 `TestLeakMatrix` (`backend/internal/leaktest`) proves in one test that a player never receives what the master hid, on every read and every stream event.
@@ -114,6 +154,7 @@ Every test that looks for something absent needs a positive control that shows t
 ### Architecture tests
 
 `backend/internal/archtest` asserts the module boundaries: from another module only its `link` package or a shared root may be imported, nothing imports `cmd/`, and every module-level dependency is in a table (a new dependency fails until it is added on purpose).
+It also holds the import rule of [Dice in tests](#dice-in-tests).
 See [Architecture](architecture/overview.md#module-boundaries-are-a-test).
 
 ## Before ready
@@ -183,9 +224,14 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 `make e2e` starts the local environment (like `make up`), installs the `e2e/` dependencies if missing, runs the tests and prints where the HTML report is (`cd e2e && npx playwright show-report`); the stack stays up until `make down`.
 
 - Locally the tests drive the installed Google Chrome (`channel: 'chrome'`); in CI they drive the Chromium that `npx playwright install chromium` downloads, at the version pinned by `package-lock.json`. `E2E_BROWSER_CHANNEL` overrides both (empty means Playwright's Chromium). `E2E_BASE_URL` and `E2E_IDP_ORIGIN` point the suite at another stack.
-- In CI every shard but plain 1/3 restores the backup the `database` job of `e2e` made (seed rows included) once CockroachDB is up, before `migrate` and the API start.
-  Plain 1/3 migrates an empty database, so a broken migration fails e2e.
+- In CI every shard but the `fresh` one (plain 1/3) restores the backup the `database` job of `e2e` made (seed rows included) once CockroachDB is up, before `migrate` and the API start.
+  The `fresh` shard migrates an empty database, so a broken migration fails e2e, and it runs even when the `database` job failed.
   See [CI](ci.md#end-to-end).
+- In CI each shard runs a list of tests balanced by measured time (`e2e/timings.json`), not Playwright's own `--shard`.
+  A new test needs no change to the file: it runs in the shard with the least time.
+  The tests of a serial group run together in one shard.
+  The fresh shard gets less test time, to make up for its slower setup.
+  The command that refreshes the file is in [CI](ci.md#end-to-end).
 - There are no retries (`retries: 0`, checked by the e2e lint job) and no `test.skip` or `test.fixme` (the e2e lint fails on both): a flaky acceptance test is a bug to fix. See [Reproducing a flaky test](#reproducing-a-flaky-test).
 - Each test that proves an acceptance criterion carries the story's or rule's tag, such as `@MR-001`; `npx playwright test --grep @MR-001` runs only that story's.
 - RPCs from a test go through `page.request` (same cookies as the page) with `Connect-Protocol-Version: 1`.
@@ -236,15 +282,36 @@ await m.getByRole('button', { name: 'Próximo turno' }).click();
 - A page with no combat view (the bestiary, a player after the combat ended) cannot show a revision: disable the rule on that call with the reason.
 - `meurpg/rpc-revision-wait` (`e2e/lint/rules`) is an error when an awaited helper that returns an `Encounter` is followed by a page action with no wait on that action's page.
   A wait that comes after the action, or on another page, does not count.
-  A page action is a call on a Playwright `Locator`, `Page`, or the page's keyboard, mouse or touchscreen, so `Set.clear()` is not one.
-  A call that ends the body of an awaited callback (`test.step`) is judged with what follows the call.
+  A page action is a call on a Playwright `Locator`, `Page`, `Frame`, `ElementHandle`, or the page's keyboard, mouse or touchscreen, so `Set.clear()` is not one.
+  The actions are `click`, `dblclick`, `fill`, `press`, `pressSequentially`, `check`, `uncheck`, `setChecked`, `selectOption`, `type`, `hover`, `focus`, `tap`, `dragTo`, `dragAndDrop`, `dispatchEvent`, `selectText`, `setInputFiles`, `clear`, and the keyboard's and mouse's `down`, `up`, `insertText`, `move` and `wheel`.
+  The rule reads the receiver's type, where Playwright declares it: an app type called `Page` is not a page, and a receiver typed `any` is not seen.
+  A callback of a directly awaited call (`await test.step(..)`) runs where it is written: the rule reads into it, and judges a call that ends it with what follows.
+  `return step(..)`, `Promise.all([..])` and a step stored in a variable are not followed.
+  A handler the page calls later (`route`, `exposeFunction`, the predicate of `waitForEvent`) or that nobody awaits (`page.on`) is not that moment.
+  An action on a page the rule cannot name (a `Frame` or `ElementHandle` variable) is cleared by any wait.
   `goto`, `reload`, `openSessionPage`, `openPlayerMap`, `gotoCampaignTab` and `openLive` count as a wait, because the page then reads the state itself.
+  `passTurnsToAndWait(master, campaignId, label, pages)` passes the turn and waits on `pages`.
+  Use it when a page acts next; `passTurnsTo` alone is for a spec that reads the state over RPC or checks the moment before the page sees the change.
   Reads (`get*`, `list*`, `read*`) and moves (`MoveCombatant`, `movePensantus`) need none.
   The rule asks for a wait on every page that acts, because it cannot tell which pages show the session.
   It does not see calls that answer with nothing (a scene roll), helpers that click inside, or the next turn of a loop.
 - The rule has no baseline: do not add suppressions for it.
   `npm run lint:test` runs it on `e2e/lint/fixtures`: `bad.ts` must fail and `fixed.ts` must pass.
 - The combat view carries `data-encounter-id` and `data-encounter-revision` for the specs; nothing in the app reads them.
+
+### A page that hangs
+
+Every spec imports `test` from `./diagnostics`, not from `@playwright/test`; the lint rejects the other import.
+A failed or timed-out test attaches `page-diagnostics` to its report.
+It covers the pages of the `page` and `context` fixtures and of every context made with `browser.newContext()`, including `newSignedInContext`.
+For each page it says whether the page crashed, the `pageerror` and `console.error` it reported, the requests that failed, and the requests still open with their age.
+For a page still open when the test fails it also says whether the page replied to a probe within 1.5 s.
+A page that really closed (the test closed its context) is not probed; the attachment lists the requests open when the test asked for the close.
+A page still open after the close was asked for is probed like any other.
+Requests made with `page.request` or `callRPC` are not page requests and are not listed.
+A page stuck in a loop makes Playwright's own trace and screenshot wait, and then no attachment is made.
+Read the attachment in the HTML report, or in the `playwright-report-*` artifact of a failed shard.
+`diagnostics.spec.ts` makes pages crash, hang and fail on purpose; its last test runs `diagnostics-fixture/` to see the attachment of a real failed test.
 
 A failed CI run keeps `stack-logs/stack.log` (every container of the stack, with timestamps) in the `playwright-report-*` artifact.
 The `flake-check` traces artifact (`flake-traces-*`) holds the same file, one per job.

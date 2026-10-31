@@ -186,7 +186,7 @@ export function openNpcGrappleSheet(
           </span>
         </div>
         <button
-          mat-flat-button
+          matButton="filled"
           type="button"
           class="btn"
           [disabled]="busy() || dc() === null || !targetId()"

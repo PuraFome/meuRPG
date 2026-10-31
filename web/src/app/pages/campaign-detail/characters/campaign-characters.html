@@ -45,7 +45,7 @@
                       }
                     </span>
                     <a
-                      mat-stroked-button
+                      matButton="outlined"
                       class="waiting__review"
                       [routerLink]="['/campaigns', campaignId(), 'characters', c.id]"
                     >
@@ -213,7 +213,7 @@
 
             @if (!s.vm.hasLivingCharacter) {
               <a
-                mat-flat-button
+                matButton="filled"
                 class="panel-action panel-action--primary"
                 [routerLink]="['/campaigns', campaignId(), 'characters', 'new']"
               >

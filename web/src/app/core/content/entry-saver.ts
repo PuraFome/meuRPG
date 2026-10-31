@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { type Injector, afterNextRender, signal } from '@angular/core';
 
 import {
   type Placement,
@@ -89,4 +89,14 @@ export function focusField(root: ParentNode, path: string): boolean {
   (target ?? el).focus({ preventScroll: true });
   (target ?? el).scrollIntoView?.({ block: 'center', behavior: 'auto' });
   return true;
+}
+
+/** Focuses the input of a path once the render that draws it is done: the open of a feature goes before, so the input exists. */
+export function focusAfterRender(root: ParentNode, injector: Injector, path: string): void {
+  afterNextRender(
+    () => {
+      focusField(root, path);
+    },
+    { injector },
+  );
 }

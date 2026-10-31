@@ -71,7 +71,7 @@ let nextId = 0;
     }
     @if (button()) {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="row__btn"
         [style.display]="choosing() ? 'none' : null"

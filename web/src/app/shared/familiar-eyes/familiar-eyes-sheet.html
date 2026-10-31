@@ -21,8 +21,8 @@
     </span>
   </p>
   <div foot class="pair">
-    <button mat-stroked-button type="button" class="pair__btn" data-initial-focus [disabled]="busy()" (click)="cancel()">Cancelar</button>
-    <button mat-flat-button type="button" class="pair__btn" [disabled]="busy()" disabledInteractive (click)="confirm()">
+    <button matButton="outlined" type="button" class="pair__btn" data-initial-focus [disabled]="busy()" (click)="cancel()">Cancelar</button>
+    <button matButton="filled" type="button" class="pair__btn" [disabled]="busy()" disabledInteractive (click)="confirm()">
       <mat-icon aria-hidden="true">visibility</mat-icon>Ver pelos olhos
     </button>
   </div>

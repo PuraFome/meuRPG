@@ -3520,6 +3520,10 @@ export const PlayService: GenService<{
    *     away and was not noticed yet; if the page is still open, the app
    *     reconnects with its backoff, as after any transient end. Opening a
    *     stream is never refused for the count.
+   *   - `unavailable` on an open stream: the server instance stopped
+   *     receiving calls (a deploy moved the traffic to another revision).
+   *     It is transient: the app reconnects, now to the active revision, and
+   *     reads the snapshot again.
    *
    * @generated from rpc meurpg.play.v1.PlayService.WatchGameSession
    */

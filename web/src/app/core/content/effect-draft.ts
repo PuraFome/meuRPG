@@ -299,6 +299,26 @@ export function unreadableRange(text: string): boolean {
   return !Number.isFinite(n) || n < 0;
 }
 
+/** "text_pt" → "textPt": the draft's key for a proto field. */
+export function draftKey(name: string): keyof EffectDraft {
+  return name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft;
+}
+
+/** The paths of the number fields of `effects` whose text is no whole number (the picker's mark is a NaN in the draft), `base` being
+ * the path of the list ("table_feat.effects"). An editor does not save while there is one, since a NaN goes out as `null`, which the
+ * server reads as "not set"; it opens the feature that holds the first and focuses its field. */
+export function unreadableNumberPaths(
+  base: string,
+  effects: readonly EffectDraft[],
+  menu: EffectMenuVm,
+): string[] {
+  return effects.flatMap((e, k) =>
+    visibleFields(menu.fieldsOf(e.type), e)
+      .filter((f) => f.kind === 'number' && Number.isNaN(e[draftKey(f.name)]))
+      .map((f) => `${base}[${k}].${f.name}`),
+  );
+}
+
 /** What the editor says of a range field it cannot read. */
 export const UNREADABLE_RANGE = 'Escreva só o número de metros, como 18 ou 4,5.';
 

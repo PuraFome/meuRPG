@@ -33,6 +33,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -126,6 +128,7 @@ type harness struct {
 	pool   *pgxpool.Pool
 	users  *identity.PostgresStore
 	play   *play.Service
+	roller dice.Roller // the dice play rolls with
 	server *httptest.Server
 	// cfg and camps are what the progression service was made from, so a test can make another over a pool of its own.
 	cfg   Config
@@ -202,8 +205,14 @@ func (c racingCampaigns) CampaignXPMode(ctx context.Context, tx pgx.Tx, campaign
 // through the API's real HTTP stack, wired as cmd/api wires them.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
+	return newHarnessRolling(t, dicetest.New())
+}
+
+// newHarnessRolling is newHarness with the dice the play service rolls with.
+func newHarnessRolling(t *testing.T, roller dice.Roller) *harness {
+	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_progression_test")
-	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool)}
+	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool), roller: roller}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
 	logger := slog.New(slog.DiscardHandler)
 	content, err := testRules()
@@ -214,13 +223,13 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatalf("campaigns.New() error = %v", err)
 	}
-	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Logger: logger, Now: clock.Now})
+	chars, err := characters.New(characters.Config{Pool: pool, Profiles: h.users, Members: camps, Content: contenttest.NewSource(pool, content), SRD: content, Roller: dicetest.New(), Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
 	}
 	pl, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: maps.NewSessionMaps(pool), Roster: chars,
-		Dice: testDice{camps}, Logger: logger, Now: clock.Now,
+		Dice: testDice{camps}, Roller: roller, Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)

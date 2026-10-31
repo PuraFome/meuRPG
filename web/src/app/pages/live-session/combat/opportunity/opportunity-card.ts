@@ -76,16 +76,16 @@ export interface MasterAnswer {
             </p>
           }
           <div class="op__pair">
-            <button mat-stroked-button type="button" class="op__btn" data-safe [disabled]="busy()" (click)="answer.emit({ offer: o, attack: null })">
+            <button matButton="outlined" type="button" class="op__btn" data-safe [disabled]="busy()" (click)="answer.emit({ offer: o, attack: null })">
               Não atacar
             </button>
             @for (a of attacks(o); track a.key) {
-              <button mat-flat-button type="button" class="op__btn" [disabled]="busy() || !a.attack" disabledInteractive (click)="answer.emit({ offer: o, attack: a })">
+              <button matButton="filled" type="button" class="op__btn" [disabled]="busy() || !a.attack" disabledInteractive (click)="answer.emit({ offer: o, attack: a })">
                 {{ label(a) }}
               </button>
             }
             @if (!attacks(o).length && failed().has(o.id)) {
-              <button mat-stroked-button type="button" class="op__btn" (click)="retry.emit(o)">Tentar de novo</button>
+              <button matButton="outlined" type="button" class="op__btn" (click)="retry.emit(o)">Tentar de novo</button>
             }
           </div>
           <p class="op__note">
@@ -95,7 +95,7 @@ export interface MasterAnswer {
           @if (o.byHand) {
             <!-- A combat without a map: nobody has a square, so nothing goes back anywhere. -->
             <div class="op__pair">
-              <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
+              <button matButton="outlined" type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
             </div>
           } @else {
             <p class="op__note op__note--plain">
@@ -110,8 +110,8 @@ export interface MasterAnswer {
             <p><b>Esperando a resposta {{ waitingFor(o) }}.</b> {{ leavingBy(o) }} O turno continua depois da resposta.</p>
           </div>
           <div class="op__pair">
-            <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">Seguir sem esperar</button>
-            <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
+            <button matButton="outlined" type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">Seguir sem esperar</button>
+            <button matButton="outlined" type="button" class="op__btn" [disabled]="busy()" (click)="withdraw.emit(o)">Retirar a oferta</button>
           </div>
           <p class="op__note op__note--plain">
             “Seguir sem esperar” é para quando o jogador não responde: o turno continua. “Retirar a oferta” é para quando você ofereceu sem querer.
@@ -120,11 +120,11 @@ export interface MasterAnswer {
         } @else {
           <p class="op__ask"><b>Esperando a reação {{ waitingFor(o) }}</b>@if (autoText(o); as t) { · {{ t }}}</p>
           <div class="op__pair">
-            <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">
+            <button matButton="outlined" type="button" class="op__btn" [disabled]="busy()" (click)="skip.emit(o)">
               Seguir sem esperar
             </button>
             @if (canUndo()) {
-              <button mat-stroked-button type="button" class="op__btn" [disabled]="busy()" (click)="undo.emit()">
+              <button matButton="outlined" type="button" class="op__btn" [disabled]="busy()" (click)="undo.emit()">
                 Desfazer o movimento
               </button>
             }

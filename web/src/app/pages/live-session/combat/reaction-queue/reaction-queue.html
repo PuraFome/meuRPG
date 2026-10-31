@@ -22,7 +22,7 @@
             <ng-container *ngTemplateOutlet="slotsTpl; context: { row: card.row }" />
             <div class="pair">
               <button
-                mat-flat-button
+                matButton="filled"
                 type="button"
                 class="btn"
                 data-initial
@@ -33,7 +33,7 @@
                 {{ singleUseLabel(card.row) }}
               </button>
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 class="btn"
                 [disabled]="busy() || !card.row.answerNow"
@@ -56,10 +56,10 @@
             <p class="card__sub">{{ card.cost }}</p>
             <ng-container *ngTemplateOutlet="slotsTpl; context: { row: card.row }" />
             <div class="pair">
-              <button mat-stroked-button type="button" class="btn" data-initial [disabled]="busy()" (click)="use(card.row)">
+              <button matButton="outlined" type="button" class="btn" data-initial [disabled]="busy()" (click)="use(card.row)">
                 <mat-icon aria-hidden="true">shield</mat-icon>Usar
               </button>
-              <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="pass(card.row.window)">
+              <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="pass(card.row.window)">
                 <mat-icon aria-hidden="true">close</mat-icon>Não usar
               </button>
             </div>
@@ -77,7 +77,7 @@
             }
             <div class="pair">
               <button
-                mat-flat-button
+                matButton="filled"
                 type="button"
                 class="btn"
                 data-initial
@@ -127,7 +127,7 @@
               </p>
               <div class="pair">
                 <button
-                  mat-flat-button
+                  matButton="filled"
                   type="button"
                   class="btn"
                   data-initial
@@ -137,7 +137,7 @@
                   Rolar o teste por {{ card.window.reactorLabel }}
                 </button>
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="btn"
                   [disabled]="busy()"
@@ -189,7 +189,7 @@
                 />
               }
               <button
-                mat-stroked-button
+                matButton="outlined"
                 type="button"
                 class="btn btn--one"
                 [disabled]="busy()"
@@ -248,7 +248,7 @@
                 </div>
                 <div class="pair">
                   <button
-                    mat-flat-button
+                    matButton="filled"
                     type="button"
                     class="btn"
                     [disabled]="busy()"
@@ -257,7 +257,7 @@
                     Sim, pular o teste
                   </button>
                   <button
-                    mat-stroked-button
+                    matButton="outlined"
                     type="button"
                     class="btn"
                     [disabled]="busy()"
@@ -268,7 +268,7 @@
                 </div>
               } @else {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   type="button"
                   class="btn btn--one"
                   [disabled]="busy()"
@@ -309,7 +309,7 @@
         <ng-container *ngTemplateOutlet="slotsTpl; context: { row: row }" />
         <div class="btns">
           <button
-            mat-stroked-button
+            matButton="outlined"
             type="button"
             class="btn"
             [class.btn--off]="!row.answerNow"
@@ -322,7 +322,7 @@
             {{ row.useLabel }}
           </button>
           <button
-            mat-stroked-button
+            matButton="outlined"
             type="button"
             class="btn"
             [class.btn--off]="!row.answerNow"

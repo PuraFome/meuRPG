@@ -160,7 +160,7 @@
         <section class="mr-panel act" aria-labelledby="save-h">
           <h2 class="mr-panel__title" id="save-h">Guardar</h2>
           <p class="act__text">O encontro fica num ponto de batalha de um mapa, e só você o vê.</p>
-          <button type="button" mat-flat-button class="act__go" [disabled]="draft.entries().length === 0" disabledInteractive [class.mr-button--off]="draft.entries().length === 0" (click)="openSave()">
+          <button type="button" matButton="filled" class="act__go" [disabled]="draft.entries().length === 0" disabledInteractive [class.mr-button--off]="draft.entries().length === 0" (click)="openSave()">
             <mat-icon aria-hidden="true">flag</mat-icon>Guardar no ponto de batalha
           </button>
           @if (draft.entries().length === 0) {
@@ -172,7 +172,7 @@
                 <p id="clear-q"><strong>Tirar o encontro do ponto?</strong> O ponto fica sem encontro guardado. O que está na tela não muda.</p>
                 <div class="act__row">
                   <button type="button" matButton="outlined" class="act__go" data-initial-focus (click)="clearing.set(false)">Voltar</button>
-                  <button type="button" mat-flat-button class="act__go" [disabled]="clearBusy()" (click)="clearPoint()">Tirar o encontro</button>
+                  <button type="button" matButton="filled" class="act__go" [disabled]="clearBusy()" (click)="clearPoint()">Tirar o encontro</button>
                 </div>
               </div>
             } @else {

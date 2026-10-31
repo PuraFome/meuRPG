@@ -21,7 +21,7 @@ import { openFamiliarEyes } from './familiar-eyes-sheet';
   host: { '[class.eyes--block]': 'block()' },
   imports: [MatButtonModule, MatIconModule],
   template: `
-    <button mat-stroked-button type="button" class="eyes" [disabled]="disabled()" (click)="ask()">
+    <button matButton="outlined" type="button" class="eyes" [disabled]="disabled()" (click)="ask()">
       <mat-icon aria-hidden="true">visibility</mat-icon>Ver pelos olhos
     </button>
   `,

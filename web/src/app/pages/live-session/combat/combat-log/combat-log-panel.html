@@ -2,8 +2,8 @@
   @if (confirming()) {
     <div class="ask" role="alertdialog" aria-label="Desfazer a última ação">
       <p class="ask__text">{{ undoText() }}</p>
-      <button #safe mat-stroked-button type="button" (click)="confirming.set(false)">Voltar</button>
-      <button mat-stroked-button type="button" class="ask__go" [disabled]="busy()" (click)="undo()">Desfazer</button>
+      <button #safe matButton="outlined" type="button" (click)="confirming.set(false)">Voltar</button>
+      <button matButton="outlined" type="button" class="ask__go" [disabled]="busy()" (click)="undo()">Desfazer</button>
     </div>
   }
 
@@ -31,7 +31,7 @@
 
 <ng-template #undoWide>
   @if (phone() && undoable() && !confirming()) {
-    <button mat-stroked-button type="button" class="undo undo--wide" [disabled]="busy()" (click)="askUndo()">
+    <button matButton="outlined" type="button" class="undo undo--wide" [disabled]="busy()" (click)="askUndo()">
       <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
     </button>
   }
@@ -44,7 +44,7 @@
       <span foldNote class="head__count">{{ count() }}</span>
       <ng-container *ngTemplateOutlet="list" />
       @if (more() && !phone()) {
-        <button mat-button type="button" class="all" (click)="openSheet()">
+        <button matButton type="button" class="all" (click)="openSheet()">
           <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver o registro todo
         </button>
       }
@@ -62,7 +62,7 @@
           <mat-icon aria-hidden="true">expand_less</mat-icon>
         </button>
       } @else if (undoable() && !confirming()) {
-        <button mat-stroked-button type="button" class="undo" [disabled]="busy()" (click)="askUndo()">
+        <button matButton="outlined" type="button" class="undo" [disabled]="busy()" (click)="askUndo()">
           <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
         </button>
       }
@@ -80,7 +80,7 @@
     }
 
     @if (more() && !phone()) {
-      <button mat-button type="button" class="all" (click)="openSheet()">
+      <button matButton type="button" class="all" (click)="openSheet()">
         <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver o registro todo
       </button>
     }

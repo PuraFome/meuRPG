@@ -37,7 +37,7 @@ import { MatIconModule } from '@angular/material/icon';
     <ng-template #main>
       @if (!primaryHidden()) {
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         class="btn primary"
         [class.primary--off]="blocked()"
@@ -54,11 +54,11 @@ import { MatIconModule } from '@angular/material/icon';
     </ng-template>
     <ng-template #other>
       @if (secondaryStyle() === 'text') {
-        <button mat-button type="button" class="btn secondary" (click)="secondary.emit()">
+        <button matButton type="button" class="btn secondary" (click)="secondary.emit()">
           {{ secondaryLabel() }}
         </button>
       } @else {
-        <button mat-stroked-button type="button" class="btn secondary" (click)="secondary.emit()">
+        <button matButton="outlined" type="button" class="btn secondary" (click)="secondary.emit()">
           {{ secondaryLabel() }}
         </button>
       }

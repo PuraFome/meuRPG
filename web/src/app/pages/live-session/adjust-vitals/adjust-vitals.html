@@ -18,7 +18,7 @@
       </p>
     </div>
     <div class="adjust__buttons">
-      <button mat-flat-button type="button" (click)="closeEnded()">Fechar</button>
+      <button matButton="filled" type="button" (click)="closeEnded()">Fechar</button>
     </div>
   } @else {
     <div class="adjust__scroll">
@@ -114,14 +114,14 @@
 
     <div class="adjust__buttons">
       <button
-        mat-flat-button
+        matButton="filled"
         type="button"
         [disabled]="saveState().status === 'saving'"
         (click)="save()"
       >
         Salvar ajuste
       </button>
-      <button mat-button type="button" (click)="close(undefined)">Cancelar</button>
+      <button matButton type="button" (click)="close(undefined)">Cancelar</button>
     </div>
   }
 </div>

@@ -17,7 +17,7 @@ import { Nudger } from '../../../core/combat/nudger';
   template: `
     @if (compact()) {
       <button
-        mat-icon-button
+        matIconButton
         type="button"
         class="nudge"
         [attr.aria-label]="'Chamar a atenção de ' + name()"
@@ -28,7 +28,7 @@ import { Nudger } from '../../../core/combat/nudger';
       </button>
     } @else {
       <button
-        mat-stroked-button
+        matButton="outlined"
         type="button"
         class="nudge"
         [attr.aria-label]="'Chamar a atenção de ' + name()"
