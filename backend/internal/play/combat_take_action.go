@@ -494,7 +494,10 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 // number the player picked from the range), read in this transaction: only a player's character counts them, and a pool
 // of points (Cura pelas mãos) is the master's. It returns how many it spent.
 func (f *takeActionFlow) spendFeatureUse(ctx context.Context, fa link.FeatureAction) (int, error) {
-	if fa.SpendsSlot && f.who.Kind == kindPlayer {
+	if fa.SpendsSlot {
+		if f.who.Kind != kindPlayer { // an NPC's slots are not counted here: the master heals it by hand
+			return 0, connect.NewError(connect.CodeInvalidArgument, errors.New("this is for a player's character; the master adjusts an NPC by hand"))
+		}
 		return f.spendSlot(ctx)
 	}
 	if fa.Resource == "" || fa.Pool || f.who.Kind != kindPlayer {

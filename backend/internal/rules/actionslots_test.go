@@ -133,3 +133,16 @@ func TestATableSlotEffectRefusals(t *testing.T) {
 		})
 	}
 }
+
+func TestAGivenSlotLevelOutsideOneToNineGivesNoAction(t *testing.T) {
+	t.Parallel()
+	// The wizard is level 3: level() * 4 is 12, a level no slot has.
+	d := deriveWithOverlay(t, slotFeatOverlay(Effect{
+		Type: "grant_action", Economy: EconomyBonusAction, Resource: "centelha", GivesSlot: "level() * 4",
+	}))
+	for _, a := range d.Actions {
+		if a.Source == slotFeat {
+			t.Errorf("action = %+v, want none: the slot level is 12", a)
+		}
+	}
+}

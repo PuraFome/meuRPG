@@ -152,10 +152,10 @@ func (x *deriver) slotAction(act *Action, a activeEffect) bool {
 		if !ok {
 			return false
 		}
-		act.GivesSlot = min(max(n, 0), MaxSlotLevel)
-		if act.GivesSlot == 0 {
-			return false // a level below 1 gives no slot: no action
+		if n < 1 || n > MaxSlotLevel {
+			return false // a level outside 1 to 9 gives no slot: no action
 		}
+		act.GivesSlot = n
 	}
 	return true
 }
