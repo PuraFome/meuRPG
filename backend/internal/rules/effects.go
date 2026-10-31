@@ -212,6 +212,17 @@ type Effect struct {
 	NoFly          bool   `json:"no_fly,omitempty"`
 	NoSwim         bool   `json:"no_swim,omitempty"`
 
+	// grant_action and spell slots (actionslots.go): GivesSlot is an Int formula for the level
+	// (1 to 9) of the slot the action creates from the uses it spends, and SpendsSlot makes
+	// the action spend a spell slot of the level the player picks and heal by it.
+	// slot_recovery: Resource is the resource each recovery spends, RecoverMaxLevel an Int
+	// formula for the highest level of a slot it takes back and RecoverLevels one for the
+	// combined level of the slots.
+	GivesSlot       string `json:"gives_slot,omitempty"`
+	SpendsSlot      bool   `json:"spends_slot,omitempty"`
+	RecoverMaxLevel string `json:"recover_max_level,omitempty"`
+	RecoverLevels   string `json:"recover_levels,omitempty"`
+
 	// song_of_rest: the die of the bard's Song of Rest (6, 8, 10 or 12 sides),
 	// which the character's short rest adds to the hit points the party regains
 	// with hit dice (songofrest.go). Each tier of the feature carries one; the
@@ -274,7 +285,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost, givesSlot, recoverMaxLevel, recoverLevels *formula.Program
 
 	// What the overlay resolves for the state gate (gate.go), on the copy of the effect
 	// that is compiled: entry is the table entry the effect belongs to; stateKey is,
@@ -288,7 +299,7 @@ type Effect struct {
 var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
-		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
+		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
 	}
@@ -392,6 +403,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ambush":             effectCompiler.ambush,
 	"extra_attack":       effectCompiler.extraAttack,
 	"wild_shape":         effectCompiler.wildShape,
+	"slot_recovery":      effectCompiler.slotRecovery,
 	"song_of_rest":       effectCompiler.songOfRest,
 	"beast_spells":       effectCompiler.beastSpells,
 	"handler":            effectCompiler.handler,
@@ -451,6 +463,12 @@ func (x effectCompiler) strayFields() error {
 	e := x.e
 	if e.Type != "wild_shape" && (e.MaxCR != "" || e.MaxCRFrom != "" || e.FormCost != "" || e.MagicalAttacks || e.NoFly || e.NoSwim) {
 		return x.fail("max_cr, max_cr_from, form_cost, magical_attacks, no_fly and no_swim belong to wild_shape")
+	}
+	if e.Type != "grant_action" && (e.GivesSlot != "" || e.SpendsSlot) {
+		return x.fail("gives_slot and spends_slot belong to grant_action")
+	}
+	if e.Type != "slot_recovery" && (e.RecoverMaxLevel != "" || e.RecoverLevels != "") {
+		return x.fail("recover_max_level and recover_levels belong to slot_recovery")
 	}
 	if e.Type != "song_of_rest" && e.Sides != 0 {
 		return x.fail("sides belongs to song_of_rest")

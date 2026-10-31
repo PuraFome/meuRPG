@@ -920,6 +920,12 @@ message Action {
   // true it ends it ("Encerrar"), for free.
   string state_key = 12;
   bool state_active = 13;
+  // The spell slot level the action creates from the uses it spends (a table feature's
+  // `gives_slot`); 0 when it creates none.
+  int32 gives_slot_level = 14;
+  // The action spends a spell slot of the level the player picks (`spend`, 1 to 9) and
+  // heals by it: `heal` at level 1 and `heal_per_point` for each level above.
+  bool spends_slot = 15;
 }
 
 // ActionEconomy is the part of the turn an action costs.

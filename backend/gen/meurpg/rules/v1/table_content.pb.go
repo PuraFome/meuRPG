@@ -1041,8 +1041,26 @@ type TableEffect struct {
 	MagicalAttacks bool   `protobuf:"varint,70,opt,name=magical_attacks,json=magicalAttacks,proto3" json:"magical_attacks,omitempty"`
 	NoFly          bool   `protobuf:"varint,71,opt,name=no_fly,json=noFly,proto3" json:"no_fly,omitempty"`
 	NoSwim         bool   `protobuf:"varint,72,opt,name=no_swim,json=noSwim,proto3" json:"no_swim,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// grant_action: the action turns the uses it spends (`resource` and `cost`) into a spell
+	// slot of the level this Int formula gives (1 to 9). The slot is free until the next long
+	// rest, like a slot Flexible Casting makes. It needs `resource` and takes no heal, no
+	// temp_hp and no cost_max.
+	GivesSlot string `protobuf:"bytes,73,opt,name=gives_slot,json=givesSlot,proto3" json:"gives_slot,omitempty"`
+	// grant_action: the action spends a spell slot, at the level the player picks at use
+	// (`spend`, 1 to 9, a level with a free slot), and heals: `heal` at level 1 plus
+	// `value_per_point` (dice, the same sides) for each level above 1. It needs `heal` and
+	// takes no resource, no cost, no cost_max and no temp_hp.
+	SpendsSlot bool `protobuf:"varint,74,opt,name=spends_slot,json=spendsSlot,proto3" json:"spends_slot,omitempty"`
+	// slot_recovery: the character takes back expended spell slots after a rest, as the
+	// wizard's Arcane Recovery does. `resource` is the resource whose use each recovery
+	// spends (a resource effect of the same feature gives the uses and the rest they come
+	// back on), `recover_max_level` an Int formula for the highest level of a slot it takes
+	// back (1 to 9) and `recover_levels` an Int formula for the combined level of the slots
+	// (a level 2 slot counts 2). Both are required.
+	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
+	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1577,6 +1595,34 @@ func (x *TableEffect) GetNoSwim() bool {
 		return x.NoSwim
 	}
 	return false
+}
+
+func (x *TableEffect) GetGivesSlot() string {
+	if x != nil {
+		return x.GivesSlot
+	}
+	return ""
+}
+
+func (x *TableEffect) GetSpendsSlot() bool {
+	if x != nil {
+		return x.SpendsSlot
+	}
+	return false
+}
+
+func (x *TableEffect) GetRecoverMaxLevel() string {
+	if x != nil {
+		return x.RecoverMaxLevel
+	}
+	return ""
+}
+
+func (x *TableEffect) GetRecoverLevels() string {
+	if x != nil {
+		return x.RecoverLevels
+	}
+	return ""
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -6631,7 +6677,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\xbf\x10\n" +
+	"\x04body\"\xd2\x11\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6716,7 +6762,13 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\tform_cost\x18E \x01(\tR\bformCost\x12'\n" +
 	"\x0fmagical_attacks\x18F \x01(\bR\x0emagicalAttacks\x12\x15\n" +
 	"\x06no_fly\x18G \x01(\bR\x05noFly\x12\x17\n" +
-	"\ano_swim\x18H \x01(\bR\x06noSwim\"\xc3\x01\n" +
+	"\ano_swim\x18H \x01(\bR\x06noSwim\x12\x1d\n" +
+	"\n" +
+	"gives_slot\x18I \x01(\tR\tgivesSlot\x12\x1f\n" +
+	"\vspends_slot\x18J \x01(\bR\n" +
+	"spendsSlot\x12*\n" +
+	"\x11recover_max_level\x18K \x01(\tR\x0frecoverMaxLevel\x12%\n" +
+	"\x0erecover_levels\x18L \x01(\tR\rrecoverLevels\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

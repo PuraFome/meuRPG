@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
 	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
 }
 
@@ -307,6 +307,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"spell_modifier":   (*overlayBuilder).checkOnTarget,
 	"ambush":           (*overlayBuilder).checkOnTarget,
 	"resource":         (*overlayBuilder).checkResourceEffect,
+	"slot_recovery":    (*overlayBuilder).checkSlotRecovery,
 }
 
 // checkOwnFields checks the fields of an ability_increase or a proficiency
@@ -523,7 +524,7 @@ var ownFields = map[string][]string{
 	"extra_attack": {"count"},
 	// A grant_action may cost several uses of its resource, let the player choose how many,
 	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
-	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability"},
+	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability", "gives_slot", "spends_slot"},
 	"on_event":     {"event", "resource", "cost", "restore", "value", "heal", "temp_hp", "heal_percent_max", "ability"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
@@ -535,6 +536,8 @@ var ownFields = map[string][]string{
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush":     {"applies"},
 	"wild_shape": {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
+	// A slot_recovery names the resource each recovery spends and its two limits.
+	"slot_recovery": {"resource", "recover_max_level", "recover_levels"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage types it covers (or the one it leaves out), its kind and when it holds.
@@ -620,6 +623,10 @@ var effectFields = []effectField{
 	{"max_cr_from", func(e *Effect) bool { return e.MaxCRFrom != "" }, func(e *Effect) { e.MaxCRFrom = "" }},
 	{"form_cost", func(e *Effect) bool { return e.FormCost != "" }, func(e *Effect) { e.FormCost = "" }},
 	{"magical_attacks", func(e *Effect) bool { return e.MagicalAttacks }, func(e *Effect) { e.MagicalAttacks = false }},
+	{"gives_slot", func(e *Effect) bool { return e.GivesSlot != "" }, func(e *Effect) { e.GivesSlot = "" }},
+	{"spends_slot", func(e *Effect) bool { return e.SpendsSlot }, func(e *Effect) { e.SpendsSlot = false }},
+	{"recover_max_level", func(e *Effect) bool { return e.RecoverMaxLevel != "" }, func(e *Effect) { e.RecoverMaxLevel = "" }},
+	{"recover_levels", func(e *Effect) bool { return e.RecoverLevels != "" }, func(e *Effect) { e.RecoverLevels = "" }},
 	{"spell", func(e *Effect) bool { return e.Spell != "" }, func(e *Effect) { e.Spell = "" }},
 	{"from_level", func(e *Effect) bool { return e.FromLevel != "" }, func(e *Effect) { e.FromLevel = "" }},
 	{"uses", func(e *Effect) bool { return e.Uses != "" }, func(e *Effect) { e.Uses = "" }},
@@ -788,6 +795,11 @@ var effectErrorRules = []effectErrorRule{
 	}, ReasonReference},
 	{[]string{"the granted spell"}, fieldAttr(".spell"), ReasonReference},
 	{[]string{"uses must be"}, fieldAttr(".uses"), ReasonValue},
+	{[]string{"gives_slot is a spell level"}, fieldAttr(".gives_slot"), ReasonValue},
+	{[]string{"gives_slot needs"}, fieldAttr(".gives_slot"), ReasonValue},
+	{[]string{"spends_slot needs a heal"}, fieldAttr(".spends_slot"), ReasonValue},
+	{[]string{"recover_max_level is a spell level"}, fieldAttr(".recover_max_level"), ReasonValue},
+	{[]string{"recover_levels must be"}, fieldAttr(".recover_levels"), ReasonValue},
 	{[]string{"ability must be"}, fieldAttr(".ability"), ReasonValue},
 	{[]string{"ritual_only needs"}, fieldAttr(".ritual_only"), ReasonValue},
 	{[]string{"ritual_only and also_with_slot"}, fieldAttr(".also_with_slot"), ReasonValue},
@@ -816,6 +828,11 @@ func formulaAttr(e *Effect, has func(words ...string) bool) string {
 		{"temp_hp", e.TempHP},
 		{"dice", e.Dice},
 		{"value_per_point", e.ValuePerPoint},
+		{"gives_slot", e.GivesSlot},
+		{"recover_max_level", e.RecoverMaxLevel},
+		{"recover_levels", e.RecoverLevels},
+		{"max_cr_from", e.MaxCRFrom},
+		{"form_cost", e.FormCost},
 	} {
 		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
 			return "." + f.name

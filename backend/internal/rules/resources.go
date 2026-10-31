@@ -206,18 +206,5 @@ const arcaneRecoveryDivisor = 2
 // every level from 1 to 5 and the combined level (level times count, summed) within
 // the allowance. It returns the combined level.
 func ArcaneRecoveryCheck(slots map[int]int, wizardLevel int) (int, error) {
-	total := 0
-	for level, count := range slots {
-		if level < 1 || level > ArcaneRecoveryMaxSlotLevel {
-			return 0, fmt.Errorf("%w: a slot of level %d cannot be recovered", ErrArcaneRecovery, level)
-		}
-		if count < 1 {
-			return 0, fmt.Errorf("%w: the count of the level %d slots must be at least 1", ErrArcaneRecovery, level)
-		}
-		total += level * count
-	}
-	if allowance := ArcaneRecoveryAllowance(wizardLevel); total > allowance {
-		return total, fmt.Errorf("%w: the slots add up to level %d and the most is %d", ErrArcaneRecovery, total, allowance)
-	}
-	return total, nil
+	return SlotRecovery{MaxLevel: ArcaneRecoveryMaxSlotLevel, Levels: ArcaneRecoveryAllowance(wizardLevel)}.Check(slots)
 }

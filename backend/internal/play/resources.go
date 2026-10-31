@@ -53,10 +53,11 @@ type RestKeeper interface {
 	SpendHitDie(ctx context.Context, tx pgx.Tx, campaignID, characterID string, faces, face, extra int) (before, after *playv1.CharacterVitals, conMod, healed int, err error)
 	// SongOfRest is the die of the Song of Rest the party hears (0: nobody sings).
 	SongOfRest(ctx context.Context, tx pgx.Tx, campaignID string) (int, error)
-	// UseArcaneRecovery spends the wizard's use and gives back the expended slots (a map
+	// UseArcaneRecovery spends the use of a recovery and gives back the expended slots (a map
 	// of spell level to count), and returns the vitals before and after and the combined
-	// level recovered.
-	UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
+	// level recovered. The feature is the table feature whose slot_recovery effect it is, ""
+	// for the wizard's own Arcane Recovery.
+	UseArcaneRecovery(ctx context.Context, tx pgx.Tx, campaignID, characterID, feature string, slots map[int]int) (before, after *playv1.CharacterVitals, levels int, err error)
 	// CreateSpellSlot is Flexible Casting's creation of a slot; ConvertSpellSlot its
 	// conversion into sorcery points.
 	CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, cost int, err error)
@@ -64,6 +65,13 @@ type RestKeeper interface {
 	// UndoCreateSpellSlot and UndoConvertSpellSlot take them back (the master's undo).
 	UndoCreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, cost int) (*playv1.CharacterVitals, error)
 	UndoConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level, gain int) (*playv1.CharacterVitals, error)
+	// GiveSpellSlot adds a free slot of the level until the next long rest (a table action
+	// that turns uses into a slot), SpendSpellSlot expends a free one (a table action that
+	// heals by it); the Undo ones take them back.
+	GiveSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (*playv1.CharacterVitals, error)
+	UndoGiveSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (*playv1.CharacterVitals, error)
+	SpendSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (*playv1.CharacterVitals, error)
+	UndoSpendSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (*playv1.CharacterVitals, error)
 }
 
 // resourceBlocked is the failed_precondition of a rule's refusal, with the

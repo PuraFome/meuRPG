@@ -408,6 +408,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			AttackBonus: int(e.GetAttackBonus()), DamageBonus: int(e.GetDamageBonus()), ReachFt: int(e.GetReachFt()),
 			AttackName: e.GetAttackName(), DamageDice: e.GetDamageDice(),
 			MaxCR: e.GetMaxCr(), MaxCRFrom: e.GetMaxCrFrom(), FormCost: e.GetFormCost(), MagicalAttacks: e.GetMagicalAttacks(), NoFly: e.GetNoFly(), NoSwim: e.GetNoSwim(),
+			GivesSlot: e.GetGivesSlot(), SpendsSlot: e.GetSpendsSlot(), RecoverMaxLevel: e.GetRecoverMaxLevel(), RecoverLevels: e.GetRecoverLevels(),
 			Dice: e.GetDice(), DiceSides: int(e.GetDiceSides()), DamageType: e.GetDamageType(), Weapon: e.GetWeapon(),
 			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
 			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),

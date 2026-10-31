@@ -77,6 +77,11 @@ type Action struct {
 	// Both are 0 for an action with no Resource. See actionspend.go.
 	Cost    int `json:",omitempty"`
 	CostMax int `json:",omitempty"`
+	// GivesSlot is the level of the spell slot each use creates from the uses it spends (0: none);
+	// SpendsSlot says each use spends a spell slot of the level the player picks and heals by it:
+	// the Heal at level 1 and HealPerPoint for each level above. See actionslots.go.
+	GivesSlot  int  `json:",omitempty"`
+	SpendsSlot bool `json:",omitempty"`
 	// Result is what a use of the action gives: hit points regained, temporary hit points.
 	Result ActionResult `json:",omitzero"`
 }
@@ -135,6 +140,7 @@ func (x *deriver) resourcesAndActions() {
 	x.d.AttacksPerAction = 1
 	x.criticalAndStyles()
 	x.wildShapeRule()
+	x.slotRecoveries()
 	x.extraAttacks()
 	// Two classes may share a resource name (Channel Divinity of the cleric and
 	// the paladin); the session counts them as one pool, which has the larger
@@ -235,6 +241,9 @@ func (x *deriver) grantAction(a activeEffect) {
 			return // the resource is not there: no ki, no ki action
 		}
 		act.Resource = spent
+	}
+	if !x.slotAction(&act, a) {
+		return
 	}
 	x.costAndResult(&act, a)
 	for _, route := range x.routes(act, a.effect.TextPT) {

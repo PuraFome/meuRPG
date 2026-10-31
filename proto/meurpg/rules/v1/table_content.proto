@@ -360,6 +360,24 @@ message TableEffect {
   bool magical_attacks = 70;
   bool no_fly = 71;
   bool no_swim = 72;
+  // grant_action: the action turns the uses it spends (`resource` and `cost`) into a spell
+  // slot of the level this Int formula gives (1 to 9). The slot is free until the next long
+  // rest, like a slot Flexible Casting makes. It needs `resource` and takes no heal, no
+  // temp_hp and no cost_max.
+  string gives_slot = 73;
+  // grant_action: the action spends a spell slot, at the level the player picks at use
+  // (`spend`, 1 to 9, a level with a free slot), and heals: `heal` at level 1 plus
+  // `value_per_point` (dice, the same sides) for each level above 1. It needs `heal` and
+  // takes no resource, no cost, no cost_max and no temp_hp.
+  bool spends_slot = 74;
+  // slot_recovery: the character takes back expended spell slots after a rest, as the
+  // wizard's Arcane Recovery does. `resource` is the resource whose use each recovery
+  // spends (a resource effect of the same feature gives the uses and the rest they come
+  // back on), `recover_max_level` an Int formula for the highest level of a slot it takes
+  // back (1 to 9) and `recover_levels` an Int formula for the combined level of the slots
+  // (a level 2 slot counts 2). Both are required.
+  string recover_max_level = 75;
+  string recover_levels = 76;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

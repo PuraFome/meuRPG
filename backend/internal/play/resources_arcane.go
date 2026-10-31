@@ -25,6 +25,8 @@ import (
 type arcaneRecoveryEvent struct {
 	Slots  []arcaneSlot `json:"slots"`
 	Levels int32        `json:"levels"`
+	// Feature is the table feature whose slot_recovery effect the recovery was; empty for the wizard's own.
+	Feature string `json:"feature,omitempty"`
 }
 
 type arcaneSlot struct {
@@ -54,6 +56,9 @@ func arcaneSlots(req *playv1.UseArcaneRecoveryRequest) (map[int]int, error) {
 	return out, nil
 }
 
+// maxFeatureKeyLen bounds the feature key a request names (a table feature's key is a slug and a hash).
+const maxFeatureKeyLen = 200
+
 // maxSlotsPerLevel bounds the count a request names (no sheet has more slots of a level).
 const maxSlotsPerLevel = 9
 
@@ -64,6 +69,8 @@ type arcaneCall struct {
 	keyText  string
 	hash     *string
 	slots    map[int]int
+	// feature is the table feature whose slot_recovery effect the call uses, "" for the wizard's own.
+	feature string
 }
 
 // arcaneRun is what the transaction of UseArcaneRecovery leaves for after the commit.
@@ -91,7 +98,10 @@ func readArcaneCall(ctx context.Context, req *playv1.UseArcaneRecoveryRequest) (
 	if err != nil {
 		return arcaneCall{}, err
 	}
-	return arcaneCall{m: m, charText: characterID.String(), keyText: key.String(), hash: idem.Hash(req), slots: slots}, nil
+	if len(req.GetFeatureKey()) > maxFeatureKeyLen {
+		return arcaneCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("feature_key is too long"))
+	}
+	return arcaneCall{m: m, charText: characterID.String(), keyText: key.String(), hash: idem.Hash(req), slots: slots, feature: req.GetFeatureKey()}, nil
 }
 
 // UseArcaneRecovery implements playv1connect.ResourceServiceHandler: the wizard's
@@ -146,7 +156,7 @@ func (s *Service) arcaneRecoveryTx(ctx context.Context, tx pgx.Tx, call arcaneCa
 	if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
 		return err
 	}
-	_, afterVitals, levels, err := s.vitals.UseArcaneRecovery(ctx, tx, call.m.CampaignID, call.charText, call.slots)
+	_, afterVitals, levels, err := s.vitals.UseArcaneRecovery(ctx, tx, call.m.CampaignID, call.charText, call.feature, call.slots)
 	if err != nil {
 		return resourceError(err)
 	}
@@ -155,6 +165,7 @@ func (s *Service) arcaneRecoveryTx(ctx context.Context, tx pgx.Tx, call arcaneCa
 	}
 	run.after = afterVitals
 	run.ev = arcaneEventOf(call.slots, levels)
+	run.ev.Feature = call.feature
 	return s.appendKeyedEvent(ctx, q, keyedEvent{
 		sessionID: session.ID, kind: eventArcaneRecovery, userID: call.m.UserID, characterID: &call.charText, key: call.keyText, hash: call.hash,
 	}, run.ev)
@@ -169,7 +180,7 @@ func mustFollowShortRest(ctx context.Context, q *playdb.Queries, sessionID strin
 		return fmt.Errorf("read the latest rest: %w", err)
 	}
 	if kind != rules.RestShort {
-		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_SHORT_REST, "Arcane Recovery needs a short rest first")
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_SHORT_REST, "the recovery needs a short rest first")
 	}
 	return nil
 }
