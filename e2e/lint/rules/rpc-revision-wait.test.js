@@ -38,7 +38,7 @@ test('reports the call a page action follows without a revision wait', async () 
     .readFileSync(path.join(fixtures, 'bad.ts'), 'utf8')
     .split('\n')
     .flatMap((line, i) => (line.endsWith('// error') ? [i + 1] : []));
-  assert.ok(marked.length >= 14);
+  assert.equal(marked.length, 14);
   assert.deepEqual(
     messages.map((m) => [m.ruleId, m.line]),
     marked.map((line) => ['meurpg/rpc-revision-wait', line]),

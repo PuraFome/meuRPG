@@ -10,9 +10,9 @@
 // (`waitForEncounterRevision`) or a page load (`goto`, `openSessionPage`, `openLive`) decides: an action first is an error.
 // `goto` and `reload` are not actions: a fresh load reads the state itself.
 //
-// A callback runs where it is written when an awaited call takes it (`await test.step(..)`): the rule reads into it, before and
+// A callback runs where it is written when a directly awaited call takes it (`await test.step(..)`): the rule reads into it, before and
 // after the call. A callback the page calls later (`route`, `exposeFunction`, a `waitForEvent` predicate, `evaluate`) or one
-// nobody awaits (`page.on(..)`) is a different moment: the rule reads neither into it nor past it.
+// nobody awaits (`page.on(..)`) is a different moment: the rule reads neither into it nor past it. Callbacks inside `Promise.all`, `expect.poll` or `toPass` are not followed.
 //
 // A receiver is a Playwright object by where its type is declared (playwright-core), not by its name: an intersection, a union,
 // a generic that extends `Locator` count by their members; an app type called `Page` does not.

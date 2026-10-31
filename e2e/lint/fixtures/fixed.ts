@@ -98,3 +98,17 @@ export async function listens(m: Page): Promise<void> {
   });
   await m.getByRole('button').click();
 }
+
+export async function exposesAFunction(m: Page): Promise<void> {
+  await combatRPC(m, 'EndTurn');
+  await m.exposeFunction('report', async () => {
+    await m.getByRole('button').click();
+  });
+}
+
+export async function startsAStepWithoutAwaiting(m: Page): Promise<void> {
+  void step('later', async () => {
+    await combatRPC(m, 'EndTurn');
+  });
+  await m.getByRole('button').click();
+}

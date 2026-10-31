@@ -23,6 +23,7 @@ export interface Page {
   keyboard: Keyboard;
   mouse: Mouse;
   route(url: string, handler: () => Promise<void>): Promise<void>;
+  exposeFunction(name: string, callback: () => Promise<void>): Promise<void>;
   waitForEvent(name: string, predicate?: () => boolean): Promise<void>;
   on(event: string, handler: () => Promise<void>): void;
 }
