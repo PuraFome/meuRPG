@@ -40,6 +40,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
@@ -244,7 +245,7 @@ func newStack(t *testing.T) *stack {
 	}
 	chars, err := characters.New(characters.Config{
 		Pool: pool, Profiles: s.users, Members: camps,
-		Content: characters.NewTableSource(pool, srd, camps), SRD: srd, Logger: logger, Now: clock.Now,
+		Content: characters.NewTableSource(pool, srd, camps), SRD: srd, Roller: dicetest.New(), Logger: logger, Now: clock.Now,
 	})
 	if err != nil {
 		t.Fatalf("characters.New() error = %v", err)
@@ -254,7 +255,7 @@ func newStack(t *testing.T) *stack {
 	chars.SetGallery(sessionMaps)
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
-		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Logger: logger, Now: clock.Now,
+		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Roller: dicetest.New(), Logger: logger, Now: clock.Now,
 		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
