@@ -128,7 +128,7 @@ test: ## Run backend Go tests with the race detector
 # backend/internal/archtest/before_ready.txt. ONLY='internal/play$' (a regex on the package directory)
 # runs only the packages whose directory matches.
 before-ready: ## Run the golden, frozen, fixture and inventory tests a change makes stale (needs MEURPG_TEST_DATABASE_URL); run it before writing `ready:`
-	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY='$(ONLY)' bash .github/scripts/before-ready.sh
+	TEST_DATABASE_URL='$(TEST_DATABASE_URL)' BEFORE_READY_ONLY='$(or $(ONLY),$(BEFORE_READY_ONLY))' bash .github/scripts/before-ready.sh
 
 run: ## Run the API server on the host (needs `make up` for the DB)
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/api

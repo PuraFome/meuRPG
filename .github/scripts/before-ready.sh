@@ -62,7 +62,9 @@ fi
 export MEURPG_REQUIRE_DB=1
 
 [ -r "$list" ] || { echo "before-ready: cannot read $list" >&2; exit 2; }
-packages="$(run_lines | cut -f1 | sort -u | grep -E -- "${BEFORE_READY_ONLY:-.}" || true)"
+only="${BEFORE_READY_ONLY:-.}"
+echo | grep -E -- "$only" >/dev/null 2>&1 || [ $? -eq 1 ] || { echo "before-ready: BEFORE_READY_ONLY '$only' is not a valid regex" >&2; exit 2; }
+packages="$(run_lines | cut -f1 | sort -u | grep -E -- "$only" || true)"
 [ -n "$packages" ] || { echo "before-ready: BEFORE_READY_ONLY matches no package of the list" >&2; exit 2; }
 count="$(echo "$packages" | wc -l | tr -d ' ')"
 

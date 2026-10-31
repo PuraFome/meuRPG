@@ -279,21 +279,14 @@ func TestBeforeReadyListIsWhole(t *testing.T) {
 	}
 }
 
-// namesRegex is a regex that only lists names: ^(TestA|TestB)$.
-var namesRegex = regexp.MustCompile(`^\^\(([A-Za-z0-9_|]+)\)\$$`)
+// groupRegex is a part with one group of plain names: ^TestLasting(Core|RPC), ^(TestA|TestB)$.
+var groupRegex = regexp.MustCompile(`^([^()]*)\(([A-Za-z0-9_|]+)\)([^()]*)$`)
 
-// alternatives splits a regex into the alternatives to check one by one, so a renamed test is
-// found even when the others of its line still match: the names of ^(TestA|TestB)$, or the
-// parts of a regex at its top-level bars.
+// alternatives splits a regex into the alternatives to check one by one, so a renamed or
+// deleted sibling is found even when the others of its line still match: the parts at its
+// top-level bars, each with its one group of names expanded (^Test(A|B)$ is ^TestA$ and ^TestB$).
 func alternatives(regex string) []string {
-	if m := namesRegex.FindStringSubmatch(regex); m != nil {
-		var out []string
-		for _, name := range strings.Split(m[1], "|") {
-			out = append(out, "^"+name+"$")
-		}
-		return out
-	}
-	var out []string
+	var parts []string
 	depth, start := 0, 0
 	for i, r := range regex {
 		switch r {
@@ -303,12 +296,24 @@ func alternatives(regex string) []string {
 			depth--
 		case '|':
 			if depth == 0 {
-				out = append(out, regex[start:i])
+				parts = append(parts, regex[start:i])
 				start = i + 1
 			}
 		}
 	}
-	return append(out, regex[start:])
+	parts = append(parts, regex[start:])
+	var out []string
+	for _, part := range parts {
+		m := groupRegex.FindStringSubmatch(part)
+		if m == nil {
+			out = append(out, part)
+			continue
+		}
+		for _, name := range strings.Split(m[2], "|") {
+			out = append(out, m[1]+name+m[3])
+		}
+	}
+	return out
 }
 
 func anyMatch(re *regexp.Regexp, names []string) bool {
@@ -342,7 +347,7 @@ func listed(ls []beforeReadyLine, name string) bool {
 // TestBeforeReadyDetector keeps the guard's eyes honest on a fixture package
 // (testdata/pinfixture): what compares with a stored file is found through a
 // constant, a flag, the frozen digests and a helper, and a test that merely
-// dereferences a variable named update is not.
+// dereferences a variable that is not a flag (counter) is not.
 func TestBeforeReadyDetector(t *testing.T) {
 	t.Parallel()
 	pins, all := pinningTests(t, filepath.Join("testdata", "pinfixture"), nil)
@@ -356,7 +361,12 @@ func TestBeforeReadyDetector(t *testing.T) {
 	if got := alternatives(`AuthorizationMatrix$|^TestEvery$`); !slices.Equal(got, []string{`AuthorizationMatrix$`, `^TestEvery$`}) {
 		t.Errorf("alternatives = %q", got)
 	}
-	if got := alternatives(`(Characterization|Golden)$|^TestX$`); len(got) != 2 {
-		t.Errorf("alternatives = %q, want 2", got)
+	want := []string{`Characterization$`, `Golden$`, `^TestX$`}
+	if got := alternatives(`(Characterization|Golden)$|^TestX$`); !slices.Equal(got, want) {
+		t.Errorf("alternatives = %q, want %q", got, want)
+	}
+	want = []string{`Frozen`, `^TestLastingCore`, `^TestLastingRPC`, `^TestA$`, `^TestB$`}
+	if got := alternatives(`Frozen|^TestLasting(Core|RPC)|^(TestA|TestB)$`); !slices.Equal(got, want) {
+		t.Errorf("alternatives = %q, want %q", got, want)
 	}
 }

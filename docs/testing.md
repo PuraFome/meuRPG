@@ -129,8 +129,8 @@ export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?ssl
 make before-ready
 ```
 
-A whole run took about 20 minutes on a 4-vCPU VM against an on-disk database, with four packages at once: `internal/play` alone takes 12 minutes, because each scenario of its seven `runGolden` goldens builds a database of its own, and the database is the limit: `go test -parallel 16` made the play group slower (22 minutes with the frozen tests added), not faster.
-While you work, run the groups your change touches: `make before-ready ONLY='internal/play$'` (a regex on the package directory; `BEFORE_READY_ONLY` is the same variable), and the whole list before `ready:`.
+A full run takes about 20 minutes on 4 vCPUs against the on-disk database (20m19s measured, four packages at once). `internal/play` is the longest group, about 13 minutes, because each scenario of its seven `runGolden` goldens builds a database of its own and the database is the limit: raising `go test -parallel` to 16 made the play group slower (about 22 minutes against 12.7).
+While you work, run the groups your change touches: `make before-ready ONLY='internal/play$'` (a regex on the package directory, with no single quote in it; `BEFORE_READY_ONLY` is the same variable), and the whole list before `ready:`.
 `BEFORE_READY_JOBS` sets how many packages run at once (4 by default).
 
 Without `MEURPG_TEST_DATABASE_URL` it stops and says how to set it, because those tests would skip and pass for nothing.
