@@ -14,10 +14,10 @@ import { describeInviteErrorCode } from '../../core/campaigns/invite-errors';
  * this page's generic follow-up instead, so nobody reads the same
  * instruction twice.
  */
+const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable']);
+
 /** The reasons of a link that is wrong or old: a character set aside for the visitor is taken with another link. */
 const WRONG_LINK_REASONS = new Set(['expired', 'invalid']);
-
-const REASONS_WITH_OWN_ADVICE = new Set(['used_up', 'not_found', 'unavailable']);
 
 /**
  * "/invite/error?reason=<code>" (public): where the server redirects after
