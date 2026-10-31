@@ -1,12 +1,12 @@
 package play
 
 import (
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // A creature's save with advantage from Magic Resistance (RN-20, RN-29): the master reads the mode and
