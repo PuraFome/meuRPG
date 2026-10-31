@@ -127,11 +127,12 @@ func selectLines(o options, lines []Line, raw []byte, stdout io.Writer) error {
 		fmt.Fprintln(stdout, note)
 	}
 	selected := len(run)
+	narrowed := outside(run, onlyRe)
 	run, skipped = within(run, onlyRe), withinLines(skipped, onlyRe)
 	if err := os.WriteFile(o.out, []byte(filtered(string(raw), run)), 0o600); err != nil {
 		return err
 	}
-	report(stdout, run, skipped, selected, o.only)
+	report(stdout, run, skipped, narrowed, selected, o.only)
 	return nil
 }
 
@@ -212,13 +213,13 @@ func filtered(raw string, run []Decision) string {
 }
 
 // report says what runs and why, and what is skipped. selected is how many lines the selection
-// chose before -only narrowed them (only is that pattern, for the message).
-func report(w io.Writer, run []Decision, skipped []Line, selected int, only string) {
+// chose before -only narrowed them, and narrowed the lines -only left out (only is that pattern).
+func report(w io.Writer, run []Decision, skipped []Line, narrowed []Line, selected int, only string) {
 	switch {
 	case selected == 0:
 		fmt.Fprintln(w, "before-ready: the change touches no Go package, proto file, migration or input of the list: nothing to run")
 	case len(run) == 0:
-		fmt.Fprintf(w, "before-ready: nothing to run: BEFORE_READY_ONLY '%s' matches none of the selected packages (BEFORE_READY_ALL=1 selects every line)\n", only)
+		fmt.Fprintf(w, "before-ready: nothing ran: the change selects none of the lines that BEFORE_READY_ONLY '%s' keeps (BEFORE_READY_ALL=1 runs them)\n", only)
 	}
 	byPkg := map[string][]string{}
 	for _, d := range run {
@@ -246,6 +247,23 @@ func report(w io.Writer, run []Decision, skipped []Line, selected int, only stri
 	if len(names) > 0 {
 		fmt.Fprintf(w, "  skip  %s: the change reaches none of their lines (BEFORE_READY_ALL=1 runs them)\n", strings.Join(names, ", "))
 	}
+	if left := Packages(All(narrowed, "")); len(left) > 0 {
+		fmt.Fprintf(w, "  skip  %s: selected by the change, but not matched by BEFORE_READY_ONLY '%s'\n", strings.Join(left, ", "), only)
+	}
+}
+
+// outside returns the lines of the decisions whose package the pattern does not match.
+func outside(ds []Decision, re *regexp.Regexp) []Line {
+	if re == nil {
+		return nil
+	}
+	var out []Line
+	for _, d := range ds {
+		if !re.MatchString(d.Line.Pkg) {
+			out = append(out, d.Line)
+		}
+	}
+	return out
 }
 
 // within keeps the decisions whose package the pattern matches; a nil pattern keeps all.

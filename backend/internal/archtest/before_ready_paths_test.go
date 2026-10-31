@@ -570,7 +570,9 @@ func TestBeforeReadyUpwardPathsDetector(t *testing.T) {
 }
 
 // up writes a path that goes up n directories and then down rest, as the cleaned form the
-// detector reports (the tests below do not write ".." themselves: the guard reads this file too).
+// detector reports. The expected values of the detector tests are written with it so that they
+// hold no ".." literal that reaches outside backend/ (the guard reads this file too); the few
+// literals that remain (goesUp and its table, upSegment) stay inside backend/.
 func up(n int, rest string) string {
 	parts := slices.Repeat([]string{".."}, n)
 	return path.Join(append(parts, rest)...)
@@ -591,8 +593,16 @@ func TestBeforeReadyUpwardPathsAssignedMoreThanOnce(t *testing.T) {
 		"TestOnlyOwnDirectory":             nil,
 	}
 	for name, paths := range want {
-		if !slices.Equal(got[name].paths, paths) {
-			t.Errorf("%s reaches %q, want %q", name, got[name].paths, paths)
+		r, found := got[name]
+		if !found {
+			t.Errorf("the fixture has no %s: the test was renamed or removed", name)
+			continue
+		}
+		if !slices.Equal(r.paths, paths) {
+			t.Errorf("%s reaches %q, want %q", name, r.paths, paths)
+		}
+		if len(r.problems) != 0 {
+			t.Errorf("%s: unexpected problems %q", name, r.problems)
 		}
 	}
 }

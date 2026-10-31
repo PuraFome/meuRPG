@@ -146,7 +146,7 @@ func TestBeforeReadyOnlyNarrowsTheListToRun(t *testing.T) {
 	if !strings.Contains(string(got), "regen play") || !strings.Contains(string(got), "regen stored") || strings.Contains(string(got), "regen api") || strings.Contains(string(got), "regen leak") {
 		t.Errorf("list to run:\n%s", got)
 	}
-	if !strings.Contains(stdout, "internal/play") || strings.Contains(stdout, "cmd/api") {
+	if !strings.Contains(stdout, "  run   internal/play") || strings.Contains(stdout, "  run   cmd/api") {
 		t.Errorf("stdout:\n%s", stdout)
 	}
 }
@@ -218,5 +218,34 @@ func TestRegenForReplacesTheTestName(t *testing.T) {
 	}
 	if got := regenFor(lines, "internal/x", "TestB"); got != "by hand" {
 		t.Errorf("TestB (the first matching line wins): %q", got)
+	}
+}
+
+// The lines the change selected but ONLY left out are listed as skipped, with the reason.
+func TestBeforeReadyOnlyListsWhatItLeftOut(t *testing.T) {
+	t.Parallel()
+	_, stdout, _ := runMain(t, "-list", writeList(t), "-out", filepath.Join(t.TempDir(), "o"), "-all", "-only", "internal/play$")
+	var skip string
+	for _, l := range strings.Split(stdout, "\n") {
+		if strings.HasPrefix(l, "  skip") {
+			skip = l
+		}
+	}
+	if !strings.Contains(skip, "cmd/api") || !strings.Contains(skip, "migrations") || !strings.Contains(skip, "BEFORE_READY_ONLY") || strings.Contains(skip, "internal/play,") {
+		t.Errorf("skip line = %q", skip)
+	}
+}
+
+// With ONLY set and nothing left to run, the output says that nothing ran and why, so it does not
+// read as a pass for someone re-running a failure.
+func TestBeforeReadyReportsThatOnlyLeftNothingToRun(t *testing.T) {
+	t.Parallel()
+	lines, _ := setup(t)
+	var out bytes.Buffer
+	report(&out, nil, nil, lines[:2], 2, "internal/nowhere")
+	for _, want := range []string{"nothing ran", "BEFORE_READY_ONLY 'internal/nowhere'", "BEFORE_READY_ALL=1"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, out.String())
+		}
 	}
 }
