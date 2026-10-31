@@ -70,6 +70,7 @@ Events, after `ready`:
 | `puzzle_changed` | A puzzle changed; only its id |
 | `calling_you` | The master's nudge, to one player's streams only |
 | `free_roll_rolled` | A table roll of the free dice roller, carried whole, to everyone; a secret roll is sent to nobody ([The free dice roller](free-dice-roller.md)) |
+| `legendary_action_spent` | The master's spend of legendary actions on a text option; `secret`, so it is sent to nobody but the master (an `encounter_changed` without content goes to the players) ([Combat](combat.md#legendary-actions-557)) |
 | `session_message_added` | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
 | `master_typing` | The master is typing: content-free, to the players |
 | `session_ended` | The session ended; the event carries the session id |

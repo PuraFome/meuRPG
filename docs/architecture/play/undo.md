@@ -8,6 +8,7 @@ The code is `combat_undo.go` and `combat_undo_kinds.go`.
 
 The last action is the session's latest `session_events` row that an undo has not yet undone (`lastAction`, looking at the latest 100 events).
 It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell (a teleport puts the caster back on the square it left), a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
+A legendary action is given back by the undo of the event that spent it (`spend_cost` on the event, `legendaryBack`): the master-only text spend (`legendary_action_spent`), a legendary attack and a legendary move. An undo cannot cross the reset of the creature's own turn: the turn passing is the last event and closes the chain, so only the spends after the last turn change can be undone. A legendary attack's undo gives back only the cost (it spent no action, attack or reaction).
 The death confirmation cannot be undone, and neither can a contest, a hit rider or a turn passing.
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 

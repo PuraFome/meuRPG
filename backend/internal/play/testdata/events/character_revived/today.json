@@ -452,6 +452,8 @@
     "x"
   ],
   "extra_used": true,
+  "spend_cost": 1,
+  "spend_name": "x",
   "action_before": true,
   "bonus_before": true,
   "reaction_before": true,

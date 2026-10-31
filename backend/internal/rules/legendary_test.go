@@ -157,3 +157,24 @@ func TestLegendaryProfileOfOrdinaryCreatures(t *testing.T) {
 		t.Error("adult red dragon is not legendary")
 	}
 }
+
+// TestLegendaryMoveSpeedPercent: the tarrasque's Move is half its speed, the vampires' is all of it.
+func TestLegendaryMoveSpeedPercent(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]int{"monster:tarrasque": 50, "monster:vampire-vampire": 100} {
+		p, ok := c.LegendaryProfile(key)
+		if !ok {
+			t.Fatalf("%s: no profile", key)
+		}
+		var got int
+		for _, o := range p.Options {
+			if o.Kind == LegendaryKindMove {
+				got = o.MoveSpeedPercent()
+			}
+		}
+		if got != want {
+			t.Errorf("%s: the move walks %d%% of the speed, want %d%%", key, got, want)
+		}
+	}
+}

@@ -1475,6 +1475,25 @@ service CombatService {
   //     has no such action, or the action is an attack roll or a Multiattack: those are made with
   //     TakeAction).
   rpc UseCreatureAction(UseCreatureActionRequest) returns (UseCreatureActionResponse);
+
+  // The master spends the legendary actions of a creature on one of its stat block's options
+  // that the engine does not resolve (kind "text": a gaze, a cantrip, a teleport): the spend is
+  // counted and the master plays the option by hand. An option of kind "attack" is made with
+  // RollAttack (`legendary_option`) and one of kind "move" with MoveCombatant
+  // (`legendary_option`); the three share one rule (SRD 5.1, "Legendary Actions"): a creature
+  // spends them only while another creature has the turn, never on its own turn, never when it is
+  // defeated or incapacitated, at the cost of the option and no more than it has left; they come
+  // back when its own turn starts. Master only, and the line it writes is the master's alone.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: the combat or the combatant is not found; a player gets
+  //     `permission_denied`.
+  //   - `invalid_argument`: no option key.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, LEGENDARY_UNAVAILABLE (the combatant
+  //     has no legendary actions, is defeated or incapacitated), LEGENDARY_OWN_TURN,
+  //     LEGENDARY_OPTION_UNKNOWN, LEGENDARY_WRONG_KIND (an attack or move option) and
+  //     LEGENDARY_NONE_LEFT (the cost is more than what is left). Nothing is spent.
+  rpc SpendLegendaryAction(SpendLegendaryActionRequest) returns (SpendLegendaryActionResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1934,6 +1953,22 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON = 114;
   // TakeAction with end_state: the state the action would end is not on. Nothing changes.
   ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON = 115;
+  // SpendLegendaryAction, RollAttack and MoveCombatant with a legendary option: the creature
+  // has the turn. Legendary actions are spent at the end of another creature's turn. Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_OWN_TURN = 116;
+  // The same: the option costs more than the legendary actions the creature has left. Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT = 117;
+  // The same: the creature's stat block has no legendary option with that key.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN = 118;
+  // The same: the option is of another kind than the call makes (SpendLegendaryAction takes
+  // text options, RollAttack attack options, MoveCombatant move options), or its attack is
+  // not the `attack_key` named.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND = 119;
+  // The same: the combatant is no creature with legendary actions, or it is defeated or
+  // incapacitated.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE = 120;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2318,6 +2353,22 @@ message CreatureActionResult {
   repeated CreatureActionTarget targets = 8;
   // The pending damages the action opened. Only the master.
   repeated PendingDamage pending_damages = 9;
+}
+
+// SpendLegendaryActionRequest spends the legendary actions of an option of kind "text".
+message SpendLegendaryActionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The legendary creature (a UUID): an NPC with legendary actions.
+  string combatant_id = 3;
+  // The option's key in its stat block (LegendaryOption.key, "wing-attack").
+  string option_key = 4;
+  string idempotency_key = 5;
+}
+
+// SpendLegendaryActionResponse returns the combat after the spend.
+message SpendLegendaryActionResponse {
+  Encounter encounter = 1;
 }
 
 // UseCreatureActionResponse returns the combat and what the action did.
@@ -2776,6 +2827,10 @@ message LegendaryState {
   int32 resistance_left = 4;
   // The stat block's legendary actions, in its order.
   repeated LegendaryOption options = 5;
+  // Whether a spend is allowed right now: the combat is running, another creature has the
+  // turn, and this one is neither defeated nor incapacitated. An option can still be
+  // refused for its cost (LegendaryOption.affordable).
+  bool usable_now = 6;
 }
 
 // LegendaryOption is one of the legendary actions of a stat block.
@@ -2999,6 +3054,13 @@ message MoveCombatantRequest {
   // begins. col and row are ignored. A player sending it gets `permission_denied`,
   // and a combatant already on the map is refused with `invalid_argument`.
   bool place = 10;
+  // Only the master: the key of a legendary option of kind "move" (LegendaryOption.key) of the
+  // combatant's stat block. The creature walks off its own turn by its usual rules and speed, on
+  // a budget of its own: a full speed that does not use, and does not depend on, the movement of
+  // its own turn, at the cost of the option in legendary actions. A walk only: no jump, no forced
+  // move, no placement. It makes no opportunity offer. Refused (EncounterBlocked LEGENDARY_*) on
+  // its own turn, with too few actions left, or for an option that is not a move.
+  string legendary_option = 11;
 }
 
 // MoveCombatantResponse returns the combat after the move.
@@ -3738,6 +3800,13 @@ message RollAttackRequest {
   // True: the attack is the weapon attack of the extra action an effect gives
   // (Velocidade): it spends that action, not the Attack action, and it is one weapon attack.
   bool use_extra_action = 101;
+  // Only the master: the key of a legendary option of kind "attack" (LegendaryOption.key) of the
+  // attacker's stat block, whose attack is `attack_key`. The attack is made as the option: off the
+  // creature's own turn, at the end of another's, spending the option's cost in legendary actions
+  // instead of the action, the attacks and the reaction. One attack for each spend. Refused
+  // (EncounterBlocked LEGENDARY_*) on its own turn, with too few actions left, or for an option
+  // that is not an attack or is not this attack. Everything else of the attack is as any other.
+  string legendary_option = 102;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -5085,6 +5154,12 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // The master spent legendary actions on an option of kind "text" (SpendLegendaryAction, #557):
+  // the actor is the creature and `legendary_spent` has the option and its cost ("gastou 2 ações
+  // lendárias: Wing Attack"). Only the master gets the line, and no player's log shows it or
+  // counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED
+  // line, the same one a player reads of any other creature.
+  COMBAT_LOG_KIND_LEGENDARY_SPENT = 27;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5308,6 +5383,8 @@ message CombatLogEntry {
   // save gave and the table's reminder. `spell.targets` has the saves and the damage; the spell
   // key is the action's.
   CombatLogCreatureAction creature_action = 113;
+  // LEGENDARY_SPENT: the option and what it cost. The master's alone.
+  CombatLogLegendarySpent legendary_spent = 114;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5407,6 +5484,14 @@ enum CombatLogEffectChange {
   // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
   // `reason` zone_enter, zone_start, zone_cast or zone_end, the roll, and the damage in `amount`.
   COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
+}
+
+// CombatLogLegendarySpent is the master's line of a spend of legendary actions.
+message CombatLogLegendarySpent {
+  // The option's name as the stat block has it (SRD 5.1, in English).
+  string option_name = 1;
+  // How many legendary actions it took.
+  int32 cost = 2;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

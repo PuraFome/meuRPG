@@ -961,6 +961,31 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
   });
 });
 
+describe('the legendary actions the master spent (#557): a line for the master alone', () => {
+  const spent = entry({
+    kind: CombatLogKind.LEGENDARY_SPENT,
+    actorLabel: 'Draco',
+    legendarySpent: { optionName: 'Wing Attack', cost: 2 },
+  } as never);
+
+  it("names the option and the cost, and flags the line as the master's alone", () => {
+    const line = logLine(spent);
+    expect(line?.hidden).toBe(true);
+    expect(line?.actor).toBe('Draco');
+    expect(line?.text).toBe('gastou 2 ações lendárias: Wing Attack');
+  });
+
+  it('writes a cost of 1 in the singular, and says what an undo takes back', () => {
+    const one = entry({
+      kind: CombatLogKind.LEGENDARY_SPENT,
+      actorLabel: 'Draco',
+      legendarySpent: { optionName: 'Detect', cost: 1 },
+    } as never);
+    expect(logLine(one)?.text).toBe('gastou 1 ação lendária: Detect');
+    expect(undoLabel(one)).toBe('o gasto de ações lendárias do Draco');
+  });
+});
+
 describe('the monsters the master put in (MR-042, RN-29): a line for the master alone, with the hit points and the dice', () => {
   it("writes the rolled hit points with their dice, and flags the line as the master's alone", () => {
     const line = logLine(

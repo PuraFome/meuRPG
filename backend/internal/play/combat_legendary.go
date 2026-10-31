@@ -5,6 +5,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -35,16 +36,17 @@ func (s *Service) addLegendaryProfiles(ctx context.Context, campaignID string, n
 // legendaryView is the master's copy of what a legendary creature has left (RN-20,
 // RN-29), from its stat block's profile and the creature_spent it keeps. nil for a
 // creature without legendary actions or resistance: the field is then absent.
-func legendaryView(p rules.LegendaryProfile, rawSpent []byte) *playv1.LegendaryState {
+func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.Encounter) *playv1.LegendaryState {
 	if !p.IsLegendary() {
 		return nil
 	}
-	spent := creatureSpentOf(rawSpent)
+	spent := creatureSpentOf(who.CreatureSpent)
 	out := &playv1.LegendaryState{
 		ActionsPerRound:  conv.Int32(p.PerRound),
 		ActionsLeft:      conv.Int32(max(p.PerRound-spent[spentLegendaryActions], 0)),
 		ResistancePerDay: conv.Int32(p.ResistancePerDay),
 		ResistanceLeft:   conv.Int32(max(p.ResistancePerDay-spent[spentLegendaryResistance], 0)),
+		UsableNow:        legendaryNow(enc, who, p) == nil,
 	}
 	for _, o := range p.Options {
 		out.Options = append(out.Options, &playv1.LegendaryOption{

@@ -438,7 +438,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names)
 	if v.master { // the creature of a monster: the master's alone (RN-20)
 		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
-		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c.CreatureSpent)
+		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c, e)
 	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 		shareEconomy(p, c)

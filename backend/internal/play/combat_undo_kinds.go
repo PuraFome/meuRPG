@@ -49,6 +49,7 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventWildShapeStarted:  (*undoer).wildShapeStarted,
 	eventWildShapeEnded:    (*undoer).wildShapeEnded,
 	eventFamiliarSight:     (*undoer).familiarSight,
+	eventLegendarySpent:    (*undoer).legendaryBack,
 }
 
 // find is the combatant of that ID among the ones the undo found.
@@ -273,6 +274,9 @@ func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev acti
 			return err
 		}
 	}
+	if ev.SpendCost > 0 { // a legendary attack spent no action, attack or reaction of the creature's: only its cost
+		return u.legendaryBack(ctx, ev)
+	}
 	if ev.AsReaction {
 		return u.setEconomy(ctx, who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
 	}
@@ -488,6 +492,9 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	if err := u.moverBack(ctx, who, ev); err != nil {
+		return err
+	}
+	if err := u.legendaryBack(ctx, ev); err != nil {
 		return err
 	}
 	// Standing up from Prone also took the condition off (combat_standup.go).

@@ -467,6 +467,13 @@ type actionEvent struct {
 	FollowUpLines []string      `json:"follow_up_lines,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
+	// SpendCost is how many of the actor's allowance of legendary actions the event spent (an
+	// attack, a move or a text option made as a legendary action), and SpendName the stat block's
+	// name of the option, kept on the text option's event alone: the undo gives the cost back, and
+	// the master's line names the option. Neutral names on purpose: no player-visible payload
+	// carries the word (RN-20, RN-29).
+	SpendCost int32  `json:"spend_cost,omitempty"`
+	SpendName string `json:"spend_name,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`

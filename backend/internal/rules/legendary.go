@@ -51,6 +51,21 @@ type LegendaryOption struct {
 	ActionKey string
 }
 
+// MoveSpeedPercent is how much of its speed a legendary option of kind move lets the creature walk:
+// 50 when the text says "half its speed" (the tarrasque), else 100 ("up to its speed").
+func (o LegendaryOption) MoveSpeedPercent() int {
+	if strings.Contains(o.Text, "half its speed") {
+		return HalfSpeedPercent
+	}
+	return FullSpeedPercent
+}
+
+// The parts of the speed a legendary move walks, in percent.
+const (
+	HalfSpeedPercent = 50
+	FullSpeedPercent = 100
+)
+
 // MonsterReaction is one of the stat block's reactions.
 type MonsterReaction struct {
 	Key  string

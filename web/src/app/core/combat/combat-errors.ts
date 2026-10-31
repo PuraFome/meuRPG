@@ -21,6 +21,7 @@ import {
 import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CLASS_BLOCKED_TEXT } from './combat-errors-class';
+import { LEGENDARY_BLOCKED_TEXT } from './combat-errors-legendary';
 import { circleLabel } from './combat-grid';
 import { metersFixed, metersText } from '../units';
 
@@ -403,6 +404,7 @@ export function blockedMessage(blocked: EncounterBlocked): string {
   return (
     BLOCKED_TEXT.get(blocked.reason) ??
     CLASS_BLOCKED_TEXT.get(blocked.reason) ??
+    LEGENDARY_BLOCKED_TEXT.get(blocked.reason) ??
     BLOCKED_TEXT_WITH_NUMBERS.get(blocked.reason)?.(blocked) ??
     'O combate não está num estado que aceite isso. A tela foi atualizada.'
   );

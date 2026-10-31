@@ -287,6 +287,7 @@ var logHandlers = map[string]logHandler{
 	eventCombatantMoved:          (*logBuilder).moved,
 	eventDoorOpened:              plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED),
 	eventCombatantsAdded:         (*logBuilder).monstersAdded,
+	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -388,7 +389,7 @@ func (b *logBuilder) moved(_ playdb.ListEncounterEventsRow, entry *logEntry) boo
 	if ev.Contest != nil && ev.Contest.Line == contestLineStoodUp { // "se levantou" (combat_standup.go)
 		return contestLogEntry(entry, ev)
 	}
-	if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
+	if (!ev.OnTurn && ev.SpendCost == 0) || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 		return false // placing a token is not a move of the fight
 	}
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED
@@ -845,6 +846,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:          (*logEntry).fillEffect,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:            (*logEntry).fillResource,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:      (*logEntry).fillMonsters,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -890,6 +892,12 @@ func (e *logEntry) fillMonsters(c *logViewing, out *playv1.CombatLogEntry) bool 
 			CombatantId: it.ID, Label: c.byID[it.ID].Label, HitPoints: it.HitPoints, Rolled: it.Dice != "", Dice: it.Dice, Faces: it.Faces, Modifier: it.Modifier,
 		})
 	}
+	return true
+}
+
+// fillLegendarySpent is the master's line of a spend: the option as the stat block names it and its cost.
+func (e *logEntry) fillLegendarySpent(_ *logViewing, out *playv1.CombatLogEntry) bool {
+	out.LegendarySpent = &playv1.CombatLogLegendarySpent{OptionName: e.ev.SpendName, Cost: e.ev.SpendCost}
 	return true
 }
 
