@@ -16,6 +16,13 @@ import (
 // (MEURPG_TEST_DATABASE_URL). There is no undo: the master corrects a wrong recovery with
 // AdjustCharacterVitals, as for Arcane Recovery.
 
+// newPlayer joins one more player to the campaign: a player has one living character per campaign.
+func (r *restTable) newPlayer(name string) *user {
+	u := r.h.newUser(name)
+	r.h.join(r.master, r.campaign, u)
+	return u
+}
+
 // landDruid creates a player's druid of the level in the Circle of the Land, Wisdom 16.
 func (r *restTable) landDruid(t *testing.T, u *user, name string, level int32) *charactersv1.Character {
 	t.Helper()
@@ -108,12 +115,13 @@ func TestNaturalRecoveryRefusesAnOverAllowanceTotalAndASixthLevelSlot(t *testing
 	}
 
 	// A level 11 druid has an allowance of 6 and a 6th-level slot, and still cannot recover it.
-	elder := r.landDruid(t, r.bia, "Velha", 11)
+	velha := r.newPlayer("Velha")
+	elder := r.landDruid(t, velha, "Velha", 11)
 	r.expend(t, elder, map[int32]int32{5: 1, 6: 1})
 	r.shortRest(t)
-	_, err = r.recoverNatural(t, r.bia, elder, newKey(), map[int32]int32{6: 1})
+	_, err = r.recoverNatural(t, velha, elder, newKey(), map[int32]int32{6: 1})
 	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_SLOT_LEVEL_TOO_HIGH)
-	if res, err := r.recoverNatural(t, r.bia, elder, newKey(), map[int32]int32{5: 1}); err != nil || slotsUsed(res.GetVitals(), 6) != 1 {
+	if res, err := r.recoverNatural(t, velha, elder, newKey(), map[int32]int32{5: 1}); err != nil || slotsUsed(res.GetVitals(), 6) != 1 {
 		t.Errorf("a 5th-level slot: err = %v; want nil with the 6th-level slot still used", err)
 	}
 }
@@ -143,8 +151,9 @@ func TestNaturalRecoveryIsNotAvailableWithoutTheLandFeature(t *testing.T) {
 	plain := r.ana.heroSheet(t, r.campaign, "Folha", &charactersv1.FullSheet{
 		BaseScores: scores, RaceKey: "race:human", Classes: []*charactersv1.ClassLevel{classLevel("class:druid", 3, "")},
 	})
-	mage := r.wizard(t, r.ana, "Elora", 3)
-	land := r.landDruid(t, r.ana, "Silvana", 3)
+	elora, silvana := r.newPlayer("Elora"), r.newPlayer("Silvana")
+	mage := r.wizard(t, elora, "Elora", 3)
+	land := r.landDruid(t, silvana, "Silvana", 3)
 	r.expend(t, plain, map[int32]int32{1: 2})
 	r.expend(t, mage, map[int32]int32{1: 2})
 	r.expend(t, land, map[int32]int32{1: 2})
@@ -152,7 +161,7 @@ func TestNaturalRecoveryIsNotAvailableWithoutTheLandFeature(t *testing.T) {
 	for name, c := range map[string]struct {
 		u *user
 		c *charactersv1.Character
-	}{"druid of no circle": {r.ana, plain}, "wizard": {r.ana, mage}, "fighter": {r.bia, r.fighter}} {
+	}{"druid of no circle": {r.ana, plain}, "wizard": {elora, mage}, "fighter": {r.bia, r.fighter}} {
 		_, err := r.recoverNatural(t, c.u, c.c, newKey(), map[int32]int32{1: 1})
 		wantCode(t, "UseNaturalRecovery("+name+")", err, connect.CodeFailedPrecondition)
 		wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE)
@@ -160,7 +169,7 @@ func TestNaturalRecoveryIsNotAvailableWithoutTheLandFeature(t *testing.T) {
 	if v := r.vitals(t, r.ana, plain); v.GetNaturalRecoveryAllowance() != 0 {
 		t.Errorf("a druid of no circle has an allowance of %d, want 0", v.GetNaturalRecoveryAllowance())
 	}
-	_, err := r.recoverSlots(t, r.ana, land, newKey(), map[int32]int32{1: 1}) // Arcane Recovery
+	_, err := r.recoverSlots(t, silvana, land, newKey(), map[int32]int32{1: 1}) // Arcane Recovery
 	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE)
 }
 
