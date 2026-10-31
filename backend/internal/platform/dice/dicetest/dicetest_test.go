@@ -116,15 +116,18 @@ func (s *spy) Fatalf(string, ...any) {
 
 func TestAScriptedFaceThatDoesNotFitFailsAtOnce(t *testing.T) {
 	t.Parallel()
-	for name, call := range map[string]func(*Roller, testing.TB){
-		"9 on a d6":  func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 6, 2, 9) },
-		"0 on a d20": func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 20, 0) },
-		"a d0":       func(r *Roller, tb testing.TB) { r.ScriptFor(tb, 0, 1) },
+	for name, c := range map[string]struct {
+		sides int
+		faces []int
+	}{
+		"9 on a d6":  {6, []int{2, 9}},
+		"0 on a d20": {20, []int{0}},
+		"a d0":       {0, []int{1}},
 	} {
 		s := &spy{TB: t}
 		func() {
 			defer func() { _ = recover() }()
-			call(New(), s)
+			New().ScriptFor(s, c.sides, c.faces...)
 		}()
 		if !s.failed {
 			t.Errorf("%s: ScriptFor did not fail the test", name)
