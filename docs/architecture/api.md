@@ -177,7 +177,13 @@ The limit sits on the operation that can hang (`platform/slowclient`):
 | The body of an image, thumbnail, fog tile or app file | 2 minutes to be written (`slowclient.WriteBody`, cleared when the handler ends). |
 | A part of a campaign import | 2 minutes (`partReadTimeout`). |
 
-The deadline of a body read (`slowclient.ReadBody`) is cleared only once the body has been read to its end, on the success path. A handler that returns with the body unread after it called `ReadBody` (a refusal, a form that is wrong, a failed store) leaves it armed (the refusals before the call, such as a missing session or a rate limit, have no deadline yet): the server has no `ReadTimeout`, and net/http discards what is left of the body (up to 256 KB, or all of a chunked one) under the connection's deadline, so a client that keeps trickling is cut off by it. At the end of the body the deadline must go, because net/http's background read, which notices a client that left, would otherwise fire on it and cancel the request while the handler still decodes or stores what it read.
+Three routes read a body that a client can trickle and call `slowclient.ReadBody` before they read it: the image upload, the `POST /auth/login` form and a part of a campaign import. The rule for such a handler:
+
+- Call `ReadBody` before any refusal (a missing session, a rate limit, a wrong media type), so a path that returns with the body unread keeps the deadline armed. The server has no `ReadTimeout`, and net/http discards what is left of an unread body (up to 256 KB, chunked or not) under the connection's deadline; with none, a client that keeps trickling holds the connection for the 35 minutes Cloud Run allows. The maps upload puts its `http.MaxBytesReader` first so that the deadline body stays the outermost one.
+- Never turn the deadline off by hand: the body does it when it ends, and remembers that it ended.
+- A second `ReadBody` on a body that has not ended gives the rest of it a new deadline (the upload does this once it holds the processing slot, so the slot's own, shorter deadline replaces the form's); on a body that has ended it does nothing. It protects the request: a deadline set after the body has ended would fire on net/http's background read, the one that notices a client that left, and cancel the request while the handler still decodes or stores what it read.
+
+The other routes have no such deadline on their bodies; a unary RPC has the one in the table above.
 
 `ReadHeaderTimeout` (10 s) and `IdleTimeout` (2 minutes) apply to every connection.
 A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and the app opens a new one.

@@ -116,10 +116,14 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) {
 // campaign of the attacker's choosing.
 func (s *Service) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 	setAuthHeaders(w)
+	// A form is a few hundred bytes; no reason to wait on a trickle. Armed
+	// before any refusal, so a client that trickles a body this route will not
+	// read (a rate limit, a wrong media type) does not hold the connection.
+	slowclient.ReadBody(w, r, s.loginFormReadTimeout)
 	if !s.allowLogin(w, r) {
 		return
 	}
-	req, le, message := parseLoginForm(w, r, loginFormReadTimeout)
+	req, le, message := parseLoginForm(w, r)
 	if le != nil {
 		s.rejectLogin(w, r, le, message)
 		return
@@ -129,7 +133,7 @@ func (s *Service) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 
 // parseLoginForm reads POST /auth/login's form. On failure it returns the
 // error to log and the message for the browser.
-func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Duration) (loginRequest, *loginError, string) {
+func parseLoginForm(w http.ResponseWriter, r *http.Request) (loginRequest, *loginError, string) {
 	// Everything goes in the body. A query string could carry the payload
 	// into the logs, so it is refused rather than ignored.
 	if r.URL.RawQuery != "" {
@@ -140,7 +144,6 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 		le := &loginError{status: http.StatusUnsupportedMediaType, reason: "not_a_form"}
 		return loginRequest{}, le, "send an application/x-www-form-urlencoded form"
 	}
-	doneReading := slowclient.ReadBody(w, readTimeout) // a form is a few hundred bytes; no reason to wait on a trickle
 	r.Body = http.MaxBytesReader(w, r.Body, maxLoginFormBytes)
 	if err := r.ParseForm(); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
@@ -149,7 +152,6 @@ func parseLoginForm(w http.ResponseWriter, r *http.Request, readTimeout time.Dur
 		}
 		return loginRequest{}, badLogin("malformed_form", nil), "the form could not be read"
 	}
-	doneReading() // the form is read to its end; every error above returns with the deadline still armed
 	form := r.PostForm
 	for _, field := range []string{"return_to", "intent", "intent_payload", "prompt"} {
 		if len(form[field]) > 1 {
