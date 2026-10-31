@@ -243,9 +243,9 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	return h
 }
 
-// releaser runs the cleanups of a harness once, the last added first, and drops them.
+// releaser runs the cleanups of a harness once, the last added first.
+// Add a cleanup that holds the services with rel.add, never with t.Cleanup.
 // A finished parallel subtest stays reachable from its parent until the parent returns, and so does every function it gave to t.Cleanup.
-// A golden has hundreds of scenarios under one parent: a cleanup that captured the services would keep every scenario's alive.
 type releaser struct{ fns []func() }
 
 func (r *releaser) add(f func()) { r.fns = append(r.fns, f) }
@@ -255,7 +255,6 @@ func (r *releaser) run() {
 	r.fns = nil
 	for i := len(fns) - 1; i >= 0; i-- {
 		fns[i]()
-		fns[i] = nil
 	}
 }
 
