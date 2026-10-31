@@ -60,5 +60,5 @@ test('a body file is used as it is', () => {
 });
 
 test('it needs the workflow, the commit and the run', () => {
-  assert.notEqual(report({ env: { WORKFLOW: '' } }).code, 0);
+  for (const name of ['WORKFLOW', 'SHA', 'RUN_URL']) assert.notEqual(report({ env: { [name]: '' } }).code, 0, name);
 });

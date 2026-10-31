@@ -117,6 +117,7 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
+      contents: read
       issues: write
     steps:
       - name: Checkout
