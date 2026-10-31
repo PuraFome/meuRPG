@@ -1,0 +1,210 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"path"
+	"sort"
+	"strings"
+)
+
+const (
+	// listPath is the default list, seen from the repository root.
+	listPath = "backend/internal/archtest/before_ready.txt"
+	// backendDir is the Go module's directory, seen from the repository root.
+	backendDir = "backend"
+	// genDir holds the Go code generated from proto/.
+	genDir = backendDir + "/gen"
+	// errorReasons is the one file under proto/ that the tests read as data, not as a schema.
+	errorReasons = "proto/error-reasons.json"
+	// noInputs marks a line whose tests read nothing outside their own package and its imports.
+	noInputs = "-"
+)
+
+// everythingFiles are the files whose change makes every line run: the tool that selects and
+// runs the tests, and the module's dependencies.
+var everythingFiles = []string{
+	".github/scripts/before-ready.sh",
+	backendDir + "/go.mod",
+	backendDir + "/go.sum",
+}
+
+// everythingDirs are the directories whose change makes every line run.
+var everythingDirs = []string{backendDir + "/cmd/beforeready"}
+
+// Line is one `run` line of the list.
+type Line struct {
+	N      int      // line number in the file, for messages
+	Raw    string   // the whole line, to tell a changed line from an unchanged one
+	Pkg    string   // directory under backend/
+	Regex  string   // the -run regex
+	Regen  string   // the regenerate command
+	Inputs []string // paths from the repository root that the tests read outside their package
+}
+
+// ParseList reads the `run` lines of the list: `run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`.
+// helper lines, comments and blank lines are skipped.
+func ParseList(r io.Reader) ([]Line, error) {
+	var lines []Line
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for n := 1; sc.Scan(); n++ {
+		text := sc.Text()
+		if strings.TrimSpace(text) == "" || strings.HasPrefix(text, "#") || !strings.HasPrefix(text, "run\t") {
+			continue
+		}
+		cols := strings.Split(text, "\t")
+		const wantCols = 5
+		if len(cols) != wantCols {
+			return nil, fmt.Errorf("line %d: want `run<TAB>package<TAB>regex<TAB>regenerate<TAB>inputs`, got %d columns", n, len(cols))
+		}
+		l := Line{N: n, Raw: text, Pkg: cols[1], Regex: cols[2], Regen: cols[3]}
+		if in := strings.TrimSpace(cols[4]); in != noInputs {
+			for _, p := range strings.Split(in, ",") {
+				l.Inputs = append(l.Inputs, strings.TrimSpace(p))
+			}
+		}
+		lines = append(lines, l)
+	}
+	return lines, sc.Err()
+}
+
+// Facts is what the selection knows about the change and the module.
+type Facts struct {
+	// Changed are the files the change touches, slash paths from the repository root
+	// (modified, deleted, renamed from and to, and untracked).
+	Changed []string
+	// PkgDirs are the directories of all the module's packages, from the repository root.
+	PkgDirs []string
+	// Deps maps a package directory to the module packages its tests need, itself included
+	// (go list -deps -test), as directories from the repository root.
+	Deps map[string][]string
+	// NewLines are the lines of the list that are not in the list of the merge base. Nil
+	// when that list could not be read.
+	NewLines map[string]bool
+}
+
+// Decision is a line that runs and the first reason it does.
+type Decision struct {
+	Line   Line
+	Reason string
+}
+
+// Select returns the lines to run, each with why, and the lines left out.
+func Select(lines []Line, f Facts) (run []Decision, skipped []Line) {
+	owner := ownerOf(f)
+	for _, l := range lines {
+		if why := whyRun(l, f, owner); why != "" {
+			run = append(run, Decision{Line: l, Reason: why})
+		} else {
+			skipped = append(skipped, l)
+		}
+	}
+	return run, skipped
+}
+
+// All returns every line as a decision with the reason.
+func All(lines []Line, reason string) []Decision {
+	out := make([]Decision, 0, len(lines))
+	for _, l := range lines {
+		out = append(out, Decision{Line: l, Reason: reason})
+	}
+	return out
+}
+
+// ownerOf returns a function that maps a file to the directory of the package that owns it:
+// the nearest package directory above it (a data file, a migration and a testdata file belong
+// to the package that embeds or reads them), or "" when no package does.
+func ownerOf(f Facts) func(string) string {
+	pkgs := make(map[string]bool, len(f.PkgDirs))
+	for _, d := range f.PkgDirs {
+		pkgs[d] = true
+	}
+	return func(file string) string {
+		for d := path.Dir(file); d != "." && d != "/"; d = path.Dir(d) {
+			if pkgs[d] {
+				return d
+			}
+		}
+		return ""
+	}
+}
+
+func whyRun(l Line, f Facts, owner func(string) string) string {
+	self := backendDir + "/" + l.Pkg
+	deps := f.Deps[self]
+	depSet := make(map[string]bool, len(deps)+1)
+	depSet[self] = true
+	for _, d := range deps {
+		depSet[d] = true
+	}
+	for _, file := range f.Changed {
+		if why := whyFile(l, f, file, self, depSet, owner(file)); why != "" {
+			return why
+		}
+	}
+	return ""
+}
+
+// whyFile says why one changed file selects the line, or "".
+func whyFile(l Line, f Facts, file, self string, deps map[string]bool, pkg string) string {
+	if why := whyEverything(file); why != "" {
+		return why
+	}
+	if file == listPath {
+		if f.NewLines == nil {
+			return file + " changed and the list of the merge base could not be read"
+		}
+		if f.NewLines[l.Raw] {
+			return "its line in " + file + " is new or changed"
+		}
+	}
+	if pkg == self {
+		return file + " is in the package"
+	}
+	if pkg != "" && deps[pkg] {
+		return file + " is in " + strings.TrimPrefix(pkg, backendDir+"/") + ", which the package imports"
+	}
+	if strings.HasPrefix(file, "proto/") && file != errorReasons {
+		for d := range deps {
+			if d == genDir || strings.HasPrefix(d, genDir+"/") {
+				return file + " is a proto file, and the package imports the code generated from proto/"
+			}
+		}
+	}
+	for _, in := range l.Inputs {
+		if file == in || strings.HasPrefix(file, strings.TrimSuffix(in, "/")+"/") {
+			return file + " is an input of the line (" + in + ")"
+		}
+	}
+	return ""
+}
+
+func whyEverything(file string) string {
+	for _, p := range everythingFiles {
+		if file == p {
+			return file + " changed: it is the tool, or the dependencies, of every line"
+		}
+	}
+	for _, d := range everythingDirs {
+		if strings.HasPrefix(file, d+"/") {
+			return file + " changed: it is the tool of every line"
+		}
+	}
+	return ""
+}
+
+// Packages returns the distinct package directories of the decisions, sorted.
+func Packages(ds []Decision) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, d := range ds {
+		if !seen[d.Line.Pkg] {
+			seen[d.Line.Pkg] = true
+			out = append(out, d.Line.Pkg)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
