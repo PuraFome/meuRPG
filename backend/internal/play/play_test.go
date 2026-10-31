@@ -28,6 +28,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -814,15 +815,23 @@ func lazyPool(t *testing.T) *pgxpool.Pool {
 func TestNewValidatesItsConfig(t *testing.T) {
 	t.Parallel()
 	pool := lazyPool(t)
-	for name, cfg := range map[string]Config{
-		"Pool":      {Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Sheets":    {Pool: pool, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Vitals":    {Pool: pool, Sheets: noSheets{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Campaigns": {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}},
-		"Maps":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Roster: noRoster{}, Dice: noDice{}},
-		"Roster":    {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Dice: noDice{}},
-		"Dice":      {Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}},
-	} {
+	full := Config{Pool: pool, Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}, Roller: dicetest.New()}
+	without := map[string]func(*Config){
+		"Pool":      func(c *Config) { c.Pool = nil },
+		"Sheets":    func(c *Config) { c.Sheets = nil },
+		"Vitals":    func(c *Config) { c.Vitals = nil },
+		"Campaigns": func(c *Config) { c.Campaigns = nil },
+		"Maps":      func(c *Config) { c.Maps = nil },
+		"Roster":    func(c *Config) { c.Roster = nil },
+		"Dice":      func(c *Config) { c.Dice = nil },
+		"Roller":    func(c *Config) { c.Roller = nil },
+	}
+	if _, err := New(full); err != nil {
+		t.Fatalf("New() with every field error = %v", err)
+	}
+	for name, drop := range without {
+		cfg := full
+		drop(&cfg)
 		if _, err := New(cfg); err == nil {
 			t.Errorf("New() without %s succeeded", name)
 		}
@@ -833,7 +842,7 @@ func TestNewValidatesItsConfig(t *testing.T) {
 // that the refusal is not cacheable. Reads are POST-only.
 func TestEveryMethodNeedsASession(t *testing.T) {
 	t.Parallel()
-	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}, Logger: slog.New(slog.DiscardHandler)})
+	svc, err := New(Config{Pool: lazyPool(t), Sheets: noSheets{}, Vitals: noVitals{}, Campaigns: noCampaigns{}, Maps: noMaps{}, Roster: noRoster{}, Dice: noDice{}, Roller: dicetest.New(), Logger: slog.New(slog.DiscardHandler)})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

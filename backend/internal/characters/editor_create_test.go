@@ -321,7 +321,7 @@ func TestCreateCharacterEditorRefusalsInsideTheTransaction(t *testing.T) {
 // whatever the client sends, and the 4d6 the sheet used are spent.
 func TestCreateCharacterEditorRecordsTheOrigin(t *testing.T) {
 	t.Parallel()
-	et := newEditorTable(t, func(c *Config) { c.Roller = nil })
+	et := newEditorTable(t, nil)
 	sheet := pensantusSheet()
 	sheet.GetFull().AbilityOrigin = &charactersv1.AbilityOrigin{Method: charactersv1.AbilityMethod_ABILITY_METHOD_POINT_BUY}
 	got, err := editorCreate(et.dona, &charactersv1.CreateCharacterRequest{CampaignId: et.campaign, Kind: editorPlayer, Name: "Pensantus", Sheet: sheet})

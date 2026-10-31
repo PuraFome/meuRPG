@@ -364,6 +364,7 @@ func TestTheDCOfAHellishRebukeSaveReachesOnlyItsRollerWhenTheTableShowsIt(t *tes
 				CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_BOSS, Name: w.secrets.public("tiefling-name"), Sheet: sheet,
 			}))).GetCharacter()
 			revealed := false
+			w.scriptD20(ownFace)
 			e := must(m.combat.AddCombatants(ctx, rq(&playv1.AddCombatantsRequest{
 				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), Participants: []*playv1.Participant{{CharacterId: tiefling.GetId(), Hidden: &revealed}},
 			}))).GetEncounter()
@@ -373,6 +374,7 @@ func TestTheDCOfAHellishRebukeSaveReachesOnlyItsRollerWhenTheTableShowsIt(t *tes
 				CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: dagger,
 			})))
 			toren, devil := w.combatant(w.toren), w.combatantOf(e, tiefling.GetId())
+			w.requireOwnTotal(devil.GetId())
 			for id, sq := range map[string][2]int32{toren.GetId(): {12, 14}, devil.GetId(): {13, 14}} {
 				must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
 			}

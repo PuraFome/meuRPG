@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
-import { beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat, type CombatTable } from './combat-support';
+import { attackCombatSquares, beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat, type CombatTable } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC, newSignedInContext, viaTargetList } from './support';
 import { setTableRulesRPC } from './table-rules-support';
@@ -10,18 +10,23 @@ import { waitForEncounterRevision } from './revision-support';
 // a Contramágica asks the master about a player's cast, and a damage on a concentrating character asks its owner for
 // the save. The table and the NPCs come through the API; what is under test is what each screen reads (RN-10, RN-20).
 
-const playerFirst = { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 };
+// The Mago joins at the start with the lowest face: its total differs from every other (beginAttackCombatRPC checks it)
+// and it has a total of its own (23, 18, 5, 4 and 3 are distinct). It cannot be added to the running combat: the master cannot set its initiative then, and the app's
+// roll could tie with the actor.
+const playerFirst = { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4, Mago: 1 };
 
 interface ReactionTable {
   m: Page;
   p: Page;
   table: CombatTable;
   campaignId: string;
+  /** The label of the Mago, in plain sight next to Pensantus; empty when the table has none. */
+  mage: string;
   done: () => Promise<void>;
 }
 
-/** A combat with Pensantus (casting), the Capitão and two Goblins, begun with Pensantus first. */
-async function reactionTable(browser: Browser, name: string): Promise<ReactionTable> {
+/** A combat with Pensantus (casting), the Capitão and two Goblins, begun with Pensantus first; with `withMage`, the SRD Mago too. */
+async function reactionTable(browser: Browser, name: string, withMage = false): Promise<ReactionTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
   const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 390, height: 844 } });
   const m = await master.newPage();
@@ -29,9 +34,10 @@ async function reactionTable(browser: Browser, name: string): Promise<ReactionTa
   await m.goto('/');
   await p.goto('/');
   const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, { sheet: pensantusCasting });
-  await beginAttackCombatRPC(m, table, playerFirst);
+  const begun = await beginAttackCombatRPC(m, table, playerFirst, withMage ? { ...attackCombatSquares, Mago: [8, 8] } : undefined, [], withMage ? ['monster:mage'] : []);
   return {
     m,
+    mage: begun.combatants.find((c) => c.label.startsWith('Mago'))?.label ?? '',
     p,
     table,
     campaignId: table.campaignId,
@@ -41,16 +47,6 @@ async function reactionTable(browser: Browser, name: string): Promise<ReactionTa
       await player.close();
     },
   };
-}
-
-/** Adds the SRD Mago next to Pensantus, in plain sight, and returns its label. */
-async function addMage(m: Page, campaignId: string): Promise<string> {
-  const enc = await getEncounterRPC(m, campaignId);
-  const added = await combatRPC(m, 'AddMonsters', { campaignId, encounterId: enc.id, creatureKey: 'monster:mage', count: 1, hidden: false });
-  const label = added.combatants.find((c) => c.label.startsWith('Mago'))!.label;
-  const id = added.combatants.find((c) => c.label === label)!.id;
-  await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id, col: 8, row: 8, forced: true });
-  return label;
 }
 
 /** Pensantus attacks the Mago with Raio de Fogo, typing a 10 (16 against armor class 12: Escudo would make it 17). */
@@ -70,9 +66,8 @@ test(
   { tag: ['@PM-04', '@RN-10', '@RN-20'] },
   async ({ browser }) => {
     test.setTimeout(240_000);
-    const { m, p, campaignId, done } = await reactionTable(browser, 'Escudo de NPC');
+    const { m, p, campaignId, mage, done } = await reactionTable(browser, 'Escudo de NPC', true);
     try {
-      const mage = await addMage(m, campaignId);
       await openSessionPage(m, campaignId);
       await openSessionPage(p, campaignId);
       const sheet = await attackTheMage(p, mage);
@@ -110,9 +105,8 @@ test(
   { tag: ['@PM-04', '@RN-10', '@RN-20'] },
   async ({ browser }) => {
     test.setTimeout(240_000);
-    const { m, p, campaignId, done } = await reactionTable(browser, 'Contramágica');
+    const { m, p, campaignId, mage, done } = await reactionTable(browser, 'Contramágica', true);
     try {
-      const mage = await addMage(m, campaignId);
       await openSessionPage(m, campaignId);
       await openSessionPage(p, campaignId);
       const enc = await getEncounterRPC(m, campaignId);

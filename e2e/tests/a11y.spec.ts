@@ -10,7 +10,7 @@ import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { type Encounter, adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
+import { type Encounter, adjustVitalsRPC, attackCombatSquares, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
@@ -1744,11 +1744,10 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade reações ${Date.now()}`, true, true, { sheet: pensantusCasting });
     campaignId = table.campaignId;
-    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
-    let enc = await getEncounterRPC(m, campaignId);
-    const added = await combatRPC(m, 'AddMonsters', { campaignId, encounterId: enc.id, creatureKey: 'monster:mage', count: 1, hidden: false });
-    const mage = added.combatants.find((c) => c.label.startsWith('Mago'))!;
-    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: mage.id, col: 8, row: 8, forced: true });
+    // The Mago joins at the start with the lowest face (the master cannot set an initiative once the combat runs).
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4, Mago: 1 }, { ...attackCombatSquares, Mago: [8, 8] }, [], ['monster:mage']);
+    const mage = begun.combatants.find((c) => c.label.startsWith('Mago'))!;
+    let enc = begun;
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 

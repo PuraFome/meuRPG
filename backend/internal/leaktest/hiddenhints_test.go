@@ -90,8 +90,10 @@ func TestHiddenCombatantEditSendsPlayersNoHint(t *testing.T) {
 func TestHiddenMonstersAddedSendPlayersNoHint(t *testing.T) {
 	w := newWorld(t)
 	hidden := true
+	w.scriptD20(ownFace)
 	got := w.hiddenOnlyEvents(func() {
-		must(w.master.combat.AddMonsters(t.Context(), rq(&playv1.AddMonstersRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:bandit", Count: 1, Name: w.secrets.marker("mon-hidden-hint"), Hidden: &hidden})))
+		added := must(w.master.combat.AddMonsters(t.Context(), rq(&playv1.AddMonstersRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:bandit", Count: 1, Name: w.secrets.marker("mon-hidden-hint"), Hidden: &hidden})))
+		w.requireOwnTotal(added.GetCombatantIds()[0]) // a read: it sends no event
 	})
 	requireOnlyMaster(t, w, got, "a hidden monster being added")
 }
