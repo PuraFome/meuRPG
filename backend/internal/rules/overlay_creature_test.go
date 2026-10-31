@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 )
 
 // The table's creatures. The names are invented; the base is the SRD's wolf.
@@ -25,6 +27,7 @@ func packLeaderCreature() TableCreature {
 func creatureOverlay(cs ...TableCreature) Overlay { return Overlay{Revision: 1, Creatures: cs} }
 
 func TestACreatureHasTheAdjustmentsInItsDerived(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	c := withOverlayOn(t, srd, creatureOverlay(packLeaderCreature()))
 	base, _ := c.MonsterDerived(wolfKey)
@@ -38,7 +41,7 @@ func TestACreatureHasTheAdjustmentsInItsDerived(t *testing.T) {
 	if base.HitPointsMax != 11 || base.ArmorClass != 13 {
 		t.Errorf("the base wolf changed: HP %d AC %d", base.HitPointsMax, base.ArmorClass)
 	}
-	if len(d.Attacks) != 1 || d.Attacks[0].Damage != "2d4+5" || d.Attacks[0].Key != packLeader+"#bite" {
+	if len(base.Attacks) != 1 || len(d.Attacks) != 1 || d.Attacks[0].Damage != "2d4+5" || d.Attacks[0].Key != packLeader+"#bite" {
 		t.Errorf("attacks = %+v, want the bite with 2d4+5", d.Attacks)
 	}
 	if got := d.Attacks[0].DamageDice; got.Count != 2 || got.Sides != 4 || got.Bonus != 5 {
@@ -82,6 +85,7 @@ func featureNames(d Derived) []string {
 }
 
 func TestEachAdjustmentWorksAlone(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	base, _ := srd.MonsterDerived(wolfKey)
 	mk := func(edit func(*TableCreature)) Derived {
@@ -93,7 +97,7 @@ func TestEachAdjustmentWorksAlone(t *testing.T) {
 		}
 		return d
 	}
-	if d := mk(func(*TableCreature) {}); d.HitPointsMax != base.HitPointsMax || d.ArmorClass != base.ArmorClass || d.Attacks[0].Damage != "2d4+2" || len(d.Features) != len(base.Features) {
+	if d := mk(func(*TableCreature) {}); len(d.Attacks) != 1 || d.HitPointsMax != base.HitPointsMax || d.ArmorClass != base.ArmorClass || d.Attacks[0].Damage != "2d4+2" || len(d.Features) != len(base.Features) {
 		t.Errorf("no adjustment: HP %d AC %d damage %s features %d, want the base's", d.HitPointsMax, d.ArmorClass, d.Attacks[0].Damage, len(d.Features))
 	}
 	if d := mk(func(c *TableCreature) { c.HitPoints = 1 }); d.HitPointsMax != 1 || d.ArmorClass != base.ArmorClass {
@@ -102,17 +106,18 @@ func TestEachAdjustmentWorksAlone(t *testing.T) {
 	if d := mk(func(c *TableCreature) { c.ArmorClass = 40 }); d.ArmorClass != 40 || d.HitPointsMax != base.HitPointsMax {
 		t.Errorf("armor class only: HP %d AC %d", d.HitPointsMax, d.ArmorClass)
 	}
-	if d := mk(func(c *TableCreature) { c.DamageBonus = -10 }); d.Attacks[0].Damage != "2d4-8" {
+	if d := mk(func(c *TableCreature) { c.DamageBonus = -10 }); len(d.Attacks) != 1 || d.Attacks[0].Damage != "2d4-8" {
 		t.Errorf("negative bonus: damage %s, want 2d4-8", d.Attacks[0].Damage)
 	}
 	// Flat damage (the raven's beak is 1) stays a number.
 	cr := TableCreature{TableEntry: TableEntry{Key: packLeader, NamePT: "Corvo Grande"}, BaseKey: "monster:raven", DamageBonus: 2}
-	if d, _ := withOverlayOn(t, srd, creatureOverlay(cr)).MonsterDerived(packLeader); d.Attacks[0].Damage != "3" {
+	if d, _ := withOverlayOn(t, srd, creatureOverlay(cr)).MonsterDerived(packLeader); len(d.Attacks) != 1 || d.Attacks[0].Damage != "3" {
 		t.Errorf("flat damage = %s, want 3", d.Attacks[0].Damage)
 	}
 }
 
 func TestACreatureResolvesWhereAnSRDCreatureDoes(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	c := withOverlayOn(t, srd, creatureOverlay(packLeaderCreature()))
 	cr, ok := c.CreatureByKey(packLeader)
@@ -157,6 +162,7 @@ func TestACreatureResolvesWhereAnSRDCreatureDoes(t *testing.T) {
 }
 
 func TestACreatureDoesNotChangeTheContentItCameFrom(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	before, _ := srd.MonsterDerived(wolfKey)
 	nBefore := len(srd.c.monsterEntries)
@@ -171,6 +177,12 @@ func TestACreatureDoesNotChangeTheContentItCameFrom(t *testing.T) {
 		t.Error("the original content has the plan")
 	}
 	after, _ := srd.MonsterDerived(wolfKey)
+	if m := srd.c.monsters[wolfKey]; m.HitPoints != 11 || m.ArmorClass != 13 || m.ArmorClassType != "natural" || m.Name != "Wolf" || m.Key != wolfKey {
+		t.Errorf("the SRD wolf's stat block changed: HP %d AC %d (%s) %s %s", m.HitPoints, m.ArmorClass, m.ArmorClassType, m.Name, m.Key)
+	}
+	if len(after.Attacks) != 1 || len(before.Attacks) != 1 {
+		t.Fatal("the wolf has not one attack")
+	}
 	if after.HitPointsMax != before.HitPointsMax || after.ArmorClass != before.ArmorClass || after.Attacks[0].Damage != "2d4+2" || len(after.Features) != len(before.Features) {
 		t.Errorf("the SRD wolf changed: %+v", after.Attacks)
 	}
@@ -184,6 +196,7 @@ func TestACreatureDoesNotChangeTheContentItCameFrom(t *testing.T) {
 }
 
 func TestAnArchivedOrSwitchedOffCreatureStillResolves(t *testing.T) {
+	t.Parallel()
 	cr := packLeaderCreature()
 	cr.Archived = true
 	o := creatureOverlay(cr)
@@ -201,6 +214,7 @@ func TestAnArchivedOrSwitchedOffCreatureStillResolves(t *testing.T) {
 }
 
 func TestACreatureKeyIsChecked(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	cases := []struct {
 		name   string
@@ -211,7 +225,7 @@ func TestACreatureKeyIsChecked(t *testing.T) {
 			c := packLeaderCreature()
 			c.Key = "monster:lobo@mesa"
 			return []TableCreature{c}
-		}, ""},
+		}, ReasonKey},
 		{"no suffix", func() []TableCreature {
 			c := packLeaderCreature()
 			c.Key = "creature:lobo"
@@ -245,13 +259,14 @@ func TestACreatureKeyIsChecked(t *testing.T) {
 			t.Errorf("%s: err = %v, want an overlay error", tc.name, err)
 			continue
 		}
-		if tc.reason != "" && oe.Reason != tc.reason {
+		if oe.Reason != tc.reason {
 			t.Errorf("%s: reason %q, want %q (%v)", tc.name, oe.Reason, tc.reason, err)
 		}
 	}
 }
 
 func TestACreatureLimitIsTheTableLimit(t *testing.T) {
+	t.Parallel()
 	srd := loadForTest(t)
 	mk := func(n int) []TableCreature {
 		var out []TableCreature
@@ -335,5 +350,269 @@ func TestACreatureRefusalsNameTheirField(t *testing.T) {
 	}
 	if _, err := srd.With(creatureOverlay(edge)); err != nil {
 		t.Errorf("the limits themselves were refused: %v", err)
+	}
+}
+
+func TestATraitMayNotTakeANameTheEngineUsesOrTheBaseHas(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	cases := []struct{ base, name string }{
+		{wolfKey, "Bite"}, {wolfKey, "bite"}, {wolfKey, "Keen Hearing and Smell"},
+		{"monster:brown-bear", "Multiattack"}, {"monster:brown-bear", "Claws"},
+		{wolfKey, "Magic Weapons"}, {wolfKey, "magic weapons"}, {wolfKey, "Spellcasting"},
+		{wolfKey, "SPELLCASTING"}, {wolfKey, "Innate Spellcasting"},
+	}
+	for _, tc := range cases {
+		cr := TableCreature{TableEntry: TableEntry{Key: packLeader, NamePT: "Lobo Alfa"}, BaseKey: tc.base,
+			Traits: []TableCreatureTrait{{NamePT: tc.name, TextPT: "x"}}}
+		_, err := srd.With(creatureOverlay(cr))
+		oe, ok := errors.AsType[*OverlayError](err)
+		if !ok || oe.Reason != ReasonName || !strings.HasSuffix(oe.Field, ".traits[0].name_pt") {
+			t.Errorf("%s on %s: err = %v (%+v), want bad_name at .traits[0].name_pt", tc.name, tc.base, err, oe)
+		}
+	}
+	// A name that only looks near is fine.
+	cr := packLeaderCreature()
+	cr.Traits = []TableCreatureTrait{{NamePT: "Mordida Alfa", TextPT: "x"}, {NamePT: "Spellcasting Lore", TextPT: "x"}}
+	if _, err := srd.With(creatureOverlay(cr)); err != nil {
+		t.Errorf("harmless names refused: %v", err)
+	}
+}
+
+func TestATableCreatureIsLeftOutOfTheEncounterTools(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	c := withOverlayOn(t, srd, creatureOverlay(packLeaderCreature()))
+	// Evaluate: only SRD creatures.
+	if _, err := c.EvaluateEncounter([]int{3}, []encounter.Entry{{Key: packLeader, Count: 1}}); !errors.Is(err, ErrEncounterCreature) {
+		t.Errorf("EvaluateEncounter err = %v, want ErrEncounterCreature", err)
+	}
+	if _, err := c.EvaluateEncounter([]int{3}, []encounter.Entry{{Key: wolfKey, Count: 1}}); err != nil {
+		t.Errorf("the SRD wolf is refused: %v", err)
+	}
+	// Swaps: neither a swap for it, nor a swap to it.
+	if _, err := c.EncounterSwaps(packLeader, ""); !errors.Is(err, ErrEncounterCreature) {
+		t.Errorf("EncounterSwaps(table creature) err = %v, want ErrEncounterCreature", err)
+	}
+	swaps, err := c.EncounterSwaps(wolfKey, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, _ := srd.EncounterSwaps(wolfKey, "")
+	if len(swaps) != len(plain) || slices.ContainsFunc(swaps, func(e CreatureEntry) bool { return e.Key == packLeader }) {
+		t.Errorf("swaps of the wolf: %d (want %d), with the table creature: %v", len(swaps), len(plain), len(swaps) != len(plain))
+	}
+	// Generate: the pool is the SRD's, so the answer is the one without the table creature.
+	for seed := range uint32(40) {
+		got, err1 := c.GenerateEncounter([]int{1, 1, 1, 1}, encounter.BandModerate, "beast", seed, 0)
+		want, err2 := srd.GenerateEncounter([]int{1, 1, 1, 1}, encounter.BandModerate, "beast", seed, 0)
+		if (err1 == nil) != (err2 == nil) || err1 == nil && !slices.EqualFunc(got.Lines, want.Lines, func(a, b EncounterLine) bool { return a.Creature.Key == b.Creature.Key && a.Count == b.Count }) {
+			t.Fatalf("seed %d: the table creature changed the generated encounter: %v / %v", seed, err1, err2)
+		}
+	}
+	// It stays in the creature list.
+	if l, _ := c.ListCreatures(CreatureFilter{Query: "lobo alfa"}); len(l) != 1 {
+		t.Error("the table creature left the creature list")
+	}
+}
+
+func TestATableCreatureIsNotAnSRDSummonOrWildShapeForm(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	cr := packLeaderCreature()
+	c := withOverlayOn(t, srd, creatureOverlay(cr))
+	// Conjure Animals takes beasts of a rating: the wolf is one, and so would the table creature be.
+	b := choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Level: 9})
+	opts, err := c.SummonOptions("spell:conjure-animals", 3, b)
+	if err != nil || len(opts.Options) == 0 {
+		t.Fatalf("SummonOptions: %+v, %v", opts, err)
+	}
+	var pick *SummonOption
+	for i, o := range opts.Options {
+		if o.Type == "beast" && len(o.Forms) == 0 && o.Count > 0 {
+			pick = &opts.Options[i]
+			if _, err := c.CheckSummon("spell:conjure-animals", 3, b, SummonPick{Option: i, Creatures: slices.Repeat([]string{wolfKey}, o.Count)}); err != nil {
+				t.Fatalf("the SRD wolf is refused: %v", err)
+			}
+			_, err := c.CheckSummon("spell:conjure-animals", 3, b, SummonPick{Option: i, Creatures: slices.Repeat([]string{packLeader}, o.Count)})
+			if !errors.Is(err, ErrSummonCreature) {
+				t.Errorf("CheckSummon with the table creature: err = %v, want ErrSummonCreature", err)
+			}
+			break
+		}
+	}
+	if pick == nil {
+		t.Fatal("no beast option to test")
+	}
+	// Wild Shape: not offered as a form.
+	druid := choiceBuild("race:human", "", ClassLevel{Class: "class:druid", Level: 4})
+	if !slices.ContainsFunc(c.WildShapeForms(druid), func(e CreatureEntry) bool { return e.Key == wolfKey }) {
+		t.Fatal("the SRD wolf is not a form")
+	}
+	if c.WildShapeAllows(druid, packLeader) || slices.ContainsFunc(c.WildShapeForms(druid), func(e CreatureEntry) bool { return e.Key == packLeader }) {
+		t.Error("the table creature is a Wild Shape form")
+	}
+	if got, want := len(c.WildShapeForms(druid)), len(srd.WildShapeForms(druid)); got != want {
+		t.Errorf("forms = %d, want %d", got, want)
+	}
+}
+
+func TestAMultiattackFollowsTheNewKeyAndTheDamageBonus(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	// The brown bear's count is corrected (corrections.json); the troll's is the stat block's routine.
+	for _, base := range []string{"monster:brown-bear", "monster:troll"} {
+		_, corrected := srd.c.attacksPerAction[base]
+		if (base == "monster:brown-bear") != corrected {
+			t.Fatalf("%s: corrected = %v", base, corrected)
+		}
+		bd, _ := srd.MonsterDerived(base)
+		if bd.AttacksPerAction < 2 {
+			t.Fatalf("%s: AttacksPerAction = %d, want 2 or more", base, bd.AttacksPerAction)
+		}
+		key := "creature:multi@mesa"
+		c := withOverlayOn(t, srd, creatureOverlay(TableCreature{TableEntry: TableEntry{Key: key, NamePT: "Multi"}, BaseKey: base, DamageBonus: 4}))
+		d, ok := c.MonsterDerived(key)
+		if !ok || d.AttacksPerAction != bd.AttacksPerAction {
+			t.Errorf("%s: AttacksPerAction = %d, want %d", base, d.AttacksPerAction, bd.AttacksPerAction)
+		}
+		if len(d.Attacks) != len(bd.Attacks) || len(d.Attacks) < 2 {
+			t.Fatalf("%s: %d attacks, want %d (2 or more)", base, len(d.Attacks), len(bd.Attacks))
+		}
+		for i, a := range d.Attacks {
+			want, _ := ParseDice(bd.Attacks[i].Damage)
+			got, _ := ParseDice(a.Damage)
+			if got.Count != want.Count || got.Sides != want.Sides || got.Bonus != want.Bonus+4 || !strings.HasPrefix(a.Key, key+"#") {
+				t.Errorf("%s: attack %d = %s %s, want the base's %s plus 4", base, i, a.Key, a.Damage, bd.Attacks[i].Damage)
+			}
+		}
+		plan, ok := c.MonsterPlan(key)
+		if !ok || plan.Key != key {
+			t.Fatalf("%s: no plan under the new key", base)
+		}
+		steps := 0
+		for _, ap := range plan.Actions {
+			if !strings.HasPrefix(ap.Key, key+"#") {
+				t.Errorf("%s: action key %s", base, ap.Key)
+			}
+			for _, r := range ap.Routines {
+				for _, st := range r {
+					steps++
+					if st.ActionKey != "" {
+						if !strings.HasPrefix(st.ActionKey, key+"#") {
+							t.Errorf("%s: routine step key %s", base, st.ActionKey)
+						} else if _, ok := plan.Action(st.ActionKey); !ok {
+							t.Errorf("%s: routine step %s is no action of the plan", base, st.ActionKey)
+						}
+					}
+				}
+			}
+		}
+		if steps == 0 {
+			t.Errorf("%s: no Multiattack routine in the plan", base)
+		}
+	}
+}
+
+func TestTheDamageBonusReadsEveryShapeOfAction(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		dice, want string
+		n          int
+	}{
+		{"2d4+2", "2d4+5", 3}, {"1d6", "1d6+1", 1}, {"1d6", "1d6-2", -2}, {"2d6-1", "2d6", 1},
+		{"5", "8", 3}, {"1", "0", -10}, {"0", "0", -1}, {"1d8 + MOD", "1d8 + MOD", 5}, {"4d6 OR 5d6", "4d6 OR 5d6", 2},
+	} {
+		if got := addDiceBonus(tc.dice, tc.n); got != tc.want {
+			t.Errorf("addDiceBonus(%q, %d) = %q, want %q", tc.dice, tc.n, got, tc.want)
+		}
+	}
+	srd := loadForTest(t)
+	// Fixtures: a creature with an attack of several damage parts, one with a save-only action that
+	// deals damage, and one with a Multiattack action.
+	var multi, save, routine string
+	for _, k := range sortedKeys(srd.c.monsters) {
+		for _, a := range srd.c.monsters[k].Actions {
+			switch {
+			case multi == "" && a.HasAttack && len(a.Damage) > 1:
+				multi = k
+			case save == "" && !a.HasAttack && a.Save != nil && len(a.Damage) > 0:
+				save = k
+			case routine == "" && len(a.Multiattack) > 0:
+				routine = k
+			}
+		}
+	}
+	if multi == "" || save == "" || routine == "" {
+		t.Fatalf("fixtures: multi %q save %q multiattack %q", multi, save, routine)
+	}
+	const key = "creature:x@mesa"
+	with := func(base string, bonus int) *Content {
+		return withOverlayOn(t, srd, creatureOverlay(TableCreature{TableEntry: TableEntry{Key: key, NamePT: "X"}, BaseKey: base, DamageBonus: bonus}))
+	}
+	// Several damage parts: only the first gets the bonus (it is added once per hit).
+	c := with(multi, 2)
+	checked := 0
+	for _, a := range srd.c.monsters[multi].Actions {
+		if !a.HasAttack || len(a.Damage) < 2 {
+			continue
+		}
+		ap, ok := srd.MonsterActionPlan(multi + "#" + slugOf(a.Name))
+		cp, ok2 := c.MonsterActionPlan(key + "#" + slugOf(a.Name))
+		if !ok || !ok2 || len(cp.Damage) != len(ap.Damage) {
+			t.Fatalf("plans of %s", a.Name)
+		}
+		for i := range ap.Damage {
+			wantBonus := ap.Damage[i].Dice.Bonus
+			if i == 0 {
+				wantBonus += 2
+			}
+			if cp.Damage[i].Dice.Bonus != wantBonus || cp.Damage[i].TypeKey != ap.Damage[i].TypeKey {
+				t.Errorf("%s part %d = %+v, want bonus %d", a.Name, i, cp.Damage[i], wantBonus)
+			}
+		}
+		checked++
+	}
+	if checked == 0 {
+		t.Fatal("no multi-part attack checked")
+	}
+	// A save-only action and the Multiattack action are untouched.
+	for _, k := range []string{save, routine} {
+		cm := with(k, 7).c.monsters[key]
+		for i, a := range srd.c.monsters[k].Actions {
+			if a.HasAttack {
+				continue
+			}
+			if !slices.Equal(cm.Actions[i].Damage, a.Damage) || cm.Actions[i].Desc != a.Desc {
+				t.Errorf("%s: action %q changed without an attack roll", k, a.Name)
+			}
+		}
+	}
+}
+
+func TestAFlatNegativeBonusNeverGoesBelowZero(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	key := "creature:corvo@mesa"
+	c := withOverlayOn(t, srd, creatureOverlay(TableCreature{TableEntry: TableEntry{Key: key, NamePT: "Corvo"}, BaseKey: "monster:raven", DamageBonus: -10}))
+	d, _ := c.MonsterDerived(key)
+	if len(d.Attacks) != 1 || d.Attacks[0].Damage != "0" || d.Attacks[0].DamageDice.Bonus != 0 {
+		t.Errorf("raven with -10: %+v, want damage 0", d.Attacks)
+	}
+}
+
+func TestAnArmorClassOverrideDropsTheBaseKindOfArmor(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	cr := packLeaderCreature()
+	c := withOverlayOn(t, srd, creatureOverlay(cr))
+	d, _ := c.MonsterDerived(packLeader)
+	if strings.Contains(d.ArmorClassDescription, "natural") || strings.Contains(d.ArmorClassDescription, "Armadura natural") {
+		t.Errorf("description = %q, want no natural armor", d.ArmorClassDescription)
+	}
+	cr.ArmorClass = 0
+	d, _ = withOverlayOn(t, srd, creatureOverlay(cr)).MonsterDerived(packLeader)
+	if d.ArmorClassDescription != "Armadura natural" {
+		t.Errorf("without an override: %q, want the base's", d.ArmorClassDescription)
 	}
 }

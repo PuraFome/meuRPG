@@ -51,7 +51,8 @@ func (c *Content) WildShapeForms(b Build) []CreatureEntry {
 		return nil
 	}
 	forms, _ := c.ListCreatures(CreatureFilter{Type: creatureBeast, MaxCR: limit.MaxCR, NoFly: limit.NoFly, NoSwim: limit.NoSwim})
-	return forms
+	// A table creature has its base's challenge rating, which its adjustments may not keep.
+	return slices.DeleteFunc(forms, func(e CreatureEntry) bool { _, table := c.c.creatureOf[e.Key]; return table })
 }
 
 // CastsInBeastForm says whether the character keeps its spells in a beast form:

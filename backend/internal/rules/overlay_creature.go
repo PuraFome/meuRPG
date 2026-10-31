@@ -89,6 +89,10 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 	return nil
 }
 
+// readTraitNames are the names of the traits the engine reads by name (creatures.go, creaturecaster.go,
+// creaturecasting.go): a table trait with one would not be text only, so the names are refused.
+var readTraitNames = []string{magicWeaponsTrait, "Spellcasting", "Innate Spellcasting"}
+
 // checkCreatureTraits checks the traits: their number, their names (one line, 1 to 80 characters, each
 // with a slug of its own that the base's abilities and actions do not use, as the slug is part of the
 // key of the feature on the sheet) and their texts (1 to 4000 characters).
@@ -102,6 +106,9 @@ func checkCreatureTraits(c *entryErrors, o *TableCreature, base *srd51.Monster, 
 		for _, a := range base.SpecialAbilities {
 			used[slugOf(a.Name)] = true
 		}
+		for _, a := range base.Actions {
+			used[slugOf(a.Name)] = true
+		}
 	}
 	for i, t := range o.Traits {
 		at := fmt.Sprintf(".traits[%d]", i)
@@ -110,8 +117,10 @@ func checkCreatureTraits(c *entryErrors, o *TableCreature, base *srd51.Monster, 
 			c.at(o.Key, path, at+".name_pt", ReasonName, "the name must be 1 to %d characters on one line, without spaces at the ends", maxNameRunes)
 		case slugOf(t.NamePT) == "":
 			c.at(o.Key, path, at+".name_pt", ReasonName, "the name must have a letter or a digit from a to z")
+		case slices.ContainsFunc(readTraitNames, func(n string) bool { return strings.EqualFold(n, t.NamePT) }):
+			c.at(o.Key, path, at+".name_pt", ReasonName, "the name %q is one the engine reads, not a text", t.NamePT)
 		case used[slugOf(t.NamePT)]:
-			c.at(o.Key, path, at+".name_pt", ReasonName, "the name is already a trait of the creature")
+			c.at(o.Key, path, at+".name_pt", ReasonName, "the name is already a trait or an action of the creature")
 		default:
 			used[slugOf(t.NamePT)] = true
 		}
@@ -131,7 +140,8 @@ func (b *overlayBuilder) deriveCreature(base *srd51.Monster, o *TableCreature) *
 		m.HitPoints, m.HitPointsRoll = o.HitPoints, ""
 	}
 	if o.ArmorClass > 0 {
-		m.ArmorClass, m.ArmorClassDesc, m.ArmorClassItems, m.ArmorClassAlts = o.ArmorClass, "", nil, nil
+		// The base's kind of armor class ("natural") and its notes no longer describe the value.
+		m.ArmorClass, m.ArmorClassType, m.ArmorClassDesc, m.ArmorClassItems, m.ArmorClassAlts = o.ArmorClass, "", "", nil, nil
 	}
 	if o.DamageBonus != 0 {
 		m.Actions = slices.Clone(base.Actions)
@@ -153,8 +163,9 @@ func (b *overlayBuilder) deriveCreature(base *srd51.Monster, o *TableCreature) *
 	return &m
 }
 
-// addDiceBonus writes dice ("2d4+2", "1d6", "5") with n more added: "2d4+2" and 3 is "2d4+5". Dice
-// that cannot be read are returned as they are.
+// addDiceBonus writes dice ("2d4+2", "1d6", "5") with n more added: "2d4+2" and 3 is "2d4+5". A flat
+// damage stops at 0 ("1" and -10 is "0"; rolled dice are floored at 0 by combat.DamageTotal). Dice
+// that cannot be read, or that end in "+MOD", are returned as they are.
 func addDiceBonus(dice string, n int) string {
 	f, ok := ParseDice(dice)
 	if !ok || f.AddsModifier {
@@ -162,7 +173,7 @@ func addDiceBonus(dice string, n int) string {
 	}
 	f.Bonus += n
 	if f.Count == 0 {
-		return strconv.Itoa(f.Bonus)
+		return strconv.Itoa(max(f.Bonus, 0)) // a flat damage is never below 0
 	}
 	out := fmt.Sprintf("%dd%d", f.Count, f.Sides)
 	switch {

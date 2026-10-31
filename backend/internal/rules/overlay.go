@@ -32,7 +32,7 @@ const (
 	// The prefix before it is the SRD's, so every place that decides by prefix
 	// ("class:", "feature:", "spell:"...) keeps working.
 	tableSuffix = "@mesa"
-	// MaxOverlayEntries is the most entries (of the six kinds, features not
+	// MaxOverlayEntries is the most entries (of the ten kinds, features not
 	// counted) one table may have.
 	MaxOverlayEntries = 1000
 	// MaxTableFeatures is the most features one class may have, and the most

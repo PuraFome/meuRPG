@@ -175,7 +175,7 @@ func checkPackHeader(pack *rulesv1.TableContentPack) []*rulesv1.TableContentViol
 func checkPackEntry(field string, e *rulesv1.TableEntry, seen map[string]bool) *rulesv1.TableContentViolation {
 	prefix := kindPrefix(e.GetKind())
 	if prefix == "" {
-		return packViolation(field+".kind", rules.ReasonValue, "the kind of an entry is one of the seven kinds")
+		return packViolation(field+".kind", rules.ReasonValue, "the kind of an entry is one of the ten kinds")
 	}
 	if reason, msg := rules.CheckEntryKey(prefix, e.GetKey()); reason != "" {
 		return packViolation(field+".key", reason, "%s", msg)
@@ -215,6 +215,8 @@ func bodyOfEntry(e *rulesv1.TableEntry) (tableBody, rulesv1.TableContentKind) {
 		return b.TableOption, rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
 	case *rulesv1.TableEntry_TableClassFeature:
 		return b.TableClassFeature, rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
+	case *rulesv1.TableEntry_TableCreature:
+		return b.TableCreature, rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }

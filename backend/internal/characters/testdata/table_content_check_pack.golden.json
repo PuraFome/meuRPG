@@ -100,7 +100,7 @@
         "8 race:raca@mesa TABLE_CONTENT_KIND_RACE r unknown="
       ],
       "violations": [
-        "pack.entries[0].kind | bad_value |  | the kind of an entry is one of the seven kinds",
+        "pack.entries[0].kind | bad_value |  | the kind of an entry is one of the ten kinds",
         "pack.entries[1].key | bad_key |  | the slug may only have a-z, 0-9 and -",
         "pack.entries[3].key | duplicate_key |  | the pack has this key twice",
         "pack.entries[4].body | bad_value |  | an entry has exactly the body of its kind",

@@ -39,7 +39,7 @@ const (
 	reasonSizeLimit = "size_limit"
 )
 
-// tableKinds describes the seven kinds: the key prefix, the proto kind and the
+// tableKinds describes the ten kinds: the key prefix, the proto kind and the
 // feature prefix of what the kind holds.
 var tableKinds = []struct {
 	prefix string
@@ -54,6 +54,7 @@ var tableKinds = []struct {
 	{"feat", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT},
 	{"option", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION},
 	{"classfeature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE},
+	{"creature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -108,6 +109,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableOption{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE:
 		return &rulesv1.TableClassFeature{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE:
+		return &rulesv1.TableCreature{}
 	}
 	return nil
 }
@@ -133,10 +136,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableOption{TableOption: v}
 	case *rulesv1.TableClassFeature:
 		e.Body = &rulesv1.TableEntry_TableClassFeature{TableClassFeature: v}
+	case *rulesv1.TableCreature:
+		e.Body = &rulesv1.TableEntry_TableCreature{TableCreature: v}
 	}
 }
 
-// bodyFields are the nine oneof getters of a write request.
+// bodyFields are the ten oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -147,6 +152,7 @@ type bodyFields interface {
 	GetTableFeat() *rulesv1.TableFeat
 	GetTableOption() *rulesv1.TableOption
 	GetTableClassFeature() *rulesv1.TableClassFeature
+	GetTableCreature() *rulesv1.TableCreature
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -170,6 +176,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableOption(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
 	case r.GetTableClassFeature() != nil:
 		return r.GetTableClassFeature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
+	case r.GetTableCreature() != nil:
+		return r.GetTableCreature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -261,9 +269,24 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()),
 			})
 			idx["class_features"] = append(idx["class_features"], e)
+		case *rulesv1.TableCreature:
+			o.Creatures = append(o.Creatures, tableCreatureOf(te, b))
+			idx["creatures"] = append(idx["creatures"], e)
 		}
 	}
 	return o, idx
+}
+
+// tableCreatureOf is the engine's creature of a stored one.
+func tableCreatureOf(te rules.TableEntry, b *rulesv1.TableCreature) rules.TableCreature {
+	c := rules.TableCreature{
+		TableEntry: te, BaseKey: b.GetBaseKey(), HitPoints: int(b.GetHitPoints()), ArmorClass: int(b.GetArmorClass()),
+		DamageBonus: int(b.GetDamageBonus()),
+	}
+	for _, t := range b.GetTraits() {
+		c.Traits = append(c.Traits, rules.TableCreatureTrait{NamePT: t.GetNamePt(), TextPT: t.GetTextPt()})
+	}
+	return c
 }
 
 var abilityFromProto = func() map[rulesv1.Ability]rules.Ability {
@@ -634,7 +657,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features|creatures)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.

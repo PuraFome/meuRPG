@@ -83,6 +83,10 @@ func TestForPlayerOfEveryKindIsFrozen(t *testing.T) {
 		{"option that asks for visible keys", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, &rulesv1.TableOption{
 			NamePt: "Opção 2", Set: "metamagic", Prerequisite: &rulesv1.OptionPrerequisite{ClassLevel: &rulesv1.OptionClassLevel{ClassKey: "class:sorcerer", Level: 10}},
 		}},
+		{"creature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE, &rulesv1.TableCreature{
+			NamePt: "Criatura", BaseKey: "monster:wolf", HitPoints: 40, ArmorClass: 17, DamageBonus: 2,
+			Traits: []*rulesv1.TableCreatureTrait{{NamePt: "Pelo de Prata", TextPt: "Brilha ao luar."}},
+		}},
 		{"feat without a prerequisite", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{NamePt: "Talento 3", Effects: frozenEffects()}},
 		{"feat that grants a hidden and a visible spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
 			NamePt: "Talento 4", Effects: []*rulesv1.TableEffect{

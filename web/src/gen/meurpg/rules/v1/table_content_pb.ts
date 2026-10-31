@@ -1070,8 +1070,8 @@ export type TableCreature = Message<"meurpg.rules.v1.TableCreature"> & {
   hitPoints: number;
 
   /**
-   * The creature's armor class, 1 to 40. 0 keeps the base's. The notes the SRD gives for
-   * the base's armor class (worn armor, a spell) are left out.
+   * The creature's armor class, 1 to 40. 0 keeps the base's. The kind and the notes the SRD
+   * gives for the base's armor class (natural armor, worn armor, a spell) are left out.
    *
    * @generated from field: int32 armor_class = 4;
    */
@@ -1079,15 +1079,19 @@ export type TableCreature = Message<"meurpg.rules.v1.TableCreature"> & {
 
   /**
    * A whole number from -10 to 30 added once to the damage of every attack action of the
-   * creature (to the first damage part of each). 0 adds nothing. The text of the action
-   * is the base's and does not show it.
+   * creature (to the first damage part of each), so a Multiattack's attacks each get it.
+   * 0 adds nothing. A flat damage stops at 0; dice that end in "+MOD" are left as they are.
+   * The text of the action is the base's and does not show it.
    *
    * @generated from field: int32 damage_bonus = 5;
    */
   damageBonus: number;
 
   /**
-   * Traits added after the base's special abilities, as text only: at most 10.
+   * Traits added after the base's special abilities, as text only: at most 10. A trait
+   * may not be named as one of the base's traits or actions (compared by the letters a to z and digits of the name,
+   * ignoring case), and may not be named "Magic Weapons",
+   * "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
    *
    * @generated from field: repeated meurpg.rules.v1.TableCreatureTrait traits = 6;
    */

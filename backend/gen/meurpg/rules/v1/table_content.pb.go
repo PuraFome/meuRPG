@@ -2042,14 +2042,18 @@ type TableCreature struct {
 	// The creature's maximum hit points, 1 to 9999. 0 keeps the base's. The hit dice of the
 	// base stay as they are.
 	HitPoints int32 `protobuf:"varint,3,opt,name=hit_points,json=hitPoints,proto3" json:"hit_points,omitempty"`
-	// The creature's armor class, 1 to 40. 0 keeps the base's. The notes the SRD gives for
-	// the base's armor class (worn armor, a spell) are left out.
+	// The creature's armor class, 1 to 40. 0 keeps the base's. The kind and the notes the SRD
+	// gives for the base's armor class (natural armor, worn armor, a spell) are left out.
 	ArmorClass int32 `protobuf:"varint,4,opt,name=armor_class,json=armorClass,proto3" json:"armor_class,omitempty"`
 	// A whole number from -10 to 30 added once to the damage of every attack action of the
-	// creature (to the first damage part of each). 0 adds nothing. The text of the action
-	// is the base's and does not show it.
+	// creature (to the first damage part of each), so a Multiattack's attacks each get it.
+	// 0 adds nothing. A flat damage stops at 0; dice that end in "+MOD" are left as they are.
+	// The text of the action is the base's and does not show it.
 	DamageBonus int32 `protobuf:"varint,5,opt,name=damage_bonus,json=damageBonus,proto3" json:"damage_bonus,omitempty"`
-	// Traits added after the base's special abilities, as text only: at most 10.
+	// Traits added after the base's special abilities, as text only: at most 10. A trait
+	// may not be named as one of the base's traits or actions (compared by the letters a to z and digits of the name,
+	// ignoring case), and may not be named "Magic Weapons",
+	// "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
 	Traits        []*TableCreatureTrait `protobuf:"bytes,6,rep,name=traits,proto3" json:"traits,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
