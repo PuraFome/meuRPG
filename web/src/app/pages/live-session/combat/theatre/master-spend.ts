@@ -36,11 +36,11 @@ import { SpendStepper, startAmount } from './spend-stepper';
         <div class="move__row">
           <span class="move__cap">Gastar, em passos de 1,5 m</span>
           <app-spend-stepper [who]="subject()" [ft]="ft()" [fill]="phone()" [busy]="busy()" [label]="'Quanto ' + subject().label + ' gastou'" (ftChange)="change($event)" />
-          <button mat-stroked-button type="button" class="move__go" [disabled]="busy()" (click)="spend()">Gastar movimento</button>
+          <button matButton="outlined" type="button" class="move__go" [disabled]="busy()" (click)="spend()">Gastar movimento</button>
         </div>
       } @else {
         <div class="move__row">
-          <button mat-stroked-button type="button" class="move__go mr-button--off" disabled disabledInteractive aria-describedby="ms-why">Gastar movimento</button>
+          <button matButton="outlined" type="button" class="move__go mr-button--off" disabled disabledInteractive aria-describedby="ms-why">Gastar movimento</button>
           <span class="move__why" id="ms-why">{{ subject().label }} já gastou todo o movimento.</span>
         </div>
       }

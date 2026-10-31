@@ -24,7 +24,7 @@
       @case ('signed-out') {
         <section class="mr-panel invite-page__prompt">
           <p>Entre com sua conta para aceitar o convite.</p>
-          <button mat-flat-button type="button" (click)="signInToAccept()">
+          <button matButton="filled" type="button" (click)="signInToAccept()">
             Entrar para aceitar o convite
           </button>
         </section>
@@ -35,7 +35,7 @@
           <p>{{ s.message }}</p>
         </div>
         @if (s.retry !== null) {
-          <button mat-stroked-button type="button" (click)="retry()">Tentar de novo</button>
+          <button matButton="outlined" type="button" (click)="retry()">Tentar de novo</button>
         }
       }
     }

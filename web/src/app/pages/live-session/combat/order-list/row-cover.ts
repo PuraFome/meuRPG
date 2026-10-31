@@ -34,7 +34,7 @@ import { CoverMark } from './cover-mark';
       </span>
     }
     @if (offer() && !marking()) {
-      <button mat-button type="button" class="action" [attr.aria-label]="'Marcar cobertura de ' + label()" (click)="open.emit()">
+      <button matButton type="button" class="action" [attr.aria-label]="'Marcar cobertura de ' + label()" (click)="open.emit()">
         Marcar cobertura
       </button>
     }

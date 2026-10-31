@@ -68,10 +68,10 @@ const filled = (control: AbstractControl): ValidationErrors | null =>
         </p>
       }
       <div class="form__btns">
-        <button mat-stroked-button type="submit" class="form__btn form__go" [attr.aria-disabled]="busy()">
+        <button matButton="outlined" type="submit" class="form__btn form__go" [attr.aria-disabled]="busy()">
           {{ submitLabel() }}
         </button>
-        <button mat-stroked-button type="button" class="form__btn" (click)="cancel.emit()">Cancelar</button>
+        <button matButton="outlined" type="button" class="form__btn" (click)="cancel.emit()">Cancelar</button>
       </div>
     </form>
   `,

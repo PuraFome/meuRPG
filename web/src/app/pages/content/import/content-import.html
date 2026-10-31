@@ -81,7 +81,7 @@
           <li><strong>{{ res.totals?.unchanged ?? 0 }}</strong> sem mudança</li>
         </ul>
         @if (res.affectedCharacters.length > 0) {
-          <div class="mr-notice mr-notice--warning">
+          <div role="status" class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">warning</mat-icon>
             <div>
               <p>

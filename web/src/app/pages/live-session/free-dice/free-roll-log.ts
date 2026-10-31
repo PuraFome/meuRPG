@@ -40,7 +40,7 @@ let nextId = 0;
           }
         </ul>
         @if (hidden() > 0) {
-          <button mat-button type="button" (click)="all.set(true)">
+          <button matButton type="button" (click)="all.set(true)">
             Mostrar as outras {{ hidden() }}
           </button>
         }
@@ -51,7 +51,7 @@ let nextId = 0;
           <mat-icon aria-hidden="true">error</mat-icon>
           <p><strong>Não deu para carregar o registro.</strong> As rolagens novas aparecem aqui mesmo assim.</p>
         </div>
-        <button mat-button type="button" (click)="retry.emit()">Tentar de novo</button>
+        <button matButton type="button" (click)="retry.emit()">Tentar de novo</button>
       } @else {
         <p class="mr-muted">Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.</p>
       }

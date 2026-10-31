@@ -62,8 +62,8 @@ let nextId = 0;
         }
       </div>
       <div class="actions">
-        <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="cancel.emit()">Não oferecer</button>
-        <button mat-stroked-button type="button" class="btn" [disabled]="!picked() || busy()" disabledInteractive (click)="send()">
+        <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="cancel.emit()">Não oferecer</button>
+        <button matButton="outlined" type="button" class="btn" [disabled]="!picked() || busy()" disabledInteractive (click)="send()">
           {{ picked() ? 'Oferecer ' + toName() : 'Oferecer' }}
         </button>
       </div>

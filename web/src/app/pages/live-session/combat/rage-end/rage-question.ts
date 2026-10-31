@@ -40,10 +40,10 @@ import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
             Se a fúria acabar, o turno passa.
           </p>
           <div class="ask__btns">
-            <button #safe mat-stroked-button type="button" class="ask__btn" [disabled]="busy()" (click)="back.emit(c.id)">
+            <button #safe matButton="outlined" type="button" class="ask__btn" [disabled]="busy()" (click)="back.emit(c.id)">
               Voltar e atacar
             </button>
-            <button mat-stroked-button type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="letEnd.emit(c.id)">
+            <button matButton="outlined" type="button" class="ask__btn ask__go" [disabled]="busy()" (click)="letEnd.emit(c.id)">
               Deixar a fúria acabar
             </button>
           </div>

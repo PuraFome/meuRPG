@@ -140,7 +140,7 @@
     <div class="actions">
       <button
         type="button"
-        mat-flat-button
+        matButton="filled"
         class="go"
         [class.mr-button--off]="busy() || blocked() !== ''"
         [disabled]="busy() || blocked() !== ''"
@@ -150,7 +150,7 @@
       >
         <mat-icon aria-hidden="true">{{ starting() ? 'swords' : 'add' }}</mat-icon>{{ goLabel() }}
       </button>
-      <button type="button" mat-stroked-button class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
+      <button type="button" matButton="outlined" class="no" [disabled]="busy()" (click)="close()">Cancelar</button>
     </div>
   </div>
 </app-sheet-frame>

@@ -90,7 +90,7 @@ export class CombatLaunch {
   selector: 'app-combat-launch-notice',
   imports: [MatButtonModule, MatIconModule],
   template: `
-    <div class="mr-notice mr-notice--warning">
+    <div role="alert" class="mr-notice mr-notice--warning">
       <mat-icon aria-hidden="true">warning</mat-icon>
       <p>
         <strong>Não deu para ler o mapa atual.</strong>

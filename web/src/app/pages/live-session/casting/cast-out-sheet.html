@@ -133,14 +133,14 @@
   <div foot>
     @if (summoned() || cast()) {
       <div class="actions">
-        <button mat-flat-button type="button" (click)="close()">Fechar</button>
+        <button matButton="filled" type="button" (click)="close()">Fechar</button>
       </div>
     } @else if (spell() && summons()) {
       <div class="actions">
         @if (!data.spellKey) {
-          <button mat-stroked-button type="button" (click)="back()">Outra magia</button>
+          <button matButton="outlined" type="button" (click)="back()">Outra magia</button>
         }
-        <button mat-flat-button type="button" class="cast" (click)="openSummon()">Escolher a criatura</button>
+        <button matButton="filled" type="button" class="cast" (click)="openSummon()">Escolher a criatura</button>
       </div>
     } @else if (spell()) {
       @if (missing()) {
@@ -148,11 +148,11 @@
       }
       <div class="actions">
         @if (!data.spellKey) {
-          <button mat-stroked-button type="button" (click)="back()">Outra magia</button>
+          <button matButton="outlined" type="button" (click)="back()">Outra magia</button>
         }
         @if (!rollsDice()) {
           <button
-            mat-flat-button
+            matButton="filled"
             type="button"
             class="cast"
             [disabled]="!ready()"

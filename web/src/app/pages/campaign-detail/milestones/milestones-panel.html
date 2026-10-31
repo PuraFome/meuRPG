@@ -9,7 +9,7 @@
       <mat-icon aria-hidden="true">error</mat-icon>
       <p><strong>Não foi possível carregar os marcos.</strong> Confira a conexão e tente de novo.</p>
     </div>
-    <button mat-stroked-button type="button" class="retry" (click)="retry()">Tentar de novo</button>
+    <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
   }
   @case ('ready') {
     <p class="lead">{{ lead() }}</p>
@@ -25,7 +25,7 @@
           <ng-container [ngTemplateOutlet]="reachedList" />
         }
       }
-      <button mat-button type="button" class="off-list" (click)="registerOffList()">
+      <button matButton type="button" class="off-list" (click)="registerOffList()">
         <mat-icon aria-hidden="true">flag</mat-icon>Registrar um marco fora da lista
       </button>
     } @else {
