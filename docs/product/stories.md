@@ -749,7 +749,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The feature goes through the same checks as a summoning spell: concentration, the replacement of its own creatures when I ask for it, the limit of creatures kept, the dismissal and the undo, which gives the use back and removes the creatures.
   It spends no slot, so a higher slot changes nothing, and a formula creature has 0 in `slot()`.
   With no use left the casting is refused, and a long rest brings the uses back.
-  The server refuses a resource the feature does not define, a cost above one use, a count per higher circle, a ritual, a mount, acting right after the owner, and a summon on an option or a feat.
+  The server refuses a resource the feature does not define, a cost above one use, a count per higher circle, a mount, acting right after the owner, and a summon on an option.
   A player who holds none of the creatures reads the feature in the table's list with nothing of the summon but the keys of the creatures they hold (and the SRD's), and no other read shows them (`TestATableFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
   The spell the feature's summon is cast as reads only to me and to a player whose character has the feature's entry (class, subclass, race, subrace or background), live or archived (`TestTheHiddenSpellOfAFeatureSummonIsReadOnlyByTheMasterAndTheHolderOfItsEntry`).
   The creatures of a spell or a feature that fights in a combat show every player their name and key, and only the summoner and me their numbers, sheet and entry; a hidden NPC beside the summoner stays unnamed (`TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse`).

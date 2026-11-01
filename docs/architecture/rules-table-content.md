@@ -468,7 +468,7 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 ## Table feature summons
 
 A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
-An option, a feat and a class feature of another kind carry none (`value` at `.summon`).
+An option carries none (`value` at `.summon`).
 The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
 It is not a spell of the holder's list: a sheet cannot list it.
 No list, search or entry shows it.

@@ -44,7 +44,7 @@ In a campaign that forces physical dice, a player cannot cast a spell whose crea
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
 
-**Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's entry key) in place of a slot.
+**Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.
 `granted_by` refuses a ritual and a slot in the same request (`INVALID_ARGUMENT`).
 A feature's summon is cast only through its feature.
@@ -52,6 +52,7 @@ With a slot, as a ritual or with no `granted_by` it is refused.
 A sheet that lists it as a known or prepared spell gets `unknown_key` at that field.
 A sheet that lists it as a cantrip gets `spell_level`, as for any spell above the cantrips.
 The casting spends one use of the feature's resource, and is refused with `NO_USES` when none is left.
+The cast list shows a feature's summon as it shows any granted spell: the source, the uses left, the casting ability with its save DC and attack bonus, and the first circle of the hidden spell. The wire carries no flag that marks it, so the summon rolls no attack and asks for no save, and the numbers are those of the grant.
 The feature's `casting_time` is the time it takes; outside combat a time longer than an action is allowed, as for a spell.
 The count is the feature's formula with `slot()` 0; a formula creature resolves with `slot()` 0.
 Concentration, `max_live`, the replacement of an old casting and the dismissal are a spell's.

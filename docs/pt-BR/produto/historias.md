@@ -749,7 +749,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   A habilidade passa pelas mesmas verificações de uma magia de invocação: a concentração, a substituição das próprias criaturas quando eu peço, o limite de criaturas mantidas, a dispensa e o desfazer, que devolve o uso e remove as criaturas.
   Ela não gasta espaço de magia, então um espaço maior não muda nada, e uma criatura de fórmula tem 0 em `slot()`.
   Sem uso restante a conjuração é recusada, e um descanso longo devolve os usos.
-  O servidor recusa um recurso que a habilidade não define, um custo acima de um uso, criaturas por círculo acima, um ritual, uma montaria, agir logo depois do dono e uma invocação numa opção ou num talento.
+  O servidor recusa um recurso que a habilidade não define, um custo acima de um uso, criaturas por círculo acima, uma montaria, agir logo depois do dono e uma invocação numa opção.
   Um jogador que não tem nenhuma das criaturas lê a habilidade na lista da mesa com nada da invocação além das chaves das criaturas que tem (e as do SRD), e nenhuma outra leitura as mostra.
   A magia em que a invocação da habilidade é conjurada só é lida por mim e por um jogador cujo personagem tem a entrada da habilidade (classe, subclasse, raça, sub-raça ou antecedente), viva ou arquivada.
   As criaturas de uma magia ou de uma habilidade que lutam num combate mostram a todo jogador o nome e a chave, e só a quem as convocou e a mim os números, a ficha e a entrada; um NPC escondido ao lado de quem convocou continua sem nome.
