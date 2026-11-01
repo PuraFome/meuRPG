@@ -162,7 +162,7 @@ func spellHitPointEffect(out *link.Spell, content *rules.Content, spellKey strin
 func spellKinds(out *link.Spell, content *rules.Content, d rules.Derived, det *rules.SpellDetails, spellKey string) {
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
-	_, out.FeatureSummon = content.FeatureSummonOwner(spellKey)
+	out.FeatureSummon = isFeatureSummon(content, spellKey)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
 	out.HalfOnMiss = content.HalvesOnMiss(spellKey)
 	out.Evocation = det.Spell.School == "school:evocation"
@@ -291,4 +291,10 @@ func (s *Service) ContentNames(ctx context.Context, tx pgx.Tx, campaignID string
 		return nil, wrap("read rules content", err)
 	}
 	return content.NamePT, nil
+}
+
+// isFeatureSummon says the spell is the hidden spell of a table feature's summon: the feature casts it, not the character.
+func isFeatureSummon(content *rules.Content, spellKey string) bool {
+	_, ok := content.FeatureSummonOwner(spellKey)
+	return ok
 }

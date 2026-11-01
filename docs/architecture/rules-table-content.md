@@ -466,9 +466,12 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 
 A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
 An option, a feat and a class feature of another kind carry none (`value` at `.summon`).
-The holder casts it as she would a spell, through the same options, checks, concentration, replacement, dismissal and undo.
-It is not a spell of her list: a sheet cannot list it, no list, search or entry shows it, and only the master and a player whose character has the feature's entry read its details.
-A key the feature's key makes for it that another entry holds is refused at `.key`, naming the key.
+The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
+It is not a spell of the holder's list: a sheet cannot list it.
+No list, search or entry shows it.
+Only the master and a player whose character has the feature's entry read its details.
+The summon takes a spell key made from the feature's key.
+If another entry already has that key, the feature is refused at `.key`, and the message names the key.
 
 | Field | Meaning | Limits |
 | --- | --- | --- |

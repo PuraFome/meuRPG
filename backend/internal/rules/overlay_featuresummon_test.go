@@ -71,7 +71,7 @@ func TestATableFeatureSummonsThroughTheSpellChecks(t *testing.T) {
 	}
 	d := Derive(b, c)
 	if !slices.ContainsFunc(d.GrantedSpells, func(g GrantedSpell) bool {
-		return g.Spell.Key == spell && g.Source == packFeature && g.Resource == packResource && !g.AtWill && !g.AlsoWithSlot
+		return g.Spell.Key == spell && g.Source == packFeature && g.Resource == packResource && !g.AtWill && !g.AlsoWithSlot && g.FeatureSummon
 	}) {
 		t.Errorf("GrantedSpells = %+v, want the feature's spell, spending the resource", d.GrantedSpells)
 	}
@@ -172,15 +172,40 @@ func TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet(t *testing.T) {
 	t.Parallel()
 	c := withOverlayOn(t, loadForTest(t), featureSummonOverlay(nil))
 	spell := FeatureSummonSpellKey(packFeature)
-	// A Bard 10 has Magical Secrets: two spells off the list. The feature's spell is not one a sheet lists, as known.
-	b := levelUpCharAt(t, c, "class:bard", "subclass:lore", 10)
+	// A Bard 10 has Magical Secrets: two spells off the list. The feature's spell is not one a sheet lists, in any list.
+	base := levelUpCharAt(t, c, "class:bard", "subclass:lore", 10)
 	other := spellsOff(c, 5, "class:bard")
-	b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell)
-	hidden := "full.known_spell_keys[" + strconv.Itoa(len(b.SpellsKnown)-1) + "]"
-	if codes := issueCodes(Derive(b, c)); !slices.Contains(codes, IssueUnknownKey+" "+hidden) {
-		t.Errorf("the feature's spell among the spells known: issues = %v, want %q", codes, IssueUnknownKey+" "+hidden)
+	for _, tc := range []struct {
+		name, field, want string
+		edit              func(b *Build)
+	}{
+		{"known", "full.known_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell) }},
+		{"prepared", "full.prepared_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsPrepared = append(slices.Clone(b.SpellsPrepared), spell) }},
+		// A cantrip list reads the level first: the spell is of the first circle, so it is no cantrip.
+		{"cantrips", "full.cantrip_keys", IssueSpellLevel, func(b *Build) { b.Cantrips = append(slices.Clone(b.Cantrips), spell) }},
+	} {
+		b := base
+		tc.edit(&b)
+		var last int
+		switch tc.name {
+		case "known":
+			last = len(b.SpellsKnown) - 1
+		case "prepared":
+			last = len(b.SpellsPrepared) - 1
+		default:
+			last = len(b.Cantrips) - 1
+		}
+		field := tc.field + "[" + strconv.Itoa(last) + "]"
+		if codes := issueCodes(Derive(b, c)); !slices.Contains(codes, tc.want+" "+field) {
+			t.Errorf("%s: the feature's spell in the list: issues = %v, want %q", tc.name, codes, tc.want+" "+field)
+		}
 	}
-	b.SpellsKnown = append(slices.Clone(b.SpellsKnown[:len(b.SpellsKnown)-1]), other...)
+	if codes := issueCodes(Derive(func() Build { b := base; b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell); return b }(), c)); slices.Contains(codes, IssueSpellNotOnList+" full.known_spell_keys["+strconv.Itoa(len(base.SpellsKnown))+"]") {
+		t.Error("the feature's spell was taken for a spell off the list: it must not spend a Magical Secret")
+	}
+	// A real spell off the list takes the Secrets (the control).
+	b := base
+	b.SpellsKnown = append(slices.Clone(b.SpellsKnown), other...)
 	for _, code := range issueCodes(Derive(b, c)) {
 		if strings.HasPrefix(code, IssueUnknownKey+" full.known_spell_keys") {
 			t.Errorf("a real spell off the list (control) was refused: %s", code)

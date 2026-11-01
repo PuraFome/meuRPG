@@ -25,7 +25,7 @@ import {
 } from './cast-sheet/cast-sheet-data';
 import { ZoneMoveSheet, zoneMoveTitle, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
 import { spellKind } from '../../../core/combat/cast-flow';
-import { optionOfRef, splitCastRef } from '../../../core/combat/cast-ref';
+import { castRefOfKey, optionOfRef, splitCastRef } from '../../../core/combat/cast-ref';
 import type { CastPreset } from './target-mode/target-flow';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
@@ -44,18 +44,13 @@ function aimsOnMap(req: AttackOpen): boolean {
  * attacks) and `ActionSheets` (the dialogs of one purpose). It keeps what the screen must know about the attack sheet
  * (a held roll's question waits for it) and the held rolls whose sheet already opened by itself.
  */
-/** A summon option as the cast ref names it: the spell and the feature that grants it ("" for the character's own). */
-function summonRef(spellKey: string, grantedBy = ''): string {
-  return `${spellKey}|${grantedBy}`;
-}
-
 export class CombatSheets {
   /** The attack sheet is on screen: it is the one that gets the answer of its own roll. */
   readonly attackOpen = signal(false);
   /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
    * of the screen does not open the question a second time. */
   readonly inspirationHandled = new Set<string>();
-  /** What the player's combatants say a summoning spell is: the keys `GetSummonOptions` lists, read once for the character. */
+  /** The summon options `GetSummonOptions` lists, as cast refs (the spell and the feature that grants it), read once for the character. */
   private summonSpells: Promise<ReadonlySet<string>> | null = null;
   /** The sheets that answer a question of the combat: the reactions and the opportunity attacks. */
   readonly reactions: ReactionSheets;
@@ -348,14 +343,15 @@ export class CombatSheets {
     this.summonSpells ??= this.ctx.creatures
       .summonOptions(this.ctx.campaignId(), own.characterId)
       .then(
-        (options) => new Set(options.spells.map((s) => summonRef(s.spellKey, s.grantedBy))),
+        (options) =>
+          new Set(options.spells.map((s) => castRefOfKey(s.spellKey, s.grantedBy ?? ''))),
         (err: unknown) => {
           this.summonSpells = null;
           throw err;
         },
       );
     return this.summonSpells.then(
-      (keys) => keys.has(summonRef(key, grantedBy)),
+      (keys) => keys.has(castRefOfKey(key, grantedBy)),
       () => false,
     );
   }
