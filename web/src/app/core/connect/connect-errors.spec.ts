@@ -8,9 +8,11 @@ import {
 import { combatErrorMessage } from '../combat/combat-errors';
 import {
   OUTCOME_UNKNOWN,
+  REFUSED_BY_A_LIMIT,
   SESSION_ENDED,
   describeConnectError,
   isRateLimited,
+  isSizeRefused,
   rateLimitedMessage,
   requestRefusedText,
 } from './connect-errors';
@@ -177,5 +179,44 @@ describe('a rate-limited call', () => {
     it('is the wording a caller without an entry shows, combat included', () => {
       expect(combatErrorMessage(ended(), 'atacar')).toBe(SESSION_ENDED);
     });
+  });
+});
+
+describe('a body over its size limit', () => {
+  const READ = 'read first 65536 bytes of message: exceeded 65536 byte http.MaxBytesReader limit';
+  const BACKSTOP = 'message size 4194305 is larger than configured max 4194304';
+  const BACKSTOP_UNKNOWN =
+    'message is larger than configured max 4194304 - unable to determine message size: x';
+  const exhausted = (message: string) => new ConnectError(message, Code.ResourceExhausted);
+
+  it('is recognised by the two wordings of Connect read errors', () => {
+    expect(isSizeRefused(exhausted(READ))).toBe(true);
+    expect(isSizeRefused(exhausted(BACKSTOP))).toBe(true);
+    expect(isSizeRefused(exhausted(BACKSTOP_UNKNOWN))).toBe(true);
+  });
+
+  it('is not a quota refusal, a rate limit or another code', () => {
+    expect(isSizeRefused(exhausted('the scene already has 20 actions'))).toBe(false);
+    expect(
+      isSizeRefused(
+        new ConnectError(READ, Code.ResourceExhausted, new Headers({ 'Retry-After': '3' })),
+      ),
+    ).toBe(false);
+    expect(isSizeRefused(new ConnectError(READ, Code.InvalidArgument))).toBe(false);
+    expect(isSizeRefused(new TypeError('Failed to fetch'))).toBe(false);
+  });
+
+  it('says the generic limit text even when the screen words resource_exhausted', () => {
+    const own = { [Code.ResourceExhausted]: 'Limite de 20 ações.' };
+    expect(describeConnectError(exhausted(READ), own)).toBe(REFUSED_BY_A_LIMIT);
+    expect(describeConnectError(exhausted(BACKSTOP), own)).toBe(REFUSED_BY_A_LIMIT);
+  });
+
+  it("keeps the screen's own text for a quota refusal with another message", () => {
+    expect(
+      describeConnectError(exhausted('the scene already has 20 actions'), {
+        [Code.ResourceExhausted]: 'Limite de 20 ações.',
+      }),
+    ).toBe('Limite de 20 ações.');
   });
 });

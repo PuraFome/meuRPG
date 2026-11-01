@@ -1,7 +1,7 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { MapBlockedReason, MapBlockedSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { describeConnectError } from '../connect/connect-errors';
+import { describeConnectError, isSizeRefused } from '../connect/connect-errors';
 
 /** The Portuguese message for a failed map call: what happened and how to
  * fix it (maps.proto lists which method returns what). */
@@ -145,7 +145,12 @@ export function editorErrorMessage(err: unknown, call: EditorCall, what: string)
     return call === 'delete' ? DELETE_BLOCKED_TEXT[reason] : BLOCKED_TEXT[reason];
   }
   const connectErr = ConnectError.from(err, Code.Unavailable);
-  if (connectErr.code === Code.ResourceExhausted && profile.exhausted !== undefined) {
+  // A body over its size limit is not a full gallery or point limit: `mapErrorMessage` words it.
+  if (
+    connectErr.code === Code.ResourceExhausted &&
+    profile.exhausted !== undefined &&
+    !isSizeRefused(connectErr)
+  ) {
     return profile.exhausted;
   }
   return mapErrorMessage(err, what);

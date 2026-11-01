@@ -242,6 +242,14 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 - In CI every shard but the `fresh` one (plain 1/3) restores the backup the `database` job of `e2e` made (seed rows included) once CockroachDB is up, before `migrate` and the API start.
   The `fresh` shard migrates an empty database, so a broken migration fails e2e, and it runs even when the `database` job failed.
   See [CI](ci.md#end-to-end).
+- `e2e/tests/mobile-smoke.spec.ts` (sign in, the "Dados" sheet, the live flow across hiding and showing the tab) also runs on WebKit and on an iPhone.
+  `e2e/playwright.mobile.config.ts` has only those two projects; the default config stays on Chromium, because the shards install only Chromium.
+  `cd e2e && npm run test:mobile` runs it after `npx playwright install webkit` (with `--with-deps` on a machine that lacks the libraries).
+  It runs over https: Playwright's WebKit on Linux drops every `Secure` cookie that arrives over http, `localhost` included, and every cookie of the app is `Secure`.
+  `e2e/tls-front.mjs` is the https front: it streams each request to the stack, leaves Host and Origin as the browser sent them, and drops the HSTS header (which covers subdomains and would make WebKit open devidp over https).
+  Locally: make a certificate with `openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout key.pem -out cert.pem`, start the stack with `PUBLIC_ORIGIN=https://localhost:8443` (`E2E_PUBLIC_ORIGIN` for compose), run `E2E_TLS_KEY=key.pem E2E_TLS_CERT=cert.pem npm run tls-front`, and set `E2E_BASE_URL=https://localhost:8443` and `E2E_TLS_CA=cert.pem` (the readiness probe checks the certificate against it; the WebKit projects ignore certificate errors).
+  The smoke signs in itself in each context, because the saved state of the setup project belongs to the http origin.
+  `/auth/login` and `/auth/callback` allow a burst of 40 requests, then one every 3 s, so a long repeat of the smoke runs in batches.
 - In CI each shard runs a list of tests balanced by measured time (`e2e/timings.json`), not Playwright's own `--shard`.
   A new test needs no change to the file: it runs in the shard with the least time.
   The tests of a serial group run together in one shard.
