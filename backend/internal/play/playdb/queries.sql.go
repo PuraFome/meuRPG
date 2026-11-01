@@ -400,6 +400,31 @@ func (q *Queries) BumpCombatantSlotsUsed(ctx context.Context, arg BumpCombatantS
 	return err
 }
 
+const bumpNPCSpellUse = `-- name: BumpNPCSpellUse :exec
+INSERT INTO npc_spell_use (character_id, slots_used)
+SELECT cb.character_id, jsonb_build_object($1::text, GREATEST($2::int, 0))
+FROM combatants cb
+JOIN characters ch ON ch.id = cb.character_id
+WHERE cb.id = $3 AND cb.kind = 'npc'
+  AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+ON CONFLICT (character_id) DO UPDATE
+SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[$1::text], to_jsonb(GREATEST(COALESCE((npc_spell_use.slots_used->>$1::text)::int, 0) + $2::int, 0)), true),
+    updated_at = now()
+`
+
+type BumpNPCSpellUseParams struct {
+	Key   string
+	Delta int32
+	ID    string
+}
+
+// The same delta as BumpCombatantSlotsUsed on the NPC's own count, when the combatant is a hand-made
+// NPC: a monster's character (combat_only) has no row, so each fight of it starts fresh.
+func (q *Queries) BumpNPCSpellUse(ctx context.Context, arg BumpNPCSpellUseParams) error {
+	_, err := q.db.Exec(ctx, bumpNPCSpellUse, arg.Key, arg.Delta, arg.ID)
+	return err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -534,6 +559,21 @@ DELETE FROM game_session_scene_players WHERE game_session_id = $1
 
 func (q *Queries) ClearScenePlayers(ctx context.Context, gameSessionID string) error {
 	_, err := q.db.Exec(ctx, clearScenePlayers, gameSessionID)
+	return err
+}
+
+const clearSetupCombatantsSpellUse = `-- name: ClearSetupCombatantsSpellUse :exec
+UPDATE combatants
+SET slots_used = '{}'
+FROM encounters e, npc_spell_use npc, characters ch
+WHERE e.id = combatants.encounter_id AND e.status <> 'active'
+  AND npc.character_id = combatants.character_id
+  AND ch.id = npc.character_id AND ch.campaign_id = $1
+`
+
+// A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too.
+func (q *Queries) ClearSetupCombatantsSpellUse(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, clearSetupCombatantsSpellUse, campaignID)
 	return err
 }
 
@@ -2123,6 +2163,17 @@ func (q *Queries) GetLatestRestKindInSession(ctx context.Context, gameSessionID 
 	var kind string
 	err := row.Scan(&kind)
 	return kind, err
+}
+
+const getNPCSpellUse = `-- name: GetNPCSpellUse :one
+SELECT slots_used FROM npc_spell_use WHERE character_id = $1
+`
+
+func (q *Queries) GetNPCSpellUse(ctx context.Context, characterID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getNPCSpellUse, characterID)
+	var slots_used []byte
+	err := row.Scan(&slots_used)
+	return slots_used, err
 }
 
 const getOnScreen = `-- name: GetOnScreen :one
@@ -8068,6 +8119,18 @@ func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeath
 	return err
 }
 
+const resetNPCSpellUseOfCampaign = `-- name: ResetNPCSpellUseOfCampaign :exec
+DELETE FROM npc_spell_use
+USING characters ch
+WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1
+`
+
+// The table's long rest: every hand-made NPC of the campaign gets its slots and uses back.
+func (q *Queries) ResetNPCSpellUseOfCampaign(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, resetNPCSpellUseOfCampaign, campaignID)
+	return err
+}
+
 const restoreHuntersMark = `-- name: RestoreHuntersMark :exec
 INSERT INTO combatant_states (id, encounter_id, combatant_id, kind, source_id, started_round, amount, created_at)
 VALUES ($1, $2, $3, 'hunters_mark_target', $4, $5, 0, $6)
@@ -8200,6 +8263,23 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		&i.RoundStartedAt,
 	)
 	return i, err
+}
+
+const seedCombatantSlotsUsed = `-- name: SeedCombatantSlotsUsed :one
+UPDATE combatants
+SET slots_used = npc.slots_used
+FROM npc_spell_use npc
+WHERE combatants.id = $1 AND npc.character_id = combatants.character_id
+RETURNING combatants.slots_used
+`
+
+// Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use).
+// No row when the character has spent nothing.
+func (q *Queries) SeedCombatantSlotsUsed(ctx context.Context, id string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, seedCombatantSlotsUsed, id)
+	var slots_used []byte
+	err := row.Scan(&slots_used)
+	return slots_used, err
 }
 
 const setCharacterEffectModifiers = `-- name: SetCharacterEffectModifiers :exec

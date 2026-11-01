@@ -778,6 +778,9 @@ O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.
 O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe seus monstros salvos pelo mesmo caminho com "Começar este combate", e um jogador nunca recebe o encontro salvo.
 No teatro da mente (RN-25) os monstros não têm quadrado.
+Um NPC feito à mão que conjura guarda os espaços de magia e os usos por dia que gastou, de um combate para o outro, até o descanso longo da mesa.
+Um monstro em combate começa cada luta com todos os seus espaços e usos, porque cada luta traz um indivíduo novo.
+Um descanso curto não muda nada para um NPC.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria

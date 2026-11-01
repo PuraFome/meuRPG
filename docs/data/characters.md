@@ -231,6 +231,13 @@ The six sets of 4d6 the server rolled (or the player typed with physical dice) f
 The server returns the same sets until `CreateCharacter` uses them and deletes the row in the same transaction.
 Numbers only.
 
+## `npc_spell_use`
+
+The spell slots and per-day uses a hand-made NPC spent, kept from one combat to the next.
+Primary key `character_id`, which cascades with the character; `slots_used` is JSON with the keys of `combatants.slots_used` (`"1"` to `"9"`, `"pact"`, `"res:<resource>"`); `updated_at`.
+A monster's `combat_only` NPC never has a row: each fight of it starts with an empty count.
+`BumpNPCSpellUse` applies each change of `combatants.slots_used` to the row (an undo too), `SeedCombatantSlotsUsed` copies the row into the combatant when the NPC joins a combat, and the table's long rest deletes the rows of the campaign.
+
 ## `character_creatures`
 
 A player character's creatures (MR-037): the familiar, animals and undead a spell summoned, those the master gave.

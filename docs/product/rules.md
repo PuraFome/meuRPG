@@ -778,6 +778,9 @@ The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 X
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
 In theatre of the mind (RN-25) monsters have no square.
+A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from one combat to the next, until the table's long rest.
+A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
+A short rest changes nothing for an NPC.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
