@@ -556,8 +556,10 @@ type CombatServiceClient interface {
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
 	// mode the server never finds out by itself that anyone left a reach; in GRID
 	// mode it finds the ones a move makes, and the master adds the ones it cannot
-	// see (a push, a forced move, a ruling). The offer looks at no square, no reach
-	// and no fog: the master decides. It makes the same offer a move makes in GRID
+	// see (a push, a forced move, a ruling). The offer looks at no square and no
+	// reach: the master decides. The fog still decides who reads it: the reactor's
+	// player must see the mover, or reads nothing and the master withdraws or
+	// skips the offer (RN-10). It makes the same offer a move makes in GRID
 	// mode (OpportunityOffer, with no square):
 	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
 	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
@@ -2555,8 +2557,10 @@ type CombatServiceHandler interface {
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
 	// mode the server never finds out by itself that anyone left a reach; in GRID
 	// mode it finds the ones a move makes, and the master adds the ones it cannot
-	// see (a push, a forced move, a ruling). The offer looks at no square, no reach
-	// and no fog: the master decides. It makes the same offer a move makes in GRID
+	// see (a push, a forced move, a ruling). The offer looks at no square and no
+	// reach: the master decides. The fog still decides who reads it: the reactor's
+	// player must see the mover, or reads nothing and the master withdraws or
+	// skips the offer (RN-10). It makes the same offer a move makes in GRID
 	// mode (OpportunityOffer, with no square):
 	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
 	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the

@@ -5144,8 +5144,8 @@ type OpportunityOffer struct {
 	ForYou bool `protobuf:"varint,6,opt,name=for_you,json=forYou,proto3" json:"for_you,omitempty"`
 	// The square of the move's line where the mover left the reach: where it goes
 	// back to if the attack drops it to 0 hit points. Only for whoever answers. 0
-	// in THEATRE mode, where the master offered the attack and nobody has a square:
-	// see `by_hand`.
+	// when the master offered the attack by hand (in either mode), since it has no
+	// square: see `by_hand`.
 	LeftCol int32 `protobuf:"varint,7,opt,name=left_col,json=leftCol,proto3" json:"left_col,omitempty"`
 	LeftRow int32 `protobuf:"varint,8,opt,name=left_row,json=leftRow,proto3" json:"left_row,omitempty"`
 	// The reactor's melee attacks (opportunity attacks are melee), as
@@ -5153,8 +5153,8 @@ type OpportunityOffer struct {
 	// Espada longa". Empty for the mover's player.
 	Attacks []*OpportunityAttack `protobuf:"bytes,9,rep,name=attacks,proto3" json:"attacks,omitempty"`
 	// Sent to whoever receives the offer (the master, the reactor's player and the
-	// mover's player). True when the master offered it (OfferOpportunity, THEATRE mode) instead of
-	// the server finding it on a move: there is no square (`left_col` and `left_row`
+	// mover's player). True when the master offered it (OfferOpportunity, in THEATRE or GRID
+	// mode) instead of the server finding it on a move: there is no square (`left_col` and `left_row`
 	// are 0 and mean nothing), and a hit never takes the mover back anywhere.
 	ByHand bool `protobuf:"varint,10,opt,name=by_hand,json=byHand,proto3" json:"by_hand,omitempty"`
 	// The mover left the reach by a long jump, not a walk: the master's panel says

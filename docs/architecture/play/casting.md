@@ -75,6 +75,7 @@ Options apply to casts (`CastSpell`); the attack cantrips rolled by `RollAttack`
 A spell is refused with `BONUS_ACTION_SPELL_LIMIT` when a bonus action spell was cast and this is not that cantrip, or when this is a bonus action spell and another one was cast.
 Reactions (Shield) do not count.
 The disabled spell row carries a `DisabledReason` that says which side blocks it (`castError` turns it into the refusal).
+
 **The sentence of a disabled spell.** `GetTurnOptions` writes `DisabledReason.text_pt` on every disabled spell line and on a spell attack (`explainSpellReasons`, `spell_reasons.go`).
 The sentence names the spell and is the same for the master and for a player.
 The reasons that carry it are `REACTION_ONLY_WHEN_HIT`, `REACTION_ONLY`, `CASTING_TIME_TOO_LONG`, `BONUS_ACTION_SPELL_LIMIT` and `ARMOR_NOT_PROFICIENT`.

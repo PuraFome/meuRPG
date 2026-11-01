@@ -1301,8 +1301,8 @@ export type OpportunityOffer = Message<"meurpg.play.v1.OpportunityOffer"> & {
   /**
    * The square of the move's line where the mover left the reach: where it goes
    * back to if the attack drops it to 0 hit points. Only for whoever answers. 0
-   * in THEATRE mode, where the master offered the attack and nobody has a square:
-   * see `by_hand`.
+   * when the master offered the attack by hand (in either mode), since it has no
+   * square: see `by_hand`.
    *
    * @generated from field: int32 left_col = 7;
    */
@@ -1324,8 +1324,8 @@ export type OpportunityOffer = Message<"meurpg.play.v1.OpportunityOffer"> & {
 
   /**
    * Sent to whoever receives the offer (the master, the reactor's player and the
-   * mover's player). True when the master offered it (OfferOpportunity, THEATRE mode) instead of
-   * the server finding it on a move: there is no square (`left_col` and `left_row`
+   * mover's player). True when the master offered it (OfferOpportunity, in THEATRE or GRID
+   * mode) instead of the server finding it on a move: there is no square (`left_col` and `left_row`
    * are 0 and mean nothing), and a hit never takes the mover back anywhere.
    *
    * @generated from field: bool by_hand = 10;
@@ -15856,8 +15856,10 @@ export const CombatService: GenService<{
    * left the reach of another, the reactor, which the master chooses. In THEATRE
    * mode the server never finds out by itself that anyone left a reach; in GRID
    * mode it finds the ones a move makes, and the master adds the ones it cannot
-   * see (a push, a forced move, a ruling). The offer looks at no square, no reach
-   * and no fog: the master decides. It makes the same offer a move makes in GRID
+   * see (a push, a forced move, a ruling). The offer looks at no square and no
+   * reach: the master decides. The fog still decides who reads it: the reactor's
+   * player must see the mover, or reads nothing and the master withdraws or
+   * skips the offer (RN-10). It makes the same offer a move makes in GRID
    * mode (OpportunityOffer, with no square):
    * the reactor's player gets the prompt (Encounter.opportunity_offers) and
    * answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the

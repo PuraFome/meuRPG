@@ -158,6 +158,15 @@ func TestMR034_AByHandOfferOnAGridRefusesWhatCannotReact(t *testing.T) {
 	}
 	_, err = a.offer(t, a.master, e, "Goblin", "Toren")
 	wantBlockedBy(t, "a hidden mover", err, blockedNoOpportunity)
+
+	// Control: once the goblin's first turn has ended it is no longer surprised, and the same offer is accepted.
+	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Goblin"), IdempotencyKey: newKey(), Hidden: false,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden() error = %v", err)
+	}
+	a.passTo(t, e, "Toren")
+	a.mustOffer(t, e, "Toren", "Goblin")
 }
 
 // TestMR034_AMovesPendingOfferBlocksTheSameOfferByHand: the offer a move made waits; the master cannot add a
@@ -217,5 +226,37 @@ func TestRN20_AByHandOfferOnAGridNamesNoHiddenReactor(t *testing.T) {
 	}
 	if !strings.Contains(protojson.Format(a.log(t, a.master, e)), "Goblin") {
 		t.Error("the master's log no longer has the goblin (the canaries above would pass for nothing)")
+	}
+}
+
+// TestRN10_AByHandOfferOnAFoggedMoverIsTheMastersToClear: the master's offer ignores the fog, but the
+// reactor's player must see the mover to be asked: on a fog map they read nothing of an unseen mover's
+// offer, and the master withdraws it.
+func TestRN10_AByHandOfferOnAFoggedMoverIsTheMastersToClear(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	e := f.fight(t)
+	f.stage(t) // the Capitão is in the dark corridor: Pensantus sees it, Toren does not
+	f.passTo(t, e, "Capitão Goblin")
+	capitao := f.id(t, "Capitão Goblin")
+
+	offerID := f.mustOffer(t, e, "Capitão Goblin", "Toren").GetOpportunityOfferId()
+	// Positive control: the master reads it.
+	if got := f.get(t, f.master).GetOpportunityOffers(); len(got) != 1 || got[0].GetId() != offerID || got[0].GetReactorLabel() != "Toren" {
+		t.Fatalf("the master reads %v, want the offer", got)
+	}
+	// Canary: Toren's player does not see the mover, so reads nothing of the offer, nor of the mover.
+	if got := f.get(t, f.caio).GetOpportunityOffers(); len(got) != 0 {
+		t.Errorf("Toren's player reads %v of an unseen mover's offer", got)
+	}
+	f.noLeak(t, "Toren's encounter", asJSON(t, f.get(t, f.caio)), "Capitão Goblin")
+	if js := asJSON(t, f.get(t, f.caio)); strings.Contains(js, capitao) || strings.Contains(js, offerID) {
+		t.Errorf("Toren's player reads the unseen mover or its offer: %s", js)
+	}
+	if err := f.withdraw(t, f.master, e, offerID); err != nil {
+		t.Fatalf("WithdrawOpportunity() error = %v", err)
+	}
+	if got := f.get(t, f.master).GetOpportunityOffers(); len(got) != 0 {
+		t.Errorf("the master still reads %v after the withdrawal", got)
 	}
 }
