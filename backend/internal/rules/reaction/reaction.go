@@ -130,6 +130,9 @@ const (
 	// LegendaryResistance is the master's question of a held action whose saving throw a creature with the
 	// trait failed: it has no reactor and uses nobody's reaction.
 	LegendaryResistance Kind = "legendary_resistance"
+	// ParryKind is a stat block's Parry: the creature adds a number to its armor class against one melee
+	// weapon attack that would hit it. The hit waits for the master, who answers for the creature.
+	ParryKind Kind = "parry"
 )
 
 // Reason is why a window closed by itself.

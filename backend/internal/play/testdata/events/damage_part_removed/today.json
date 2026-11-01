@@ -161,7 +161,9 @@
           "from": 1,
           "to": 1
         },
-        "bonus_unknown": true
+        "bonus_unknown": true,
+        "resisted": true,
+        "resisted_left": 1
       },
       "pushed": {
         "target_id": "x",
@@ -621,7 +623,9 @@
               "from": 1,
               "to": 1
             },
-            "bonus_unknown": true
+            "bonus_unknown": true,
+            "resisted": true,
+            "resisted_left": 1
           }
         ],
         "save_sources": [
@@ -963,6 +967,7 @@
     "maneuver_name": "x",
     "resource": "x",
     "stopped": true,
+    "bonus": 1,
     "magic": true,
     "save_d20": 1,
     "save_bonus": 1,

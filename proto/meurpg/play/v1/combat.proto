@@ -5914,6 +5914,10 @@ enum ReactionKind {
   // the master reads and answers it; AnswerReaction USE names the creatures in `creature_ids`,
   // PASS leaves every save as it was rolled.
   REACTION_KIND_LEGENDARY_RESISTANCE = 16;
+  // Aparar: a creature whose stat block has Parry adds to its armor class against one melee weapon
+  // attack that would hit it (SRD 5.1, Parry). The hit waits (AWAITING_REACTION) for the master,
+  // who answers for the creature; only the master reads and answers it.
+  REACTION_KIND_PARRY = 17;
 }
 
 enum ReactionWindowStatus {
@@ -6019,6 +6023,8 @@ message ReactionWindow {
     ProtectionPrompt protection = 42;
     // Only the master.
     LegendaryResistancePrompt legendary_resistance = 43;
+    // Only the master.
+    ParryPrompt parry = 44;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -6169,6 +6175,18 @@ message ProtectionPrompt {
   string attacker_label = 1;
   // The creature the attack is aimed at, one of the reactor's neighbors.
   string ally_label = 2;
+}
+
+// ParryPrompt: a melee weapon attack hit a creature whose stat block has Parry. Only the master
+// reads it; the total and the armor class of the hit are in the window's trigger.
+message ParryPrompt {
+  // The pending damage the hit opened.
+  string pending_damage_id = 1;
+  string attacker_label = 2;
+  string attack_name_pt = 3;
+  // What Parry adds to the armor class, and the armor class the hit is compared with again.
+  int32 ac_bonus = 4;
+  int32 armor_class_with_parry = 5;
 }
 
 // LegendaryResistancePrompt: the failed saving throws of a held action that a creature with
@@ -6348,9 +6366,15 @@ message ReactionResult {
     ManeuverReduceResult maneuver_reduce = 27;
     ProtectionResult protection = 28;
     LegendaryResistanceResult legendary_resistance = 29;
+    ParryResult parry = 31;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
+}
+
+// ParryResult: the armor class with Parry stopped the hit (the roll is not rolled again).
+message ParryResult {
+  bool stopped = 1;
 }
 
 message ShieldResult {

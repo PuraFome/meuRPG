@@ -60,6 +60,8 @@ type logEntry struct {
 	// stopped the pending damages Escudo stopped (a spell attack or an attack).
 	pend    map[string]*damageLog
 	stopped []string
+	// parried are the pending damages a Parry stopped: a miss for everyone, and the master's line alone says why.
+	parried []string
 	// returned and returnBlocked: the opportunity attack's damage took the mover to
 	// 0 hit points, and it went back to the square it left the reach at (or could
 	// not, because the square was taken: the master's line says so).
@@ -550,11 +552,19 @@ func (b *logBuilder) wildShape(e playdb.ListEncounterEventsRow, entry *logEntry)
 func (b *logBuilder) reactionUsed(e playdb.ListEncounterEventsRow, entry *logEntry) bool {
 	ev := entry.ev
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION
+	parry := ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ParryKind)
+	if parry {
+		entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW // the master's line (reactionLiners); the players get none
+	}
 	// Escudo that stopped the attack takes its damage away; the hit waits for
-	// its roll otherwise, which the roll event says.
+	// its roll otherwise, which the roll event says. A Parry does the same, without saying why to a player.
 	if host, ok := b.byPending[ev.Pending]; ok {
 		host.hosts = append(host.hosts, e.ID)
-		if ev.Stopped {
+		switch {
+		case ev.Stopped && parry:
+			host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+			host.parried = append(host.parried, ev.Pending)
+		case ev.Stopped:
 			host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
 			host.stopped = append(host.stopped, ev.Pending)
 		}
@@ -985,8 +995,9 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 	if c.dice {
 		e.attackDice(out, v)
 	}
-	if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
-		out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
+	if len(e.stopped) > 0 || len(e.parried) > 0 { // Escudo or a Parry stopped it: a miss, with no damage
+		out.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
+		out.StoppedByReaction = len(e.stopped) > 0 || v.master // a player is not told a reaction did it (RN-20)
 	} else if e.ev.Pending != "" {
 		out.Damage = e.damage(c.dice, v.master, v.master || v.owns(c.target), v.saveDCFor(c.target), out)
 		e.dressDamage(out.Damage, v, c.dice, v.master || (c.target.Kind == kindPlayer && v.owns(c.target)), holdsHP(c.target))

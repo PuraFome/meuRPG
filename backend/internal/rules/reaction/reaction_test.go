@@ -89,6 +89,8 @@ func TestClosureReasonsAreTheReactorsOwnFirst(t *testing.T) {
 		{"the reaction was spent", FeatherFall, Facts{ReactionUsed: true}, ReasonReactionSpent, true},
 		{"the reactor fell unconscious", HellishRebukeKind, Facts{Incapacitated: true}, ReasonReactorIncapacitated, true},
 		{"incapacitated beats spent", CounterspellKind, Facts{Incapacitated: true, ReactionUsed: true}, ReasonReactorIncapacitated, true},
+		{"a Parry waits on the creature's reaction", ParryKind, Facts{ReactionUsed: true}, ReasonReactionSpent, true},
+		{"a Parry closes when the creature cannot act", ParryKind, Facts{Incapacitated: true}, ReasonReactorIncapacitated, true},
 		{"the spell was countered", CounterspellKind, Facts{TriggerGone: true}, ReasonTriggerGone, true},
 		{"spent beats a gone trigger", CounterspellKind, Facts{ReactionUsed: true, TriggerGone: true}, ReasonReactionSpent, true},
 		{"a concentration save ignores the reaction", Concentration, Facts{ReactionUsed: true}, ReasonNone, false},

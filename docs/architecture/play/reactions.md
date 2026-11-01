@@ -24,6 +24,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Concentration save | Damage that lands on a concentrating creature (DC 10 or half the damage); 0 HP ends it with no save | The attack that dealt the damage (`CONCENTRATION_SAVE_PENDING`), answered with `ResolveConcentrationSave` (the app's die, a physical die, "Deixar o mestre rolar por mim" or the master's "keep") |
 | Effect save | An end-of-turn or start-of-turn save of a lasting effect (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
+| Parry | A melee weapon hit on an NPC whose stat block has Parry (see [Parry](#parry)) | The hit's damage roll (`AWAITING_REACTION`) |
 | Legendary Resistance | A player's spell with a saving throw (one target or many) that a creature with the trait and a use left fails (`LEGENDARY_RESISTANCE`; see [Creatures](creatures.md#legendary-resistance), which lists the saves that are not offered it) | The cast, with the d20s and effect dice of its saves. The master's alone, with no reactor: he turns the failures he picks (`creature_ids`, one use each) or passes, and the cast settles with the same dice |
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".
@@ -65,6 +66,34 @@ sequenceDiagram
 `RollDamage` and `ApplyPendingDamage` on a blow waiting for the reaction give `REACTION_PENDING`; the attacker's `EndTurn` gives `PENDING_DAMAGE` (only the master passes, discarding).
 The +5 stays in `combatants.ac_bonus` until the start of the character's next turn (`ResetCombatantTurn`): every attack in the meantime uses the sheet's AC plus the bonus, and the bonus never alters the sheet (RN-04).
 The opportunity attack is `RollAttack` with `as_reaction`: a melee attack off turn spending the reaction in place of the action.
+
+## Parry
+
+A melee weapon attack that hits an NPC whose stat block has Parry waits in a window of kind `parry` (`combat_reaction_parry.go`).
+The window belongs to the master, who answers for the creature: "Aparar (+N CA)" or "Deixar passar".
+The hit is held as the Shield's is: its pending damage is born `AWAITING_REACTION`, and the d20 is kept in it (`attack_total`, `attack_armor_class`).
+"Usar" spends the creature's `reaction_used` and compares the kept total with the armor class the roll was compared with plus N, so nothing is rolled again.
+A total below it is a miss: the pending damage is discarded.
+Otherwise the pending damage goes to `AWAITING_ROLL` and the hit lands.
+"Deixar passar" lets the hit land and keeps the reaction.
+The bonus is not stored on the creature: it holds for that one attack (the Shield's +5 is `combatants.ac_bonus` until the creature's next turn).
+
+The window opens when all of this holds:
+
+- the target is an NPC with a Parry in its stat block (`ReactionStats.MonsterReactions`);
+- the attack is a melee weapon attack: a melee attack of the attacker's sheet that is not a spell, and, for a thrown melee weapon on a map, a target within the weapon's melee reach;
+- the hit is not a critical one (it hits whatever the armor class);
+- the creature can react: `reaction_used` is false, it is not defeated, surprised or incapacitated (`incapacitating`), and no effect takes its reactions;
+- the creature sees the attacker (`reactorSees`: not blinded, the attacker not invisible, and on a map with fog the creature's senses reach the attacker's square);
+- the creature has no Shield window for the same hit (a Shield window is opened first).
+
+The app does not know what the creature wields, so the master answers for the "wielding a melee weapon" condition.
+The window opens also when the bonus cannot change the outcome (the roll is far over the armor class), so the pause says nothing about how far the roll was (RN-10).
+A second hit of the same round finds the reaction spent and opens no window; the reaction returns in `ResetCombatantTurn` at the start of the creature's turn.
+The table rule "Reações dos inimigos" ([above](#who-reads-what-rn-10-rn-20)) applies as to any NPC reaction: with "Sempre" the Parry window takes the place of the master's check.
+
+`reaction_window_opened` and `reaction_window_closed` go to the master only: the creature has no player.
+The attack's own response and the combat's change hints are the ordinary ones.
 
 ## Protection
 
@@ -139,7 +168,7 @@ Hellish Rebuke's second-step prompt carries the aggressor's modifier only for th
 ## The log and undo
 
 Each reaction is one line (`COMBAT_LOG_KIND_REACTION_WINDOW`) with the master's and the players' text; `reaction_answered` and `concentration_save_rolled` are the session event kinds.
-A used Shield keeps `reaction_used` (undoable).
+A used Shield keeps `reaction_used` (undoable), and so does a used Parry.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.
 

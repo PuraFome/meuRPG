@@ -52,7 +52,9 @@ type reactionEvent struct {
 	ManeuverName string `json:"maneuver_name,omitempty"`
 	Resource     string `json:"resource,omitempty"`
 	Stopped      bool   `json:"stopped,omitempty"`
-	Magic        bool   `json:"magic,omitempty"`
+	// Bonus is what a Parry added to the armor class (AC is the armor class it was added to, Before the total).
+	Bonus int32 `json:"bonus,omitempty"`
+	Magic bool  `json:"magic,omitempty"`
 	// Hellish Rebuke: the aggressor's save and the fire.
 	SaveD20   int32 `json:"save_d20,omitempty"`
 	SaveBonus int32 `json:"save_bonus,omitempty"`
@@ -88,6 +90,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.Concentration:       "Teste de concentração",
 	reaction.MasterCheck:         "Verificação do mestre",
 	reaction.LegendaryResistance: "Resistência Lendária",
+	reaction.ParryKind:           "Aparar",
 }
 
 // reactionNameKeys are the content keys of the reaction names.

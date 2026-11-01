@@ -156,6 +156,22 @@ A player's character caught by a zone is asked in a window of its own, and has n
 The choice the master has with the roll of an effect's save does not reach the saves of a zone.
 A spell cast for an NPC is not offered either.
 
+## Monster reactions
+
+A stat block's reactions come from its `reactions` (`rules.LegendaryProfile.Reactions`, read by `characters.creatureReactionStats` into `ReactionStats.MonsterReactions`).
+Parry is the one the engine resolves: the Bandit Captain, Erinyes, Gladiator, Knight, Marilith and Noble add 2 to 5 to their armor class against one melee weapon attack that would hit them.
+Every other reaction (Split, Shriek, Rock Catching, Unnerving Mask, the Shield Guardian's Shield...) is text the engine cannot resolve: it opens no window, and the master reads it on the creature's sheet.
+Parry goes through the reaction window ([Reactions](reactions.md#parry)), one per round, answered by the master for the creature.
+It is the NPC's alone: a player's character made from a stat block gets no Parry window.
+The reaction is the creature's `reaction_used` column, the same as a player's: spent by the answer, back at the start of the creature's own turn.
+Nothing is kept in `creature_spent`.
+
+**Who sees what (RN-20, RN-29).**
+Only the master reads the window, the bonus, the armor class with it and that the creature has the reaction.
+A player reads the neutral wait ("Esperando o mestre") while it is open, as for any NPC that may react.
+After the answer a player reads an ordinary attack line: a miss when Parry turned the hit, a hit when it did not, with no armor class and no word of a reaction.
+The master's line says "<name> aparou (+N CA)" with the total and the armor class.
+
 ## On screen
 
 The browser reads the list with `ListCharacterCreatures`, the sheets with `ContentService.GetCreature` (kept in memory; public rules), the master's catalogue with `ListCreatures` and what the sheet can summon with `GetSummonOptions`, and casts with `CastSummon`.

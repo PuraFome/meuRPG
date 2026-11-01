@@ -105,6 +105,8 @@ type windowTrigger struct {
 	Pending string `json:"pending,omitempty"`
 	// Resist are the failed saving throws a Legendary Resistance window offers.
 	Resist []resistOffer `json:"resist,omitempty"`
+	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
+	Bonus int32 `json:"bonus,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the
@@ -320,7 +322,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		if resistGone(t, byID) {
 			return true, true, nil
 		}
-	case reaction.Shield, reaction.MasterCheck:
+	case reaction.Shield, reaction.ParryKind, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			gone, err = pendingGone(ctx, c, *w.PendingDamageID)
 			return gone, true, err

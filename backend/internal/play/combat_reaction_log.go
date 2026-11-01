@@ -81,6 +81,7 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 	reaction.HellishRebukeKind:  (*reactionFacts).hellishRebuke,
 	reaction.FeatherFall:        (*reactionFacts).featherFall,
 	reaction.Concentration:      (*reactionFacts).concentration,
+	reaction.ParryKind:          (*reactionFacts).parry,
 }
 
 // reactionLine is the line for the viewer, and whether it names the reactor.

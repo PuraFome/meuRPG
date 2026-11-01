@@ -752,6 +752,9 @@ Ele vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, o
 Os mesmos dados resolvem o lançamento.
 A característica não é oferecida em nenhuma outra salvaguarda: a de uma armadilha, a do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
 Uma criatura que uma zona de magia pega faz a salvaguarda na hora, sem escolha do mestre.
+Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
+O mestre lê a oferta e responde pela criatura; o jogador lê só a espera, depois um acerto ou erro comum, nunca a reação, o bônus nem a classe de armadura (RN-20).
+As outras reações dele (Dividir, Grito, Pegar Pedra, Máscara Inquietante...) são texto na ficha da criatura que o app não resolve.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria
@@ -796,6 +799,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
+| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, uma por rodada, respondida pelo mestre pela criatura. A rolagem guardada é comparada com a nova classe de armadura; um acerto que não a alcança mais vira erro. Uma criatura que não pode reagir, não vê o atacante ou já reagiu na rodada não recebe a janela; nem um ataque à distância ou de magia, nem um acerto crítico. |
 | Resistência Lendária | A magia de um jogador faz uma criatura com a característica e um uso sobrando falhar numa salvaguarda: o lançamento espera só o mestre, que transforma as falhas que escolher ou as deixa como estão (RN-29). |
 
 O reator rola no app, digita um dado físico ou deixa a jogada para o mestre.

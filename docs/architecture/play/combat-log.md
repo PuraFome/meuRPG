@@ -32,6 +32,7 @@ Initiative, turn order and reinforcements are not log lines.
 | A casting that touches a hidden one | Yes, with `hidden` on | No line |
 | The amount the master applied in place of the rolled one | Both | Only what the character took |
 | The reaction notice (Shield) | All, with the attacker | Only their own character's, without the attacker and the blow's total |
+| An NPC's Parry used | The line "<name> aparou (+N CA)" with the total and the armor class, and the attack's line stopped by a reaction (`stopped_by_reaction`) | No line of the reaction; the attack's line is a plain miss (`stopped_by_reaction` unset, no armor class), or a hit when Parry did not turn it |
 | Conditions | All | Those of the combatants they see |
 | "Morrendo" | Yes | Never: "Caído", with the counts (public unless the table hides them); "Estável" and "Morto" are for all |
 | HP after the damage (`hit_points_after`) | Yes | Never (RN-20) |

@@ -752,6 +752,9 @@ He sees the failed roll and turns the failures he chooses, one use each, or lets
 The same dice settle the cast.
 The trait is not offered on any other save: a trap's, a weapon's rider, Turn Undead or Hellish Rebuke.
 A creature a spell zone catches saves at once, with no choice for the master.
+A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
+The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
+Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
@@ -796,6 +799,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
+| Parry (monster) | A melee weapon attack hits a creature whose stat block has it: +2 to +5 AC against that attack, one per round, answered by the master for the creature. The kept roll is compared with the new armor class; a hit that no longer meets it is a miss. A creature that cannot react, cannot see the attacker or already reacted this round gets no window; neither does a ranged or spell attack or a critical hit. |
 | Legendary Resistance | A player's spell makes a creature with the trait and a use left fail a saving throw: the cast waits for the master alone, who turns the failures he picks or lets them stand (RN-29). |
 
 The reactor rolls in the app, types a physical die, or leaves the roll to the master.
