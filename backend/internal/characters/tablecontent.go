@@ -512,6 +512,19 @@ var (
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY:   rules.ZoneFirstEntry,
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_BOTH:          rules.ZoneBoth,
 	}
+	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP: rules.SummonTurnOwnerRollGroup,
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_AFTER_OWNER:      rules.SummonTurnAfterOwner, // the engine refuses it
+	}
+	summonRoleOf = map[rulesv1.TableSummonRole]string{
+		rulesv1.TableSummonRole_TABLE_SUMMON_ROLE_COMPANION: rules.SummonRoleCompanion,
+		rulesv1.TableSummonRole_TABLE_SUMMON_ROLE_MOUNT:     rules.SummonRoleMount, // the engine refuses it
+	}
+	summonReplacesOf = map[rulesv1.TableSummonReplaces]string{
+		rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_NONE:        rules.SummonReplacesNone,
+		rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_SAME_SUMMON: rules.SummonReplacesSame,
+	}
 	shapeOf = map[rulesv1.TableAreaShape]string{
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CONE:     rules.ShapeCone,
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CUBE:     rules.ShapeCube,
@@ -564,7 +577,32 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 	if h := b.GetHeal(); h != nil {
 		s.Heal = &rules.TableSpellHeal{Dice: h.GetDice(), PerSlotLevel: h.GetPerSlotLevel(), AddsModifier: h.GetAddsModifier()}
 	}
+	s.Summon = tableSummonOf(b.GetSummon())
 	return s
+}
+
+// enumOrUnknown is the rules' word for an enum value whose zero is the default (""): a number the map does not
+// know is "unknown", which the rules refuse, and not the default.
+func enumOrUnknown[K ~int32](words map[K]string, k K) string {
+	if k == 0 {
+		return ""
+	}
+	if w, ok := words[k]; ok {
+		return w
+	}
+	return "unknown"
+}
+
+// tableSummonOf is the summon of a table spell's body, nil for none.
+func tableSummonOf(m *rulesv1.TableSummon) *rules.TableSummon {
+	if m == nil {
+		return nil
+	}
+	return &rules.TableSummon{
+		CreatureKeys: m.GetCreatureKeys(), Count: m.GetCount(), CountPerSlotLevel: int(m.GetCountPerSlotLevel()),
+		TurnMode: enumOrUnknown(summonTurnOf, m.GetTurnMode()), Role: enumOrUnknown(summonRoleOf, m.GetRole()), MaxLive: int(m.GetMaxLive()),
+		Replaces: enumOrUnknown(summonReplacesOf, m.GetReplaces()), ResourceKey: m.GetResourceKey(), ResourceCost: int(m.GetResourceCost()),
+	}
 }
 
 // slotsLength refuses a slots list that is not nine counts or none: the engine's

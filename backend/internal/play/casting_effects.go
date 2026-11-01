@@ -407,10 +407,7 @@ func (s *Service) summonFor(ctx context.Context, c *combatTx, m authz.Membership
 	if err != nil {
 		return err
 	}
-	sum, err := s.roster.SummonCreatures(ctx, c.tx, link.Summon{
-		CampaignID: m.CampaignID, CharacterID: plan.g.caster.ID, Source: summonSource(plan.spell), GroupID: uuid.New().String(),
-		Concentration: chk.Concentration, Creatures: summonSpecs(chk.Creatures, given),
-	})
+	sum, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(m.CampaignID, plan.g.caster.ID, plan.spell, uuid.New().String(), circle, chk, summonSpecs(chk.Creatures, given)))
 	if err != nil {
 		return err
 	}

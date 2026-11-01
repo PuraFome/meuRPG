@@ -3,11 +3,13 @@ package characters
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
@@ -51,20 +53,37 @@ type lazyOwner struct {
 	env                     *formula.Env
 }
 
+// numbersOf is the snapshot and the hit points of a new creature of the content's key made with a slot of the
+// circle (0 for none): the snapshot is nil for a creature with no formula, whose numbers are the content's.
+func (l *lazyOwner) numbersOf(ctx context.Context, content *rules.Content, key string, slot int) (stat []byte, hp int32, err error) {
+	d, ok := content.MonsterDerived(key)
+	if !ok {
+		return nil, 0, fmt.Errorf("%q is not a creature", key) // CheckSummon said it was
+	}
+	hpMax := d.HitPointsMax
+	if content.CreatureHasFormulas(key) {
+		if stat, hpMax, err = l.resolve(ctx, key, slot); err != nil {
+			return nil, 0, err
+		}
+	}
+	return stat, conv.Int32(max(hpMax, 1)), nil
+}
+
 // resolve is resolveForOwner for the owner, whose environment is worked out once.
-func (l *lazyOwner) resolve(ctx context.Context, key string) (stat []byte, hp int, err error) {
+func (l *lazyOwner) resolve(ctx context.Context, key string, slot int) (stat []byte, hp int, err error) {
 	if l.env == nil {
 		if l.env, err = l.s.ownerEnv(ctx, l.q, l.content, l.campaignID, l.characterID); err != nil {
 			return nil, 0, err
 		}
 	}
-	return resolveForOwner(l.content, l.env, key)
+	return resolveForOwner(l.content, l.env, key, slot)
 }
 
-// resolveForOwner works out the snapshot of the table creature key for the character (the slot is 0: the
-// creature was not made by a slot). It returns the JSON to store and the creature's hit points.
-func resolveForOwner(content *rules.Content, env *formula.Env, key string) (stat []byte, hp int, err error) {
-	r, ok := content.ResolveCreature(key, env, 0)
+// resolveForOwner works out the snapshot of the table creature key for the character and the circle of the
+// slot it was made with (0 when it was not made by a slot). It returns the JSON to store and the creature's
+// hit points.
+func resolveForOwner(content *rules.Content, env *formula.Env, key string, slot int) (stat []byte, hp int, err error) {
+	r, ok := content.ResolveCreature(key, env, slot)
 	if !ok {
 		return nil, 0, wrap("resolve a creature", fmt.Errorf("%q is not a table creature with formulas", key))
 	}
@@ -95,12 +114,17 @@ func monsterDerivedOf(content *rules.Content, key string, statBlock []byte) (rul
 
 // statBlockOf is the snapshot of the creature with the ID, or nil. A snapshot is used whenever the row has
 // one, whatever the entry's formulas are now, as the list does; only a table creature can have one, so an
-// SRD creature costs no query.
+// SRD creature costs no query. The row of a table creature is read whatever its entry says now (an edit can
+// drop the formulas of a creature that has a snapshot); a row that is not there (a creature deleted under its
+// combatant) is no error: the entry's static numbers stand.
 func (s *Service) statBlockOf(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID, creatureID, monsterKey string) ([]byte, error) {
 	if creatureID == "" || !content.IsTableCreature(monsterKey) {
 		return nil, nil
 	}
 	row, err := s.queriesIn(tx).GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: campaignID, ID: creatureID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, s.dbError(ctx, "read a creature's numbers", err)
 	}

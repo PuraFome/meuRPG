@@ -143,10 +143,13 @@ type groupRoll struct {
 }
 
 // concentrationSpellOf is the spell a creature's source depends on for
-// concentration: only Conjurar Animais lasts that way.
-func concentrationSpellOf(source string) string {
-	if source == "conjure_animals" {
+// concentration: Conjurar Animais, and the table spell (summonKey) that made a creature of the source "table".
+func concentrationSpellOf(source, summonKey string) string {
+	switch source {
+	case "conjure_animals":
 		return "spell:conjure-animals"
+	case summonSourceTable:
+		return summonKey
 	}
 	return ""
 }
@@ -270,7 +273,7 @@ func ownerOf(all []playdb.Combatant, cr link.Creature) *playdb.Combatant {
 // seedConcentration makes the creature's owner concentrate on the spell the creature
 // depends on, when the owner has no concentration yet.
 func (s *Service) seedConcentration(ctx context.Context, c *combatTx, cr link.Creature, owner *playdb.Combatant) error {
-	spell := concentrationSpellOf(cr.Source)
+	spell := concentrationSpellOf(cr.Source, cr.SummonKey)
 	if spell == "" || !cr.DependsOnConcentration || owner == nil || owner.ConcentrationSpell != nil {
 		return nil
 	}
@@ -539,8 +542,15 @@ func summonNames(raw []string, n int) ([]string, error) {
 	return out, nil
 }
 
-// summonSource is where a creature of the spell came from, as the table says.
-func summonSource(spellKey string) string {
+// summonSourceTable is the source of the creatures of a table spell's summon.
+const summonSourceTable = "table"
+
+// summonSourceOf is where a creature of the spell came from, as the table says: a table spell's summon (chk.Table)
+// or one of the SRD's spells.
+func summonSourceOf(spellKey string, chk link.SummonSpell) string {
+	if chk.Table {
+		return summonSourceTable
+	}
 	switch spellKey {
 	case "spell:find-familiar":
 		return "familiar"
@@ -550,6 +560,19 @@ func summonSource(spellKey string) string {
 		return "conjure_animals"
 	}
 	return ""
+}
+
+// summonOf is the casting to record in the roster: the creatures of the check, from the slot of the circle
+// (0 for a ritual), with the source and, for a table spell, its key and rule.
+func summonOf(campaignID, characterID, spellKey, groupID string, slot int, chk link.SummonSpell, specs []link.CreatureSpec) link.Summon {
+	sm := link.Summon{
+		CampaignID: campaignID, CharacterID: characterID, Source: summonSourceOf(spellKey, chk), GroupID: groupID, Slot: slot,
+		Concentration: chk.Concentration, Creatures: specs,
+	}
+	if chk.Table {
+		sm.SummonKey, sm.OwnInitiative, sm.MaxLive, sm.ReplacesSame = spellKey, chk.TurnMode == rules.SummonTurnOwnInitiative, chk.MaxLive, chk.ReplacesSame
+	}
+	return sm
 }
 
 // summonSpecs are the creatures of a choice, with their names.

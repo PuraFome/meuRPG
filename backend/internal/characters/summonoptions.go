@@ -194,29 +194,48 @@ func summonCircleOptions(content *rules.Content, key string, circle int, b rules
 }
 
 // summonReplaces is what a casting sends away: a new familiar replaces the old
-// one, and a new concentration ends the creatures of the old one
-// (SummonCreatures).
+// one, a table spell may replace the creatures of its own old casting, and a new
+// concentration ends the creatures of the old one (SummonCreatures).
 func summonReplaces(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID, characterID, key string, concentration bool) ([]*charactersv1.ReplacedCreature, error) {
 	var out []*charactersv1.ReplacedCreature
+	if rule, table := content.SummonRule(key); table && rule.ReplacesSame {
+		rows, err := q.ListLiveCreaturesOfSummon(ctx, charactersdb.ListLiveCreaturesOfSummonParams{CampaignID: campaignID, CharacterID: characterID, SummonKey: key})
+		if err != nil {
+			return nil, wrap("list the creatures of the spell", err)
+		}
+		out = appendReplaced(out, content, rows, func(r charactersdb.ListLiveCreaturesOfSummonRow) charactersdb.CharacterCreature {
+			return r.CharacterCreature
+		})
+	}
 	if key == "spell:find-familiar" {
 		rows, err := q.ListLiveFamiliars(ctx, charactersdb.ListLiveFamiliarsParams{CampaignID: campaignID, CharacterID: characterID})
 		if err != nil {
 			return nil, wrap("list the familiars", err)
 		}
-		for _, r := range rows {
-			out = append(out, replaced(content, r.CharacterCreature))
-		}
+		out = appendReplaced(out, content, rows, func(r charactersdb.ListLiveFamiliarsRow) charactersdb.CharacterCreature { return r.CharacterCreature })
 	}
 	if concentration {
 		rows, err := q.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: campaignID, CharacterID: characterID})
 		if err != nil {
 			return nil, wrap("list the creatures that depend on a concentration", err)
 		}
-		for _, r := range rows {
-			out = append(out, replaced(content, r.CharacterCreature))
-		}
+		out = appendReplaced(out, content, rows, func(r charactersdb.ListLiveCreaturesOnConcentrationRow) charactersdb.CharacterCreature {
+			return r.CharacterCreature
+		})
 	}
 	return out, nil
+}
+
+// appendReplaced adds the creatures of the rows to out, each once: a creature of the same table spell can be on
+// the concentration too.
+func appendReplaced[T any](out []*charactersv1.ReplacedCreature, content *rules.Content, rows []T, pick func(T) charactersdb.CharacterCreature) []*charactersv1.ReplacedCreature {
+	for _, r := range rows {
+		c := pick(r)
+		if !slices.ContainsFunc(out, func(o *charactersv1.ReplacedCreature) bool { return o.GetId() == c.ID }) {
+			out = append(out, replaced(content, c))
+		}
+	}
+	return out
 }
 
 func replaced(content *rules.Content, c charactersdb.CharacterCreature) *charactersv1.ReplacedCreature {

@@ -33,6 +33,8 @@ import (
 type summoning struct {
 	creatures []link.CreatureSpec
 	in        rollInput
+	chk       link.SummonSpell
+	slot      int
 }
 
 // prepareSummon checks, inside the cast's transaction, what a summoning spell
@@ -55,7 +57,7 @@ func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Member
 	if err := s.summonHasRoom(ctx, c, m, caster, concentration, len(chk.Creatures)); err != nil {
 		return nil, err
 	}
-	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in}, nil
+	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in, chk: chk, slot: slotLevel}, nil
 }
 
 // summonRollOK checks who casts and how the group's initiative comes: a player's
@@ -113,20 +115,18 @@ func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz
 
 // joinSummon makes the creatures of a cast and puts them in the combat: they
 // appear next to the caster and share one initiative roll, so a group with the
-// same total takes a joint turn. The cast's event keeps what an undo needs.
-func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Combatant, spellKey string, concentration bool, sm *summoning, made *actionEvent) error {
-	res, err := s.roster.SummonCreatures(ctx, c.tx, link.Summon{
-		CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Source: summonSource(spellKey), GroupID: made.CastID,
-		Concentration: concentration, Creatures: sm.creatures,
-	})
+// same total takes a joint turn; the creatures of a table spell that rolls its own
+// initiative each roll theirs. The cast's event keeps what an undo needs.
+func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Combatant, spellKey string, sm *summoning, made *actionEvent) error {
+	res, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(c.session.CampaignID, caster.CharacterID, spellKey, made.CastID, sm.slot, sm.chk, sm.creatures))
 	if err != nil {
 		return err
 	}
 	for _, cr := range res.Created {
 		made.Created, made.MonsterKeys = append(made.Created, cr.ID), append(made.MonsterKeys, cr.MonsterKey)
 	}
-	made.Source, made.OwnerCharacter = summonSource(spellKey), caster.CharacterID
-	roll, err := s.rollGroup(sm.in, res.Created[0].InitiativeBonus)
+	made.Source, made.OwnerCharacter = summonSourceOf(spellKey, sm.chk), caster.CharacterID
+	rolls, roll, err := s.summonRolls(sm.in, res.Created)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 	if err != nil {
 		return err
 	}
-	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, map[string]groupRoll{made.CastID: roll})
+	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, rolls)
 	if err != nil {
 		return err
 	}
@@ -146,6 +146,28 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 		Round: c.enc.Round, Actor: caster.ID, OwnerCharacter: caster.CharacterID, Created: made.Created, MonsterKeys: made.MonsterKeys,
 		Source: made.Source, Key: spellKey, SummonRoll: &roll,
 	})
+}
+
+// summonRolls rolls the initiative of a casting's creatures: one roll for each group among them (the creatures
+// of a casting share one, a creature that rolls its own initiative has a group of its own). The first creature's
+// roll is the one the cast's event keeps.
+func (s *Service) summonRolls(in rollInput, created []link.Creature) (map[string]groupRoll, groupRoll, error) {
+	rolls := make(map[string]groupRoll, len(created))
+	var first groupRoll
+	for i, cr := range created {
+		if _, done := rolls[cr.GroupID]; done {
+			continue
+		}
+		roll, err := s.rollGroup(in, cr.InitiativeBonus)
+		if err != nil {
+			return nil, first, err
+		}
+		rolls[cr.GroupID] = roll
+		if i == 0 {
+			first = roll
+		}
+	}
+	return rolls, first, nil
 }
 
 // combatantsOfCreatures are the combatants of the creatures, in the order of ids,
@@ -386,14 +408,11 @@ func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, sl
 			return err
 		}
 	}
-	sum, err := s.roster.SummonCreatures(ctx, c.tx, link.Summon{
-		CampaignID: r.m.CampaignID, CharacterID: characterID, Source: summonSource(spellKey), GroupID: uuid.New().String(),
-		Concentration: chk.Concentration, Creatures: summonSpecs(chk.Creatures, given),
-	})
+	sum, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(r.m.CampaignID, characterID, spellKey, uuid.New().String(), int(castSlotLevel(slot)), chk, summonSpecs(chk.Creatures, given)))
 	if err != nil {
 		return err
 	}
-	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSource(spellKey), Ritual: r.call.ritual, Key: spellKey, Slot: slot}
+	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSourceOf(spellKey, chk), Ritual: r.call.ritual, Key: spellKey, Slot: slot}
 	for _, cr := range sum.Created {
 		r.made.Created, r.made.MonsterKeys = append(r.made.Created, cr.ID), append(r.made.MonsterKeys, cr.MonsterKey)
 	}

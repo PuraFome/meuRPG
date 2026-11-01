@@ -300,7 +300,7 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 		}
 		return out, nil
 	}
-	opt := SummonOption{Count: def.count + def.perLevel*(circle-def.spellLevel)}
+	opt := SummonOption{Count: c.summonCount(spell, def, circle, b)}
 	for _, k := range def.creatures {
 		opt.Forms = append(opt.Forms, SummonForm{Key: k, Attack: def.attack})
 	}
