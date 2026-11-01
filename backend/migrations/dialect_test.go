@@ -91,7 +91,7 @@ func TestNewMigrationsAndQueriesRunOnBothDatabases(t *testing.T) {
 		t.Fatalf("find the queries.sql files: %v (found %d)", err, len(queries))
 	}
 	for _, q := range queries {
-		body, err := os.ReadFile(q) //nolint:gosec // the path comes from a glob of this repository
+		body, err := fs.ReadFile(os.DirFS(".."), filepath.ToSlash(strings.TrimPrefix(q, ".."+string(filepath.Separator))))
 		if err != nil {
 			t.Fatal(err)
 		}

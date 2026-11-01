@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -39,43 +40,47 @@ func SortJSONKeys(s string) string {
 func render(out *strings.Builder, v any) {
 	switch v := v.(type) {
 	case map[string]any:
-		keys := make([]string, 0, len(v))
-		for k := range v {
-			keys = append(keys, k)
-		}
-		slices.Sort(keys)
-		out.WriteByte('{')
-		for i, k := range keys {
-			if i > 0 {
-				out.WriteString(", ")
-			}
-			out.WriteString(quote(k))
-			out.WriteString(": ")
-			render(out, v[k])
-		}
-		out.WriteByte('}')
+		renderObject(out, v)
 	case []any:
-		out.WriteByte('[')
-		for i, e := range v {
-			if i > 0 {
-				out.WriteString(", ")
-			}
-			render(out, e)
-		}
-		out.WriteByte(']')
+		renderArray(out, v)
 	case json.Number:
 		out.WriteString(v.String())
 	case string:
 		out.WriteString(quote(v))
 	case bool:
-		if v {
-			out.WriteString("true")
-		} else {
-			out.WriteString("false")
-		}
+		out.WriteString(strconv.FormatBool(v))
 	default:
 		out.WriteString("null")
 	}
+}
+
+func renderObject(out *strings.Builder, v map[string]any) {
+	keys := make([]string, 0, len(v))
+	for k := range v {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	out.WriteByte('{')
+	for i, k := range keys {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		out.WriteString(quote(k))
+		out.WriteString(": ")
+		render(out, v[k])
+	}
+	out.WriteByte('}')
+}
+
+func renderArray(out *strings.Builder, v []any) {
+	out.WriteByte('[')
+	for i, e := range v {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		render(out, e)
+	}
+	out.WriteByte(']')
 }
 
 func quote(s string) string {

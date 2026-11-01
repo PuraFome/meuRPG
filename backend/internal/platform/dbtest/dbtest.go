@@ -236,8 +236,14 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	freeMu.Lock()
 	made = append(made, name)
 	freeMu.Unlock()
+	copyCockroachTemplate(t, open(t, dsn))
 
-	conn := open(t, dsn)
+	return poolFor(t, prefix, name, dsn, conns)
+}
+
+// copyCockroachTemplate copies the template's schema and rows into the empty database conn is open on.
+func copyCockroachTemplate(t testing.TB, conn *sql.DB) {
+	t.Helper()
 	for _, stmt := range template.ddl {
 		if _, err := conn.ExecContext(t.Context(), stmt); err != nil {
 			t.Fatalf("copy the template's schema: %v\n%s", err, stmt)
@@ -260,8 +266,6 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 		`SELECT setval('goose_db_version_id_seq', (SELECT max(id) FROM goose_db_version))`); err != nil {
 		t.Fatalf("move the migration version sequence: %v", err)
 	}
-
-	return poolFor(t, prefix, name, dsn, conns)
 }
 
 // Main runs a package's tests and then drops the databases this process
