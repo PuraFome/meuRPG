@@ -164,7 +164,7 @@ func insertSceneEvent(ctx context.Context, c *combatTx, kind string, actor, key 
 	if err != nil {
 		return "", fmt.Errorf("next event number: %w", err)
 	}
-	row, err := c.q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+	row, err := insertSessionEvent(ctx, c.q, playdb.InsertSessionEventParams{
 		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: c.characterID,
 		Payload: body, IdempotencyKey: key, CreatedAt: c.now, IdempotencyHash: hashOf(c, key),
 	})
@@ -998,7 +998,7 @@ func (s *Service) sceneRollAnswer(ctx context.Context, m authz.Membership, out *
 	}
 	// The caller is a player: the pass or fail is in the answer only when the
 	// scene showed its DC (RN-20).
-	roll := sceneRollToProto(out.rollID, characterID, name, out.at, out.ev, out.ev.DCShown)
+	roll := sceneRollToProto(out.rollID, characterID, name, out.at, out.ev, out.ev.DCShown || heldViewerIsMaster(ctx, m))
 	roll.Sources = out.shown
 	return roll
 }
