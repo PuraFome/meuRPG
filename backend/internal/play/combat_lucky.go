@@ -45,10 +45,17 @@ import (
 // luckyReroll is the die Lucky rolled again: its index in the faces in the order rolled, the 1 it
 // showed and the new face. An attack's event keeps it, so the log still says "Sortudo: 1 → 14"
 // after a reload.
+//
+// A d20 a reroll rule of the table's features rolled again (held_reroll.go) is carried the same way, since the two never
+// meet in one roll: Source is then the rule's feature (the Reroll's source key), and Resource and Cost the uses it
+// spent, which the undo of the attack or the cast gives back. All three are empty for Lucky's.
 type luckyReroll struct {
-	Index int32 `json:"index"`
-	From  int32 `json:"from"`
-	To    int32 `json:"to"`
+	Index    int32  `json:"index"`
+	From     int32  `json:"from"`
+	To       int32  `json:"to"`
+	Source   string `json:"source,omitempty"`
+	Resource string `json:"resource,omitempty"`
+	Cost     int32  `json:"cost,omitempty"`
 }
 
 // proto is the reroll as a DiceRoll lists it: none for a nil reroll (no question, or the 1 kept).
@@ -56,14 +63,21 @@ func (r *luckyReroll) proto() []*playv1.Reroll {
 	if r == nil {
 		return nil
 	}
-	return []*playv1.Reroll{{Index: r.Index, From: r.From, To: r.To, SourceKey: link.LuckyTrait}}
+	source := link.LuckyTrait
+	if r.Source != "" {
+		source = r.Source
+	}
+	return []*playv1.Reroll{{Index: r.Index, From: r.From, To: r.To, SourceKey: source}}
 }
 
 // luckyNote is the sentence a log line written as text adds for the d20 Lucky rolled again
 // (" Sortudo: 1 → 14."), "" when none was: the structured lines carry it in DiceRoll.rerolled.
 func luckyNote(r *luckyReroll) string {
-	if r == nil {
+	switch {
+	case r == nil:
 		return ""
+	case r.Source != "": // a reroll rule's: the line does not name the feature, the structured one does
+		return fmt.Sprintf(" Rolou de novo: %d → %d.", r.From, r.To)
 	}
 	return fmt.Sprintf(" Sortudo: %d → %d.", r.From, r.To)
 }

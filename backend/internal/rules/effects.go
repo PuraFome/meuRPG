@@ -284,6 +284,12 @@ type Effect struct {
 	// DC, a number of uses).
 	TextPT string `json:"text_pt,omitempty"`
 
+	// reroll (rolleffects.go): Rolls are the rolls it covers (Roll*), a list because Applies holds one
+	// word; AtMost, the highest face that may be rolled again. It spends Cost uses (an Int formula,
+	// default 1) of Resource when it names one.
+	Rolls  []string `json:"rolls,omitempty"`
+	AtMost int      `json:"at_most,omitempty"`
+
 	// Compiled formulas, filled at load.
 	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost, givesSlot, recoverMaxLevel, recoverLevels *formula.Program
 
@@ -302,11 +308,13 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
+		"reroll",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
 		"attack.weapon.melee", "attack.weapon.ranged",
 		"damage.weapon.melee", "damage.weapon.ranged",
+		CriticalRangeTarget,
 	}
 	modifierModes     = []string{"add", "max", "set"}
 	proficiencyLevels = []string{"half", "full", "expertise"}
@@ -401,6 +409,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"extra_damage":       effectCompiler.extraDamage,
 	"spell_modifier":     effectCompiler.spellModifier,
 	"ambush":             effectCompiler.ambush,
+	"reroll":             effectCompiler.reroll,
 	"extra_attack":       effectCompiler.extraAttack,
 	"wild_shape":         effectCompiler.wildShape,
 	"slot_recovery":      effectCompiler.slotRecovery,
@@ -469,6 +478,12 @@ func (x effectCompiler) strayFields() error {
 	}
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
+	}
+	if e.Type != "reroll" && len(e.Rolls) > 0 {
+		return x.fail("rolls belongs to reroll")
+	}
+	if e.Type != "reroll" && e.AtMost != 0 {
+		return x.fail("at_most belongs to reroll")
 	}
 	if err := x.strayOwnFields(); err != nil {
 		return err
@@ -630,7 +645,11 @@ func (x effectCompiler) modifier() error {
 	if !x.c.validModifierTarget(e.Target) {
 		return x.fail("unknown target %q", e.Target)
 	}
-	if !slices.Contains(modifierModes, e.Mode) {
+	if e.Target == CriticalRangeTarget {
+		if field, msg := criticalRangeShape(e); field != "" {
+			return x.fail("%s", msg)
+		}
+	} else if !slices.Contains(modifierModes, e.Mode) {
 		return x.fail("unknown mode %q", e.Mode)
 	}
 	if e.Value == "" {

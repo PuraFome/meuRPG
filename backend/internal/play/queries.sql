@@ -1507,13 +1507,13 @@ SET slots_used = jsonb_set(slots_used, ARRAY[sqlc.arg(key)::text], to_jsonb(GREA
 WHERE id = sqlc.arg(id);
 
 -- name: SeedCombatantSlotsUsed :one
--- Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use).
--- No row when the character has spent nothing.
+-- Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use): its
+-- slots and uses, and its uses a day and Legendary Resistance. No row when the character has spent nothing.
 UPDATE combatants
-SET slots_used = npc.slots_used
+SET slots_used = npc.slots_used, creature_spent = combatants.creature_spent || npc.creature_spent
 FROM npc_spell_use npc
 WHERE combatants.id = sqlc.arg(id) AND npc.character_id = combatants.character_id
-RETURNING combatants.slots_used;
+RETURNING combatants.slots_used, combatants.creature_spent;
 
 -- name: SyncNPCSpellUse :exec
 -- Sets the NPC's own count under one key to the highest count any combatant of that character holds in
@@ -1539,20 +1539,76 @@ ON CONFLICT (character_id) DO UPDATE
 SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[sqlc.arg(key)::text], excluded.slots_used->sqlc.arg(key)::text, true),
     updated_at = now();
 
+-- name: SyncNPCCreatureSpent :exec
+-- Sets the NPC's own count under one key of creature_spent ("use:<action key>", "rest:<action key>" or "legendary_resistance") to
+-- the highest count any combatant of that character holds in this combat, after the combatant's change: the
+-- row keeps what one individual spent, never the sum, and a count that falls to 0 leaves the row. A
+-- monster's character (combat_only), a creature and a player write nothing.
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = sqlc.arg(id) AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max(CASE WHEN jsonb_typeof(cb.creature_spent->sqlc.arg(key)::text) = 'number' THEN (cb.creature_spent->>sqlc.arg(key)::text)::int END), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
+INSERT INTO npc_spell_use (character_id, creature_spent)
+SELECT character_id, jsonb_build_object(sqlc.arg(key)::text, n) FROM top
+WHERE n > 0 OR EXISTS (SELECT 1 FROM npc_spell_use own WHERE own.character_id = top.character_id)
+ON CONFLICT (character_id) DO UPDATE
+SET creature_spent = CASE WHEN excluded.creature_spent->sqlc.arg(key)::text = '0'::jsonb
+        THEN npc_spell_use.creature_spent - sqlc.arg(key)::text
+        ELSE jsonb_set(npc_spell_use.creature_spent, ARRAY[sqlc.arg(key)::text], excluded.creature_spent->sqlc.arg(key)::text, true) END,
+    updated_at = now();
+
 -- name: GetNPCSpellUse :one
 SELECT slots_used FROM npc_spell_use WHERE character_id = $1;
 
 -- name: ClearSetupCombatantsSpellUse :exec
--- A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too.
+-- A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too,
+-- its slots and uses and the keys of its uses a day, rest actions and Legendary Resistance (the others stay).
 UPDATE combatants
-SET slots_used = '{}'
+SET slots_used = '{}', creature_spent = combatants.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(combatants.creature_spent) k
+    WHERE k = 'legendary_resistance' OR k LIKE 'use:%' OR k LIKE 'rest:%')
 FROM encounters e, npc_spell_use npc, characters ch
 WHERE e.id = combatants.encounter_id AND e.status = 'setup'
   AND npc.character_id = combatants.character_id
   AND ch.id = npc.character_id AND ch.campaign_id = $1;
 
+-- name: ClearSetupCombatantsRestUses :exec
+-- The short rest: a combat in setup gives back the actions that recharge after a rest ("rest:" keys) of its NPCs.
+UPDATE combatants
+SET creature_spent = combatants.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(combatants.creature_spent) k WHERE k LIKE 'rest:%')
+FROM encounters e, npc_spell_use npc, characters ch
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
+  AND npc.character_id = combatants.character_id
+  AND ch.id = npc.character_id AND ch.campaign_id = $1;
+
+-- name: ResetNPCRestUsesOfCampaign :exec
+-- The short rest: every hand-made NPC of the campaign gets its rest actions back.
+UPDATE npc_spell_use npc
+SET creature_spent = npc.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%'),
+    updated_at = now()
+FROM characters ch
+WHERE ch.id = npc.character_id AND ch.campaign_id = $1
+  AND EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%');
+
+-- name: DeleteEmptyNPCSpellUseOfCampaign :exec
+-- A row of the campaign with nothing spent left goes.
+DELETE FROM npc_spell_use
+USING characters ch
+WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1
+  AND npc_spell_use.slots_used = '{}'::jsonb AND npc_spell_use.creature_spent = '{}'::jsonb;
+
 -- name: ResetNPCSpellUseOfCampaign :exec
--- The table's long rest: every hand-made NPC of the campaign gets its slots and uses back.
+-- The table's long rest: every hand-made NPC of the campaign gets its slots, its uses and its Legendary Resistance back.
 DELETE FROM npc_spell_use
 USING characters ch
 WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1;
@@ -1782,8 +1838,8 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 -- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 -- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
 -- window kept.
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -1835,6 +1891,12 @@ UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
 RETURNING *;
 
+-- name: AnswerInspirationHoldReroll :exec
+-- The answer to the reroll's question: the d20 after it (the faces, the one that counts and the total) and the faces that
+-- counted before and after (NULL when the player kept the roll), with the answer's key. The roll is closed by the
+-- answer_key the settled path writes.
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, reroll_answer_key = $5, reroll_from = $6, reroll_to = $7 WHERE id = $1;
+
 -- name: AskInspirationHoldIndomitable :exec
 -- The save as it stands (after Lucky and the die) failed: the row stays open for Indomitable's question. The
 -- die's answer, when there was a die question, is kept with it (die_answer_key, die_used), since the die is spent.
@@ -1861,11 +1923,12 @@ UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
--- Lucky question or whose Stroke of Luck question still waits stays: those questions need no die.
+-- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
+  AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
 
 -- name: InsertHitRider :one
