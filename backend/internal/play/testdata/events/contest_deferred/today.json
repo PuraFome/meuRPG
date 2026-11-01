@@ -56,7 +56,8 @@
   "fall_cuts": [
     {
       "pending_id": "x",
-      "before": 1
+      "before": 1,
+      "prev": "x"
     }
   ],
   "channel": {
@@ -1026,6 +1027,7 @@
     "kept": true,
     "saved_ids": [
       "x"
-    ]
+    ],
+    "reduction": 1
   }
 }
