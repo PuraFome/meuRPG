@@ -12,7 +12,7 @@ import (
 
 // The critical range of the table's critical_range modifier, end to end (#573): a weapon attack is a critical
 // hit from the lowest natural d20 the character's effects give (the lowest of the SRD's 20, Improved
-// Critical's 19 and the table's), and a spell attack keeps the 20 (combat_attack_stroke.go criticalFrom). These
+// Critical's 19 and the table's), and a spell attack keeps the 20 (combat_attack_stroke.go criticalFrom). Both
 // tests need the database (MEURPG_TEST_DATABASE_URL).
 
 // giveFeat is the master adding a feat to a sheet, which only he may do.
@@ -70,6 +70,40 @@ func TestTableCriticalRangeWidensTheCriticalRangeOfAWeaponAttack(t *testing.T) {
 			if got := res.GetRoll().GetOutcome(); got != tc.want[i] {
 				t.Errorf("%s: natural %d is %v, want %v", tc.who, face, got, tc.want[i])
 			}
+		}
+	}
+}
+
+// A spell attack keeps the SRD's 20 whatever the table's critical range is: the same feat that makes Toren's weapon
+// attack critical on an 18 does nothing for a spell attack (combat_attack_stroke.go criticalFrom).
+func TestTableCriticalRangeDoesNotWidenASpellAttack(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{
+				NamePt: "Olho Afiado", DescPt: []string{"Um talento da mesa."},
+				Effects: []*rulesv1.TableEffect{{Type: "modifier", Target: "critical_range", Mode: "set", Value: "18"}},
+			}},
+		}))
+		if err != nil {
+			t.Fatalf("CreateTableEntry() error = %v", err)
+		}
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, abilities(10, 14, 12, 16, 8), nil, []string{fireBolt})
+		a.giveFeat(t, a.pens, res.Msg.GetEntry().GetKey())
+	})
+	a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.capitao.GetId()}}, npcRolls: []int{3}, reveal: []string{"Capitão Goblin"},
+		players: map[string]int32{"Pensantus": 18},
+		at:      map[string][2]int32{"Pensantus": {3, 3}, "Capitão Goblin": {9, 3}},
+	})
+	for i, tc := range []struct {
+		face int32
+		want playv1.AttackOutcome
+	}{{18, hit}, {19, hit}, {20, crit}} {
+		e := a.turnOf(t, "Pensantus")
+		res := a.mustAttack(t, a.ana, e, "Pensantus", fireBolt, "Capitão Goblin", d20(tc.face))
+		if got := res.GetRoll().GetOutcome(); got != tc.want {
+			t.Errorf("round %d: a spell attack on a natural %d is %v, want %v", i, tc.face, got, tc.want)
 		}
 	}
 }

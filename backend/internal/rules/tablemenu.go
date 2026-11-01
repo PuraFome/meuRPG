@@ -352,7 +352,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Deixa o jogador rolar de novo um dado que mostrou um valor baixo (até o valor escolhido) numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; a nova rolagem vale, mesmo se for pior. Pode gastar usos de um recurso que a entrada define a cada vez.", Fields: []MenuField{
+	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Deixa o jogador rolar de novo um dado que mostrou um valor baixo (até o valor escolhido) numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; a nova rolagem vale, mesmo se for pior. Nos dados de dano o jogador não é perguntado: o app rola de novo, de uma vez, todos os dados da jogada de dano que mostraram o valor escolhido ou menos, e um uso cobre a jogada de dano inteira. Pode gastar usos de um recurso que a entrada define a cada vez (sem recurso, vale sempre).", Fields: []MenuField{
 		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
 		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
 		{Name: "resource", Kind: "resource_ref"},

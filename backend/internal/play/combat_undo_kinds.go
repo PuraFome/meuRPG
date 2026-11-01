@@ -388,13 +388,19 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 				return err
 			}
 		}
-		if ev.DamageReroll != nil {
-			if err := u.spendResourcesBack(ctx, who, ev.DamageReroll.Resource, ev.DamageReroll.Cost); err != nil {
-				return err
-			}
+		if err := u.damageRerollBack(ctx, who, ev); err != nil {
+			return err
 		}
 	}
 	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+}
+
+// damageRerollBack gives back the uses a damage reroll spent.
+func (u *undoer) damageRerollBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.DamageReroll == nil {
+		return nil
+	}
+	return u.spendResourcesBack(ctx, who, ev.DamageReroll.Resource, ev.DamageReroll.Cost)
 }
 
 // onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
