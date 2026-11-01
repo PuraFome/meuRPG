@@ -15,11 +15,12 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The questions a held roll asks, in the order the SRD puts them on the table: the 1 the halfling's
-// Lucky may roll again comes first, then the reroll the table's features give (held_reroll.go), and the
-// Bardic Inspiration die is added to whatever the d20 is after them (combat_lucky.go has the rule). Each question is one link of the chain: it says when it is open,
-// what it asks and what its answer writes. A question that comes later (the master's reroll, Cutting
-// Words on a check) is one more link with its own columns.
+// The questions a held roll asks, in the order the SRD puts them on the table: the 1 the halfling's Lucky may roll
+// again, the reroll the table's features give (held_reroll.go), and the Bardic Inspiration die, which is added to
+// whatever the d20 is (combat_lucky.go has the rule). Lucky's and the reroll never meet in one roll: a roll that asks
+// Lucky is not offered the reroll. Each question is one link of the chain: it says when it is open, what it asks and
+// what its answer writes. A question that comes later (the master's reroll, Cutting Words on a check) is one more link
+// with its own columns.
 
 // questionKind names a question of the chain.
 type questionKind int

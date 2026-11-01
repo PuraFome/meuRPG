@@ -325,7 +325,7 @@ func (s *Service) heldGate(ctx context.Context, env gateEnv, spec rollSpec) (gat
 }
 
 // askerState is what the gate knows of the roller before the roll: the die it holds, and Indomitable's and Stroke of
-// Luck's uses left (the reroll rules are read once the roll is made, not for an answer).
+// Luck's uses left (the reroll rules are read by rerollsLeft in heldGate, before the d20 is rolled, and not for an answer).
 func (s *Service) askerState(ctx context.Context, env gateEnv, spec rollSpec) (rollerState, error) {
 	st, err := s.rollerStateOf(ctx, env, spec.Roller)
 	if err != nil {

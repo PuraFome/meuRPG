@@ -104,19 +104,13 @@ func (a *armed) holds(t *testing.T) int {
 	return n
 }
 
-// fight starts the close fight, which opens on Toren.
-func (r *rerollTable) fight(t *testing.T) *playv1.Encounter {
-	t.Helper()
-	return r.closeFight(t)
-}
-
 // A weapon attack whose d20 shows the limit or lower is held with the reroll question (the armor class is never told).
 // Answering yes rolls the d20 again with the service's roller, the new face is used, the rule's use is spent, and the
 // result lists the reroll with the rule's source.
 func TestAD20AtTheLimitAsksToRollAgainAndTheNewRollIsUsed(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil {
 		t.Fatalf("RollAttack(2) error = %v", err)
@@ -155,6 +149,9 @@ func TestAD20AtTheLimitAsksToRollAgainAndTheNewRollIsUsed(t *testing.T) {
 	if left := r.left(t); left != 1 {
 		t.Errorf("uses left = %d, want one spent", left)
 	}
+	if !offer.GetD20().GetPhysical() || a.GetRoll().GetD20().GetPhysical() {
+		t.Errorf("physical = %v as held, %v as rerolled; want the typed 2 physical and the server's new roll not", offer.GetD20().GetPhysical(), a.GetRoll().GetD20().GetPhysical())
+	}
 	if c := byLabel(t, a.GetEncounter(), "Toren"); !c.GetActionUsed() || c.GetHeldRollOffer() != nil {
 		t.Errorf("Toren = action used %v, question %v; want the action spent and no question", c.GetActionUsed(), c.GetHeldRollOffer())
 	}
@@ -164,7 +161,7 @@ func TestAD20AtTheLimitAsksToRollAgainAndTheNewRollIsUsed(t *testing.T) {
 func TestUndoingARerolledAttackGivesTheUseBack(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(1))
 	if err != nil {
 		t.Fatalf("RollAttack(1) error = %v", err)
@@ -189,7 +186,7 @@ func TestUndoingARerolledAttackGivesTheUseBack(t *testing.T) {
 func TestKeepingTheD20SpendsNoUse(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil {
 		t.Fatalf("RollAttack(2) error = %v", err)
@@ -203,6 +200,9 @@ func TestKeepingTheD20SpendsNoUse(t *testing.T) {
 	if a.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || len(d20.GetRerolled()) != 0 || d20.GetFaces()[0] != 2 || out.GetNext() != nil {
 		t.Errorf("the attack = outcome %v, d20 %v; want the 2 kept, a miss and no reroll", a.GetRoll().GetOutcome(), d20)
 	}
+	if !d20.GetPhysical() {
+		t.Error("the kept 2 is not physical any more, want the typed face as it was")
+	}
 	if left := r.left(t); left != 2 {
 		t.Errorf("uses left = %d, want none spent", left)
 	}
@@ -213,7 +213,7 @@ func TestKeepingTheD20SpendsNoUse(t *testing.T) {
 func TestWithTheSwitchOffTheRollSettlesAsIfDeclined(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, false)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil {
 		t.Fatalf("RollAttack(2) error = %v", err)
@@ -241,7 +241,7 @@ func TestWithTheSwitchOffTheRollSettlesAsIfDeclined(t *testing.T) {
 func TestNoQuestionAboveTheLimitOrWithoutTheUses(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(3))
 	if err != nil || res.GetHeldRollOffer() != nil || res.GetRoll().GetOutcome() == playv1.AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED {
 		t.Fatalf("a 3 with the limit at 2 = %v, %v; want it resolved with no question", res, err)
@@ -251,14 +251,14 @@ func TestNoQuestionAboveTheLimitOrWithoutTheUses(t *testing.T) {
 	}
 
 	dear := d20RerollTable(t, true, d20RerollEffects("2", 2, "3"))
-	e = dear.fight(t)
+	e = dear.closeFight(t)
 	res, err = dear.attack(t, dear.caio, e, "Toren", battleaxe, "Goblin", d20(1))
 	if err != nil || res.GetHeldRollOffer() != nil || res.GetRoll().GetOutcome() == playv1.AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED {
 		t.Fatalf("a rule that costs 3 of a pool of 2 = %v, %v; want it resolved with no question", res, err)
 	}
 
 	one := d20RerollTable(t, true, d20RerollEffects("1", 2, "1"))
-	e = one.fight(t)
+	e = one.closeFight(t)
 	res, err = one.attack(t, one.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil || res.GetHeldRollOffer().GetReroll() == nil {
 		t.Fatalf("the first low face = %v, %v; want the question", res, err)
@@ -281,7 +281,7 @@ func TestNoQuestionAboveTheLimitOrWithoutTheUses(t *testing.T) {
 func TestTheNewRollIsFinalEvenWhenLow(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil {
 		t.Fatalf("RollAttack(2) error = %v", err)
@@ -302,7 +302,7 @@ func TestTheNewRollIsFinalEvenWhenLow(t *testing.T) {
 func TestARetryOfTheRerollAnswerSpendsOnce(t *testing.T) {
 	t.Parallel()
 	r := usualD20RerollTable(t, true)
-	e := r.fight(t)
+	e := r.closeFight(t)
 	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
 	if err != nil {
 		t.Fatalf("RollAttack(2) error = %v", err)

@@ -41,6 +41,9 @@ type rollerState struct {
 	// Rerolls are the reroll rules of the roller's table features that cover the roll and that it can pay (held_reroll.go);
 	// read when the roll is made, only with the switch on.
 	Rerolls []link.RerollRule
+	// RerollsOff says the d20 rerolls switch is off: a reroll question still waiting from when it was on is not waiting
+	// any more, it is forgotten like a stale hold, and the roller is not refused for it.
+	RerollsOff bool
 }
 
 // stateOfCombatant is the state of a roller whose combatant the path already has: the die it holds in
@@ -58,6 +61,12 @@ func stateOfCombatant(c playdb.Combatant, round int32) rollerState {
 // know where it is, the die it holds wherever it is kept (dieOf). It reads through the transaction's
 // queries, so inside a change it sees the change.
 func (s *Service) rollerStateOf(ctx context.Context, env gateEnv, r heldRoller) (rollerState, error) {
+	st, err := s.rollerStateNow(ctx, env, r)
+	st.RerollsOff = !s.d20Rerolls
+	return st, err
+}
+
+func (s *Service) rollerStateNow(ctx context.Context, env gateEnv, r heldRoller) (rollerState, error) {
 	if r.Combatant != nil {
 		return stateOfCombatant(*r.Combatant, r.Round), nil
 	}
@@ -174,8 +183,12 @@ func errDieGone() error {
 // stale says a hold made in a combat no longer has anything to answer: its round is over (or the
 // combat ended), or, in inspiration_holds, the die is not the combatant's any more (used or expired) and
 // no Lucky question waits, which needs no die. A weapon attack is stale only by its round, as it always
-// was in roll_holds, wherever it is kept.
+// was in roll_holds, wherever it is kept. A reroll question still waiting when the switch is off (it was written with the
+// switch on) is stale too, out of combat as well: nothing can answer it in the client.
 func (h heldRoll) stale(st rollerState) bool {
+	if st.RerollsOff && rerollAsks(h) {
+		return true
+	}
 	if h.Round == nil {
 		return false
 	}

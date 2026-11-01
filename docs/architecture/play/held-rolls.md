@@ -304,16 +304,20 @@ SRD 5.1 says it as it says the halfling's Lucky: the die is rolled again and the
 For a d20 the player is asked "rolar de novo?" (`held_reroll.go`).
 The damage dice are not a held roll: the app rolls them again by itself (`combat_damage_reroll.go`).
 
-- **Held only when asked.** The question comes as soon as the d20 is rolled, never later: the d20 that counts shows `AtMost` or lower, no 1 waits for Lucky first (a roll Lucky asked about, and a face it rolled again, are not offered), and the character can pay a rule that covers the kind (the first of its rules in the sheet's order that does).
+- **Held only when asked.** The question comes as soon as the d20 is rolled, never later: the d20 that counts shows `AtMost` or lower, and the character can pay a rule that covers the kind (the first of its rules in the sheet's order that does).
   `rerollsLeft` reads the sheet and the vitals only for a roll of a player's character that may ask, of a kind with an applies word.
   For a pair (advantage or disadvantage) it is the die that counts.
+  Lucky and the reroll never meet in one roll: a roll that asks Lucky's question (a 1 on a halfling's d20) is not offered the reroll, before or after Lucky is answered, because the reroll is decided only when the d20 is rolled.
 - **The switch.** Nothing is asked unless `Config.D20Rerolls` is on, which `cmd/api` does not set: the web client does not answer the question yet (an unknown case of the offer renders the die's prompt with zero sides), so the server never holds a roll on it until the screen ships.
   With it off the roll settles as if the player declined: no hold, nothing spent, nothing written.
+  A question written with it on that still waits when it goes off is stale (`rollerState.RerollsOff`): it never refuses a roll, the next roll that runs the gate forgets it, and answering it fails.
 - **Kinds that ask** (`heldKindDef.rerollApplies`): the weapon attack and the spell attack (`attack`), the scene check and the group check (`check`), the effect's saving throw and the concentration save (`save`).
   The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle hint try never ask it, whatever the character has.
-- **Order.** Lucky, then the reroll, then the Bardic Inspiration die, then Indomitable or Stroke of Luck, which look at the new roll.
-- **Answer.** Rolling again makes the service roll a d20 with its own roller whatever the campaign's dice mode (the answer carries no die; a physical-dice table is not asked to type it, so this is not RN-18 faithful), replaces the face at `reroll_index`, picks the die that counts again by the roll's mode (`countedAfter`), applies Reliable Talent, and spends `Cost` uses of the rule's resource (`spendUses`) in the transaction of the answer.
+  Lucky reaches more kinds than these; widening the reroll to match is left to a follow-up.
+- **Order.** The reroll comes after Lucky's place in the chain and before the Bardic Inspiration die, then Indomitable or Stroke of Luck, which look at the new roll (a roll that asks the reroll is not asked either of them at once).
+- **Answer.** Rolling again makes the service roll a d20 with its own roller whatever the campaign's dice mode (the answer carries no die; a physical-dice table is not asked to type it, so this is not RN-18 faithful, a known gap), replaces the face at `reroll_index`, picks the die that counts again by the roll's mode (`countedAfter`), applies Reliable Talent, clears the roll's `Physical` flag (the new die is the server's, never claimed to be physical) and spends `Cost` uses of the rule's resource (`spendUses`) in the transaction of the answer.
   The new roll is final.
+  A free rule (no resource) is offered with cost 0 and spends nothing.
   The rule is kept on the row (limit, resource, cost, source), so the answer reads nothing from the sheet.
 - **Log and undo.** The reroll is carried where Lucky's is (`luckyReroll`, with the rule's `Source` and the uses spent), so every result that lists Lucky's lists it, with the rule's feature as `source_key`.
   The event of a weapon attack or a cast keeps the uses (`actionEvent.D20Reroll`), and their undo gives them back (`d20RerollBack`).

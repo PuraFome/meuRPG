@@ -16,20 +16,25 @@ import (
 // The d20 rolled again by a reroll rule of the character's table features (the engine's reroll effect, link.RerollRule:
 // Applies the kind of roll, AtMost the highest face that may be rolled again, Resource and Cost the uses it spends, none
 // for a free rule). SRD 5.1 puts it the way it puts the halfling's Lucky: the die is rolled again and the new roll must
-// be used, even when it is worse. It is a link of the chain (held_questions.go) between Lucky's and the Bardic
+// be used, even when it is worse. It is a link of the chain (held_questions.go) after Lucky's and before the Bardic
 // Inspiration die's, since the die is added to whatever the d20 is after it. The question comes as soon as the d20 is
-// rolled, never later: the d20 that counts shows AtMost or lower, no 1 waits for Lucky's question first (the roll that
-// Lucky asked about is not offered again, nor is a face it rolled again), and the character can pay a rule that covers
-// the kind (the first of its rules, in the sheet's order). The new roll is final: it is never asked about again, even
-// when it is another low face.
+// rolled, never later: the d20 that counts shows AtMost or lower, and the character can pay a rule that covers the kind
+// (the first of its rules that it can pay, in the sheet's order). The new roll is final: it is never asked about again,
+// even when it is another low face.
 //
-// The kinds that ask it are the ones the registry gives an applies word: the weapon attack and the spell attack
-// ("attack"), the scene check and the group check ("check"), the effect's saving throw and the concentration save
-// ("save"). The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle
-// hint try never ask it, whatever the character has.
+// Lucky and this question never meet in one roll: a roll that asks Lucky's question (a 1 on a halfling's d20) is not
+// offered the reroll, before or after Lucky is answered, because the reroll is decided only when the d20 is rolled and
+// the code cannot follow Lucky's new face with a second question.
+//
+// The kinds that ask it are the weapon attack and the spell attack ("attack"), the scene check and the group check
+// ("check"), the effect's saving throw and the concentration save ("save"). The kinds that never ask it, whatever the
+// character has, are the trap search, the puzzle hint, Hide, the contests, the Counterspell check, the death save and
+// the initiative; Lucky reaches more of them, and widening this to match is left to a follow-up.
 //
 // Nothing is asked unless Service.d20Rerolls is on (Config.D20Rerolls): the web client does not answer the question yet,
-// so with the switch off the roll settles as if the player declined, with nothing held, spent or written.
+// so with the switch off the roll settles as if the player declined, with nothing held, spent or written. A question
+// written with the switch on that is still waiting when it goes off is forgotten by the next roll that asks, like a
+// stale hold, and never blocks the roller.
 //
 // The reroll is carried where Lucky's is (luckyReroll, with the rule's source key and uses), so every path that tells the
 // d20 Lucky rolled again tells this one too, and the undo of a weapon attack or a cast gives the uses back (actionEvent.D20Reroll).
@@ -99,7 +104,11 @@ func (ae answering) rerollAt(roll d20Roll, luckyAt *int32) *rerollAsk {
 		return nil
 	}
 	r := ae.st.Rerolls[i]
-	return &rerollAsk{Index: clamp32(roll.Index, 0, 1), AtMost: clamp32(r.AtMost, 1, d20Sides), Resource: r.Resource, Cost: clamp32(r.Cost, 0, heldBonusLimit), Source: r.Source}
+	cost := clamp32(r.Cost, 0, heldBonusLimit)
+	if r.Resource == "" {
+		cost = 0 // a free rule spends nothing, whatever cost the effect carries
+	}
+	return &rerollAsk{Index: clamp32(roll.Index, 0, 1), AtMost: clamp32(r.AtMost, 1, d20Sides), Resource: r.Resource, Cost: cost, Source: r.Source}
 }
 
 // keep writes the rule the roll is held for in the hold.
@@ -155,6 +164,8 @@ func (u *undoer) d20RerollBack(ctx context.Context, who playdb.Combatant, ev act
 	return u.spendResourcesBack(ctx, who, ev.D20Reroll.Resource, ev.D20Reroll.Cost)
 }
 
+// answerReroll writes the answer to the reroll question into the hold's row: the d20 after it, the faces that counted
+// before and after (none when the roll was kept) and the answer's key.
 func (st inspirationHoldStore) answerReroll(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldReroll(ctx, playdb.AnswerInspirationHoldRerollParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
@@ -165,6 +176,7 @@ func (st inspirationHoldStore) answerReroll(ctx context.Context, h heldRoll) err
 	return nil
 }
 
+// answerReroll writes the answer of a hold in the store that keeps it; only inspiration_holds keeps a reroll question.
 func (hs heldStores) answerReroll(ctx context.Context, h heldRoll) error {
 	return hs.st.answerReroll(ctx, h)
 }
@@ -210,8 +222,9 @@ func (q rerollQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 // rerolled is the roll with the die that showed the low face rolled again, and the rule's uses spent.
 //
 // The server rolls the new die itself with its roller, whatever the campaign's dice mode: a player who rolls real dice
-// (RN-18) is not asked to type the new face, and the hold keeps its Physical flag from the first roll. This reroll is
-// therefore not RN-18 faithful for a physical-dice table; the answer carries no way of rolling to change that.
+// (RN-18) is not asked to type the new face. The new roll is therefore not RN-18 faithful for a physical-dice table (a
+// known gap: the answer carries no way of typing a face), and it is never claimed to be physical: the hold's Physical
+// flag is cleared, so the result and the log tell the truth about the die.
 func (ae answering) rerolled(ctx context.Context, h heldRoll) (heldRoll, error) {
 	if len(h.Faces) == 0 {
 		return h, connect.NewError(connect.CodeInternal, errors.New("a reroll of a roll with no faces"))
@@ -229,10 +242,10 @@ func (ae answering) rerolled(ctx context.Context, h heldRoll) (heldRoll, error) 
 	faces := slices.Clone(h.Faces)
 	from := clamp32(faces[index], 1, d20Sides)
 	faces[index] = face
-	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, ae.spec.Mode), Physical: h.Physical}
+	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, ae.spec.Mode)}
 	roll.Total = roll.Face() + ae.spec.Modifier
 	roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
-	h.Faces, h.Counted, h.Total = faces, roll.Index, roll.Total
+	h.Faces, h.Counted, h.Total, h.Physical = faces, roll.Index, roll.Total, false
 	h.RerollFrom, h.RerollTo = new(from), new(clamp32(face, 1, d20Sides))
 	return h, nil
 }
