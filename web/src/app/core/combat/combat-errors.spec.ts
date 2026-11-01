@@ -24,6 +24,15 @@ describe('combat errors', () => {
     }
   });
 
+  it('says every refusal of a spent action of a stat block in words, and that nothing was spent', () => {
+    for (const reason of [
+      EncounterBlockedReason.CREATURE_ACTION_RECHARGING,
+      EncounterBlockedReason.CREATURE_ACTION_NO_USES_LEFT,
+    ]) {
+      expect(blockedMessage({ reason } as never)).toMatch(/[Nn]ada foi gasto\./);
+    }
+  });
+
   it('says a reserved character cannot fight, not that the combat is gone (R2-06)', () => {
     expect(
       blockedMessage({ reason: EncounterBlockedReason.CHARACTER_RESERVED } as never),

@@ -465,10 +465,15 @@ service CombatService {
   rpc StandUp(StandUpRequest) returns (StandUpResponse);
 
   // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
-  // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+  // combat in either mode (RN-25, ADR-0017): the combatant on turn (the mover)
   // left the reach of another, the reactor, which the master chooses. In THEATRE
-  // mode the server never finds out by itself that anyone left a reach. It makes
-  // the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+  // mode the server never finds out by itself that anyone left a reach; in GRID
+  // mode it finds the ones a move makes, and the master adds the ones it cannot
+  // see (a push, a forced move, a ruling). The offer looks at no square and no
+  // reach: the master decides. The fog still decides who reads it: the reactor's
+  // player must see the mover, or reads nothing and the master withdraws or
+  // skips the offer (RN-10). It makes the same offer a move makes in GRID
+  // mode (OpportunityOffer, with no square):
   // the reactor's player gets the prompt (Encounter.opportunity_offers) and
   // answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
   // master answers for an NPC's reaction (he attacks by hand) or skips the offer
@@ -485,12 +490,13 @@ service CombatService {
   //   - `not_found`: the combat, the mover or the reactor is not in the open
   //     session.
   //   - `permission_denied`: the caller is a player.
-  //   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
-  //     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
-  //     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
-  //     reactor cannot make the attack now, or is on the mover's side, or has no
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+  //     (NOT_ACTIVE); the mover is not on turn (NOT_YOUR_TURN); the reactor used
+  //     its reaction (REACTION_USED); the reactor cannot make the attack now
+  //     (surprised, down, incapacitated), or is on the mover's side, or has no
   //     melee attack, or the mover is defeated, hidden or took the Disengage
-  //     action, or the same offer already waits (NO_OPPORTUNITY).
+  //     action, or the same offer already waits (NO_OPPORTUNITY), also when a
+  //     move made it.
   rpc OfferOpportunity(OfferOpportunityRequest) returns (OfferOpportunityResponse);
 
   // WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
@@ -501,7 +507,8 @@ service CombatService {
   //
   // Every stream gets `encounter_changed`.
   //
-  // Errors: as SkipOpportunity.
+  // Errors: as SkipOpportunity, and `failed_precondition` THEATRE_ONLY for an
+  // offer a move made: only an offer the master made by hand is taken back.
   rpc WithdrawOpportunity(WithdrawOpportunityRequest) returns (WithdrawOpportunityResponse);
 
   // SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
@@ -1823,9 +1830,9 @@ enum EncounterBlockedReason {
   // move that gets some squares before the locked door is no refusal: it ends
   // before the door (MoveCombatantResponse.locked_door).
   ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED = 60;
-  // SpendMovement, OfferOpportunity: the combat is a GRID one, where movement is
-  // a move on the map and the server finds the opportunity attacks itself. Both
-  // are for a THEATRE combat (RN-25).
+  // SpendMovement: the combat is a GRID one, where movement is a move on the map.
+  // It is for a THEATRE combat (RN-25). WithdrawOpportunity: the offer was made by
+  // a move (it has a square); only an offer the master made by hand is taken back.
   ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY = 61;
   // MoveCombatant (a move, a jump, a placement), FireTrap, SearchForTraps and
   // what else needs squares: the combat is a THEATRE one (RN-25), which has no
@@ -1834,7 +1841,7 @@ enum EncounterBlockedReason {
   // StartEncounter: a THEATRE combat takes no map point (it needs no map).
   ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP = 63;
   // OfferOpportunity: the opportunity attack cannot be offered now: the reactor
-  // cannot make it (defeated, down, incapacitated, blinded, no melee attack) or is
+  // cannot make it (defeated, down, surprised, incapacitated, blinded, no melee attack) or is
   // on the mover's side, the mover is defeated, hidden or took the Disengage
   // action, or the same offer already waits. (The reactor's reaction being used is
   // REACTION_USED.)
@@ -1975,6 +1982,13 @@ enum EncounterBlockedReason {
   // The same: the creature is no creature with the trait (the combatant is a player's character
   // or its stat block does not have it). Refused before the roll; nothing changes.
   ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
+  // The master's UseCreatureAction and RollAttack, and the RollAttack of the player who controls
+  // the creature, with an action of a stat block that has a Recharge: the action was used and has
+  // not recharged. Nothing is spent. No other player can try the creature's action.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING = 123;
+  // The same, for an action with uses a day or one that recharges after a rest: every use is
+  // spent. Nothing is spent. The same reading rule.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT = 124;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2511,8 +2525,8 @@ message OpportunityOffer {
   bool for_you = 6;
   // The square of the move's line where the mover left the reach: where it goes
   // back to if the attack drops it to 0 hit points. Only for whoever answers. 0
-  // in THEATRE mode, where the master offered the attack and nobody has a square:
-  // see `by_hand`.
+  // when the master offered the attack by hand (in either mode), since it has no
+  // square: see `by_hand`.
   int32 left_col = 7;
   int32 left_row = 8;
   // The reactor's melee attacks (opportunity attacks are melee), as
@@ -2520,8 +2534,8 @@ message OpportunityOffer {
   // Espada longa". Empty for the mover's player.
   repeated OpportunityAttack attacks = 9;
   // Sent to whoever receives the offer (the master, the reactor's player and the
-  // mover's player). True when the master offered it (OfferOpportunity, THEATRE mode) instead of
-  // the server finding it on a move: there is no square (`left_col` and `left_row`
+  // mover's player). True when the master offered it (OfferOpportunity, in THEATRE or GRID
+  // mode) instead of the server finding it on a move: there is no square (`left_col` and `left_row`
   // are 0 and mean nothing), and a hit never takes the mover back anywhere.
   bool by_hand = 10;
   // The mover left the reach by a long jump, not a walk: the master's panel says
@@ -2821,6 +2835,40 @@ message Combatant {
   // them on. Only the master gets it, and only for such a combatant; a player's copy never
   // has the field, not even empty (RN-20, RN-29).
   LegendaryState legendary = 105;
+
+  // The actions of the creature's stat block that Recharge, have uses a day or recharge after
+  // a rest, each with what it has left, in the stat block's order. Only the master and the
+  // player who controls the creature get it, and only for a combatant with such actions; every
+  // other player's copy never has them (RN-20, RN-29).
+  repeated LimitedAction limited_actions = 106;
+
+  // Which reaction was spent while reaction_used is true, and the round it was spent in.
+  // The owner's and the master's; a joint-turn partner reads reaction_used only. Never an NPC's to a player.
+  // OPPORTUNITY for an opportunity attack; UNSPECIFIED when the server has no name for it (a feature's reaction), where
+  // the round alone says when.
+  ReactionKind reaction_kind = 107;
+  int32 reaction_round = 108;
+}
+
+// LimitedAction is an action of a stat block with a limit and what the creature has left of it.
+// The master and the player who controls the creature read it.
+message LimitedAction {
+  // The action's key in its stat block, the `action_key` of UseCreatureAction.
+  string action_key = 1;
+  // The SRD's name of the action, in English, and its name in Portuguese ("" when the
+  // content has none).
+  string name = 2;
+  string name_pt = 3;
+  // "recharge", "per_day" or "rest".
+  string kind = 4;
+  // The SRD's words of the limit ("Recharge 5-6", "3/day").
+  string usage = 5;
+  // Whether the action can be used now.
+  bool available = 6;
+  // How many uses the action has (1 for a Recharge action and for one that recharges after a
+  // rest) and how many are left.
+  int32 uses_allowed = 7;
+  int32 uses_left = 8;
 }
 
 // LegendaryState is what a legendary creature has left of its legendary actions this
@@ -3128,7 +3176,7 @@ message SpendMovementResponse {
   int32 movement_left_dft = 2;
 }
 
-// OfferOpportunityRequest offers an opportunity attack, in a THEATRE combat.
+// OfferOpportunityRequest offers an opportunity attack by hand, in a THEATRE or a GRID combat.
 message OfferOpportunityRequest {
   string campaign_id = 1;
   string encounter_id = 2;
@@ -5226,6 +5274,11 @@ enum CombatLogKind {
   // counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED
   // line, the same one a player reads of any other creature.
   COMBAT_LOG_KIND_LEGENDARY_SPENT = 27;
+  // The server rolled the d6 of a Recharge action at the start of its creature's turn ("rolled
+  // 5 for Fire Breath: recharged"): the creature (the actor) and `recharge`. Only the master
+  // and the player who controls the creature get the line; no other player's log shows it or
+  // counts it (RN-20, RN-29).
+  COMBAT_LOG_KIND_RECHARGE_ROLLED = 28;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5451,6 +5504,8 @@ message CombatLogEntry {
   CombatLogCreatureAction creature_action = 113;
   // LEGENDARY_SPENT: the option and what it cost. The master's alone.
   CombatLogLegendarySpent legendary_spent = 114;
+  // RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
+  CombatLogRecharge recharge = 115;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5562,6 +5617,16 @@ message CombatLogLegendarySpent {
   string option_name = 1;
   // How many legendary actions it took.
   int32 cost = 2;
+}
+
+// CombatLogRecharge is the line of a Recharge roll, for the master and the creature's controller.
+message CombatLogRecharge {
+  // The action's name, in Portuguese when the content has it, else the SRD's in English.
+  string action_name = 1;
+  // The d6, 1 to 6.
+  int32 face = 2;
+  // Whether the face made the action available again.
+  bool recharged = 3;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

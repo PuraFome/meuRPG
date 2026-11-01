@@ -67,6 +67,8 @@ const (
 	eventCombatEffectEnded = "combat_effect_ended"
 	// The master spent legendary actions on an option the engine does not resolve (combat_legendary_spend.go).
 	eventLegendarySpent = "legendary_action_spent"
+	// The server rolled a d6 for a Recharge action at the start of its creature's turn (combat_recharge.go).
+	eventRechargeRolled = "recharge_rolled"
 )
 
 // The kinds of the XP awards (package progression writes them

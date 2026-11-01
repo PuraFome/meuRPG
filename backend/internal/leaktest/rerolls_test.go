@@ -92,7 +92,7 @@ func partLines(en *playv1.CombatLogEntry) []string {
 
 func TestRerollQuestionsReachOnlyWhoMayReadThem(t *testing.T) {
 	var feat string
-	rt := newRollsTableOf(t, true, func(rt *rollsTable) { feat = rt.rerollFeat() })
+	rt := newRollsTableOf(t, true, true, func(rt *rollsTable) { feat = rt.rerollFeat() })
 	w, m, caio, ana := rt.world, rt.master, rt.caio, rt.ana
 	rt.buildRows()
 	rt.rows = append(rt.rows,

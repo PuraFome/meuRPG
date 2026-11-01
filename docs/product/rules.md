@@ -424,6 +424,7 @@ The master sees everything.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
 - **A creature's trait that turns a failed saving throw into a success** (Legendary Resistance) is the master's: a player reads that the creature's save succeeded, never the roll that failed, how many uses are left or the name of the trait.
+- **What a creature spent of its limited actions** (Recharge, N/day), the Recharge roll at the start of its turn and the reason a spent action is refused belong to the master and to the player who controls the creature; every other player reads none of them.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.
 
 **Joint turns.**
@@ -509,6 +510,7 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 - The reactor's controller (the player, or the master for an NPC) attacks, declines ("Não atacar") or, for an absent player, the master follows without waiting ("Seguir sem esperar"). The attack is read from the square the mover left, and cover counts from there.
 - **The mover's turn waits** ("Esperando a reação do mestre") until the offer and the damage of its attack are settled: the player cannot end the turn, act, attack, cast or move. The master is never held. An offer nobody can answer any more is skipped by itself.
 - If the attack takes the mover to 0 hit points, they go back to the square where they left the reach.
+- The master can also offer one by hand ("Oferecer ataque de oportunidade"), for a reach the app did not see, on a map or off it; the same rules apply, except the places: reach and square are the master's word. The grid's button comes with its screen. Under fog the reactor's player must still see the mover to be asked; otherwise the master withdraws or skips the offer.
 - A player reads a warning before a move that may provoke ("Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade"), built only from what they see, so it may err on the side of excess. A hidden reactor provokes all the same, and the mover reads only "Esperando o mestre". Other players see nothing.
 - A move that enters a trap the character knows asks "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" undoes moves, jumps and the Disengage flag. A move whose offer was answered can be undone only after undoing the answer.
@@ -846,6 +848,15 @@ A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from
 A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
 Several copies of one hand-made NPC each start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
 A short rest changes nothing for an NPC.
+An action of a monster with a limit is enforced by the server: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) and one that returns after a rest.
+A use spends it, in the same change as the attack or the action, and a spent action is refused with nothing changed.
+The refusal says the action has not recharged or has no uses left, to the master and to the player who controls the monster.
+At the start of the monster's turn the server rolls a d6 for each spent Recharge action, in the stat block's order, and a face in its range makes it available again.
+A defeated monster does not roll, and an action with uses a day or after a rest does not come back in a combat.
+The master and the player who controls the monster read what each limited action has left and a log line with the d6.
+Every other player reads neither, and the turn looks the same to them with or without the roll (RN-20).
+"Desfazer última ação" gives the use back; the roll cannot be undone.
+A hand-made NPC has no stat block, so it keeps no limit, and a monster starts every combat with all its actions.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
@@ -1089,7 +1100,7 @@ The card shows what the app read of the action: the ability and the DC of the sa
 - **Who is hit.** On a map an action with a shape asks where it goes, with the same map as the spells' area: a cone, a line or a cube from a direction, a sphere or a cylinder at a point (up to 120 feet away, the stat block words the distance in text), and a radius around the creature with no choice. The server takes who is inside, with cover, and the master names nobody. An action with no shape, and every action in a combat without a grid (RN-25), asks the master to name the targets; the enemies of the creature start chosen.
 - **The save.** The app rolls a d20 for every target against the action's DC (a player's character too, as for a spell's save with the app's dice), with the target's own modifiers, advantages and conditions.
 - **The damage.** The damage the save governs opens as pending damage for each target that takes it, in the stat block's parts (RN-42): in full for a target that fails, half for one that passes when the action says "half", nothing for one that passes when it says "none". An NPC's target takes it at once and a player's character waits for the master, as for any damage (RN-02); the damage shows under the result and is applied or discarded there. The concentration save of a damaged creature follows (RN-31).
-- **What the use costs.** The action of the NPC's turn. There is no slot, no concentration and no reaction window; a limit such as "Recarga 5–6" or "3/dia" (the SRD says "Recharge 5-6" and "3/day") is read and shown, and the app does not enforce it. The log has one line for the use, and "Desfazer última ação" takes it back with its damage and condition.
+- **What the use costs.** The action of the NPC's turn. There is no slot, no concentration and no reaction window; a limit such as "Recarga 5–6" or "3/dia" (the SRD says "Recharge 5-6" and "3/day") is shown and enforced as RN-29 says. The log has one line for the use, and "Desfazer última ação" takes it back with its damage and condition.
 - **What players read (RN-20).** A player never sees a stat block, an action's DC or its key (it names the creature's type). The log line says the action's name and, for each target the player sees, whether it passed or failed, with the damage; the save's dice and the DC are the master's, and the owner of a target character reads that character's own dice. A hidden creature's action is masked as a hidden NPC's attack is.
 
 How it is built: [Attacks and damage](../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders) and [Rules: creatures](../architecture/rules-creatures-items.md#the-actions-of-a-stat-block).
