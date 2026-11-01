@@ -37,7 +37,7 @@ curl -s -X POST http://localhost:8080/meurpg.system.v1.SystemService/GetServerIn
   -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
 ```
 
-The server reads at most 4 MiB per RPC message (`maxRequestBytes`).
+The server reads no RPC message over 4 MiB (`maxRequestBytes`), and a unary body has a lower limit per procedure ([Request size limits](#request-size-limits)).
 
 ## Error codes
 
@@ -190,8 +190,9 @@ A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and th
 
 ## Request size limits
 
-Every request has a size limit twice: on the body as it is read, and on each field after it is decoded.
-Both limits have a default, so a field or a procedure that nobody annotated is still bounded.
+A unary request has a size limit on its body as it is read and on each field after it is decoded.
+A stream's request has the field limits and the 4 MiB backstop, not the per-procedure body limit.
+Every limit has a default, so a field or a procedure that nobody annotated is still bounded.
 The code is `platform/reqlimit`.
 
 | Limit | Default | Where it is raised | The client sees |
@@ -199,7 +200,7 @@ The code is `platform/reqlimit`.
 | Items of a repeated field, entries of a map | 100 (`DefaultMaxItems`) | `(meurpg.options.v1.max_items)` on the field | `invalid_argument` with a `RequestRefused` detail, reason `LIST_TOO_LONG` |
 | Bytes of a string (each element of a repeated string, each key and value of a map) | 8 KiB (`DefaultMaxString`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
 | Bytes of a bytes field, counted the same way | 4 KiB (`DefaultMaxBytes`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
-| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure | `resource_exhausted`, from Connect |
+| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure (`ImportTableContent` has 4 MiB, for the table-content pack) | `resource_exhausted`, from Connect |
 | Bytes of any one RPC message | 4 MiB (`Backstop`, `connect.WithReadMaxBytes`) | never | `resource_exhausted`, from Connect |
 
 The rule a reader follows:
@@ -208,16 +209,17 @@ The rule a reader follows:
   An option states the whole limit of that field, up or down; it does not add to the default.
   `max_items` counts the field's own items, `max_len` counts bytes of each string or bytes value in it.
 - **The interceptor** (`reqlimit.Interceptor`, in `connectOptions` inside `rpclog`) walks the decoded request before the handler, for unary calls and for each message a stream receives.
-  It refuses the first field over its limit and checks the size of a list or map before it looks at what is inside.
+  It refuses the first field over its limit, in the order the fields are declared in the `.proto`, and checks the size of a list or map before it looks at what is inside.
   The detail names the field by its path in proto names (`party.members.notes`) and never the limit, which is in the `.proto`.
 - **The read limit** (`reqlimit.Middleware`, in front of `slowclient.Middleware`) wraps the body of a unary RPC in `http.MaxBytesReader` at `ReadLimit(procedure)`.
-  `raisedReadLimits` is the one place that lists the procedures allowed more than the default, each with the fields that need it.
+  `raisedReadLimits` is the one place that lists the procedures allowed more than the default, each entry with a comment that says why.
   A stream's request keeps only the 4 MiB backstop.
 - **A field option that goes over the default** needs an entry in `raisedReadLimits` for every procedure that reaches the field, and that entry never goes over the backstop.
 - **The registry test** (`TestRegistry`, no database) walks every procedure of every `meurpg.*` service and fails when:
-  - a procedure has a read limit below the default or over the backstop, or `raisedReadLimits` names something that is not a procedure or does not raise the default;
-  - a list, map, string or bytes field of a request has no limit, nested messages and map values included;
+  - a procedure's read limit is not the default or its `raisedReadLimits` entry, or an entry names something that is not a procedure, does not raise the default or is over the backstop;
+  - a list, map, string or bytes field of a request (nested messages and map values included) has a limit different from the one the test works out itself, the field's option or else the default of its kind, or a limit of 0;
   - a procedure reaches a field raised over its default and has no entry in `raisedReadLimits`.
+  Another test fails if a default is changed to 0 or to another number without the test.
   It does not add up a worst case: whoever writes the option chooses the procedure's read limit on purpose, and the test makes sure they did.
 - **The sentences** for `RequestRefused` and for a bare `resource_exhausted` are in `web/src/app/core/connect/connect-errors.ts`, so every screen shows them without wording them.
 

@@ -130,7 +130,7 @@ var (
 )
 
 // maxRequestBytes caps the size of a single RPC message the server will read
-// (4 MiB); reqlimit's per-procedure read limits are all below it.
+// (4 MiB). Every per-procedure read limit of reqlimit is at most that.
 const maxRequestBytes = reqlimit.Backstop
 
 // streamSendTimeout is how long one message of a live stream may take to be

@@ -46,13 +46,8 @@ func ItemsLimit(fd protoreflect.FieldDescriptor) uint32 {
 // is the field's own (the element of a list) or, in a map, the key's or the
 // value's. It is 0 for a kind that is neither string nor bytes.
 func LenLimit(fd protoreflect.FieldDescriptor, kind protoreflect.Kind) uint32 {
-	var def uint32
-	switch kind {
-	case protoreflect.StringKind:
-		def = DefaultMaxString
-	case protoreflect.BytesKind:
-		def = DefaultMaxBytes
-	default:
+	def := defaultLen(kind)
+	if def == 0 {
 		return 0
 	}
 	if n := option(fd, optionsv1.E_MaxLen); n > 0 {
@@ -80,11 +75,22 @@ func Raised(fd protoreflect.FieldDescriptor) bool {
 		return true
 	}
 	for _, k := range valueKinds(fd) {
-		if n := LenLimit(fd, k); n > DefaultMaxString || (k == protoreflect.BytesKind && n > DefaultMaxBytes) {
+		if def := defaultLen(k); def > 0 && LenLimit(fd, k) > def {
 			return true
 		}
 	}
 	return false
+}
+
+// defaultLen is the default byte limit of a kind, 0 for a kind with none.
+func defaultLen(k protoreflect.Kind) uint32 {
+	switch k {
+	case protoreflect.StringKind:
+		return DefaultMaxString
+	case protoreflect.BytesKind:
+		return DefaultMaxBytes
+	}
+	return 0
 }
 
 // valueKinds are the kinds of the values of a field that a max_len bounds.

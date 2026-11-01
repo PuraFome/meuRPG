@@ -197,9 +197,9 @@ func TestEffectiveLimit(t *testing.T) {
 	}
 }
 
-// serve mounts a unary and a server-stream handler whose request is a
-// GetServerInfoResponse (two strings: the request types need only a string
-// field), behind the interceptor.
+// serve mounts a unary and a server-stream handler behind the interceptor.
+// Both take a GetServerInfoResponse as the request: it is a generated message
+// with two string fields, which is all these tests need.
 func serve(t *testing.T, extra func(http.Handler) http.Handler) (url string, called *int) {
 	t.Helper()
 	calls := new(int)
@@ -297,8 +297,7 @@ func TestMiddlewareRefusesALargeBodyAsResourceExhausted(t *testing.T) {
 		t.Errorf("the handler ran %d times", *called)
 	}
 	// A raised read limit lets the body through to the interceptor again.
-	raisedReadLimits["/meurpg.test.v1.Echo/Say"] = DefaultReadLimit * 2
-	t.Cleanup(func() { delete(raisedReadLimits, "/meurpg.test.v1.Echo/Say") })
+	withRaised(t, "/meurpg.test.v1.Echo/Say", DefaultReadLimit*2)
 	if r := refusalOf(t, say(DefaultReadLimit+1)); r == nil {
 		t.Error("a body under its raised read limit should reach the interceptor")
 	}
@@ -315,18 +314,67 @@ func TestMiddlewareLeavesOtherRequestsAlone(t *testing.T) {
 		n, _ := r.Body.Read(b)
 		read = n
 	}))
-	for _, c := range []struct{ path, contentType string }{
-		{"/upload", "application/json"},
-		{"/meurpg.x.v1.S/M", "application/connect+proto"},
-		{"/meurpg.x.v1.S/M", "multipart/form-data; boundary=x"},
+	for _, c := range []struct{ method, path, contentType string }{
+		{http.MethodPost, "/upload", "application/json"},
+		{http.MethodPost, "/meurpg.x.v1.S/M", "application/connect+proto"},
+		{http.MethodPost, "/meurpg.x.v1.S/M", "multipart/form-data; boundary=x"},
+		{http.MethodGet, "/meurpg.x.v1.S/M", "application/json"},
 	} {
 		read = 0
 		path := c.path
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, strings.NewReader(text(DefaultReadLimit*4)))
+		req := httptest.NewRequestWithContext(t.Context(), c.method, path, strings.NewReader(text(DefaultReadLimit*4)))
 		req.Header.Set("Content-Type", c.contentType)
 		h.ServeHTTP(httptest.NewRecorder(), req)
 		if read <= DefaultReadLimit {
 			t.Errorf("%s %s: read %d bytes, the body was limited", path, c.contentType, read)
 		}
+	}
+}
+
+// withRaised puts an entry in raisedReadLimits for the test and takes it out
+// at the end. The tests that use it are not parallel.
+func withRaised(t *testing.T, procedure string, n int64) {
+	t.Helper()
+	raisedMu.Lock()
+	raisedReadLimits[procedure] = n
+	raisedMu.Unlock()
+	t.Cleanup(func() {
+		raisedMu.Lock()
+		delete(raisedReadLimits, procedure)
+		raisedMu.Unlock()
+	})
+}
+
+// A stream's request (connect+proto) keeps only the 4 MiB backstop: the
+// per-procedure read limit does not touch it, while the same size in a unary
+// body is refused.
+func TestStreamRequestKeepsOnlyTheBackstop(t *testing.T) {
+	// No interceptor here: the field limits would refuse this size first.
+	called := new(int)
+	mux := http.NewServeMux()
+	mux.Handle("/meurpg.test.v1.Echo/Watch", connect.NewServerStreamHandler("/meurpg.test.v1.Echo/Watch",
+		func(_ context.Context, req *connect.Request[systemv1.GetServerInfoResponse], stream *connect.ServerStream[systemv1.GetServerInfoResponse]) error {
+			*called++
+			return stream.Send(&systemv1.GetServerInfoResponse{Version: strings.Repeat("b", len(req.Msg.GetCommit()))})
+		}, connect.WithReadMaxBytes(Backstop)))
+	srv := httptest.NewServer(Middleware(mux))
+	t.Cleanup(srv.Close)
+	client := connect.NewClient[systemv1.GetServerInfoResponse, systemv1.GetServerInfoResponse](http.DefaultClient, srv.URL+"/meurpg.test.v1.Echo/Watch")
+	open := func(n int) error {
+		stream, err := client.CallServerStream(t.Context(), connect.NewRequest(&systemv1.GetServerInfoResponse{Commit: text(n)}))
+		if err != nil {
+			return err
+		}
+		defer stream.Close()
+		for stream.Receive() {
+		}
+		return stream.Err()
+	}
+	if err := open(DefaultReadLimit * 4); err != nil || *called != 1 {
+		t.Fatalf("a stream request of %d bytes: %v (handler calls %d)", DefaultReadLimit*4, err, *called)
+	}
+	ce, ok := errors.AsType[*connect.Error](open(Backstop + 1))
+	if !ok || ce.Code() != connect.CodeResourceExhausted {
+		t.Errorf("a stream request over the backstop: %v, want resource_exhausted", ce)
 	}
 }

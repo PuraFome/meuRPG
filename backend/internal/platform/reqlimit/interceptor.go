@@ -75,30 +75,35 @@ type violation struct {
 	field  string // the path from the message that was walked, in proto field names
 }
 
-// firstViolation walks the set fields of m, checking a list's or map's size
+// firstViolation walks the set fields of m in declaration order (so the
+// first violation is the same on every run), checking a list's or map's size
 // before it looks inside. It follows the message in hand, never a descriptor,
-// so a recursive type ends where the data does.
+// so a recursive type ends where the data does. Extension fields are not
+// walked: the API's requests have none.
 func firstViolation(m protoreflect.Message) *violation {
-	var found *violation
-	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+	fields := m.Descriptor().Fields()
+	for i := range fields.Len() {
+		fd := fields.Get(i)
 		switch fd.Kind() {
 		case protoreflect.StringKind, protoreflect.BytesKind, protoreflect.MessageKind, protoreflect.GroupKind:
 		default:
 			if !fd.IsList() { // a number, a bool or an enum has nothing to bound
-				return true
+				continue
 			}
 		}
-		if found = checkField(fd, v); found != nil {
+		if !m.Has(fd) {
+			continue
+		}
+		if found := checkField(fd, m.Get(fd)); found != nil {
 			if found.field == "" {
 				found.field = string(fd.Name())
 			} else {
 				found.field = string(fd.Name()) + "." + found.field
 			}
-			return false
+			return found
 		}
-		return true
-	})
-	return found
+	}
+	return nil
 }
 
 // plan is the limits of a field, resolved once: reading the options of a

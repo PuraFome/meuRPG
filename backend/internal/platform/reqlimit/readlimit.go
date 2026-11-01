@@ -3,7 +3,9 @@ package reqlimit
 import (
 	"net/http"
 	"strings"
+	"sync"
 
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1/rulesv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
 
@@ -18,13 +20,21 @@ const (
 
 // raisedReadLimits are the procedures whose unary body may be larger than
 // DefaultReadLimit, by procedure ("/meurpg.x.v1.Service/Method"), in bytes.
-// An entry is added together with the field options that need it, with a
-// comment that names the fields. TestRegistry requires an entry for every
-// procedure that reaches a field raised over its defaults, and none above Backstop.
-var raisedReadLimits = map[string]int64{}
+// Each entry has a comment that says why. TestRegistry requires an entry for
+// every procedure that reaches a field raised over its defaults, and none
+// above Backstop. Tests change it only through the lock (withRaised).
+var (
+	raisedMu         sync.RWMutex
+	raisedReadLimits = map[string]int64{
+		// A table-content pack is up to 3 MiB of proto JSON (characters.MaxPackBytes).
+		rulesv1connect.TableContentServiceImportTableContentProcedure: Backstop,
+	}
+)
 
 // ReadLimit is the most bytes the body of a unary request to the procedure may have.
 func ReadLimit(procedure string) int64 {
+	raisedMu.RLock()
+	defer raisedMu.RUnlock()
 	if n, ok := raisedReadLimits[procedure]; ok {
 		return n
 	}

@@ -99,6 +99,14 @@ describe('a request over its size limit', () => {
     );
   });
 
+  it('leaves a detail with no reason to the screen', () => {
+    const err = refused(RequestRefusedReason.UNSPECIFIED);
+    expect(requestRefusedText(err)).toBeNull();
+    expect(describeConnectError(err, { [Code.InvalidArgument]: 'Nome inválido.' })).toBe(
+      'Nome inválido.',
+    );
+  });
+
   it('leaves an invalid_argument with no such detail to the screen', () => {
     const err = new ConnectError('bad name', Code.InvalidArgument);
     expect(requestRefusedText(err)).toBeNull();
@@ -107,10 +115,10 @@ describe('a request over its size limit', () => {
     );
   });
 
-  it('words a body over the read limit (resource_exhausted from the transport) unless the screen words it', () => {
+  it('words a resource_exhausted with no detail neutrally, unless the screen words it', () => {
     const err = new ConnectError('http: request body too large', Code.ResourceExhausted);
     expect(describeConnectError(err, {})).toBe(
-      'O pedido é grande demais. Reduza o conteúdo e tente de novo.',
+      'O servidor recusou o pedido por um limite. Reduza o conteúdo ou tente de novo mais tarde.',
     );
     expect(describeConnectError(err, { [Code.ResourceExhausted]: 'Galeria cheia.' })).toBe(
       'Galeria cheia.',
