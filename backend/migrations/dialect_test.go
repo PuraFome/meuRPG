@@ -30,13 +30,40 @@ var cockroachOnly = []struct {
 	{regexp.MustCompile(`(?i)\bUSING\s+HASH\b`), "USING HASH"},
 	{regexp.MustCompile(`(?i)\bSTORING\b`), "STORING (write INCLUDE)"},
 	{regexp.MustCompile(`(?i)\bSET\s+TRANSACTION\s+PRIORITY\b`), "SET TRANSACTION PRIORITY"},
+	{regexp.MustCompile(`(?i)\bBYTES\b`), "the BYTES type (write BYTEA)"},
+	{regexp.MustCompile(`(?i)\bUPSERT\b`), "UPSERT (write INSERT ... ON CONFLICT)"},
+	{regexp.MustCompile(`(?i)\bFAMILY\b`), "column families"},
+	{regexp.MustCompile(`(?i)\bINVERTED\s+INDEX\b`), "INVERTED INDEX (write USING GIN)"},
+	{regexp.MustCompile(`(?i)\bCONFIGURE\s+ZONE\b`), "CONFIGURE ZONE"},
+	{regexp.MustCompile(`(?i)\bNOT\s+VISIBLE\b`), "NOT VISIBLE columns"},
 }
 
-var sqlComment = regexp.MustCompile(`(?m)--.*$`)
+// stripComments cuts the -- comments of a SQL text, but not a -- inside a string literal.
+func stripComments(sql string) string {
+	var out strings.Builder
+	inLiteral := false
+	for i := 0; i < len(sql); i++ {
+		c := sql[i]
+		switch {
+		case c == '\'':
+			inLiteral = !inLiteral
+		case !inLiteral && c == '-' && i+1 < len(sql) && sql[i+1] == '-':
+			for i < len(sql) && sql[i] != '\n' {
+				i++
+			}
+			if i < len(sql) {
+				out.WriteByte('\n')
+			}
+			continue
+		}
+		out.WriteByte(c)
+	}
+	return out.String()
+}
 
 // dialectProblems names what a SQL text uses that only CockroachDB accepts.
 func dialectProblems(sql string) []string {
-	sql = sqlComment.ReplaceAllString(sql, "")
+	sql = stripComments(sql)
 	var out []string
 	for _, c := range cockroachOnly {
 		if c.re.MatchString(sql) {
@@ -55,6 +82,12 @@ func TestDialectProblemsFindsWhatOnlyCockroachDBAccepts(t *testing.T) {
 		"SELECT 1 -- STRING is cut in a comment":                 0,
 		"CREATE TABLE t (a TEXT, b BIGINT)":                      0,
 		"SELECT x FROM t AS OF SYSTEM TIME '-1s'":                1,
+		"SELECT '--', 1 FROM t AS OF SYSTEM TIME '-1s'":          1,
+		"CREATE TABLE t (a BYTES)":                               1,
+		"UPSERT INTO t VALUES (1)":                               1,
+		"CREATE INVERTED INDEX i ON t (a)":                       1,
+		"ALTER TABLE t ALTER COLUMN a SET NOT VISIBLE":           1,
+		"SELECT 1 -- FAMILY\nSELECT 2":                           0,
 	} {
 		if got := dialectProblems(sql); len(got) != want {
 			t.Errorf("dialectProblems(%q) = %v, want %d", sql, got, want)
@@ -62,7 +95,7 @@ func TestDialectProblemsFindsWhatOnlyCockroachDBAccepts(t *testing.T) {
 	}
 }
 
-func TestNewMigrationsAndQueriesRunOnBothDatabases(t *testing.T) {
+func TestNewMigrationsAndQueryFilesAvoidCockroachDBOnlySQL(t *testing.T) {
 	t.Parallel()
 	check := func(path string, body []byte) {
 		for _, p := range dialectProblems(string(body)) {
@@ -73,10 +106,14 @@ func TestNewMigrationsAndQueriesRunOnBothDatabases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checked := 0
+	checked, highest := 0, 0
 	for _, e := range entries {
 		n, err := strconv.Atoi(strings.SplitN(e.Name(), "_", 2)[0])
-		if err != nil || n <= lastCockroachOnlyMigration {
+		if err != nil {
+			continue
+		}
+		highest = max(highest, n)
+		if n <= lastCockroachOnlyMigration {
 			continue
 		}
 		body, err := fs.ReadFile(files, e.Name())
@@ -85,6 +122,9 @@ func TestNewMigrationsAndQueriesRunOnBothDatabases(t *testing.T) {
 		}
 		check(e.Name(), body)
 		checked++
+	}
+	if highest < lastCockroachOnlyMigration {
+		t.Fatalf("the highest migration number read is %d, want at least %d: the scan does not see the migration files", highest, lastCockroachOnlyMigration)
 	}
 	queries, err := filepath.Glob(filepath.Join("..", "internal", "*", "queries.sql"))
 	if err != nil || len(queries) == 0 {

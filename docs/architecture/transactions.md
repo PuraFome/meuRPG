@@ -8,7 +8,7 @@ With a few simultaneous requests every one holds a connection and waits for anot
 
 | Helper | Use |
 | --- | --- |
-| `db.InTx(ctx, pool, fn)` | Every write. It runs `fn` in a transaction and, on SQLSTATE `40001` (CockroachDB's serialization conflict), rolls back and runs `fn` again. SQLSTATE `40P01` (a deadlock) is retried too. |
+| `db.InTx(ctx, pool, fn)` | Every write. It runs `fn` in a transaction and, on SQLSTATE `40001` (a serialization conflict, on both databases), rolls back and runs `fn` again. SQLSTATE `40P01` (a deadlock) is retried too. |
 | `db.ReadTx(ctx, pool, fn)` | A read that joins several statements into one response. `READ ONLY` on every attempt, with the same retry. |
 
 Both run one loop of our own (`backend/internal/platform/db/tx.go`) on CockroachDB and on PostgreSQL.

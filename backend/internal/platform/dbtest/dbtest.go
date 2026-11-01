@@ -1,30 +1,32 @@
-// Package dbtest gives integration tests a real, freshly migrated
-// CockroachDB database. Only tests import it.
+// Package dbtest gives integration tests a real, freshly migrated database,
+// CockroachDB or PostgreSQL.
+// Only tests import it.
 //
 // The tests need MEURPG_TEST_DATABASE_URL; without it they skip (or fail, with
-// MEURPG_REQUIRE_DB=1, which CI sets), so
-// `go test ./...` works anywhere. To run them, start a throwaway CockroachDB
-// (`make up` does, on port 26257) and run:
+// MEURPG_REQUIRE_DB=1, which CI sets), so `go test ./...` works anywhere.
+// The package asks the server which database it is.
+// To run the tests, start a throwaway database (`make db-test-start`) and run:
 //
-//	MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test
+//	MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable' make test
 //
-// Migrating a brand-new database for every test took about 25 seconds on
-// CockroachDB (each schema change is a job, and there are many
-// migrations), and the play package alone makes dozens of databases: CI hit
-// its 10-minute limit (PR #59). So the migrations run once per set of
-// migration files, into a template database named after their fingerprint
-// (meurpg_tpl_<hash>), and a test database copies the template's tables, functions
-// and triggers.
-// Even that copy took about 5 seconds, and dropping the database 1.5 more
-// (04/10/2026, 32 tables), for each of some 400 tests; so a package makes
-// only as many databases as it runs tests at once and reuses them: emptying
-// one with DELETE takes about 10 milliseconds. The schema is the one the
-// migrations build; the migrations package still tests the migrations
-// themselves, from scratch.
+// Migrating a new database for every test is too slow on CockroachDB, where
+// each schema change is a job.
+// So the migrations run once per set of migration files, into a template
+// database named after their fingerprint (meurpg_tpl_<hash>).
+// A test database is a copy of the template:
+//   - On PostgreSQL, a native CREATE DATABASE ... TEMPLATE.
+//   - On CockroachDB, which has no native copy, the template's DDL is replayed
+//     and its reference tables and goose's table are copied row by row.
+//
+// A copy still costs much more than emptying a database, so a package makes
+// only as many databases as it runs tests at once and reuses them, emptying
+// one with DELETE.
+// The schema is the one the migrations build; the migrations package still
+// tests the migrations themselves, from scratch.
 //
 // Every test process shares the template: the first one to create it
-// migrates it, and the others wait until it has every migration. A template
-// left half migrated (a run killed midway) is dropped and built again.
+// migrates it, and the others wait until it has every migration.
+// A template left half migrated (a run killed midway) is dropped and built again.
 // Templates of older migration sets stay on the test server; they are empty
 // and safe to drop.
 package dbtest

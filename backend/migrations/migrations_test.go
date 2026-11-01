@@ -177,8 +177,8 @@ func TestMigrationsAreSafeToRerun(t *testing.T) {
 	}
 }
 
-// schemaQueries read one table's columns, constraints and indexes from the catalog, which both
-// databases have, in an order that does not depend on when the migrations created them.
+// schemaQueries read one table's columns, constraints and indexes from the catalog.
+// PostgreSQL has no SHOW CREATE TABLE, so its schema is read this way.
 var schemaQueries = []string{
 	`SELECT column_name || ' ' || data_type || ' ' || is_nullable || ' ' || COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY column_name`,
 	`SELECT conname || ' ' || pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = ('public.' || $1)::regclass ORDER BY conname`,
@@ -205,14 +205,29 @@ func readSchemaLines(t *testing.T, db *sql.DB, b *strings.Builder, table, query 
 	}
 }
 
-// schema returns the columns, constraints and indexes of every table, goose's excluded.
+// schema returns the CREATE statements of every table on CockroachDB, and the columns, constraints and
+// indexes of every table on PostgreSQL, goose's excluded.
 func schema(t *testing.T, db *sql.DB) string {
 	t.Helper()
+	postgres, err := IsPostgres(t.Context(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var b strings.Builder
 	for _, table := range tables(t, db) {
-		for _, q := range schemaQueries {
-			readSchemaLines(t, db, &b, table, q)
+		if postgres {
+			for _, q := range schemaQueries {
+				readSchemaLines(t, db, &b, table, q)
+			}
+			continue
 		}
+		// SHOW CREATE TABLE prints what the catalog does not: the row-level TTL settings (which
+		// CockroachDB rewrites when a column is added), the column order and the computed columns.
+		var name, create string
+		if err := db.QueryRowContext(t.Context(), "SHOW CREATE TABLE "+table).Scan(&name, &create); err != nil {
+			t.Fatalf("SHOW CREATE TABLE %s: %v", table, err)
+		}
+		b.WriteString(create + "\n")
 	}
 	return b.String()
 }

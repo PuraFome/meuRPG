@@ -12,18 +12,20 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// The migrations are written for CockroachDB, and production applied them
-// byte for byte, so they never change to please another database. The tests
-// also run on PostgreSQL, and this file is the one place that adapts the files
-// to it: NewTestProvider and NewAdaptedProvider read them with the CockroachDB-only parts cut or
-// stood in for. Only tests call it.
+// The migrations are written for CockroachDB, and production applies them
+// byte for byte, so they never change to please another database.
+// The tests can also run on PostgreSQL.
+// This file is the one place that adapts the files to it.
+// NewTestProvider and NewAdaptedProvider read them with the CockroachDB-only
+// parts cut or stood in for.
+// Only tests call it.
 //
 // What PostgreSQL lacks, and what stands in for it:
 //
 //   - Row-level TTL (WITH (ttl_...) on CREATE TABLE, ALTER TABLE ... SET
-//     (ttl_...)): the clause is cut. The sweeps that delete expired rows are the
-//     application's, and a test that needs the database to do it runs on
-//     CockroachDB only (docs/testing.md).
+//     (ttl_...)): the clause is cut.
+//     PostgreSQL never deletes an expired row by itself, so a test that
+//     needs the database to do it fails on PostgreSQL (docs/testing.md).
 //   - The STRING type: a domain over TEXT.
 //   - unique_rowid(): a function over a sequence.
 //
