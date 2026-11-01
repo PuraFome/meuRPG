@@ -6,7 +6,8 @@
 @let a = access();
 @let m = a.status === 'master' ? state() : null;
 @if (m?.status !== 'ready') {
-  <!-- Every screen before the creature shares one box: the h1, a status region and an alert region that stay in the page, so the loading text, the "not found" and the failure are said when they replace each other. -->
+  <!-- Every screen before the creature shares one box: the h1, a status region and an alert region that stay in the page.
+     The loading text is the status; "not found", "only the master" and the failure are alerts, because the person cannot use the screen. -->
   <div>
     <h1 class="mr-page-title">{{ heading() }}</h1>
     <div class="mr-live" role="status">
@@ -15,15 +16,15 @@
           <mat-spinner diameter="24" aria-label="Carregando a criatura" />
           Carregando a ficha da criatura...
         </p>
-      } @else if (a.status === 'forbidden') {
+      }
+    </div>
+    <div class="mr-live" role="alert">
+      @if (a.status === 'forbidden') {
         <div class="mr-notice mr-notice--neutral">
           <mat-icon aria-hidden="true">lock</mat-icon>
           <p><strong>Só o mestre usa o bestiário da campanha.</strong></p>
         </div>
-      }
-    </div>
-    <div class="mr-live" role="alert">
-      @if (a.status === 'not-found') {
+      } @else if (a.status === 'not-found') {
         <div class="mr-notice mr-notice--neutral">
           <mat-icon aria-hidden="true">search_off</mat-icon>
           <p>

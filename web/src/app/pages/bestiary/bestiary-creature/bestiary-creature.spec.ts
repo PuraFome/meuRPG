@@ -321,7 +321,7 @@ describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () 
     TestBed.resetTestingModule();
     access = { status: 'forbidden' };
     const forbidden = await open();
-    const status = forbidden.el.querySelector('.mr-live[role="status"]')!;
+    const status = forbidden.el.querySelector('.mr-live[role="alert"]')!;
     expect(status.querySelector('.mr-notice')?.hasAttribute('role')).toBe(false);
     expect(flat(status)).toContain('Só o mestre usa o bestiário da campanha.');
   });
