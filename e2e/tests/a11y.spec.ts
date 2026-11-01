@@ -5977,7 +5977,7 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
       await updateEntryRPC(m, campaignId, spell, 'tableSpell', spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }));
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      await expect(m.getByRole('status').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
+      await expect(m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, a entrada mudou enquanto se editava ${where}`);
     } else {
       await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();

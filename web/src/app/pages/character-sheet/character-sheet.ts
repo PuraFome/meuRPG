@@ -54,6 +54,7 @@ import { ProficiencyColumn } from './proficiency-column/proficiency-column';
 import { SheetHeader } from './sheet-header/sheet-header';
 import { ChangedContentNotice } from './changed-content/changed-content';
 import { OwnerChanges } from './owner-changes/owner-changes';
+import { OwnerResubmit } from './owner-resubmit/owner-resubmit';
 import { RejectConfirm } from './reject-confirm/reject-confirm';
 import { RequestChanges } from './request-changes/request-changes';
 import { formatWhen, issueTitle } from './sheet-format';
@@ -115,6 +116,7 @@ type PageState =
     MasterNotes,
     NotesPanel,
     OwnerChanges,
+    OwnerResubmit,
     PendingChoicesBanner,
     MatButtonModule,
     MatIconModule,

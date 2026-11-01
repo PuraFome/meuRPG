@@ -271,6 +271,7 @@ describe('CastSheet: an area spell without a map', () => {
     expect(el.querySelector('[role="application"]')).toBeNull();
     expect(plain(el.textContent)).toContain('Quem a magia atinge (pode ser ninguém)');
     const regions = new Set(el.querySelectorAll('.mr-live[role="status"]'));
+    expect(regions.size).toBeGreaterThan(0);
     expect([...regions].every((r) => !r.querySelector('.mr-notice'))).toBe(true);
     button('Conjurar Bola de Fogo')!.click();
     await settle();

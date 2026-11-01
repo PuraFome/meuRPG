@@ -239,10 +239,6 @@
           <app-owner-changes
             [reason]="vm.review?.reason ?? ''"
             [when]="whenOf(vm.review?.requestedAt)"
-            [busy]="writes.resubmitState().status === 'saving'"
-            [error]="errorOf(writes.resubmitState())"
-            [editLink]="vm.canEdit ? ['/campaigns', vm.campaignId, 'characters', vm.id, 'edit'] : null"
-            (resubmit)="writes.resubmit(vm.campaignId, vm.id)"
           />
         } @else if (writes.resubmitted()) {
           <div class="mr-notice mr-notice--success">
@@ -263,6 +259,14 @@
         }
       }
     </div>
+    @if (vm.state === 'pending' && !vm.canApprove && !vm.isMaster && vm.review?.status === 'changes_requested') {
+      <app-owner-resubmit
+        [busy]="writes.resubmitState().status === 'saving'"
+        [error]="errorOf(writes.resubmitState())"
+        [editLink]="vm.canEdit ? ['/campaigns', vm.campaignId, 'characters', vm.id, 'edit'] : null"
+        (resubmit)="writes.resubmit(vm.campaignId, vm.id)"
+      />
+    }
 
     @if (vm.sheet.kind === 'full') {
       @let full = asFullSheet(vm.sheet);

@@ -29,10 +29,10 @@ import type { EntrySaver } from '../../../core/content/entry-saver';
         </div>
       </div>
     }
-    <div class="mr-live" role="status">
+    <div class="mr-live" role="alert">
       @if (saver().stale()) {
-        <div class="mr-notice mr-notice--warning">
-          <mat-icon aria-hidden="true">sync_problem</mat-icon>
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
           <div>
             <p><strong>Esta entrada mudou enquanto você editava.</strong> Recarregue para ver a versão nova; o que você digitou aqui será perdido.</p>
             <button matButton="outlined" type="button" class="reload" (click)="reload.emit()">Recarregar</button>

@@ -3161,6 +3161,11 @@ describe('CharacterSheetPage: a write that fails, or lands after the person left
     await nextTurn();
     fixture.detectChanges();
     expect(alert(fixture.nativeElement)).toContain('Personagem não encontrado');
+    const refusal = fixture.nativeElement.querySelector('app-owner-resubmit [role="alert"]')!;
+    expect(refusal.closest('.mr-live')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.mr-live[role="status"]')!.textContent,
+    ).not.toContain('Personagem não encontrado');
   });
 
   it('shows the error of a sheet that cannot be read, and the enemies layout when the XP mode cannot', async () => {
