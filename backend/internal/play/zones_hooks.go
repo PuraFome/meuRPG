@@ -218,6 +218,15 @@ func (s *Service) zonesAtTurnStart(ctx context.Context, c *combatTx, ids []strin
 	return s.catchWhoStarts(ctx, c, zs, ids, mark, round)
 }
 
+// endsOn says whether a creature that ends its turn on the square is caught by the zone.
+// It is a square of the zone, and for a wall also a square within 10 feet of its damaging side.
+func (z *zone) endsOn(sq grid.Square) bool {
+	if z.def.kind == zoneWall {
+		return z.hurtsAtEnd(sq)
+	}
+	return z.has(sq)
+}
+
 // zonesAtTurnEnd is what the end of a creature's part of the turn does to the zones: it is caught by each
 // zone that asks for the creatures that end their turn inside (Grease).
 func (s *Service) zonesAtTurnEnd(ctx context.Context, c *combatTx, who playdb.Combatant) error {
@@ -230,7 +239,7 @@ func (s *Service) zonesAtTurnEnd(ctx context.Context, c *combatTx, who playdb.Co
 	}
 	mark := currentMark(c) + ":end"
 	for _, z := range zs {
-		if !z.def.onTurnEnd || !z.has(squareOfCombatant(who)) {
+		if !z.def.onTurnEnd || !z.endsOn(squareOfCombatant(who)) {
 			continue
 		}
 		if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnd, mark: mark, round: c.enc.Round}, who.ID); err != nil {

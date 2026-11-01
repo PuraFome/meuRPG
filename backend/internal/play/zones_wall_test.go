@@ -174,7 +174,7 @@ func TestWallReachOfARingIsInsideOrOutside(t *testing.T) {
 // wallCave is the zone cave with Pensantus (wizard 9) knowing Wall of Fire.
 func wallCave(t *testing.T) *cave {
 	t.Helper()
-	return newCaveOf(t, 9, []string{wallOfFireKey, cloudkillKey}, func(a *armed) *charactersv1.Character {
+	return newCaveOf(t, 9, []string{wallOfFireKey, cloudkillKey, thunderwave}, func(a *armed) *charactersv1.Character {
 		return a.caio.caster(t, a.campaignID, "Toren", "class:cleric", "race:human", 7, abilities(14, 12, 14, 16, 10),
 			[]string{maceKey}, []string{sacredFlame}, nil, []string{blessKey})
 	})
@@ -507,5 +507,189 @@ func TestWallOfFireIsUnavailableInTheTurnOptions(t *testing.T) {
 	}
 	if o := spellOption(c.mustOptions(t, c.ana, e, "Pensantus"), cloudkillKey); o == nil || !o.GetEnabled() {
 		t.Errorf("Cloudkill option = %v, want enabled", o)
+	}
+}
+
+// The later hits of the wall deal the damage dice with no saving throw to a creature that enters the wall or ends its
+// turn inside it or within 10 ft of its damaging side. The wall is cast at (9,8) running north (squares (9,8) and
+// (9,7), the map's wall ends it at (9,6)); LEFT is the west.
+
+// wallHitsOn are the dice counts of the wall's damages waiting to be rolled for the creature.
+func (c *cave) wallHitsOn(t *testing.T, label string) []int {
+	t.Helper()
+	rows, err := c.h.pool.Query(t.Context(), `SELECT dice_count FROM pending_damages WHERE target_id = $1 AND attack_key = $2 AND status = 'awaiting_roll' ORDER BY created_at, id`, c.id(t, label), wallOfFireKey)
+	if err != nil {
+		t.Fatalf("read the damages of the wall: %v", err)
+	}
+	defer rows.Close()
+	var out []int
+	for rows.Next() {
+		var n int
+		if err := rows.Scan(&n); err != nil {
+			t.Fatalf("read a damage of the wall: %v", err)
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+// castWallWithOgreAt puts the ogre on the square, has Pensantus lay the wall and passes to the ogre's turn.
+// The ogre is quick, so the master can walk it about.
+func (c *cave) castWallWithOgreAt(t *testing.T, col, row int32, slot int32, edit func(*playv1.CastSpellRequest), origin *playv1.SpellOrigin, rolls ...int) *playv1.Encounter {
+	t.Helper()
+	e := c.zoneFight(t)
+	c.passTo(t, e, "Pensantus")
+	c.mustMove(t, c.master, "Ogro", col, row)
+	c.execSQL(t, `UPDATE combatants SET speed_ft = 200 WHERE id = $1`, c.id(t, "Ogro"))
+	if len(rolls) > 0 {
+		c.h.roller.queue(rolls...) // the saves and the damage of a creature the wall is cast on
+	}
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(slot), origin, nil, edit)
+	return c.passTo(t, c.get(t, c.master), "Ogro")
+}
+
+func (c *cave) castNorthWall(t *testing.T, col, row int32, slot int32) *playv1.Encounter {
+	t.Helper()
+	var rolls []int
+	if col == 9 { // the ogre stands in the wall: it saves and passes at the cast
+		rolls = []int{20, 1, 1, 1, 1, 1, 1}
+	}
+	return c.castWallWithOgreAt(t, col, row, slot, northWall(playv1.WallSide_WALL_SIDE_LEFT), at(9, 8), rolls...)
+}
+
+func TestTheWallHurtsWhoEndsItsTurnWhereItReaches(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name     string
+		col, row int32
+		hits     []int
+	}{
+		{"inside the wall", 9, 7, []int{5}},
+		{"inside the wall and within 10 ft: once", 9, 8, []int{5}},
+		{"10 ft from the damaging side", 7, 7, []int{5}},
+		{"5 ft from the damaging side", 8, 7, []int{5}},
+		{"15 ft from the damaging side", 6, 7, nil},
+		{"5 ft on the other side", 10, 7, nil},
+		{"10 ft on the other side", 11, 7, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := wallCave(t)
+			e := c.castNorthWall(t, tt.col, tt.row, 4)
+			if got := c.wallHitsOn(t, "Ogro"); len(got) != 0 {
+				t.Fatalf("hits before the end of the turn = %v, want none: it began its turn there", got)
+			}
+			c.mustEndTurn(t, c.master, e)
+			if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, tt.hits) {
+				t.Errorf("hits at the end of the turn = %v, want %v", got, tt.hits)
+			}
+		})
+	}
+}
+
+func TestTheWallHurtsWithTheDiceOfTheSlot(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.castNorthWall(t, 9, 7, 5)
+	c.mustEndTurn(t, c.master, e)
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{6}) {
+		t.Errorf("hits = %v, want one of 6 dice: the 5th level slot", got)
+	}
+}
+
+// Nobody is spared: the caster's ally and the caster take it too, and it asks no save.
+func TestTheWallSparesNobodyAndAsksNoSave(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.zoneFight(t)
+	c.passTo(t, e, "Pensantus")
+	c.mustMove(t, c.master, "Pensantus", 8, 7) // the caster, west of the wall
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(9, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	c.passTo(t, c.get(t, c.master), "Brisa")
+	if got := c.wallHitsOn(t, "Pensantus"); !slices.Equal(got, []int{5}) {
+		t.Errorf("hits on the caster = %v, want one: it ended its turn 5 ft from the damaging side", got)
+	}
+	c.mustMove(t, c.master, "Brisa", 7, 7)
+	c.mustEndTurn(t, c.master, c.get(t, c.master))
+	if got := c.wallHitsOn(t, "Brisa"); !slices.Equal(got, []int{5}) {
+		t.Errorf("hits on Brisa = %v, want one", got)
+	}
+	if w := c.windowOf(t, c.bia, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE); w != nil {
+		t.Errorf("Brisa is asked a save: %v, want none after the cast", w)
+	}
+}
+
+func TestEnteringTheWallHurtsOnceAndEndingTheTurnThereHurtsAgain(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.castNorthWall(t, 12, 7, 4)
+	c.mustMove(t, c.master, "Ogro", 9, 7)
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5}) {
+		t.Fatalf("hits after walking in = %v, want one", got)
+	}
+	c.mustMove(t, c.master, "Ogro", 9, 8) // moving about inside the wall hurts no more
+	if got := c.wallHitsOn(t, "Ogro"); len(got) != 1 {
+		t.Fatalf("hits after moving inside = %v, want still one", got)
+	}
+	c.mustEndTurn(t, c.master, e)
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5, 5}) {
+		t.Errorf("hits after the end of the turn = %v, want two: one for entering and one for the turn end", got)
+	}
+	if got := c.zoneReasons(t, wallOfFireKey); !slices.Equal(got, []string{"zone_enter", "zone_end"}) {
+		t.Errorf("reasons of the lines = %v, want zone_enter then zone_end", got)
+	}
+}
+
+func TestLeavingTheWallAndEnteringAgainHurtsOnce(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.castNorthWall(t, 12, 7, 4)
+	for _, col := range []int32{9, 12, 9} {
+		c.mustMove(t, c.master, "Ogro", col, 7)
+	}
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5}) {
+		t.Errorf("hits = %v, want one: entering twice on a turn hurts once", got)
+	}
+}
+
+func TestBeingPushedIntoTheWallHurtsAsEntering(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.castNorthWall(t, 11, 7, 4)
+	c.mustEndTurn(t, c.master, e) // the ogre is east of the wall: nothing yet
+	c.nextTurnOf(t, "Pensantus")
+	if got := c.wallHitsOn(t, "Ogro"); len(got) != 0 {
+		t.Fatalf("hits before the push = %v, want none", got)
+	}
+	c.h.roller.queue(1)
+	c.mustCastArea(t, c.ana, "Pensantus", thunderwave, slotOfLevel(1), nil, toward(-1, 0))
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5}) {
+		t.Errorf("hits after the push = %v, want one: pushed from 11 to 9, into the wall", got)
+	}
+}
+
+func TestTheRingHurtsOnItsDamagingSideAtTheEndOfTheTurn(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name     string
+		side     playv1.WallSide
+		col, row int32
+		want     int
+	}{
+		{"inner side, inside", playv1.WallSide_WALL_SIDE_INNER, 18, 7, 1},
+		{"inner side, outside", playv1.WallSide_WALL_SIDE_INNER, 22, 7, 0},
+		{"outer side, inside", playv1.WallSide_WALL_SIDE_OUTER, 18, 7, 0},
+		{"outer side, outside", playv1.WallSide_WALL_SIDE_OUTER, 22, 7, 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := wallCave(t)
+			ring := func(r *playv1.CastSpellRequest) { r.Wall = &playv1.SpellWall{Ring: true, Side: tt.side} }
+			e := c.castWallWithOgreAt(t, tt.col, tt.row, 4, ring, at(19, 7), 20, 1, 1, 1, 1, 1) // the goblin in the ring saves
+			c.mustEndTurn(t, c.master, e)
+			if got := c.wallHitsOn(t, "Ogro"); len(got) != tt.want {
+				t.Errorf("hits = %v, want %d", got, tt.want)
+			}
+		})
 	}
 }

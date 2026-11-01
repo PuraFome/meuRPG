@@ -42,6 +42,8 @@ import (
 //     component (zones_silence.go).
 //   - Wall of Fire: a wall of fire, a line or a ring that the caster lays from a point (zones_wall.go). A Dexterity save
 //     at the cast for the creatures inside it, fire damage, half on a pass.
+//     Later hits ask no save: a creature that enters the wall, or ends its turn inside it or within 10 feet of its
+//     damaging side, takes the damage dice.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
 // inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
@@ -175,7 +177,7 @@ var zoneDefs = map[string]zoneDef{
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:wall-of-fire": {
-		kind: zoneWall, onCast: true, shape: grid.ShapeLine, sizeFt: wallLineFt, save: "dex",
+		kind: zoneWall, onCast: true, onEnter: true, onTurnEnd: true, shape: grid.ShapeLine, sizeFt: wallLineFt, save: "dex",
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:spirit-guardians": {

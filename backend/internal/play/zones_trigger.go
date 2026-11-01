@@ -80,6 +80,13 @@ func (z *zone) catches(owner, who playdb.Combatant, mark string) bool {
 	return placed(who) && !who.Defeated && !z.spares(owner, who) && !z.hitOn(who.ID, mark)
 }
 
+// asksNoSave says the catch asks no saving throw: the zone has none, or it is a wall and the catch is not the cast.
+// A wall asks the creatures inside it at the cast, and its later hits (entering it, ending a turn near it) deal the
+// damage dice outright.
+func (z *zone) asksNoSave(why string) bool {
+	return z.row.SaveAbility == "" || (z.def.kind == zoneWall && why != zoneWhyCast)
+}
+
 // catchZone catches a creature in a zone: it writes that the zone hit it on this turn, makes its saving
 // throw and deals what the spell says.
 func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch) error {
@@ -107,7 +114,7 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 		}
 	}
 	switch {
-	case k.z.row.SaveAbility == "":
+	case k.z.asksNoSave(k.why):
 		return s.catchWithoutSave(ctx, c, k, owner)
 	case k.who.Kind == kindPlayer:
 		return s.askZoneSave(ctx, c, k, owner) // a player's character is asked (zones_save.go)
