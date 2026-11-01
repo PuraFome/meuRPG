@@ -137,9 +137,15 @@ func TestWallReachOfAStraightWallIsTheDamagingSide(t *testing.T) {
 		s           grid.Square
 		left, right bool
 	}{
-		{wsq(11, 9), true, false}, {wsq(11, 8), true, false}, {wsq(11, 7), false, false},
-		{wsq(11, 11), false, true}, {wsq(11, 12), false, true}, {wsq(11, 13), false, false},
-		{wsq(13, 9), true, false}, {wsq(14, 10), false, false}, {wsq(9, 10), false, false},
+		{wsq(11, 9), true, false},
+		{wsq(11, 8), true, false},
+		{wsq(11, 7), false, false},
+		{wsq(11, 11), false, true},
+		{wsq(11, 12), false, true},
+		{wsq(11, 13), false, false},
+		{wsq(13, 9), true, false},
+		{wsq(14, 10), false, false},
+		{wsq(9, 10), false, false},
 	} {
 		if left[c.s] != c.left || right[c.s] != c.right {
 			t.Errorf("%v: left %v right %v, want %v and %v", c.s, left[c.s], right[c.s], c.left, c.right)
@@ -165,8 +171,12 @@ func TestWallReachOfARingIsInsideOrOutside(t *testing.T) {
 		s            grid.Square
 		inner, outer bool
 	}{
-		{wsq(10, 10), true, false}, {wsq(11, 10), true, false}, {wsq(11, 11), true, false},
-		{wsq(13, 10), false, true}, {wsq(14, 10), false, true}, {wsq(15, 10), false, false},
+		{wsq(10, 10), true, false},
+		{wsq(11, 10), true, false},
+		{wsq(11, 11), true, false},
+		{wsq(13, 10), false, true},
+		{wsq(14, 10), false, true},
+		{wsq(15, 10), false, false},
 	} {
 		if inner[c.s] != c.inner || outer[c.s] != c.outer {
 			t.Errorf("%v: inner %v outer %v, want %v and %v", c.s, inner[c.s], outer[c.s], c.inner, c.outer)

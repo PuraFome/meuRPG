@@ -29,9 +29,9 @@ type zoneStep struct {
 	travels bool
 }
 
-// travelled are the squares the creature crossed, the last being where it stands now.
+// traveled are the squares the creature crossed, the last being where it stands now.
 // It crossed none when the step did not travel.
-func (st zoneStep) travelled() []grid.Square {
+func (st zoneStep) traveled() []grid.Square {
 	if !st.travels || st.from == nil || len(st.path) == 0 {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (st zoneStep) travelled() []grid.Square {
 // spikesIn is the number of squares of the step inside the zone.
 func (z *zone) spikesIn(st zoneStep) int {
 	n := 0
-	for _, sq := range st.travelled() {
+	for _, sq := range st.traveled() {
 		if z.has(sq) {
 			n++
 		}

@@ -30,7 +30,7 @@ const (
 	zoneWhyStart = "zone_start"
 	zoneWhyCast  = "zone_cast" // standing in the area when the spell was cast
 	zoneWhyEnd   = "zone_end"  // ended its turn inside
-	zoneWhyMove  = "zone_move" // travelled through the area (Spike Growth)
+	zoneWhyMove  = "zone_move" // traveled through the area (Spike Growth)
 )
 
 // eventZoneTriggered is a creature caught by the area a spell keeps on the map, and eventZoneMoved
