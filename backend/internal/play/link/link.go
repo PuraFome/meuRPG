@@ -895,6 +895,9 @@ type SummonSpell struct {
 	TurnMode     string
 	MaxLive      int
 	ReplacesSame bool
+	// Feature says the summon is a table feature's: a casting spends a use of the feature's resource, not a slot,
+	// and the creatures are made with a slot() of 0.
+	Feature bool
 }
 
 // CreatureState is where a combat leaves a creature: its hit points and whether

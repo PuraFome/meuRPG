@@ -11,7 +11,7 @@ import (
 // SRD's giant spider.
 
 const (
-	packFeature = "feature:matilha-do-guardiao" + tableSuffix
+	packFeature  = "feature:matilha-do-guardiao" + tableSuffix
 	packResource = "chamados"
 )
 

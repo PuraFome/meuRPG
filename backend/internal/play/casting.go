@@ -666,10 +666,10 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 	return plan, nil
 }
 
-// checkGrantMode refuses a cast the grant does not allow: a summoning spell, or a ritual
-// cast against a grant that is (or is not) for rituals only.
+// checkGrantMode refuses a cast the grant does not allow: a summoning spell (except a feature's summon, which only
+// its grant casts), or a ritual cast against a grant that is (or is not) for rituals only.
 func (p *castPlan) checkGrantMode(grant link.OutsideGrant) error {
-	if p.osp.Effect == link.EffectSummon {
+	if p.osp.Effect == link.EffectSummon && !p.osp.FeatureSummon {
 		return badCast("a summoning spell is cast with the character's classes, not through a grant")
 	}
 	if p.ritual != grant.RitualOnly {
