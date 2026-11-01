@@ -260,6 +260,9 @@ type moveRequest struct {
 	// forced (a teleport, a token put right) and place (the first square of a
 	// combatant that has none) are the master's.
 	forced, place bool
+	// legendary is the key of the legendary option of kind "move" the move is made as (the master's, off the
+	// creature's own turn, with a budget of its own, see spendLegendaryMove).
+	legendary string
 }
 
 // walking says whether the move is a walk that pays its way: not a jump, and not
@@ -280,7 +283,7 @@ func readMoveRequest(ctx context.Context, msg *playv1.MoveCombatantRequest) (mov
 	}
 	r := moveRequest{
 		m: m, key: key, encID: encID, combID: combID, col: msg.GetCol(), row: msg.GetRow(),
-		jump: msg.GetJump(), height: msg.GetJumpHeightDft(), forced: msg.GetForced(), place: msg.GetPlace(),
+		jump: msg.GetJump(), height: msg.GetJumpHeightDft(), forced: msg.GetForced(), place: msg.GetPlace(), legendary: msg.GetLegendaryOption(),
 	}
 	return r, r.validate()
 }
@@ -309,7 +312,7 @@ func (r moveRequest) validate() error {
 	if r.place && r.jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("a placement is not a jump"))
 	}
-	return nil
+	return r.validateLegendary(master)
 }
 
 // A drag and a crawl each make a foot of path cost this many.
@@ -350,6 +353,10 @@ type moveAttempt struct {
 	squareChanged  bool
 	coverMark      string
 	used           int
+	// spent is what a legendary move paid, in legendary actions, and speedPct the part of its speed the option
+	// lets it walk (rules.LegendaryOption.MoveSpeedPercent).
+	spent    int32
+	speedPct int
 	// made is the move's event.
 	made actionEvent
 	// what the publishers read after the commit.
@@ -407,6 +414,9 @@ func (s *Service) MoveCombatant(
 // brings with it (write) and fills the event the log keeps (describe).
 func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
 	if err := s.loadMover(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := s.spendLegendaryMove(ctx, a); err != nil {
 		return nil, err
 	}
 	if err := s.chooseSquare(ctx, a); err != nil {
@@ -567,7 +577,7 @@ func (s *Service) startMove(ctx context.Context, a *moveAttempt) error {
 	}
 	a.th = th
 	a.from = moveStateOf(a.target)
-	a.made = actionEvent{Round: a.c.enc.Round, Secret: a.target.Hidden, Actor: a.target.ID, OnTurn: a.onTurn, From: a.from}
+	a.made = actionEvent{Round: a.c.enc.Round, Secret: a.target.Hidden, Actor: a.target.ID, OnTurn: a.onTurn, From: a.from, SpendCost: a.spent}
 	a.to = grid.Square{Col: int(a.col), Row: int(a.row)}
 	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH {
 		a.to = squareOfCombatant(a.target) // a high jump moves nobody
@@ -718,7 +728,7 @@ func (a *moveAttempt) planHighJump(p playerPlan) error {
 // decides to force it. Out of turn, for a player's character and when forced, the master's move stays
 // free and unlimited: it puts a token right.
 func (a *moveAttempt) paysItsWay() bool {
-	return a.v.master && a.onTurn && a.req.walking() && !a.req.place && placed(a.target) && a.target.UserID == nil
+	return a.v.master && (a.onTurn || a.req.legendary != "") && a.req.walking() && !a.req.place && placed(a.target) && a.target.UserID == nil
 }
 
 // planNPCWalk is an NPC's drag on its own turn: a player's straight move, planned on everything there is
@@ -731,7 +741,7 @@ func (a *moveAttempt) planNPCWalk() error {
 		all:     all,
 		mover:   moverOf(a.target),
 		origin:  squareOfCombatant(a.target),
-		leftDFt: movementLeftDFt(a.target) / a.factor,
+		leftDFt: a.movementBudgetDFt() / a.factor,
 	})
 }
 
@@ -767,6 +777,9 @@ func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
 		a.coverMark = "none"
 	}
 	a.used = int(a.target.MovementUsedDft) + a.cost*a.factor
+	if a.req.legendary != "" { // its own budget: the movement of the creature's turn is neither spent nor read
+		a.used, a.last = int(a.target.MovementUsedDft), int(a.target.LastMoveDft)
+	}
 	if err := a.c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
 		ID: a.target.ID, GridCol: &a.newCol, GridRow: &a.newRow,
 		MovementUsedFt: clamp32(a.used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(a.used, 0, math.MaxInt32), LastMoveDft: clamp32(a.last, 0, math.MaxInt32), CoverMark: a.coverMark,
@@ -831,7 +844,7 @@ func (a *moveAttempt) describeMove() {
 	made.Col, made.Row = a.newCol, a.newRow
 	made.CostDFt, made.CostFt = clamp32(a.cost, 0, math.MaxInt32), clamp32(a.cost/10, 0, math.MaxInt32)
 	made.DistanceDFt, made.DistanceFt = clamp32(a.length, 0, math.MaxInt32), clamp32(a.length/10, 0, math.MaxInt32)
-	if a.req.jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && a.cost > 0 { // what the walk spent: the path's cost, doubled by a drag and by a crawl
+	if a.req.jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && a.cost > 0 && a.req.legendary == "" { // what the walk spent: the path's cost, doubled by a drag and by a crawl
 		made.SpentDFt, made.Dragging, made.Crawling = clamp32(a.cost*a.factor, 0, math.MaxInt32), a.dragHalves, crawls(a.target) && !a.req.forced
 	}
 	switch a.req.jump {
@@ -843,7 +856,7 @@ func (a *moveAttempt) describeMove() {
 	case playv1.JumpKind_JUMP_KIND_HIGH:
 		made.Jump, made.HeightDFt = jumpHigh, a.req.height
 	}
-	a.logged = a.onTurn && (a.length > 0 || made.Jump == jumpHigh)
+	a.logged = (a.onTurn || a.req.legendary != "") && (a.length > 0 || made.Jump == jumpHigh)
 	if a.v.master && a.squareChanged && !a.paid {
 		a.th.landed(a.to) // the master's move is not a walk: only where it ends counts
 	}

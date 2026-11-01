@@ -23,6 +23,7 @@ A save that 5e-database leaves only in the text ("Força CD 11 ou cai Derrubado"
 | `WildShapeLimitFor(build)`, `WildShapeForms(build)`, `WildShapeAllows(build, beast)`, `WildShapeDerived(sheet, beast)`, `CastsInBeastForm(derived)` | See [Wild Shape](#wild-shape). |
 
 A table creature (`creature:<slug>@mesa`) is an SRD creature with the master's adjustments and resolves through the same functions; the encounter tools, the summon choices and Wild Shape leave it out ([Table creatures](rules-table-content.md#table-creatures)).
+Its numbers can be formulas of its owner, resolved by `ResolveCreature` and written by `ApplyResolved` ([formulas of the owner](rules-table-content.md#formulas-of-the-owner)).
 
 **A creature's armor class** comes from the armor it uses, and the note says what it wears and the other values ("15 com Armadura Arcana").
 

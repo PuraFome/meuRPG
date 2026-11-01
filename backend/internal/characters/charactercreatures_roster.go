@@ -3,10 +3,10 @@ package characters
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"strconv"
 	"time"
+	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -102,6 +102,9 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 	if err := checkCreatureRoom(ctx, q, sm); err != nil {
 		return res, err
 	}
+	if err := checkSummonLive(ctx, q, sm); err != nil {
+		return res, err
+	}
 	if res.Created, err = s.insertSummoned(ctx, q, content, sm); err != nil {
 		return res, err
 	}
@@ -109,8 +112,9 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 }
 
 // replaceForSummon dismisses what the casting replaces and returns it: the old
-// familiar for a new one ("replaced"), and for a concentration spell the
-// creatures of the old concentration ("concentration").
+// familiar for a new one ("replaced"), the creatures of the same table spell when
+// it replaces its own ("replaced"), and for a concentration spell the creatures
+// of the old concentration ("concentration").
 func (s *Service) replaceForSummon(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
 	var out []link.Creature
 	if sm.Source == creatureSourceFamiliar {
@@ -125,21 +129,43 @@ func (s *Service) replaceForSummon(ctx context.Context, q *charactersdb.Queries,
 			return out, err
 		}
 	}
+	if sm.ReplacesSame {
+		replaced, err := s.replaceSameSummon(ctx, q, content, sm)
+		if out = append(out, replaced...); err != nil {
+			return out, err
+		}
+	}
 	if sm.Concentration {
 		// A new concentration spell ends the old one, and the creatures that lasted
 		// only while it did (RN-22), in or out of a combat.
-		old, err := q.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
-		if err != nil {
-			return out, wrap("list the creatures that depend on a concentration", err)
-		}
-		replaced, err := s.dismissReplaced(ctx, q, content, sm.CampaignID, creatureViews(old, func(r charactersdb.ListLiveCreaturesOnConcentrationRow) (charactersdb.CharacterCreature, *string) {
-			return r.CharacterCreature, r.PlayerUserID
-		}), "concentration", "dismiss the old concentration's creatures")
+		replaced, err := s.replaceConcentration(ctx, q, content, sm)
 		if out = append(out, replaced...); err != nil {
 			return out, err
 		}
 	}
 	return out, nil
+}
+
+// replaceSameSummon dismisses the live creatures of the table spell the casting is of.
+func (s *Service) replaceSameSummon(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
+	old, err := q.ListLiveCreaturesOfSummon(ctx, charactersdb.ListLiveCreaturesOfSummonParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, SummonKey: sm.SummonKey})
+	if err != nil {
+		return nil, wrap("list the creatures of the spell", err)
+	}
+	return s.dismissReplaced(ctx, q, content, sm.CampaignID, creatureViews(old, func(r charactersdb.ListLiveCreaturesOfSummonRow) (charactersdb.CharacterCreature, *string) {
+		return r.CharacterCreature, r.PlayerUserID
+	}), "replaced", "dismiss the old creatures of the spell")
+}
+
+// replaceConcentration dismisses the live creatures that depend on the caster's concentration.
+func (s *Service) replaceConcentration(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
+	old, err := q.ListLiveCreaturesOnConcentration(ctx, charactersdb.ListLiveCreaturesOnConcentrationParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID})
+	if err != nil {
+		return nil, wrap("list the creatures that depend on a concentration", err)
+	}
+	return s.dismissReplaced(ctx, q, content, sm.CampaignID, creatureViews(old, func(r charactersdb.ListLiveCreaturesOnConcentrationRow) (charactersdb.CharacterCreature, *string) {
+		return r.CharacterCreature, r.PlayerUserID
+	}), "concentration", "dismiss the old concentration's creatures")
 }
 
 // dismissReplaced dismisses the creatures with the reason (what names the
@@ -152,7 +178,9 @@ func (s *Service) dismissReplaced(ctx context.Context, q *charactersdb.Queries, 
 	out := make([]link.Creature, 0, len(old))
 	for _, o := range old {
 		ids = append(ids, o.ID)
-		out = append(out, creatureOf(content, o))
+		cr := creatureOf(content, o)
+		cr.DismissedReason = reason
+		out = append(out, cr)
 	}
 	if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: ids, Reason: reason, At: s.now()}); err != nil {
 		return out, wrap(what, err)
@@ -173,35 +201,66 @@ func checkCreatureRoom(ctx context.Context, q *charactersdb.Queries, sm link.Sum
 	return nil
 }
 
+// checkSummonLive blocks a casting of a table spell that would leave the character with more of its creatures
+// than the spell's max_live (the creatures the casting replaced are gone by now). It counts the character's live
+// creatures of the spell, in any combat or none, and runs in the casting's transaction, so nothing is made on a refusal.
+func checkSummonLive(ctx context.Context, q *charactersdb.Queries, sm link.Summon) error {
+	if sm.MaxLive <= 0 || sm.SummonKey == "" {
+		return nil
+	}
+	live, err := q.ListLiveCreaturesOfSummon(ctx, charactersdb.ListLiveCreaturesOfSummonParams{CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, SummonKey: sm.SummonKey})
+	if err != nil {
+		return wrap("count the creatures of the spell", err)
+	}
+	if len(live)+len(sm.Creatures) > sm.MaxLive {
+		return errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CREATURE_LIMIT, sm.CharacterID)
+	}
+	return nil
+}
+
 // insertSummoned writes the casting's creatures at full hit points, in the
-// casting's order.
+// casting's order. A creature with formulas gets its numbers worked out for its
+// owner and the slot of the casting. A creature that rolls its own initiative has
+// a summon group of its own; the concentration it depends on is the casting's.
 func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, content *rules.Content, sm link.Summon) ([]link.Creature, error) {
 	var out []link.Creature
 	labels := creatureNames(content, sm.Creatures)
-	var cast *string
-	if sm.Concentration {
-		cast = &sm.GroupID
-	}
 	at := s.now()
+	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
-		d, ok := content.MonsterDerived(spec.MonsterKey)
-		if !ok {
-			return out, fmt.Errorf("%q is not a creature", spec.MonsterKey) // CheckSummon said it was
+		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot)
+		if err != nil {
+			return out, err
 		}
-		hp := int32(max(d.HitPointsMax, 1)) //nolint:gosec // an SRD creature has at most 676 hit points
-		row, err := q.InsertCharacterCreature(ctx, charactersdb.InsertCharacterCreatureParams{
-			CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, MonsterKey: spec.MonsterKey, Name: labels[i], Source: sm.Source,
-			Attack: spec.Attack, SummonGroupID: sm.GroupID, ConcentrationCastID: cast, HpCurrent: hp, HpMax: hp,
-			// Each a microsecond after the last: the casting's order is the list's order, so "the
-			// first creature of the group" is the same wherever it is read.
-			CreatedAt: at.Add(time.Duration(i) * time.Microsecond),
-		})
+		p := summonedParams(sm, spec, labels[i], stat, hp)
+		// Each a microsecond after the last: the casting's order is the list's order, so "the
+		// first creature of the group" is the same wherever it is read.
+		p.CreatedAt = at.Add(time.Duration(i) * time.Microsecond)
+		row, err := q.InsertCharacterCreature(ctx, p)
 		if err != nil {
 			return out, wrap("insert a creature", err)
 		}
 		out = append(out, creatureOf(content, creatureView{CharacterCreature: row}))
 	}
 	return out, nil
+}
+
+// summonedParams is the row of one creature of the casting.
+func summonedParams(sm link.Summon, spec link.CreatureSpec, name string, stat []byte, hp int32) charactersdb.InsertCharacterCreatureParams {
+	p := charactersdb.InsertCharacterCreatureParams{
+		CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, MonsterKey: spec.MonsterKey, Name: name, Source: sm.Source,
+		Attack: spec.Attack, SummonGroupID: sm.GroupID, HpCurrent: hp, HpMax: hp, StatBlock: stat,
+	}
+	if sm.Concentration {
+		p.ConcentrationCastID = &sm.GroupID
+	}
+	if sm.OwnInitiative {
+		p.SummonGroupID = uuid.New().String()
+	}
+	if sm.SummonKey != "" {
+		p.SummonKey = &sm.SummonKey
+	}
+	return p
 }
 
 // setSummonedOwner gives the new creatures their owner's player, read with the
@@ -470,6 +529,9 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	for _, m := range made {
 		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack})
 	}
+	if rule, table := content.SummonRule(spellKey); table {
+		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame
+	}
 	return out, nil
 }
 
@@ -509,7 +571,12 @@ func (s *Service) summonStanding(d rules.Derived, spellKey string, ritualSpell b
 // attacks only with its reaction keeps its attacks for the opportunity attack.
 // No creature casts a spell here.
 func creatureDerived(content *rules.Content, key, attack string) (rules.Derived, bool) {
-	d, ok := content.MonsterDerived(key)
+	return creatureDerivedFrom(content, key, attack, nil)
+}
+
+// creatureDerivedFrom is creatureDerived for a creature with the snapshot of its numbers (nil for none).
+func creatureDerivedFrom(content *rules.Content, key, attack string, statBlock []byte) (rules.Derived, bool) {
+	d, ok := monsterDerivedOf(content, key, statBlock)
 	if !ok {
 		return rules.Derived{}, false
 	}
@@ -524,14 +591,19 @@ func creatureDerived(content *rules.Content, key, attack string) (rules.Derived,
 }
 
 // CreatureSheet implements play.CombatRoster: what an attack needs from a
-// creature's stat block (its armor class, its attacks, the standard actions).
-// False for a key that is not an SRD creature.
-func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error) {
+// creature's stat block (its armor class, its attacks, the standard actions);
+// a creature with a snapshot reads the snapshot's numbers.
+// False for a key that is not a creature of the content (SRD or the table's).
+func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string) (link.Sheet, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.Sheet{}, false, wrap("read rules content", err)
 	}
-	d, ok := creatureDerived(content, monsterKey, attack)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.Sheet{}, false, err
+	}
+	d, ok := creatureDerivedFrom(content, monsterKey, attack, stat)
 	if !ok {
 		return link.Sheet{}, false, nil
 	}
@@ -557,14 +629,18 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, mons
 // CreatureTurnOptions implements play.CombatRoster: what the creature can do
 // now, from its stat block and what it used this turn. A creature that attacks
 // only with its reaction shows its attacks disabled (REACTION_ONLY): the app
-// offers them when a move leaves its reach. False for a key that is not an SRD
-// creature.
-func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error) {
+// offers them when a move leaves its reach. False for a key that is not a
+// creature of the content (SRD or the table's).
+func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return nil, false, wrap("read rules content", err)
 	}
-	d, ok := creatureDerived(content, monsterKey, attack)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return nil, false, err
+	}
+	d, ok := creatureDerivedFrom(content, monsterKey, attack, stat)
 	if !ok {
 		return nil, false, nil
 	}
@@ -586,12 +662,16 @@ func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID
 // CreatureSave implements play.CombatRoster: a creature's saving throw bonus
 // against an ability ("dex"), from its stat block (the listed bonus, or the
 // ability modifier).
-func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error) {
+func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, ability string) (link.Save, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.Save{}, wrap("read rules content", err)
 	}
-	d, ok := content.MonsterDerived(monsterKey)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.Save{}, err
+	}
+	d, ok := monsterDerivedOf(content, monsterKey, stat)
 	if !ok {
 		return link.Save{}, nil
 	}
@@ -606,12 +686,16 @@ func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monst
 // CreatureCheck implements play.CombatRoster: a creature's bonus in a skill or ability
 // check from its stat block, with the passive score of the skills that have one. Known is
 // false for a key that is not a skill or an ability the stat block gives.
-func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, key string) (link.SceneOption, error) {
+func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.SceneOption{}, wrap("read rules content", err)
 	}
-	d, ok := content.MonsterDerived(monsterKey)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.SceneOption{}, err
+	}
+	d, ok := monsterDerivedOf(content, monsterKey, stat)
 	if !ok {
 		return link.SceneOption{}, nil
 	}
@@ -690,7 +774,7 @@ func damageTypesOf(mods []rules.CreatureDamageMod, qualifier string) []string {
 
 // CreatureEyes implements play.CombatRoster: what a creature notices with, from
 // its stat block: the passive Perception it lists and its senses (MR-035, MR-037).
-// False for a key that is not an SRD creature.
+// False for a key that is not a creature of the content (SRD or the table's).
 func (s *Service) CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (maplink.Eyes, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {

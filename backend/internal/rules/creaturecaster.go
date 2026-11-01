@@ -28,11 +28,45 @@ type MonsterCaster struct {
 
 var (
 	casterAbilityRe = regexp.MustCompile(`(?i)spell ?casting ability (?:is )?(Intelligence|Wisdom|Charisma)`)
+	casterLevelRe   = regexp.MustCompile(`(?i)(\d+)(?:st|nd|rd|th)-level spellcaster`)
+	casterDCRe      = regexp.MustCompile(`spell save DC (\d+)`)
+	casterAttackRe  = regexp.MustCompile(`\+(\d+) to hit with spell attacks`)
 	innateBreakRe   = regexp.MustCompile(`[\s;]+(\d+/day(?: each)?:)`)
-	innateLineRe    = regexp.MustCompile(`(?m)^(?:[^\n]*\. )?(At will|(\d+)/day( each)?): (.+)$`)
-	casterLevelRe   = regexp.MustCompile(`(?i)is an? (\d+)(?:st|nd|rd|th)-level spellcaster`)
+	innateLineRe    = regexp.MustCompile(`(?mi)^(?:[^\n]*\. )?(at will|(\d+)/day( each)?): (.+)$`)
 	parenthesisRe   = regexp.MustCompile(`\s*\([^)]*\)`)
 )
+
+// CastingText is what the text of a Spellcasting or Innate Spellcasting trait writes: the caster level, the
+// casting ability, the save DC and the spell attack bonus. A Has field says the text wrote that value, so a reader that
+// prints the text (the NPC's note) does not invent what the rules would derive.
+type CastingText struct {
+	Level                                  int
+	Ability                                Ability
+	DC, Attack                             int
+	HasLevel, HasAbility, HasDC, HasAttack bool
+}
+
+// SpellcastingNumbers reads the numbers a trait's text writes. It is the one reader of them: MonsterCaster and the
+// NPC's note both use it.
+func SpellcastingNumbers(desc string) CastingText {
+	var t CastingText
+	if m := casterLevelRe.FindStringSubmatch(desc); m != nil {
+		t.Level, _ = strconv.Atoi(m[1])
+		t.HasLevel = true
+	}
+	if m := casterAbilityRe.FindStringSubmatch(desc); m != nil {
+		t.Ability, t.HasAbility = casterAbilities[strings.ToLower(m[1])], true
+	}
+	if m := casterDCRe.FindStringSubmatch(desc); m != nil {
+		t.DC, _ = strconv.Atoi(m[1])
+		t.HasDC = true
+	}
+	if m := casterAttackRe.FindStringSubmatch(desc); m != nil {
+		t.Attack, _ = strconv.Atoi(m[1])
+		t.HasAttack = true
+	}
+	return t
+}
 
 var casterAbilities = map[string]Ability{"intelligence": INT, "wisdom": WIS, "charisma": CHA}
 
@@ -51,9 +85,7 @@ func (c *Content) MonsterCaster(key string) (MonsterCaster, bool) {
 	for _, a := range m.SpecialAbilities {
 		switch a.Name {
 		case "Spellcasting":
-			if sc, ok := c.c.castingTrait(m.ProficiencyBonus, a.Desc); ok {
-				c.c.addSlotCasting(&out, key, m.ProficiencyBonus, scores, a.Desc, sc)
-			}
+			c.c.addSlotCasting(&out, key, m.ProficiencyBonus, scores, a.Desc)
 		case "Innate Spellcasting":
 			c.c.addInnateCasting(&out, key, m.ProficiencyBonus, scores, a.Desc)
 		}
@@ -64,37 +96,44 @@ func (c *Content) MonsterCaster(key string) (MonsterCaster, bool) {
 	return out, true
 }
 
-// numbersOf are the casting ability, the save DC and the attack bonus a trait's text gives: the numbers
-// it lists, and, for what it leaves out, 8 or nothing plus the proficiency bonus and the ability modifier.
-func numbersOf(profBonus int, scores map[Ability]int, desc string) (ability Ability, dc, attack int) {
-	if m := casterAbilityRe.FindStringSubmatch(desc); m != nil {
-		ability = casterAbilities[strings.ToLower(m[1])]
+// numbersOf are what a trait's text writes, with the save DC and the attack bonus it gives: the numbers
+// it writes, and, for what it leaves out, 8 or nothing plus the proficiency bonus and the ability modifier.
+// false when the text writes neither an ability nor a DC or an attack bonus: there is nothing to cast with.
+func numbersOf(profBonus int, scores map[Ability]int, desc string) (t CastingText, dc, attack int, ok bool) {
+	t = SpellcastingNumbers(desc)
+	if !t.HasAbility && !t.HasDC && !t.HasAttack {
+		return t, 0, 0, false
 	}
-	mod := modifier(scores[ability])
+	mod := modifier(scores[t.Ability])
 	dc, attack = 8+profBonus+mod, profBonus+mod
-	if m := castingDCRe.FindStringSubmatch(desc); m != nil {
-		dc, _ = strconv.Atoi(m[1])
-		attack, _ = strconv.Atoi(m[2])
-	} else if m := innateDCRe.FindStringSubmatch(desc); m != nil {
-		dc, _ = strconv.Atoi(m[1])
+	switch {
+	case t.HasDC && t.HasAttack:
+		dc, attack = t.DC, t.Attack
+	case t.HasDC && !t.HasAbility:
+		dc, attack = t.DC, t.DC-8
+	case t.HasAttack && !t.HasAbility:
+		dc, attack = t.Attack+8, t.Attack
+	case t.HasDC:
+		dc = t.DC
+	case t.HasAttack:
+		attack = t.Attack
 	}
-	return ability, dc, attack
+	return t, dc, attack, true
 }
 
-var innateDCRe = regexp.MustCompile(`spell save DC (\d+)`)
-
 // addSlotCasting adds the Spellcasting trait: the slots, the prepared spells and the numbers.
-func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string, sc CreatureCasting) {
-	ability, dc, attack := numbersOf(profBonus, scores, desc)
-	if sc.SaveDC > 0 {
-		dc, attack = sc.SaveDC, sc.AttackBonus
+func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string) {
+	t, dc, attack, ok := numbersOf(profBonus, scores, desc)
+	slots, spells := c.castingTrait(desc)
+	if !ok || (len(spells) == 0 && !t.HasDC) {
+		return
 	}
-	if m := casterLevelRe.FindStringSubmatch(desc); m != nil {
-		out.Level, _ = strconv.Atoi(m[1])
+	if t.HasLevel {
+		out.Level = t.Level
 	}
-	out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
-	out.Slots = sc.Slots[:]
-	for _, k := range sc.Spells {
+	out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: t.Ability, SaveDC: dc, AttackBonus: attack}
+	out.Slots = slots[:]
+	for _, k := range spells {
 		if e, ok := c.spellEntries[k]; ok {
 			out.Spells = append(out.Spells, CharacterSpell{Spell: e, Prepared: true})
 		}
@@ -104,24 +143,26 @@ func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, 
 // addInnateCasting adds the innate spells of the trait as granted spells: "At will" ones at will, "N/day each"
 // ones with a resource of N uses a spell, and "N/day" ones with one resource of N uses for the whole list.
 func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string) {
-	ability, dc, attack := numbersOf(profBonus, scores, desc)
+	t, dc, attack, ok := numbersOf(profBonus, scores, desc)
+	if !ok {
+		return
+	}
 	source := key + innateSourceSuffix
 	// A text that runs its lists together on one line ("... major image 3/day each: ...") gets one list a line.
 	desc = innateBreakRe.ReplaceAllString(desc, "\n$1")
-	base := GrantedSpell{Source: source, SourcePT: "Conjuração inata", Ability: ability, AttackBonus: attack, SaveDC: dc}
+	base := GrantedSpell{Source: source, SourcePT: "Conjuração inata", Ability: t.Ability, AttackBonus: attack, SaveDC: dc}
 	for _, line := range innateLineRe.FindAllStringSubmatch(desc, -1) {
 		perDay, _ := strconv.Atoi(line[2])
-		for _, name := range strings.Split(line[4], ",") {
-			name = strings.Trim(strings.TrimSpace(parenthesisRe.ReplaceAllString(name, "")), ";. ")
+		for _, name := range listedSpellNames(line[4]) {
 			if entry, ok := c.spellEntries["spell:"+slugOf(name)]; ok {
 				g := base
-				g.Spell, g.AtWill = entry, line[1] == "At will"
+				g.Spell, g.AtWill = entry, strings.EqualFold(line[1], "At will")
 				grantInnate(out, g, perDay, line[3] != "")
 			}
 		}
 	}
 	if len(out.Granted) > 0 && out.Spellcasting.Class == "" {
-		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
+		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: t.Ability, SaveDC: dc, AttackBonus: attack}
 	}
 }
 
@@ -155,4 +196,13 @@ func resourceName(spellPT string, perDay int, each bool) string {
 		return spellPT
 	}
 	return fmt.Sprintf("Magias inatas (%d/dia)", perDay)
+}
+
+// innateListNames are the spell names an Innate Spellcasting trait's text lists, by frequency.
+func innateListNames(desc string) []string {
+	var names []string
+	for _, line := range innateLineRe.FindAllStringSubmatch(innateBreakRe.ReplaceAllString(desc, "\n$1"), -1) {
+		names = append(names, listedSpellNames(line[4])...)
+	}
+	return names
 }

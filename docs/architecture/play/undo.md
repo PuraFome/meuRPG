@@ -7,8 +7,14 @@ The code is `combat_undo.go` and `combat_undo_kinds.go`.
 ## What can be undone
 
 The last action is the session's latest `session_events` row that an undo has not yet undone (`lastAction`, looking at the latest 100 events).
-It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell (a teleport puts the caster back on the square it left), a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
-The death confirmation cannot be undone, and neither can a contest, a hit rider or a turn passing.
+It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell (a teleport puts the caster back on the square it left), a Shield used or declined, a Parry used (the creature gets its reaction back and the hit waits for the window again), a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
+A legendary action is given back by the undo of the event that spent it (`spend_cost` on the event).
+That is the master-only text spend (`legendary_action_spent`), a legendary attack and a legendary move.
+An undo cannot cross the reset of the creature's own turn: the turn passing is the last event and closes the chain.
+So only the spends after the last turn change can be undone.
+A legendary attack's undo gives back only the cost, since it spent no action, attack or reaction.
+The undo of a cast gives back the uses of Legendary Resistance the master spent on its saves with the slot and the damage.
+The death confirmation cannot be undone, and neither can a contest, a hit rider, a turn passing, an effect's or a concentration's saving throw (so a use of Legendary Resistance on those saves is not given back).
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 
 Some events are written just before the change's own event and never close the chain, because the undo acts on the change and takes them along:
@@ -27,7 +33,8 @@ The walk over those events is `chainRules`, a list of rules read in order, the f
 An event that a new change writes beside its own is a new rule there.
 
 Each event stores the before (HP and `defeated`, the economy, the attacks made, the damage state, the death counts, the concentration, the conditions, the AC bonus, the form) and what it spent (the slot, the resource use).
-Undo writes it back through the same paths (`character_vitals` for slots, uses and HP; `combatants.slots_used` for an NPC's slots and uses) and stores an `action_undone` event with the undone event's id.
+Undo writes it back through the same paths (`character_vitals` for slots, uses and HP; `combatants.slots_used` and, for a hand-made NPC, `npc_spell_use` for an NPC's slots and uses) and stores an `action_undone` event with the undone event's id.
+The undo of an NPC's cast gives the slot back only when the event says `slot_counted`, and the use of a limited grant when it stores `grant_use`; an at-will cast gives nothing back.
 `takeBack` reads the combatants once and hands the event to the function of its kind in the `undoers` map (`combat_undo_kinds.go`); a new undoable kind needs an entry there and in `undoableKinds`.
 `expected_event_id` is the log's `undoable_event_id`; if it is already another, the call is `aborted`, and two masters never undo two things.
 The undone line disappears from the log.

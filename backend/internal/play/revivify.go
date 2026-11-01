@@ -541,6 +541,7 @@ func (s *Service) spendForRevivify(ctx context.Context, c *combatTx, caster play
 	if slotVitals != nil {
 		vitals = append(vitals, slotVitals)
 	}
+	made.SlotCounted = caster.Kind != kindPlayer
 	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
 		ID: caster.ID, ActionUsed: true, BonusActionUsed: caster.BonusActionUsed, ReactionUsed: caster.ReactionUsed, Dashed: caster.Dashed,
 	}); err != nil {

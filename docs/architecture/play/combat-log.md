@@ -10,7 +10,14 @@ The code is `combat_events.go`, `combat_log.go`, `combat_log_rolls.go` and `comb
 Each line is structured (kind, round, who did it and to whom, the attack or action and its Portuguese name, the rolls, the result, the damage and type); the Portuguese sentence is the app's (`logLine` in `combat-log.ts`, one builder per kind).
 An attack's events (the roll, the damage, the "Aplicar") become one line, the attack's.
 
-The log contains: the start and end of the combat; attacks (with the damage, the amount the master applied in place of the rolled one, and the concentration reminder); spells cast (one line with the result on each target); reactions; death saves and the confirmed death; conditions and the end of concentration; standard and feature actions; the movement on turn; and, for the master only, an NPC's HP adjustment, the show/hide, the monsters added (`COMBAT_LOG_KIND_MONSTERS_ADDED`, also before round 1) and the offers made by hand.
+The log contains: the start and end of the combat; attacks (with the damage, the amount the master applied in place of the rolled one, and the concentration reminder); spells cast (one line with the result on each target); reactions; death saves and the confirmed death; conditions and the end of concentration; standard and feature actions; the movement on turn; and, for the master only, an NPC's HP adjustment, the show/hide, the monsters added (`COMBAT_LOG_KIND_MONSTERS_ADDED`, also before round 1), the legendary actions spent on a text option (`COMBAT_LOG_KIND_LEGENDARY_SPENT`) and the offers made by hand.
+The line of a legendary spend reads "Draco gastou 2 ações lendárias: Wing Attack", the option as the SRD names it.
+A save the master made a success with Legendary Resistance is, for the master, the effect line (`COMBAT_LOG_EFFECT_CHANGE_SAVED`, with `resisted`, `resisted_left` and the roll that failed) or the concentration line that names the failed roll and the choice.
+A save of a spell the master turned into a success is, for the master, the spell line with the failed roll, the choice (`resisted`) and the uses left (`resisted_left`).
+The window and its answer write no line of their own.
+A player reads the line of a save that passed: no roll, no count, no name for the trait.
+A legendary attack or move is the ordinary attack or movement line, which says nothing of the spend.
+No player reads the master's line, the event (`legendary_action_spent`, secret) or the stream change it sends.
 What a table feature's `on_event` hook gave (the hit points, the temporary hit points, the uses it spent and restored) is in the line the death save (`CombatLogDeathSave.hook`) or the damage (`CombatLogDamage.hook`) already writes, and what a table action gave in the line of the action (`CombatLogDamage` with `healing`, `amount` and `temp_hp_gained`); the master and the character's own player read the numbers and everyone else reads the line without them (RN-10). The event keeps the feature's key, never its name; the line names it.
 Movement lines carry `distance_ft`, `distance_dft` and, for a walk, `spent_dft` with `move_dragging` and `move_crawling`: what the movement really spent (the path's cost doubled again by a drag and by a crawl).
 The line says the second number only when it differs from the distance, with the reason in words (another creature's space and difficult terrain, "arrastando", "rastejando").
@@ -30,6 +37,7 @@ Initiative, turn order and reinforcements are not log lines.
 | A casting that touches a hidden one | Yes, with `hidden` on | No line |
 | The amount the master applied in place of the rolled one | Both | Only what the character took |
 | The reaction notice (Shield) | All, with the attacker | Only their own character's, without the attacker and the blow's total |
+| An NPC's Parry used | The line "<name> aparou (+N CA)" with the total and the armor class, and the attack's line stopped by a reaction (`stopped_by_reaction`) | No line of the reaction; the attack's line is a plain miss (`stopped_by_reaction` unset, no armor class), or a hit when Parry did not turn it |
 | Conditions | All | Those of the combatants they see |
 | "Morrendo" | Yes | Never: "Caído", with the counts (public unless the table hides them); "Estável" and "Morto" are for all |
 | HP after the damage (`hit_points_after`) | Yes | Never (RN-20) |
@@ -43,7 +51,7 @@ On a fogged map, each event is also stamped with the users who saw its NPCs (see
 
 Each change is written in the same transaction as the change, with ids and numbers only; the event carries the `encounter_id`, the round and whether a hidden combatant was in it.
 A weapon's or action's name never goes in the event: the log reads it from the sheet, on the spot.
-The kinds include `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`, `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`, `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`, and the kinds of the features around combat (reactions, contests, traps, wild shape, effects, exhaustion, and `spell_zone_triggered` and `spell_zone_moved` for the areas spells keep on the map, which read as effect lines; see [Spell zones](spell-zones.md)).
+The kinds include `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`, `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`, `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`, `legendary_action_spent` (the master's text spend of a legendary action), and the kinds of the features around combat (reactions, contests, traps, wild shape, effects, exhaustion, and `spell_zone_triggered` and `spell_zone_moved` for the areas spells keep on the map, which read as effect lines; see [Spell zones](spell-zones.md)).
 A new kind is a row in `session_event_kinds` (a migration) and an `event...` constant in the code; `TestEveryEventKindOfTheCodeIsInTheTable` fails if one is missing.
 
 A payload is at most 16 KiB of the database's text of the JSON (a `CHECK` of `session_events`).

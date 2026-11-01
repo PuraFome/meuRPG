@@ -1,5 +1,6 @@
 import { CombatantKind, ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, reactionWindow } from './combat-testing';
+import { slotTitle } from './combat-grid';
 import {
   describeRow,
   heldReason,
@@ -179,6 +180,23 @@ describe("the master's cards for the reaction windows", () => {
     if (card.type === 'single') {
       expect(plain(card.text)).toContain('pode usar Contramágica contra Bola de Fogo (3º nível)');
     }
+  });
+
+  it('an innate spell is called by its uses left, not by a circle', () => {
+    expect(
+      plain(
+        slotTitle({
+          level: 1,
+          pact: false,
+          free: 2,
+          total: 3,
+          resource: 'innate_3_day_shield',
+        } as never),
+      ),
+    ).toBe('Conjuração inata (2 de 3 usos)');
+    expect(
+      plain(slotTitle({ level: 3, pact: false, free: 1, total: 2, resource: '' } as never)),
+    ).toBe('3º nível');
   });
 
   it('the second steps and the check are their own cards', () => {
@@ -368,6 +386,45 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
         'O ataque de 16 do Capitão Goblin acerta a CA 12. Com Escudo Arcano a CA vai a 17 e o ataque erra.',
       );
       expect(plain(card.cost)).toContain('Gasta a reação e um espaço de 1º nível (3 de 4 livres)');
+      expect(card.cost).toContain('10 s');
+    }
+    expect(windowsBarText(e)).toBe('Falta responder por Pensantus');
+  });
+
+  it("a player's reaction nobody answered in 10 s is a card of its own with the numbers, and the bar asks the master", () => {
+    const e = encounter({
+      combatants: [...combatants, combatant({ id: 'cg', label: 'Capitão Goblin' })],
+      reactionWindows: [
+        reactionWindow({
+          id: 'late',
+          kind: ReactionKind.SHIELD,
+          reactorId: 'pen',
+          reactorLabel: 'Pensantus',
+          reactorIsPlayer: true,
+          answerNow: true,
+          unanswered: true,
+          trigger: {
+            actorId: 'cg',
+            actorLabel: 'Capitão Goblin',
+            attackTotal: 16,
+            armorClassWithShield: 17,
+            slotEffects: [],
+          } as never,
+          prompt: {
+            case: 'shield',
+            value: { slots: [{ level: 1, free: 2, total: 3, resource: 'innate_3_day_shield' }] },
+          } as never,
+        } as never),
+      ],
+    } as never);
+    const card = reactionCards(e)[0];
+    expect(card.type).toBe('unanswered');
+    if (card.type === 'unanswered') {
+      expect(card.title).toBe('Pensantus pode usar Escudo Arcano');
+      expect(plain(card.text)).toBe(
+        'O ataque de 16 do Capitão Goblin acerta a CA 12. Com Escudo Arcano a CA vai a 17 e o ataque erra.',
+      );
+      expect(plain(card.cost)).toContain('Gasta a reação e um uso inato (2 de 3 livres)');
       expect(card.cost).toContain('10 s');
     }
     expect(windowsBarText(e)).toBe('Falta responder por Pensantus');

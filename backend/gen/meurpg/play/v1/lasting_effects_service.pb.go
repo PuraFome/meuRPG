@@ -1039,9 +1039,17 @@ type RollEffectSaveRequest struct {
 	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
 	// maneuver the character has not or that does not go on this roll, and with a resource
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
-	ManeuverKey   string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ManeuverKey string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// The master's choice, made with the roll: when the saving throw of a creature whose stat block has
+	// Legendary Resistance fails, it succeeds instead and one use is spent, in the same change (SRD 5.1).
+	// A save that succeeds spends nothing and the flag is ignored, as it is on a skipped or kept one. The
+	// master only: a player gets `permission_denied`. Refused with EncounterBlocked
+	// LEGENDARY_RESISTANCE_UNAVAILABLE for a combatant without the trait (before the roll) and
+	// LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
+	// the creature is incapacitated.
+	UseLegendaryResistance bool `protobuf:"varint,12,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RollEffectSaveRequest) Reset() {
@@ -1164,6 +1172,13 @@ func (x *RollEffectSaveRequest) GetManeuverKey() string {
 		return x.ManeuverKey
 	}
 	return ""
+}
+
+func (x *RollEffectSaveRequest) GetUseLegendaryResistance() bool {
+	if x != nil {
+		return x.UseLegendaryResistance
+	}
+	return false
 }
 
 type isRollEffectSaveRequest_Roll interface {
@@ -2137,7 +2152,7 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\teffect_id\x18\x04 \x01(\tR\beffectId\x12!\n" +
 	"\fcombatant_id\x18\x05 \x01(\tR\vcombatantId\"U\n" +
 	"\x1aRemoveEffectTargetResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xba\x03\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xf4\x03\n" +
 	"\x15RollEffectSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2151,7 +2166,8 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18\n" +
 	" \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
-	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKeyB\x06\n" +
+	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x128\n" +
+	"\x18use_legendary_resistance\x18\f \x01(\bR\x16useLegendaryResistanceB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xed\x02\n" +
 	"\x16RollEffectSaveResponse\x127\n" +

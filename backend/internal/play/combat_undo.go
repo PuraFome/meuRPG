@@ -33,6 +33,7 @@ var undoableKinds = []string{
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
+	eventLegendarySpent,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -116,6 +117,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainShapeAndSight,
 	chainHeld,
 	chainProtection,
+	chainResistance,
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
@@ -252,6 +254,15 @@ func chainHeld(c chainEvent) chainVerdict {
 // never closes the chain: the undo acts on the attack and gives the reaction back (ProtectedBy).
 func chainProtection(c chainEvent) chainVerdict {
 	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ProtectionKind) && ev.Reaction.Used {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
+// chainResistance: the master's answer to a Legendary Resistance window is written beside the cast it released
+// and never closes the chain: the undo acts on the cast and gives the uses back (resistedBack).
+func chainResistance(c chainEvent) chainVerdict {
+	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.LegendaryResistance) {
 		return chainSkip
 	}
 	return chainGoOn
@@ -579,6 +590,10 @@ func (s *Service) followToSquare(ctx context.Context, campaignID string, d *enco
 // in it, whose own sheet it changes; the others would learn that something happened
 // out of their sight (RN-10).
 func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
+	if ev.UndoneKind == eventLegendarySpent { // the master's text spend: nothing a player sees
+		s.publishEncounterChangedToMaster(campaignID, d.enc)
+		return
+	}
 	f, err := s.fogSightOf(ctx, campaignID, d.enc)
 	if err != nil || f == nil || !ev.Fogged {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)

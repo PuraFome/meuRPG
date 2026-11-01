@@ -53,6 +53,7 @@ const maxCreatureName = 40
 const (
 	creatureSourceFamiliar = "familiar"
 	creatureSourceMaster   = "master"
+	creatureSourceTable    = "table"
 )
 
 var creatureSourceToProto = map[string]charactersv1.CreatureSource{
@@ -60,6 +61,7 @@ var creatureSourceToProto = map[string]charactersv1.CreatureSource{
 	"animate_dead":       charactersv1.CreatureSource_CREATURE_SOURCE_ANIMATE_DEAD,
 	"conjure_animals":    charactersv1.CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS,
 	creatureSourceMaster: charactersv1.CreatureSource_CREATURE_SOURCE_MASTER,
+	creatureSourceTable:  charactersv1.CreatureSource_CREATURE_SOURCE_TABLE,
 }
 
 // creatureAttackNumber is the attack permission as the API's number
@@ -121,7 +123,7 @@ func (v creatureView) visibleTo(m authz.Membership) bool {
 // characterCreatureToProto builds the CharacterCreature the caller sees. The caller may
 // see it (visibleTo).
 func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCreature) *charactersv1.CharacterCreature {
-	d, _ := content.MonsterDerived(c.MonsterKey) // not in the content: no armor class
+	d, _ := monsterDerivedOf(content, c.MonsterKey, c.StatBlock) // not in the content: no armor class
 	return &charactersv1.CharacterCreature{
 		Id: c.ID, CharacterId: c.CharacterID, MonsterKey: c.MonsterKey, MonsterNamePt: content.NamePT(c.MonsterKey), Name: c.Name,
 		Source: creatureSourceToProto[c.Source], Attack: creatureAttackNumber[c.Attack], SummonGroupId: c.SummonGroupID,
@@ -135,7 +137,7 @@ func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCr
 func creatureOf(content *rules.Content, v creatureView) link.Creature {
 	out := link.Creature{
 		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: conv.OrZero(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
-		Source: v.Source, Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
+		Source: v.Source, SummonKey: conv.OrZero(v.SummonKey), Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
 		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax),
 	}
 	if d, ok := content.MonsterDerived(v.MonsterKey); ok {

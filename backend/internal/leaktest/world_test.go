@@ -394,9 +394,20 @@ func (w *world) buildCombat() {
 			{CharacterId: w.hiddenNPC.GetId()},
 			{CharacterId: w.bandit.GetId()},
 		},
-		Monsters: []*playv1.MonsterGroup{{CreatureKey: "monster:goblin", Count: 2, Name: w.secrets.marker("mon-group")}},
+		Monsters: []*playv1.MonsterGroup{
+			{CreatureKey: "monster:goblin", Count: 2, Name: w.secrets.marker("mon-group")},
+			{CreatureKey: dragonKey, Count: 1, Name: w.secrets.marker("dragon-name")},
+		},
 	}))).GetEncounter()
 	w.secrets.add(&canary{needle: "monster:goblin", kind: "monster-key"})
+	w.secrets.add(&canary{needle: dragonKey, kind: "monster-key"})
+	w.allow("dragon-name", w.ana) // the dragon stands in Ana's sight, as the goblin does
+	// The dragon is in plain sight of Ana: she reads it, and its legendary state is still the master's.
+	for _, c := range e.GetCombatants() {
+		if c.GetBestiaryCreatureKey() == dragonKey {
+			must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: c.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+		}
+	}
 	for _, c := range e.GetCombatants() {
 		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER && !c.GetMine() {
 			must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
@@ -471,6 +482,9 @@ func (w *world) combatantOf(e *playv1.Encounter, characterID string) *playv1.Com
 func (w *world) combatantReaders(c *playv1.Combatant) []*person {
 	if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER {
 		return []*person{w.ana, w.caio}
+	}
+	if c.GetBestiaryCreatureKey() == dragonKey { // in Ana's sight
+		return []*person{w.ana}
 	}
 	if c.GetCharacterId() == w.seenNPC.GetId() { // the goblin in Ana's sight
 		return []*person{w.ana}
@@ -673,13 +687,24 @@ func (w *world) buildTableContent() {
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
-	// Creatures (issue #578). A table creature is the master's alone, whatever its state (RN-23), except to the
+	// Creatures. A table creature is the master's alone, whatever its state (RN-23), except to the
 	// player whose character holds one: that player reads the creature (its name, key, stat block with the trait,
 	// hit points and armor class). Ana's character holds the live one and the archived one, Caio's the one switched
 	// off. Their hit points and armor class are numbers no other answer has.
 	liveCreature := create("creature-live", creature(liveCreatureHP, liveCreatureAC, w.ana), w.ana)
 	archivedCreature := create("creature-archived", creature(archivedCreatureHP, archivedCreatureAC, w.ana), w.ana)
 	offCreature := create("creature-off", creature(offCreatureHP, offCreatureAC, w.caio), w.caio)
+	// A creature whose numbers are formulas of its owner: the formulas give 4747 and 37 whoever the owner is, and
+	// the numbers are worked out when it is given. They are Ana's and the master's, like the static ones.
+	formulaCreature := create("creature-formula", &rulesv1.TableCreature{
+		BaseKey: "monster:giant-crab", HitPointsFormula: "1000 * 4 + 747", ArmorClassFormula: "20 + 17",
+		Traits: []*rulesv1.TableCreatureTrait{{NamePt: w.secrets.marker("creature-formula-trait-name", w.ana), TextPt: w.secrets.marker("creature-formula-trait-text", w.ana)}},
+	}, w.ana)
+	w.giveTableCreature(w.pens, formulaCreature.GetKey())
+	w.secrets.number("formula-creature-hp", formulaCreatureHP)
+	w.secrets.number("formula-creature-ac", formulaCreatureAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(formulaCreatureHP), w.ana)
+	w.secrets.allowNeedle(strconv.Itoa(formulaCreatureAC), w.ana)
 	w.giveTableCreature(w.pens, liveCreature.GetKey())
 	w.giveTableCreature(w.pens, archivedCreature.GetKey())
 	w.giveTableCreature(w.toren, offCreature.GetKey())
@@ -712,6 +737,9 @@ const (
 	archivedCreatureAC = 36
 	offCreatureHP      = 4343
 	offCreatureAC      = 38
+	// formulaCreatureHP and formulaCreatureAC are what the formulas of the fixture's formula creature give.
+	formulaCreatureHP = 4747
+	formulaCreatureAC = 37
 )
 
 // giveTableCreature has the master give a table creature to a character. Its owner's player reads the creature
@@ -865,3 +893,7 @@ func initiativeOrder(e *playv1.Encounter) string {
 	}
 	return strings.Join(out, ", ")
 }
+
+// dragonKey is the legendary creature of the combat: an SRD adult red dragon (3 legendary
+// actions, Legendary Resistance 3/day).
+const dragonKey = "monster:adult-red-dragon"

@@ -65,6 +65,8 @@ const (
 	// A lasting effect ended: Escudo at the start of the caster's turn, Ajuda when the
 	// master ends it (combat_effects.go).
 	eventCombatEffectEnded = "combat_effect_ended"
+	// The master spent legendary actions on an option the engine does not resolve (combat_legendary_spend.go).
+	eventLegendarySpent = "legendary_action_spent"
 )
 
 // The kinds of the XP awards (package progression writes them

@@ -69,6 +69,7 @@ func (b *overlayBuilder) addSpell(ts *TableSpell, path string) error {
 	checkSpellAttack(&c, key, path, ts, sp)
 	b.spellDamageAndHeal(&c, key, path, ts, sp)
 	zone := checkSpellZone(&c, key, path, ts, target)
+	b.addSummon(&c, key, path, ts)
 	if err := c.err(); err != nil {
 		return err
 	}

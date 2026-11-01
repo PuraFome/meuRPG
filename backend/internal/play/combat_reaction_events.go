@@ -54,7 +54,9 @@ type reactionEvent struct {
 	ManeuverName string `json:"maneuver_name,omitempty"`
 	Resource     string `json:"resource,omitempty"`
 	Stopped      bool   `json:"stopped,omitempty"`
-	Magic        bool   `json:"magic,omitempty"`
+	// Bonus is what a Parry added to the armor class (AC is the armor class it was added to, Before the total).
+	Bonus int32 `json:"bonus,omitempty"`
+	Magic bool  `json:"magic,omitempty"`
 	// Hellish Rebuke: the aggressor's save and the fire.
 	SaveD20   int32 `json:"save_d20,omitempty"`
 	SaveBonus int32 `json:"save_bonus,omitempty"`
@@ -78,17 +80,19 @@ const reactionHeldDropped = "held_dropped"
 // reactionNames are the Portuguese names of the reactions, as names_pt.json has them
 // (TestReactionNamesAreTheOfficialOnes keeps them equal).
 var reactionNames = map[reaction.Kind]string{
-	reaction.Shield:             "Escudo Arcano",
-	reaction.UncannyDodgeKind:   "Esquiva Sobrenatural",
-	reaction.HellishRebukeKind:  "Repreensão Infernal",
-	reaction.CounterspellKind:   "Contramágica",
-	reaction.CuttingWords:       "Palavras de Interrupção",
-	reaction.DeflectKind:        "Defletir Projéteis",
-	reaction.ManeuverReduceKind: "Manobra",
-	reaction.ProtectionKind:     "Estilo de Luta: Proteção",
-	reaction.FeatherFall:        "Queda Suave",
-	reaction.Concentration:      "Teste de concentração",
-	reaction.MasterCheck:        "Verificação do mestre",
+	reaction.Shield:              "Escudo Arcano",
+	reaction.UncannyDodgeKind:    "Esquiva Sobrenatural",
+	reaction.HellishRebukeKind:   "Repreensão Infernal",
+	reaction.CounterspellKind:    "Contramágica",
+	reaction.CuttingWords:        "Palavras de Interrupção",
+	reaction.DeflectKind:         "Defletir Projéteis",
+	reaction.ManeuverReduceKind:  "Manobra",
+	reaction.ProtectionKind:      "Estilo de Luta: Proteção",
+	reaction.FeatherFall:         "Queda Suave",
+	reaction.Concentration:       "Teste de concentração",
+	reaction.MasterCheck:         "Verificação do mestre",
+	reaction.LegendaryResistance: "Resistência Lendária",
+	reaction.ParryKind:           "Aparar",
 }
 
 // reactionNameKeys are the content keys of the reaction names.
@@ -165,6 +169,27 @@ func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, by
 	}
 }
 
+// masterClosedText is the sentence a window that closed by itself leaves for the master. The window of
+// Legendary Resistance is his alone, with no reactor to name.
+func masterClosedText(n reactionNote, kind reaction.Kind, name, label string) string {
+	if kind == reaction.LegendaryResistance {
+		return "A Resistência Lendária fechou: o gatilho não vale mais."
+	}
+	switch n.reason {
+	case reaction.ReasonReactionSpent:
+		return fmt.Sprintf("%s de %s fechou: a reação já foi usada.", name, label)
+	case reaction.ReasonReactorIncapacitated:
+		return fmt.Sprintf("%s de %s fechou: não pode reagir.", name, label)
+	}
+	switch kind {
+	case reaction.CounterspellKind:
+		return fmt.Sprintf("A Contramágica de %s fechou: a magia já foi anulada.", label)
+	case reaction.Concentration:
+		return fmt.Sprintf("O teste de concentração de %s fechou: a concentração já acabou.", label)
+	}
+	return fmt.Sprintf("%s de %s fechou: o gatilho não vale mais.", name, label)
+}
+
 // closedText is the sentence a window that closed by itself leaves: the reactor reads
 // only the reason about itself (never that another reactor acted), the master the
 // reason in the fight's words (PM-04c, 11).
@@ -176,19 +201,7 @@ func closedText(n reactionNote, reactor playdb.Combatant, hasReactor, forMaster 
 		label = reactor.Label
 	}
 	if forMaster {
-		switch n.reason {
-		case reaction.ReasonReactionSpent:
-			return fmt.Sprintf("%s de %s fechou: a reação já foi usada.", name, label)
-		case reaction.ReasonReactorIncapacitated:
-			return fmt.Sprintf("%s de %s fechou: não pode reagir.", name, label)
-		}
-		switch kind {
-		case reaction.CounterspellKind:
-			return fmt.Sprintf("A Contramágica de %s fechou: a magia já foi anulada.", label)
-		case reaction.Concentration:
-			return fmt.Sprintf("O teste de concentração de %s fechou: a concentração já acabou.", label)
-		}
-		return fmt.Sprintf("%s de %s fechou: o gatilho não vale mais.", name, label)
+		return masterClosedText(n, kind, name, label)
 	}
 	switch n.reason {
 	case reaction.ReasonReactionSpent:

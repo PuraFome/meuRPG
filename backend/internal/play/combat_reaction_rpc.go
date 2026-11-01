@@ -145,6 +145,10 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 		err = s.answerConcentration(ctx, c, m, w, reactor, use, got)
 	case reaction.EffectSave:
 		err = errEffectSaveWindow()
+	case reaction.LegendaryResistance:
+		err = s.answerLegendaryResistance(ctx, c, w, use, msg.GetCreatureIds(), got)
+	case reaction.ParryKind:
+		err = s.answerParry(ctx, c, w, reactor, use, got)
 	default:
 		err = s.answerMore(ctx, c, m, w, reactor, use, msg, got)
 	}

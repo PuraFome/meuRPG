@@ -113,6 +113,9 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 		}
 	}
 	effectLogRoll(le, e, v, byID)
+	if v.master && e.ev.Resisted {
+		le.Resisted, le.ResistedLeft = true, e.ev.ResistLeft
+	}
 	out.Effect = le
 }
 
@@ -129,7 +132,8 @@ func exhaustionLogEffect(l *lastingEvent, names func(string) string, byID map[st
 // player's; the DC the master's, and the target's player's when the table shows the DC of a save (RN-10: the DC of an NPC's effect reaches no other player).
 func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID map[string]playdb.Combatant) {
 	l := e.ev.Lasting
-	if l.D20 != 0 && (v.master || slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) })) {
+	// The roll of a save the master made a success is the master's alone: it failed.
+	if l.D20 != 0 && (v.master || (!e.ev.Resisted && slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) }))) {
 		d20, total := l.D20, l.Total
 		le.D20, le.Total = &d20, &total
 		le.Rerolled = e.ev.rerolls() // the d20 Lucky or Indomitable rolled again: "Sortudo: 1 → 14"

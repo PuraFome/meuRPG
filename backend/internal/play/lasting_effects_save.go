@@ -205,6 +205,9 @@ func readEffectSaveCall(ctx context.Context, msg *playv1.RollEffectSaveRequest) 
 	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
 		return call, err
 	}
+	if err := refuseResistance(call.m, msg.GetUseLegendaryResistance()); err != nil {
+		return call, err
+	}
 	if call.key, call.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
@@ -296,6 +299,8 @@ type effectSaveStep struct {
 	cs      []playdb.Combatant
 	ev      actionEvent
 	le      *lastingEvent
+	// legendary is the master's choice of Legendary Resistance for this save.
+	legendary legendaryResist
 	// zone is set when the save is the one an area a spell keeps on the map asks (zones_save.go).
 	zone *zoneSaveStep
 }
@@ -323,6 +328,9 @@ func (s *Service) writeEffectSave(ctx context.Context, c *combatTx, call effectS
 		return nil, s.handSaveToMaster(ctx, c, x.w, x.t)
 	}
 	if err := s.loadEffectSave(ctx, c, x); err != nil {
+		return nil, err
+	}
+	if x.legendary, err = s.legendaryResistOpen(ctx, c, x.reactor, msg.GetUseLegendaryResistance() && !call.skip); err != nil {
 		return nil, err
 	}
 	saved, held, err := s.answerEffectSave(ctx, c, x)
@@ -374,7 +382,12 @@ func (s *Service) answerEffectSave(ctx context.Context, c *combatTx, x *effectSa
 		x.run.result = &playv1.EffectSaveResult{Skipped: true}
 		return false, false, nil
 	}
-	return s.rollEffectSaveD20(ctx, c, x)
+	saved, held, err = s.rollEffectSaveD20(ctx, c, x)
+	if err != nil || held {
+		return false, held, err
+	}
+	saved, err = x.resistFailure(ctx, c, saved)
+	return saved, false, err
 }
 
 // effectSaveFacts is what the roll of an effect's save is made from: the effects' states, the
@@ -600,7 +613,7 @@ func savedResultOf(res combatResult, made actionEvent, showDC bool) *playv1.Effe
 		return &playv1.EffectSaveResult{}
 	}
 	le := ev.Lasting
-	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.rerolls()}
+	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.rerolls(), Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
 	if ev.Res != nil && ev.Res.Kind == resBardicUse {
 		out.InspirationSides, out.InspirationFace = ev.Res.Sides, ev.Res.Face
 	}

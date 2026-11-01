@@ -70,6 +70,9 @@ type content struct {
 	// summons are the spells that summon a creature (the "summon" kind of
 	// effects/spells.json), by spell key.
 	summons map[string]*summonDef
+	// tableSummons are the rules of the table spells' summons (overlay_summon.go), by spell key; a spell
+	// of it is in summons too.
+	tableSummons map[string]*tableSummonRule
 	// monsterEntries are the creatures as the lists show them, sorted by
 	// Portuguese name.
 	monsterEntries []CreatureEntry
@@ -139,6 +142,8 @@ type content struct {
 	optionPrereq   map[string]TableOptionPrerequisite
 	// creatureOf says, for each table creature, the SRD creature it is made from (overlay_creature.go).
 	creatureOf map[string]CreatureTableEntry
+	// creatureSpecs are the table creatures' adjustments and compiled formulas, by key (overlay_creature_formula.go).
+	creatureSpecs map[string]*creatureSpec
 
 	// The table's layer (overlay.go); every one of these is empty in the
 	// SRD content.

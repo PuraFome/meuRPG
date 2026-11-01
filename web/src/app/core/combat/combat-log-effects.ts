@@ -50,6 +50,16 @@ function effectSaveNumbers(fx: CombatLogEffect, ctx: LogContext): string {
   return ` (${fx.d20 !== undefined ? `d20 ${fx.d20}, ` : ''}${natural ? `${natural}, ` : ''}total ${fx.total} contra CD ${fx.dc})`;
 }
 
+/** The master's line of a save he made a success (the server sends `resisted` to nobody else): the roll that failed and the
+ * choice, "Dragão falhou no teste de Sabedoria contra Imobilizar Pessoa (d20 3, total 10 contra CD 15) e usou Resistência
+ * Lendária: sucesso (restam 2)", or `null` for every other line. */
+function resistedSave(fx: CombatLogEffect, ctx: LogContext): string | null {
+  if (!fx.resisted || !ctx.master) {
+    return null;
+  }
+  return `${upFirst(effectTargets(fx, ctx))} falhou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)} e usou Resistência Lendária: sucesso (restam ${fx.resistedLeft})`;
+}
+
 function effectSaveWords(fx: CombatLogEffect): string {
   const name = abilityName(fx.ability, fx.abilityNamePt);
   return name ? ` de ${name}` : '';
@@ -105,6 +115,7 @@ const EFFECT_LINES: Partial<Record<CombatLogEffectChange, EffectLine>> = {
   [CombatLogEffectChange.DURATION_CHANGED]: (fx, ctx) =>
     `A duração de ${fx.sourceNamePt} ${effectTargets(fx, ctx, 'em')} mudou`,
   [CombatLogEffectChange.SAVED]: (fx, ctx) =>
+    resistedSave(fx, ctx) ??
     zoneCatch(fx, ctx, `passou no teste${effectSaveWords(fx)}${effectSaveNumbers(fx, ctx)}`) ??
     `${upFirst(effectTargets(fx, ctx))} passou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)}`,
   [CombatLogEffectChange.SAVE_FAILED]: (fx, ctx) =>

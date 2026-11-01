@@ -30,7 +30,9 @@
     "CuttingAsk": "attacks",
     "CharmImmune": false,
     "StatBlock": false,
-    "ResourceMax": {}
+    "ResourceMax": {},
+    "MonsterReactions": null,
+    "Innate": null
   },
   "every branch, asking for every attack": {
     "Spells": [
@@ -76,7 +78,9 @@
     "ResourceMax": {
       "ki": 3,
       "superiority": 4
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "nothing derived, no full sheet": {
     "Spells": null,
@@ -109,6 +113,8 @@
     "CuttingAsk": "attacks",
     "CharmImmune": false,
     "StatBlock": false,
-    "ResourceMax": {}
+    "ResourceMax": {},
+    "MonsterReactions": null,
+    "Innate": null
   }
 }

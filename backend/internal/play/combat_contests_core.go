@@ -345,7 +345,7 @@ func (s *Service) numbersOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	var o link.SceneOption
 	var err error
 	if isCreature(c) {
-		o, err = s.roster.CreatureCheck(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), key)
+		o, err = s.roster.CreatureCheck(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), key)
 	} else {
 		var opts []link.SceneOption
 		if opts, err = s.roster.SceneOptions(ctx, tx, campaignID, c.CharacterID, []string{key}); err == nil && len(opts) == 1 {

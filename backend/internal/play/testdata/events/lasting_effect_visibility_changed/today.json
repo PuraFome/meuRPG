@@ -124,8 +124,10 @@
   "cast_id": "x",
   "slot": {
     "level": 1,
-    "pact": true
+    "pact": true,
+    "resource": "x"
   },
+  "slot_counted": true,
   "grant_use": "x",
   "resource": "x",
   "hits": [
@@ -171,7 +173,9 @@
           "from": 1,
           "to": 1
         },
-        "bonus_unknown": true
+        "bonus_unknown": true,
+        "resisted": true,
+        "resisted_left": 1
       },
       "pushed": {
         "target_id": "x",
@@ -467,6 +471,10 @@
     "x"
   ],
   "extra_used": true,
+  "spend_cost": 1,
+  "spend_name": "x",
+  "resisted": true,
+  "resist_left": 1,
   "action_before": true,
   "bonus_before": true,
   "reaction_before": true,
@@ -632,7 +640,9 @@
               "from": 1,
               "to": 1
             },
-            "bonus_unknown": true
+            "bonus_unknown": true,
+            "resisted": true,
+            "resisted_left": 1
           }
         ],
         "save_sources": [
@@ -954,7 +964,8 @@
     "by_master": true,
     "slot": {
       "level": 1,
-      "pact": true
+      "pact": true,
+      "resource": "x"
     },
     "racial": true,
     "spell": "x",
@@ -979,6 +990,7 @@
     "maneuver_name": "x",
     "resource": "x",
     "stopped": true,
+    "bonus": 1,
     "magic": true,
     "save_d20": 1,
     "save_bonus": 1,

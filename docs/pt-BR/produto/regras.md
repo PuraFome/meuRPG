@@ -423,6 +423,7 @@ O mestre vê tudo.
 - O mesmo vale para o dano num personagem depois que o mestre o aplica (de magia, de ação de criatura ou de efeito): o dono do alvo e o mestre leem o valor sofrido, os demais jogadores leem o valor como rolado, então a linha nunca diz a que o alvo resiste.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
+- **A característica de uma criatura que transforma um teste de resistência falhado em sucesso** (Resistência Lendária) é do mestre: o jogador lê que o teste de resistência da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.
 
 **Turnos conjuntos.**
@@ -433,6 +434,7 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 **Magias e reações.**
 
 - O teste de resistência de um alvo vai ao jogador como uma palavra (passou ou falhou). Os dados vão ao mestre e ao dono de um personagem alvo, nunca de um NPC. A CD vai ao mestre e ao conjurador, e ao dono do alvo que faz o teste quando a regra da mesa "Os jogadores veem a CD dos testes de resistência" está ligada (RN-24).
+- A chave e os usos por dia de um uso inato vão ao mestre e ao dono do conjurador, e os outros jogadores leem só que a conjuração foi inata ("conjuração inata").
 - Uma conjuração que toca um combatente escondido não deixa linha para o jogador. O aviso de reação não carrega nem o atacante nem o total do acerto. O jogador não pode mirar em um alvo escondido.
 - **Magias que leem PV** (Sono, Leque Cromático, Palavra de Poder Atordoar, Palavra de Poder Matar, Estabilizar, Cura Completa) são resolvidas com os PV reais, e o jogador ainda vê só palavras. O conjurador vê o próprio total (`5d8 (2, 4, 1, 5, 3) = 15`) e quem foi afetado ("adormeceu", "não foi afetado"), nunca os PV de um alvo nem o motivo. O mestre vê o total, os PV de cada criatura, o que sobrou e o motivo. Os outros jogadores veem só quem foi afetado e a condição. Os alvos são listados na ordem do conjurador, não na ordem do total, que revelaria quem tem menos PV. Palavra de Poder Matar num personagem de jogador o leva a 0 com três falhas, e o mestre confirma a morte (RN-03).
 
@@ -577,6 +579,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Os interruptores.** Em "Opções para os jogadores", o mestre liga ou desliga cada classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção e característica de classe, do SRD e da mesa por igual (um interruptor por opção, quantas fichas a usam, "Ligar todas" e "Desligar todas" por tipo, salvo na hora). Tudo vem ligado por padrão. O que está desligado nunca chega a um jogador em nenhuma leitura; as fichas que já o usam continuam funcionando; uma classe desligada esconde suas subclasses e uma raça desligada suas sub-raças, exceto numa ficha que já tem a original. Uma nova escolha de um jogador por uma opção desligada é recusada (na criação, na edição e na subida de nível), uma edição sem relação nunca é, e o mestre nunca é recusado. A ficha de um jogador mantém, ao ser editada ou subir de nível, o que o mestre arquivou ou desligou depois.
   O mestre liga e desliga criaturas só pela API.
   A tela não tem grupo de criaturas.
+- **Uma magia da mesa pode invocar criaturas.** Elas são da mesa ou do SRD e seguem as regras das magias de invocação do SRD: o espaço de magia, a concentração, a substituição, a dispensa e o desfazer. O número de criaturas pode depender de quem conjura e do espaço usado. Os jogadores leem as criaturas como em qualquer invocação.
 - **As telas abertas acompanham.** Quando o mestre muda o conteúdo ou um interruptor, as telas abertas dos jogadores leem as listas de novo, cada uma com o papel de quem a lê.
 - **Uma ficha que usa conteúdo da mesa não passa para outra campanha.** Essa verificação espera por copiar personagem e reutilizar NPCs ([MR-021](historias.md#mr-021-copiar-personagem), [MR-022](historias.md#mr-022-reutilizar-npcs)). Copiar conteúdo para outra campanha é [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova), depois do MVP.
 - **O alvo de uma magia.** Uma criatura, várias (uma a mais por nível acima, se o mestre quiser), uma área (cone, cubo, cilindro, linha ou esfera, em passos de 1,5 m) ou só quem conjura. As mecânicas são opcionais: um ataque ou um teste de resistência, dano (mais dados por nível acima ou por faixa do truque) e cura. Em combate, uma magia da mesa passa pela mesma conjuração de uma magia do SRD.
@@ -587,20 +590,26 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
-  Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30) e até 10 traços só de texto.
+  Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30), até 10 traços só de texto e até 8 ataques próprios.
+  Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, e o acerto e o bônus de dano de cada ataque próprio.
+  Uma fórmula lê o nível, o nível de classe, o bônus de proficiência, os valores e modificadores de habilidade, a categoria de armadura, o escudo e o deslocamento de caminhada do dono, e o círculo do espaço de magia com que uma magia foi conjurada.
+  Uma criatura dada a um personagem não foi feita por um espaço, então esse círculo é 0 nas fórmulas dela.
+  Um resultado é arredondado para baixo e fica dentro da faixa do campo; um resultado acima de 10.000 ou abaixo de -10.000 é uma fórmula que falhou, e o campo mantém o valor fixo ou o da criatura base.
+  Os números são calculados para o personagem que recebe a criatura, e guardados: um nível novo do dono ou uma edição das fórmulas não muda uma criatura já dada.
+  "Pôr no combate" e "Criar NPC" não têm dono, então usam os números fixos da entrada e não rodam fórmula.
   A criatura do SRD de que ela parte nunca muda.
   Uma criatura da mesa nunca é a base de outra.
   A lista e a ficha de criaturas, dá-la a um personagem, o combate e "Criar NPC" a leem pela chave.
   O mestre a dá a um personagem, ela entra nos combates com os seus números, e dá para criar um NPC a partir dela.
   Os pontos de vida são copiados quando a criatura é dada, então editar a entrada não muda uma criatura já dada.
-  A classe de armadura e os ataques acompanham a entrada.
+  Numa criatura sem fórmula, a classe de armadura e os ataques acompanham a entrada.
   Uma entrada de criatura é do mestre: um jogador a lê, na lista de criaturas e na ficha dela, só enquanto um personagem dele a tem.
   Quem a tem a lê com a entrada ativa, arquivada ou desligada.
   Um jogador que não tem nenhuma não a encontra.
   As criaturas já dadas continuam funcionando para os donos.
   O mestre pode dar uma criatura arquivada.
   Todos no combate leem o nome e a chave de uma criatura, como numa invocação do SRD ou num NPC.
-  Uma criatura que um personagem tem acompanha a entrada na luta: editar muda a classe de armadura e os ataques dela na hora.
+  Uma criatura sem fórmula que um personagem tem acompanha a entrada na luta: editar muda a classe de armadura e os ataques dela na hora.
   Um monstro posto no combate mantém os números com que entrou: editar muda os monstros postos depois, não os que já estão na luta.
   Uma edição que não muda nenhum dos números, como trocar o nome, acha o mesmo NPC.
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam com o mestre e, no caso dos pontos de vida, com o dono.
@@ -780,6 +789,33 @@ O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.
 O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe seus monstros salvos pelo mesmo caminho com "Começar este combate", e um jogador nunca recebe o encontro salvo.
 No teatro da mente (RN-25) os monstros não têm quadrado.
+Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso num teste de resistência que falha, por escolha do mestre.
+Nos testes de resistência que o mestre rola por ele (o de um efeito e o de concentração) ele pede a característica junto com a rolagem.
+Uma rolagem que falha vira sucesso e gasta um uso.
+Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
+A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que o teste de resistência teve sucesso (RN-20).
+Quando a magia de um jogador com teste de resistência alcança o monstro (num alvo ou em vários), o lançamento espera o mestre (RN-31), quer o teste de resistência tenha passado, quer tenha falhado.
+A espera não revela nada sobre a rolagem: o jogador lê a mesma espera e o mesmo resultado nos dois casos.
+Ele vê as rolagens que falharam e transforma as falhas que escolher, um uso cada, ou deixa como estão.
+Quando todos esses testes de resistência passaram, não há nada a oferecer e ele deixa o lançamento seguir.
+Os mesmos dados resolvem o lançamento.
+A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, o do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
+Uma criatura que uma zona de magia pega faz o teste de resistência na hora, sem escolha do mestre.
+Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
+O mestre lê a oferta e responde pela criatura; o jogador lê só a espera, depois um acerto ou erro comum, nunca a reação, o bônus nem a classe de armadura (RN-20).
+As outras reações dele (Dividir, Grito, Pegar Pedra, Máscara Inquietante...) são texto na ficha da criatura que o app não resolve.
+Uma criatura com ações lendárias (SRD 5.1) tem 3 por rodada, como o SRD dá a toda criatura lendária.
+Elas são só do mestre e voltam no começo do turno da própria criatura.
+O mestre as gasta no fim do turno de outra criatura, nunca no turno da própria criatura e nunca enquanto ela está incapacitada ou derrotada.
+Cada opção custa o que a ficha diz (1 a 3) do total da rodada, e um gasto além do que resta é recusado.
+Um ataque ou um movimento passa pelo fluxo comum de ataque ou de movimento.
+Uma opção que o motor não resolve é oferecida como texto e conta do mesmo jeito.
+Nenhum gasto é permitido enquanto uma janela de reação ou uma espera aguarda resposta.
+Os jogadores não leem nenhum gasto, só a linha comum de ataque ou de movimento (RN-20).
+Um NPC feito à mão que conjura guarda os espaços de magia e os usos por dia que gastou, de um combate para o outro, até o descanso longo da mesa.
+Um monstro em combate começa cada luta com todos os seus espaços e usos, porque cada luta traz um indivíduo novo.
+Várias cópias de um NPC feito à mão começam com a contagem que o NPC guardou, e ele guarda a maior contagem que uma cópia atingiu, não a soma.
+Um descanso curto não muda nada para um NPC.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria
@@ -825,7 +861,12 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
+| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, respondida pelo mestre pela criatura. |
+| Resistência Lendária | A magia de um jogador com teste de resistência alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento espera só o mestre (RN-29). |
 
+O Aparar de um monstro é um por rodada, e a rolagem guardada é comparada com a nova classe de armadura.
+Um acerto que não a alcança mais vira erro.
+Não abre janela quando a criatura não pode reagir, não vê o atacante ou já reagiu na rodada, nem para um ataque à distância ou de magia ou um acerto crítico.
 O reator rola no app, digita um dado físico ou deixa a jogada para o mestre.
 A ação em espera aguarda até a janela ser respondida, e é descartada se não puder mais acontecer; só o mestre lê isso.
 O turno espera pelas janelas abertas.

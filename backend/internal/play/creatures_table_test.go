@@ -9,7 +9,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// tableSkeletonKey is the master's creature of issue #578: an SRD skeleton with 30 hit points, armor class
+// tableSkeletonKey is the master's creature: an SRD skeleton with 30 hit points, armor class
 // 15 and +3 on the damage of each attack. These tests need the database (MEURPG_TEST_DATABASE_URL).
 const tableSkeletonKey = "creature:guarda-ossuda@mesa"
 
@@ -108,5 +108,78 @@ func TestMR578_ATableCreatureAddedAfterItsEditFightsWithTheNewNumbers(t *testing
 	}
 	if ac, bonus := numbers(first.GetCombatantIds()[0]); ac != 20 || bonus != 2 {
 		t.Errorf("the combatant added before the edit = armor class %d, damage bonus %d; want the 20 and 2 it joined with", ac, bonus)
+	}
+}
+
+// silverWolfKey is the master's formula creature: an SRD wolf with 5 hit points per
+// level of its owner, an armor class of 10 + proficiency + Dexterity, and a claw that hits with proficiency +
+// Strength and adds Strength to the damage.
+const (
+	silverWolfKey = "creature:lobo-prateado@mesa"
+	silverClawKey = silverWolfKey + "#garra-de-prata"
+)
+
+func silverWolfEntry(hp, ac, toHit, damage string) *rulesv1.TableCreature {
+	return &rulesv1.TableCreature{
+		NamePt: "Lobo Prateado", BaseKey: "monster:wolf", HitPointsFormula: hp, ArmorClassFormula: ac,
+		Attacks: []*rulesv1.TableCreatureAttack{{
+			NamePt: "Garra de Prata", Melee: true, DiceCount: 1, DiceSides: 6, DamageType: "damage-type:slashing", ToHit: toHit, DamageBonus: damage,
+		}},
+	}
+}
+
+// TestMR578_AFormulaCreatureFightsWithTheNumbersItWasGivenWith: the master gives Toren (Fighter 5) and Pensantus
+// (Wizard 9) the same creature, then edits the entry's formulas. The combat takes each creature in with the hit
+// points and armor class of its owner when it was given, and its claw hits and damages with the owner's numbers;
+// the edit changes none of them.
+func TestMR578_AFormulaCreatureFightsWithTheNumbersItWasGivenWith(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	created, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+		CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: silverWolfEntry(
+			"5 * level()", `10 + prof() + mod("dex")`, `prof() + mod("str")`, `mod("str")`)},
+	}))
+	if err != nil {
+		t.Fatalf("CreateTableEntry(creature) error = %v", err)
+	}
+	entry := created.Msg.GetEntry()
+	forToren := a.give(t, a.toren, silverWolfKey, "LoboT")
+	forPens := a.give(t, a.pens, silverWolfKey, "LoboP")
+	// Toren: level 5, proficiency +3, Dexterity 14 (+2), Strength 17 (+3). Pensantus: level 9, proficiency +4,
+	// Dexterity 14 (+2), Strength 10 (+0).
+	if forToren.GetHitPointsMax() != 25 || forToren.GetArmorClass() != 15 || forPens.GetHitPointsMax() != 45 || forPens.GetArmorClass() != 16 {
+		t.Fatalf("the gifts = hp %d AC %d and hp %d AC %d; want 25/15 and 45/16",
+			forToren.GetHitPointsMax(), forToren.GetArmorClass(), forPens.GetHitPointsMax(), forPens.GetArmorClass())
+	}
+	// The master changes every formula; the creatures already given keep their numbers.
+	if _, err := a.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(&rulesv1.UpdateTableEntryRequest{
+		CampaignId: a.campaignID, Key: entry.GetKey(), ExpectedRevision: entry.GetRevision(),
+		Body: &rulesv1.UpdateTableEntryRequest_TableCreature{TableCreature: silverWolfEntry("1", "1", "-5", "-5")},
+	})); err != nil {
+		t.Fatalf("UpdateTableEntry(creature) error = %v", err)
+	}
+
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{2},
+		players:  map[string]int32{"Pensantus": 20, "Sálvia": 15, "Toren": 12, "LoboT": 10, "LoboP": 9},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Sálvia": {6, 5}, "LoboT": {5, 3}, "LoboP": {5, 4}},
+	})
+	for label, want := range map[string]struct{ hp, ac, toHit, damage int32 }{
+		"LoboT": {25, 15, 6, 3},
+		"LoboP": {45, 16, 4, 0},
+	} {
+		c := byLabel(t, e, label)
+		if c.GetHitPointsCurrent() != want.hp || c.GetHitPointsMax() != want.hp || c.GetArmorClass() != want.ac {
+			t.Errorf("%s: hp %d/%d AC %d; want %d and %d", label, c.GetHitPointsCurrent(), c.GetHitPointsMax(), c.GetArmorClass(), want.hp, want.ac)
+		}
+		opt := attackOption(a.mustOptions(t, a.master, e, label), silverClawKey)
+		if opt == nil {
+			t.Fatalf("%s has no attack %s", label, silverClawKey)
+		}
+		if got := opt.GetAttack(); got.GetAttackBonus() != want.toHit || got.GetDamageDice().GetBonus() != want.damage {
+			t.Errorf("%s: claw to-hit %d, damage bonus %d; want %d and %d", label, got.GetAttackBonus(), got.GetDamageDice().GetBonus(), want.toHit, want.damage)
+		}
 	}
 }

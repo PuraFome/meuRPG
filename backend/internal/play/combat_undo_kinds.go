@@ -49,6 +49,7 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventWildShapeStarted:  (*undoer).wildShapeStarted,
 	eventWildShapeEnded:    (*undoer).wildShapeEnded,
 	eventFamiliarSight:     (*undoer).familiarSight,
+	eventLegendarySpent:    (*undoer).legendaryBack,
 }
 
 // find is the combatant of that ID among the ones the undo found.
@@ -276,6 +277,9 @@ func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev acti
 			return err
 		}
 	}
+	if ev.SpendCost > 0 { // a legendary attack spent no action, attack or reaction of the creature's: only its cost
+		return u.legendaryBack(ctx, ev)
+	}
 	if ev.AsReaction {
 		return u.setEconomy(ctx, who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed)
 	}
@@ -493,6 +497,9 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	if err := u.moverBack(ctx, who, ev); err != nil {
 		return err
 	}
+	if err := u.legendaryBack(ctx, ev); err != nil {
+		return err
+	}
 	// Standing up from Prone also took the condition off (combat_standup.go).
 	if ev.CondSet {
 		if err := u.setConditionsBack(ctx, who.ID, ev.CondBefore); err != nil {
@@ -665,7 +672,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
+		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {
@@ -810,6 +817,9 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 	}
 	if who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
+	}
+	if !ev.SlotCounted { // an NPC's cast that did not count its slot has none to give back
+		return nil
 	}
 	return u.s.giveBackNPCSlot(ctx, u.c, who, *ev.Slot)
 }

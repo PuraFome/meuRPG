@@ -217,6 +217,7 @@ type Combatant struct {
 	JumpLongBonusDft        int32
 	JumpDoubled             bool
 	TableOnceTurns          []byte
+	CreatureSpent           []byte
 }
 
 type CombatantState struct {

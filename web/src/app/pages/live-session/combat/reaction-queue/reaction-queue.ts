@@ -174,7 +174,10 @@ export class ReactionQueue {
       .find((r) => r.window.id === windowId);
     const chosen = row ? this.slotOf(row) : null;
     return (
-      !!chosen && chosen.slot.level === option.slot.level && chosen.slot.pact === option.slot.pact
+      !!chosen &&
+      chosen.slot.level === option.slot.level &&
+      chosen.slot.pact === option.slot.pact &&
+      chosen.slot.resource === option.slot.resource
     );
   }
 
@@ -189,14 +192,14 @@ export class ReactionQueue {
     if (chosen) {
       return this.answer(w, {
         use: true,
-        slot: { level: chosen.slot.level, pact: chosen.slot.pact },
+        slot: { level: chosen.slot.level, pact: chosen.slot.pact, resource: chosen.slot.resource },
       });
     }
     const shield = w.prompt.case === 'shield' ? w.prompt.value.slots : [];
     const slot = [...shield].filter((s) => s.free > 0).sort((a, b) => a.level - b.level)[0];
     return this.answer(w, {
       use: true,
-      ...(slot ? { slot: { level: slot.level, pact: slot.pact } } : {}),
+      ...(slot ? { slot: { level: slot.level, pact: slot.pact, resource: slot.resource } } : {}),
     });
   }
 

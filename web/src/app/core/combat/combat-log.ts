@@ -128,6 +128,10 @@ const UNDO_LABELS: ReadonlyMap<CombatLogKind, (e: CombatLogEntry) => string> = n
   ],
   [CombatLogKind.REACTION, (e) => `a reação ${ofThe(e.actorLabel)} ${e.actorLabel}`],
   [
+    CombatLogKind.LEGENDARY_SPENT,
+    (e) => `o gasto de ações lendárias ${ofThe(e.actorLabel)} ${e.actorLabel}`,
+  ],
+  [
     CombatLogKind.OPPORTUNITY_OFFERED,
     (e) => `a oferta de ataque de oportunidade a ${e.targetLabel || 'alguém'}`,
   ],

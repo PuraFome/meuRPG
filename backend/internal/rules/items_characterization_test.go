@@ -369,12 +369,13 @@ func TestMonsterSpellcastingTextsCharacterization(t *testing.T) {
 	base := loadForTest(t).c
 	texts := map[string]string{
 		"dc and slots":     "The mage has spell save DC 14, +6 to hit with spell attacks.\n- Cantrips (at will): fire bolt, light*\n- 1st level (4 slots): shield, magic missile\n- 3rd level (2 slots): counterspell, fireball",
-		"slots only":       "- 2nd level (1 slot): misty step, unknown spell, ",
+		"slots only":       "Its spellcasting ability is Intelligence.\n- 2nd level (1 slot): misty step, unknown spell, ",
 		"dc only":          "It has spell save DC 12, +4 to hit with spell attacks.",
 		"nothing":          "It casts nothing.",
-		"level 10":         "- 10th level (1 slot): wish",
-		"cantrips only":    "- Cantrips (at will): fire bolt",
+		"level 10":         "Its spellcasting ability is Intelligence.\n- 10th level (1 slot): wish",
+		"cantrips only":    "Its spellcasting ability is Intelligence.\n- Cantrips (at will): fire bolt",
 		"unknown cantrips": "- Cantrips (at will): nope",
+		"no ability":       "- 2nd level (1 slot): misty step",
 	}
 	got := map[string]string{}
 	for name, text := range texts {

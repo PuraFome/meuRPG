@@ -1632,6 +1632,8 @@ const (
 	CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS CreatureSource = 3
 	// Given by the master (GiveCreature).
 	CreatureSource_CREATURE_SOURCE_MASTER CreatureSource = 4
+	// A spell of the table's (`summon` of a TableSpell).
+	CreatureSource_CREATURE_SOURCE_TABLE CreatureSource = 5
 )
 
 // Enum value maps for CreatureSource.
@@ -1642,6 +1644,7 @@ var (
 		2: "CREATURE_SOURCE_ANIMATE_DEAD",
 		3: "CREATURE_SOURCE_CONJURE_ANIMALS",
 		4: "CREATURE_SOURCE_MASTER",
+		5: "CREATURE_SOURCE_TABLE",
 	}
 	CreatureSource_value = map[string]int32{
 		"CREATURE_SOURCE_UNSPECIFIED":     0,
@@ -1649,6 +1652,7 @@ var (
 		"CREATURE_SOURCE_ANIMATE_DEAD":    2,
 		"CREATURE_SOURCE_CONJURE_ANIMALS": 3,
 		"CREATURE_SOURCE_MASTER":          4,
+		"CREATURE_SOURCE_TABLE":           5,
 	}
 )
 
@@ -13872,13 +13876,14 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	")LEVEL_UP_MULTICLASS_EXCEPTION_UNSPECIFIED\x10\x00\x12.\n" +
 	"*LEVEL_UP_MULTICLASS_EXCEPTION_EXTRA_ATTACK\x10\x01\x122\n" +
 	".LEVEL_UP_MULTICLASS_EXCEPTION_CHANNEL_DIVINITY\x10\x02\x123\n" +
-	"/LEVEL_UP_MULTICLASS_EXCEPTION_UNARMORED_DEFENSE\x10\x03*\xb2\x01\n" +
+	"/LEVEL_UP_MULTICLASS_EXCEPTION_UNARMORED_DEFENSE\x10\x03*\xcd\x01\n" +
 	"\x0eCreatureSource\x12\x1f\n" +
 	"\x1bCREATURE_SOURCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18CREATURE_SOURCE_FAMILIAR\x10\x01\x12 \n" +
 	"\x1cCREATURE_SOURCE_ANIMATE_DEAD\x10\x02\x12#\n" +
 	"\x1fCREATURE_SOURCE_CONJURE_ANIMALS\x10\x03\x12\x1a\n" +
-	"\x16CREATURE_SOURCE_MASTER\x10\x04*\xb0\x01\n" +
+	"\x16CREATURE_SOURCE_MASTER\x10\x04\x12\x19\n" +
+	"\x15CREATURE_SOURCE_TABLE\x10\x05*\xb0\x01\n" +
 	"\fChoiceOrigin\x12\x1d\n" +
 	"\x19CHOICE_ORIGIN_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12CHOICE_ORIGIN_RACE\x10\x01\x12\x17\n" +

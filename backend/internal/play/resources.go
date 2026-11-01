@@ -324,6 +324,15 @@ func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, call restCall, run 
 	if _, run.after, err = s.vitals.TakeRest(ctx, tx, call.m.CampaignID, call.msg); err != nil {
 		return resourceError(err)
 	}
+	if call.kind == rules.RestLong {
+		// Hand-made NPCs get their spell slots and per-day uses back with the table.
+		if err := q.ClearSetupCombatantsSpellUse(ctx, &call.m.CampaignID); err != nil {
+			return fmt.Errorf("clear the NPCs' spell use in a combat in setup: %w", err)
+		}
+		if err := q.ResetNPCSpellUseOfCampaign(ctx, &call.m.CampaignID); err != nil {
+			return fmt.Errorf("give the NPCs' spell use back: %w", err)
+		}
+	}
 	if err := s.restEndsSpells(ctx, tx, q, session, call, run); err != nil {
 		return err
 	}

@@ -423,6 +423,7 @@ The master sees everything.
 - The same holds for damage on a character after the master applies it (a spell's, a creature action's or a rider's): the target's owner and the master read the amount taken, every other player reads the amount as rolled, so the line never tells what the target resists.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
+- **A creature's trait that turns a failed saving throw into a success** (Legendary Resistance) is the master's: a player reads that the creature's save succeeded, never the roll that failed, how many uses are left or the name of the trait.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.
 
 **Joint turns.**
@@ -433,6 +434,7 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 **Spells and reactions.**
 
 - A target's saving throw goes to the player as a word (passed or failed). The dice go to the master and the owner of a target character, never an NPC's. The DC goes to the master and the caster, and to the owner of the target that rolls the save when the table rule "Os jogadores veem a CD dos testes de resistência" is on (RN-24).
+- The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
 
@@ -577,6 +579,7 @@ Members read the campaign's content, except creatures (below); only the master w
 - **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses and a switched-off race its subraces, except on a sheet that already has the parent. A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
   The master switches creatures on and off through the API only.
   The screen has no creature group.
+- **A table spell can summon creatures.** They are the table's or the SRD's, and they follow the rules of the SRD's summoning spells: the slot, concentration, replacement, dismissal and undo. The number of creatures may depend on the caster and on the slot used. Players read the creatures as for any summon.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **A sheet that uses table content does not move to another campaign.** That check waits for copy character and reuse NPCs ([MR-021](stories.md#mr-021-copy-a-character), [MR-022](stories.md#mr-022-reuse-npcs)). Copying content to another campaign is [MR-026](stories.md#mr-026-propose-a-new-race-or-class), after the MVP.
 - **The target of a spell.** One creature, several (one more per level above, if the master wants), an area (cone, cube, cylinder, line or sphere, in steps of 1.5 m) or only the caster. The mechanics are optional: an attack or a saving throw, damage (more dice per level above or per cantrip tier) and healing. In combat a table spell goes through the same casting as an SRD spell.
@@ -587,20 +590,26 @@ Members read the campaign's content, except creatures (below); only the master w
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**
-  A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30) and up to 10 traits that are text only.
+  A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30), up to 10 traits that are text only and up to 8 attacks of its own.
+  Its numbers can be formulas of its owner: hit points, armor class, the damage bonus, the attack bonus, and the to-hit and damage bonus of each own attack.
+  A formula reads the owner's level, class level, proficiency bonus, ability scores and modifiers, armor category, shield and walking speed, and the circle of the spell slot a spell was cast with.
+  A creature given to a character was not made by a slot, so that circle is 0 in its formulas.
+  A result is rounded down and clamped to the range of its field; a result beyond 10,000 or below -10,000 is a failed formula, and the field keeps its static value or the base creature's.
+  The numbers are worked out for the character that is given the creature, and kept: a later level of the owner or an edit of the formulas does not change a creature already given.
+  "Pôr no combate" and "Criar NPC" have no owner, so they use the entry's static numbers and run no formula.
   The SRD creature it comes from never changes.
   A table creature is never the base of another.
   The creature list and sheet, giving it to a character, combat and "Criar NPC" read it by key.
   The master gives it to a character, it joins combats with its numbers, and an NPC can be made from it.
   The hit points are copied when the creature is given, so editing the entry does not change a creature already given.
-  The armor class and the attacks follow the entry.
+  For a creature with no formula, the armor class and the attacks follow the entry.
   A creature entry is the master's: a player reads it, in the creature list and on its sheet, only while one of their characters holds it.
   A holder reads it whether the entry is live, archived or switched off.
   A player who holds none does not find it.
   The creatures already given keep working for their owners.
   The master can give an archived creature.
   Everyone in a combat reads a creature's name and key, as for an SRD summon or an NPC.
-  A creature a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
+  A creature with no formula that a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
   A monster put in a combat keeps the numbers it joined with: an edit changes the monsters added afterwards, not the ones already in a fight.
   An edit that changes none of the numbers, such as a rename, finds the same NPC.
   Its stat block, hit points and armor class stay with the master and, for the hit points, the owner.
@@ -780,6 +789,33 @@ The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 X
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
 In theatre of the mind (RN-25) monsters have no square.
+A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice.
+For the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll.
+A roll that fails becomes a success that spends one use.
+A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and the uses are the combat's (a new combat starts with all of them).
+The master's log line says the roll and the choice; the player's line says the save succeeded (RN-20).
+When a player's spell with a saving throw reaches it (on one target or many), the cast waits for the master (RN-31), whether the save passed or failed.
+The wait reveals nothing about the roll: a player reads the same wait and the same result either way.
+He sees the failed rolls and turns the failures he chooses, one use each, or lets them stand.
+When every such save passed, he has nothing to offer and lets the cast go on.
+The same dice settle the cast.
+The trait is not offered on any other save: a trap's, a weapon's rider, Turn Undead or Hellish Rebuke.
+A creature a spell zone catches saves at once, with no choice for the master.
+A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
+The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
+Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
+A creature with legendary actions (SRD 5.1) has 3 a round, as the SRD gives every legendary creature.
+They are the master's alone, and they come back at the start of the creature's own turn.
+The master spends them at the end of another creature's turn, never on the creature's own turn and never while it is incapacitated or defeated.
+Each option costs what the stat block says (1 to 3) against the round's total, and a spend beyond what is left is refused.
+An attack or a move goes through the ordinary attack or movement flow.
+An option the engine cannot resolve is offered as text and still counts.
+No spend is allowed while a reaction window or hold waits for an answer.
+The players read no spend, only the ordinary attack or movement line (RN-20).
+A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from one combat to the next, until the table's long rest.
+A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
+Several copies of one hand-made NPC each start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
+A short rest changes nothing for an NPC.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
@@ -825,7 +861,12 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
+| Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, answered by the master for the creature. |
+| Legendary Resistance | A player's spell with a saving throw reaches a creature with the trait and a use left, whether its save passed or failed: the cast waits for the master alone (RN-29). |
 
+A monster's Parry is one a round, and the kept roll is compared with the new armor class.
+A hit that no longer meets it is a miss.
+It opens no window when the creature cannot react, cannot see the attacker or already reacted this round, nor for a ranged or spell attack or a critical hit.
 The reactor rolls in the app, types a physical die, or leaves the roll to the master.
 The held action waits until the window is answered, and is dropped if it can no longer happen; only the master reads that.
 The turn waits for open windows.

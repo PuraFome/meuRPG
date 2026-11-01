@@ -59,6 +59,7 @@ run	internal/play	Frozen|Golden|^(TestAddCharacterEffectGroupsReplacesRetriesAnd
 helper	internal/play	runGolden	plays the scenarios and compares them with the golden file of the call
 run	internal/progression	^(TestAuthorizationMatrix|TestHistoryAndMilestonesWhatEachViewerReads|TestAddMilestoneStepByStep|TestMoveMilestoneStepByStep)$	cd backend && go test ./internal/progression -run '^{test}$' -update (a new RPC also needs its row in the authorization matrix, internal/progression/authz_test.go)	-
 run	internal/rules	(Characterization|Golden)$|^TestCorrectSubclassFeaturesRowOfANewSubclass$	cd backend && go test ./internal/rules -run '^{test}$' -update	-
+run	internal/rules	^(TestLegendaryProfileOfEverySRDStatBlock|TestLegendaryOptionKeysAndAttackActions|TestMonsterReactionsOfEverySRDStatBlock)$	no generator: edit legendaryGolden and reactionGolden in internal/rules/legendary_test.go by hand to the new reading of the stat blocks	-
 run	internal/rules	^TestSnapshot$	no generator: regenerate data/ with cmd/srdimport, or raise "revision" and "sha256" in internal/rules/srd51/effects/revision.json as the failure says	NOTICE,web/src/app/pages/credits/credits.ts
 run	internal/rules/combat	Characterization$	cd backend && go test ./internal/rules/combat -run '^{test}$' -update	-
 run	internal/rules/dungeon	^(TestGolden|TestCheckCorruptionCorpus)$	cd backend && go test ./internal/rules/dungeon -run '^{test}$' -update (a change of the generator output also bumps Version in internal/rules/dungeon/types.go)	-

@@ -27,7 +27,10 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       EncounterBlockedReason.TOO_MANY_COMBATANTS,
       'Não cabem mais combatentes neste combate. Nada foi gasto.',
     ],
-    [EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE, 'Falta o d20 da iniciativa das criaturas.'],
+    [
+      EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE,
+      'Falta o d20 da iniciativa das criaturas. Se cada uma rola a sua, role no app.',
+    ],
     [
       EncounterBlockedReason.CASTING_TIME_TOO_LONG,
       'Essa magia leva mais tempo do que um combate dá. Conjure fora do combate.',

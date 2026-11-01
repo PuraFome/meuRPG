@@ -17,7 +17,8 @@ import (
 // about its reactions (PM-04). A full sheet gives its spells, slots, the casting
 // numbers and the features (Uncanny Dodge, Deflect Missiles, Cutting Words and the
 // tiefling's Infernal Legacy); a basic sheet made from a creature gives the
-// slot-based Spellcasting trait of its stat block; any other basic sheet has none.
+// Spellcasting trait of its stat block (slots) and the uses of its Innate
+// Spellcasting; any other basic sheet has none.
 func (s *Service) ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.ReactionStats, error) {
 	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
@@ -40,8 +41,8 @@ func (s *Service) ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, char
 	return fullReactionStats(d, sheet.GetFull()), nil
 }
 
-// creatureReactionStats reads a stat block's reactions: its Spellcasting trait,
-// and whether it is immune to being charmed.
+// creatureReactionStats reads a stat block's reactions: its Spellcasting trait, its innate
+// spells with uses a day, and whether it is immune to being charmed.
 func creatureReactionStats(content *rules.Content, monsterKey string) link.ReactionStats {
 	out := link.ReactionStats{StatBlock: true}
 	if monsterKey == "" {
@@ -52,6 +53,18 @@ func creatureReactionStats(content *rules.Content, monsterKey string) link.React
 	}
 	if c, ok := content.MonsterSpellcasting(monsterKey); ok {
 		out.Spells, out.SlotsTotal, out.CastingMod, out.SaveDC = c.Spells, c.Slots, c.AbilityMod, c.SaveDC
+		for _, in := range c.Innate {
+			out.Innate = append(out.Innate, link.InnateUse{Spell: in.Spell, Resource: in.Resource, Max: in.Max})
+			if out.ResourceMax == nil {
+				out.ResourceMax = map[string]int{}
+			}
+			out.ResourceMax[in.Resource] = in.Max
+		}
+	}
+	if p, ok := content.LegendaryProfile(monsterKey); ok {
+		for _, r := range p.Reactions {
+			out.MonsterReactions = append(out.MonsterReactions, link.MonsterReaction{Kind: r.Kind, ACBonus: r.ACBonus})
+		}
 	}
 	return out
 }

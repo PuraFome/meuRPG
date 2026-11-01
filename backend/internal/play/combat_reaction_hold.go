@@ -51,6 +51,11 @@ type replayState struct {
 	// the hold was written: the replay lands those dice, not new ones.
 	parts     []partRecord
 	partRolls []partRoll
+	// saves are the saving throws a held cast rolled when the hold was written, and resisted the creatures
+	// whose failed save the master turned into a success (combat_legendary_hold.go): the replay lands
+	// those dice, not new ones.
+	saves    []keptSave
+	resisted map[string]bool
 }
 
 // answeredRef is an answer's event, kept to be completed once the replay it released
@@ -72,6 +77,7 @@ type holdData struct {
 	Rolled    *rolledDamage `json:"rolled,omitempty"`
 	Parts     []partRecord  `json:"parts,omitempty"`
 	PartRolls []partRoll    `json:"part_rolls,omitempty"`
+	Saves     []keptSave    `json:"saves,omitempty"`
 }
 
 // The ambient write: a replay runs the action's own handler inside the
@@ -186,7 +192,7 @@ func replayStateOf(h playdb.ReactionHold, windows []playdb.ReactionWindow) *repl
 	var data holdData
 	_ = json.Unmarshal(h.Data, &data)
 	st.rolled = data.Rolled
-	st.parts, st.partRolls = data.Parts, data.PartRolls
+	st.parts, st.partRolls, st.saves = data.Parts, data.PartRolls, data.Saves
 	for _, w := range windows {
 		if w.Status != windowAnswered {
 			continue
@@ -206,6 +212,11 @@ func replayStateOf(h playdb.ReactionHold, windows []playdb.ReactionWindow) *repl
 			st.protectors = append(st.protectors, conv.OrZero(w.ReactorID))
 		case reaction.DeflectKind, reaction.ManeuverReduceKind:
 			st.deflected += out.Reduction
+		case reaction.LegendaryResistance:
+			st.resisted = map[string]bool{}
+			for _, id := range out.Saved {
+				st.resisted[id] = true
+			}
 		}
 	}
 	return st

@@ -173,6 +173,9 @@ func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentration
 	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
 		return call, err
 	}
+	if err := refuseResistance(call.m, msg.GetUseLegendaryResistance()); err != nil {
+		return call, err
+	}
 	if call.key, call.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
@@ -181,6 +184,11 @@ func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentration
 	}
 	call.in, call.handOver, call.keep, err = concentrationRollOf(msg)
 	return call, err
+}
+
+// wantsResistance says the master asked for Legendary Resistance on a save that has a roll to resist.
+func (c concentrationCall) wantsResistance() bool {
+	return c.msg.GetUseLegendaryResistance() && !c.keep
 }
 
 // concentrationRun is what a try of the change leaves for the answer. A retry starts it over.
@@ -271,7 +279,7 @@ func concentrationResultOfRetry(payload []byte) *playv1.ConcentrationSaveResult 
 // the d20 was rolled, the dice with the Bardic Inspiration die and the d20 Lucky rolled again.
 func concentrationResultOf(ev actionEvent) *playv1.ConcentrationSaveResult {
 	re := ev.Reaction
-	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell}
+	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell, Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
 	if ev.D20 == 0 { // kept with no roll
 		return out
 	}
@@ -299,16 +307,17 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if err != nil {
 		return nil, err
 	}
-	if w.Kind != string(reaction.Concentration) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not a concentration save: use AnswerReaction"))
-	}
-	t := windowTriggerOf(w)
 	master := call.m.Role == authz.RoleMaster
-	if err := refuseSaveAnswer(t, master, call.keep, call.handOver); err != nil {
+	t, err := concentrationTriggerOf(w, call, master)
+	if err != nil {
 		return nil, err
 	}
 	if call.handOver {
 		return nil, s.handSaveToMaster(ctx, c, w, t)
+	}
+	legendary, err := s.legendaryResistOpen(ctx, c, reactor, call.wantsResistance())
+	if err != nil {
+		return nil, err
 	}
 	dc := clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 	ev := actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Key: t.Key, Pending: t.Pending}
@@ -319,6 +328,9 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	}
 	if run.offer != nil || run.lucky != nil || run.held != nil { // the d20 is kept for a question: nothing is written
 		return nil, nil
+	}
+	if kept, err = legendary.resistConcentration(ctx, c, reactor, kept, &ev, run); err != nil {
+		return nil, err
 	}
 	if !kept {
 		if err := s.loseConcentration(ctx, c, reactor); err != nil {
@@ -334,6 +346,16 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	c.characterID = &reactor.CharacterID
 	run.made = ev
 	return ev, nil
+}
+
+// concentrationTriggerOf is the trigger of a concentration window, refused when the window is of another
+// kind or the answer is not the answering member's to give.
+func concentrationTriggerOf(w playdb.ReactionWindow, call concentrationCall, master bool) (windowTrigger, error) {
+	if w.Kind != string(reaction.Concentration) {
+		return windowTrigger{}, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not a concentration save: use AnswerReaction"))
+	}
+	t := windowTriggerOf(w)
+	return t, refuseSaveAnswer(t, master, call.keep, call.handOver)
 }
 
 // concentrationOutcome is the save of the window: kept as it is (the master's word) or rolled. It answers

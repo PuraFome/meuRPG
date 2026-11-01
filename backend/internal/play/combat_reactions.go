@@ -50,18 +50,32 @@ func (s *Service) hitWindows(ctx context.Context, c *combatTx, attacker, target 
 		trigger.Distance = d
 	}
 	if !critical || magic {
-		k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
-		if err != nil {
-			return nil, err
-		}
-		if ok && k.canReact() && len(k.slotsFor(spellShield)) > 0 {
-			return []windowSpec{{kind: reaction.Shield, reactor: &target, trigger: trigger}}, nil
+		specs, err := s.targetReactionWindows(ctx, c, attacker, target, trigger, magic)
+		if err != nil || len(specs) > 0 {
+			return specs, err
 		}
 	}
 	if c.rules.EnemyReactionsAlways && playerAgainstEnemy(attacker, target) {
 		return []windowSpec{{kind: reaction.MasterCheck, trigger: trigger}}, nil
 	}
 	return nil, nil
+}
+
+// targetReactionWindows is the window of the target's own reaction to a hit that is not a critical one (or is a
+// Magic Missile): its Shield when it can cast it, else, for a weapon attack, its stat block's Parry
+// (combat_reaction_parry.go). Magic Missile has no attack roll, so it is never parried.
+func (s *Service) targetReactionWindows(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, trigger windowTrigger, magic bool) ([]windowSpec, error) {
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, target)
+	if err != nil || !ok || !k.canReact() {
+		return nil, err
+	}
+	if len(k.slotsFor(spellShield)) > 0 {
+		return []windowSpec{{kind: reaction.Shield, reactor: &target, trigger: trigger}}, nil
+	}
+	if magic {
+		return nil, nil
+	}
+	return s.parryWindows(ctx, c, k, attacker, trigger)
 }
 
 // openPendingWindows opens the windows of a hit on the pending damage it holds.
