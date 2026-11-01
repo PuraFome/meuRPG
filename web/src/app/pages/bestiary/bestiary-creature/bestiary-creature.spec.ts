@@ -283,4 +283,46 @@ describe("BestiaryCreature: the Ogre's stat block (MR-042, E10-08 state 3)", () 
     await settle();
     expect(flat(el.querySelector('h1'))).toBe('Ogro');
   });
+
+  it('says loading, "not found" and a failed read in two regions that stay in the page, under one h1', async () => {
+    let fail!: (e: Error) => void;
+    const gate = new Promise<never>((_, reject) => (fail = reject));
+    const { el, settle } = await open('/campaigns/camp-1/bestiary/ogre', (a) =>
+      a.statBlock.mockReturnValueOnce(gate as never),
+    );
+    const status = el.querySelector('.mr-live[role="status"]')!;
+    const alert = el.querySelector('.mr-live[role="alert"]')!;
+    expect(status.textContent).toContain('Carregando a ficha da criatura');
+    expect(alert.textContent?.trim()).toBe('');
+    fail(new ConnectError('down', Code.Unavailable));
+    await settle();
+    expect(el.querySelector('.mr-live[role="status"]')).toBe(status);
+    expect(el.querySelector('.mr-live[role="alert"]')).toBe(alert);
+    expect(status.textContent?.trim()).toBe('');
+    const notice = alert.querySelector('.mr-notice--danger')!;
+    expect(flat(notice)).toContain('o servidor não respondeu');
+    expect(notice.hasAttribute('role')).toBe(false);
+    expect(el.querySelectorAll('h1')).toHaveLength(1);
+    expect(flat(el.querySelector('h1'))).toBe('Não foi possível abrir a criatura');
+  });
+
+  it("says a creature that is not in the book, and a campaign that is not the master's, from the regions", async () => {
+    let fail!: (e: Error) => void;
+    const gate = new Promise<never>((_, reject) => (fail = reject));
+    const { el, settle } = await open('/campaigns/camp-1/bestiary/wyrm', (a) =>
+      a.statBlock.mockReturnValueOnce(gate as never),
+    );
+    const alert = el.querySelector('.mr-live[role="alert"]')!;
+    expect(alert.textContent?.trim()).toBe('');
+    fail(new ConnectError('no', Code.NotFound));
+    await settle();
+    expect(alert.querySelector('.mr-notice--neutral')?.hasAttribute('role')).toBe(false);
+    expect(flat(alert)).toContain('Essa criatura não existe no bestiário');
+    TestBed.resetTestingModule();
+    access = { status: 'forbidden' };
+    const forbidden = await open();
+    const status = forbidden.el.querySelector('.mr-live[role="status"]')!;
+    expect(status.querySelector('.mr-notice')?.hasAttribute('role')).toBe(false);
+    expect(flat(status)).toContain('Só o mestre usa o bestiário da campanha.');
+  });
 });

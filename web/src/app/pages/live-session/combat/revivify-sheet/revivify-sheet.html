@@ -16,21 +16,28 @@
       }
     </ol>
 
-    @if (error()) {
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ error() }}</p>
-      </div>
-    }
+    <!-- The refusal stops the person: an alert region that is there before the text. -->
+    <div class="mr-live" role="alert">
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+    </div>
 
-    @if (step() === 'target') {
-      @if (loading()) {
-        <p class="plain" role="status">Procurando quem morreu por perto…</p>
-      } @else if (rows().length === 0) {
-        @if (!error()) {
-          <p class="plain" role="status">{{ nobody }}</p>
+    <!-- Searching and "nobody" replace each other in a status region that stays in the page. -->
+    <div class="mr-live" role="status">
+      @if (step() === 'target') {
+        @if (loading()) {
+          <p class="plain">Procurando quem morreu por perto…</p>
+        } @else if (rows().length === 0 && !error()) {
+          <p class="plain">{{ nobody }}</p>
         }
-      } @else {
+      }
+    </div>
+
+    @if (step() === 'target' && !loading() && rows().length > 0) {
         <span class="cap" id="revivify-who">Quem morreu por perto</span>
         <div class="rows" role="radiogroup" aria-labelledby="revivify-who">
           @for (r of rows(); track r.id) {
@@ -58,7 +65,6 @@
         @if (!waitsMaster()) {
           <p class="small">Só aparece quem a magia pode alcançar agora.</p>
         }
-      }
     }
 
     @if (step() === 'confirm') {
