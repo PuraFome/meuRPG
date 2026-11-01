@@ -163,7 +163,8 @@ The saves the master rolls for the creature take the choice with the roll (`comb
 
 The master does not need to guess before the dice.
 When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
-When the roll succeeds, nothing is spent and the choice is ignored; so it is for a save the master skips or keeps.
+When the roll succeeds, nothing is spent and the choice is ignored.
+The choice is ignored the same way for a save the master skips or keeps.
 The refusals change nothing: `permission_denied` for a player, `LEGENDARY_RESISTANCE_UNAVAILABLE` for a combatant without the trait (before the roll), and `LEGENDARY_RESISTANCE_NONE_LEFT` for a failed save with no use left.
 A refusal for no uses left comes after the roll, so the master may roll that window again.
 A request sent twice spends once, and its retry answers the same.
@@ -186,7 +187,8 @@ The window offers one choice for each failed save of such a creature: "Usar Resi
 The master chooses the failures to turn (`creature_ids`) or declines (`PASS`).
 The hold keeps the d20 and the effect dice of every save of the cast, so the answer settles the cast with the same dice and rolls nothing again.
 A turned failure is a save that succeeded, and the cast writes the damage, the conditions and the effects of a success.
-Each turned failure spends one use, in the same change as the cast; an answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
+Each turned failure spends one use, in the same change as the cast.
+An answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
 A request sent twice spends once.
 No window opens when no creature with the trait failed, when none has a use left, or when the spell has no saving throw.
 A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
