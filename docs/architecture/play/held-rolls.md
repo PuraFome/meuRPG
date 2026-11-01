@@ -116,7 +116,7 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
   It is asked only after the result is known, with the Lucky reroll and the die already in the total.
   Its answer is final: using it spends the use and closes the row; keeping the roll spends nothing.
 
-A later question, such as a master's reroll, would be one more link with its own columns and rule for who answers. Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
+Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 ## The registry and the one answer
 
@@ -127,7 +127,7 @@ It:
 1. finds the hold;
 2. checks who may answer (`mayAnswerHeld`), before anything about the roll's state is said: a combatant's roll by whoever may act for the combatant, its player or the master; a character's roll out of a combat by its player or the master. Another player is refused: `permission_denied` for a combat's roll through the older attack RPCs, `not_found` everywhere else;
 3. checks the answer against the roll as it stands (the question must be open, Lucky's first; an answer already given is answered again, never twice with another key);
-4. rolls the reroll or the die the way the campaign has the player roll (RN-18; the master is exempt);
+4. rolls the new d20 of Lucky the way the campaign has the player roll (RN-18; the master is exempt), or the reroll of a rule with the service's own roller;
 5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key. When the master answers a player's roll, the path runs **as the roller** (`heldReply.as`, read by `heldMember` and `heldRole`, which stand in for the authz lookups at the top of the paths a hold runs again): it finds the roller's character and combatant as the first time, and nobody gets a power they did not have. The answer is the roller's view of the result. A weapon attack's path takes the answerer as it is: the master may act for any combatant.
 
 **The player's first chance.** For `heldPlayerFirst` (10 seconds) after a question is asked, measured from the hold's `created_at` on the service clock, `playerFirst` refuses the master's answer with `failed_precondition` and `ResourceBlocked` `PLAYER_FIRST`, whose `wait_seconds` is the time left rounded up; it runs for every answer RPC, after the state of the roll is checked and before anything is rolled. It does not apply to the player's own answer, to the master's answer to a roll no user plays (an NPC's, a player who left: `rollerPlayer`), or to a repeated answer. The Lucky and die questions of one roll share the hold's time.
