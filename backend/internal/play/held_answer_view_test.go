@@ -86,10 +86,10 @@ func mastersGuidingBolt(t *testing.T) (a *armed, hold string) {
 	a, e := shadowFight(t, "race:halfling", 3, true)
 	typed := func(r *playv1.CastSpellRequest) { r.Roll, r.D20Faces = nil, []int32{4, 4} } // two dice: the cast rolls with advantage or disadvantage here
 	res, err := a.cast(t, a.master, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), typed)
-	if err != nil || res.GetCast() != nil || res.GetInspirationOffer() == nil {
+	if err != nil || res.GetCast() != nil || res.GetHeldRollOffer() == nil {
 		t.Fatalf("CastSpell(master) = %v, %v; want the die's question and no cast", res, err)
 	}
-	return a, res.GetInspirationOffer().GetHoldId()
+	return a, res.GetHeldRollOffer().GetHoldId()
 }
 
 // wantCastSettled checks the roll and the write the master's cast makes, whoever answers it.
@@ -145,10 +145,10 @@ func mastersEffectSave(t *testing.T) (a *armed, hold string) {
 		t.Fatalf("the master's windows = %v, want the save of Hold Person", a.windows(t, a.master))
 	}
 	res, err := a.rollEffectSave(t, a.master, e, w.GetId(), effectSaveFace(1))
-	if err != nil || res.GetResult() != nil || res.GetLuckyOffer() == nil {
+	if err != nil || res.GetResult() != nil || res.GetHeldRollOffer() == nil {
 		t.Fatalf("RollEffectSave(master) = %v, %v; want Lucky's question alone", res, err)
 	}
-	return a, res.GetLuckyOffer().GetHoldId()
+	return a, res.GetHeldRollOffer().GetHoldId()
 }
 
 // wantSaveSettled checks the roll the master's save makes, whoever answers it, and that its DC is not in the response.
@@ -197,10 +197,10 @@ func TestHeldAnswerRendersTheAnsweringMembersViewOfAGroupCheck(t *testing.T) {
 	view := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = dc })
 	a.mustRollGroup(t, a.caio, view.GetId(), 17)
 	res, err := a.rollForPlayer(t, a.master, view.GetId(), dalilaID, 1)
-	if err != nil || res.GetGroupCheck() != nil || res.GetLuckyOffer() == nil {
+	if err != nil || res.GetGroupCheck() != nil || res.GetHeldRollOffer() == nil {
 		t.Fatalf("RollForPlayer() = %v, %v; want Lucky's question alone", res, err)
 	}
-	out, err := a.answerHeldRoll(t, dalila, res.GetLuckyOffer().GetHoldId(), luckyAnswer(14))
+	out, err := a.answerHeldRoll(t, dalila, res.GetHeldRollOffer().GetHoldId(), luckyAnswer(14))
 	if err != nil {
 		t.Fatalf("the player's answer: error = %v", err)
 	}
@@ -222,11 +222,11 @@ func TestHeldAnswerByTheMasterRendersTheMastersView(t *testing.T) {
 		a, e := shadowFight(t, "race:halfling", 3, true)
 		a.h.roller.queue(9, 13)
 		held, err := a.castGuidingBolt(t, e)
-		if err != nil || held.GetInspirationOffer() == nil {
+		if err != nil || held.GetHeldRollOffer() == nil {
 			t.Fatalf("Brisa's Guiding Bolt = %v, %v; want the die's question", held, err)
 		}
 		a.h.afterThePlayersChance()
-		out, err := a.answerHeldRoll(t, a.master, held.GetInspirationOffer().GetHoldId(), dieAnswer(false))
+		out, err := a.answerHeldRoll(t, a.master, held.GetHeldRollOffer().GetHoldId(), dieAnswer(false))
 		if err != nil {
 			t.Fatalf("the master's answer: error = %v", err)
 		}
@@ -243,11 +243,11 @@ func TestHeldAnswerByTheMasterRendersTheMastersView(t *testing.T) {
 		view := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = dc })
 		a.mustRollGroup(t, a.caio, view.GetId(), 17)
 		held, err := a.rollGroup(t, dalila, view.GetId(), 1)
-		if err != nil || held.GetLuckyOffer() == nil {
+		if err != nil || held.GetHeldRollOffer() == nil {
 			t.Fatalf("RollGroupCheck() = %v, %v; want Lucky's question alone", held, err)
 		}
 		a.h.afterThePlayersChance()
-		out, err := a.answerHeldRoll(t, a.master, held.GetLuckyOffer().GetHoldId(), luckyAnswer(14))
+		out, err := a.answerHeldRoll(t, a.master, held.GetHeldRollOffer().GetHoldId(), luckyAnswer(14))
 		if err != nil {
 			t.Fatalf("the master's answer: error = %v", err)
 		}

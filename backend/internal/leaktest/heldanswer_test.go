@@ -249,10 +249,10 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 			CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), CasterId: rt.ids[labelBrisa], SpellKey: "spell:guiding-bolt", Slot: &playv1.SpellSlot{Level: 1},
 			Targets: []*playv1.SpellTarget{{CombatantId: rt.ids[labelGoblin]}}, IdempotencyKey: newKey(), D20Faces: []int32{4, 4},
 		})))
-		if res.GetCast() != nil || res.GetInspirationOffer() == nil {
+		if res.GetCast() != nil || res.GetHeldRollOffer() == nil {
 			t.Fatalf("the master's cast = %v, want the die's question and no cast", res)
 		}
-		return res.GetInspirationOffer().GetHoldId()
+		return res.GetHeldRollOffer().GetHoldId()
 	}
 	castSettled := func(t *testing.T, rt *answerTable, cast *playv1.SpellCast) {
 		t.Helper()
@@ -289,10 +289,10 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 		res := must(m.lasting.RollEffectSave(t.Context(), rq(&playv1.RollEffectSaveRequest{
 			CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), WindowId: window, IdempotencyKey: newKey(), Roll: &playv1.RollEffectSaveRequest_D20Face{D20Face: 1},
 		})))
-		if res.GetResult() != nil || res.GetLuckyOffer() == nil {
+		if res.GetResult() != nil || res.GetHeldRollOffer() == nil {
 			t.Fatalf("the master's save = %v, want Lucky's question alone", res)
 		}
-		return res.GetLuckyOffer().GetHoldId()
+		return res.GetHeldRollOffer().GetHoldId()
 	}
 	saveSettled := func(t *testing.T, rt *answerTable, res *playv1.RollEffectSaveResponse) {
 		t.Helper()
@@ -312,6 +312,7 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 		return must(rt.caio.resources.AnswerHeldRoll(rt.t.Context(), rq(req)))
 	}
 	run := func(t *testing.T, body func(t *testing.T, rt *answerTable)) {
+		t.Helper()
 		rt := newAnswerTable(t)
 		defer func() {
 			if r := recover(); r != nil {
@@ -326,6 +327,7 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 
 	t.Run("a spell attack with a die, AnswerHeldRoll", func(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
+			t.Helper()
 			hold := castHeld(t, rt)
 			out := answerHeld(rt, hold, func(r *playv1.AnswerHeldRollRequest) { r.Answer = dieAnswerOf(8) })
 			rt.scan(t, rt.caio, "Caio's answer", out)
@@ -334,8 +336,9 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 	})
 	t.Run("a spell attack with a die, AnswerOutsideInspiration", func(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
+			t.Helper()
 			hold := castHeld(t, rt)
-			out := must(rt.caio.resources.AnswerOutsideInspiration(t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{
+			out := must(rt.caio.resources.AnswerOutsideInspiration(t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{ //nolint:staticcheck // the row covers the deprecated RPC while it exists
 				CampaignId: rt.campaign, HoldId: hold, Use: true, IdempotencyKey: newKey(), Roll: &playv1.AnswerOutsideInspirationRequest_TypedFace{TypedFace: 8},
 			})))
 			rt.scan(t, rt.caio, "Caio's answer", out)
@@ -344,6 +347,7 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 	})
 	t.Run("a save that shows a 1, AnswerHeldRoll", func(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
+			t.Helper()
 			hold := saveHeld(t, rt)
 			out := answerHeld(rt, hold, func(r *playv1.AnswerHeldRollRequest) { r.Answer = luckyAnswerOf(17) })
 			rt.scan(t, rt.caio, "Caio's answer", out)
@@ -352,8 +356,9 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 	})
 	t.Run("a save that shows a 1, AnswerOutsideLucky", func(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
+			t.Helper()
 			hold := saveHeld(t, rt)
-			out := must(rt.caio.resources.AnswerOutsideLucky(t.Context(), rq(&playv1.AnswerOutsideLuckyRequest{
+			out := must(rt.caio.resources.AnswerOutsideLucky(t.Context(), rq(&playv1.AnswerOutsideLuckyRequest{ //nolint:staticcheck // the row covers the deprecated RPC while it exists
 				CampaignId: rt.campaign, HoldId: hold, Reroll: true, IdempotencyKey: newKey(), Roll: &playv1.AnswerOutsideLuckyRequest_TypedFace{TypedFace: 17},
 			})))
 			rt.scan(t, rt.caio, "Caio's answer", out)
@@ -362,6 +367,7 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 	})
 	t.Run("a group check that does not show its DC", func(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
+			t.Helper()
 			m, w := rt.master, rt.world
 			typed := func(face int32) *playv1.CheckRollInput {
 				return &playv1.CheckRollInput{Roll: &playv1.CheckRollInput_D20Faces{D20Faces: &playv1.D20Faces{Faces: []int32{face}}}}
@@ -380,10 +386,10 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 			held := must(m.contests.RollForPlayer(t.Context(), rq(&playv1.RollForPlayerRequest{
 				CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: view.GetId(), CharacterId: w.pens.GetId(), Roll: typed(1),
 			})))
-			if held.GetGroupCheck() != nil || held.GetLuckyOffer() == nil {
+			if held.GetGroupCheck() != nil || held.GetHeldRollOffer() == nil {
 				t.Fatalf("the master's roll = %v, want Lucky's question alone", held)
 			}
-			req := &playv1.AnswerHeldRollRequest{CampaignId: w.campaign, HoldId: held.GetLuckyOffer().GetHoldId(), IdempotencyKey: newKey(), Answer: luckyAnswerOf(14)}
+			req := &playv1.AnswerHeldRollRequest{CampaignId: w.campaign, HoldId: held.GetHeldRollOffer().GetHoldId(), IdempotencyKey: newKey(), Answer: luckyAnswerOf(14)}
 			out := must(w.ana.resources.AnswerHeldRoll(t.Context(), rq(req)))
 			rt.scan(t, w.ana, "Ana's answer", out)
 
