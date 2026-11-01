@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, type Signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, type Signal, computed, effect } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -111,6 +111,13 @@ export class FreeDiceSheet {
   protected readonly unknownDice = computed(() =>
     Array.from({ length: this.form().count }, (_, i) => i),
   );
+
+  /**
+   * Esc and the backdrop wait for the answer of a roll in the air.
+   * The sheet shrinks to the rolling card on the first tap and the button moves away.
+   * The second tap of a double tap would land on the backdrop and close the sheet.
+   */
+  protected readonly lockWhileRolling = effect(() => this.sheet.lock(this.state.rolling()));
 
   protected close(): void {
     this.sheet.close();
