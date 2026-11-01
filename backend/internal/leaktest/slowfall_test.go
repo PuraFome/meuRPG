@@ -38,7 +38,7 @@ func (w *world) slowFallFall() {
 
 // slowFallNeedles are what no other player reads: the window, the kind, and the numbers of the line.
 func (w *world) slowFallNeedles(windowID string) {
-	w.secrets.add(&canary{needle: windowID, kind: "reaction-window-id"})
+	w.secrets.add(&canary{needle: windowID, kind: "reaction-window-id", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: "REACTION_KIND_SLOW_FALL", kind: "slow-fall-kind", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: `"slowFall"`, kind: "slow-fall-prompt", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: "no dano da queda", kind: "slow-fall-numbers", readers: names([]*person{w.caio})})
@@ -56,9 +56,12 @@ func TestASlowFallsWindowIsTheMonksAndTheMastersAlone(t *testing.T) {
 
 	check := func(when string) {
 		t.Helper()
-		for _, r := range w.reads(w.ana) {
-			for _, f := range w.inspect(w.ana, r, nil) {
-				t.Errorf("%s Ana: %s", when, f)
+		// Ana reads none of it, and Caio, the monk, reads all but the damage around the cut (the master's).
+		for _, p := range []*person{w.ana, w.caio} {
+			for _, r := range w.reads(p) {
+				for _, f := range w.inspect(p, r, nil) {
+					t.Errorf("%s %s: %s", when, p.name, f)
+				}
 			}
 		}
 	}

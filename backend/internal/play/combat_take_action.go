@@ -558,13 +558,14 @@ func (f *takeActionFlow) cutFall(ctx context.Context, sheet link.Sheet) error {
 		return err
 	}
 	f.made.FallCuts, f.made.Amount = cuts, taken
-	// The monk's own question about the fall closes with the reaction it spent: an undo opens it again.
+	// The monk's own questions about the fall (Slow Fall, and a Feather Fall it can cast too) close with the
+	// reaction it spent: an undo opens them again.
 	open, err := openWindowsOf(ctx, f.c)
 	if err != nil {
 		return err
 	}
 	for _, w := range open {
-		if reaction.Kind(w.Kind) == reaction.SlowFall && conv.OrZero(w.ReactorID) == f.who.ID {
+		if k := reaction.Kind(w.Kind); (k == reaction.SlowFall || k == reaction.FeatherFall) && conv.OrZero(w.ReactorID) == f.who.ID {
 			f.made.ClosedWindows = append(f.made.ClosedWindows, w.ID)
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -217,7 +219,7 @@ func TestSlowFallPassedLeavesTheFallAsItWas(t *testing.T) {
 	}
 }
 
-// TestSlowFallWindowSaysNothingToOthersAfterTheUseOfTheButton: the button spends the reaction, which
+// TestSlowFallButtonClosesTheQuestion: the button spends the reaction, which
 // closes the window of the question: a monk has one reaction.
 func TestSlowFallButtonClosesTheQuestion(t *testing.T) {
 	t.Parallel()
@@ -367,5 +369,110 @@ func TestSlowFallOfTwoMonksIsIndependent(t *testing.T) {
 	var torenAmount int32
 	if err := r.h.pool.QueryRow(t.Context(), `SELECT amount FROM pending_damages WHERE target_id = $1 AND trap_point_id IS NOT NULL`, r.id(t, "Toren")).Scan(&torenAmount); err != nil || torenAmount != 10 {
 		t.Errorf("Toren's fall = %d (%v), want 10: only his own 20 came off", torenAmount, err)
+	}
+}
+
+// multiclassRig is the cave with a pit on (9, 7), Toren a monk of level 4 and a wizard of level 3 with
+// Feather Fall prepared, and the combat begun with the dice of the fall queued: one reactor with the two
+// windows of one fall. CreateCharacter refuses the multiclass, so the sheet is the monk's rewritten.
+func multiclassRig(t *testing.T) (*trapRig, *playv1.Encounter) {
+	t.Helper()
+	c := newCaveOf(t, 3, []string{burningHands, magicMissileSpell, shieldSpell}, func(a *armed) *charactersv1.Character {
+		toren := a.caio.hero(t, a.campaignID, "Toren", "class:monk", "race:human", 4, abilities(12, 16, 14, 14, 8), nil, nil)
+		if _, err := a.h.pool.Exec(t.Context(), `
+			UPDATE characters SET sheet = sheet || jsonb_build_object('full', (sheet -> 'full')
+				|| jsonb_build_object(
+					'classes', (sheet #> '{full,classes}') || '[{"level": 3, "class_key": "class:wizard"}]'::jsonb,
+					'known_spell_keys', '["spell:feather-fall"]'::jsonb,
+					'prepared_spell_keys', '["spell:feather-fall"]'::jsonb))
+			WHERE id = $1`, toren.GetId()); err != nil {
+			t.Fatalf("make the multiclass sheet: %v", err)
+		}
+		return toren
+	})
+	r := newTrapRigOn(t, c)
+	r.trap(t, "Fosso", 9, 7, pit("6d6"), func(s *mapsv1.TrapSpec) { s.PresetKey = "trap:simple-pit" })
+	e := r.fight(t)
+	r.h.roller.queue(fiveSixTimes()...)
+	r.torenFalls(t)
+	return r, e
+}
+
+// featherFor answers "Usar" with a slot of the first level, on Toren.
+func featherFor(t *testing.T, r *trapRig) func(*playv1.AnswerReactionRequest) {
+	t.Helper()
+	return func(q *playv1.AnswerReactionRequest) {
+		q.Answer, q.Slot, q.CreatureIds = playv1.ReactionChoice_REACTION_CHOICE_USE, slotOfLevel(1), []string{r.id(t, "Toren")}
+	}
+}
+
+// TestSlowFallOfAMonkWhoCanAlsoCastFeatherFall: one reactor, one reaction, two windows of one fall.
+func TestSlowFallOfAMonkWhoCanAlsoCastFeatherFall(t *testing.T) {
+	t.Parallel()
+	feather := playv1.ReactionKind_REACTION_KIND_FEATHER_FALL
+	t.Run("the Slow Fall waits for the Feather Fall", func(t *testing.T) {
+		t.Parallel()
+		r, e := multiclassRig(t)
+		slow := r.windowOf(t, r.caio, slowFallKind)
+		if slow == nil || r.windowOf(t, r.caio, feather) == nil {
+			t.Fatalf("Toren reads %v, want both windows", r.windows(t, r.caio))
+		}
+		_, err := r.answerReaction(t, r.caio, e, slow.GetId(), use)
+		wantRefusal(t, "Slow Fall before Feather Fall", err, connect.CodeFailedPrecondition, "this reaction window cannot be answered now")
+	})
+	t.Run("Feather Fall first discards the fall and closes the Slow Fall", func(t *testing.T) {
+		t.Parallel()
+		r, e := multiclassRig(t)
+		r.mustAnswer(t, r.caio, e, r.windowOf(t, r.caio, feather).GetId(), featherFor(t, r))
+		if status, _ := r.fallOf(t, "Toren"); status != "discarded" {
+			t.Errorf("Toren's fall is %s, want it discarded", status)
+		}
+		if status, reason := r.windowRow(t, "slow_fall", "Toren"); status != "closed" || reason != "reaction_spent" {
+			t.Errorf("the Slow Fall window is %s (%s), want it closed: the reaction was spent", status, reason)
+		}
+	})
+	t.Run("Feather Fall passed, Slow Fall used", func(t *testing.T) {
+		t.Parallel()
+		r, e := multiclassRig(t)
+		r.mustAnswer(t, r.caio, e, r.windowOf(t, r.caio, feather).GetId(), passAnswer)
+		r.mustAnswer(t, r.caio, e, r.windowOf(t, r.caio, slowFallKind).GetId(), use)
+		if status, amount := r.fallOf(t, "Toren"); status != "rolled" || amount != 10 {
+			t.Errorf("Toren's fall = %s for %d, want it rolled (30 - 20 = 10)", status, amount)
+		}
+	})
+	t.Run("the button closes both and the undo opens both again", func(t *testing.T) {
+		t.Parallel()
+		r, e := multiclassRig(t)
+		w := newUndoWatch(t, r.armed)
+		w.run(t, "Slow Fall button", nil, func() {
+			if _, err := r.action(t, r.caio, e, "Toren", slowFallAction); err != nil {
+				t.Fatalf("TakeAction(Slow Fall) error = %v", err)
+			}
+		})
+		if r.windowOf(t, r.caio, feather) == nil || r.windowOf(t, r.caio, slowFallKind) == nil {
+			t.Errorf("Toren reads %v after the undo, want both windows open", r.windows(t, r.caio))
+		}
+	})
+}
+
+// TestSlowFallButtonUndoOpensTheQuestionAgain: the button while the window is open, then the undo.
+func TestSlowFallButtonUndoOpensTheQuestionAgain(t *testing.T) {
+	t.Parallel()
+	r, e := slowFallRig(t, 4, "6d6", false, fiveSixTimes()...)
+	r.torenFalls(t)
+	w := newUndoWatch(t, r.armed)
+	w.run(t, "Slow Fall button", nil, func() {
+		if _, err := r.action(t, r.caio, e, "Toren", slowFallAction); err != nil {
+			t.Fatalf("TakeAction(Slow Fall) error = %v", err)
+		}
+	})
+	if status, amount := r.fallOf(t, "Toren"); status != "awaiting_reaction" || amount != 30 {
+		t.Errorf("Toren's fall = %s for %d after the undo, want it waiting (30)", status, amount)
+	}
+	if r.windowOf(t, r.caio, slowFallKind) == nil {
+		t.Error("the window is closed after the undo")
+	}
+	if byLabel(t, r.get(t, r.caio), "Toren").GetReactionUsed() {
+		t.Error("the reaction is still spent after the undo")
 	}
 }

@@ -22,7 +22,9 @@ import (
 const slowFallMinLevel = 4
 
 // fallDamagesOf is the falling damage each caught combatant rolled, by combatant, for the combatants
-// that took some: the first damage of the outcome that is of the fall's type.
+// that took some: the damages of the outcome that are of the fall's type. Only a player's character is
+// asked, and a player's character takes the damage as rolled (the resistances of a character are the
+// master's, applied by hand: afterResistance changes nothing for it), so this is the amount stored.
 func fallDamagesOf(caught []playdb.Combatant, outcomes []trapOutcome) map[string]int32 {
 	out := map[string]int32{}
 	for i, o := range outcomes {

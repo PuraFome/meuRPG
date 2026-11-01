@@ -179,6 +179,9 @@ function groupSubtitle(first: ReactionWindow): string {
         `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
         'acertou',
       ]);
+    case ReactionKind.FEATHER_FALL:
+    case ReactionKind.SLOW_FALL:
+      return joinDots(['Queda num fosso', 'na ordem da iniciativa']);
     case ReactionKind.PROTECTION:
       return joinDots([
         `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
