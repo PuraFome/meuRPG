@@ -38,6 +38,7 @@ const server = https.createServer({ key, cert }, (req, res) => {
   });
   // The browser went away (or the stream ended): the upstream request goes with it.
   res.on('close', () => upstream.destroy());
+  req.on('error', () => upstream.destroy());
   req.pipe(upstream);
 });
 // A stream stays open for minutes: no idle limit.

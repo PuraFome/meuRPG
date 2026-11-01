@@ -458,6 +458,7 @@ jobs:
           mkdir -p e2e/stack-logs
           docker compose logs --no-color --timestamps | tee e2e/stack-logs/stack.log
           cp "$RUNNER_TEMP/tls-front.log" e2e/stack-logs/ 2>/dev/null || true
+          cat "$RUNNER_TEMP/tls-front.log" 2>/dev/null || true
 
       - name: Upload the Playwright report
         if: failure()
