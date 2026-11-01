@@ -10974,7 +10974,13 @@ type SummonSpellOptions struct {
 	// What a casting would send away: the character's familiar for Encontrar
 	// Familiar, and the creatures a previous concentration holds for a spell that
 	// needs concentration (a new casting ends it, RN-22). Empty when nothing goes.
-	Replaces      []*ReplacedCreature `protobuf:"bytes,10,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	Replaces []*ReplacedCreature `protobuf:"bytes,10,rep,name=replaces,proto3" json:"replaces,omitempty"`
+	// The feature that gives the summon, when it is a feature's: its key. The character casts it with a use of
+	// `resource_key` (`uses_left` remain) instead of a slot, at the one circle in `circles`, and CastSummon
+	// and CastSpell name the feature in `granted_by`. Empty for a spell the character has.
+	GrantedBy     string `protobuf:"bytes,11,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
+	ResourceKey   string `protobuf:"bytes,12,opt,name=resource_key,json=resourceKey,proto3" json:"resource_key,omitempty"`
+	UsesLeft      int32  `protobuf:"varint,13,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11077,6 +11083,27 @@ func (x *SummonSpellOptions) GetReplaces() []*ReplacedCreature {
 		return x.Replaces
 	}
 	return nil
+}
+
+func (x *SummonSpellOptions) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
+}
+
+func (x *SummonSpellOptions) GetResourceKey() string {
+	if x != nil {
+		return x.ResourceKey
+	}
+	return ""
+}
+
+func (x *SummonSpellOptions) GetUsesLeft() int32 {
+	if x != nil {
+		return x.UsesLeft
+	}
+	return 0
 }
 
 // SummonCircle is what a spell may bring at one circle.
@@ -13528,7 +13555,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x94\x01\n" +
 	"\x18GetSummonOptionsResponse\x12@\n" +
 	"\x06spells\x18\x01 \x03(\v2(.meurpg.characters.v1.SummonSpellOptionsR\x06spells\x126\n" +
-	"\x05slots\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonSlotR\x05slots\"\x94\x03\n" +
+	"\x05slots\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonSlotR\x05slots\"\xf3\x03\n" +
 	"\x12SummonSpellOptions\x12\x1b\n" +
 	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
@@ -13541,7 +13568,11 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x12can_cast_with_slot\x18\b \x01(\bR\x0fcanCastWithSlot\x12<\n" +
 	"\acircles\x18\t \x03(\v2\".meurpg.characters.v1.SummonCircleR\acircles\x12B\n" +
 	"\breplaces\x18\n" +
-	" \x03(\v2&.meurpg.characters.v1.ReplacedCreatureR\breplaces\"d\n" +
+	" \x03(\v2&.meurpg.characters.v1.ReplacedCreatureR\breplaces\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18\v \x01(\tR\tgrantedBy\x12!\n" +
+	"\fresource_key\x18\f \x01(\tR\vresourceKey\x12\x1b\n" +
+	"\tuses_left\x18\r \x01(\x05R\busesLeft\"d\n" +
 	"\fSummonCircle\x12\x16\n" +
 	"\x06circle\x18\x01 \x01(\x05R\x06circle\x12<\n" +
 	"\aoptions\x18\x02 \x03(\v2\".meurpg.characters.v1.SummonOptionR\aoptions\"\x9f\x01\n" +

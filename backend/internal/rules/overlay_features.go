@@ -52,6 +52,10 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if err != nil {
 		return err
 	}
+	effects, summon, err := b.lowerFeatureSummon(f, k.owner, path, effects)
+	if err != nil {
+		return err
+	}
 	b.n.namesEN[f.Key] = f.NamePT
 	b.n.namesPT[f.Key] = f.NamePT
 	switch k.prefix {
@@ -65,7 +69,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	b.declareResources(k, effects)
 	b.declareStates(f.Key, k.owner, effects)
 	if len(effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: effects, path: path, strict: b.strict[k.owner]})
+		b.pending = append(b.pending, pendingEffects{owner: f.Key, entry: k.owner, effects: effects, path: path, strict: b.strict[k.owner], summon: summon})
 	}
 	return nil
 }
@@ -198,6 +202,17 @@ func (b *overlayBuilder) declareResources(k featureKind, effects []Effect) {
 	}
 }
 
+// checkOptionShape refuses what an option does not have: options of its own, and a summon (its feature's).
+func checkOptionShape(o *TableFeature, at string) error {
+	if len(o.Options) > 0 {
+		return ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
+	}
+	if o.Summon != nil {
+		return ovErr(o.Key, "an option does not summon: the summon is its feature's").at(at+".summon", ReasonValue)
+	}
+	return nil
+}
+
 // addOptions registers the option list of a feature as features of their own,
 // each with the feature as its parent, and returns their keys. An option is in no
 // level row: the choice that offers it is the only way to have it.
@@ -208,9 +223,10 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 	for i := range f.Options {
 		o := &f.Options[i]
 		at := fmt.Sprintf("%s.options[%d]", path, i)
-		if len(o.Options) > 0 {
-			return nil, ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
+		if err := checkOptionShape(o, at); err != nil {
+			return nil, err
 		}
+
 		if err := checkTableKey(featureKeyPrefix, o.Key); err != nil {
 			return nil, locate(err, at)
 		}
@@ -905,25 +921,47 @@ func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out [
 				continue
 			}
 		}
-		e.Tags, e.Targets, e.From, e.Spells = slices.Clone(e.Tags), slices.Clone(e.Targets), slices.Clone(e.From), slices.Clone(e.Spells)
-		if !p.strict {
-			stripUnused(&e)
-		}
-		if err := b.checkEffect(p.owner, at, &e, p.strict); err != nil {
-			c.add(err)
-			failed = true
-			continue
-		}
-		b.bindGate(b.featureEntry[p.owner], &e)
-		if err := b.n.compileEffect(p.owner, &e); err != nil {
-			attr, reason := effectError(&e, err.Error())
-			c.add(ovErr(p.owner, "%v", err).at(at+attr, reason))
+		if !b.compileEffectAt(c, p, i, at, &e) {
 			failed = true
 			continue
 		}
 		out = append(out, &e)
 	}
 	return out, failed
+}
+
+// compileEffectAt checks and compiles the effect e, the i-th of the pending ones, and says whether it worked.
+func (b *overlayBuilder) compileEffectAt(c *entryErrors, p pendingEffects, i int, at string, e *Effect) bool {
+	own := p.summon != nil && p.summon.at == i // the effect a summon lowered to
+	if own && !b.resourceDefined(p.owner, p.summon.resource) {
+		c.add(ovErr(p.owner, "the summon spends %q, which no resource effect of this entry or its class defines", p.summon.resource).at(p.path+".summon.resource_key", ReasonReference))
+		return false
+	}
+	e.Tags, e.Targets, e.From, e.Spells = slices.Clone(e.Tags), slices.Clone(e.Targets), slices.Clone(e.From), slices.Clone(e.Spells)
+	if !p.strict {
+		stripUnused(e)
+	}
+	// The lowered effect is the engine's own: its spell is hidden, so the menu's checks (which name only spells of
+	// the table) do not apply to it.
+	if err := b.checkEffectUnless(own, p.owner, at, e, p.strict); err != nil {
+		c.add(err)
+		return false
+	}
+	b.bindGate(b.featureEntry[p.owner], e)
+	if err := b.n.compileEffect(p.owner, e); err != nil {
+		attr, reason := effectError(e, err.Error())
+		c.add(ovErr(p.owner, "%v", err).at(at+attr, reason))
+		return false
+	}
+	return true
+}
+
+// checkEffectUnless is checkEffect, except for an effect the engine wrote.
+func (b *overlayBuilder) checkEffectUnless(own bool, owner, at string, e *Effect, strict bool) error {
+	if own {
+		return nil
+	}
+	return b.checkEffect(owner, at, e, strict)
 }
 
 // compileOwn compiles an effect the engine wrote itself (the spellcasting

@@ -479,7 +479,8 @@ The spell is registered with the SRD's summoning spells, so `SummonSpells`, `Sum
 | `role` | `companion` | `mount` is refused |
 | `max_live` | The most creatures of the spell the caster keeps; a casting that would pass it is refused; 0 is no limit of its own | 0 to 40 |
 | `replaces` | `none` (the default) or `same_summon` | |
-| `resource_key`, `resource_cost` | Reserved | Refused |
+| `resource_key`, `resource_cost` | What a feature's summon spends | Refused on a spell (`value` at `.summon.resource_key`) |
+| `casting_time`, `duration`, `concentration` | What a feature's summon takes to cast and how long it lasts | Refused on a spell, which has its own |
 
 The spell is a leveled spell with only the caster as target, and with no attack, saving throw, damage, healing or area.
 It is not a ritual: the cost of a summon is a slot (`value` at `.ritual`).
@@ -487,6 +488,33 @@ A refusal of a summon's own field is a violation at `.summon.<field>`.
 The target is refused at `.target.kind`, and a cantrip or a spell with damage, healing, a saving throw, an attack or an area at `.summon`.
 `slot()` is legal in a summon's count as in a creature's formulas, and nowhere else.
 An archived or switched-off creature is not offered by a summoning spell and is refused in a cast (`ErrSummonCreature`); the creatures already made keep working.
-A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
+A player reads the summon of a spell or a feature in `ListTableEntries` as a list of creature keys and nothing else.
+Of those keys, a table creature stays only while a live creature of that key belongs to a character of the player; an SRD creature stays.
+The count, its growth, the limit, the turn mode, the role, what is replaced, the cost and the timing are the master's.
+A field that `TableSummon` gets later is the master's until it is named in `playerSummonFields` (`characters/tablecontent.go`).
 The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
 Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.
+
+## Table feature summons
+
+A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
+An option carries none (`value` at `.summon`).
+The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
+It is not a spell of the holder's list: a sheet cannot list it.
+No list, search or entry shows it.
+Only the master and a player whose character has the feature's entry read its details.
+The summon takes a spell key made from the feature's key.
+If another entry already has that key, the feature is refused at `.key`, and the message names the key.
+
+| Field | Meaning | Limits |
+| --- | --- | --- |
+| `resource_key` | The resource a casting spends a use of | A resource the feature's entry defines with a `resource` effect, or an SRD resource; otherwise `reference` at `.summon.resource_key` |
+| `resource_cost` | Uses a casting spends | 0 or 1 |
+| `casting_time` | Time to cast | An action by default |
+| `duration`, `concentration` | How long the creatures last, and whether the holder concentrates | Instantaneous by default |
+| `count_per_slot_level` | No slot is spent, so nothing is added for a higher circle | Must be 0 |
+
+`slot()` is 0 in the count of a feature's summon and in the formulas of its creatures.
+How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
+A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
+Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.

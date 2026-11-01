@@ -87,6 +87,11 @@ export function subtitleOf(i: SubtitleInput): string {
       ]),
     );
   }
+  if (s.grantedBy) {
+    return tight(
+      `Habilidade · ${s.castingTimePt}${i.inCombat && s.concentration ? ' · concentração' : ''}`,
+    );
+  }
   return tight(
     `Magia de ${circleLabel(s.level)}${i.ritual ? ' · ritual' : ''} · ${s.castingTimePt}${i.inCombat && s.concentration ? ' · concentração' : ''}`,
   );
@@ -185,6 +190,7 @@ export function listLabelOf(
 }
 
 export interface MissingInput {
+  /** The cast spends no slot (a ritual, or a feature's summon): there is no slot to choose. */
   readonly ritual: boolean;
   readonly hasSlot: boolean;
   readonly familiar: boolean;
@@ -226,7 +232,7 @@ export function missingOf(i: MissingInput): string {
   return `${text[0].toUpperCase()}${text.slice(1)}.`;
 }
 
-/** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
+/** "Conjurar como ritual · 1 hora · sem gastar espaço", what the slot costs, or the use a feature's summon spends. */
 export function costLineOf(
   s: SummonSpellOptions | null,
   ritual: boolean,
@@ -238,6 +244,10 @@ export function costLineOf(
   }
   if (ritual) {
     return tight(`Conjurar como ritual · ${s.castingTimePt} · sem gastar espaço`);
+  }
+  if (s.grantedBy) {
+    const made = count > 1 ? `${creaturesText(count)} · ` : '';
+    return tight(`${made}${s.castingTimePt} · gasta um uso · restam ${s.usesLeft}`);
   }
   const spend = slot
     ? `gasta um espaço de ${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}`
@@ -284,4 +294,14 @@ export function diceFlagsOf(
   const canType = combat.diceMode !== DiceMode.APP;
   const preferApp = effectivePreference(combat.diceMode, combat.preference) === DicePreference.APP;
   return { canApp, canType, typing: !canApp || (canType && !preferApp) };
+}
+
+/** What the sheet answers when it cast: for the panel's live notice. */
+export interface SummonSheetResult {
+  readonly spellName: string;
+  readonly ritual: boolean;
+  readonly castingTime: string;
+  readonly names: readonly string[];
+  readonly count: number;
+  readonly dismissed: number;
 }

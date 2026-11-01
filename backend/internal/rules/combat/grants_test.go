@@ -143,3 +143,35 @@ func TestGrantedSpellsOutsideAFight(t *testing.T) {
 		t.Errorf("misty step with no use left = %+v, want NO_USES", ms)
 	}
 }
+
+// The summon of a table feature is no spell, so the turn's spell limit (SRD 5.1, Casting Time) neither stops it after a
+// bonus action spell nor stops a bonus action spell after it.
+func TestAFeatureSummonIsOutsideTheTurnsSpellLimit(t *testing.T) {
+	t.Parallel()
+	summon := grantedSpell("spell:feature-chamado@mesa", 1, limited, func(g *rules.GrantedSpell) { g.FeatureSummon = true })
+	bonusSummon := grantedSpell("spell:feature-grito@mesa", 1, limited, func(g *rules.GrantedSpell) {
+		g.FeatureSummon = true
+		g.Spell.CastingTime.Unit = rules.CastBonusAction
+	})
+	plain := grantedSpell("spell:shield-of-faith", 1, limited)
+	bonus := grantedSpell("spell:healing-word", 1, limited, func(g *rules.GrantedSpell) { g.Spell.CastingTime.Unit = rules.CastBonusAction })
+	d := rules.Derived{
+		GrantedSpells: []rules.GrantedSpell{summon, bonusSummon, plain, bonus},
+		Resources:     []rules.Resource{{Key: "usos_da_graca", Max: 1, Recharge: rules.RechargeLongRest}},
+	}
+
+	afterBonusSpell := Options(d, TurnState{BonusSpellCast: true}, Usage{})
+	if s := spellOptionFor(t, afterBonusSpell, summon.Spell.Key); !s.Enabled {
+		t.Errorf("the feature's summon after a bonus action spell = %+v, want it enabled", s)
+	}
+	if s := spellOptionFor(t, afterBonusSpell, plain.Spell.Key); s.Enabled || s.Reason == nil || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("a spell after a bonus action spell (the control) = %+v, want BONUS_ACTION_SPELL_LIMIT", s)
+	}
+	afterSpell := Options(d, TurnState{SpellCast: true}, Usage{})
+	if s := spellOptionFor(t, afterSpell, bonusSummon.Spell.Key); !s.Enabled {
+		t.Errorf("a feature's summon cast with a bonus action after a spell = %+v, want it enabled", s)
+	}
+	if s := spellOptionFor(t, afterSpell, bonus.Spell.Key); s.Enabled || s.Reason == nil || s.Reason.Code != ReasonBonusActionSpellLimit {
+		t.Errorf("a bonus action spell after a spell (the control) = %+v, want BONUS_ACTION_SPELL_LIMIT", s)
+	}
+}

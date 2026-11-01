@@ -73,6 +73,10 @@ type content struct {
 	// tableSummons are the rules of the table spells' summons (overlay_summon.go), by spell key; a spell
 	// of it is in summons too.
 	tableSummons map[string]*tableSummonRule
+	// featureSummons are the hidden spells of the table features' summons (overlay_featuresummon.go), by spell key,
+	// each with the key of the entry (class, subclass, race, subrace or background) its feature belongs to. No catalog
+	// lists them.
+	featureSummons map[string]string
 	// monsterEntries are the creatures as the lists show them, sorted by
 	// Portuguese name.
 	monsterEntries []CreatureEntry
@@ -992,7 +996,9 @@ func (c *content) spellCatalog(reuse map[string]*SpellDetails) []SpellEntry {
 			Classes: c.spellClasses(s), Ritual: s.Ritual, Concentration: s.Concentration,
 			CastingTime: parseCastingTime(s.CastingTime), Archived: c.archived[k], Off: c.off[k],
 		}
-		out = append(out, e)
+		if _, hidden := c.featureSummons[k]; !hidden {
+			out = append(out, e)
+		}
 		c.spellEntries[k] = e
 		if d, ok := reuse[k]; ok && d.Spell.Archived == e.Archived && d.Spell.Off == e.Off && slices.Equal(d.Spell.Classes, e.Classes) {
 			c.spellDetails[k] = d

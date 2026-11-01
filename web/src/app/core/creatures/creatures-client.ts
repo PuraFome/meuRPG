@@ -42,6 +42,8 @@ export interface SummonCast {
   readonly ritual: boolean;
   /** The slot of a cast that is not a ritual. */
   readonly slot?: { readonly level: number; readonly pact: boolean };
+  /** The feature that gives the summon (`SummonSpellOptions.grantedBy`): the cast spends a use of its resource, not a slot. */
+  readonly grantedBy?: string;
   /** The option and the kind of each creature; a name for each, or none. */
   readonly summon: {
     readonly option: number;
@@ -238,6 +240,7 @@ export class CreaturesClient {
       spellKey: cast.spellKey,
       ritual: cast.ritual,
       slot: cast.slot,
+      ...(cast.grantedBy ? { grantedBy: cast.grantedBy } : {}),
       summon: {
         option: cast.summon.option,
         creatureKeys: [...cast.summon.creatureKeys],

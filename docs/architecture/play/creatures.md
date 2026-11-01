@@ -44,6 +44,29 @@ In a campaign that forces physical dice, a player cannot cast a spell whose crea
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
 
+**Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
+`CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.
+`granted_by` refuses a ritual and a slot in the same request (`INVALID_ARGUMENT`).
+A feature's summon is cast only through its feature.
+With a slot, as a ritual or with no `granted_by` it is refused.
+A sheet that lists it as a cantrip, a known or a prepared spell, or as a pick, is refused like a key the content does not have: `Validate` says "is not a known key of the right kind" at that field, and `Derive` (a stored sheet) gives `unknown_key`, with no word of the feature in either.
+A `CastSummon` with `ritual` for its key, from a character without the feature, gets `not_found` ("spell not found"), as for an unknown key.
+The casting spends one use of the feature's resource, and is refused with `NO_USES` when none is left.
+The cast list shows a feature's summon as it shows any granted spell: the source, the uses left, the casting ability with its save DC and attack bonus, and the first circle of the hidden spell. The wire carries no flag that marks it, so the summon rolls no attack and asks for no save, and the numbers are those of the grant.
+The feature's `casting_time` is the time it takes; outside combat a time longer than an action is allowed, as for a spell.
+The count is the feature's formula with `slot()` 0; a formula creature resolves with `slot()` 0.
+Concentration, `max_live`, the replacement of an old casting and the dismissal are a spell's.
+A feature's summon is not a spell.
+No Counterspell window opens for it.
+It does not count as the turn's spell, and the limit of the turn's spells (a bonus action spell and another spell) does not stop it.
+The undo in a combat gives the use back, as it gives a slot back, and removes the creatures.
+A casting outside a combat that takes time and concentrates ends the caster's other concentration cast when it starts, before its own row is written (one concentrating cast at a time).
+`GetSummonOptions` names the feature with `granted_by`, `resource_key` and `uses_left`, and offers its one circle only while a use is left; it still lists the castings it would replace.
+A rest returns the uses by the resource's `recharge`.
+`GetSpellDetails` answers the feature's hidden spell to the master and to a player whose character has the entry of the feature, live or archived.
+The entry is a class, subclass, race, subrace or background.
+Every other member gets an unknown spell.
+
 **`GetSummonOptions`** (read, `IDEMPOTENT`).
 For a player character it answers what the cast sheet draws: for each summoning spell it may cast (on the sheet, prepared or in the spellbook; the Pact of the Chain gives the Find Familiar ritual) the key, the Portuguese name, the level, the time, whether it is a ritual and needs concentration, `can_ritual` and `can_cast_with_slot`; for each level it can use, the options `rules.SummonOptions` gives (the count already with the level, and the forms or the type and maximum CR); the slots (`SummonSlot`, pact ones with `pact`); and per spell what a casting would send away (the living familiar; the creatures of the current concentration).
 It is the same code `CheckSummon` uses (`summonStanding`), so the read and the casting agree; `CastSummon` still checks every choice.

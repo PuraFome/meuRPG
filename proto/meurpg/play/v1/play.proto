@@ -1112,6 +1112,9 @@ message CastSummonRequest {
   SummonChoice summon = 6;
   // A UUID the app generates once for this casting and sends again on a retry.
   string idempotency_key = 7;
+  // The feature that gives the summon (its key, SummonSpellOptions.granted_by): the casting spends a use of
+  // the feature's resource, and is neither a ritual nor cast with a slot. Empty for the character's own spells.
+  string granted_by = 8;
 }
 
 // CastSummonResponse returns what the casting made.
@@ -1121,7 +1124,7 @@ message CastSummonResponse {
   repeated string creature_ids = 1;
   // The creatures a new familiar replaced and dismissed (UUIDs), if any.
   repeated string dismissed_creature_ids = 2;
-  // The caster's vitals after the slot was spent; unset for a ritual.
+  // The caster's vitals after the slot or the use was spent; unset for a ritual.
   CharacterVitals vitals = 3;
 }
 

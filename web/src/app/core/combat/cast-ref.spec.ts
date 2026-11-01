@@ -5,7 +5,7 @@ import {
   SpellOptionSchema,
   SpellSchema,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { castRefOf, optionOfRef, splitCastRef } from './cast-ref';
+import { castRefOf, castRefOfKey, optionOfRef, splitCastRef } from './cast-ref';
 import { grantLine, spellLine } from './combat-options';
 
 const own = create(SpellOptionSchema, {
@@ -31,6 +31,15 @@ describe('the reference of a spell the character can cast', () => {
       grantedBy: 'feat:graca@mesa',
     });
     expect(splitCastRef('spell:bless')).toEqual({ key: 'spell:bless', grantedBy: '' });
+  });
+
+  it('is built from a key and the granting source when only those are at hand', () => {
+    expect(castRefOfKey('spell:bless', '')).toBe('spell:bless');
+    expect(castRefOfKey('spell:bless', 'feat:graca@mesa')).toBe(castRefOf(granted));
+    expect(splitCastRef(castRefOfKey('spell:bless', 'feat:graca@mesa'))).toEqual({
+      key: 'spell:bless',
+      grantedBy: 'feat:graca@mesa',
+    });
   });
 
   it('finds the option a reference names, the same spell twice apart', () => {
