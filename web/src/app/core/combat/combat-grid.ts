@@ -88,3 +88,10 @@ export function slotTitle(s: {
   }
   return s.pact ? `${circleLabel(s.level)} (pacto)` : circleLabel(s.level);
 }
+
+/** "3 de 4 livres" when the total is known, else "3 livres". */
+export function freeLabel(slot: { free: number; total: number }): string {
+  if (slot.total > 0)
+    return `${slot.free} de ${slot.total} ${slot.free === 1 ? 'livre' : 'livres'}`;
+  return `${slot.free} ${slot.free === 1 ? 'livre' : 'livres'}`;
+}

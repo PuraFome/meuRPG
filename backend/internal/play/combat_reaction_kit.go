@@ -138,7 +138,7 @@ func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 }
 
 // innateChoices are the uses a day of a stat block's innate spell, one choice a resource with uses left,
-// offered beside the slots (an SRD creature has one or the other, not both): the choice has the spell's own
+// offered beside the slots: the choice has the spell's own
 // level and counts the uses where a slot choice counts slots.
 func (k kit) innateChoices(spell string) []*rulesv1.SlotChoice {
 	var out []*rulesv1.SlotChoice

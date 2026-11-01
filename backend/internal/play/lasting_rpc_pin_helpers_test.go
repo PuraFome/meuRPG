@@ -30,7 +30,9 @@ import (
 
 var updateLasting = flag.Bool("update-lasting", false, "write the golden files of the lasting effects (testdata/lasting_core and testdata/lasting_rpc) again")
 
-var rpcTime = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z`)
+var (
+	rpcTime = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z`)
+)
 
 // wantLastingGolden compares got with the golden file of the scenario in testdata/<dir>.
 func wantLastingGolden(t *testing.T, dir, name, got string) {

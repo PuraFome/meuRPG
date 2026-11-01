@@ -17,7 +17,8 @@ import (
 // about its reactions (PM-04). A full sheet gives its spells, slots, the casting
 // numbers and the features (Uncanny Dodge, Deflect Missiles, Cutting Words and the
 // tiefling's Infernal Legacy); a basic sheet made from a creature gives the
-// Spellcasting trait of its stat block (slots) and the uses of its Innate Spellcasting; any other basic sheet has none.
+// Spellcasting trait of its stat block (slots) and the uses of its Innate
+// Spellcasting; any other basic sheet has none.
 func (s *Service) ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (link.ReactionStats, error) {
 	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {

@@ -34,9 +34,10 @@ It is the reactor's player, or the master for an NPC's and, to answer for the pl
 When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`.
 The attacker sees "esperando a reação"; the hit player and the master get the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total).
 The player decides without knowing the total, as at a table.
-A creature whose Innate Spellcasting lists a reaction spell with uses a day (the Couatl's Shield, the giants' Feather Fall) gets the use as one more `SlotChoice`, with `resource` set to the resource key and `free` and `total` counting uses.
+A creature whose Innate Spellcasting lists a reaction spell with uses a day (the Couatl's Shield) gets the use as one more `SlotChoice`, with `resource` set to the resource key and `free` and `total` counting uses.
 Answering with that `resource` counts one use under `res:<resource>` in the combatant's `slots_used`.
 The undo gives the use back, as it gives a slot back.
+The same path serves any reaction spell the window handles.
 The attacker's sheet follows the answer: on each `encounter_changed` it reads `GetTurnOptions` again, a pending damage that is gone (Shield stopped the hit) turns the result into a miss, and one back in `AWAITING_ROLL` goes on to the damage.
 The player learns only that, never the armor class.
 

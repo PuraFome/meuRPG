@@ -176,7 +176,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return {
         ...base,
         icon: 'shield',
-        text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${circleLabel(slot.level)})` : ''}, com a reação`,
+        text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${slot.resource ? 'conjuração inata' : circleLabel(slot.level)})` : ''}, com a reação`,
       };
     },
   ],
