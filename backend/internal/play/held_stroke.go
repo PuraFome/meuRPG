@@ -129,16 +129,22 @@ func (st inspirationHoldStore) askStroke(ctx context.Context, h heldRoll) error 
 	if err != nil {
 		return err
 	}
-	return st.q.AskInspirationHoldStroke(ctx, playdb.AskInspirationHoldStrokeParams{ //nolint:wrapcheck // the gate wraps it
+	if err := st.q.AskInspirationHoldStroke(ctx, playdb.AskInspirationHoldStrokeParams{
 		ID: h.ID, StrokeFailed: h.StrokeFailed, DieAnswerKey: h.DieAnswerKey, DieUsed: raw,
-	})
+	}); err != nil {
+		return fmt.Errorf("ask Stroke of Luck: %w", err)
+	}
+	return nil
 }
 
 func (st inspirationHoldStore) answerStroke(ctx context.Context, h heldRoll) error {
-	return st.q.AnswerInspirationHoldStroke(ctx, playdb.AnswerInspirationHoldStrokeParams{ //nolint:wrapcheck // the question wraps it
+	if err := st.q.AnswerInspirationHoldStroke(ctx, playdb.AnswerInspirationHoldStrokeParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
 		StrokeAnswerKey: h.StrokeAnswerKey, StrokeFrom: h.StrokeFrom,
-	})
+	}); err != nil {
+		return fmt.Errorf("answer Stroke of Luck: %w", err)
+	}
+	return nil
 }
 
 func (hs heldStores) askStroke(ctx context.Context, h heldRoll) error { return hs.st.askStroke(ctx, h) }
@@ -202,7 +208,7 @@ func (q strokeQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 // (GetOpenGameSessionForUpdate), so two changes of a table take turns, as for every other spend of a use.
 func (s *Service) spendUse(ctx context.Context, env gateEnv, r heldRoller, key string) error {
 	if r.CharacterID == "" {
-		return errors.New("a use outside a character") //nolint:err113 // the paths that ask it all roll for a character
+		return connect.NewError(connect.CodeInternal, errors.New("a use outside a character"))
 	}
 	if env.c != nil {
 		_, err := s.spendResource(ctx, env.c, r.CharacterID, key, 1)
@@ -220,7 +226,10 @@ func (s *Service) spendUse(ctx context.Context, env gateEnv, r heldRoller, key s
 	_, _, err = s.vitals.AdjustVitals(ctx, env.tx, r.CampaignID, r.CharacterID, &playv1.AdjustCharacterVitalsRequest{
 		ResourcesUsed: []*playv1.ResourceUsed{{Key: key, Used: left.GetUsed() + 1}},
 	})
-	return err //nolint:wrapcheck // the question wraps it
+	if err != nil {
+		return fmt.Errorf("spend the use: %w", err)
+	}
+	return nil
 }
 
 // strokeLeft says the roller has the feature with a use left: only a roll of a player's character that may ask and

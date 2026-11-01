@@ -116,16 +116,22 @@ func (st inspirationHoldStore) askIndomitable(ctx context.Context, h heldRoll) e
 			return fmt.Errorf("keep the die: %w", err)
 		}
 	}
-	return st.q.AskInspirationHoldIndomitable(ctx, playdb.AskInspirationHoldIndomitableParams{ //nolint:wrapcheck // the gate wraps it
+	if err := st.q.AskInspirationHoldIndomitable(ctx, playdb.AskInspirationHoldIndomitableParams{
 		ID: h.ID, IndomitableFailed: h.IndomFailed, DieAnswerKey: h.DieAnswerKey, DieUsed: raw,
-	})
+	}); err != nil {
+		return fmt.Errorf("ask Indomitable: %w", err)
+	}
+	return nil
 }
 
 func (st inspirationHoldStore) answerIndomitable(ctx context.Context, h heldRoll) error {
-	return st.q.AnswerInspirationHoldIndomitable(ctx, playdb.AnswerInspirationHoldIndomitableParams{ //nolint:wrapcheck // the question wraps it
+	if err := st.q.AnswerInspirationHoldIndomitable(ctx, playdb.AnswerInspirationHoldIndomitableParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
 		IndomitableAnswerKey: h.IndomAnswerKey, IndomitableFrom: h.IndomFrom, IndomitableTo: h.IndomTo,
-	})
+	}); err != nil {
+		return fmt.Errorf("answer Indomitable: %w", err)
+	}
+	return nil
 }
 
 // indomitableQuestion is the fighter's "Falhou na salvaguarda. Usar Indomitável para rolar de novo?".
@@ -165,7 +171,7 @@ func (q indomitableQuestion) apply(ctx context.Context, ae answering, h heldRoll
 		}
 		roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
 		if ae.c == nil {
-			return h, errors.New("the Indomitable question outside a combat") //nolint:err113 // the paths that ask it all run in a combat
+			return h, connect.NewError(connect.CodeInternal, errors.New("the Indomitable question outside a combat"))
 		}
 		if _, err := ae.s.spendResource(ctx, ae.c, ae.spec.Roller.CharacterID, indomitableResource, 1); err != nil {
 			return h, err
