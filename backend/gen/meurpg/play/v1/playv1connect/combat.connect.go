@@ -552,10 +552,13 @@ type CombatServiceClient interface {
 	//     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
 	StandUp(context.Context, *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error)
 	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
-	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+	// combat in either mode (RN-25, ADR-0017): the combatant on turn (the mover)
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
-	// mode the server never finds out by itself that anyone left a reach. It makes
-	// the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+	// mode the server never finds out by itself that anyone left a reach; in GRID
+	// mode it finds the ones a move makes, and the master adds the ones it cannot
+	// see (a push, a forced move, a ruling). The offer looks at no square, no reach
+	// and no fog: the master decides. It makes the same offer a move makes in GRID
+	// mode (OpportunityOffer, with no square):
 	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
 	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
 	// master answers for an NPC's reaction (he attacks by hand) or skips the offer
@@ -572,12 +575,13 @@ type CombatServiceClient interface {
 	//   - `not_found`: the combat, the mover or the reactor is not in the open
 	//     session.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
-	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
-	//     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
-	//     reactor cannot make the attack now, or is on the mover's side, or has no
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+	//     (NOT_ACTIVE); the mover is not on turn (NOT_YOUR_TURN); the reactor used
+	//     its reaction (REACTION_USED); the reactor cannot make the attack now
+	//     (surprised, down, incapacitated), or is on the mover's side, or has no
 	//     melee attack, or the mover is defeated, hidden or took the Disengage
-	//     action, or the same offer already waits (NO_OPPORTUNITY).
+	//     action, or the same offer already waits (NO_OPPORTUNITY), also when a
+	//     move made it.
 	OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error)
 	// WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
 	// opportunity offer that nobody answered (he offered it by mistake). The offer
@@ -587,7 +591,8 @@ type CombatServiceClient interface {
 	//
 	// Every stream gets `encounter_changed`.
 	//
-	// Errors: as SkipOpportunity.
+	// Errors: as SkipOpportunity, and `failed_precondition` THEATRE_ONLY for an
+	// offer a move made: only an offer the master made by hand is taken back.
 	WithdrawOpportunity(context.Context, *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error)
 	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
 	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed
@@ -2546,10 +2551,13 @@ type CombatServiceHandler interface {
 	//     less movement left than the cost (TOO_FAR, with missing_ft and missing_dft).
 	StandUp(context.Context, *connect.Request[v1.StandUpRequest]) (*connect.Response[v1.StandUpResponse], error)
 	// OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
-	// combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+	// combat in either mode (RN-25, ADR-0017): the combatant on turn (the mover)
 	// left the reach of another, the reactor, which the master chooses. In THEATRE
-	// mode the server never finds out by itself that anyone left a reach. It makes
-	// the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+	// mode the server never finds out by itself that anyone left a reach; in GRID
+	// mode it finds the ones a move makes, and the master adds the ones it cannot
+	// see (a push, a forced move, a ruling). The offer looks at no square, no reach
+	// and no fog: the master decides. It makes the same offer a move makes in GRID
+	// mode (OpportunityOffer, with no square):
 	// the reactor's player gets the prompt (Encounter.opportunity_offers) and
 	// answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
 	// master answers for an NPC's reaction (he attacks by hand) or skips the offer
@@ -2566,12 +2574,13 @@ type CombatServiceHandler interface {
 	//   - `not_found`: the combat, the mover or the reactor is not in the open
 	//     session.
 	//   - `permission_denied`: the caller is a player.
-	//   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
-	//     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
-	//     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
-	//     reactor cannot make the attack now, or is on the mover's side, or has no
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+	//     (NOT_ACTIVE); the mover is not on turn (NOT_YOUR_TURN); the reactor used
+	//     its reaction (REACTION_USED); the reactor cannot make the attack now
+	//     (surprised, down, incapacitated), or is on the mover's side, or has no
 	//     melee attack, or the mover is defeated, hidden or took the Disengage
-	//     action, or the same offer already waits (NO_OPPORTUNITY).
+	//     action, or the same offer already waits (NO_OPPORTUNITY), also when a
+	//     move made it.
 	OfferOpportunity(context.Context, *connect.Request[v1.OfferOpportunityRequest]) (*connect.Response[v1.OfferOpportunityResponse], error)
 	// WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
 	// opportunity offer that nobody answered (he offered it by mistake). The offer
@@ -2581,7 +2590,8 @@ type CombatServiceHandler interface {
 	//
 	// Every stream gets `encounter_changed`.
 	//
-	// Errors: as SkipOpportunity.
+	// Errors: as SkipOpportunity, and `failed_precondition` THEATRE_ONLY for an
+	// offer a move made: only an offer the master made by hand is taken back.
 	WithdrawOpportunity(context.Context, *connect.Request[v1.WithdrawOpportunityRequest]) (*connect.Response[v1.WithdrawOpportunityResponse], error)
 	// SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
 	// or PARTY, "Aliado". It decides who may pass whom (an enemy cannot be passed

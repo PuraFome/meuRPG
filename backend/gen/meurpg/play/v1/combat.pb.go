@@ -819,9 +819,9 @@ const (
 	// move that gets some squares before the locked door is no refusal: it ends
 	// before the door (MoveCombatantResponse.locked_door).
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED EncounterBlockedReason = 60
-	// SpendMovement, OfferOpportunity: the combat is a GRID one, where movement is
-	// a move on the map and the server finds the opportunity attacks itself. Both
-	// are for a THEATRE combat (RN-25).
+	// SpendMovement: the combat is a GRID one, where movement is a move on the map.
+	// It is for a THEATRE combat (RN-25). WithdrawOpportunity: the offer was made by
+	// a move (it has a square); only an offer the master made by hand is taken back.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY EncounterBlockedReason = 61
 	// MoveCombatant (a move, a jump, a placement), FireTrap, SearchForTraps and
 	// what else needs squares: the combat is a THEATRE one (RN-25), which has no
@@ -830,7 +830,7 @@ const (
 	// StartEncounter: a THEATRE combat takes no map point (it needs no map).
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP EncounterBlockedReason = 63
 	// OfferOpportunity: the opportunity attack cannot be offered now: the reactor
-	// cannot make it (defeated, down, incapacitated, blinded, no melee attack) or is
+	// cannot make it (defeated, down, surprised, incapacitated, blinded, no melee attack) or is
 	// on the mover's side, the mover is defeated, hidden or took the Disengage
 	// action, or the same offer already waits. (The reactor's reaction being used is
 	// REACTION_USED.)
@@ -7886,7 +7886,7 @@ func (x *SpendMovementResponse) GetMovementLeftDft() int32 {
 	return 0
 }
 
-// OfferOpportunityRequest offers an opportunity attack, in a THEATRE combat.
+// OfferOpportunityRequest offers an opportunity attack by hand, in a THEATRE or a GRID combat.
 type OfferOpportunityRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`

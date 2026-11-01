@@ -2929,7 +2929,7 @@ export const SpendMovementResponseSchema: GenMessage<SpendMovementResponse> = /*
   messageDesc(file_meurpg_play_v1_combat, 41);
 
 /**
- * OfferOpportunityRequest offers an opportunity attack, in a THEATRE combat.
+ * OfferOpportunityRequest offers an opportunity attack by hand, in a THEATRE or a GRID combat.
  *
  * @generated from message meurpg.play.v1.OfferOpportunityRequest
  */
@@ -13274,9 +13274,9 @@ export enum EncounterBlockedReason {
   DOOR_LOCKED = 60,
 
   /**
-   * SpendMovement, OfferOpportunity: the combat is a GRID one, where movement is
-   * a move on the map and the server finds the opportunity attacks itself. Both
-   * are for a THEATRE combat (RN-25).
+   * SpendMovement: the combat is a GRID one, where movement is a move on the map.
+   * It is for a THEATRE combat (RN-25). WithdrawOpportunity: the offer was made by
+   * a move (it has a square); only an offer the master made by hand is taken back.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY = 61;
    */
@@ -13300,7 +13300,7 @@ export enum EncounterBlockedReason {
 
   /**
    * OfferOpportunity: the opportunity attack cannot be offered now: the reactor
-   * cannot make it (defeated, down, incapacitated, blinded, no melee attack) or is
+   * cannot make it (defeated, down, surprised, incapacitated, blinded, no melee attack) or is
    * on the mover's side, the mover is defeated, hidden or took the Disengage
    * action, or the same offer already waits. (The reactor's reaction being used is
    * REACTION_USED.)
@@ -15852,10 +15852,13 @@ export const CombatService: GenService<{
   },
   /**
    * OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
-   * combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+   * combat in either mode (RN-25, ADR-0017): the combatant on turn (the mover)
    * left the reach of another, the reactor, which the master chooses. In THEATRE
-   * mode the server never finds out by itself that anyone left a reach. It makes
-   * the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+   * mode the server never finds out by itself that anyone left a reach; in GRID
+   * mode it finds the ones a move makes, and the master adds the ones it cannot
+   * see (a push, a forced move, a ruling). The offer looks at no square, no reach
+   * and no fog: the master decides. It makes the same offer a move makes in GRID
+   * mode (OpportunityOffer, with no square):
    * the reactor's player gets the prompt (Encounter.opportunity_offers) and
    * answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
    * master answers for an NPC's reaction (he attacks by hand) or skips the offer
@@ -15872,12 +15875,13 @@ export const CombatService: GenService<{
    *   - `not_found`: the combat, the mover or the reactor is not in the open
    *     session.
    *   - `permission_denied`: the caller is a player.
-   *   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
-   *     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
-   *     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
-   *     reactor cannot make the attack now, or is on the mover's side, or has no
+   *   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+   *     (NOT_ACTIVE); the mover is not on turn (NOT_YOUR_TURN); the reactor used
+   *     its reaction (REACTION_USED); the reactor cannot make the attack now
+   *     (surprised, down, incapacitated), or is on the mover's side, or has no
    *     melee attack, or the mover is defeated, hidden or took the Disengage
-   *     action, or the same offer already waits (NO_OPPORTUNITY).
+   *     action, or the same offer already waits (NO_OPPORTUNITY), also when a
+   *     move made it.
    *
    * @generated from rpc meurpg.play.v1.CombatService.OfferOpportunity
    */
@@ -15895,7 +15899,8 @@ export const CombatService: GenService<{
    *
    * Every stream gets `encounter_changed`.
    *
-   * Errors: as SkipOpportunity.
+   * Errors: as SkipOpportunity, and `failed_precondition` THEATRE_ONLY for an
+   * offer a move made: only an offer the master made by hand is taken back.
    *
    * @generated from rpc meurpg.play.v1.CombatService.WithdrawOpportunity
    */
