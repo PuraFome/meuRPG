@@ -127,6 +127,8 @@ type damageFlow struct {
 	states map[string][]playdb.CombatantState
 	pr     *partsRoll
 	roll   dice.Result
+	// reroll is the use of a reroll rule the roll spent (combat_damage_reroll.go).
+	reroll *damageRerollUse
 	// total is the damage never below 0; faces and rolledTotal are what the pending damages keep.
 	total       int
 	faces       []int32
@@ -153,6 +155,9 @@ func (f *damageFlow) run(ctx context.Context) (any, error) {
 	}
 	if held {
 		return f.out.made, nil
+	}
+	if err := f.rerollDamage(ctx); err != nil {
+		return nil, err
 	}
 	f.adjustRoll()
 	f.startEvent()
@@ -378,7 +383,7 @@ func (f *damageFlow) startEvent() {
 	f.out.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
 		DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: conv.Int32(int(p.DiceBonus) + int(p.CriticalMax)), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: f.faces,
-		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal,
+		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal, DamageReroll: f.reroll,
 	}
 }
 

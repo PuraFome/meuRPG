@@ -388,6 +388,11 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 				return err
 			}
 		}
+		if ev.DamageReroll != nil {
+			if err := u.spendResourcesBack(ctx, who, ev.DamageReroll.Resource, ev.DamageReroll.Cost); err != nil {
+				return err
+			}
+		}
 	}
 	return u.onceMarksBack(ctx, who, ev.OnceBefore)
 }

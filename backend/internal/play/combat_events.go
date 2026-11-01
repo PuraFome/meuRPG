@@ -665,9 +665,11 @@ type actionEvent struct {
 	// made: the undo of the roll puts it back, so the damage is offered as it was.
 	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
-	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
-	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
-	Steps         []stepGroup `json:"steps,omitempty"`
+	ManeuverSpent []string `json:"maneuver_spent,omitempty"`
+	// DamageReroll is the use of a reroll rule the damage roll spent (combat_damage_reroll.go); an undo gives it back.
+	DamageReroll *damageRerollUse `json:"damage_reroll,omitempty"`
+	OnceBefore   *onceMarks       `json:"once_before,omitempty"`
+	Steps        []stepGroup      `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`
