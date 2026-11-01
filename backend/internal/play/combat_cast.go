@@ -778,7 +778,7 @@ func (f *castFlow) affect(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := f.offerResistance(ctx); err != nil { // a creature with Legendary Resistance failed a save: the master decides first
+	if err := f.offerResistance(ctx); err != nil { // a target with Legendary Resistance and a use left: the master decides first
 		return err
 	}
 	if err := f.pushFailedSaves(ctx); err != nil { // the forced move of a failed save (combat_forced.go)

@@ -415,6 +415,15 @@ func (w *world) sacredFlameFight() (pens, dragon *playv1.Combatant) {
 	return pens, dragon
 }
 
+// heldAnswer is what the master does with the window of a held cast.
+type heldAnswer int
+
+const (
+	passWindow heldAnswer = iota
+	useTrait
+	removeDragon
+)
+
 // heldCastRead is everything a player can read of a Sacred Flame at the dragon that waits for the master and
 // then lands: the combat and the log while it waits and after the answer, the answer to the cast itself and the
 // stream hints, as the player's own text.
@@ -425,8 +434,8 @@ type heldCastRead struct {
 }
 
 // heldCastRun plays Ana's Sacred Flame at a dragon with three uses left in a world of its own: the dragon rolls
-// face, and the master answers the window (USE on the dragon, or PASS when use is false).
-func heldCastRun(t *testing.T, face int, use bool) heldCastRead {
+// face, and the master answers the window: USE on the dragon, PASS, or takes the dragon out of the combat.
+func heldCastRun(t *testing.T, face int, answer heldAnswer) heldCastRead {
 	t.Helper()
 	w := newWorld(t)
 	ctx := t.Context()
@@ -458,18 +467,26 @@ func heldCastRun(t *testing.T, face int, use bool) heldCastRead {
 			t.Errorf("the master reads %v, want the Legendary Resistance window", enc.GetReactionWindows())
 			return
 		}
+		if answer == removeDragon {
+			must(m.combat.RemoveCombatant(ctx, rq(&playv1.RemoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: dragon.GetId(), IdempotencyKey: newKey()})))
+			for _, p := range players {
+				parts[p.name] = append(parts[p.name], w.reads(p)...) // after the dragon left
+			}
+			out.master = w.reads(m)
+			return
+		}
 		req := &playv1.AnswerReactionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: out.window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey()}
-		if use {
+		if answer == useTrait {
 			req.Answer, req.CreatureIds = playv1.ReactionChoice_REACTION_CHOICE_USE, []string{dragon.GetId()}
 		}
-		answer := m.call(playv1connect.CombatServiceAnswerReactionProcedure, req)
-		if !answer.ok() {
-			t.Fatalf("the master's answer: status %d %s", answer.status, answer.body)
+		resp := m.call(playv1connect.CombatServiceAnswerReactionProcedure, req)
+		if !resp.ok() {
+			t.Fatalf("the master's answer: status %d %s", resp.status, resp.body)
 		}
 		for _, p := range players {
 			parts[p.name] = append(parts[p.name], w.reads(p)...) // after the answer
 		}
-		out.master = slices.Concat(w.reads(m), []reply{answer})
+		out.master = slices.Concat(w.reads(m), []reply{resp})
 	})
 	for _, p := range players {
 		var text strings.Builder
@@ -508,8 +525,8 @@ func normalizeRead(s string) string {
 // nothing to offer and nothing spent).
 func TestAPassedAndAResistedSaveReadTheSameToThePlayers(t *testing.T) {
 	var passed, resisted heldCastRead
-	t.Run("the save passes", func(t *testing.T) { passed = heldCastRun(t, 20, false) })
-	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = heldCastRun(t, 1, true) })
+	t.Run("the save passes", func(t *testing.T) { passed = heldCastRun(t, 20, passWindow) })
+	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = heldCastRun(t, 1, useTrait) })
 	for _, name := range []string{"Ana", "Caio"} {
 		if passed.player[name] != resisted.player[name] {
 			t.Errorf("%s reads a passed save and a resisted one differently:\n--- passed\n%s\n--- resisted\n%s", name, passed.player[name], resisted.player[name])
@@ -534,6 +551,23 @@ func TestAPassedAndAResistedSaveReadTheSameToThePlayers(t *testing.T) {
 		}
 		if spent != (name == "resisted") {
 			t.Errorf("the master's reads of the %s run show a use spent = %v", name, spent)
+		}
+	}
+}
+
+// The master takes the dragon out of the combat while the cast waits. The window and the wait end whatever the
+// dragon rolled, so the players read the same thing after the removal for a passed save and for a failed one.
+// Only the ids and the timestamps are normalised.
+func TestARemovedDragonEndsThePassedAndTheFailedWaitAlike(t *testing.T) {
+	var passed, failed heldCastRead
+	t.Run("the save passes", func(t *testing.T) { passed = heldCastRun(t, 20, removeDragon) })
+	t.Run("the save fails", func(t *testing.T) { failed = heldCastRun(t, 1, removeDragon) })
+	for _, name := range []string{"Ana", "Caio"} {
+		if passed.player[name] != failed.player[name] {
+			t.Errorf("%s reads the removal after a passed save and after a failed one differently:\n--- passed\n%s\n--- failed\n%s", name, passed.player[name], failed.player[name])
+		}
+		if !strings.Contains(failed.player[name], "Esperando o mestre") {
+			t.Errorf("%s reads no wait before the removal: the control is missing", name)
 		}
 	}
 }

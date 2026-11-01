@@ -103,8 +103,10 @@ type windowTrigger struct {
 	// PendingKey is the pending damage the trigger is about (a hit's, or the damage
 	// that was rolled and waits).
 	Pending string `json:"pending,omitempty"`
-	// Resist are the failed saving throws a Legendary Resistance window offers.
+	// Resist are the failed saving throws a Legendary Resistance window offers; none when every save passed.
 	Resist []resistOffer `json:"resist,omitempty"`
+	// Held are the targets with the trait and a use left that hold the window, whether their saves passed or failed.
+	Held []string `json:"held,omitempty"`
 	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
 	Bonus int32 `json:"bonus,omitempty"`
 }

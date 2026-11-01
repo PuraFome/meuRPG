@@ -590,3 +590,63 @@ func TestLegendaryResistance_ACombatThatEndsDropsTheHeldCast(t *testing.T) {
 		t.Error("the dropped cast left a spend")
 	}
 }
+
+// holdState is what the table reads of a waiting cast: the master's window and the players' wait.
+func (a *armed) holdState(t *testing.T) (window bool, wait string) {
+	t.Helper()
+	return a.windowOf(t, a.master, resistKind) != nil, a.get(t, a.ana).GetReactionWait().GetTitlePt()
+}
+
+// The window lasts the same whatever the save rolled: the master takes the only creature that holds it out of
+// the combat, and the window and the hold end alike for a passed save and for a failed one, so the players'
+// wait ends at the same moment either way.
+func TestLegendaryResistance_ARemovedCreatureEndsTheWindowWhateverItRolled(t *testing.T) {
+	t.Parallel()
+	for name, face := range map[string]int{"the save passed": 20, "the save failed": 1} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, e := resistFight(t, "Draco")
+			a.h.roller.queue(face)
+			if _, err := a.holdAt(t, "Draco"); err != nil {
+				t.Fatalf("CastSpell() error = %v", err)
+			}
+			if window, wait := a.holdState(t); !window || wait != "Esperando o mestre" {
+				t.Fatalf("while it waits: window %v, wait %q; want the window and the wait", window, wait)
+			}
+			a.removeReactionCombatant(t, e, "Draco")
+			if window, wait := a.holdState(t); window || wait != "" {
+				t.Errorf("after the removal: window %v, wait %q; want none of them", window, wait)
+			}
+		})
+	}
+}
+
+// A cast at two creatures with the trait, one that passed and one that failed, and a goblin: the window stays
+// while either creature is in the combat, whichever of the two left first, and ends with the last.
+func TestLegendaryResistance_AWindowOfMixedSavesLastsWhileAnyHolderStays(t *testing.T) {
+	t.Parallel()
+	for name, order := range map[string][2]string{"the passed one leaves first": {"Draco", "Drago"}, "the failed one leaves first": {"Drago", "Draco"}} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, e := resistFight(t, "Draco", "Drago")
+			a.put(t, "Draco", 8, 4)
+			a.put(t, "Drago", 8, 5)
+			a.put(t, "Goblin", 8, 6)
+			a.h.roller.queue(1, 20, 1) // the goblin rolls first: it fails; Draco passes and Drago fails
+			if _, err := a.holdAt(t, "Draco", "Drago", "Goblin"); err != nil {
+				t.Fatalf("CastSpell() error = %v", err)
+			}
+			if offers := a.windowOf(t, a.master, resistKind).GetLegendaryResistance().GetOffers(); len(offers) != 1 || offers[0].GetCombatantId() != a.id(t, "Drago") {
+				t.Fatalf("the offers = %v, want Drago's failure alone", offers)
+			}
+			a.removeReactionCombatant(t, e, order[0])
+			if window, wait := a.holdState(t); !window || wait != "Esperando o mestre" {
+				t.Errorf("after %s left: window %v, wait %q; want both kept", order[0], window, wait)
+			}
+			a.removeReactionCombatant(t, e, order[1])
+			if window, wait := a.holdState(t); window || wait != "" {
+				t.Errorf("after both left: window %v, wait %q; want none of them", window, wait)
+			}
+		})
+	}
+}

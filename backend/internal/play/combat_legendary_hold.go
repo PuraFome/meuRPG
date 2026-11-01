@@ -172,7 +172,7 @@ func (f *castFlow) offerResistance(ctx context.Context) error {
 	}
 	var offers []resistOffer
 	var kept []keptSave
-	held := false
+	var held []string
 	for _, h := range f.out.made.Hits {
 		if h.Save == nil {
 			continue
@@ -181,12 +181,12 @@ func (f *castFlow) offerResistance(ctx context.Context) error {
 		if !g.capable[h.Target] {
 			continue
 		}
-		held = true
+		held = append(held, h.Target)
 		if !h.Save.Saved {
 			offers = append(offers, resistOffer{Who: h.Target, D20: h.Save.D20, Total: h.Save.Total, DC: h.Save.DC})
 		}
 	}
-	if !held {
+	if len(held) == 0 {
 		return nil
 	}
 	g.rollback(ctx, f.c)
@@ -196,7 +196,7 @@ func (f *castFlow) offerResistance(ctx context.Context) error {
 		ev.Secret = ev.Secret || t.Hidden
 	}
 	spec := windowSpec{kind: reaction.LegendaryResistance, trigger: windowTrigger{
-		Actor: f.caster.ID, Key: f.call.spellKey, Spell: f.call.spellKey, Level: conv.Int32(f.slotLevel), Roll: "cast", Resist: offers,
+		Actor: f.caster.ID, Key: f.call.spellKey, Spell: f.call.spellKey, Level: conv.Int32(f.slotLevel), Roll: "cast", Resist: offers, Held: held,
 	}}
 	ev, err := f.s.holdAction(ctx, f.c, f.m, "cast", f.caster, f.req, holdData{Saves: kept}, []windowSpec{spec}, ev)
 	if err != nil {
@@ -379,22 +379,27 @@ func offered(t windowTrigger, id string) bool {
 	return false
 }
 
-// resistGone says no creature the window offers is in the combat any more.
-// A window that offers none (every save passed) stays until the master answers it.
+// resistGone says no creature that holds the window is in the combat any more.
+// Those are the targets with the trait and a use left, whatever their saves rolled, so the window lasts the same either way.
+// A window stored without them falls back to the creatures it offers.
 func resistGone(t windowTrigger, byID map[string]playdb.Combatant) bool {
-	if len(t.Resist) == 0 {
-		return false
+	held := t.Held
+	if len(held) == 0 {
+		for _, o := range t.Resist {
+			held = append(held, o.Who)
+		}
 	}
-	for _, o := range t.Resist {
-		if _, ok := byID[o.Who]; ok {
+	for _, id := range held {
+		if _, ok := byID[id]; ok {
 			return false
 		}
 	}
-	return true
+	return len(held) > 0
 }
 
 // resistancePrompt is the master's question of a Legendary Resistance window: each failed save with the
-// roll that failed and the uses its creature has left. Nobody else is shown the window.
+// roll that failed and the uses its creature has left, and nothing when every save passed.
+// Nobody else is shown the window.
 func (wv *windowView) resistancePrompt(w playdb.ReactionWindow, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
 	content, err := wv.s.roster.RulesContent(wv.ctx, nil, wv.m.CampaignID)

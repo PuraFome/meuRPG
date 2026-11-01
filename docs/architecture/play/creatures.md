@@ -192,7 +192,8 @@ Each turned failure spends one use, in the same change as the cast.
 An answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
 A request sent twice spends once.
 No window opens when no target has the trait with a use left, or when the spell has no saving throw.
-The pause is the same whatever the save rolled, so the wait reveals nothing about the roll, only what the docs already say: the creature has the trait and a use left.
+The wait shows only that the creature has the trait and a use left.
+It lasts the same whatever the save rolled: it ends when none of those creatures is in the combat.
 A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
 The wait itself is visible, as it is for a Shield on an NPC, so a player who sees it open for a creature can tell that the master was asked something.
 The app does not hide that timing.
