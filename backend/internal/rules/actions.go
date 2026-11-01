@@ -155,6 +155,7 @@ func (x *deriver) resourcesAndActions() {
 		}
 	}
 	x.maneuvers()
+	x.rollEffects()
 	x.extraDamages()
 	x.spellModifiers()
 	x.ambushes()
@@ -337,6 +338,7 @@ func (x *deriver) criticalAndStyles() {
 		if !x.applies(a) {
 			continue
 		}
+		x.criticalRangeFrom(a)
 		if a.effect.Type == "song_of_rest" {
 			x.d.SongOfRestSides = max(x.d.SongOfRestSides, a.effect.Sides)
 		}

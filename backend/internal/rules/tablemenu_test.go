@@ -151,7 +151,14 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	// Every value of every list is accepted, in the field it goes in.
 	var effects []Effect
 	for _, v := range menuList(t, m, ListModifierTargets) {
-		effects = append(effects, Effect{Type: "modifier", Target: v.Key, Mode: "add", Value: "1"})
+		e := Effect{Type: "modifier", Target: v.Key, Mode: "add", Value: "1"}
+		if v.Key == CriticalRangeTarget {
+			e.Mode, e.Value = "set", "18" // the critical range is set, never added
+		}
+		effects = append(effects, e)
+	}
+	for _, v := range menuList(t, m, ListRollApplies) {
+		effects = append(effects, Effect{Type: "reroll", Rolls: []string{v.Key}, AtMost: 2}, Effect{Type: "roll_minimum", Rolls: []string{v.Key}, Value: "5"})
 	}
 	for _, v := range menuList(t, m, ListModifierModes) {
 		effects = append(effects, Effect{Type: "modifier", Target: "ac", Mode: v.Key, Value: "1"})
@@ -281,6 +288,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
+		"reroll":             {Type: "reroll", Rolls: []string{RollAttack}, AtMost: 2},
+		"roll_minimum":       {Type: "roll_minimum", Rolls: []string{RollCheck}, Value: "10"},
 		"wild_shape":         {Type: "wild_shape", MaxCR: "1"},
 		"slot_recovery":      {Type: "slot_recovery", Resource: "dados_de_teste", RecoverMaxLevel: "3", RecoverLevels: "2"},
 		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
@@ -359,6 +368,10 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.RecoverMaxLevel = ""
 		case "recover_levels":
 			e.RecoverLevels = ""
+		case "rolls":
+			e.Rolls = nil
+		case "at_most":
+			e.AtMost = 0
 		default:
 			t.Fatalf("no way to clear %q", field)
 		}

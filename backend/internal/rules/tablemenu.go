@@ -128,7 +128,9 @@ const (
 	ListRollDieTargets = "roll_die_targets"
 	ListSpellChanges   = "spell_changes"
 	ListAmbushApplies  = "ambush_applies"
-	ListDamageTypes    = "damage_types"
+	// ListRollApplies are the rolls a reroll or a roll_minimum covers.
+	ListRollApplies = "roll_applies"
+	ListDamageTypes = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
 	ListResistanceConditions = "resistance_conditions"
 	// ListResistanceTypes are the damage types of a resistance effect plus the closed words
@@ -345,6 +347,20 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Deixa o jogador rolar de novo um dado que mostrou um valor baixo (até o valor escolhido) numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; a nova rolagem vale, mesmo se for pior. Pode gastar usos de um recurso que a entrada define a cada vez.", Fields: []MenuField{
+		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
+		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "cost", Kind: "formula"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "roll_minimum", NamePT: "Mínimo da rolagem", HintPT: "Um dado que mostra menos que o mínimo conta como o mínimo, numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano (como o Talento Confiável).", Fields: []MenuField{
+		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
+		{Name: "value", Required: true, Kind: "number", Min: MinRollMinimum, Max: MaxRollMinimum},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
@@ -375,6 +391,7 @@ var (
 		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
+		CriticalRangeTarget: "Margem de acerto crítico (o menor d20 que é crítico)",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -635,6 +652,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListRollDieTargets, Values: c.menuRollDieTargets()},
 		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
+		{Name: ListRollApplies, Values: rollAppliesValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceTypes, Values: c.menuResistanceTypes()},
 		{Name: ListResistanceKinds, Values: resistanceKindValues()},

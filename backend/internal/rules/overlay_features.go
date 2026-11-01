@@ -18,7 +18,7 @@ import (
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
 	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
-	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "choice", "ability_increase", "note",
+	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -306,6 +306,9 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"extra_damage":     (*overlayBuilder).checkOnTarget,
 	"spell_modifier":   (*overlayBuilder).checkOnTarget,
 	"ambush":           (*overlayBuilder).checkOnTarget,
+	"reroll":           (*overlayBuilder).checkRoll,
+	"roll_minimum":     (*overlayBuilder).checkRoll,
+	"modifier":         (*overlayBuilder).checkModifier,
 	"resource":         (*overlayBuilder).checkResourceEffect,
 	"slot_recovery":    (*overlayBuilder).checkSlotRecovery,
 }
@@ -534,8 +537,11 @@ var ownFields = map[string][]string{
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
 	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling", "while"},
 	// An ambush gives an edge against a target, by its applies alone.
-	"ambush":     {"applies"},
-	"wild_shape": {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
+	"ambush": {"applies"},
+	// A reroll covers some rolls up to a face and may spend a resource; a roll_minimum raises a low die.
+	"reroll":       {"rolls", "at_most", "resource", "cost"},
+	"roll_minimum": {"rolls", "value"},
+	"wild_shape":   {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
 	// A slot_recovery names the resource each recovery spends and its two limits.
 	"slot_recovery": {"resource", "recover_max_level", "recover_levels"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
@@ -646,6 +652,8 @@ var effectFields = []effectField{
 	{"reach_ft", func(e *Effect) bool { return e.ReachFt != 0 }, func(e *Effect) { e.ReachFt = 0 }},
 	{"attack_name", func(e *Effect) bool { return e.AttackName != "" }, func(e *Effect) { e.AttackName = "" }},
 	{"damage_dice", func(e *Effect) bool { return e.DamageDice != "" }, func(e *Effect) { e.DamageDice = "" }},
+	{"rolls", func(e *Effect) bool { return len(e.Rolls) > 0 }, func(e *Effect) { e.Rolls = nil }},
+	{"at_most", func(e *Effect) bool { return e.AtMost != 0 }, func(e *Effect) { e.AtMost = 0 }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.
