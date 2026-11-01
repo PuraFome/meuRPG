@@ -64,7 +64,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The result is kept as JSON in `character_creatures.stat_block`, and `hp_max` is the resolved hit points.
   It is a snapshot, like `hp_max`: a later level of the owner or an edit of the entry's formulas changes no creature already held.
   A creature with a snapshot builds its stat block with `rules.ResolvedDerived`, which takes the numbers from the snapshot and the text (name, traits, attack names) from the content.
-  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
+  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry, or renamed (its key follows its name), has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
   A snapshot is used whenever the row has one, even when the entry has lost all its formulas.
   The list (`CharacterCreature.armor_class`), the combat sheet, the turn options, the saving throws and the checks of a held creature read the snapshot.
   A trap that hits a creature outside a combat reads it too.
