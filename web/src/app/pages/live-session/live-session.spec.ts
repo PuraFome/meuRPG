@@ -1793,8 +1793,9 @@ describe('LiveSession', () => {
       };
       await render();
       const reads = () => maps.calls.filter((c) => c === 'inTheDark map-1').length;
-      // Opening the page schedules one read; let it land so the counts below are only the hints'.
-      await vi.waitFor(() => expect(reads()).toBeGreaterThan(0));
+      // Opening the page reads twice: once when the map and its tokens arrive, and once for the vision hint the snapshot
+      // schedules (the debounce of the loader). Wait for both, so the counts below are only the hints'.
+      await vi.waitFor(() => expect(reads()).toBe(2));
       const before = reads();
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
       try {
