@@ -313,6 +313,14 @@ describe("what the master's held actions say", () => {
     expect(reactionName(reactionWindow({ id: 'x', kind: ReactionKind.FEATHER_FALL }))).toBe(
       'Queda Suave',
     );
+    expect(reactionName(reactionWindow({ id: 'x', kind: ReactionKind.SLOW_FALL }))).toBe(
+      'Queda Lenta',
+    );
+    expect(
+      describeRow(
+        reactionWindow({ id: 'x', kind: ReactionKind.SLOW_FALL, reactorLabel: 'Toren' } as never),
+      ).replace(/\u00a0/g, ' '),
+    ).toBe('Queda Lenta · Toren cai');
     expect(describeRow(reactionWindow({ id: 'x', kind: ReactionKind.DEFLECT_MISSILES }))).toContain(
       'Defletir Projéteis',
     );

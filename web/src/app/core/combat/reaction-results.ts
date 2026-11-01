@@ -253,6 +253,27 @@ function featherFallResult(
   };
 }
 
+function slowFallResult(
+  v: ResultOf<'slowFall'>,
+  _asked: ReactionWindow,
+  ctx: ResultContext,
+): ResultView {
+  const around =
+    v.damageBefore !== undefined && v.damageAfter !== undefined
+      ? ` O dano da queda foi de ${v.damageBefore} para ${v.damageAfter}.`
+      : '';
+  return {
+    title: `${REACTION_NAMES.slowFall} usada`,
+    subtitle: base(ctx).subtitle,
+    icon: 'arrow_downward',
+    pill: null,
+    text: [`O dano da queda diminuiu em ${v.reduction}.${around}`],
+    chips: base(ctx).used,
+    note: '',
+    throwBack: false,
+  };
+}
+
 const RESULTS: {
   [K in ResultCase]?: (value: ResultOf<K>, asked: ReactionWindow, ctx: ResultContext) => ResultView;
 } = {
@@ -265,6 +286,7 @@ const RESULTS: {
   maneuverReduce: maneuverReduceResult,
   protection: protectionResult,
   featherFall: featherFallResult,
+  slowFall: slowFallResult,
 };
 
 /** The result sheet of an answered reaction: what the server's `ReactionResult` says, for the one who answered. */
