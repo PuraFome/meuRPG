@@ -241,8 +241,20 @@ The players' line of the cast is a save that passed.
 A hold that is dropped (the combat ends, the cast is no longer possible, the kept dice no longer fit the save) spends nothing and leaves no part of the cast.
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
 
-Only the saves of a player's spell are held for the choice.
-Not offered, so a failed save stands there: a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead and the Dexterity save against Hellish Rebuke.
+**The save of a hit rider** (`combat_legendary_rider.go`).
+The answer to a rider that rolls the save of a creature with the trait and a use left (`UseHitRider`: Stunning Strike, an Open Hand technique, or the rider of a creature's attack, which the master answers) is held the same way, by the same path: the answer runs under a savepoint, keeps the target's roll, rolls its writes back and holds the request in a hold of kind `hit_rider` and a window of kind `legendary_resistance` that only the master reads.
+The window offers the failed save alone (nothing when it passed), and its trigger names the rider (`roll: "rider"`, the rider's kind as the key).
+The master answers as for a cast; the replay runs the answer again with the kept d20 and, on `USE`, turns the failed save into a success and spends one use in its own transaction.
+The ki, the effect and the closing of the offer are the replay's: until the master answers, the offer stays open, the ki is not spent and the target is not stunned.
+The offer is not answered again while the window waits (`REACTION_PENDING`), so two riders of one hit are held one after the other, each with its own use.
+A decline, a choice with no save (no reactions, a grapple), a target that is not an NPC with the trait and a use left are never held.
+The line of the rider is the ordinary save line for a player: the target saved, with no roll (RN-20).
+The master reads the roll that failed, `resisted` and `resisted_left` on the line (`CombatLogHitRider`).
+A hit rider is not among the undoable kinds ([Undo](undo.md)), so the use a held rider spent is not given back.
+A hold that is dropped (the target leaves, the combat ends, the kept dice no longer fit) spends nothing: the offer stays open.
+
+Only the saves of a player's spell and of a hit rider are held for the choice.
+Not offered, so a failed save stands there: a trap's save, the Wisdom save against Turn Undead, the Dexterity save against Hellish Rebuke and the Wisdom save of a goading maneuver.
 The save of a creature a spell zone catches is rolled by the server at once, with no choice for the master; the cast that lays the zone holds nothing.
 A player's character caught by a zone is asked in a window of its own, and has no such trait.
 The choice the master has with the roll of an effect's save does not reach the saves of a zone.

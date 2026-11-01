@@ -4977,7 +4977,13 @@ type CombatLogHitRider struct {
 	MoreDamages []*CombatLogDamage `protobuf:"bytes,17,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
 	// The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
 	// grid or another creature stopped it.
-	PushStopped   bool `protobuf:"varint,18,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
+	PushStopped bool `protobuf:"varint,18,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
+	// The target failed the save and the master turned it into a success with Legendary Resistance:
+	// `result` is SAVED and `d20` and `save_total` are the roll that failed. Only the master reads
+	// either; everyone else reads a save that passed (RN-20, RN-29).
+	Resisted bool `protobuf:"varint,19,opt,name=resisted,proto3" json:"resisted,omitempty"`
+	// The uses of the trait the creature has left. Only the master.
+	ResistedLeft  int32 `protobuf:"varint,20,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5136,6 +5142,20 @@ func (x *CombatLogHitRider) GetPushStopped() bool {
 		return x.PushStopped
 	}
 	return false
+}
+
+func (x *CombatLogHitRider) GetResisted() bool {
+	if x != nil {
+		return x.Resisted
+	}
+	return false
+}
+
+func (x *CombatLogHitRider) GetResistedLeft() int32 {
+	if x != nil {
+		return x.ResistedLeft
+	}
+	return 0
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -25952,7 +25972,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\xb7\x05\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\xf8\x05\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -25975,7 +25995,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"repeatSave\x127\n" +
 	"\x06damage\x18\x10 \x01(\v2\x1f.meurpg.play.v1.CombatLogDamageR\x06damage\x12B\n" +
 	"\fmore_damages\x18\x11 \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12!\n" +
-	"\fpush_stopped\x18\x12 \x01(\bR\vpushStopped\"\xb4\x01\n" +
+	"\fpush_stopped\x18\x12 \x01(\bR\vpushStopped\x12\x1a\n" +
+	"\bresisted\x18\x13 \x01(\bR\bresisted\x12#\n" +
+	"\rresisted_left\x18\x14 \x01(\x05R\fresistedLeft\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tcaster_id\x18\x02 \x01(\tR\bcasterId\x12\x1b\n" +

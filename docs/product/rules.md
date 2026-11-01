@@ -831,7 +831,8 @@ The wait reveals nothing about the roll: a player reads the same wait and the sa
 He sees the failed rolls and turns the failures he chooses, one use each, or lets them stand.
 When every such save passed, he has nothing to offer and lets the cast go on.
 The same dice settle the cast.
-The trait is not offered on any other save: a trap's, a weapon's rider, Turn Undead or Hellish Rebuke.
+The save of a hit rider (Stunning Strike, an Open Hand technique, a creature's attack rider) is held the same way: the answer to the rider waits for the master alone, whether the save passed or failed, the ki and the effect come with the replay, and a player reads only the wait and then a save that passed or failed (RN-20).
+The trait is not offered on any other save: a trap's, Turn Undead, Hellish Rebuke or a goading maneuver's.
 A creature a spell zone catches saves at once, with no choice for the master.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
 The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
@@ -908,7 +909,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, answered by the master for the creature. |
-| Legendary Resistance | A player's spell with a saving throw reaches a creature with the trait and a use left, whether its save passed or failed: the cast waits for the master alone (RN-29). |
+| Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). |
 
 A monster's Parry is one a round, and the kept roll is compared with the new armor class.
 A hit that no longer meets it is a miss.

@@ -16,7 +16,7 @@ A legendary attack's undo gives back only the cost, since it spent no action, at
 The undo of a cast gives back the uses of Legendary Resistance the master spent on its saves with the slot and the damage.
 The use of a limited action is given back by the undo of the event that spent it (`limit_key` on the event): the Recharge action is available again, or the action with uses a day has the use back ([Creatures](creatures.md#limited-actions)).
 The roll of a Recharge action at a turn start (`recharge_rolled`) cannot be undone, and it closes the chain like the turn change.
-The death confirmation cannot be undone, and neither can a contest, a hit rider, a turn passing, an effect's or a concentration's saving throw (so a use of Legendary Resistance on those saves is not given back).
+The death confirmation cannot be undone, and neither can a contest, a hit rider, a turn passing, an effect's or a concentration's saving throw (so a use of Legendary Resistance on those saves, or on a rider's, is not given back).
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 
 Some events are written just before the change's own event and never close the chain, because the undo acts on the change and takes them along:

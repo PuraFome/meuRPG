@@ -246,6 +246,8 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		}
 		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
 		return err
+	case "hit_rider":
+		return s.replayHeldRider(ctx, m, h)
 	}
 	return s.replayHeldCheck(ctx, m, h)
 }
@@ -316,6 +318,8 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
+		case "hit_rider":
+			// The answer of the Legendary Resistance window has nothing to learn from the rider.
 		case "cast":
 			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
 			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {

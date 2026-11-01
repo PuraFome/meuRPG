@@ -75,6 +75,14 @@ type riderEvent struct {
 	// hosts the damage lines that follow on this event, as a cast hosts those of its targets.
 	Pending string   `json:"pending_id,omitempty"`
 	More    []string `json:"more_pending_ids,omitempty"`
+	// Resisted says the target failed the save and the master made it a success with Legendary Resistance
+	// (Result is then saved, D20 and Total the roll that failed), and ResistLeft the uses it has left: the master's
+	// alone (combat_legendary_hold.go).
+	Resisted   bool  `json:"resisted,omitempty"`
+	ResistLeft int32 `json:"resist_left,omitempty"`
+	// save is the target's save as it was rolled, kept for the hold of a creature with Legendary Resistance; it is
+	// never stored with the event.
+	save *saveRoll
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning
@@ -188,16 +196,26 @@ func (s *Service) UseHitRider(
 	ctx context.Context,
 	req *connect.Request[playv1.UseHitRiderRequest],
 ) (*connect.Response[playv1.UseHitRiderResponse], error) {
-	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
-	riderID, err := parseCombatID(req.Msg.GetRiderId(), "rider")
+	return s.useHitRider(ctx, m, req.Msg)
+}
+
+// useHitRider is UseHitRider for a member already known: the replay of a rider held for the master's Legendary
+// Resistance runs it again as the one who answered (combat_reaction_hold.go).
+func (s *Service) useHitRider(ctx context.Context, m authz.Membership, msg *playv1.UseHitRiderRequest) (*connect.Response[playv1.UseHitRiderResponse], error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHitRider, encounterID: encID}, func(c *combatTx) (any, error) {
-		return s.answerRider(ctx, c, m, riderID, req.Msg.GetChoice())
+	riderID, err := parseCombatID(msg.GetRiderId(), "rider")
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(msg), kind: eventHitRider, encounterID: encID}, func(c *combatTx) (any, error) {
+		return s.answerRider(ctx, c, m, msg, riderID)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a rider", err)
@@ -217,7 +235,10 @@ func (s *Service) UseHitRider(
 
 // answerRider answers an offer: the choice is checked, applied (a decline spends nothing) and the
 // offer closed.
-func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membership, riderID string, in playv1.HitRiderChoice) (actionEvent, error) {
+// A choice that rolls the save of a creature with Legendary Resistance and a use left waits for the master, as a cast
+// does (combat_legendary_hold.go): the answer is run under a savepoint, the roll is kept, the writes are rolled back and
+// the request is held in a window of the master's alone. The offer stays open until the replay closes it.
+func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.UseHitRiderRequest, riderID string) (actionEvent, error) {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return actionEvent{}, err
@@ -226,23 +247,47 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return actionEvent{}, err
 	}
-	choice, err := riderChoiceOf(row.Kind, in)
+	choice, err := riderChoiceOf(row.Kind, msg.GetChoice())
+	if err != nil {
+		return actionEvent{}, err
+	}
+	guard, err := s.guardRider(ctx, c, row, target, choice)
 	if err != nil {
 		return actionEvent{}, err
 	}
 	ev := actionEvent{Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Key: row.Kind}
 	re := &riderEvent{Choice: choice, Result: riderDecl}
-	ev.Rider = re
-	if row.Kind == riderCreature {
-		if err := s.answerCreatureRider(ctx, c, m, row, attacker, target, choice, re); err != nil {
-			return actionEvent{}, err
-		}
-	} else if choice != choiceDecline {
-		if err := s.applyChoice(ctx, c, m, cs, row.Kind, attacker, target, choice, re); err != nil {
-			return actionEvent{}, err
-		}
+	if err := s.applyAnswer(ctx, c, m, cs, row, attacker, target, choice, re); err != nil {
+		guard.abort(ctx, c)
+		return actionEvent{}, err
 	}
-	return s.closeRider(ctx, c, row, attacker, choice, ev)
+	if held, ok, err := s.holdRider(ctx, c, m, guard, msg, row, attacker, target, re, ev); err != nil || ok {
+		if err != nil {
+			guard.abort(ctx, c)
+		}
+		return held, err
+	}
+	ev.Rider = re
+	ev, err = s.closeRider(ctx, c, row, attacker, choice, ev)
+	if err != nil {
+		guard.abort(ctx, c)
+		return actionEvent{}, err
+	}
+	if err := guard.release(ctx); err != nil {
+		return actionEvent{}, err
+	}
+	return ev, nil
+}
+
+// applyAnswer applies the choice of an offer: a creature's rider, a monk's rider, or nothing for a decline.
+func (s *Service) applyAnswer(ctx context.Context, c *combatTx, m authz.Membership, cs []playdb.Combatant, row playdb.HitRider, attacker, target playdb.Combatant, choice string, re *riderEvent) error {
+	if row.Kind == riderCreature {
+		return s.answerCreatureRider(ctx, c, m, row, attacker, target, choice, re)
+	}
+	if choice == choiceDecline {
+		return nil
+	}
+	return s.applyChoice(ctx, c, m, cs, row.Kind, attacker, target, choice, re)
 }
 
 // riderOffer finds the open offer the caller may answer, with the monk and the target it is about:
@@ -414,6 +459,8 @@ func (s *Service) riderEffect(ctx context.Context, c *combatTx, cs []playdb.Comb
 }
 
 // rollRiderSave has the server roll the target's saving throw, as a spell's save is rolled.
+// The replay of a rider held for the master's Legendary Resistance lands the roll the hold kept, never a new one, and
+// turns the failed save into a success when the master chose to (combat_legendary_rider.go).
 func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Membership, target playdb.Combatant, ability string, against []string, dc int32, re *riderEvent) (bool, error) {
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, ability)
 	if err != nil {
@@ -429,15 +476,27 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	}
 	creature := creatureFacts(target, states, sheet.Traits)
 	if combat.AutoFailsSave(creature, ability) {
-		return false, nil
+		re.save = &saveRoll{DC: dc, Auto: true}
+		return s.resistRiderSave(ctx, c, target, re, false)
 	}
 	mode := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true, Against: against}))
-	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
-	if err != nil {
+	var d20 d20Roll
+	if kept := c.replay.keptSave(target.ID); kept != nil {
+		dice, ok := keptDice(kept, save.Bonus, mode, nil)
+		if !ok {
+			return false, errKeptDiceMismatch(target.ID)
+		}
+		d20 = dice.d20
+	} else if d20, err = s.d20With(rollInput{inApp: true}, save.Bonus, mode); err != nil {
 		return false, err
 	}
 	re.D20, re.Total = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total)
-	return combat.SaveSucceeded(d20.Total, int(dc)), nil
+	saved := combat.SaveSucceeded(d20.Total, int(dc))
+	re.save = &saveRoll{
+		D20: re.D20, Bonus: conv.Int32(save.Bonus), Total: re.Total, DC: dc, Saved: saved,
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
+	}
+	return s.resistRiderSave(ctx, c, target, re, saved)
 }
 
 // riderLogProto is the line of an answered rider: the target's roll for the master and, when

@@ -25,11 +25,11 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Effect save | An end-of-turn or start-of-turn save of a lasting effect (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
 | Parry | A melee weapon hit on an NPC whose stat block has Parry (see [Parry](#parry)) | The hit's damage roll (`AWAITING_REACTION`) |
-| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, passed or failed (`LEGENDARY_RESISTANCE`) | The cast, with the d20s and effect dice of its saves |
+| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, or a hit rider (Stunning Strike, an Open Hand technique, a creature's rider) whose save it makes, passed or failed (`LEGENDARY_RESISTANCE`) | The cast or the rider's answer (hold kind `cast` or `hit_rider`), with the d20s and effect dice of its saves |
 
 The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
 When every such save passed, the window offers nothing and he passes.
-The cast then settles with the same dice.
+The cast, or the answer to the rider, then settles with the same dice.
 [Creatures](creatures.md#legendary-resistance) lists the saves that are not offered the trait.
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".
