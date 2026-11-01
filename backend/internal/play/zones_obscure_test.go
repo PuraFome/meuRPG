@@ -307,7 +307,7 @@ func TestTheFogHearsOfACloudThatEndsOutsideACombatWrite(t *testing.T) {
 }
 
 // A zone keeps up to 4,096 squares, enough for Fog Cloud at a 9th-level slot (a sphere of 36 squares of radius, about
-// 4,070); one more is refused by the table's check (migration 00289).
+// 4,070); one more is refused by the table's check (migration 00296).
 func TestAZoneKeepsUpTo4096SquaresAndNoMore(t *testing.T) {
 	t.Parallel()
 	c := obscureCave(t)
