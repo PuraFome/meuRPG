@@ -7,7 +7,9 @@
   </a>
 }
 @if (a.status !== 'ok') {
-  <!-- The screens before the import share one box: the h1, a status region and an alert region that stay in the page, so the loading text, the "not found" and the failure are said when they replace each other. No heading takes the focus here. -->
+  <!-- The screens before the import share one box: the h1, a status region and an alert region that stay in the page.
+     The loading text, the "not found" and the failure are said when they replace each other.
+     No heading takes the focus here. -->
   <div>
     <h1 class="mr-page-title">{{ a.status === 'not-found' ? 'Campanha não encontrada' : a.status === 'error' ? 'Não foi possível abrir a importação' : 'Importar pacote' }}</h1>
     <div class="mr-live" role="status">

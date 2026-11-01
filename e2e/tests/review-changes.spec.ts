@@ -97,7 +97,7 @@ test(
 
       await playerPage.reload();
       await expect(state(playerPage)).toContainText('Rascunho');
-      await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toHaveCount(0);
+      await expect(playerPage.getByText('O mestre pediu ajustes.')).toHaveCount(0);
     } finally {
       await playerContext.close();
     }

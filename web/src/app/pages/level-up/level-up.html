@@ -5,7 +5,8 @@
 
 @let st = state();
 @if (st.status !== 'ready') {
-  <!-- The three states before the steps share one h1 and two regions that stay in the page, so the loading text, the blocked reason and the failure are said when they replace each other. -->
+  <!-- The three states before the steps share one h1 and two regions that stay in the page.
+       The loading text, the blocked reason and the failure are said when they replace each other. -->
   <h1 class="mr-page-title">
     {{ st.status === 'loading' ? 'Subir de nível' : st.status === 'blocked' ? 'Ainda não dá para subir de nível' : 'Não foi possível abrir o nível' }}
   </h1>
