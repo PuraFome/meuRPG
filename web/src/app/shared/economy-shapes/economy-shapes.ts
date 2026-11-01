@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { cannotAct } from '../../core/combat/conditions';
+import { type ReactionRecord, reactionUsedText } from '../../core/combat/reaction-record';
 
 /** The four things a turn has: the Action (a circle), the Bonus action (a triangle), the Reaction (a square) and the movement (a walker). */
 export type EconomyKind = 'action' | 'bonus' | 'reaction' | 'move';
@@ -16,7 +17,7 @@ export interface EconomyShape {
 }
 
 /** The part of a combatant the shapes read. */
-export interface EconomyFacts {
+export interface EconomyFacts extends ReactionRecord {
   readonly actionUsed: boolean;
   readonly bonusActionUsed: boolean;
   readonly reactionUsed: boolean;
@@ -30,6 +31,11 @@ export interface EconomyOptions {
   /** Extra Attack: the attacks still left once the first spent the Action. */
   readonly attacksLeft?: number;
   readonly attacksPerAction?: number;
+}
+
+/** "Reação usada (Escudo Arcano, rodada 2)" while the reaction is spent with a record; otherwise "Reação" and the word. */
+function reactionName(c: EconomyFacts, word: string, cannot: boolean): string {
+  return c.reactionUsed && !cannot ? reactionUsedText(c) : `Reação ${word}`;
 }
 
 /**
@@ -62,7 +68,7 @@ export function economyShapes(c: EconomyFacts, options: EconomyOptions = {}): Ec
     {
       kind: 'reaction',
       text: 'Reação',
-      name: `Reação ${word(c.reactionUsed)}`,
+      name: reactionName(c, word(c.reactionUsed), cannot),
       spent: cannot || c.reactionUsed,
     },
   ];

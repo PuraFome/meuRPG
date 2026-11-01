@@ -79,7 +79,7 @@ func (s *Service) answerUncannyDodge(ctx context.Context, c *combatTx, w playdb.
 	}
 	t := windowTriggerOf(w)
 	after := clamp32(reaction.UncannyDodge(int(t.Damage)), 0, math.MaxInt32)
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.UncannyDodgeKind); err != nil {
 		return err
 	}
 	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true, Before: t.Damage, After: after}, ""); err != nil {
@@ -129,7 +129,7 @@ func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.React
 		return err
 	}
 	left, reduction := reaction.DeflectMissiles(int(t.Damage), face, k.st.DexMod, k.st.MonkLevel)
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.DeflectKind); err != nil {
 		return err
 	}
 	caught := left == 0
@@ -227,7 +227,7 @@ func (s *Service) spendCuttingWords(ctx context.Context, c *combatTx, reactor pl
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	return s.spendReaction(ctx, c, reactor)
+	return s.spendReaction(ctx, c, reactor, reaction.CuttingWords)
 }
 
 // cuttingFill completes the result with what the roll became, known when the held action is
@@ -345,7 +345,7 @@ func (s *Service) spendRebuke(ctx context.Context, c *combatTx, reactor playdb.C
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	return s.spendReaction(ctx, c, reactor)
+	return s.spendReaction(ctx, c, reactor, reaction.HellishRebukeKind)
 }
 
 // askAggressorSave keeps the window open for the second step: the aggressor is an NPC, so its saving

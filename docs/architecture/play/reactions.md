@@ -41,6 +41,10 @@ It is the reactor's player, or the master for an NPC's and, to answer for the pl
 When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`.
 The attacker sees "esperando a reação"; the hit player and the master get the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total).
 The player decides without knowing the total, as at a table.
+The Shield window opens after every reaction that lowers the attack roll.
+Cutting Words, Protection and Counterspell hold the action before its outcome is applied, and the replay of the held action opens Shield from the hit that is left.
+A cut that turns the hit into a miss opens no Shield window and spends no slot, and a countered Magic Missile opens none either.
+The master's trigger carries the total after the cut; the player's prompt carries no total and no die.
 A creature whose Innate Spellcasting lists a reaction spell with uses a day (the Couatl's Shield) gets the use as one more `SlotChoice`, with `resource` set to the resource key and `free` and `total` counting uses.
 Answering with that `resource` counts one use under `res:<resource>` in the combatant's `slots_used`.
 The undo gives the use back, as it gives a slot back.
@@ -181,6 +185,15 @@ Hellish Rebuke's second-step prompt carries the aggressor's modifier only for th
 
 Each reaction is one line (`COMBAT_LOG_KIND_REACTION_WINDOW`) with the master's and the players' text; `reaction_answered` and `concentration_save_rolled` are the session event kinds.
 A used Shield keeps `reaction_used` (undoable), and so does a used Parry.
+A spent reaction records its kind and the round in `combatants.reaction_kind` and `reaction_round`.
+The kind is the reaction window's key, `opportunity` for an opportunity attack, or the key of the feature whose action is a reaction.
+`spendReactionAs` writes the economy and the record together; `recordReaction` (`SetCombatantReactionSpent`) writes the record where another path spends the reaction.
+The throw back of Deflect Missiles writes nothing: answering Deflect recorded it.
+The start of the combatant's turn clears the record, and so does an economy write that gives the reaction back (the undo).
+The view sends `Combatant.reaction_kind` and `reaction_round` to the owner and the master only.
+A joint-turn partner reads `reaction_used`, and no other player reads any of the three.
+An NPC's record is the master's.
+`reaction_kind` is `UNSPECIFIED` when the server has no name for the reaction, as for a feature's.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.
 

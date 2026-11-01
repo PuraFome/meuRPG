@@ -246,10 +246,8 @@ func (s *Service) useShield(ctx context.Context, c *combatTx, w playdb.ReactionW
 	if err != nil {
 		return none, nil, err
 	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: target.ID, ActionUsed: target.ActionUsed, BonusActionUsed: target.BonusActionUsed, ReactionUsed: true, Dashed: target.Dashed,
-	}); err != nil {
-		return none, nil, fmt.Errorf("spend the reaction: %w", err)
+	if err := spendReactionAs(ctx, c, target, string(reaction.Shield)); err != nil {
+		return none, nil, err
 	}
 	if err := c.q.SetCombatantAcBonus(ctx, playdb.SetCombatantAcBonusParams{ID: target.ID, AcBonus: combat.ShieldACBonus}); err != nil {
 		return none, nil, fmt.Errorf("give the armor class bonus: %w", err)
