@@ -84,12 +84,17 @@ func (s *Service) rollRecharge(ctx context.Context, c *combatTx, creatureID stri
 		}
 	}
 	body, err := json.Marshal(actionEvent{
-		Round: round, Secret: true, Actor: creatureID, Key: a.Key,
+		Round: round, Secret: true, Fogged: true, Actor: creatureID, Key: a.Key,
 		RechargeFace: clamp32(roll.Total, 1, rechargeDie), Recharged: recharged, RechargeName: nameOfPlan(a),
 	})
 	if err != nil {
 		return fmt.Errorf("encode the Recharge event: %w", err)
 	}
-	_, err = insertRaw(ctx, c, eventRechargeRolled, &c.actorUserID, nil, body)
+	// The row names no user and no character (the turn ended by someone else), and no player sees it on a map
+	// with the fog: it is written fogged with nobody in seen_by, as a secret event is stamped (c.stamp).
+	keep := c.characterID
+	c.characterID = nil
+	defer func() { c.characterID = keep }()
+	_, err = insertRaw(ctx, c, eventRechargeRolled, nil, nil, body)
 	return err
 }

@@ -229,3 +229,67 @@ func TestRecharge_AGroupTurnRollsForEveryMember(t *testing.T) {
 		t.Errorf("the master's log has %v, want a roll for each hound", lines)
 	}
 }
+
+// onFogMap plays the cave's fog fight with a hell hound added to it, whose breath is spent when spent is true,
+// until the hound's turn starts. It returns how much each player's revision went up and what the master's log
+// and the stored rows say of the Recharge roll.
+func rechargeOnFogMap(t *testing.T, spent bool) (rise map[string]int32, lines int, rows []string) {
+	t.Helper()
+	f := newFogCave(t)
+	e := f.fight(t)
+	f.stage(t)
+	res := f.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
+		r.CreatureKey, r.Count, r.Hidden = houndKey, 1, new(false)
+	})
+	hound := byLabelID(t, f.get(t, f.master), res.GetCombatantIds()[0])
+	if spent {
+		f.spendByHand(t, hound, spentRechargePrefix+fireBreath)
+	}
+	players := map[string]*user{"Toren's player": f.caio, "Pensantus's player": f.ana, "Brisa's player": f.bia}
+	before := map[string]int32{}
+	for name, u := range players {
+		before[name] = f.get(t, u).GetRevision()
+	}
+	f.h.roller.queue(6)
+	e = f.passTo(t, f.get(t, f.master), hound)
+	rise = map[string]int32{}
+	for name, u := range players {
+		rise[name] = f.get(t, u).GetRevision() - before[name]
+	}
+	rowsOf, err := f.h.pool.Query(t.Context(), `SELECT coalesce(actor_user_id::text, '') || '|' || coalesce(character_id::text, '') FROM session_events WHERE kind = $1`, eventRechargeRolled)
+	if err != nil {
+		t.Fatalf("read the stored rows: %v", err)
+	}
+	defer rowsOf.Close()
+	for rowsOf.Next() {
+		var s string
+		if err := rowsOf.Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		rows = append(rows, s)
+	}
+	return rise, len(f.rechargeLines(t, f.master, e)), rows
+}
+
+// On a map with the fog a Recharge roll counts for no player: the revision a player reads goes up by the same
+// amount whether the creature rolled or not, the player's log has no line, and the stored row names neither the
+// user who ended the turn before nor a character. The master's log has the line (the positive control).
+func TestRN20_TheRechargeRollIsNotCountedOnAFogMap(t *testing.T) {
+	t.Parallel()
+	control, controlLines, controlRows := rechargeOnFogMap(t, false)
+	rolled, rolledLines, rolledRows := rechargeOnFogMap(t, true)
+	if controlLines != 0 || len(controlRows) != 0 {
+		t.Fatalf("the control rolled: %d lines, rows %v", controlLines, controlRows)
+	}
+	if rolledLines != 1 || len(rolledRows) != 1 {
+		t.Fatalf("the master reads %d lines and %d rows of the roll, want one of each", rolledLines, len(rolledRows))
+	}
+	for name, n := range control {
+		if rolled[name] != n {
+			t.Errorf("%s: the revision went up by %d with the roll and by %d without it, want the same", name, rolled[name], n)
+		}
+	}
+	if rolledRows[0] != "|" {
+		t.Errorf("the stored row carries %q as user and character, want neither", rolledRows[0])
+	}
+}
