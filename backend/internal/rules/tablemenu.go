@@ -133,7 +133,7 @@ const (
 	ListRollDieTargets = "roll_die_targets"
 	ListSpellChanges   = "spell_changes"
 	ListAmbushApplies  = "ambush_applies"
-	// ListRollApplies are the rolls a reroll or a roll_minimum covers.
+	// ListRollApplies are the rolls a reroll covers.
 	ListRollApplies = "roll_applies"
 	ListDamageTypes = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
@@ -357,12 +357,6 @@ var menuTypes = []MenuType{
 		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "cost", Kind: "formula"},
-		{Name: "when", Kind: "condition"},
-		{Name: "text_pt", Kind: "text"},
-	}},
-	{Type: "roll_minimum", NamePT: "Mínimo da rolagem", HintPT: "Um dado que mostra menos que o mínimo conta como o mínimo, numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano (como o Talento Confiável).", Fields: []MenuField{
-		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
-		{Name: "value", Required: true, Kind: "number", Min: MinRollMinimum, Max: MaxRollMinimum},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},

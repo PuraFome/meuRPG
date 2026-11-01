@@ -8,17 +8,15 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// TestStoredRollEffectsReachTheEngine: the rolls, at_most, resource and cost of a stored reroll, and the
-// rolls and value of a roll_minimum, become the engine's effect.
+// TestStoredRollEffectsReachTheEngine: the rolls, at_most, resource and cost of a stored reroll become the
+// engine's effect.
 func TestStoredRollEffectsReachTheEngine(t *testing.T) {
 	t.Parallel()
 	got := tableEffectsOf([]*rulesv1.TableEffect{
 		{Type: "reroll", Rolls: []string{"attack", "damage"}, AtMost: 2, Resource: "sorte", Cost: "1"},
-		{Type: "roll_minimum", Rolls: []string{"check", "save"}, Value: "10"},
 	})
 	want := []rules.Effect{
 		{Type: "reroll", Rolls: []string{"attack", "damage"}, AtMost: 2, Resource: "sorte", Cost: "1"},
-		{Type: "roll_minimum", Rolls: []string{"check", "save"}, Value: "10"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("effects = %+v, want %+v", got, want)

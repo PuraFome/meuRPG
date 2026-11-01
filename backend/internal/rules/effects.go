@@ -284,10 +284,9 @@ type Effect struct {
 	// DC, a number of uses).
 	TextPT string `json:"text_pt,omitempty"`
 
-	// reroll and roll_minimum (rolleffects.go): Rolls are the rolls they cover (Roll*), a list because
-	// Applies holds one word; AtMost, for a reroll, the highest face that may be rolled again. A
-	// reroll spends Cost uses (an Int formula, default 1) of Resource when it names one; a roll_minimum
-	// reads Value, the least a die counts as.
+	// reroll (rolleffects.go): Rolls are the rolls it covers (Roll*), a list because Applies holds one
+	// word; AtMost, the highest face that may be rolled again. It spends Cost uses (an Int formula,
+	// default 1) of Resource when it names one.
 	Rolls  []string `json:"rolls,omitempty"`
 	AtMost int      `json:"at_most,omitempty"`
 
@@ -309,7 +308,7 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
-		"reroll", "roll_minimum",
+		"reroll",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -411,7 +410,6 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"spell_modifier":     effectCompiler.spellModifier,
 	"ambush":             effectCompiler.ambush,
 	"reroll":             effectCompiler.reroll,
-	"roll_minimum":       effectCompiler.rollMinimum,
 	"extra_attack":       effectCompiler.extraAttack,
 	"wild_shape":         effectCompiler.wildShape,
 	"slot_recovery":      effectCompiler.slotRecovery,
@@ -481,8 +479,8 @@ func (x effectCompiler) strayFields() error {
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
 	}
-	if e.Type != "reroll" && e.Type != "roll_minimum" && len(e.Rolls) > 0 {
-		return x.fail("rolls belongs to reroll and roll_minimum")
+	if e.Type != "reroll" && len(e.Rolls) > 0 {
+		return x.fail("rolls belongs to reroll")
 	}
 	if e.Type != "reroll" && e.AtMost != 0 {
 		return x.fail("at_most belongs to reroll")

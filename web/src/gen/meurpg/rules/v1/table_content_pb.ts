@@ -823,7 +823,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   recoverLevels: string;
 
   /**
-   * reroll and roll_minimum: the rolls they cover, one or more of "attack", "check", "save"
+   * reroll: the rolls it covers, one or more of "attack", "check", "save"
    * (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
    *
    * @generated from field: repeated string rolls = 77;
@@ -833,7 +833,6 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   /**
    * reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
    * The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
-   * roll_minimum takes its least value in `value` (2 to 20), spends no resource.
    *
    * @generated from field: int32 at_most = 78;
    */

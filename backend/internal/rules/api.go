@@ -714,10 +714,8 @@ type Derived struct {
 	// give advantage against a creature that has not had its turn yet, and make a hit on a surprised
 	// creature a critical hit; empty for none.
 	UnactedAdvantage, SurprisedCritical string `json:",omitempty"`
-	// Rerolls are the reroll effects of the character and RollMinimums its roll_minimum
-	// effects, in the order of the effects (rolleffects.go).
-	Rerolls      []RerollRule  `json:",omitempty"`
-	RollMinimums []RollMinimum `json:",omitempty"`
+	// Rerolls are the reroll effects of the character, in the order of the effects (rolleffects.go).
+	Rerolls []RerollRule `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.

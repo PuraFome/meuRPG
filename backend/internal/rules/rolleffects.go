@@ -7,11 +7,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
-// RollDamage is, besides the d20 rolls of combateffects.go, a roll a reroll or a roll_minimum covers (its
+// RollDamage is, besides the d20 rolls of combateffects.go, a roll a reroll covers (its
 // `rolls`): a die of weapon or spell damage.
 const RollDamage = "damage"
 
-// rollApplies are the rolls a reroll or roll_minimum covers: RollAppliesAttack, RollAppliesCheck and
+// rollApplies are the rolls a reroll covers: RollAppliesAttack, RollAppliesCheck and
 // RollAppliesSave (the d20 rolls) and RollDamage (a die of weapon or spell damage).
 var rollApplies = []string{RollAppliesAttack, RollAppliesCheck, RollAppliesSave, RollDamage}
 
@@ -23,9 +23,6 @@ const (
 	// MinRerollAtMost and MaxRerollAtMost bound a reroll's at_most: a die showing it or lower may be rolled again.
 	MinRerollAtMost = 1
 	MaxRerollAtMost = 20
-	// MinRollMinimum and MaxRollMinimum bound a roll_minimum's value: a die that shows less counts as it.
-	MinRollMinimum = 2
-	MaxRollMinimum = 20
 )
 
 // CriticalRangeTarget is the modifier target that widens the critical range: the lowest natural d20 that
@@ -43,17 +40,6 @@ type RerollRule struct {
 	// Resource is the resource each reroll spends, "" for a free one, and Cost how many uses.
 	Resource string
 	Cost     int
-	// Source is the feature (or option) key that gives it.
-	Source string
-}
-
-// RollMinimum is a roll_minimum effect the character has: a die of the covered rolls that shows less than
-// Value counts as Value (the shape of the SRD's Reliable Talent).
-type RollMinimum struct {
-	// Applies are the rolls it covers (Roll*).
-	Applies []string
-	// Value is the least a die counts as.
-	Value int
 	// Source is the feature (or option) key that gives it.
 	Source string
 }
@@ -98,21 +84,6 @@ func rerollShape(e *Effect) (field, msg string) {
 	return "", ""
 }
 
-// rollMinimumShape says what is wrong with a roll_minimum effect's own fields.
-func rollMinimumShape(e *Effect) (field, msg string) {
-	if f, m := rollsShape(e); f != "" {
-		return f, m
-	}
-	n, err := strconv.Atoi(e.Value)
-	switch {
-	case err != nil || n < MinRollMinimum || n > MaxRollMinimum:
-		return "value", "value is a whole number from 2 to 20"
-	case e.Resource != "":
-		return "resource", "a roll minimum spends no resource"
-	}
-	return "", ""
-}
-
 // criticalRangeShape says what is wrong with a modifier of the critical range: only the mode set, and a
 // literal value from 15 to 20 (a formula is clamped when it is worked out).
 func criticalRangeShape(e *Effect) (field, msg string) {
@@ -135,24 +106,12 @@ func (x effectCompiler) reroll() error {
 	return err
 }
 
-// rollMinimum checks a roll_minimum effect.
-func (x effectCompiler) rollMinimum() error {
-	if field, msg := rollMinimumShape(x.e); field != "" {
-		return x.fail("%s", msg)
+// checkReroll checks a reroll of the table's content at its own fields.
+func (b *overlayBuilder) checkReroll(site effectSite, e *Effect) error {
+	if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
+		return site.fail(".resource", ReasonReference, "the reroll spends %q, which no resource effect of this entry or its class defines", e.Resource)
 	}
-	return nil
-}
-
-// checkRoll checks a reroll or roll_minimum of the table's content at its own fields.
-func (b *overlayBuilder) checkRoll(site effectSite, e *Effect) error {
-	shape := rollMinimumShape
-	if e.Type == "reroll" {
-		shape = rerollShape
-		if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
-			return site.fail(".resource", ReasonReference, "the reroll spends %q, which no resource effect of this entry or its class defines", e.Resource)
-		}
-	}
-	if field, msg := shape(e); field != "" {
+	if field, msg := rerollShape(e); field != "" {
 		return site.fail("."+field, ReasonValue, "%s", msg)
 	}
 	return nil
@@ -169,16 +128,12 @@ func (b *overlayBuilder) checkModifier(site effectSite, e *Effect) error {
 	return nil
 }
 
-// rollEffects fills Derived.Rerolls and Derived.RollMinimums from the effects the character has, in the
-// order of the effects.
+// rollEffects fills Derived.Rerolls from the effects the character has, in the order of the effects.
 func (x *deriver) rollEffects() {
 	for _, a := range x.active {
 		e := a.effect
 		switch {
 		case len(e.Tags) > 0 || !x.applies(a):
-		case e.Type == "roll_minimum":
-			n, _ := strconv.Atoi(e.Value)
-			x.d.RollMinimums = append(x.d.RollMinimums, RollMinimum{Applies: slices.Clone(e.Rolls), Value: n, Source: a.owner})
 		case e.Type == "reroll":
 			if cost, ok := x.rerollCost(a); ok {
 				x.d.Rerolls = append(x.d.Rerolls, RerollRule{

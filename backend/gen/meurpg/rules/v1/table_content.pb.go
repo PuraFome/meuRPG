@@ -1086,12 +1086,11 @@ type TableEffect struct {
 	// (a level 2 slot counts 2). Both are required.
 	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
 	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
-	// reroll and roll_minimum: the rolls they cover, one or more of "attack", "check", "save"
+	// reroll: the rolls it covers, one or more of "attack", "check", "save"
 	// (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
 	Rolls []string `protobuf:"bytes,77,rep,name=rolls,proto3" json:"rolls,omitempty"`
 	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
 	// The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
-	// roll_minimum takes its least value in `value` (2 to 20), spends no resource.
 	AtMost        int32 `protobuf:"varint,78,opt,name=at_most,json=atMost,proto3" json:"at_most,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
