@@ -146,18 +146,25 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 	default:
 		after.ActionUsed = true
 	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
-	}); err != nil {
-		return nil, fmt.Errorf("spend the action: %w", err)
-	}
-	if action.GetAction().GetEconomy() == rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION {
-		if err := recordReaction(ctx, c, who.ID, actionKey); err != nil {
-			return nil, err
-		}
+	if err := spendFeatureEconomy(ctx, c, after, actionKey, action.GetAction().GetEconomy()); err != nil {
+		return nil, err
 	}
 	c.characterID = &who.CharacterID
 	return &resourceFlow{m: m, v: v, cs: cs, who: who, made: made}, nil
+}
+
+// spendFeatureEconomy writes the economy a feature's action spent and, when it is a reaction,
+// records the feature's key as the kind of the reaction.
+func spendFeatureEconomy(ctx context.Context, c *combatTx, after playdb.Combatant, actionKey string, economy rulesv1.ActionEconomy) error {
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: after.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
+	}); err != nil {
+		return fmt.Errorf("spend the action: %w", err)
+	}
+	if economy != rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION {
+		return nil
+	}
+	return recordReaction(ctx, c, after.ID, actionKey)
 }
 
 // finishFlow touches the combat's revision, which every change does.
