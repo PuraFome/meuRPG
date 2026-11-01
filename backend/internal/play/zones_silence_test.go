@@ -306,3 +306,46 @@ func TestSilenceTakesTheVerbalReactionsAway(t *testing.T) {
 		}
 	}
 }
+
+// shatterZoneKey is a fixture: Shatter given the row of a zone that deals its thunder damage to a creature that comes in,
+// to reach the damage of a zone (afterResistance) with a type Silence changes. Registered once, before any test runs.
+const shatterZoneKey = "spell:shatter"
+
+func init() {
+	zoneDefs[shatterZoneKey] = zoneDef{
+		kind: zoneDamage, shape: grid.ShapeSphere, sizeFt: 10, save: "con", onEnter: true,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	}
+}
+
+// thunderZoneHitsTheOgre puts a thunder zone at (16,7), with a Silence over it (centered one square east, so the caster stays out of it) or not, walks the ogre in after a failed save
+// and returns its hit points.
+func thunderZoneHitsTheOgre(t *testing.T, silenced bool) int {
+	t.Helper()
+	c := newCaveOf(t, 9, []string{shatterZoneKey, silenceKey}, func(a *armed) *charactersv1.Character {
+		return a.caio.caster(t, a.campaignID, "Toren", "class:cleric", "race:human", 7, abilities(14, 12, 14, 16, 10),
+			[]string{maceKey}, []string{sacredFlame}, nil, []string{silenceKey, blessKey})
+	})
+	if silenced {
+		c.castSilence(t, 17, 7) // it starts the fight
+	} else {
+		c.zoneFight(t)
+	}
+	c.passTo(t, c.get(t, c.master), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", shatterZoneKey, slotOfLevel(2), at(16, 7), nil)
+	c.h.roller.queue(1, 5, 5, 5) // the Constitution save fails; 3d8 = 15
+	c.mustMove(t, c.master, "Ogro", 16, 7)
+	cur, _, _ := c.hp(t, "Ogro")
+	return int(cur)
+}
+
+// The damage of a zone goes through afterResistance: a creature inside a Silence takes none of a zone's thunder.
+func TestSilenceMakesWhoIsInsideImmuneToTheThunderOfAZone(t *testing.T) {
+	t.Parallel()
+	if got := thunderZoneHitsTheOgre(t, false); got != 59-15 {
+		t.Fatalf("the ogre outside a Silence has %d hit points, want 44: 15 of thunder from the zone", got)
+	}
+	if got := thunderZoneHitsTheOgre(t, true); got != 59 {
+		t.Errorf("the ogre inside a Silence has %d hit points, want 59: immune to thunder", got)
+	}
+}
