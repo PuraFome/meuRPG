@@ -30,7 +30,7 @@ import {
   strokeTitle,
 } from '../../core/held-rolls/held-text';
 import { inspirationDieName, promptTitle, useLabel } from '../../core/resources/bardic-inspiration';
-import { MultiRoll, type RollField } from '../../pages/live-session/combat/multi-roll/multi-roll';
+import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../roll-picker/roll-picker';
 
 /** Each prompt's own heading id: a sheet and the session panel may both ask on the page. */

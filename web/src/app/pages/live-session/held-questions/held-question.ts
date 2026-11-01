@@ -16,7 +16,7 @@ import {
   questionTitle,
   questionWhat,
 } from '../../../core/held-rolls/held-text';
-import { MultiRoll, type RollField } from '../combat/multi-roll/multi-roll';
+import { MultiRoll, type RollField } from '../../../shared/multi-roll/multi-roll';
 import { inspirationDieName, useLabel } from '../../../core/resources/bardic-inspiration';
 
 /** Each question's own heading id: the panel and the rows of the order may both show several. */
