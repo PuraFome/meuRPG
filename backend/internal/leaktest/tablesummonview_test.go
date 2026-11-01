@@ -1,11 +1,11 @@
 package leaktest
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -190,7 +190,8 @@ func (v *summonView) toCasterTurn() {
 	v.t.Fatal("the summoner's turn never came")
 }
 
-// castSpell has Ana cast the table spell, for n creatures; castFeature has her use the race's trait.
+// cast has Ana cast a spell of her own (grantedBy empty, with a slot) or the race's trait (granted_by, no slot) in the combat,
+// for the creatures named.
 func (v *summonView) cast(spell, grantedBy string, slot *playv1.SpellSlot, keys ...string) *playv1.CastSpellResponse {
 	v.t.Helper()
 	return must(v.w.ana.combat.CastSpell(v.t.Context(), rq(&playv1.CastSpellRequest{
@@ -296,11 +297,9 @@ func TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse(t *tes
 	}
 	for what, resp := range map[string]*playv1.CastSpellResponse{"the spell's cast": spellCast, "the feature's cast": featureCast} {
 		body := []byte(jsonOf(resp))
-		for _, p := range []*person{w.ana} { // the answer goes to the caster
-			r := reply{status: 200, body: body, msg: resp}
-			for _, f := range w.inspect(p, r, nil) {
-				t.Errorf("%s: the answer to %s: %s", p.name, what, f)
-			}
+		// The answer goes to the caster.
+		for _, f := range w.inspect(w.ana, reply{status: 200, body: body, msg: resp}, nil) {
+			t.Errorf("Ana: the answer to %s: %s", what, f)
 		}
 	}
 
@@ -336,9 +335,9 @@ func TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse(t *tes
 	// The hidden NPC stood next to the summoner all along: the summoner's view does not name it.
 	for _, p := range []*person{w.ana, w.caio} {
 		for _, r := range v.combatRows(nil) {
-			reply := p.call(r.procedure, r.request(w, p))
-			if reply.ok() && (strings.Contains(string(reply.body), v.hiddenName) || strings.Contains(string(reply.body), v.hiddenCombatant) || strings.Contains(string(reply.body), v.hiddenChar)) {
-				t.Errorf("%s reads the hidden NPC in %s: %s", p.name, r.name(), shorten(reply.body))
+			rep := p.call(r.procedure, r.request(w, p))
+			if rep.ok() && (strings.Contains(string(rep.body), v.hiddenName) || strings.Contains(string(rep.body), v.hiddenCombatant) || strings.Contains(string(rep.body), v.hiddenChar)) {
+				t.Errorf("%s reads the hidden NPC in %s: %s", p.name, r.name(), shorten(rep.body))
 			}
 		}
 	}
@@ -350,8 +349,14 @@ func TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse(t *tes
 	w.settle(v.watchers[w.master], v.watchers[w.ana], v.watchers[w.caio])
 	for p, sw := range v.watchers {
 		heard := sw.since(0)
-		if len(heard) == 0 {
-			t.Errorf("%s's stream heard nothing: the check proves nothing", p.name)
+		real := 0
+		for _, ev := range heard {
+			if ev.GetCurrentMapChanged() == nil && ev.GetHeartbeat() == nil {
+				real++
+			}
+		}
+		if real == 0 && (p == w.master || p == w.ana) {
+			t.Errorf("%s's stream heard no event besides the marker and the heartbeat: the check proves nothing", p.name)
 		}
 		for _, ev := range heard {
 			body := []byte(jsonOf(ev))
@@ -376,9 +381,10 @@ func TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse(t *tes
 }
 
 // A summoned creature and the entries: Ana reads the creature in the table's entries while a character of hers holds
-// one, and not once it was dismissed, replaced or undone; Caio never reads it. A spell that lists a creature she holds, one
-// nobody holds and an SRD creature shows her the held one and the SRD one. Her options name the creatures she may pick
-// all along, because she picks from them.
+// one live, and not once it was dismissed or undone; replaced by a new casting she holds the new ones. Caio never reads
+// it. This holds for a spell's creature and for a feature's. A spell that lists a creature she holds, one nobody holds and
+// an SRD creature shows her the held one and the SRD one. Her options name the creatures she may pick all along, because
+// she picks from them.
 func TestASummonedTableCreatureLeavesTheEntriesWhenNoneIsHeld(t *testing.T) {
 	v := newSummonView(t)
 	w := v.w
@@ -387,74 +393,98 @@ func TestASummonedTableCreatureLeavesTheEntriesWhenNoneIsHeld(t *testing.T) {
 	opts := func() string {
 		return string(w.ana.call(charactersv1connect.CharacterServiceGetSummonOptionsProcedure, &charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}).body)
 	}
-	if has(w.ana, v.spellCreature) || has(w.caio, v.spellCreature) || !has(w.master, v.spellCreature) {
-		t.Fatalf("before a cast: Ana %v, Caio %v, the master %v read the creature in the entries; want false, false, true", has(w.ana, v.spellCreature), has(w.caio, v.spellCreature), has(w.master, v.spellCreature))
+	live := func() int {
+		return len(must(w.ana.characters.ListCharacterCreatures(ctx, rq(&charactersv1.ListCharacterCreaturesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCreatures())
 	}
-	if !strings.Contains(opts(), v.spellCreature) {
-		t.Error("Ana's options do not name the creature she may pick (the positive control)")
-	}
-
-	// Held: the creature is in Ana's entries and in the mixed spell's list, beside the SRD wolf, and the unheld one is not.
-	v.cast(v.spell, "", &playv1.SpellSlot{Level: 1}, v.spellCreature, v.spellCreature)
-	mixed := func(p *person) string { return v.entries(p) }
-	if !has(w.ana, v.spellCreature) || has(w.caio, v.spellCreature) {
-		t.Errorf("held: Ana reads the creature %v, Caio %v; want true, false", has(w.ana, v.spellCreature), has(w.caio, v.spellCreature))
-	}
-	if body := mixed(w.ana); !strings.Contains(body, v.partialSpell) || has(w.ana, v.unheld) {
-		t.Errorf("the mixed spell in Ana's entries lists the unheld creature, or the spell is missing: %s", shorten([]byte(body)))
-	}
-	if !has(w.master, v.unheld) {
-		t.Error("the master's entries do not list the unheld creature (the positive control)")
-	}
-	if has(w.caio, v.unheld) {
-		t.Error("Caio reads a creature nobody holds in the entries")
-	}
-
-	// Replaced: the second casting dismisses the first creatures and makes new ones, which Ana holds.
-	v.toNextTurn()
-	v.cast(v.spell, "", &playv1.SpellSlot{Level: 1}, v.spellCreature, v.spellCreature)
-	if !has(w.ana, v.spellCreature) {
-		t.Error("replaced: Ana no longer reads the creature she holds")
-	}
-
-	// Undone: the last cast is taken back and the first creatures return, so Ana holds them still.
 	undo := func() {
 		log := must(w.master.combat.ListCombatLog(ctx, rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()})))
 		must(w.master.combat.UndoLastAction(ctx, rq(&playv1.UndoLastActionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), ExpectedEventId: log.GetUndoableEventId(), IdempotencyKey: newKey()})))
 	}
-	undo()
-	if !has(w.ana, v.spellCreature) {
-		t.Error("after the undo of the second cast: Ana does not read the creature of the first (the positive control)")
+	for _, kind := range []struct {
+		name, key string
+		cast      func()
+	}{
+		{"the spell's creature", v.spellCreature, func() { v.cast(v.spell, "", &playv1.SpellSlot{Level: 1}, v.spellCreature, v.spellCreature) }},
+		{"the feature's creature", v.featureCr, func() { v.cast(v.featureSpell, v.grantedBy, nil, v.featureCr, v.featureCr) }},
+	} {
+		key := kind.key
+		if has(w.ana, key) || has(w.caio, key) || !has(w.master, key) {
+			t.Fatalf("%s before a cast: Ana %v, Caio %v, the master %v read it in the entries; want false, false, true", kind.name, has(w.ana, key), has(w.caio, key), has(w.master, key))
+		}
+		if !strings.Contains(opts(), key) {
+			t.Errorf("%s: Ana's options do not name the creature she may pick (the positive control)", kind.name)
+		}
+
+		// Held: the creature is in Ana's entries and in the mixed spell's list, beside the SRD wolf, and the unheld one is not.
+		kind.cast()
+		if !has(w.ana, key) || has(w.caio, key) {
+			t.Errorf("%s held: Ana reads it %v, Caio %v; want true, false", kind.name, has(w.ana, key), has(w.caio, key))
+		}
+		if kind.key == v.spellCreature {
+			if got, want := v.summonKeysOf(w.ana, v.partialSpell), []string{v.spellCreature, "monster:wolf"}; !slices.Equal(got, want) {
+				t.Errorf("the mixed spell in Ana's entries lists %v, want the held creature and the SRD's wolf %v", got, want)
+			}
+			if got := v.summonKeysOf(w.caio, v.partialSpell); !slices.Equal(got, []string{"monster:wolf"}) {
+				t.Errorf("the mixed spell in Caio's entries lists %v, want the SRD's wolf only", got)
+			}
+			if got := v.summonKeysOf(w.master, v.partialSpell); len(got) != 3 {
+				t.Errorf("the mixed spell in the master's entries lists %v, want the three creatures (the positive control)", got)
+			}
+		}
+
+		// Replaced: the second casting dismisses the first creatures and makes new ones, which Ana holds.
+		v.toNextTurn()
+		kind.cast()
+		if !has(w.ana, key) || live() != 2 {
+			t.Errorf("%s replaced: Ana reads it %v with %d creatures live; want true and 2 (the new ones only)", kind.name, has(w.ana, key), live())
+		}
+
+		// Undone: the replacing cast is taken back and the first creatures return, so Ana holds them still.
+		undo()
+		if !has(w.ana, key) || live() != 2 {
+			t.Errorf("%s after the undo of the second cast: Ana reads it %v with %d creatures live; want true and 2 (the first ones, the positive control)", kind.name, has(w.ana, key), live())
+		}
+
+		// Dismissed: the owner sends every creature away.
+		for _, c := range must(w.ana.characters.ListCharacterCreatures(ctx, rq(&charactersv1.ListCharacterCreaturesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCreatures() {
+			must(w.ana.characters.DismissCreature(ctx, rq(&charactersv1.DismissCreatureRequest{CampaignId: w.campaign, CreatureId: c.GetId()})))
+		}
+		if has(w.ana, key) || has(w.caio, key) {
+			t.Errorf("%s after the dismissal: Ana reads it %v, Caio %v; want false, false", kind.name, has(w.ana, key), has(w.caio, key))
+		}
+
+		// Undone, with nothing else held: a new cast and its undo leave no creature behind.
+		kind.cast()
+		if !has(w.ana, key) {
+			t.Fatalf("%s after a new cast: Ana does not read it", kind.name)
+		}
+		undo()
+		if has(w.ana, key) || has(w.caio, key) {
+			t.Errorf("%s after the undo of the only cast: Ana reads it %v, Caio %v; want false, false", kind.name, has(w.ana, key), has(w.caio, key))
+		}
+		if !strings.Contains(opts(), key) {
+			t.Errorf("%s: Ana's options no longer name the creature she may pick", kind.name)
+		}
+		if !has(w.master, key) {
+			t.Errorf("%s: the master's entries lost the creature", kind.name)
+		}
+		v.toNextTurn()
 	}
-	// Dismissed: the owner sends every creature away.
-	list := must(w.ana.characters.ListCharacterCreatures(ctx, rq(&charactersv1.ListCharacterCreaturesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetCreatures()
-	if len(list) == 0 {
-		t.Fatal("Ana holds no creature before the dismissal")
+	if !has(w.master, v.unheld) || has(w.ana, v.unheld) || has(w.caio, v.unheld) {
+		t.Errorf("a creature nobody holds: the master reads it %v, Ana %v, Caio %v; want true, false, false", has(w.master, v.unheld), has(w.ana, v.unheld), has(w.caio, v.unheld))
 	}
-	for _, c := range list {
-		if _, err := w.ana.characters.DismissCreature(ctx, connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: w.campaign, CreatureId: c.GetId()})); err != nil {
-			t.Fatalf("DismissCreature() error = %v", err)
+}
+
+// summonKeysOf are the creature keys the summon of a spell lists in the entries p reads.
+func (v *summonView) summonKeysOf(p *person, spell string) []string {
+	v.t.Helper()
+	for _, e := range must(p.table.ListTableEntries(v.t.Context(), rq(&rulesv1.ListTableEntriesRequest{CampaignId: v.w.campaign}))).GetEntries() {
+		if e.GetKey() == spell {
+			return e.GetTableSpell().GetSummon().GetCreatureKeys()
 		}
 	}
-	if has(w.ana, v.spellCreature) || has(w.caio, v.spellCreature) {
-		t.Errorf("after the dismissal: Ana reads the creature %v, Caio %v; want false, false", has(w.ana, v.spellCreature), has(w.caio, v.spellCreature))
-	}
-
-	// Undone, with nothing else held: a new cast and its undo leave no creature behind.
-	v.cast(v.spell, "", &playv1.SpellSlot{Level: 1}, v.spellCreature, v.spellCreature)
-	if !has(w.ana, v.spellCreature) {
-		t.Fatal("after a new cast: Ana does not read the creature")
-	}
-	undo()
-	if has(w.ana, v.spellCreature) || has(w.caio, v.spellCreature) {
-		t.Errorf("after the undo of the only cast: Ana reads the creature %v, Caio %v; want false, false", has(w.ana, v.spellCreature), has(w.caio, v.spellCreature))
-	}
-	if !strings.Contains(opts(), v.spellCreature) {
-		t.Error("Ana's options no longer name the creature she may pick")
-	}
-	if !has(w.master, v.spellCreature) {
-		t.Error("the master's entries lost the creature")
-	}
+	v.t.Fatalf("%s does not read the spell %s in the entries", p.name, spell)
+	return nil
 }
 
 // canaryByKind is the first canary of the kind, a number or not.
