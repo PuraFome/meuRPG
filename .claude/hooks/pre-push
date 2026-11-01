@@ -4,7 +4,7 @@
 #
 # When a push carries a `ready:` commit, it runs the linters CI runs, on what the branch changed since
 # origin/main: `make lint`, the complexity limits and the //nolint cap for backend/ and proto/, the web
-# lint and format check for web/, the e2e lint for e2e/. A preflight starts only at `ready:`, so it
+# lint, format check and dependency rules (depcruise) for web/, the e2e lint for e2e/. A preflight starts only at `ready:`, so it
 # then never fails on lint or format alone. Every other push (progress commits, work in between)
 # passes untouched, so a session's signs of life never wait on unfinished code; so do pushes to
 # status/* and pr-screenshots, and branch deletions.
@@ -12,6 +12,9 @@
 # A failed check stops the push and prints the check's last lines. Fix them and push again; never
 # push with --no-verify.
 set -uo pipefail
+# Git runs a hook with GIT_DIR set and GIT_WORK_TREE unset. In a linked worktree that makes make lint's
+# --new-from-merge-base read paths against backend/ and flag files the branch never touched: drop them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
 zero=0000000000000000000000000000000000000000
@@ -34,8 +37,8 @@ while read -r _ local_sha remote_ref remote_sha; do
 done
 [ $lint = 1 ] || exit 0
 echo "pre-push: this push carries ready:, so the linters CI runs go first." >&2
-# The VM's default Node heap can be too small for the web lint on a large change.
-export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}"
+# The web lint runs out of memory with the VM's default Node heap, and with 4 GiB, on a large change.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
 
 changed=$(git diff --name-only origin/main...HEAD)
 [ -n "$(git status --porcelain --untracked-files=no)" ] && echo "pre-push: the working tree has uncommitted changes; the linters read them too." >&2
@@ -69,6 +72,7 @@ fi
 if grep -qE '^(web|proto)/' <<<"$changed" && needs_modules web; then
   check "web lint" bash -c 'cd web && npm run -s lint'
   check "web format" bash -c 'cd web && npm run -s format:check'
+  check "web depcruise" bash -c 'cd web && npm run -s depcruise'
 fi
 if grep -q '^e2e/' <<<"$changed" && needs_modules e2e; then
   [ -d e2e/lint/node_modules ] || (cd e2e && npm run -s lint:install >/dev/null 2>&1)

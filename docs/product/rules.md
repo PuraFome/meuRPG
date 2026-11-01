@@ -31,7 +31,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-20 | **What players see of enemies in combat.** Players do not see enemy hit points as a number. They see one word: "Ileso", "Ferido", "Muito ferido" or "Derrotado". | [Detail](#rn-20-what-players-see-of-enemies-in-combat) |
 | RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. | [Detail](#rn-21-grid-movement) |
 | RN-22 | **Conditions and concentration.** The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). | [Detail](#rn-22-conditions-and-concentration) |
-| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds and spells that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content; only the master writes. | [Detail](#rn-23-table-content) |
+| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
 | RN-24 | **Table rules.** At the top of the "Regras da mesa" page is the **table style**: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. | [Detail](#rn-24-table-rules) |
 | RN-25 | **The grid and combat without a grid.** The rules count in 1.5 m squares on every map (RN-21). A map drawn with bigger squares is calibrated: "each square of this drawing is worth 3 m" makes the app count four 1.5 m squares in each one, and a 1.5 m reach stays the neighbour. | [Detail](#rn-25-the-grid-and-combat-without-a-grid) |
 | RN-26 | **Doors.** A closed door blocks movement, sight and light, like a wall, and counts as a wall for cover. A character who walks into it opens it, unless it is locked; the master opens, closes and locks any door, in the editor and in the session. | [Detail](#rn-26-doors) |
@@ -566,22 +566,47 @@ How it is built: [Architecture](../architecture/play/lasting-effects.md) and [ru
 
 ## RN-23: Table content
 
-The master registers classes, subclasses, races, subraces, backgrounds and spells that hold only in their campaign, next to the SRD 5.1.
-Members read the campaign's content; only the master writes.
+The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1.
+Members read the campaign's content, except creatures (below); only the master writes.
 
 - **A change takes effect at once, locked sheets included.** The sheet recalculates, and whatever fell outside the rules shows on it as a notice ("A classe mudou") with the exact sentences, without blocking other edits. Only the owner and the master read it. It disappears by itself when what it says is fixed. Only the owners of the sheets that use the changed entry are notified.
 - **Nothing is deleted.** The master archives and unarchives; there is no "Apagar". An archived entry keeps working on the sheets that already use it, and is no longer offered as a new choice. The master is never given an archived entry as a new choice either: the screen names the refusal.
-- **Table content never runs code.** Effects come from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, choice, note, granted spell, maneuver die). A feature with only text always holds. The server returns every violation of an entry at once, each pointing at the editor field it belongs to, and a refused save changes nothing.
+- **Table content never runs code.** Effects come from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, Wild Shape, spell slots, choice, note, granted spell, maneuver die). A feature with only text always holds. The server returns every violation of an entry at once, each pointing at the editor field it belongs to, and a refused save changes nothing.
 - **What players see.** Every enabled playable option, whole (numbers and effects). They look up every enabled spell under "Magias" ([MR-045](stories.md#mr-045-look-up-spells)) and pick on the sheet only from their class's list (each class's list by the level in it, with multiclass).
-- **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background and spell on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses and a switched-off race its subraces, except on a sheet that already has the parent. A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
+- **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses and a switched-off race its subraces, except on a sheet that already has the parent. A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
+  The master switches creatures on and off through the API only.
+  The screen has no creature group.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **A sheet that uses table content does not move to another campaign.** That check waits for copy character and reuse NPCs ([MR-021](stories.md#mr-021-copy-a-character), [MR-022](stories.md#mr-022-reuse-npcs)). Copying content to another campaign is [MR-026](stories.md#mr-026-propose-a-new-race-or-class), after the MVP.
 - **The target of a spell.** One creature, several (one more per level above, if the master wants), an area (cone, cube, cylinder, line or sphere, in steps of 1.5 m) or only the caster. The mechanics are optional: an attack or a saving throw, damage (more dice per level above or per cantrip tier) and healing. In combat a table spell goes through the same casting as an SRD spell.
 - **An area the spell keeps on the map.** A leveled table spell may keep its area while it lasts, as Moonbeam and Spirit Guardians do (RN-37): the master picks when it catches a creature (at the start of its turn, on its first entry, or both) and whether it follows the caster. The area is the spell's own target (a sphere, a cylinder or a cube), the damage and the saving throw are the spell's (a spell with no saving throw just deals the damage, to be rolled), and the time is its duration. It needs exactly one damage type, no attack and no healing, a timed duration or concentration, a distance (or the range Self if it follows the caster). Each field that is wrong is refused at its own field, one sentence each.
 - **Classes.** A table class brings the 20-level table (proficiency bonus, features, cantrips and spells known, slots or pact slots), hit die, saving throws, skills, proficiencies, the ability score improvement levels (4, 8, 12, 16 and 19 by default) and spellcasting (none, full, half or pact). The one-third caster is a subclass that casts. The class editor starts from the server's numbers. Multiclass at creation and level up work with table classes, with the SRD prerequisites as a sheet notice.
 - **Maneuvers.** A maneuver is a die from a resource. After a weapon hit the damage step offers each damage maneuver the character knows, one per attack; it adds the die to the damage (doubled on a critical hit), spends a use, and the master reads its rider on the roll. The die can also start a grapple or reduce a melee hit's damage as a reaction. The die on an attack roll can be registered but is not rolled yet.
+- **Wild Shape.** A table subclass or feature changes the druid's Wild Shape (MR-037): the highest challenge rating of the beasts (a fixed one, or one from the level such as the level divided by 3), how many uses of Wild Shape one change of form costs (none, for a free change), and whether the beast's attacks count as magical. The character takes the most permissive of what it has: the highest rating, the lowest cost, and magical attacks if any feature gives them. The list of forms and the choice agree.
+- **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
-- **Limits:** 1,000 entries per campaign, 64 KiB per entry, 60 features per class, 60 traits per race and subrace, 6,000 effects and 500 distinct formulas (100 KiB of text) in all, each formula of at most 1,024 bytes.
+- **Creatures.**
+  A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30) and up to 10 traits that are text only.
+  The SRD creature it comes from never changes.
+  A table creature is never the base of another.
+  The creature list and sheet, giving it to a character, combat and "Criar NPC" read it by key.
+  The master gives it to a character, it joins combats with its numbers, and an NPC can be made from it.
+  The hit points are copied when the creature is given, so editing the entry does not change a creature already given.
+  The armor class and the attacks follow the entry.
+  A creature entry is the master's: a player reads it, in the creature list and on its sheet, only while one of their characters holds it.
+  A holder reads it whether the entry is live, archived or switched off.
+  A player who holds none does not find it.
+  The creatures already given keep working for their owners.
+  The master can give an archived creature.
+  Everyone in a combat reads a creature's name and key, as for an SRD summon or an NPC.
+  A creature a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
+  A monster put in a combat keeps the numbers it joined with: an edit changes the monsters added afterwards, not the ones already in a fight.
+  An edit that changes none of the numbers, such as a rename, finds the same NPC.
+  Its stat block, hit points and armor class stay with the master and, for the hit points, the owner.
+  Summoning spells, Wild Shape and the encounter generator, evaluator and swaps offer SRD creatures only.
+  A package battle encounter that names a table creature is refused as unknown content.
+  The web app has no editor for creatures: they are created through the API or a content pack.
+- **Limits:** 1,000 entries per campaign, 64 KiB per entry, 60 features per class, 60 traits per race and subrace, 10 traits per creature, 6,000 effects and 500 distinct formulas (100 KiB of text) in all, each formula of at most 1,024 bytes.
 
 On screen: "Conteúdo da mesa" (the list by kind with counts and each entry's state, editors for each kind, "Esta entrada mudou enquanto você editava" with "Recarregar", "N fichas ficaram com aviso" after an edit). On a phone the master only reads and archives. Details: [Design](../design/sheet.md#editors), [Architecture](../architecture/rules-table-content.md), [characters](../architecture/characters-table-content.md) and [web](../architecture/characters-web.md#table-content-screens). Stories: [MR-025](stories.md#mr-025-register-table-content), [MR-045](stories.md#mr-045-look-up-spells).
 
@@ -764,7 +789,8 @@ These limits stop one account from filling the server. The numbers are defaults 
 | --- | --- |
 | Campaigns one account is master of | 10 |
 | Invites that still work in a campaign (not revoked, not expired, with uses left) | 50 |
-| Characters and NPCs in a campaign, living or dead, pending included | 1,000 |
+| Characters and NPCs in a campaign, living or dead, pending included. The NPCs made for a creature in a combat do not count toward it; they have their own cap | 1,000 |
+| NPCs made for the creatures of a combat in a campaign | 1,000 |
 | AI images per campaign per month (RN-28) | 20 |
 | AI images for the whole server per Brasília day | 100 |
 | AI image requests alive at once on the server | 5 (one being made, four waiting) |
