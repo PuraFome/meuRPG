@@ -364,7 +364,7 @@ func TestACreatureFormulaRefusalsNameTheirField(t *testing.T) {
 		{"a long range under the range", func(c *TableCreature) {
 			c.Attacks = three(func(a *TableCreatureAttack) { a.Melee, a.RangeFt, a.LongRangeFt = false, 60, 30 })
 		}, ".attacks[2].long_range_ft", ReasonValue},
-		{"two attacks with a name", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.NamePT = "um" }) }, ".attacks[2].name_pt", ReasonName},
+		{"a name repeating another attack's", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.NamePT = "um" }) }, ".attacks[2].name_pt", ReasonName},
 		{"an SRD damage type key that does not exist", func(c *TableCreature) {
 			c.Attacks = three(func(a *TableCreatureAttack) { a.DamageType = "damage-type:nope" })
 		}, ".attacks[2].damage_type", ReasonReference},
@@ -468,48 +468,47 @@ func TestSlotInTheFormulaCompiler(t *testing.T) {
 	}
 }
 
+// TestClampEdges: one creature whose five numbers are level(), run for owners whose level is each edge of the
+// ranges, one past it and far past it.
 func TestClampEdges(t *testing.T) {
 	t.Parallel()
-	type edit func(*TableCreature, string)
-	fields := []struct {
+	cr := TableCreature{
+		TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey,
+		HitPointsFormula: "level()", ArmorClassFormula: "level()", DamageBonusFormula: "level()",
+		AttackBonusFormula: "level()", SaveDCFormula: "level()",
+	}
+	c := withOverlay(t, creatureOverlay(cr))
+	limits := []struct {
 		name   string
-		set    edit
 		get    func(ResolvedCreature) int
 		lo, hi int
 	}{
-		{"hit points", func(c *TableCreature, s string) { c.HitPointsFormula = s }, func(r ResolvedCreature) int { return r.HitPoints }, 1, MaxCreatureHitPoints},
-		{"armor class", func(c *TableCreature, s string) { c.ArmorClassFormula = s }, func(r ResolvedCreature) int { return r.ArmorClass }, 1, MaxCreatureArmorClass},
-		{"damage bonus", func(c *TableCreature, s string) { c.DamageBonusFormula = s }, func(r ResolvedCreature) int { return r.DamageBonus }, MinCreatureDamageBonus, MaxCreatureDamageBonus},
-		{"attack bonus", func(c *TableCreature, s string) { c.AttackBonusFormula = s }, func(r ResolvedCreature) int { return r.AttackBonus }, MinCreatureAttackBonus, MaxCreatureAttackBonus},
-		{"save DC", func(c *TableCreature, s string) { c.SaveDCFormula = s }, func(r ResolvedCreature) int { return r.SaveDC }, MinCreatureSaveDC, MaxCreatureSaveDC},
+		{"hit points", func(r ResolvedCreature) int { return r.HitPoints }, 1, 9999},
+		{"armor class", func(r ResolvedCreature) int { return r.ArmorClass }, 1, 40},
+		{"damage bonus", func(r ResolvedCreature) int { return r.DamageBonus }, -10, 30},
+		{"attack bonus", func(r ResolvedCreature) int { return r.AttackBonus }, -10, 30},
+		{"save DC", func(r ResolvedCreature) int { return r.SaveDC }, 1, 30},
 	}
-	num := func(n int) string { // a formula for n, negative included
-		if n < 0 {
-			return "0 - " + strconv.Itoa(-n)
+	levels := []int{-10000, -11, -10, -1, 0, 1, 2, 29, 30, 31, 39, 40, 41, 9998, 9999, 10000}
+	for _, level := range levels {
+		r, ok := c.ResolveCreature(swarmLord, owner(level, 2, nil, nil), 0)
+		if !ok || len(r.Failed) != 0 {
+			t.Fatalf("level %d: ok %v, failed %v", level, ok, r.Failed)
 		}
-		return strconv.Itoa(n)
-	}
-	for _, f := range fields {
-		for _, tc := range []struct{ in, want int }{
-			{f.lo - 1, f.lo}, {f.lo, f.lo}, {f.lo + 1, f.lo + 1}, {f.hi - 1, f.hi - 1}, {f.hi, f.hi}, {f.hi + 1, f.hi},
-		} {
-			if tc.in > 1000 { // a literal is at most 1000: build the big ones from a product
-				continue
-			}
-			cr := TableCreature{TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey}
-			f.set(&cr, num(tc.in))
-			r, _ := withOverlay(t, creatureOverlay(cr)).ResolveCreature(swarmLord, owner(1, 2, nil, nil), 0)
-			if got := f.get(r); got != tc.want {
-				t.Errorf("%s: formula %d gives %d, want %d", f.name, tc.in, got, tc.want)
+		for _, l := range limits {
+			if got, want := l.get(r), min(max(level, l.lo), l.hi); got != want {
+				t.Errorf("%s at %d = %d, want %d", l.name, level, got, want)
 			}
 		}
 	}
-	// The hit points go past a literal: 9998, 9999 and 10000 as products.
-	for in, want := range map[string]int{"1000 * 10 - 2": 9998, "1000 * 10 - 1": 9999, "1000 * 10": 9999, "0": 1, "1": 1, "2": 2} {
-		cr := TableCreature{TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey, HitPointsFormula: in}
-		r, _ := withOverlay(t, creatureOverlay(cr)).ResolveCreature(swarmLord, owner(1, 2, nil, nil), 0)
-		if r.HitPoints != want {
-			t.Errorf("hit points %q = %d, want %d", in, r.HitPoints, want)
+	// The ranges themselves, written out.
+	for level, want := range map[int][5]int{
+		-11: {1, 1, -10, -10, 1}, 0: {1, 1, 0, 0, 1}, 1: {1, 1, 1, 1, 1}, 31: {31, 31, 30, 30, 30},
+		41: {41, 40, 30, 30, 30}, 9999: {9999, 40, 30, 30, 30}, 10000: {9999, 40, 30, 30, 30},
+	} {
+		r, _ := c.ResolveCreature(swarmLord, owner(level, 2, nil, nil), 0)
+		if got := [5]int{r.HitPoints, r.ArmorClass, r.DamageBonus, r.AttackBonus, r.SaveDC}; got != want {
+			t.Errorf("level %d: %v, want %v", level, got, want)
 		}
 	}
 }

@@ -69,6 +69,7 @@ type CharacterCreature struct {
 	DismissedReason     *string
 	CreateKey           *string
 	CreateHash          *string
+	StatBlock           []byte
 }
 
 type CharacterLevelUp struct {

@@ -69,11 +69,13 @@ type attackSpec struct {
 	toHitP, damageP *formula.Program
 }
 
-// ResolvedCreature is a table creature's numbers for one owner: every formula run and clamped. HitPoints and
-// ArmorClass are 0 when the base's stand. DamageBonus is the bonus the creature-level formula or the static
-// field gives every attack that has no bonus of its own. AttackBonus and SaveDC replace the base's only when HasAttackBonus
-// and HasSaveDC. Attacks are the creature's own, with their final numbers. Failed lists the fields (as
-// ".hit_points_formula") whose formula failed to run, which then keep the static value.
+// ResolvedCreature is a table creature's numbers for one owner: every formula run and clamped.
+// HitPoints and ArmorClass are 0 when the base's stand.
+// DamageBonus is the bonus the creature-level formula or the static field gives each attack with no bonus of its own.
+// AttackBonus and SaveDC replace the base's only when HasAttackBonus and HasSaveDC.
+// AttackBonus is also the to-hit of an own attack with no to_hit of its own.
+// Attacks are the creature's own, with their final numbers.
+// Failed lists the fields (as ".hit_points_formula") whose formula failed to run, which then keep the static value.
 type ResolvedCreature struct {
 	Key, NamePT, BaseKey string
 	HitPoints            int
@@ -132,6 +134,20 @@ func (c *Content) ResolveCreature(key string, env *formula.Env, slot int) (Resol
 		return ResolvedCreature{}, false
 	}
 	return s.resolve(env, slot, false), true
+}
+
+// CreatureHasFormulas says whether key is a table creature with a formula in any number or attack: the creature
+// whose numbers depend on its owner. A table creature with none, and an SRD creature, have the same stat block
+// for everyone.
+func (c *Content) CreatureHasFormulas(key string) bool {
+	s, ok := c.c.creatureSpecs[key]
+	if !ok {
+		return false
+	}
+	if s.hpP != nil || s.acP != nil || s.damageP != nil || s.attackP != nil || s.saveP != nil {
+		return true
+	}
+	return slices.ContainsFunc(s.attacks, func(a attackSpec) bool { return a.toHitP != nil || a.damageP != nil })
 }
 
 // ResolvedDerived is the stat block of the table creature r for combat: MonsterDerived and the plan of its
@@ -279,8 +295,10 @@ var (
 // to the first damage part of each attack action of the base; the attack bonus in place of the base's; the DC
 // of each action with a saving throw; the extra traits after the base's; and the creature's own attacks after
 // its actions, each an action with an attack roll. The text of an action is the base's, except for the to-hit
-// and the DC it states. base is not changed. With the static values, it is the stat block the content keeps. ok is false when an
-// attack of r has dice that cannot be read. The to-hit rewrite matches "+N to hit" and the DC rewrite
+// and the DC it states. base is not changed.
+// With the static values, it is the stat block the content keeps.
+// ok is false when an attack of r has dice that cannot be read.
+// The to-hit rewrite matches "+N to hit" and the DC rewrite
 // "DC N <Ability> saving throw" or "DC N saving throw"; other wordings keep the base's text.
 func ApplyResolved(base *srd51.Monster, r ResolvedCreature) (*srd51.Monster, bool) {
 	m := *base

@@ -238,6 +238,9 @@ They last from session to session until dismissed; the app never counts a spell'
 `monster_key` is the SRD creature or the table creature (`creature:<slug>@mesa`, a `campaign_content` row of kind `creature`); the sheet comes from `rules`, never stored; `name` is the player's name for it, **free text of 1 to 40 characters** (listed in [Privacy](../privacy.md)); `source` is `familiar`, `animate_dead`, `conjure_animals` or `master`; `attack` is what the spell lets it do (`none`, `reaction`, `full`).
 `summon_group_id` groups the creatures of one casting (initiative and undo); `concentration_cast_id` marks those that last only while the caster concentrates.
 `hp_current` and `hp_max` (copied from the creature sheet at birth: a table creature's entry is copied when the creature is given, and a later edit of the entry does not change them) are its HP outside combat, corrected by the master (RN-02).
+`stat_block` (`JSONB`, `NULL` by default; migration 00297) is the numbers of a table creature whose entry has formulas, worked out for its owner when the creature is created (a `rules.ResolvedCreature`).
+It is a snapshot: a later level of the owner or an edit of the formulas does not change it.
+It is `NULL` for an SRD creature and for a table creature with no formula, whose numbers are read from the content.
 A dismissed creature is not deleted: it keeps `dismissed_at` and `dismissed_reason` (`owner`, `master`, `defeated`, `concentration`, `replaced`, `undone`; both set or both NULL, `CHECK`), so the master's undo can bring it back.
 Partial index on the living ones of a character; indexes on the summon group and the campaign.
 Cascades with the campaign and the character.

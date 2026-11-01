@@ -344,15 +344,18 @@ type CombatRoster interface {
 	// CreatureSheet, CreatureTurnOptions and CreatureSave are CombatSheet,
 	// CombatTurnOptions and CombatSave for a creature, from its stat block and
 	// what its spell lets it attack with ("none", "reaction", "full"); false for
-	// a key that is not an SRD creature.
-	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error)
-	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
-	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error)
+	// a key that is not a creature. creatureID is the creature's row ID, or "" for a
+	// creature that has none (a trap's target outside a combat reads it too, with its ID):
+	// a table creature whose numbers are formulas of its owner reads the snapshot taken
+	// when it was created, and the content's block without an ID.
+	CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string) (link.Sheet, bool, error)
+	CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error)
+	CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, ability string) (link.Save, error)
 	// CreatureCheck is a creature's bonus (and passive score, for the senses' skills) in
 	// a skill or ability check ("skill:stealth", "ability:str"), from its stat block: the
 	// listed bonus, or the ability modifier. Known is false for a key the stat block does
 	// not give.
-	CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, key string) (link.SceneOption, error)
+	CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error)
 	// DamageModifiers are the damage types the target takes double, half or none
 	// of (SRD 5.1), from the stat block of the creature it is: the monsterKey when
 	// it is a character's creature, otherwise the one on the basic sheet of an NPC

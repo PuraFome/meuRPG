@@ -2174,15 +2174,18 @@ type TableCreature struct {
 	// "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
 	Traits []*TableCreatureTrait `protobuf:"bytes,6,rep,name=traits,proto3" json:"traits,omitempty"`
 	// The numbers below are formulas, evaluated against an owner's sheet.
-	// A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>"), and use floor, ceil, min and max.
+	// A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>").
+	// It may also use floor, ceil, min and max.
 	// It may also read slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a slot cast.
-	// slot() is legal only in hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula, save_dc_formula and the to_hit and damage_bonus of an attack.
+	// slot() is legal only in these fields:
+	// hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula and save_dc_formula,
+	// and the to_hit and damage_bonus of an attack.
 	// Effects, conditions and every other formula refuse slot().
 	// A formula that does not compile, or calls a function that does not exist, is refused with its field.
 	// A result is rounded down and clamped to the range of its field.
 	// If a formula fails while it runs, the static value stands.
 	// An empty formula keeps the static value, or the base's when the field has none.
-	// The static fields above stay.
+	// The static fields hit_points, armor_class and damage_bonus stay.
 	// A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
 	//
 	// The maximum hit points, clamped to 1..9999.
@@ -2203,9 +2206,11 @@ type TableCreature struct {
 	// Empty keeps the base's.
 	SaveDcFormula string `protobuf:"bytes,11,opt,name=save_dc_formula,json=saveDcFormula,proto3" json:"save_dc_formula,omitempty"`
 	// Attacks added after the base's actions, at most 8.
-	// Each becomes an action of the creature keyed "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are.
+	// Each becomes an action of the creature keyed "<creature key>#<slug of its name>".
+	// It has an attack roll, as the SRD creatures' attacks do.
 	// They are not part of the base's Multiattack.
-	// A name may not repeat a trait or an action of the base, nor another attack, compared as the traits' names are.
+	// A name may not repeat a trait or an action of the base, nor another attack.
+	// Names are compared as the traits' names are.
 	Attacks       []*TableCreatureAttack `protobuf:"bytes,12,rep,name=attacks,proto3" json:"attacks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

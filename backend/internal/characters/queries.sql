@@ -526,11 +526,11 @@ LIMIT sqlc.arg(max_rows);
 
 -- name: InsertCharacterCreature :one
 INSERT INTO character_creatures
-    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash)
+    (campaign_id, character_id, monster_key, name, source, attack, summon_group_id, concentration_cast_id, hp_current, hp_max, created_at, create_key, create_hash, stat_block)
 VALUES (
     sqlc.arg(campaign_id)::UUID, sqlc.arg(character_id)::UUID, sqlc.arg(monster_key), sqlc.arg(name), sqlc.arg(source),
     sqlc.arg(attack), sqlc.arg(summon_group_id)::UUID, sqlc.narg(concentration_cast_id)::UUID, sqlc.arg(hp_current), sqlc.arg(hp_max),
-    sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash)
+    sqlc.arg(created_at), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.narg(stat_block)::JSONB
 )
 RETURNING *;
 -- A creature is made inside the owner's locked transaction (GiveCreature locks the owner first), so a

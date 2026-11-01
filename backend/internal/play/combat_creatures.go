@@ -55,7 +55,7 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 		}
 		return sheet, err
 	}
-	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack))
+	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack))
 	if err != nil {
 		return link.Sheet{}, err
 	}
@@ -81,7 +81,7 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	} else {
 		var ok bool
 		var err error
-		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack), turnOf(c))
+		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack), turnOf(c))
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (s *Service) saveOf(ctx context.Context, tx pgx.Tx, campaignID string, c pl
 	if !isCreature(c) {
 		return s.roster.CombatSave(ctx, tx, campaignID, c.CharacterID, ability)
 	}
-	return s.roster.CreatureSave(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), ability)
+	return s.roster.CreatureSave(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), ability)
 }
 
 // mayAttack checks what the spell that brought a creature lets it do: a
