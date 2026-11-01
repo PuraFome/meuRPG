@@ -24,6 +24,35 @@ type zoneStep struct {
 	who  string
 	from *grid.Square
 	path []grid.Square
+	// travels says the creature went the distance on the ground, by its own feet or pushed: a walk or a push. A jump,
+	// a teleport and the master's placement put it there without crossing the squares between.
+	travels bool
+}
+
+// travelled are the squares the creature crossed on the ground, the last being where it stands now: none when the step
+// did not travel.
+func (st zoneStep) travelled() []grid.Square {
+	if !st.travels || st.from == nil || len(st.path) == 0 {
+		return nil
+	}
+	var out []grid.Square
+	for _, step := range grid.Line(*st.from, st.path[len(st.path)-1]) {
+		if step.Square != *st.from {
+			out = append(out, step.Square)
+		}
+	}
+	return out
+}
+
+// spikesIn is the number of squares of the step inside the zone.
+func (z *zone) spikesIn(st zoneStep) int {
+	n := 0
+	for _, sq := range st.travelled() {
+		if z.has(sq) {
+			n++
+		}
+	}
+	return n
 }
 
 // pathOf are the squares a creature goes through: the straight line for a walk, only the end for
@@ -74,6 +103,12 @@ func (s *Service) zonesAfterSteps(ctx context.Context, c *combatTx, steps ...zon
 			return err
 		}
 		for _, z := range zs {
+			if z.def.kind == zoneSpikes {
+				if err := s.spikeCatch(ctx, c, z, st, mark); err != nil {
+					return err
+				}
+				continue
+			}
 			if !z.enteredBy(st) {
 				continue
 			}
@@ -317,9 +352,9 @@ func (s *Service) zonesAfterMove(ctx context.Context, a *moveAttempt) error {
 		return nil
 	}
 	from := squareOfState(a.made.From)
-	steps := []zoneStep{{who: a.target.ID, from: from, path: pathOf(from, a.to, a.req.walking())}}
+	steps := []zoneStep{{who: a.target.ID, from: from, path: pathOf(from, a.to, a.req.walking()), travels: a.req.walking()}}
 	if a.draggedMoved != nil {
-		steps = append(steps, zoneStep{who: a.draggedMoved.ID, from: a.draggedFrom, path: []grid.Square{squareOfCombatant(*a.draggedMoved)}})
+		steps = append(steps, zoneStep{who: a.draggedMoved.ID, from: a.draggedFrom, path: []grid.Square{squareOfCombatant(*a.draggedMoved)}, travels: a.req.walking()})
 	}
 	return s.zonesAfterSteps(ctx, a.c, steps...)
 }

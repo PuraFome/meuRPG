@@ -69,7 +69,7 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 	}
 	dice, dtype := zoneDamageOf(sp)
 	switch {
-	case def.kind != zoneDamage: // no damage: the web's fire is the master's to light
+	case def.kind != zoneDamage && def.kind != zoneSpikes: // no damage: the web's fire is the master's to light
 		dice, dtype = "", ""
 	case dice == "":
 		dice, dtype = def.dice, def.dtype

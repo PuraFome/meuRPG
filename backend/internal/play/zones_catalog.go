@@ -59,6 +59,8 @@ const (
 	// zoneRetch: a saving throw at the start of a turn of a creature whose square is inside; a failure spends its action
 	// (Stinking Cloud).
 	zoneRetch
+	// zoneSpikes: no save; a creature that travels through the zone takes damage for every square it enters (Spike Growth).
+	zoneSpikes
 )
 
 // zoneSight says how a zone changes what is seen on the map.
@@ -128,6 +130,13 @@ const (
 	darknessFt        = 15
 	stinkingCloudFt   = 20
 	silenceFt         = 20
+	spikeGrowthFt     = 20
+)
+
+// The damage Spike Growth deals for each square a creature enters in its area.
+const (
+	spikeDice   = "2d4"
+	spikeDamage = "damage-type:piercing"
 )
 
 // moveRangeFt is how far the caster moves an area with an action (Moonbeam), and driftFt how far a
@@ -148,6 +157,10 @@ var zoneDefs = map[string]zoneDef{
 	},
 	"spell:stinking-cloud": {
 		kind: zoneRetch, onStart: true, shape: grid.ShapeSphere, sizeFt: stinkingCloudFt, save: "con", corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:spike-growth": {
+		kind: zoneSpikes, shape: grid.ShapeCylinder, sizeFt: spikeGrowthFt, difficult: true, dice: spikeDice, dtype: spikeDamage,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:silence": {

@@ -30,6 +30,7 @@ const (
 	zoneWhyStart = "zone_start"
 	zoneWhyCast  = "zone_cast" // standing in the area when the spell was cast
 	zoneWhyEnd   = "zone_end"  // ended its turn inside
+	zoneWhyMove  = "zone_move" // travelled through the area (Spike Growth)
 )
 
 // eventZoneTriggered is a creature caught by the area a spell keeps on the map, and eventZoneMoved
@@ -49,6 +50,8 @@ type zoneCatch struct {
 	// made is the event of the cast the catch belongs to (a catch at the cast): what the catch changes is
 	// written into it, so that the undo of the cast puts it back. nil for a catch outside a cast.
 	made *actionEvent
+	// squares is how many times the zone's damage dice count: the squares a creature entered in Spike Growth, else 0 for once.
+	squares int
 }
 
 // spares says the zone leaves the creature alone: the caster and the caster's allies for the zones
@@ -381,4 +384,24 @@ func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
+}
+
+// spikeCatch hurts a creature that travelled through the squares of a Spike Growth: the damage dice of the zone once for
+// every square it entered, rolled by whoever rolls the caster's damage. It is not asked once a turn: the damage is for the
+// distance, and it spares nobody.
+func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
+	n := z.spikesIn(st)
+	if n == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	who, ok := combatantByID(cs, st.who)
+	owner, okOwner := combatantByID(cs, z.row.OwnerID)
+	if !ok || !okOwner || !placed(who) || who.Defeated {
+		return nil
+	}
+	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, mark: mark, round: c.enc.Round, squares: n}, owner)
 }
