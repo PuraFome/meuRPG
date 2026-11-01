@@ -34,6 +34,10 @@ It is the reactor's player, or the master for an NPC's and, to answer for the pl
 When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`.
 The attacker sees "esperando a reação"; the hit player and the master get the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total).
 The player decides without knowing the total, as at a table.
+The Shield window opens after every reaction that lowers the attack roll.
+Cutting Words, Protection and Counterspell hold the action before the d20, and the replay of the held action opens Shield from the hit that is left.
+A cut that turns the hit into a miss opens no Shield window and spends no slot, and a countered Magic Missile opens none either.
+The master's trigger carries the total after the cut; the player's prompt carries no total and no die.
 The attacker's sheet follows the answer: on each `encounter_changed` it reads `GetTurnOptions` again, a pending damage that is gone (Shield stopped the hit) turns the result into a miss, and one back in `AWAITING_ROLL` goes on to the damage.
 The player learns only that, never the armor class.
 
