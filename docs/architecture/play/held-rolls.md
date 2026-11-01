@@ -35,7 +35,15 @@ Whichever path rolls the d20 asks the same gate.
 
 **Initiative.** Initiative is a Dexterity check (SRD 5.1), so `initiativeGate` asks a character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, before the total is set. The combat is in SETUP, so the roller is the character alone (no combatant has a die yet) and the die is the one in `character_inspiration`, which carries into the combat when it begins; the hold is the character's, and the combat's read hands the question to the character's combatant (`openInitiatives`, for its player and the master) so a reload finds it. Nothing is written while it waits: the initiative stays unset and the player can still be told "Esperando". The die adds to the total, not to the bonus, so a tie is still told by the same bonus. An NPC's and a creature's initiative, and the master's roll for them, wait for nobody.
 
-**Not held, on purpose:** a cast with several attacks or targets (Scorching Ray with more than one ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold as weapon attacks through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's, a Hellish Rebuke's: the target's player is not rolling), so they are never offered Indomitable (see Indomitable below).
+**Not held, on purpose:**
+
+- a cast with several attacks or targets (Scorching Ray with more than one ray, Twinned Spell) or one that waited for a reaction window;
+- the attack cantrips (they hold as weapon attacks through `RollAttack`);
+- the master's rolls (the master never waits here);
+- the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's, a Hellish Rebuke's), because the target's player is not rolling, so they are never offered Indomitable (see Indomitable below).
+
+One exception: a spell's save against a creature with Legendary Resistance and a use left is held for the master, whether it passed or failed, d20s kept ([Creatures](creatures.md#legendary-resistance)).
+
 For the saves rolled inside someone else's call, a halfling's Lucky is applied automatically: `autoLucky` (`combat_lucky.go`) rolls the first die showing a 1 again in the app, and the reroll is kept in `saveRoll.Lucky` or `actionEvent.Lucky`, shown as `DiceRoll.rerolled`.
 `luckySaver` gives it to a player's character only, never to an NPC.
 

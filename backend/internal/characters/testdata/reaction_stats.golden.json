@@ -32,7 +32,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "bardic_inspiration": 4
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bardo, pergunta padrão": {
     "Spells": null,
@@ -67,7 +69,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "bardic_inspiration": 4
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bardo, pergunta sempre": {
     "Spells": null,
@@ -102,7 +106,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "bardic_inspiration": 4
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bruxo tiefling 3": {
     "Spells": null,
@@ -137,7 +143,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "infernal_legacy": 1
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "feiticeiro tiefling 1": {
     "Spells": null,
@@ -170,7 +178,9 @@
     "CuttingAsk": "attacks",
     "CharmImmune": false,
     "StatBlock": false,
-    "ResourceMax": {}
+    "ResourceMax": {},
+    "MonsterReactions": null,
+    "Innate": null
   },
   "goblin de ficha básica": {
     "Spells": null,
@@ -203,7 +213,9 @@
     "CuttingAsk": "",
     "CharmImmune": false,
     "StatBlock": true,
-    "ResourceMax": null
+    "ResourceMax": null,
+    "MonsterReactions": null,
+    "Innate": null
   },
   "guerreiro que não conjura": {
     "Spells": null,
@@ -239,7 +251,9 @@
     "ResourceMax": {
       "action_surge": 1,
       "second_wind": 1
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "ladino 5": {
     "Spells": null,
@@ -272,7 +286,9 @@
     "CuttingAsk": "attacks",
     "CharmImmune": false,
     "StatBlock": false,
-    "ResourceMax": {}
+    "ResourceMax": {},
+    "MonsterReactions": null,
+    "Innate": null
   },
   "mago com magias preparadas": {
     "Spells": [
@@ -318,7 +334,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "arcane_recovery": 1
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "mago do bestiário": {
     "Spells": [
@@ -368,7 +386,9 @@
     "CuttingAsk": "",
     "CharmImmune": false,
     "StatBlock": true,
-    "ResourceMax": null
+    "ResourceMax": null,
+    "MonsterReactions": null,
+    "Innate": null
   },
   "monge 3": {
     "Spells": null,
@@ -403,7 +423,9 @@
     "StatBlock": false,
     "ResourceMax": {
       "ki": 3
-    }
+    },
+    "MonsterReactions": null,
+    "Innate": null
   },
   "refused: a character that is not there": {
     "code": "not_found",

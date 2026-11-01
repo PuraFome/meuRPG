@@ -142,7 +142,7 @@ message TableEffect {
   // "skill.stealth").
   string roll = 9;
   repeated string targets = 10;
-  // sense: "darkvision", "blindsight", "tremorsense" or "truesight", and its range.
+  // sense: "darkvision", "blindsight", "tremorsense", "truesight" or "devils-sight", and its range.
   string sense = 11;
   int32 range_ft = 12;
   // resource: a name for the resource, the formula of its maximum and when it

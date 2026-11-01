@@ -969,6 +969,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["EndSpellZone"] = cc.EndSpellZone(ctx, connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: id}))
 	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	_, combat["UseCreatureAction"] = cc.UseCreatureAction(ctx, connect.NewRequest(&playv1.UseCreatureActionRequest{CampaignId: id}))
+	_, combat["SpendLegendaryAction"] = cc.SpendLegendaryAction(ctx, connect.NewRequest(&playv1.SpendLegendaryActionRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

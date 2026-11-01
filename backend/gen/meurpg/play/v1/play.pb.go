@@ -5033,7 +5033,8 @@ func (x *WatchGameSessionResponse_TrapNoticed) GetPointId() string {
 // (GetMap, GetMapLayers). It carries no square and no creature, so it tells
 // the player nothing the reads do not. It is sent only to the players it
 // touches, and at most once while one is still waiting in the stream's queue.
-// The master never gets it (the map_changed hints cover them).
+// The master also gets it when a sight zone or a Wild Shape changes, whether
+// or not a player's view moved; his light warning reads the same scene.
 type WatchGameSessionResponse_VisionChanged struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The map (a UUID), which the player sees.

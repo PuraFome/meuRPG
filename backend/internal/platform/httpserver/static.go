@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 
 // init teaches the standard library the types of two files the app copies as they are. Go's
 // built-in table has neither, and without a system mime.types (the production image has none)
-// http.ServeFile would sniff the manifest as text/plain, which browsers refuse as a manifest.
+// the file server would sniff the manifest as text/plain, which browsers refuse as a manifest.
 func init() {
 	for ext, typ := range map[string]string{
 		".webmanifest": "application/manifest+json",
@@ -104,13 +105,18 @@ func NewStatic(dir string, opts ...StaticOption) (handler http.Handler, ok bool,
 	if dir == "" {
 		return nil, false, nil
 	}
-	indexPath := filepath.Join(dir, "index.html")
-	if !isFile(indexPath) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
 		return nil, false, nil
 	}
-	h := &staticHandler{dir: dir, indexPath: indexPath}
+	if !isFile(root, "index.html") {
+		_ = root.Close()
+		return nil, false, nil
+	}
+	h := &staticHandler{root: root, indexPath: filepath.Join(dir, "index.html")}
 	for _, opt := range opts {
 		if err := opt(h); err != nil {
+			_ = root.Close()
 			return nil, false, err
 		}
 	}
@@ -118,10 +124,10 @@ func NewStatic(dir string, opts ...StaticOption) (handler http.Handler, ok bool,
 	return h, true, nil
 }
 
-// isFile reports whether p exists and is not a directory. A missing build is
+// isFile reports whether rel exists under root and is not a directory. A missing build is
 // the normal case outside the Docker image, so it is not an error.
-func isFile(p string) bool {
-	info, err := os.Stat(p)
+func isFile(root *os.Root, rel string) bool {
+	info, err := root.Stat(rel)
 	return err == nil && !info.IsDir()
 }
 
@@ -130,8 +136,10 @@ func isFile(p string) bool {
 // then the extension, as in "main-3QX7LZ2K.js" or "media/font-AB12CD34.woff2".
 var hashedName = regexp.MustCompile(`-[A-Z0-9]{8}\.[A-Za-z0-9]+(\.[A-Za-z0-9]+)*$`)
 
+// staticHandler reads only through root, which stays open for the life of the handler.
+// root refuses any path, symlinks included, that leads out of the build directory.
 type staticHandler struct {
-	dir               string
+	root              *os.Root
 	indexPath         string
 	formActionOrigins []string
 	csp               string
@@ -144,9 +152,8 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// path.Clean on an absolute path can never produce a ".." that escapes
-	// above "/": Clean has nothing to pop it against. That, plus
-	// filepath.Join below, keeps fsPath inside h.dir.
+	// path.Clean on an absolute path can never produce a ".." that escapes above "/".
+	// h.root enforces the same for every file that is opened.
 	cleanPath := path.Clean(r.URL.Path)
 
 	// Registering this handler at "/" only ever receives requests that no
@@ -162,7 +169,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.setSecurityHeaders(w)
 
-	if fsPath, ok := h.existingAsset(cleanPath); ok {
+	if rel, ok := h.existingAsset(cleanPath); ok {
 		// Angular's outputHashing:"all" puts a content hash in the name of
 		// every file it builds, so those are safe to cache forever: a
 		// change always ships under a new name. The files copied as they are
@@ -174,7 +181,7 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
 		defer slowclient.WriteBody(w, staticWriteTimeout)()
-		http.ServeFile(w, r, fsPath)
+		h.serveAsset(w, r, rel)
 		return
 	}
 
@@ -187,22 +194,116 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // existingAsset reports whether cleanPath maps to a real, non-directory
-// file under h.dir other than index.html, which always goes through the
+// file under the build directory other than index.html, which always goes through the
 // no-cache fallback path above instead.
-func (h *staticHandler) existingAsset(cleanPath string) (string, bool) {
-	if cleanPath == "/" {
+// rel is its path relative to the root.
+func (h *staticHandler) existingAsset(cleanPath string) (rel string, ok bool) {
+	rel = filepath.FromSlash(strings.TrimPrefix(cleanPath, "/"))
+	if !filepath.IsLocal(rel) || rel == "index.html" || !isFile(h.root, rel) {
 		return "", false
 	}
-	fsPath := filepath.Join(h.dir, filepath.FromSlash(cleanPath))
-	// #nosec G703 -- cleanPath came from path.Clean on an absolute URL
-	// path, which can never contain a ".." that escapes above "/"; and
-	// http.ServeFile independently rejects any raw request path containing
-	// ".." before it ever looks at fsPath (see ServeHTTP above).
-	info, err := os.Stat(fsPath)
-	if err != nil || info.IsDir() || fsPath == h.indexPath {
-		return "", false
+	return rel, true
+}
+
+// serveAsset serves the file at rel, as its .br or .gz copy when it is a script or a stylesheet,
+// the client accepts that encoding and the copy exists.
+// The content type is always the one of the original file.
+func (h *staticHandler) serveAsset(w http.ResponseWriter, r *http.Request, rel string) {
+	if isCompressible(rel) {
+		w.Header().Add("Vary", "Accept-Encoding")
+		if coding, f, info := h.openVariant(r, rel); f != nil {
+			defer func() { _ = f.Close() }()
+			w.Header().Set("Content-Encoding", coding)
+			http.ServeContent(w, r, filepath.Base(rel), info.ModTime(), f)
+			return
+		}
 	}
-	return fsPath, true
+	f, err := h.root.Open(rel)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeContent(w, r, filepath.Base(rel), info.ModTime(), f)
+}
+
+// precompressed lists the encodings the build ships next to its scripts and stylesheets,
+// in the order the server prefers them.
+var precompressed = []struct{ coding, suffix string }{
+	{"br", ".br"},
+	{"gzip", ".gz"},
+}
+
+// isCompressible reports whether the build ships compressed copies of the file at p.
+func isCompressible(p string) bool {
+	ext := filepath.Ext(p)
+	return ext == ".js" || ext == ".css"
+}
+
+// openVariant opens the best compressed copy of rel that the request accepts.
+// f is nil when there is none.
+func (h *staticHandler) openVariant(r *http.Request, rel string) (coding string, f *os.File, info os.FileInfo) {
+	accept := r.Header.Values("Accept-Encoding")
+	for _, v := range precompressed {
+		if !acceptsCoding(accept, v.coding) {
+			continue
+		}
+		file, err := h.root.Open(rel + v.suffix)
+		if err != nil {
+			continue
+		}
+		st, err := file.Stat()
+		if err != nil || st.IsDir() {
+			_ = file.Close()
+			continue
+		}
+		return v.coding, file, st
+	}
+	return "", nil, nil
+}
+
+// acceptsCoding reports whether the Accept-Encoding header values allow coding.
+// Tokens are case-insensitive, "*" stands for every coding not named, and a q-value that is not above 0 (q=0, a negative or NaN) refuses one.
+func acceptsCoding(values []string, coding string) bool {
+	wildcard, named := false, false
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			token, q := parseCoding(part)
+			switch token {
+			case coding:
+				if !(q > 0) {
+					return false
+				}
+				named = true
+			case "*":
+				wildcard = wildcard || q > 0
+			}
+		}
+	}
+	return named || wildcard
+}
+
+// parseCoding splits one element of an Accept-Encoding header into its lower-case token and its q-value.
+// A missing or malformed q-value counts as 1.
+func parseCoding(part string) (token string, q float64) {
+	fields := strings.Split(part, ";")
+	token = strings.ToLower(strings.TrimSpace(fields[0]))
+	q = 1
+	for _, param := range fields[1:] {
+		key, val, ok := strings.Cut(strings.TrimSpace(param), "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(key), "q") {
+			continue
+		}
+		if parsed, err := strconv.ParseFloat(strings.TrimSpace(val), 64); err == nil {
+			q = parsed
+		}
+	}
+	return token, q
 }
 
 func (h *staticHandler) setSecurityHeaders(w http.ResponseWriter) {

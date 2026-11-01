@@ -24,6 +24,12 @@ func (w *world) reactionFight() *playv1.Combatant {
 // reactionFightNamed is reactionFight with the name the Mago is given.
 func (w *world) reactionFightNamed(name string) *playv1.Combatant {
 	w.t.Helper()
+	return w.reactionFightOf("monster:mage", name)
+}
+
+// reactionFightOf is reactionFight with the creature of the bestiary the NPC is made from, and its name.
+func (w *world) reactionFightOf(creatureKey, name string) *playv1.Combatant {
+	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
 	sheet := w.fullSheet("class:wizard", "race:human", 1)
@@ -34,12 +40,12 @@ func (w *world) reactionFightNamed(name string) *playv1.Combatant {
 	hidden := false
 	w.scriptD20(ownFace)
 	must(m.combat.AddMonsters(ctx, rq(&playv1.AddMonstersRequest{
-		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: "monster:mage", Count: 1, Name: name, Hidden: &hidden,
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey(), CreatureKey: creatureKey, Count: 1, Name: name, Hidden: &hidden,
 	})))
 	e := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
 	var mage *playv1.Combatant
 	for _, c := range e.GetCombatants() {
-		if c.GetBestiaryCreatureKey() == "monster:mage" {
+		if c.GetBestiaryCreatureKey() == creatureKey {
 			mage = c
 		}
 	}

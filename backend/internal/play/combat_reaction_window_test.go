@@ -28,7 +28,12 @@ func mageFight(t *testing.T) (*armed, *playv1.Encounter) {
 // monsterFight is the fight with one stat block NPC of the key, labeled label, next to Toren.
 func monsterFight(t *testing.T, key, label string) (*armed, *playv1.Encounter) {
 	t.Helper()
-	a := newCasters(t)
+	return monsterFightOn(t, newCasters(t), key, label)
+}
+
+// monsterFightOn is monsterFight for a party already made.
+func monsterFightOn(t *testing.T, a *armed, key, label string) (*armed, *playv1.Encounter) {
+	t.Helper()
 	e := a.monsterSetup(t, false)
 	a.h.roller.queue(1)
 	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = key, 1 })

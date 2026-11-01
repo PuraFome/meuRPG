@@ -82,8 +82,8 @@ From the `Scene` (the grid, the walls and doors, the map's base light, the paint
 | Bright | Seen in bright light. |
 
 - Light and sight stop at walls and at closed, locked and secret doors, by the same line as movement.
-- A viewer has a square and senses in feet (darkvision, blindsight, truesight).
-  Darkvision, within its range, sees dim as bright and dark as grey; blindsight sees regardless of light, in grey; truesight sees both as bright.
+- A viewer has a square and senses in feet (darkvision, blindsight, truesight, Devil's Sight).
+  Darkvision, within its range, sees dim as bright and dark as grey; blindsight sees regardless of light, in grey; truesight sees both as bright; Devil's Sight sees dark, magical or not, as bright within its range, leaves dim light dim and, like every sense but blindsight, sees through no cloud.
 - An observer always knows their own square.
 - `Lit.Union` joins several viewers (the party's view, or a player with more than one creature); it keeps the greatest state.
 - `PassivePenalty` gives -5 for dim and grey (lightly obscured, SRD) and 0 for bright.

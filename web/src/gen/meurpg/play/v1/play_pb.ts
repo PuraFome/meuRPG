@@ -2137,7 +2137,8 @@ export const WatchGameSessionResponse_TrapNoticedSchema: GenMessage<WatchGameSes
  * (GetMap, GetMapLayers). It carries no square and no creature, so it tells
  * the player nothing the reads do not. It is sent only to the players it
  * touches, and at most once while one is still waiting in the stream's queue.
- * The master never gets it (the map_changed hints cover them).
+ * The master also gets it when a sight zone or a Wild Shape changes, whether
+ * or not a player's view moved; his light warning reads the same scene.
  *
  * @generated from message meurpg.play.v1.WatchGameSessionResponse.VisionChanged
  */
@@ -3453,7 +3454,8 @@ export const PlayService: GenService<{
    *     sees or remembers changed, or an NPC moved on a square they see; a
    *     hint, and the app reads MapService.GetMapVision and the map again.
    *     Sent only to the players it touches, and not queued again while one
-   *     waits in the stream's queue; the master never gets it;
+   *     waits in the stream's queue; the master gets it when a sight zone or
+   *     a Wild Shape changes, whether or not a player's view moved;
    *   - `shown_image_changed` when the master shows an image, stops showing
    *     it, deletes it, or changes who sees it. A player gets it only when
    *     what they see changed: the image, for a player who sees it now, and

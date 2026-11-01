@@ -53,3 +53,30 @@ func TestRN10_AViewReadNeverSwallowsTheMoveHint(t *testing.T) {
 		t.Errorf("Ana still receives %s, out of her sight", goblin)
 	}
 }
+
+// The master's light warning reads the same scene as the players' views, so a change of
+// what is seen that moves no token (a zone that blocks sight, a form, a familiar's eyes)
+// reaches the master as vision_changed, also when no player's view changed.
+func TestRN37_VisionChangedAlsoReachesTheMaster(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	m := c.master
+	master, ana := m.watch(c.campaign), c.ana.watch(c.campaign)
+	sm := NewSessionMaps(c.h.pool)
+	sm.SetService(c.h.svc)
+	drain := func() (masterGot, anaGot []*playv1.WatchGameSessionResponse) {
+		m.setMapRevealed(c.campaign, c.probeMap, !m.mustGetMap(c.campaign, c.probeMap).GetMap().GetRevealed())
+		return master.drain(c.probeMap), ana.drain(c.probeMap)
+	}
+	drain() // what the setup left in the streams
+
+	sm.VisionChanged(t.Context(), c.campaign, c.mapID)
+
+	masterGot, anaGot := drain()
+	if len(masterGot) != 1 || masterGot[0].GetVisionChanged().GetMapId() != c.mapID {
+		t.Errorf("the master got %v, want one vision_changed for the map", masterGot)
+	}
+	if len(anaGot) != 0 {
+		t.Errorf("a player whose view did not change got %v, want nothing", anaGot)
+	}
+}

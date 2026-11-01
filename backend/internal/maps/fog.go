@@ -310,6 +310,31 @@ func pointsSig(points []mapsdb.MapPoint) uint64 {
 	return h.Sum64()
 }
 
+// obscured are the squares the combat's spell zones make heavily obscured (clouds) or magically dark.
+type obscured struct{ clouds, dark []grid.Square }
+
+// obscuredLayer is the squares as a layer of the grid, nil for none; squares outside the grid are left out.
+func obscuredLayer(g grid.Grid, squares []grid.Square) *grid.Layer {
+	if len(squares) == 0 {
+		return nil
+	}
+	l := grid.NewLayer(g)
+	for _, sq := range squares {
+		if g.Contains(sq) {
+			l.Set(sq.Col, sq.Row, true)
+		}
+	}
+	return l
+}
+
+// sortedSquares is the squares of the grid in row, column order, each once, without changing the argument: what
+// the scene is made of, so two lists with the same scene have the same key.
+func sortedSquares(g grid.Grid, in []grid.Square) []grid.Square {
+	out := slices.DeleteFunc(slices.Clone(in), func(sq grid.Square) bool { return !g.Contains(sq) })
+	slices.SortFunc(out, func(a, b grid.Square) int { return cmpInts(a.Row, b.Row, a.Col, b.Col) })
+	return slices.Compact(out)
+}
+
 // source is a light on the map, before it is a vision.Source.
 type source = vision.Source
 
@@ -349,7 +374,7 @@ func (s *Service) newSight(ctx context.Context, tx pgx.Tx, in fogInput, points [
 	if sg.extra, err = s.familiarEyes(ctx, tx, in, members, sg.stands, combat); err != nil {
 		return nil, err
 	}
-	if sg.entry, err = s.sceneEntry(ctx, tx, in, sources); err != nil {
+	if sg.entry, err = s.sceneEntry(ctx, tx, in, sources, obscured{clouds: combat.Clouds, dark: combat.MagicDark}); err != nil {
 		return nil, err
 	}
 	return sg, nil
@@ -373,33 +398,33 @@ func standingSquare(g grid.Grid, combat link.CombatPositions, tokens []mapsdb.Ma
 
 // compileScene compiles the scene of the map from its stored layers and the sources,
 // into the entry; the entry's err says why it could not.
-func (s *Service) compileScene(ctx context.Context, tx pgx.Tx, in fogInput, sources []source, e *litEntry) {
+func (s *Service) compileScene(ctx context.Context, tx pgx.Tx, in fogInput, sources []source, ob obscured, e *litEntry) {
 	stored, err := queriesIn(s.queries, tx).GetMapLayers(ctx, in.mapID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		e.err = fmt.Errorf("read the layers: %w", err)
 		return
 	}
 	e.set = loadLayers(stored, in.g)
-	if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources}); err != nil {
+	if e.lit, err = vision.Compile(vision.Scene{Grid: in.g, Walls: e.set.walls, Doors: e.set.doors, Base: in.base, Painted: e.set.light, Sources: sources, Clouds: obscuredLayer(in.g, ob.clouds), MagicDark: obscuredLayer(in.g, ob.dark)}); err != nil {
 		e.err = fmt.Errorf("compile the map's light: %w", err)
 	}
 }
 
 // sceneEntry is the compiled scene of the map: compiled here on the transaction when
 // there is one, else the cache's, shared by everyone who asks for the same key.
-func (s *Service) sceneEntry(ctx context.Context, tx pgx.Tx, in fogInput, sources []source) (*litEntry, error) {
+func (s *Service) sceneEntry(ctx context.Context, tx pgx.Tx, in fogInput, sources []source, ob obscured) (*litEntry, error) {
 	if tx != nil {
 		// Inside a transaction, the scene is compiled here, on the transaction, and
 		// kept out of the cache: joining the cache's single flight would make a
 		// request that holds a connection wait for another that may be waiting for one.
-		entry := &litEntry{key: litKeyOf(in, sources), views: map[vision.Viewer]*vision.View{}}
-		s.compileScene(ctx, tx, in, sources, entry)
+		entry := &litEntry{key: litKeyOf(in, sources, ob), views: map[vision.Viewer]*vision.View{}}
+		s.compileScene(ctx, tx, in, sources, ob, entry)
 		if entry.err != nil {
 			return nil, entry.err
 		}
 		return entry, nil
 	}
-	entry := s.lits.entry(litKeyOf(in, sources))
+	entry := s.lits.entry(litKeyOf(in, sources, ob))
 	// The compiled scene is shared by everyone who asks for the same key, so
 	// it must not depend on the first asker: if that request hangs up halfway,
 	// the others would all receive its cancellation. It runs to the end under
@@ -407,7 +432,7 @@ func (s *Service) sceneEntry(ctx context.Context, tx pgx.Tx, in fogInput, source
 	entry.once.Do(func() {
 		shared, cancel := context.WithTimeout(context.WithoutCancel(ctx), litCompileTimeout)
 		defer cancel()
-		s.compileScene(shared, tx, in, sources, entry)
+		s.compileScene(shared, tx, in, sources, ob, entry)
 	})
 	if entry.err != nil {
 		s.lits.drop(entry)
@@ -587,7 +612,7 @@ func (s *Service) carriedLights(tokens []mapsdb.MapToken, alive map[string]bool,
 
 // litKeyOf hashes what a compiled scene depends on. The layers' revisions stand
 // for the walls and the painted light: every change to them moves one.
-func litKeyOf(in fogInput, sources []source) litKey {
+func litKeyOf(in fogInput, sources []source, ob obscured) litKey {
 	sorted := slices.Clone(sources)
 	slices.SortFunc(sorted, func(a, b source) int {
 		return cmpInts(a.At.Row, b.At.Row, a.At.Col, b.At.Col, a.BrightFt, b.BrightFt, a.DimFt, b.DimFt)
@@ -608,6 +633,14 @@ func litKeyOf(in fogInput, sources []source) litKey {
 		put(src.At.Row)
 		put(src.BrightFt)
 		put(src.DimFt)
+	}
+	for _, list := range [][]grid.Square{ob.clouds, ob.dark} {
+		squares := sortedSquares(in.g, list)
+		put(len(squares)) // where one list ends and the next begins
+		for _, sq := range squares {
+			put(sq.Col)
+			put(sq.Row)
+		}
 	}
 	return litKey{mapID: in.mapID, sum: h.Sum64()}
 }

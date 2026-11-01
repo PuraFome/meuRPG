@@ -394,9 +394,20 @@ func (w *world) buildCombat() {
 			{CharacterId: w.hiddenNPC.GetId()},
 			{CharacterId: w.bandit.GetId()},
 		},
-		Monsters: []*playv1.MonsterGroup{{CreatureKey: "monster:goblin", Count: 2, Name: w.secrets.marker("mon-group")}},
+		Monsters: []*playv1.MonsterGroup{
+			{CreatureKey: "monster:goblin", Count: 2, Name: w.secrets.marker("mon-group")},
+			{CreatureKey: dragonKey, Count: 1, Name: w.secrets.marker("dragon-name")},
+		},
 	}))).GetEncounter()
 	w.secrets.add(&canary{needle: "monster:goblin", kind: "monster-key"})
+	w.secrets.add(&canary{needle: dragonKey, kind: "monster-key"})
+	w.allow("dragon-name", w.ana) // the dragon stands in Ana's sight, as the goblin does
+	// The dragon is in plain sight of Ana: she reads it, and its legendary state is still the master's.
+	for _, c := range e.GetCombatants() {
+		if c.GetBestiaryCreatureKey() == dragonKey {
+			must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: c.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+		}
+	}
 	for _, c := range e.GetCombatants() {
 		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER && !c.GetMine() {
 			must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
@@ -471,6 +482,9 @@ func (w *world) combatantOf(e *playv1.Encounter, characterID string) *playv1.Com
 func (w *world) combatantReaders(c *playv1.Combatant) []*person {
 	if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER {
 		return []*person{w.ana, w.caio}
+	}
+	if c.GetBestiaryCreatureKey() == dragonKey { // in Ana's sight
+		return []*person{w.ana}
 	}
 	if c.GetCharacterId() == w.seenNPC.GetId() { // the goblin in Ana's sight
 		return []*person{w.ana}
@@ -879,3 +893,7 @@ func initiativeOrder(e *playv1.Encounter) string {
 	}
 	return strings.Join(out, ", ")
 }
+
+// dragonKey is the legendary creature of the combat: an SRD adult red dragon (3 legendary
+// actions, Legendary Resistance 3/day).
+const dragonKey = "monster:adult-red-dragon"

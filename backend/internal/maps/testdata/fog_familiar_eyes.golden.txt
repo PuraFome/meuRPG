@@ -2,12 +2,12 @@ no members: nil
 a member with no eyes: nil
 eyes on a creature with no token: nil
 the creature is far from a character that stands nowhere: nil
-16 across and 2 down: salvia=[{{18 6} {60 0 0}}];
-exactly 20 squares away: salvia=[{{22 8} {60 0 0}}];
+16 across and 2 down: salvia=[{{18 6} {60 0 0 0}}];
+exactly 20 squares away: salvia=[{{22 8} {60 0 0 0}}];
 20 across and 1 down: nil
-12 across and 7 down: salvia=[{{14 15} {60 0 0}}];
-8 up: salvia=[{{2 0} {60 0 0}}];
-the combatant stands elsewhere than the token: salvia=[{{4 8} {60 0 0}}];
+12 across and 7 down: salvia=[{{14 15} {60 0 0 0}}];
+8 up: salvia=[{{2 0} {60 0 0 0}}];
+the combatant stands elsewhere than the token: salvia=[{{4 8} {60 0 0 0}}];
 the combatant is out of range, the token in: nil
-two members, one creature each: pens=[{{6 8} {60 0 0}}];
-a member twice: salvia=[{{6 8} {60 0 0}} {{6 8} {60 0 0}}];
+two members, one creature each: pens=[{{6 8} {60 0 0 0}}];
+a member twice: salvia=[{{6 8} {60 0 0 0}} {{6 8} {60 0 0 0}}];

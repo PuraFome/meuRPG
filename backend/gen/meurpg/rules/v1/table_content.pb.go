@@ -1004,7 +1004,7 @@ type TableEffect struct {
 	// "skill.stealth").
 	Roll    string   `protobuf:"bytes,9,opt,name=roll,proto3" json:"roll,omitempty"`
 	Targets []string `protobuf:"bytes,10,rep,name=targets,proto3" json:"targets,omitempty"`
-	// sense: "darkvision", "blindsight", "tremorsense" or "truesight", and its range.
+	// sense: "darkvision", "blindsight", "tremorsense", "truesight" or "devils-sight", and its range.
 	Sense   string `protobuf:"bytes,11,opt,name=sense,proto3" json:"sense,omitempty"`
 	RangeFt int32  `protobuf:"varint,12,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
 	// resource: a name for the resource, the formula of its maximum and when it

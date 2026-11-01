@@ -86,7 +86,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The result is kept as JSON in `character_creatures.stat_block`, and `hp_max` is the resolved hit points.
   It is a snapshot, like `hp_max`: a later level of the owner or an edit of the entry's formulas changes no creature already held.
   A creature with a snapshot builds its stat block with `rules.ResolvedDerived`, which takes the numbers from the snapshot and the text (name, traits, attack names) from the content.
-  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
+  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry, or renamed (its key follows its name), has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
   A snapshot is used whenever the row has one, even when the entry has lost all its formulas.
   The list (`CharacterCreature.armor_class`), the combat sheet, the turn options, the saving throws and the checks of a held creature read the snapshot.
   A trap that hits a creature outside a combat reads it too.
@@ -157,11 +157,18 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), which lists no frequency in the data.
   They keep only the description note, and the master casts for them.
   `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
+  `MonsterCaster` is the only reader of a stat block's casting: `MonsterSpellcasting`, the reaction view (Shield, Counterspell), is a thin view of it.
+  `rules.SpellcastingNumbers` is the only reader of the numbers a trait's text writes (level, ability, DC, attack bonus); the NPC's description note prints what it finds.
+  A trait with neither a casting ability nor a DC or attack bonus makes no caster.
+  A DC with no readable spell is no caster.
+  Loading the SRD snapshot refuses a stat block whose Spellcasting or Innate Spellcasting lists a spell the content does not have, or lists spells with no ability, DC or attack bonus (`casterProblem`).
+  That check applies to the SRD snapshot only: a pack or table creature cannot carry a Spellcasting or Innate Spellcasting trait.
   `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
   When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.
   The NPC's slots and uses are counted on the combatant (`combatants.slots_used`, the count a reaction's Shield uses), whatever its sheet.
   A cast spends them, the undo gives them back, and an at-will spell spends nothing.
-  The count lives on the combatant, so a new combat starts fresh.
+  A monster (the `combat_only` NPC of a creature) starts every combat with an empty count.
+  A hand-made NPC keeps its count in `npc_spell_use`: each copy starts a combat with it, each change writes it back as the highest count any copy holds (never the sum), and the table's long rest clears it.
   The master reads the slots and uses left in the options; a player never does.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.
@@ -197,6 +204,87 @@ Some combat paths ask "does it hold HP on the combatant?" (`holdsHP`: NPC or cre
 
 Creatures never "fall" (`isDown`), have no death saves or confirmation, cast no Shield, spend no slots, never get `ApplyPendingDamage`, are never hidden, give no XP (only a defeated NPC does), and are not in the highlights for the owner.
 Tests: `TestMR037_TheKindAudit`, `TestMR037_ACreatureAtZeroLeavesAndTheHitPointsGoBack`, `TestRN20_CreatureHitPointsOnlyToOwnerAndMaster`, `TestMR037_ACreatureMovesLikeAnyCombatant`, `TestMR037_ADismissedCreatureBlocksNoSquare`, `TestMR037_SummonOptions`, `TestRN20_SummonOptionsCarryNoHitPoints`.
+
+## Legendary Resistance
+
+A creature whose stat block has the Legendary Resistance trait (SRD 5.1, "3/Day") can choose to succeed on a saving throw it fails.
+The number of uses a day is the trait's own, read from the stat block (`LegendaryProfile.ResistancePerDay`).
+The uses spent are kept on the combatant as `creature_spent.legendary_resistance` ([Data](../../data/combat.md)).
+A combat starts with none spent.
+The "day" is the rest between combats at the table: the app carries no use from one combat to the next.
+It is a trait, not an action: it works on the creature's own turn, on another's, and while the creature is incapacitated.
+Only the master chooses it, and only for a creature that has the trait: a player's character and a creature without it never do.
+
+The saves the master rolls for the creature take the choice with the roll (`combat_legendary_resist.go`):
+
+| Save | Call | Field |
+| --- | --- | --- |
+| An effect's save, at the start or end of the turn or after damage | `RollEffectSave` | `use_legendary_resistance` |
+| The Constitution save to keep a concentration | `ResolveConcentrationSave` | `use_legendary_resistance` |
+
+The master does not need to guess before the dice.
+When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
+When the roll succeeds, nothing is spent and the choice is ignored.
+The choice is ignored the same way for a save the master skips or keeps.
+The refusals change nothing: `permission_denied` for a player, `LEGENDARY_RESISTANCE_UNAVAILABLE` for a combatant without the trait (before the roll), and `LEGENDARY_RESISTANCE_NONE_LEFT` for a failed save with no use left.
+A refusal for no uses left comes after the roll, so the master may roll that window again.
+A request sent twice spends once, and its retry answers the same.
+
+**Who sees what (RN-20, RN-29).**
+The master reads the roll that failed, the choice and the uses left in the result of the call.
+The uses left are also on the master's copy of the combatant.
+His log line says it: "falhou no teste (…) e usou Resistência Lendária: sucesso (restam 2)".
+A player reads the line of a save that succeeded, the same one a roll that passed writes.
+The effect ends or the concentration is kept.
+The line has no roll, no count and no name for the trait.
+The event is the ordinary save event, with `resisted` and `resist_left`, neutral names that no player-visible payload carries.
+The hints are those of a save that passed, so the stream tells a player nothing more.
+The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.
+
+**A player's action that makes the creature save** (`combat_legendary_hold.go`).
+A spell with a saving throw, on one target or many (`CastSpell`), asks the master first when a creature with the trait and a use left is among its targets, whether its save passed or failed.
+The cast is held with the request, in a window of kind `legendary_resistance` that only the master reads and answers (`AnswerReaction`).
+The window offers one choice for each failed save of such a creature (none when every one passed): "Usar Resistência Lendária (restam K)", with the d20, the total, the DC and the uses left.
+The master chooses the failures to turn (`creature_ids`) or declines (`PASS`).
+A window with nothing to offer takes only `PASS`: a `USE` that names a creature is refused and spends nothing.
+The hold keeps the d20 and the effect dice of every save of the cast, so the answer settles the cast with the same dice and rolls nothing again.
+A turned failure is a save that succeeded, and the cast writes the damage, the conditions and the effects of a success.
+Each turned failure spends one use, in the same change as the cast.
+An answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
+A request sent twice spends once.
+No window opens when no target has the trait with a use left, or when the spell has no saving throw.
+The wait shows only that the creature has the trait and a use left.
+It lasts the same whatever the save rolled: it ends when none of those creatures is in the combat.
+A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
+The wait itself is visible, as it is for a Shield on an NPC, so a player who sees it open for a creature can tell that the master was asked something.
+The app does not hide that timing.
+The players' line of the cast is a save that passed.
+A hold that is dropped (the combat ends, the cast is no longer possible, the kept dice no longer fit the save) spends nothing and leaves no part of the cast.
+The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
+
+Only the saves of a player's spell are held for the choice.
+Not offered, so a failed save stands there: a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead and the Dexterity save against Hellish Rebuke.
+The save of a creature a spell zone catches is rolled by the server at once, with no choice for the master; the cast that lays the zone holds nothing.
+A player's character caught by a zone is asked in a window of its own, and has no such trait.
+The choice the master has with the roll of an effect's save does not reach the saves of a zone.
+A spell cast for an NPC is not offered either.
+
+## Monster reactions
+
+A stat block's reactions come from its `reactions` (`rules.LegendaryProfile.Reactions`, read by `characters.creatureReactionStats` into `ReactionStats.MonsterReactions`).
+Parry is the one the engine resolves: the Bandit Captain, Erinyes, Gladiator, Knight, Marilith and Noble add 2 to 5 to their armor class against one melee weapon attack that would hit them.
+Every other reaction (Split, Shriek, Rock Catching, Unnerving Mask, the Shield Guardian's Shield...) is text the engine cannot resolve: it opens no window, and the master reads it on the creature's sheet.
+Parry goes through the reaction window ([Reactions](reactions.md#parry)), one per round, answered by the master for the creature.
+It is the NPC's alone: a player's character made from a stat block gets no Parry window.
+The reaction is the creature's `reaction_used` column, the same as a player's: spent by the answer, back at the start of the creature's own turn.
+Nothing is kept in `creature_spent`.
+
+**Who sees what (RN-20, RN-29).**
+Only the master reads the window, the bonus, the armor class with it and that the creature has the reaction.
+A player reads the neutral wait ("Esperando o mestre") while it is open, as for any NPC that may react.
+The wait itself is visible, so it tells a player that the creature may have a reaction; the app does not hide that timing.
+After the answer a player reads an ordinary attack line: a miss when Parry turned the hit, a hit when it did not, with no armor class and no word of a reaction.
+The master's line says "<name> aparou (+N CA)" with the total and the armor class.
 
 ## On screen
 

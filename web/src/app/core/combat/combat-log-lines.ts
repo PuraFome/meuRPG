@@ -176,7 +176,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return {
         ...base,
         icon: 'shield',
-        text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${circleLabel(slot.level)})` : ''}, com a reação`,
+        text: ` conjura ${e.keyNamePt || 'uma magia'}${slot ? ` (${slot.resource ? 'conjuração inata' : circleLabel(slot.level)})` : ''}, com a reação`,
       };
     },
   ],
@@ -293,6 +293,24 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
     CombatLogKind.MONSTERS_ADDED,
     ({ e, base }) => {
       return { ...base, hidden: true, icon: 'pets', actor: '', text: monstersAddedText(e) };
+    },
+  ],
+  // The master spent legendary actions on an option of a stat block that the engine does not resolve: the line is
+  // his alone, with the creature, the option as the stat block names it (SRD, English) and the cost.
+  [
+    CombatLogKind.LEGENDARY_SPENT,
+    ({ e, base }) => {
+      const spent = e.legendarySpent;
+      if (!spent) {
+        return null;
+      }
+      const actions = spent.cost === 1 ? 'ação lendária' : 'ações lendárias';
+      return {
+        ...base,
+        hidden: true,
+        icon: 'bolt',
+        text: `gastou ${spent.cost} ${actions}: ${spent.optionName}`,
+      };
     },
   ],
   // The master took an extra out of a damage; the reason is only for him and the attacker's player.
