@@ -223,6 +223,18 @@ func appFields() []appField {
 			build: func(n int) proto.Message { return tableSpell(&rulesv1.TableSpell{HigherLevelPt: []string{ascii(n)}}) },
 		},
 		appField{
+			name: "background equipment_pt", procedure: rulesv1connect.TableContentServiceCreateTableEntryProcedure, field: "table_background.equipment_pt", reason: textLimit, limit: 16 << 10,
+			build: func(n int) proto.Message {
+				return &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: &rulesv1.TableBackground{EquipmentPt: ascii(n)}}}
+			},
+		},
+		appField{
+			name: "spell material_pt", procedure: rulesv1connect.TableContentServiceCreateTableEntryProcedure, field: "table_spell.components.material_pt", reason: textLimit, limit: 16 << 10,
+			build: func(n int) proto.Message {
+				return tableSpell(&rulesv1.TableSpell{Components: &rulesv1.TableSpellComponents{MaterialPt: ascii(n)}})
+			},
+		},
+		appField{
 			name: "feat desc_pt paragraph", procedure: rulesv1connect.TableContentServiceUpdateTableEntryProcedure, field: "table_feat.desc_pt", reason: textLimit, limit: 16 << 10,
 			build: func(n int) proto.Message { return tableFeat(&rulesv1.TableFeat{DescPt: []string{ascii(n)}}) },
 		},
@@ -265,7 +277,7 @@ func TestTheAppsFieldsTakeTheirLimitAndRefuseOneMore(t *testing.T) {
 func TestTheAppsLargestRequestsFitTheirReadLimit(t *testing.T) {
 	for _, tc := range appFields() {
 		if tc.field == "pack_json" {
-			continue // base64 in proto JSON: a pack at the field limit takes the whole backstop, see TestAPackAtTheLimitFitsTheBackstopAsProto
+			continue // base64 in proto JSON: a pack within about 50 bytes of 3 MiB is over the backstop, see TestAPackAtTheLimitFitsTheBackstopAsProto
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			msg := tc.build(tc.limit)

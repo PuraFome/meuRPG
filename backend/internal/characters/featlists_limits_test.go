@@ -1,12 +1,14 @@
 package characters
 
 import (
+	"errors"
 	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	systemv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -56,18 +58,42 @@ func TestFeatListsOverTheLimitAreRefusedByTheRPCs(t *testing.T) {
 	player := charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
 	anas := ana.create(t, campaign, player, "Gimli", hillDwarfSheet(1))
 	for name, full := range oversizedFeatSheets() {
-		want := connect.CodeResourceExhausted
-		if name == "one over" {
-			want = connect.CodeInvalidArgument
+		check := func(call string, err error) {
+			t.Helper()
+			if name == "one over" {
+				wantRequestRefused(t, name+": "+call, err, "sheet.full.feat_keys", systemv1.RequestRefusedReason_REQUEST_REFUSED_REASON_LIST_TOO_LONG)
+				return
+			}
+			wantCode(t, name+": "+call, err, connect.CodeResourceExhausted)
 		}
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: full}}
 		_, err := ana.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{CampaignId: campaign, Kind: player, Name: "Teste", Sheet: sheet}))
-		wantCode(t, name+": CreateCharacter()", err, want)
+		check("CreateCharacter()", err)
 		_, err = ana.preview(t, campaign, "", player, sheet)
-		wantCode(t, name+": PreviewCharacter() new", err, want)
+		check("PreviewCharacter() new", err)
 		_, err = ana.preview(t, campaign, anas.GetId(), 0, sheet)
-		wantCode(t, name+": PreviewCharacter() edit", err, want)
+		check("PreviewCharacter() edit", err)
 		_, err = ana.update(t, anas, "Gimli", sheet)
-		wantCode(t, name+": UpdateCharacter()", err, want)
+		check("UpdateCharacter()", err)
 	}
+}
+
+// wantRequestRefused fails the test unless err is invalid_argument with the RequestRefused detail of the field and reason.
+func wantRequestRefused(t *testing.T, call string, err error, field string, reason systemv1.RequestRefusedReason) {
+	t.Helper()
+	ce, ok := errors.AsType[*connect.Error](err)
+	if !ok || ce.Code() != connect.CodeInvalidArgument {
+		t.Fatalf("%s error = %v, want invalid_argument", call, err)
+	}
+	for _, d := range ce.Details() {
+		if v, derr := d.Value(); derr == nil {
+			if r, ok := v.(*systemv1.RequestRefused); ok {
+				if r.GetField() != field || r.GetReason() != reason {
+					t.Errorf("%s detail = field %q reason %v, want %q %v", call, r.GetField(), r.GetReason(), field, reason)
+				}
+				return
+			}
+		}
+	}
+	t.Fatalf("%s: no RequestRefused detail in %v", call, err)
 }

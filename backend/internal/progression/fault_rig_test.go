@@ -25,6 +25,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
+	systemv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
@@ -417,8 +418,11 @@ func refusal(err error) string {
 		if derr != nil {
 			continue
 		}
-		if b, ok := v.(*progressionv1.XPBlocked); ok {
+		switch b := v.(type) {
+		case *progressionv1.XPBlocked:
 			out += fmt.Sprintf(" [reason=%s character=%s xp_mode=%s treasure=%s]", b.GetReason(), b.GetCharacterId(), b.GetXpMode(), b.GetTreasurePointId())
+		case *systemv1.RequestRefused:
+			out += fmt.Sprintf(" [request refused field=%s reason=%s]", b.GetField(), b.GetReason())
 		}
 	}
 	return out

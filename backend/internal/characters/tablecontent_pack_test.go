@@ -399,8 +399,10 @@ func TestMR025_ImportRefuses1001EntriesAsAMessageAndAsAFile(t *testing.T) {
 		if !ok || ce.Code() != connect.CodeInvalidArgument || len(ce.Details()) != 1 {
 			t.Fatalf("mode %v, as a message: error = %v, want invalid_argument with the request limit detail", mode, err)
 		}
-		if d, derr := ce.Details()[0].Value(); derr != nil || d.(*systemv1.RequestRefused).GetField() != "pack.entries" {
-			t.Errorf("mode %v, as a message: detail = %v (%v), want the field pack.entries", mode, d, derr)
+		if d, derr := ce.Details()[0].Value(); derr != nil {
+			t.Errorf("mode %v, as a message: detail: %v", mode, derr)
+		} else if r, ok := d.(*systemv1.RequestRefused); !ok || r.GetField() != "pack.entries" || r.GetReason() != systemv1.RequestRefusedReason_REQUEST_REFUSED_REASON_LIST_TOO_LONG {
+			t.Errorf("mode %v, as a message: detail = %v, want LIST_TOO_LONG at pack.entries", mode, d)
 		}
 
 		_, err = pt.master.table.ImportTableContent(t.Context(), connect.NewRequest(&rulesv1.ImportTableContentRequest{CampaignId: pt.to, PackJson: file, Mode: mode}))

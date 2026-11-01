@@ -242,12 +242,12 @@ The limit of the field is the app's own cap, in bytes for a string (a character 
 | `UpdateMasterNotesRequest.notes` | 80 KiB | 20,000 characters (`characters.MaxMasterNotesLength`) |
 | `PaintMapCellsRequest.squares` | 400 items | `maxPaintSquares` (`maps/layers.go`) |
 | `CreateMapPointRequest.hooks`, `UpdateMapPointRequest.hooks` | 16 KiB | 4,000 characters (`maps/mapservice.go`) |
-| `UpdateCampaignDocumentRequest.body` | 400 KiB | `campaigns.MaxDocumentBytes`, 200 KiB after a line break `\r\n` becomes `\n` (`campaigns/document.go`) |
+| `UpdateCampaignDocumentRequest.body` | 400 KiB | `campaigns.MaxDocumentBytes`, 200 KiB after a line break `\r\n` becomes `\n`, so a document with `\r\n` may be up to 400 KiB (`campaigns/document.go`) |
 | `SetOptionSwitchesRequest.switches` | 1400 items | `characters.MaxOptionSwitches` (`characters/tableswitches.go`) |
 | `TableContentPack.entries` | 1000 items | `rules.MaxOverlayEntries` |
-| `ImportTableContentRequest.pack_json` | 3 MiB | `characters.MaxPackBytes` (`characters/tablecontent_pack.go`) |
+| `ImportTableContentRequest.pack_json` | 3 MiB | `characters.MaxPackBytes` (`characters/tablecontent_pack.go`); in proto JSON the bytes are base64, so a pack within about 50 bytes of 3 MiB is over the 4 MiB backstop and is refused as `resource_exhausted` first, and real packs are far below |
 | `TableCasting.srd_spell_keys` | 400 items | `rules.MaxClassSRDSpells` (`rules/overlay_budget.go`) |
-| `desc_pt` of a table feature, feat, option, class feature, subclass and spell, `TableSpell.higher_level_pt`, `TableEffect.text_pt` | 16 KiB for each text | 4,000 characters (`rules/overlay.go`, `rules/overlay_budget.go`) |
+| `desc_pt` of a table feature, feat, option, class feature, subclass and spell, `TableSpell.higher_level_pt`, `TableEffect.text_pt`, `TableBackground.equipment_pt`, `TableSpellComponents.material_pt` | 16 KiB for each text | 4,000 characters (`rules/overlay.go`, `rules/overlay_budget.go`, `rules/overlay_spell.go`) |
 
 The entries of a table (`TableEntry`) are in `ImportTableContent`, `CreateTableEntry` and `UpdateTableEntry`, so the last two rows apply to all three.
 Every other list in a request keeps the default of 100, and a string up to 2,000 characters fits the default of 8 KiB.
@@ -256,16 +256,16 @@ Every other list in a request keeps the default of 100, and a string up to 2,000
 
 | Procedure | Read limit | Why |
 | --- | --- | --- |
-| `ImportTableContent` | 4 MiB (the backstop) | `pack_json` is up to 3 MiB, and proto JSON writes bytes in base64 |
-| `UpdateCampaignDocument` | 512 KiB | `body` is up to 400 KiB, and a line break takes 2 bytes in proto JSON |
+| `ImportTableContent` | 4 MiB (the backstop) | `pack_json` is up to 3 MiB, and proto JSON writes bytes in base64 (4 MiB for a pack at the limit) |
+| `UpdateCampaignDocument` | 512 KiB | `body` is up to 400 KiB; a document of `\n` line breaks (what the editor sends) is up to 200 KiB, or 400 KiB of proto JSON, and a document of only `\r\n` at the limit is beyond the read limit, which is accepted |
 | `CreateTableEntry`, `UpdateTableEntry` | 128 KiB | An entry's data is up to 64 KiB (`characters.MaxTableEntryBytes`), with texts of 16 KiB |
 | `SetOptionSwitches` | 256 KiB | `switches` is up to 1400 entries |
-| `CreateCharacter`, `UpdateCharacter`, `PreviewCharacter`, `PreviewChoices` | 128 KiB | A full sheet with `known_spell_keys`, `known_issues`, `content_baselines` and the texts at their limits |
+| `CreateCharacter`, `UpdateCharacter`, `PreviewCharacter`, `PreviewChoices` | 128 KiB | A realistic full sheet with its lists and texts, with room for the echoed `known_issues` and `content_baselines` |
 | `UpdateCharacterStory` | 128 KiB | `backstory` is up to 40 KiB |
 | `UpdateMasterNotes` | 128 KiB | `notes` is up to 80 KiB |
-| `LevelUpCharacter`, `PreviewLevelUp` | 128 KiB | `known_spell_keys` is up to 200 items, with the other lists of keys |
-| `CreateMapPoint`, `UpdateMapPoint` | 128 KiB | `hooks` is up to 16 KiB, with the point's other texts |
-| `PaintMapCells` | 128 KiB | `squares` is up to 400 items |
+| `LevelUpCharacter`, `PreviewLevelUp` | 128 KiB | A margin: the registry asks for an entry above the default, and a realistic choice is far below it |
+| `CreateMapPoint`, `UpdateMapPoint` | 128 KiB | A margin: the registry asks for an entry above the default, and a realistic point is far below it |
+| `PaintMapCells` | 128 KiB | A margin: the registry asks for an entry above the default, and 400 squares are about 10 KiB |
 
 Every other unary procedure has the default of 64 KiB.
 

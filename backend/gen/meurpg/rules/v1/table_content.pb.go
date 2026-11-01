@@ -2858,6 +2858,8 @@ type TableBackground struct {
 	Tools           []string `protobuf:"bytes,3,rep,name=tools,proto3" json:"tools,omitempty"`
 	LanguageChoices int32    `protobuf:"varint,4,opt,name=language_choices,json=languageChoices,proto3" json:"language_choices,omitempty"`
 	// The equipment, as a text.
+	// The text has at most 4,000 characters (backend/internal/rules/overlay_features.go:1153 and backend/internal/rules/overlay_spell.go:488).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	EquipmentPt   string        `protobuf:"bytes,5,opt,name=equipment_pt,json=equipmentPt,proto3" json:"equipment_pt,omitempty"`
 	Feature       *TableFeature `protobuf:"bytes,6,opt,name=feature,proto3" json:"feature,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -3216,6 +3218,8 @@ type TableSpellComponents struct {
 	Somatic  bool                   `protobuf:"varint,2,opt,name=somatic,proto3" json:"somatic,omitempty"`
 	Material bool                   `protobuf:"varint,3,opt,name=material,proto3" json:"material,omitempty"`
 	// Describes the material; goes with `material`, and only with it.
+	// The text has at most 4,000 characters (backend/internal/rules/overlay_spell.go:138 and backend/internal/rules/overlay_spell.go:488).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	MaterialPt    string `protobuf:"bytes,4,opt,name=material_pt,json=materialPt,proto3" json:"material_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6795,13 +6799,13 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x19\n" +
 	"\brace_key\x18\x02 \x01(\tR\araceKey\x12G\n" +
 	"\x0fability_bonuses\x18\x03 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x0eabilityBonuses\x125\n" +
-	"\x06traits\x18\x04 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\x06traits\"\xdf\x01\n" +
+	"\x06traits\x18\x04 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\x06traits\"\xe7\x01\n" +
 	"\x0fTableBackground\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x16\n" +
 	"\x06skills\x18\x02 \x03(\tR\x06skills\x12\x14\n" +
 	"\x05tools\x18\x03 \x03(\tR\x05tools\x12)\n" +
-	"\x10language_choices\x18\x04 \x01(\x05R\x0flanguageChoices\x12!\n" +
-	"\fequipment_pt\x18\x05 \x01(\tR\vequipmentPt\x127\n" +
+	"\x10language_choices\x18\x04 \x01(\x05R\x0flanguageChoices\x12)\n" +
+	"\fequipment_pt\x18\x05 \x01(\tB\x06\x90\xb5\x18\x80\x80\x01R\vequipmentPt\x127\n" +
 	"\afeature\x18\x06 \x01(\v2\x1d.meurpg.rules.v1.TableFeatureR\afeature\"\xd9\x01\n" +
 	"\x10TableSpellTarget\x129\n" +
 	"\x04kind\x18\x01 \x01(\x0e2%.meurpg.rules.v1.TableSpellTargetKindR\x04kind\x12\x14\n" +
@@ -6822,12 +6826,12 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.rules.v1.SpellDurationKindR\x04kind\x12\x16\n" +
 	"\x06amount\x18\x02 \x01(\x05R\x06amount\x126\n" +
 	"\x04unit\x18\x03 \x01(\x0e2\".meurpg.rules.v1.SpellDurationUnitR\x04unit\x12\x13\n" +
-	"\x05up_to\x18\x04 \x01(\bR\x04upTo\"\x85\x01\n" +
+	"\x05up_to\x18\x04 \x01(\bR\x04upTo\"\x8d\x01\n" +
 	"\x14TableSpellComponents\x12\x16\n" +
 	"\x06verbal\x18\x01 \x01(\bR\x06verbal\x12\x18\n" +
 	"\asomatic\x18\x02 \x01(\bR\asomatic\x12\x1a\n" +
-	"\bmaterial\x18\x03 \x01(\bR\bmaterial\x12\x1f\n" +
-	"\vmaterial_pt\x18\x04 \x01(\tR\n" +
+	"\bmaterial\x18\x03 \x01(\bR\bmaterial\x12'\n" +
+	"\vmaterial_pt\x18\x04 \x01(\tB\x06\x90\xb5\x18\x80\x80\x01R\n" +
 	"materialPt\"\x8f\x01\n" +
 	"\x10TableSpellDamage\x12&\n" +
 	"\x0fdamage_type_key\x18\x01 \x01(\tR\rdamageTypeKey\x12\x12\n" +

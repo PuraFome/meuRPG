@@ -632,7 +632,9 @@ message TableBackground {
   repeated string tools = 3;
   int32 language_choices = 4;
   // The equipment, as a text.
-  string equipment_pt = 5;
+  // The text has at most 4,000 characters (backend/internal/rules/overlay_features.go:1153 and backend/internal/rules/overlay_spell.go:488).
+  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
+  string equipment_pt = 5 [(meurpg.options.v1.max_len) = 16384];
   TableFeature feature = 6;
 }
 
@@ -715,7 +717,9 @@ message TableSpellComponents {
   bool somatic = 2;
   bool material = 3;
   // Describes the material; goes with `material`, and only with it.
-  string material_pt = 4;
+  // The text has at most 4,000 characters (backend/internal/rules/overlay_spell.go:138 and backend/internal/rules/overlay_spell.go:488).
+  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
+  string material_pt = 4 [(meurpg.options.v1.max_len) = 16384];
 }
 
 // TableSpellDamage is one damage type of a table spell. The dice are plain dice
