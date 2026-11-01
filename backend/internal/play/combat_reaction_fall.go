@@ -192,7 +192,7 @@ func (s *Service) spendFeatherFall(ctx context.Context, c *combatTx, reactor pla
 	if vit != nil {
 		got.vitals = append(got.vitals, vit)
 	}
-	return sl, s.spendReaction(ctx, c, reactor)
+	return sl, s.spendReaction(ctx, c, reactor, reaction.FeatherFall)
 }
 
 // takeFallAway discards the fall damage of the creatures the answer saved.

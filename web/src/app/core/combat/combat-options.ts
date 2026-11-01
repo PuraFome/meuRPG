@@ -66,7 +66,7 @@ export function reasonText(reason: DisabledReason | undefined, master = false): 
   if (!reason) {
     return '';
   }
-  // An effect or a condition writes its own sentence (RN-22), already without a cause the caller may not read.
+  // An effect, a condition or a spell writes its own sentence (RN-22), already without a cause the caller may not read.
   const own = master ? reason.textMasterPt || reason.textPt : reason.textPt;
   if (own) {
     return own;
@@ -75,20 +75,6 @@ export function reasonText(reason: DisabledReason | undefined, master = false): 
     return `Sem usos: ${rechargeText(reason.recharge)}`;
   }
   return REASON_TEXT[reason.code] ?? 'Indisponível agora';
-}
-
-/**
- * Why a spell is disabled. The bonus-action-spell limit (SRD 5.1, Casting a Spell) names its case by the spell's own
- * economy, since the server's reason carries no spell name: a bonus action spell is blocked by an earlier spell (other
- * than a cantrip of 1 action), any other spell by an earlier bonus action spell.
- */
-export function spellReasonText(spell: SpellOption, master = false): string {
-  if (spell.reason?.code !== DisabledReasonCode.BONUS_ACTION_SPELL_LIMIT || spell.reason.textPt) {
-    return reasonText(spell.reason, master);
-  }
-  return spell.economy === ActionEconomy.BONUS_ACTION
-    ? 'Você já conjurou outra magia neste turno: junto com uma magia de ação bônus, só cabe um truque de 1 ação.'
-    : 'Você já conjurou uma magia de ação bônus neste turno: a outra magia só pode ser um truque de 1 ação.';
 }
 
 /** A reaction row has no button by design: "Escudo" waits to be hit. Its

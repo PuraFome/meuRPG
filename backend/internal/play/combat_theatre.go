@@ -327,14 +327,11 @@ func (s *Service) OfferOpportunity(
 	return connect.NewResponse(&playv1.OfferOpportunityResponse{Encounter: out, OpportunityOfferId: ev.OfferID}), nil
 }
 
-// offerWrite is the change of OfferOpportunity: the combat must be a running one without a
-// grid, the parties must be fit for the offer, and the offer is written.
+// offerWrite is the change of OfferOpportunity: the combat must be a running one (with or
+// without a grid), the parties must be fit for the offer, and the offer is written.
 func (s *Service) offerWrite(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
-	}
-	if !isTheatre(c.enc) {
-		return nil, errTheatreOnly() // on a map, the server finds the opportunity attacks
 	}
 	if c.enc.Status != statusActive {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
@@ -409,9 +406,9 @@ func errNoOpportunity(msg string) error {
 // checkReactor says whether the reactor may be offered an opportunity attack on the
 // mover, by the rules a move's offers follow (opportunityReactors): hostile to the
 // mover, awake, with its reaction, able to attack with it and holding a melee
-// attack; and a mover that is still there to be attacked (not defeated, not hidden,
-// not after the Disengage action). It does not look at places: in a combat without a
-// grid the master says who left whose reach.
+// attack, not surprised; and a mover that is still there to be attacked (not defeated,
+// not hidden, not after the Disengage action). It does not look at places, reach or fog:
+// the master says who left whose reach, on a map or off it.
 func (s *Service) checkReactor(ctx context.Context, c *combatTx, reactor, mover playdb.Combatant) error {
 	switch {
 	case mover.Defeated:
@@ -438,6 +435,13 @@ func (s *Service) checkReactor(ctx context.Context, c *combatTx, reactor, mover 
 	}
 	if down {
 		return errNoOpportunity("the reactor is down")
+	}
+	surprised, err := s.surprisedReactor(ctx, c.tx, reactor) // no reaction until its first turn ends (SRD 5.1, "Surprise")
+	if err != nil {
+		return err
+	}
+	if surprised {
+		return errNoOpportunity("the reactor is surprised")
 	}
 	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
 	if err != nil {

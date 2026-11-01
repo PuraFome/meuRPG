@@ -465,10 +465,15 @@ service CombatService {
   rpc StandUp(StandUpRequest) returns (StandUpResponse);
 
   // OfferOpportunity is the master's "Oferecer ataque de oportunidade", for a
-  // combat in THEATRE mode (RN-25, ADR-0017): the combatant on turn (the mover)
+  // combat in either mode (RN-25, ADR-0017): the combatant on turn (the mover)
   // left the reach of another, the reactor, which the master chooses. In THEATRE
-  // mode the server never finds out by itself that anyone left a reach. It makes
-  // the same offer a move makes in GRID mode (OpportunityOffer, with no square):
+  // mode the server never finds out by itself that anyone left a reach; in GRID
+  // mode it finds the ones a move makes, and the master adds the ones it cannot
+  // see (a push, a forced move, a ruling). The offer looks at no square and no
+  // reach: the master decides. The fog still decides who reads it: the reactor's
+  // player must see the mover, or reads nothing and the master withdraws or
+  // skips the offer (RN-10). It makes the same offer a move makes in GRID
+  // mode (OpportunityOffer, with no square):
   // the reactor's player gets the prompt (Encounter.opportunity_offers) and
   // answers with RollAttack (`opportunity_offer_id`) or DeclineOpportunity; the
   // master answers for an NPC's reaction (he attacks by hand) or skips the offer
@@ -485,12 +490,13 @@ service CombatService {
   //   - `not_found`: the combat, the mover or the reactor is not in the open
   //     session.
   //   - `permission_denied`: the caller is a player.
-  //   - `failed_precondition`: the combat is a GRID one (THEATRE_ONLY); it is
-  //     ended (ENCOUNTER_ENDED) or not ACTIVE (NOT_ACTIVE); the mover is not on
-  //     turn (NOT_YOUR_TURN); the reactor used its reaction (REACTION_USED); the
-  //     reactor cannot make the attack now, or is on the mover's side, or has no
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED) or not ACTIVE
+  //     (NOT_ACTIVE); the mover is not on turn (NOT_YOUR_TURN); the reactor used
+  //     its reaction (REACTION_USED); the reactor cannot make the attack now
+  //     (surprised, down, incapacitated), or is on the mover's side, or has no
   //     melee attack, or the mover is defeated, hidden or took the Disengage
-  //     action, or the same offer already waits (NO_OPPORTUNITY).
+  //     action, or the same offer already waits (NO_OPPORTUNITY), also when a
+  //     move made it.
   rpc OfferOpportunity(OfferOpportunityRequest) returns (OfferOpportunityResponse);
 
   // WithdrawOpportunity is the master's "Retirar a oferta": he takes back an
@@ -501,7 +507,8 @@ service CombatService {
   //
   // Every stream gets `encounter_changed`.
   //
-  // Errors: as SkipOpportunity.
+  // Errors: as SkipOpportunity, and `failed_precondition` THEATRE_ONLY for an
+  // offer a move made: only an offer the master made by hand is taken back.
   rpc WithdrawOpportunity(WithdrawOpportunityRequest) returns (WithdrawOpportunityResponse);
 
   // SetCombatantSide says whose side an NPC fights on (Q69): ENEMY, the default,
@@ -1823,9 +1830,9 @@ enum EncounterBlockedReason {
   // move that gets some squares before the locked door is no refusal: it ends
   // before the door (MoveCombatantResponse.locked_door).
   ENCOUNTER_BLOCKED_REASON_DOOR_LOCKED = 60;
-  // SpendMovement, OfferOpportunity: the combat is a GRID one, where movement is
-  // a move on the map and the server finds the opportunity attacks itself. Both
-  // are for a THEATRE combat (RN-25).
+  // SpendMovement: the combat is a GRID one, where movement is a move on the map.
+  // It is for a THEATRE combat (RN-25). WithdrawOpportunity: the offer was made by
+  // a move (it has a square); only an offer the master made by hand is taken back.
   ENCOUNTER_BLOCKED_REASON_THEATRE_ONLY = 61;
   // MoveCombatant (a move, a jump, a placement), FireTrap, SearchForTraps and
   // what else needs squares: the combat is a THEATRE one (RN-25), which has no
@@ -1834,7 +1841,7 @@ enum EncounterBlockedReason {
   // StartEncounter: a THEATRE combat takes no map point (it needs no map).
   ENCOUNTER_BLOCKED_REASON_THEATRE_HAS_NO_MAP = 63;
   // OfferOpportunity: the opportunity attack cannot be offered now: the reactor
-  // cannot make it (defeated, down, incapacitated, blinded, no melee attack) or is
+  // cannot make it (defeated, down, surprised, incapacitated, blinded, no melee attack) or is
   // on the mover's side, the mover is defeated, hidden or took the Disengage
   // action, or the same offer already waits. (The reactor's reaction being used is
   // REACTION_USED.)
@@ -2518,8 +2525,8 @@ message OpportunityOffer {
   bool for_you = 6;
   // The square of the move's line where the mover left the reach: where it goes
   // back to if the attack drops it to 0 hit points. Only for whoever answers. 0
-  // in THEATRE mode, where the master offered the attack and nobody has a square:
-  // see `by_hand`.
+  // when the master offered the attack by hand (in either mode), since it has no
+  // square: see `by_hand`.
   int32 left_col = 7;
   int32 left_row = 8;
   // The reactor's melee attacks (opportunity attacks are melee), as
@@ -2527,8 +2534,8 @@ message OpportunityOffer {
   // Espada longa". Empty for the mover's player.
   repeated OpportunityAttack attacks = 9;
   // Sent to whoever receives the offer (the master, the reactor's player and the
-  // mover's player). True when the master offered it (OfferOpportunity, THEATRE mode) instead of
-  // the server finding it on a move: there is no square (`left_col` and `left_row`
+  // mover's player). True when the master offered it (OfferOpportunity, in THEATRE or GRID
+  // mode) instead of the server finding it on a move: there is no square (`left_col` and `left_row`
   // are 0 and mean nothing), and a hit never takes the mover back anywhere.
   bool by_hand = 10;
   // The mover left the reach by a long jump, not a walk: the master's panel says
@@ -2834,6 +2841,13 @@ message Combatant {
   // player who controls the creature get it, and only for a combatant with such actions; every
   // other player's copy never has them (RN-20, RN-29).
   repeated LimitedAction limited_actions = 106;
+
+  // Which reaction was spent while reaction_used is true, and the round it was spent in.
+  // The owner's and the master's; a joint-turn partner reads reaction_used only. Never an NPC's to a player.
+  // OPPORTUNITY for an opportunity attack; UNSPECIFIED when the server has no name for it (a feature's reaction), where
+  // the round alone says when.
+  ReactionKind reaction_kind = 107;
+  int32 reaction_round = 108;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -3162,7 +3176,7 @@ message SpendMovementResponse {
   int32 movement_left_dft = 2;
 }
 
-// OfferOpportunityRequest offers an opportunity attack, in a THEATRE combat.
+// OfferOpportunityRequest offers an opportunity attack by hand, in a THEATRE or a GRID combat.
 message OfferOpportunityRequest {
   string campaign_id = 1;
   string encounter_id = 2;

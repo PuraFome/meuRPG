@@ -218,6 +218,8 @@ type Combatant struct {
 	JumpDoubled             bool
 	TableOnceTurns          []byte
 	CreatureSpent           []byte
+	ReactionKind            *string
+	ReactionRound           *int32
 }
 
 type CombatantState struct {

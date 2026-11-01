@@ -695,6 +695,10 @@ func (f *attackFlow) spendEconomy(ctx context.Context) error {
 	}); err != nil {
 		return fmt.Errorf("spend the action: %w", err)
 	}
+	if f.call.opportunity() {
+		// The throw back of Deflect Missiles (catchID) spends nothing here: answering Deflect recorded the reaction.
+		return recordReaction(ctx, f.c, f.attacker.ID, reactionOpportunity)
+	}
 	return nil
 }
 

@@ -23,7 +23,7 @@ Some events are written just before the change's own event and never close the c
 
 - the creatures a cast made or an ended concentration dismissed (`creature_summoned`, `creature_dismissed`);
 - a concentration that ended at 0 HP, whether a damage or the master's adjustment of an NPC's HP took the combatant there (the event is grouped by the pending damage or by the combatant, and the undo of the change takes it back);
-- the opportunity offers a move made (an offer the master makes by hand in theatre closes the chain instead);
+- the opportunity offers a move made (an offer the master makes by hand closes the chain instead);
 - a door a move opened (it stays open after the undo) and a hiding an attack ended;
 - the puzzle events and the clue a solve gave;
 - what the traps did that is not this combat's (a trap noticed, a firing or search outside a combat or in another);
