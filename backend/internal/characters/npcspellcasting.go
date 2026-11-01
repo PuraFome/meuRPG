@@ -16,16 +16,12 @@ import (
 // this text.
 
 var (
-	spellDCRe     = regexp.MustCompile(`spell save DC (\d+)`)
-	spellAttackRe = regexp.MustCompile(`\+(\d+) to hit with spell attacks`)
-	spellLevelRe  = regexp.MustCompile(`(\d+)(?:st|nd|rd|th)-level spellcaster`)
-	spellAbility  = regexp.MustCompile(`(?i)casting ability is (Intelligence|Wisdom|Charisma)`)
 	slotLabelRe   = regexp.MustCompile(`^(\d+)(?:st|nd|rd|th) level \((\d+) slots?\)$`)
 	perDayRe      = regexp.MustCompile(`^(\d+)/day( each)?$`)
 	spellKeyClean = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
-var spellAbilityPT = map[string]string{"Intelligence": "Inteligência", "Wisdom": "Sabedoria", "Charisma": "Carisma"}
+var spellAbilityPT = map[rules.Ability]string{rules.INT: "Inteligência", rules.WIS: "Sabedoria", rules.CHA: "Carisma"}
 
 // maxSpellNoteLength keeps the note well inside the description's limit.
 const maxSpellNoteLength = 1500
@@ -79,17 +75,18 @@ func spellcastingHead(t rules.CreatureAbility) []string {
 	if t.Name == "Innate Spellcasting" {
 		head[0] = "Conjuração inata"
 	}
-	if m := spellLevelRe.FindStringSubmatch(t.Text); m != nil {
-		head[0] += " de " + m[1] + "º nível"
+	n := rules.SpellcastingNumbers(t.Text)
+	if n.HasLevel {
+		head[0] += fmt.Sprintf(" de %dº nível", n.Level)
 	}
-	if m := spellAbility.FindStringSubmatch(t.Text); m != nil {
-		head = append(head, "habilidade "+spellAbilityPT[m[1]])
+	if n.HasAbility {
+		head = append(head, "habilidade "+spellAbilityPT[n.Ability])
 	}
-	if m := spellDCRe.FindStringSubmatch(t.Text); m != nil {
-		head = append(head, "CD "+m[1])
+	if n.HasDC {
+		head = append(head, fmt.Sprintf("CD %d", n.DC))
 	}
-	if m := spellAttackRe.FindStringSubmatch(t.Text); m != nil {
-		head = append(head, "ataque de magia +"+m[1])
+	if n.HasAttack {
+		head = append(head, fmt.Sprintf("ataque de magia +%d", n.Attack))
 	}
 	return head
 }

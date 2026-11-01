@@ -63,6 +63,7 @@ func (s *Service) endZoneIn(ctx context.Context, c *combatTx, zoneID string) (an
 	if err := c.q.DeleteSpellZone(ctx, zoneID); err != nil {
 		return nil, fmt.Errorf("end the spell zone: %w", err)
 	}
+	c.zoneChanged(z)
 	if err := s.closeZoneWindows(ctx, c, zoneID, endByMaster); err != nil {
 		return nil, err
 	}

@@ -101,8 +101,8 @@ type CharacterDirectory interface {
 	// (MR-031): the master deleted the image from the gallery.
 	ClearPortraits(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (int64, error)
 	// PartyVision returns the campaign's player characters that have a player,
-	// each with what it sees with (its derived darkvision, blindsight and
-	// truesight): the fog of war's viewers (MR-036). A character that died is
+	// each with what it sees with (its derived darkvision, blindsight,
+	// truesight and Devil's Sight): the fog of war's viewers (MR-036). A character that died is
 	// listed as Dead, with no senses. A beast's senses in Wild
 	// Shape replace the character's, and a familiar the player looks through comes
 	// as Eyes (MR-037).

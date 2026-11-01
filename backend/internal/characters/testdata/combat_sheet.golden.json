@@ -161,7 +161,8 @@
     "Senses": {
       "DarkvisionFt": 60,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -341,7 +342,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -511,7 +513,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 9,
@@ -649,7 +652,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -819,7 +823,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -1014,7 +1019,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -1268,7 +1274,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -1420,7 +1427,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,
@@ -1590,7 +1598,8 @@
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
-      "TruesightFt": 0
+      "TruesightFt": 0,
+      "DevilsSightFt": 0
     },
     "Traits": {
       "BarbarianLevel": 0,

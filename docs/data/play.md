@@ -351,6 +351,12 @@ Cascades with the session or the character; the index is by session.
 - Players read the session row's public parts (the current map if revealed, the shown image, the open scene), the stage through the stage-copy ids, and the history through the player stream, which never receives an event marked `secret` or fogged for them.
 - `session_messages`: the master, the author, the lines `for_everyone`, and the rows of `session_message_readers`; the same rule on every path, and a line the caller may not read is `not_found` ([live session](../architecture/play/live-session.md#the-conversation-of-the-scene)).
 - `battle_encounters`, `revivify_requests` and `trap_damages` are master only (a player sees their own character's applied result in the log).
+- A saving throw the master made a success (`lasting_effect_saved`, `concentration_save_rolled`) keeps `resisted` and `resist_left` on its payload, beside the roll that failed.
+  The log shows a player the line of a save that passed, never the roll, the count or the trait.
+- A `legendary_action_spent` event (the master's spend of a text option) is always `secret`.
+  It holds the creature's id, the round, the option's key and name and `spend_cost`.
+  It is the master's alone in the log, the stream and every count.
+  An attack or a move made as a legendary option keeps only `spend_cost` on its ordinary event, a number for the undo.
 - A `free_roll_rolled` event is read by everyone when `secret` is false; a secret one is the master's alone, on every path: the list, the stream, the summary and any count (RN-10).
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.

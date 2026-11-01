@@ -121,7 +121,7 @@ func (bg *budget) casting(path string, key string, c *TableCasting) error {
 // parts are walked in a fixed order, so the first refusal is always the same.
 func checkBudgets(o *Overlay) error {
 	bg := &budget{formulas: map[string]bool{}}
-	for _, part := range []func(*Overlay) error{bg.classes, bg.subclasses, bg.races, bg.subraces, bg.backgrounds, bg.feats, bg.options, bg.classFeatures} {
+	for _, part := range []func(*Overlay) error{bg.classes, bg.subclasses, bg.races, bg.subraces, bg.backgrounds, bg.feats, bg.options, bg.classFeatures, bg.creatures} {
 		if err := part(o); err != nil {
 			return err
 		}
@@ -256,6 +256,26 @@ func (bg *budget) feats(o *Overlay) error {
 	for fi := range o.Feats {
 		tf := &o.Feats[fi]
 		if err := bg.feature(fmt.Sprintf("feats[%d]", fi), &TableFeature{Key: tf.Key, Effects: tf.Effects}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// creatures counts the formulas of each table creature (they are compiled, so they share the
+// overlay's formula budget) and refuses a creature with too many attacks before any of them is read.
+func (bg *budget) creatures(o *Overlay) error {
+	for i := range o.Creatures {
+		tc := &o.Creatures[i]
+		path := fmt.Sprintf("creatures[%d]", i)
+		if len(tc.Attacks) > MaxCreatureAttacks {
+			return ovErr(tc.Key, "%d attacks; the limit is %d per creature", len(tc.Attacks), MaxCreatureAttacks).at(path+".attacks", ReasonLimit)
+		}
+		formulas := []string{tc.HitPointsFormula, tc.ArmorClassFormula, tc.DamageBonusFormula, tc.AttackBonusFormula}
+		for _, a := range tc.Attacks {
+			formulas = append(formulas, a.ToHit, a.DamageBonus)
+		}
+		if err := bg.add(path, 0, formulas...); err != nil {
 			return err
 		}
 	}
