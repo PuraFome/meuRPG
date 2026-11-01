@@ -219,6 +219,16 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
 The vitals keeper has `GiveSpellSlot`, `SpendSpellSlot` and their undos; a slot made by `GiveSpellSlot` is counted as created, like Flexible Casting's, and goes with the next long rest.
 `UseArcaneRecovery` takes the feature key and reads `vitalsMax.recoveries` (`Derived.TableRecoveries`); with no key it is the wizard's own.
 
+## Rerolls and the critical range
+
+`tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
+A `modifier` on `critical_range` uses `target`, `mode` (`set`) and `value`, with no field of its own.
+Both are on the effect menu ([rules](rules-table-content.md#reroll), [critical range](rules-table-content.md#critical-range)).
+`GetEffectMenu` returns the entry of `reroll` with its fields and the list `roll_applies`, and the target `critical_range` among the modifier targets.
+`EffectMenuValue` carries `only_modes`, `min` and `max` for a target of a modifier: the modes it takes (empty is every mode) and the bounds of a literal value (both zero is unbounded).
+`menuValues` copies them from `rules.MenuValue` unchanged.
+`rerollRulesOf` copies `Derived.Rerolls` into `link.Traits.RerollRules` for combat.
+
 ## Spell targets and the "Magias" page
 
 Every spell, SRD or table, says who it catches, and the players' "Magias" page (MR-045) reads that, the search and the filters from the server.

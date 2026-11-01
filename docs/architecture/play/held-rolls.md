@@ -297,33 +297,41 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
 - **Web.** A card with "Usar" and "Manter" and no roll picker.
   A player outside a combat reads the question again from `ListHeldRolls`, since the older lists of the outside state do not carry it.
 
-## The d20 rolled again by a reroll rule (#573)
+## The d20 rolled again by a reroll rule
 
-A table feature can give a reroll (the engine's `reroll` effect, `link.RerollRule`): `Applies` the kind of roll (`attack`, `check`, `save`), `AtMost` the highest face that may be rolled again, `Resource` and `Cost` the uses it spends (none: free).
-SRD 5.1 says it as it says the halfling's Lucky: the die is rolled again and the new roll must be used, even when it is worse.
+A table feature can give a reroll (the `reroll` effect, [Reroll](../rules-table-content.md#reroll); `link.RerollRule`).
+SRD 5.1 puts it as it puts the halfling's Lucky: the die is rolled again and the new roll must be used, even when it is worse.
 For a d20 the player is asked "rolar de novo?" (`held_reroll.go`).
-The damage dice are not a held roll: the app rolls them again by itself (`combat_damage_reroll.go`).
+The damage dice are not a held roll: the app rolls them again by itself ([Attacks and damage](attacks-and-damage.md)).
 
-- **Held only when asked.** The question comes as soon as the d20 is rolled, never later: the d20 that counts shows `AtMost` or lower, and the character can pay a rule that covers the kind (the first of its rules in the sheet's order that does).
-  `rerollsLeft` reads the sheet and the vitals only for a roll of a player's character that may ask, of a kind with an applies word.
-  For a pair (advantage or disadvantage) it is the die that counts.
-  Lucky and the reroll never meet in one roll: a roll that asks Lucky's question (a 1 on a halfling's d20) is not offered the reroll, before or after Lucky is answered, because the reroll is decided only when the d20 is rolled.
-- **The switch.** Nothing is asked unless `Config.D20Rerolls` is on, which `cmd/api` does not set: the web client does not answer the question yet (an unknown case of the offer renders the die's prompt with zero sides), so the server never holds a roll on it until the screen ships.
-  With it off the roll settles as if the player declined: no hold, nothing spent, nothing written.
-  A question written with it on that still waits when it goes off is stale (`rollerState.RerollsOff`): it never refuses a roll, the next roll that runs the gate forgets it, and answering it fails.
-- **Kinds that ask** (`heldKindDef.rerollApplies`): the weapon attack and the spell attack (`attack`), the scene check and the group check (`check`), the effect's saving throw and the concentration save (`save`).
-  The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle hint try never ask it, whatever the character has.
-  Lucky reaches more kinds than these; widening the reroll to match is left to a follow-up.
-- **Order.** The reroll comes after Lucky's place in the chain and before the Bardic Inspiration die, then Indomitable or Stroke of Luck, which look at the new roll (a roll that asks the reroll is not asked either of them at once).
-- **Answer.** Rolling again makes the service roll a d20 with its own roller whatever the campaign's dice mode (the answer carries no die; a physical-dice table is not asked to type it, so this is not RN-18 faithful, a known gap), replaces the face at `reroll_index`, picks the die that counts again by the roll's mode (`countedAfter`), applies Reliable Talent, clears the roll's `Physical` flag (the new die is the server's, never claimed to be physical) and spends `Cost` uses of the rule's resource (`spendUses`) in the transaction of the answer.
+- **When it asks.** The question comes as soon as the d20 is rolled, never later.
+  The d20 that counts shows `AtMost` or lower, and the character can pay a rule that covers the kind of roll (the first such rule in the sheet's order).
+  For a pair (advantage or disadvantage) the die that counts is the one asked about.
+  The sheet and the vitals are read only for a roll of a player's character that may ask and has a kind that a reroll covers.
+- **Lucky.** The two never meet in one roll.
+  A roll that asks Lucky's question (a 1 on a halfling's d20) is not offered the reroll, before or after Lucky is answered.
+- **The switch.** Nothing is asked unless `Config.D20Rerolls` is on, and `cmd/api` leaves it off because the web has no screen for the question.
+  With it off the roll settles as if the player declined: nothing is held, spent or written.
+  A question written while it was on and still waiting when it goes off is stale: the next roll that runs the gate forgets it, it never refuses a roll, and answering it fails.
+- **Kinds that ask** (`heldKindDef.rerollApplies`):
+  - `attack`: the weapon attack and the spell attack;
+  - `check`: the scene check and the group check;
+  - `save`: the effect's saving throw and the concentration save.
+
+  The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle hint never ask it, whatever the character has.
+- **Order.** The reroll comes after Lucky and before the Bardic Inspiration die.
+  Indomitable and Stroke of Luck look at the new roll.
+- **Answer.** Rolling again makes the service roll a d20 with its own roller, whatever the campaign's dice mode.
+  The player is not asked to type it, so the new die is not RN-18 faithful at a physical-dice table; this is a known gap.
+  The new d20 replaces the face asked about, the die that counts is picked again, Reliable Talent applies, the roll's `Physical` flag is cleared, and the rule's uses are spent in the same transaction.
   The new roll is final.
-  A free rule (no resource) is offered with cost 0 and spends nothing.
+  A free rule (no resource) spends nothing.
   The rule is kept on the row (limit, resource, cost, source), so the answer reads nothing from the sheet.
-- **Log and undo.** The reroll is carried where Lucky's is (`luckyReroll`, with the rule's `Source` and the uses spent), so every result that lists Lucky's lists it, with the rule's feature as `source_key`.
-  The event of a weapon attack or a cast keeps the uses (`actionEvent.D20Reroll`), and their undo gives them back (`d20RerollBack`).
-  The scene check, the group check and the saves have no undo, so nothing is given back there.
+- **Log and undo.** The roll lists the reroll as Lucky's is listed, with the rule's feature as `source_key`.
+  The event of a weapon attack or a cast keeps the uses, and undoing it gives them back.
+  The scene check, the group check and the saves have no undo.
 - **Refusals.** While the question waits, the character's other rolls are refused with `REROLL_PENDING`.
-- **Columns** of `inspiration_holds` (migration 00300): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
-  `DeleteOrphanInspirationHolds` keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
-- **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` in `AnswerHeldRollRequest`.
-- **Web.** Generated types only, no screen.
+- **Columns** of `inspiration_holds` ([Play data](../../data/play.md)): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
+  The cleanup of orphan holds keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
+- **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` (`reroll`, a boolean) in `AnswerHeldRollRequest`.
+- **Web.** The generated types exist and there is no screen for the question.

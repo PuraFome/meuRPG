@@ -654,6 +654,16 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O servidor recusa um evento desconhecido, um gatilho sem resultado e um recurso que a entrada não define.
 - **Dado** uma classe da mesa com uma subclasse que conjura (um conjurador de um terço), **quando** cadastro a subclasse com "Esta subclasse conjura", **então** a tabela do conjurador de um terço começa no nível em que ela começa, e as magias da subclasse vêm da lista de classe da qual ela conjura.
 
+**Margem de crítico e rolar de novo.**
+
+- **Dado** uma característica da mesa com um modificador "Margem de acerto crítico" definido em 19 (RN-23), **quando** o dono ataca com uma arma e o d20 mostra 19, **então** o ataque acerta e é um acerto crítico, **e** um ataque de magia com 19 não é.
+  Com uma classe que já tem Crítico Aprimorado, vale o menor dos dois; um valor fora de 15 a 20 é recusado no próprio campo.
+- **Dado** uma característica com o efeito "Rolar de novo" em jogadas de ataque, no máximo 2, gastando 1 uso de um recurso da característica, **quando** o d20 do dono mostra 2 ou menos e sobra um uso, **então** o jogador recebe "rolar de novo?" antes de a jogada ser dita bem-sucedida ou falha; "sim" gasta o uso e o novo d20 vale, "não" não gasta nada.
+  A pergunta aparece quando a tela do jogador para ela existir: até lá o servidor não retém a jogada, e o critério só é cumprido pelo teste da API.
+  O efeito se escreve pela API: o editor do mestre ainda não tem entrada para ele.
+- **Dado** uma característica com o efeito "Rolar de novo" em dano, no máximo 2, gastando 1 uso, **quando** o dono rola o dano de uma arma e um dado mostra 1 ou 2, **então** o app rola esse dado de novo sem perguntar, a linha de dano o lista e o uso é gasto; **quando** o mestre desfaz o dano, **então** o uso volta.
+  Uma característica sem recurso rola de novo de graça; um custo que o recurso nunca paga deixa o efeito fora da ficha.
+
 **Talentos.**
 
 - **Dado** que sou mestre de "Mirathel", **quando** cadastro um talento com o pré-requisito (valores de habilidade — todos ou um deles —, uma proficiência, "consegue conjurar ao menos uma magia", uma raça ou sub-raça, ou um nível) e efeitos do menu fechado, **então** o talento aparece na lista de conteúdo como os outros tipos, em "Opções para os jogadores" e na subida de nível (se a mesa usa talentos), **e** a ficha de um personagem que o pegou o lista como "Talento" com os efeitos dele.

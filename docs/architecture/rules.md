@@ -91,7 +91,7 @@ The result covers the 12 SRD classes and 9 SRD races from level 1 to 20 (and the
   - A weapon-damage bonus tagged `wielding:one-melee-weapon` (the Dueling fighting style) is applied to every melee weapon that is not two-handed, in the damage rolled in one hand.
     The sheet lists the weapons carried, not the ones in hand, so the attack line says the condition for the table to check (`Attack.damage_note_pt`).
   - Each attack's damage is also given as numbers (`DamageDice`, `VersatileDice`).
-  - `Derived.CriticalRange` is 20, 19 with Improved Critical and 18 with Superior Critical; `Derived.TwoWeaponFighting` says the character has the fighting style.
+  - `Derived.CriticalRange` is 20, 19 with Improved Critical and 18 with Superior Critical, or the lower value of a table's [`critical_range`](rules-table-content.md#critical-range) modifier (15 at the least); `Derived.TwoWeaponFighting` says the character has the fighting style.
 - **Choices counted**: each feature that offers options (fighting styles, metamagic, invocations, pact boon, hunter's prey...) allows a fixed number of picks, shared by the features that offer the same options.
   More picks, or the same option name twice, raise `choice_count`, and the repeated one gives no effect.
 - **Features and traits** up to the character's level, with the SRD text (see [Portuguese texts](#portuguese-texts-of-the-srd)), the `hints` and the `issues`.
