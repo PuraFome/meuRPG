@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -339,5 +340,27 @@ func TestMR578_AMalformedSnapshotFallsBackToTheContentOrIsClamped(t *testing.T) 
 		if got := tb.numbersOf(t, tb.owner, tb.pc, wolf.GetId()); got != tc.want {
 			t.Errorf("%s: %+v, want %+v", tc.name, got, tc.want)
 		}
+	}
+}
+
+// A creature whose row is gone (its owner's character was deleted in the middle of a read) has no snapshot: the sheet
+// falls back to the content's static numbers and does not fail.
+func TestMR578_ACreatureWithoutARowFallsBackToTheStaticNumbers(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	tb.master.addEntry(t, tb.campaign, silverWolf())
+	var sheet link.Sheet
+	var ok bool
+	err := db.InTx(t.Context(), tb.h.pool, func(tx pgx.Tx) error {
+		var err error
+		sheet, ok, err = tb.h.svc.CreatureSheet(t.Context(), tx, tb.campaign, uuid.New().String(), silverWolfKey, "full")
+		return err
+	})
+	if err != nil || !ok {
+		t.Fatalf("CreatureSheet() of a creature with no row = %v, %v, want its sheet", ok, err)
+	}
+	i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == clawKey })
+	if sheet.ArmorClass != 13 || i < 0 || sheet.Attacks[i].ToHit != 0 || sheet.Attacks[i].DiceBonus != 0 {
+		t.Errorf("sheet = armor class %d, attacks %+v, want 13 and a claw with the static +0", sheet.ArmorClass, sheet.Attacks)
 	}
 }
