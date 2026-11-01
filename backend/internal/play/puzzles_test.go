@@ -24,6 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/reqlimit"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -55,7 +56,7 @@ func newPuzzleTable(t *testing.T) *puzzleTable {
 	a.h.svc.SetPuzzleMaps(msvc)
 	a.h.svc.SetTraps(msvc) // a wrong move may fire a trap point ("Ao errar")
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
-	msvc.Mount(srv.Handle, mapsSessions{testSessions}, a.h.camps, connect.WithRequireConnectProtocolHeader())
+	msvc.Mount(srv.Handle, mapsSessions{testSessions}, a.h.camps, reqlimit.HandlerOption())
 	server := httptest.NewServer(srv.Handler())
 	t.Cleanup(server.Close)
 	return &puzzleTable{armed: a, msvc: msvc, server: server}
@@ -1855,10 +1856,10 @@ func TestPuzzleRevealDoesNotNameAPointOfAHiddenMap(t *testing.T) {
 		seen = append(seen, "read: "+jsonOf(p.read(t, u, puz.GetId())))
 	}
 	var sid string
-	if err := p.h.pool.QueryRow(t.Context(), `SELECT id::STRING FROM game_sessions WHERE campaign_id = $1 LIMIT 1`, p.campaignID).Scan(&sid); err != nil {
+	if err := p.h.pool.QueryRow(t.Context(), `SELECT id::TEXT FROM game_sessions WHERE campaign_id = $1 LIMIT 1`, p.campaignID).Scan(&sid); err != nil {
 		t.Fatalf("read the session: %v", err)
 	}
-	rows, err := p.h.pool.Query(t.Context(), `SELECT kind, payload::STRING FROM session_events WHERE game_session_id = $1 ORDER BY seq`, sid)
+	rows, err := p.h.pool.Query(t.Context(), `SELECT kind, payload::TEXT FROM session_events WHERE game_session_id = $1 ORDER BY seq`, sid)
 	if err != nil {
 		t.Fatalf("read session_events: %v", err)
 	}

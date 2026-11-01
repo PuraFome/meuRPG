@@ -42,6 +42,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice/dicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/reqlimit"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
 	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
@@ -313,7 +314,7 @@ func newStack(t *testing.T) *stack {
 	})
 
 	srv := httpserver.New(httpserver.Config{Logger: logger})
-	opt := connect.WithRequireConnectProtocolHeader()
+	opt := reqlimit.HandlerOption()
 	sessions := fakeSessions{}
 	camps.Mount(srv.Handle, sessions, opt)
 	chars.Mount(srv.Handle, sessions, camps, opt)
