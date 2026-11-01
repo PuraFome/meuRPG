@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 // The formulas of a table creature (issue #578, slice 2a). The names are invented; the bases are the SRD's
@@ -212,12 +213,14 @@ func TestACreatureOwnAttacksAreActions(t *testing.T) {
 		Attacks: []TableCreatureAttack{
 			{NamePT: "Garra Venenosa", Melee: true, ReachFt: 10, DiceCount: 2, DiceSides: 6, DamageType: "damage-type:slashing", ToHit: `prof() + mod("str")`, DamageBonus: `mod("str")`},
 			{NamePT: "Espinho", RangeFt: 30, LongRangeFt: 90, DiceCount: 1, DiceSides: 8, DamageType: "damage-type:piercing", ToHit: `prof() + slot()`},
+			{NamePT: "Pancada", Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:bludgeoning"},
 		},
 	}
 	c := withOverlay(t, creatureOverlay(cr))
 	env := owner(5, 3, nil, map[string]int{"str": 4})
 	r, ok := c.ResolveCreature(swarmLord, env, 2)
-	if !ok || len(r.Attacks) != 2 || r.Attacks[0].AttackBonus != 7 || r.Attacks[0].DamageBonusValue != 4 || r.Attacks[1].AttackBonus != 5 {
+	if !ok || len(r.Attacks) != 3 || r.Attacks[0].AttackBonus != 7 || r.Attacks[0].DamageBonusValue != 4 ||
+		r.Attacks[1].AttackBonus != 5 || r.Attacks[1].DamageBonusValue != 0 || r.Attacks[2].AttackBonus != 0 || r.Attacks[2].DamageBonusValue != 0 {
 		t.Fatalf("resolved attacks = %+v", r.Attacks)
 	}
 	d, plan, _ := c.ResolvedDerived(r)
@@ -226,8 +229,8 @@ func TestACreatureOwnAttacksAreActions(t *testing.T) {
 		byKey[a.Key] = a
 	}
 	claw, spike := byKey[swarmLord+"#garra-venenosa"], byKey[swarmLord+"#espinho"]
-	if claw.Key == "" || spike.Key == "" || len(d.Attacks) != 4 {
-		t.Fatalf("attacks = %+v, want the spider's two and the two own", d.Attacks)
+	if claw.Key == "" || spike.Key == "" || len(d.Attacks) != 5 {
+		t.Fatalf("attacks = %+v, want the spider's two and the three own", d.Attacks)
 	}
 	if !claw.Melee || claw.AttackBonus != 7 || claw.Damage != "2d6+4" || claw.DamageType != "damage-type:slashing" || claw.ReachFt != 10 {
 		t.Errorf("claw = %+v", claw)
@@ -239,20 +242,36 @@ func TestACreatureOwnAttacksAreActions(t *testing.T) {
 	if !ok || ap.Kind != ActionKindAttack || ap.Attack == nil || ap.Attack.Bonus != 5 || ap.Attack.RangeFt != 30 || len(ap.Damage) != 1 {
 		t.Errorf("plan of the spike = %+v", ap)
 	}
-	// The owner-less stat block (MonsterDerived) has them too, worked out for a level 1 owner with no modifiers.
-	st, _ := c.MonsterDerived(swarmLord)
-	if len(st.Attacks) != 4 || st.Attacks[2].Key != swarmLord+"#garra-venenosa" || st.Attacks[2].AttackBonus != 2 || st.Attacks[2].Damage != "2d6" {
-		t.Errorf("static attacks = %+v", st.Attacks)
-	}
-	if st.Attacks[3].AttackBonus != 2 {
-		t.Errorf("static spike to-hit = %d, want prof 2 + slot 0", st.Attacks[3].AttackBonus)
-	}
-	// The creature's attack bonus replaces the own attacks' to-hit.
-	cr.AttackBonusFormula = "9"
+
+	// The specific beats the general: with creature-level formulas the attacks that have their own keep them,
+	// and the ones that do not (and the base's) get the creature's.
+	cr.AttackBonusFormula, cr.DamageBonusFormula = "9", "2"
 	c = withOverlay(t, creatureOverlay(cr))
-	r, _ = c.ResolveCreature(swarmLord, env, 0)
-	if r.Attacks[0].AttackBonus != 9 || r.Attacks[1].AttackBonus != 9 {
-		t.Errorf("with an attack bonus formula: %+v", r.Attacks)
+	r, _ = c.ResolveCreature(swarmLord, env, 2)
+	got := [][2]int{}
+	for _, a := range r.Attacks {
+		got = append(got, [2]int{a.AttackBonus, a.DamageBonusValue})
+	}
+	if want := [][2]int{{7, 4}, {5, 2}, {9, 2}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("own attacks (to-hit, damage) = %v, want %v", got, want)
+	}
+	d, _, _ = c.ResolvedDerived(r)
+	if d.Attacks[0].AttackBonus != 9 || d.Attacks[0].Damage != "1d8+5" || d.Attacks[1].AttackBonus != 9 {
+		t.Errorf("the base's attacks = %+v, want +9 and the bite 1d8+5", d.Attacks[:2])
+	}
+
+	// Without an owner no formula runs: the own attacks are +0 with the static damage bonus, the base's are the base's.
+	cr.DamageBonus = 1
+	c = withOverlay(t, creatureOverlay(cr))
+	st, _ := c.MonsterDerived(swarmLord)
+	if len(st.Attacks) != 5 || st.Attacks[0].AttackBonus != 5 || st.Attacks[0].Damage != "1d8+4" {
+		t.Fatalf("static base attacks = %+v", st.Attacks[:2])
+	}
+	for i, dmg := range []string{"2d6+1", "1d8+1", "1d4+1"} {
+		a := st.Attacks[2+i]
+		if a.AttackBonus != 0 || a.Damage != dmg {
+			t.Errorf("static own attack %d = to-hit %d damage %s, want +0 and %s", i, a.AttackBonus, a.Damage, dmg)
+		}
 	}
 }
 
@@ -267,6 +286,13 @@ func TestSlotIsLegalOnlyInACreature(t *testing.T) {
 			t.Errorf("slot %d: HP %d, want %d", slot, r.HitPoints, want)
 		}
 	}
+	// The damage bonus formula reads the slot too, clamped to its range.
+	for slot, want := range map[int]int{0: 0, 4: 4, 9: 9} {
+		r, _ := c.ResolveCreature(swarmLord, owner(5, 3, nil, nil), slot)
+		if r.DamageBonus != want {
+			t.Errorf("slot %d: damage bonus %d, want %d", slot, r.DamageBonus, want)
+		}
+	}
 	// An effect (a number) and a condition refuse it; so does the plain compiler.
 	for _, e := range []Effect{
 		{Type: "modifier", Target: "ac", Mode: "add", Value: "slot()"},
@@ -277,11 +303,23 @@ func TestSlotIsLegalOnlyInACreature(t *testing.T) {
 			t.Errorf("effect %+v: err = %v, want slot() refused", e, err)
 		}
 	}
-	// The caster's own prepared formula refuses it too.
-	tc := classWithEffects(nil)
-	tc.Casting = TableCasting{Kind: CastingFull, Ability: WIS, Preparation: PreparationPrepared, PreparedMax: "slot()"}
-	if _, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{tc}}); err == nil {
-		t.Error("slot() in a prepared-spells formula was accepted")
+	// The caster's prepared-spells formula refuses it, and accepts a plain one.
+	prepared := func(src string) error {
+		var tc TableClass
+		for _, tab := range srd.TableDefaults().Tables {
+			if tab.Kind == CastingFull && tab.Preparation == PreparationPrepared {
+				tc = classFromDefaults(tab, "preparador")
+			}
+		}
+		tc.Casting.PreparedMax = src
+		_, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{tc}})
+		return err
+	}
+	if err := prepared("level()"); err != nil {
+		t.Errorf("a prepared-spells formula of level(): %v", err)
+	}
+	if err := prepared("slot()"); err == nil || !strings.Contains(err.Error(), "slot()") {
+		t.Errorf("slot() in a prepared-spells formula: err = %v, want it refused naming slot()", err)
 	}
 }
 
@@ -310,7 +348,7 @@ func TestACreatureFormulaRefusalsNameTheirField(t *testing.T) {
 		{"an illegal argument", func(c *TableCreature) { c.DamageBonusFormula = `mod("xyz")` }, ".damage_bonus_formula", ReasonFormula},
 		{"a state in a number", func(c *TableCreature) { c.AttackBonusFormula = `active("x")` }, ".attack_bonus_formula", ReasonFormula},
 		{"a condition as a number", func(c *TableCreature) { c.SaveDCFormula = `armor() == "none"` }, ".save_dc_formula", ReasonFormula},
-		{"a formula of 1025 bytes", func(c *TableCreature) { c.SaveDCFormula = strings.Repeat("1+", 600) + "1" }, ".save_dc_formula", ReasonFormula},
+		{"a formula of 1201 bytes", func(c *TableCreature) { c.SaveDCFormula = strings.Repeat("1+", 600) + "1" }, ".save_dc_formula", ReasonFormula},
 		{"a bad to_hit", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.ToHit = "nope(" }) }, ".attacks[2].to_hit", ReasonFormula},
 		{"a bad damage_bonus", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.DamageBonus = "level" }) }, ".attacks[2].damage_bonus", ReasonFormula},
 		{"nine attacks", func(c *TableCreature) { c.Attacks = tooMany }, ".attacks", ReasonLimit},
@@ -326,6 +364,16 @@ func TestACreatureFormulaRefusalsNameTheirField(t *testing.T) {
 		{"a long range under the range", func(c *TableCreature) {
 			c.Attacks = three(func(a *TableCreatureAttack) { a.Melee, a.RangeFt, a.LongRangeFt = false, 60, 30 })
 		}, ".attacks[2].long_range_ft", ReasonValue},
+		{"two attacks with a name", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.NamePT = "um" }) }, ".attacks[2].name_pt", ReasonName},
+		{"an SRD damage type key that does not exist", func(c *TableCreature) {
+			c.Attacks = three(func(a *TableCreatureAttack) { a.DamageType = "damage-type:nope" })
+		}, ".attacks[2].damage_type", ReasonReference},
+		{"a long range of 1201", func(c *TableCreature) {
+			c.Attacks = three(func(a *TableCreatureAttack) { a.Melee, a.RangeFt, a.LongRangeFt = false, 60, 1201 })
+		}, ".attacks[2].long_range_ft", ReasonValue},
+		{"a reach on a ranged attack", func(c *TableCreature) {
+			c.Attacks = three(func(a *TableCreatureAttack) { a.Melee, a.RangeFt, a.ReachFt = false, 30, 5 })
+		}, ".attacks[2].reach_ft", ReasonValue},
 		{"no dice", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.DiceCount = 0 }) }, ".attacks[2].dice_count", ReasonValue},
 		{"a d7", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.DiceSides = 7 }) }, ".attacks[2].dice_sides", ReasonValue},
 		{"a damage type that is not one", func(c *TableCreature) { c.Attacks = three(func(a *TableCreatureAttack) { a.DamageType = "slashing" }) }, ".attacks[2].damage_type", ReasonReference},
@@ -391,7 +439,7 @@ func TestOwnerEnvReadsADerivedSheet(t *testing.T) {
 		HitPointsFormula:  `level() + classLevel("druid") * 2 + classLevel("wizard") + mod("con") + mod("wis")`,
 		ArmorClassFormula: `10 + prof() + floor(score("wis") / 4)`,
 	}))
-	r, ok := c.ResolveCreature(swarmLord, OwnerEnv(d), 0)
+	r, ok := c.ResolveCreature(swarmLord, OwnerEnv(d, false), 0)
 	// 7 + 8 + 3 + 2 - 1 = 19 and 10 + 3 + 2 = 15.
 	if !ok || r.HitPoints != 19 || r.ArmorClass != 15 {
 		t.Errorf("resolved = %+v, want HP 19 AC 15", r)
@@ -417,5 +465,161 @@ func TestSlotInTheFormulaCompiler(t *testing.T) {
 	}
 	if _, err := plain.WithSlot().Compile("slot(1)", formula.Int); err == nil {
 		t.Error("slot(1) accepted")
+	}
+}
+
+func TestClampEdges(t *testing.T) {
+	t.Parallel()
+	type edit func(*TableCreature, string)
+	fields := []struct {
+		name   string
+		set    edit
+		get    func(ResolvedCreature) int
+		lo, hi int
+	}{
+		{"hit points", func(c *TableCreature, s string) { c.HitPointsFormula = s }, func(r ResolvedCreature) int { return r.HitPoints }, 1, MaxCreatureHitPoints},
+		{"armor class", func(c *TableCreature, s string) { c.ArmorClassFormula = s }, func(r ResolvedCreature) int { return r.ArmorClass }, 1, MaxCreatureArmorClass},
+		{"damage bonus", func(c *TableCreature, s string) { c.DamageBonusFormula = s }, func(r ResolvedCreature) int { return r.DamageBonus }, MinCreatureDamageBonus, MaxCreatureDamageBonus},
+		{"attack bonus", func(c *TableCreature, s string) { c.AttackBonusFormula = s }, func(r ResolvedCreature) int { return r.AttackBonus }, MinCreatureAttackBonus, MaxCreatureAttackBonus},
+		{"save DC", func(c *TableCreature, s string) { c.SaveDCFormula = s }, func(r ResolvedCreature) int { return r.SaveDC }, MinCreatureSaveDC, MaxCreatureSaveDC},
+	}
+	num := func(n int) string { // a formula for n, negative included
+		if n < 0 {
+			return "0 - " + strconv.Itoa(-n)
+		}
+		return strconv.Itoa(n)
+	}
+	for _, f := range fields {
+		for _, tc := range []struct{ in, want int }{
+			{f.lo - 1, f.lo}, {f.lo, f.lo}, {f.lo + 1, f.lo + 1}, {f.hi - 1, f.hi - 1}, {f.hi, f.hi}, {f.hi + 1, f.hi},
+		} {
+			if tc.in > 1000 { // a literal is at most 1000: build the big ones from a product
+				continue
+			}
+			cr := TableCreature{TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey}
+			f.set(&cr, num(tc.in))
+			r, _ := withOverlay(t, creatureOverlay(cr)).ResolveCreature(swarmLord, owner(1, 2, nil, nil), 0)
+			if got := f.get(r); got != tc.want {
+				t.Errorf("%s: formula %d gives %d, want %d", f.name, tc.in, got, tc.want)
+			}
+		}
+	}
+	// The hit points go past a literal: 9998, 9999 and 10000 as products.
+	for in, want := range map[string]int{"1000 * 10 - 2": 9998, "1000 * 10 - 1": 9999, "1000 * 10": 9999, "0": 1, "1": 1, "2": 2} {
+		cr := TableCreature{TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey, HitPointsFormula: in}
+		r, _ := withOverlay(t, creatureOverlay(cr)).ResolveCreature(swarmLord, owner(1, 2, nil, nil), 0)
+		if r.HitPoints != want {
+			t.Errorf("hit points %q = %d, want %d", in, r.HitPoints, want)
+		}
+	}
+}
+
+// TestANoFormulaCreatureWithASaveIsSliceOnes: a creature with only static adjustments, on a base whose action
+// has a saving throw, has the stat block slice 1 built. The expectation is built here by hand from the SRD
+// monster, not by ApplyResolved.
+func TestANoFormulaCreatureWithASaveIsSliceOnes(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	cr := TableCreature{
+		TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey,
+		HitPoints: 40, ArmorClass: 16, DamageBonus: 2,
+		Traits: []TableCreatureTrait{{NamePT: "Teia Densa", TextPT: "Um texto."}},
+	}
+	c := withOverlayOn(t, srd, creatureOverlay(cr))
+	m := *srd.c.monsters[spiderKey]
+	m.Key, m.Name = swarmLord, spiderName
+	m.HitPoints, m.HitPointsRoll = 40, ""
+	m.ArmorClass, m.ArmorClassType, m.ArmorClassDesc, m.ArmorClassItems, m.ArmorClassAlts = 16, "", "", nil, nil
+	m.Actions = append([]srd51.MonsterAction(nil), m.Actions...)
+	m.Actions[0].Damage = append([]srd51.MonsterDamage(nil), m.Actions[0].Damage...)
+	m.Actions[0].Damage[0].Dice = "1d8+5"
+	m.SpecialAbilities = append(append([]srd51.MonsterAbility(nil), m.SpecialAbilities...), srd51.MonsterAbility{Name: "Teia Densa", Desc: "Um texto."})
+	want := c.c.monsterDerived(&m)
+	wantPlan, err := c.c.planOf(&m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := c.MonsterDerived(swarmLord)
+	if !ok || !reflect.DeepEqual(got, want) {
+		t.Errorf("the derived block differs from the one slice 1 builds (ok %v)", ok)
+	}
+	if plan, _ := c.MonsterPlan(swarmLord); !reflect.DeepEqual(plan, wantPlan) {
+		t.Error("the plan differs from the one slice 1 builds")
+	}
+	if len(got.SaveActions) != 1 || got.SaveActions[0].DC != 11 {
+		t.Errorf("save actions = %+v, want the bite at DC 11", got.SaveActions)
+	}
+	// And any owner resolves to the same.
+	r, _ := c.ResolveCreature(swarmLord, owner(9, 4, nil, nil), 5)
+	if d, _, ok := c.ResolvedDerived(r); !ok || !reflect.DeepEqual(d, want) {
+		t.Errorf("a resolved block differs (ok %v)", ok)
+	}
+}
+
+func TestResolvedDerivedTrustsTheContentNotTheValue(t *testing.T) {
+	t.Parallel()
+	cr := spiderLord()
+	cr.Traits = []TableCreatureTrait{{NamePT: "Teia Densa", TextPT: "Um texto."}}
+	cr.Attacks = []TableCreatureAttack{{NamePT: "Pancada", Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:bludgeoning"}}
+	c := withOverlay(t, creatureOverlay(cr))
+	env := owner(5, 3, map[string]int{"druid": 5}, nil)
+	good, _ := c.ResolveCreature(swarmLord, env, 0)
+	want, wantPlan, _ := c.ResolvedDerived(good)
+
+	forged := good
+	forged.BaseKey, forged.NamePT, forged.Traits = wolfKey, "Outro", nil
+	forged.Attacks = []ResolvedAttack{good.Attacks[0]}
+	forged.Attacks[0].DiceSides, forged.Attacks[0].DamageType, forged.Attacks[0].NamePT = 20, "damage-type:fire", "Falso"
+	got, plan, ok := c.ResolvedDerived(forged)
+	if !ok || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(plan, wantPlan) {
+		t.Errorf("a forged identity changed the stat block (ok %v)", ok)
+	}
+	// Forged numbers are clamped.
+	wild := good
+	wild.HitPoints, wild.ArmorClass, wild.DamageBonus, wild.SaveDC = 1<<30, -5, 1000, -9
+	wild.Attacks = []ResolvedAttack{good.Attacks[0]}
+	wild.Attacks[0].AttackBonus = 99
+	if d, _, ok := c.ResolvedDerived(wild); !ok || d.HitPointsMax != MaxCreatureHitPoints || d.ArmorClass != 1 || d.Attacks[2].AttackBonus != MaxCreatureAttackBonus {
+		t.Errorf("forged numbers: HP %d AC %d (ok %v)", d.HitPointsMax, d.ArmorClass, ok)
+	}
+	// A value with other attacks than the entry's, or a creature the content does not have, is refused.
+	short := good
+	short.Attacks = nil
+	if _, _, ok := c.ResolvedDerived(short); ok {
+		t.Error("a value with no attacks resolved")
+	}
+	other := good
+	other.Key = wolfKey
+	if _, _, ok := c.ResolvedDerived(other); ok {
+		t.Error("an SRD creature resolved")
+	}
+	// The traits of a resolved value are a copy.
+	good.Traits[0].NamePT = "Mexido"
+	again, _ := c.ResolveCreature(swarmLord, env, 0)
+	if again.Traits[0].NamePT != "Teia Densa" {
+		t.Errorf("a trait written through a resolved value changed the content: %q", again.Traits[0].NamePT)
+	}
+}
+
+func TestADamageTypeInAnErrorIsShort(t *testing.T) {
+	t.Parallel()
+	cr := TableCreature{
+		TableEntry: TableEntry{Key: swarmLord, NamePT: spiderName}, BaseKey: spiderKey,
+		Attacks: []TableCreatureAttack{{NamePT: "Um", Melee: true, DiceCount: 1, DiceSides: 6, DamageType: strings.Repeat("x", 500)}},
+	}
+	_, err := loadForTest(t).With(creatureOverlay(cr))
+	if err == nil || strings.Contains(err.Error(), strings.Repeat("x", 100)) {
+		t.Errorf("err = %v, want one without the 500 characters", err)
+	}
+}
+
+func TestApplyResolvedWritesTheDCOfAnActionWithoutAnAbilityWord(t *testing.T) {
+	t.Parallel()
+	base := &srd51.Monster{Key: "monster:x", Actions: []srd51.MonsterAction{
+		{Name: "Gaze", Desc: "Each creature must make a DC 12 saving throw or be frightened.", Save: &srd51.MonsterSave{Ability: "wis", DC: 12, OnSuccess: "none"}},
+	}}
+	m, ok := ApplyResolved(base, ResolvedCreature{Key: "creature:x@mesa", NamePT: "X", SaveDC: 17, HasSaveDC: true})
+	if !ok || m.Actions[0].Save.DC != 17 || !strings.Contains(m.Actions[0].Desc, "DC 17 saving throw") || base.Actions[0].Save.DC != 12 {
+		t.Errorf("action = %+v (base DC %d)", m.Actions[0], base.Actions[0].Save.DC)
 	}
 }

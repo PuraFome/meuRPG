@@ -2173,31 +2173,39 @@ type TableCreature struct {
 	// ignoring case), and may not be named "Magic Weapons",
 	// "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
 	Traits []*TableCreatureTrait `protobuf:"bytes,6,rep,name=traits,proto3" json:"traits,omitempty"`
-	// The creature's numbers as formulas of its owner. A formula is evaluated for the owner when the
-	// creature is given or summoned, and may read level(), classLevel("<class>"), prof(), mod("<ability>"),
-	// score("<ability>") and slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a
-	// slot cast. slot() is legal only in these fields, never in an effect or a condition. A formula that does
-	// not compile, or calls a function that does not exist, is refused with its field. An empty formula keeps
-	// the static value; the static fields above stay, and are what a creature with no owner uses (Pôr no
-	// combate, Criar NPC): there the formulas are not evaluated. If a formula fails while it runs, the static
-	// value stands. Each result is rounded down and clamped to the range of its field.
+	// The numbers below are formulas, evaluated against an owner's sheet.
+	// A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>"), and use floor, ceil, min and max.
+	// It may also read slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a slot cast.
+	// slot() is legal only in hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula, save_dc_formula and the to_hit and damage_bonus of an attack.
+	// Effects, conditions and every other formula refuse slot().
+	// A formula that does not compile, or calls a function that does not exist, is refused with its field.
+	// A result is rounded down and clamped to the range of its field.
+	// If a formula fails while it runs, the static value stands.
+	// An empty formula keeps the static value, or the base's when the field has none.
+	// The static fields above stay.
+	// A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
 	//
-	// hit_points_formula: maximum hit points, clamped to 1..9999. Replaces hit_points.
+	// The maximum hit points, clamped to 1..9999.
+	// Replaces hit_points.
 	HitPointsFormula string `protobuf:"bytes,7,opt,name=hit_points_formula,json=hitPointsFormula,proto3" json:"hit_points_formula,omitempty"`
-	// armor_class_formula: armor class, clamped to 1..40. Replaces armor_class.
+	// The armor class, clamped to 1..40.
+	// Replaces armor_class.
 	ArmorClassFormula string `protobuf:"bytes,8,opt,name=armor_class_formula,json=armorClassFormula,proto3" json:"armor_class_formula,omitempty"`
-	// damage_bonus_formula: the damage bonus of damage_bonus, clamped to -10..30. Replaces damage_bonus.
+	// The damage bonus, clamped to -10..30.
+	// Replaces damage_bonus.
 	DamageBonusFormula string `protobuf:"bytes,9,opt,name=damage_bonus_formula,json=damageBonusFormula,proto3" json:"damage_bonus_formula,omitempty"`
-	// attack_bonus_formula: the to-hit of every attack of the creature, the base's and the ones in
-	// `attacks` that have no to_hit of their own, clamped to -10..30. Empty keeps the base's.
+	// The to-hit of each attack of the base, clamped to -10..30.
+	// Also the to-hit of an attack in `attacks` that has no to_hit of its own.
+	// An attack's own to_hit wins over it.
+	// Empty keeps the base's.
 	AttackBonusFormula string `protobuf:"bytes,10,opt,name=attack_bonus_formula,json=attackBonusFormula,proto3" json:"attack_bonus_formula,omitempty"`
-	// save_dc_formula: the DC of every action of the creature that asks for a saving throw, clamped to
-	// 1..30. Empty keeps the base's.
+	// The DC of each action of the base that asks for a saving throw, clamped to 1..30.
+	// Empty keeps the base's.
 	SaveDcFormula string `protobuf:"bytes,11,opt,name=save_dc_formula,json=saveDcFormula,proto3" json:"save_dc_formula,omitempty"`
-	// Attacks added after the base's actions, at most 8. Each becomes an action of the creature keyed
-	// "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are. They are
-	// not part of the base's Multiattack. A name may not repeat a trait or an action of the base, nor
-	// another attack, compared as the traits' names are.
+	// Attacks added after the base's actions, at most 8.
+	// Each becomes an action of the creature keyed "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are.
+	// They are not part of the base's Multiattack.
+	// A name may not repeat a trait or an action of the base, nor another attack, compared as the traits' names are.
 	Attacks       []*TableCreatureAttack `protobuf:"bytes,12,rep,name=attacks,proto3" json:"attacks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2322,7 +2330,8 @@ type TableCreatureAttack struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 1 to 80 characters, on one line.
 	NamePt string `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	// A melee attack has reach_ft and no range; a ranged one has range_ft and no reach.
+	// True for a melee attack, which has reach_ft and no range.
+	// False for a ranged attack, which has range_ft and no reach.
 	Melee bool `protobuf:"varint,2,opt,name=melee,proto3" json:"melee,omitempty"`
 	// The reach of a melee attack in feet, 0 (5 ft.) to 30.
 	ReachFt int32 `protobuf:"varint,3,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
@@ -2330,16 +2339,19 @@ type TableCreatureAttack struct {
 	RangeFt int32 `protobuf:"varint,4,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
 	// The long range of a ranged attack, 0 (none) or more than range_ft, up to 1200.
 	LongRangeFt int32 `protobuf:"varint,5,opt,name=long_range_ft,json=longRangeFt,proto3" json:"long_range_ft,omitempty"`
-	// The damage dice, such as 2d6: 1 to 20 dice of 4, 6, 8, 10, 12 or 20 sides.
+	// How many dice of damage, 1 to 20.
 	DiceCount int32 `protobuf:"varint,6,opt,name=dice_count,json=diceCount,proto3" json:"dice_count,omitempty"`
+	// The sides of each die: 4, 6, 8, 10, 12 or 20.
 	DiceSides int32 `protobuf:"varint,7,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
-	// A formula for the bonus added to this attack's damage, clamped to -10..30. Empty is the creature's
-	// damage bonus.
+	// A formula for the bonus added to this attack's damage, clamped to -10..30.
+	// It wins over the creature's damage bonus.
+	// Empty is the creature's damage bonus.
 	DamageBonus string `protobuf:"bytes,8,opt,name=damage_bonus,json=damageBonus,proto3" json:"damage_bonus,omitempty"`
 	// A "damage-type:" key of the SRD, such as "damage-type:slashing".
 	DamageType string `protobuf:"bytes,9,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
-	// A formula for the to-hit, clamped to -10..30, used when the creature has no attack_bonus_formula.
-	// Empty is +0.
+	// A formula for the to-hit, clamped to -10..30.
+	// It wins over attack_bonus_formula.
+	// Empty is attack_bonus_formula, or +0 when that is empty too.
 	ToHit         string `protobuf:"bytes,10,opt,name=to_hit,json=toHit,proto3" json:"to_hit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

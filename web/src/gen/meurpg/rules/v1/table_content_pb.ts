@@ -1186,56 +1186,64 @@ export type TableCreature = Message<"meurpg.rules.v1.TableCreature"> & {
   traits: TableCreatureTrait[];
 
   /**
-   * The creature's numbers as formulas of its owner. A formula is evaluated for the owner when the
-   * creature is given or summoned, and may read level(), classLevel("<class>"), prof(), mod("<ability>"),
-   * score("<ability>") and slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a
-   * slot cast. slot() is legal only in these fields, never in an effect or a condition. A formula that does
-   * not compile, or calls a function that does not exist, is refused with its field. An empty formula keeps
-   * the static value; the static fields above stay, and are what a creature with no owner uses (Pôr no
-   * combate, Criar NPC): there the formulas are not evaluated. If a formula fails while it runs, the static
-   * value stands. Each result is rounded down and clamped to the range of its field.
+   * The numbers below are formulas, evaluated against an owner's sheet.
+   * A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>"), and use floor, ceil, min and max.
+   * It may also read slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a slot cast.
+   * slot() is legal only in hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula, save_dc_formula and the to_hit and damage_bonus of an attack.
+   * Effects, conditions and every other formula refuse slot().
+   * A formula that does not compile, or calls a function that does not exist, is refused with its field.
+   * A result is rounded down and clamped to the range of its field.
+   * If a formula fails while it runs, the static value stands.
+   * An empty formula keeps the static value, or the base's when the field has none.
+   * The static fields above stay.
+   * A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
    *
-   * hit_points_formula: maximum hit points, clamped to 1..9999. Replaces hit_points.
+   * The maximum hit points, clamped to 1..9999.
+   * Replaces hit_points.
    *
    * @generated from field: string hit_points_formula = 7;
    */
   hitPointsFormula: string;
 
   /**
-   * armor_class_formula: armor class, clamped to 1..40. Replaces armor_class.
+   * The armor class, clamped to 1..40.
+   * Replaces armor_class.
    *
    * @generated from field: string armor_class_formula = 8;
    */
   armorClassFormula: string;
 
   /**
-   * damage_bonus_formula: the damage bonus of damage_bonus, clamped to -10..30. Replaces damage_bonus.
+   * The damage bonus, clamped to -10..30.
+   * Replaces damage_bonus.
    *
    * @generated from field: string damage_bonus_formula = 9;
    */
   damageBonusFormula: string;
 
   /**
-   * attack_bonus_formula: the to-hit of every attack of the creature, the base's and the ones in
-   * `attacks` that have no to_hit of their own, clamped to -10..30. Empty keeps the base's.
+   * The to-hit of each attack of the base, clamped to -10..30.
+   * Also the to-hit of an attack in `attacks` that has no to_hit of its own.
+   * An attack's own to_hit wins over it.
+   * Empty keeps the base's.
    *
    * @generated from field: string attack_bonus_formula = 10;
    */
   attackBonusFormula: string;
 
   /**
-   * save_dc_formula: the DC of every action of the creature that asks for a saving throw, clamped to
-   * 1..30. Empty keeps the base's.
+   * The DC of each action of the base that asks for a saving throw, clamped to 1..30.
+   * Empty keeps the base's.
    *
    * @generated from field: string save_dc_formula = 11;
    */
   saveDcFormula: string;
 
   /**
-   * Attacks added after the base's actions, at most 8. Each becomes an action of the creature keyed
-   * "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are. They are
-   * not part of the base's Multiattack. A name may not repeat a trait or an action of the base, nor
-   * another attack, compared as the traits' names are.
+   * Attacks added after the base's actions, at most 8.
+   * Each becomes an action of the creature keyed "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are.
+   * They are not part of the base's Multiattack.
+   * A name may not repeat a trait or an action of the base, nor another attack, compared as the traits' names are.
    *
    * @generated from field: repeated meurpg.rules.v1.TableCreatureAttack attacks = 12;
    */
@@ -1263,7 +1271,8 @@ export type TableCreatureAttack = Message<"meurpg.rules.v1.TableCreatureAttack">
   namePt: string;
 
   /**
-   * A melee attack has reach_ft and no range; a ranged one has range_ft and no reach.
+   * True for a melee attack, which has reach_ft and no range.
+   * False for a ranged attack, which has range_ft and no reach.
    *
    * @generated from field: bool melee = 2;
    */
@@ -1291,20 +1300,23 @@ export type TableCreatureAttack = Message<"meurpg.rules.v1.TableCreatureAttack">
   longRangeFt: number;
 
   /**
-   * The damage dice, such as 2d6: 1 to 20 dice of 4, 6, 8, 10, 12 or 20 sides.
+   * How many dice of damage, 1 to 20.
    *
    * @generated from field: int32 dice_count = 6;
    */
   diceCount: number;
 
   /**
+   * The sides of each die: 4, 6, 8, 10, 12 or 20.
+   *
    * @generated from field: int32 dice_sides = 7;
    */
   diceSides: number;
 
   /**
-   * A formula for the bonus added to this attack's damage, clamped to -10..30. Empty is the creature's
-   * damage bonus.
+   * A formula for the bonus added to this attack's damage, clamped to -10..30.
+   * It wins over the creature's damage bonus.
+   * Empty is the creature's damage bonus.
    *
    * @generated from field: string damage_bonus = 8;
    */
@@ -1318,8 +1330,9 @@ export type TableCreatureAttack = Message<"meurpg.rules.v1.TableCreatureAttack">
   damageType: string;
 
   /**
-   * A formula for the to-hit, clamped to -10..30, used when the creature has no attack_bonus_formula.
-   * Empty is +0.
+   * A formula for the to-hit, clamped to -10..30.
+   * It wins over attack_bonus_formula.
+   * Empty is attack_bonus_formula, or +0 when that is empty too.
    *
    * @generated from field: string to_hit = 10;
    */

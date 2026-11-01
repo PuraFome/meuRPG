@@ -80,7 +80,10 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 		return err
 	}
 	b.register(o.TableEntry)
-	m := ApplyResolved(base, spec.resolve(nil, 0, true))
+	m, ok := ApplyResolved(base, spec.resolve(nil, 0, true))
+	if !ok {
+		return ovErr(key, "the creature's attacks cannot be written").at(path+".attacks", ReasonValue)
+	}
 	plan, err := b.n.planOf(m)
 	if err != nil {
 		return ovErr(key, "%v", err).at(path, ReasonValue)

@@ -42,9 +42,10 @@ const (
 // TableCreatureAttack is an attack action a table creature adds to its base's. It becomes an action keyed
 // "<creature key>#<slug of the name>" with an attack roll, as the SRD stat blocks' attacks are. A melee
 // attack has a reach (0 is 5 ft.) and no range; a ranged one has a range, a long range (0 for none) and no
-// reach. ToHit and DamageBonus are formulas ("" is 0 for the to-hit, the creature's damage bonus for the
-// damage), and the creature's AttackBonusFormula, when set, replaces ToHit. It is not part of the base's
-// Multiattack.
+// reach. ToHit and DamageBonus are formulas, and the specific beats the general: an attack's own ToHit wins
+// over the creature's AttackBonusFormula, and its own DamageBonus over the creature's damage bonus. An
+// attack with no ToHit of its own gets the creature's attack bonus, else +0; one with no DamageBonus gets
+// the creature's damage bonus. It is not part of the base's Multiattack.
 type TableCreatureAttack struct {
 	NamePT                         string
 	Melee                          bool
@@ -69,8 +70,8 @@ type attackSpec struct {
 }
 
 // ResolvedCreature is a table creature's numbers for one owner: every formula run and clamped. HitPoints and
-// ArmorClass are 0 when the base's stand. DamageBonus is the bonus every attack of the base gets (the
-// formula's result, or the static one). AttackBonus and SaveDC replace the base's only when HasAttackBonus
+// ArmorClass are 0 when the base's stand. DamageBonus is the bonus the creature-level formula or the static
+// field gives every attack that has no bonus of its own. AttackBonus and SaveDC replace the base's only when HasAttackBonus
 // and HasSaveDC. Attacks are the creature's own, with their final numbers. Failed lists the fields (as
 // ".hit_points_formula") whose formula failed to run, which then keep the static value.
 type ResolvedCreature struct {
@@ -94,9 +95,10 @@ type ResolvedAttack struct {
 }
 
 // OwnerEnv is the formula environment of an owner whose sheet is d: its level, class levels, ability scores
-// and modifiers, proficiency bonus, armor and walking speed. It has no shield (the sheet does not say) and
-// no slot; ResolveCreature sets the slot.
-func OwnerEnv(d Derived) *formula.Env {
+// and modifiers, proficiency bonus, armor and walking speed. shield says whether the owner carries a
+// shield that counts (the sheet does not say, so the caller does; it is what shield() answers). It has no
+// slot; ResolveCreature sets the slot.
+func OwnerEnv(d Derived, shield bool) *formula.Env {
 	levels := map[string]int{}
 	for _, cl := range d.Classes {
 		levels[strings.TrimPrefix(cl.ClassKey, "class:")] += cl.Level
@@ -112,7 +114,7 @@ func OwnerEnv(d Derived) *formula.Env {
 		Score:      func(a string) int { return scores[Ability(a)] },
 		Prof:       func() int { return d.ProficiencyBonus },
 		Armor:      func() string { return d.ArmorCategory },
-		Shield:     func() bool { return false },
+		Shield:     func() bool { return shield },
 		SpeedWalk:  func() int { return d.SpeedWalkFt },
 	}
 }
@@ -133,27 +135,63 @@ func (c *Content) ResolveCreature(key string, env *formula.Env, slot int) (Resol
 }
 
 // ResolvedDerived is the stat block of the table creature r for combat: MonsterDerived and the plan of its
-// actions, with r applied (ApplyResolved). ok is false when r's creature is not a table creature of the content.
+// actions, with r applied (ApplyResolved). What r says about the creature itself (its base, name, traits and
+// the shape of its attacks) is ignored: it comes from the content's entry for r.Key, and only r's numbers are
+// used, clamped to their ranges. ok is false when r.Key is not a table creature, r does not have the entry's
+// attacks, or the stat block cannot be built.
 func (c *Content) ResolvedDerived(r ResolvedCreature) (Derived, *MonsterPlan, bool) {
-	if _, table := c.c.creatureSpecs[r.Key]; !table {
+	s, table := c.c.creatureSpecs[r.Key]
+	if !table || len(r.Attacks) != len(s.attacks) {
 		return Derived{}, nil, false
 	}
-	base, ok := c.c.monsters[r.BaseKey]
+	base, ok := c.c.monsters[s.baseKey]
 	if !ok {
 		return Derived{}, nil, false
 	}
-	m := ApplyResolved(base, r)
+	m, ok := ApplyResolved(base, s.trusted(r))
+	if !ok {
+		return Derived{}, nil, false
+	}
 	plan, err := c.c.planOf(m)
 	if err != nil {
 		return Derived{}, nil, false
 	}
-	d := c.c.monsterDerived(m)
-	return d, plan, true
+	return c.c.monsterDerived(m), plan, true
 }
 
-// neutralOwner is the owner of a creature that has none (the static stat block): a level 1 character, every
-// modifier 0, no slot.
-func neutralOwner() *formula.Env { return levelOnlyEnv(1) }
+// trusted is r with the identity and the attack shapes of the entry and the numbers of r, clamped.
+func (s *creatureSpec) trusted(r ResolvedCreature) ResolvedCreature {
+	t := ResolvedCreature{
+		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits),
+		HitPoints: clampOrZero(r.HitPoints, 1, MaxCreatureHitPoints), ArmorClass: clampOrZero(r.ArmorClass, 1, MaxCreatureArmorClass),
+		DamageBonus:    clamp(r.DamageBonus, MinCreatureDamageBonus, MaxCreatureDamageBonus),
+		HasAttackBonus: r.HasAttackBonus, HasSaveDC: r.HasSaveDC,
+	}
+	if t.HasAttackBonus {
+		t.AttackBonus = clamp(r.AttackBonus, MinCreatureAttackBonus, MaxCreatureAttackBonus)
+	}
+	if t.HasSaveDC {
+		t.SaveDC = clamp(r.SaveDC, MinCreatureSaveDC, MaxCreatureSaveDC)
+	}
+	for i, a := range s.attacks {
+		t.Attacks = append(t.Attacks, ResolvedAttack{
+			TableCreatureAttack: a.def,
+			AttackBonus:         clamp(r.Attacks[i].AttackBonus, MinCreatureAttackBonus, MaxCreatureAttackBonus),
+			DamageBonusValue:    clamp(r.Attacks[i].DamageBonusValue, MinCreatureDamageBonus, MaxCreatureDamageBonus),
+		})
+	}
+	return t
+}
+
+func clamp(v, lo, hi int) int { return min(max(v, lo), hi) }
+
+// clampOrZero is clamp, except that 0 stays 0 (the base's value).
+func clampOrZero(v, lo, hi int) int {
+	if v == 0 {
+		return 0
+	}
+	return clamp(v, lo, hi)
+}
 
 // formulaRun runs the programs of one resolve for one owner, keeping the fields whose formula failed.
 type formulaRun struct {
@@ -171,18 +209,18 @@ func (f *formulaRun) int(p *formula.Program, field string, lo, hi int) (int, boo
 		f.failed = append(f.failed, field)
 		return 0, false
 	}
-	return min(max(v, lo), hi), true
+	return clamp(v, lo, hi), true
 }
 
-// resolve runs the spec's formulas. With ownerless the creature-level formulas are not run (the static
-// fields stand) and the attacks' own are run on the neutral owner.
+// resolve runs the spec's formulas. With ownerless no formula is run: the static fields stand, and the own
+// attacks have +0 to hit and the static damage bonus.
 func (s *creatureSpec) resolve(env *formula.Env, slot int, ownerless bool) ResolvedCreature {
 	r := ResolvedCreature{
-		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: s.traits,
+		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits),
 		HitPoints: s.hp, ArmorClass: s.ac, DamageBonus: s.damageBonus,
 	}
 	if ownerless {
-		env = neutralOwner()
+		env = &formula.Env{}
 	}
 	circle := slot
 	if circle < 0 || circle > MaxSlotLevel {
@@ -193,7 +231,7 @@ func (s *creatureSpec) resolve(env *formula.Env, slot int, ownerless bool) Resol
 	if !ownerless {
 		s.resolveNumbers(f, &r)
 	}
-	s.resolveAttacks(f, &r)
+	s.resolveAttacks(f, &r, ownerless)
 	r.Failed = f.failed
 	return r
 }
@@ -213,18 +251,19 @@ func (s *creatureSpec) resolveNumbers(f *formulaRun, r *ResolvedCreature) {
 	r.SaveDC, r.HasSaveDC = f.int(s.saveP, ".save_dc_formula", MinCreatureSaveDC, MaxCreatureSaveDC)
 }
 
-// resolveAttacks works out the creature's own attacks: the to-hit is the creature's attack bonus, else the
-// attack's own formula, else 0; the damage bonus is the attack's own formula, else the creature's.
-func (s *creatureSpec) resolveAttacks(f *formulaRun, r *ResolvedCreature) {
+// resolveAttacks works out the creature's own attacks, the specific beating the general: the to-hit is the
+// attack's own formula, else the creature's attack bonus, else 0; the damage bonus is the attack's own
+// formula, else the creature's. Without an owner no formula is run.
+func (s *creatureSpec) resolveAttacks(f *formulaRun, r *ResolvedCreature, ownerless bool) {
 	for i, a := range s.attacks {
-		ra := ResolvedAttack{TableCreatureAttack: a.def, DamageBonusValue: r.DamageBonus}
-		if r.HasAttackBonus {
-			ra.AttackBonus = r.AttackBonus
-		} else if v, ok := f.int(a.toHitP, fmt.Sprintf(".attacks[%d].to_hit", i), MinCreatureAttackBonus, MaxCreatureAttackBonus); ok {
-			ra.AttackBonus = v
-		}
-		if v, ok := f.int(a.damageP, fmt.Sprintf(".attacks[%d].damage_bonus", i), MinCreatureDamageBonus, MaxCreatureDamageBonus); ok {
-			ra.DamageBonusValue = v
+		ra := ResolvedAttack{TableCreatureAttack: a.def, AttackBonus: r.AttackBonus, DamageBonusValue: r.DamageBonus}
+		if !ownerless {
+			if v, ok := f.int(a.toHitP, fmt.Sprintf(".attacks[%d].to_hit", i), MinCreatureAttackBonus, MaxCreatureAttackBonus); ok {
+				ra.AttackBonus = v
+			}
+			if v, ok := f.int(a.damageP, fmt.Sprintf(".attacks[%d].damage_bonus", i), MinCreatureDamageBonus, MaxCreatureDamageBonus); ok {
+				ra.DamageBonusValue = v
+			}
 		}
 		r.Attacks = append(r.Attacks, ra)
 	}
@@ -232,7 +271,7 @@ func (s *creatureSpec) resolveAttacks(f *formulaRun, r *ResolvedCreature) {
 
 var (
 	toHitTextRe = regexp.MustCompile(`[+-]\d+ to hit`)
-	saveDCRe    = regexp.MustCompile(`DC \d+( \w+ saving throw)`)
+	saveDCRe    = regexp.MustCompile(`DC \d+( (?:\w+ )?saving throw)`)
 )
 
 // ApplyResolved is the stat block of base with r written on it: the key and name of the table creature; hit
@@ -240,8 +279,10 @@ var (
 // to the first damage part of each attack action of the base; the attack bonus in place of the base's; the DC
 // of each action with a saving throw; the extra traits after the base's; and the creature's own attacks after
 // its actions, each an action with an attack roll. The text of an action is the base's, except for the to-hit
-// and the DC it states. base is not changed. With the static values, it is the stat block the content keeps.
-func ApplyResolved(base *srd51.Monster, r ResolvedCreature) *srd51.Monster {
+// and the DC it states. base is not changed. With the static values, it is the stat block the content keeps. ok is false when an
+// attack of r has dice that cannot be read. The to-hit rewrite matches "+N to hit" and the DC rewrite
+// "DC N <Ability> saving throw" or "DC N saving throw"; other wordings keep the base's text.
+func ApplyResolved(base *srd51.Monster, r ResolvedCreature) (*srd51.Monster, bool) {
 	m := *base
 	m.Key, m.Name = r.Key, r.NamePT
 	if r.HitPoints > 0 {
@@ -257,7 +298,11 @@ func ApplyResolved(base *srd51.Monster, r ResolvedCreature) *srd51.Monster {
 			applyToAction(&m.Actions[i], r)
 		}
 		for _, a := range r.Attacks {
-			m.Actions = append(m.Actions, attackAction(a))
+			act, ok := attackAction(a)
+			if !ok {
+				return nil, false
+			}
+			m.Actions = append(m.Actions, act)
 		}
 	}
 	if len(r.Traits) > 0 {
@@ -266,7 +311,7 @@ func ApplyResolved(base *srd51.Monster, r ResolvedCreature) *srd51.Monster {
 			m.SpecialAbilities = append(m.SpecialAbilities, srd51.MonsterAbility{Name: t.NamePT, Desc: t.TextPT})
 		}
 	}
-	return &m
+	return &m, true
 }
 
 // applyToAction writes the bonuses and the DC of r on one action of the base (a copy of it).
@@ -291,9 +336,12 @@ func applyToAction(a *srd51.MonsterAction, r ResolvedCreature) {
 
 // attackAction is the action of a creature's own attack, worded as the SRD words its attacks so the plan
 // and the sheet read it the same way.
-func attackAction(a ResolvedAttack) srd51.MonsterAction {
+func attackAction(a ResolvedAttack) (srd51.MonsterAction, bool) {
 	dice := addDiceBonus(fmt.Sprintf("%dd%d", a.DiceCount, a.DiceSides), a.DamageBonusValue)
-	f, _ := ParseDice(dice)
+	f, ok := ParseDice(dice)
+	if !ok {
+		return srd51.MonsterAction{}, false
+	}
 	avg := f.Count*(f.Sides+1)/2 + f.Bonus
 	typ := strings.TrimPrefix(a.DamageType, "damage-type:")
 	var head string
@@ -310,7 +358,7 @@ func attackAction(a ResolvedAttack) srd51.MonsterAction {
 		Name: a.NamePT, HasAttack: true, AttackBonus: a.AttackBonus,
 		Desc:   fmt.Sprintf("%s Hit: %d (%s) %s damage.", head, max(avg, 0), dice, typ),
 		Damage: []srd51.MonsterDamage{{Dice: dice, DamageType: a.DamageType}},
-	}
+	}, true
 }
 
 // checkCreatureFormulas checks the formula fields and the creature's own attacks, compiles the formulas
@@ -373,7 +421,7 @@ func (b *overlayBuilder) checkCreatureAttack(c *entryErrors, key string, a *Tabl
 		c.at(key, path, at+".dice_sides", ReasonValue, "the dice have %v sides", tableDiceSides)
 	}
 	if dt, found := b.base.named[a.DamageType]; !found || dt == nil || !strings.HasPrefix(a.DamageType, "damage-type:") {
-		c.at(key, path, at+".damage_type", ReasonReference, "damage type %q is not in the SRD", a.DamageType)
+		c.at(key, path, at+".damage_type", ReasonReference, "damage type %q is not in the SRD", truncateRunes(a.DamageType, 40))
 	}
 }
 
@@ -397,4 +445,13 @@ func checkAttackShape(c *entryErrors, key string, a *TableCreatureAttack, path, 
 			c.at(key, path, at+".reach_ft", ReasonValue, "a ranged attack has a range, not a reach")
 		}
 	}
+}
+
+// truncateRunes is s cut to n characters, with "..." when it was longer.
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "..."
 }
