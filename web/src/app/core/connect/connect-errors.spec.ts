@@ -1,5 +1,10 @@
+import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import {
+  RequestRefusedReason,
+  RequestRefusedSchema,
+} from '../../../gen/meurpg/system/v1/request_limits_pb';
 import { combatErrorMessage } from '../combat/combat-errors';
 import {
   OUTCOME_UNKNOWN,
@@ -7,6 +12,7 @@ import {
   describeConnectError,
   isRateLimited,
   rateLimitedMessage,
+  requestRefusedText,
 } from './connect-errors';
 
 describe('describeConnectError', () => {
@@ -65,6 +71,50 @@ describe('describeConnectError', () => {
     expect(
       describeConnectError(err, { [Code.PermissionDenied]: 'Só o mestre pode fazer isso.' }),
     ).toBe('Só o mestre pode fazer isso.');
+  });
+});
+
+describe('a request over its size limit', () => {
+  const refused = (reason: RequestRefusedReason) =>
+    new ConnectError('request over its size limit', Code.InvalidArgument, undefined, [
+      {
+        desc: RequestRefusedSchema,
+        value: create(RequestRefusedSchema, { reason, field: 'names' }),
+      },
+    ]);
+
+  it('words a list that is too long, whatever the screen says for invalid_argument', () => {
+    const err = refused(RequestRefusedReason.LIST_TOO_LONG);
+    expect(requestRefusedText(err)).toBe(
+      'O pedido tem itens demais. Reduza a lista e tente de novo.',
+    );
+    expect(describeConnectError(err, { [Code.InvalidArgument]: 'Dados inválidos.' })).toBe(
+      'O pedido tem itens demais. Reduza a lista e tente de novo.',
+    );
+  });
+
+  it('words a text that is too long', () => {
+    expect(describeConnectError(refused(RequestRefusedReason.TEXT_TOO_LONG), {})).toBe(
+      'O texto é grande demais. Encurte e tente de novo.',
+    );
+  });
+
+  it('leaves an invalid_argument with no such detail to the screen', () => {
+    const err = new ConnectError('bad name', Code.InvalidArgument);
+    expect(requestRefusedText(err)).toBeNull();
+    expect(describeConnectError(err, { [Code.InvalidArgument]: 'Nome inválido.' })).toBe(
+      'Nome inválido.',
+    );
+  });
+
+  it('words a body over the read limit (resource_exhausted from the transport) unless the screen words it', () => {
+    const err = new ConnectError('http: request body too large', Code.ResourceExhausted);
+    expect(describeConnectError(err, {})).toBe(
+      'O pedido é grande demais. Reduza o conteúdo e tente de novo.',
+    );
+    expect(describeConnectError(err, { [Code.ResourceExhausted]: 'Galeria cheia.' })).toBe(
+      'Galeria cheia.',
+    );
   });
 });
 

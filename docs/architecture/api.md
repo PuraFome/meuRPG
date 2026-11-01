@@ -110,7 +110,7 @@ The `reason` in identity's sign-in log line is for the log and never reaches the
 | `play` | `EncounterBlocked` (and its familiar-sight reason), `EncounterBuildBlocked`, `SceneBlocked`, `PuzzleBlocked`, `PuzzleInvalid`, `GameSessionBlocked`, `ResourceBlocked`, `ContestBlocked`, `CastingBlocked` | the voice of a line | no: literals, named in `unmigratedBodyReasons` |
 | `progression` | `XPBlocked` | none | n/a |
 | `rules` | `TableContentBlocked`; the violations of `TableContentRefusal` | none | n/a |
-| `platform` | none | the rate limit of every API route | yes |
+| `platform` | `RequestRefused` (any call; its sentences are in `core/connect/connect-errors.ts`) | the rate limit of every API route | yes |
 
 ### The two checks
 
@@ -125,7 +125,7 @@ The `reason` in identity's sign-in log line is for the log and never reaches the
 
 ### Adding a reason
 
-1. A detail reason: add the enum value to the `.proto`, run the generator, add the value to its `reasons` in `proto/error-reasons.json`, and add the sentence where the module's `*-errors.ts` words its other reasons.
+1. A detail reason: add the enum value to the `.proto`, run the generator, add the value to its `reasons` in `proto/error-reasons.json`, and add the sentence where the module's `*-errors.ts` words its other reasons (`RequestRefused`, which any call can carry, is worded in `core/connect/connect-errors.ts`).
    A new detail message goes in `details` with its enum field.
 2. A body reason: add the `rpcerr.Reason` constant, its entry in `body`, and its key in `BODY_REASON_TEXT`.
    Set it with `reason: rpcerr.ReasonX`, never a literal.
@@ -187,6 +187,43 @@ The other routes have no such deadline on their bodies; a unary RPC has the one 
 
 `ReadHeaderTimeout` (10 s) and `IdleTimeout` (2 minutes) apply to every connection.
 A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and the app opens a new one.
+
+## Request size limits
+
+Every request has a size limit twice: on the body as it is read, and on each field after it is decoded.
+Both limits have a default, so a field or a procedure that nobody annotated is still bounded.
+The code is `platform/reqlimit`.
+
+| Limit | Default | Where it is raised | The client sees |
+| --- | --- | --- | --- |
+| Items of a repeated field, entries of a map | 100 (`DefaultMaxItems`) | `(meurpg.options.v1.max_items)` on the field | `invalid_argument` with a `RequestRefused` detail, reason `LIST_TOO_LONG` |
+| Bytes of a string (each element of a repeated string, each key and value of a map) | 8 KiB (`DefaultMaxString`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
+| Bytes of a bytes field, counted the same way | 4 KiB (`DefaultMaxBytes`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
+| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure | `resource_exhausted`, from Connect |
+| Bytes of any one RPC message | 4 MiB (`Backstop`, `connect.WithReadMaxBytes`) | never | `resource_exhausted`, from Connect |
+
+The rule a reader follows:
+
+- **The field limit** is the option of the field if it has one, else the default for its kind (`reqlimit.EffectiveLimit`).
+  An option states the whole limit of that field, up or down; it does not add to the default.
+  `max_items` counts the field's own items, `max_len` counts bytes of each string or bytes value in it.
+- **The interceptor** (`reqlimit.Interceptor`, in `connectOptions` inside `rpclog`) walks the decoded request before the handler, for unary calls and for each message a stream receives.
+  It refuses the first field over its limit and checks the size of a list or map before it looks at what is inside.
+  The detail names the field by its path in proto names (`party.members.notes`) and never the limit, which is in the `.proto`.
+- **The read limit** (`reqlimit.Middleware`, in front of `slowclient.Middleware`) wraps the body of a unary RPC in `http.MaxBytesReader` at `ReadLimit(procedure)`.
+  `raisedReadLimits` is the one place that lists the procedures allowed more than the default, each with the fields that need it.
+  A stream's request keeps only the 4 MiB backstop.
+- **A field option that goes over the default** needs an entry in `raisedReadLimits` for every procedure that reaches the field, and that entry never goes over the backstop.
+- **The registry test** (`TestRegistry`, no database) walks every procedure of every `meurpg.*` service and fails when:
+  - a procedure has a read limit below the default or over the backstop, or `raisedReadLimits` names something that is not a procedure or does not raise the default;
+  - a list, map, string or bytes field of a request has no limit, nested messages and map values included;
+  - a procedure reaches a field raised over its default and has no entry in `raisedReadLimits`.
+  It does not add up a worst case: whoever writes the option chooses the procedure's read limit on purpose, and the test makes sure they did.
+- **The sentences** for `RequestRefused` and for a bare `resource_exhausted` are in `web/src/app/core/connect/connect-errors.ts`, so every screen shows them without wording them.
+
+The options are custom (`proto/meurpg/options/v1/limits.proto`) instead of protovalidate.
+The need is three numeric caps, and protovalidate would bring a rules engine and a CEL runtime into the server, the generated code and the build for them.
+The option is a few small functions that read a descriptor and walk a message, and the registry test reads the same options as the interceptor.
 
 ## Abuse limits
 
