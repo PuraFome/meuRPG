@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -398,16 +399,12 @@ func TestEveryEventKindOfTheCodeIsInTheTable(t *testing.T) {
 		t.Fatalf("Up() error = %v", err)
 	}
 
-	var create string
-	var name string
-	if err := db.QueryRowContext(t.Context(), `SHOW CREATE TABLE session_events`).Scan(&name, &create); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(create, "session_events_kind_valid") {
+	constraints := constraintsOf(t, db, "session_events")
+	if strings.Contains(constraints, "session_events_kind_valid") {
 		t.Error("session_events still has the kind CHECK")
 	}
-	if !strings.Contains(create, "session_events_kind_fkey FOREIGN KEY (kind) REFERENCES public.session_event_kinds(kind)") {
-		t.Errorf("session_events has no foreign key on kind:\n%s", create)
+	if !regexp.MustCompile(`session_events_kind_fkey FOREIGN KEY \(kind\) REFERENCES (public\.)?session_event_kinds\(kind\)`).MatchString(constraints) {
+		t.Errorf("session_events has no foreign key on kind:\n%s", constraints)
 	}
 
 	inTable := map[string]bool{}
@@ -536,4 +533,12 @@ func TestCascadeForeignKeysOfBigTablesAreIndexed(t *testing.T) {
 			t.Errorf("%s is a cascade or SET NULL foreign key of a big table without an index", r)
 		}
 	}
+}
+
+// constraintsOf lists the constraints of a table, "name definition" one per line, as both databases print them.
+func constraintsOf(t *testing.T, db *sql.DB, table string) string {
+	t.Helper()
+	var b strings.Builder
+	readSchemaLines(t, db, &b, table, schemaQueries[1])
+	return b.String()
 }
