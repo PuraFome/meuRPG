@@ -797,10 +797,10 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   spendsSlot: boolean;
 
   /**
-   * slot_recovery: the character takes back expended spell slots after a rest, as the
-   * wizard's Arcane Recovery does. `resource` is the resource whose use each recovery
-   * spends (a resource effect of the same feature gives the uses and the rest they come
-   * back on), `recover_max_level` an Int formula for the highest level of a slot it takes
+   * slot_recovery: the character takes back expended spell slots after a short rest, as the
+   * wizard's Arcane Recovery does. A feature has one. `resource` is the resource whose use each
+   * recovery spends (an SRD resource, or one a resource effect of the entry or its class
+   * defines, which gives the uses and the rest they come back on), `recover_max_level` an Int formula for the highest level of a slot it takes
    * back (1 to 9) and `recover_levels` an Int formula for the combined level of the slots
    * (a level 2 slot counts 2). Both are required.
    *

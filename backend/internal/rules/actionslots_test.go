@@ -108,6 +108,7 @@ func TestATableSlotEffectRefusals(t *testing.T) {
 		"recovery above level 9":         {[]Effect{res, {Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "10", RecoverLevels: "2"}}, ".recover_max_level", ReasonValue},
 		"recovery of no levels":          {[]Effect{res, {Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "3", RecoverLevels: "0"}}, "", ReasonValue},
 		"recovery with another field":    {[]Effect{res, {Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "3", RecoverLevels: "2", Cost: "1"}}, "", ReasonValue},
+		"a second recovery in a feature": {[]Effect{res, {Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "1", RecoverLevels: "1"}, {Type: "slot_recovery", Resource: "centelha", RecoverMaxLevel: "3", RecoverLevels: "2"}}, ".type", ReasonEffect},
 		"recover_levels on a note":       {[]Effect{{Type: "note", RecoverLevels: "2"}}, "", ReasonValue},
 	} {
 		t.Run(name, func(t *testing.T) {

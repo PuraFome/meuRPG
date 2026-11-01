@@ -512,7 +512,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 
 // ownFields are the fields only some effect types read. Every other field of the
 // menu (when, tags, text_pt) any type may have; the fields of the engine's own
-// effects (the spellcasting, the wild shape, the handler) never come from the
+// effects (the spellcasting, the handler) never come from the
 // table.
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
@@ -877,9 +877,10 @@ func (b *overlayBuilder) compileEffectsOf(owner string) error {
 	return c.err()
 }
 
-// oneOfAKind says a feature has at most one effect of the type: its key names what the player marks.
+// oneOfAKind says a feature has at most one effect of the type: its key names what the player marks,
+// or what the recovery call reads.
 func oneOfAKind(effectType string) bool {
-	return effectType == "extra_damage" || effectType == "spell_modifier"
+	return effectType == "extra_damage" || effectType == "spell_modifier" || effectType == "slot_recovery"
 }
 
 // compilePending checks and compiles one owner's pending effects, on copies. It
@@ -891,7 +892,7 @@ func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out [
 		e := p.effects[i]
 		at := fmt.Sprintf("%s.effects[%d]", p.path, i)
 		if oneOfAKind(e.Type) {
-			// One for each feature: the extra or the option is chosen, marked and spent by the feature's key.
+			// One for each feature: the extra, the option or the recovery is chosen, marked and spent by the feature's key.
 			if chosen[e.Type]++; chosen[e.Type] > 1 {
 				c.add(ovErr(p.owner, "a feature has one %s effect: give the other its own feature", e.Type).at(at+".type", ReasonEffect))
 				failed = true

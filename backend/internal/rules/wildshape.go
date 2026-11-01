@@ -26,7 +26,7 @@ type WildShapeLimit struct {
 }
 
 // WildShapeLimitFor returns what the build's Wild Shape features allow, and
-// false when the build has none (not a druid of level 2). The most permissive
+// false when no wild_shape effect applies. The most permissive
 // effect wins in each part: the highest challenge rating, the cheapest cost, and
 // magical attacks if any effect gives them (Derived.WildShape).
 func (c *Content) WildShapeLimitFor(b Build) (WildShapeLimit, bool) {

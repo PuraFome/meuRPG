@@ -195,3 +195,61 @@ func TestMR025_ATableFeatureRecoversSpellSlotsWithinItsLimits(t *testing.T) {
 	_, err = r.recoverFeature(t, r.ana, mage, feature, map[int32]int32{1: 1})
 	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT)
 }
+
+// A table subclass that changes Wild Shape and recovers slots stays on the sheets that have it when the master archives
+// or switches it off (RN-23).
+func TestMR025_AnArchivedOrSwitchedOffTableSubclassStaysOnItsSheet(t *testing.T) {
+	t.Parallel()
+	r := newRecoveryTable(t)
+	res, err := r.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+		CampaignId: r.campaign, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
+			NamePt: "Círculo do Retorno", ClassKey: "class:druid", DescPt: []string{"Formas e espaços."},
+			Levels: []*rulesv1.TableSubclassLevel{{Level: 2, Features: []*rulesv1.TableFeature{{NamePt: "Retorno", DescPt: []string{"Volta."}, Effects: []*rulesv1.TableEffect{
+				fxPool("retorno", "1", "long_rest"),
+				{Type: "wild_shape", MaxCr: "1", FormCost: "0"},
+				{Type: "slot_recovery", Resource: "retorno", RecoverMaxLevel: "2", RecoverLevels: "2"},
+			}}}}},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("CreateTableEntry() error = %v", err)
+	}
+	entry := res.Msg.GetEntry()
+	feature := entry.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetKey()
+	druid := r.ana.heroWith(t, r.campaign, "Sálvia", classLevel("class:druid", 5, entry.GetKey()), abilities(10, 12, 14, 10, 16), nil, nil, nil)
+	r.expend(t, druid, map[int32]int32{1: 2})
+	r.shortRest(t)
+
+	maxCR := func() string {
+		t.Helper()
+		list, err := r.ana.characters.ListWildShapeForms(t.Context(), connect.NewRequest(&charactersv1.ListWildShapeFormsRequest{CampaignId: r.campaign, CharacterId: druid.GetId()}))
+		if err != nil {
+			t.Fatalf("ListWildShapeForms() error = %v", err)
+		}
+		return list.Msg.GetMaxCr()
+	}
+	if got := maxCR(); got != "1" {
+		t.Fatalf("with the subclass the limit is CR %s, want 1", got)
+	}
+	if _, err := r.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: r.campaign, Key: entry.GetKey()})); err != nil {
+		t.Fatalf("ArchiveTableEntry() error = %v", err)
+	}
+	if got := maxCR(); got != "1" {
+		t.Errorf("after the archive the limit is CR %s, want 1: an archived entry still holds on the sheets that have it", got)
+	}
+
+	if _, err := r.master.table.UnarchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.UnarchiveTableEntryRequest{CampaignId: r.campaign, Key: entry.GetKey()})); err != nil {
+		t.Fatalf("UnarchiveTableEntry() error = %v", err)
+	}
+	if _, err := r.master.table.SetOptionSwitches(t.Context(), connect.NewRequest(&rulesv1.SetOptionSwitchesRequest{
+		CampaignId: r.campaign, Switches: []*rulesv1.OptionSwitch{{Key: entry.GetKey(), Off: true}},
+	})); err != nil {
+		t.Fatalf("SetOptionSwitches() error = %v", err)
+	}
+	if got := maxCR(); got != "1" {
+		t.Errorf("after the switch-off the limit is CR %s, want 1: the sheet that has the subclass keeps it", got)
+	}
+	if _, err := r.recoverFeature(t, r.ana, druid, feature, map[int32]int32{1: 1}); err != nil {
+		t.Errorf("the recovery after the switch-off error = %v, want none", err)
+	}
+}

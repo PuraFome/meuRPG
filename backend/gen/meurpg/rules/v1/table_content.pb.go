@@ -1051,10 +1051,10 @@ type TableEffect struct {
 	// `value_per_point` (dice, the same sides) for each level above 1. It needs `heal` and
 	// takes no resource, no cost, no cost_max and no temp_hp.
 	SpendsSlot bool `protobuf:"varint,74,opt,name=spends_slot,json=spendsSlot,proto3" json:"spends_slot,omitempty"`
-	// slot_recovery: the character takes back expended spell slots after a rest, as the
-	// wizard's Arcane Recovery does. `resource` is the resource whose use each recovery
-	// spends (a resource effect of the same feature gives the uses and the rest they come
-	// back on), `recover_max_level` an Int formula for the highest level of a slot it takes
+	// slot_recovery: the character takes back expended spell slots after a short rest, as the
+	// wizard's Arcane Recovery does. A feature has one. `resource` is the resource whose use each
+	// recovery spends (an SRD resource, or one a resource effect of the entry or its class
+	// defines, which gives the uses and the rest they come back on), `recover_max_level` an Int formula for the highest level of a slot it takes
 	// back (1 to 9) and `recover_levels` an Int formula for the combined level of the slots
 	// (a level 2 slot counts 2). Both are required.
 	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
