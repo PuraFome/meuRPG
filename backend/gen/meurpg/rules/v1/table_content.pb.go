@@ -2173,19 +2173,23 @@ type TableCreature struct {
 	// ignoring case), and may not be named "Magic Weapons",
 	// "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
 	Traits []*TableCreatureTrait `protobuf:"bytes,6,rep,name=traits,proto3" json:"traits,omitempty"`
-	// The numbers below are formulas, evaluated against an owner's sheet.
-	// A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>").
+	// The numbers below are formulas, evaluated against the sheet of the character that is given the creature.
+	// A formula may read level(), classLevel("<class>"), prof(), mod("<ability>"), score("<ability>"),
+	// armor() (the category of the armor worn), shield() (whether a shield counts) and speedwalk() (the walking speed in feet).
 	// It may also use floor, ceil, min and max.
-	// It may also read slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a slot cast.
+	// It may also read slot(): the circle (1 to 9) of the spell slot a spell was cast with.
+	// A creature given to a character was not made by a slot, so slot() is 0 in its formulas.
 	// slot() is legal only in these fields:
-	// hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula and save_dc_formula,
+	// hit_points_formula, armor_class_formula, damage_bonus_formula and attack_bonus_formula,
 	// and the to_hit and damage_bonus of an attack.
 	// Effects, conditions and every other formula refuse slot().
 	// A formula that does not compile, or calls a function that does not exist, is refused with its field.
-	// A result is rounded down and clamped to the range of its field.
+	// A result is rounded down.
+	// A result beyond 10000 or below -10000 is a failed formula, and the static value stands.
+	// Within that limit, the result is clamped to the range of its field.
 	// If a formula fails while it runs, the static value stands.
 	// An empty formula keeps the static value, or the base's when the field has none.
-	// The static fields hit_points, armor_class and damage_bonus stay.
+	// The static fields hit_points, armor_class and damage_bonus are used when the formula is empty or fails.
 	// A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
 	//
 	// The maximum hit points, clamped to 1..9999.
@@ -2202,10 +2206,6 @@ type TableCreature struct {
 	// An attack's own to_hit wins over it.
 	// Empty keeps the base's.
 	AttackBonusFormula string `protobuf:"bytes,10,opt,name=attack_bonus_formula,json=attackBonusFormula,proto3" json:"attack_bonus_formula,omitempty"`
-	// The DC of the saving throws of the creature's actions on its sheet, clamped to 1..30.
-	// The DC of a rider or an area of an action keeps the base's value.
-	// Empty keeps the base's.
-	SaveDcFormula string `protobuf:"bytes,11,opt,name=save_dc_formula,json=saveDcFormula,proto3" json:"save_dc_formula,omitempty"`
 	// Attacks added after the base's actions, at most 8.
 	// Each becomes an action of the creature keyed "<creature key>#<slug of its name>".
 	// It has an attack roll, as the SRD creatures' attacks do.
@@ -2313,13 +2313,6 @@ func (x *TableCreature) GetDamageBonusFormula() string {
 func (x *TableCreature) GetAttackBonusFormula() string {
 	if x != nil {
 		return x.AttackBonusFormula
-	}
-	return ""
-}
-
-func (x *TableCreature) GetSaveDcFormula() string {
-	if x != nil {
-		return x.SaveDcFormula
 	}
 	return ""
 }
@@ -7248,7 +7241,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\tclass_key\x18\x03 \x01(\tR\bclassKey\x12\x14\n" +
 	"\x05level\x18\x04 \x01(\x05R\x05level\x120\n" +
 	"\x14replaces_feature_key\x18\x05 \x01(\tR\x12replacesFeatureKey\x126\n" +
-	"\aeffects\x18\x06 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\x8d\x04\n" +
+	"\aeffects\x18\x06 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xfc\x03\n" +
 	"\rTableCreature\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x19\n" +
 	"\bbase_key\x18\x02 \x01(\tR\abaseKey\x12\x1d\n" +
@@ -7262,9 +7255,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x13armor_class_formula\x18\b \x01(\tR\x11armorClassFormula\x120\n" +
 	"\x14damage_bonus_formula\x18\t \x01(\tR\x12damageBonusFormula\x120\n" +
 	"\x14attack_bonus_formula\x18\n" +
-	" \x01(\tR\x12attackBonusFormula\x12&\n" +
-	"\x0fsave_dc_formula\x18\v \x01(\tR\rsaveDcFormula\x12>\n" +
-	"\aattacks\x18\f \x03(\v2$.meurpg.rules.v1.TableCreatureAttackR\aattacks\"\xb7\x02\n" +
+	" \x01(\tR\x12attackBonusFormula\x12>\n" +
+	"\aattacks\x18\f \x03(\v2$.meurpg.rules.v1.TableCreatureAttackR\aattacksJ\x04\b\v\x10\fR\x0fsave_dc_formula\"\xb7\x02\n" +
 	"\x13TableCreatureAttack\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x14\n" +
 	"\x05melee\x18\x02 \x01(\bR\x05melee\x12\x19\n" +

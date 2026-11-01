@@ -283,7 +283,7 @@ func tableCreatureOf(te rules.TableEntry, b *rulesv1.TableCreature) rules.TableC
 		TableEntry: te, BaseKey: b.GetBaseKey(), HitPoints: int(b.GetHitPoints()), ArmorClass: int(b.GetArmorClass()),
 		DamageBonus:      int(b.GetDamageBonus()),
 		HitPointsFormula: b.GetHitPointsFormula(), ArmorClassFormula: b.GetArmorClassFormula(),
-		DamageBonusFormula: b.GetDamageBonusFormula(), AttackBonusFormula: b.GetAttackBonusFormula(), SaveDCFormula: b.GetSaveDcFormula(),
+		DamageBonusFormula: b.GetDamageBonusFormula(), AttackBonusFormula: b.GetAttackBonusFormula(),
 	}
 	for _, t := range b.GetTraits() {
 		c.Traits = append(c.Traits, rules.TableCreatureTrait{NamePT: t.GetNamePt(), TextPT: t.GetTextPt()})

@@ -735,7 +735,6 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma criatura dada com fórmulas, **quando** o dono sobe de nível ou edito as fórmulas, **então** a criatura já dada mantém os números, e uma dada depois tem os novos.
 - **Dado** uma criatura dada com fórmulas, **quando** acrescento, removo, renomeio ou reordeno os ataques próprios dela, **então** os ataques que ficam mantêm os números com que foram dados, um ataque novo tem os números fixos da entrada, um removido some, e os pontos de vida, a classe de armadura e os bônus da criatura não mudam.
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
-- **Dado** uma criatura cuja CD é uma fórmula, **então** os testes de resistência das ações dela na ficha usam essa CD, e a CD de um efeito adicional ou de uma área de uma ação mantém a da criatura base.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
   Isso vale com a entrada ativa, arquivada ou desligada.

@@ -9,7 +9,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// tableSkeletonKey is the master's creature of issue #578: an SRD skeleton with 30 hit points, armor class
+// tableSkeletonKey is the master's creature: an SRD skeleton with 30 hit points, armor class
 // 15 and +3 on the damage of each attack. These tests need the database (MEURPG_TEST_DATABASE_URL).
 const tableSkeletonKey = "creature:guarda-ossuda@mesa"
 
@@ -111,7 +111,7 @@ func TestMR578_ATableCreatureAddedAfterItsEditFightsWithTheNewNumbers(t *testing
 	}
 }
 
-// silverWolfKey is the master's formula creature of issue #578, slice 2a: an SRD wolf with 5 hit points per
+// silverWolfKey is the master's formula creature: an SRD wolf with 5 hit points per
 // level of its owner, an armor class of 10 + proficiency + Dexterity, and a claw that hits with proficiency +
 // Strength and adds Strength to the damage.
 const (

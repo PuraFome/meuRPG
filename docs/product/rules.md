@@ -586,11 +586,11 @@ Members read the campaign's content, except creatures (below); only the master w
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**
   A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30), up to 10 traits that are text only and up to 8 attacks of its own.
-  Its numbers can be formulas of its owner: hit points, armor class, the damage bonus, the attack bonus, the DC of the saving throws of its actions, and the to-hit and damage bonus of each own attack.
-  A formula reads the owner's level, class level, proficiency bonus and ability modifiers, and the circle of the spell slot the owner cast with (0 outside a slot cast).
-  Each result is clamped to the range of its field.
+  Its numbers can be formulas of its owner: hit points, armor class, the damage bonus, the attack bonus, and the to-hit and damage bonus of each own attack.
+  A formula reads the owner's level, class level, proficiency bonus, ability scores and modifiers, armor category, shield and walking speed, and the circle of the spell slot a spell was cast with.
+  A creature given to a character was not made by a slot, so that circle is 0 in its formulas.
+  A result is rounded down and clamped to the range of its field; a result beyond 10,000 or below -10,000 is a failed formula, and the field keeps its static value or the base creature's.
   The numbers are worked out for the character that is given the creature, and kept: a later level of the owner or an edit of the formulas does not change a creature already given.
-  The DC of a rider or an area of an action keeps the base creature's value.
   "Pôr no combate" and "Criar NPC" have no owner, so they use the entry's static numbers and run no formula.
   The SRD creature it comes from never changes.
   A table creature is never the base of another.

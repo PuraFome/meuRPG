@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// The numbers of a table creature as formulas of its owner (issue #578, slice 2a). A table creature keeps
+// The numbers of a table creature as formulas of its owner. A table creature keeps
 // its static adjustments (overlay_creature.go); on top of them, each number may be a formula that reads
 // the owner (level(), classLevel("x"), prof(), mod("wis")) and the circle of the slot the owner cast with
 // (slot(), 0 outside a slot cast). The formulas are compiled once, when the overlay is built, and kept on
@@ -29,9 +29,6 @@ const (
 	// MinCreatureAttackBonus and MaxCreatureAttackBonus bound the to-hit a formula gives.
 	MinCreatureAttackBonus = -10
 	MaxCreatureAttackBonus = 30
-	// MinCreatureSaveDC and MaxCreatureSaveDC bound the DC a formula gives.
-	MinCreatureSaveDC = 1
-	MaxCreatureSaveDC = 30
 	// The bounds of a creature's own attack.
 	maxCreatureReachFt    = 30
 	maxCreatureRangeFt    = 600
@@ -57,11 +54,11 @@ type TableCreatureAttack struct {
 // creatureSpec is a table creature as the content keeps it: the static adjustments and the compiled
 // formulas. It is immutable once built.
 type creatureSpec struct {
-	key, namePT, baseKey              string
-	hp, ac, damageBonus               int
-	traits                            []TableCreatureTrait
-	hpP, acP, damageP, attackP, saveP *formula.Program
-	attacks                           []attackSpec
+	key, namePT, baseKey       string
+	hp, ac, damageBonus        int
+	traits                     []TableCreatureTrait
+	hpP, acP, damageP, attackP *formula.Program
+	attacks                    []attackSpec
 }
 
 type attackSpec struct {
@@ -72,7 +69,7 @@ type attackSpec struct {
 // ResolvedCreature is a table creature's numbers for one owner: every formula run and clamped.
 // HitPoints and ArmorClass are 0 when the base's stand.
 // DamageBonus is the bonus the creature-level formula or the static field gives each attack with no bonus of its own.
-// AttackBonus and SaveDC replace the base's only when HasAttackBonus and HasSaveDC.
+// AttackBonus replaces the base's only when HasAttackBonus.
 // AttackBonus is also the to-hit of an own attack with no to_hit of its own.
 // Attacks are the creature's own, with their final numbers.
 // Failed lists the fields (as ".hit_points_formula") whose formula failed to run, which then keep the static value.
@@ -83,8 +80,6 @@ type ResolvedCreature struct {
 	DamageBonus          int
 	AttackBonus          int
 	HasAttackBonus       bool
-	SaveDC               int
-	HasSaveDC            bool
 	Traits               []TableCreatureTrait
 	Attacks              []ResolvedAttack
 	Failed               []string
@@ -127,7 +122,8 @@ func OwnerEnv(d Derived, shield bool) *formula.Env {
 // environment the feature formulas run on) that cast it with a slot of the given circle (0 outside a slot
 // cast; out of 0 to 9 is 0). Each formula is run and clamped: hit points 1 to MaxCreatureHitPoints, armor
 // class 1 to MaxCreatureArmorClass, damage bonus MinCreatureDamageBonus to MaxCreatureDamageBonus, attack
-// bonus MinCreatureAttackBonus to MaxCreatureAttackBonus, save DC MinCreatureSaveDC to MaxCreatureSaveDC.
+// bonus MinCreatureAttackBonus to MaxCreatureAttackBonus. A result beyond the formula engine's limit
+// (formula.MaxResult) is a failed formula.
 // A field with no formula keeps the static value. ok is false for a key that is not a table creature, or a
 // nil env. It reads the content only.
 func (c *Content) ResolveCreature(key string, env *formula.Env, slot int) (ResolvedCreature, bool) {
@@ -152,7 +148,7 @@ func (c *Content) CreatureHasFormulas(key string) bool {
 	if !ok {
 		return false
 	}
-	if s.hpP != nil || s.acP != nil || s.damageP != nil || s.attackP != nil || s.saveP != nil {
+	if s.hpP != nil || s.acP != nil || s.damageP != nil || s.attackP != nil {
 		return true
 	}
 	return slices.ContainsFunc(s.attacks, func(a attackSpec) bool { return a.toHitP != nil || a.damageP != nil })
@@ -190,13 +186,10 @@ func (s *creatureSpec) trusted(r ResolvedCreature) ResolvedCreature {
 		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits),
 		HitPoints: clampOrZero(r.HitPoints, 1, MaxCreatureHitPoints), ArmorClass: clampOrZero(r.ArmorClass, 1, MaxCreatureArmorClass),
 		DamageBonus:    clamp(r.DamageBonus, MinCreatureDamageBonus, MaxCreatureDamageBonus),
-		HasAttackBonus: r.HasAttackBonus, HasSaveDC: r.HasSaveDC,
+		HasAttackBonus: r.HasAttackBonus,
 	}
 	if t.HasAttackBonus {
 		t.AttackBonus = clamp(r.AttackBonus, MinCreatureAttackBonus, MaxCreatureAttackBonus)
-	}
-	if t.HasSaveDC {
-		t.SaveDC = clamp(r.SaveDC, MinCreatureSaveDC, MaxCreatureSaveDC)
 	}
 	own := map[string]ResolvedAttack{}
 	for _, a := range r.Attacks {
@@ -285,7 +278,6 @@ func (s *creatureSpec) resolveNumbers(f *formulaRun, r *ResolvedCreature) {
 		r.DamageBonus = v
 	}
 	r.AttackBonus, r.HasAttackBonus = f.int(s.attackP, ".attack_bonus_formula", MinCreatureAttackBonus, MaxCreatureAttackBonus)
-	r.SaveDC, r.HasSaveDC = f.int(s.saveP, ".save_dc_formula", MinCreatureSaveDC, MaxCreatureSaveDC)
 }
 
 // resolveAttacks works out the creature's own attacks, the specific beating the general: the to-hit is the
@@ -306,21 +298,16 @@ func (s *creatureSpec) resolveAttacks(f *formulaRun, r *ResolvedCreature, ownerl
 	}
 }
 
-var (
-	toHitTextRe = regexp.MustCompile(`[+-]\d+ to hit`)
-	saveDCRe    = regexp.MustCompile(`DC \d+( (?:\w+ )?saving throw)`)
-)
+var toHitTextRe = regexp.MustCompile(`[+-]\d+ to hit`)
 
 // ApplyResolved is the stat block of base with r written on it: the key and name of the table creature; hit
 // points (the roll is cleared); armor class (its kind and notes are cleared); the damage bonus added once
-// to the first damage part of each attack action of the base; the attack bonus in place of the base's; the DC
-// of each action with a saving throw; the extra traits after the base's; and the creature's own attacks after
-// its actions, each an action with an attack roll. The text of an action is the base's, except for the to-hit
-// and the DC it states. base is not changed.
+// to the first damage part of each attack action of the base; the attack bonus in place of the base's; the
+// extra traits after the base's; and the creature's own attacks after its actions, each an action with an
+// attack roll. The text of an action is the base's, except for the to-hit it states. base is not changed.
 // With the static values, it is the stat block the content keeps.
 // ok is false when an attack of r has dice that cannot be read.
-// The to-hit rewrite matches "+N to hit" and the DC rewrite
-// "DC N <Ability> saving throw" or "DC N saving throw"; other wordings keep the base's text.
+// The to-hit rewrite matches "+N to hit"; other wordings keep the base's text.
 func ApplyResolved(base *srd51.Monster, r ResolvedCreature) (*srd51.Monster, bool) {
 	m := *base
 	m.Key, m.Name = r.Key, r.NamePT
@@ -331,7 +318,7 @@ func ApplyResolved(base *srd51.Monster, r ResolvedCreature) (*srd51.Monster, boo
 		// The base's kind of armor class ("natural") and its notes no longer describe the value.
 		m.ArmorClass, m.ArmorClassType, m.ArmorClassDesc, m.ArmorClassItems, m.ArmorClassAlts = r.ArmorClass, "", "", nil, nil
 	}
-	if r.DamageBonus != 0 || r.HasAttackBonus || r.HasSaveDC || len(r.Attacks) > 0 {
+	if r.DamageBonus != 0 || r.HasAttackBonus || len(r.Attacks) > 0 {
 		m.Actions = slices.Clone(base.Actions)
 		for i := range m.Actions {
 			applyToAction(&m.Actions[i], r)
@@ -353,7 +340,7 @@ func ApplyResolved(base *srd51.Monster, r ResolvedCreature) (*srd51.Monster, boo
 	return &m, true
 }
 
-// applyToAction writes the bonuses and the DC of r on one action of the base (a copy of it).
+// applyToAction writes the bonuses of r on one action of the base (a copy of it).
 func applyToAction(a *srd51.MonsterAction, r ResolvedCreature) {
 	if a.HasAttack {
 		if r.HasAttackBonus {
@@ -364,12 +351,6 @@ func applyToAction(a *srd51.MonsterAction, r ResolvedCreature) {
 			a.Damage = slices.Clone(a.Damage)
 			a.Damage[0].Dice = addDiceBonus(a.Damage[0].Dice, r.DamageBonus)
 		}
-	}
-	if a.Save != nil && r.HasSaveDC {
-		s := *a.Save
-		s.DC = r.SaveDC
-		a.Save = &s
-		a.Desc = saveDCRe.ReplaceAllString(a.Desc, "DC "+strconv.Itoa(r.SaveDC)+"$1")
 	}
 }
 
@@ -422,7 +403,6 @@ func (b *overlayBuilder) checkCreatureFormulas(c *entryErrors, o *TableCreature,
 	s.acP = compile(o.ArmorClassFormula, ".armor_class_formula")
 	s.damageP = compile(o.DamageBonusFormula, ".damage_bonus_formula")
 	s.attackP = compile(o.AttackBonusFormula, ".attack_bonus_formula")
-	s.saveP = compile(o.SaveDCFormula, ".save_dc_formula")
 	if len(o.Attacks) > MaxCreatureAttacks {
 		c.at(o.Key, path, ".attacks", ReasonLimit, "%d attacks; the limit is %d per creature", len(o.Attacks), MaxCreatureAttacks)
 		return s

@@ -586,11 +586,11 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
   Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30), até 10 traços só de texto e até 8 ataques próprios.
-  Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, a CD dos testes de resistência das ações dela, e o acerto e o bônus de dano de cada ataque próprio.
-  Uma fórmula lê o nível, o nível de classe, o bônus de proficiência e os modificadores de habilidade do dono, e o círculo do espaço de magia com que o dono conjurou (0 fora de uma conjuração com espaço).
-  Cada resultado fica dentro da faixa do campo.
+  Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, e o acerto e o bônus de dano de cada ataque próprio.
+  Uma fórmula lê o nível, o nível de classe, o bônus de proficiência, os valores e modificadores de habilidade, a categoria de armadura, o escudo e o deslocamento de caminhada do dono, e o círculo do espaço de magia com que uma magia foi conjurada.
+  Uma criatura dada a um personagem não foi feita por um espaço, então esse círculo é 0 nas fórmulas dela.
+  Um resultado é arredondado para baixo e fica dentro da faixa do campo; um resultado acima de 10.000 ou abaixo de -10.000 é uma fórmula que falhou, e o campo mantém o valor fixo ou o da criatura base.
   Os números são calculados para o personagem que recebe a criatura, e guardados: um nível novo do dono ou uma edição das fórmulas não muda uma criatura já dada.
-  A CD de um efeito adicional ou de uma área de uma ação mantém o valor da criatura base.
   "Pôr no combate" e "Criar NPC" não têm dono, então usam os números fixos da entrada e não rodam fórmula.
   A criatura do SRD de que ela parte nunca muda.
   Uma criatura da mesa nunca é a base de outra.

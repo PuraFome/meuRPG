@@ -51,7 +51,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   A snapshot is used whenever the row has one, even when the entry has lost all its formulas.
   The list (`CharacterCreature.armor_class`), the combat sheet, the turn options, the saving throws and the checks of a held creature read the snapshot.
   A trap that hits a creature outside a combat reads it too.
-  The saving throw DC of a rider or an area of a creature's action is read from the content's block, not from the snapshot.
+  `GetCreature` and `ListCreatures` show the content's owner-less stat block, not a snapshot; the creature list's `armor_class` and the combat show the snapshot.
   A creature with no formula has no snapshot, and reads the content as described below.
   "Pôr no combate" and "Criar NPC" have no owner: they use the entry's static fields, and no formula is run.
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.

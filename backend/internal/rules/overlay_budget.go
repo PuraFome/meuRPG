@@ -271,7 +271,7 @@ func (bg *budget) creatures(o *Overlay) error {
 		if len(tc.Attacks) > MaxCreatureAttacks {
 			return ovErr(tc.Key, "%d attacks; the limit is %d per creature", len(tc.Attacks), MaxCreatureAttacks).at(path+".attacks", ReasonLimit)
 		}
-		formulas := []string{tc.HitPointsFormula, tc.ArmorClassFormula, tc.DamageBonusFormula, tc.AttackBonusFormula, tc.SaveDCFormula}
+		formulas := []string{tc.HitPointsFormula, tc.ArmorClassFormula, tc.DamageBonusFormula, tc.AttackBonusFormula}
 		for _, a := range tc.Attacks {
 			formulas = append(formulas, a.ToHit, a.DamageBonus)
 		}

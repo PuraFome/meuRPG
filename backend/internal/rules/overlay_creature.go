@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// The table's creatures (issue #578): an entry "creature:<slug>@mesa" is an SRD creature with a few
+// The table's creatures: an entry "creature:<slug>@mesa" is an SRD creature with a few
 // adjustments: its hit points, its armor class, a damage bonus on its attacks and extra traits (text
 // only). The entry becomes a creature of the clone, by its own key, so the creature list and sheet,
 // giving it to a character, combat and "Criar NPC" read it where they read an SRD creature
@@ -43,10 +43,10 @@ type TableCreature struct {
 	DamageBonus int
 	Traits      []TableCreatureTrait
 	// The formulas of the creature's numbers, of its owner (see ResolveCreature): empty keeps the
-	// static value (HitPoints, ArmorClass, DamageBonus) or the base's (the attack bonus, the save DC).
+	// static value (HitPoints, ArmorClass, DamageBonus) or the base's (the attack bonus).
 	// slot() is legal in each. Attacks are the creature's own attack actions (at most MaxCreatureAttacks).
-	HitPointsFormula, ArmorClassFormula, DamageBonusFormula, AttackBonusFormula, SaveDCFormula string
-	Attacks                                                                                    []TableCreatureAttack
+	HitPointsFormula, ArmorClassFormula, DamageBonusFormula, AttackBonusFormula string
+	Attacks                                                                     []TableCreatureAttack
 }
 
 // TableCreatureTrait is a trait added to a table creature: a name and a text, no effects.

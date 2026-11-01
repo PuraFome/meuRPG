@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
-// The stat block snapshot of a creature (issue #578, slice 2a). A table creature whose entry has formulas
+// The stat block snapshot of a creature. A table creature whose entry has formulas
 // (rules.Content.CreatureHasFormulas) gets its numbers worked out for its owner when it is created, and
 // they are kept in character_creatures.stat_block as the JSON of a rules.ResolvedCreature. Like hp_max, the
 // snapshot does not follow the owner's later levels or an edit of the entry's formulas. The text of the

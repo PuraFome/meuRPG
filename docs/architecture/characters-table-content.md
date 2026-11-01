@@ -202,9 +202,9 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
   `insertSummoned` derives the recipient's sheet with the campaign's content and active states, makes the environment with `rules.OwnerEnv`, runs `ResolveCreature` with the slot 0, stores the JSON and takes `hp_max` from the result.
   `CreatureSheet`, `CreatureTurnOptions`, `CreatureSave` and `CreatureCheck` take the creature's ID and read the snapshot, and so does the list's `armor_class`.
   The snapshot follows neither the owner's later levels nor an edit of the formulas; the text of the creature is read from the content.
-  A snapshot is used whenever the row has one, whatever the entry's formulas are now (the list and the combat read it the same way).
+  A snapshot is used whenever the row has one, whatever the entry's formulas are (the list and the combat read it the same way).
   `rules.ResolvedDerived` matches the snapshot's own attacks to the entry's by the key of their action: one in both keeps the snapshot's numbers, one new in the entry has the static numbers, and one the entry lost is dropped.
-  The DC of a rider or an area of a creature's action is read from the content's plan, not from the snapshot.
+  `GetCreature` and `ListCreatures` show the content's owner-less stat block, not a snapshot; the creature list's `armor_class` and the combat show the snapshot.
   "Pôr no combate" and "Criar NPC" have no owner and use the entry's static fields.
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.

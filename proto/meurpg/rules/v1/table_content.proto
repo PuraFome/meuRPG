@@ -523,19 +523,23 @@ message TableCreature {
   // ignoring case), and may not be named "Magic Weapons",
   // "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
   repeated TableCreatureTrait traits = 6;
-  // The numbers below are formulas, evaluated against an owner's sheet.
-  // A formula may read level(), classLevel("<class>"), prof(), mod("<ability>") and score("<ability>").
+  // The numbers below are formulas, evaluated against the sheet of the character that is given the creature.
+  // A formula may read level(), classLevel("<class>"), prof(), mod("<ability>"), score("<ability>"),
+  // armor() (the category of the armor worn), shield() (whether a shield counts) and speedwalk() (the walking speed in feet).
   // It may also use floor, ceil, min and max.
-  // It may also read slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a slot cast.
+  // It may also read slot(): the circle (1 to 9) of the spell slot a spell was cast with.
+  // A creature given to a character was not made by a slot, so slot() is 0 in its formulas.
   // slot() is legal only in these fields:
-  // hit_points_formula, armor_class_formula, damage_bonus_formula, attack_bonus_formula and save_dc_formula,
+  // hit_points_formula, armor_class_formula, damage_bonus_formula and attack_bonus_formula,
   // and the to_hit and damage_bonus of an attack.
   // Effects, conditions and every other formula refuse slot().
   // A formula that does not compile, or calls a function that does not exist, is refused with its field.
-  // A result is rounded down and clamped to the range of its field.
+  // A result is rounded down.
+  // A result beyond 10000 or below -10000 is a failed formula, and the static value stands.
+  // Within that limit, the result is clamped to the range of its field.
   // If a formula fails while it runs, the static value stands.
   // An empty formula keeps the static value, or the base's when the field has none.
-  // The static fields hit_points, armor_class and damage_bonus stay.
+  // The static fields hit_points, armor_class and damage_bonus are used when the formula is empty or fails.
   // A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
   //
   // The maximum hit points, clamped to 1..9999.
@@ -552,10 +556,8 @@ message TableCreature {
   // An attack's own to_hit wins over it.
   // Empty keeps the base's.
   string attack_bonus_formula = 10;
-  // The DC of the saving throws of the creature's actions on its sheet, clamped to 1..30.
-  // The DC of a rider or an area of an action keeps the base's value.
-  // Empty keeps the base's.
-  string save_dc_formula = 11;
+  reserved 11;
+  reserved "save_dc_formula";
   // Attacks added after the base's actions, at most 8.
   // Each becomes an action of the creature keyed "<creature key>#<slug of its name>".
   // It has an attack roll, as the SRD creatures' attacks do.

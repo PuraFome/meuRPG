@@ -543,8 +543,9 @@ func creatureDerivedFrom(content *rules.Content, key, attack string, statBlock [
 }
 
 // CreatureSheet implements play.CombatRoster: what an attack needs from a
-// creature's stat block (its armor class, its attacks, the standard actions).
-// False for a key that is not an SRD creature.
+// creature's stat block (its armor class, its attacks, the standard actions);
+// a creature with a snapshot reads the snapshot's numbers.
+// False for a key that is not a creature of the content (SRD or the table's).
 func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string) (link.Sheet, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
@@ -580,8 +581,8 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, crea
 // CreatureTurnOptions implements play.CombatRoster: what the creature can do
 // now, from its stat block and what it used this turn. A creature that attacks
 // only with its reaction shows its attacks disabled (REACTION_ONLY): the app
-// offers them when a move leaves its reach. False for a key that is not an SRD
-// creature.
+// offers them when a move leaves its reach. False for a key that is not a
+// creature of the content (SRD or the table's).
 func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
@@ -725,7 +726,7 @@ func damageTypesOf(mods []rules.CreatureDamageMod, qualifier string) []string {
 
 // CreatureEyes implements play.CombatRoster: what a creature notices with, from
 // its stat block: the passive Perception it lists and its senses (MR-035, MR-037).
-// False for a key that is not an SRD creature.
+// False for a key that is not a creature of the content (SRD or the table's).
 func (s *Service) CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (maplink.Eyes, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// A table creature whose numbers are formulas of its owner (issue #578, slice 2a): an SRD wolf with 5 hit
+// A table creature whose numbers are formulas of its owner: an SRD wolf with 5 hit
 // points per level, an armor class of 10 + proficiency + Dexterity, and a claw that hits with proficiency +
 // Strength. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
@@ -170,14 +170,14 @@ func TestMR578_TheFormulaFieldsOfACreatureHaveTheirPaths(t *testing.T) {
 		NamePt: "Mordida", Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:piercing", ToHit: "prof() +",
 	})
 	bad.Attacks[1] = &rulesv1.TableCreatureAttack{NamePt: "Pancada", Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:bludgeoning"}
-	bad.SaveDcFormula = "wisdom()"
+	bad.ArmorClassFormula = "wisdom()"
 	_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, bad)))
 	fields := map[string]string{}
 	for _, v := range violationsOfErr(t, err) {
 		fields[v.GetField()] = v.GetReason()
 	}
-	if fields["table_creature.attacks[2].to_hit"] != rules.ReasonFormula || fields["table_creature.save_dc_formula"] != rules.ReasonFormula || len(fields) != 2 {
-		t.Errorf("violations = %v, want a formula at table_creature.attacks[2].to_hit and at table_creature.save_dc_formula", fields)
+	if fields["table_creature.attacks[2].to_hit"] != rules.ReasonFormula || fields["table_creature.armor_class_formula"] != rules.ReasonFormula || len(fields) != 2 {
+		t.Errorf("violations = %v, want a formula at table_creature.attacks[2].to_hit and at table_creature.armor_class_formula", fields)
 	}
 }
 
@@ -185,7 +185,7 @@ func TestMR578_AFormulaCreatureTravelsInAPackWithEveryField(t *testing.T) {
 	t.Parallel()
 	pt := newPackTable(t)
 	full := silverWolf()
-	full.DamageBonusFormula, full.AttackBonusFormula, full.SaveDcFormula = "1", "prof()", "8 + prof()"
+	full.DamageBonusFormula, full.AttackBonusFormula = "1", "prof()"
 	full.HitPoints, full.ArmorClass, full.DamageBonus = 30, 14, 2
 	full.Attacks = append(full.Attacks, &rulesv1.TableCreatureAttack{
 		NamePt: "Espinho", Melee: false, RangeFt: 30, LongRangeFt: 90, DiceCount: 2, DiceSides: 8, DamageType: "damage-type:piercing",
@@ -207,7 +207,7 @@ func TestMR578_AFormulaCreatureTravelsInAPackWithEveryField(t *testing.T) {
 		t.Fatalf("the imported creature = %v, want the exported one", in)
 	}
 	got := bodyMessage(in).(*rulesv1.TableCreature)
-	if got.GetSaveDcFormula() != "8 + prof()" || len(got.GetAttacks()) != 2 || got.GetAttacks()[1].GetLongRangeFt() != 90 || got.GetAttacks()[1].GetToHit() != "slot() + prof()" {
+	if got.GetAttackBonusFormula() != "prof()" || len(got.GetAttacks()) != 2 || got.GetAttacks()[1].GetLongRangeFt() != 90 || got.GetAttacks()[1].GetToHit() != "slot() + prof()" {
 		t.Errorf("the imported creature lost a field: %v", got)
 	}
 }
