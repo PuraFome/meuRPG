@@ -424,6 +424,7 @@ O mestre vê tudo.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
 - **A característica de uma criatura que transforma um teste de resistência falhado em sucesso** (Resistência Lendária) é do mestre: o jogador lê que o teste de resistência da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
+- **O que uma criatura gastou das ações com limite** (Recarga, N/dia), a rolagem de Recarga no começo do turno dela e o motivo da recusa de uma ação gasta são do mestre e do jogador que controla a criatura; os outros jogadores não leem nenhum deles.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.
 
 **Turnos conjuntos.**
@@ -817,6 +818,15 @@ Um NPC feito à mão que conjura guarda os espaços de magia e os usos por dia q
 Um monstro em combate começa cada luta com todos os seus espaços e usos, porque cada luta traz um indivíduo novo.
 Várias cópias de um NPC feito à mão começam com a contagem que o NPC guardou, e ele guarda a maior contagem que uma cópia atingiu, não a soma.
 Um descanso curto não muda nada para um NPC.
+Uma ação de monstro com limite é imposta pelo servidor: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) e a que volta depois de um descanso.
+Um uso a gasta, na mesma mudança do ataque ou da ação, e uma ação gasta é recusada sem mudar nada.
+A recusa diz que a ação não recarregou ou não tem mais usos, ao mestre e ao jogador que controla o monstro.
+No começo do turno do monstro o servidor rola um d6 para cada ação de Recarga gasta, na ordem da ficha, e uma face dentro do intervalo a deixa disponível de novo.
+Um monstro derrotado não rola, e uma ação com usos por dia ou depois de um descanso não volta num combate.
+O mestre e o jogador que controla o monstro leem o que resta de cada ação com limite e uma linha do registro com o d6.
+Os outros jogadores não leem nenhum dos dois, e o turno parece o mesmo para eles com ou sem a rolagem (RN-20).
+"Desfazer última ação" devolve o uso; a rolagem não se desfaz.
+Um NPC feito à mão não tem ficha de criatura, então não guarda limite, e um monstro começa todo combate com todas as ações.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria
@@ -1071,7 +1081,7 @@ O cartão mostra o que o app leu da ação: o atributo e a CD do teste, a área,
 - **Quem é atingido.** Num mapa, uma ação com forma pergunta para onde ela vai, com o mesmo mapa da área das magias: um cone, uma linha ou um cubo a partir de uma direção, uma esfera ou um cilindro num ponto (até 36 m de distância, pois a ficha descreve a distância em texto), e um raio ao redor da criatura, sem escolha. O servidor pega quem está dentro, com a cobertura, e o mestre não nomeia ninguém. Uma ação sem forma, e toda ação num combate sem grade (RN-25), pede que o mestre nomeie os alvos; os inimigos da criatura já começam marcados.
 - **O teste.** O app rola um d20 para cada alvo contra a CD da ação (o personagem de um jogador também, como no teste de uma magia com os dados do app), com os modificadores, vantagens e condições do próprio alvo.
 - **O dano.** O dano que o teste governa abre como dano pendente para cada alvo que o toma, nas partes da ficha (RN-42): inteiro para quem falha, metade para quem passa quando a ação diz "metade", nada para quem passa quando diz "nada". O alvo NPC toma na hora e o personagem de um jogador espera o mestre, como em qualquer dano (RN-02); o dano aparece sob o resultado e é aplicado ou descartado ali. O teste de concentração de quem tomou dano vem em seguida (RN-31).
-- **O que o uso custa.** A ação do turno do NPC. Não há espaço de magia, concentração nem janela de reação; um limite como "Recarga 5–6" ou "3/dia" (o SRD diz "Recharge 5-6" e "3/day") é lido e mostrado, e o app não o impõe. O registro tem uma linha para o uso, e "Desfazer última ação" o desfaz com o dano e a condição.
+- **O que o uso custa.** A ação do turno do NPC. Não há espaço de magia, concentração nem janela de reação; um limite como "Recarga 5–6" ou "3/dia" (o SRD diz "Recharge 5-6" e "3/day") é mostrado e imposto como a RN-29 diz. O registro tem uma linha para o uso, e "Desfazer última ação" o desfaz com o dano e a condição.
 - **O que os jogadores leem (RN-20).** Um jogador nunca vê uma ficha, a CD de uma ação nem a chave dela (que revela o tipo da criatura). A linha do registro diz o nome da ação e, para cada alvo que o jogador vê, se passou ou falhou, com o dano; os dados do teste e a CD são do mestre, e o dono de um personagem alvo lê os dados do próprio personagem. A ação de uma criatura escondida é mascarada como o ataque de um NPC escondido.
 
 Como é construído: [Ataques e dano](../../architecture/play/attacks-and-damage.md#a-creatures-actions-and-riders) e [Regras: criaturas](../../architecture/rules-creatures-items.md#the-actions-of-a-stat-block).
