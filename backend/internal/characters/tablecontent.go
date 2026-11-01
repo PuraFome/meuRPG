@@ -1123,20 +1123,36 @@ func (v playerView) strip(body tableBody) {
 	}
 }
 
-// stripSummon makes a table spell's or a feature's summon what a player may read: only the creature keys, and of those
-// the table creatures a character of the player holds (an SRD creature stays). The player casts from GetSummonOptions,
-// so the rest (the count, its growth, the limit, the turn mode, the role, what is replaced, the cost and the timing) is
-// the master's; a field the message gets later stays hidden until it is named here and in playerSummonFields.
+// stripSummon makes a table spell's or a feature's summon what a player may read: the fields named in playerSummonFields
+// and nothing else, and of the creature keys the table creatures a character of the player holds (an SRD creature stays).
+// The player casts from GetSummonOptions, so the rest of the summon (the count, its growth, the limit, the turn mode,
+// the role, what is replaced, the cost and the timing) is the master's; a field the message gets later stays hidden
+// until it is named in the map.
 func (v playerView) stripSummon(m *rulesv1.TableSummon) {
 	if m == nil {
 		return
 	}
-	kept := slices.DeleteFunc(m.GetCreatureKeys(), func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	m.CreatureKeys = slices.DeleteFunc(m.GetCreatureKeys(), func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	from := proto.Clone(m).ProtoReflect()
 	proto.Reset(m)
-	m.CreatureKeys = kept
+	to := m.ProtoReflect()
+	fields := to.Descriptor().Fields()
+	for i := range fields.Len() {
+		fd := fields.Get(i)
+		switch {
+		case !playerSummonFields[string(fd.Name())] || !from.Has(fd):
+		case fd.IsList(): // a list is appended: Set takes only a list this message made
+			list, src := to.Mutable(fd).List(), from.Get(fd).List()
+			for j := range src.Len() {
+				list.Append(src.Get(j))
+			}
+		default:
+			to.Set(fd, from.Get(fd))
+		}
+	}
 }
 
-// playerSummonFields are the fields of a TableSummon a player reads (stripSummon keeps them and clears every other).
+// playerSummonFields are the fields of a TableSummon a player reads: stripSummon copies these and no other.
 var playerSummonFields = map[string]bool{"creature_keys": true}
 
 // stripOption takes the hidden keys out of an option: its effects and what it requires.

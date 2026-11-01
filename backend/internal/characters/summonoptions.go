@@ -138,7 +138,8 @@ func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Querie
 		return nil, nil
 	}
 	slots := spend.slots
-	if rule, table := content.SummonRule(key); table && rule.Feature != "" {
+	// A feature's summon: its options also need the rule (the resource it spends).
+	if rule, table := content.SummonRule(key); table && isFeatureSummon(content, key) {
 		return s.featureSummonOptions(ctx, q, content, campaignID, characterID, b, d, det, rule, spend.used)
 	}
 	own, err := content.SummonOptions(key, det.Spell.Level, b)

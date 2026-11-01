@@ -530,8 +530,9 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack})
 	}
 	if rule, table := content.SummonRule(spellKey); table {
-		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame, out.Feature = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame, rule.Feature != ""
+		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame
 	}
+	out.Feature = isFeatureSummon(content, spellKey)
 	return out, nil
 }
 
