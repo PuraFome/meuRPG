@@ -178,24 +178,16 @@ func TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet(t *testing.T) {
 	for _, tc := range []struct {
 		name, field, want string
 		edit              func(b *Build)
+		last              func(b Build) int // the index of the spell just added
 	}{
-		{"known", "full.known_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell) }},
-		{"prepared", "full.prepared_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsPrepared = append(slices.Clone(b.SpellsPrepared), spell) }},
+		{"known", "full.known_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell) }, func(b Build) int { return len(b.SpellsKnown) - 1 }},
+		{"prepared", "full.prepared_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsPrepared = append(slices.Clone(b.SpellsPrepared), spell) }, func(b Build) int { return len(b.SpellsPrepared) - 1 }},
 		// A cantrip list reads the level first: the spell is of the first circle, so it is no cantrip.
-		{"cantrips", "full.cantrip_keys", IssueSpellLevel, func(b *Build) { b.Cantrips = append(slices.Clone(b.Cantrips), spell) }},
+		{"cantrips", "full.cantrip_keys", IssueSpellLevel, func(b *Build) { b.Cantrips = append(slices.Clone(b.Cantrips), spell) }, func(b Build) int { return len(b.Cantrips) - 1 }},
 	} {
 		b := base
 		tc.edit(&b)
-		var last int
-		switch tc.name {
-		case "known":
-			last = len(b.SpellsKnown) - 1
-		case "prepared":
-			last = len(b.SpellsPrepared) - 1
-		default:
-			last = len(b.Cantrips) - 1
-		}
-		field := tc.field + "[" + strconv.Itoa(last) + "]"
+		field := tc.field + "[" + strconv.Itoa(tc.last(b)) + "]"
 		if codes := issueCodes(Derive(b, c)); !slices.Contains(codes, tc.want+" "+field) {
 			t.Errorf("%s: the feature's spell in the list: issues = %v, want %q", tc.name, codes, tc.want+" "+field)
 		}
@@ -231,5 +223,16 @@ func TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused(t
 	}}
 	if _, err := loadForTest(t).With(taken); err == nil || !strings.Contains(err.Error(), "taken by another entry") {
 		t.Errorf("a table spell on the feature's summon key: err = %v, want a refusal that says the key is taken", err)
+	}
+}
+
+func TestTheHiddenSpellOfAFeatureSummonIsNotSwitchable(t *testing.T) {
+	t.Parallel()
+	c := withOverlayOn(t, loadForTest(t), featureSummonOverlay(nil))
+	if spell := FeatureSummonSpellKey(packFeature); c.Switchable(spell) {
+		t.Errorf("Switchable(%s) = true, want false: the hidden spell goes with its feature", spell)
+	}
+	if !c.Switchable("spell:fireball") {
+		t.Error("Switchable(spell:fireball) = false, want true (the control)")
 	}
 }

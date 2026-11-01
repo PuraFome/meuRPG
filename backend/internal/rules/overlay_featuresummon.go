@@ -21,7 +21,8 @@ const featureSummonSpellPrefix = "spell:"
 const featureSummonLevel = 1
 
 // featureSummonAbility is the casting ability of the granted spell. A summon rolls no attack and asks for no saving
-// throw, so the choice shows nowhere.
+// throw, but the grant still carries the ability, and the cast list shows its ability, save DC and attack bonus like
+// those of any granted spell (and the first circle of the hidden spell).
 const featureSummonAbility = "int"
 
 // FeatureSummonSpellKey is the key of the hidden spell of a feature's summon: "spell:" and the feature's key

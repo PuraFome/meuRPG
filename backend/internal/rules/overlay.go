@@ -680,7 +680,8 @@ func (c *content) isSwitchable(key string) bool {
 		return ok
 	case strings.HasPrefix(key, "spell:"):
 		_, ok := c.spells[key]
-		return ok
+		_, feature := c.featureSummons[key] // the hidden spell of a feature goes with the feature, no entry of its own
+		return ok && !feature
 	case strings.HasPrefix(key, "feat:"):
 		_, ok := c.feats[key]
 		return ok
