@@ -60,7 +60,7 @@ func TestAManeuverGoesOnTheRollsItsKindAndTargetsNameAndOnlyThose(t *testing.T) 
 
 type rollDiceTable struct {
 	*armed
-	look, brace, dash string
+	look, brace, dash, strikeKey string
 }
 
 func newRollDiceTable(t *testing.T) *rollDiceTable {
@@ -84,6 +84,7 @@ func newRollDiceTable(t *testing.T) *rollDiceTable {
 				die("Olhar Atento", rules.ManeuverCheck, "6", func(e *rulesv1.TableEffect) { e.Targets = []string{"skill.perception"} }),
 				die("Firmeza", rules.ManeuverSave, "6", func(e *rulesv1.TableEffect) { e.Ability = "con" }),
 				die("Saída Rápida", rules.ManeuverInitiative, "4", nil),
+				die("Golpe Preciso", rules.ManeuverAttack, "8", nil),
 			}}},
 		}
 		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
@@ -124,10 +125,12 @@ func newRollDiceTable(t *testing.T) *rollDiceTable {
 			g.brace = d.GetKey()
 		case rules.ManeuverInitiative:
 			g.dash = d.GetKey()
+		case rules.ManeuverAttack:
+			g.strikeKey = d.GetKey()
 		}
 	}
-	if g.look == "" || g.brace == "" || g.dash == "" {
-		t.Fatalf("the derived sheet lists the dice %v, want a check, a save and an initiative die", g.pens.GetDerived().GetRollDice())
+	if g.look == "" || g.brace == "" || g.dash == "" || g.strikeKey == "" {
+		t.Fatalf("the derived sheet lists the dice %v, want a check, a save, an initiative and an attack die", g.pens.GetDerived().GetRollDice())
 	}
 	return g
 }

@@ -240,7 +240,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Efeito | Lasting effect | Algo que uma magia ou o mestre põe numa criatura por um tempo: uma condição com fim, um bônus, uma ação extra. Contado em rodadas no combate e em tempo de jogo fora dele (RN-22). |
 | Tempo de jogo | Game time | O tempo na ficção; uma rodada tem 6 segundos. Fora do combate, só anda quando o mestre o anda. |
 | Janela de reação | Reaction window | A pergunta "você pode reagir?" que segura a ação que a abriu até ser respondida. O jogador lê só a própria; na de um NPC, "Esperando o mestre". |
-| Reação | Reaction | Uma ação uma vez por rodada, que volta no começo da vez do combatente: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave e o ataque de oportunidade. |
+| Reação | Reaction | Uma ação uma vez por rodada, que volta no começo da vez do combatente: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta e o ataque de oportunidade. |
 | Registro do combate | Combat log | O que aconteceu, da última rodada para a primeira. O jogador recebe só o que vê; o mestre recebe tudo, com "Só o mestre vê" (RN-20). |
 | Destaques do combate | Combat highlights | A tela do fim do combate: quem causou mais dano, curou mais, levou mais, deu mais golpes finais e acertou mais críticos. Empates nomeiam todos (MR-032). |
 | Surpresa | Surprise | Uma criatura que não pode se mover, agir nem reagir até o fim do primeiro turno dela (RN-34). |

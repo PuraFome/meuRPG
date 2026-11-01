@@ -3865,6 +3865,15 @@ message RollAttackRequest {
   // (EncounterBlocked LEGENDARY_*) on its own turn, with too few actions left, or for an option
   // that is not an attack or is not this attack. Everything else of the attack is as any other.
   string legendary_option = 102;
+  // A table maneuver die (a superiority_die effect of applies "attack") the player adds to this weapon
+  // attack, like the die of Bless: its key, one of Maneuver.key of the character's derived sheet. The die
+  // is rolled with the roll (in the app, or its face is the last of `extra_die_faces` with physical dice),
+  // added to the total and listed in the roll's `extra_dice`. One use of its resource is spent when the
+  // attack is written, so a roll a reaction window holds spends it on the replay, and an undo gives it back.
+  // Only the character's own weapon attack (an opportunity attack included): `invalid_argument` for an NPC
+  // attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+  string maneuver_key = 103;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -6033,6 +6042,10 @@ enum ReactionKind {
   // attack that would hit it (SRD 5.1, Parry). The hit waits (AWAITING_REACTION) for the master,
   // who answers for the creature; only the master reads and answers it.
   REACTION_KIND_PARRY = 17;
+  // Queda Lenta: a monk of level 4 or higher falls (a pit trap) and may use its reaction to reduce the
+  // falling damage by five times its monk level (SRD 5.1, Slow Fall). The fall damage waits
+  // (AWAITING_REACTION) until the window is answered or closed.
+  REACTION_KIND_SLOW_FALL = 18;
 }
 
 enum ReactionWindowStatus {
@@ -6140,6 +6153,7 @@ message ReactionWindow {
     LegendaryResistancePrompt legendary_resistance = 43;
     // Only the master.
     ParryPrompt parry = 44;
+    SlowFallPrompt slow_fall = 45;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -6374,6 +6388,14 @@ message FeatherFallPrompt {
   repeated meurpg.rules.v1.SlotChoice slot_options = 4;
 }
 
+// SlowFallPrompt: the monk falls and may reduce the falling damage. The damage itself is never in it.
+message SlowFallPrompt {
+  // How deep the fall is, in feet.
+  int32 fall_ft = 1;
+  // The points Slow Fall takes off: five times the monk level.
+  int32 reduction = 2;
+}
+
 message ConcentrationSavePrompt {
   string spell_key = 1;
   string spell_name_pt = 2;
@@ -6482,9 +6504,19 @@ message ReactionResult {
     ProtectionResult protection = 28;
     LegendaryResistanceResult legendary_resistance = 29;
     ParryResult parry = 31;
+    SlowFallResult slow_fall = 32;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
+}
+
+// SlowFallResult: the points Slow Fall took off the fall.
+message SlowFallResult {
+  // The points taken off (a small fall floors at 0, so it can be less than five times the monk level).
+  int32 reduction = 1;
+  // Only when the master answered: the falling damage before and after.
+  optional int32 damage_before = 2;
+  optional int32 damage_after = 3;
 }
 
 // ParryResult: the armor class with Parry stopped the hit (the roll is not rolled again).

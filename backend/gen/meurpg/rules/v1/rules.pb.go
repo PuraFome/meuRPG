@@ -4975,15 +4975,14 @@ func (x *DiceFormula) GetAddsModifier() bool {
 	return false
 }
 
-// DerivedClass is one of a character's classes, with names resolved.
 // RollDie is a table die the character adds to a roll of its own: sent back as the
-// `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave and SubmitInitiative.
+// `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave, SubmitInitiative and RollAttack.
 type RollDie struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The feature (option) that gives it.
 	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	// "check", "save" or "initiative".
+	// "check", "save", "initiative" or "attack" (a weapon attack roll).
 	Applies string `protobuf:"bytes,3,opt,name=applies,proto3" json:"applies,omitempty"`
 	// The die's sides, worked out for the character.
 	Sides int32 `protobuf:"varint,4,opt,name=sides,proto3" json:"sides,omitempty"`
@@ -5085,6 +5084,7 @@ func (x *RollDie) GetTextPt() string {
 	return ""
 }
 
+// DerivedClass is one of a character's classes, with names resolved.
 type DerivedClass struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Content key of the class, such as "class:wizard".

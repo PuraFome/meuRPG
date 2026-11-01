@@ -308,7 +308,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	switch reaction.Kind(w.Kind) {
 	case reaction.Concentration:
 		return concentrationGone(w, t, byID), true, nil
-	case reaction.FeatherFall:
+	case reaction.FeatherFall, reaction.SlowFall:
 		gone, err = fallGone(ctx, c, t)
 		return gone, true, err
 	case reaction.EffectSave:
@@ -377,7 +377,7 @@ func (s *Service) holdGone(ctx context.Context, c *combatTx, w playdb.ReactionWi
 
 // actorGone says the one who did it left the fight: there is nothing to react to.
 func actorGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) bool {
-	if t.Actor == "" || reaction.Kind(w.Kind) == reaction.FeatherFall {
+	if t.Actor == "" || reaction.Kind(w.Kind) == reaction.FeatherFall || reaction.Kind(w.Kind) == reaction.SlowFall {
 		return false
 	}
 	a, ok := byID[t.Actor]
@@ -498,14 +498,14 @@ func (s *Service) closeInvalidWindows(ctx context.Context, c *combatTx, st settl
 }
 
 // openIndexOf indexes the open windows: the groups that still hold an action, the pending damages
-// they are about and the creatures a Feather Fall window may still save (by creature and trap).
+// they are about and the creatures a Feather Fall or Slow Fall window may still save (by creature and trap).
 func openIndexOf(open []playdb.ReactionWindow) (openGroup, openPending, openFall map[string]bool) {
 	openGroup = map[string]bool{}
 	openPending = map[string]bool{}
 	openFall = map[string]bool{}
 	for _, w := range open {
 		openGroup[w.GroupID] = true
-		if reaction.Kind(w.Kind) == reaction.FeatherFall {
+		if k := reaction.Kind(w.Kind); k == reaction.FeatherFall || k == reaction.SlowFall {
 			for _, id := range windowTriggerOf(w).Falling {
 				openFall[id+"/"+windowTriggerOf(w).Trap] = true
 			}
@@ -536,7 +536,7 @@ func (s *Service) releaseWaiting(ctx context.Context, c *combatTx, waiting []pla
 
 // releaseOne lets one waiting pending damage go on when nothing holds it any more.
 func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingDamage, openFall map[string]bool, byID map[string]playdb.Combatant) (bool, error) {
-	if p.TrapPointID != nil { // a fall damage: it lands when no Feather Fall can take it away
+	if p.TrapPointID != nil { // a fall damage: it lands when no Feather Fall or Slow Fall can change it
 		if openFall[p.TargetID+"/"+*p.TrapPointID] {
 			return false, nil
 		}

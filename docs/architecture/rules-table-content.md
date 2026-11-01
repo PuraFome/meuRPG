@@ -136,9 +136,10 @@ Recharges: besides `short_rest`, `long_rest`, `dawn` and `none`, a resource may 
 A resource counts uses; a pool of hit points is not offered.
 
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
+An option with a `grant_action` and no die is a plain maneuver: an action that spends one use of the shared pool and the economy it declares, with no number to roll.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
-**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play spends them on the scene check, the concentration save, the effect save and the initiative ([Rests and resources](play/rests-and-resources.md#table-dice-on-the-characters-own-rolls)); the derived sheet lists them as `DerivedSheet.roll_dice`. A number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`); an always-on die has no effect type.
+**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one), `initiative` or `attack` (a weapon attack roll). These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play spends them on the scene check, the concentration save, the effect save, the initiative and the weapon attack roll ([Rests and resources](play/rests-and-resources.md#table-dice-on-the-characters-own-rolls)); the derived sheet lists them as `DerivedSheet.roll_dice`. A number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`); an always-on die has no effect type.
 
 ### Extra damage
 

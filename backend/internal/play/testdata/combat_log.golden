@@ -991,6 +991,18 @@ build:
   ff-none/3 kind=COMBAT_LOG_KIND_REACTION_WINDOW
   ff-none/4 kind=COMBAT_LOG_KIND_REACTION_WINDOW
   ff-none/5 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/0 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/1 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/2 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/3 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/4 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf/5 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/0 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/1 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/2 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/3 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/4 kind=COMBAT_LOG_KIND_REACTION_WINDOW
+  sf-by-master/5 kind=COMBAT_LOG_KIND_REACTION_WINDOW
   conc-kept/0 kind=COMBAT_LOG_KIND_REACTION_WINDOW
   conc-kept/1 kind=COMBAT_LOG_KIND_REACTION_WINDOW
   conc-kept/2 kind=COMBAT_LOG_KIND_REACTION_WINDOW
@@ -1160,24 +1172,36 @@ build:
   ff-none/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:20Z","id":"ff-none/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Suave: Lobo Sombrio não sofre dano de queda.","round":1}
   ff-none/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:21Z","id":"ff-none/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Suave: Lobo Sombrio não sofre dano de queda.","round":1}
   ff-none/5: {"at":"2026-01-02T03:06:22Z","id":"ff-none/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Suave: Lobo Sombrio não sofre dano de queda.","round":1}
-  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
-  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
-  conc-kept/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:25Z","hidden":true,"id":"conc-kept/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
-  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
-  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
-  conc-kept/5: {"at":"2026-01-02T03:06:28Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
-  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:31Z","hidden":true,"id":"conc-kept-nod20/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/5: {"at":"2026-01-02T03:06:34Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
-  conc-failed/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","hidden":true,"id":"conc-failed/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
-  conc-failed/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:36Z","hidden":true,"id":"conc-failed/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
-  conc-failed/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:37Z","hidden":true,"id":"conc-failed/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
-  conc-failed/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","hidden":true,"id":"conc-failed/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
-  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","hidden":true,"id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
-  conc-failed/5: {"at":"2026-01-02T03:06:40Z","hidden":true,"id":"conc-failed/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  sf/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"sf/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"sf/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:25Z","hidden":true,"id":"sf/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"sf/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"sf/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf/5: {"at":"2026-01-02T03:06:28Z","id":"sf/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta: -20 no dano da queda (de 30 para 10).","round":1}
+  sf-by-master/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"sf-by-master/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -4 no dano da queda (de 4 para 0). (respondido pelo mestre)","round":1}
+  sf-by-master/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"sf-by-master/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta: -4 no dano da queda (de 4 para 0).","round":1}
+  sf-by-master/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:31Z","hidden":true,"id":"sf-by-master/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio usou Queda Lenta: -4 no dano da queda (de 4 para 0).","round":1}
+  sf-by-master/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"sf-by-master/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -4 no dano da queda (de 4 para 0). (respondido pelo mestre)","round":1}
+  sf-by-master/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"sf-by-master/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -4 no dano da queda (de 4 para 0). (respondido pelo mestre)","round":1}
+  sf-by-master/5: {"at":"2026-01-02T03:06:34Z","id":"sf-by-master/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta: -4 no dano da queda (de 4 para 0).","round":1}
+  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
+  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:36Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
+  conc-kept/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:37Z","hidden":true,"id":"conc-kept/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
+  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
+  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. (respondido pelo mestre)","round":1}
+  conc-kept/5: {"at":"2026-01-02T03:06:40Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10.","round":1}
+  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:41Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:42Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:43Z","hidden":true,"id":"conc-kept-nod20/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:44Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:45Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/5: {"at":"2026-01-02T03:06:46Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-failed/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:47Z","hidden":true,"id":"conc-failed/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  conc-failed/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:48Z","hidden":true,"id":"conc-failed/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  conc-failed/2: {"actor_id":"npc-lobo","actor_label":"Lobo Sombrio","at":"2026-01-02T03:06:49Z","hidden":true,"id":"conc-failed/2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Lobo Sombrio falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  conc-failed/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:50Z","hidden":true,"id":"conc-failed/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:51Z","hidden":true,"id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
+  conc-failed/5: {"at":"2026-01-02T03:06:52Z","hidden":true,"id":"conc-failed/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7 contra CD 10.","round":1}
   unknown-kind/0: -
   unknown-kind/1: -
   unknown-kind/2: -
@@ -1190,11 +1214,11 @@ build:
   shield-kind/3: -
   shield-kind/4: -
   shield-kind/5: -
-  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:59Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. Sortudo: 1 → 12.","round":1}
-  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:00Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal (espaço de 1º nível) contra Goblin 1: teste de Destreza 1d20 (12) + 3 = 15 contra CD 10: falhou; 4 de fogo. Sortudo: 1 → 12.","round":1}
-  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:01Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano de Aria caiu de 8 para 4.","round":1}
-  fog-2: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:02Z","id":"fog-2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Esquiva Sobrenatural: o dano de Goblin 1 caiu de 8 para 4.","round":1}
-  secret-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:03Z","hidden":true,"id":"secret-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano de Aria caiu de 8 para 4.","round":1}
+  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:11Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15 contra CD 10. Sortudo: 1 → 12.","round":1}
+  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:12Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal (espaço de 1º nível) contra Goblin 1: teste de Destreza 1d20 (12) + 3 = 15 contra CD 10: falhou; 4 de fogo. Sortudo: 1 → 12.","round":1}
+  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:13Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano de Aria caiu de 8 para 4.","round":1}
+  fog-2: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:14Z","id":"fog-2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Esquiva Sobrenatural: o dano de Goblin 1 caiu de 8 para 4.","round":1}
+  secret-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:15Z","hidden":true,"id":"secret-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano de Aria caiu de 8 para 4.","round":1}
   cs-unused-conc: -
 -- acting player (Aria)
   cs-countered-check/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:04:05Z","id":"cs-countered-check/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Contramágica: a Bola de Fogo de Goblin 1 foi anulada.","round":1}
@@ -1329,22 +1353,34 @@ build:
   ff-none/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:20Z","id":"ff-none/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:21Z","id":"ff-none/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/5: {"at":"2026-01-02T03:06:22Z","id":"ff-none/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Suave: ninguém sofre dano de queda.","round":1}
-  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
-  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  sf/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"sf/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -20 no dano da queda.","round":1}
+  sf/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"sf/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf/2: -
+  sf/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"sf/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -20 no dano da queda.","round":1}
+  sf/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"sf/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta.","round":1}
+  sf/5: {"at":"2026-01-02T03:06:28Z","id":"sf/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  sf-by-master/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"sf-by-master/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -4 no dano da queda. (respondido pelo mestre)","round":1}
+  sf-by-master/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"sf-by-master/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf-by-master/2: -
+  sf-by-master/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"sf-by-master/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta: -4 no dano da queda. (respondido pelo mestre)","round":1}
+  sf-by-master/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"sf-by-master/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta.","round":1}
+  sf-by-master/5: {"at":"2026-01-02T03:06:34Z","id":"sf-by-master/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
+  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:36Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept/2: -
-  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
-  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
-  conc-kept/5: {"at":"2026-01-02T03:06:28Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
+  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
+  conc-kept/5: {"at":"2026-01-02T03:06:40Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:41Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:42Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept-nod20/2: -
-  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/5: {"at":"2026-01-02T03:06:34Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
-  conc-failed/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","id":"conc-failed/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
+  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:44Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:45Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/5: {"at":"2026-01-02T03:06:46Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-failed/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:47Z","id":"conc-failed/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
   conc-failed/1: -
   conc-failed/2: -
-  conc-failed/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","id":"conc-failed/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
+  conc-failed/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:50Z","id":"conc-failed/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
   conc-failed/4: -
   conc-failed/5: -
   unknown-kind/0: -
@@ -1359,10 +1395,10 @@ build:
   shield-kind/3: -
   shield-kind/4: -
   shield-kind/5: -
-  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:59Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. Sortudo: 1 → 12.","round":1}
-  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:00Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
+  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:11Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção: 1d20 (12) + 3 = 15. Sortudo: 1 → 12.","round":1}
+  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:12Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
   fog-1: -
-  fog-2: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:02Z","id":"fog-2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
+  fog-2: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:14Z","id":"fog-2","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
   secret-1: -
   cs-unused-conc: -
 -- other player (Bruno)
@@ -1498,23 +1534,35 @@ build:
   ff-none/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:20Z","id":"ff-none/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:21Z","id":"ff-none/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/5: {"at":"2026-01-02T03:06:22Z","id":"ff-none/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Suave: ninguém sofre dano de queda.","round":1}
-  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  sf/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"sf/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"sf/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf/2: -
+  sf/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"sf/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"sf/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -20 no dano da queda.","round":1}
+  sf/5: {"at":"2026-01-02T03:06:28Z","id":"sf/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  sf-by-master/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"sf-by-master/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf-by-master/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"sf-by-master/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf-by-master/2: -
+  sf-by-master/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"sf-by-master/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf-by-master/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"sf-by-master/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -4 no dano da queda. (respondido pelo mestre)","round":1}
+  sf-by-master/5: {"at":"2026-01-02T03:06:34Z","id":"sf-by-master/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:36Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept/2: -
-  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
-  conc-kept/5: {"at":"2026-01-02T03:06:28Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
+  conc-kept/5: {"at":"2026-01-02T03:06:40Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:41Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:42Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept-nod20/2: -
-  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/5: {"at":"2026-01-02T03:06:34Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:44Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:45Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/5: {"at":"2026-01-02T03:06:46Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
   conc-failed/0: -
   conc-failed/1: -
   conc-failed/2: -
   conc-failed/3: -
-  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
+  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:51Z","id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
   conc-failed/5: -
   unknown-kind/0: -
   unknown-kind/1: -
@@ -1528,9 +1576,9 @@ build:
   shield-kind/3: -
   shield-kind/4: -
   shield-kind/5: -
-  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:59Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:00Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
-  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:01Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
+  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:11Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:12Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
+  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:13Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
   fog-2: -
   secret-1: -
   cs-unused-conc: -
@@ -1667,23 +1715,35 @@ build:
   ff-none/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:20Z","id":"ff-none/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:21Z","id":"ff-none/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Suave: ninguém sofre dano de queda.","round":1}
   ff-none/5: {"at":"2026-01-02T03:06:22Z","id":"ff-none/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Suave: ninguém sofre dano de queda.","round":1}
-  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  sf/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:23Z","id":"sf/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:24Z","id":"sf/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf/2: -
+  sf/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"sf/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"sf/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -20 no dano da queda.","round":1}
+  sf/5: {"at":"2026-01-02T03:06:28Z","id":"sf/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  sf-by-master/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"sf-by-master/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf-by-master/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"sf-by-master/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Queda Lenta.","round":1}
+  sf-by-master/2: -
+  sf-by-master/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"sf-by-master/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Queda Lenta.","round":1}
+  sf-by-master/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"sf-by-master/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno usou Queda Lenta: -4 no dano da queda. (respondido pelo mestre)","round":1}
+  sf-by-master/5: {"at":"2026-01-02T03:06:34Z","id":"sf-by-master/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém usou Queda Lenta.","round":1}
+  conc-kept/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:35Z","id":"conc-kept/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:36Z","id":"conc-kept/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept/2: -
-  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:26Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:27Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
-  conc-kept/5: {"at":"2026-01-02T03:06:28Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:29Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:30Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
+  conc-kept/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:38Z","id":"conc-kept/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-kept/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção: 1d20 (12) + 3 = 15. (respondido pelo mestre)","round":1}
+  conc-kept/5: {"at":"2026-01-02T03:06:40Z","id":"conc-kept/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/0: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:41Z","id":"conc-kept-nod20/0","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:06:42Z","id":"conc-kept-nod20/1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 manteve a concentração em Bênção.","round":1}
   conc-kept-nod20/2: -
-  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:32Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:33Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
-  conc-kept-nod20/5: {"at":"2026-01-02T03:06:34Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/3: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:44Z","id":"conc-kept-nod20/3","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:45Z","id":"conc-kept-nod20/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno manteve a concentração em Bênção.","round":1}
+  conc-kept-nod20/5: {"at":"2026-01-02T03:06:46Z","id":"conc-kept-nod20/5","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Alguém manteve a concentração em Bênção.","round":1}
   conc-failed/0: -
   conc-failed/1: -
   conc-failed/2: -
   conc-failed/3: -
-  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:39Z","id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
+  conc-failed/4: {"actor_id":"pc-bruno","actor_label":"Bruno","at":"2026-01-02T03:06:51Z","id":"conc-failed/4","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Bruno falhou no teste de concentração em Bênção: 1d20 (4) + 3 = 7.","round":1}
   conc-failed/5: -
   unknown-kind/0: -
   unknown-kind/1: -
@@ -1697,9 +1757,9 @@ build:
   shield-kind/3: -
   shield-kind/4: -
   shield-kind/5: -
-  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:06:59Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
-  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:00Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
-  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:01Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
+  conc-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:11Z","id":"conc-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria manteve a concentração em Bênção.","round":1}
+  hr-lucky: {"actor_id":"pc-aria","actor_label":"Aria","at":"2026-01-02T03:07:12Z","id":"hr-lucky","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Aria usou Repreensão Infernal contra Goblin 1: Goblin 1 falhou no teste de resistência e sofreu fogo.","round":1}
+  fog-1: {"actor_id":"npc-gob","actor_label":"Goblin 1","at":"2026-01-02T03:07:13Z","id":"fog-1","kind":"COMBAT_LOG_KIND_REACTION_WINDOW","reaction_text_pt":"Goblin 1 usou Esquiva Sobrenatural: o dano caiu pela metade.","round":1}
   fog-2: -
   secret-1: -
   cs-unused-conc: -

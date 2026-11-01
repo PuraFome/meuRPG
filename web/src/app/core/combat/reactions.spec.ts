@@ -169,6 +169,7 @@ describe('the prompt of each reaction', () => {
       win('maneuverReduce', { attackerLabel: 'Ogro', options: [] }),
       win('protection', { attackerLabel: 'Goblin', allyLabel: 'Toren' }),
       win('featherFall', { falling: [], fallFt: 30 }),
+      win('slowFall', { fallFt: 30, reduction: 20 }),
     ];
     for (const w of prompts) {
       expect(promptView(w, 2)!.question).toContain(spent);
@@ -273,6 +274,15 @@ describe('the prompt of each reaction', () => {
       2,
     )!;
     expect(two.title).toBe('2 criaturas estão caindo');
+  });
+
+  it('Queda Lenta: the depth of the fall and the points it takes off, with no damage in it', () => {
+    const v = promptView(win('slowFall', { fallFt: 30, reduction: 20 }), 2)!;
+    expect(v.title).toBe('Você está caindo');
+    expect(plain(v.subtitle)).toBe('queda de 9 m · Rodada 2');
+    expect(v.question).toContain('diminui em 20 (5 vezes o seu nível de monge)');
+    expect(v.useLabel).toBe('Usar Queda Lenta');
+    expect(v.costs).toEqual(['Reação', 'Sem espaço de magia']);
   });
 
   it('the concentration save: the DC the server sent and the minimum of 10', () => {
@@ -495,6 +505,31 @@ describe('the result of an answered reaction', () => {
       ctx,
     );
     expect(both.text[0]).toContain('descem devagar e não sofreram dano de queda');
+  });
+
+  it('Queda Lenta: the points taken off, and the damage around them only when the server sent it', () => {
+    const asked = win('slowFall', { fallFt: 30, reduction: 20 });
+    const player = resultView(
+      { used: true, result: { case: 'slowFall', value: { reduction: 20 } } } as never,
+      asked,
+      ctx,
+    );
+    expect(player.title).toBe('Queda Lenta usada');
+    expect(player.text[0]).toBe('O dano da queda diminuiu em 20.');
+    const master = resultView(
+      {
+        used: true,
+        result: {
+          case: 'slowFall',
+          value: { reduction: 20, damageBefore: 30, damageAfter: 10 },
+        },
+      } as never,
+      asked,
+      ctx,
+    );
+    expect(master.text[0]).toBe(
+      'O dano da queda diminuiu em 20. O dano da queda foi de 30 para 10.',
+    );
   });
 
   it('the concentration result says kept or lost, with the roll against the DC', () => {
