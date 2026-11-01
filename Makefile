@@ -225,7 +225,7 @@ db-test-start: ## Start the test PostgreSQL on localhost:5433 (TEST_PG_PORT=5434
 	fi
 	@echo "Test PostgreSQL on localhost:$(TEST_PG_PORT). Run the integration tests with:"
 	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_PG_DATABASE_URL)' make test"
-	@echo "The tests that need CockroachDB itself fail on it: run them on make db-test-cockroach-start (docs/testing.md)."
+	@echo "The tests that need CockroachDB itself are left out by make test-postgres; run them on make db-test-cockroach-start (docs/testing.md)."
 	@echo "Stop it with: make db-test-stop TEST_PG_PORT=$(TEST_PG_PORT)"
 
 db-test-stop: ## Stop the test PostgreSQL started by db-test-start (TEST_PG_PORT, 5433 by default); its data stays for the next start

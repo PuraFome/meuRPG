@@ -159,6 +159,17 @@ func (h *hintTracker) after(d time.Duration, f func()) {
 	})
 }
 
+// afterTimer is after for a gate that wants the timer back (the maps service's).
+func (h *hintTracker) afterTimer(d time.Duration, f func()) *time.Timer {
+	h.mu.Lock()
+	h.pending++
+	h.mu.Unlock()
+	return time.AfterFunc(d, func() {
+		defer h.done()
+		f()
+	})
+}
+
 func (h *hintTracker) done() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -267,7 +278,7 @@ func newStack(t *testing.T) *stack {
 	chars.SetReviewHost(live)
 	msvc, err := maps.New(maps.Config{
 		Pool: pool, Blobs: blobs, Characters: chars, Live: live, Generator: &gen.Fake{}, Rules: srd, Combats: live,
-		Defaults: camps, Logger: logger, Now: clock.Now,
+		Defaults: camps, Logger: logger, Now: clock.Now, HintAfter: s.hints.afterTimer,
 	})
 	if err != nil {
 		t.Fatalf("maps.New() error = %v", err)

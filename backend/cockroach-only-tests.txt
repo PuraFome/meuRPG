@@ -8,3 +8,11 @@
 # A test outside the list that needs CockroachDB fails in the PostgreSQL run.
 #
 # One entry per line: <package directory from backend/> <top-level test name> <why it needs CockroachDB>
+internal/campaigns TestInvitesAreDeletedByTheDatabase row-level TTL of campaign_invites, read with SHOW CREATE TABLE
+internal/campaigns TestQ24_PendingMembershipExpiresAfter30Days row-level TTL of campaign_members, read from the table options
+internal/characters TestOrphanedPlayerCharactersAreDeletedByTheDatabase row-level TTL of characters, read from the table options
+internal/identity TestRowLevelTTL row-level TTL of auth_sessions and oidc_login_states, read with SHOW CREATE TABLE
+internal/play TestRosterReadInsideTxIsRetriedOn40001 a 40001 injected into a read (inject_retry_errors_enabled)
+internal/play TestRosterReadInsideTxIsRetriedOnRealConflict a conflict made by a HIGH priority transaction (SET TRANSACTION PRIORITY), and UPSERT
+internal/platform/dbtest TestSchemaDDLOrdersTablesAfterTheirReferences the schema copy replays SHOW CREATE (CockroachDB's way of making a test database)
+internal/platform/dbtest TestSchemaDDLRefusesACycle the schema copy replays SHOW CREATE (CockroachDB's way of making a test database)

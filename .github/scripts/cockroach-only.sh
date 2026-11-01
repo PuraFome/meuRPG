@@ -13,6 +13,7 @@
 #                                         CockroachDB, and leaves the list)
 set -euo pipefail
 
+self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 root=$(cd "$(dirname "$0")/../.." && pwd)
 list="$root/backend/cockroach-only-tests.txt"
 module=github.com/PuraFome/meuRPG/backend
@@ -66,9 +67,9 @@ case "${1:-}" in
     : "${MEURPG_TEST_DATABASE_URL:?set MEURPG_TEST_DATABASE_URL to a PostgreSQL}"
     out=$(mktemp)
     trap 'rm -f "$out"' EXIT
-    mapfile -t packages < <("$0" packages)
+    mapfile -t packages < <("$self" packages)
     # The tests are expected to fail: the exit code of go test is not the answer, the per-test results are.
-    (cd "$root/backend" && MEURPG_REQUIRE_DB=1 go test -json -count=1 -timeout 20m -run "$("$0" run-regex)" "${packages[@]}" > "$out") || true
+    (cd "$root/backend" && MEURPG_REQUIRE_DB=1 go test -json -count=1 -timeout 20m -run "$("$self" run-regex)" "${packages[@]}" > "$out") || true
     status=0
     while read -r pkg name; do
       result=$(jq -r --arg p "$module/$pkg" --arg t "$name" 'select(.Package == $p and .Test == $t and (.Action == "pass" or .Action == "fail" or .Action == "skip")) | .Action' "$out" | tail -n1)
