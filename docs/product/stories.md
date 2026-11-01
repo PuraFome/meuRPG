@@ -743,7 +743,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The server refuses acting right after the owner, a mount, a spell paid with a resource, a ritual, a plain count above the limit of creatures kept, an unknown creature, a repeated one, more than 8 creatures, a count that does not work and a spell that is not for the caster alone.
   In a combat, creatures that each roll their own initiative need the app's roller, because one typed die is one face.
   Players read the creatures as for any summon: the name and key in the combat, the numbers only the owner and I.
-  A player who holds none of the creatures reads the spell in the table's list without its creatures, count and limit; the caster reads the creatures she may pick when she casts (`TestATableSpellThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
+  A player who holds none of the creatures reads the spell in the table's list without the table creatures they do not hold (the SRD's stay), and without its count and limit; the caster reads the creatures she may pick when she casts (`TestATableSpellThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
   (`TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestMR578_ATableSpellSummonsItsCreaturesOutsideACombat`, `TestAFormulaCreatureThatAttacksKeepsItsNumbersFromAThirdPlayer`)
 - **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
 - **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.

@@ -4272,10 +4272,10 @@ type TableSummon struct {
 	// creature the casting brings.
 	CreatureKeys []string `protobuf:"bytes,1,rep,name=creature_keys,json=creatureKeys,proto3" json:"creature_keys,omitempty"`
 	// How many creatures the casting brings at the spell's own circle: a formula that may read the
-	// caster (mod("cha"), prof()) and slot() (the circle of the slot; the spell's own for a
-	// ritual). The result is 1 to 20. Required.
+	// caster (mod("cha"), prof()) and slot() (the circle of the slot). A formula that fails when it
+	// runs counts as 1. Required.
 	Count string `protobuf:"bytes,2,opt,name=count,proto3" json:"count,omitempty"`
-	// How many more for each circle above the spell's own, 0 to 10.
+	// How many more for each circle above the spell's own, 0 to 10. The sum with count is clamped to 1 to 20.
 	CountPerSlotLevel int32               `protobuf:"varint,3,opt,name=count_per_slot_level,json=countPerSlotLevel,proto3" json:"count_per_slot_level,omitempty"`
 	TurnMode          TableSummonTurnMode `protobuf:"varint,4,opt,name=turn_mode,json=turnMode,proto3,enum=meurpg.rules.v1.TableSummonTurnMode" json:"turn_mode,omitempty"`
 	Role              TableSummonRole     `protobuf:"varint,5,opt,name=role,proto3,enum=meurpg.rules.v1.TableSummonRole" json:"role,omitempty"`

@@ -166,6 +166,9 @@ func TestMR578_ATableSpellReplacesItsOwnCreaturesAndDependsOnConcentration(t *te
 	if len(res.GetDismissedCreatureIds()) != 2 {
 		t.Errorf("dismissed = %v, want the first band's two wolves", res.GetDismissedCreatureIds())
 	}
+	if got := a.dismissalReasons(t); !slices.Equal(got, []string{"replaced", "replaced"}) {
+		t.Errorf("dismissal reasons = %v, want \"replaced\" for each wolf of the spell's own old casting", got)
+	}
 	if got := a.mustCreatures(t, a.ana, a.pens); len(got) != 3 || got[0].GetId() == first[0].GetId() {
 		t.Errorf("creatures = %v, want the pack's wolf and the new band", creatureNames(got))
 	}
@@ -228,6 +231,25 @@ func TestMR578_ATableSpellSummonsInACombatAndTheUndoTakesItBack(t *testing.T) {
 	}
 }
 
+// dismissalReasons are the reasons of the creature_dismissed events, in order.
+func (a *armed) dismissalReasons(t *testing.T) []string {
+	t.Helper()
+	rows, err := a.h.pool.Query(t.Context(), `SELECT payload->>'reason' FROM session_events WHERE kind = 'creature_dismissed' ORDER BY seq`)
+	if err != nil {
+		t.Fatalf("read the dismissals: %v", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var r string
+		if err := rows.Scan(&r); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
 // creatureCombatants are the ids of the creatures in the combat.
 func creatureCombatants(e *playv1.Encounter) []string {
 	var out []string
@@ -273,6 +295,9 @@ func TestMR578_ATableSpellInACombatReplacesItsOwnCombatantsAndTheUndoBringsThemB
 	}
 
 	castHerd(a.turnOf(t, "Pensantus"), 9, 10)
+	if got := a.dismissalReasons(t); !slices.Equal(got, []string{"replaced", "replaced"}) {
+		t.Errorf("dismissal reasons = %v, want \"replaced\" for each old wolf", got)
+	}
 	e = a.get(t, a.ana)
 	second := creatureCombatants(e)
 	if len(second) != 2 || slices.ContainsFunc(second, func(id string) bool { return slices.Contains(first, id) }) {

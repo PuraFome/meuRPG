@@ -2327,15 +2327,15 @@ export type TableSummon = Message<"meurpg.rules.v1.TableSummon"> & {
 
   /**
    * How many creatures the casting brings at the spell's own circle: a formula that may read the
-   * caster (mod("cha"), prof()) and slot() (the circle of the slot; the spell's own for a
-   * ritual). The result is 1 to 20. Required.
+   * caster (mod("cha"), prof()) and slot() (the circle of the slot). A formula that fails when it
+   * runs counts as 1. Required.
    *
    * @generated from field: string count = 2;
    */
   count: string;
 
   /**
-   * How many more for each circle above the spell's own, 0 to 10.
+   * How many more for each circle above the spell's own, 0 to 10. The sum with count is clamped to 1 to 20.
    *
    * @generated from field: int32 count_per_slot_level = 3;
    */

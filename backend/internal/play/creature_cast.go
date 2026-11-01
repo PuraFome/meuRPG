@@ -82,8 +82,8 @@ func (s *Service) summonRollOK(ctx context.Context, c *combatTx, m authz.Members
 	return s.mustRollThisWay(ctx, c.tx, m, in)
 }
 
-// summonHasRoom refuses a cast whose creatures do not fit in the combat. It runs
-// before anything is spent: a combat holds 40 combatants, and the creatures the
+// summonHasRoom refuses a cast whose creatures do not fit in the combat (the room check runs before anything
+// is spent; the other checks of the cast have their own place). A combat holds 40 combatants, and the creatures the
 // cast sends away (the concentration it ends, the creatures of its own spell it
 // replaces) leave first.
 func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, spellKey string, chk link.SummonSpell, concentration bool) error {
@@ -433,16 +433,12 @@ func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, sl
 	return s.dismissReplaced(ctx, c, r, sum.Replaced)
 }
 
-// dismissReplaced writes the dismissal of each creature a casting replaced: a
-// familiar is replaced by the next one, the others end with the concentration.
+// dismissReplaced writes the dismissal of each creature a casting replaced, with the reason the roster
+// dismissed it for.
 func (s *Service) dismissReplaced(ctx context.Context, c *combatTx, r *summonRun, replaced []link.Creature) error {
 	for _, cr := range replaced {
 		r.made.Dismissed = append(r.made.Dismissed, cr.ID)
-		reason := "concentration"
-		if cr.Source == "familiar" {
-			reason = "replaced"
-		}
-		if err := insertEvent(ctx, c, eventCreatureDismissed, &r.m.UserID, nil, actionEvent{OwnerCharacter: r.call.characterID, Created: []string{cr.ID}, Reason: reason}); err != nil {
+		if err := insertEvent(ctx, c, eventCreatureDismissed, &r.m.UserID, nil, actionEvent{OwnerCharacter: r.call.characterID, Created: []string{cr.ID}, Reason: cr.DismissedReason}); err != nil {
 			return err
 		}
 	}

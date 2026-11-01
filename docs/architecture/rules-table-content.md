@@ -443,7 +443,7 @@ The spell is registered with the SRD's summoning spells, so `SummonSpells`, `Sum
 | Field | Meaning | Limits |
 | --- | --- | --- |
 | `creature_keys` | Table creatures or SRD creatures the caster picks from | 1 to 8 (`MaxTableSummonCreatures`), none twice, each one that exists |
-| `count` | A formula of the caster and of `slot()`; below 1 is 1 | At most 20 creatures (`MaxTableSummonCount`); a formula that fails to compile is `formula` at `.summon.count`; a plain number above `max_live` is `value` at `.summon.max_live` |
+| `count` | A formula of the caster and of `slot()`; one that fails when it runs counts as 1 | The sum with the per-circle part is clamped to 1 to 20 (`MaxTableSummonCount`); a formula that fails to compile is `formula` at `.summon.count`; a plain number above `max_live` (the number clamped to 20) is `value` at `.summon.max_live` |
 | `count_per_slot_level` | Creatures added for each circle above the spell's own | 0 to 10 |
 | `turn_mode` | `own_initiative` (the default) or `owner_roll_group` | `after_owner` is refused |
 | `role` | `companion` | `mount` is refused |
@@ -455,8 +455,8 @@ The spell is a leveled spell with only the caster as target, and with no attack,
 It is not a ritual: the cost of a summon is a slot (`value` at `.ritual`).
 A refusal of a summon's own field is a violation at `.summon.<field>`.
 The target is refused at `.target.kind`, and a cantrip or a spell with damage, healing, a saving throw, an attack or an area at `.summon`.
-A count formula that fails when it runs counts as 1, plus the creatures of the circles above the spell's own.
 `slot()` is legal in a summon's count as in a creature's formulas, and nowhere else.
+An archived or switched-off creature is not offered by a summoning spell and is refused in a cast (`ErrSummonCreature`); the creatures already made keep working.
 A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
 The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
 Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.

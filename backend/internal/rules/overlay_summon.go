@@ -55,9 +55,9 @@ const (
 )
 
 // TableSummon is what a table spell summons. CreatureKeys are table creatures ("creature:<slug>@mesa") or SRD
-// creatures. Count is a formula of the caster and of slot() (the circle of the slot, the spell's own for a ritual);
-// a result below 1 is 1 and above MaxTableSummonCount is MaxTableSummonCount. CountPerSlotLevel creatures are
-// added for each circle above the spell's own. TurnMode, Role and Replaces are "" for their first value.
+// creatures. Count is a formula of the caster and of slot() (the circle of the slot);
+// a formula that fails when it runs counts as 1. CountPerSlotLevel creatures are added for each circle above the
+// spell's own, and the sum is clamped to 1..MaxTableSummonCount. TurnMode, Role and Replaces are "" for their first value.
 // MaxLive is 0 (no limit of its own) or the most creatures of this spell the caster keeps; a casting that would
 // pass it is refused. ResourceKey and ResourceCost are reserved for spells paid with a resource; the rules refuse them.
 type TableSummon struct {
@@ -142,7 +142,7 @@ func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSp
 	} else {
 		rule.countP = p
 	}
-	if n, err := strconv.Atoi(strings.TrimSpace(s.Count)); err == nil && s.MaxLive > 0 && n > s.MaxLive {
+	if n, err := strconv.Atoi(strings.TrimSpace(s.Count)); err == nil && s.MaxLive > 0 && min(n, MaxTableSummonCount) > s.MaxLive {
 		c.at(key, path, ".summon.max_live", ReasonValue, "the count is %d but the spell keeps at most %d creatures: the first casting would be refused", n, s.MaxLive)
 	}
 	if len(c.list) > 0 {

@@ -374,7 +374,11 @@ func TestMR578_ACreatureWithoutARowFallsBackToTheStaticNumbers(t *testing.T) {
 			if sheet.ArmorClass != tc.wantAC {
 				t.Errorf("armor class = %d, want the static %d", sheet.ArmorClass, tc.wantAC)
 			}
-			if i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == clawKey }); i >= 0 && (sheet.Attacks[i].ToHit != 0 || sheet.Attacks[i].DiceBonus != 0) {
+			i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == clawKey })
+			if tc.key == silverWolfKey && i < 0 {
+				t.Fatalf("the sheet's attacks %v lack the claw", sheet.Attacks)
+			}
+			if i >= 0 && (sheet.Attacks[i].ToHit != 0 || sheet.Attacks[i].DiceBonus != 0) {
 				t.Errorf("the claw = %+v, want the static +0", sheet.Attacks[i])
 			}
 		})

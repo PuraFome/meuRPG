@@ -202,7 +202,8 @@ func checkCreatureRoom(ctx context.Context, q *charactersdb.Queries, sm link.Sum
 }
 
 // checkSummonLive blocks a casting of a table spell that would leave the character with more of its creatures
-// than the spell's max_live (the creatures the casting replaced are gone by now).
+// than the spell's max_live (the creatures the casting replaced are gone by now). It counts the character's live
+// creatures of the spell, in any combat or none, and runs in the casting's transaction, so nothing is made on a refusal.
 func checkSummonLive(ctx context.Context, q *charactersdb.Queries, sm link.Summon) error {
 	if sm.MaxLive <= 0 || sm.SummonKey == "" {
 		return nil

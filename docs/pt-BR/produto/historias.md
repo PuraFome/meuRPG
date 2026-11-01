@@ -743,7 +743,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O servidor recusa agir logo depois do dono, uma montaria, uma magia paga com um recurso, um ritual, um número simples acima do limite de criaturas mantidas, uma criatura desconhecida, uma repetida, mais de 8 criaturas, um número que não funciona e uma magia que não seja só para quem conjura.
   Em um combate, criaturas que rolam cada uma a sua iniciativa pedem o rolador do app, porque um dado digitado é uma face só.
   Os jogadores leem as criaturas como em qualquer invocação: o nome e a chave no combate, e os números só o dono e eu.
-  Um jogador que não tem nenhuma das criaturas lê a magia na lista da mesa sem as criaturas, o número e o limite; quem conjura lê as criaturas que pode escolher ao conjurar (`TestATableSpellThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
+  Um jogador que não tem nenhuma das criaturas lê a magia na lista da mesa sem as criaturas da mesa que não tem (as do SRD ficam) e sem o número e o limite; quem conjura lê as criaturas que pode escolher ao conjurar (`TestATableSpellThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
   (`TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestMR578_ATableSpellSummonsItsCreaturesOutsideACombat`, `TestAFormulaCreatureThatAttacksKeepsItsNumbersFromAThirdPlayer`)
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.

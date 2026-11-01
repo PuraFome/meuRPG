@@ -38,8 +38,9 @@ The `creature_summoned` event keeps the roll of the first creature only; each co
 `max_live` refuses a casting that would leave more creatures of the spell than it allows (`CREATURE_LIMIT`).
 A summon that replaces its own dismisses the creatures of the old casting of the spell (reason `replaced`), in or out of a combat.
 In a combat their combatants leave the order and the map, the room for the new ones counts them as gone, and an undo of the new casting brings the old ones back and removes the new ones.
-A creature is dismissed with the reason the roster gave it, and the line of its dismissal says it.
-The caster reads the key and name of the table creatures a spell offers in `GetSummonOptions` before she holds one; the master and she alone.
+The line of a dismissal carries the reason the creature was dismissed for.
+`GetSummonOptions` is read by the character's owner and the master, and names the table creatures a spell offers, with key and name, before the owner holds one.
+In a campaign that forces physical dice, a player cannot cast a spell whose creatures each roll their own initiative (the app's roller is refused and a typed die is one face): the master casts it, who is exempt from the forced mode.
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
 

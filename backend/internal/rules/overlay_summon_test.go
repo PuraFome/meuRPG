@@ -100,6 +100,10 @@ func TestTheCountOfASummonReadsTheCasterAndIsClamped(t *testing.T) {
 	if got, _ := c.SummonOptions(callOfThePack, 2, b); got.Options[0].Count != 1 {
 		t.Errorf("a Charisma of 6: %+v, want the least, 1 creature", got.Options)
 	}
+	ts.Summon.Count, ts.Summon.MaxLive = "25", 30 // clamped to 20, under the limit
+	if got, err := tableSummonContent(t, ts).SummonOptions(callOfThePack, 2, b); err != nil || got.Options[0].Count != MaxTableSummonCount {
+		t.Errorf("a count of 25 with a limit of 30: %+v, %v, want %d creatures", got.Options, err, MaxTableSummonCount)
+	}
 	ts.Summon.Count, ts.Summon.MaxLive = "50", 0
 	if got, _ := tableSummonContent(t, ts).SummonOptions(callOfThePack, 2, b); got.Options[0].Count != MaxTableSummonCount {
 		t.Errorf("a count of 50: %+v, want %d creatures", got.Options, MaxTableSummonCount)
@@ -181,5 +185,22 @@ func TestSlotInASummonCountOnlyInASummonCount(t *testing.T) {
 	r, ok := c.ResolveCreature(packLeader, owner(5, 3, nil, nil), 4)
 	if !ok || r.HitPoints != 40 {
 		t.Errorf("a creature made with a 4th circle slot: %+v, %v, want 40 hit points", r, ok)
+	}
+}
+
+func TestAnArchivedCreatureIsNotOfferedByASummonButTheOthersAre(t *testing.T) {
+	t.Parallel()
+	cr := packLeaderCreature()
+	cr.Archived = true
+	c := withOverlayOn(t, loadForTest(t), Overlay{Revision: 1, Creatures: []TableCreature{cr}, Spells: []TableSpell{summonSpell()}})
+	got, err := c.SummonOptions(callOfThePack, 2, Build{})
+	if err != nil || len(got.Options[0].Forms) != 1 || got.Options[0].Forms[0].Key != wolfKey {
+		t.Fatalf("options = %+v, %v, want only the SRD wolf", got.Options, err)
+	}
+	if _, err := c.CheckSummon(callOfThePack, 2, Build{}, SummonPick{Creatures: []string{packLeader, wolfKey}}); !errors.Is(err, ErrSummonCreature) {
+		t.Errorf("a cast with the archived creature: err = %v, want ErrSummonCreature", err)
+	}
+	if made, err := c.CheckSummon(callOfThePack, 2, Build{}, SummonPick{Creatures: []string{wolfKey, wolfKey}}); err != nil || len(made) != 2 {
+		t.Errorf("a cast with the wolf alone: %+v, %v, want two creatures", made, err)
 	}
 }

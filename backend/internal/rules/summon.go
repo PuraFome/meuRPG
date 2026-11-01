@@ -302,6 +302,9 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 	}
 	opt := SummonOption{Count: c.summonCount(spell, def, circle, b)}
 	for _, k := range def.creatures {
+		if c.Hidden(k) {
+			continue // an archived or switched-off creature is not offered as a new choice; the live ones keep working
+		}
 		opt.Forms = append(opt.Forms, SummonForm{Key: k, Attack: def.attack})
 	}
 	if len(def.unlocks) > 0 {
