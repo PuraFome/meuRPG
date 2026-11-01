@@ -114,7 +114,9 @@ var plans sync.Map // protoreflect.FieldDescriptor -> *plan
 
 func planOf(fd protoreflect.FieldDescriptor) *plan {
 	if p, ok := plans.Load(fd); ok {
-		return p.(*plan)
+		if pl, ok := p.(*plan); ok {
+			return pl
+		}
 	}
 	p := &plan{items: ItemsLimit(fd)}
 	if fd.IsMap() {
@@ -122,8 +124,12 @@ func planOf(fd protoreflect.FieldDescriptor) *plan {
 	} else {
 		p.elem = LenLimit(fd, fd.Kind())
 	}
-	actual, _ := plans.LoadOrStore(fd, p)
-	return actual.(*plan)
+	if actual, loaded := plans.LoadOrStore(fd, p); loaded {
+		if pl, ok := actual.(*plan); ok {
+			return pl
+		}
+	}
+	return p
 }
 
 // checkField checks one set field; the path of the violation is relative to it.
@@ -132,7 +138,7 @@ func checkField(fd protoreflect.FieldDescriptor, v protoreflect.Value) *violatio
 	switch {
 	case fd.IsList():
 		l := v.List()
-		if uint32(l.Len()) > p.items {
+		if tooMany(l.Len(), p.items) {
 			return &violation{reason: systemv1.RequestRefusedReason_REQUEST_REFUSED_REASON_LIST_TOO_LONG}
 		}
 		for i := range l.Len() {
@@ -142,7 +148,7 @@ func checkField(fd protoreflect.FieldDescriptor, v protoreflect.Value) *violatio
 		}
 	case fd.IsMap():
 		mp := v.Map()
-		if uint32(mp.Len()) > p.items {
+		if tooMany(mp.Len(), p.items) {
 			return &violation{reason: systemv1.RequestRefusedReason_REQUEST_REFUSED_REASON_LIST_TOO_LONG}
 		}
 		var bad *violation
@@ -176,3 +182,6 @@ func checkValue(kind protoreflect.Kind, limit uint32, v protoreflect.Value) *vio
 	}
 	return nil
 }
+
+// tooMany says a list or map of n entries is over its limit.
+func tooMany(n int, limit uint32) bool { return int64(n) > int64(limit) }

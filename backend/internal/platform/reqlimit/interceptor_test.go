@@ -57,7 +57,7 @@ func TestCheckDefaults(t *testing.T) {
 		build func() *dynamicpb.Message
 		want  *refusal
 	}{
-		{"empty request", func() *dynamicpb.Message { return s.newReq() }, nil},
+		{"empty request", s.newReq, nil},
 		{"list at the limit", func() *dynamicpb.Message { m := s.newReq(); s.setStrings(m, "names", DefaultMaxItems, "x"); return m }, nil},
 		{"list over the limit", func() *dynamicpb.Message { m := s.newReq(); s.setStrings(m, "names", DefaultMaxItems+1, "x"); return m }, &refusal{list, "names"}},
 		{"element at the limit", func() *dynamicpb.Message {
