@@ -716,6 +716,8 @@ type Derived struct {
 	UnactedAdvantage, SurprisedCritical string `json:",omitempty"`
 	// Rerolls are the reroll effects of the character, in the order of the effects (rolleffects.go).
 	Rerolls []RerollRule `json:",omitempty"`
+	// RollMinimums are the roll_minimum effects of the character, in the order of the effects (rolleffects.go).
+	RollMinimums []RollMinimum `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
@@ -725,6 +727,9 @@ type Derived struct {
 	// Critical; the lowest of those and of the critical_range modifiers (15 at
 	// the least).
 	CriticalRange int
+	// SpellCriticalRange is the same for a spell attack roll: 20, or the lowest of the critical_range
+	// modifiers whose scope is spell or both (15 at the least). The SRD features never lower it.
+	SpellCriticalRange int
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
 	BrutalCriticalDice int

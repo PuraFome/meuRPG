@@ -205,6 +205,16 @@ type RerollRule struct {
 	Source   string
 }
 
+// RollMinimum is a roll_minimum the character's table features give: a die of the rolls in Applies ("attack",
+// "check", "save", "damage") that shows less than Value counts as Value.
+type RollMinimum struct {
+	Applies []string
+	Value   int
+	// DamageType limits a damage minimum to the dice of that damage type; empty is every die.
+	DamageType string
+	Source     string
+}
+
 // ExtraDamage is damage a table feature adds to a weapon hit (the engine's extra_damage effect):
 // Applies says what it asks of the target ("any_target" or "larger_target"), Resource the uses it
 // spends ("" for none), Amount the fixed damage (never doubled by a critical hit) and DiceCount d
@@ -299,6 +309,12 @@ type Traits struct {
 	ExtraDamages []ExtraDamage
 	// RerollRules are the rerolls of a die the table's features give (reroll effects).
 	RerollRules []RerollRule `json:",omitempty"`
+	// RollMinimums are the lowest values a die counts as that the table's features give (roll_minimum effects).
+	RollMinimums []RollMinimum `json:",omitempty"`
+	// SpellCriticalRange is the lowest natural d20 that is a critical hit on a spell attack roll when a table
+	// feature lowers it (critical_range with the spell or both scope, 15 at the least); 0 is 20. The weapon
+	// range is Sheet.CriticalRange.
+	SpellCriticalRange int `json:",omitempty"`
 	// SpellModifiers are the cast options the table's features offer (spell_modifier effects).
 	SpellModifiers []SpellModifier
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty

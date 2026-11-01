@@ -18,7 +18,7 @@ import (
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
 	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
-	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "choice", "ability_increase", "note",
+	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -307,6 +307,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"spell_modifier":   (*overlayBuilder).checkOnTarget,
 	"ambush":           (*overlayBuilder).checkOnTarget,
 	"reroll":           (*overlayBuilder).checkReroll,
+	"roll_minimum":     (*overlayBuilder).checkRollMinimum,
 	"modifier":         (*overlayBuilder).checkModifier,
 	"resource":         (*overlayBuilder).checkResourceEffect,
 	"slot_recovery":    (*overlayBuilder).checkSlotRecovery,
@@ -517,7 +518,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // effects (the spellcasting, the handler) never come from the
 // table.
 var ownFields = map[string][]string{
-	"modifier":     {"target", "mode", "value"},
+	"modifier":     {"target", "mode", "value", "applies"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
@@ -538,8 +539,10 @@ var ownFields = map[string][]string{
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush": {"applies"},
 	// A reroll covers some rolls up to a face and may spend a resource.
-	"reroll":     {"rolls", "at_most", "resource", "cost"},
-	"wild_shape": {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
+	"reroll": {"rolls", "at_most", "resource", "cost"},
+	// A roll_minimum covers some rolls and says the lowest a die counts as.
+	"roll_minimum": {"rolls", "value", "damage_type"},
+	"wild_shape":   {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
 	// A slot_recovery names the resource each recovery spends and its two limits.
 	"slot_recovery": {"resource", "recover_max_level", "recover_levels"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
