@@ -48,7 +48,7 @@ func (s *Service) catchWithoutSave(ctx context.Context, c *combatTx, k zoneCatch
 	if !ok || f.Count < 1 {
 		return nil
 	}
-	f.Count *= max(k.squares, 1)
+	f.Count *= max(k.times, 1)
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &owner.ID, TargetID: k.who.ID, AttackKey: k.z.row.SpellKey, Status: pendingAwaitingRoll,
 		DiceCount: clamp32(f.Count, 0, 100), DiceSides: clamp32(f.Sides, 0, 100), DiceBonus: clamp32(f.Bonus, -1000, 1000), DamageType: k.z.row.DamageType,

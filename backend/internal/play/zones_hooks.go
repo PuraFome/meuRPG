@@ -24,22 +24,21 @@ type zoneStep struct {
 	who  string
 	from *grid.Square
 	path []grid.Square
-	// travels says the creature went the distance on the ground, by its own feet or pushed: a walk or a push. A jump,
-	// a teleport and the master's placement put it there without crossing the squares between.
+	// travels says the creature crossed the squares to get there: a walk or a push.
+	// A jump, a teleport and a placement do not cross them.
 	travels bool
 }
 
-// travelled are the squares the creature crossed on the ground, the last being where it stands now: none when the step
-// did not travel.
+// travelled are the squares the creature crossed, the last being where it stands now.
+// It crossed none when the step did not travel.
 func (st zoneStep) travelled() []grid.Square {
 	if !st.travels || st.from == nil || len(st.path) == 0 {
 		return nil
 	}
-	var out []grid.Square
-	for _, step := range grid.Line(*st.from, st.path[len(st.path)-1]) {
-		if step.Square != *st.from {
-			out = append(out, step.Square)
-		}
+	steps := grid.Line(*st.from, st.path[len(st.path)-1])
+	out := make([]grid.Square, len(steps))
+	for i, step := range steps {
+		out[i] = step.Square
 	}
 	return out
 }
@@ -111,8 +110,8 @@ func (s *Service) zonesAfterSteps(ctx context.Context, c *combatTx, steps ...zon
 	return nil
 }
 
-// zoneAfterStep catches the creature that stepped if the step brought it into the zone, or hurts it for the squares it
-// crossed in Spike Growth.
+// zoneAfterStep catches the creature that stepped when the step brought it into the zone.
+// Spike Growth hurts it for the squares it crossed instead.
 func (s *Service) zoneAfterStep(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
 	if z.def.kind == zoneSpikes {
 		return s.spikeCatch(ctx, c, z, st, mark)

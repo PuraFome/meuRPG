@@ -113,6 +113,18 @@ describe('the log lines of spell zones', () => {
     expect(text(e)).toBe('Tor entrou na Nuvem de Adagas e sofreu 11 de dano cortante');
   });
 
+  it('says the damage of a creature that travelled through a zone', () => {
+    const e = effect({
+      change: CombatLogEffectChange.DAMAGE,
+      reason: 'zone_move',
+      sourceNamePt: 'Crescimento de Espinhos',
+      targetLabels: ['Tor'],
+      amount: 7,
+      damageTypePt: 'perfurante',
+    });
+    expect(text(e)).toBe('Tor andou no Crescimento de Espinhos e sofreu 7 de dano perfurante');
+  });
+
   it.each([
     ['concentration', 'Raio Lunar acabou em Bartolo: a concentração acabou'],
     ['duration', 'Raio Lunar acabou em Bartolo: o tempo da magia passou'],

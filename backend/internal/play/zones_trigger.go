@@ -50,8 +50,8 @@ type zoneCatch struct {
 	// made is the event of the cast the catch belongs to (a catch at the cast): what the catch changes is
 	// written into it, so that the undo of the cast puts it back. nil for a catch outside a cast.
 	made *actionEvent
-	// squares is how many times the zone's damage dice count: the squares a creature entered in Spike Growth, else 0 for once.
-	squares int
+	// times is how many times the damage dice count; 0 counts them once.
+	times int
 }
 
 // spares says the zone leaves the creature alone: the caster and the caster's allies for the zones
@@ -386,9 +386,8 @@ func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState
 	}
 }
 
-// spikeCatch hurts a creature that travelled through the squares of a Spike Growth: the damage dice of the zone once for
-// every square it entered, rolled by whoever rolls the caster's damage. It is not asked once a turn: the damage is for the
-// distance, and it spares nobody.
+// spikeCatch hurts a creature for each square it crossed in a Spike Growth.
+// Nobody is spared, and the same creature is hurt again on every move.
 func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
 	n := z.spikesIn(st)
 	if n == 0 {
@@ -403,5 +402,5 @@ func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneS
 	if !ok || !okOwner || !placed(who) || who.Defeated {
 		return nil
 	}
-	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, mark: mark, round: c.enc.Round, squares: n}, owner)
+	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, mark: mark, round: c.enc.Round, times: n}, owner)
 }

@@ -143,3 +143,18 @@ func TestSpikeGrowthDamageIsRolledAsPiercing(t *testing.T) {
 		t.Errorf("damage = %d %s, want 10 piercing", d.GetAmount(), d.GetDamageTypeKey())
 	}
 }
+
+// A jump crosses none of the squares under it: the creature that lands inside is not hurt.
+func TestSpikeGrowthDoesNotHurtWhoJumpsIn(t *testing.T) {
+	t.Parallel()
+	c := spikeCave(t)
+	c.castSpikes(t, 10, 7)
+	z := c.oneZone(t, c.master, spikeGrowthKey)
+	if !zoneHas(z, 6, 7) || zoneHas(z, 5, 7) {
+		t.Fatalf("zone squares = %v, want (6,7) inside and Toren's (5,7) outside", z.GetSquares())
+	}
+	c.mustMove(t, c.caio, "Toren", 6, 7, jumpTo(playv1.JumpKind_JUMP_KIND_LONG))
+	if got := c.spikeDamagesOf(t, "Toren"); len(got) != 0 {
+		t.Errorf("the jump hurt Toren: %v, want none", got)
+	}
+}
