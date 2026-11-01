@@ -360,8 +360,8 @@ func (l *Lit) CanSee(v Viewer, sq grid.Square) bool {
 }
 
 // InTheDark says whether the viewer sees nothing where it stands: its own square
-// is dark (the base light, the painted light and the sources all leave it so) and
-// none of its senses covers it. A sense with any range covers the square the
+// is dark (the base light, the painted light and the sources all leave it so, or
+// it is a square of magical darkness) and none of its senses covers it. A sense with any range covers the square the
 // viewer stands on, at distance 0: darkvision and blindsight see in the dark, and
 // truesight sees there too. It is the question See answers for the viewer's own
 // square, which See always marks as known (grey in the dark); a viewer outside the
