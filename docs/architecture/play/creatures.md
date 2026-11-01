@@ -211,8 +211,9 @@ Tests: `TestMR037_TheKindAudit`, `TestMR037_ACreatureAtZeroLeavesAndTheHitPoints
 A creature whose stat block has the Legendary Resistance trait (SRD 5.1, "3/Day") can choose to succeed on a saving throw it fails.
 The number of uses a day is the trait's own, read from the stat block (`LegendaryProfile.ResistancePerDay`).
 The uses spent are kept on the combatant as `creature_spent.legendary_resistance` ([Data](../../data/combat.md)).
-A combat starts with none spent.
-The "day" is the rest between combats at the table: the app carries no use from one combat to the next.
+A monster's combat starts with none spent.
+The "day" is the rest between combats at the table.
+A persistent NPC with a stat block keeps the uses it spent until the table's long rest ([Kept until the long rest](#kept-until-the-long-rest)).
 It is a trait, not an action: it works on the creature's own turn, on another's, and while the creature is incapacitated.
 Only the master chooses it, and only for a creature that has the trait: a player's character and a creature without it never do.
 
@@ -273,15 +274,15 @@ A spell cast for an NPC is not offered either.
 ## Limited actions
 
 An action of a stat block with a limit is enforced by the server: a Recharge action, one with uses a day, and one that returns after a rest (`rules.ActionUsage`, SRD 5.1: "Recharge 5-6", "3/Day").
-What a creature spent of them is kept on the combatant in `creature_spent`, under `use:<action key>` and `recharge:<action key>` ([Data](../../data/combat.md)).
-A combat starts with none spent: the "day" is the rest between combats at the table.
-Only a creature with a stat block has these limits, so a hand-made NPC keeps no state and has no limit.
+What a creature spent of them is kept on the combatant in `creature_spent`, under `use:<action key>` (N/day), `rest:<action key>` (after a rest) and `recharge:<action key>` ([Data](../../data/combat.md)).
+A monster's combat starts with none spent: the "day" is the rest between combats at the table.
+Only a creature with a stat block has these limits, so an NPC with no stat block has none.
 
 | Usage | Spent by | Comes back |
 | --- | --- | --- |
 | Recharge X-Y | The first use | On a d6 the server rolls at the start of the creature's turn, when the face is in X-Y |
 | N/Day | Each use, up to N | Never in a combat |
-| After a rest | The first use | Never in a combat |
+| After a rest | The first use | Never in a combat; a persistent NPC gets it back at a short or long rest |
 
 The spend is part of the use (`combat_action_limit.go`).
 It happens in the same change as the attack (`RollAttack`) or the action (`UseCreatureAction`) that uses the action.
@@ -289,6 +290,9 @@ A Multiattack spends nothing of its own: each step is its own call and is limite
 A spent action is refused with nothing changed.
 The master and the player who controls the creature read `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
 The refusal comes before any roll, so the master may use another action.
+An NPC made from a stat block keeps one attack per action on a basic sheet, ([Attacks and damage](attacks-and-damage.md)).
+Actions the sheet cannot tell apart, when one of them is limited, refuse the attack with `CREATURE_ACTION_UNAVAILABLE`.
+A limit is never taken from the wrong action.
 
 **The roll at the turn start** (`combat_recharge.go`).
 When a creature's turn starts, the server rolls one d6 for each of its spent Recharge actions, in the order of its stat block.
@@ -307,8 +311,18 @@ Another player has no call that reaches the creature's action.
 The undo of the use gives it back: the action is available again or has the use back.
 The roll is not undoable, and it closes the chain like the turn change it belongs to.
 
+**Kept until the long rest.**
+A persistent NPC with a stat block is a character of kind NPC that is not `combat_only`, made from a creature.
+It keeps its `use:<action key>` and `legendary_resistance` counts from one combat to the next, until the table's long rest.
+It keeps its `rest:<action key>` counts until the next short or long rest.
+The counts are in `npc_spell_use.creature_spent` ([Data](../../data/characters.md#npc_spell_use)), beside the slots of its spells.
+`bumpCreatureSpent` writes them back with `SyncNPCCreatureSpent` after each change of those keys (an undo too): the row keeps the highest count any copy holds in the combat, never the sum, and a key that falls to 0 leaves it.
+`SeedCombatantSlotsUsed` gives each copy the row when it joins a combat, and the table's long rest deletes the row; a short rest removes its `rest:` keys ([Rests](rests-and-resources.md)).
+`recharge:<action key>` and `legendary_actions` are not kept: a new combat starts with every Recharge action available.
+A monster (the `combat_only` NPC of a creature) never has a row and starts every combat with all its actions and uses.
+The master reads the uses left as in any combat; a player never reads them (RN-20, RN-29).
+
 **What is not covered.**
-A hand-made NPC keeps nothing across combats, and a monster starts every combat with all its actions.
 A trait with a number a day (Legendary Resistance has its own path above) and a spell's uses are other paths with their own counts.
 
 ## Monster reactions

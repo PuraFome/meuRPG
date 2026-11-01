@@ -1250,8 +1250,14 @@ type TableEffect struct {
 	// (a level 2 slot counts 2). Both are required.
 	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
 	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// reroll: the rolls it covers, one or more of "attack", "check", "save"
+	// (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
+	Rolls []string `protobuf:"bytes,77,rep,name=rolls,proto3" json:"rolls,omitempty"`
+	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
+	// The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
+	AtMost        int32 `protobuf:"varint,78,opt,name=at_most,json=atMost,proto3" json:"at_most,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1814,6 +1820,20 @@ func (x *TableEffect) GetRecoverLevels() string {
 		return x.RecoverLevels
 	}
 	return ""
+}
+
+func (x *TableEffect) GetRolls() []string {
+	if x != nil {
+		return x.Rolls
+	}
+	return nil
+}
+
+func (x *TableEffect) GetAtMost() int32 {
+	if x != nil {
+		return x.AtMost
+	}
+	return 0
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -7190,7 +7210,13 @@ type EffectMenuValue struct {
 	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// A short explanation where the name alone does not say; often empty.
-	HintPt        string `protobuf:"bytes,3,opt,name=hint_pt,json=hintPt,proto3" json:"hint_pt,omitempty"`
+	HintPt string `protobuf:"bytes,3,opt,name=hint_pt,json=hintPt,proto3" json:"hint_pt,omitempty"`
+	// For a target of a modifier: the only modes it takes (the critical range is "set", never
+	// added); empty means every mode.
+	OnlyModes []string `protobuf:"bytes,4,rep,name=only_modes,json=onlyModes,proto3" json:"only_modes,omitempty"`
+	// For the same, the bounds of a literal value; both zero when unbounded.
+	Min           int32 `protobuf:"varint,5,opt,name=min,proto3" json:"min,omitempty"`
+	Max           int32 `protobuf:"varint,6,opt,name=max,proto3" json:"max,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7244,6 +7270,27 @@ func (x *EffectMenuValue) GetHintPt() string {
 		return x.HintPt
 	}
 	return ""
+}
+
+func (x *EffectMenuValue) GetOnlyModes() []string {
+	if x != nil {
+		return x.OnlyModes
+	}
+	return nil
+}
+
+func (x *EffectMenuValue) GetMin() int32 {
+	if x != nil {
+		return x.Min
+	}
+	return 0
+}
+
+func (x *EffectMenuValue) GetMax() int32 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
 }
 
 // EffectMenuList is a closed list a field takes.
@@ -7477,7 +7524,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\xda\x11\n" +
+	"\x04body\"\x89\x12\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -7568,7 +7615,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\vspends_slot\x18J \x01(\bR\n" +
 	"spendsSlot\x12*\n" +
 	"\x11recover_max_level\x18K \x01(\tR\x0frecoverMaxLevel\x12%\n" +
-	"\x0erecover_levels\x18L \x01(\tR\rrecoverLevels\"\x81\x02\n" +
+	"\x0erecover_levels\x18L \x01(\tR\rrecoverLevels\x12\x14\n" +
+	"\x05rolls\x18M \x03(\tR\x05rolls\x12\x17\n" +
+	"\aat_most\x18N \x01(\x05R\x06atMost\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
@@ -7997,11 +8046,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x04list\x18\x04 \x01(\tR\x04list\x12\x10\n" +
 	"\x03min\x18\x05 \x01(\x05R\x03min\x12\x10\n" +
 	"\x03max\x18\x06 \x01(\x05R\x03max\x12!\n" +
-	"\falways_shown\x18\a \x01(\bR\valwaysShown\"U\n" +
+	"\falways_shown\x18\a \x01(\bR\valwaysShown\"\x98\x01\n" +
 	"\x0fEffectMenuValue\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
-	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\"^\n" +
+	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\x12\x1d\n" +
+	"\n" +
+	"only_modes\x18\x04 \x03(\tR\tonlyModes\x12\x10\n" +
+	"\x03min\x18\x05 \x01(\x05R\x03min\x12\x10\n" +
+	"\x03max\x18\x06 \x01(\x05R\x03max\"^\n" +
 	"\x0eEffectMenuList\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x128\n" +
 	"\x06values\x18\x02 \x03(\v2 .meurpg.rules.v1.EffectMenuValueR\x06values\"\x90\x01\n" +

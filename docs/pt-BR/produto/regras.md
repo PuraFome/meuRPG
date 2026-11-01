@@ -576,7 +576,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 
 - **Uma mudança vale na hora, inclusive nas fichas travadas.** A ficha recalcula, e o que ficou fora das regras aparece nela como um aviso ("A classe mudou") com as frases exatas, sem bloquear outras edições. Só o dono e o mestre o leem. Ele some sozinho quando o que diz é corrigido. Só os donos das fichas que usam a entrada alterada são avisados.
 - **Nada é apagado.** O mestre arquiva e desarquiva; não existe "Apagar". Uma entrada arquivada continua funcionando nas fichas que já a usam e deixa de ser oferecida como nova escolha. O mestre também nunca recebe uma entrada arquivada como nova escolha: a tela nomeia a recusa.
-- **O conteúdo da mesa nunca executa código.** Os efeitos vêm de um menu fechado (modificador, proficiência, recurso, sentido, modo de jogada, ação, ataque extra, ataque à distância, Forma Selvagem, espaços de magia, escolha, nota, magia concedida, dado de manobra). Uma característica só com texto sempre vale. O servidor devolve de uma vez todas as violações de uma entrada, cada uma apontando o campo do editor a que pertence, e um salvamento recusado não muda nada.
+- **O conteúdo da mesa nunca executa código.** Os efeitos vêm de um menu fechado (modificador, proficiência, recurso, sentido, modo de jogada, ação, ataque extra, ataque à distância, Forma Selvagem, espaços de magia, escolha, nota, magia concedida, dado de manobra, rolar de novo). Uma característica só com texto sempre vale. O servidor devolve de uma vez todas as violações de uma entrada, cada uma apontando o campo do editor a que pertence, e um salvamento recusado não muda nada.
 - **O que os jogadores veem.** Toda opção jogável ligada, inteira (números e efeitos). Eles consultam toda magia ligada em "Magias" ([MR-045](historias.md#mr-045-consultar-as-magias)) e escolhem na ficha só da lista da classe deles (a lista de cada classe pelo nível nela, com multiclasse).
 - **Os interruptores.** Em "Opções para os jogadores", o mestre liga ou desliga cada classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção e característica de classe, do SRD e da mesa por igual (um interruptor por opção, quantas fichas a usam, "Ligar todas" e "Desligar todas" por tipo, salvo na hora). Tudo vem ligado por padrão. O que está desligado nunca chega a um jogador em nenhuma leitura; as fichas que já o usam continuam funcionando; uma classe desligada esconde suas subclasses e uma raça desligada suas sub-raças, exceto numa ficha que já tem a original. Uma nova escolha de um jogador por uma opção desligada é recusada (na criação, na edição e na subida de nível), uma edição sem relação nunca é, e o mestre nunca é recusado. A ficha de um jogador mantém, ao ser editada ou subir de nível, o que o mestre arquivou ou desligou depois.
   O mestre liga e desliga criaturas só pela API.
@@ -590,6 +590,36 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Classes.** Uma classe da mesa traz a tabela de 20 níveis (bônus de proficiência, características, truques e magias conhecidos, espaços ou espaços de pacto), dado de vida, testes de resistência, perícias, proficiências, os níveis de aumento de habilidade (4, 8, 12, 16 e 19 por padrão) e conjuração (nenhuma, completa, metade ou pacto). O conjurador de um terço é uma subclasse que conjura. O editor de classe começa dos números do servidor. A multiclasse na criação e na subida de nível funciona com classes da mesa, com os pré-requisitos do SRD como aviso na ficha.
 - **Manobras.** Uma manobra é um dado de um recurso. Depois de um golpe de arma, a etapa de dano oferece cada manobra de dano que o personagem conhece, uma por ataque; ela soma o dado ao dano (dobrado num acerto crítico), gasta um uso, e o mestre lê o efeito adicional dela na jogada. O dado também pode iniciar uma agarrada ou reduzir o dano de um golpe corpo a corpo como reação. O dado numa jogada de ataque pode ser registrado, mas ainda não é rolado.
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
+- **A margem de acerto crítico.**
+  Um modificador da mesa "Margem de acerto crítico (o menor d20 que é crítico)" define o menor d20 natural que é acerto crítico, de 15 a 20.
+  Só o modo "Definir" é aceito, o servidor recusa os outros, e uma fórmula fica entre 15 e 20.
+  Vale só para ataques com arma, como o Crítico Aprimorado; um ataque de magia é crítico só no 20.
+  Vale o menor entre o valor da mesa e a margem das características de classe (Crítico Aprimorado, Crítico Superior).
+  O ataque acerta nessa rolagem e o dano segue a regra de crítico da mesa (RN-24).
+- **Rolar de novo.**
+  O efeito "Rolar de novo" deixa um dado ser rolado outra vez, e a nova rolagem vale, mesmo se for pior (SRD 5.1).
+  O mestre escolhe as jogadas que ele cobre (ataque, teste de habilidade, teste de resistência, dano; cada uma uma vez), a maior face que pode ser rolada de novo (de 1 a 20) e, se quiser, um recurso que a entrada ou a classe define e os usos que cada nova rolagem gasta (1 por padrão).
+  Sem recurso, é de graça.
+  Um custo abaixo de 1, um custo que o máximo do recurso no nível do personagem nunca paga, ou um recurso que o personagem não tem naquele nível deixam o efeito fora da ficha.
+  Quando vários efeitos cobrem a jogada, vale o primeiro que o personagem consegue pagar.
+  - **O d20.** O jogador recebe "rolar de novo?" depois do d20 e antes de o app dizer se a jogada tem sucesso, quando o dado mostra a face escolhida ou menos e o personagem consegue pagar.
+    Com vantagem ou desvantagem, o dado perguntado é o que vale.
+    Responder sim gasta os usos e rola um novo d20 que vale, mesmo se for outra face baixa; responder não não gasta nada.
+    Vale para jogadas de ataque com arma e com magia, para o teste de cena, o teste em grupo, o teste de resistência de um efeito e o teste de concentração.
+    Nunca vale para uma disputa (agarrar, empurrar, escapar), Esconder-se, o teste do Contramágica, um teste contra a morte, a iniciativa, uma busca por armadilha ou uma dica de enigma.
+    O app não tem tela para a pergunta, então ele não pergunta: toda jogada vale como foi rolada e nada fica retido nem é gasto.
+    A pergunta é do jogador da rolagem e do mestre, como a do Sortudo (RN-35).
+  - **Sortudo.** Uma jogada que faz a pergunta do Sortudo do halfling não recebe a de rolar de novo, então as duas nunca se encontram numa jogada.
+  - **Dano.** O app rola os dados de dano de novo sozinho e nunca pergunta.
+    Um uso cobre uma jogada de dano, e cada dado que mostra a face escolhida ou menos é rolado de novo uma vez.
+    Um dado que o Combate com Armas Grandes já rolou de novo fica como está.
+    Dano que o jogador digitou de dados físicos e dano retido por uma janela de reação não são rolados de novo.
+    No dano com partes (um golpe de arma e os extras dele) a parte lista os dados rolados de novo com a característica que deu o efeito; os outros danos mostram só os dados novos.
+    O uso é gasto junto com o dano, e desfazer o dano o devolve.
+  - **Dados físicos.** O app rola o novo d20 e os novos dados de dano sozinho, mesmo numa mesa de dados físicos, então esse dado não é digitado pelo jogador (a RN-18 não vale para ele).
+  - **Não coberto.** Um mínimo para a jogada e uma margem de crítico maior para ataques de magia não existem.
+    O editor do mestre lista "Rolar de novo", mas não consegue salvá-lo: escreva-o pela API.
+    A margem de crítico se escolhe no editor como um modificador, e o servidor recusa qualquer modo que não seja "Definir".
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
@@ -673,7 +703,7 @@ Uma mudança vale a partir da próxima jogada, sem nunca reescrever o que já fo
 - **Estilo da mesa.** No alto: "Tudo no app" (dados no app, combate com mapa, névoa ligada nos mapas novos), "Mesa física" (dados físicos, combate sem mapa por padrão, névoa desligada) ou "Teatro da mente" (cada jogador escolhe os dados, combate sem mapa, sem névoa), e "Personalizado" quando as escolhas não batem com nenhum. Um estilo só preenche esses padrões, que continuam editáveis um a um. Mais ideias: [MR-046](historias.md#mr-046-o-estilo-da-mesa-recurso-por-recurso).
 - **Pontos de vida na subida de nível:** rolar, a média, ou o jogador escolhe entre os dois. O servidor recusa o método que a regra não permite, e a ficha de um jogador acima do nível 1 deve segui-lo na criação ("rolar": todo nível depois do primeiro é uma rolagem; "média": nenhum).
 - **Habilidades de uma ficha nova.** O mestre marca os jeitos que valem: o conjunto padrão (15, 14, 13, 12, 10, 8), a compra de pontos com 27 pontos, 4d6 descartando o menor, ou digitar de 3 a 18 antes do bônus de raça. Os 4d6 são rolados e guardados pelo servidor, uma vez (um jogador de dados físicos os digita, uma vez). A ficha de um jogador é conferida com o jeito que ele usou, enquanto for rascunho; as edições do mestre são livres. Bônus manuais de habilidade não contornam o jeito: para um jogador, não podem passar do que a raça deixa distribuir mais 2 para cada Aumento de Habilidade alcançado. Os três jeitos vêm do SRD 5.2.1 (as regras de 2024, CC BY 4.0), creditado em "Créditos" e rotulado "SRD 5.2.1 (regras de 2024)".
-- **O acerto crítico:** dados dobrados (o do SRD) ou o máximo dos dados mais uma rolagem. Vale em todo acerto crítico em combate (arma, ataque de magia, criatura, NPC, monstro, armadilha), com mapa ou no teatro. A etapa de dano o declara ("role os dados duas vezes" ou "o máximo mais uma rolagem") e um jogador de dados físicos digita só os dados rolados. Um ataque com arma é crítico num 20 natural; um guerreiro Campeão também no 19 a partir do nível 3 e no 18 a partir do nível 15; um ataque de magia sempre precisa do 20. Um acerto crítico corpo a corpo de um bárbaro rola dados de arma extras nos níveis 9, 13 e 17 (Crítico Brutal), sempre rolados, nomeados na linha de dano ("Crítico Brutal"). O dano de características que o app não rola (Ataque Furtivo, Destruição Divina) é somado à mão.
+- **O acerto crítico:** dados dobrados (o do SRD) ou o máximo dos dados mais uma rolagem. Vale em todo acerto crítico em combate (arma, ataque de magia, criatura, NPC, monstro, armadilha), com mapa ou no teatro. A etapa de dano o declara ("role os dados duas vezes" ou "o máximo mais uma rolagem") e um jogador de dados físicos digita só os dados rolados. Um ataque com arma é crítico num 20 natural; um guerreiro Campeão também no 19 a partir do nível 3 e no 18 a partir do nível 15; uma margem de acerto crítico da mesa pode ampliá-la ainda mais (abaixo); um ataque de magia sempre precisa do 20. Um acerto crítico corpo a corpo de um bárbaro rola dados de arma extras nos níveis 9, 13 e 17 (Crítico Brutal), sempre rolados, nomeados na linha de dano ("Crítico Brutal"). O dano de características que o app não rola (Ataque Furtivo, Destruição Divina) é somado à mão.
 - **Talento Confiável** (ladino 11): num teste de habilidade que soma o bônus de proficiência, um d20 de 9 ou menos conta como 10. Não vale para ataques, testes de resistência, iniciativa nem testes sem proficiência. A jogada guarda a face que saiu e diz que foi tratada como 10. Vale nos testes de cena, nas buscas por armadilhas, nas dicas de quebra-cabeça, nos testes em grupo, nos dois lados de uma disputa e no Esconder-se.
 - **Testes contra a morte:** vistos por todos, ou só pelo dono e pelo mestre. Quando escondidos, todo outro jogador lê só "Caído" no combatente, na ordem, no registro, no stream, no resumo e nos destaques. Todos mantêm o resultado: "Estável" e "Morto". Cada jogada guarda se estava escondida, então mudar a regra nunca revela nem esconde o que já foi escrito.
 - **Magias de área e criaturas escondidas** (RN-23): revelar, manter escondidas ou perguntar a cada vez.
@@ -795,7 +825,7 @@ No teatro da mente (RN-25) os monstros não têm quadrado.
 Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso num teste de resistência que falha, por escolha do mestre.
 Nos testes de resistência que o mestre rola por ele (o de um efeito e o de concentração) ele pede a característica junto com a rolagem.
 Uma rolagem que falha vira sucesso e gasta um uso.
-Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
+Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos de um monstro são do combate (um combate novo começa com todos).
 A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que o teste de resistência teve sucesso (RN-20).
 Quando a magia de um jogador com teste de resistência alcança o monstro (num alvo ou em vários), o lançamento espera o mestre (RN-31), quer o teste de resistência tenha passado, quer tenha falhado.
 A espera não revela nada sobre a rolagem: o jogador lê a mesma espera e o mesmo resultado nos dois casos.
@@ -818,7 +848,7 @@ Os jogadores não leem nenhum gasto, só a linha comum de ataque ou de movimento
 Um NPC feito à mão que conjura guarda os espaços de magia e os usos por dia que gastou, de um combate para o outro, até o descanso longo da mesa.
 Um monstro em combate começa cada luta com todos os seus espaços e usos, porque cada luta traz um indivíduo novo.
 Várias cópias de um NPC feito à mão começam com a contagem que o NPC guardou, e ele guarda a maior contagem que uma cópia atingiu, não a soma.
-Um descanso curto não muda nada para um NPC.
+Um descanso curto devolve a um NPC persistente as ações que recarregam depois de um descanso curto ou longo, e nada mais.
 Uma ação de monstro com limite é imposta pelo servidor: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) e a que volta depois de um descanso.
 Um uso a gasta, na mesma mudança do ataque ou da ação, e uma ação gasta é recusada sem mudar nada.
 A recusa diz que a ação não recarregou ou não tem mais usos, ao mestre e ao jogador que controla o monstro.
@@ -827,7 +857,12 @@ Um monstro derrotado não rola, e uma ação com usos por dia ou depois de um de
 O mestre e o jogador que controla o monstro leem o que resta de cada ação com limite e uma linha do registro com o d6.
 Os outros jogadores não leem nenhum dos dois, e o turno parece o mesmo para eles com ou sem a rolagem (RN-20).
 "Desfazer última ação" devolve o uso; a rolagem não se desfaz.
-Um NPC feito à mão não tem ficha de criatura, então não guarda limite, e um monstro começa todo combate com todas as ações.
+Um NPC persistente com ficha de criatura (feito a partir de uma criatura) guarda o que gastou das ações N/dia e da Resistência Lendária até o descanso longo da mesa.
+Ele guarda uma ação que recarrega depois de um descanso curto ou longo até o próximo descanso curto ou longo.
+O descanso longo devolve as três, e o descanso curto devolve só a última.
+Várias cópias dele começam com a contagem que o NPC guardou, e ele guarda a maior contagem que uma cópia atingiu, não a soma.
+Uma ação de Recarga e as ações lendárias de uma rodada não são guardadas: um combate novo começa com toda ação de Recarga disponível.
+Um monstro começa todo combate com todas as ações e usos, e um NPC sem ficha de criatura não tem limites.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria

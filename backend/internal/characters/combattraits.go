@@ -160,6 +160,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
+	t.RerollRules = rerollRulesOf(d)
 	return t
 }
 
@@ -196,4 +197,12 @@ func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.Ex
 		})
 	}
 	return maneuvers, extras, options
+}
+
+// rerollRulesOf are the rerolls of a die the character's table features give.
+func rerollRulesOf(d rules.Derived) (rerolls []link.RerollRule) {
+	for _, r := range d.Rerolls {
+		rerolls = append(rerolls, link.RerollRule{Applies: r.Applies, AtMost: r.AtMost, Resource: r.Resource, Cost: r.Cost, Source: r.Source})
+	}
+	return rerolls
 }

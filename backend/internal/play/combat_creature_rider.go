@@ -46,7 +46,7 @@ func (s *Service) offerCreatureRider(ctx context.Context, c *combatTx, target pl
 	if !ok || attacker.Kind != kindNPC || attacker.Side == target.Side {
 		return nil
 	}
-	plan, ok, err := s.planOfAttack(ctx, c, attacker, d.key)
+	plan, ok, err := s.planOfAttack(ctx, c, attacker, d.key, false)
 	if err != nil || !ok || !creatureRiderOf(plan) {
 		return err
 	}

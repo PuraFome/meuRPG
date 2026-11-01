@@ -833,6 +833,7 @@ func (f *castFlow) seal(ctx context.Context) error {
 	made := &f.out.made
 	packCoverSeen(made)
 	made.Die = f.out.modes.dieUsed()
+	made.D20Reroll = rerollUse(f.out.modes.luckyUsed())
 	made.Stroke = f.out.modes.strokeUsed() // the miss the caster turned into a hit: the undo gives the use back
 	made.Secret = f.hidden
 	if f.placedArea {

@@ -1,5 +1,5 @@
-<!-- The live region stays in the page, so the notice is announced when it
-     appears (role="status": polite, it never interrupts). -->
+<!-- The live region stays in the page once the shell has drawn it (the app loads this component when the browser is idle),
+     so a notice that starts later is announced when it appears (role="status": polite, it never interrupts). -->
 <div role="status">
   @for (s of sessions(); track s.sessionId) {
     <div class="live-notice">

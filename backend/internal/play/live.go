@@ -207,7 +207,7 @@ func (s *Service) readEncounter(ctx context.Context, campaignID, encounterID str
 		if err != nil {
 			return err
 		}
-		d, err = loadEncounter(ctx, q, enc)
+		d, err = loadEncounter(ctx, q, enc, s.d20Rerolls)
 		return err
 	})
 	if err != nil {

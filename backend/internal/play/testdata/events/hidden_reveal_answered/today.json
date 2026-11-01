@@ -20,7 +20,10 @@
   "lucky": {
     "index": 1,
     "from": 1,
-    "to": 1
+    "to": 1,
+    "source": "x",
+    "resource": "x",
+    "cost": 1
   },
   "indomitable": {
     "index": 1,
@@ -31,6 +34,10 @@
     "index": 1,
     "from": 1,
     "to": 1
+  },
+  "d20_reroll": {
+    "resource": "x",
+    "cost": 1
   },
   "target_ac": 1,
   "reliable_talent": true,
@@ -171,7 +178,10 @@
         "lucky": {
           "index": 1,
           "from": 1,
-          "to": 1
+          "to": 1,
+          "source": "x",
+          "resource": "x",
+          "cost": 1
         },
         "bonus_unknown": true,
         "resisted": true,
@@ -198,7 +208,10 @@
       "lucky": {
         "index": 1,
         "from": 1,
-        "to": 1
+        "to": 1,
+        "source": "x",
+        "resource": "x",
+        "cost": 1
       },
       "stroke": {
         "index": 1,
@@ -642,7 +655,10 @@
             "lucky": {
               "index": 1,
               "from": 1,
-              "to": 1
+              "to": 1,
+              "source": "x",
+              "resource": "x",
+              "cost": 1
             },
             "bonus_unknown": true,
             "resisted": true,
@@ -739,7 +755,8 @@
         {
           "i": 1,
           "from": 1,
-          "to": 1
+          "to": 1,
+          "source_key": "x"
         }
       ],
       "resource": "x",
@@ -750,6 +767,10 @@
   "maneuver_spent": [
     "x"
   ],
+  "damage_reroll": {
+    "resource": "x",
+    "cost": 1
+  },
   "once_before": {
     "sneak": "x",
     "colossus": "x",
