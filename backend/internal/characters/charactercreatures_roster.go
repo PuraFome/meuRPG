@@ -21,7 +21,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
 // What the play module reads and writes of a character's creatures (MR-037),
@@ -184,7 +183,7 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 		cast = &sm.GroupID
 	}
 	at := s.now()
-	var env *formula.Env // the owner's, worked out once and only for a creature with formulas
+	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
 		d, ok := content.MonsterDerived(spec.MonsterKey)
 		if !ok {
@@ -193,12 +192,7 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 		var stat []byte
 		if content.CreatureHasFormulas(spec.MonsterKey) {
 			var err error
-			if env == nil {
-				if env, err = s.ownerEnv(ctx, q, content, sm.CampaignID, sm.CharacterID); err != nil {
-					return out, err
-				}
-			}
-			if stat, d.HitPointsMax, err = resolveForOwner(content, env, spec.MonsterKey); err != nil {
+			if stat, d.HitPointsMax, err = owner.resolve(ctx, spec.MonsterKey); err != nil {
 				return out, err
 			}
 		}

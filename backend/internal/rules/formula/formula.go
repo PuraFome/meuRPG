@@ -508,19 +508,24 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 		return fmt.Errorf("%s takes %d argument(s), got %d", callee.Value, arity, len(n.Arguments))
 	}
 	if literals != nil {
-		s, ok := n.Arguments[0].(*ast.StringNode)
-		if !ok {
-			return fmt.Errorf("the argument of %s must be written as text, such as %s(%q)", callee.Value, callee.Value, literals[0])
-		}
-		if !slices.Contains(literals, s.Value) {
-			return fmt.Errorf("%s does not accept %q", callee.Value, s.Value)
-		}
-		return nil
+		return checkLiteralArg(n, callee.Value, literals)
 	}
 	for _, arg := range n.Arguments {
 		if err := c.check(arg); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// checkLiteralArg checks that the only argument of the call is text written out and one of the literals.
+func checkLiteralArg(n *ast.CallNode, name string, literals []string) error {
+	s, ok := n.Arguments[0].(*ast.StringNode)
+	if !ok {
+		return fmt.Errorf("the argument of %s must be written as text, such as %s(%q)", name, name, literals[0])
+	}
+	if !slices.Contains(literals, s.Value) {
+		return fmt.Errorf("%s does not accept %q", name, s.Value)
 	}
 	return nil
 }

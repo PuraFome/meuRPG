@@ -41,6 +41,26 @@ func (s *Service) ownerEnv(ctx context.Context, q *charactersdb.Queries, content
 	return rules.OwnerEnv(d, b.Shield && !d.ShieldIdle), nil
 }
 
+// lazyOwner is the formula environment of the character that is given creatures, worked out on the first
+// creature with formulas and kept for the rest.
+type lazyOwner struct {
+	s                       *Service
+	q                       *charactersdb.Queries
+	content                 *rules.Content
+	campaignID, characterID string
+	env                     *formula.Env
+}
+
+// resolve is resolveForOwner for the owner, whose environment is worked out once.
+func (l *lazyOwner) resolve(ctx context.Context, key string) (stat []byte, hp int, err error) {
+	if l.env == nil {
+		if l.env, err = l.s.ownerEnv(ctx, l.q, l.content, l.campaignID, l.characterID); err != nil {
+			return nil, 0, err
+		}
+	}
+	return resolveForOwner(l.content, l.env, key)
+}
+
 // resolveForOwner works out the snapshot of the table creature key for the character (the slot is 0: the
 // creature was not made by a slot). It returns the JSON to store and the creature's hit points.
 func resolveForOwner(content *rules.Content, env *formula.Env, key string) (stat []byte, hp int, err error) {
