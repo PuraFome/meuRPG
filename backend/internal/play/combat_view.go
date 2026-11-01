@@ -139,7 +139,7 @@ type encounterData struct {
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
-func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter) (*encounterData, error) {
+func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, rerolls bool) (*encounterData, error) {
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
@@ -156,7 +156,7 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, err
 	}
-	allHolds, err := openHoldsOfCombat(ctx, q, enc.ID)
+	allHolds, err := openHoldsOfCombat(ctx, q, enc.ID, rerolls)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string)
 }
 
 // openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, in the shape of the gate.
-func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID string, rerolls bool) ([]heldRoll, error) {
 	rows, err := q.ListOpenInspirationHoldsOfEncounter(ctx, &encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list the held rolls of the combat: %w", err)
@@ -246,7 +246,7 @@ func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID strin
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
-	return out, nil
+	return withoutDeadRerolls(out, rerolls), nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -808,7 +808,7 @@ func (s *Service) GetEncounter(
 		if err != nil {
 			return fmt.Errorf("find the encounter: %w", err)
 		}
-		d, err = loadEncounter(ctx, q, enc)
+		d, err = loadEncounter(ctx, q, enc, s.d20Rerolls)
 		return err
 	})
 	if err != nil {

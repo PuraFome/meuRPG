@@ -297,7 +297,7 @@ func (s *Service) openHeldRolls(ctx context.Context, campaignID string) ([]heldR
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
-	return out, nil
+	return withoutDeadRerolls(out, s.d20Rerolls), nil
 }
 
 // listedCombat is a combat the list has read: its row and its combatants.

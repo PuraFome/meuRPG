@@ -372,7 +372,7 @@ func TestAKindThatNeverAsksIsNotHeldForARerollWithTheSwitchOn(t *testing.T) {
 // A question written with the switch on that still waits when it goes off never blocks the roller. A roller whose gate
 // runs (a halfling, whose Lucky may ask) forgets it in the next roll, which is written at once and not refused with
 // REROLL_PENDING; for any other roller the gate has nothing to ask and does not look, and the old question, which the
-// client cannot answer (its answer fails), stays harmlessly in the table until a roll of that kind runs the gate.
+// client cannot answer (its answer fails), stays in the table, offered by no reader, until a roll that runs the gate forgets it.
 func TestAQuestionLeftWaitingWhenTheSwitchGoesOffDoesNotBlockTheRoller(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, race string }{{"a roller whose gate runs", "race:halfling"}, {"a roller whose gate does not run", ""}} {
@@ -489,5 +489,41 @@ func TestTheOrphanCleanupKeepsAPendingRerollAndDeletesAStaleHoldThatAsksNothing(
 	}
 	if n := r.holds(t); n != 0 {
 		t.Errorf("%d rows after the cleanup, want the stale hold that asks nothing deleted", n)
+	}
+}
+
+// With the switch off no reader offers a reroll question left waiting from when it was on: not the list of the caller
+// (the scene check, out of a combat), nor the combat's view and the list for a weapon attack held in a combat.
+func TestWithTheSwitchOffNoReaderOffersALeftoverRerollQuestion(t *testing.T) {
+	t.Parallel()
+	r := usualD20RerollParty(t)
+	point, actions := r.h.newScene(r.mapID, "O muro do pátio", true, 5, sceneSpec{key: "skill:athletics", dc: new(int32(15))})
+	r.openScene(t, point)
+	if held, err := r.rollSceneTyped(t, r.caio, actions[0], newKey(), 2); err != nil || held.GetHeldRollOffer().GetReroll() == nil {
+		t.Fatalf("the check on a 2 = %v, %v; want the reroll question", held, err)
+	}
+	e := r.closeFight(t)
+	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
+	if err != nil || res.GetHeldRollOffer().GetReroll() == nil {
+		t.Fatalf("RollAttack(2) = %v, %v; want the reroll question", res, err)
+	}
+	if list := r.listHeldRolls(t, r.caio); len(list) != 2 {
+		t.Fatalf("the list with the switch on = %v, want both questions", list)
+	}
+	if c := byLabel(t, r.get(t, r.caio), "Toren"); c.GetHeldRollOffer() == nil {
+		t.Fatal("the combat view with the switch on has no question on Toren")
+	}
+	r.h.svc.d20Rerolls = false
+	if list := r.listHeldRolls(t, r.caio); len(list) != 0 {
+		t.Errorf("the player's list = %v, want no leftover question", list)
+	}
+	if list := r.listHeldRolls(t, r.master); len(list) != 0 {
+		t.Errorf("the master's list = %v, want no leftover question", list)
+	}
+	if c := byLabel(t, r.get(t, r.caio), "Toren"); c.GetHeldRollOffer() != nil {
+		t.Errorf("Toren's combat view = %v, want no question", c.GetHeldRollOffer())
+	}
+	if c := byLabel(t, r.get(t, r.master), "Toren"); c.GetHeldRollOffer() != nil {
+		t.Errorf("Toren's combat view for the master = %v, want no question", c.GetHeldRollOffer())
 	}
 }

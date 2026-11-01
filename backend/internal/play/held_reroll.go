@@ -120,6 +120,16 @@ func (r *rerollAsk) keep(h *heldRoll) {
 	h.RerollResource, h.RerollCost, h.RerollSource = r.Resource, r.Cost, r.Source
 }
 
+// withoutDeadRerolls leaves out the reroll questions still waiting when the switch is off (they were written with it on):
+// no reader offers a question the client cannot answer. The hold itself is forgotten by the next roll of the roller that
+// runs the gate, by an answer tried on it, or by the cleanup of the orphans.
+func withoutDeadRerolls(holds []heldRoll, rerolls bool) []heldRoll {
+	if rerolls {
+		return holds
+	}
+	return slices.DeleteFunc(holds, rerollAsks)
+}
+
 // rerollAsks says the roll waits for the reroll answer.
 func rerollAsks(h heldRoll) bool {
 	return h.RerollAsk && h.RerollAnswerKey == nil && h.AnswerKey == nil
