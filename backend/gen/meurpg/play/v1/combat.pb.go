@@ -13930,7 +13930,11 @@ type SpellSlot struct {
 	// The slot level, 1 to 9.
 	Level int32 `protobuf:"varint,1,opt,name=level,proto3" json:"level,omitempty"`
 	// True for a Warlock's pact magic slot (level is then its level).
-	Pact          bool `protobuf:"varint,2,opt,name=pact,proto3" json:"pact,omitempty"`
+	Pact bool `protobuf:"varint,2,opt,name=pact,proto3" json:"pact,omitempty"`
+	// The resource of an innate spell's uses a day, when the spell is cast with one of
+	// them and not with a slot (level is then the spell's own). Empty for a slot.
+	// Only the master and the caster's owner read the resource itself; any other viewer reads "innate".
+	Resource      string `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -13977,6 +13981,13 @@ func (x *SpellSlot) GetPact() bool {
 		return x.Pact
 	}
 	return false
+}
+
+func (x *SpellSlot) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
 }
 
 // SpellTarget is one target of a spell.
@@ -26390,10 +26401,11 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11expected_event_id\x18\x03 \x01(\tR\x0fexpectedEventId\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"Q\n" +
 	"\x16UndoLastActionResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"5\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"Q\n" +
 	"\tSpellSlot\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x12\n" +
-	"\x04pact\x18\x02 \x01(\bR\x04pact\"l\n" +
+	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x1a\n" +
+	"\bresource\x18\x03 \x01(\tR\bresource\"l\n" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +

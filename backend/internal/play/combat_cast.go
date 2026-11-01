@@ -632,6 +632,7 @@ func (f *castFlow) spendCastSlot(ctx context.Context) error {
 	if slotVitals != nil {
 		f.out.vitals = append(f.out.vitals, slotVitals)
 	}
+	f.out.made.SlotCounted = f.caster.Kind != kindPlayer
 	return nil
 }
 

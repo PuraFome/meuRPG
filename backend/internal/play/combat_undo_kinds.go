@@ -818,6 +818,9 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 	if who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
 	}
+	if !ev.SlotCounted { // an NPC's cast that did not count its slot has none to give back
+		return nil
+	}
 	return u.s.giveBackNPCSlot(ctx, u.c, who, *ev.Slot)
 }
 

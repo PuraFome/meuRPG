@@ -749,6 +749,26 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     ).toBe(' conjura Escudo Arcano (1º\u00a0nível), com a reação');
     expect(
       logLine(
+        entry({
+          kind: CombatLogKind.REACTION,
+          actorLabel: 'Couatl',
+          keyNamePt: 'Escudo Arcano',
+          spell: { slot: { level: 1, pact: false, resource: 'innate_3_day_shield' } },
+        } as never),
+      )?.text,
+    ).toBe(' conjura Escudo Arcano (conjuração inata), com a reação');
+    expect(
+      logLine(
+        entry({
+          kind: CombatLogKind.REACTION,
+          actorLabel: 'Couatl',
+          keyNamePt: 'Escudo Arcano',
+          spell: { slot: { level: 1, pact: false, resource: 'innate' } },
+        } as never),
+      )?.text,
+    ).toBe(' conjura Escudo Arcano (conjuração inata), com a reação');
+    expect(
+      logLine(
         attack({
           actorLabel: 'Pensantus',
           targetLabel: 'Goblin 1',

@@ -10,7 +10,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 
 | Reaction | Trigger (SRD 5.1) | Held until answered |
 | --- | --- | --- |
-| Shield | A hit on the reactor, or Magic Missile | The hit's damage roll (`AWAITING_REACTION`) |
+| Shield | A hit on the reactor, or Magic Missile | The hit's damage roll (`AWAITING_REACTION`). Offers the slots and, for a creature with the Innate Spellcasting grant, a use of its resource |
 | Uncanny Dodge | A hit the rogue sees, after the damage is rolled | The damage landing: halved, rounded down |
 | Deflect Missiles | A ranged weapon hit on the monk | The damage landing, less 1d10 + Dexterity + monk level; at 0 it is caught and, for 1 ki, thrown back with `RollAttack(catch_window_id)`. The server builds the attack from the missile (its dice plus Dexterity, proficiency plus Dexterity to hit, 20/60 ft) and ignores `attack_key`. The second-step prompt (`DeflectMissilesThrowPrompt`) carries the missile's name and bonus; closing that sheet without a roll passes the window (the missile is kept) |
 | Hellish Rebuke | The reactor was damaged by a creature it sees within 60 ft, and survived | Nothing: it happens after. Offers the Infernal Legacy (a 2nd-level cast, once per long rest) and the slots; the NPC aggressor's save is the master's (second step) |
@@ -41,6 +41,10 @@ It is the reactor's player, or the master for an NPC's and, to answer for the pl
 When a non-critical blow hits a player character who can cast Shield now (prepared, with a free slot, reaction free, standing), the pending damage is born `AWAITING_REACTION`, not `AWAITING_ROLL`.
 The attacker sees "esperando a reação"; the hit player and the master get the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total).
 The player decides without knowing the total, as at a table.
+A creature whose Innate Spellcasting lists a reaction spell with uses a day (the Couatl's Shield) gets the use as one more `SlotChoice`, with `resource` set to the resource key and `free` and `total` counting uses.
+Answering with that `resource` counts one use under `res:<resource>` in the combatant's `slots_used`.
+The undo gives the use back, as it gives a slot back.
+The same path serves any reaction spell the window handles.
 The attacker's sheet follows the answer: on each `encounter_changed` it reads `GetTurnOptions` again, a pending damage that is gone (Shield stopped the hit) turns the result into a miss, and one back in `AWAITING_ROLL` goes on to the damage.
 The player learns only that, never the armor class.
 

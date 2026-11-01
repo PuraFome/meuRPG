@@ -33,7 +33,8 @@
     "ResourceMax": {
       "bardic_inspiration": 4
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bardo, pergunta padrão": {
     "Spells": null,
@@ -69,7 +70,8 @@
     "ResourceMax": {
       "bardic_inspiration": 4
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bardo, pergunta sempre": {
     "Spells": null,
@@ -105,7 +107,8 @@
     "ResourceMax": {
       "bardic_inspiration": 4
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "bruxo tiefling 3": {
     "Spells": null,
@@ -141,7 +144,8 @@
     "ResourceMax": {
       "infernal_legacy": 1
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "feiticeiro tiefling 1": {
     "Spells": null,
@@ -175,7 +179,8 @@
     "CharmImmune": false,
     "StatBlock": false,
     "ResourceMax": {},
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "goblin de ficha básica": {
     "Spells": null,
@@ -209,7 +214,8 @@
     "CharmImmune": false,
     "StatBlock": true,
     "ResourceMax": null,
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "guerreiro que não conjura": {
     "Spells": null,
@@ -246,7 +252,8 @@
       "action_surge": 1,
       "second_wind": 1
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "ladino 5": {
     "Spells": null,
@@ -280,7 +287,8 @@
     "CharmImmune": false,
     "StatBlock": false,
     "ResourceMax": {},
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "mago com magias preparadas": {
     "Spells": [
@@ -327,7 +335,8 @@
     "ResourceMax": {
       "arcane_recovery": 1
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "mago do bestiário": {
     "Spells": [
@@ -378,7 +387,8 @@
     "CharmImmune": false,
     "StatBlock": true,
     "ResourceMax": null,
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "monge 3": {
     "Spells": null,
@@ -414,7 +424,8 @@
     "ResourceMax": {
       "ki": 3
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "refused: a character that is not there": {
     "code": "not_found",

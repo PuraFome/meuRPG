@@ -74,3 +74,24 @@ export function stepSquare(from: Square, key: string, columns: number, rows: num
 export function circleLabel(level: number): string {
   return level === 0 ? 'Truque' : `${level}º\u00a0nível`;
 }
+
+/** What a choice is called: its circle, "(pacto)" for a pact slot, or the uses left of an innate spell. */
+export function slotTitle(s: {
+  level: number;
+  pact: boolean;
+  free: number;
+  total: number;
+  resource?: string;
+}): string {
+  if (s.resource) {
+    return `Conjuração inata (${s.free} de ${s.total} usos)`;
+  }
+  return s.pact ? `${circleLabel(s.level)} (pacto)` : circleLabel(s.level);
+}
+
+/** "3 de 4 livres" when the total is known, else "3 livres". */
+export function freeLabel(slot: { free: number; total: number }): string {
+  if (slot.total > 0)
+    return `${slot.free} de ${slot.total} ${slot.free === 1 ? 'livre' : 'livres'}`;
+  return `${slot.free} ${slot.free === 1 ? 'livre' : 'livres'}`;
+}

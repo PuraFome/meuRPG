@@ -628,6 +628,9 @@ type ReactionStats struct {
 	// MonsterReactions are the reactions a stat block lists (SRD 5.1, "Reactions"):
 	// Parry changes the armor class, any other one is text for the master.
 	MonsterReactions []MonsterReaction
+	// Innate are the spells a stat block casts innately with the uses a day of a resource (the
+	// Couatl's Shield): a reaction can spend one of them where a slot is not needed.
+	Innate []InnateUse
 }
 
 // MonsterReaction is a reaction of a stat block. Kind is "parry" (ACBonus is what it
@@ -635,6 +638,12 @@ type ReactionStats struct {
 type MonsterReaction struct {
 	Kind    string
 	ACBonus int
+}
+
+// InnateUse is an innate spell with the resource that holds its uses and how many a day.
+type InnateUse struct {
+	Spell, Resource string
+	Max             int
 }
 
 // ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage

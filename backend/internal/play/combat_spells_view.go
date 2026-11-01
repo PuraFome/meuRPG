@@ -18,11 +18,21 @@ import (
 // NPC's dice never reach a player); whether an NPC's save bonus is known is the
 // master's.
 
-func slotProto(s *slotRef) *playv1.SpellSlot {
+// innateSlotMarker is what a viewer who may not read the resource of an innate use reads in its place: the
+// cast was innate, and the key and the uses a day stay with the master and the caster's player.
+const innateSlotMarker = "innate"
+
+// slotProto is the slot of a cast as the viewer gets it: the resource of an innate use (a stat block's uses a
+// day) is the master's and the caster's player's, everyone else reads only that the cast was innate.
+func slotProto(s *slotRef, v combatViewer, caster playdb.Combatant) *playv1.SpellSlot {
 	if s == nil {
 		return nil
 	}
-	return &playv1.SpellSlot{Level: s.Level, Pact: s.Pact}
+	out := &playv1.SpellSlot{Level: s.Level, Pact: s.Pact, Resource: s.Resource}
+	if out.Resource != "" && !v.master && !v.owns(caster) {
+		out.Resource = innateSlotMarker
+	}
+	return out
 }
 
 // saveView is a target's saving throw as the viewer may see it.
@@ -207,7 +217,7 @@ func (s *Service) castProto(ctx context.Context, res combatResult, ev actionEven
 // header of a spell that reads hit points and the Metamagic it spent.
 func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *playv1.SpellCast {
 	out := &playv1.SpellCast{
-		CastId: ev.CastID, SpellKey: shownKey(v, caster, ev.Key), Slot: slotProto(ev.Slot), Concentrating: ev.Concentrate,
+		CastId: ev.CastID, SpellKey: shownKey(v, caster, ev.Key), Slot: slotProto(ev.Slot, v, caster), Concentrating: ev.Concentrate,
 		ConcentrationEndedSpellKey: ev.ConcEnded,
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)

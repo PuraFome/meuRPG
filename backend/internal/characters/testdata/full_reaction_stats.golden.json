@@ -31,7 +31,8 @@
     "CharmImmune": false,
     "StatBlock": false,
     "ResourceMax": {},
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "every branch, asking for every attack": {
     "Spells": [
@@ -78,7 +79,8 @@
       "ki": 3,
       "superiority": 4
     },
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   },
   "nothing derived, no full sheet": {
     "Spells": null,
@@ -112,6 +114,7 @@
     "CharmImmune": false,
     "StatBlock": false,
     "ResourceMax": {},
-    "MonsterReactions": null
+    "MonsterReactions": null,
+    "Innate": null
   }
 }

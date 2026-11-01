@@ -434,6 +434,7 @@ A hidden member is never named: the turn waits for the master's part as "Falta o
 **Spells and reactions.**
 
 - A target's saving throw goes to the player as a word (passed or failed). The dice go to the master and the owner of a target character, never an NPC's. The DC goes to the master and the caster, and to the owner of the target that rolls the save when the table rule "Os jogadores veem a CD dos testes de resistência" is on (RN-24).
+- The key and the uses a day of an innate use go to the master and the caster's owner, and every other player reads only that the cast was innate ("conjuração inata").
 - A cast that touches a hidden combatant leaves no line for the player. The reaction prompt carries neither the attacker nor the hit's total. The player cannot aim at a hidden target.
 - **Spells that read HP** (Sleep, Color Spray, Power Word Stun, Power Word Kill, Spare the Dying, Heal; "Sono", "Leque Cromático", "Palavra de Poder Atordoar", "Palavra de Poder Matar", "Estabilizar", "Cura Completa") are resolved with the real hit points, and the player still sees only words. The caster sees their own total (`5d8 (2, 4, 1, 5, 3) = 15`) and who was affected ("adormeceu", "não foi afetado"), never a target's hit points or the reason. The master sees the total, each creature's hit points, what remained and the reason. Other players see only who was affected and the condition. Targets are listed in the caster's order, not the order of the total, which would reveal who has the least hit points. Power Word Kill on a player character takes them to 0 with three failures, and the master confirms the death (RN-03).
 
@@ -810,6 +811,10 @@ An attack or a move goes through the ordinary attack or movement flow.
 An option the engine cannot resolve is offered as text and still counts.
 No spend is allowed while a reaction window or hold waits for an answer.
 The players read no spend, only the ordinary attack or movement line (RN-20).
+A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from one combat to the next, until the table's long rest.
+A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
+Several copies of one hand-made NPC each start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
+A short rest changes nothing for an NPC.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates

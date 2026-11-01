@@ -618,7 +618,7 @@ func wantGolden(t *testing.T, path, got string) {
 // stateTables are the tables a golden prints, which markCall snapshots to tell a call that changed nothing.
 var stateTables = []string{
 	"combatants", "combatant_states", "character_vitals", "character_wild_shapes", "pending_damages",
-	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts",
+	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts", "npc_spell_use",
 }
 
 // stateSnapshot is the rows of the stateTables and the number of events as one text.

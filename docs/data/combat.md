@@ -222,7 +222,7 @@ For a `creature`, `character_id` and `user_id` are the **owner's**, and `creatur
 | Conditions | `conditions` (SRD keys, at most 20) and `condition_sources` (JSON), `concentration_spell`, `exhaustion_level` (0 to 6). |
 | What lasting effects leave | `effect_conditions`, `effect_ac_bonus`, `effect_speed_pct` (0 to 400), `effect_speed_add_ft`, `effect_no_action`, `effect_no_move`, `effect_no_reaction` (the Open Hand technique), `hp_max_base`: worked out again after every change to the effects. |
 | Bardic Inspiration | `inspiration_sides`, `inspiration_from`, `inspiration_expires_round`: all `NULL` together or a valid die (6, 8, 10, 12; round at least 1). Ends with the combat. |
-| Spent resources of an NPC | `slots_used` (JSON: slots, pact slots and resource uses an NPC spent in this combat). |
+| Spent resources of an NPC | `slots_used` (JSON: slots, pact slots and resource uses an NPC spent in this combat; a hand-made NPC joins with the count of `npc_spell_use`, see [Characters](characters.md#npc_spell_use)). |
 | Spent by a stat block | `creature_spent`: JSON `{"<key>": N}`, at most 4096 bytes, only what was spent, absent is 0. Keys: `legendary_actions` (taken since the creature's last turn, cleared by `ResetCombatantTurn`) and `legendary_resistance` (uses spent in this combat). `use:<action key>` and `recharge:<action key>` are reserved for the N/day and Recharge actions. A reaction stays in `reaction_used`. |
 | Death | `defeated`, `death_successes`, `death_failures` (0 to 3 each), `death_round`, `death_order_index`, `revivify_blocked` (see below). |
 
