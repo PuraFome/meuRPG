@@ -19,7 +19,9 @@ import (
 // whose trigger names the zone. The player rolls in the app or types the d20 as the table's dice say, the app
 // adds the bonus, the turn waits for the answer, and what the save does (the damage, halved on a pass, or the
 // restraint of the web) is done as the zone does it for an NPC. NPCs are rolled by the server at once, as the
-// saving throws of a cast are.
+// saving throws of a cast are, except one with Legendary Resistance and a use left: the master is asked, as for any
+// save the master rolls for a creature, and the answer may name the trait (use_legendary_resistance). The window is
+// the master's alone, and a player reads the wait any window gives, never what it is for.
 
 // zoneWindowGroup is the group of the questions a creature owes on a turn: they are answered in the order
 // they were opened, which is the order the spells were cast (the windows of a group are answered one at a time).
@@ -27,7 +29,8 @@ func zoneWindowGroup(encounterID, reactorID, mark string) string {
 	return uuid.NewSHA1(uuid.NameSpaceOID, []byte("zone|"+encounterID+"|"+reactorID+"|"+mark)).String()
 }
 
-// askZoneSave opens the question of the saving throw to the creature's player.
+// askZoneSave opens the question of the saving throw: to the creature's player, or, for an NPC with Legendary
+// Resistance, to the master (asksTheSave).
 func (s *Service) askZoneSave(ctx context.Context, c *combatTx, k zoneCatch, owner playdb.Combatant) error {
 	trigger := windowTrigger{Actor: owner.ID, Target: k.who.ID, Key: k.z.row.SpellKey, Zone: k.z.row.ID, Phase: k.why}
 	if k.made != nil { // a catch at the cast: the cast records the creature, with the conditions the answer may change
@@ -86,6 +89,9 @@ func (s *Service) loadZoneSave(ctx context.Context, c *combatTx, x *effectSaveSt
 	x.ability, x.dc = z.row.SaveAbility, z.row.SaveDc
 	x.ev = actionEvent{Round: c.enc.Round, Secret: owner.Hidden || x.reactor.Hidden, Actor: owner.ID, Target: x.reactor.ID, Key: z.row.SpellKey}
 	x.le = &lastingEvent{Key: z.row.SpellKey, Change: "saved", Targets: []string{x.reactor.ID}, Caster: owner.ID, Reason: x.t.Phase, Ability: x.ability, DC: x.dc}
+	if x.t.Phase == zoneWhyCast { // the answer belongs to the cast: its undo gives back the use the answer spent (resistedBackOfAnswers)
+		x.ev.CastID = z.row.CastID
+	}
 	return nil
 }
 
@@ -138,6 +144,36 @@ func (s *Service) closeCastZoneWindows(ctx context.Context, c *combatTx, castID 
 		}
 		if err := s.closeZoneWindows(ctx, c, z.row.ID, endByMaster); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// zoneResistsBack gives back the uses of Legendary Resistance the master spent on the answers to the catches of a cast
+// (the creatures an area caught when it was cast): the answers are written after the cast, and the undo of the cast
+// takes back what they did.
+func (s *Service) zoneResistsBack(ctx context.Context, c *combatTx, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, castID string) error {
+	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
+	if at <= 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, newer := range recent[:at] {
+		if newer.Kind != eventLastingSaved {
+			continue
+		}
+		ev, err := readEvent(newer.Payload)
+		if err != nil || ev.CastID != castID || !ev.Resisted {
+			continue
+		}
+		if _, here := combatantByID(cs, ev.Target); !here {
+			continue // a creature that left the combat has nothing to put back
+		}
+		if _, err := bumpCreatureSpent(ctx, c.q, ev.Target, spentLegendaryResistance, -1); err != nil {
+			return fmt.Errorf("give the Legendary Resistance back: %w", err)
 		}
 	}
 	return nil
