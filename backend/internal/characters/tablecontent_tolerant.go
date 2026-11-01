@@ -10,29 +10,34 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// maxTolerantPasses bounds how many times a content is rebuilt, each time without
-// the entries the engine refused in the pass before.
+// maxTolerantPasses bounds how many times a content is rebuilt.
+// Each pass leaves out the entries the engine refused in the pass before.
 const maxTolerantPasses = 16
 
-// errTooManyPasses is what buildTolerant returns when entries kept being refused after
-// maxTolerantPasses rebuilds; no partial content is served.
+// errTooManyPasses is what buildTolerant returns when the passes run out.
+// No partial content is served.
 var errTooManyPasses = errors.New("the content kept being refused after leaving entries out")
 
-// leftOut is a stored entry that the content was built without, with everything the
-// engine found wrong with it.
+// leftOut is a stored entry that the content was built without.
+// It carries every violation the engine found in it.
 type leftOut struct {
 	Key        string
 	Kind       rulesv1.TableContentKind
 	Violations []*rulesv1.TableContentViolation
 }
 
-// buildTolerant is srd.With the overlay of entries, built without the entries the
-// engine refuses and the ones that depend on them.
-// An error that names no entry, or only entries in strict, is returned as it is.
+// buildTolerant is srd.With the overlay of entries, built without the entries the engine refuses.
+// The entries that depend on a refused one are left out too.
+// An error that names no entry, or names an entry in strict, is returned as it is.
 func buildTolerant(srd *rules.Content, entries []entryRow, revision int, off []string, strict ...string) (*rules.Content, []leftOut, error) {
+	return buildPasses(maxTolerantPasses, srd, entries, revision, off, strict)
+}
+
+// buildPasses is buildTolerant with the number of passes it may take.
+func buildPasses(passes int, srd *rules.Content, entries []entryRow, revision int, off, strict []string) (*rules.Content, []leftOut, error) {
 	var out []leftOut
 	live := entries
-	for range maxTolerantPasses {
+	for range passes {
 		overlay, idx := overlayFromEntries(live, revision)
 		overlay.Off = off
 		content, err := srd.With(overlay)
@@ -49,8 +54,8 @@ func buildTolerant(srd *rules.Content, entries []entryRow, revision int, off []s
 	return nil, nil, errTooManyPasses
 }
 
-// blameLive groups the violations by the live entry they name. It reports false when
-// one names no entry, an entry that is not live or one that must stay.
+// blameLive groups the violations by the live entry they name.
+// It reports false when one names no entry, an entry that is not live or one that must stay.
 func blameLive(violations []*rulesv1.TableContentViolation, live []entryRow, strict []string) ([]leftOut, bool) {
 	var out []leftOut
 	for _, v := range violations {
@@ -74,7 +79,8 @@ func withoutKeys(entries []entryRow, out []leftOut) []entryRow {
 	})
 }
 
-// refusedOf is what the content reports of the entries left out: the first violation of each.
+// refusedOf is what the content reports of the entries left out.
+// It keeps the first violation of each.
 func refusedOf(out []leftOut) []rules.Refused {
 	if len(out) == 0 {
 		return nil
@@ -105,7 +111,8 @@ func decodeTolerant(rows []charactersdb.CampaignContent) ([]entryRow, []leftOut)
 	return entries, out
 }
 
-// buildFromRows is buildTolerant over stored rows: a row that cannot be read is left out too.
+// buildFromRows is buildTolerant over stored rows.
+// A row that cannot be read is left out too.
 func buildFromRows(srd *rules.Content, rows []charactersdb.CampaignContent, revision int, off []string) (*rules.Content, error) {
 	entries, unreadable := decodeTolerant(rows)
 	content, out, err := buildTolerant(srd, entries, revision, off)
@@ -118,8 +125,16 @@ func buildFromRows(srd *rules.Content, rows []charactersdb.CampaignContent, revi
 	return content.WithRefused(refusedOf(append(unreadable, out...))), nil
 }
 
-// withoutStoredLeftOut is after without the entries the stored rows alone already
-// leave out, except key. It reports false when there is none to drop.
+// onlyThisEntry says whether every violation is in the entry being written.
+func onlyThisEntry(violations []*rulesv1.TableContentViolation) bool {
+	return !slices.ContainsFunc(violations, func(v *rulesv1.TableContentViolation) bool {
+		return v.GetKey() != "" || !strings.HasPrefix(v.GetField(), "table_")
+	})
+}
+
+// withoutStoredLeftOut is after without the entries the stored rows already leave out.
+// The entry key is never dropped.
+// It reports false when there is none to drop.
 func withoutStoredLeftOut(srd *rules.Content, stored, after []entryRow, revision int, key string) ([]entryRow, bool) {
 	if len(stored) == 0 {
 		return nil, false

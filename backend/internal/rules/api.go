@@ -249,7 +249,7 @@ func (c *Content) WithRefused(refused []Refused) *Content {
 
 // Refused lists the stored entries the content was built without, in key order.
 // It is empty for a content built from every entry.
-func (c *Content) Refused() []Refused { return c.refused }
+func (c *Content) Refused() []Refused { return slices.Clone(c.refused) }
 
 // LoadSRD loads the embedded SRD 5.1 snapshot and effects, checks them and
 // compiles every formula. Call it once at startup and fail fast on error:

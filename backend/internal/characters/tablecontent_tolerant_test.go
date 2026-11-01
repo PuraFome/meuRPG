@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"errors"
 	"slices"
 	"testing"
 
@@ -74,5 +75,20 @@ func TestBuildTolerantFailsWhenTheErrorNamesNoEntryOrAStrictOne(t *testing.T) {
 	race := storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_RACE, "race:gnomo-teste@mesa", "Gnomo de teste", testRace("Gnomo de teste"))
 	if _, _, err := buildTolerant(srd, []entryRow{race}, -1, nil); err == nil {
 		t.Error("a keyless violation was tolerated")
+	}
+}
+
+func TestBuildTolerantFailsWhenThePassesRunOut(t *testing.T) {
+	t.Parallel()
+	srd := loadRules(t)
+	entries := []entryRow{
+		storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS, "class:guardiao@mesa", "", testClass("Guardião")),
+		storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS, "subclass:caminho@mesa", "Caminho", testSubclass("Caminho", "class:guardiao@mesa")),
+	}
+	if _, _, err := buildPasses(2, srd, entries, 1, nil, nil); !errors.Is(err, errTooManyPasses) {
+		t.Errorf("two passes: error = %v, want errTooManyPasses (the subclass needs a third)", err)
+	}
+	if _, out, err := buildPasses(3, srd, entries, 1, nil, nil); err != nil || len(out) != 2 {
+		t.Errorf("three passes: %v, %v; want both left out", out, err)
 	}
 }

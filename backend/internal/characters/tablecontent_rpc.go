@@ -258,13 +258,13 @@ type stored struct {
 // checkOverlay builds the campaign's whole overlay with the entries (the write's
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
-// stored are the entries before the write: one the rules already refuse there does
-// not make the write fail, and is left out of the check.
+// stored are the entries before the write.
+// One the rules already refuse there is left out of the check.
 func (s *Service) checkOverlay(stored, entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
-	if err != nil {
+	if err != nil && !onlyThisEntry(violationsOf(err, idx, key)) {
 		if rest, ok := withoutStoredLeftOut(s.srd, stored, entries, revision, key); ok {
 			overlay, idx = overlayFromEntries(rest, revision)
 			overlay.Strict = []string{key}

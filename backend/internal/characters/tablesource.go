@@ -150,9 +150,9 @@ func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id
 	if err != nil {
 		return nil, wrap("read the options switched off", err)
 	}
-	// An entry the rules refuse now (after an engine change) is left out with what
-	// depends on it, and the content reports it (Content.Refused). An error that
-	// names no entry still fails the read, which is better than a silent SRD.
+	// An entry the rules refuse is left out with what depends on it.
+	// The content reports what was left out (Content.Refused).
+	// An error that names no entry fails the read.
 	c, err := buildFromRows(s.srd, rows, int(revision), off)
 	if err != nil {
 		if errors.Is(err, errTooManyPasses) {

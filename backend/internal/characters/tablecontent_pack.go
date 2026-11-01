@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -270,8 +271,8 @@ type planner struct {
 	// excluded are the entries left out of the engine's check: the ones whose data cannot be
 	// checked, and the ones it has already refused.
 	excluded map[int]bool
-	// skipped are the stored entries outside the pack that the rules already refuse: they
-	// are left out of the check, as the live content leaves them out.
+	// skipped are the stored entries outside the pack that the rules already refuse.
+	// They are left out of the check, as the live content leaves them out.
 	skipped map[string]bool
 	plan    *importPlan
 }
@@ -431,22 +432,19 @@ func (p *planner) runEngine() {
 	}
 }
 
-// skipStored works out, once, which stored entries outside the pack the rules refuse on their
-// own, and reports whether there are any to leave out of the next pass.
+// skipStored works out, once, which stored entries outside the pack the rules refuse as stored.
+// It reports whether there are any to leave out of the next pass.
 func (p *planner) skipStored() bool {
 	if p.skipped != nil {
 		return false
 	}
 	p.skipped = map[string]bool{}
-	var stored []entryRow
-	for _, c := range p.cands {
-		if c.packIndex < 0 {
-			stored = append(stored, c.row)
-		}
-	}
+	stored := slices.SortedFunc(maps.Values(p.stored), func(a, b entryRow) int { return strings.Compare(a.row.ContentKey, b.row.ContentKey) })
 	if _, out, err := buildTolerant(p.srd, stored, int(p.revision), nil); err == nil {
 		for _, l := range out {
-			p.skipped[l.Key] = true
+			if _, inPack := p.packIdx[l.Key]; !inPack {
+				p.skipped[l.Key] = true
+			}
 		}
 	}
 	return len(p.skipped) > 0
