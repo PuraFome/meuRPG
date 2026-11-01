@@ -1614,7 +1614,7 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** an action with a limit ("Recarga 5–6", "3/dia" or after a rest) that I used, **then** it is spent, and the server refuses it again with nothing changed ("Essa ação da criatura ainda não recarregou. Nada foi gasto." or "Essa ação da criatura não tem mais usos. Nada foi gasto."); an action with uses a day stays available until its uses are gone.
 - **Given** a spent Recharge action, **when** its creature's turn starts, **then** the server rolls a d6 for it, in the stat block's order, and a face in its range makes it available again; I read the d6 and the result in the log, a defeated creature does not roll, and an action with uses a day or after a rest does not come back in the combat.
 - **Given** I undo the use of a limited action, **then** it is available again or has the use back; the roll at a turn start cannot be undone.
-- **Given** I am a player, **then** I read nothing of what a creature spent, of the roll or of the refusal, and a turn with a roll looks the same as one without (RN-20); the player who owns the creature reads the refusal of its own use.
+- **Given** I am a player, **then** I read nothing of what a creature spent, of the roll or of the refusal, and a turn with a roll looks the same as one without (RN-20); the player who owns the creature reads only that it cannot use the action now, the same for every limit.
 - **Given** I am a player, **then** I find no "Outras ações", I read the log line with the action's name and, for the targets I see, whether each passed or failed and the damage I take, and never the stat block, the DC or which creature it is (RN-20).
 
 #### In the app

@@ -224,7 +224,8 @@ Only a creature with a stat block has these limits, so a hand-made NPC keeps no 
 The spend is part of the use (`combat_action_limit.go`).
 It happens in the same change as the attack (`RollAttack`) or the action (`UseCreatureAction`) that uses the action.
 A Multiattack spends nothing of its own: each step is its own call and is limited by its own action key.
-A spent action is refused with nothing changed: `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
+A spent action is refused with nothing changed.
+The master reads `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
 The refusal comes before any roll, so the master may use another action.
 
 **The roll at the turn start** (`combat_recharge.go`).
@@ -238,7 +239,8 @@ Nothing is published for it: the turn start already tells everybody that the com
 The master reads each limited action with what it has left (`Combatant.limited_actions`) and the roll in his log line ([Combat log](combat-log.md)).
 A player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
 Only the master may use an NPC's action, so only the master is refused for a spent one.
-The player who owns a creature (RN-20) uses it and reads the reason of a refusal, since the creature is theirs.
+The player who owns a creature attacks with it and reads only `CREATURE_ACTION_UNAVAILABLE`, "the creature cannot use this action now", the same for every limit.
+Trying again each turn shows nothing of the Recharge roll.
 Another player has no call that reaches the action.
 
 **What undo does** ([Undo](undo.md)).

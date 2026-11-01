@@ -442,7 +442,7 @@ func (f *attackFlow) checkLimit(ctx context.Context) error {
 		return err
 	}
 	f.plan = plan
-	return checkActionLimit(plan, f.attacker)
+	return checkActionLimit(plan, f.attacker, f.v.master)
 }
 
 // spendLimit spends the use of a limited action in the transaction of the attack.

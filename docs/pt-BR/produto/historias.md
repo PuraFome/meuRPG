@@ -1614,7 +1614,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dado** uma ação com limite ("Recarga 5–6", "3/dia" ou depois de um descanso) que usei, **então** ela é gasta, e o servidor a recusa de novo sem mudar nada ("Essa ação da criatura ainda não recarregou. Nada foi gasto." ou "Essa ação da criatura não tem mais usos. Nada foi gasto."); uma ação com usos por dia continua disponível até os usos acabarem.
 - **Dado** uma ação de Recarga gasta, **quando** o turno da criatura começa, **então** o servidor rola um d6 para ela, na ordem da ficha, e uma face dentro do intervalo a deixa disponível de novo; leio o d6 e o resultado no registro, uma criatura derrotada não rola, e uma ação com usos por dia ou depois de um descanso não volta no combate.
 - **Dado** que desfaço o uso de uma ação com limite, **então** ela fica disponível de novo ou recupera o uso; a rolagem no começo de um turno não se desfaz.
-- **Dado** que sou jogador, **então** não leio nada do que a criatura gastou, da rolagem nem da recusa, e um turno com rolagem parece o mesmo que um sem ela (RN-20); o jogador dono da criatura lê a recusa do uso dela.
+- **Dado** que sou jogador, **então** não leio nada do que a criatura gastou, da rolagem nem da recusa, e um turno com rolagem parece o mesmo que um sem ela (RN-20); o jogador dono da criatura lê só que ela não pode usar a ação agora, igual para todo limite.
 - **Dado** que sou jogador, **então** não encontro "Outras ações", leio a linha do registro com o nome da ação e, para os alvos que vejo, se cada um passou ou falhou e o dano que tomo, e nunca a ficha, a CD nem qual criatura é (RN-20).
 
 #### No app

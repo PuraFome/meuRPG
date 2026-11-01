@@ -40,9 +40,14 @@ func limitSpent(plan rules.ActionPlan, who playdb.Combatant) bool {
 }
 
 // checkActionLimit refuses a limited action the creature has spent. Nothing changes.
-func checkActionLimit(plan rules.ActionPlan, who playdb.Combatant) error {
+// The master reads why. Anyone else reads only that the creature cannot use the action now, the same
+// for every limit, so trying again each turn tells a player nothing of the Recharge roll (RN-20, RN-29).
+func checkActionLimit(plan rules.ActionPlan, who playdb.Combatant, master bool) error {
 	if !limitSpent(plan, who) {
 		return nil
+	}
+	if !master {
+		return unavailable("the creature cannot use this action now")
 	}
 	if plan.Usage.Kind == rules.UsageRecharge {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING, "the action has not recharged")

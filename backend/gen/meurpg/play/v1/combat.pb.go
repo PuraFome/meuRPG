@@ -971,11 +971,12 @@ const (
 	// The same: the creature is no creature with the trait (the combatant is a player's character
 	// or its stat block does not have it). Refused before the roll; nothing changes.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE EncounterBlockedReason = 122
-	// UseCreatureAction and RollAttack with an action of a stat block that has a Recharge: the
-	// action was used and has not recharged. Nothing is spent.
+	// The master's UseCreatureAction and RollAttack with an action of a stat block that has a
+	// Recharge: the action was used and has not recharged. Nothing is spent. Anyone else reads
+	// CREATURE_ACTION_UNAVAILABLE instead, which says nothing of the limit.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING EncounterBlockedReason = 123
 	// The same, for an action with uses a day or one that recharges after a rest: every use is
-	// spent. Nothing is spent.
+	// spent. Nothing is spent. The same reading rule.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT EncounterBlockedReason = 124
 )
 

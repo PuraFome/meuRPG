@@ -121,7 +121,7 @@ func TestALimitedActionsStateIsTheMastersAlone(t *testing.T) {
 
 // A refused try is the same to a player whatever the creature has spent: only the master may use a creature's
 // action, and the answer a player gets does not tell whether it was spent. (The player who owns a creature of
-// a stat block reads the reason of a refused attack of a spent action: it is their own creature's, and
+// a stat block attacks with it and reads only that it cannot use the action now, the same whatever the limit:
 // TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone in the play package pins it.) The master's refusal
 // names the reason, and nothing changed.
 func TestARefusedSpentActionIsTheMastersAlone(t *testing.T) {

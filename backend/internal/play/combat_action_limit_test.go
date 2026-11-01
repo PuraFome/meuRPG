@@ -118,7 +118,8 @@ func TestActionLimit_UsesADayAndRestRunOut(t *testing.T) {
 // The attack of a Recharge action (a spider's Web, a ranged attack: a creature of a character has it as an
 // attack of its sheet) is spent by its roll and refused on the creature's next turn, and its undo gives the
 // use back. The bite beside it is not limited. The player who owns the creature (Toren's) makes these attacks and
-// reads the reason of the refusal: it is their own creature's action, not a secret of the master's.
+// reads only that the creature cannot use the action now: trying again each turn must not show the Recharge
+// roll (RN-20). The master reads the reason.
 func TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
@@ -145,7 +146,12 @@ func TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone(t *testing.T) {
 	e = c.ownTurnAgain(t, e, "Teia")
 	events := c.events(t)
 	_, err := c.attack(t, c.caio, e, "Teia", spiderWeb, "Goblin", twoD20(15))
-	wantBlockedBy(t, "RollAttack", err, recharging)
+	blocked := wantBlockedBy(t, "RollAttack by the owner", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE)
+	if text := strings.ToLower(err.Error() + blocked.String()); strings.Contains(text, "recharg") || strings.Contains(text, "uses") {
+		t.Errorf("the owner's refusal says why: %v", err)
+	}
+	_, err = c.attack(t, c.master, e, "Teia", spiderWeb, "Goblin", twoD20(15))
+	wantBlockedBy(t, "RollAttack by the master", err, recharging)
 	if c.events(t) != events || c.spentOf(t, id)[key] != 1 || byLabel(t, c.get(t, c.master), "Teia").GetActionUsed() {
 		t.Errorf("the refusal changed something: events %d (was %d), spent %v", c.events(t), events, c.spentOf(t, id))
 	}

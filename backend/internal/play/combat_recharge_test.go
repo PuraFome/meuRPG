@@ -315,3 +315,22 @@ func TestRN20_TheRechargeRollIsNotCountedWithoutTheFog(t *testing.T) {
 		t.Errorf("the revision went up by %d with a roll and by %d without, want the same", with, without)
 	}
 }
+
+// The roll at a turn start cannot be undone: it is the latest event, it is no undoable kind, and the use before
+// it stays spent.
+func TestRecharge_TheRollAtTheTurnStartCannotBeUndone(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	a.h.roller.queue(18)
+	a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren"})
+	a.h.roller.queue(6) // the Recharge roll recharges the breath
+	e = a.ownTurnAgain(t, e, hound)
+	if len(a.rechargeLines(t, a.master, e)) != 1 {
+		t.Fatalf("the master reads no roll line: %v", a.rechargeLines(t, a.master, e))
+	}
+	events := a.events(t)
+	wantBlockedBy(t, "UndoLastAction after the roll", a.undo(t, a.master, e, newKey()), blockedNothingToUndo)
+	if a.events(t) != events {
+		t.Errorf("the refused undo wrote events: %d (was %d)", a.events(t), events)
+	}
+}

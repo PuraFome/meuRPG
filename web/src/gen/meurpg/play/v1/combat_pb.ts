@@ -14263,8 +14263,9 @@ export enum EncounterBlockedReason {
   LEGENDARY_RESISTANCE_UNAVAILABLE = 122,
 
   /**
-   * UseCreatureAction and RollAttack with an action of a stat block that has a Recharge: the
-   * action was used and has not recharged. Nothing is spent.
+   * The master's UseCreatureAction and RollAttack with an action of a stat block that has a
+   * Recharge: the action was used and has not recharged. Nothing is spent. Anyone else reads
+   * CREATURE_ACTION_UNAVAILABLE instead, which says nothing of the limit.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING = 123;
    */
@@ -14272,7 +14273,7 @@ export enum EncounterBlockedReason {
 
   /**
    * The same, for an action with uses a day or one that recharges after a rest: every use is
-   * spent. Nothing is spent.
+   * spent. Nothing is spent. The same reading rule.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT = 124;
    */
