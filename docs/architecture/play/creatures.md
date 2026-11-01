@@ -49,8 +49,8 @@ The undo gives the slot back and removes the creatures.
 `granted_by` refuses a ritual and a slot in the same request (`INVALID_ARGUMENT`).
 A feature's summon is cast only through its feature.
 With a slot, as a ritual or with no `granted_by` it is refused.
-A sheet that lists it as a known or prepared spell gets `unknown_key` at that field.
-A sheet that lists it as a cantrip gets `spell_level`, as for any spell above the cantrips.
+A sheet that lists it as a cantrip, a known or a prepared spell, or as a pick, is refused like a key the content does not have: `Validate` says "is not a known key of the right kind" at that field, and `Derive` (a stored sheet) gives `unknown_key`, with no word of the feature in either.
+A `CastSummon` with `ritual` for its key, from a character without the feature, gets `not_found` ("spell not found"), as for an unknown key.
 The casting spends one use of the feature's resource, and is refused with `NO_USES` when none is left.
 The cast list shows a feature's summon as it shows any granted spell: the source, the uses left, the casting ability with its save DC and attack bonus, and the first circle of the hidden spell. The wire carries no flag that marks it, so the summon rolls no attack and asks for no save, and the numbers are those of the grant.
 The feature's `casting_time` is the time it takes; outside combat a time longer than an action is allowed, as for a spell.
@@ -60,6 +60,7 @@ A feature's summon is not a spell.
 No Counterspell window opens for it.
 It does not count as the turn's spell, and the limit of the turn's spells (a bonus action spell and another spell) does not stop it.
 The undo in a combat gives the use back, as it gives a slot back, and removes the creatures.
+A casting outside a combat that takes time and concentrates ends the caster's other concentration cast when it starts, before its own row is written (one concentrating cast at a time).
 `GetSummonOptions` names the feature with `granted_by`, `resource_key` and `uses_left`, and offers its one circle only while a use is left; it still lists the castings it would replace.
 A rest returns the uses by the resource's `recharge`.
 `GetSpellDetails` answers the feature's hidden spell to the master and to a player whose character has the entry of the feature, live or archived.
