@@ -8,7 +8,7 @@ import { authStatePath, newSignedInContext, waitForCampaignList } from './suppor
 // A request body over its procedure's read limit (docs/architecture/api.md#request-size-limits) is refused by the server
 // while the browser may still be sending it. The screen must show the Portuguese refusal, not the sentence for a network
 // failure: the person can fix the first and can only retry the second.
-// These two guard that: nothing in the page turns a refusal into a network failure.
+// These three guard that: nothing in the page turns a refusal into a network failure.
 test.use({ storageState: authStatePath('Mestre Teste') });
 
 const REFUSED_BY_A_LIMIT = 'O servidor recusou o pedido por um limite. Reduza o conteúdo ou tente de novo mais tarde.';
