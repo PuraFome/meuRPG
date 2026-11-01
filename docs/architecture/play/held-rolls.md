@@ -264,10 +264,7 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
   - The ability check of a Counterspell.
 - **Not offered.**
   - The trap search and the puzzle hint try go through the gate but give it no `strokeRule`, so they never ask.
-    This is a limit of the design so far, not a rule of the feature.
-    The search rolls two dice of Perception and its outcome depends on the trap's DC.
-    The hint try has no column for the use, and a retry compares the typed faces with the stored ones.
-  - The saving throws and the death save: the feature is for attacks and ability checks.
+  - The saving throws, the group check of a saving throw and the death save: the feature is for attacks and ability checks.
   - A cast with several attacks or targets, the initiative and the rolls inside someone else's call.
   - The rolls of the master and of NPCs never ask.
 - **Held only with a use left.** `heldGate` reads the vitals (`strokeAvailable`) only for a roll that may ask. A rogue with no use left, or a character without the feature, is never held.
@@ -297,5 +294,5 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
 - **Columns** of `inspiration_holds` (migration 00290): `stroke_ask`, `stroke_failed`, `stroke_answer_key`, `stroke_from`.
   `DeleteOrphanInspirationHolds` keeps a hold with `stroke_ask` set, since a question outside a combat has no die.
 - **Wire.** `StrokeOfLuckQuestion` in `HeldRollOffer.question`, `StrokeOfLuckAnswer` in `AnswerHeldRollRequest`.
-- **Web.** The Lucky and Indomitable card, with "Usar" and "Manter" and no roll picker.
+- **Web.** A card with "Usar" and "Manter" and no roll picker.
   A player outside a combat reads the question again from `ListHeldRolls`, since the older lists of the outside state do not carry it.

@@ -21,6 +21,7 @@ import {
   asksLucky,
   dieOf,
   luckyHeldLine,
+  strokeFailed,
 } from '../../core/held-rolls/held-roll-offer';
 import {
   INDOMITABLE_WHAT,
@@ -81,6 +82,7 @@ export class HeldRollPrompt {
    * d20 as 20. Nothing is rolled, so there is no picker. */
   protected readonly stroke = computed(() => asksStroke(this.offer()));
   protected readonly strokeTitle = computed(() => strokeTitle(this.offer()));
+  protected readonly strokeTold = computed(() => strokeFailed(this.offer()));
   protected readonly strokeWhat = STROKE_WHAT;
   /** The fighter's question, after the result of a saving throw: Indomitable rolls it again and the new roll stands. */
   protected readonly indomitable = computed(() => asksIndomitable(this.offer()));

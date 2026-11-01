@@ -45,7 +45,9 @@
     } @else if (look() === 'card') {
       <p class="d20">
         <span class="d20__face">{{ counted() }}</span>
-        <span class="d20__text">Seu d20{{ bonusText() }}. O resultado só aparece depois da sua escolha.</span>
+        <span class="d20__text"
+          >Seu d20{{ bonusText() }}.{{ strokeTold() ? '' : ' O resultado só aparece depois da sua escolha.' }}</span
+        >
       </p>
     }
     <section class="ask" [attr.aria-labelledby]="titleId">

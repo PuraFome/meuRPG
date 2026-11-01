@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -318,9 +319,9 @@ func checkStrokeRule(dc int, blind bool) *strokeRule {
 func opposedStrokeRule() *strokeRule { return &strokeRule{Blind: true} }
 
 // groupStrokeRule is the rule of a member's roll in a group check: it fails against the check's DC, which the player is
-// told only when the master shows it. No DC, no failure.
+// told only when the master shows it. No DC, no failure, and a saving throw never asks.
 func groupStrokeRule(check playdb.GroupCheck) *strokeRule {
-	if check.Dc == nil {
+	if check.Dc == nil || strings.HasPrefix(check.SkillKey, "save:") {
 		return nil
 	}
 	return checkStrokeRule(int(*check.Dc), !check.ShowDc)

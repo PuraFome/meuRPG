@@ -577,6 +577,22 @@ func TestAGroupCheckAsksStrokeOfLuckBlindWithAHiddenDCAndTellsWithAShownOne(t *t
 	}
 }
 
+// A group check of a saving throw is not an ability check: the rogue is never asked about Stroke of Luck.
+func TestAGroupSavingThrowDoesNotAskStrokeOfLuck(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	save := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) {
+		r.SkillKey, r.Dc, r.ShowDc = "save:con", 25, true
+	})
+	out, err := a.rollGroup(t, a.caio, save.GetId(), 2)
+	if err != nil || out.GetHeldRollOffer() != nil || out.GetGroupCheck() == nil {
+		t.Fatalf("RollGroupCheck(2) = %v, %v; want the roll written with no question", out, err)
+	}
+	if used := a.strokeUsed(t); used != 0 {
+		t.Errorf("stroke_of_luck used = %d, want 0", used)
+	}
+}
+
 // The contest roll of a rogue is opposed, so the question comes blind on any d20 but a 20; using it counts the d20 as 20.
 func TestAContestRollAsksStrokeOfLuckBlind(t *testing.T) {
 	t.Parallel()
