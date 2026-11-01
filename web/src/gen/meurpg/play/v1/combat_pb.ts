@@ -5718,7 +5718,9 @@ export type TakeActionRequest = Message<"meurpg.play.v1.TakeActionRequest"> & {
    * (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
    * cost, the least. The server reads the points left in the same transaction as the use and refuses a number outside
    * the range with `invalid_argument` (nothing is spent); it never trusts the client with more than this number.
-   * Ignored by an action whose cost is fixed.
+   * Ignored by an action whose cost is fixed. An action that spends a spell slot (Action.spends_slot) reads it as the
+   * level of the slot, 1 to 9: a level with no free slot is refused with `failed_precondition` (ResourceBlocked
+   * NO_FREE_SLOT, nothing is spent) and a level outside 1 to 9 with `invalid_argument`.
    *
    * @generated from field: int32 spend = 103;
    */

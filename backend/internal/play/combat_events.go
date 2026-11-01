@@ -389,7 +389,7 @@ type actionEvent struct {
 	ByArea      bool `json:"by_area,omitempty"`
 	Heal        bool `json:"heal,omitempty"`
 	Concentrate bool `json:"concentrate,omitempty"`
-	// PointsSpent is how many uses of Resource a feature action of the table's content spent (0: one), TempTried says the
+	// PointsSpent is how many uses of Resource a feature action of the table's content or a Wild Shape start spent (0: one for an event without it), TempTried says the
 	// action gave temporary hit points and TempGained how many the target kept of them (they do not stack): an undo
 	// gives the uses back and puts the target's hit points as Before has them.
 	PointsSpent int32 `json:"points_spent,omitempty"`

@@ -107,6 +107,8 @@ The character checks are `characters`'; their refusals are `ResourceBlocked` rea
 The call needs the latest `rest_taken` of the open session to be a short rest (`NO_SHORT_REST` otherwise) and no combat open.
 `CharacterVitals.arcane_recovery_allowance` and `natural_recovery_allowance` let the sheet word the allowance; each is 0 for a character without the feature.
 The short rest sheet has one section for each recovery the character has.
+With `feature_key` on `UseArcaneRecovery` the call is a table feature's `slot_recovery` effect: it spends a use of the effect's resource and keeps to the effect's highest slot level and combined level (`rules.TableSlotRecovery.Check`, run by `characters.UseTableSlotRecovery`), with the same refusals; a key the character does not have is `NOT_AVAILABLE`.
+The `arcane_recovery_used` event carries the feature key.
 
 ### Lay on Hands (paladin 1)
 

@@ -3,7 +3,7 @@
 -- target within range, you can turn the miss into a hit. Alternatively, if you fail an ability check, you can treat
 -- the d20 roll as a 20. Once you use this feature, you can't use it again until you finish a short or long rest.").
 -- It comes after the halfling's Lucky and the Bardic Inspiration die (inspiration_holds, 00244, 00254), in the same
--- place as Indomitable's question (00289), which it never meets: a save is not an attack or an ability check.
+-- place as Indomitable's question (00290), which it never meets: a save is not an attack or an ability check.
 --   - stroke_ask is true once the question was asked: the attack missed or the check failed on the roll as it stood
 --     after Lucky and the die, or the roller may not know the result (the table hides the DC, an opposed check, the
 --     dice an effect adds after the gate) and so the question comes on every eligible roll. It waits while it is true
@@ -14,7 +14,7 @@
 --   - stroke_from is the d20 that counted when the player used the feature; NULL when the player kept the roll. For a
 --     check the faces hold the 20 then; an attack keeps its d20 and the path turns the miss into a hit.
 -- A Bardic Inspiration die answered while the question follows is kept on the row with Indomitable's columns
--- (die_answer_key, die_used, 00289).
+-- (die_answer_key, die_used, 00290).
 --
 -- Production is live: the columns only add and have defaults or allow NULL, and the check is dropped before it is
 -- added, so running the migration twice is safe.

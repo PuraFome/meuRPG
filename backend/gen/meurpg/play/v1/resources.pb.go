@@ -1144,8 +1144,12 @@ type UseArcaneRecoveryRequest struct {
 	// The slots to recover: how many of each spell level, one entry per level.
 	Slots          []*SpellSlotBack `protobuf:"bytes,3,rep,name=slots,proto3" json:"slots,omitempty"`
 	IdempotencyKey string           `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The table feature whose slot_recovery effect the call uses,
+	// spending the effect's resource and keeping to its limits. Empty is the wizard's own
+	// Arcane Recovery.
+	FeatureKey    string `protobuf:"bytes,5,opt,name=feature_key,json=featureKey,proto3" json:"feature_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UseArcaneRecoveryRequest) Reset() {
@@ -1202,6 +1206,13 @@ func (x *UseArcaneRecoveryRequest) GetSlots() []*SpellSlotBack {
 func (x *UseArcaneRecoveryRequest) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *UseArcaneRecoveryRequest) GetFeatureKey() string {
+	if x != nil {
+		return x.FeatureKey
 	}
 	return ""
 }
@@ -4285,13 +4296,15 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x15constitution_modifier\x18\x03 \x01(\x05R\x14constitutionModifier\x12\x16\n" +
 	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12+\n" +
 	"\x12song_of_rest_sides\x18\x05 \x01(\x05R\x0fsongOfRestSides\x12)\n" +
-	"\x11song_of_rest_face\x18\x06 \x01(\x05R\x0esongOfRestFace\"\xbc\x01\n" +
+	"\x11song_of_rest_face\x18\x06 \x01(\x05R\x0esongOfRestFace\"\xdd\x01\n" +
 	"\x18UseArcaneRecoveryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x123\n" +
 	"\x05slots\x18\x03 \x03(\v2\x1d.meurpg.play.v1.SpellSlotBackR\x05slots\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x7f\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x1f\n" +
+	"\vfeature_key\x18\x05 \x01(\tR\n" +
+	"featureKey\"\x7f\n" +
 	"\x19UseArcaneRecoveryResponse\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x12)\n" +
 	"\x10recovered_levels\x18\x02 \x01(\x05R\x0frecoveredLevels\"\xbd\x01\n" +

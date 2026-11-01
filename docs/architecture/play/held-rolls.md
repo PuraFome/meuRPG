@@ -249,7 +249,7 @@ It is offered after the result, a new link of the chain (`held_indomitable.go`).
   The effect save and the concentration save are not undoable events (they are not in `undoableKinds`), so the use they spent is not given back.
 - **Refusals.** While the question waits, the character's other rolls are refused with `INDOMITABLE_PENDING`.
   The master answers after the player's first 10 seconds, as for Lucky.
-- **Columns** of `inspiration_holds` (migration 00289): `indomitable_ask`, `indomitable_failed`, `indomitable_answer_key`, `indomitable_from`, `indomitable_to`, `die_answer_key`, `die_used`.
+- **Columns** of `inspiration_holds` (migration 00290): `indomitable_ask`, `indomitable_failed`, `indomitable_answer_key`, `indomitable_from`, `indomitable_to`, `die_answer_key`, `die_used`.
 - **Wire.** `IndomitableQuestion` in `HeldRollOffer.question`, `IndomitableAnswer` in `AnswerHeldRollRequest`.
 
 ## Stroke of Luck (rogue 20)
@@ -291,7 +291,7 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
   - The scene, group, contest and Hide checks are not undoable events, so the use they spent is not given back. A short or a long rest returns it.
 - **Refusals.** While the question waits, the character's other rolls are refused with `STROKE_OF_LUCK_PENDING`.
   The master answers after the player's first 10 seconds, as for Lucky.
-- **Columns** of `inspiration_holds` (migration 00290): `stroke_ask`, `stroke_failed`, `stroke_answer_key`, `stroke_from`.
+- **Columns** of `inspiration_holds` (migration 00291): `stroke_ask`, `stroke_failed`, `stroke_answer_key`, `stroke_from`.
   `DeleteOrphanInspirationHolds` keeps a hold with `stroke_ask` set, since a question outside a combat has no die.
 - **Wire.** `StrokeOfLuckQuestion` in `HeldRollOffer.question`, `StrokeOfLuckAnswer` in `AnswerHeldRollRequest`.
 - **Web.** A card with "Usar" and "Manter" and no roll picker.
