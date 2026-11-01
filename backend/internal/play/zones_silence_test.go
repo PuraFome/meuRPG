@@ -10,7 +10,6 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -293,15 +292,48 @@ func TestSilenceRefusesRevivifyToACasterInside(t *testing.T) {
 	}
 }
 
+// kitOfCombatant reads the reactions of the combatant as the combat does.
+func (c *cave) kitOfCombatant(t *testing.T, label string) kit {
+	t.Helper()
+	cs, err := c.h.svc.queries.ListCombatants(t.Context(), c.get(t, c.master).GetId())
+	if err != nil {
+		t.Fatalf("ListCombatants() error = %v", err)
+	}
+	for _, who := range cs {
+		if who.ID == c.id(t, label) {
+			k, ok, err := c.h.svc.kitOf(t.Context(), nil, c.campaignID, who)
+			if err != nil || !ok {
+				t.Fatalf("kitOf(%s) = %v, %v", label, ok, err)
+			}
+			return k
+		}
+	}
+	t.Fatalf("no combatant %s", label)
+	return kit{}
+}
+
 // A reactor inside a Silence is offered no reaction spell with a verbal component; outside it is.
+// The wizard of the cave knows Shield, Hellish Rebuke and Feather Fall, and the kit is read from the database.
 func TestSilenceTakesTheVerbalReactionsAway(t *testing.T) {
 	t.Parallel()
-	st := link.ReactionStats{Spells: []string{spellShield, spellHellishRebuke, spellFeatherFall}, SlotsTotal: [9]int{2}}
+	spells := []string{spellShield, spellHellishRebuke, spellFeatherFall, silenceKey}
+	c := newCaveOf(t, 9, spells, func(a *armed) *charactersv1.Character {
+		return a.caio.caster(t, a.campaignID, "Toren", "class:cleric", "race:human", 7, abilities(14, 12, 14, 16, 10),
+			[]string{maceKey}, []string{sacredFlame}, nil, []string{silenceKey, blessKey})
+	})
+	c.passTo(t, c.zoneFight(t), "Toren")
 	for _, spell := range []string{spellShield, spellHellishRebuke, spellFeatherFall} {
-		if got := (kit{who: playdb.Combatant{Kind: kindNPC}, st: st}).slotsFor(spell); len(got) == 0 {
-			t.Fatalf("slotsFor(%s) outside a Silence = none, want the 1st level slots", spell)
+		if got := c.kitOfCombatant(t, "Pensantus").slotsFor(spell); len(got) == 0 {
+			t.Fatalf("slotsFor(%s) outside a Silence = none, want slots: the row proves nothing", spell)
 		}
-		if got := (kit{who: playdb.Combatant{Kind: kindNPC}, st: st, muted: true}).slotsFor(spell); len(got) != 0 {
+	}
+	c.mustCastArea(t, c.caio, "Toren", silenceKey, slotOfLevel(2), at(12, 7), nil)
+	k := c.kitOfCombatant(t, "Pensantus")
+	if !k.muted {
+		t.Fatal("the wizard inside the sphere is not muted")
+	}
+	for _, spell := range []string{spellShield, spellHellishRebuke, spellFeatherFall} {
+		if got := k.slotsFor(spell); len(got) != 0 {
 			t.Errorf("slotsFor(%s) inside a Silence = %v, want none", spell, got)
 		}
 	}
@@ -347,5 +379,48 @@ func TestSilenceMakesWhoIsInsideImmuneToTheThunderOfAZone(t *testing.T) {
 	}
 	if got := thunderZoneHitsTheOgre(t, true); got != 59 {
 		t.Errorf("the ogre inside a Silence has %d hit points, want 59: immune to thunder", got)
+	}
+}
+
+func (c *cave) masterSets(t *testing.T, label string, keys ...string) {
+	t.Helper()
+	e := c.get(t, c.master)
+	if _, err := c.master.combat.SetCombatantConditions(t.Context(), connect.NewRequest(&playv1.SetCombatantConditionsRequest{
+		CampaignId: c.campaignID, EncounterId: e.GetId(), CombatantId: c.id(t, label), IdempotencyKey: newKey(), Conditions: &playv1.ConditionList{Keys: keys},
+	})); err != nil {
+		t.Fatalf("SetCombatantConditions(%s) error = %v", label, err)
+	}
+}
+
+// The deafness a Silence gives is read from the zone: the master's list, which carries it, does not store it.
+func TestTheMastersConditionListDoesNotStoreTheDeafnessOfASilence(t *testing.T) {
+	t.Parallel()
+	c := silenceCave(t)
+	c.castSilence(t, 7, 7)
+	if !hasCondition(c.get(t, c.master), t, "Ogro", conditionDeafened) {
+		t.Fatal("the ogre inside the sphere is not deafened: the row proves nothing")
+	}
+	c.masterSets(t, "Ogro", conditionDeafened, "condition:prone")
+	c.mustMove(t, c.master, "Ogro", 20, 7)
+	e := c.get(t, c.master)
+	if hasCondition(e, t, "Ogro", conditionDeafened) {
+		t.Error("the ogre outside the sphere is still deafened: the master's list stored the Silence's deafness")
+	}
+	if !hasCondition(e, t, "Ogro", "condition:prone") {
+		t.Error("the condition the master set is gone")
+	}
+}
+
+// A deafness from another source, stored, stays when the creature leaves the sphere.
+func TestADeafnessStoredFromAnotherSourceStaysOutsideTheSilence(t *testing.T) {
+	t.Parallel()
+	c := silenceCave(t)
+	c.passTo(t, c.zoneFight(t), "Toren")
+	c.masterSets(t, "Ogro", conditionDeafened)
+	c.mustCastArea(t, c.caio, "Toren", silenceKey, slotOfLevel(2), at(7, 7), nil)
+	c.masterSets(t, "Ogro", conditionDeafened, "condition:prone")
+	c.mustMove(t, c.master, "Ogro", 20, 7)
+	if !hasCondition(c.get(t, c.master), t, "Ogro", conditionDeafened) {
+		t.Error("the ogre's own deafness is gone after it left the sphere")
 	}
 }

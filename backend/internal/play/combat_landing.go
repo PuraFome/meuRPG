@@ -31,12 +31,14 @@ func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playd
 	if err != nil {
 		return 0, err
 	}
-	muted, err := mutedIn(ctx, c.q, c.enc.ID, target)
-	if err != nil {
-		return 0, err
-	}
-	if muted {
-		mods.Immune = append(slices.Clone(mods.Immune), silenceImmune)
+	if damageType == silenceImmune { // the zones matter only for the damage Silence shields from
+		muted, err := mutedIn(ctx, c.q, c.enc.ID, target)
+		if err != nil {
+			return 0, err
+		}
+		if muted {
+			mods.Immune = append(slices.Clone(mods.Immune), silenceImmune)
+		}
 	}
 	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
 }

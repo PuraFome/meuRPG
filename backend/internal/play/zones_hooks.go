@@ -114,7 +114,7 @@ func (s *Service) zonesAfterSteps(ctx context.Context, c *combatTx, steps ...zon
 // Spike Growth hurts it for the squares it crossed instead.
 func (s *Service) zoneAfterStep(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
 	if z.def.kind == zoneSpikes {
-		return s.spikeCatch(ctx, c, z, st, mark)
+		return s.spikeCatch(ctx, c, z, st)
 	}
 	if !z.enteredBy(st) {
 		return nil

@@ -48,7 +48,7 @@ Without a grid (`isTheatre`) a spell is not placed, so there is no zone.
 
 | Where | What it does |
 | --- | --- |
-| `zonesAfterSteps` (`zones_hooks.go`) | Called with the creatures that changed square: `moveInTx` (the mover and the creature it dragged; this also covers the master's move and a placement), `castFlow.teleport` (Misty Step's landing, `combat_teleport.go`), `pusher.enterZones` (a push by a cast or by the Open Hand technique) and the shove outcome (`shovePushes`). A step has where the creature stood and the squares it went through (the straight line for a walk, only the end for a jump, a push or a forced move). A zone catches a step that comes into it: one square inside whose predecessor is outside |
+| `zonesAfterSteps` (`zones_hooks.go`) | Called with the creatures that changed square: `moveInTx` (the mover and the creature it dragged; this also covers the master's move and a placement), `castFlow.teleport` (Misty Step's landing, `combat_teleport.go`), `pusher.enterZones` (a push by a cast or by the Open Hand technique) and the shove outcome (`shovePushes`). A step has where the creature stood and the squares it went through (the straight line for a walk, only the end for a jump or a placement; a walk, a push and a shove also say they travelled, and Spike Growth counts the squares of the straight line from where the creature stood to where it landed). A zone catches a step that comes into it: one square inside whose predecessor is outside |
 | `zonesAtTurnStart` | Called at the end of `startOfTurnEffects`: ends the zones whose round is out, moves the zones that drift, then catches every creature that starts its turn inside |
 | `zonesAtTurnEnd` | Called when a member's part of the turn ends (`closeTurnPart`), right before the saves of the effects open: both questions are then open together, in no order. It catches the creature if it stands in a zone that asks at the end of the turn: in Grease, or in reach of a Wall of Fire (`endsOn`). Its hit mark is `"<round>:<leader>:end"`, so the entry and the end of one turn each ask once |
 | `followCaster` | Part of `zonesAfterSteps`: when the creature that moved owns a zone centred on it, the zone is placed on its square and the creatures the new area covers and the old one did not are caught as if they had come in |
@@ -73,7 +73,7 @@ None of the three is undoable (`undoableKinds`), so a move that caught someone c
 
 - Spirit Guardians follows its caster (`followCaster`).
 - Cloudkill drifts at the start of its caster's turn (`driftZones`): `planPush` from the caster's square, `driftFt` (10) long, so it stops at a wall; a cloud on the caster's own square stays.
-- Moonbeam is moved by `MoveSpellZone` (`zones_move.go`), a keyed `write` of kind `spell_zone_moved`. A player must be the caster's player, on the caster's turn (`mustActNow`), with the action free (it is spent), and within `moveRangeFt` (60) of the zone's origin (`TARGET_OUT_OF_REACH` with `missing_ft`); the square must be on the map and not a wall. The master moves any zone, with none of that. A zone the caller does not read is `not_found`, as one that does not exist. The creatures the new area reaches are caught by `relocate`, the same step that follows and drifts.
+- Moonbeam is moved by `MoveSpellZone` (`zones_move.go`), a keyed `write` of kind `spell_zone_moved`. A player must be the caster's player, on the caster's turn (`mustActNow`), with the action free (it is spent), and within `moveRangeFt` (60) of the zone's origin (`TARGET_OUT_OF_REACH` with `missing_ft`); the square must be on the map and not a wall. The master moves any zone but a wall, with none of that. A wall is not moved (`failed_precondition`): the master ends it and the spell is cast again. A zone the caller does not read is `not_found`, as one that does not exist. The creatures the new area reaches are caught by `relocate`, the same step that follows and drifts.
 
 ## Zones that block sight
 
@@ -116,6 +116,7 @@ Creatures occupy one square, so "entirely inside" is the creature's square in th
   `deafened` is an owner-only condition (`ownerOnlyConditions`): only the master and the creature's player read it.
   The rules that read the stored condition (a bard's cut of the reaction, the hearing of the Channel Divinity, the hearing flags of the combatant's options) do not see the derived one.
 - Sound that passes through the sphere, and objects inside it, are not ruled.
+- Whether Subtle Spell lets a caster cast a verbal spell inside a Silence is the master's to rule: the engine has no component model for it, so the app refuses the cast.
 
 ## Spike Growth
 
@@ -197,12 +198,13 @@ The zones ride on `Encounter.zones`: a change arrives as the usual `encounter_ch
 `core/combat/zones.ts` turns each `SpellZone` into a `ZoneView` (label, detail pieces, rounds left, concentration, occupants, the "Só você vê" flag, `canMove`, `canEnd`); a zone with `details_hidden` reads name, area, caster, concentration and occupants only, even if a field slipped through, and the client never fills what the server left out.
 `zone-move.ts` holds the move range copy (`ZONE_MOVE_RANGE_FT`, the server's `moveRangeFt`) and `zoneMovePreview`, which draws the open-floor squares with `sphereSquares`; no wall cuts the preview, the server cuts the area on commit.
 `MoveSpellZone` and `EndSpellZone` are in `CombatCastCalls`, one idempotency key per request kept across retries and renewed after success; `zone-errors.ts` words their refusals.
-The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast` and `zone_end` catches and the end reasons are in `combat-log-effects.ts`.
+The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zone_end` and `zone_move` catches and the end reasons are in `combat-log-effects.ts`.
 
 ### The map, the panel and the end
 
 - **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern: the first six catalog spells a fixed one, every other spell a hash of the key.
-  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's, Stinking Cloud on Web's, Silence on Web's too (the dots), Spike Growth on Moonbeam's and Wall of Fire on Entangle's.
+  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's, Spike Growth on Moonbeam's and Wall of Fire on Entangle's.
+  Web, Stinking Cloud and Silence share one pattern, the dots.
   `zoneLegend` gives the entries the card lists.
   The layer and its labels are `aria-hidden`; the panel is the accessible version.
   The move page's map does not draw zones.

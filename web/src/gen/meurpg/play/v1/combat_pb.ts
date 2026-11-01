@@ -6817,7 +6817,7 @@ export type CastSpellRequest = Message<"meurpg.play.v1.CastSpellRequest"> & {
    * Wall of Fire on a map with a grid: the wall's shape, size and damaging side. The point of origin
    * (`origin`) is the line's first square or the ring's center. Required for a spell that lays a wall
    * (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
-   * (see SpellWall), or sent for any other spell, it is `invalid_argument`.
+   * (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
    *
    * @generated from field: meurpg.play.v1.SpellWall wall = 35;
    */
@@ -6955,7 +6955,7 @@ export const SpellDirectionSchema: GenMessage<SpellDirection> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_combat, 116);
 
 /**
- * SpellWall places a wall (a line or a ring) that a point alone cannot. Today only Wall of Fire reads it.
+ * SpellWall places a wall (a line or a ring) that a point alone cannot. Wall of Fire reads it.
  * The spell's point of origin is the line's first square, or the ring's center.
  *
  * @generated from message meurpg.play.v1.SpellWall
@@ -15792,7 +15792,7 @@ export enum CombatLogEffectChange {
   /**
    * A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
    * area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
-   * `reason` zone_enter, zone_start, zone_cast or zone_end, the roll, and the damage in `amount`.
+   * `reason` zone_enter, zone_start, zone_cast, zone_end or zone_move, the roll, and the damage in `amount`.
    *
    * @generated from enum value: COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
    */

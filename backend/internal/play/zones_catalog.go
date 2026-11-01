@@ -40,6 +40,8 @@ import (
 //   - Silence: a sphere of 20 feet of radius at a point, ruling sound. It asks nobody. A creature whose square is
 //     in it is immune to thunder damage and deafened, and a caster there cannot cast a spell with a verbal
 //     component (zones_silence.go).
+//   - Spike Growth: a cylinder of 20 feet of radius at a point, difficult terrain. It asks no save: a creature
+//     that moves through it takes piercing damage for every square it enters inside, on every move.
 //   - Wall of Fire: a wall of fire, a line or a ring that the caster lays from a point (zones_wall.go). A Dexterity save
 //     at the cast for the creatures inside it, fire damage, half on a pass.
 //     Later hits ask no save: a creature that enters the wall, or ends its turn inside it or within 10 feet of its
@@ -48,6 +50,7 @@ import (
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
 // inside.
 // A wall hits twice when a creature enters it and ends the turn there.
+// Spike Growth has no count: it hits on every move.
 // For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
 // when it begins its turn there or comes back in.
 
@@ -209,13 +212,13 @@ var zoneDefs = map[string]zoneDef{
 	},
 }
 
-// zoneDefOf is the zone one of the SRD's ten spells keeps.
+// zoneDefOf is the zone one of the twelve SRD spells keeps.
 func zoneDefOf(spellKey string) (zoneDef, bool) {
 	d, ok := zoneDefs[spellKey]
 	return d, ok
 }
 
-// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's ten, or the table spell's own
+// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the twelve SRD spells, or the table spell's own
 // area, which the master wrote as the model says. Both are the same value, so the zone is made and worked the
 // same way from either.
 func zoneDefOfSpell(sp link.Spell) (zoneDef, bool) {
@@ -254,7 +257,7 @@ type zoneDefJSON struct {
 	Corners   bool   `json:"corners,omitempty"`
 }
 
-// storedDef is the definition as the zone row keeps it, nil for one of the SRD's ten (the code's table is its truth).
+// storedDef is the definition as the zone row keeps it, nil for one of the twelve SRD spells (the code's table is its truth).
 func storedDef(spellKey string, d zoneDef) []byte {
 	if _, srd := zoneDefOf(spellKey); srd {
 		return nil

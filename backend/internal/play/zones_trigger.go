@@ -394,7 +394,7 @@ func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState
 
 // spikeCatch hurts a creature for each square it crossed in a Spike Growth.
 // Nobody is spared, and the same creature is hurt again on every move.
-func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
+func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep) error {
 	n := z.spikesIn(st)
 	if n == 0 {
 		return nil
@@ -408,5 +408,5 @@ func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneS
 	if !ok || !okOwner || !placed(who) || who.Defeated {
 		return nil
 	}
-	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, mark: mark, round: c.enc.Round, times: n}, owner)
+	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, round: c.enc.Round, times: n}, owner)
 }

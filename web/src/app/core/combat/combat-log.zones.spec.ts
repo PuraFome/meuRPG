@@ -117,12 +117,12 @@ describe('the log lines of spell zones', () => {
     const e = effect({
       change: CombatLogEffectChange.DAMAGE,
       reason: 'zone_move',
-      sourceNamePt: 'Crescimento de Espinhos',
+      sourceNamePt: 'Crescer Espinhos',
       targetLabels: ['Tor'],
       amount: 7,
       damageTypePt: 'perfurante',
     });
-    expect(text(e)).toBe('Tor andou no Crescimento de Espinhos e sofreu 7 de dano perfurante');
+    expect(text(e)).toBe('Tor andou no Crescer Espinhos e sofreu 7 de dano perfurante');
   });
 
   it.each([

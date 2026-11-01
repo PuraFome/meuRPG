@@ -29,23 +29,29 @@ func (c *cave) castSpikes(t *testing.T, col, row int32) *playv1.Encounter {
 	return e
 }
 
-// spikeDamagesOf are the damages of the spikes waiting to be rolled for the creature: their dice counts.
-func (c *cave) spikeDamagesOf(t *testing.T, label string) []int {
+// pendingDiceOf are the dice counts of the damages of the spell waiting to be rolled for the creature.
+func (c *cave) pendingDiceOf(t *testing.T, label, spell string) []int {
 	t.Helper()
-	rows, err := c.h.pool.Query(t.Context(), `SELECT dice_count FROM pending_damages WHERE target_id = $1 AND attack_key = $2 AND status = 'awaiting_roll' ORDER BY created_at, id`, c.id(t, label), spikeGrowthKey)
+	rows, err := c.h.pool.Query(t.Context(), `SELECT dice_count FROM pending_damages WHERE target_id = $1 AND attack_key = $2 AND status = 'awaiting_roll' ORDER BY created_at, id`, c.id(t, label), spell)
 	if err != nil {
-		t.Fatalf("read the damages of the spikes: %v", err)
+		t.Fatalf("read the damages of %s: %v", spell, err)
 	}
 	defer rows.Close()
 	var out []int
 	for rows.Next() {
 		var n int
 		if err := rows.Scan(&n); err != nil {
-			t.Fatalf("read a damage of the spikes: %v", err)
+			t.Fatalf("read a damage of %s: %v", spell, err)
 		}
 		out = append(out, n)
 	}
 	return out
+}
+
+// spikeDamagesOf are the damages of the spikes waiting to be rolled for the creature: their dice counts.
+func (c *cave) spikeDamagesOf(t *testing.T, label string) []int {
+	t.Helper()
+	return c.pendingDiceOf(t, label, spikeGrowthKey)
 }
 
 // walkOgre walks the ogre on its own turn.

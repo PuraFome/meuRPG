@@ -520,20 +520,7 @@ func TestWallOfFireIsUnavailableInTheTurnOptions(t *testing.T) {
 // wallHitsOn are the dice counts of the wall's damages waiting to be rolled for the creature.
 func (c *cave) wallHitsOn(t *testing.T, label string) []int {
 	t.Helper()
-	rows, err := c.h.pool.Query(t.Context(), `SELECT dice_count FROM pending_damages WHERE target_id = $1 AND attack_key = $2 AND status = 'awaiting_roll' ORDER BY created_at, id`, c.id(t, label), wallOfFireKey)
-	if err != nil {
-		t.Fatalf("read the damages of the wall: %v", err)
-	}
-	defer rows.Close()
-	var out []int
-	for rows.Next() {
-		var n int
-		if err := rows.Scan(&n); err != nil {
-			t.Fatalf("read a damage of the wall: %v", err)
-		}
-		out = append(out, n)
-	}
-	return out
+	return c.pendingDiceOf(t, label, wallOfFireKey)
 }
 
 // layWallWithOgreAt puts the ogre on the square, has Pensantus lay the wall and passes to the ogre's turn.
@@ -901,4 +888,19 @@ func TestTheFogHearsOfTheWallCast(t *testing.T) {
 	if got := c.h.vision.n.Load(); got <= before {
 		t.Errorf("fog refreshes after the cast = %d, before %d: the fog was not told", got, before)
 	}
+}
+
+// A wall is not moved: the master's move is refused and the wall keeps its squares.
+func TestTheMasterCannotMoveAWall(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	z := c.castEastWall(t)
+	_, err := c.moveZone(t, c.master, z.GetId(), 12, 7)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("MoveSpellZone(wall) error = %v, want failed_precondition", err)
+	}
+	if now := c.oneZone(t, c.master, wallOfFireKey); len(now.GetSquares()) != len(z.GetSquares()) || len(now.GetSquares()) == 0 {
+		t.Errorf("the wall has %d squares after the refused move, want its %d", len(now.GetSquares()), len(z.GetSquares()))
+	}
+	wantCloudsOf(t, c, z)
 }
