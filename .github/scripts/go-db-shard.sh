@@ -21,7 +21,7 @@
 # everything not named here, so a NEW package lands in "rest" on its own and
 # is never skipped. If a group gets too slow, move a package up.
 #
-# The play package alone took 920 s, so it is split by test: play-1 to play-3
+# The play package alone took 920 s, so it is split by test: play-1 to play-4
 # each run the tests whose name hashes (cksum) to their part, with
 # `-run '^(TestA|TestB)$'`. The hash is stable: adding a test never moves the
 # others, and a NEW test lands in a part by itself. The tests are read from the
@@ -31,24 +31,24 @@
 set -euo pipefail
 
 module=github.com/PuraFome/meuRPG/backend
-play_parts=3
+play_parts=4
 
 case_packages() {
   case "$1" in
     play-[1-9]) echo "$module/internal/play" ;;
     maps) echo "$module/internal/maps" ;;
     characters) echo "$module/internal/characters $module/migrations $module/internal/progression" ;;
-    # The CPU-bound pure packages, kept off the runners of the database ones.
-    pure) echo "$module/internal/rules $module/internal/rules/dungeon $module/internal/rules/puzzle" ;;
+    # The CPU-bound pure packages, kept off the runners of the database ones, in two groups.
+    rules) echo "$module/internal/rules" ;;
+    dungeon) echo "$module/internal/rules/dungeon $module/internal/rules/puzzle" ;;
     leak) echo "$module/internal/leaktest" ;;
-    camp) echo "$module/internal/campaigns $module/internal/campaignpackage" ;;
     rest) echo "" ;;
     *) echo "unknown group: $1" >&2; return 1 ;;
   esac
 }
 
-# play-2 and play-3 name the same package as play-1: only play-1 counts here.
-named_groups="play-1 maps characters pure leak camp"
+# play-2 to play-4 name the same package as play-1: only play-1 counts here.
+named_groups="play-1 maps characters rules dungeon leak"
 
 all_packages() { go list ./... | sort; }
 
