@@ -25,10 +25,12 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1/progressionv1connect"
+	systemv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/system/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/reqlimit"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
@@ -289,7 +291,7 @@ func newFaultRig(t *testing.T, mode campaignsv1.XpMode, n int) *faultRig {
 		t.Fatalf("New() error = %v", err)
 	}
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
-	svc.Mount(srv.Handle, fakeSessions{}, tb.h.camps, connect.WithRequireConnectProtocolHeader())
+	svc.Mount(srv.Handle, fakeSessions{}, tb.h.camps, reqlimit.HandlerOption())
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	rig.client = func(u *user) progressionv1connect.ProgressionServiceClient {
@@ -416,8 +418,11 @@ func refusal(err error) string {
 		if derr != nil {
 			continue
 		}
-		if b, ok := v.(*progressionv1.XPBlocked); ok {
+		switch b := v.(type) {
+		case *progressionv1.XPBlocked:
 			out += fmt.Sprintf(" [reason=%s character=%s xp_mode=%s treasure=%s]", b.GetReason(), b.GetCharacterId(), b.GetXpMode(), b.GetTreasurePointId())
+		case *systemv1.RequestRefused:
+			out += fmt.Sprintf(" [request refused field=%s reason=%s]", b.GetField(), b.GetReason())
 		}
 	}
 	return out
@@ -459,7 +464,7 @@ func (rig *faultRig) wantNoPendingHistoryFault(t *testing.T, call string) {
 func (rig *faultRig) takeEvents(t *testing.T) []string {
 	t.Helper()
 	rows, err := rig.h.pool.Query(t.Context(), `
-		SELECT e.kind, coalesce(e.actor_user_id::STRING, ''), e.payload::STRING
+		SELECT e.kind, coalesce(e.actor_user_id::TEXT, ''), e.payload::TEXT
 		FROM session_events e JOIN game_sessions s ON s.id = e.game_session_id
 		WHERE s.campaign_id = $1 AND e.kind IN ('xp_awarded', 'xp_award_undone', 'milestone_marked')
 		ORDER BY e.created_at, e.seq`, rig.campaign)
@@ -505,9 +510,9 @@ func (rig *faultRig) awardRow(t *testing.T, id string) string {
 	var total int32
 	var again, hashed, undone, undoKey bool
 	if err := rig.h.pool.QueryRow(ctx, `
-		SELECT mode, reason, coalesce(given_by::STRING, ''), coalesce(encounter_id::STRING, ''), gold, total_xp,
-		       coalesce(milestone_id::STRING, ''), milestone_again, idempotency_hash IS NOT NULL,
-		       undone_at IS NOT NULL, coalesce(undone_by::STRING, ''), undo_key IS NOT NULL
+		SELECT mode, reason, coalesce(given_by::TEXT, ''), coalesce(encounter_id::TEXT, ''), gold, total_xp,
+		       coalesce(milestone_id::TEXT, ''), milestone_again, idempotency_hash IS NOT NULL,
+		       undone_at IS NOT NULL, coalesce(undone_by::TEXT, ''), undo_key IS NOT NULL
 		FROM xp_awards WHERE id = $1`, id).Scan(&mode, &reason, &givenBy, &encounter, &gold, &total, &milestone, &again, &hashed, &undone, &undoneBy, &undoKey); err != nil {
 		t.Fatalf("read the award %s: %v", id, err)
 	}
@@ -518,7 +523,7 @@ func (rig *faultRig) awardRow(t *testing.T, id string) string {
 	head := fmt.Sprintf("award %s mode=%s reason=%q given_by=%s encounter=%s gold=%s total=%d milestone=%s again=%v hashed=%v undone=%v undone_by=%s undo_key=%v",
 		id, mode, reason, givenBy, encounter, goldText, total, milestone, again, hashed, undone, undoneBy, undoKey)
 	var parts []string
-	shares, err := rig.h.pool.Query(ctx, `SELECT character_id::STRING, xp, level_at_mark FROM xp_award_shares WHERE award_id = $1`, id)
+	shares, err := rig.h.pool.Query(ctx, `SELECT character_id::TEXT, xp, level_at_mark FROM xp_award_shares WHERE award_id = $1`, id)
 	if err != nil {
 		t.Fatalf("read the shares: %v", err)
 	}
@@ -536,7 +541,7 @@ func (rig *faultRig) awardRow(t *testing.T, id string) string {
 		parts = append(parts, rig.redact(fmt.Sprintf("share %s xp=%d level_at_mark=%s", who, xp, levelText)))
 	}
 	shares.Close()
-	treasures, err := rig.h.pool.Query(ctx, `SELECT point_id::STRING, value_po FROM xp_award_treasures WHERE award_id = $1`, id)
+	treasures, err := rig.h.pool.Query(ctx, `SELECT point_id::TEXT, value_po FROM xp_award_treasures WHERE award_id = $1`, id)
 	if err != nil {
 		t.Fatalf("read the treasures: %v", err)
 	}

@@ -43,7 +43,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-32 | **Casting outside combat.** A character casts a spell outside a combat with no turn and no economy: a spell cast in an action takes effect at once, and one that takes minutes or hours (or a ritual) is finished by the master when the game time has passed. A ritual costs no spell slot and 10 more minutes. A cast that is interrupted fails and spends no slot. | [Detail](#rn-32-casting-outside-combat) |
 | RN-33 | **Class and race choices.** A class or a race can ask the player to pick something (a Fighting Style, a Draconic Ancestry, Pact Boon and invocations, Metamagic, a Favored Enemy, a terrain, the Half-Elf's +1s...). A character is not created with a choice open; a locked sheet that has one keeps working and completes it later, and a level-up also asks the choices that were left behind. | [Detail](#rn-33-class-and-race-choices) |
 | RN-34 | **Contests and special actions.** Grapple, shove and escape are contests of Strength (Athletics) against Strength (Athletics) or Dexterity (Acrobatics); a tie changes nothing. Dragging a grappled creature halves the speed. Hide compares the Stealth total with each creature's passive Perception (a tie keeps the hider noticed); Help gives advantage; a group check passes when at least half pass; a surprised creature does nothing on its first turn. A player never reads an NPC's numbers, the escape DC, who noticed a hider or another player's total. | [Detail](#rn-34-contests-and-special-actions) |
-| RN-35 | **Race traits and the monk's Slow Fall in combat.** A half-orc dropped to 0 hit points but not killed outright stays at 1 (Relentless Endurance, once per long rest, used by the app by itself); its critical hit with a melee weapon attack rolls one more weapon die (Savage Attacks); a monk's reaction takes 5 times its level off a pit's fall damage (Slow Fall); a goblin's Fuga Ágil is Disengage or Hide as a bonus action; a halfling whose d20 shows a 1 (an attack, or a check or saving throw the player rolls) is asked "Tirou 1: rolar de novo?" before the result, and the new roll stands; on a saving throw the app rolls for a player's halfling in someone else's action, the app rolls the 1 again by itself (Lucky). | [Detail](#rn-35-race-traits-and-the-monks-slow-fall-in-combat) |
+| RN-35 | **Race traits and the monk's Slow Fall in combat.** A half-orc dropped to 0 hit points but not killed outright stays at 1 (Relentless Endurance, once per long rest, used by the app by itself); its critical hit with a melee weapon attack rolls one more weapon die (Savage Attacks); a monk's reaction takes 5 times its level off a pit's fall damage (Slow Fall); a goblin's Fuga Ágil is Disengage or Hide as a bonus action; a halfling whose d20 shows a 1 (an attack, or a check or saving throw the player rolls) is asked "Tirou 1: rolar de novo?" before the result, and the new roll stands; on a saving throw the app rolls for a player's halfling in someone else's action, the app rolls the 1 again by itself (Lucky); a fighter who fails a saving throw (an effect's, concentration or a death save) is asked "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" and the new roll stands (Indomitable); a rogue of level 20 whose attack misses or whose ability check fails is asked "Errou o ataque. Usar Golpe de Sorte para acertar?" or "Falhou no teste. Usar Golpe de Sorte para contar o d20 como 20?" (Stroke of Luck). | [Detail](#rn-35-race-traits-and-the-monks-slow-fall-in-combat) |
 | RN-36 | **Who reads a line of the scene's conversation.** A line is for the whole table or for chosen readers; the master always reads every line, can choose any set of players, and a player chooses everyone or "só o mestre". Whoever is not chosen never receives the line: not its text, its image, its existence, its count or a notice that it was sent, in a read, on the stream, in the summary or in the voice. The master speaks as the narrator or as an NPC of the campaign; a player as their own character (RN-18) or out of character. | [Detail](#rn-36-who-reads-a-line-of-the-scenes-conversation) |
 | RN-37 | **Areas that spells keep on the map.** Spirit Guardians, Moonbeam, Cloudkill, Web, Grease and Entangle leave their area on the map while they last. A creature makes the spell's saving throw when the area catches it, at most once on a turn for each area. Spirit Guardians, Moonbeam, Cloudkill and Web ask a creature that comes in and one that begins its turn inside, and the cast hits nobody (Web puts its effect on the creatures inside at the cast). Grease asks the creatures inside at the cast, a creature that comes in and one that ends its turn inside, never at the start of a turn. Entangle asks only the creatures inside at the cast. The area ends with the concentration or its time, and moves where the spell lets it. A hidden caster's area is the master's alone. | [Detail](#rn-37-areas-that-spells-keep-on-the-map) |
 | RN-38 | **A creature's save actions.** The master uses an NPC's action that asks a saving throw (a breath weapon, a gaze) from its turn. The app rolls each target's save against the stat block's DC, opens the damage the save governs (half on a success when the action says so) and spends the action. A player reads each target's result and the damage they take, never the DC or the stat block. | [Detail](#rn-38-a-creatures-save-actions) |
@@ -937,6 +937,52 @@ These SRD 5.1 traits change the numbers of a combat (Half-Orc, Halfling, Monk, R
   - **Where it asks:** the ability check of a Counterspell above the slot's level, the Stealth check of a Hide, either side's roll of a contest (a grapple, a shove, an escape; a Bardic Inspiration die moves the total), an initiative (a player's character, before the combat begins; the die adds to the total), a death save (a halfling's 1, and a Bardic Inspiration die the character holds, which moves the total across 10 but never a natural 1 or 20), weapon attacks and attack cantrips (the master rolling for the character gets the question too), a scene check, a group check, a trap search (out of a combat, or the Search action of a combat, which spends the action only once the question is answered), a puzzle hint try, and in a combat a spell attack against one target, an effect's saving throw and a concentration save. A roll the master makes for a player's character asks too (the question goes to the player and to the master, and the master's answer waits for the player's first 10 s).
   - **Where nobody can be asked** (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke, rolled by the app inside someone else's action), the app rolls the 1 again by itself, since a reroll of a 1 never lowers the result. The line says "Sortudo: 1 → 14" to whoever sees that save's dice.
   - **Not covered:** an NPC never gets it, even with a halfling's sheet.
+- **Indomitable (fighter 9, 13 and 17).**
+  A fighter who fails a saving throw may roll it again and must use the new roll, even when it is worse.
+  It spends one use, and the uses come back with a long rest (1, 2 or 3 uses by level).
+  - **The app asks** "Falhou na salvaguarda. Usar Indomitável para rolar de novo?" only when the save failed and the character has a use left.
+    "Rolar de novo" rolls in the app or takes a real die (RN-18); "Manter" keeps the roll and spends nothing.
+    A save rolled with advantage or disadvantage takes both new dice.
+    The new roll is never asked about again.
+    The result and the log say "Indomitável: 4 → 15", for the roller's player and the master (RN-10).
+  - **Order.** Lucky first, then the Bardic Inspiration die, then Indomitable, on the total that results.
+  - **The die.** A Bardic Inspiration die added to the roll goes with that roll.
+    When the player rerolls, the die stays spent and is not added to the new roll.
+    When the player keeps the roll, the die stays in the total.
+  - **Where it asks:** the saving throw of a lasting effect, the concentration save and the death save (a natural 1 or a total below 10 fails; a natural 20 never does).
+    The player rolls it, or the master rolls it for the player's character.
+  - **Hidden DC.** When the table hides the saving throw DC, the question comes on every save the fighter has a use for and says nothing of the result.
+    It also comes on every save when dice of an effect (Bless, Bane, a maneuver) are added after the roll.
+  - **Who answers** is the same as Lucky: the roller's player, and the master after 10 seconds.
+  - **Undo.** Undoing a death save gives the use back.
+    The effect save and the concentration save cannot be undone, so their use stays spent.
+  - **Not covered:** a saving throw rolled inside someone else's action (a spell's, a trap's, a hit rider's, a Hellish Rebuke's) is never held, so it does not ask.
+    An NPC and the master's own creatures never ask.
+- **Stroke of Luck (rogue 20).**
+  A rogue whose attack misses may hit instead, or whose ability check fails may count the d20 as a 20 (SRD 5.1).
+  It spends one use, and the use comes back with a short or a long rest.
+  - **The app asks** only when the roll missed or failed and the character has a use left.
+    The attack roll asks "Errou o ataque. Usar Golpe de Sorte para acertar?", and a check asks "Falhou no teste. Usar Golpe de Sorte para contar o d20 como 20?".
+    "Usar" spends the use; "Manter" keeps the roll and spends nothing.
+    No dice are rolled for the answer, so there is no real-dice choice (RN-18).
+    The question is never asked twice about the same roll.
+  - **The attack roll.** A missed attack, a natural 1 included, becomes a hit.
+    It is an ordinary hit, not a critical hit: the d20 is not changed, and the damage is rolled as for any hit.
+    The player never learns the target's armor class from the question (RN-20).
+    The miss is judged against the armor class the app knows when the roll is made, so a Shield reaction the target takes later does not open the question.
+  - **The check.** The d20 counts as 20, and the total is 20 plus the check's modifier.
+  - **Order.** Lucky first, then the Bardic Inspiration die, then Stroke of Luck, on the total that results.
+  - **Hidden result.** When the table hides what the question would tell, it comes on every roll the rogue could use it on and says nothing of the result.
+    That is a scene or group check whose DC is hidden, the roll of a contest or of Hide, and an attack with dice of an effect (Bless, Bane) added after the roll.
+    A natural 20 on the d20 and a check with no DC never ask.
+  - **Where it asks:** weapon attacks and the spell attack against one target, the scene check, the group check, the checks of a contest and of Hide, and the Counterspell check.
+    The player rolls it, or the master rolls it for the player's character.
+  - **Privacy.** The question, the result and the log line "Golpe de Sorte" are for the roller's player and the master (RN-10).
+  - **Who answers** is the same as Lucky: the roller's player, and the master after 10 seconds.
+  - **Undo.** Undoing an attack, a spell attack or a Counterspell gives the use back.
+    The other checks cannot be undone, so their use stays spent until a rest.
+  - **Not covered:** the trap search, the puzzle hint, the saving throws and the death save, a cast with several attacks or targets, and the rolls made on someone else's action.
+    An NPC and the master's own creatures never ask.
 
 How it is built: [Architecture](../architecture/play/held-rolls.md) and [attacks and damage](../architecture/play/attacks-and-damage.md).
 Tests: `combat-rolls.spec.ts` and `scenes.spec.ts` (`@RN-35`).

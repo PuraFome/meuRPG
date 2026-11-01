@@ -149,7 +149,7 @@ type groupHold struct {
 
 // asking says the roll was kept for one of the player's answers: nothing is written yet.
 func (g *groupHold) asking() bool {
-	return g.offer != nil || g.lucky != nil
+	return g.offer != nil || g.lucky != nil || g.held != nil
 }
 
 type groupHoldKey struct{}
@@ -191,13 +191,18 @@ func (s *Service) parseGroupAsk(msg *playv1.RequestGroupCheckRequest) (groupAsk,
 		return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, errors.New("skill_key must be a skill, an ability check or a saving throw"))
 	}
 	askedIDs := msg.GetCharacterIds()
-	for i, id := range askedIDs {
+	if len(askedIDs) > maxCombatants {
+		return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("character_ids must have at most %d entries", maxCombatants))
+	}
+	seen := make(map[string]struct{}, len(askedIDs))
+	for _, id := range askedIDs {
 		if _, err := parseCombatID(id, "character"); err != nil {
 			return groupAsk{}, err
 		}
-		if slices.Contains(askedIDs[:i], id) {
+		if _, dup := seen[id]; dup {
 			return groupAsk{}, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids names a character twice"))
 		}
+		seen[id] = struct{}{}
 	}
 	dc := msg.GetDc()
 	if dc < 0 || dc > maxGroupCheckDC {
@@ -519,6 +524,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
 		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Reliable: spec.reliable, Lucky: spec.lucky, MayAsk: true,
+		Stroke: groupStrokeRule(spec.check),
 	})
 	if err != nil {
 		return contestRoll{}, false, false, err
@@ -533,7 +539,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 	roll = contestRoll{
 		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
 		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
-		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky,
+		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky, Stroke: step.Stroke,
 		CountedAs: countedAs(step.Roll.Face(), countedFace(step.Roll.Face(), spec.reliable)),
 	}
 	if step.Bonus != nil {

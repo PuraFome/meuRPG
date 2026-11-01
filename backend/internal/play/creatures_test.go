@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/reqlimit"
 )
 
 // The character's creatures (MR-037): the familiar, the
@@ -274,7 +275,7 @@ func TestMR037_TheRitualFamiliarSpendsNoSlotAndANewOneReplacesTheOld(t *testing.
 		t.Errorf("creature_summoned events = %d, want 2", n)
 	}
 	var payload string
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT payload::STRING FROM session_events WHERE kind = 'creature_summoned' ORDER BY seq LIMIT 1`).Scan(&payload); err != nil {
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT payload::TEXT FROM session_events WHERE kind = 'creature_summoned' ORDER BY seq LIMIT 1`).Scan(&payload); err != nil {
 		t.Fatalf("read the event: %v", err)
 	}
 	if strings.Contains(payload, "Nanquim") || !strings.Contains(payload, "monster:owl") {
@@ -1497,7 +1498,7 @@ func TestMR037_ACreatureMovesLikeAnyCombatant(t *testing.T) {
 	}
 	c.h.svc.SetTerrain(msvc)
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
-	msvc.Mount(srv.Handle, mapsSessions{testSessions}, c.h.camps, connect.WithRequireConnectProtocolHeader())
+	msvc.Mount(srv.Handle, mapsSessions{testSessions}, c.h.camps, reqlimit.HandlerOption())
 	server := httptest.NewServer(srv.Handler())
 	t.Cleanup(server.Close)
 	paint := mapsv1connect.NewMapServiceClient(&http.Client{Transport: userTransport{userID: c.master.id, next: server.Client().Transport}}, server.URL)
