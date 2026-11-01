@@ -1,6 +1,6 @@
 # Spell zones
 
-The areas that Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud keep on the map (RN-37).
+The areas that Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud and Silence keep on the map (RN-37).
 The code is `zones_*.go` in `backend/internal/play`; the rules are in [Rules](../../product/rules.md#rn-37-areas-that-spells-keep-on-the-map).
 
 ## The model
@@ -11,7 +11,7 @@ A lasting effect belongs to one target and has its own clock; a zone has no sing
 Its life has three points, each a single call: the cast makes it (`createZone`), the end of a concentration deletes it (`endZonesOf`, called by `endConcentrationEffects`, so every way a concentration ends reaches it, `stopConcentrating` and `endConcentrationAtZero` included), and the start of the caster's turn deletes it when its round is out (`endZonesOutOfTime`).
 The foreign keys delete it with the combat or the caster.
 
-`zoneDefs` (`zones_catalog.go`) is the table of the nine spells: kind (damage, restrain, prone, open or retch), shape and size (`growsFt` is what a slot above the spell's level adds to the radius, `sizeAt`), how the cast places it (`AreaPlacement`), how it moves, the save, when it catches (`onEnter`, `onStart`, `onCast`, `onTurnEnd`), the effect a restraint puts on a creature (`restrainKey`), whether it spares the caster's side, whether the cast still hits the creatures inside, and what it does to sight (`sight`: none, cloud or dark).
+`zoneDefs` (`zones_catalog.go`) is the table of the ten spells: kind (damage, restrain, prone, open or retch), shape and size (`growsFt` is what a slot above the spell's level adds to the radius, `sizeAt`), how the cast places it (`AreaPlacement`), how it moves, the save, when it catches (`onEnter`, `onStart`, `onCast`, `onTurnEnd`), the effect a restraint puts on a creature (`restrainKey`), whether it spares the caster's side, whether the cast still hits the creatures inside, and what it does to sight (`sight`: none, cloud or dark).
 Another spell with a lingering area is another row, plus its entry in the catalogue of lasting effects if it also puts an effect on its targets.
 `placementOf`, `areaOf` and the area fields of the turn options read the row first, so the preview, the cast and the options lay the area out as the zone does.
 A cube is centred on its point (`Area.FromPoint`, an even side puts the extra square on the larger side).
@@ -27,7 +27,7 @@ A zone is laid only when the request chooses a point (`origin`): `placeArea` the
 `castFlow.affect` hands a placed cast of a zone spell to `affectZone`.
 Moonbeam, Spirit Guardians and Cloudkill hit nobody at the cast.
 Grease and Entangle catch the creatures standing in the area once the zone exists (`catchWhoIsInside`, reason `zone_cast`).
-Fog Cloud and Darkness (`zoneOpen`) catch nobody.
+Fog Cloud, Darkness and Silence (`zoneOpen`) catch nobody.
 Stinking Cloud (`zoneRetch`) catches at the start of a turn only.
 Web runs `hitTarget` and `applyLastingSpell`, so the creatures inside get the web's effect.
 `createZone` keeps `plan.origin` and `plan.squares` (what `planArea` worked out, walls included), the caster's DC, the damage at the cast's slot level and the end round (`SpellEffectRounds`).
@@ -90,6 +90,27 @@ A creature immune to poison damage or to the poisoned condition is not asked (`i
 Nothing else counts: no rule reads the creature's type, because the SRD data has none for this.
 The text a player reads when asked is in `zoneSaveText` (`zones_save.go`).
 
+## Silence
+
+Silence (`zoneOpen`, `silences`) asks nobody and the cast hits nobody; the zone is a sphere of 20 feet that does not spread around corners.
+Its three effects are read where they matter, from the zones of the combat; none is stored on a creature.
+Creatures occupy one square, so "entirely inside" is the creature's square in the sphere.
+`occupiedSquares` (`zones_silence.go`) is the one place that says which squares a creature covers, and `zone.holds` asks that all of them are in the zone.
+`silencedBy` says a combatant is entirely inside any Silence of the combat.
+
+- **Verbal gate.** `castFlow.checkSilence` runs right after `pickSlot`, before anything is spent.
+  A caster entirely inside a Silence who casts a spell with `Spell.Verbal` gets `failed_precondition` ("the caster is inside a Silence...").
+  A spell with only somatic or material components is cast as usual.
+- **Thunder.** `modifiersOf` (the steps of a damage, `combat_parts.go`) adds an immunity step to thunder damage with the source `spell:silence`, so the master sees it in the steps and may ignore it as any source.
+  `afterResistance` (the damage of zones, effects, traps and reactions) adds thunder to the immunities of a target inside.
+  Both read the zones when the damage lands, so a creature pushed in or out by the same cast counts where it stands then.
+- **Deafened.** The condition is derived, not stored: `loadEncounter` gives the combatants inside a Silence the `condition:deafened` key (`withSilenceDeaf`), so every read of the combat shows it and nothing is written.
+  It ends with the step out or with the zone, and it stays while another Silence covers the creature.
+  A deafness a creature already has from another source is left as it is.
+  `deafened` is an owner-only condition (`ownerOnlyConditions`): only the master and the creature's player read it.
+  The rules that read the stored condition (a bard's cut of the reaction, the hearing of the Channel Divinity, the hearing flags of the combatant's options) do not see the derived one.
+- Sound that passes through the sphere, and objects inside it, are not ruled.
+
 ## What a zone does not change in an attack
 
 A cloud or darkness changes what a viewer sees on the map.
@@ -130,7 +151,7 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast` and 
 ### The map, the panel and the end
 
 - **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern: the first six catalog spells a fixed one, every other spell a hash of the key.
-  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's and Stinking Cloud on Web's.
+  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's, Stinking Cloud on Web's and Silence on Web's too (the dots).
   `zoneLegend` gives the entries the card lists.
   The layer and its labels are `aria-hidden`; the panel is the accessible version.
   The move page's map does not draw zones.

@@ -16,9 +16,9 @@ import (
 // a zone catches their character, the order of two questions, a zone with no saving throw, how a zone
 // ends and what it does to the speed and the terrain.
 
-// noSaveSpell is a fixture: an SRD spell (Silence) given the row of a zone with no saving throw, such as
+// noSaveSpell is a fixture: an SRD spell (Silent Image) given the row of a zone with no saving throw, such as
 // the board's Cloud of Daggers, which the SRD 5.1 does not have. Registered once, before any test runs.
-const noSaveSpell = "spell:silence"
+const noSaveSpell = "spell:silent-image"
 
 func init() {
 	zoneDefs[noSaveSpell] = zoneDef{

@@ -304,7 +304,7 @@ Columns: `source_id` (a Berserker's frenzy has its own combatant as source), `en
 
 ## `spell_zones`
 
-`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud.
+`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud and Silence.
 A row belongs to the combat (`encounter_id`) and to its caster (`owner_id`), and goes away with either.
 `spell_key` and `cast_id` (the id of the cast that made it, which the undo of the cast finds it by); `slot_level`; `origin_col`, `origin_row` and `squares` (JSON, `[[col,row],...]`, at most 4,096: where it stands now, after the walls cut it).
 The limit is 4,096 because Fog Cloud cast with a 9th-level slot is a sphere of 180 feet of radius, 4,053 squares (migration 00296).

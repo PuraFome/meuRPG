@@ -10,7 +10,7 @@ import (
 )
 
 // The spells that keep an area on the map while they last (SRD 5.1): Spirit Guardians, Moonbeam,
-// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud. The cast puts a zone on the map (the spell_zones table); what the zone does,
+// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud and Silence. The cast puts a zone on the map (the spell_zones table); what the zone does,
 // where it stands and how it moves is written here, one row for each spell, in our own words:
 //
 //   - Spirit Guardians: an aura around the caster that goes where the caster goes. A creature that
@@ -35,6 +35,9 @@ import (
 //     darkvision see into it.
 //   - Stinking Cloud: a sphere of 20 feet of radius at a point, heavily obscured. A creature whose square is in
 //     it at the start of its turn makes a Constitution save, and a failure spends its action.
+//   - Silence: a sphere of 20 feet of radius at a point, ruling sound. It asks nobody. A creature whose square is
+//     in it is immune to thunder damage and deafened, and a caster there cannot cast a spell with a verbal
+//     component (zones_silence.go).
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
 // inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
@@ -50,7 +53,8 @@ const (
 	zoneRestrain
 	// zoneProne: a saving throw; a failure knocks the creature prone (Grease).
 	zoneProne
-	// zoneOpen: no save and no trigger; the zone only changes what is seen (Fog Cloud, Darkness).
+	// zoneOpen: no save and no trigger; the zone only changes what is seen (Fog Cloud, Darkness) or what is heard
+	// (Silence).
 	zoneOpen
 	// zoneRetch: a saving throw at the start of a turn of a creature whose square is inside; a failure spends its action
 	// (Stinking Cloud).
@@ -107,6 +111,9 @@ type zoneDef struct {
 	// keepsCastHits says the cast still hits the creatures inside the area when the spell is cast (the
 	// effect Web puts on them).
 	keepsCastHits bool
+	// silences says the creatures inside the zone are deafened and immune to thunder damage, and that no spell with a
+	// verbal component is cast from inside it (Silence).
+	silences bool
 }
 
 // The sizes the spells give their areas, in feet.
@@ -120,6 +127,7 @@ const (
 	fogCloudFt        = 20
 	darknessFt        = 15
 	stinkingCloudFt   = 20
+	silenceFt         = 20
 )
 
 // moveRangeFt is how far the caster moves an area with an action (Moonbeam), and driftFt how far a
@@ -140,6 +148,10 @@ var zoneDefs = map[string]zoneDef{
 	},
 	"spell:stinking-cloud": {
 		kind: zoneRetch, onStart: true, shape: grid.ShapeSphere, sizeFt: stinkingCloudFt, save: "con", corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:silence": {
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: silenceFt, silences: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:spirit-guardians": {
@@ -169,13 +181,13 @@ var zoneDefs = map[string]zoneDef{
 	},
 }
 
-// zoneDefOf is the zone one of the SRD's nine spells keeps.
+// zoneDefOf is the zone one of the SRD's ten spells keeps.
 func zoneDefOf(spellKey string) (zoneDef, bool) {
 	d, ok := zoneDefs[spellKey]
 	return d, ok
 }
 
-// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's nine, or the table spell's own
+// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's ten, or the table spell's own
 // area, which the master wrote as the model says. Both are the same value, so the zone is made and worked the
 // same way from either.
 func zoneDefOfSpell(sp link.Spell) (zoneDef, bool) {
@@ -214,7 +226,7 @@ type zoneDefJSON struct {
 	Corners   bool   `json:"corners,omitempty"`
 }
 
-// storedDef is the definition as the zone row keeps it, nil for one of the SRD's nine (the code's table is its truth).
+// storedDef is the definition as the zone row keeps it, nil for one of the SRD's ten (the code's table is its truth).
 func storedDef(spellKey string, d zoneDef) []byte {
 	if _, srd := zoneDefOf(spellKey); srd {
 		return nil

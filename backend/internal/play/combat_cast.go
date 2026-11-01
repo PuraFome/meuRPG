@@ -250,7 +250,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 // Metamagic, the targets and the dice. Nothing is written.
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.applyTableOptions, f.checkTargetsAlive,
+		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkSilence, f.applyTableOptions, f.checkTargetsAlive,
 		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
 	} {
 		if err := phase(ctx); err != nil {
