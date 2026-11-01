@@ -5,8 +5,8 @@
 // source: meurpg/options/v1/limits.proto
 
 // Package meurpg.options.v1 holds custom options for the API's own
-// conventions. Today that is the request size limits: a field says how many
-// items or bytes the server accepts in it.
+// conventions: the request size limits, where a field says how many items or
+// bytes the server accepts in it.
 // docs/architecture/api.md#request-size-limits describes how they are enforced.
 
 package optionsv1

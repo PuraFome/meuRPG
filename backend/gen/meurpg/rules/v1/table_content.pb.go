@@ -31,6 +31,7 @@
 package rulesv1
 
 import (
+	_ "github.com/PuraFome/meuRPG/backend/gen/meurpg/options/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -847,6 +848,8 @@ type TableEffect struct {
 	Spells []string `protobuf:"bytes,20,rep,name=spells,proto3" json:"spells,omitempty"`
 	// The text for the sheet, in Portuguese, when a note, a resource or an action
 	// needs one. "{value}" is the value with its sign, "{n}" without it.
+	// The effect text has at most 4,000 characters (backend/internal/rules/overlay_budget.go:93).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	TextPt string `protobuf:"bytes,21,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
 	// superiority_die: a die an option (a maneuver) adds to a roll, spent from the
 	// resource named in `resource` (one use each; the entry or its class defines it).
@@ -1536,6 +1539,8 @@ type TableFeature struct {
 	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt  []string       `protobuf:"bytes,3,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	Effects []*TableEffect `protobuf:"bytes,4,rep,name=effects,proto3" json:"effects,omitempty"`
 	// The option list of a class or subclass feature (a table's maneuvers): options the
@@ -1626,6 +1631,8 @@ type TableFeat struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// What the feat asks of a character; unset asks nothing.
 	Prerequisite *FeatPrerequisite `protobuf:"bytes,3,opt,name=prerequisite,proto3" json:"prerequisite,omitempty"`
@@ -1700,6 +1707,8 @@ type TableOption struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
 	// "metamagic", "fighting_style", "pact_boon", "hunters_prey", "defensive_tactics",
@@ -1929,6 +1938,8 @@ type TableClassFeature struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// The class that has it: an SRD class or a table class. Never changes.
 	ClassKey string `protobuf:"bytes,3,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
@@ -2041,6 +2052,7 @@ type TableCasting struct {
 	// spells that name the class. Only a class whose list_from is empty has them;
 	// a third caster's subclass and a class that does not cast have none. Each is
 	// a spell of the SRD, named once, and a class names at most 400.
+	// The request limit is 400 items, the same as rules.MaxClassSRDSpells (backend/internal/rules/overlay_budget.go:33 and :106).
 	SrdSpellKeys  []string `protobuf:"bytes,8,rep,name=srd_spell_keys,json=srdSpellKeys,proto3" json:"srd_spell_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2518,7 +2530,9 @@ type TableSubclass struct {
 	// The parent class's key. Immutable.
 	ClassKey string `protobuf:"bytes,2,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
 	// The class level the choice happens at: the parent's, or 0 for "the parent's".
-	Level  int32                 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
+	Level int32 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string              `protobuf:"bytes,4,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	Levels []*TableSubclassLevel `protobuf:"bytes,5,rep,name=levels,proto3" json:"levels,omitempty"`
 	// Makes the subclass a third caster ("third"); the parent class must not cast.
@@ -3418,8 +3432,12 @@ type TableSpell struct {
 	Concentration bool `protobuf:"varint,8,opt,name=concentration,proto3" json:"concentration,omitempty"`
 	Ritual        bool `protobuf:"varint,9,opt,name=ritual,proto3" json:"ritual,omitempty"`
 	// The classes (SRD or table) whose list has the spell.
-	ClassKeys     []string          `protobuf:"bytes,10,rep,name=class_keys,json=classKeys,proto3" json:"class_keys,omitempty"`
-	DescPt        []string          `protobuf:"bytes,11,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
+	ClassKeys []string `protobuf:"bytes,10,rep,name=class_keys,json=classKeys,proto3" json:"class_keys,omitempty"`
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
+	DescPt []string `protobuf:"bytes,11,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
+	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	HigherLevelPt []string          `protobuf:"bytes,12,rep,name=higher_level_pt,json=higherLevelPt,proto3" json:"higher_level_pt,omitempty"`
 	Target        *TableSpellTarget `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
 	// "melee", "ranged" or empty (no spell attack). Not together with `save`.
@@ -4816,6 +4834,7 @@ type TableContentPack struct {
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
 	// other fields of TableEntry are left out of an export and ignored in an import.
+	// The request limit is 1000 items, the same as rules.MaxOverlayEntries (backend/internal/rules/overlay.go:37).
 	Entries       []*TableEntry `protobuf:"bytes,4,rep,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4987,6 +5006,7 @@ type ImportTableContentRequest struct {
 	// "proficiency_key") is a violation of its entry at the path of the field (reason
 	// "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
 	// this field's size.
+	// The request limit is 3 MiB, the same as characters.MaxPackBytes (backend/internal/characters/tablecontent_pack.go:41).
 	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5596,7 +5616,8 @@ func (x *ListOptionSwitchesResponse) GetTableRevision() int32 {
 type SetOptionSwitchesRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	// At least one, at most 700; a key once.
+	// At least one, at most 1400; a key once.
+	// The request limit is 1400 items, the same as characters.MaxOptionSwitches (backend/internal/characters/tableswitches.go:32 and :197).
 	Switches      []*OptionSwitch `protobuf:"bytes,2,rep,name=switches,proto3" json:"switches,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6557,7 +6578,7 @@ var File_meurpg_rules_v1_table_content_proto protoreflect.FileDescriptor
 
 const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\n" +
-	"#meurpg/rules/v1/table_content.proto\x12\x0fmeurpg.rules.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x8f\b\n" +
+	"#meurpg/rules/v1/table_content.proto\x12\x0fmeurpg.rules.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1emeurpg/options/v1/limits.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x8f\b\n" +
 	"\n" +
 	"TableEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
@@ -6587,7 +6608,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\x92\x0f\n" +
+	"\x04body\"\x9a\x0f\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6609,8 +6630,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x05count\x18\x11 \x01(\x05R\x05count\x12\x12\n" +
 	"\x04from\x18\x12 \x03(\tR\x04from\x12\x18\n" +
 	"\aeconomy\x18\x13 \x01(\tR\aeconomy\x12\x16\n" +
-	"\x06spells\x18\x14 \x03(\tR\x06spells\x12\x17\n" +
-	"\atext_pt\x18\x15 \x01(\tR\x06textPt\x12\x18\n" +
+	"\x06spells\x18\x14 \x03(\tR\x06spells\x12\x1f\n" +
+	"\atext_pt\x18\x15 \x01(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06textPt\x12\x18\n" +
 	"\aapplies\x18\x16 \x01(\tR\aapplies\x12\x18\n" +
 	"\aability\x18\x17 \x01(\tR\aability\x12!\n" +
 	"\fignore_cover\x18\x18 \x01(\bR\vignoreCover\x12)\n" +
@@ -6666,21 +6687,21 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\vattack_name\x18A \x01(\tR\n" +
 	"attackName\x12\x1f\n" +
 	"\vdamage_dice\x18B \x01(\tR\n" +
-	"damageDice\"\xc3\x01\n" +
+	"damageDice\"\xcb\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
-	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
-	"\adesc_pt\x18\x03 \x03(\tR\x06descPt\x126\n" +
+	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
+	"\adesc_pt\x18\x03 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x126\n" +
 	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\x127\n" +
-	"\aoptions\x18\x05 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\aoptions\"\xbc\x01\n" +
+	"\aoptions\x18\x05 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\aoptions\"\xc4\x01\n" +
 	"\tTableFeat\x12\x17\n" +
-	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
-	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12E\n" +
+	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
+	"\adesc_pt\x18\x02 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12E\n" +
 	"\fprerequisite\x18\x03 \x01(\v2!.meurpg.rules.v1.FeatPrerequisiteR\fprerequisite\x126\n" +
-	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf1\x01\n" +
+	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf9\x01\n" +
 	"\vTableOption\x12\x17\n" +
-	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
-	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12\x10\n" +
+	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
+	"\adesc_pt\x18\x02 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12\x10\n" +
 	"\x03set\x18\x03 \x01(\tR\x03set\x12G\n" +
 	"\fprerequisite\x18\x04 \x01(\v2#.meurpg.rules.v1.OptionPrerequisiteR\fprerequisite\x126\n" +
 	"\aeffects\x18\x05 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\x12\x1d\n" +
@@ -6694,14 +6715,14 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x12requires_spell_key\x18\x04 \x01(\tR\x10requiresSpellKey\"E\n" +
 	"\x10OptionClassLevel\x12\x1b\n" +
 	"\tclass_key\x18\x01 \x01(\tR\bclassKey\x12\x14\n" +
-	"\x05level\x18\x02 \x01(\x05R\x05level\"\xe2\x01\n" +
+	"\x05level\x18\x02 \x01(\x05R\x05level\"\xea\x01\n" +
 	"\x11TableClassFeature\x12\x17\n" +
-	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
-	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12\x1b\n" +
+	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
+	"\adesc_pt\x18\x02 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12\x1b\n" +
 	"\tclass_key\x18\x03 \x01(\tR\bclassKey\x12\x14\n" +
 	"\x05level\x18\x04 \x01(\x05R\x05level\x120\n" +
 	"\x14replaces_feature_key\x18\x05 \x01(\tR\x12replacesFeatureKey\x126\n" +
-	"\aeffects\x18\x06 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\x97\x02\n" +
+	"\aeffects\x18\x06 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\x9e\x02\n" +
 	"\fTableCasting\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x122\n" +
 	"\aability\x18\x02 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12 \n" +
@@ -6710,8 +6731,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\fprepared_max\x18\x05 \x01(\tR\vpreparedMax\x12\x1f\n" +
 	"\vstart_level\x18\x06 \x01(\x05R\n" +
 	"startLevel\x12\x16\n" +
-	"\x06ritual\x18\a \x01(\bR\x06ritual\x12$\n" +
-	"\x0esrd_spell_keys\x18\b \x03(\tR\fsrdSpellKeys\"\xcb\x01\n" +
+	"\x06ritual\x18\a \x01(\bR\x06ritual\x12+\n" +
+	"\x0esrd_spell_keys\x18\b \x03(\tB\x05\x88\xb5\x18\x90\x03R\fsrdSpellKeys\"\xcb\x01\n" +
 	"\x0fTableClassLevel\x12\x1d\n" +
 	"\n" +
 	"prof_bonus\x18\x01 \x01(\x05R\tprofBonus\x129\n" +
@@ -6747,12 +6768,12 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\bfeatures\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\bfeatures\x12%\n" +
 	"\x0ecantrips_known\x18\x03 \x01(\x05R\rcantripsKnown\x12!\n" +
 	"\fspells_known\x18\x04 \x01(\x05R\vspellsKnown\x12\x14\n" +
-	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xe2\x02\n" +
+	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xea\x02\n" +
 	"\rTableSubclass\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1b\n" +
 	"\tclass_key\x18\x02 \x01(\tR\bclassKey\x12\x14\n" +
-	"\x05level\x18\x03 \x01(\x05R\x05level\x12\x17\n" +
-	"\adesc_pt\x18\x04 \x03(\tR\x06descPt\x12;\n" +
+	"\x05level\x18\x03 \x01(\x05R\x05level\x12\x1f\n" +
+	"\adesc_pt\x18\x04 \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12;\n" +
 	"\x06levels\x18\x05 \x03(\v2#.meurpg.rules.v1.TableSubclassLevelR\x06levels\x127\n" +
 	"\acasting\x18\x06 \x01(\v2\x1d.meurpg.rules.v1.TableCastingR\acasting\x12M\n" +
 	"\x0falways_prepared\x18\a \x03(\v2$.meurpg.rules.v1.TableAlwaysPreparedR\x0ealwaysPrepared\x12'\n" +
@@ -6816,7 +6837,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x0eTableSpellHeal\x12\x12\n" +
 	"\x04dice\x18\x01 \x01(\tR\x04dice\x12$\n" +
 	"\x0eper_slot_level\x18\x02 \x01(\tR\fperSlotLevel\x12#\n" +
-	"\radds_modifier\x18\x03 \x01(\bR\faddsModifier\"\xab\x06\n" +
+	"\radds_modifier\x18\x03 \x01(\bR\faddsModifier\"\xbb\x06\n" +
 	"\n" +
 	"TableSpell\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x14\n" +
@@ -6833,9 +6854,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x06ritual\x18\t \x01(\bR\x06ritual\x12\x1d\n" +
 	"\n" +
 	"class_keys\x18\n" +
-	" \x03(\tR\tclassKeys\x12\x17\n" +
-	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
-	"\x0fhigher_level_pt\x18\f \x03(\tR\rhigherLevelPt\x129\n" +
+	" \x03(\tR\tclassKeys\x12\x1f\n" +
+	"\adesc_pt\x18\v \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06descPt\x12.\n" +
+	"\x0fhigher_level_pt\x18\f \x03(\tB\x06\x90\xb5\x18\x80\x80\x01R\rhigherLevelPt\x129\n" +
 	"\x06target\x18\r \x01(\v2!.meurpg.rules.v1.TableSpellTargetR\x06target\x12\x16\n" +
 	"\x06attack\x18\x0e \x01(\tR\x06attack\x12.\n" +
 	"\x04save\x18\x0f \x01(\v2\x1a.meurpg.rules.v1.SpellSaveR\x04save\x129\n" +
@@ -6928,24 +6949,24 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"w\n" +
 	"\x1bUnarchiveTableEntryResponse\x121\n" +
 	"\x05entry\x18\x01 \x01(\v2\x1b.meurpg.rules.v1.TableEntryR\x05entry\x12%\n" +
-	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"\x8f\x01\n" +
+	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"\x96\x01\n" +
 	"\x10TableContentPack\x12\x16\n" +
 	"\x06format\x18\x01 \x01(\tR\x06format\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x05R\aversion\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x125\n" +
-	"\aentries\x18\x04 \x03(\v2\x1b.meurpg.rules.v1.TableEntryR\aentries\"<\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12<\n" +
+	"\aentries\x18\x04 \x03(\v2\x1b.meurpg.rules.v1.TableEntryB\x05\x88\xb5\x18\xe8\aR\aentries\"<\n" +
 	"\x19ExportTableContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"S\n" +
 	"\x1aExportTableContentResponse\x125\n" +
-	"\x04pack\x18\x01 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\"\xef\x01\n" +
+	"\x04pack\x18\x01 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\"\xf8\x01\n" +
 	"\x19ImportTableContentRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
 	"\x04pack\x18\x02 \x01(\v2!.meurpg.rules.v1.TableContentPackR\x04pack\x124\n" +
 	"\x04mode\x18\x03 \x01(\x0e2 .meurpg.rules.v1.TableImportModeR\x04mode\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
-	"\tpack_json\x18\x05 \x01(\fR\bpackJson\"\x9f\x02\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12$\n" +
+	"\tpack_json\x18\x05 \x01(\fB\a\x90\xb5\x18\x80\x80\xc0\x01R\bpackJson\"\x9f\x02\n" +
 	"\x10TableImportEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x125\n" +
 	"\x04kind\x18\x02 \x01(\x0e2!.meurpg.rules.v1.TableContentKindR\x04kind\x12\x17\n" +
@@ -6988,11 +7009,12 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	" \x01(\x05R\x0fcharactersUsing\"\x81\x01\n" +
 	"\x1aListOptionSwitchesResponse\x12<\n" +
 	"\aoptions\x18\x01 \x03(\v2\".meurpg.rules.v1.OptionSwitchEntryR\aoptions\x12%\n" +
-	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"v\n" +
+	"\x0etable_revision\x18\x02 \x01(\x05R\rtableRevision\"}\n" +
 	"\x18SetOptionSwitchesRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\x129\n" +
-	"\bswitches\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.OptionSwitchR\bswitches\"\x9a\x01\n" +
+	"campaignId\x12@\n" +
+	"\bswitches\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.OptionSwitchB\x05\x88\xb5\x18\xf8\n" +
+	"R\bswitches\"\x9a\x01\n" +
 	"\x19SetOptionSwitchesResponse\x12%\n" +
 	"\x0etable_revision\x18\x01 \x01(\x05R\rtableRevision\x12\x18\n" +
 	"\achanged\x18\x02 \x01(\x05R\achanged\x12<\n" +

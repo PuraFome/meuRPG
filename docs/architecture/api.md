@@ -200,7 +200,7 @@ The code is `platform/reqlimit`.
 | Items of a repeated field, entries of a map | 100 (`DefaultMaxItems`) | `(meurpg.options.v1.max_items)` on the field | `invalid_argument` with a `RequestRefused` detail, reason `LIST_TOO_LONG` |
 | Bytes of a string (each element of a repeated string, each key and value of a map) | 8 KiB (`DefaultMaxString`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
 | Bytes of a bytes field, counted the same way | 4 KiB (`DefaultMaxBytes`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
-| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure (`ImportTableContent` has 4 MiB, for the table-content pack) | `resource_exhausted`, from Connect |
+| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure ([Procedures with a raised read limit](#procedures-with-a-raised-read-limit)) | `resource_exhausted`, from Connect |
 | Bytes of any one RPC message | 4 MiB (`Backstop`, `connect.WithReadMaxBytes`) | never | `resource_exhausted`, from Connect |
 
 The rule a reader follows:
@@ -226,6 +226,53 @@ The rule a reader follows:
 The options are custom (`proto/meurpg/options/v1/limits.proto`) instead of protovalidate.
 The need is three numeric caps, and protovalidate would bring a rules engine and a CEL runtime into the server, the generated code and the build for them.
 The option is a few small functions that read a descriptor and walk a message, and the registry test reads the same options as the interceptor.
+
+### Fields with a raised limit
+
+A field has an option only where the app's own rule allows more than the default.
+The limit of the field is the app's own cap, in bytes for a string (a character takes up to 4), and the `.proto` comment of the field cites where the cap is.
+
+| Field | Limit | The app's own cap |
+| --- | --- | --- |
+| `known_spell_keys` of `FullSheet` and of `LevelUpChoices` | 200 items | `rules.MaxKnownSpells` (`rules/api.go`) |
+| `FullSheet.known_issues` | 1000 items | `rules.MaxOverlayEntries` (`rules/overlay.go`); the server computes it again on every save |
+| `FullSheet.content_baselines` | 1000 entries | `rules.MaxOverlayEntries`; the server clears it on every save |
+| `FullSheet.custom_features_text` | 20 KiB | 5,000 characters (`characters/sheet.go`) |
+| `CharacterStory.backstory` | 40 KiB | 10,000 characters (`characters/sheet.go`) |
+| `UpdateMasterNotesRequest.notes` | 80 KiB | 20,000 characters (`characters.MaxMasterNotesLength`) |
+| `PaintMapCellsRequest.squares` | 400 items | `maxPaintSquares` (`maps/layers.go`) |
+| `CreateMapPointRequest.hooks`, `UpdateMapPointRequest.hooks` | 16 KiB | 4,000 characters (`maps/mapservice.go`) |
+| `UpdateCampaignDocumentRequest.body` | 400 KiB | `campaigns.MaxDocumentBytes`, 200 KiB after a line break `\r\n` becomes `\n` (`campaigns/document.go`) |
+| `SetOptionSwitchesRequest.switches` | 1400 items | `characters.MaxOptionSwitches` (`characters/tableswitches.go`) |
+| `TableContentPack.entries` | 1000 items | `rules.MaxOverlayEntries` |
+| `ImportTableContentRequest.pack_json` | 3 MiB | `characters.MaxPackBytes` (`characters/tablecontent_pack.go`) |
+| `TableCasting.srd_spell_keys` | 400 items | `rules.MaxClassSRDSpells` (`rules/overlay_budget.go`) |
+| `desc_pt` of a table feature, feat, option, class feature, subclass and spell, `TableSpell.higher_level_pt`, `TableEffect.text_pt` | 16 KiB for each text | 4,000 characters (`rules/overlay.go`, `rules/overlay_budget.go`) |
+
+The entries of a table (`TableEntry`) are in `ImportTableContent`, `CreateTableEntry` and `UpdateTableEntry`, so the last two rows apply to all three.
+Every other list in a request keeps the default of 100, and a string up to 2,000 characters fits the default of 8 KiB.
+
+### Procedures with a raised read limit
+
+| Procedure | Read limit | Why |
+| --- | --- | --- |
+| `ImportTableContent` | 4 MiB (the backstop) | `pack_json` is up to 3 MiB, and proto JSON writes bytes in base64 |
+| `UpdateCampaignDocument` | 512 KiB | `body` is up to 400 KiB, and a line break takes 2 bytes in proto JSON |
+| `CreateTableEntry`, `UpdateTableEntry` | 128 KiB | An entry's data is up to 64 KiB (`characters.MaxTableEntryBytes`), with texts of 16 KiB |
+| `SetOptionSwitches` | 256 KiB | `switches` is up to 1400 entries |
+| `CreateCharacter`, `UpdateCharacter`, `PreviewCharacter`, `PreviewChoices` | 128 KiB | A full sheet with `known_spell_keys`, `known_issues`, `content_baselines` and the texts at their limits |
+| `UpdateCharacterStory` | 128 KiB | `backstory` is up to 40 KiB |
+| `UpdateMasterNotes` | 128 KiB | `notes` is up to 80 KiB |
+| `LevelUpCharacter`, `PreviewLevelUp` | 128 KiB | `known_spell_keys` is up to 200 items, with the other lists of keys |
+| `CreateMapPoint`, `UpdateMapPoint` | 128 KiB | `hooks` is up to 16 KiB, with the point's other texts |
+| `PaintMapCells` | 128 KiB | `squares` is up to 400 items |
+
+Every other unary procedure has the default of 64 KiB.
+
+### In tests
+
+A module's test harness mounts its handlers with `reqlimit.HandlerOption()` (the protocol header and the field limits) and puts `reqlimit.Middleware` in front of its mux (`httpserver.Server.Handler` already does), so a test through a real handler is refused as in production.
+`platform/reqlimit` tests the limits of the fields above without a database (`appfields_test.go`).
 
 ## Abuse limits
 
