@@ -130,6 +130,24 @@ The `superiority_die` effects of applies `check`, `save` and `initiative` ([Rule
 
 Not covered: the trap search, the puzzle hint, the group check, the checks of a contest, Hide and the Counterspell check, the death save, and the rolls made on someone else's call. Another creature's roll (an ally's) takes no die of the character.
 
+### Indomitable (fighter 9)
+
+The resource `indomitable` has 1, 2 or 3 uses (levels 9, 13 and 17) and recharges on a long rest.
+It is spent when the player rerolls a failed saving throw (the held-roll question in [held rolls](held-rolls.md#indomitable-fighter-9-13-and-17)), through `spendResource` on the vitals.
+Keeping the roll spends nothing.
+The undo of a death save gives the use back (`spendResourceBack`).
+The effect save and the concentration save cannot be undone, so the use they spent stays spent.
+A saving throw rolled inside someone else's call never offers it.
+
+### Stroke of Luck (rogue 20)
+
+The resource `stroke_of_luck` has 1 use and recharges on a short or a long rest.
+It is spent when the player uses it on a missed attack or a failed ability check (the held-roll question in [held rolls](held-rolls.md#stroke-of-luck-rogue-20)).
+Outside a combat the use goes through the vitals (`AdjustVitals`), in a combat through `spendResource`.
+Keeping the roll spends nothing.
+The undo of an attack, a spell attack or a Counterspell gives the use back (`spendResourceBack`).
+The scene, group, contest and Hide checks cannot be undone, so the use they spent stays spent until a rest.
+
 ### Metamagic (sorcerer 3)
 
 `CastSpellRequest.metamagic` carries the options of a casting with their parameters.

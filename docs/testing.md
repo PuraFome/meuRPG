@@ -46,7 +46,17 @@ The content loaders refuse malformed content, and `TestSnapshot`, `TestReference
 
 ## Integration tests
 
-Integration tests run against a real CockroachDB: set `MEURPG_TEST_DATABASE_URL` and run `make test`.
+Integration tests run against a real database: set `MEURPG_TEST_DATABASE_URL` and run `make test`.
+The URL may name a PostgreSQL or a CockroachDB server: `backend/internal/platform/dbtest` asks the server which it is.
+CI runs the tests on CockroachDB, the production database.
+On PostgreSQL the test database is a native `CREATE DATABASE ... TEMPLATE` copy, and the CockroachDB-only parts of the migrations are adapted by the test runner (the migrations are not changed).
+The tests that need CockroachDB itself are not skipped on PostgreSQL, so they fail there:
+- Row-level TTL: `TestOrphanedPlayerCharactersAreDeletedByTheDatabase` (characters), `TestRowLevelTTL` (identity), `TestInvitesAreDeletedByTheDatabase` (campaigns) and the TTL check of `campaigns/pending_test.go`.
+- Transaction priority and injected retry errors: `play/rosterretry_test.go`.
+- `SHOW CREATE`: `identity/store_integration_test.go` and `campaigns/campaigns_test.go`.
+- Lock watching through `crdb_internal` or `SHOW CLUSTER STATEMENTS`: `progression/gold_test.go`, `play/creatures_test.go` and `maps/kinds_test.go`.
+
+A test that compares a `jsonb` column read as text calls `dbtest.SortJSONKeys` on it, because the two databases print the keys in a different order.
 Without the variable they skip; with `MEURPG_REQUIRE_DB=1` (CI sets it) a missing variable fails them instead (`backend/internal/platform/testenv`).
 
 ```bash
