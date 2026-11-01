@@ -1,7 +1,10 @@
 package reqlimit
 
 import (
+	"io"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -233,3 +236,43 @@ func checkBounded(t *testing.T, procedure string, fd protoreflect.FieldDescripto
 	}
 	return lists, texts
 }
+
+// TestMiddlewareEnforcesTheReadLimitOfEveryProcedure runs the production
+// middleware over a handler that reads the whole body, at the path of every
+// procedure: a body of the procedure's limit (the default, or its entry in
+// raisedReadLimits as the test reads it) is read, and one byte more is refused.
+// It cannot pass for a procedure whose limit is not enforced.
+func TestMiddlewareEnforcesTheReadLimitOfEveryProcedure(t *testing.T) {
+	raisedMu.RLock()
+	raised := maps.Clone(raisedReadLimits)
+	raisedMu.RUnlock()
+	read := Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			http.Error(w, "too large", http.StatusRequestEntityTooLarge)
+		}
+	}))
+	send := func(path string, n int64) int {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, io.LimitReader(zeros{}, n))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		read.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for _, p := range procedures(t) {
+		limit := int64(wantRead)
+		if n, ok := raised[p.name]; ok {
+			limit = n
+		}
+		if code := send(p.name, limit); code != http.StatusOK {
+			t.Errorf("%s: a body of %d bytes got %d, want it read", p.name, limit, code)
+		}
+		if code := send(p.name, limit+1); code != http.StatusRequestEntityTooLarge {
+			t.Errorf("%s: a body of %d bytes got %d, want it refused", p.name, limit+1, code)
+		}
+	}
+}
+
+// zeros is an endless reader of zero bytes.
+type zeros struct{}
+
+func (zeros) Read(p []byte) (int, error) { clear(p); return len(p), nil }

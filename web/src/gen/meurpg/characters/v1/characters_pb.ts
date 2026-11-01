@@ -795,7 +795,7 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * Content keys of the spells known (levels 1 to 9): the spellbook of a
    * Wizard, or the spells of a Bard, Ranger, Sorcerer or Warlock. At most
    * 200, no repeats.
-   * The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go:77).
+   * The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go).
    *
    * @generated from field: repeated string known_spell_keys = 15;
    */
@@ -864,7 +864,7 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * Features and traits the rules content does not have, in the player's
    * own words, such as those of a subclass from another book. 0 to 5,000
    * characters, multi-line. Part of the game data: it locks with the sheet.
-   * The request limit is 20 KiB: 5,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:40 and :352).
+   * The request limit is 20 KiB: 5,000 characters of up to 4 bytes (maxCustomFeaturesLength in backend/internal/characters/sheet.go).
    *
    * @generated from field: string custom_features_text = 23;
    */
@@ -956,9 +956,9 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * compares against, so an issue the sheet already had is never blamed on a change.
    * An issue that was flagged and still stands is left out, so a save never clears
    * it; only fixing what it says does.
-   * The server computes it again on every save (backend/internal/characters/sheet.go:125).
+   * The server computes it again on every save (checkFullSheet in backend/internal/characters/sheet.go).
    * The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
-   * The request limit is 1000 items, the table's most entries (backend/internal/rules/overlay.go:37).
+   * The request limit is 1000 items, the table's most entries (backend/internal/rules/overlay.go).
    *
    * @generated from field: repeated string known_issues = 30;
    */
@@ -969,9 +969,9 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
    * unresolved issue tied to it), the content revision the sheet was last known to
    * fit it at. Set by the server and ignored from the client; an entry not here
    * uses `content_revision`.
-   * The server clears it on every save and sets it again from the stored sheet (backend/internal/characters/sheet.go:126).
+   * The server clears it on every save and sets it again from the stored sheet (checkFullSheet in backend/internal/characters/sheet.go).
    * The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
-   * The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go:37).
+   * The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go).
    *
    * @generated from field: map<string, int32> content_baselines = 31;
    */
@@ -1528,7 +1528,7 @@ export type CharacterStory = Message<"meurpg.characters.v1.CharacterStory"> & {
   /**
    * The character's backstory ("história"): 0 to 10,000 characters,
    * multi-line.
-   * The request limit is 40 KiB: 10,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:67).
+   * The request limit is 40 KiB: 10,000 characters of up to 4 bytes (maxBackstoryLength in backend/internal/characters/sheet.go).
    *
    * @generated from field: string backstory = 3;
    */
@@ -2468,7 +2468,7 @@ export type UpdateMasterNotesRequest = Message<"meurpg.characters.v1.UpdateMaste
   /**
    * 0 to 20,000 characters, multi-line. Empty (or only spaces) deletes the
    * notes.
-   * The request limit is 80 KiB: 20,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:29).
+   * The request limit is 80 KiB: 20,000 characters of up to 4 bytes (MaxMasterNotesLength in backend/internal/characters/sheet.go).
    *
    * @generated from field: string notes = 3;
    */
@@ -4089,7 +4089,7 @@ export type LevelUpChoices = Message<"meurpg.characters.v1.LevelUpChoices"> & {
   cantripKeys: string[];
 
   /**
-   * The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go:77 and backend/internal/characters/levelup_plan.go:38).
+   * The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go and backend/internal/characters/levelup_plan.go).
    *
    * @generated from field: repeated string known_spell_keys = 5;
    */

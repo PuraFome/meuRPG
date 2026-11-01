@@ -40,24 +40,26 @@ var (
 		rulesv1connect.TableContentServiceUpdateTableEntryProcedure: 128 << 10,
 		// switches is up to 1400 entries of a content key and a flag.
 		rulesv1connect.TableContentServiceSetOptionSwitchesProcedure: 256 << 10,
-		// A full sheet carries lists of up to 200 known spells, 1000 known_issues and
-		// 1000 content_baselines, and texts of up to 40 KiB (custom_features_text, backstory).
+		// A full sheet carries known_spell_keys of up to 200 items, known_issues and
+		// content_baselines of up to 1000, and custom_features_text of up to 20 KiB. The
+		// read limit must exceed the raised fields' limits.
 		charactersv1connect.CharacterServiceCreateCharacterProcedure:  128 << 10,
 		charactersv1connect.CharacterServiceUpdateCharacterProcedure:  128 << 10,
 		charactersv1connect.CharacterServicePreviewCharacterProcedure: 128 << 10,
 		charactersv1connect.CharacterServicePreviewChoicesProcedure:   128 << 10,
-		// backstory is up to 40 KiB, with the other texts of the story.
+		// CreateCharacter also carries the story: backstory is up to 40 KiB. For
+		// UpdateCharacterStory it is the field that raises the limit.
 		charactersv1connect.CharacterServiceUpdateCharacterStoryProcedure: 128 << 10,
 		// notes is up to 80 KiB.
 		charactersv1connect.CharacterServiceUpdateMasterNotesProcedure: 128 << 10,
-		// The choices list up to 200 known_spell_keys, with the other lists of keys of
-		// up to 128 bytes each.
+		// known_spell_keys is up to 200 items. The read limit must exceed the raised
+		// field's limit; a realistic choice is far below it.
 		charactersv1connect.CharacterServiceLevelUpCharacterProcedure: 128 << 10,
 		charactersv1connect.CharacterServicePreviewLevelUpProcedure:   128 << 10,
-		// hooks is up to 16 KiB, with the point's description and scene actions.
+		// hooks is up to 16 KiB; the read limit must exceed it.
 		mapsv1connect.MapServiceCreateMapPointProcedure: 128 << 10,
 		mapsv1connect.MapServiceUpdateMapPointProcedure: 128 << 10,
-		// squares is up to 400 entries of a column and a row.
+		// squares is up to 400 items; the read limit must exceed it.
 		mapsv1connect.MapServicePaintMapCellsProcedure: 128 << 10,
 	}
 )

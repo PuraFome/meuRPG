@@ -29,8 +29,7 @@ import (
 
 // UnaryBodyTimeout is how long the body of a unary RPC has to arrive. A body is
 // at most its procedure's read limit (platform/reqlimit: 64 KiB by default, 4 MiB
-// for the largest), which a 1 Mbit/s connection sends in about 35 s; the
-// deadline is what ends a client that trickles the body.
+// for the largest raised procedure), which a 1 Mbit/s connection sends in about 35 s.
 const UnaryBodyTimeout = time.Minute
 
 type controllerKey struct{}

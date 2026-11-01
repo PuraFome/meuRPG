@@ -3130,7 +3130,7 @@ type CreateMapPointRequest struct {
 	TargetMapId string `protobuf:"bytes,8,opt,name=target_map_id,json=targetMapId,proto3" json:"target_map_id,omitempty"`
 	// Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
 	// line breaks. Any other kind with hooks is `invalid_argument`.
-	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
 	Hooks string `protobuf:"bytes,9,opt,name=hooks,proto3" json:"hooks,omitempty"`
 	// Only for a SCENE point: true shows the scene's DCs to the players
 	// (MapPoint.show_dc). Any other kind with it true is `invalid_argument`.
@@ -3352,7 +3352,7 @@ type UpdateMapPointRequest struct {
 	Revealed *bool `protobuf:"varint,10,opt,name=revealed,proto3,oneof" json:"revealed,omitempty"`
 	// The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
 	// clears them. The point must be a SCENE point after the change.
-	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
 	Hooks *string `protobuf:"bytes,11,opt,name=hooks,proto3,oneof" json:"hooks,omitempty"`
 	// Turns "Mostrar a CD aos jogadores" on or off (MapPoint.show_dc). The point
 	// must be a SCENE point after the change to turn it on; a point that stops
@@ -5999,7 +5999,7 @@ type PaintMapCellsRequest struct {
 	Value int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// The squares, 1 to 400, each inside the map's grid. A repeated square is
 	// painted once.
-	// The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go:53).
+	// The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go).
 	Squares       []*MapSquare `protobuf:"bytes,5,rep,name=squares,proto3" json:"squares,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

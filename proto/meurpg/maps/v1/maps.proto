@@ -1457,7 +1457,7 @@ message CreateMapPointRequest {
   string target_map_id = 8;
   // Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
   // line breaks. Any other kind with hooks is `invalid_argument`.
-  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
   string hooks = 9 [(meurpg.options.v1.max_len) = 16384];
   // Only for a SCENE point: true shows the scene's DCs to the players
   // (MapPoint.show_dc). Any other kind with it true is `invalid_argument`.
@@ -1508,7 +1508,7 @@ message UpdateMapPointRequest {
   optional bool revealed = 10;
   // The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
   // clears them. The point must be a SCENE point after the change.
-  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+  // The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
   optional string hooks = 11 [(meurpg.options.v1.max_len) = 16384];
   // Turns "Mostrar a CD aos jogadores" on or off (MapPoint.show_dc). The point
   // must be a SCENE point after the change to turn it on; a point that stops
@@ -1939,7 +1939,7 @@ message PaintMapCellsRequest {
   int32 value = 4;
   // The squares, 1 to 400, each inside the map's grid. A repeated square is
   // painted once.
-  // The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go:53).
+  // The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go).
   repeated MapSquare squares = 5 [(meurpg.options.v1.max_items) = 400];
 }
 

@@ -2945,7 +2945,7 @@ type FullSheet struct {
 	// Content keys of the spells known (levels 1 to 9): the spellbook of a
 	// Wizard, or the spells of a Bard, Ranger, Sorcerer or Warlock. At most
 	// 200, no repeats.
-	// The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go:77).
+	// The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go).
 	KnownSpellKeys []string `protobuf:"bytes,15,rep,name=known_spell_keys,json=knownSpellKeys,proto3" json:"known_spell_keys,omitempty"`
 	// Content keys of the spells prepared for the day (levels 1 to 9), for a
 	// Cleric, Druid, Paladin or Wizard. At most 100, no repeats.
@@ -2976,7 +2976,7 @@ type FullSheet struct {
 	// Features and traits the rules content does not have, in the player's
 	// own words, such as those of a subclass from another book. 0 to 5,000
 	// characters, multi-line. Part of the game data: it locks with the sheet.
-	// The request limit is 20 KiB: 5,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:40 and :352).
+	// The request limit is 20 KiB: 5,000 characters of up to 4 bytes (maxCustomFeaturesLength in backend/internal/characters/sheet.go).
 	CustomFeaturesText string `protobuf:"bytes,23,opt,name=custom_features_text,json=customFeaturesText,proto3" json:"custom_features_text,omitempty"`
 	// Options chosen for features and traits that offer them, as content
 	// keys: a fighting style ("feature:fighter-fighting-style-defense"), a
@@ -3033,17 +3033,17 @@ type FullSheet struct {
 	// compares against, so an issue the sheet already had is never blamed on a change.
 	// An issue that was flagged and still stands is left out, so a save never clears
 	// it; only fixing what it says does.
-	// The server computes it again on every save (backend/internal/characters/sheet.go:125).
+	// The server computes it again on every save (checkFullSheet in backend/internal/characters/sheet.go).
 	// The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
-	// The request limit is 1000 items, the table's most entries (backend/internal/rules/overlay.go:37).
+	// The request limit is 1000 items, the table's most entries (backend/internal/rules/overlay.go).
 	KnownIssues []string `protobuf:"bytes,30,rep,name=known_issues,json=knownIssues,proto3" json:"known_issues,omitempty"`
 	// For each table entry the sheet is still flagged for (a changed entry with an
 	// unresolved issue tied to it), the content revision the sheet was last known to
 	// fit it at. Set by the server and ignored from the client; an entry not here
 	// uses `content_revision`.
-	// The server clears it on every save and sets it again from the stored sheet (backend/internal/characters/sheet.go:126).
+	// The server clears it on every save and sets it again from the stored sheet (checkFullSheet in backend/internal/characters/sheet.go).
 	// The editor sends back what it read (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232).
-	// The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go:37).
+	// The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go).
 	ContentBaselines map[string]int32 `protobuf:"bytes,31,rep,name=content_baselines,json=contentBaselines,proto3" json:"content_baselines,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	// The feats the character took (MR-025), as content keys: "feat:grappler" or a
 	// table's "feat:<slug>@mesa". Feats are an optional rule of the game (the
@@ -4164,7 +4164,7 @@ type CharacterStory struct {
 	Appearance  *Appearance            `protobuf:"bytes,2,opt,name=appearance,proto3" json:"appearance,omitempty"`
 	// The character's backstory ("história"): 0 to 10,000 characters,
 	// multi-line.
-	// The request limit is 40 KiB: 10,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:67).
+	// The request limit is 40 KiB: 10,000 characters of up to 4 bytes (maxBackstoryLength in backend/internal/characters/sheet.go).
 	Backstory string `protobuf:"bytes,3,opt,name=backstory,proto3" json:"backstory,omitempty"`
 	// Allies and organizations ("aliados e organizações"): 0 to 2,000
 	// characters, multi-line.
@@ -5970,7 +5970,7 @@ type UpdateMasterNotesRequest struct {
 	CharacterId string                 `protobuf:"bytes,2,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// 0 to 20,000 characters, multi-line. Empty (or only spaces) deletes the
 	// notes.
-	// The request limit is 80 KiB: 20,000 characters of up to 4 bytes (backend/internal/characters/sheet.go:29).
+	// The request limit is 80 KiB: 20,000 characters of up to 4 bytes (MaxMasterNotesLength in backend/internal/characters/sheet.go).
 	Notes         string `protobuf:"bytes,3,opt,name=notes,proto3" json:"notes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -8889,7 +8889,7 @@ type LevelUpChoices struct {
 	// The new cantrips, spells known (or spellbook) and prepared spells. At most
 	// 30, 30 and 100 entries.
 	CantripKeys []string `protobuf:"bytes,4,rep,name=cantrip_keys,json=cantripKeys,proto3" json:"cantrip_keys,omitempty"`
-	// The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go:77 and backend/internal/characters/levelup_plan.go:38).
+	// The request limit is 200 items, the same as rules.MaxKnownSpells (backend/internal/rules/api.go and backend/internal/characters/levelup_plan.go).
 	KnownSpellKeys    []string `protobuf:"bytes,5,rep,name=known_spell_keys,json=knownSpellKeys,proto3" json:"known_spell_keys,omitempty"`
 	PreparedSpellKeys []string `protobuf:"bytes,6,rep,name=prepared_spell_keys,json=preparedSpellKeys,proto3" json:"prepared_spell_keys,omitempty"`
 	// The options the new features offer, the new skills, and the new

@@ -872,7 +872,7 @@ type TableEffect struct {
 	Spells []string `protobuf:"bytes,20,rep,name=spells,proto3" json:"spells,omitempty"`
 	// The text for the sheet, in Portuguese, when a note, a resource or an action
 	// needs one. "{value}" is the value with its sign, "{n}" without it.
-	// The effect text has at most 4,000 characters (backend/internal/rules/overlay_budget.go:93).
+	// The effect text has at most 4,000 characters (maxTextRunes, checked in backend/internal/rules/overlay_budget.go).
 	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	TextPt string `protobuf:"bytes,21,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
 	// superiority_die: a die an option (a maneuver) adds to a roll, spent from the
@@ -1665,7 +1665,7 @@ type TableFeature struct {
 	Key    string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt  []string       `protobuf:"bytes,3,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	Effects []*TableEffect `protobuf:"bytes,4,rep,name=effects,proto3" json:"effects,omitempty"`
@@ -1757,7 +1757,7 @@ type TableFeat struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// What the feat asks of a character; unset asks nothing.
@@ -1833,7 +1833,7 @@ type TableOption struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
@@ -2064,7 +2064,7 @@ type TableClassFeature struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// The text, one paragraph per entry.
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,2,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	// The class that has it: an SRD class or a table class. Never changes.
@@ -2265,7 +2265,8 @@ type TableCreatureTrait struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 1 to 80 characters, on one line.
 	NamePt string `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	// 1 to 4000 characters.
+	// 1 to 4000 characters (maxTextRunes in backend/internal/rules/overlay.go).
+	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	TextPt        string `protobuf:"bytes,2,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2339,7 +2340,7 @@ type TableCasting struct {
 	// spells that name the class. Only a class whose list_from is empty has them;
 	// a third caster's subclass and a class that does not cast have none. Each is
 	// a spell of the SRD, named once, and a class names at most 400.
-	// The request limit is 400 items, the same as rules.MaxClassSRDSpells (backend/internal/rules/overlay_budget.go:33 and :106).
+	// The request limit is 400 items, the same as rules.MaxClassSRDSpells (backend/internal/rules/overlay_budget.go).
 	SrdSpellKeys  []string `protobuf:"bytes,8,rep,name=srd_spell_keys,json=srdSpellKeys,proto3" json:"srd_spell_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2818,7 +2819,7 @@ type TableSubclass struct {
 	ClassKey string `protobuf:"bytes,2,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
 	// The class level the choice happens at: the parent's, or 0 for "the parent's".
 	Level int32 `protobuf:"varint,3,opt,name=level,proto3" json:"level,omitempty"`
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string              `protobuf:"bytes,4,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
 	Levels []*TableSubclassLevel `protobuf:"bytes,5,rep,name=levels,proto3" json:"levels,omitempty"`
@@ -3145,7 +3146,7 @@ type TableBackground struct {
 	Tools           []string `protobuf:"bytes,3,rep,name=tools,proto3" json:"tools,omitempty"`
 	LanguageChoices int32    `protobuf:"varint,4,opt,name=language_choices,json=languageChoices,proto3" json:"language_choices,omitempty"`
 	// The equipment, as a text.
-	// The text has at most 4,000 characters (backend/internal/rules/overlay_features.go:1153 and backend/internal/rules/overlay_spell.go:488).
+	// The text has at most 4,000 characters (maxTextRunes, checked by checkTextAt in backend/internal/rules/overlay_spell.go).
 	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	EquipmentPt   string        `protobuf:"bytes,5,opt,name=equipment_pt,json=equipmentPt,proto3" json:"equipment_pt,omitempty"`
 	Feature       *TableFeature `protobuf:"bytes,6,opt,name=feature,proto3" json:"feature,omitempty"`
@@ -3505,7 +3506,7 @@ type TableSpellComponents struct {
 	Somatic  bool                   `protobuf:"varint,2,opt,name=somatic,proto3" json:"somatic,omitempty"`
 	Material bool                   `protobuf:"varint,3,opt,name=material,proto3" json:"material,omitempty"`
 	// Describes the material; goes with `material`, and only with it.
-	// The text has at most 4,000 characters (backend/internal/rules/overlay_spell.go:138 and backend/internal/rules/overlay_spell.go:488).
+	// The text has at most 4,000 characters (maxTextRunes, checked by checkTextAt in backend/internal/rules/overlay_spell.go).
 	// The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
 	MaterialPt    string `protobuf:"bytes,4,opt,name=material_pt,json=materialPt,proto3" json:"material_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -3724,10 +3725,10 @@ type TableSpell struct {
 	Ritual        bool `protobuf:"varint,9,opt,name=ritual,proto3" json:"ritual,omitempty"`
 	// The classes (SRD or table) whose list has the spell.
 	ClassKeys []string `protobuf:"bytes,10,rep,name=class_keys,json=classKeys,proto3" json:"class_keys,omitempty"`
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	DescPt []string `protobuf:"bytes,11,rep,name=desc_pt,json=descPt,proto3" json:"desc_pt,omitempty"`
-	// Each paragraph has at most 4,000 characters (backend/internal/rules/overlay.go:49 and :1195).
+	// Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
 	// The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
 	HigherLevelPt []string          `protobuf:"bytes,12,rep,name=higher_level_pt,json=higherLevelPt,proto3" json:"higher_level_pt,omitempty"`
 	Target        *TableSpellTarget `protobuf:"bytes,13,opt,name=target,proto3" json:"target,omitempty"`
@@ -3983,7 +3984,7 @@ type TableContentViolation struct {
 	// a field the message does not have) and
 	// "size_limit" (64 KiB of data). The 1000-entry limit is "limit", with an empty
 	// field. In ImportTableContent a violation about the pack itself is at a field
-	// that starts with "pack": "pack" (over 3 MiB: "size_limit"), "pack.format" and
+	// that starts with "pack": "pack" (a `pack_json` over 3 MiB: "size_limit"), "pack.format" and
 	// "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
 	// not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
 	// repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
@@ -5157,7 +5158,7 @@ type TableContentPack struct {
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
 	// other fields of TableEntry are left out of an export and ignored in an import.
-	// The request limit is 1000 items, the same as rules.MaxOverlayEntries (backend/internal/rules/overlay.go:37).
+	// The request limit is 1000 items, the same as rules.MaxOverlayEntries (backend/internal/rules/overlay.go).
 	Entries       []*TableEntry `protobuf:"bytes,4,rep,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5328,8 +5329,8 @@ type ImportTableContentRequest struct {
 	// reads it strictly, and a field it does not know (a misspelled "proficiency" for
 	// "proficiency_key") is a violation of its entry at the path of the field (reason
 	// "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
-	// this field's size.
-	// The request limit is 3 MiB, the same as characters.MaxPackBytes (backend/internal/characters/tablecontent_pack.go:41).
+	// this field's size; over it the request is refused as RequestRefused (TEXT_TOO_LONG).
+	// The request limit is 3 MiB, the same as characters.MaxPackBytes (backend/internal/characters/tablecontent_pack.go).
 	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5941,7 +5942,7 @@ type SetOptionSwitchesRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// At least one, at most 1400; a key once.
-	// The request limit is 1400 items, the same as characters.MaxOptionSwitches (backend/internal/characters/tableswitches.go:32 and :197).
+	// The request limit is 1400 items, the same as characters.MaxOptionSwitches (backend/internal/characters/tableswitches.go).
 	Switches      []*OptionSwitch `protobuf:"bytes,2,rep,name=switches,proto3" json:"switches,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -7068,10 +7069,10 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\varmor_class\x18\x04 \x01(\x05R\n" +
 	"armorClass\x12!\n" +
 	"\fdamage_bonus\x18\x05 \x01(\x05R\vdamageBonus\x12;\n" +
-	"\x06traits\x18\x06 \x03(\v2#.meurpg.rules.v1.TableCreatureTraitR\x06traits\"F\n" +
+	"\x06traits\x18\x06 \x03(\v2#.meurpg.rules.v1.TableCreatureTraitR\x06traits\"N\n" +
 	"\x12TableCreatureTrait\x12\x17\n" +
-	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
-	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\x9e\x02\n" +
+	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1f\n" +
+	"\atext_pt\x18\x02 \x01(\tB\x06\x90\xb5\x18\x80\x80\x01R\x06textPt\"\x9e\x02\n" +
 	"\fTableCasting\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x122\n" +
 	"\aability\x18\x02 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12 \n" +

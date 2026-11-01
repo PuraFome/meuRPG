@@ -223,6 +223,12 @@ func appFields() []appField {
 			build: func(n int) proto.Message { return tableSpell(&rulesv1.TableSpell{HigherLevelPt: []string{ascii(n)}}) },
 		},
 		appField{
+			name: "creature trait text_pt", procedure: rulesv1connect.TableContentServiceCreateTableEntryProcedure, field: "table_creature.traits.text_pt", reason: textLimit, limit: 16 << 10,
+			build: func(n int) proto.Message {
+				return &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{Traits: []*rulesv1.TableCreatureTrait{{TextPt: ascii(n)}}}}}
+			},
+		},
+		appField{
 			name: "background equipment_pt", procedure: rulesv1connect.TableContentServiceCreateTableEntryProcedure, field: "table_background.equipment_pt", reason: textLimit, limit: 16 << 10,
 			build: func(n int) proto.Message {
 				return &rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableBackground{TableBackground: &rulesv1.TableBackground{EquipmentPt: ascii(n)}}}

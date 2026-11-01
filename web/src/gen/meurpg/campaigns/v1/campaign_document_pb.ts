@@ -131,7 +131,7 @@ export type UpdateCampaignDocumentRequest = Message<"meurpg.campaigns.v1.UpdateC
    * Nothing else is changed: spaces at the start and end are kept, because
    * they can mean something in Markdown.
    * The request limit is 400 KiB, twice the document's 200 KiB.
-   * A Windows line break takes 2 bytes until the server changes it (backend/internal/campaigns/document.go:38-40 and :212-217).
+   * A Windows line break takes 2 bytes until the server changes it (MaxDocumentBytes and cleanDocument in backend/internal/campaigns/document.go).
    *
    * @generated from field: string body = 2;
    */

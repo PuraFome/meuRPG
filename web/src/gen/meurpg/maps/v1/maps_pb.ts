@@ -1497,7 +1497,7 @@ export type CreateMapPointRequest = Message<"meurpg.maps.v1.CreateMapPointReques
   /**
    * Only for a SCENE point: the master's hooks, 0 to 4,000 characters, with
    * line breaks. Any other kind with hooks is `invalid_argument`.
-   * The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+   * The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
    *
    * @generated from field: string hooks = 9;
    */
@@ -1648,7 +1648,7 @@ export type UpdateMapPointRequest = Message<"meurpg.maps.v1.UpdateMapPointReques
   /**
    * The new hooks of a SCENE point (MR-029), 0 to 4,000 characters; empty
    * clears them. The point must be a SCENE point after the change.
-   * The request limit is 16 KiB: 4,000 characters of up to 4 bytes (backend/internal/maps/mapservice.go:47).
+   * The request limit is 16 KiB: 4,000 characters of up to 4 bytes (maxHooksLength in backend/internal/maps/mapservice.go).
    *
    * @generated from field: optional string hooks = 11;
    */
@@ -3011,7 +3011,7 @@ export type PaintMapCellsRequest = Message<"meurpg.maps.v1.PaintMapCellsRequest"
   /**
    * The squares, 1 to 400, each inside the map's grid. A repeated square is
    * painted once.
-   * The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go:53).
+   * The request limit is 400 items, the same as maxPaintSquares (backend/internal/maps/layers.go).
    *
    * @generated from field: repeated meurpg.maps.v1.MapSquare squares = 5;
    */
