@@ -824,12 +824,18 @@ type Creature struct {
 	// MonsterKey is the SRD creature, "monster:wolf", and Name what the table
 	// calls it (1 to 40 characters).
 	MonsterKey, Name string
-	// Source is "familiar", "animate_dead", "conjure_animals" or "master".
+	// Source is "familiar", "animate_dead", "conjure_animals", "master" or "table".
 	Source string
+	// SummonKey is the table spell that made it ("spell:<slug>@mesa"), for the source "table"; "" otherwise.
+	SummonKey string
 	// Attack is "none", "reaction" or "full" (rules.SummonAttack*).
 	Attack string
-	// GroupID is shared by the creatures of one casting.
+	// GroupID is shared by the creatures of one casting that take one initiative roll; a creature that
+	// rolls its own initiative has a group of its own.
 	GroupID string
+	// DismissedReason is why a casting sent it away ("replaced", "concentration"), set on the creatures of
+	// SummonResult.Replaced.
+	DismissedReason string
 	// DependsOnConcentration says it lasts only while the caster concentrates.
 	DependsOnConcentration bool
 	// HitPointsCurrent and HitPointsMax are its own.
@@ -856,8 +862,20 @@ type CreatureSpec struct {
 // Summon is a casting to record: the creatures a spell made for a character.
 type Summon struct {
 	CampaignID, CharacterID string
-	// Source is "familiar", "animate_dead" or "conjure_animals".
+	// Source is "familiar", "animate_dead", "conjure_animals", "master" or "table".
 	Source string
+	// SummonKey is the table spell ("spell:<slug>@mesa") of the source "table"; "" otherwise.
+	SummonKey string
+	// Slot is the circle of the slot the casting spent, 0 for a ritual and a gift: what slot() reads in the
+	// formulas of a table creature.
+	Slot int
+	// OwnInitiative says each creature rolls its own initiative and has a group of its own; otherwise the
+	// creatures of the casting share GroupID and one roll.
+	OwnInitiative bool
+	// MaxLive is the most creatures of SummonKey the character keeps (0: no limit of the spell's own), and
+	// ReplacesSame says the casting dismisses the live creatures of SummonKey first.
+	MaxLive      int
+	ReplacesSame bool
 	// GroupID is the id the creatures of the casting share.
 	GroupID string
 	// Concentration says the creatures last only while the caster concentrates.
@@ -893,6 +911,12 @@ type SummonSpell struct {
 	Level int
 	// Creatures are the creatures the choice made, with what each may do.
 	Creatures []SummonedForm
+	// Table says the spell is a table spell's summon; TurnMode ("own_initiative" or "owner_roll_group"),
+	// MaxLive and ReplacesSame are its rule (rules.SummonRule).
+	Table        bool
+	TurnMode     string
+	MaxLive      int
+	ReplacesSame bool
 }
 
 // CreatureState is where a combat leaves a creature: its hit points and whether

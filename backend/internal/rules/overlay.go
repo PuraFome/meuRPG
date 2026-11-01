@@ -337,6 +337,8 @@ type TableSpell struct {
 	// Zone says the spell keeps its area on the map while it lasts (the areas of Moonbeam or Spirit Guardians),
 	// or is nil.
 	Zone *TableSpellZone
+	// Summon says the spell brings the table's creatures to the caster, or is nil (see TableSummon).
+	Summon *TableSummon
 }
 
 // The triggers of a table spell's zone: when it catches a creature.
@@ -1277,6 +1279,11 @@ func (c *content) cloneForOverlay() *content {
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
 	n.spellZones = map[string]SpellZoneRule{}
+	n.summons = maps.Clone(c.summons)
+	if n.summons == nil {
+		n.summons = map[string]*summonDef{}
+	}
+	n.tableSummons = map[string]*tableSummonRule{}
 	n.raceChoice = map[string][]int{}
 	n.raceSets = map[string][][]int{}
 	n.raceSizes = map[string][]string{}

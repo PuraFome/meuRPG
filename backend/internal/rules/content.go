@@ -70,6 +70,9 @@ type content struct {
 	// summons are the spells that summon a creature (the "summon" kind of
 	// effects/spells.json), by spell key.
 	summons map[string]*summonDef
+	// tableSummons are the rules of the table spells' summons (overlay_summon.go), by spell key; a spell
+	// of it is in summons too.
+	tableSummons map[string]*tableSummonRule
 	// monsterEntries are the creatures as the lists show them, sorted by
 	// Portuguese name.
 	monsterEntries []CreatureEntry

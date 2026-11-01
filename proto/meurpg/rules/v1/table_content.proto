@@ -539,10 +539,11 @@ message TableCreature {
   // armor() (the category of the armor worn), shield() (whether a shield counts) and speedwalk() (the walking speed in feet).
   // It may also use floor, ceil, min and max.
   // It may also read slot(): the circle (1 to 9) of the spell slot a spell was cast with.
-  // A creature given to a character was not made by a slot, so slot() is 0 in its formulas.
+  // A creature given to a character was not made by a slot, so slot() is 0 in its formulas;
+  // a creature a table spell summons has the circle of the cast.
   // slot() is legal only in these fields:
   // hit_points_formula, armor_class_formula, damage_bonus_formula and attack_bonus_formula,
-  // and the to_hit and damage_bonus of an attack.
+  // the to_hit and damage_bonus of an attack, and the count of a spell's summon.
   // Effects, conditions and every other formula refuse slot().
   // A formula that does not compile, or calls a function that does not exist, is refused with its field.
   // A result is rounded down.
@@ -928,6 +929,67 @@ message TableSpell {
   // Unset: the spell does nothing of the kind. Needs an AREA target of a sphere, a cylinder or a cube,
   // exactly one damage type, a timed duration or a concentration, and no attack and no heal.
   TableSpellZone zone = 18;
+  // The creatures the spell brings to its caster; unset: the spell summons nothing. A summoning
+  // spell is a leveled spell whose target is only the caster (SELF) and that has no attack, no
+  // saving throw, no damage, no healing and no area. It is cast, spent, concentrated on and
+  // dismissed as the SRD's summoning spells are.
+  TableSummon summon = 19;
+}
+
+// TableSummonTurnMode says how the creatures of a casting take their turns in a combat.
+enum TableSummonTurnMode {
+  // Same as OWN_INITIATIVE.
+  TABLE_SUMMON_TURN_MODE_UNSPECIFIED = 0;
+  // Each creature rolls its own initiative and takes its own turn.
+  TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE = 1;
+  // The creatures of a casting take one initiative roll, the owner's player rolls it and they take a
+  // joint turn (as the SRD's Conjure Animals).
+  TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP = 2;
+  // Reserved: the creatures act right after their owner. The server refuses it.
+  TABLE_SUMMON_TURN_MODE_AFTER_OWNER = 3;
+}
+
+// TableSummonRole says what the summoned creatures are to their owner.
+enum TableSummonRole {
+  // Same as COMPANION.
+  TABLE_SUMMON_ROLE_UNSPECIFIED = 0;
+  // The owner's creature: it joins the combat and the map, and its owner plays it.
+  TABLE_SUMMON_ROLE_COMPANION = 1;
+  // Reserved: a creature the owner rides. The server refuses it.
+  TABLE_SUMMON_ROLE_MOUNT = 2;
+}
+
+// TableSummonReplaces says what a new casting of the spell does to the creatures of the old one.
+enum TableSummonReplaces {
+  // Same as NONE.
+  TABLE_SUMMON_REPLACES_UNSPECIFIED = 0;
+  // They stay (up to `max_live`).
+  TABLE_SUMMON_REPLACES_NONE = 1;
+  // They are dismissed ("replaced") and the new ones take their place.
+  TABLE_SUMMON_REPLACES_SAME_SUMMON = 2;
+}
+
+// TableSummon is what a table spell summons. The cost is the spell slot of the cast.
+message TableSummon {
+  // The creatures a casting may choose from, 1 to 8, none twice: table creatures
+  // ("creature:<slug>@mesa") or SRD creatures ("monster:wolf"). The caster picks one of them for each
+  // creature the casting brings.
+  repeated string creature_keys = 1;
+  // How many creatures the casting brings at the spell's own circle: a formula that may read the
+  // caster (mod("cha"), prof()) and slot() (the circle of the slot). A formula that fails when it
+  // runs counts as 1. Required.
+  string count = 2;
+  // How many more for each circle above the spell's own, 0 to 10. The sum with count is clamped to 1 to 20.
+  int32 count_per_slot_level = 3;
+  TableSummonTurnMode turn_mode = 4;
+  TableSummonRole role = 5;
+  // 0, or the most creatures of this spell the caster keeps at a time (1 to 40): a casting that
+  // would pass it is refused. A new casting that replaces the old creatures counts only the new ones.
+  int32 max_live = 6;
+  TableSummonReplaces replaces = 7;
+  // Reserved for spells paid with a resource: the server refuses both today.
+  string resource_key = 8;
+  int32 resource_cost = 9;
 }
 
 // TableSpellZone is what a table spell leaves on the map (the areas of Moonbeam or Spirit Guardians,

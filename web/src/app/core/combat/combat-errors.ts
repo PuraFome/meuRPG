@@ -294,7 +294,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     EncounterBlockedReason.STATE_NOT_ON,
     'Esse estado já não está ligado. A tela foi atualizada; nada mudou.',
   ],
-  [EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE, 'Falta o d20 da iniciativa das criaturas.'],
+  [
+    EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE,
+    'Falta o d20 da iniciativa das criaturas. Se cada uma rola a sua, role no app.',
+  ],
   [
     EncounterBlockedReason.CREATURE_CANNOT_ATTACK,
     'Essa criatura não ataca assim: um familiar não ataca, e o do Pacto da Corrente só com a reação.',

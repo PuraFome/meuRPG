@@ -762,7 +762,7 @@ func (f *castFlow) bringSummons(ctx context.Context) error {
 	if f.summon == nil {
 		return nil
 	}
-	return f.s.joinSummon(ctx, f.c, f.caster, f.call.spellKey, f.sp.Concentration, f.summon, &f.out.made)
+	return f.s.joinSummon(ctx, f.c, f.caster, f.call.spellKey, f.summon, &f.out.made)
 }
 
 // affect is what the cast does to each target.

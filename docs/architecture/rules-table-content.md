@@ -261,7 +261,7 @@ A formula is compiled once, when the overlay is built, with `formula.Compiler.Wi
 A formula that does not compile, or calls a function that does not exist, is `bad_formula` at its field, such as `.attacks[2].to_hit`.
 The environment is `OwnerEnv`: `level()`, `classLevel("<class>")`, `prof()`, `mod("<ability>")`, `score("<ability>")`, `armor()`, `shield()` and `speedwalk()`, with `floor`, `ceil`, `min` and `max`.
 It may also call `slot()`, the circle of the spell slot a spell was cast with.
-A creature given to a character was not made by a slot, so `slot()` is 0 in its formulas.
+A creature given to a character was not made by a slot, so `slot()` is 0 in its formulas; one a spell summoned has the circle of the slot it was cast with.
 `slot()` is legal only in these fields; an effect, a condition and every other formula refuse it.
 The formulas count in the overlay's formula budget.
 The specific beats the general: an own attack's `ToHit` wins over `AttackBonusFormula`, and its `DamageBonus` over the creature's damage bonus.
@@ -282,7 +282,7 @@ The checks run before anything is built, so a creature reports every refusal at 
 A table creature is left out of every use that depends on the base's challenge rating and XP, which the adjustments may not keep:
 
 - The encounter evaluator, the generator and the swaps (`EvaluateEncounter`, `GenerateEncounter`, `EncounterSwaps`) read the SRD's creatures only.
-- The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only.
+- The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only; a table spell's `summon` also accepts table creatures.
 - The Wild Shape forms (`WildShapeForms`) are SRD beasts only.
 - The encounter tools refuse a table creature's key as unknown content, because `HasCreature` is true for SRD creatures only.
 
@@ -434,3 +434,29 @@ No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 ## The area a spell keeps on the map
 
 `TableSpell.Zone` (`TableSpellZone`: `Trigger` of `ZoneStartOfTurn`, `ZoneFirstEntry` or `ZoneBoth`, and `FollowsCaster`) is checked by `checkSpellZone` and kept in `Content.spellZones` (`Content.SpellZone`). Refused at `.zone.trigger` (not one of the three), `.zone.follows_caster` (needs the range Self if it follows, a distance if it does not) and `.zone` (a cantrip; a target that is not a sphere, a cylinder or a cube; not exactly one damage type; a spell attack or healing; neither a timed duration nor concentration). The combat reads it through `link.Spell.Zone` ([Spell zones](play/spell-zones.md)).
+
+## Table spell summons
+
+A `TableSpell` may carry a `summon` (`TableSummon`, `rules/overlay_summon.go`): the creatures it brings to its caster.
+The spell is registered with the SRD's summoning spells, so `SummonSpells`, `SummonOptions` and `CheckSummon` read it like any other.
+
+| Field | Meaning | Limits |
+| --- | --- | --- |
+| `creature_keys` | Table creatures or SRD creatures the caster picks from | 1 to 8 (`MaxTableSummonCreatures`), none twice, each one that exists |
+| `count` | A formula of the caster and of `slot()`; one that fails when it runs counts as 1 | The sum with the per-circle part is clamped to 1 to 20 (`MaxTableSummonCount`); a formula that fails to compile is `formula` at `.summon.count`; a plain number above `max_live` (the number clamped to 20) is `value` at `.summon.max_live` |
+| `count_per_slot_level` | Creatures added for each circle above the spell's own | 0 to 10 |
+| `turn_mode` | `own_initiative` (the default) or `owner_roll_group` | `after_owner` is refused |
+| `role` | `companion` | `mount` is refused |
+| `max_live` | The most creatures of the spell the caster keeps; a casting that would pass it is refused; 0 is no limit of its own | 0 to 40 |
+| `replaces` | `none` (the default) or `same_summon` | |
+| `resource_key`, `resource_cost` | Reserved | Refused |
+
+The spell is a leveled spell with only the caster as target, and with no attack, saving throw, damage, healing or area.
+It is not a ritual: the cost of a summon is a slot (`value` at `.ritual`).
+A refusal of a summon's own field is a violation at `.summon.<field>`.
+The target is refused at `.target.kind`, and a cantrip or a spell with damage, healing, a saving throw, an attack or an area at `.summon`.
+`slot()` is legal in a summon's count as in a creature's formulas, and nowhere else.
+An archived or switched-off creature is not offered by a summoning spell and is refused in a cast (`ErrSummonCreature`); the creatures already made keep working.
+A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
+The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
+Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.

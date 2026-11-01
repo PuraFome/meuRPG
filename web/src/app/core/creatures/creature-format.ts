@@ -15,6 +15,7 @@ export function sourcePhrase(source: CreatureSource, ownerName: string): string 
     case CreatureSource.ANIMATE_DEAD:
       return `Animado por ${ownerName}`;
     case CreatureSource.CONJURE_ANIMALS:
+    case CreatureSource.TABLE:
       return `Conjurado por ${ownerName}`;
     case CreatureSource.MASTER:
       return 'Dado pelo mestre';
@@ -31,6 +32,7 @@ export function sourceShort(source: CreatureSource): string {
     case CreatureSource.ANIMATE_DEAD:
       return 'animado';
     case CreatureSource.CONJURE_ANIMALS:
+    case CreatureSource.TABLE:
       return 'conjurado';
     default:
       return 'dado pelo mestre';

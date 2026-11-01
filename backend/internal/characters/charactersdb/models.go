@@ -70,6 +70,7 @@ type CharacterCreature struct {
 	CreateKey           *string
 	CreateHash          *string
 	StatBlock           []byte
+	SummonKey           *string
 }
 
 type CharacterLevelUp struct {
