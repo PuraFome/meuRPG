@@ -288,3 +288,21 @@ func TestTheUndoRestoresTheNPCCountAfterACarriedOverCount(t *testing.T) {
 		t.Errorf("the combatant's count after the undo = %s, want the carried 1", got)
 	}
 }
+
+// TestDeletingTheNPCRemovesItsCount: the count is kept for the character (ON DELETE CASCADE), so deleting
+// the character takes its row.
+func TestDeletingTheNPCRemovesItsCount(t *testing.T) {
+	t.Parallel()
+	a, mage := handMadeMage(t)
+	e := a.magicMissile(t, a.mageCombat(t, mage, false))
+	a.endEncounter(t, e)
+	if got := a.storedUse(t, mage); got != `{"1": 1}` { // positive control: the row is there
+		t.Fatalf("the NPC's count before the delete = %s, want one slot", got)
+	}
+	if _, err := a.h.pool.Exec(t.Context(), `DELETE FROM characters WHERE id = $1`, mage); err != nil {
+		t.Fatalf("delete the NPC: %v", err)
+	}
+	if got := a.storedUse(t, mage); got != "" {
+		t.Errorf("the NPC's count after the delete = %s, want none", got)
+	}
+}
