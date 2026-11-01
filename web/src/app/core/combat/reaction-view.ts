@@ -4,17 +4,7 @@ import { circleLabel } from './combat-grid';
 import { article } from './combat-log';
 import { freeText } from './cast-flow';
 
-/** The names of the reactions, as `names_pt.json` writes them. */
-export const REACTION_NAMES = {
-  shield: 'Escudo Arcano',
-  uncannyDodge: 'Esquiva Sobrenatural',
-  hellishRebuke: 'Repreensão Infernal',
-  counterspell: 'Contramágica',
-  cuttingWords: 'Palavras de Interrupção',
-  deflectMissiles: 'Defletir Projéteis',
-  featherFall: 'Queda Suave',
-  protection: 'Proteção',
-} as const;
+export { REACTION_NAMES } from './reaction-record';
 
 /** "Rodada 2" with the words of the round. */
 export function roundWord(round: number): string {

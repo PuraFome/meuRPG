@@ -138,7 +138,7 @@ func (s *Service) useParry(ctx context.Context, c *combatTx, w playdb.ReactionWi
 	}
 	total := conv.OrZero(p.AttackTotal)
 	stopped := total < base+bonus
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.ParryKind); err != nil {
 		return err
 	}
 	next := pendingAwaitingRoll

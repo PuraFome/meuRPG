@@ -29,6 +29,20 @@ func ownsCreature(w *world, p *person, m protoreflect.Message) bool {
 	return m.Get(owner).String() == w.ownCharacter(p).GetId() && (p == w.ana || p == w.caio || p == w.pending)
 }
 
+// actorIsOwnCreature is true for a log entry whose actor is a creature combatant the caller's character owns.
+func actorIsOwnCreature(w *world, p *person, m protoreflect.Message) bool {
+	fd := m.Descriptor().Fields().ByName("actor_id")
+	if fd == nil || w.encounter == nil {
+		return false
+	}
+	for _, c := range w.encounter.GetCombatants() {
+		if c.GetId() == m.Get(fd).String() {
+			return ownsCreature(w, p, c.ProtoReflect())
+		}
+	}
+	return false
+}
+
 // notAPlayerCharacter is true for a combatant that is an NPC or a creature.
 func playerCharacter(_ *world, _ *person, m protoreflect.Message) bool {
 	fd := m.Descriptor().Fields().ByName("kind")
@@ -106,6 +120,8 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "bestiary_creature_key", "which creature an NPC is", nil},
 	{"meurpg.play.v1.Combatant", "challenge_rating", "which creature an NPC is", nil},
 	{"meurpg.play.v1.Combatant", "legendary", "a creature's legendary actions, resistance and options are the master's (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Combatant", "limited_actions", "what a creature spent of its Recharge and N/day actions is the master's and the player's who controls it (RN-20, RN-29)", ownsCreature},
+	{"meurpg.play.v1.CombatLogEntry", "recharge", "the d6 the server rolls for a creature's Recharge action is the master's and the player's who controls the creature (RN-20, RN-29)", actorIsOwnCreature},
 	{"meurpg.play.v1.CombatLogEffect", "resisted", "a save the master made a success reads as a save that passed to a player (RN-20, RN-29)", nil},
 	{"meurpg.play.v1.CombatLogEffect", "resisted_left", "the uses of a creature's trait left are the master's (RN-20, RN-29)", nil},
 	{"meurpg.play.v1.SaveResult", "resisted", "only the master makes a save a success, and reads that he did", nil},
@@ -128,6 +144,8 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.ReactionWindow", "trigger", "the numbers of what happened (total, armor class, damage) are the master's (RN-20)", nil},
 	{"meurpg.play.v1.ReactionWindow", "answer_now", "the order the master answers in is his", nil},
 	{"meurpg.play.v1.Combatant", "death_failures", "the table keeps the death saves to the owner and the master (RN-24)", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
+	{"meurpg.play.v1.Combatant", "reaction_kind", "which reaction a combatant spent is the master's and its player's; a joint-turn partner reads reaction_used only, and an NPC's never reaches a player", own},
+	{"meurpg.play.v1.Combatant", "reaction_round", "the round a combatant spent its reaction in is the master's and its player's", own},
 
 	// --- play: the contests and the special actions (RN-10, RN-20)
 	{"meurpg.play.v1.ContestView", "escape_dc", "the fixed escape DC of a grapple that came from an attack is the master's", nil},
