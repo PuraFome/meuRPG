@@ -443,7 +443,7 @@ func (s *Service) encounterDataOf(ctx context.Context, res combatResult) (*encou
 	if err != nil {
 		return nil, err
 	}
-	return loadEncounter(pctx, s.queries, enc)
+	return loadEncounter(pctx, s.queries, enc, s.d20Rerolls)
 }
 
 // groupRowsOf are the rows of the casting an effect id belongs to: every target of it. A row that

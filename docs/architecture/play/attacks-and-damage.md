@@ -112,6 +112,11 @@ The `extra_damage` effect of a table feature ([Rules: table content](../rules-ta
 
 Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `colossus_slayer_turn`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
+A table `reroll` effect that covers `damage` rolls again each die at or below its `at_most`, once, in the damage step (`combat_damage_reroll.go`); the player is never asked.
+One use of its resource (none for a free rule) covers one damage roll and is spent in the transaction of the damage, and undoing the damage gives it back.
+It skips typed sums, damage held for a reaction window and a die Great Weapon Fighting already rolled again.
+A roll with parts (a weapon hit and its extras) lists the dice in the part's `Rerolled` with the rule's feature as `source_key`; a roll without parts changes only its faces and total.
+The attack's critical range is `Derived.CriticalRange` for a weapon attack and 20 for a spell attack (`criticalFrom`).
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
 An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.

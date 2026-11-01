@@ -654,6 +654,16 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The server refuses an unknown event, a trigger with no result, and a resource the entry does not define.
 - **Given** a table class with a spellcasting subclass (a third-caster), **when** I register the subclass with "Esta subclasse conjura", **then** the third-caster table starts at the level it begins, and the subclass's spells come from the class list it casts from.
 
+**Critical range and rerolls.**
+
+- **Given** a feature of the table with a modifier "Margem de acerto crítico" set to 19 (RN-23), **when** its owner attacks with a weapon and the d20 shows 19, **then** the attack hits and is a critical hit, **and** a spell attack with a 19 is not.
+  With a class that already has Improved Critical, the lower of the two counts; a value outside 15 to 20 is refused at its field.
+- **Given** a feature with the effect "Rolar de novo" on attack rolls, at most 2, spending 1 use of a resource of the feature, **when** its owner's d20 shows 2 or lower and a use is left, **then** the player is asked "rolar de novo?" before the roll is said to succeed or fail; "sim" spends the use and the new d20 stands, "não" spends nothing.
+  The app has no screen for the question, so the server does not hold the roll; the API test covers the criterion.
+  The effect is written through the API: the editor lists it but cannot save it.
+- **Given** a feature with the effect "Rolar de novo" on damage, at most 2, spending 1 use, **when** its owner rolls a weapon's damage and a die shows 1 or 2, **then** the app rolls that die again without asking, the part of the damage lists it, and the use is spent; **when** the master undoes the damage, **then** the use comes back.
+  A feature with no resource rerolls for free; a cost the resource can never pay leaves the effect out of the sheet.
+
 **Feats.**
 
 - **Given** I am the game master of "Mirathel", **when** I register a feat with its prerequisite (ability scores — all of them or one of them —, a proficiency, "can cast at least one spell", a race or subrace, or a level) and effects from the closed menu, **then** the feat appears in the content list like the other kinds, in "Opções para os jogadores" and in the level-up (if the table uses feats), **and** the sheet of a character who took it lists it as "Talento" with its effects.

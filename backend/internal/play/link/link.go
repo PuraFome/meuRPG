@@ -143,7 +143,8 @@ type Sheet struct {
 	// with Extra Attack.
 	AttacksPerAction int
 	// CriticalRange is the lowest natural d20 that is a critical hit with a
-	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical.
+	// weapon attack: 20, 19 with Improved Critical, 18 with Superior Critical, or lower with a table
+	// feature's critical_range modifier (15 at the least).
 	// 0 (a basic sheet) is 20.
 	CriticalRange int
 	// BrutalCriticalDice is how many weapon damage dice a critical hit with a melee
@@ -191,6 +192,17 @@ type Maneuver struct {
 	// Targets are the skills ("skill.stealth") and abilities ("check.dex") a die on ability checks goes on;
 	// empty is every ability check.
 	Targets []string
+}
+
+// RerollRule is a reroll the character's table features give (the engine's reroll effect): a die of the rolls
+// in Applies ("attack", "check", "save", "damage") that shows AtMost or lower may be rolled again, and the new
+// roll must be used. Each reroll spends Cost uses of Resource ("" for a free one).
+type RerollRule struct {
+	Applies  []string
+	AtMost   int
+	Resource string
+	Cost     int
+	Source   string
 }
 
 // ExtraDamage is damage a table feature adds to a weapon hit (the engine's extra_damage effect):
@@ -285,6 +297,8 @@ type Traits struct {
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
 	ExtraDamages []ExtraDamage
+	// RerollRules are the rerolls of a die the table's features give (reroll effects).
+	RerollRules []RerollRule `json:",omitempty"`
 	// SpellModifiers are the cast options the table's features offer (spell_modifier effects).
 	SpellModifiers []SpellModifier
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty

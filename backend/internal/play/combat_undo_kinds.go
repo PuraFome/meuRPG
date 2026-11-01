@@ -234,7 +234,7 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
 		}
-		if err := u.strokeBack(ctx, who, ev); err != nil {
+		if err := u.rollUsesBack(ctx, who, ev); err != nil {
 			return err
 		}
 		if err := u.meleeHitBack(ctx, who, ev); err != nil {
@@ -395,8 +395,19 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 				return err
 			}
 		}
+		if err := u.damageRerollBack(ctx, who, ev); err != nil {
+			return err
+		}
 	}
 	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+}
+
+// damageRerollBack gives back the uses a damage reroll spent.
+func (u *undoer) damageRerollBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.DamageReroll == nil {
+		return nil
+	}
+	return u.spendResourcesBack(ctx, who, ev.DamageReroll.Resource, ev.DamageReroll.Cost)
 }
 
 // onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
@@ -675,7 +686,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack, u.castLimitBack,
+		u.castCounters, u.castDieBack, u.strokeBack, u.d20RerollBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack, u.castLimitBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {

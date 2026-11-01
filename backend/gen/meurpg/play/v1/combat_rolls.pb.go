@@ -1107,17 +1107,19 @@ func (x *DamagePart) GetResourceLeft() int32 {
 	return 0
 }
 
-// Reroll is a die rolled again: a damage die by Great Weapon Fighting, or a d20 that showed a
-// 1 by the halfling's Lucky (an attack roll, an ability check or a saving throw).
+// Reroll is a die rolled again: a damage die by Great Weapon Fighting or by a table feature's reroll rule, or a d20 rolled
+// again by the halfling's Lucky (a 1), by a table feature's reroll rule that the player chose to use (an attack roll, an
+// ability check or a saving throw), by Indomitable (a saving throw) or by Stroke of Luck (an ability check counted as 20).
 type Reroll struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The die, as an index into the roll's `faces` (in the order rolled).
 	Index int32 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 	From  int32 `protobuf:"varint,2,opt,name=from,proto3" json:"from,omitempty"`
 	To    int32 `protobuf:"varint,3,opt,name=to,proto3" json:"to,omitempty"`
-	// The feature that rolled it again, as a content key: "trait:lucky" for the halfling's
-	// Lucky (its Portuguese name is in the content's names, "Sortudo"). Empty for Great
-	// Weapon Fighting, which only rerolls damage dice.
+	// The feature that rolled it again, as a content key: "trait:lucky" for the halfling's Lucky (its Portuguese name is in
+	// the content's names, "Sortudo"), "feature:indomitable-1-use" for Indomitable, "feature:stroke-of-luck" for Stroke of
+	// Luck, and the key of the table feature (the reroll rule's source) for a die of damage or a d20 rolled again by a
+	// reroll rule. Empty for Great Weapon Fighting, which only rerolls damage dice.
 	SourceKey     string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

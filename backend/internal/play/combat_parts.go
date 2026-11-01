@@ -116,6 +116,8 @@ type rerolled struct {
 	Index int32 `json:"i"`
 	From  int32 `json:"from"`
 	To    int32 `json:"to"`
+	// SourceKey is the feature of the table that rolled the die again; empty for Great Weapon Fighting.
+	SourceKey string `json:"source_key,omitempty"`
 }
 
 // stepGroup is the damage of one type and the modifiers that covered it: what the
@@ -503,7 +505,7 @@ func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamageP
 		Counted: r.Counted, Physical: r.Physical, DamageTypeKey: r.DamageType,
 	}
 	for _, rr := range r.Rerolled {
-		pr.Rerolled = append(pr.Rerolled, &playv1.Reroll{Index: rr.Index, From: rr.From, To: rr.To})
+		pr.Rerolled = append(pr.Rerolled, &playv1.Reroll{Index: rr.Index, From: rr.From, To: rr.To, SourceKey: rr.SourceKey})
 	}
 	_ = damageTypePT
 	return pr

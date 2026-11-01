@@ -1838,8 +1838,8 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 -- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 -- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
 -- window kept.
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -1891,6 +1891,12 @@ UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
 RETURNING *;
 
+-- name: AnswerInspirationHoldReroll :exec
+-- The answer to the reroll's question: the d20 after it (the faces, the one that counts and the total) and the faces that
+-- counted before and after (NULL when the player kept the roll), with the answer's key. The roll is closed by the
+-- answer_key the settled path writes.
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, reroll_answer_key = $5, reroll_from = $6, reroll_to = $7 WHERE id = $1;
+
 -- name: AskInspirationHoldIndomitable :exec
 -- The save as it stands (after Lucky and the die) failed: the row stays open for Indomitable's question. The
 -- die's answer, when there was a die question, is kept with it (die_answer_key, die_used), since the die is spent.
@@ -1917,11 +1923,12 @@ UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
--- Lucky question or whose Stroke of Luck question still waits stays: those questions need no die.
+-- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
+  AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
 
 -- name: InsertHitRider :one

@@ -736,7 +736,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 	if err != nil {
 		return nil, s.dbError(ctx, "find the encounter", err)
 	}
-	d, err := loadEncounter(pctx, s.queries, enc)
+	d, err := loadEncounter(pctx, s.queries, enc, s.d20Rerolls)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the encounter", err)
 	}
