@@ -3,6 +3,7 @@ package play
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"sort"
 	"strings"
 	"testing"
@@ -67,7 +68,7 @@ func (a *armed) rowsOf(t *testing.T, query string, args ...any) []string {
 		}
 		parts := make([]string, len(vals))
 		for i, v := range vals {
-			parts[i] = fmt.Sprint(v)
+			parts[i] = dbtest.SortJSONKeys(fmt.Sprint(v))
 		}
 		out = append(out, strings.Join(parts, " | "))
 	}

@@ -94,6 +94,9 @@ type templateDB struct {
 	// rows, and left alone when a database is emptied. Read from the migrated
 	// template, so a migration that seeds another table needs no change here.
 	reference []string
+	// postgres says the server is PostgreSQL: the copy is CREATE DATABASE ...
+	// TEMPLATE and ddl is empty (postgres.go).
+	postgres bool
 }
 
 // Enabled reports whether a test database is configured.
@@ -220,6 +223,15 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 		return poolFor(t, prefix, name, dsn, conns)
 	}
 	admin := open(t, rawURL)
+	if template.postgres {
+		freeMu.Lock()
+		made = append(made, name)
+		freeMu.Unlock()
+		if err := copyPostgresTemplate(t.Context(), admin, template.name, name); err != nil {
+			t.Fatalf("copy the template: %v", err)
+		}
+		return poolFor(t, prefix, name, dsn, conns)
+	}
 	mustExec(t, admin, "CREATE DATABASE "+name)
 	freeMu.Lock()
 	made = append(made, name)
@@ -277,7 +289,7 @@ func dropAll(rawURL string) {
 	defer func() { _ = conn.Close() }()
 	for _, name := range made {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		_, _ = conn.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE")
+		_, _ = conn.ExecContext(ctx, migrations.DropDatabaseSQL(template.postgres, name))
 		cancel()
 	}
 }
@@ -335,13 +347,13 @@ const poolMaxConnsEnv = "MEURPG_TEST_POOL_MAX_CONNS"
 // answer from dozens of queries).
 const nestedAcquireTimeout = 90 * time.Second
 
-// inTxClosure is the frame of the function crdbpgxv5.ExecuteTx calls with the
-// transaction: db.InTx's fn runs under it, and nothing else does.
+// inTxClosure is the frame of the function db.InTx calls with the
+// transaction: its fn runs under it, and nothing else does.
 //
-// The name is cockroach-go's: if a new version renames it, the guard goes
-// blind and TestGuardCatchesANestedAcquisition (it needs the database, so it
-// runs in CI's go-db job) fails.
-const inTxClosure = "crdbpgxv5.ExecuteTx.func1"
+// If db renames that function, the guard goes blind and
+// TestGuardCatchesANestedAcquisition (it needs the database, so it runs in
+// CI's go-db job) fails.
+const inTxClosure = "platform/db.runAttempt"
 
 // errNestedAcquire is the cause of the canceled Acquire of a nested read.
 var errNestedAcquire = errors.New("dbtest: nested pool acquisition inside a db.InTx closure")
@@ -530,12 +542,19 @@ func buildTemplate(rawURL string) (templateDB, error) {
 		return templateDB{}, err
 	}
 	defer func() { _ = tpl.Close() }()
-	provider, err := migrations.NewProvider(tpl)
+	postgres, err := migrations.IsPostgres(ctx, admin)
+	if err != nil {
+		return templateDB{}, fmt.Errorf("create the template: %w", err)
+	}
+	provider, err := migrations.NewAdaptedProvider(tpl, postgres)
 	if err != nil {
 		return templateDB{}, err
 	}
-	if err := ensureMigrated(ctx, admin, tpl, provider, name); err != nil {
+	if err := ensureMigrated(ctx, admin, tpl, provider, name, postgres); err != nil {
 		return templateDB{}, err
+	}
+	if postgres {
+		return postgresTemplate(ctx, tpl, name)
 	}
 
 	ddl, tables, err := schemaDDL(ctx, tpl)
@@ -557,11 +576,11 @@ func buildTemplate(rawURL string) (templateDB, error) {
 // ensureMigrated returns once the template name has every migration: made
 // and migrated here, or by another process. A template whose migrations
 // stalled is dropped and made again.
-func ensureMigrated(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string) error {
+func ensureMigrated(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string, postgres bool) error {
 	sources := provider.ListSources()
 	latest := sources[len(sources)-1].Version
 	for {
-		again, err := createOrAwait(ctx, admin, tpl, provider, name, latest)
+		again, err := createOrAwait(ctx, admin, tpl, provider, name, latest, postgres)
 		if !again {
 			return err
 		}
@@ -571,10 +590,13 @@ func ensureMigrated(ctx context.Context, admin, tpl *sql.DB, provider *goose.Pro
 // createOrAwait makes and migrates the template, or, when another process
 // made it, waits until it has the latest migration. again says the template
 // was stalled and is dropped: try once more.
-func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string, latest int64) (again bool, _ error) {
+func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Provider, name string, latest int64, postgres bool) (again bool, _ error) {
 	_, err := admin.ExecContext(ctx, "CREATE DATABASE "+name)
 	if err == nil {
-		// This process creates it, so it migrates it.
+		// This process creates it, so it makes it ready and migrates it.
+		if err := migrations.PrepareTestDatabase(ctx, tpl); err != nil {
+			return false, err
+		}
 		if _, err := provider.Up(ctx); err != nil {
 			return false, fmt.Errorf("migrate the template: %w", err)
 		}
@@ -588,7 +610,7 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 	if !errors.Is(err, errStalled) {
 		return false, err
 	}
-	if _, err := admin.ExecContext(ctx, "DROP DATABASE IF EXISTS "+name+" CASCADE"); err != nil {
+	if _, err := admin.ExecContext(ctx, migrations.DropDatabaseSQL(postgres, name)); err != nil {
 		return false, fmt.Errorf("drop a stalled template: %w", err)
 	}
 	return true, nil
