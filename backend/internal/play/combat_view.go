@@ -93,7 +93,7 @@ func (v combatViewer) seesAt(c playdb.Combatant, sq grid.Square) bool {
 }
 
 // seesAtOffer is seesAt for the square an opportunity offer was made at. An offer
-// the master made by hand (a combat without a map, RN-25) has no square: nobody
+// the master made by hand has no square: nobody
 // stood anywhere, so the viewer sees the mover only if they see it now.
 func (v combatViewer) seesAtOffer(c playdb.Combatant, o playdb.OpportunityOffer) bool {
 	if o.LeftCol == nil || o.LeftRow == nil {
@@ -493,6 +493,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
 		shareEconomy(out, c)
+		if c.ReactionUsed { // which reaction and when: the owner's and the master's; a joint-turn partner reads reaction_used
+			out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)
+		}
 		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}

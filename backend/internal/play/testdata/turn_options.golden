@@ -2764,6 +2764,7 @@ options
 .options.spells[spell:magic-missile].spell.schoolNamePt = "Evocação"
 .options.spells[spell:shield].economy = "ACTION_ECONOMY_REACTION"
 .options.spells[spell:shield].reason.code = "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT"
+.options.spells[spell:shield].reason.textPt = "Escudo Arcano é uma reação: o app pergunta quando um ataque acerta você."
 .options.spells[spell:shield].slots[0].free = 4
 .options.spells[spell:shield].slots[0].level = 1
 .options.spells[spell:shield].slots[0].total = 4
@@ -3197,6 +3198,7 @@ options
 .options.spells[spell:magic-missile].spell.schoolNamePt = "Evocação"
 .options.spells[spell:shield].economy = "ACTION_ECONOMY_REACTION"
 .options.spells[spell:shield].reason.code = "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT"
+.options.spells[spell:shield].reason.textPt = "Escudo Arcano é uma reação: o app pergunta quando um ataque acerta você."
 .options.spells[spell:shield].slots[0].free = 4
 .options.spells[spell:shield].slots[0].level = 1
 .options.spells[spell:shield].slots[0].total = 4

@@ -4892,8 +4892,9 @@ export type DisabledReason = Message<"meurpg.rules.v1.DisabledReason"> & {
 
   /**
    * The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
-   * already without a cause a player may not read (RN-20). Only the reasons of effects and
-   * conditions carry it.
+   * already without a cause a player may not read (RN-20). The reasons of effects and
+   * conditions carry it, and so do the reasons of a spell, which name it (all but NO_SLOT,
+   * which repeats on every spell row and keeps the short word the screen has).
    *
    * @generated from field: string text_pt = 100;
    */
