@@ -55,7 +55,7 @@ case "${1:-}" in
         status=1
       fi
       # -skip and -run match a name in every package: another package's test of the same name would be left out too.
-      others=$(grep -rlE "^func $name\(t \*testing\.T\)" --include='*_test.go' "$root/backend" | grep -v "^$dir/" || true)
+      others=$(grep -rlE "^func $name\(t \*testing\.T\)" --include='*_test.go' "$root/backend" | xargs -r -n1 dirname | grep -vx "$dir" || true)
       if [ -n "$others" ]; then
         echo "::error file=backend/cockroach-only-tests.txt::$name is also a test in: $others" >&2
         status=1
@@ -82,7 +82,7 @@ case "${1:-}" in
     exit "$status"
     ;;
   *)
-    sed -n '2,15p' "$0" >&2
+    sed -n '2,13p' "$0" >&2
     exit 2
     ;;
 esac

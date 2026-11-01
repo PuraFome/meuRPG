@@ -523,9 +523,9 @@ func TestMR042_ARetryIsCheckedAgainstWhatWasAdded(t *testing.T) {
 	}
 }
 
-// hitDice finds the dice "2d8" written as dice, not inside a run of hex digits: every log entry
-// carries random UUIDs, and one like "…e2d833…" or one that starts with "2d8" must not fail the
-// test (it did on 07/10/2026 and on 01/11/2026). The dice end the text or are followed by "+".
+// hitDice finds the dice "2d8" written as dice: not preceded by a hex digit or "-", and not
+// followed by a hex digit. Every log entry carries random UUIDs, and one like "…e2d833…" or one
+// that starts with "2d8" does not match.
 var hitDice = regexp.MustCompile(`(^|[^0-9a-fA-F-])2d8($|[^0-9a-fA-F])`)
 
 // TestHitDicePatternIgnoresUUIDs: the pattern finds the dice and not a UUID that holds "2d8".

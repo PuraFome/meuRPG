@@ -45,7 +45,7 @@ endif
 COCKROACH_VERSION := v26.2.8
 COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 
-# The test CockroachDB (`make db-test-start`): a second native node on port
+# The test CockroachDB (`make db-test-cockroach-start`): a second native node on port
 # 26258 for the integration tests only, whose store lives in memory (2 GiB at
 # most) and disappears when it stops. Schema changes, which the test
 # databases are made of, take a quarter of the time they take on disk, and
@@ -54,7 +54,7 @@ COCKROACH_STORE ?= $(HOME)/.meurpg/cockroach
 # default 4 hours (gc.ttlseconds).
 #
 # TEST_DB_PORT starts more than one, each with its own memory and console
-# (`make db-test-start TEST_DB_PORT=26259`): two runs of the integration
+# (`make db-test-cockroach-start TEST_DB_PORT=26259`): two runs of the integration
 # tests then never wait for each other. The console port follows the SQL
 # port (26258 -> 8082, 26259 -> 8083...).
 TEST_DB_PORT ?= 26258
@@ -223,9 +223,8 @@ db-test-start: ## Start the test PostgreSQL on localhost:5433 (TEST_PG_PORT=5434
 			-o "-p $(TEST_PG_PORT) -c listen_addresses=localhost -c unix_socket_directories=$(TEST_PG_DIR) -c default_transaction_isolation=serializable -c fsync=off -c synchronous_commit=off -c full_page_writes=off -c max_connections=300" \
 			>"$(TEST_PG_DIR)/start.log" 2>&1 || { cat "$(TEST_PG_DIR)/start.log" "$(TEST_PG_DIR)/server.log"; exit 1; }; \
 	fi
-	@echo "Test PostgreSQL on localhost:$(TEST_PG_PORT). Run the integration tests with:"
-	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_PG_DATABASE_URL)' make test"
-	@echo "The tests that need CockroachDB itself are left out by make test-postgres; run them on make db-test-cockroach-start (docs/testing.md)."
+	@echo "Test PostgreSQL on localhost:$(TEST_PG_PORT). Run the integration tests with: make test-postgres"
+	@echo "The tests that need CockroachDB itself are left out; run them on make db-test-cockroach-start (docs/testing.md)."
 	@echo "Stop it with: make db-test-stop TEST_PG_PORT=$(TEST_PG_PORT)"
 
 db-test-stop: ## Stop the test PostgreSQL started by db-test-start (TEST_PG_PORT, 5433 by default); its data stays for the next start

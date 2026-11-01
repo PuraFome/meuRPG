@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Tracker counts the sends the play service's hint gates have scheduled and not yet
+// Tracker counts the sends the play service's gate (After) and the maps layer gate (AfterTimer) have scheduled and not yet
 // made, so a test can wait for the state "no trailing hint is pending" instead of sleeping
 // past the gate's interval. The sends still run on the real clock.
 type Tracker struct {
@@ -19,13 +19,7 @@ type Tracker struct {
 
 // After is the gate's time.AfterFunc: it counts the send until it has been made.
 func (h *Tracker) After(d time.Duration, f func()) {
-	h.mu.Lock()
-	h.pending++
-	h.mu.Unlock()
-	time.AfterFunc(d, func() {
-		defer h.done()
-		f()
-	})
+	h.AfterTimer(d, f)
 }
 
 // AfterTimer is After for a gate that wants the timer back (the maps service's).

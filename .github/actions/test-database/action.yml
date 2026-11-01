@@ -34,7 +34,7 @@ runs:
           database=postgres
           # The same test as `changes` in backend.yml uses for a train: the branch name alone is not enough, a fork
           # can name a branch like that.
-          case "$HEAD_REF" in refactor/train-*) if [ "$HEAD_REPO" = "$REPO" ]; then database=cockroach; fi ;; esac
+          case "${HEAD_REF,,}" in refactor/train-*) if [ "$HEAD_REPO" = "$REPO" ]; then database=cockroach; fi ;; esac
         fi
         if [ "$database" = postgres ]; then
           echo "url=postgresql://root@localhost:5432/postgres?sslmode=disable" >> "$GITHUB_OUTPUT"

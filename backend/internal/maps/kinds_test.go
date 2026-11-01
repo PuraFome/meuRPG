@@ -930,8 +930,8 @@ func TestMR036_CarriedLight(t *testing.T) {
 // The master's change to a trap locks the point and then the session (the event it
 // records); the play module's trigger locks the session and then the point. When a
 // move fires a trap while the master reveals it, the two wait for each other:
-// the database aborts one (40001 on CockroachDB, 40P01 on PostgreSQL) and the retry of its transaction goes on, so the
-// master's call still succeeds and the trap is revealed.
+// the database aborts one (40001 on CockroachDB, 40P01 on PostgreSQL) and the retry of its
+// transaction goes on, so the master's call still succeeds and the trap is revealed.
 func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)

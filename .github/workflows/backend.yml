@@ -83,14 +83,14 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres))\.sh$|\.github/actions/test-database/|\.github/nolint-cap$|\.node-version$)'
 
       - name: Do the Go jobs run
         id: go
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap)\.sh$|\.github/nolint-cap$)'
+          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres))\.sh$|\.github/actions/test-database/|\.github/nolint-cap$)'
 
   proto:
     name: proto (lint, breaking, generate)

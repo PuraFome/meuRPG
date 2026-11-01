@@ -16,6 +16,8 @@ on:
       - ".github/workflows/repeat-changed.yml"
       - ".github/scripts/flake*.mjs"
       - ".github/scripts/repeat-changed.sh"
+      - ".github/scripts/cockroach-only.sh"
+      - ".github/scripts/start-*.sh"
       - ".github/actions/**"
 
 concurrency:

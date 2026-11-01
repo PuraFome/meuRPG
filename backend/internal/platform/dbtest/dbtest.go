@@ -7,7 +7,7 @@
 // The package asks the server which database it is.
 // To run the tests, start a throwaway database (`make db-test-start`) and run:
 //
-//	MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable' make test
+//	MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:5433/postgres?sslmode=disable' make test-postgres
 //
 // Migrating a new database for every test is too slow on CockroachDB, where
 // each schema change is a job.

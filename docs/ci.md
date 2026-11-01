@@ -55,7 +55,7 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | `govulncheck (called vulnerabilities)` | `govulncheck ./...` (version pinned): fails on a known vulnerability in a module or in the Go standard library that the code actually calls. See [Vulnerability scans](#vulnerability-scans) |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory database, with `MEURPG_REQUIRE_DB=1`: [PostgreSQL or CockroachDB, by the event](#which-database-the-tests-run-on). Each package has a 25-minute `-timeout` inside the job's 30 |
 | `go-db cockroach-only list` | Checks the [list of the tests that need CockroachDB](#which-database-the-tests-run-on): every listed test exists and, on PostgreSQL, fails |
-| `go (integration tests against CockroachDB)` | Waits for every group and for the list check; the stable check for a branch protection rule. The name stays so the rule keeps working, though a preflight runs it on PostgreSQL |
+| `go (integration tests against CockroachDB)` | Waits for every group and for the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
 
 **The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-3`, `maps`, `characters`, `pure`, `leak`, `camp` and `rest`.
