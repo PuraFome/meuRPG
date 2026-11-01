@@ -383,6 +383,7 @@ type InspirationHold struct {
 	RerollAnswerKey      *string
 	RerollFrom           *int32
 	RerollTo             *int32
+	CountedBy            string
 }
 
 type OpportunityOffer struct {

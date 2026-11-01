@@ -127,7 +127,7 @@ func (st inspirationHoldStore) askIndomitable(ctx context.Context, h heldRoll) e
 func (st inspirationHoldStore) answerIndomitable(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldIndomitable(ctx, playdb.AnswerInspirationHoldIndomitableParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
-		IndomitableAnswerKey: h.IndomAnswerKey, IndomitableFrom: h.IndomFrom, IndomitableTo: h.IndomTo,
+		IndomitableAnswerKey: h.IndomAnswerKey, IndomitableFrom: h.IndomFrom, IndomitableTo: h.IndomTo, CountedBy: h.CountedBy,
 	}); err != nil {
 		return fmt.Errorf("answer Indomitable: %w", err)
 	}

@@ -344,8 +344,8 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 	if !f.v.master {
 		return fmt.Sprintf("%s manteve a concentração em %s.", f.who, spell)
 	}
-	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
-		f.who, spell, f.e.ev.value(re.SaveD20)+re.SaveBonus, re.SaveDC, f.e.ev.ResistLeft, f.by)
+	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d%s contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
+		f.who, spell, f.e.ev.value(re.SaveD20)+re.SaveBonus, f.e.ev.countedNote(re.SaveD20), re.SaveDC, f.e.ev.ResistLeft, f.by)
 }
 
 // concentrationRoll is the roller's save of a concentration as the line says it: the d20, the bonus and

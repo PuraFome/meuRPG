@@ -58,6 +58,8 @@ type riderEvent struct {
 	D20    int32  `json:"d20,omitempty"`
 	Total  int32  `json:"total,omitempty"`
 	DC     int32  `json:"dc,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it (a creature rider's save).
+	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).
 	Pushed *forcedMove `json:"pushed,omitempty"`
 	// A creature's rider: the action, the condition it gave (Given says it was given), the escape DC of a
@@ -481,12 +483,20 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		}
 	}
 	if numbers && r.D20 > 0 {
-		out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
-		if showDC { // the DC is the master's, and the target's player's when the table shows it
-			out.Dc = r.DC
-		}
+		riderNumbersProto(out, r, showDC)
 	}
 	return out
+}
+
+// riderNumbersProto sets the roll of the save on the line: the d20, the total, what the die counted as and the DC.
+func riderNumbersProto(out *playv1.CombatLogHitRider, r *riderEvent, showDC bool) {
+	out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
+	if r.CountedAs != 0 {
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), r.CountedBy
+	}
+	if showDC { // the DC is the master's, and the target's player's when the table shows it
+		out.Dc = r.DC
+	}
 }
 
 // creatureRiderForPlayer takes from a creature rider's line what a player may not read: the stat block's key,

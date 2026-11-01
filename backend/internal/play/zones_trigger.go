@@ -224,6 +224,9 @@ func writeZoneCaught(c *combatTx, k zoneCatch, owner playdb.Combatant, hit castH
 		Round: k.round, Secret: owner.Hidden || k.who.Hidden, Actor: owner.ID, Target: k.who.ID, Key: k.z.row.SpellKey,
 		Pending: dealt.pending.ID, Lasting: l,
 	}
+	if hit.Save != nil {
+		ev.countedRoll = hit.Save.countedRoll
+	}
 	if dealt.landed {
 		ev.Applied, ev.Before, ev.After = dealt.hit.Applied, dealt.hit.Before, dealt.hit.After
 	}

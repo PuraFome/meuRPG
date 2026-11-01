@@ -140,7 +140,7 @@ func (st inspirationHoldStore) askStroke(ctx context.Context, h heldRoll) error 
 func (st inspirationHoldStore) answerStroke(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldStroke(ctx, playdb.AnswerInspirationHoldStrokeParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
-		StrokeAnswerKey: h.StrokeAnswerKey, StrokeFrom: h.StrokeFrom,
+		StrokeAnswerKey: h.StrokeAnswerKey, StrokeFrom: h.StrokeFrom, CountedBy: h.CountedBy,
 	}); err != nil {
 		return fmt.Errorf("answer Stroke of Luck: %w", err)
 	}
@@ -193,7 +193,7 @@ func (q strokeQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 		if ae.spec.Stroke == nil || !ae.spec.Stroke.Attack {
 			after.Faces = slices.Clone(h.Faces)
 			after.Faces[counted] = d20Sides
-			after.Total = d20Sides + ae.spec.Modifier
+			after.Total, after.CountedBy = d20Sides+ae.spec.Modifier, "" // the 20 is no minimum's
 		}
 	}
 	if err := newHeldStores(ae.q).answerStroke(ctx, after); err != nil {

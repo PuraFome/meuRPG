@@ -137,7 +137,7 @@ func (q *Queries) AnswerInspirationHold(ctx context.Context, arg AnswerInspirati
 }
 
 const answerInspirationHoldIndomitable = `-- name: AnswerInspirationHoldIndomitable :exec
-UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, indomitable_answer_key = $5, indomitable_from = $6, indomitable_to = $7 WHERE id = $1
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, indomitable_answer_key = $5, indomitable_from = $6, indomitable_to = $7, counted_by = $8 WHERE id = $1
 `
 
 type AnswerInspirationHoldIndomitableParams struct {
@@ -148,6 +148,7 @@ type AnswerInspirationHoldIndomitableParams struct {
 	IndomitableAnswerKey *string
 	IndomitableFrom      *int32
 	IndomitableTo        *int32
+	CountedBy            string
 }
 
 // The answer to Indomitable's question: the d20 after it (the faces, the one that counts and the total) and the
@@ -162,13 +163,14 @@ func (q *Queries) AnswerInspirationHoldIndomitable(ctx context.Context, arg Answ
 		arg.IndomitableAnswerKey,
 		arg.IndomitableFrom,
 		arg.IndomitableTo,
+		arg.CountedBy,
 	)
 	return err
 }
 
 const answerInspirationHoldLucky = `-- name: AnswerInspirationHoldLucky :one
-UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6, counted_by = $7 WHERE id = $1
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by
 `
 
 type AnswerInspirationHoldLuckyParams struct {
@@ -178,6 +180,7 @@ type AnswerInspirationHoldLuckyParams struct {
 	Total          int32
 	LuckyAnswerKey *string
 	LuckyTo        *int32
+	CountedBy      string
 }
 
 // The answer to the Lucky question of a held roll: the d20 after it (the faces, the one that
@@ -190,6 +193,7 @@ func (q *Queries) AnswerInspirationHoldLucky(ctx context.Context, arg AnswerInsp
 		arg.Total,
 		arg.LuckyAnswerKey,
 		arg.LuckyTo,
+		arg.CountedBy,
 	)
 	var i InspirationHold
 	err := row.Scan(
@@ -234,12 +238,13 @@ func (q *Queries) AnswerInspirationHoldLucky(ctx context.Context, arg AnswerInsp
 		&i.RerollAnswerKey,
 		&i.RerollFrom,
 		&i.RerollTo,
+		&i.CountedBy,
 	)
 	return i, err
 }
 
 const answerInspirationHoldReroll = `-- name: AnswerInspirationHoldReroll :exec
-UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, reroll_answer_key = $5, reroll_from = $6, reroll_to = $7 WHERE id = $1
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, reroll_answer_key = $5, reroll_from = $6, reroll_to = $7, counted_by = $8 WHERE id = $1
 `
 
 type AnswerInspirationHoldRerollParams struct {
@@ -250,6 +255,7 @@ type AnswerInspirationHoldRerollParams struct {
 	RerollAnswerKey *string
 	RerollFrom      *int32
 	RerollTo        *int32
+	CountedBy       string
 }
 
 // The answer to the reroll's question: the d20 after it (the faces, the one that counts and the total) and the faces that
@@ -264,12 +270,13 @@ func (q *Queries) AnswerInspirationHoldReroll(ctx context.Context, arg AnswerIns
 		arg.RerollAnswerKey,
 		arg.RerollFrom,
 		arg.RerollTo,
+		arg.CountedBy,
 	)
 	return err
 }
 
 const answerInspirationHoldStroke = `-- name: AnswerInspirationHoldStroke :exec
-UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer_key = $5, stroke_from = $6 WHERE id = $1
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer_key = $5, stroke_from = $6, counted_by = $7 WHERE id = $1
 `
 
 type AnswerInspirationHoldStrokeParams struct {
@@ -279,6 +286,7 @@ type AnswerInspirationHoldStrokeParams struct {
 	Total           int32
 	StrokeAnswerKey *string
 	StrokeFrom      *int32
+	CountedBy       string
 }
 
 // The answer to Stroke of Luck's question: the d20 after it (the faces, the one that counts and the total; a check
@@ -292,6 +300,7 @@ func (q *Queries) AnswerInspirationHoldStroke(ctx context.Context, arg AnswerIns
 		arg.Total,
 		arg.StrokeAnswerKey,
 		arg.StrokeFrom,
+		arg.CountedBy,
 	)
 	return err
 }
@@ -2025,7 +2034,7 @@ func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRi
 }
 
 const getInspirationHold = `-- name: GetInspirationHold :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
 `
 
 type GetInspirationHoldParams struct {
@@ -2078,12 +2087,13 @@ func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHold
 		&i.RerollAnswerKey,
 		&i.RerollFrom,
 		&i.RerollTo,
+		&i.CountedBy,
 	)
 	return i, err
 }
 
 const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
 type GetInspirationHoldByKeyParams struct {
@@ -2136,6 +2146,7 @@ func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspiratio
 		&i.RerollAnswerKey,
 		&i.RerollFrom,
 		&i.RerollTo,
+		&i.CountedBy,
 	)
 	return i, err
 }
@@ -4038,9 +4049,9 @@ func (q *Queries) InsertImageViewer(ctx context.Context, arg InsertImageViewerPa
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $26, $27, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $27, $28, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by
 `
 
 type InsertInspirationHoldParams struct {
@@ -4069,6 +4080,7 @@ type InsertInspirationHoldParams struct {
 	RerollResource    string
 	RerollCost        int32
 	RerollSource      string
+	CountedBy         string
 	CombatantID       *string
 	EncounterID       *string
 }
@@ -4104,6 +4116,7 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.RerollResource,
 		arg.RerollCost,
 		arg.RerollSource,
+		arg.CountedBy,
 		arg.CombatantID,
 		arg.EncounterID,
 	)
@@ -4150,6 +4163,7 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		&i.RerollAnswerKey,
 		&i.RerollFrom,
 		&i.RerollTo,
+		&i.CountedBy,
 	)
 	return i, err
 }
@@ -6516,7 +6530,7 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 }
 
 const listOpenAttackHolds = `-- name: ListOpenAttackHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
 `
 
 // The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
@@ -6572,6 +6586,7 @@ func (q *Queries) ListOpenAttackHolds(ctx context.Context, encounterID *string) 
 			&i.RerollAnswerKey,
 			&i.RerollFrom,
 			&i.RerollTo,
+			&i.CountedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -6751,7 +6766,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenInspirationHolds = `-- name: ListOpenInspirationHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds
 WHERE answer_key IS NULL
   AND ((encounter_id = $1 AND combatant_id = $2)
     OR (combatant_id IS NULL AND character_id = $3))
@@ -6820,6 +6835,7 @@ func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInsp
 			&i.RerollAnswerKey,
 			&i.RerollFrom,
 			&i.RerollTo,
+			&i.CountedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -6832,7 +6848,7 @@ func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInsp
 }
 
 const listOpenInspirationHoldsOfCampaign = `-- name: ListOpenInspirationHoldsOfCampaign :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // Every roll of the campaign that waits for an answer, for the master's list and the players' own.
@@ -6887,6 +6903,7 @@ func (q *Queries) ListOpenInspirationHoldsOfCampaign(ctx context.Context, campai
 			&i.RerollAnswerKey,
 			&i.RerollFrom,
 			&i.RerollTo,
+			&i.CountedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -6899,7 +6916,7 @@ func (q *Queries) ListOpenInspirationHoldsOfCampaign(ctx context.Context, campai
 }
 
 const listOpenInspirationHoldsOfEncounter = `-- name: ListOpenInspirationHoldsOfEncounter :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // Every roll held in the combat that waits for an answer, whichever roll it is, for the combatants' views.
@@ -6954,6 +6971,7 @@ func (q *Queries) ListOpenInspirationHoldsOfEncounter(ctx context.Context, encou
 			&i.RerollAnswerKey,
 			&i.RerollFrom,
 			&i.RerollTo,
+			&i.CountedBy,
 		); err != nil {
 			return nil, err
 		}

@@ -182,8 +182,10 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 		return nil, nil
 	}
 	roll := gate.Roll
-	// The die counts as the minimum when a table feature raised it: a 1 that counts as 10 is an ordinary 10, and the 1 and
-	// the 20 are the die's that count.
+	// The rules read the number the die counts as (Value), not the face that came up (Face).
+	// A 1 that counts as 10 is an ordinary 10: a success, not the two failures of a natural 1.
+	// A die that counts as 20 brings the character back.
+	// The event keeps the face as rolled, for the log.
 	face, bonus := roll.Value(), roll.Total-roll.Value()
 	r := combat.DeathSaveWith(face, bonus, int(who.DeathSuccesses), int(who.DeathFailures))
 	out.made = actionEvent{

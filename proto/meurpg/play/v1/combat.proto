@@ -2469,6 +2469,10 @@ message CombatLogHitRider {
   // The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
   // grid or another creature stopped it.
   bool push_stopped = 18;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `save_total` uses this
+  // one), and the feature that did it as a content key. Set where the d20 is.
+  optional int32 treated_as = 19;
+  string treated_as_source = 20;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -6324,6 +6328,10 @@ message LegendaryResistanceOffer {
   // The uses of the trait the creature has left, and its uses a day.
   int32 uses_left = 6;
   int32 uses_per_day = 7;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key.
+  optional int32 treated_as = 8;
+  string treated_as_source = 9;
 }
 
 message ManeuverReduceOption {

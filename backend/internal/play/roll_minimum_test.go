@@ -12,10 +12,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The table's roll_minimum on the held d20 rolls (#757): an attack, a saving throw and a death save count a d20 that shows
-// less than the minimum as the minimum, for every rule that reads the die. The faces stay as they came up, and the roll
-// says what it counted as and which feature did it. These tests need the database (MEURPG_TEST_DATABASE_URL), but the
-// first one.
+// The table's roll_minimum on the held d20 rolls (#757).
+// An attack, a saving throw and a death save count a d20 below the minimum as the minimum.
+// Every rule that reads the die sees that number.
+// The faces stay as they came up, and the roll says what it counted as and which feature did it.
+// These tests need the database (MEURPG_TEST_DATABASE_URL), but the first ones.
 
 // Reliable Talent and the table's minimums compete for the floor of a roll: the highest wins, a tie keeps Reliable Talent,
 // a minimum of another kind or limited to a damage type is not a floor of the roll.
@@ -77,10 +78,10 @@ func TestAFloorCountsTheDieThatCountsAndKeepsTheFaces(t *testing.T) {
 			t.Parallel()
 			faces := append([]int(nil), tc.roll.Faces...)
 			got := floorD20(tc.roll, 5, floor)
-			if got.Counted != tc.wantCounted || got.Total != tc.wantTotal || got.Value() != tc.wantValue {
-				t.Errorf("floorD20() = counted %d, total %d, value %d; want %d, %d, %d", got.Counted, got.Total, got.Value(), tc.wantCounted, tc.wantTotal, tc.wantValue)
+			if got.CountedValue != tc.wantCounted || got.Total != tc.wantTotal || got.Value() != tc.wantValue {
+				t.Errorf("floorD20() = counted %d, total %d, value %d; want %d, %d, %d", got.CountedValue, got.Total, got.Value(), tc.wantCounted, tc.wantTotal, tc.wantValue)
 			}
-			if got.Counted != 0 && got.CountedBy != floor.Source {
+			if got.CountedValue != 0 && got.CountedBy != floor.Source {
 				t.Errorf("counted by %q, want %q", got.CountedBy, floor.Source)
 			}
 			for i, f := range faces {
@@ -282,10 +283,13 @@ func TestAnEffectSaveCountsTheMinimum(t *testing.T) {
 		t.Errorf("the retry = %v, %v; want the roll of %v", g, err, r)
 	}
 	pick := func(en *playv1.CombatLogEntry) bool { return en.GetEffect().D20 != nil }
-	for who, u := range map[string]*user{"the master": a.master, "the target's player": a.caio} {
-		en := a.logEntryWith(t, u, e, pick)
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"the master", a.master}, {"the target's player", a.caio}} {
+		en := a.logEntryWith(t, who.u, e, pick)
 		if en == nil || en.GetEffect().GetTreatedAs() != 10 || en.GetEffect().GetTreatedAsSource() != feat || en.GetEffect().GetD20() != 3 || en.GetEffect().GetTotal() != 10 {
-			t.Errorf("%s reads %v, want the 3 counted as 10 by the feat", who, en.GetEffect())
+			t.Errorf("%s reads %v, want the 3 counted as 10 by the feat", who.name, en.GetEffect())
 		}
 	}
 	for _, en := range a.log(t, a.ana, e).GetRounds() {
@@ -454,5 +458,237 @@ func TestKeepingTheRollAfterTheRerollQuestionStillCountsTheMinimum(t *testing.T)
 	}
 	if d := out.GetAttack().GetRoll().GetD20(); d.GetTreatedAs() != 10 || d.GetTotal() != 16 || d.GetFaces()[0] != 2 {
 		t.Errorf("the d20 = %v, want the 2 kept and counted as 10", d)
+	}
+}
+
+// wantNoLeak checks a roll that hides its faces hides what it counted as too.
+func wantNoLeak(t *testing.T, what string, d *playv1.DiceRoll) {
+	t.Helper()
+	if len(d.GetFaces()) == 0 && (d.GetTreatedAs() != 0 || d.GetTreatedAsSource() != "") {
+		t.Errorf("%s = %v, want no faces and no counted number together", what, d)
+	}
+}
+
+// Sacred Flame on Toren, whose saves have a minimum of 20: the 3 counts 20 and saves.
+// The master and Toren's player read the face and what it counted as, the others read how the save ended.
+func TestASpellSaveOfATargetCountsTheMinimum(t *testing.T) {
+	t.Parallel()
+	a, e := luckySaveFight(t, "", "Brisa", false)
+	feat := a.rerollFeat(t, &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"save"}, Value: "20"})
+	a.giveFeat(t, a.toren, feat)
+	a.h.roller.queue(3)
+	res := a.flameAt(t, e, "Toren")
+	if sv := res.GetCast().GetTargets()[0].GetSave(); sv.GetOutcome() != playv1.SaveOutcome_SAVE_OUTCOME_SAVED || sv.GetRoll() != nil {
+		t.Errorf("the caster's player reads %v, want the outcome alone", sv)
+	}
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"the master", a.master}, {"Caio", a.caio}} {
+		sv := a.castSaveOf(t, who.u, e, "Toren")
+		roll := sv.GetRoll()
+		if sv.GetOutcome() != playv1.SaveOutcome_SAVE_OUTCOME_SAVED {
+			t.Errorf("%s reads %v, want the save passed", who.name, sv)
+		}
+		wantCountedAs(t, who.name+"'s roll", roll, 3, 20, 20+roll.GetModifier(), feat)
+	}
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"Bia", a.bia}, {"Ana", a.ana}} {
+		sv := a.castSaveOf(t, who.u, e, "Toren")
+		wantNoLeak(t, who.name+"'s roll", sv.GetRoll())
+		if sv.GetRoll() != nil {
+			t.Errorf("%s reads the dice %v, want none", who.name, sv.GetRoll())
+		}
+	}
+}
+
+// A cast held for the master's Legendary Resistance rolls the saves of the other targets once: Toren's 1 counts 20 when the
+// master answers and the cast goes on from the held rolls.
+func TestAHeldCastReplaysTheMinimumOfATargetsSave(t *testing.T) {
+	t.Parallel()
+	a, e := resistFightWith(t, adultRedDragon, "", "Draco")
+	feat := a.rerollFeat(t, &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"save"}, Value: "20"})
+	a.giveFeat(t, a.toren, feat)
+	a.put(t, "Toren", 7, 5)
+	a.h.roller.queue(1, 3) // Toren's save is rolled first, then the dragon's
+	if _, err := a.holdAt(t, "Draco", "Toren"); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	w := a.windowOf(t, a.master, resistKind)
+	if w == nil {
+		t.Fatalf("the master's windows = %v, want the Legendary Resistance window", a.windows(t, a.master))
+	}
+	asked := a.h.roller.taken()
+	if _, err := a.resistUse(t, a.master, e, w, "Draco"); err != nil {
+		t.Fatalf("AnswerReaction() error = %v", err)
+	}
+	if again := a.h.roller.taken(); again != asked {
+		t.Errorf("the replay rolled %d dice more, want none", again-asked)
+	}
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"the master", a.master}, {"Caio", a.caio}} {
+		roll := a.castSaveOf(t, who.u, a.get(t, a.master), "Toren").GetRoll()
+		wantCountedAs(t, who.name+"'s roll", roll, 1, 20, 20+roll.GetModifier(), feat)
+	}
+	wantNoLeak(t, "Ana's roll", a.castSaveOf(t, a.ana, a.get(t, a.master), "Toren").GetRoll())
+}
+
+// A held attack that offers a reroll says what the die counts as: the offer, the list and a retry agree.
+func TestTheOfferOfAHeldRollSaysWhatTheDieCountsAs(t *testing.T) {
+	t.Parallel()
+	effects := append(d20RerollEffects("2", 2, "1"), &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"attack"}, Value: "10"})
+	r := d20RerollTable(t, true, effects)
+	e := r.closeFight(t)
+	key := newKey()
+	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", attackCallKeyed(key, d20(2)))
+	if err != nil {
+		t.Fatalf("RollAttack(2) error = %v", err)
+	}
+	offer := res.GetHeldRollOffer()
+	r.wantReroll(t, "the first offer", offer, playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, 2)
+	d := offer.GetD20()
+	wantCountedAs(t, "the first offer's d20", d, 2, 10, 16, r.feat)
+	list := r.listHeldRolls(t, r.caio)
+	if len(list) != 1 || !proto.Equal(list[0].GetD20(), d) {
+		t.Errorf("the list = %v, want the offer's d20 %v", list, d)
+	}
+	again, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", attackCallKeyed(key, d20(2)))
+	if err != nil || !proto.Equal(again.GetHeldRollOffer().GetD20(), d) {
+		t.Errorf("the retry = %v, %v; want the same d20", again.GetHeldRollOffer(), err)
+	}
+}
+
+// The offer of a roll with only Reliable Talent behind it keeps what it always said: a single d20 shows no counted number,
+// a pair with advantage shows it with Reliable Talent as the source, and a row from before the source was kept reads the same.
+func TestTheOfferOfAHeldRollKeepsWhatReliableTalentAlwaysSaid(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name       string
+		held       heldRoll
+		wantTreat  int32
+		wantSource string
+	}{
+		{"a single d20", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15}, 0, ""},
+		{"a single d20 of Reliable Talent", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15, CountedBy: reliableTalentSource}, 0, ""},
+		{"a pair of a row without source", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15}, 10, reliableTalentSource},
+		{"a pair of Reliable Talent", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15, CountedBy: reliableTalentSource}, 10, reliableTalentSource},
+		{"a single d20 of a table minimum", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15, CountedBy: "feat:ten"}, 10, "feat:ten"},
+		{"a pair of a table minimum", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15, CountedBy: "feat:ten"}, 10, "feat:ten"},
+		{"a pair above the floor", heldRoll{Faces: []int{12, 2}, Modifier: 5, Total: 17}, 0, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			d := heldD20Of(tc.held)
+			if d.GetTreatedAs() != tc.wantTreat || d.GetTreatedAsSource() != tc.wantSource || (tc.wantTreat == 0) != (d.TreatedAs == nil) {
+				t.Errorf("heldD20Of() = %v, want counted as %d by %q", d, tc.wantTreat, tc.wantSource)
+			}
+		})
+	}
+}
+
+// A save that fails on the number it counts as is asked about Indomitable: the question shows the face and the number, the
+// new roll replaces the die and counts as it came up.
+func TestIndomitableIsAskedAboutAFailedEffectSaveThatTheMinimumRaised(t *testing.T) {
+	t.Parallel()
+	a, feat := minimumTable(t, "Toren", []string{"save"}, "8")
+	e, w := a.holdOnToren(t)
+	res, err := a.rollEffectSave(t, a.caio, e, w.GetId(), effectSaveFace(2))
+	offer := res.GetHeldRollOffer()
+	if err != nil || offer.GetIndomitable() == nil || !offer.GetIndomitable().GetFailed() {
+		t.Fatalf("RollEffectSave(2) = %v, %v; want Indomitable's question about the failed 8", res, err)
+	}
+	wantCountedAs(t, "the offer's d20", offer.GetD20(), 2, 8, 8, feat)
+	out, err := a.answerHeldRoll(t, a.caio, offer.GetHoldId(), indomitableAnswer(true, 17))
+	r := out.GetEffectSave().GetResult()
+	if err != nil || !r.GetSaved() || r.GetD20() != 17 || r.GetTreatedAs() != 0 || len(r.GetRerolled()) != 1 || r.GetRerolled()[0].GetFrom() != 2 {
+		t.Errorf("the save = %v, %v; want the new 17 to save, with no counted number, replacing the 2", r, err)
+	}
+}
+
+// The same for the concentration save: a 2 counts 8 against DC 10 and +1 makes 9, so Indomitable is asked.
+func TestIndomitableIsAskedAboutAFailedConcentrationSaveThatTheMinimumRaised(t *testing.T) {
+	t.Parallel()
+	a := multiclassTable(t)
+	feat := a.rerollFeat(t, &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"save"}, Value: "8"})
+	a.giveFeat(t, a.pens, feat)
+	a, e := concentratingHitOn(t, a, 6)
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	if w == nil {
+		t.Fatalf("Pensantus's windows = %v, want a concentration save", a.windows(t, a.ana))
+	}
+	res, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(2))
+	offer := res.GetHeldRollOffer()
+	if err != nil || offer.GetIndomitable() == nil || !offer.GetIndomitable().GetFailed() {
+		t.Fatalf("ResolveConcentrationSave(2) = %v, %v; want Indomitable's question", res, err)
+	}
+	wantCountedAs(t, "the offer's d20", offer.GetD20(), 2, 8, 9, feat)
+	out, err := a.answerHeldRoll(t, a.ana, offer.GetHoldId(), indomitableAnswer(true, 15))
+	r := out.GetConcentrationSave().GetResult()
+	if err != nil || !r.GetKept() || r.GetSave().GetFaces()[0] != 15 || r.GetSave().GetTreatedAs() != 0 {
+		t.Errorf("the save = %v, %v; want the new 15 to keep the concentration", r, err)
+	}
+}
+
+// A spell attack hides what it counted as wherever it hides its faces.
+func TestASpellAttackHidesTheCountedNumberWithTheFaces(t *testing.T) {
+	t.Parallel()
+	a, _ := minimumTable(t, "Brisa", []string{"attack"}, "10")
+	a.closeFight(t)
+	e := a.turnOf(t, "Brisa")
+	if _, err := a.cast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), d20Faces(1, 4)); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"the master", a.master}, {"Bia", a.bia}, {"Caio", a.caio}, {"Ana", a.ana}} {
+		for _, l := range logEntries(a.log(t, who.u, e)) {
+			for _, tg := range l.GetSpell().GetTargets() {
+				wantNoLeak(t, who.name+"'s attack roll", tg.GetAttackRoll())
+			}
+		}
+	}
+}
+
+// The save of a creature's rider counts the target's minimum: the ghoul's claws ask DC 10 of Toren, whose saves have a
+// minimum of 20, so his 2 counts 20 and he is not paralyzed.
+// The master's line and Toren's player read it; another player reads the result alone.
+func TestACreatureRiderSaveCountsTheMinimum(t *testing.T) {
+	t.Parallel()
+	a, e, ghoul := creatureFight(t, true, "monster:ghoul", false)
+	feat := a.rerollFeat(t, &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"save"}, Value: "20"})
+	a.giveFeat(t, a.toren, feat)
+	res := a.mustAttack(t, a.master, e, ghoul, "basic:1", "Toren", d20(19))
+	id := res.GetPendingDamage().GetId()
+	a.mustDamage(t, a.master, e, id, typedDamage(5))
+	if _, err := a.settle(t, a.master, e, id, true); err != nil {
+		t.Fatalf("apply the claws: %v", err)
+	}
+	offers := ridersOfKind(a.get(t, a.master), playv1.HitRiderKind_HIT_RIDER_KIND_CREATURE)
+	if len(offers) != 1 {
+		t.Fatalf("creature offers = %v, want the claws' rider", offers)
+	}
+	a.h.roller.queue(2)
+	after, err := a.useRider(t, a.master, e, offers[0].GetId(), playv1.HitRiderChoice_HIT_RIDER_CHOICE_APPLY)
+	if err != nil {
+		t.Fatalf("UseHitRider(apply) error = %v", err)
+	}
+	if hasCondition(after, t, "Toren", "condition:paralyzed") {
+		t.Error("Toren is paralyzed, want the 2 to count 20 and save")
+	}
+	for _, who := range []struct {
+		name string
+		line *playv1.CombatLogHitRider
+	}{{"the master", a.lastRiderLine(t)}, {"Toren's player", a.lastRiderLineOf(t, a.caio)}} {
+		if l := who.line; l.GetD20() != 2 || l.GetTreatedAs() != 20 || l.GetTreatedAsSource() != feat || l.GetResult() != playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_SAVED {
+			t.Errorf("%s reads %v, want the 2 counted as 20 by the feat, saved", who.name, l)
+		}
+	}
+	if other := a.lastRiderLineOf(t, a.ana); other.GetD20() != 0 || other.GetTreatedAs() != 0 || other.GetTreatedAsSource() != "" {
+		t.Errorf("another player reads %v, want the result alone", other)
 	}
 }

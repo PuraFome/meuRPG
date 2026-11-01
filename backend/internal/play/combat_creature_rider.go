@@ -123,7 +123,7 @@ func (s *Service) savingRider(ctx context.Context, c *combatTx, m authz.Membersh
 	if hit.Save == nil {
 		return nil
 	}
-	re.D20, re.Total, re.DC = hit.Save.D20, hit.Save.Total, hit.Save.DC
+	re.D20, re.Total, re.DC, re.countedRoll = hit.Save.D20, hit.Save.Total, hit.Save.DC, hit.Save.countedRoll
 	if hit.Save.Saved {
 		re.Result = riderSaved
 		return nil

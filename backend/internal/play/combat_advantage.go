@@ -605,20 +605,22 @@ type d20Roll struct {
 	// Total is the number the die counts as plus the modifier.
 	Total    int
 	Physical bool
-	// Counted is the number a minimum made the die that counts (a roll_minimum or Reliable Talent), 0 when it counts as it
-	// came up, and CountedBy the content key of the feature that did it.
-	Counted   int
+	// CountedValue is the number a floor made the die that counts count as.
+	// It is 0 when the die counts as it came up.
+	// It is a number, unlike the Index of a pair.
+	CountedValue int
+	// CountedBy is the content key of the feature that gave the floor.
 	CountedBy string
 }
 
 // Face is the die that counts as it came up: what the roll shows.
 func (r d20Roll) Face() int { return r.Faces[r.Index] }
 
-// Value is the number the die that counts counts as: the face, or the minimum that raised it. Every rule that reads the
-// die reads this one.
+// Value is the number the die that counts counts as: the face, or the floor that raised it.
+// Every rule that reads the die reads this one.
 func (r d20Roll) Value() int {
-	if r.Counted > 0 {
-		return r.Counted
+	if r.CountedValue > 0 {
+		return r.CountedValue
 	}
 	return r.Face()
 }

@@ -179,7 +179,7 @@ func (u *undoer) d20RerollBack(ctx context.Context, who playdb.Combatant, ev act
 func (st inspirationHoldStore) answerReroll(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldReroll(ctx, playdb.AnswerInspirationHoldRerollParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
-		RerollAnswerKey: h.RerollAnswerKey, RerollFrom: h.RerollFrom, RerollTo: h.RerollTo,
+		RerollAnswerKey: h.RerollAnswerKey, RerollFrom: h.RerollFrom, RerollTo: h.RerollTo, CountedBy: h.CountedBy,
 	}); err != nil {
 		return fmt.Errorf("answer the reroll: %w", err)
 	}

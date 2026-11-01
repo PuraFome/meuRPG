@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -253,7 +254,12 @@ func heldD20Of(h heldRoll) *playv1.DiceRoll {
 		roll = diceRoll(pairDice, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
 		roll.CountedIndex = clamp32(h.Counted, 0, 1)
 	}
-	markTreated(roll, modifier, total, h.CountedBy)
+	// A row written before counted_by was kept had only Reliable Talent to count it. The offer of a single d20 tells Reliable
+	// Talent's floor no more than it ever did, and a pair always has.
+	source := cmp.Or(h.CountedBy, reliableTalentSource)
+	if len(h.Faces) == pairDice || source != reliableTalentSource {
+		markTreated(roll, modifier, total, source)
+	}
 	roll.Rerolled = rerolledOf(h).proto()
 	return roll
 }

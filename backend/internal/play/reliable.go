@@ -1,6 +1,7 @@
 package play
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -78,8 +79,8 @@ func treatedRoll(face, modifier, total int32, physical bool) *playv1.DiceRoll {
 	return out
 }
 
-// rollFloor is the lowest number the d20 of a roll counts as, and the content key of the feature that gives it. The
-// zero value is no floor.
+// rollFloor is the lowest number the d20 of a roll counts as, and the content key of the feature that gives it.
+// The zero value is no floor.
 type rollFloor struct {
 	Value  int
 	Source string
@@ -93,9 +94,10 @@ func reliableFloor(reliable bool) rollFloor {
 	return rollFloor{Value: rules.ReliableTalentFloor, Source: reliableTalentSource}
 }
 
-// floorFor is the floor of a d20 of the kind (rules.RollApplies*) for a character with the traits: the highest of the
-// table's minimums of that kind that are not limited to a damage type, against Reliable Talent's when the check gets it.
-// A tie keeps Reliable Talent.
+// floorFor is the floor of a d20 of the kind (rules.RollApplies*) for a character with the traits.
+// It is the highest of the table's minimums of that kind that are not limited to a damage type.
+// Reliable Talent's floor competes when reliable says the check gets it, and a tie keeps Reliable Talent.
+// Only the check paths (T3) pass reliable true: the others pass false.
 func floorFor(traits link.Traits, kind string, reliable bool) rollFloor {
 	best := reliableFloor(reliable)
 	for _, m := range traits.RollMinimums {
@@ -106,22 +108,21 @@ func floorFor(traits link.Traits, kind string, reliable bool) rollFloor {
 	return best
 }
 
-// floorD20 counts the die of a roll with a mode that counts (the higher with advantage, the lower with disadvantage)
-// by the floor: the die counts as the floor when it came up lower, and the total uses that number. Treating each die
-// before the pick and treating the one picked give the same number, so the pick stays the mode's. The faces stay as
-// they came up.
+// floorD20 counts the die that counts by the floor: it counts as the floor when it came up lower.
+// The total uses that number and the faces stay as they came up.
+// Treating each die before the pick and treating the one picked give the same number, so the pick stays the mode's.
 func floorD20(r d20Roll, modifier int, f rollFloor) d20Roll {
-	r.Counted, r.CountedBy = 0, ""
+	r.CountedValue, r.CountedBy = 0, ""
 	r.Total = r.Face() + modifier
 	if f.Value > r.Face() {
-		r.Counted, r.CountedBy = f.Value, f.Source
+		r.CountedValue, r.CountedBy = f.Value, f.Source
 		r.Total = f.Value + modifier
 	}
 	return r
 }
 
-// countedRoll is what a stored roll keeps of a floor: the number the die counted as and the feature that did it. Both
-// are zero when the die counted as it came up.
+// countedRoll is what a stored roll keeps of a floor: the number the die counted as and the feature that did it.
+// Both are zero when the die counted as it came up.
 type countedRoll struct {
 	CountedAs int32  `json:"counted_as,omitempty"`
 	CountedBy string `json:"counted_by,omitempty"`
@@ -129,7 +130,7 @@ type countedRoll struct {
 
 // countedOf is what a roll keeps of its floor.
 func countedOf(r d20Roll) countedRoll {
-	return countedRoll{CountedAs: clamp32(r.Counted, 0, 20), CountedBy: r.CountedBy}
+	return countedRoll{CountedAs: clamp32(r.CountedValue, 0, 20), CountedBy: r.CountedBy}
 }
 
 // value is the number the d20 that showed face counted as.
@@ -140,6 +141,14 @@ func (c countedRoll) value(face int32) int32 {
 	return face
 }
 
+// countedNote is what a line adds after a total when the d20 that showed face counted as another number, "" otherwise.
+func (c countedRoll) countedNote(face int32) string {
+	if c.CountedAs == 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (d20 %d, conta como %d)", face, c.CountedAs)
+}
+
 // mark tells the API that the die counted as another number than it came up; the faces stay as they came up.
 func (c countedRoll) mark(out *playv1.DiceRoll) *playv1.DiceRoll {
 	if c.CountedAs != 0 {
@@ -148,8 +157,8 @@ func (c countedRoll) mark(out *playv1.DiceRoll) *playv1.DiceRoll {
 	return out
 }
 
-// markTreated marks the die that counted of a roll, when its total uses another number than the face that came up: a
-// floor (source) changed it.
+// markTreated marks the die that counted of a roll when its total uses another number than the face that came up.
+// The floor named by source changed it.
 func markTreated(out *playv1.DiceRoll, modifier, total int32, source string) *playv1.DiceRoll {
 	faces := out.GetFaces()
 	i := int(out.GetCountedIndex())

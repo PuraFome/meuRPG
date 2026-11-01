@@ -4977,9 +4977,13 @@ type CombatLogHitRider struct {
 	MoreDamages []*CombatLogDamage `protobuf:"bytes,17,rep,name=more_damages,json=moreDamages,proto3" json:"more_damages,omitempty"`
 	// The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
 	// grid or another creature stopped it.
-	PushStopped   bool `protobuf:"varint,18,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PushStopped bool `protobuf:"varint,18,opt,name=push_stopped,json=pushStopped,proto3" json:"push_stopped,omitempty"`
+	// The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `save_total` uses this
+	// one), and the feature that did it as a content key. Set where the d20 is.
+	TreatedAs       *int32 `protobuf:"varint,19,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
+	TreatedAsSource string `protobuf:"bytes,20,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CombatLogHitRider) Reset() {
@@ -5136,6 +5140,20 @@ func (x *CombatLogHitRider) GetPushStopped() bool {
 		return x.PushStopped
 	}
 	return false
+}
+
+func (x *CombatLogHitRider) GetTreatedAs() int32 {
+	if x != nil && x.TreatedAs != nil {
+		return *x.TreatedAs
+	}
+	return 0
+}
+
+func (x *CombatLogHitRider) GetTreatedAsSource() string {
+	if x != nil {
+		return x.TreatedAsSource
+	}
+	return ""
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -22654,10 +22672,14 @@ type LegendaryResistanceOffer struct {
 	Total int32 `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
 	Dc    int32 `protobuf:"varint,5,opt,name=dc,proto3" json:"dc,omitempty"`
 	// The uses of the trait the creature has left, and its uses a day.
-	UsesLeft      int32 `protobuf:"varint,6,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
-	UsesPerDay    int32 `protobuf:"varint,7,opt,name=uses_per_day,json=usesPerDay,proto3" json:"uses_per_day,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UsesLeft   int32 `protobuf:"varint,6,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	UsesPerDay int32 `protobuf:"varint,7,opt,name=uses_per_day,json=usesPerDay,proto3" json:"uses_per_day,omitempty"`
+	// The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+	// one), and the feature that did it as a content key.
+	TreatedAs       *int32 `protobuf:"varint,8,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
+	TreatedAsSource string `protobuf:"bytes,9,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *LegendaryResistanceOffer) Reset() {
@@ -22737,6 +22759,20 @@ func (x *LegendaryResistanceOffer) GetUsesPerDay() int32 {
 		return x.UsesPerDay
 	}
 	return 0
+}
+
+func (x *LegendaryResistanceOffer) GetTreatedAs() int32 {
+	if x != nil && x.TreatedAs != nil {
+		return *x.TreatedAs
+	}
+	return 0
+}
+
+func (x *LegendaryResistanceOffer) GetTreatedAsSource() string {
+	if x != nil {
+		return x.TreatedAsSource
+	}
+	return ""
 }
 
 type ManeuverReduceOption struct {
@@ -25970,7 +26006,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\xb7\x05\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\x96\x06\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -25993,7 +26029,11 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"repeatSave\x127\n" +
 	"\x06damage\x18\x10 \x01(\v2\x1f.meurpg.play.v1.CombatLogDamageR\x06damage\x12B\n" +
 	"\fmore_damages\x18\x11 \x03(\v2\x1f.meurpg.play.v1.CombatLogDamageR\vmoreDamages\x12!\n" +
-	"\fpush_stopped\x18\x12 \x01(\bR\vpushStopped\"\xb4\x01\n" +
+	"\fpush_stopped\x18\x12 \x01(\bR\vpushStopped\x12\"\n" +
+	"\n" +
+	"treated_as\x18\x13 \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
+	"\x11treated_as_source\x18\x14 \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\v_treated_as\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tcaster_id\x18\x02 \x01(\tR\bcasterId\x12\x1b\n" +
@@ -27550,7 +27590,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bac_bonus\x18\x04 \x01(\x05R\aacBonus\x123\n" +
 	"\x16armor_class_with_parry\x18\x05 \x01(\x05R\x13armorClassWithParry\"]\n" +
 	"\x19LegendaryResistancePrompt\x12@\n" +
-	"\x06offers\x18\x01 \x03(\v2(.meurpg.play.v1.LegendaryResistanceOfferR\x06offers\"\xca\x01\n" +
+	"\x06offers\x18\x01 \x03(\v2(.meurpg.play.v1.LegendaryResistanceOfferR\x06offers\"\xa9\x02\n" +
 	"\x18LegendaryResistanceOffer\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
@@ -27559,7 +27599,11 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12\x1b\n" +
 	"\tuses_left\x18\x06 \x01(\x05R\busesLeft\x12 \n" +
 	"\fuses_per_day\x18\a \x01(\x05R\n" +
-	"usesPerDay\"\x9a\x01\n" +
+	"usesPerDay\x12\"\n" +
+	"\n" +
+	"treated_as\x18\b \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
+	"\x11treated_as_source\x18\t \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\v_treated_as\"\x9a\x01\n" +
 	"\x14ManeuverReduceOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1b\n" +
@@ -29100,6 +29144,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*UseCreatureActionRequest_Origin)(nil),
 		(*UseCreatureActionRequest_Direction)(nil),
 	}
+	file_meurpg_play_v1_combat_proto_msgTypes[13].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[15].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[20].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[24].OneofWrappers = []any{}
@@ -29186,6 +29231,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 	file_meurpg_play_v1_combat_proto_msgTypes[188].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[191].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[192].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[197].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[201].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[206].OneofWrappers = []any{
 		(*AnswerReactionRequest_RollInApp)(nil),
