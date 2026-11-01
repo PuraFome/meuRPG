@@ -366,12 +366,12 @@ test(
       await updateEntryRPC(m, campaignId, key, 'tableSpell', spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }));
       await m.getByLabel('Descrição').fill('O meu texto.');
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      const alert = m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' });
+      const alert = m.getByRole('status').filter({ hasText: 'Esta entrada mudou enquanto você editava.' });
       await expect(alert).toBeVisible();
       await expect(m.getByLabel('Descrição')).toHaveValue('O meu texto.');
       await alert.getByRole('button', { name: 'Recarregar' }).click();
       await expect(m.getByLabel('Descrição')).toHaveValue('Outro texto.');
-      await expect(m.getByRole('alert')).toHaveCount(0);
+      await expect(m.getByText('Esta entrada mudou enquanto você editava.')).toHaveCount(0);
     } finally {
       await Promise.all([master.close(), player.close()]);
     }
