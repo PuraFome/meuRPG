@@ -852,7 +852,9 @@
     "pending_id": "x",
     "more_pending_ids": [
       "x"
-    ]
+    ],
+    "resisted": true,
+    "resist_left": 1
   },
   "creature_action": {
     "name": "x",

@@ -495,6 +495,9 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	if last.Kind == eventTrapTriggered {
 		return s.takeBackFiring(ctx, c, run, recent, last, ev)
 	}
+	if last.Kind == eventSpellCast && ev.CastID != "" {
+		return s.zoneResistsBack(ctx, c, recent, last, ev.CastID)
+	}
 	return nil
 }
 

@@ -339,16 +339,22 @@ func (s *Service) resistSpellSave(ctx context.Context, c *combatTx, target playd
 	if saved || hit.Save == nil || !c.replay.resists(target.ID) {
 		return saved, nil
 	}
-	r, err := s.legendaryResistOpen(ctx, c, target, true)
-	if err != nil {
-		return false, err
-	}
-	resisted, left, err := r.resists(ctx, c, target, false)
+	resisted, left, err := s.spendResistance(ctx, c, target)
 	if err != nil || !resisted {
 		return false, err
 	}
 	hit.Save.Saved, hit.Save.Resisted, hit.Save.ResistedLeft = true, true, left
 	return true, nil
+}
+
+// spendResistance spends one use of the target's Legendary Resistance in the replay's transaction and says how many
+// are left. It refuses, with nothing spent, a creature that has none left.
+func (s *Service) spendResistance(ctx context.Context, c *combatTx, target playdb.Combatant) (resisted bool, left int32, err error) {
+	r, err := s.legendaryResistOpen(ctx, c, target, true)
+	if err != nil {
+		return false, 0, err
+	}
+	return r.resists(ctx, c, target, false)
 }
 
 // resistedBack gives back the uses of Legendary Resistance a cast spent (its undo).

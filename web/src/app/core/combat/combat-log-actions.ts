@@ -334,7 +334,9 @@ export function hitRiderText(e: CombatLogEntry): string {
     : '';
   let result = '';
   if (r.result === HitRiderLogResult.SAVED) {
-    result = `: ${target} passou no teste${roll}`;
+    result = r.resisted
+      ? `: ${resistedRiderSave(target, roll, r.resistedLeft)}`
+      : `: ${target} passou no teste${roll}`;
   } else if (r.result === HitRiderLogResult.FAILED) {
     result = `: ${target} falhou no teste${roll}`;
     if (r.choice === HitRiderChoice.PUSH) {
@@ -342,6 +344,11 @@ export function hitRiderText(e: CombatLogEntry): string {
     }
   }
   return ` usou ${names[r.choice] ?? 'a técnica'} em ${target}${result}`;
+}
+
+/** The master's words for a rider's save he made a success (the server sends `resisted` to nobody else): "Dragão falhou no teste (d20 1, total 14 contra CD 16) e usou Resistência Lendária: sucesso (restam 2)". */
+function resistedRiderSave(target: string, roll: string, left: number): string {
+  return `${target} falhou no teste${roll} e usou Resistência Lendária: sucesso (restam ${left})`;
 }
 
 /**
@@ -366,7 +373,9 @@ function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hit
   const escape = r.escapeDc > 0 ? ` (${dcLabel(r.escapeDc).replace('CD', 'CD de fuga')})` : '';
   let result = '';
   if (r.result === HitRiderLogResult.SAVED) {
-    result = `: ${target} passou no teste${roll}${damage}`;
+    result = r.resisted
+      ? `: ${resistedRiderSave(target, roll, r.resistedLeft)}${damage}`
+      : `: ${target} passou no teste${roll}${damage}`;
   } else if (r.result === HitRiderLogResult.FAILED) {
     result = `: ${target} falhou no teste${roll}${damage}${condition}`;
   } else if (r.conditionNamePt) {

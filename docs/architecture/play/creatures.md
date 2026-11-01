@@ -223,6 +223,7 @@ The saves the master rolls for the creature take the choice with the roll (`comb
 | --- | --- | --- |
 | An effect's save, at the start or end of the turn or after damage | `RollEffectSave` | `use_legendary_resistance` |
 | The Constitution save to keep a concentration | `ResolveConcentrationSave` | `use_legendary_resistance` |
+| The save of a spell zone that catches the creature | `RollEffectSave` | `use_legendary_resistance` |
 
 The master does not need to guess before the dice.
 When the roll fails, or the creature fails the save without a roll, the save succeeds instead and one use is spent, in the same change as the save.
@@ -242,6 +243,7 @@ The line has no roll, no count and no name for the trait.
 The event is the ordinary save event, with `resisted` and `resist_left`, neutral names that no player-visible payload carries.
 The hints are those of a save that passed, so the stream tells a player nothing more.
 The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.
+The one exception is the answer to a zone's catch at a cast: the undo of the cast gives its use back.
 
 **A player's action that makes the creature save** (`combat_legendary_hold.go`).
 A spell with a saving throw, on one target or many (`CastSpell`), asks the master first when a creature with the trait and a use left is among its targets, whether its save passed or failed.
@@ -264,11 +266,42 @@ The players' line of the cast is a save that passed.
 A hold that is dropped (the combat ends, the cast is no longer possible, the kept dice no longer fit the save) spends nothing and leaves no part of the cast.
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
 
-Only the saves of a player's spell are held for the choice.
-Not offered, so a failed save stands there: a trap's save, the save of a weapon's hit rider, the Wisdom save against Turn Undead and the Dexterity save against Hellish Rebuke.
-The save of a creature a spell zone catches is rolled by the server at once, with no choice for the master; the cast that lays the zone holds nothing.
-A player's character caught by a zone is asked in a window of its own, and has no such trait.
-The choice the master has with the roll of an effect's save does not reach the saves of a zone.
+**The save of a hit rider** (`combat_legendary_rider.go`).
+The answer to a rider that rolls the save of a creature with the trait and a use left is held the same way, by the same path.
+That is `UseHitRider` for Stunning Strike, an Open Hand technique, or the rider of a creature's attack, which the master answers.
+The answer runs under a savepoint, keeps the target's roll, rolls its writes back and holds the request in a hold of kind `hit_rider`.
+The hold has a window of kind `legendary_resistance` that only the master reads.
+The window offers the failed save alone (nothing when it passed), and its trigger names the rider (`roll: "rider"`, the rider's kind as the key).
+The master answers as for a cast; the replay runs the answer again with the kept d20 and, on `USE`, turns the failed save into a success and spends one use in its own transaction.
+The ki, the effect and the closing of the offer are the replay's: until the master answers, the offer stays open, the ki is not spent and the target is not stunned.
+While a rider's hold stands, any answer to any rider offer of the combat is refused with `REACTION_PENDING`, the same offer declined or switched included.
+The refusal depends only on the hold, never on the target.
+A player only ever sees the wait and the save's result.
+Two riders of one hit are therefore held one after the other, each with its own use.
+A failed save that a stun immunity turns into a saved one is not offered.
+A decline, a choice with no save (no reactions, a grapple), a target that is not an NPC with the trait and a use left are never held.
+The line of the rider is the ordinary save line for a player: the target saved, with no roll (RN-20).
+The master reads the roll that failed, `resisted` and `resisted_left` on the line (`CombatLogHitRider`), and the web log words it.
+The replay of a push tells the streams that the creature moved.
+A hit rider is not among the undoable kinds ([Undo](undo.md)), so the use a held rider spent is not given back.
+A hold that is dropped (the target leaves, the combat ends, the kept dice no longer fit) spends nothing: the offer stays open.
+
+**The save of a spell zone** (`zones_trigger.go`, `zones_save.go`).
+A creature that a zone catches ([Spell zones](spell-zones.md)) is asked of the master when it has the trait and a use left, as a player's character is asked of its player.
+The question is the `EFFECT_SAVE` window of the zone, with the creature as its reactor, and only the master reads and answers it.
+The master rolls in the app or types the d20, and names the trait with the roll as for any effect save.
+A turned failure is a save that succeeded: the zone does what a pass does (half the damage, no restraint, no fall, no retching), and one use is spent in the answer.
+The roll that failed stays in the event for the master alone.
+The catch at a cast, on entering, at the start of the turn and at its end all ask the same way.
+A creature without the trait, or with no use left, is rolled by the server at once.
+A player reads the wait any window gives ("Esperando o mestre") and, after, a save that passed or failed.
+That the creature is asked at all shows that it has the trait and a use left, as the wait of a cast does.
+The undo of a cast gives back the uses its zone's catches spent.
+The answers to a catch on entering, at a turn start or at a turn end cannot be undone, so their use stays spent.
+
+Only the saves of a player's spell and of a hit rider are held for the choice, and the master answers the save of a spell zone with the roll.
+Not offered, so a failed save stands there: a trap's save, the Wisdom save against Turn Undead, the Dexterity save against Hellish Rebuke and the Wisdom save of a goading maneuver.
+The cast that lays a zone holds nothing: the zone's catches are asked in windows of their own.
 A spell cast for an NPC is not offered either.
 
 ## Limited actions

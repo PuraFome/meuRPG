@@ -2469,6 +2469,12 @@ message CombatLogHitRider {
   // The push of `pushed_ft` ended before its whole distance: a wall, a door, the edge of the
   // grid or another creature stopped it.
   bool push_stopped = 18;
+  // The target failed the save and the master turned it into a success with Legendary Resistance:
+  // `result` is SAVED and `d20` and `save_total` are the roll that failed. Only the master reads
+  // either; everyone else reads a save that passed (RN-20, RN-29).
+  bool resisted = 19;
+  // The uses of the trait the creature has left. Only the master.
+  int32 resisted_left = 20;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell

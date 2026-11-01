@@ -137,7 +137,7 @@ func (f *reactionFacts) heldDropped() (string, bool) {
 	if !f.v.master {
 		return "", false
 	}
-	what := map[string]string{"cast": "A conjuração", "attack": "O ataque", "damage": "O dano"}[f.re.Roll]
+	what := map[string]string{"cast": "A conjuração", "attack": "O ataque", "damage": "O dano", holdHitRider: "O efeito de acerto"}[f.re.Roll]
 	return fmt.Sprintf("%s de %s esperava uma reação e não pôde acontecer depois das respostas (%s).", what, f.who, f.re.Why), true
 }
 

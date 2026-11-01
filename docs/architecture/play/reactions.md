@@ -23,14 +23,15 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Contest | A grapple, shove or escape that waits for the defender's roll or the shover's choice | Nothing: the contest row itself. Answered with `RespondContest` or `ResolveShove`, never `AnswerReaction`. Opened by `syncContests`, closed by itself when the contest no longer waits (see [Contests](contests.md)) |
 | Hidden reveal | A player's area spell hit hidden creatures and the table asks ("Perguntar a cada vez") | The turn: the master reads it as a window (`HIDDEN_REVEAL`) and answers with `ResolveHiddenReveal` |
 | Concentration save | Damage that lands on a concentrating creature (DC 10 or half the damage); 0 HP ends it with no save | The attack that dealt the damage (`CONCENTRATION_SAVE_PENDING`), answered with `ResolveConcentrationSave` (the app's die, a physical die, "Deixar o mestre rolar por mim" or the master's "keep") |
-| Effect save | An end-of-turn or start-of-turn save of a lasting effect (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md)) |
+| Effect save | An end-of-turn or start-of-turn save of a lasting effect, or the save a spell zone asks of a player's character or of an NPC with Legendary Resistance and a use left (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md), [Spell zones](spell-zones.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
 | Parry | A melee weapon hit on an NPC whose stat block has Parry (see [Parry](#parry)) | The hit's damage roll (`AWAITING_REACTION`) |
-| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, passed or failed (`LEGENDARY_RESISTANCE`) | The cast, with the d20s and effect dice of its saves |
+| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, or a hit rider (Stunning Strike, an Open Hand technique, a creature's rider) whose save it makes, passed or failed (`LEGENDARY_RESISTANCE`) | The cast or the rider's answer (hold kind `cast` or `hit_rider`), with the d20s and effect dice of its saves |
 
 The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
 When every such save passed, the window offers nothing and he passes.
-The cast then settles with the same dice.
+The cast, or the answer to the rider, then settles with the same dice.
+A zone's save against such a creature has no hold: the master answers the zone's `EFFECT_SAVE` window, which only the master reads, with the roll and the choice of the trait.
 [Creatures](creatures.md#legendary-resistance) lists the saves that are not offered the trait.
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".

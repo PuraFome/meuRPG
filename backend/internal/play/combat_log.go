@@ -958,6 +958,9 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 			showDC = c.v.master
 		}
 		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(target), showDC)
+		if c.v.master { // the roll that failed and the use that made it a success are the master's alone (RN-20, RN-29)
+			out.HitRider.Resisted, out.HitRider.ResistedLeft = r.Resisted, r.ResistLeft
+		}
 		if r.ActionKey != "" && !c.v.master {
 			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
 		}

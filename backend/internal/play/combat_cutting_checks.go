@@ -27,6 +27,7 @@ const (
 	holdContest       = "contest"
 	holdContestAnswer = "contest_answer"
 	holdHide          = "hide"
+	holdHitRider      = "hit_rider"
 )
 
 // holdCheck holds the roll of a combatant's ability check when a Cutting Words can change it: it

@@ -101,6 +101,7 @@ func (s *Service) AnswerReaction(
 		for _, v := range got.vitals {
 			s.publishVitals(m.CampaignID, v)
 		}
+		s.publishPushed(ctx, m.CampaignID, d, res.pushed)
 	})
 	if err != nil {
 		return nil, err

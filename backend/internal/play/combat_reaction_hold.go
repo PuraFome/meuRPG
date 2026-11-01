@@ -246,6 +246,8 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		}
 		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
 		return err
+	case holdHitRider:
+		return s.replayHeldRider(ctx, m, h)
 	}
 	return s.replayHeldCheck(ctx, m, h)
 }
@@ -259,6 +261,10 @@ func (s *Service) settleReplay(ctx context.Context, c *combatTx, h playdb.Reacti
 		return nil
 	case errors.As(err, &done):
 		c.tellActorVitals(done.event)
+		c.pushed = append(pushesOf(done.event.Hits), c.pushed...)
+		if done.event.Rider != nil {
+			c.pushed = append(c.pushed, done.event.Rider.Pushed)
+		}
 		s.completeAnswers(c, windows, st, done.event)
 		return nil
 	case err != nil && clientError(err):
@@ -322,7 +328,7 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
 				ref.ev.Before = done.Hits[0].Total + st.reduction
 			}
-		default: // a check: the total it became
+		default: // a check: the total it became (a hit rider's answer has nothing to learn from the rider)
 			ref.ev.After = st.after
 			ref.ev.Before = st.after + st.reduction
 		}

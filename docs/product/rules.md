@@ -833,8 +833,16 @@ The wait reveals nothing about the roll: a player reads the same wait and the sa
 He sees the failed rolls and turns the failures he chooses, one use each, or lets them stand.
 When every such save passed, he has nothing to offer and lets the cast go on.
 The same dice settle the cast.
-The trait is not offered on any other save: a trap's, a weapon's rider, Turn Undead or Hellish Rebuke.
-A creature a spell zone catches saves at once, with no choice for the master.
+The save of a hit rider (Stunning Strike, an Open Hand technique, a creature's attack rider) works the same way.
+The monk's player answers the offer and then reads "Esperando o mestre", whatever the save rolled.
+The master sees the failed save, if any, and turns it into a success or lets it stand, one use each.
+The rider then lands as the save finally went: the ki is spent and the effect applies only to a target that failed.
+While one rider waits, no rider offer of the combat is answered.
+A player reads only the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
+The trait is not offered on any other save: a trap's, Turn Undead, Hellish Rebuke or a goading maneuver's.
+The save a spell's area (for example Moonbeam or Spirit Guardians) asks of such a creature is asked of the master alone, as it is asked of a player's character: the master rolls it and, on a failure, may use the trait.
+A player reads the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
+A creature without the trait or without a use left is rolled at once.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
 The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
 Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
@@ -911,7 +919,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, answered by the master for the creature. |
-| Legendary Resistance | A player's spell with a saving throw reaches a creature with the trait and a use left, whether its save passed or failed: the cast waits for the master alone (RN-29). |
+| Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
 
 A monster's Parry is one a round, and the kept roll is compared with the new armor class.
 A hit that no longer meets it is a miss.
@@ -1087,7 +1095,11 @@ A spell the master wrote for the table can keep its area the same way ([RN-23](#
 - **Once on a turn.** A zone hits a creature at most once for each turn, whether the creature walked in or began the turn inside. Going out and in again, or moving about inside, hits it no more that turn; its next turn starts a new count. The cast, the entry and the end of a turn of Grease each ask once on a turn. A "turn" is the turn that is running, whoever's it is: a creature pushed into the area on someone else's turn is hit then, and hit again when its own turn starts there.
 - **When a zone catches.** Spirit Guardians, Moonbeam and Cloudkill catch a creature that comes in and one that begins its turn inside; the cast hits nobody, and a creature standing in the area at the cast is caught when it begins its turn there or comes back in. Web catches the same two, and its effect goes on the creatures inside at the cast. Grease catches the creatures inside at the cast, a creature that comes in and one that ends its turn inside. Entangle catches only the creatures inside at the cast. Stinking Cloud catches a creature that begins its turn inside; the cast hits nobody. Fog Cloud and Darkness catch nobody.
 - **When a zone looks.** At every change of square: a walk, a jump, a creature pushed (Thunderwave, the monk's push), shoved, dragged along, or teleported (Misty Step lands in the area as a step would), or put somewhere by the master (a forced move), and at the start of every turn. Undoing a move re-evaluates nothing; the damage a zone dealt is a pending damage of its own, which the master discards or undoes like any other.
-- **The question of the save.** When a zone catches a player's character the player is asked, as for the save an effect asks (RN-22): "Rolar no app", or a typed d20 on physical dice (RN-18), the app adds the bonus; the turn waits for the answer. An NPC's save is rolled by the app at once. A creature in two zones is asked one question at a time, in the order the spells were cast: the next opens when the one before is answered. After the save the damage lands as the damage of an effect does (halved on a pass): an NPC takes it, a player's character waits for the master to apply it. A zone whose spell asks no saving throw has the damage wait to be rolled, by whoever rolls the caster's damage.
+- **The question of the save.** When a zone catches a player's character the player is asked, as for the save an effect asks (RN-22): "Rolar no app", or a typed d20 on physical dice (RN-18), the app adds the bonus; the turn waits for the answer.
+  An NPC's save is rolled by the app at once, except that of an NPC with Legendary Resistance and a use left: it is asked of the master, who rolls it and may use the trait (RN-29).
+  A creature in two zones is asked one question at a time, in the order the spells were cast: the next opens when the one before is answered.
+  After the save the damage lands as the damage of an effect does (halved on a pass): an NPC takes it, a player's character waits for the master to apply it.
+  A zone whose spell asks no saving throw has the damage wait to be rolled, by whoever rolls the caster's damage.
 - **Speed and terrain.** A creature Spirit Guardians catches moves at half speed for that turn. Web, Grease and Entangle are difficult terrain: a square of them costs double to walk.
 - **How a zone ends, and its line.** The log has a line for each way: the caster lost the concentration, began another concentration spell (the line says the zone ended with the old spell), the time passed, or the master ended it. The master ends a zone with "Encerrar zona"; he alone may, for a concentration that ended outside the app. A hidden caster's lines are the master's. The master's undo of the cast takes the zone away with the concentration; what a zone did afterwards is not undone as an action. What a zone did at the cast (Grease, Entangle) is undone with it, including the fall or the restraint a player's answer gave afterwards; the log keeps the lines of the saves.
 - **What a player reads of a zone.** A player reads the name, the shape, the squares, "Concentração de <caster>" and who stands in it (of those they see) for any zone whose caster they see. The save, the DC, the dice, the damage, the notes and the time are the master's and the caster's own player's: another player reads none of them. The question of the save is the one exception: the player whose creature rolls it reads its DC when the table shows the DC of a save (RN-24).
