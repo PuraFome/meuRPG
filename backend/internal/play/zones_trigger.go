@@ -80,9 +80,8 @@ func (z *zone) catches(owner, who playdb.Combatant, mark string) bool {
 	return placed(who) && !who.Defeated && !z.spares(owner, who) && !z.hitOn(who.ID, mark)
 }
 
-// asksNoSave says the catch asks no saving throw: the zone has none, or it is a wall and the catch is not the cast.
-// A wall asks the creatures inside it at the cast, and its later hits (entering it, ending a turn near it) deal the
-// damage dice outright.
+// asksNoSave says the catch asks no saving throw.
+// A wall asks its saving throw only of who stands in it at the cast.
 func (z *zone) asksNoSave(why string) bool {
 	return z.row.SaveAbility == "" || (z.def.kind == zoneWall && why != zoneWhyCast)
 }

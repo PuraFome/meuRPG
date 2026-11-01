@@ -46,7 +46,9 @@ import (
 //     damaging side, takes the damage dice.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
-// inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
+// inside.
+// A wall hits twice when a creature enters it and ends the turn there.
+// For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
 // when it begins its turn there or comes back in.
 
 // zoneKind says what a zone does to the creature it catches.
@@ -104,7 +106,7 @@ type zoneDef struct {
 	// when it starts its turn inside.
 	onEnter, onStart bool
 	// onCast says the zone catches the creatures standing in the area when the spell is cast, and onTurnEnd the
-	// creature that ends its turn inside (Grease).
+	// creature that ends its turn inside (Grease) or, for a wall, within 10 feet of its damaging side (Wall of Fire).
 	onCast, onTurnEnd bool
 	// sight is what the zone does to what is seen (rules/vision).
 	sight zoneSight
@@ -177,7 +179,7 @@ var zoneDefs = map[string]zoneDef{
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:wall-of-fire": {
-		kind: zoneWall, onCast: true, onEnter: true, onTurnEnd: true, shape: grid.ShapeLine, sizeFt: wallLineFt, save: "dex",
+		kind: zoneWall, onCast: true, onEnter: true, onTurnEnd: true, shape: grid.ShapeLine, sizeFt: wallLineFt, save: "dex", sight: sightCloud,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 	"spell:spirit-guardians": {

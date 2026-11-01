@@ -1,14 +1,17 @@
 package play
 
 import (
+	"maps"
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -533,9 +536,9 @@ func (c *cave) wallHitsOn(t *testing.T, label string) []int {
 	return out
 }
 
-// castWallWithOgreAt puts the ogre on the square, has Pensantus lay the wall and passes to the ogre's turn.
+// layWallWithOgreAt puts the ogre on the square, has Pensantus lay the wall and passes to the ogre's turn.
 // The ogre is quick, so the master can walk it about.
-func (c *cave) castWallWithOgreAt(t *testing.T, col, row int32, slot int32, edit func(*playv1.CastSpellRequest), origin *playv1.SpellOrigin, rolls ...int) *playv1.Encounter {
+func (c *cave) layWallWithOgreAt(t *testing.T, col, row int32, slot int32, edit func(*playv1.CastSpellRequest), origin *playv1.SpellOrigin, rolls ...int) *playv1.Encounter {
 	t.Helper()
 	e := c.zoneFight(t)
 	c.passTo(t, e, "Pensantus")
@@ -548,13 +551,15 @@ func (c *cave) castWallWithOgreAt(t *testing.T, col, row int32, slot int32, edit
 	return c.passTo(t, c.get(t, c.master), "Ogro")
 }
 
-func (c *cave) castNorthWall(t *testing.T, col, row int32, slot int32) *playv1.Encounter {
+// layNorthWallWithOgreAt is layWallWithOgreAt for the wall from (9,8) to the north.
+// ogreInWall says the ogre stands in the wall at the cast: it saves and passes, and the dice are queued for it.
+func (c *cave) layNorthWallWithOgreAt(t *testing.T, col, row int32, slot int32, ogreInWall bool) *playv1.Encounter {
 	t.Helper()
 	var rolls []int
-	if col == 9 { // the ogre stands in the wall: it saves and passes at the cast
+	if ogreInWall {
 		rolls = []int{20, 1, 1, 1, 1, 1, 1}
 	}
-	return c.castWallWithOgreAt(t, col, row, slot, northWall(playv1.WallSide_WALL_SIDE_LEFT), at(9, 8), rolls...)
+	return c.layWallWithOgreAt(t, col, row, slot, northWall(playv1.WallSide_WALL_SIDE_LEFT), at(9, 8), rolls...)
 }
 
 func TestTheWallHurtsWhoEndsItsTurnWhereItReaches(t *testing.T) {
@@ -575,7 +580,7 @@ func TestTheWallHurtsWhoEndsItsTurnWhereItReaches(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := wallCave(t)
-			e := c.castNorthWall(t, tt.col, tt.row, 4)
+			e := c.layNorthWallWithOgreAt(t, tt.col, tt.row, 4, tt.col == 9)
 			if got := c.wallHitsOn(t, "Ogro"); len(got) != 0 {
 				t.Fatalf("hits before the end of the turn = %v, want none: it began its turn there", got)
 			}
@@ -590,7 +595,7 @@ func TestTheWallHurtsWhoEndsItsTurnWhereItReaches(t *testing.T) {
 func TestTheWallHurtsWithTheDiceOfTheSlot(t *testing.T) {
 	t.Parallel()
 	c := wallCave(t)
-	e := c.castNorthWall(t, 9, 7, 5)
+	e := c.layNorthWallWithOgreAt(t, 9, 7, 5, true)
 	c.mustEndTurn(t, c.master, e)
 	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{6}) {
 		t.Errorf("hits = %v, want one of 6 dice: the 5th level slot", got)
@@ -622,7 +627,7 @@ func TestTheWallSparesNobodyAndAsksNoSave(t *testing.T) {
 func TestEnteringTheWallHurtsOnceAndEndingTheTurnThereHurtsAgain(t *testing.T) {
 	t.Parallel()
 	c := wallCave(t)
-	e := c.castNorthWall(t, 12, 7, 4)
+	e := c.layNorthWallWithOgreAt(t, 12, 7, 4, false)
 	c.mustMove(t, c.master, "Ogro", 9, 7)
 	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5}) {
 		t.Fatalf("hits after walking in = %v, want one", got)
@@ -643,7 +648,7 @@ func TestEnteringTheWallHurtsOnceAndEndingTheTurnThereHurtsAgain(t *testing.T) {
 func TestLeavingTheWallAndEnteringAgainHurtsOnce(t *testing.T) {
 	t.Parallel()
 	c := wallCave(t)
-	c.castNorthWall(t, 12, 7, 4)
+	c.layNorthWallWithOgreAt(t, 12, 7, 4, false)
 	for _, col := range []int32{9, 12, 9} {
 		c.mustMove(t, c.master, "Ogro", col, 7)
 	}
@@ -655,7 +660,7 @@ func TestLeavingTheWallAndEnteringAgainHurtsOnce(t *testing.T) {
 func TestBeingPushedIntoTheWallHurtsAsEntering(t *testing.T) {
 	t.Parallel()
 	c := wallCave(t)
-	e := c.castNorthWall(t, 11, 7, 4)
+	e := c.layNorthWallWithOgreAt(t, 11, 7, 4, false)
 	c.mustEndTurn(t, c.master, e) // the ogre is east of the wall: nothing yet
 	c.nextTurnOf(t, "Pensantus")
 	if got := c.wallHitsOn(t, "Ogro"); len(got) != 0 {
@@ -685,11 +690,215 @@ func TestTheRingHurtsOnItsDamagingSideAtTheEndOfTheTurn(t *testing.T) {
 			t.Parallel()
 			c := wallCave(t)
 			ring := func(r *playv1.CastSpellRequest) { r.Wall = &playv1.SpellWall{Ring: true, Side: tt.side} }
-			e := c.castWallWithOgreAt(t, tt.col, tt.row, 4, ring, at(19, 7), 20, 1, 1, 1, 1, 1) // the goblin in the ring saves
+			e := c.layWallWithOgreAt(t, tt.col, tt.row, 4, ring, at(19, 7), 20, 1, 1, 1, 1, 1) // the goblin in the ring saves
 			c.mustEndTurn(t, c.master, e)
 			if got := c.wallHitsOn(t, "Ogro"); len(got) != tt.want {
 				t.Errorf("hits = %v, want %d", got, tt.want)
 			}
 		})
+	}
+}
+
+// insertWallOf puts a second wall on the map, like the first one but the zone of another caster.
+func (c *cave) insertWallOf(t *testing.T, owner string) {
+	t.Helper()
+	e := c.get(t, c.master)
+	_, err := playdb.New(c.h.pool).InsertSpellZone(t.Context(), playdb.InsertSpellZoneParams{
+		EncounterID: e.GetId(), OwnerID: c.id(t, owner), SpellKey: wallOfFireKey, CastID: newKey(), SlotLevel: 4,
+		OriginCol: 9, OriginRow: 8, Squares: squaresToJSON([]grid.Square{{Col: 9, Row: 8}, {Col: 9, Row: 7}}),
+		SaveAbility: "dex", SaveDc: 15, DamageDice: "5d8", DamageType: "damage-type:fire", StartedRound: e.GetRound(), CreatedAt: time.Now(),
+		WallSide: "left", WallDx: 0, WallDy: -1, WallLengthFt: 60,
+	})
+	if err != nil {
+		t.Fatalf("InsertSpellZone() error = %v", err)
+	}
+}
+
+func TestTwoWallsHurtOneCreatureTwiceAtTheEndOfTheTurn(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.layNorthWallWithOgreAt(t, 8, 7, 4, false)
+	c.insertWallOf(t, "Brisa")
+	c.mustEndTurn(t, c.master, e)
+	if got := c.wallHitsOn(t, "Ogro"); !slices.Equal(got, []int{5, 5}) {
+		t.Errorf("hits = %v, want two: one for each wall", got)
+	}
+}
+
+// The cast and the end of the turn mark the caster apart, so both ask.
+func TestTheCasterInItsOwnWallSavesAtTheCastAndIsHurtAtTheEndOfTheTurn(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	e := c.zoneFight(t)
+	c.passTo(t, e, "Pensantus")
+	c.mustMove(t, c.master, "Pensantus", 9, 7)
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(9, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	w := c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("the caster standing in her own wall is not asked the save at the cast")
+	}
+	c.h.roller.queue(4, 4, 4, 4, 4)
+	if _, err := c.rollEffectSave(t, c.ana, c.get(t, c.master), w.GetId(), effectSaveFace(1)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if got := c.wallHitsOn(t, "Pensantus"); len(got) != 0 {
+		t.Fatalf("hits before the end of the turn = %v, want none", got)
+	}
+	if _, err := c.endTurn(t, c.master, c.get(t, c.master), true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	if got := c.wallHitsOn(t, "Pensantus"); !slices.Equal(got, []int{5}) {
+		t.Errorf("hits at the end of the turn = %v, want one", got)
+	}
+}
+
+func TestADefeatedCreatureIsNotHurtByTheWall(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.layNorthWallWithOgreAt(t, 12, 7, 4, false)
+	c.execSQL(t, `UPDATE combatants SET defeated = true WHERE id = $1`, c.id(t, "Ogro"))
+	c.mustMove(t, c.master, "Ogro", 9, 7)
+	if got := c.wallHitsOn(t, "Ogro"); len(got) != 0 {
+		t.Errorf("hits = %v, want none for a creature that is out of the fight", got)
+	}
+}
+
+// eastWall is the wall from (18,3) to the south: the east room holds all of it, and nobody stands near its right side.
+func eastWall(r *playv1.CastSpellRequest) {
+	r.Wall = &playv1.SpellWall{Direction: toward(0, 1), Side: playv1.WallSide_WALL_SIDE_RIGHT}
+}
+
+func (c *cave) castEastWall(t *testing.T) *playv1.SpellZone {
+	t.Helper()
+	c.passTo(t, c.zoneFight(t), "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(18, 3), nil, eastWall)
+	return c.oneZone(t, c.master, wallOfFireKey)
+}
+
+// wantCloudsOf fails unless the cloud squares of the map are exactly the squares of the zone.
+func wantCloudsOf(t *testing.T, c *cave, z *playv1.SpellZone) {
+	t.Helper()
+	var want []grid.Square
+	for _, s := range z.GetSquares() {
+		want = append(want, wsq(int(s.GetCol()), int(s.GetRow())))
+	}
+	clouds, dark := c.combatPositions(t)
+	if len(want) == 0 || !maps.Equal(setOf(clouds), setOf(want)) {
+		t.Errorf("cloud squares = %v, want the %d squares of the wall %v", clouds, len(want), want)
+	}
+	if len(dark) != 0 {
+		t.Errorf("magic dark squares = %v, want none: the wall is no darkness", dark)
+	}
+}
+
+// The wall's squares block sight like a Fog Cloud's, for a straight wall and for a ring.
+func TestTheWallsSquaresAreCloudSquaresOfTheFog(t *testing.T) {
+	t.Parallel()
+	t.Run("straight", func(t *testing.T) {
+		t.Parallel()
+		c := wallCave(t)
+		wantCloudsOf(t, c, c.castEastWall(t))
+	})
+	t.Run("ring", func(t *testing.T) {
+		t.Parallel()
+		c := wallCave(t)
+		c.wallFight(t)
+		c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(19, 7), nil, func(r *playv1.CastSpellRequest) {
+			r.Wall = &playv1.SpellWall{Ring: true, Side: playv1.WallSide_WALL_SIDE_INNER}
+		})
+		z := c.oneZone(t, c.master, wallOfFireKey)
+		if len(z.GetSquares()) != 16 {
+			t.Fatalf("ring squares = %d, want 16", len(z.GetSquares()))
+		}
+		wantCloudsOf(t, c, z)
+	})
+}
+
+// The wall hurts but does not stop: a creature walks through it.
+func TestTheWallDoesNotBlockMovement(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(9, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	c.execSQL(t, `UPDATE combatants SET speed_ft = 200 WHERE id = $1`, c.id(t, "Ogro"))
+	c.h.roller.queue(1, 1, 1, 1, 1, 1) // the ogre's save and the damage of the square it crosses
+	c.mustMove(t, c.master, "Ogro", 11, 7)
+	if o := byLabel(t, c.get(t, c.master), "Ogro"); o.GetCol() != 11 || o.GetRow() != 7 {
+		t.Errorf("the ogre is at (%d,%d), want (11,7): the wall stopped it", o.GetCol(), o.GetRow())
+	}
+}
+
+// A hidden caster's wall hides what a hidden caster's Fog Cloud hides: the squares are the fog's and the zone is the master's.
+func TestAHiddenCastersWallBlocksSightLikeAnyCloud(t *testing.T) {
+	t.Parallel()
+	c := newCaveWith(t, 5, []string{thunderwave})
+	c.druidFightOf(t, 9, []string{wallOfFireKey})
+	c.mustCastArea(t, c.master, "Druida", wallOfFireKey, slotOfLevel(4), at(18, 3), nil, eastWall)
+	z := c.oneZone(t, c.master, wallOfFireKey)
+	if z.GetVisibility() != playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_MASTER_ONLY {
+		t.Errorf("visibility = %v, want MASTER_ONLY: the caster is hidden", z.GetVisibility())
+	}
+	wantCloudsOf(t, c, z)
+}
+
+// Whatever ends the wall, the fog hears of it and the wall's squares stop blocking sight.
+func TestTheFogHearsOfAWallThatEnds(t *testing.T) {
+	t.Parallel()
+	ends := []struct {
+		name string
+		end  func(t *testing.T, c *cave, z *playv1.SpellZone)
+	}{
+		{"the caster loses the concentration", func(t *testing.T, c *cave, _ *playv1.SpellZone) {
+			t.Helper()
+			c.correct(t, c.pens, hpIs(0))
+		}},
+		{"the time passes", func(t *testing.T, c *cave, _ *playv1.SpellZone) {
+			t.Helper()
+			for range 10 {
+				c.nextTurnOf(t, "Pensantus")
+			}
+		}},
+		{"the master ends it", func(t *testing.T, c *cave, z *playv1.SpellZone) {
+			t.Helper()
+			if _, err := c.master.combat.EndSpellZone(t.Context(), connect.NewRequest(&playv1.EndSpellZoneRequest{
+				CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), ZoneId: z.GetId(), IdempotencyKey: newKey(),
+			})); err != nil {
+				t.Fatalf("EndSpellZone() error = %v", err)
+			}
+		}},
+		{"the master undoes the cast", func(t *testing.T, c *cave, _ *playv1.SpellZone) {
+			t.Helper()
+			c.undoLast(t)
+		}},
+	}
+	for _, tc := range ends {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := wallCave(t)
+			z := c.castEastWall(t)
+			if clouds, _ := c.combatPositions(t); len(clouds) == 0 {
+				t.Fatal("the cast put no cloud squares on the map")
+			}
+			before := c.h.vision.n.Load()
+			tc.end(t, c, z)
+			if got := c.h.vision.n.Load(); got <= before {
+				t.Errorf("fog refreshes after the wall ended = %d, before %d: the fog was not told", got, before)
+			}
+			if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
+				t.Errorf("cloud squares after = %d, want none", len(clouds))
+			}
+		})
+	}
+}
+
+// The cast itself tells the fog.
+func TestTheFogHearsOfTheWallCast(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	before := c.h.vision.n.Load()
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(18, 3), nil, eastWall)
+	if got := c.h.vision.n.Load(); got <= before {
+		t.Errorf("fog refreshes after the cast = %d, before %d: the fog was not told", got, before)
 	}
 }

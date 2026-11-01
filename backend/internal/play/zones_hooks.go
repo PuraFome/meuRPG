@@ -219,7 +219,7 @@ func (s *Service) zonesAtTurnStart(ctx context.Context, c *combatTx, ids []strin
 }
 
 // endsOn says whether a creature that ends its turn on the square is caught by the zone.
-// It is a square of the zone, and for a wall also a square within 10 feet of its damaging side.
+// It is inside the zone, or for a wall also within 10 feet of its damaging side.
 func (z *zone) endsOn(sq grid.Square) bool {
 	if z.def.kind == zoneWall {
 		return z.hurtsAtEnd(sq)
@@ -227,8 +227,8 @@ func (z *zone) endsOn(sq grid.Square) bool {
 	return z.has(sq)
 }
 
-// zonesAtTurnEnd is what the end of a creature's part of the turn does to the zones: it is caught by each
-// zone that asks for the creatures that end their turn inside (Grease).
+// zonesAtTurnEnd is what the end of a creature's part of the turn does to the zones.
+// Each zone that asks for the creatures that end their turn inside (Grease, Wall of Fire) opens its saving throw or its damage.
 func (s *Service) zonesAtTurnEnd(ctx context.Context, c *combatTx, who playdb.Combatant) error {
 	if isTheatre(c.enc) || c.enc.Status != statusActive || !placed(who) {
 		return nil
