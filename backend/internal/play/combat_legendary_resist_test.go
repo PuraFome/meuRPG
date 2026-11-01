@@ -1,12 +1,17 @@
 package play
 
 import (
+	"context"
+	"maps"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -503,5 +508,60 @@ func TestLegendaryResistance_TheChoiceIsIgnoredWhereThereIsNoRoll(t *testing.T) 
 	}
 	if _, err := b.resolveConcentration(t, b.master, f, cw.GetId(), resistingConcentration(keepConcentration)); err != nil {
 		t.Errorf("a kept concentration with the choice error = %v, want it ignored", err)
+	}
+}
+
+// countingRoster counts the reads of the characters a service makes through its roster.
+type countingRoster struct {
+	CombatRoster
+	characters int
+}
+
+func (r *countingRoster) CombatCharacters(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) ([]link.Character, error) {
+	r.characters++
+	return r.CombatRoster.CombatCharacters(ctx, tx, campaignID, ids)
+}
+
+// The Legendary Resistance of several targets is read at once: NPCs made from a stat block keep no key on their
+// combatant, and the key of each is one read of the characters for all of them, not one per target. Each target
+// still reads its own uses (the second dragon has spent one) and a target without the trait reads none.
+func TestLegendaryResistance_SeveralTargetsAreReadTogether(t *testing.T) {
+	a := newArmed(t)
+	var participants []*playv1.Participant
+	for _, name := range []string{"Draco A", "Draco B", "Draco C"} {
+		res, err := a.master.characters.CreateNpcFromCreature(t.Context(), connect.NewRequest(&charactersv1.CreateNpcFromCreatureRequest{
+			CampaignId: a.campaignID, CreatureKey: adultRedDragon, Name: name, Kind: charactersv1.CharacterKind_CHARACTER_KIND_STORY, IdempotencyKey: newKey(),
+		}))
+		if err != nil {
+			t.Fatalf("CreateNpcFromCreature(%s) error = %v", name, err)
+		}
+		participants = append(participants, &playv1.Participant{CharacterId: res.Msg.GetCharacter().GetId()})
+	}
+	participants = append(participants, &playv1.Participant{CharacterId: a.goblin.GetId()})
+	e := a.start(t, plan{npcs: participants, npcRolls: []int{5, 4, 3, 2}, players: map[string]int32{"Toren": 10, "Pensantus": 5, "Brisa": 1}, reveal: []string{"Draco A", "Draco B", "Draco C", "Goblin"}, theatre: true})
+	if _, err := bumpCreatureSpent(t.Context(), playdb.New(a.h.pool), a.id(t, "Draco B"), spentLegendaryResistance, 1); err != nil {
+		t.Fatalf("spend a use: %v", err)
+	}
+	want := map[string]resistance{
+		a.id(t, "Draco A"): {3, 3}, a.id(t, "Draco B"): {3, 2}, a.id(t, "Draco C"): {3, 3},
+	}
+	roster := &countingRoster{CombatRoster: a.h.svc.roster}
+	a.h.svc.roster = roster
+	a.coreInTx(t, e.GetId(), func(ctx context.Context, c *combatTx) error {
+		cs, err := listCombatants(ctx, c)
+		if err != nil {
+			return err
+		}
+		got, err := a.h.svc.resistancesOf(ctx, c, cs)
+		if err != nil {
+			return err
+		}
+		if !maps.Equal(got, want) {
+			t.Errorf("resistances = %v, want %v (none for the goblin and the party)", got, want)
+		}
+		return nil
+	})
+	if roster.characters != 1 {
+		t.Errorf("the keys of 3 dragons and a goblin took %d reads of the characters, want 1", roster.characters)
 	}
 }

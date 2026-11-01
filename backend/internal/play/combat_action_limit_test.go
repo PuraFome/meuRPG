@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -15,14 +16,15 @@ import (
 // need the database (MEURPG_TEST_DATABASE_URL).
 
 const (
-	spiderWeb     = "monster:giant-spider#web"
-	healingTouch  = "monster:deva#healing-touch"
-	fetidCloud    = "monster:dretch#fetid-cloud"
-	inkCloud      = "monster:octopus#ink-cloud"
-	breathSpent   = spentRechargePrefix + fireBreath
-	recharging    = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING
-	noUsesLeft    = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT
-	healingTouchN = 3
+	spiderWeb         = "monster:giant-spider#web"
+	healingTouch      = "monster:deva#healing-touch"
+	fetidCloud        = "monster:dretch#fetid-cloud"
+	inkCloud          = "monster:octopus#ink-cloud"
+	breathSpent       = spentRechargePrefix + fireBreath
+	recharging        = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING
+	noUsesLeft        = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT
+	healingTouchN     = 3
+	unavailableAction = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE
 )
 
 // twoD20 is the roll of an attack made with disadvantage: both dice show the face (a ranged attack on an adjacent
@@ -239,24 +241,114 @@ func TestActionLimit_ASpendThatDoesNotFitIsRefused(t *testing.T) {
 	}
 }
 
-// Two attack actions whose names are equal up to the cut of a basic sheet match no action, so a limit is never
-// taken from the wrong one.
-func TestPlanByCutNameRefusesAnAmbiguousMatch(t *testing.T) {
-	t.Parallel()
+// cutPlan is a stat block whose two attack actions share the name a basic sheet keeps; each is limited (Recharge 5-6) as
+// the arguments say, and the second differs in its damage unless same.
+func cutPlan(limitFirst, limitSecond, same bool) (*rules.MonsterPlan, link.Attack) {
 	long := strings.Repeat("a", maxPlanAttackName)
+	dmg := func(sides int) []rules.ActionDamage {
+		return []rules.ActionDamage{{Dice: rules.DiceFormula{Count: 2, Sides: sides, Bonus: 3}, TypeKey: "damage-type:fire"}}
+	}
+	usage := func(on bool) rules.ActionUsage {
+		if on {
+			return rules.ActionUsage{Kind: rules.UsageRecharge, RechargeMin: 5}
+		}
+		return rules.ActionUsage{Kind: rules.UsageAtWill}
+	}
+	second := 8
+	if same {
+		second = 6
+	}
+	at := &rules.ActionAttack{Bonus: 7, Melee: true, ReachFt: 10}
 	plan := &rules.MonsterPlan{Actions: []rules.ActionPlan{
-		{Key: "x#one", NamePT: long + "b", Attack: &rules.ActionAttack{}},
-		{Key: "x#two", NamePT: long + "c", Attack: &rules.ActionAttack{}},
-		{Key: "x#bite", NamePT: "Mordida", Attack: &rules.ActionAttack{}},
+		{Key: "x#one", NamePT: long + "b", Attack: at, Damage: dmg(6), Usage: usage(limitFirst)},
+		{Key: "x#two", NamePT: long + "c", Attack: at, Damage: dmg(second), Usage: usage(limitSecond)},
+		{Key: "x#bite", NamePT: "Mordida", Attack: at, Damage: dmg(6)},
 		{Key: "x#web", NamePT: "Teia"},
 	}}
-	if got, ok := planByCutName(plan, long); ok {
-		t.Errorf("the cut name of two actions matched %s", got.Key)
-	}
-	if got, ok := planByCutName(plan, "Mordida"); !ok || got.Key != "x#bite" {
+	sheet := link.Attack{Name: long, ToHit: 7, DiceCount: 2, DiceSides: second, DiceBonus: 3, DamageType: "damage-type:fire", RangeFt: 10}
+	return plan, sheet
+}
+
+// A name that only one action has is the action's, and an action with no attack roll matches none.
+func TestPlanByCutNameFindsTheActionOfTheName(t *testing.T) {
+	t.Parallel()
+	plan, _ := cutPlan(false, false, false)
+	if got, _, ok := planByCutName(plan, link.Attack{Name: "Mordida"}); !ok || got.Key != "x#bite" {
 		t.Errorf("a name of one action matched %v, %v, want the bite", got.Key, ok)
 	}
-	if _, ok := planByCutName(plan, "Teia"); ok {
+	if _, _, ok := planByCutName(plan, link.Attack{Name: "Teia"}); ok {
 		t.Error("an action with no attack matched")
+	}
+}
+
+// Two actions that share the cut name are told apart by the numbers of the sheet's attack, so the limit is taken
+// from the right one: the sheet's attack (2d8+3) is the second action, which is the limited one, and it is
+// refused once spent; the first action (2d6+3), unlimited, is never refused.
+func TestPlanByCutNameTellsTwoActionsApartByTheirNumbers(t *testing.T) {
+	t.Parallel()
+	plan, sheet := cutPlan(false, true, false)
+	got, ambiguous, ok := planByCutName(plan, sheet)
+	if !ok || ambiguous || got.Key != "x#two" {
+		t.Fatalf("the 2d8+3 attack matched %v, ambiguous %v, ok %v, want x#two", got.Key, ambiguous, ok)
+	}
+	spent := playdb.Combatant{CreatureSpent: []byte(`{"` + limitKeyOf(got) + `":1}`)}
+	wantBlockedBy(t, "the spent action", checkActionLimit(got, spent), recharging)
+	sheet.DiceSides = 6
+	if got, _, ok = planByCutName(plan, sheet); !ok || got.Key != "x#one" {
+		t.Errorf("the 2d6+3 attack matched %v, %v, want x#one", got.Key, ok)
+	}
+	for _, change := range []func(*link.Attack){
+		func(a *link.Attack) { a.ToHit++ }, func(a *link.Attack) { a.DiceBonus++ },
+		func(a *link.Attack) { a.DamageType = "damage-type:cold" }, func(a *link.Attack) { a.RangeFt = 0 },
+	} {
+		_, sheet := cutPlan(false, true, false)
+		change(&sheet)
+		if got, _, ok := planByCutName(plan, sheet); ok {
+			t.Errorf("an attack with other numbers matched %v", got.Key)
+		}
+	}
+}
+
+// Two actions with the same numbers cannot be told apart: when one of them is limited the attack is refused as an
+// action the creature cannot make, when none is it is no action (the attack is made as today).
+func TestPlanByCutNameWithTheSameNumbers(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name          string
+		first, second bool
+		wantAmbiguous bool
+	}{
+		{"one limited", false, true, true}, {"both limited", true, true, true}, {"none limited", false, false, false},
+	} {
+		plan, sheet := cutPlan(tc.first, tc.second, true)
+		got, ok, err := planOfSheetAttack(plan, sheet)
+		if ok {
+			t.Errorf("%s: matched %v", tc.name, got.Key)
+		}
+		if tc.wantAmbiguous {
+			wantBlockedBy(t, tc.name, err, unavailableAction)
+		} else if err != nil {
+			t.Errorf("%s: refused: %v", tc.name, err)
+		}
+	}
+}
+
+// The range a basic sheet writes: 0 for a melee attack at the normal reach, the reach of a longer one, the
+// range of a thrown or ranged one.
+func TestSheetRangeOfFollowsTheBasicSheet(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		at   rules.ActionAttack
+		want int
+	}{
+		{rules.ActionAttack{Melee: true, ReachFt: 5}, 0},
+		{rules.ActionAttack{Melee: true, ReachFt: 10}, 10},
+		{rules.ActionAttack{Melee: true, ReachFt: 5, RangeFt: 20, LongRangeFt: 60}, 20},
+		{rules.ActionAttack{RangeFt: 80, LongRangeFt: 320}, 80},
+		{rules.ActionAttack{RangeFt: 900}, 600},
+	} {
+		if got := sheetRangeOf(&tc.at); got != tc.want {
+			t.Errorf("%+v: range %d, want %d", tc.at, got, tc.want)
+		}
 	}
 }
