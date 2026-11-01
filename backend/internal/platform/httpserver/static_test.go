@@ -483,3 +483,80 @@ func TestStaticHandler_IndexIsNeverEncoded(t *testing.T) {
 		})
 	}
 }
+
+// TestStaticHandler_CannotLeaveTheDirectory: a request that climbs out of the build directory never gets
+// a byte of a file next to it, plain or compressed.
+func TestStaticHandler_CannotLeaveTheDirectory(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "web")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "index.html"), "<html>app shell</html>")
+	writeFile(t, filepath.Join(parent, "secret.js"), "SECRET")
+	writeFile(t, filepath.Join(parent, "secret.js.br"), "SECRET-BR")
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	for _, target := range []string{"/../secret.js", "/%2e%2e/secret.js", "/..%2fsecret.js", "/sub/../../secret.js"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+			req.Header.Set("Accept-Encoding", "br")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if strings.Contains(rec.Body.String(), "SECRET") {
+				t.Errorf("body = %q, leaked a file outside the directory", rec.Body.String())
+			}
+			if got := rec.Header().Get("Content-Encoding"); got != "" {
+				t.Errorf("Content-Encoding = %q, want none", got)
+			}
+		})
+	}
+}
+
+// TestStaticHandler_SymlinkOutOfTheDirectory: a symlink in the build directory that points outside it is
+// served neither as a compressed copy nor as a file.
+func TestStaticHandler_SymlinkOutOfTheDirectory(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "web")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "index.html"), "<html>app shell</html>")
+	writeFile(t, filepath.Join(dir, "link-ABCD1234.js"), "console.log('plain')")
+	writeFile(t, filepath.Join(parent, "outside.br"), "OUTSIDE")
+	writeFile(t, filepath.Join(parent, "outside.txt"), "OUTSIDE")
+	if err := os.Symlink(filepath.Join("..", "outside.br"), filepath.Join(dir, "link-ABCD1234.js.br")); err != nil {
+		t.Skipf("cannot create a symlink: %v", err)
+	}
+	if err := os.Symlink(filepath.Join("..", "outside.txt"), filepath.Join(dir, "out.txt")); err != nil {
+		t.Skipf("cannot create a symlink: %v", err)
+	}
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	for _, target := range []string{"/link-ABCD1234.js", "/out.txt"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+		req.Header.Set("Accept-Encoding", "br")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if strings.Contains(rec.Body.String(), "OUTSIDE") {
+			t.Errorf("%s: body = %q, served a file outside the directory", target, rec.Body.String())
+		}
+		if got := rec.Header().Get("Content-Encoding"); got != "" {
+			t.Errorf("%s: Content-Encoding = %q, want none", target, got)
+		}
+	}
+}

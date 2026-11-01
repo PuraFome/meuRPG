@@ -447,6 +447,7 @@ jobs:
         working-directory: e2e
         env:
           E2E_BASE_URL: https://localhost:8443
+          E2E_TLS_CA: ${{ runner.temp }}/tls-cert.pem
         run: npx playwright test -c playwright.mobile.config.ts
 
       - name: Show and save the stack logs
