@@ -277,6 +277,14 @@ message RollEffectSaveRequest {
   // maneuver the character has not or that does not go on this roll, and with a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 11;
+  // The master's choice, made with the roll: when the saving throw of a creature whose stat block has
+  // Legendary Resistance fails, it succeeds instead and one use is spent, in the same change (SRD 5.1).
+  // A save that succeeds spends nothing and the flag is ignored, as it is on a skipped or kept one. The
+  // master only: a player gets `permission_denied`. Refused with EncounterBlocked
+  // LEGENDARY_RESISTANCE_UNAVAILABLE for a combatant without the trait (before the roll) and
+  // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
+  // the creature is incapacitated.
+  bool use_legendary_resistance = 12;
 }
 
 message RollEffectSaveResponse {

@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Casting a summoning spell (MR-037): Convocar Familiar (1 hour, a
@@ -33,6 +34,8 @@ import (
 type summoning struct {
 	creatures []link.CreatureSpec
 	in        rollInput
+	chk       link.SummonSpell
+	slot      int
 }
 
 // prepareSummon checks, inside the cast's transaction, what a summoning spell
@@ -48,14 +51,18 @@ func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return nil, err
 	}
+	if chk.Table && chk.TurnMode == rules.SummonTurnOwnInitiative && len(chk.Creatures) > 1 && !in.inApp {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE,
+			"each creature rolls its own initiative: set roll_in_app, a typed die is one face")
+	}
 	given, err := summonNames(pick.GetNames(), len(chk.Creatures))
 	if err != nil {
 		return nil, err
 	}
-	if err := s.summonHasRoom(ctx, c, m, caster, concentration, len(chk.Creatures)); err != nil {
+	if err := s.summonHasRoom(ctx, c, m, caster, spellKey, chk, concentration); err != nil {
 		return nil, err
 	}
-	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in}, nil
+	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in, chk: chk, slot: slotLevel}, nil
 }
 
 // summonRollOK checks who casts and how the group's initiative comes: a player's
@@ -75,36 +82,39 @@ func (s *Service) summonRollOK(ctx context.Context, c *combatTx, m authz.Members
 	return s.mustRollThisWay(ctx, c.tx, m, in)
 }
 
-// summonHasRoom refuses a cast whose creatures do not fit in the combat. It runs
-// before anything is spent: a combat holds 40 combatants, and the creatures of the
-// concentration this one ends leave first.
-func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, concentration bool, bringing int) error {
+// summonHasRoom refuses a cast whose creatures do not fit in the combat (the room check runs before anything
+// is spent; the other checks of the cast have their own place). A combat holds 40 combatants, and the creatures the
+// cast sends away (the concentration it ends, the creatures of its own spell it
+// replaces) leave first.
+func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, spellKey string, chk link.SummonSpell, concentration bool) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
 	}
-	leaving := 0
-	if concentration {
-		if leaving, err = s.concentrationLeaving(ctx, c, m, caster, cs); err != nil {
-			return err
-		}
+	leaving, err := s.replacedLeaving(ctx, c, m, caster, cs, spellKey, chk.ReplacesSame, concentration)
+	if err != nil {
+		return err
 	}
-	if len(cs)-leaving+bringing > maxCombatants {
+	if len(cs)-leaving+len(chk.Creatures) > maxCombatants {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, "the combat has no room for these creatures")
 	}
 	return nil
 }
 
-// concentrationLeaving counts the creatures of the caster's concentration that are
-// in the combat: they leave when the new concentration starts.
-func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, cs []playdb.Combatant) (int, error) {
-	old, err := s.roster.ConcentrationCreatures(ctx, c.tx, m.CampaignID, caster.CharacterID)
+// replacedLeaving counts the creatures in the combat that a new cast sends away: those of the caster's
+// concentration when the spell concentrates, and those of the same table spell when it replaces its own.
+func (s *Service) replacedLeaving(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, cs []playdb.Combatant, spellKey string, same, concentration bool) (int, error) {
+	if !same && !concentration {
+		return 0, nil
+	}
+	mine, err := s.roster.CharacterCreatures(ctx, c.tx, m.CampaignID, []string{caster.CharacterID})
 	if err != nil {
 		return 0, err
 	}
 	leaving := 0
-	for _, o := range old {
-		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
+	for _, o := range mine {
+		goes := concentration && o.DependsOnConcentration || same && o.Source == summonSourceTable && o.SummonKey == spellKey
+		if goes && slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
 			leaving++
 		}
 	}
@@ -113,20 +123,23 @@ func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz
 
 // joinSummon makes the creatures of a cast and puts them in the combat: they
 // appear next to the caster and share one initiative roll, so a group with the
-// same total takes a joint turn. The cast's event keeps what an undo needs.
-func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Combatant, spellKey string, concentration bool, sm *summoning, made *actionEvent) error {
-	res, err := s.roster.SummonCreatures(ctx, c.tx, link.Summon{
-		CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Source: summonSource(spellKey), GroupID: made.CastID,
-		Concentration: concentration, Creatures: sm.creatures,
-	})
+// same total takes a joint turn; the creatures of a table spell that rolls its own
+// initiative each roll theirs. The cast's event keeps what an undo needs.
+func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Combatant, spellKey string, sm *summoning, made *actionEvent) error {
+	res, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(c.session.CampaignID, caster.CharacterID, spellKey, made.CastID, sm.slot, sm.chk, sm.creatures))
 	if err != nil {
 		return err
 	}
 	for _, cr := range res.Created {
 		made.Created, made.MonsterKeys = append(made.Created, cr.ID), append(made.MonsterKeys, cr.MonsterKey)
 	}
-	made.Source, made.OwnerCharacter = summonSource(spellKey), caster.CharacterID
-	roll, err := s.rollGroup(sm.in, res.Created[0].InitiativeBonus)
+	gone, err := s.dropReplaced(ctx, c, caster, res.Replaced)
+	if err != nil {
+		return err
+	}
+	made.Dismissed = append(made.Dismissed, gone...)
+	made.Source, made.OwnerCharacter = summonSourceOf(spellKey, sm.chk), caster.CharacterID
+	rolls, roll, err := s.summonRolls(sm.in, res.Created)
 	if err != nil {
 		return err
 	}
@@ -135,7 +148,7 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 	if err != nil {
 		return err
 	}
-	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, map[string]groupRoll{made.CastID: roll})
+	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, rolls)
 	if err != nil {
 		return err
 	}
@@ -146,6 +159,28 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 		Round: c.enc.Round, Actor: caster.ID, OwnerCharacter: caster.CharacterID, Created: made.Created, MonsterKeys: made.MonsterKeys,
 		Source: made.Source, Key: spellKey, SummonRoll: &roll,
 	})
+}
+
+// summonRolls rolls the initiative of a casting's creatures: one roll for each group among them (the creatures
+// of a casting share one, a creature that rolls its own initiative has a group of its own). The first creature's
+// roll is the one the cast's event keeps.
+func (s *Service) summonRolls(in rollInput, created []link.Creature) (map[string]groupRoll, groupRoll, error) {
+	rolls := make(map[string]groupRoll, len(created))
+	var first groupRoll
+	for i, cr := range created {
+		if _, done := rolls[cr.GroupID]; done {
+			continue
+		}
+		roll, err := s.rollGroup(in, cr.InitiativeBonus)
+		if err != nil {
+			return nil, first, err
+		}
+		rolls[cr.GroupID] = roll
+		if i == 0 {
+			first = roll
+		}
+	}
+	return rolls, first, nil
 }
 
 // combatantsOfCreatures are the combatants of the creatures, in the order of ids,
@@ -386,14 +421,11 @@ func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, sl
 			return err
 		}
 	}
-	sum, err := s.roster.SummonCreatures(ctx, c.tx, link.Summon{
-		CampaignID: r.m.CampaignID, CharacterID: characterID, Source: summonSource(spellKey), GroupID: uuid.New().String(),
-		Concentration: chk.Concentration, Creatures: summonSpecs(chk.Creatures, given),
-	})
+	sum, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(r.m.CampaignID, characterID, spellKey, uuid.New().String(), int(castSlotLevel(slot)), chk, summonSpecs(chk.Creatures, given)))
 	if err != nil {
 		return err
 	}
-	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSource(spellKey), Ritual: r.call.ritual, Key: spellKey, Slot: slot}
+	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSourceOf(spellKey, chk), Ritual: r.call.ritual, Key: spellKey, Slot: slot}
 	for _, cr := range sum.Created {
 		r.made.Created, r.made.MonsterKeys = append(r.made.Created, cr.ID), append(r.made.MonsterKeys, cr.MonsterKey)
 	}
@@ -401,16 +433,12 @@ func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, sl
 	return s.dismissReplaced(ctx, c, r, sum.Replaced)
 }
 
-// dismissReplaced writes the dismissal of each creature a casting replaced: a
-// familiar is replaced by the next one, the others end with the concentration.
+// dismissReplaced writes the dismissal of each creature a casting replaced, with the reason the roster
+// dismissed it for.
 func (s *Service) dismissReplaced(ctx context.Context, c *combatTx, r *summonRun, replaced []link.Creature) error {
 	for _, cr := range replaced {
 		r.made.Dismissed = append(r.made.Dismissed, cr.ID)
-		reason := "concentration"
-		if cr.Source == "familiar" {
-			reason = "replaced"
-		}
-		if err := insertEvent(ctx, c, eventCreatureDismissed, &r.m.UserID, nil, actionEvent{OwnerCharacter: r.call.characterID, Created: []string{cr.ID}, Reason: reason}); err != nil {
+		if err := insertEvent(ctx, c, eventCreatureDismissed, &r.m.UserID, nil, actionEvent{OwnerCharacter: r.call.characterID, Created: []string{cr.ID}, Reason: cr.DismissedReason}); err != nil {
 			return err
 		}
 	}

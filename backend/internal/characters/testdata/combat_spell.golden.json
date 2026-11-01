@@ -35,6 +35,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -79,6 +80,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -123,6 +125,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -178,6 +181,7 @@
     "AreaSizeFt": 10,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -233,6 +237,7 @@
     "AreaSizeFt": 10,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -279,6 +284,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -323,6 +329,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -362,6 +369,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -406,6 +414,7 @@
     "AreaSizeFt": 30,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -452,6 +461,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -501,6 +511,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -547,6 +558,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -591,6 +603,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -637,6 +650,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -692,6 +706,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -738,6 +753,7 @@
     "AreaSizeFt": 60,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -777,6 +793,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -830,6 +847,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -869,6 +887,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -915,6 +934,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -961,6 +981,7 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": true,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1007,6 +1028,7 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": true,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1046,6 +1068,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1092,6 +1115,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1138,6 +1162,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1184,6 +1209,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1223,6 +1249,7 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   },
@@ -1276,6 +1303,7 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
+    "ZoneSizeFt": 0,
     "Zone": null,
     "ZoneLaid": false
   }

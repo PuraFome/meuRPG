@@ -53,6 +53,7 @@ const SENSE_WORDS: Readonly<Record<string, string>> = {
   blindsight: 'Visão às cegas',
   tremorsense: 'Sentido sísmico',
   truesight: 'Visão verdadeira',
+  'devils-sight': 'Visão do diabo',
 };
 
 export type NameOf = (key: string) => string;

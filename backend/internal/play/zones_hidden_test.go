@@ -17,11 +17,11 @@ import (
 // does not name it to a player.
 
 // npcCaster creates an NPC druid of level 5 who prepared Moonbeam (the master plays it).
-func (u *user) npcCaster(t *testing.T, campaignID, name string) *charactersv1.Character {
+func (u *user) npcCaster(t *testing.T, campaignID, name string, more ...string) *charactersv1.Character {
 	t.Helper()
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: abilities(10, 14, 12, 16, 10), RaceKey: "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:druid", Level: 5}},
-		PreparedSpellKeys: []string{moonbeamKey},
+		PreparedSpellKeys: append([]string{moonbeamKey}, more...),
 	}}}
 	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 		CampaignId: campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_BOSS, Name: name, Sheet: sheet,
@@ -36,7 +36,13 @@ func (u *user) npcCaster(t *testing.T, campaignID, name string) *charactersv1.Ch
 // (revealed) and the goblin (hidden unless revealed).
 func (c *cave) druidFight(t *testing.T, reveal ...string) *playv1.Encounter {
 	t.Helper()
-	druid := c.master.npcCaster(t, c.campaignID, "Druida")
+	return c.druidFightWith(t, nil, reveal...)
+}
+
+// druidFightWith is druidFight with more spells prepared by the druid.
+func (c *cave) druidFightWith(t *testing.T, more []string, reveal ...string) *playv1.Encounter {
+	t.Helper()
+	druid := c.master.npcCaster(t, c.campaignID, "Druida", more...)
 	return c.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: druid.GetId()}, {CharacterId: c.ogre.GetId()}, {CharacterId: c.goblins.GetId()}},
 		npcRolls: []int{20, 2, 1},

@@ -617,6 +617,9 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := s.effectRowsToCharacters(ctx, c, cs, []playdb.Combatant{target}); err != nil {
 		return nil, err
 	}
+	if err := c.ownerGone(ctx, target.ID); err != nil {
+		return nil, err
+	}
 	if err := c.q.DeleteCombatant(ctx, target.ID); err != nil {
 		return nil, fmt.Errorf("delete the combatant: %w", err)
 	}

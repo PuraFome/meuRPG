@@ -152,6 +152,11 @@ func (s *Service) EndGameSession(
 		for _, v := range out.told {
 			s.publishVitals(m.CampaignID, v)
 		}
+		if out.visionMap != "" {
+			pctx, stop := afterCommit(ctx)
+			defer stop()
+			s.maps.VisionChanged(pctx, m.CampaignID, out.visionMap)
+		}
 		// Every stream of the session ends (WatchGameSession).
 		s.hub.Publish(m.CampaignID, live.Event{
 			Audience: live.Audience{Everyone: true},
@@ -169,6 +174,8 @@ type sessionEnd struct {
 	ended   bool                      // this call ended an open session
 	fought  []playdb.Combatant        // the combatants of the combat the session ended, for the creatures' owners
 	told    []*playv1.CharacterVitals // the forms and sights the combat's end ended
+	// visionMap is the map whose fog reads again: the combat's end took a cloud or darkness off it.
+	visionMap string
 }
 
 // endSessionIn ends the session inside tx, with its combat and the image the master
@@ -191,7 +198,7 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	// A combat ends with its session; the player characters' tokens move to
 	// where they stood (MR-013).
-	if out.fought, out.told, err = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
+	if out.fought, out.told, out.visionMap, err = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
 		return err
 	}
 	if current.ShownImageKeep && current.ShownImageID != nil {

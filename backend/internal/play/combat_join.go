@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -317,6 +318,17 @@ func (s *Service) insertJoined(ctx context.Context, c *combatTx, row playdb.Inse
 	}
 	if err != nil {
 		return inserted, fmt.Errorf("insert combatant: %w", err)
+	}
+	// A hand-made NPC brings what it spent in earlier combats (npc_spell_use); a monster
+	// starts with nothing.
+	if !p.char.Player && !p.char.CombatOnly {
+		used, err := c.q.SeedCombatantSlotsUsed(ctx, inserted.ID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return inserted, fmt.Errorf("seed the NPC's spent slots: %w", err)
+		}
+		if err == nil {
+			inserted.SlotsUsed = used
+		}
 	}
 	// A character that joins a combat leaves any familiar's sight it had: the
 	// sight is an action of a turn there (MR-036).
