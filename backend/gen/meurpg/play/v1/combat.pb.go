@@ -6501,7 +6501,7 @@ func (x *Combatant) GetLimitedActions() []*LimitedAction {
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
-// The master's alone.
+// The master and the player who controls the creature read it.
 type LimitedAction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The action's key in its stat block, the `action_key` of UseCreatureAction.

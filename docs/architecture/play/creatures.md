@@ -276,7 +276,7 @@ Nothing is published for it: the turn start already tells everybody that the com
 
 **Who sees what (RN-20, RN-29).**
 The master and the player who controls the creature read each limited action with what it has left (`Combatant.limited_actions`), the roll in a log line ([Combat log](combat-log.md)) and the refusal reasons.
-`combatantReader.read` writes the field for the master and for `v.owns(c)`, and `controlledLimits` loads the stat block's limits for the creatures the player controls and nothing else of the master's NPC data.
+The controller reads the limits of its own creature and nothing else of the master's NPC data.
 Every other player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
 Another player has no call that reaches the creature's action.
 

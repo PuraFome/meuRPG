@@ -2156,7 +2156,7 @@ export const CombatantSchema: GenMessage<Combatant> = /*@__PURE__*/
 
 /**
  * LimitedAction is an action of a stat block with a limit and what the creature has left of it.
- * The master's alone.
+ * The master and the player who controls the creature read it.
  *
  * @generated from message meurpg.play.v1.LimitedAction
  */

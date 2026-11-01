@@ -2837,7 +2837,7 @@ message Combatant {
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
-// The master's alone.
+// The master and the player who controls the creature read it.
 message LimitedAction {
   // The action's key in its stat block, the `action_key` of UseCreatureAction.
   string action_key = 1;
