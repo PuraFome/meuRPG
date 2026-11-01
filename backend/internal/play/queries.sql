@@ -1487,9 +1487,13 @@ DELETE FROM reaction_windows WHERE encounter_id = $1;
 -- name: DeleteReactionHoldsOfEncounter :exec
 DELETE FROM reaction_holds WHERE encounter_id = $1;
 
--- name: SetCombatantSlotsUsed :exec
--- The slots (and resource uses) a stat block spent in this combat.
-UPDATE combatants SET slots_used = $2 WHERE id = $1;
+-- name: BumpCombatantSlotsUsed :exec
+-- Adds a delta to what a stat block spent under one key in this combat (a slot level,
+-- "pact" or "res:<resource>"), never below 0, on the stored value: two changes in one
+-- transaction both land.
+UPDATE combatants
+SET slots_used = jsonb_set(slots_used, ARRAY[sqlc.arg(key)::text], to_jsonb(GREATEST(COALESCE((slots_used->>sqlc.arg(key)::text)::int, 0) + sqlc.arg(delta)::int, 0)), true)
+WHERE id = sqlc.arg(id);
 
 -- name: ReopenReactionWindow :exec
 -- The undo of a reaction's answer: the window waits again.

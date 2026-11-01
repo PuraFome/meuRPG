@@ -380,6 +380,26 @@ func (q *Queries) AskInspirationHoldStroke(ctx context.Context, arg AskInspirati
 	return err
 }
 
+const bumpCombatantSlotsUsed = `-- name: BumpCombatantSlotsUsed :exec
+UPDATE combatants
+SET slots_used = jsonb_set(slots_used, ARRAY[$1::text], to_jsonb(GREATEST(COALESCE((slots_used->>$1::text)::int, 0) + $2::int, 0)), true)
+WHERE id = $3
+`
+
+type BumpCombatantSlotsUsedParams struct {
+	Key   string
+	Delta int32
+	ID    string
+}
+
+// Adds a delta to what a stat block spent under one key in this combat (a slot level,
+// "pact" or "res:<resource>"), never below 0, on the stored value: two changes in one
+// transaction both land.
+func (q *Queries) BumpCombatantSlotsUsed(ctx context.Context, arg BumpCombatantSlotsUsedParams) error {
+	_, err := q.db.Exec(ctx, bumpCombatantSlotsUsed, arg.Key, arg.Delta, arg.ID)
+	return err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -8889,21 +8909,6 @@ type SetCombatantSideParams struct {
 // Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
 func (q *Queries) SetCombatantSide(ctx context.Context, arg SetCombatantSideParams) error {
 	_, err := q.db.Exec(ctx, setCombatantSide, arg.ID, arg.Side)
-	return err
-}
-
-const setCombatantSlotsUsed = `-- name: SetCombatantSlotsUsed :exec
-UPDATE combatants SET slots_used = $2 WHERE id = $1
-`
-
-type SetCombatantSlotsUsedParams struct {
-	ID        string
-	SlotsUsed []byte
-}
-
-// The slots (and resource uses) a stat block spent in this combat.
-func (q *Queries) SetCombatantSlotsUsed(ctx context.Context, arg SetCombatantSlotsUsedParams) error {
-	_, err := q.db.Exec(ctx, setCombatantSlotsUsed, arg.ID, arg.SlotsUsed)
 	return err
 }
 

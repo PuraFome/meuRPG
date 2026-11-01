@@ -186,15 +186,10 @@ func (s *Service) spendSlotOf(ctx context.Context, c *combatTx, who playdb.Comba
 }
 
 // bumpUsed adds delta to what an NPC's fight spent under key (a slot level, "pact"
-// or a resource), never below 0.
+// or a resource), never below 0. It changes the stored count, not a copy a caller loaded,
+// so two changes to one NPC in one transaction both land.
 func (s *Service) bumpUsed(ctx context.Context, c *combatTx, who playdb.Combatant, key string, delta int) error {
-	used := slotsUsedOf(who)
-	used[key] = max(used[key]+delta, 0)
-	body, err := json.Marshal(used)
-	if err != nil {
-		return fmt.Errorf("encode the slots used: %w", err)
-	}
-	if err := c.q.SetCombatantSlotsUsed(ctx, playdb.SetCombatantSlotsUsedParams{ID: who.ID, SlotsUsed: body}); err != nil {
+	if err := c.q.BumpCombatantSlotsUsed(ctx, playdb.BumpCombatantSlotsUsedParams{ID: who.ID, Key: key, Delta: int32(delta)}); err != nil { //nolint:gosec // +1 or -1
 		return fmt.Errorf("count the slot spent: %w", err)
 	}
 	return nil
