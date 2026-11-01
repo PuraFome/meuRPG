@@ -19,7 +19,10 @@
   "lucky": {
     "index": 1,
     "from": 1,
-    "to": 1
+    "to": 1,
+    "source": "x",
+    "resource": "x",
+    "cost": 1
   },
   "stroke": {
     "index": 1,
