@@ -1504,17 +1504,28 @@ FROM npc_spell_use npc
 WHERE combatants.id = sqlc.arg(id) AND npc.character_id = combatants.character_id
 RETURNING combatants.slots_used;
 
--- name: BumpNPCSpellUse :exec
--- The same delta as BumpCombatantSlotsUsed on the NPC's own count, when the combatant is a hand-made
--- NPC: a monster's character (combat_only) has no row, so each fight of it starts fresh.
+-- name: SyncNPCSpellUse :exec
+-- Sets the NPC's own count under one key to the highest count any combatant of that character holds in
+-- this combat, after the combatant's bump: several copies of one hand-made NPC share one row, and the row
+-- keeps what one individual spent, never the sum. The copies each start the next combat with it. A
+-- monster's character (combat_only), a creature and a player write nothing, so each fight of a monster
+-- starts fresh.
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = sqlc.arg(id) AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max((cb.slots_used->>sqlc.arg(key)::text)::int), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
 INSERT INTO npc_spell_use (character_id, slots_used)
-SELECT cb.character_id, jsonb_build_object(sqlc.arg(key)::text, GREATEST(sqlc.arg(delta)::int, 0))
-FROM combatants cb
-JOIN characters ch ON ch.id = cb.character_id
-WHERE cb.id = sqlc.arg(id) AND cb.kind = 'npc'
-  AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+SELECT character_id, jsonb_build_object(sqlc.arg(key)::text, n) FROM top
 ON CONFLICT (character_id) DO UPDATE
-SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[sqlc.arg(key)::text], to_jsonb(GREATEST(COALESCE((npc_spell_use.slots_used->>sqlc.arg(key)::text)::int, 0) + sqlc.arg(delta)::int, 0)), true),
+SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[sqlc.arg(key)::text], excluded.slots_used->sqlc.arg(key)::text, true),
     updated_at = now();
 
 -- name: GetNPCSpellUse :one
@@ -1525,7 +1536,7 @@ SELECT slots_used FROM npc_spell_use WHERE character_id = $1;
 UPDATE combatants
 SET slots_used = '{}'
 FROM encounters e, npc_spell_use npc, characters ch
-WHERE e.id = combatants.encounter_id AND e.status <> 'active'
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
   AND npc.character_id = combatants.character_id
   AND ch.id = npc.character_id AND ch.campaign_id = $1;
 

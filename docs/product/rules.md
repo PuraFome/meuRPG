@@ -780,6 +780,7 @@ The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its
 In theatre of the mind (RN-25) monsters have no square.
 A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from one combat to the next, until the table's long rest.
 A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
+Several copies of one hand-made NPC each start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
 A short rest changes nothing for an NPC.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 

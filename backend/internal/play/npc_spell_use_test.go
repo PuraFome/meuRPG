@@ -95,7 +95,7 @@ func (a *armed) magicMissile(t *testing.T, e *playv1.Encounter) *playv1.Encounte
 	return e
 }
 
-func (a *armed) longRest(t *testing.T, kind playv1.RestKind) {
+func (a *armed) rest(t *testing.T, kind playv1.RestKind) {
 	t.Helper()
 	if _, err := a.master.resource.TakeRest(t.Context(), connect.NewRequest(&playv1.TakeRestRequest{CampaignId: a.campaignID, Kind: kind, IdempotencyKey: newKey()})); err != nil {
 		t.Fatalf("TakeRest(%v) error = %v", kind, err)
@@ -132,14 +132,14 @@ func TestTheLongRestClearsAHandMadeNPCsUseAndTheShortRestDoesNot(t *testing.T) {
 	if got := a.usedOf(t, "Mago"); got != `{"1": 1}` {
 		t.Fatalf("the Mage's count in setup = %s, want one 1st-level slot", got)
 	}
-	a.longRest(t, playv1.RestKind_REST_KIND_SHORT)
+	a.rest(t, playv1.RestKind_REST_KIND_SHORT)
 	if got := a.storedUse(t, mage); got != `{"1": 1}` {
 		t.Errorf("the NPC's count after a short rest = %s, want it kept", got)
 	}
 	if got := a.usedOf(t, "Mago"); got != `{"1": 1}` {
 		t.Errorf("the Mage's count in setup after a short rest = %s, want it kept", got)
 	}
-	a.longRest(t, playv1.RestKind_REST_KIND_LONG)
+	a.rest(t, playv1.RestKind_REST_KIND_LONG)
 	if got := a.storedUse(t, mage); got != "" {
 		t.Errorf("the NPC's count after a long rest = %s, want none", got)
 	}
@@ -217,5 +217,74 @@ func TestAHandMadeNPCAddedMidCombatBringsItsCount(t *testing.T) {
 	}
 	if got := a.usedOf(t, "Mago"); got != `{"1": 1}` {
 		t.Errorf("the Mage's count after joining = %s, want the slot it spent", got)
+	}
+}
+
+// twoMages starts a combat of two copies of the hand-made Mage, in setup.
+func (a *armed) twoMages(t *testing.T, mage string) {
+	t.Helper()
+	a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: mage, Count: 2}}, npcRolls: []int{1, 2},
+		players: map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 5}, setup: true,
+	})
+}
+
+// TestCopiesOfAHandMadeNPCKeepTheHighestCountNotTheSum: two copies each spend one of the Mage's two
+// uses, so the NPC keeps 1 and each copy starts the next combat at 1; when one copy spends two and
+// the other one, the NPC keeps 2; the undo of the higher copy lowers it to the other's count.
+func TestCopiesOfAHandMadeNPCKeepTheHighestCountNotTheSum(t *testing.T) {
+	t.Parallel()
+	a, mage := handMadeMage(t)
+	const key = usedResource + "innate_2_day_bless"
+	a.twoMages(t, mage)
+	a.bumpCommitted(t, "Mago 1", key, 1)
+	a.bumpCommitted(t, "Mago 2", key, 1)
+	if got := a.storedUse(t, mage); got != `{"res:innate_2_day_bless": 1}` {
+		t.Fatalf("the NPC's count after each copy spent one = %s, want 1", got)
+	}
+	a.bumpCommitted(t, "Mago 1", key, 1)
+	if got := a.storedUse(t, mage); got != `{"res:innate_2_day_bless": 2}` {
+		t.Fatalf("the NPC's count after one copy spent two = %s, want 2", got)
+	}
+	a.bumpCommitted(t, "Mago 1", key, -1)
+	if got := a.storedUse(t, mage); got != `{"res:innate_2_day_bless": 1}` {
+		t.Errorf("the NPC's count after the undo of the higher copy = %s, want the other copy's 1", got)
+	}
+	a.endEncounter(t, a.get(t, a.master))
+	a.twoMages(t, mage)
+	for _, label := range []string{"Mago 1", "Mago 2"} {
+		if got := a.usedOf(t, label); got != `{"res:innate_2_day_bless": 1}` {
+			t.Errorf("%s starts the next combat at %s, want 1", label, got)
+		}
+	}
+}
+
+// TestAPlayersBumpLeavesNoNPCRow: a player's combatant counts nothing for an NPC.
+func TestAPlayersBumpLeavesNoNPCRow(t *testing.T) {
+	t.Parallel()
+	a, mage := handMadeMage(t)
+	a.mageCombat(t, mage, true)
+	a.bumpCommitted(t, "Toren", "1", 1)
+	if got := a.storedUse(t, a.characterOf(t, "Toren")); got != "" {
+		t.Errorf("the player's NPC row = %s, want none", got)
+	}
+}
+
+// TestTheUndoRestoresTheNPCCountAfterACarriedOverCount: a combat starts with the count the NPC
+// kept, a cast raises it and the undo brings it back to what it carried.
+func TestTheUndoRestoresTheNPCCountAfterACarriedOverCount(t *testing.T) {
+	t.Parallel()
+	a, mage := handMadeMage(t)
+	a.endEncounter(t, a.magicMissile(t, a.mageCombat(t, mage, false)))
+	e := a.magicMissile(t, a.mageCombat(t, mage, false))
+	if got := a.storedUse(t, mage); got != `{"1": 2}` {
+		t.Fatalf("the NPC's count after the second cast = %s, want 2", got)
+	}
+	a.undoLast(t, e)
+	if got := a.storedUse(t, mage); got != `{"1": 1}` {
+		t.Errorf("the NPC's count after the undo = %s, want the carried 1", got)
+	}
+	if got := a.usedOf(t, "Mago"); got != `{"1": 1}` {
+		t.Errorf("the combatant's count after the undo = %s, want the carried 1", got)
 	}
 }

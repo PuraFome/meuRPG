@@ -400,31 +400,6 @@ func (q *Queries) BumpCombatantSlotsUsed(ctx context.Context, arg BumpCombatantS
 	return err
 }
 
-const bumpNPCSpellUse = `-- name: BumpNPCSpellUse :exec
-INSERT INTO npc_spell_use (character_id, slots_used)
-SELECT cb.character_id, jsonb_build_object($1::text, GREATEST($2::int, 0))
-FROM combatants cb
-JOIN characters ch ON ch.id = cb.character_id
-WHERE cb.id = $3 AND cb.kind = 'npc'
-  AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
-ON CONFLICT (character_id) DO UPDATE
-SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[$1::text], to_jsonb(GREATEST(COALESCE((npc_spell_use.slots_used->>$1::text)::int, 0) + $2::int, 0)), true),
-    updated_at = now()
-`
-
-type BumpNPCSpellUseParams struct {
-	Key   string
-	Delta int32
-	ID    string
-}
-
-// The same delta as BumpCombatantSlotsUsed on the NPC's own count, when the combatant is a hand-made
-// NPC: a monster's character (combat_only) has no row, so each fight of it starts fresh.
-func (q *Queries) BumpNPCSpellUse(ctx context.Context, arg BumpNPCSpellUseParams) error {
-	_, err := q.db.Exec(ctx, bumpNPCSpellUse, arg.Key, arg.Delta, arg.ID)
-	return err
-}
-
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -566,7 +541,7 @@ const clearSetupCombatantsSpellUse = `-- name: ClearSetupCombatantsSpellUse :exe
 UPDATE combatants
 SET slots_used = '{}'
 FROM encounters e, npc_spell_use npc, characters ch
-WHERE e.id = combatants.encounter_id AND e.status <> 'active'
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
   AND npc.character_id = combatants.character_id
   AND ch.id = npc.character_id AND ch.campaign_id = $1
 `
@@ -10129,6 +10104,41 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const syncNPCSpellUse = `-- name: SyncNPCSpellUse :exec
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = $2 AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max((cb.slots_used->>$1::text)::int), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
+INSERT INTO npc_spell_use (character_id, slots_used)
+SELECT character_id, jsonb_build_object($1::text, n) FROM top
+ON CONFLICT (character_id) DO UPDATE
+SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[$1::text], excluded.slots_used->$1::text, true),
+    updated_at = now()
+`
+
+type SyncNPCSpellUseParams struct {
+	Key string
+	ID  string
+}
+
+// Sets the NPC's own count under one key to the highest count any combatant of that character holds in
+// this combat, after the combatant's bump: several copies of one hand-made NPC share one row, and the row
+// keeps what one individual spent, never the sum. The copies each start the next combat with it. A
+// monster's character (combat_only), a creature and a player write nothing, so each fight of a monster
+// starts fresh.
+func (q *Queries) SyncNPCSpellUse(ctx context.Context, arg SyncNPCSpellUseParams) error {
+	_, err := q.db.Exec(ctx, syncNPCSpellUse, arg.Key, arg.ID)
+	return err
 }
 
 const tallySessionSceneChecks = `-- name: TallySessionSceneChecks :many

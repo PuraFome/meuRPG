@@ -780,6 +780,7 @@ O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe s
 No teatro da mente (RN-25) os monstros não têm quadrado.
 Um NPC feito à mão que conjura guarda os espaços de magia e os usos por dia que gastou, de um combate para o outro, até o descanso longo da mesa.
 Um monstro em combate começa cada luta com todos os seus espaços e usos, porque cada luta traz um indivíduo novo.
+Várias cópias de um NPC feito à mão começam com a contagem que o NPC guardou, e ele guarda a maior contagem que uma cópia atingiu, não a soma.
 Um descanso curto não muda nada para um NPC.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 

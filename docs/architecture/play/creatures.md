@@ -116,7 +116,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The NPC's slots and uses are counted on the combatant (`combatants.slots_used`, the count a reaction's Shield uses), whatever its sheet.
   A cast spends them, the undo gives them back, and an at-will spell spends nothing.
   A monster (the `combat_only` NPC of a creature) starts every combat with an empty count.
-  A hand-made NPC keeps its count in `npc_spell_use`: it joins a combat with it, `bumpUsed` writes each change through to it, and the table's long rest clears it.
+  A hand-made NPC keeps its count in `npc_spell_use`: it joins a combat with it, `bumpUsed` writes each change through to it as the highest count any copy of the NPC holds in the combat (never the sum), each copy starts with it, and the table's long rest clears it.
   The master reads the slots and uses left in the options; a player never does.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.

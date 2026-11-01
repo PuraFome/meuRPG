@@ -5,8 +5,8 @@
 -- with it. The keys are the combatant's: "1" to "9" for a slot level, "pact", "res:<resource>" for a use.
 -- A monster of a combat (the combat_only NPC the app keeps for a creature) never has a row: each fight is a new
 -- individual and starts with all its slots and uses.
--- The combatant's count is copied here as it changes and copied back when the NPC joins a combat; the long rest
--- deletes the rows of the campaign. The row goes with its character.
+-- The highest count any copy of the NPC holds in a combat is kept here as it changes, and each copy gets it when it
+-- joins a combat; the long rest deletes the rows of the campaign. The row goes with its character.
 --
 -- Production is live: the table only adds, so running the migration twice is safe.
 CREATE TABLE IF NOT EXISTS npc_spell_use (

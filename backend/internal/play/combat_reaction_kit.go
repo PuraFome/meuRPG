@@ -212,8 +212,8 @@ func (s *Service) bumpUsed(ctx context.Context, c *combatTx, who playdb.Combatan
 		return fmt.Errorf("count the slot spent: %w", err)
 	}
 	// A hand-made NPC keeps the count until the table's long rest: the NPC's own count follows
-	// the combatant's, so an undo gives back on both. A monster's has no such count.
-	if err := c.q.BumpNPCSpellUse(ctx, playdb.BumpNPCSpellUseParams{ID: who.ID, Key: key, Delta: int32(delta)}); err != nil { //nolint:gosec // +1 or -1
+	// the highest of its copies' in this combat, so an undo gives back on both. A monster's has no such count.
+	if err := c.q.SyncNPCSpellUse(ctx, playdb.SyncNPCSpellUseParams{ID: who.ID, Key: key}); err != nil {
 		return fmt.Errorf("count the slot spent on the NPC: %w", err)
 	}
 	return nil
