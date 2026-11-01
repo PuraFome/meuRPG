@@ -199,7 +199,7 @@ func (b *overlayBuilder) checkSummonCreatureKeys(c *entryErrors, key, path strin
 		switch {
 		case slices.Index(keys, k) != i:
 			c.at(key, path, at, ReasonValue, "the creature %q is listed twice", truncateRunes(k, 60))
-		case !srd && !(strings.HasPrefix(k, CreatureKeyPrefix) && b.entries[k]):
+		case !srd && (!strings.HasPrefix(k, CreatureKeyPrefix) || !b.entries[k]):
 			c.at(key, path, at, ReasonReference, "the creature %q does not exist", truncateRunes(k, 60))
 		}
 	}

@@ -60,7 +60,10 @@ const (
 )
 
 // newRollsTable builds the world and starts the combat: Caio's paladin plays first.
-func newRollsTable(t *testing.T) *rollsTable { return newRollsTableWith(t, nil) }
+func newRollsTable(t *testing.T) *rollsTable {
+	t.Helper()
+	return newRollsTableWith(t, nil)
+}
 
 // newRollsTableWith is newRollsTable with a step between the heroes and the combat: what a test gives its heroes
 // before the combat begins (a creature that joins it).
