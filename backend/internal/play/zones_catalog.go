@@ -9,9 +9,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The spells that keep an area on the map while they last (SRD 5.1): Spirit Guardians, Moonbeam,
-// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth and Wall of Fire. The cast puts a zone on the map (the spell_zones table); what the zone does,
-// where it stands and how it moves is written here, one row for each spell, in our own words:
+// The spells that keep an area on the map while they last (SRD 5.1):
+// Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence,
+// Spike Growth and Wall of Fire.
+// The cast puts a zone on the map (the spell_zones table).
+// What the zone does, where it stands and how it moves is written here, one row for each spell, in our own words:
 //
 //   - Spirit Guardians: an aura around the caster that goes where the caster goes. A creature that
 //     comes into it or begins its turn in it makes a Wisdom saving throw and takes radiant damage
@@ -83,7 +85,7 @@ const (
 type zoneDef struct {
 	kind  zoneKind
 	shape grid.Shape
-	// sizeFt is the radius of a sphere or a cylinder, the side of a cube.
+	// sizeFt is the radius of a sphere or a cylinder, the side of a cube, the length of a line.
 	sizeFt int
 	// placement is how the cast puts the area on the map.
 	placement playv1.AreaPlacement

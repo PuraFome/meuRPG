@@ -25,8 +25,8 @@ type zone struct {
 	squares []grid.Square
 	in      map[grid.Square]bool
 	marks   map[string]string
-	// wall is how a wall zone was laid, nil for any other zone; reach is the squares that hurt a creature that ends its
-	// turn there (zones_wall.go).
+	// wall is how a wall zone was laid, nil for any other zone.
+	// reach is the squares within 10 ft of its damaging side, and the wall itself (zones_wall.go).
 	wall  *wallSpec
 	reach map[grid.Square]bool
 }

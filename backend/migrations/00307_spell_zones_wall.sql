@@ -17,8 +17,12 @@ ALTER TABLE spell_zones ADD CONSTRAINT spell_zones_wall_way_valid
 ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_length_valid;
 ALTER TABLE spell_zones ADD CONSTRAINT spell_zones_wall_length_valid
     CHECK (wall_length_ft BETWEEN 0 AND 60 AND wall_length_ft % 5 = 0);
+ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_pair_valid;
+ALTER TABLE spell_zones ADD CONSTRAINT spell_zones_wall_pair_valid
+    CHECK ((wall_side = '') = (wall_length_ft = 0));
 
 -- +goose Down
+ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_pair_valid;
 ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_length_valid;
 ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_way_valid;
 ALTER TABLE spell_zones DROP CONSTRAINT IF EXISTS spell_zones_wall_side_valid;

@@ -7758,7 +7758,7 @@ export enum DisabledReasonCode {
 
   /**
    * A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
-   * size and damaging side (CastSpellRequest.wall), which the screen cannot ask for yet.
+   * size and damaging side (CastSpellRequest.wall), which the screen does not send.
    *
    * @generated from enum value: DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED = 113;
    */

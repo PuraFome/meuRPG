@@ -10,9 +10,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// A wall (Wall of Fire, SRD 5.1) is a zone whose squares are a line or a ring that the caster lays from the point of
-// origin, not a shape of the spell's area. The wall is the squares of the zone; a creature is inside the wall when its
-// square is one of them.
+// A wall (Wall of Fire, SRD 5.1) is a zone whose squares are a line or a ring laid from the point of origin.
+// They are not a shape of the spell's area.
+// A creature is inside the wall when its square is one of them.
 
 // The largest a wall is, in feet: a straight wall's length and a ring's diameter.
 const (
@@ -35,7 +35,7 @@ type wallSpec struct {
 	Side playv1.WallSide `json:"side"`
 }
 
-// wallSideNames are the names the zone row keeps for the sides.
+// wallSideNames are the names the zone row keeps for the sides (wallOfRow reads them back).
 var wallSideNames = map[playv1.WallSide]string{
 	playv1.WallSide_WALL_SIDE_LEFT:  "left",
 	playv1.WallSide_WALL_SIDE_RIGHT: "right",
@@ -49,22 +49,20 @@ func needsWall(sp link.Spell) bool {
 	return ok && d.kind == zoneWall
 }
 
-// wallFor reads the wall of a cast or a preview. A spell that lays a wall on a map must have one, and no other spell
-// takes one; in a combat without a map nothing is laid, so a wall has no place there either.
-func wallFor(sp link.Spell, w *playv1.SpellWall, theatre bool) (*wallSpec, error) {
+// wallFor reads the wall of a cast or a preview on a map.
+// A spell that lays a wall must have one, laid from a point of origin.
+// No other spell takes one.
+func wallFor(sp link.Spell, w *playv1.SpellWall, origin *playv1.SpellOrigin) (*wallSpec, error) {
 	switch {
 	case !needsWall(sp):
 		if w != nil {
 			return nil, badArea("wall is for a spell that lays a wall")
 		}
 		return nil, nil
-	case theatre:
-		if w != nil {
-			return nil, badArea("a combat without a map has no wall to place: the master decides who is inside")
-		}
-		return nil, nil
 	case w == nil:
 		return nil, errWallPlacementRequired()
+	case origin == nil:
+		return nil, badArea("a wall is laid from the point of origin: set origin")
 	}
 	spec, err := readWall(w)
 	if err != nil {
@@ -79,9 +77,9 @@ func errWallPlacementRequired() error {
 		"this spell lays a wall: set wall with its shape, size and damaging side")
 }
 
-// refuseWallSpells lists the spells that lay a wall as unavailable on a map: the cast needs the wall's shape and side
-// (CastSpellRequest.wall), which the casting panel cannot ask for yet. A spell already off for another reason keeps
-// that reason.
+// refuseWallSpells lists the spells that lay a wall as unavailable on a map.
+// The cast needs the wall's shape and side (CastSpellRequest.wall), which the casting panel does not send.
+// A spell that is off for another reason keeps that reason.
 func refuseWallSpells(o *rulesv1.TurnOptions) {
 	for _, sp := range o.GetSpells() {
 		if d, ok := zoneDefOf(sp.GetSpell().GetKey()); ok && d.kind == zoneWall && sp.GetEnabled() {
@@ -91,16 +89,15 @@ func refuseWallSpells(o *rulesv1.TurnOptions) {
 	}
 }
 
-// readWall checks a wall the request sends and fills in its full size: a straight wall runs in one of the eight
-// directions and has a left or a right side, a ring has no direction and an inner or an outer side, and the length
-// is a multiple of 5 up to the size of the spell.
+// readWall checks a wall the request sends and fills in its full size.
+// A straight wall runs in one of the eight directions and has a left or a right side.
+// A ring has no direction and an inner or an outer side.
 func readWall(w *playv1.SpellWall) (wallSpec, error) {
-	size, side := wallLineFt, w.GetSide()
-	sideOK := side == playv1.WallSide_WALL_SIDE_LEFT || side == playv1.WallSide_WALL_SIDE_RIGHT
+	side := w.GetSide()
 	spec := wallSpec{Ring: w.GetRing(), Side: side}
+	size, sideOK := wallLineFt, side == playv1.WallSide_WALL_SIDE_LEFT || side == playv1.WallSide_WALL_SIDE_RIGHT
 	if w.GetRing() {
-		size = wallRingFt
-		sideOK = side == playv1.WallSide_WALL_SIDE_INNER || side == playv1.WallSide_WALL_SIDE_OUTER
+		size, sideOK = wallRingFt, side == playv1.WallSide_WALL_SIDE_INNER || side == playv1.WallSide_WALL_SIDE_OUTER
 		if w.GetDirection() != nil {
 			return wallSpec{}, badArea("a ringed wall has no direction")
 		}
@@ -116,54 +113,81 @@ func readWall(w *playv1.SpellWall) (wallSpec, error) {
 	if !sideOK {
 		return wallSpec{}, badArea("the side must be LEFT or RIGHT for a straight wall and INNER or OUTER for a ring")
 	}
-	spec.LengthFt = int(w.GetLengthFt())
-	if spec.LengthFt == 0 {
-		spec.LengthFt = size
+	length, err := wallLength(int(w.GetLengthFt()), size)
+	spec.LengthFt = length
+	return spec, err
+}
+
+// wallLength is the length a request asks for: 0 is the full size, anything else a multiple of 5 up to the size.
+func wallLength(asked, size int) (int, error) {
+	if asked == 0 {
+		return size, nil
 	}
-	if spec.LengthFt < grid.FeetPerSquare || spec.LengthFt > size || spec.LengthFt%grid.FeetPerSquare != 0 {
-		return wallSpec{}, badArea("length_ft must be a multiple of 5 up to the spell's size (60 for a straight wall, 20 for a ring), or 0 for the full size")
+	if asked < grid.FeetPerSquare || asked > size || asked%grid.FeetPerSquare != 0 {
+		return 0, badArea("length_ft must be a multiple of 5 up to the spell's size (60 for a straight wall, 20 for a ring), or 0 for the full size")
 	}
-	return spec, nil
+	return asked, nil
 }
 
 // wallOfRow rebuilds the wall a zone row keeps; nil for a zone that is no wall.
 func wallOfRow(side string, dx, dy int16, lengthFt int32) *wallSpec {
-	for s, name := range wallSideNames {
-		if name == side {
-			ring := s == playv1.WallSide_WALL_SIDE_INNER || s == playv1.WallSide_WALL_SIDE_OUTER
-			return &wallSpec{Ring: ring, Dir: grid.Direction{Dx: int(dx), Dy: int(dy)}, LengthFt: int(lengthFt), Side: s}
-		}
+	w := &wallSpec{Dir: grid.Direction{Dx: int(dx), Dy: int(dy)}, LengthFt: int(lengthFt)}
+	switch side {
+	case "left":
+		w.Side = playv1.WallSide_WALL_SIDE_LEFT
+	case "right":
+		w.Side = playv1.WallSide_WALL_SIDE_RIGHT
+	case "inner":
+		w.Side, w.Ring = playv1.WallSide_WALL_SIDE_INNER, true
+	case "outer":
+		w.Side, w.Ring = playv1.WallSide_WALL_SIDE_OUTER, true
+	default:
+		return nil
 	}
-	return nil
+	return w
 }
 
-// ringFt is the distance, in feet, of the squares of a ring from the point of origin: the radius, taken up to the next
-// multiple of 5.
+// ringFt is the distance of the squares of a ring from the point of origin, in feet.
+// It is the radius taken up to the next multiple of 5.
 func (w wallSpec) ringFt() int {
 	return (w.LengthFt/2 + grid.FeetPerSquare - 1) / grid.FeetPerSquare * grid.FeetPerSquare
 }
 
+// shape is the shape and the size the zone view tells: a line of the wall's length, or a sphere of the ring's radius.
+func (w wallSpec) shape() (grid.Shape, int) {
+	if w.Ring {
+		return grid.ShapeSphere, w.ringFt()
+	}
+	return grid.ShapeLine, w.LengthFt
+}
+
 // squares are the squares of the wall laid from the point of origin, before the terrain is looked at.
 //
-// A straight wall starts on the point of origin and takes one square at a time in its direction, while the distance
-// from the point of origin to the square, plus the square itself, is at most the length (the map's own distance, so a
-// wall of 60 feet has 12 squares along a row and 9 along a diagonal).
+// A straight wall starts on the point of origin.
+// It takes one square at a time in its direction.
+// A square is in while its distance from the point of origin, plus the square itself, is at most the length.
+// The distance is the map's own, so a wall of 60 feet has 12 squares along a row and 9 along a diagonal.
 //
-// A ring is the squares whose distance from the point of origin is the radius (half the diameter, taken up to the next
-// multiple of 5) and no less than 5 feet less: the diameter of 20 feet is the ring of the squares 10 feet out, and
-// the diameter of 10 feet is the 8 squares around the point of origin.
+// A ring is the squares at the radius from the point of origin.
+// The radius is half the diameter, taken up to the next multiple of 5.
+// A diameter of 20 feet is the squares 10 feet out.
+// A diameter of 10 feet is the 8 squares around the point of origin.
 func (w wallSpec) squares(origin grid.Square) []grid.Square {
 	if w.Ring {
 		return w.ringSquares(origin)
 	}
 	var out []grid.Square
-	for k := 0; ; k++ {
+	if !w.Dir.Valid() {
+		return out
+	}
+	for k := 0; k <= w.LengthFt/grid.FeetPerSquare; k++ {
 		sq := grid.Square{Col: origin.Col + k*w.Dir.Dx, Row: origin.Row + k*w.Dir.Dy}
 		if grid.RangeFt(origin, sq)+grid.FeetPerSquare > w.LengthFt {
-			return out
+			break
 		}
 		out = append(out, sq)
 	}
+	return out
 }
 
 func (w wallSpec) ringSquares(origin grid.Square) []grid.Square {
@@ -196,15 +220,17 @@ func (w wallSpec) laid(t grid.Terrain, origin grid.Square) []grid.Square {
 	return raw
 }
 
-// reach is the squares that hurt a creature that ends its turn there: the squares of the wall, and the squares within
-// 10 feet of it that lie on the damaging side.
+// reach is the squares of the wall and the squares within 10 feet of it that lie on the damaging side.
 //
-// Of a straight wall the side is the cross product of its direction and the way from the point of origin to the square.
-// Rows grow downward on the map, so a wall that runs east (dx 1, dy 0) has its left to the north: the squares of
-// the row above have a negative cross product, which is LEFT, and the squares below a positive one, which is RIGHT.
+// Of a straight wall the side is the sign of a cross product.
+// It is the direction of the wall crossed with the way from the point of origin to the square.
+// Rows grow downward on the map, so a wall that runs east (dx 1, dy 0) has its left to the north.
+// The squares of the row above it have a negative cross product, which is LEFT.
+// The squares below it have a positive one, which is RIGHT.
 // A square level with the wall, beyond its ends, is on neither side.
 //
-// Of a ring, INNER is the squares closer to the point of origin than the ring and OUTER the ones farther.
+// Of a ring, INNER is the squares closer to the point of origin than the ring.
+// OUTER is the squares farther.
 func (w wallSpec) reach(origin grid.Square, wall []grid.Square) map[grid.Square]bool {
 	out := make(map[grid.Square]bool, len(wall)*3)
 	span := wallReachFt / grid.FeetPerSquare
@@ -235,7 +261,7 @@ func (w wallSpec) onDamagingSide(origin, sq grid.Square) bool {
 	return cross > 0
 }
 
-// hurtsAtEnd says whether a creature that ends its turn on the square is hurt by the wall.
+// hurtsAtEnd says whether the square is one the damaging side of the wall reaches.
 func (z *zone) hurtsAtEnd(sq grid.Square) bool { return z.reach[sq] }
 
 // wallStored are the columns of a zone row that keep the wall.

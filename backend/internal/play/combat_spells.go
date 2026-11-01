@@ -168,8 +168,6 @@ func castError(r *rulesv1.DisabledReason, ignoreEconomy bool) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell takes too long to cast in a fight"))
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT:
 		return errArmorNotProficient()
-	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED:
-		return errWallPlacementRequired()
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell cannot be cast now"))
 }

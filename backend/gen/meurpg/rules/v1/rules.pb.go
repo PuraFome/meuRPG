@@ -1649,7 +1649,7 @@ const (
 	// it is not proficient with, and cannot cast spells (SRD 5.1, "Armor").
 	DisabledReasonCode_DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT DisabledReasonCode = 112
 	// A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
-	// size and damaging side (CastSpellRequest.wall), which the screen cannot ask for yet.
+	// size and damaging side (CastSpellRequest.wall), which the screen does not send.
 	DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED DisabledReasonCode = 113
 )
 

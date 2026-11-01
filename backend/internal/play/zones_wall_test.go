@@ -269,9 +269,206 @@ func TestWallOnAnotherSpellIsRefused(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("error = %v, want invalid_argument", err)
 	}
-	_, err = c.castWall(t, 4, func(r *playv1.CastSpellRequest) { r.Wall = &playv1.SpellWall{Side: playv1.WallSide_WALL_SIDE_LEFT} })
+}
+
+func TestAStraightWallWithoutADirectionIsRefused(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	_, err := c.castWall(t, 4, func(r *playv1.CastSpellRequest) { r.Wall = &playv1.SpellWall{Side: playv1.WallSide_WALL_SIDE_LEFT} })
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("a straight wall with no direction: error = %v, want invalid_argument", err)
+		t.Errorf("error = %v, want invalid_argument", err)
+	}
+}
+
+func TestAWallWithoutAPointOfOriginIsRefused(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	_, err := c.castArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), nil, nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("error = %v, want invalid_argument", err)
+	}
+	if zs := c.get(t, c.master).GetZones(); len(zs) != 0 {
+		t.Errorf("zones = %v, want none", zs)
+	}
+}
+
+func TestAWallInACombatWithoutAMapIsRefused(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.execSQL(t, `UPDATE encounters SET status = 'active', mode = 'theatre', grid_columns = 0, grid_rows = 0, map_id = NULL, map_point_id = NULL`)
+	_, err := c.castWall(t, 4, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("error = %v, want invalid_argument", err)
+	}
+}
+
+func TestAPlayersWallBeyondTheRangeIsRefusedAndTheMastersIsNot(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	// The map is 24 squares wide, so the encounter is widened to put a point past the 120 ft of the spell.
+	c.execSQL(t, `UPDATE encounters SET grid_columns = 48`)
+	far := func(u *user) error {
+		_, err := c.castArea(t, u, "Pensantus", wallOfFireKey, slotOfLevel(4), at(40, 7), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+		return err
+	}
+	wantBlockedBy(t, "CastSpell", far(c.ana), blockedOutOfReach)
+	if byLabel(t, c.get(t, c.master), "Pensantus").GetActionUsed() {
+		t.Error("the refused cast spent the action")
+	}
+	if err := far(c.master); err != nil {
+		t.Errorf("the master's cast was held to the range: %v", err)
+	}
+}
+
+func TestTheMasterCanLayTheWall(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.h.roller.queue(5, 5, 5, 5, 5, 5)
+	if _, err := c.castArea(t, c.master, "Pensantus", wallOfFireKey, slotOfLevel(4), at(7, 8), nil, northWall(playv1.WallSide_WALL_SIDE_RIGHT)); err != nil {
+		t.Fatalf("CastSpell() as the master error = %v", err)
+	}
+	if z := c.oneZone(t, c.master, wallOfFireKey); len(z.GetSquares()) != 2 {
+		t.Errorf("squares = %v, want 2", z.GetSquares())
+	}
+}
+
+// The answer of the cast draws the wall, and the answer of a retry of the same key draws the same one.
+func TestTheAnswerAndItsRetryDrawTheWall(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.h.roller.queue(20, 1, 1, 1, 1, 1)
+	key := newKey()
+	cast := func() *playv1.CastSpellResponse {
+		res, err := c.castWall(t, 4, func(r *playv1.CastSpellRequest) {
+			northWall(playv1.WallSide_WALL_SIDE_LEFT)(r)
+			r.IdempotencyKey = key
+		})
+		if err != nil {
+			t.Fatalf("CastSpell() error = %v", err)
+		}
+		return res
+	}
+	first, retry := cast(), cast()
+	for name, res := range map[string]*playv1.CastSpellResponse{"cast": first, "retry": retry} {
+		got := res.GetArea().GetSquares()
+		if len(got) != 2 || got[0].GetCol() != 7 || got[1].GetCol() != 7 {
+			t.Errorf("area of the %s = %v, want the squares (7,7) and (7,8)", name, got)
+		}
+	}
+	if zs := c.get(t, c.master).GetZones(); len(zs) != 1 {
+		t.Errorf("zones after the retry = %d, want 1", len(zs))
+	}
+}
+
+func TestAPreviewOfTheWallShowsTheSquaresTheCastLays(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	wall := &playv1.SpellWall{Direction: toward(0, -1), Side: playv1.WallSide_WALL_SIDE_LEFT}
+	res, err := c.ana.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
+		CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), CasterId: c.id(t, "Pensantus"), SpellKey: wallOfFireKey,
+		Slot: slotOfLevel(4), Area: &playv1.PreviewSpellAreaRequest_Origin{Origin: at(7, 8)}, Wall: wall,
+	}))
+	if err != nil {
+		t.Fatalf("PreviewSpellArea() error = %v", err)
+	}
+	if got := labelsOfTargets(res.Msg); !slices.Equal(got, []string{"Ogro"}) {
+		t.Errorf("targets = %v, want the ogre", got)
+	}
+	c.h.roller.queue(20, 1, 1, 1, 1, 1)
+	if _, err := c.castWall(t, 4, northWall(playv1.WallSide_WALL_SIDE_LEFT)); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	z := c.oneZone(t, c.master, wallOfFireKey)
+	if len(res.Msg.GetSquares()) != len(z.GetSquares()) {
+		t.Fatalf("preview squares = %v, zone squares = %v", res.Msg.GetSquares(), z.GetSquares())
+	}
+	for _, s := range res.Msg.GetSquares() {
+		if !zoneHas(z, s.GetCol(), s.GetRow()) {
+			t.Errorf("the preview has %v, which the zone does not", s)
+		}
+	}
+	_, err = c.ana.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
+		CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), CasterId: c.id(t, "Pensantus"), SpellKey: wallOfFireKey,
+		Slot: slotOfLevel(4), Area: &playv1.PreviewSpellAreaRequest_Origin{Origin: at(7, 8)},
+	}))
+	wantBlockedBy(t, "PreviewSpellArea without a wall", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED)
+}
+
+// The ring around (19,7) holds the goblin, moved to (21,8), and is told to the viewer as a sphere of its radius.
+func TestARingedWallIsLaidAroundThePoint(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.mustMove(t, c.master, "Goblin", 21, 8)
+	c.h.roller.queue(5, 5, 5, 5, 5, 5)
+	_, err := c.castArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(19, 7), nil, func(r *playv1.CastSpellRequest) {
+		r.Wall = &playv1.SpellWall{Ring: true, Side: playv1.WallSide_WALL_SIDE_OUTER}
+	})
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	z := c.oneZone(t, c.master, wallOfFireKey)
+	if len(z.GetSquares()) != 16 || zoneHas(z, 19, 7) || !zoneHas(z, 21, 7) || !zoneHas(z, 21, 8) {
+		t.Errorf("squares = %v, want the 16 squares 10 ft from (19,7)", z.GetSquares())
+	}
+	if z.GetShape() != rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_SPHERE || z.GetSizeFt() != 10 {
+		t.Errorf("shape %v size %d, want a sphere of 10 ft: the ring's radius", z.GetShape(), z.GetSizeFt())
+	}
+	if cur, _, _ := c.hp(t, "Goblin"); cur > 0 {
+		t.Errorf("the goblin has %d hit points, want it down: it stands in the ring", cur)
+	}
+}
+
+func TestAStraightWallIsToldAsALineOfItsLength(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.h.roller.queue(20, 1, 1, 1, 1, 1)
+	_, err := c.castWall(t, 4, func(r *playv1.CastSpellRequest) {
+		r.Wall = &playv1.SpellWall{Direction: toward(0, -1), Side: playv1.WallSide_WALL_SIDE_LEFT, LengthFt: 25}
+	})
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	if z := c.oneZone(t, c.master, wallOfFireKey); z.GetShape() != rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_LINE || z.GetSizeFt() != 25 {
+		t.Errorf("shape %v size %d, want a line of 25 ft", z.GetShape(), z.GetSizeFt())
+	}
+}
+
+// A player's character inside the wall at the cast is asked its save, and a failure leaves the damage for the master.
+func TestAPlayerInsideTheWallIsAskedTheSaveAtTheCast(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(5, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("Toren's player has no question: the wall caught his character at the cast")
+	}
+	if p := w.GetEffectSave(); p.GetZoneReason() != "zone_cast" || p.GetAbility() != "dex" || !p.GetHalfOnSave() {
+		t.Errorf("prompt = %v, want a Dexterity zone save at the cast with half on a pass", p)
+	}
+	c.h.roller.queue(4, 4, 4, 4, 4) // 5d8 = 20
+	if _, err := c.rollEffectSave(t, c.caio, c.get(t, c.master), w.GetId(), effectSaveFace(1)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	var amount int32
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT amount FROM pending_damages WHERE target_id = $1 AND effect_source_key = $2`, c.id(t, "Toren"), wallOfFireKey).Scan(&amount); err != nil || amount != 20 {
+		t.Errorf("pending damage = %d, %v, want 20", amount, err)
+	}
+}
+
+func TestAWallWithNoDirectionLaysNothingInTheGeometry(t *testing.T) {
+	t.Parallel()
+	if got := (wallSpec{LengthFt: 60}).squares(wsq(5, 5)); len(got) != 0 {
+		t.Errorf("squares = %v, want none for a wall that runs nowhere", got)
 	}
 }
 

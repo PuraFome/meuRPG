@@ -451,11 +451,8 @@ func (f *castFlow) readMap(ctx context.Context) error {
 // inside (planArea); without a map the caster lists them and the master judges.
 func (f *castFlow) placeArea(ctx context.Context) error {
 	var err error
-	if f.wall, err = wallFor(f.sp, f.req.GetWall(), isTheatre(f.c.enc)); err != nil {
+	if f.wall, err = f.wallOfRequest(); err != nil {
 		return err
-	}
-	if f.wall != nil && f.req.GetOrigin() == nil {
-		return badArea("a wall is laid from the point of origin: set origin")
 	}
 	// A spell that keeps its area on the map lays it only when the request chooses a point: a cast without one is the
 	// spell as it was before the zones (its targets, its effects), and lays nothing.
@@ -471,6 +468,18 @@ func (f *castFlow) placeArea(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell has no area to place on this map: list its targets"))
 	}
 	return nil
+}
+
+// wallOfRequest reads the wall of the request.
+// A combat without a map lays nothing, so a wall has no place there.
+func (f *castFlow) wallOfRequest() (*wallSpec, error) {
+	if isTheatre(f.c.enc) {
+		if f.req.GetWall() != nil {
+			return nil, badArea("a combat without a map has no wall to place: the master decides who is inside")
+		}
+		return nil, nil
+	}
+	return wallFor(f.sp, f.req.GetWall(), f.req.GetOrigin())
 }
 
 // planPlacedArea places the area the request chose and takes its creatures as the targets.

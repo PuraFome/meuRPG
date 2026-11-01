@@ -406,12 +406,9 @@ func (s *Service) previewPlan(
 	if err != nil {
 		return areaPlan{}, err
 	}
-	wall, err := wallFor(sp, msg.GetWall(), false)
+	wall, err := wallFor(sp, msg.GetWall(), msg.GetOrigin())
 	if err != nil {
 		return areaPlan{}, err
-	}
-	if wall != nil && msg.GetOrigin() == nil {
-		return areaPlan{}, badArea("a wall is laid from the point of origin: set origin")
 	}
 	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
