@@ -48,7 +48,7 @@ The content loaders refuse malformed content, and `TestSnapshot`, `TestReference
 
 Integration tests run against a real database: set `MEURPG_TEST_DATABASE_URL` and run `make test`.
 The URL may name a PostgreSQL or a CockroachDB server: `backend/internal/platform/dbtest` asks the server which it is.
-On PostgreSQL the test database is a native `CREATE DATABASE … TEMPLATE` copy, and the CockroachDB-only parts of the migrations are adapted by the test runner (the migrations are not changed).
+On PostgreSQL the test database is a native `CREATE DATABASE ... TEMPLATE` copy, and the CockroachDB-only parts of the migrations are adapted by the test runner (the migrations are not changed).
 A test that compares a `jsonb` column read as text calls `dbtest.SortJSONKeys` on it, because the two databases print the keys in a different order.
 Without the variable they skip; with `MEURPG_REQUIRE_DB=1` (CI sets it) a missing variable fails them instead (`backend/internal/platform/testenv`).
 

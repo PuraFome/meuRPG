@@ -140,6 +140,7 @@ func TestInTxCommitFailures(t *testing.T) {
 		{"the database answered with a constraint error", answered, false},
 		{"the connection broke", broken, true},
 		{"CockroachDB does not know", unknown, true},
+		{"PostgreSQL answered COMMIT with ROLLBACK", pgx.ErrTxCommitRollback, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

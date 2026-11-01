@@ -17,9 +17,10 @@ type TxStarter interface {
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 }
 
-// defaultRetryPolicy (cockroach-go's policy type, which counts the attempts and
-// ends them with *crdb.MaxRetriesExceededError) waits 10ms, 20ms, 40ms... (capped at 500ms) between
-// attempts and gives up after 8 retries (about 1.6s of waiting in total).
+// defaultRetryPolicy is cockroach-go's policy type: it counts the attempts and
+// ends them with *crdb.MaxRetriesExceededError.
+// It waits 10ms, 20ms, 40ms... (capped at 500ms) between attempts.
+// It gives up after 8 retries (about 1.6s of waiting in total).
 // Backing off, instead of retrying immediately, gives the transaction we
 // collided with time to finish.
 var defaultRetryPolicy crdb.RetryPolicy = &crdb.ExpBackoffRetryPolicy{
@@ -31,7 +32,8 @@ var defaultRetryPolicy crdb.RetryPolicy = &crdb.ExpBackoffRetryPolicy{
 // InTx runs fn inside a transaction and commits it when fn returns nil.
 //
 // Why retries: every transaction begins with ISOLATION LEVEL SERIALIZABLE,
-// which is all CockroachDB has and is asked for explicitly on PostgreSQL. When two transactions touch the same rows concurrently, the
+// which is all CockroachDB has and is asked for explicitly on PostgreSQL.
+// When two transactions touch the same rows concurrently, the
 // database may abort one of them with SQLSTATE 40001 ("restart transaction"),
 // or 40P01 on a deadlock, instead of letting them produce an inconsistent
 // result. The fix is simply to run the transaction again, and InTx does that
@@ -127,7 +129,7 @@ func runTx(ctx context.Context, conn TxStarter, opts pgx.TxOptions, policy crdb.
 		select {
 		case <-time.After(delay):
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Join(ctx.Err(), err)
 		}
 	}
 }
@@ -143,12 +145,12 @@ func attempt(ctx context.Context, conn TxStarter, opts pgx.TxOptions, fn func(pg
 	finished := false
 	defer func() {
 		if !finished {
-			_ = tx.Rollback(context.WithoutCancel(ctx))
+			rollback(ctx, tx)
 		}
 	}()
 	if err := runAttempt(tx, fn); err != nil {
 		finished = true
-		_ = tx.Rollback(context.WithoutCancel(ctx))
+		rollback(ctx, tx)
 		return err
 	}
 	finished = true
@@ -159,6 +161,9 @@ func attempt(ctx context.Context, conn TxStarter, opts pgx.TxOptions, fn func(pg
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code != sqlstateUnknownCommit {
 		return err // the database answered: the transaction was not saved
 	}
+	if errors.Is(err, pgx.ErrTxCommitRollback) || errors.Is(err, pgx.ErrTxClosed) {
+		return err // PostgreSQL answered COMMIT with ROLLBACK: the transaction was not saved
+	}
 	return &AmbiguousCommitError{cause: err}
 }
 
@@ -167,3 +172,10 @@ func attempt(ctx context.Context, conn TxStarter, opts pgx.TxOptions, fn func(pg
 //
 //go:noinline
 func runAttempt(tx pgx.Tx, fn func(pgx.Tx) error) error { return fn(tx) }
+
+// rollback ends tx even when ctx is already cancelled, but never waits on a hung connection for long.
+func rollback(ctx context.Context, tx pgx.Tx) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	_ = tx.Rollback(ctx)
+}

@@ -8,12 +8,15 @@ With a few simultaneous requests every one holds a connection and waits for anot
 
 | Helper | Use |
 | --- | --- |
-| `db.InTx(ctx, pool, fn)` | Every write. It runs `fn` in a transaction and, on SQLSTATE `40001` (CockroachDB's serialization conflict), rolls back and runs `fn` again. |
+| `db.InTx(ctx, pool, fn)` | Every write. It runs `fn` in a transaction and, on SQLSTATE `40001` (CockroachDB's serialization conflict), rolls back and runs `fn` again. SQLSTATE `40P01` (a deadlock) is retried too. |
 | `db.ReadTx(ctx, pool, fn)` | A read that joins several statements into one response. `READ ONLY` on every attempt, with the same retry. |
 
 Both run one loop of our own (`backend/internal/platform/db/tx.go`) on CockroachDB and on PostgreSQL.
-The loop retries on `40001` and `40P01`, backs off with the cockroach-go retry policy, and opens each attempt with `BEGIN` at `SERIALIZABLE` and the transaction's access mode.
-It reads the error of `COMMIT`: PostgreSQL reports a lost serialization race there, where CockroachDB reports it at `RELEASE SAVEPOINT`, and the cockroach-go helper drops the `COMMIT` error, so it would report success for a write that was lost.
+The loop backs off with the cockroach-go retry policy.
+It opens each attempt with `BEGIN` at `SERIALIZABLE` and the transaction's access mode.
+It reads the error of `COMMIT`.
+A lost serialization race can surface there, so a lost write is never reported as success.
+A `COMMIT` that PostgreSQL answers with `ROLLBACK` returns that error as a plain failure.
 A `COMMIT` whose outcome is unknown (`40003`, or a connection that broke) returns `*db.AmbiguousCommitError`, which `rpcerr` answers as an unknown outcome and never retries.
 
 `fn` may run more than once, so it follows the rules below.
