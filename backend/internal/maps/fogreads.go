@@ -27,6 +27,7 @@ func visionKey(mapID string) string { return "vision:" + mapID }
 
 // visionChangedEvent is the hint that tells one player to read the map's view
 // again. It carries the map, which the player sees, and nothing of what changed.
+// It is also sent to the master, whose light warning reads the same scene.
 func visionChangedEvent(mapID string) *playv1.WatchGameSessionResponse {
 	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_VisionChanged_{
 		VisionChanged: &playv1.WatchGameSessionResponse_VisionChanged{MapId: mapID},

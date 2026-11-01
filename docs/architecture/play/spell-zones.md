@@ -79,7 +79,7 @@ Fog Cloud and Stinking Cloud are clouds (`sightCloud`); Darkness is magical dark
 The squares of these zones reach the fog through `CombatPositions` (`mapseam.go`, `sightZonesOn`): `Clouds` and `MagicDark`.
 `vision.Scene.Clouds` and `MagicDark` are layers of the map's grid; the rules are in [Fog of war](../maps/fog.md#zones-that-block-sight).
 The scene's cache key (`litKeyOf`) hashes both lists, so a zone with other squares is another scene.
-No RPC or event of its own carries it: any change to the squares or the existence of a sight zone tells the fog (`zoneChanged` sets `zonesMoved`, and `tellEnded` calls `VisionChanged` after the commit, which tells the master's light warning too).
+No RPC or event of its own carries it: any change to the squares or the existence of a sight zone tells the fog and the master's light warning.
 A hidden caster's cloud still blocks sight.
 
 ## Stinking Cloud
@@ -93,7 +93,8 @@ The text a player reads when asked is in `zoneSaveText` (`zones_save.go`).
 ## What a zone does not change in an attack
 
 A cloud or darkness changes what a viewer sees on the map.
-It does not give an attack advantage or disadvantage, and a creature inside is not "unseen" in an attack roll by it.
+An attack or damage roll gets no advantage or disadvantage from a cloud or a Darkness.
+Who sees whom for a reaction follows them: a reactor that cannot see the mover or the caster does not get an opportunity attack, a Counterspell or a reaction to damage.
 Whether an NPC attacks a player it cannot see with disadvantage is not ruled, nor is any attack rule on a map with the fog off (issue #700, under #640).
 
 ## The save question, the end and the other effects

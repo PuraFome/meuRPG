@@ -295,7 +295,7 @@ func planOn(v combatViewer, actual grid.Terrain, known *grid.Terrain) grid.Terra
 // attack sees the mover (D1b). Without the fog everyone does (the hidden mover is
 // left out by the caller). With the fog every reactor, of any kind, sees from its
 // own square with its own senses (SRD: a creature perceives with its own eyes;
-// darkvision, blindsight and truesight from the sheet or stat block, plain sight when
+// darkvision, blindsight, truesight and Devil's Sight from the sheet or stat block, plain sight when
 // it gives none), in the light of the map, whatever "Visão do grupo" shows its player.
 // It is a pair check, so the reach filter runs first and only the reactors a move
 // leaves are asked. at is the square the mover stood on, where it was when it left.

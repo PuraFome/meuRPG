@@ -335,11 +335,9 @@ func TestADarknessTakesACreatureOffTheMapOfADarkvisionPlayer(t *testing.T) {
 	// The creature moves inside the Darkness: the stream of the warlock and of the master say where, Ana's says nothing of it.
 	z.forceMove(z.foeC, foeCol+1, foeRow)
 	events := z.endAndCollect(watchers)
-	for _, p := range []*person{ana} {
-		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
-		if combatants, tokens := moved(events[p]); slices.Contains(combatants, z.foeC) || slices.Contains(tokens, z.foe.GetId()) {
-			t.Errorf("%s's stream says the creature moved: %v %v", p.name, combatants, tokens)
-		}
+	requireClean(t, ana.name, "the stream", bytesOf(events[ana]), needles)
+	if combatants, tokens := moved(events[ana]); slices.Contains(combatants, z.foeC) || slices.Contains(tokens, z.foe.GetId()) {
+		t.Errorf("%s's stream says the creature moved: %v %v", ana.name, combatants, tokens)
 	}
 	for _, p := range []*person{caio, master} {
 		if combatants, _ := moved(events[p]); !slices.Contains(combatants, z.foeC) {

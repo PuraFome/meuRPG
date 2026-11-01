@@ -17,8 +17,8 @@ import (
 const basicPassivePerception = 10
 
 // PartyVision returns the campaign's player characters that have a player (the
-// living ones, and the dead ones as Dead), each with what it sees with: its derived darkvision, blindsight and
-// truesight (MR-036). The maps module asks for it to work out what each
+// living ones, and the dead ones as Dead), each with what it sees with: its derived darkvision, blindsight,
+// truesight and Devil's Sight (MR-036). The maps module asks for it to work out what each
 // player sees on a map with the fog of war on, after its own authorization
 // check, so it takes no caller. It implements maps.CharacterDirectory.
 //

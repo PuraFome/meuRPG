@@ -16,7 +16,7 @@ flowchart LR
     Mem[("map_vision_memory: what each player has seen")] --> Eff
     View --> Eff["what each player knows: now + remembered"]
     Eff --> Reads["GetMap, ListMaps, GetMapLayers, GetMapVision"]
-    Eff -->|"vision_changed"| Stream["stream: only who changed"]
+    Eff -->|"vision_changed"| Stream["stream: who changed, and the master"]
     View -->|"writes that change what is seen"| Mem
 ```
 
@@ -25,7 +25,7 @@ flowchart LR
 - A player sees through their **living character**, on the token's square or, while a combat runs on the map, on the combatant's square (`maps.CombatMaps.CombatPositions`, implemented by `play`; tokens return to their place at the end of combat).
 - With "Visão do grupo" on, everyone sees the union of all player characters' sight.
 - A character without a token on the map sees nothing new (only what they remember); a dead one neither.
-- Senses (darkvision, blindsight, truesight, Devil's Sight) come from the derived sheet through `maps.CharacterDirectory.PartyVision` (implemented by `characters.Service`). In Wild Shape the beast's senses rule, and the familiar a player is seeing through arrives as `link.PartyMember.Eyes`.
+- Senses (darkvision, blindsight, truesight, Devil's Sight) come from the derived sheet through `maps.CharacterDirectory.PartyVision` (implemented by `characters.Service`). In Wild Shape the beast's senses rule, so a druid in beast form loses Devil's Sight, and the familiar a player is seeing through arrives as `link.PartyMember.Eyes`.
 - The carried light lives on the token (`map_tokens.carried_light`) and moves with the token or the combatant. A token the master hid keeps lighting the map without appearing.
 
 ## The scene and the cache
@@ -42,13 +42,12 @@ The scene (grid, walls, base light, painted light, light points, carried lights,
 
 Fog Cloud, Stinking Cloud and Darkness are zones of `play` (RN-37).
 `CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscuredLayer` turns each list of `obscured` into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
-`play` tells `maps` that a zone changed through `VisionChanged`, as Wild Shape and a familiar's sight do, so the revision of what the players see moves and the usual `vision_changed` goes out; no RPC or event of its own carries it.
-`VisionChanged` also sends `vision_changed` to the master, whether or not a player's view moved, because his light warning reads the same scene.
+`play` tells `maps` that a zone changed through `VisionChanged`, as Wild Shape and a familiar's sight do, so the revision of what the players see moves and the usual `vision_changed` goes out, also to the master; no RPC or event of its own carries it.
 In `rules/vision`:
 
 - A line that crosses a cloud square is blocked, as a wall blocks it, but the cloud square itself is not a wall.
 - A square in a cloud is not seen from outside, and a viewer in a cloud sees only its own square.
-- Two of these lines are the table's ruling: a viewer inside a cloud sees only its own square, and a line crossing a cloud is blocked.
+- That a viewer inside a cloud sees only its own square, and that a line crossing a cloud is blocked, is the table's ruling.
 - The SRD heavy obscurement only blinds a creature trying to see something in the area.
 - Blindsight within its range sees through a cloud.
 - A square of magical darkness has no light (`Dark`) and darkvision does not work in it. Truesight, blindsight and Devil's Sight do.
@@ -62,7 +61,8 @@ That effect never reveals the caster.
 The players get its footprint as the squares they cannot see now, with no zone and no caster.
 
 A map without fog never builds a scene, so its zones change nothing about sight.
-The attack rules do not read these squares.
+An attack or damage roll gets no advantage or disadvantage from a cloud or a Darkness.
+Who sees whom for a reaction follows them: a reactor that cannot see the mover or the caster through a cloud, or in a Darkness without Devil's Sight, truesight or blindsight in range, gets no opportunity attack, Counterspell or reaction to damage (`reactorSees`).
 Whether an NPC attacks a player it cannot see with disadvantage is not ruled, nor is any attack rule on a map with the fog off (issue #700).
 
 ## What was seen stays
@@ -101,8 +101,13 @@ With the fog on and `base_light = 'bright'` ("Claro"), a player receives the ter
 `ListCharactersInTheDark(campaign_id, map_id)` (`maps/darkwarning.go`) tells the master which player characters see nothing where they stand. It is the master's alone: a player gets `permission_denied`, a non-member `not_found` (RN-10), because the answer is worked out from lights a player cannot see.
 
 - **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` (the light is dark there, or the square is in a Darkness) and none of its darkvision, blindsight, truesight or Devil's Sight covers it.
-  Darkvision does not work in a Darkness, so a viewer with only darkvision in one is in the dark. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
-- **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark. Fog off, a map without a grid, a character without a token on this map and a dead character list nobody. "Penumbra" and "Claro" list nobody either, unless a Darkness is up: it makes its squares dark whatever the base light. The cause is always `DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`, for no light and for a Darkness alike. The map's base light name is the master's `Map.base_light`, already in `GetMap`.
+  A viewer with only darkvision in a Darkness is in the dark. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
+- **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark.
+  Fog off, a map without a grid, a character without a token on this map and a dead character list nobody.
+  "Penumbra" and "Claro" list nobody either, unless a Darkness is up.
+  A Darkness makes its squares dark whatever the base light.
+  The cause is always `DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`, for no light and for a Darkness alike.
+  The map's base light name is the master's `Map.base_light`, already in `GetMap`.
 - **When to ask again.** The read has no stream of its own. Every change that moves a light or a character already reaches the master as `map_changed` (a carried light, set or put out, by the master or the owner; a Luz point; a token placed, hidden or shown; painting; the fog and base light) or as `token_moved` (a character's move). A change of what is seen (a Darkness appearing, moving or ending, a Wild Shape, a familiar's eyes) reaches him as `vision_changed` (`SessionMaps.VisionChanged`).
   The master's screen reads again on those three (`scheduleVision` reads the warning with the vision), and a failed read shows no warning.
 
@@ -112,7 +117,7 @@ Tests: `TestRN10_DarkWarning_*` (`maps`), `TestInTheDark` (`rules/vision`), and 
 
 The notice is `vision_changed{map_id}`, contentless: the app reads `GetMapVision` and the map again.
 It goes to **each player whose sight, memory or received layers changed**.
-`SessionMaps.VisionChanged` also sends it to the master alone, uncoalesced, whether or not a player's view moved.
+The master gets it too, alone and uncoalesced, whether or not a player's view moved.
 
 - `refreshVision` stores the last revision each player was notified of and compares. A `GetMapVision` read does **not** count as a notice: a page reads the view as soon as a `token_moved` arrives, sometimes before the move's recalculation, and if the read counted, the recalculation would find nothing new and the page would leave an enemy on the map that had left the view. The revision includes the filtered layers, so terrain or cover painted where they see, or a wall where they only remember, also notify; so does a player who only remembers and has no living character.
 - After a restart, or when the server drops a map (the last 64 used maps stay, `maxTrackedMaps`), a player the server has no record of is only notified if something they see or remember really changed.

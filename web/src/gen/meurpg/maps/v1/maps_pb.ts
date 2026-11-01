@@ -5422,8 +5422,8 @@ export const MapService: GenService<{
    * nothing where they stand on a map: the map has the fog of war on, the square
    * is dark (the base light "Escuro" and no painted light or light source reaches
    * it, a hidden NPC's light and a carried light included, or the square is in a
-   * Darkness) and the character has no darkvision, blindsight or truesight that
-   * works there (darkvision does not work in a Darkness). With "Penumbra" or
+   * Darkness) and the character has no darkvision, blindsight, truesight or Devil's Sight
+   * that works there (darkvision does not work in a Darkness). With "Penumbra" or
    * "Claro" as the base light the list is empty unless a Darkness is up, and
    * without the fog nobody is in the dark. Only the characters that stand on this map are listed, living
    * ones that have a player. The answer is the master's alone (RN-10): it is
