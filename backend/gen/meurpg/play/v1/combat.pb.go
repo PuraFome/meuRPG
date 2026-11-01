@@ -13525,6 +13525,7 @@ type SpellSlot struct {
 	Pact bool `protobuf:"varint,2,opt,name=pact,proto3" json:"pact,omitempty"`
 	// The resource of an innate spell's uses a day, when the spell is cast with one of
 	// them and not with a slot (level is then the spell's own). Empty for a slot.
+	// Only the master and the caster's owner read the resource itself; any other viewer reads "innate".
 	Resource      string `protobuf:"bytes,3,opt,name=resource,proto3" json:"resource,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

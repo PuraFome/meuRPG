@@ -6202,6 +6202,7 @@ export type SpellSlot = Message<"meurpg.play.v1.SpellSlot"> & {
   /**
    * The resource of an innate spell's uses a day, when the spell is cast with one of
    * them and not with a slot (level is then the spell's own). Empty for a slot.
+   * Only the master and the caster's owner read the resource itself; any other viewer reads "innate".
    *
    * @generated from field: string resource = 3;
    */
