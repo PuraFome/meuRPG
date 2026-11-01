@@ -476,3 +476,41 @@ func TestSlowFallButtonUndoOpensTheQuestionAgain(t *testing.T) {
 		t.Error("the reaction is still spent after the undo")
 	}
 }
+
+// A "Deixar passar" on a fall window is a reaction_answered event, which the master's undo does not take back: it is not the
+// undoable event of the log and an undo that names it is refused, so the fall that went on stays with the master.
+func TestAPassOnAFallWindowIsNotUndoable(t *testing.T) {
+	t.Parallel()
+	feather := playv1.ReactionKind_REACTION_KIND_FEATHER_FALL
+	for name, tc := range map[string]struct {
+		rig    func(t *testing.T) (*trapRig, *playv1.Encounter)
+		kind   playv1.ReactionKind
+		player func(r *trapRig) *user
+	}{
+		"Slow Fall": {func(t *testing.T) (*trapRig, *playv1.Encounter) {
+			t.Helper()
+			r, e := slowFallRig(t, 4, "6d6", false, fiveSixTimes()...)
+			r.torenFalls(t)
+			return r, e
+		}, slowFallKind, func(r *trapRig) *user { return r.caio }},
+		"Feather Fall": {fallingRig, feather, func(r *trapRig) *user { return r.ana }},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r, e := tc.rig(t)
+			r.mustAnswer(t, tc.player(r), e, r.windowOf(t, tc.player(r), tc.kind).GetId(), passAnswer)
+			if status, _ := r.fallOf(t, "Toren"); status != "rolled" {
+				t.Fatalf("Toren's fall = %s after the pass, want rolled", status)
+			}
+			if id := r.armed.log(t, r.master, e).GetUndoableEventId(); id != "" {
+				t.Errorf("the log offers %s to undo after a pass, want nothing", id)
+			}
+			if err := r.undo(t, r.master, e, newKey()); err == nil {
+				t.Error("an undo after a pass succeeded")
+			}
+			if status, _ := r.fallOf(t, "Toren"); status != "rolled" {
+				t.Errorf("Toren's fall = %s after the refused undo, want rolled", status)
+			}
+		})
+	}
+}

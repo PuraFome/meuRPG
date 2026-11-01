@@ -19,12 +19,12 @@ The die is described in [Rests and resources](rests-and-resources.md#table-dice-
 It joins the dice an effect adds (Bless), after them.
 It is rolled with the attack, or typed as the last of `extra_die_faces`.
 It is added to the total and listed in the roll's `extra_dice` and in the attacker's log line.
-`checkManeuver` refuses an NPC attacker, a spell attack and a die of another `applies` (`invalid_argument`).
-It refuses a pool with no use left (`NO_USES_LEFT`).
-It runs before the roll and again on the replay of a held roll.
-The use is spent when the attack is written (`rollExtraDice`) and kept in `ManeuverSpent`.
+The roll is refused for an NPC attacker, a spell attack and a die of another `applies` (`invalid_argument`).
+It is refused when the pool has no use left (`NO_USES_LEFT`).
+The checks run before the roll and again on the replay of a held roll.
+One use is spent when the attack is written.
 A held roll spends it once, on the replay.
-The master's undo gives it back (`maneuverBack`).
+The master's undo gives the use back.
 A replay refused because the pool changed is dropped, and only the master reads it in the log.
 A natural 1 still misses, and a critical hit does not double the die.
 The die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.

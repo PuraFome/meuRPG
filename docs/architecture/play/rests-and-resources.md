@@ -131,7 +131,7 @@ The `superiority_die` effects of applies `check`, `save`, `initiative` and `atta
 - On the checks and saves the die joins the dice an effect adds (`effectDie.ManeuverResource`): it is rolled with them (in the app, or typed as the last of `extra_die_faces`), added to the total and shown as a source ("Nome +1d6: 4"). The resource is spent when the roll is written (`spendManeuverDice`, so a roll that waits for a Lucky or Bardic Inspiration question spends nothing), and the event keeps it in `ManeuverSpent`.
 - On a weapon attack (`RollAttack`) the die is added to the attack roll, as Bless's die is.
   The use is spent when the attack is written ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)).
-  `maneuverFits` takes any weapon attack.
+  Any weapon attack takes the die.
   The attack roll refuses a spell attack and an NPC attacker.
 - On the initiative the die is rolled after the d20 is settled (in the app, or `maneuver_face` with physical dice) and added to the total (`initiativeManeuver`).
 

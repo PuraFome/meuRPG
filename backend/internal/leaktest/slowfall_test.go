@@ -43,6 +43,8 @@ func (w *world) slowFallNeedles(windowID string) {
 	w.secrets.add(&canary{needle: `"slowFall"`, kind: "slow-fall-prompt", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: "no dano da queda", kind: "slow-fall-numbers", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: "de 37 para 17", kind: "slow-fall-damage"})
+	// The close message: only the reactor and the master read that Toren used the feature.
+	w.secrets.add(&canary{needle: "usou Queda Lenta: -20", kind: "slow-fall-answer", readers: names([]*person{w.caio})})
 }
 
 func TestASlowFallsWindowIsTheMonksAndTheMastersAlone(t *testing.T) {
@@ -52,17 +54,23 @@ func TestASlowFallsWindowIsTheMonksAndTheMastersAlone(t *testing.T) {
 	if window == nil || window.GetSlowFall().GetReduction() != 20 {
 		t.Fatalf("Caio reads %v, want Toren's Slow Fall window (20 points)", window)
 	}
+	first := len(w.secrets.list)
 	w.slowFallNeedles(window.GetId())
 
+	got := newAnswers()
 	check := func(when string) {
 		t.Helper()
 		// Ana reads none of it, and Caio, the monk, reads all but the damage around the cut (the master's).
 		for _, p := range []*person{w.ana, w.caio} {
 			for _, r := range w.reads(p) {
+				got.keep(p, r)
 				for _, f := range w.inspect(p, r, nil) {
 					t.Errorf("%s %s: %s", when, p.name, f)
 				}
 			}
+		}
+		for _, r := range w.reads(w.master) {
+			got.keep(w.master, r)
 		}
 	}
 	check("while Toren may use Slow Fall")
@@ -114,9 +122,12 @@ func TestASlowFallsWindowIsTheMonksAndTheMastersAlone(t *testing.T) {
 	if got := line(w.caio); !strings.HasSuffix(got, "-20 no dano da queda.") {
 		t.Errorf("Caio's line = %q, want the points taken off", got)
 	}
-	if got := line(w.ana); strings.Contains(got, "20") || strings.Contains(got, "37") {
-		t.Errorf("Ana's line = %q, want no number", got)
+	if got := line(w.ana); strings.Contains(got, "20") || strings.Contains(got, "37") || got != "Toren usou Queda Lenta." {
+		t.Errorf("Ana's line = %q, want the use without a number", got)
 	}
+	// Only the needles of this table are checked here (the matrix reads the rest of the world's).
+	w.secrets.list = w.secrets.list[first:]
+	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })
 }
 
 // Toren's window is heard by Toren's player and the master alone.
