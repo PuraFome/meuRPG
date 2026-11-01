@@ -1,13 +1,17 @@
 package play
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The table die of applies "attack" a player adds to a weapon attack of its own character (RollAttackRequest.maneuver_key).
@@ -155,8 +159,8 @@ func TestAnNPCAttackerAddsNoManeuverDie(t *testing.T) {
 		d20(9)(r)
 		r.ManeuverKey, r.ExtraDieFaces = g.strikeKey, []int32{3}
 	})
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("an NPC's attack with a maneuver die: %v, want invalid_argument", err)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "goes on a weapon attack of a player's character") {
+		t.Errorf("an NPC's attack with a maneuver die: %v, want invalid_argument naming the weapon attack of a player's character", err)
 	}
 }
 
@@ -299,8 +303,8 @@ func TestAManeuverDieNeverGoesOnASpellAttackOrAnNPCsAttack(t *testing.T) {
 		{"an NPC", playdb.Combatant{Kind: kindNPC, CharacterID: "c2"}, link.Attack{}},
 	} {
 		f := &attackFlow{req: &playv1.RollAttackRequest{ManeuverKey: "x"}, attacker: tc.attacker, attack: tc.attack}
-		if err := f.checkManeuver(t.Context()); connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Errorf("%s: %v, want invalid_argument", tc.name, err)
+		if err := f.checkManeuver(t.Context()); connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "goes on a weapon attack of a player's character") {
+			t.Errorf("%s: %v, want invalid_argument naming the weapon attack of a player's character", tc.name, err)
 		}
 	}
 	if err := (&attackFlow{req: &playv1.RollAttackRequest{}, attacker: playdb.Combatant{Kind: kindNPC}}).checkManeuver(t.Context()); err != nil {
@@ -316,4 +320,188 @@ func extraDiceOfLog(entries []*playv1.CombatLogEntry) []*playv1.ExtraDie {
 		}
 	}
 	return nil
+}
+
+// A natural 1 misses whatever the die adds, and the use is spent; a natural 20 is a critical hit whose dice are the
+// weapon's alone: the maneuver die is not doubled.
+func TestTheDieNeverTurnsAFumbleIntoAHitAndIsNotDoubledOnACriticalHit(t *testing.T) {
+	t.Parallel()
+	g := newRollDiceTable(t)
+	e := g.strikeFight(t)
+	fumble, err := g.strike(t, e, g.strikeKey, 1, 8) // 1 + 5 + 8 = 14 against armor class 12
+	if err != nil {
+		t.Fatalf("RollAttack(a 1 with the die) error = %v", err)
+	}
+	if fumble.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || fumble.GetPendingDamage() != nil {
+		t.Errorf("the attack = %v, want a miss that opens no damage", fumble.GetRoll())
+	}
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d, want 1 (the die was rolled with the attack)", got)
+	}
+	crit, err := g.strike(t, e, g.strikeKey, 20, 8)
+	if err != nil {
+		t.Fatalf("RollAttack(a 20 with the die) error = %v", err)
+	}
+	if crit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_CRITICAL_HIT {
+		t.Fatalf("the attack = %v, want a critical hit", crit.GetRoll())
+	}
+	if p := crit.GetPendingDamage(); p.GetDiceCount() != 2 || p.GetDiceSides() != 8 {
+		t.Errorf("the damage = %d d%d, want the longsword's 1d8 doubled and nothing of the die", p.GetDiceCount(), p.GetDiceSides())
+	}
+}
+
+// The dice an effect adds come first and the maneuver die last, in the typed faces too; the total counts both.
+func TestTheDieComesAfterBlessInTheTypedFacesAndTheTotalCountsBoth(t *testing.T) {
+	t.Parallel()
+	g := newRollDiceTable(t)
+	e := g.strikeFight(t)
+	g.mustAddEffect(t, e, "spell:bless", []string{"Pensantus"}, g.rounds(t, 10, "Pensantus"))
+	// The d4 of Bless takes the first face: a 6 there is past the die.
+	if _, err := g.strike(t, e, g.strikeKey, 9, 6, 3); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("the faces in the wrong order: %v, want invalid_argument", err)
+	}
+	res, err := g.strike(t, e, g.strikeKey, 9, 3, 6)
+	if err != nil {
+		t.Fatalf("RollAttack(Bless and the die) error = %v", err)
+	}
+	roll := res.GetRoll().GetD20()
+	dice := roll.GetExtraDice()
+	if len(dice) != 2 || dice[0].GetFaces() != 4 || dice[0].GetFace() != 3 || dice[1].GetFaces() != 8 || dice[1].GetFace() != 6 {
+		t.Fatalf("extra dice = %v, want Bless's d4 of 3 then the d8 of 6", dice)
+	}
+	if want := 9 + roll.GetModifier() + 3 + 6; roll.GetTotal() != want {
+		t.Errorf("total = %d, want %d", roll.GetTotal(), want)
+	}
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d, want 1", got)
+	}
+}
+
+// With disadvantage the d20 pair is typed first; the die is added to the d20 that counts.
+func TestTheDieIsAddedToTheCountedD20OfADisadvantage(t *testing.T) {
+	t.Parallel()
+	g := newRollDiceTable(t)
+	e := g.strikeFight(t)
+	g.setConditions(t, e, "Pensantus", "condition:poisoned")
+	res, err := g.attack(t, g.ana, e, "Pensantus", longsword, "Goblin", func(r *playv1.RollAttackRequest) {
+		r.Roll, r.D20Faces = nil, []int32{15, 4}
+		r.ManeuverKey, r.ExtraDieFaces = g.strikeKey, []int32{7}
+	})
+	if err != nil {
+		t.Fatalf("RollAttack(with disadvantage and the die) error = %v", err)
+	}
+	roll := res.GetRoll()
+	if roll.GetMode() != playv1.RollMode_ROLL_MODE_DISADVANTAGE {
+		t.Fatalf("the mode = %v, want disadvantage", roll.GetMode())
+	}
+	if want := 4 + roll.GetD20().GetModifier() + 7; roll.GetD20().GetTotal() != want {
+		t.Errorf("total = %d, want the 4 that counts, the modifier and the die's 7 = %d", roll.GetD20().GetTotal(), want)
+	}
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d, want 1", got)
+	}
+}
+
+// strokeDieTable is a Rogue 20 (Stroke of Luck) of a subclass with an attack die, and two other heroes.
+func newStrokeDieTable(t *testing.T) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
+				NamePt: "Lâmina Certeira", ClassKey: "class:rogue", DescPt: []string{"Dados."},
+				Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{
+					{NamePt: "Reserva", DescPt: []string{"Dados."}, Effects: []*rulesv1.TableEffect{{Type: "resource", Resource: rollDiceUses, Max: "2", Recharge: "short_rest"}}},
+					{NamePt: "Golpe Preciso", DescPt: []string{"Um dado."}, Effects: []*rulesv1.TableEffect{{Type: "superiority_die", Applies: rules.ManeuverAttack, Resource: rollDiceUses, Value: "8"}}},
+				}}},
+			}},
+		}))
+		if err != nil {
+			t.Fatalf("CreateTableEntry() error = %v", err)
+		}
+		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 10}, RaceKey: "race:human",
+			Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+			Classes: []*charactersv1.ClassLevel{{
+				ClassKey: "class:rogue", Level: 20, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: res.Msg.GetEntry().GetKey()},
+			}},
+			Languages:            []string{"Anão", "Élfico", "Gnômico"},
+			SkillProficiencyKeys: []string{"skill:acrobatics", "skill:perception", "skill:stealth", "skill:sleight-of-hand"},
+			WeaponKeys:           []string{rapier},
+			HitPoints:            &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}, ExperiencePoints: 355000,
+		}}}
+		made, err := a.caio.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+			CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Pipo", Sheet: sheet,
+		}))
+		if err != nil {
+			t.Fatalf("CreateCharacter(Pipo) error = %v", err)
+		}
+		a.toren = made.Msg.GetCharacter()
+		a.pens = a.ana.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 10}, []string{battleaxe}, nil)
+		a.bri = a.bia.hero(t, a.campaignID, "Orla", "class:bard", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 8, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 16}, nil, nil)
+	})
+}
+
+func strokeDieKey(t *testing.T, a *armed) string {
+	t.Helper()
+	dice := a.toren.GetDerived().GetRollDice()
+	if len(dice) != 1 {
+		t.Fatalf("Pipo's dice = %v, want the attack die", dice)
+	}
+	return dice[0].GetKey()
+}
+
+// The die moves the total after the d20 is settled, so Stroke of Luck's question comes blind (even on a roll that hits),
+// and the undo of an attack that used both gives back the use of the feature and the use of the die.
+func TestAnAttackWithTheDieAsksStrokeOfLuckBlindAndTheUndoGivesBothBack(t *testing.T) {
+	t.Parallel()
+	a := newStrokeDieTable(t)
+	key := strokeDieKey(t, a)
+	e := a.strokeFight(t)
+	withDie := func(face, die int32) (*playv1.RollAttackResponse, error) {
+		return a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", func(r *playv1.RollAttackRequest) {
+			d20(face)(r)
+			r.ManeuverKey, r.ExtraDieFaces = key, []int32{die}
+		})
+	}
+	hit, err := withDie(19, 3)
+	if err != nil {
+		t.Fatalf("RollAttack(a 19 with the die) error = %v", err)
+	}
+	wantStroke(t, "the attack that hits with the die", hit.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, false)
+	if hit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED {
+		t.Fatalf("the attack was settled before the answer: %v", hit.GetRoll())
+	}
+	if _, err := a.answerHeldRoll(t, a.caio, hit.GetHeldRollOffer().GetHoldId(), strokeAnswer(false)); err != nil {
+		t.Fatalf("AnswerHeldRoll(keep) error = %v", err)
+	}
+	if left, _ := poolOf(a.vitals(t, a.toren), rollDiceUses); left != 1 {
+		t.Fatalf("dice left = %d after the kept roll, want 1", left)
+	}
+	a.passTo(t, e, "Toren")
+	a.passTo(t, e, "Pipo") // the next round: the action is whole again
+	// A natural 1 misses whatever the die adds: the question comes, the feature is used and the miss is a hit.
+	miss, err := withDie(1, 1)
+	if err != nil {
+		t.Fatalf("RollAttack(a 1 with the die) error = %v", err)
+	}
+	wantStroke(t, "the attack that misses with the die", miss.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, false)
+	fin, err := a.answerHeldRoll(t, a.caio, miss.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil || fin.GetAttack().GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT {
+		t.Fatalf("Stroke of Luck's answer = %v, %v; want the hit", fin, err)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Fatalf("stroke_of_luck used = %d, want 1", used)
+	}
+	if left, _ := poolOf(a.vitals(t, a.toren), rollDiceUses); left != 0 {
+		t.Fatalf("dice left = %d, want 0", left)
+	}
+	a.undoLast(t, e)
+	if used := a.strokeUsed(t); used != 0 {
+		t.Errorf("stroke_of_luck used = %d after the undo, want 0", used)
+	}
+	if left, _ := poolOf(a.vitals(t, a.toren), rollDiceUses); left != 1 {
+		t.Errorf("dice left = %d after the undo, want 1", left)
+	}
 }

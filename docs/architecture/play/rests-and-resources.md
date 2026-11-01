@@ -128,10 +128,16 @@ The `superiority_die` effects of applies `check`, `save`, `initiative` and `atta
 
 - `maneuverForRoll` checks the maneuver is the character's and fits the roll: a `check` die fits the skill (`skill.stealth`) or the ability (`check.dex`) of the check when it lists targets, a `save` die the ability of the save when it names one (the scene's `save:` actions are saves). Anything else is `invalid_argument`; no use left is `NO_USES_LEFT`.
 - On the checks and saves the die joins the dice an effect adds (`effectDie.ManeuverResource`): it is rolled with them (in the app, or typed as the last of `extra_die_faces`), added to the total and shown as a source ("Nome +1d6: 4"). The resource is spent when the roll is written (`spendManeuverDice`, so a roll that waits for a Lucky or Bardic Inspiration question spends nothing), and the event keeps it in `ManeuverSpent`.
-- On a weapon attack (`RollAttack`) the die is added to the attack roll, as Bless's die is, and the use is spent when the attack is written ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)). `maneuverFits` takes any weapon attack; the attack roll refuses a spell attack and an NPC attacker.
+- On a weapon attack (`RollAttack`) the die is added to the attack roll, as Bless's die is.
+  The use is spent when the attack is written ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)).
+  `maneuverFits` takes any weapon attack.
+  The attack roll refuses a spell attack and an NPC attacker.
 - On the initiative the die is rolled after the d20 is settled (in the app, or `maneuver_face` with physical dice) and added to the total (`initiativeManeuver`).
 
-A maneuver with no die is a feature action (`grant_action` with the pool as its `resource`): it lists under "Habilidades" with its name and cost, `TakeAction` spends one use of the same pool the die maneuvers use and the economy the option declares, the log line names it, and the master's undo gives both back.
+A maneuver with no die is a feature action (`grant_action` with the pool as its `resource`).
+It lists under "Habilidades" with its name and cost.
+`TakeAction` spends one use of the pool the die maneuvers share, and the economy the option declares.
+The log line names it, and the master's undo gives both back.
 The option with no use left is off with `NO_USES`, and `TakeAction` refuses it with the encounter reason `NO_USES`.
 It has no number to roll: a maneuver that heals or gives temporary hit points by the die is not covered here.
 

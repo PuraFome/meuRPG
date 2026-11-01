@@ -14,11 +14,20 @@ A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
 The AC is the sheet's: a shield beside a two-handed weapon on the sheet adds nothing, in the combat and in the comparison alike.
 A Protection used on the attack gives the roll disadvantage, with its own source in the mode (see [Reactions](reactions.md#protection)).
 A weapon attack held for a Lucky or Bardic Inspiration question is in [Held rolls](held-rolls.md); a hit that waits for a reaction is in [Reactions](reactions.md).
-`RollAttackRequest.maneuver_key` adds a table die of applies `attack` ([Rests and resources](rests-and-resources.md#table-dice-on-the-characters-own-rolls)) to a weapon attack of the player's own character.
-The die joins the dice an effect adds (Bless), after them: it is rolled with the attack (the last of `extra_die_faces` with physical dice), added to the total and listed in the roll's `extra_dice` and the attacker's log line.
-`checkManeuver` refuses an NPC attacker, a spell attack, a die of another `applies` and a pool with no use left (`NO_USES_LEFT`) before the roll, and again on the replay of a held roll.
-The use is spent when the attack is written (`rollExtraDice`) and kept in `ManeuverSpent`, so a held roll spends it once, on the replay, and the master's undo gives it back (`maneuverBack`).
-A die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.
+`RollAttackRequest.maneuver_key` adds a table die of applies `attack` to a weapon attack of the player's own character.
+The die is described in [Rests and resources](rests-and-resources.md#table-dice-on-the-characters-own-rolls).
+It joins the dice an effect adds (Bless), after them.
+It is rolled with the attack, or typed as the last of `extra_die_faces`.
+It is added to the total and listed in the roll's `extra_dice` and in the attacker's log line.
+`checkManeuver` refuses an NPC attacker, a spell attack and a die of another `applies` (`invalid_argument`).
+It refuses a pool with no use left (`NO_USES_LEFT`).
+It runs before the roll and again on the replay of a held roll.
+The use is spent when the attack is written (`rollExtraDice`) and kept in `ManeuverSpent`.
+A held roll spends it once, on the replay.
+The master's undo gives it back (`maneuverBack`).
+A replay refused because the pool changed is dropped, and only the master reads it in the log.
+A natural 1 still misses, and a critical hit does not double the die.
+The die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.
 An opportunity attack and an attack as a reaction take the die like any other.
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
