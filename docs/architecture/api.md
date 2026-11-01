@@ -37,7 +37,7 @@ curl -s -X POST http://localhost:8080/meurpg.system.v1.SystemService/GetServerIn
   -H 'Content-Type: application/json' -H 'Connect-Protocol-Version: 1' -d '{}'
 ```
 
-The server reads no RPC message over 4 MiB (`maxRequestBytes`), and a unary body has a lower limit per procedure ([Request size limits](#request-size-limits)).
+The server reads no RPC message over 4 MiB (`maxRequestBytes`), and a unary Connect call has a lower body limit per procedure ([Request size limits](#request-size-limits)).
 
 ## Error codes
 
@@ -191,7 +191,8 @@ A live stream ends by itself after `play.DefaultMaxLifetime` (10 minutes) and th
 ## Request size limits
 
 A unary request has a size limit on its body as it is read and on each field after it is decoded.
-A stream's request has the field limits and the 4 MiB backstop, not the per-procedure body limit.
+The per-procedure body limit applies to the Connect protocol (the content types `application/json` and `application/proto`), which is what the app uses.
+A stream's request, and a gRPC or gRPC-Web call, have the field limits and the 4 MiB backstop, not the per-procedure body limit.
 Every limit has a default, so a field or a procedure that nobody annotated is still bounded.
 The code is `platform/reqlimit`.
 
@@ -200,7 +201,7 @@ The code is `platform/reqlimit`.
 | Items of a repeated field, entries of a map | 100 (`DefaultMaxItems`) | `(meurpg.options.v1.max_items)` on the field | `invalid_argument` with a `RequestRefused` detail, reason `LIST_TOO_LONG` |
 | Bytes of a string (each element of a repeated string, each key and value of a map) | 8 KiB (`DefaultMaxString`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
 | Bytes of a bytes field, counted the same way | 4 KiB (`DefaultMaxBytes`) | `(meurpg.options.v1.max_len)` on the field | the same, reason `TEXT_TOO_LONG` |
-| Bytes of the body of a unary RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure ([Procedures with a raised read limit](#procedures-with-a-raised-read-limit)) | `resource_exhausted`, from Connect |
+| Bytes of the body of a unary Connect RPC | 64 KiB (`DefaultReadLimit`) | an entry of `raisedReadLimits` in `platform/reqlimit/readlimit.go`, by procedure ([Procedures with a raised read limit](#procedures-with-a-raised-read-limit)) | `resource_exhausted`, from Connect |
 | Bytes of any one RPC message | 4 MiB (`Backstop`, `connect.WithReadMaxBytes`) | never | `resource_exhausted`, from Connect |
 
 The rule a reader follows:
@@ -212,9 +213,9 @@ The rule a reader follows:
 - **The interceptor** (`reqlimit.Interceptor`, in `connectOptions` inside `rpclog`) walks the decoded request before the handler, for unary calls and for each message a stream receives.
   It refuses the first field over its limit, in the order the fields are declared in the `.proto`, and checks the size of a list or map before it looks at what is inside.
   The detail names the field by its path in proto names (`party.members.notes`) and never the limit, which is in the `.proto`.
-- **The read limit** (`reqlimit.Middleware`, in front of `slowclient.Middleware`) wraps the body of a unary RPC in `http.MaxBytesReader` at `ReadLimit(procedure)`.
+- **The read limit** (`reqlimit.Middleware`, in front of `slowclient.Middleware`) wraps the body of a unary Connect RPC in `http.MaxBytesReader` at `ReadLimit(procedure)`.
   `raisedReadLimits` is the one place that lists the procedures allowed more than the default, each entry with a comment that says why.
-  A stream's request keeps only the 4 MiB backstop.
+  A stream's request, and a gRPC or gRPC-Web call, keep only the 4 MiB backstop.
 - **A field option that goes over the default** needs an entry in `raisedReadLimits` for every procedure that reaches the field, and that entry never goes over the backstop.
 - **The registry test** (`TestRegistry`, no database) walks every procedure of every `meurpg.*` service and fails when:
   - a procedure's read limit is not the default or its `raisedReadLimits` entry, or an entry names something that is not a procedure, does not raise the default or is over the backstop;
