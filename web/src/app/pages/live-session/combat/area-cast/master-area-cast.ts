@@ -49,6 +49,7 @@ import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { AreaShape } from '../../../../core/combat/spell-area';
 import { AreaList } from '../../../../shared/area-picker/area-list';
+import { AreaNotice } from '../../../../shared/area-picker/area-notice';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
 import { HiddenSwitch } from '../../../../shared/hidden-switch/hidden-switch';
@@ -83,7 +84,16 @@ export interface MasterAreaCastData {
  */
 @Component({
   selector: 'app-master-area-cast',
-  imports: [AreaList, AreaMap, AreaStep, HiddenSwitch, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    AreaList,
+    AreaNotice,
+    AreaMap,
+    AreaStep,
+    HiddenSwitch,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './master-area-cast.html',
   styleUrl: './master-area-cast.scss',

@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // GetSummonOptions implements charactersv1connect.CharacterServiceHandler: what
@@ -77,8 +78,9 @@ func (s *Service) readSummonOptions(ctx context.Context, tx pgx.Tx, m authz.Memb
 		return out, wrap("read rules content", err)
 	}
 	d := rules.Derive(b, content)
+	used := usageOf(vitals)
 	for _, key := range content.SummonSpells() {
-		spell, err := s.summonSpellOptions(ctx, q, content, m.CampaignID, id, b, d, key, out.Slots)
+		spell, err := s.summonSpellOptions(ctx, q, content, m.CampaignID, id, b, d, key, summonSpend{slots: out.Slots, used: used})
 		if err != nil {
 			return out, err
 		}
@@ -122,12 +124,23 @@ func summonSlots(vitals *playv1.CharacterVitals) []*charactersv1.SummonSlot {
 	return out
 }
 
+// summonSpend is what the character has to cast with: its slots and the uses it has spent of its resources.
+type summonSpend struct {
+	slots []*charactersv1.SummonSlot
+	used  combat.Usage
+}
+
 // summonSpellOptions is one spell's entry, or nil when the character cannot cast
 // it (no ritual and no ready slot cast).
-func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID, characterID string, b rules.Build, d rules.Derived, key string, slots []*charactersv1.SummonSlot) (*charactersv1.SummonSpellOptions, error) {
+func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID, characterID string, b rules.Build, d rules.Derived, key string, spend summonSpend) (*charactersv1.SummonSpellOptions, error) {
 	det, ok := content.SpellDetails(key)
 	if !ok {
 		return nil, nil
+	}
+	slots := spend.slots
+	// A feature's summon: its options also need the rule (the resource it spends).
+	if rule, table := content.SummonRule(key); table && isFeatureSummon(content, key) {
+		return s.featureSummonOptions(ctx, q, content, campaignID, characterID, b, d, det, rule, spend.used)
 	}
 	own, err := content.SummonOptions(key, det.Spell.Level, b)
 	if err != nil {
@@ -144,6 +157,35 @@ func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Querie
 	}
 	for _, c := range summonCircles(det.Spell.Level, st.canRitual, canSlot, slots) {
 		if sc, ok := summonCircleOptions(content, key, c, b); ok {
+			out.Circles = append(out.Circles, sc)
+		}
+	}
+	if out.Replaces, err = summonReplaces(ctx, q, content, campaignID, characterID, key, own.Concentration); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// featureSummonOptions is the entry of a feature's summon: nil when the character does not have the feature (or not
+// yet), else the one circle the summon is cast at, the use it spends and the uses left. With no use left the entry
+// stays, with no circle to cast at.
+func (s *Service) featureSummonOptions(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID, characterID string, b rules.Build, d rules.Derived, det *rules.SpellDetails, rule rules.SummonRule, used combat.Usage) (*charactersv1.SummonSpellOptions, error) {
+	key := det.Spell.Key
+	i := slices.IndexFunc(d.GrantedSpells, func(g rules.GrantedSpell) bool { return g.Spell.Key == key && g.Source == rule.Feature })
+	if i < 0 {
+		return nil, nil
+	}
+	grant := combat.GrantOf(d, used, d.GrantedSpells[i])
+	own, err := content.SummonOptions(key, det.Spell.Level, b)
+	if err != nil {
+		return nil, fmt.Errorf("summon options of %s: %w", key, err)
+	}
+	out := &charactersv1.SummonSpellOptions{
+		SpellKey: key, NamePt: content.NamePT(key), Level: i32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime),
+		Concentration: own.Concentration, GrantedBy: rule.Feature, ResourceKey: grant.Resource, UsesLeft: i32(grant.UsesLeft),
+	}
+	if grant.UsesLeft > 0 {
+		if sc, ok := summonCircleOptions(content, key, det.Spell.Level, b); ok {
 			out.Circles = append(out.Circles, sc)
 		}
 	}

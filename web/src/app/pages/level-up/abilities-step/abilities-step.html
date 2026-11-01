@@ -22,12 +22,14 @@
       (picked)="s().draft.setFeat($event)"
       (abilityToggled)="s().draft.toggleFeatAbility($event)"
     />
-    @if (aboveTwenty()) {
-      <p class="mr-notice mr-notice--warning above" role="alert">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <span>Nenhuma habilidade passa de 20. Escolha outra.</span>
-      </p>
-    }
+    <div class="mr-live" role="alert">
+      @if (aboveTwenty()) {
+        <p class="mr-notice mr-notice--danger above">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span>Nenhuma habilidade passa de 20. Escolha outra.</span>
+        </p>
+      }
+    </div>
   } @else {
   <p class="lead">Aumente uma habilidade em 2, ou duas habilidades em 1. Nenhuma passa de 20.</p>
 
@@ -42,12 +44,14 @@
     </label>
   </div>
 
-  @if (aboveTwenty()) {
-    <p class="mr-notice mr-notice--warning above" role="alert">
-      <mat-icon aria-hidden="true">warning</mat-icon>
-      <span>Nenhuma habilidade passa de 20. Escolha outra.</span>
-    </p>
-  }
+  <div class="mr-live" role="alert">
+    @if (aboveTwenty()) {
+      <p class="mr-notice mr-notice--danger above">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <span>Nenhuma habilidade passa de 20. Escolha outra.</span>
+      </p>
+    }
+  </div>
   <div [attr.role]="one() ? 'radiogroup' : 'group'" aria-labelledby="asi-title">
   <ul class="rows">
     @for (r of rows(); track r.key) {

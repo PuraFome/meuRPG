@@ -67,6 +67,8 @@ type OutsideSpell struct {
 	NPC bool
 	// Grants are the granted_spell effects that give the spell (empty when none does).
 	Grants []OutsideGrant
+	// FeatureSummon says the spell is the summon of a table feature: only its grant casts it.
+	FeatureSummon bool
 }
 
 // GrantedRitual says a grant casts the spell as a ritual.

@@ -256,6 +256,23 @@ describe('CombatView, the reaction windows', () => {
     );
   });
 
+  it('says a failed action in an alert region that was there before the text, and the notice has no role', async () => {
+    const { fixture, el } = setup({});
+    await settle(fixture);
+    const alert = el.querySelector('.mr-live[role="alert"]')!;
+    expect(alert.textContent?.trim()).toBe('');
+    (fixture.componentInstance as unknown as { error: { set(v: string): void } }).error.set(
+      'Não deu para fazer isso agora.',
+    );
+    await settle(fixture);
+    expect(el.querySelector('.mr-live[role="alert"]')).toBe(alert);
+    const notice = alert.querySelector('.mr-notice--danger')!;
+    expect(plain(notice.textContent)).toContain('Não deu para fazer isso agora.');
+    expect(notice.hasAttribute('role')).toBe(false);
+    // The sibling region that tells a closed window is still the polite status one.
+    expect(el.querySelector('.view-notices[role="status"]')).not.toBeNull();
+  });
+
   it('says why a window closed by itself in a status line, and "Entendi" takes it away', async () => {
     const { fixture, el, state } = setup({});
     await settle(fixture);

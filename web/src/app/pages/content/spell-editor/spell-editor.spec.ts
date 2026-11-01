@@ -192,7 +192,7 @@ describe('SpellEditor', () => {
     );
     click(el, 'Salvar magia');
     await settle(fixture, 3);
-    expect(text(el.querySelector('[role="alert"]')!)).toContain(
+    expect(text(el.querySelector('.mr-live[role="alert"]')!)).toContain(
       'Esta entrada mudou enquanto você editava.',
     );
     click(el, 'Recarregar');

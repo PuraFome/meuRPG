@@ -55,7 +55,14 @@
           <button type="button" class="setup__edit" [attr.aria-label]="'Mudar o espaço e a quantidade: ' + setupLine()" (click)="editing.set(true)">Mudar</button>
         </p>
       } @else {
-        @if (!ritual()) {
+        @if (granted()) {
+          @if (s.usesLeft === 0) {
+            <div class="mr-notice mr-notice--warning fixed" role="status">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <p>Sem usos restantes.</p>
+            </div>
+          }
+        } @else if (!ritual()) {
           @if (slotRows().length === 0) {
             <div class="mr-notice mr-notice--warning fixed" role="status">
               <mat-icon aria-hidden="true">info</mat-icon>

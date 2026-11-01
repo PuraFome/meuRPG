@@ -15,6 +15,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { MapAsk } from '../../../shared/map-ask/map-ask';
 
+let nextId = 0;
+
 /**
  * "Porta" (E10-05 7, RN-26): the side panel while the door tool is the chosen one. It says what a tap does (puts the chosen kind where
  * a wall has floor on both sides, changes the kind of a door, and "Tirar a porta" closes the gap again), shows why a tap did nothing
@@ -29,8 +31,8 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
   template: `
     <section class="mr-panel dp" aria-labelledby="dp-title">
       @if (standing()) {
-        <app-map-ask [title]="erasing() ? 'Tirar a porta onde há alguém?' : 'Pôr a porta onde há alguém?'" [confirmLabel]="erasing() ? 'Tirar a porta' : 'Pôr a porta'" (cancel)="cancel.emit()" (confirm)="confirm.emit()">
-          <div class="mr-notice mr-notice--warning" role="alert">
+        <app-map-ask [title]="erasing() ? 'Tirar a porta onde há alguém?' : 'Pôr a porta onde há alguém?'" [confirmLabel]="erasing() ? 'Tirar a porta' : 'Pôr a porta'" (cancel)="cancel.emit()" (confirm)="confirm.emit()" [describedBy]="askId">
+          <div [id]="askId" class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">warning</mat-icon>
             @if (erasing()) {
               <p>{{ who() }} nesse quadrado. Com a parede de volta, quem está nele some da vista dos jogadores.</p>
@@ -102,6 +104,8 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
   `,
 })
 export class DoorPanel {
+  /** The id of the notice inside the question, which the question's title points at. */
+  protected readonly askId = `dp-ask-${nextId++}`;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 

@@ -176,6 +176,18 @@ describe('PuzzleForm (MR-038, E10-06 state 2)', { timeout: 20_000 }, () => {
     expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1');
   });
 
+  it('refuses a save before the start is on screen in an alert region that was there first', async () => {
+    const { el, settle } = await open();
+    const live = el.querySelector('.mr-live[role="alert"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    type(el.querySelector<HTMLInputElement>('input[name="name"]')!, 'O selo da Capela');
+    (el.querySelector('form') as HTMLFormElement).requestSubmit();
+    await settle();
+    const notice = live.querySelector('.mr-notice--danger')!;
+    expect(notice.textContent).toContain('Espere o começo aparecer');
+    expect(notice.hasAttribute('role')).toBe(false);
+  });
+
   it('asks for another start when the size changes, after a short pause', async () => {
     const { el, pause, settle } = await open();
     await pause();

@@ -29,7 +29,7 @@ function setup(inputs: Record<string, unknown>) {
 }
 
 describe('AreaList: who is in the area', () => {
-  it('lists each creature with its state, its cover as text and the ally tag, under the ally warning', () => {
+  it('lists each creature with its state, its cover as text and the ally tag', () => {
     const el = setup({
       rows: [
         row({ id: 't', label: 'Toren', ally: true, distance: 'a 3,0 m do ponto' }),
@@ -42,14 +42,7 @@ describe('AreaList: who is in the area', () => {
         }),
       ],
       count: '2 criaturas',
-      warning: {
-        strong: 'Toren está na área.',
-        rest: 'A Bola de Fogo atinge aliados também. Mude o local se não quiser atingi-lo.',
-      },
     });
-    const alert = el.querySelector('[role="alert"]');
-    expect(plain(alert?.textContent)).toContain('Toren está na área.');
-    expect(plain(alert?.textContent)).toContain('A Bola de Fogo atinge aliados também.');
     const items = Array.from(el.querySelectorAll('li.row')).map((li) => plain(li.textContent));
     expect(items[0]).toContain('Toren');
     expect(items[0]).toContain('Aliado');
@@ -80,9 +73,7 @@ describe('AreaList: who is in the area', () => {
         rest: 'A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
       },
     });
-    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain(
-      'Ninguém que você vê está na área. A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
-    );
+    expect(el.querySelector('.mr-notice')).toBeNull();
     expect(el.querySelector('ul')).toBeNull();
   });
 

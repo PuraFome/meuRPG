@@ -58,11 +58,14 @@ describe('ContentImport (MR-025)', () => {
   const importPack = vi.fn();
   const getCampaign = vi.fn();
 
-  async function setup(role = Role.MASTER) {
+  async function setup(role = Role.MASTER, gate?: Promise<unknown>) {
     importPack.mockReset();
-    getCampaign.mockReset().mockResolvedValue({
-      campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false },
-    });
+    getCampaign.mockReset().mockReturnValue(
+      gate ??
+        Promise.resolve({
+          campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false },
+        }),
+    );
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -105,6 +108,36 @@ describe('ContentImport (MR-025)', () => {
     const { el } = await setup(Role.PLAYER);
     expect(text(el)).toContain('Só o mestre importa conteúdo.');
     expect(el.querySelector('input[type="file"]')).toBeNull();
+  });
+
+  it('says loading and then "only the master" from two regions that stay in the page, with no role on the notice', async () => {
+    let release!: (v: unknown) => void;
+    const gate = new Promise((r) => (release = r));
+    const { fixture, el } = await setup(Role.PLAYER, gate);
+    const status = el.querySelector('.mr-live[role="status"]')!;
+    const alert = el.querySelector('.mr-live[role="alert"]')!;
+    expect(text(status)).toContain('Carregando...');
+    expect(alert.textContent?.trim()).toBe('');
+    release({ campaign: { id: 'camp-1', name: 'Mirathel', myRole: Role.PLAYER } });
+    await settle(fixture, 4);
+    expect(el.querySelector('.mr-live[role="status"]')).toBe(status);
+    expect(el.querySelector('.mr-live[role="alert"]')).toBe(alert);
+    expect(status.textContent?.trim()).toBe('');
+    const notice = alert.querySelector('.mr-notice--neutral')!;
+    expect(text(notice)).toContain('Só o mestre importa conteúdo.');
+    expect(notice.hasAttribute('role')).toBe(false);
+    expect(el.querySelectorAll('h1')).toHaveLength(1);
+  });
+
+  it('says a refused file from an alert region that was there first, and the notice has no role', async () => {
+    const { fixture, el } = await setup();
+    const alert = el.querySelector('.mr-live[role="alert"]')!;
+    expect(alert.textContent?.trim()).toBe('');
+    await choose(fixture, el, '{ isto não é json');
+    expect(el.querySelector('.mr-live[role="alert"]')).toBe(alert);
+    const notice = alert.querySelector('.mr-notice--danger')!;
+    expect(text(notice)).toContain('não é um JSON válido');
+    expect(notice.hasAttribute('role')).toBe(false);
   });
 
   it('asks for the file first and explains nothing is imported before the preview', async () => {

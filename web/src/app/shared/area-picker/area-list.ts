@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { AllyWarning, AreaRow } from '../../core/combat/area-text';
+import type { AreaRow } from '../../core/combat/area-text';
 import { combatantInitial } from '../../core/combat/combat-view';
 import { CombatantToken } from '../combatant-token/combatant-token';
 
 /**
  * Step 2 of an area spell, "Quem está na área" (PM-02a state 3, PM-02b states 4 and 6, PM-02d state 11): who the server
  * says is inside, each with the state word (never hit points, RN-20) and the cover against the point of origin as text,
- * the ally warning (`role="alert"`) and the count. A player's list holds only what they see (RN-10): nothing here counts
- * or hints at anything else. With nobody inside, the list gives way to the confirmation in place ("Ninguém que você vê
+ * the count. The ally warning and the confirmation are drawn by the screen (`app-area-notice`), in a status region that is already
+ * in the page. A player's list holds only what they see (RN-10): nothing here counts or hints at anything else. With nobody inside, the list gives way to the confirmation in place ("Ninguém que você vê
  * está na área."), and the page's buttons become "Conjurar mesmo assim" and "Mudar o local".
  */
 @Component({
@@ -17,18 +17,7 @@ import { CombatantToken } from '../combatant-token/combatant-token';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CombatantToken, MatIconModule],
   template: `
-    @if (nobody(); as n) {
-      <div class="mr-notice mr-notice--warning" role="alert">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <p><strong>{{ n.strong }}</strong> {{ n.rest }}</p>
-      </div>
-    } @else {
-      @if (warning(); as w) {
-        <div class="mr-notice mr-notice--warning" role="alert">
-          <mat-icon aria-hidden="true">warning</mat-icon>
-          <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
-        </div>
-      }
+    @if (!nobody()) {
       <div class="head">
         <h4 class="head__title">{{ heading() }}</h4>
         <span class="head__count">{{ count() }}</span>
@@ -74,8 +63,7 @@ export class AreaList {
   readonly count = input('');
   /** "Quem você vê na área" for a player, "Na área" for the master. */
   readonly heading = input('Quem você vê na área');
-  readonly warning = input<AllyWarning | null>(null);
-  /** The confirmation in place of the list, when nobody the caster sees is inside. */
+  /** When nobody the caster sees is inside, the list gives way to the confirmation, which the screen draws. */
   readonly nobody = input<{ strong: string; rest: string } | null>(null);
   /** The line under the list (how the cover is measured), or `''`. */
   readonly note = input('');

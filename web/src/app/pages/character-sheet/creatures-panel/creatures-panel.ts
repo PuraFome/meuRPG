@@ -321,6 +321,9 @@ export class CreaturesPanel {
 
   protected costText(spell: SummonSpellOptions): string {
     const where = 'Só durante uma sessão, fora de combate.';
+    if (spell.grantedBy) {
+      return tight(`Gasta um uso, restam ${spell.usesLeft}. ${where}`);
+    }
     if (spell.canRitual) {
       return tight(`Ritual de ${spell.castingTimePt}: não gasta espaço de magia. ${where}`);
     }

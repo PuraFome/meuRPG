@@ -532,6 +532,9 @@ type Spell struct {
 	// Mortos, Conjurar Animais; MR-037): the cast takes a choice of creatures
 	// instead of targets.
 	Summon bool
+	// FeatureSummon says the summon is a table feature's: not a spell the character cast, so no Counterspell
+	// window opens for it and it does not count as the turn's spell.
+	FeatureSummon bool
 	// IgnoresCover says the spell's saving throw gets no benefit from cover (Chama
 	// Sagrada, SRD 5.1); the total-cover targeting refusal stays.
 	IgnoresCover bool
@@ -931,6 +934,9 @@ type SummonSpell struct {
 	TurnMode     string
 	MaxLive      int
 	ReplacesSame bool
+	// Feature says the summon is a table feature's: a casting spends a use of the feature's resource, not a slot,
+	// and the creatures are made with a slot() of 0.
+	Feature bool
 }
 
 // CreatureState is where a combat leaves a creature: its hit points and whether

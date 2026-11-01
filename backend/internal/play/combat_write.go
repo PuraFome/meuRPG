@@ -244,8 +244,10 @@ type combatTx struct {
 	// combatants whose character vitals a replayed action changed.
 	reactionNotes []reactionNote
 	replay        *replayState
-	lastAnswered  reaction.Kind
-	tellIDs       []string
+	// pushed are the forced moves a replayed held action made, published after the commit of the answer that released it.
+	pushed       []*forcedMove
+	lastAnswered reaction.Kind
+	tellIDs      []string
 	// answered are the answers of this change whose event waits for what the replay
 	// of a held action made of the roll (combat_reaction_hold.go).
 	answered []answeredRef
@@ -279,6 +281,8 @@ type combatResult struct {
 	// combatants whose vitals a replayed action changed: told after the commit.
 	notes   []reactionNote
 	tellIDs []string
+	// pushed are the forced moves a replayed held action made, to tell the streams.
+	pushed []*forcedMove
 }
 
 // write runs one change to a combat, as AdjustCharacterVitals runs a vitals
@@ -341,7 +345,7 @@ func (s *Service) writeOnce(ctx context.Context, w combatWrite, sight *fogSight,
 	run.res.stamped = run.last
 	if run.ended != nil {
 		run.res.lines = run.ended.lines
-		run.res.notes, run.res.tellIDs = run.ended.reactionNotes, run.ended.tellIDs
+		run.res.notes, run.res.tellIDs, run.res.pushed = run.ended.reactionNotes, run.ended.tellIDs, run.ended.pushed
 	}
 	s.tellEnded(ctx, w.m.CampaignID, run.ended)
 	return run.res, nil

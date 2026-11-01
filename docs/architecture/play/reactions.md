@@ -18,18 +18,20 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Cutting Words | An attack roll (a weapon's, a cantrip's or a spell cast from a slot with one target), an ability check in combat or a damage roll of a creature of the other side that the bard sees within 60 ft | The roll (the bard answers before the die is thrown). A creature that cannot hear or is immune to charm opens no window (`cuttingWindows` skips it), and neither does one the bard's player cannot see (`reactorSees`: a hidden NPC, the fog). The sheet setting asks for checks only in "todos". The checks held are the initiator's roll of a contest (`StartContest`), the answer to a contest (`RespondContest`) and a `Hide`; the spell attack joins the Counterspell windows of its cast. See [Cutting Words on a check](#cutting-words-on-a-check) |
 | Protection | An attack on a creature of the reactor's side within 5 ft of the reactor (not the reactor itself), by a creature the reactor sees, while the reactor wields a shield | The attack roll (before the d20): the roll gets disadvantage |
 | Feather Fall | A fall of a pit trap (`fall_ft` of the preset) within 60 ft | The fall damage (`AWAITING_REACTION` trap damage); up to 5 creatures saved |
+| Slow Fall | A fall of a pit trap (as Feather Fall's) whose damage a player's monk of level 4 or higher took | The monk's own fall damage (`AWAITING_REACTION`, held with Feather Fall's in one group, in initiative order); `answerSlowFall` takes 5 times the monk level off it (`reduceFall`, the cuts kept in `fall_cuts`) and spends the reaction, which closes any other window of the monk. The prompt carries the depth and the points, never the damage; only the master's result has the damage before and after. An NPC, a monk below level 4 and a monk with no reaction open none. The `feature:slow-fall` button stays for a fall that already landed |
 | Opportunity attack | A creature leaves a reach | The mover's turn (its own offers, shown as a window; see [Movement](movement.md#opportunity-attacks)) |
 | Contest | A grapple, shove or escape that waits for the defender's roll or the shover's choice | Nothing: the contest row itself. Answered with `RespondContest` or `ResolveShove`, never `AnswerReaction`. Opened by `syncContests`, closed by itself when the contest no longer waits (see [Contests](contests.md)) |
 | Hidden reveal | A player's area spell hit hidden creatures and the table asks ("Perguntar a cada vez") | The turn: the master reads it as a window (`HIDDEN_REVEAL`) and answers with `ResolveHiddenReveal` |
 | Concentration save | Damage that lands on a concentrating creature (DC 10 or half the damage); 0 HP ends it with no save | The attack that dealt the damage (`CONCENTRATION_SAVE_PENDING`), answered with `ResolveConcentrationSave` (the app's die, a physical die, "Deixar o mestre rolar por mim" or the master's "keep") |
-| Effect save | An end-of-turn or start-of-turn save of a lasting effect (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md)) |
+| Effect save | An end-of-turn or start-of-turn save of a lasting effect, or the save a spell zone asks of a player's character or of an NPC with Legendary Resistance and a use left (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md), [Spell zones](spell-zones.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
 | Parry | A melee weapon hit on an NPC whose stat block has Parry (see [Parry](#parry)) | The hit's damage roll (`AWAITING_REACTION`) |
-| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, passed or failed (`LEGENDARY_RESISTANCE`) | The cast, with the d20s and effect dice of its saves |
+| Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, or a hit rider (Stunning Strike, an Open Hand technique, a creature's rider) whose save it makes, passed or failed (`LEGENDARY_RESISTANCE`) | The cast or the rider's answer (hold kind `cast` or `hit_rider`), with the d20s and effect dice of its saves |
 
 The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
 When every such save passed, the window offers nothing and he passes.
-The cast then settles with the same dice.
+The cast, or the answer to the rider, then settles with the same dice.
+A zone's save against such a creature has no hold: the master answers the zone's `EFFECT_SAVE` window, which only the master reads, with the roll and the choice of the trait.
 [Creatures](creatures.md#legendary-resistance) lists the saves that are not offered the trait.
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".
@@ -155,7 +157,7 @@ Ending the combat discards every window and held action.
 ## The automatic pass (client side)
 
 An optional reaction a player does not answer passes after 30 seconds.
-The server keeps no timer: the master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) remembers when it first saw each open window of kind Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection or Feather Fall waiting for its player (`reactor_is_player`, `answer_now`), and after `AUTO_PASS_SECONDS` (30) sends the same `AnswerReaction` "Deixar passar" the master can tap, with the idempotency key `auto-pass:<window id>`, so two tabs or a retry never answer twice; a refusal because it was answered meanwhile is ignored.
+The server keeps no timer: the master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) remembers when it first saw each open window of kind Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall or Slow Fall waiting for its player (`reactor_is_player`, `answer_now`), and after `AUTO_PASS_SECONDS` (30) sends the same `AnswerReaction` "Deixar passar" the master can tap, with the idempotency key `auto-pass:<window id>`, so two tabs or a retry never answer twice; a refusal because it was answered meanwhile is ignored.
 Saving throws (`CONCENTRATION_SAVE`, `EFFECT_SAVE`, the Hellish Rebuke second step), contests and the master's check never auto-pass.
 A reload starts the 30 s again (in memory only).
 The player's prompt only shows the countdown; their client never answers by itself.
@@ -207,4 +209,4 @@ The app decides, and says so:
 - Hellish Rebuke's fire is always rolled in the app;
 - Deflect Missiles' free-hand condition is not checked;
 - the shield counts as wielded unless a two-handed weapon is on the sheet, and a versatile weapon is one-handed (the sheet has no hands);
-- Feather Fall's trigger is the pit trap (a creature thrown into a fall by another effect has no window).
+- Feather Fall's and Slow Fall's trigger is the pit trap (a creature thrown into a fall by another effect has no window).

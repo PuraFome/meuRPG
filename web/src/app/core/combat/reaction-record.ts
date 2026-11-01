@@ -9,6 +9,7 @@ export const REACTION_NAMES = {
   cuttingWords: 'Palavras de Interrupção',
   deflectMissiles: 'Defletir Projéteis',
   featherFall: 'Queda Suave',
+  slowFall: 'Queda Lenta',
   protection: 'Proteção',
 } as const;
 
@@ -33,6 +34,8 @@ export function reactionKindName(kind: ReactionKind): string {
       return REACTION_NAMES.protection;
     case ReactionKind.FEATHER_FALL:
       return REACTION_NAMES.featherFall;
+    case ReactionKind.SLOW_FALL:
+      return REACTION_NAMES.slowFall;
     case ReactionKind.CONCENTRATION_SAVE:
       return 'Teste de concentração';
     case ReactionKind.OPPORTUNITY:

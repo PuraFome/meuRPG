@@ -82,6 +82,7 @@ async function mount(
     cast?: () => Promise<unknown>;
     list?: () => Promise<unknown>;
     noSlot?: boolean;
+    preview?: () => Promise<unknown>;
   } = {},
 ): Promise<Harness> {
   const reload = signal(0);
@@ -125,10 +126,12 @@ async function mount(
     ),
   );
   const base = inCombat ? combatPreview : outsidePreview;
-  const preview = vi.fn(() =>
-    Promise.resolve(
-      over.noSlot ? create(PreviewRevivifyResponseSchema, { ...base, slot: undefined }) : base,
-    ),
+  const preview = vi.fn(
+    over.preview ??
+      (() =>
+        Promise.resolve(
+          over.noSlot ? create(PreviewRevivifyResponseSchema, { ...base, slot: undefined }) : base,
+        )),
   );
   const request = vi.fn(() =>
     Promise.resolve(
@@ -266,6 +269,35 @@ describe('RevivifySheet in a combat', () => {
     await click(h, 'Encerrar turno');
     expect(h.endTurn).toHaveBeenCalledWith('c', 'enc', 'i', false, 8);
     expect(h.closed).toHaveBeenCalledWith(true);
+  });
+
+  it('says "searching" and then "nobody" from a status region that was there before, with no role of its own', async () => {
+    let release!: (r: unknown) => void;
+    const gate = new Promise((r) => (release = r));
+    const h = await mount(true, { preview: () => gate });
+    const status = h.el.querySelector('.mr-live[role="status"]')!;
+    expect(text(status)).toBe('Procurando quem morreu por perto…');
+    expect(status.querySelector('[role]')).toBeNull();
+    release(create(PreviewRevivifyResponseSchema, { targets: [] }));
+    await settle(h);
+    expect(h.el.querySelector('.mr-live[role="status"]')).toBe(status);
+    expect(text(status)).toContain('Ninguém');
+    expect(status.querySelector('[role]')).toBeNull();
+  });
+
+  it('says the refusal from an alert region that was there before, and the notice has no role', async () => {
+    const h = await mount(true, {
+      cast: () => Promise.reject(new ConnectError('x', Code.FailedPrecondition)),
+    });
+    const alert = h.el.querySelector('.mr-live[role="alert"]')!;
+    expect(alert.textContent?.trim()).toBe('');
+    await click(h, 'Próximo');
+    await tick(h);
+    await click(h, 'Conjurar Revivificar');
+    expect(h.el.querySelector('.mr-live[role="alert"]')).toBe(alert);
+    const notice = alert.querySelector('.mr-notice--danger')!;
+    expect(text(notice)).toContain('Não dá para reviver esta criatura agora.');
+    expect(notice.hasAttribute('role')).toBe(false);
   });
 
   it('says one generic sentence when the target is refused, and reads the list again', async () => {

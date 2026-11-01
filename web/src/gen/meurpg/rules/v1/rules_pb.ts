@@ -1924,9 +1924,8 @@ export const DiceFormulaSchema: GenMessage<DiceFormula> = /*@__PURE__*/
   messageDesc(file_meurpg_rules_v1_rules, 28);
 
 /**
- * DerivedClass is one of a character's classes, with names resolved.
  * RollDie is a table die the character adds to a roll of its own: sent back as the
- * `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave and SubmitInitiative.
+ * `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave, SubmitInitiative and RollAttack.
  *
  * @generated from message meurpg.rules.v1.RollDie
  */
@@ -1944,7 +1943,7 @@ export type RollDie = Message<"meurpg.rules.v1.RollDie"> & {
   namePt: string;
 
   /**
-   * "check", "save" or "initiative".
+   * "check", "save", "initiative" or "attack" (a weapon attack roll).
    *
    * @generated from field: string applies = 3;
    */
@@ -1993,6 +1992,8 @@ export const RollDieSchema: GenMessage<RollDie> = /*@__PURE__*/
   messageDesc(file_meurpg_rules_v1_rules, 29);
 
 /**
+ * DerivedClass is one of a character's classes, with names resolved.
+ *
  * @generated from message meurpg.rules.v1.DerivedClass
  */
 export type DerivedClass = Message<"meurpg.rules.v1.DerivedClass"> & {

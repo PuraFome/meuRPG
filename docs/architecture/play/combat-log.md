@@ -14,6 +14,7 @@ The log contains: the start and end of the combat; attacks (with the damage, the
 The line of a legendary spend reads "Draco gastou 2 ações lendárias: Wing Attack", the option as the SRD names it.
 A save the master made a success with Legendary Resistance is, for the master, the effect line (`COMBAT_LOG_EFFECT_CHANGE_SAVED`, with `resisted`, `resisted_left` and the roll that failed) or the concentration line that names the failed roll and the choice.
 A save of a spell the master turned into a success is, for the master, the spell line with the failed roll, the choice (`resisted`) and the uses left (`resisted_left`).
+A rider's save the master turned into a success is, for the master, the rider line with the failed roll, `resisted` and `resisted_left`; a player reads a save that passed.
 The window and its answer write no line of their own.
 A player reads the line of a save that passed: no roll, no count, no name for the trait.
 A legendary attack or move is the ordinary attack or movement line, which says nothing of the spend.

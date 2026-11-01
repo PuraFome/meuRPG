@@ -212,7 +212,7 @@ func (s *Service) fireInCombat(ctx context.Context, c *combatTx, trap maplink.Tr
 	if err != nil {
 		return nil, err
 	}
-	fallWins, err := s.trapFallWindows(ctx, c, prev, caught, ev.PointID)
+	fallWins, err := s.trapFallWindows(ctx, c, prev, caught, outcomes, ev.PointID)
 	if err != nil {
 		return nil, err
 	}
@@ -279,9 +279,10 @@ func (s *Service) rollTrapInCombat(ctx context.Context, c *combatTx, trap maplin
 	return outcomes, nil
 }
 
-// trapFallWindows are the windows a pit's fall can be slowed in by a Feather Fall (PM-04): its
-// damage waits for them when somebody can cast it.
-func (s *Service) trapFallWindows(ctx context.Context, c *combatTx, prev maplink.Trap, caught []playdb.Combatant, pointID string) ([]windowSpec, error) {
+// trapFallWindows are the windows a pit's fall can be slowed in by a Feather Fall or a monk's Slow Fall
+// (PM-04): its damage waits for them when somebody can answer. outcomes are the rolls of the caught,
+// in the same order.
+func (s *Service) trapFallWindows(ctx context.Context, c *combatTx, prev maplink.Trap, caught []playdb.Combatant, outcomes []trapOutcome, pointID string) ([]windowSpec, error) {
 	fall := s.fallDepth(prev)
 	if fall <= 0 || len(caught) == 0 {
 		return nil, nil
@@ -290,7 +291,7 @@ func (s *Service) trapFallWindows(ctx context.Context, c *combatTx, prev maplink
 	if err != nil {
 		return nil, err
 	}
-	return s.fallWindows(ctx, c, cs, caught, pointID, fall)
+	return s.fallWindows(ctx, c, cs, caught, fallDamagesOf(caught, outcomes), pointID, fall)
 }
 
 // caughtInCombat is what the trap did to one combatant: its attacks and saves as the event keeps
