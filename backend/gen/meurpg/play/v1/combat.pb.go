@@ -5927,8 +5927,8 @@ type Combatant struct {
 	// The master's, the owner's and a joint turn's, as reaction_used is; never an NPC's to a player.
 	// OPPORTUNITY for an opportunity attack; UNSPECIFIED when the server has no name for it (a feature's reaction), where
 	// the round alone says when.
-	ReactionKind  ReactionKind `protobuf:"varint,106,opt,name=reaction_kind,json=reactionKind,proto3,enum=meurpg.play.v1.ReactionKind" json:"reaction_kind,omitempty"`
-	ReactionRound int32        `protobuf:"varint,107,opt,name=reaction_round,json=reactionRound,proto3" json:"reaction_round,omitempty"`
+	ReactionKind  ReactionKind `protobuf:"varint,107,opt,name=reaction_kind,json=reactionKind,proto3,enum=meurpg.play.v1.ReactionKind" json:"reaction_kind,omitempty"`
+	ReactionRound int32        `protobuf:"varint,108,opt,name=reaction_round,json=reactionRound,proto3" json:"reaction_round,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -25796,8 +25796,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11stand_up_cost_dft\x18g \x01(\x05R\x0estandUpCostDft\x12E\n" +
 	"\x0fheld_roll_offer\x18h \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\x12<\n" +
 	"\tlegendary\x18i \x01(\v2\x1e.meurpg.play.v1.LegendaryStateR\tlegendary\x12A\n" +
-	"\rreaction_kind\x18j \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\freactionKind\x12%\n" +
-	"\x0ereaction_round\x18k \x01(\x05R\rreactionRoundB\r\n" +
+	"\rreaction_kind\x18k \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\freactionKind\x12%\n" +
+	"\x0ereaction_round\x18l \x01(\x05R\rreactionRoundB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +
