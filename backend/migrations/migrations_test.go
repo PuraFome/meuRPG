@@ -177,16 +177,36 @@ func TestMigrationsAreSafeToRerun(t *testing.T) {
 	}
 }
 
-// schema returns the CREATE statements of every table, goose's excluded.
+// schemaQueries read one table's columns, constraints and indexes from the catalog, which both
+// databases have, in an order that does not depend on when the migrations created them.
+var schemaQueries = []string{
+	`SELECT column_name || ' ' || data_type || ' ' || is_nullable || ' ' || COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY column_name`,
+	`SELECT conname || ' ' || pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = ('public.' || $1)::regclass ORDER BY conname`,
+	`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = $1 ORDER BY indexname`,
+}
+
+// schema returns the columns, constraints and indexes of every table, goose's excluded.
 func schema(t *testing.T, db *sql.DB) string {
 	t.Helper()
 	var b strings.Builder
 	for _, table := range tables(t, db) {
-		var name, create string
-		if err := db.QueryRowContext(t.Context(), "SHOW CREATE TABLE "+table).Scan(&name, &create); err != nil {
-			t.Fatalf("SHOW CREATE TABLE %s: %v", table, err)
+		for _, q := range schemaQueries {
+			rows, err := db.QueryContext(t.Context(), q, table)
+			if err != nil {
+				t.Fatalf("read the schema of %s: %v", table, err)
+			}
+			for rows.Next() {
+				var line string
+				if err := rows.Scan(&line); err != nil {
+					t.Fatalf("scan the schema of %s: %v", table, err)
+				}
+				b.WriteString(table + ": " + line + "\n")
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatalf("read the schema of %s: %v", table, err)
+			}
+			_ = rows.Close()
 		}
-		b.WriteString(create + "\n")
 	}
 	return b.String()
 }

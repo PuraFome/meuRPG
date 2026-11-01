@@ -57,7 +57,7 @@ COMMIT;
 func IsPostgres(ctx context.Context, db *sql.DB) (bool, error) {
 	var version string
 	if err := db.QueryRowContext(ctx, `SELECT version()`).Scan(&version); err != nil {
-		return false, fmt.Errorf("ask the server its version: %w", err)
+		return false, err
 	}
 	return !strings.Contains(version, "CockroachDB"), nil
 }
