@@ -22,7 +22,7 @@ func slotProto(s *slotRef) *playv1.SpellSlot {
 	if s == nil {
 		return nil
 	}
-	return &playv1.SpellSlot{Level: s.Level, Pact: s.Pact}
+	return &playv1.SpellSlot{Level: s.Level, Pact: s.Pact, Resource: s.Resource}
 }
 
 // saveView is a target's saving throw as the viewer may see it.

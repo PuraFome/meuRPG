@@ -2,16 +2,16 @@ package rules
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
 
-// CreatureCasting is the slot-based Spellcasting trait of a stat block (the Mage,
-// the Archmage, the Lich, the Priest...), as the combat reads it to know whether
-// a monster can cast a reaction spell (Shield, Counterspell). The stat block is
-// text, so it is read here: the spells and the slots of each level the trait lists,
-// the save DC, the attack bonus and the ability modifier that follows from it.
-// Innate Spellcasting (at will, n/day) has no slots and is left out.
+// CreatureCasting is the casting of a stat block (the Mage, the Archmage, the Lich, the Priest,
+// the Couatl...), as the combat reads it to know whether a monster can cast a reaction spell
+// (Shield, Counterspell). The stat block is text, so it is read here: the spells and the slots of
+// each level the Spellcasting trait lists, the innate spells that spend uses a day, the save DC,
+// the attack bonus and the ability modifier that follows from it.
 type CreatureCasting struct {
 	// SaveDC and AttackBonus are the trait's.
 	SaveDC, AttackBonus int
@@ -22,6 +22,16 @@ type CreatureCasting struct {
 	Slots [9]int
 	// Spells are the keys of the spells it has prepared, cantrips included.
 	Spells []string
+	// Innate are the spells of the Innate Spellcasting trait that spend the uses of a resource;
+	// the at-will ones spend nothing and are left out.
+	Innate []InnateUse `json:",omitempty"`
+}
+
+// InnateUse is an innate spell cast with the uses a day of a resource.
+type InnateUse struct {
+	// Spell is the spell's key, Resource the key of the resource that holds its uses and Max how many a day.
+	Spell, Resource string
+	Max             int
 }
 
 var (
@@ -30,13 +40,19 @@ var (
 )
 
 // MonsterSpellcasting is the reaction view of MonsterCaster: the slots, the prepared spells and the numbers of the
-// Spellcasting trait; false when the creature has none with slots.
+// Spellcasting trait, and the innate spells with uses a day; false when the creature has neither.
 func (c *Content) MonsterSpellcasting(key string) (CreatureCasting, bool) {
 	mc, ok := c.MonsterCaster(key)
-	if !ok || mc.Slots == nil {
+	var innate []InnateUse
+	for _, g := range mc.Granted {
+		if i := slices.IndexFunc(mc.Resources, func(r Resource) bool { return r.Key == g.Resource }); !g.AtWill && i >= 0 {
+			innate = append(innate, InnateUse{Spell: g.Spell.Key, Resource: g.Resource, Max: mc.Resources[i].Max})
+		}
+	}
+	if !ok || (mc.Slots == nil && len(innate) == 0) {
 		return CreatureCasting{}, false
 	}
-	out := CreatureCasting{SaveDC: mc.Spellcasting.SaveDC, AttackBonus: mc.Spellcasting.AttackBonus}
+	out := CreatureCasting{SaveDC: mc.Spellcasting.SaveDC, AttackBonus: mc.Spellcasting.AttackBonus, Innate: innate}
 	out.AbilityMod = out.AttackBonus - c.c.monsters[key].ProficiencyBonus
 	copy(out.Slots[:], mc.Slots)
 	for _, s := range mc.Spells {

@@ -124,7 +124,8 @@
   "cast_id": "x",
   "slot": {
     "level": 1,
-    "pact": true
+    "pact": true,
+    "resource": "x"
   },
   "slot_counted": true,
   "grant_use": "x",
@@ -955,7 +956,8 @@
     "by_master": true,
     "slot": {
       "level": 1,
-      "pact": true
+      "pact": true,
+      "resource": "x"
     },
     "racial": true,
     "spell": "x",

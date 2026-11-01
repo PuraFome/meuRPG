@@ -258,7 +258,9 @@ export class CombatAttackCalls {
       encounterId,
       windowId,
       answer: answer.use ? ReactionChoice.USE : ReactionChoice.PASS,
-      slot: answer.slot ? { level: answer.slot.level, pact: answer.slot.pact } : undefined,
+      slot: answer.slot
+        ? { level: answer.slot.level, pact: answer.slot.pact, resource: answer.slot.resource ?? '' }
+        : undefined,
       useRacial: answer.useRacial ?? false,
       creatureIds: [...(answer.creatureIds ?? [])],
       maneuverKey: answer.maneuverKey ?? '',

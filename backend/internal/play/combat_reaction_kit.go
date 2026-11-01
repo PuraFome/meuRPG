@@ -121,11 +121,11 @@ func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 		}
 		return nil
 	}
+	out := k.innateChoices(spell)
 	if !slices.Contains(k.st.Spells, spell) {
-		return nil
+		return out
 	}
 	used := slotsUsedOf(k.who)
-	var out []*rulesv1.SlotChoice
 	for l := int(level); l <= 9; l++ {
 		if free := k.st.SlotsTotal[l-1] - used[strconv.Itoa(l)]; free > 0 {
 			out = append(out, &rulesv1.SlotChoice{Level: int32(l), Free: int32(free), Total: n32(k.st.SlotsTotal[l-1])}) //nolint:gosec // 1 to 9, a count of slots
@@ -133,6 +133,19 @@ func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 	}
 	if free := k.st.PactSlots - used[usedPact]; free > 0 && int32(k.st.PactLevel) >= level { //nolint:gosec // a pact slot level
 		out = append(out, &rulesv1.SlotChoice{Level: int32(k.st.PactLevel), Pact: true, Free: int32(free), Total: n32(k.st.PactSlots)}) //nolint:gosec // a count of slots
+	}
+	return out
+}
+
+// innateChoices are the uses a day of a stat block's innate spell, one choice a resource with uses left,
+// offered beside the slots (an SRD creature has one or the other, not both): the choice has the spell's own
+// level and counts the uses where a slot choice counts slots.
+func (k kit) innateChoices(spell string) []*rulesv1.SlotChoice {
+	var out []*rulesv1.SlotChoice
+	for _, in := range k.st.Innate {
+		if left := k.resourceLeft(in.Resource); in.Spell == spell && left > 0 {
+			out = append(out, &rulesv1.SlotChoice{Level: reactionSpellLevel[spell], Resource: in.Resource, Free: left, Total: n32(in.Max)})
+		}
 	}
 	return out
 }
@@ -169,6 +182,12 @@ func (s *Service) spendSlotOf(ctx context.Context, c *combatTx, who playdb.Comba
 	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, who)
 	if err != nil {
 		return nil, err
+	}
+	if slot.Resource != "" { // an innate spell spends a use of its resource
+		if !ok || k.resourceLeft(slot.Resource) <= 0 {
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
+		}
+		return nil, s.bumpUsed(ctx, c, who, usedResource+slot.Resource, 1)
 	}
 	key := strconv.Itoa(int(slot.Level))
 	if slot.Pact {
@@ -207,14 +226,19 @@ func (s *Service) spendResourceOf(ctx context.Context, c *combatTx, who playdb.C
 // pickSlot checks the slot an answer chose against the free ones; invalid_argument
 // when it is not one of them.
 func pickSlot(in *playv1.SpellSlot, free []*rulesv1.SlotChoice) (slotRef, error) {
-	if in == nil || !slices.ContainsFunc(free, func(s *rulesv1.SlotChoice) bool { return s.GetLevel() == in.GetLevel() && s.GetPact() == in.GetPact() }) {
+	if in == nil || !slices.ContainsFunc(free, func(s *rulesv1.SlotChoice) bool {
+		return s.GetLevel() == in.GetLevel() && s.GetPact() == in.GetPact() && s.GetResource() == in.GetResource()
+	}) {
 		return slotRef{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slot is not one of the free slots the window offers"))
 	}
-	return slotRef{Level: in.GetLevel(), Pact: in.GetPact()}, nil
+	return slotRef{Level: in.GetLevel(), Pact: in.GetPact(), Resource: in.GetResource()}, nil
 }
 
-// giveBackNPCSlot takes a slot an NPC spent back (the undo of its Shield or of a cast).
+// giveBackNPCSlot takes a slot, or the use of an innate spell, an NPC spent back (the undo of its Shield or of a cast).
 func (s *Service) giveBackNPCSlot(ctx context.Context, c *combatTx, who playdb.Combatant, slot slotRef) error {
+	if slot.Resource != "" {
+		return s.bumpUsed(ctx, c, who, usedResource+slot.Resource, -1)
+	}
 	key := strconv.Itoa(int(slot.Level))
 	if slot.Pact {
 		key = usedPact

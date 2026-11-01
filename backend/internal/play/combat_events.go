@@ -68,6 +68,8 @@ func hpStateOf(v *playv1.CharacterVitals) hpState {
 type slotRef struct {
 	Level int32 `json:"level"`
 	Pact  bool  `json:"pact,omitempty"`
+	// Resource is the resource of an innate spell's uses a day when the cast spent one of them and no slot.
+	Resource string `json:"resource,omitempty"`
 }
 
 // deathState is a combatant's death save counts and whether its turn's save was

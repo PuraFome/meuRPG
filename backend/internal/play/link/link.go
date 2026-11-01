@@ -622,6 +622,15 @@ type ReactionStats struct {
 	// ("bardic_inspiration", "ki", "infernal_legacy"): the combat counts what an NPC
 	// spent; a player's character spends from its vitals.
 	ResourceMax map[string]int
+	// Innate are the spells a stat block casts innately with the uses a day of a resource (the
+	// Couatl's Shield): a reaction can spend one of them where a slot is not needed.
+	Innate []InnateUse
+}
+
+// InnateUse is an innate spell with the resource that holds its uses and how many a day.
+type InnateUse struct {
+	Spell, Resource string
+	Max             int
 }
 
 // ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage

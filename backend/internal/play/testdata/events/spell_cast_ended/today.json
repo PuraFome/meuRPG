@@ -5,7 +5,8 @@
   "secret": true,
   "slot": {
     "level": 1,
-    "pact": true
+    "pact": true,
+    "resource": "x"
   },
   "ritual": true,
   "minutes": 1,

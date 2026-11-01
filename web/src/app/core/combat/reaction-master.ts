@@ -7,7 +7,7 @@ import {
 import type { SlotChoice } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots } from '../format/text';
 import { metersText } from '../units';
-import { circleLabel } from './combat-grid';
+import { circleLabel, slotTitle } from './combat-grid';
 import { article } from './combat-log';
 import { listNames } from './joint-turn';
 import { ofThe } from './move-plan';
@@ -221,7 +221,7 @@ export function slotOptions(w: ReactionWindow): readonly SlotOption[] {
       ? [
           {
             slot: s.slot,
-            title: s.slot.pact ? `${circleLabel(s.slot.level)} (pacto)` : circleLabel(s.slot.level),
+            title: slotTitle(s.slot),
             effect: s.noCheck ? 'anula sem teste' : `teste de conjuração CD ${s.checkDc}`,
           },
         ]

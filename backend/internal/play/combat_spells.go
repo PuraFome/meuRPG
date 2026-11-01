@@ -193,10 +193,12 @@ func slotOf(in *playv1.SpellSlot, c castable) (*slotRef, error) {
 	if in == nil || in.GetLevel() < c.level || in.GetLevel() > 9 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slot must be a spell slot of at least the spell's level"))
 	}
-	if !slices.ContainsFunc(c.slots, func(s *rulesv1.SlotChoice) bool { return s.GetLevel() == in.GetLevel() && s.GetPact() == in.GetPact() }) {
+	if !slices.ContainsFunc(c.slots, func(s *rulesv1.SlotChoice) bool {
+		return s.GetLevel() == in.GetLevel() && s.GetPact() == in.GetPact() && s.GetResource() == in.GetResource()
+	}) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slot is not one the caster has free"))
 	}
-	return &slotRef{Level: in.GetLevel(), Pact: in.GetPact()}, nil
+	return &slotRef{Level: in.GetLevel(), Pact: in.GetPact(), Resource: in.GetResource()}, nil
 }
 
 // reachOf is how far a player's spell reaches from the caster in feet, and

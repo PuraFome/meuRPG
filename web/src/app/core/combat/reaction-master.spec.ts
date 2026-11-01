@@ -1,5 +1,6 @@
 import { CombatantKind, ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, reactionWindow } from './combat-testing';
+import { slotTitle } from './combat-grid';
 import {
   describeRow,
   heldReason,
@@ -179,6 +180,23 @@ describe("the master's cards for the reaction windows", () => {
     if (card.type === 'single') {
       expect(plain(card.text)).toContain('pode usar Contramágica contra Bola de Fogo (3º nível)');
     }
+  });
+
+  it('an innate spell is called by its uses left, not by a circle', () => {
+    expect(
+      plain(
+        slotTitle({
+          level: 1,
+          pact: false,
+          free: 2,
+          total: 3,
+          resource: 'innate_3_day_shield',
+        } as never),
+      ),
+    ).toBe('Conjuração inata (2 de 3 usos)');
+    expect(
+      plain(slotTitle({ level: 3, pact: false, free: 1, total: 2, resource: '' } as never)),
+    ).toBe('3º nível');
   });
 
   it('the second steps and the check are their own cards', () => {
