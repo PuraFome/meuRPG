@@ -2765,6 +2765,11 @@ message Combatant {
   // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
   // weapon attack.
   HeldRollOffer held_roll_offer = 104;
+  // Which reaction was spent while reaction_used is true, and the round it was spent in.
+  // The master's, the owner's and a joint turn's, as reaction_used is. OPPORTUNITY for an
+  // opportunity attack, UNSPECIFIED for a feature's reaction: the round alone says when.
+  ReactionKind reaction_kind = 105;
+  int32 reaction_round = 106;
 }
 
 // Participant is who joins a combat: a character of the campaign.

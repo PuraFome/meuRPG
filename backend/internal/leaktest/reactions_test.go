@@ -313,3 +313,55 @@ func TestAReactionOutsideAPlayersVisionIsNotInTheirLog(t *testing.T) {
 		}
 	}
 }
+
+// The record of a spent reaction (which one, in which round) is the master's and the owner's, like
+// reaction_used: an NPC's never reaches a player (RN-20), in the combat or in the log. The master's
+// own read is the positive control.
+func TestAnNPCsSpentReactionRecordIsTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	mage := w.reactionFight()
+	toren := w.combatant(w.toren)
+	w.secrets.add(&canary{needle: `"reactionKind"`, kind: "reaction-record-kind"})
+	w.secrets.add(&canary{needle: `"reactionRound"`, kind: "reaction-record-round"})
+
+	must(w.caio.combat.RollAttack(t.Context(), rq(&playv1.RollAttackRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: toren.GetId(), AttackKey: "equipment:dagger", TargetId: mage.GetId(),
+		IdempotencyKey: newKey(), Roll: &playv1.RollAttackRequest_D20Face{D20Face: 10},
+	})))
+	win := windowOfKind(w.master, w, playv1.ReactionKind_REACTION_KIND_SHIELD)
+	if win == nil {
+		t.Fatal("the Mago has no Shield window")
+	}
+	must(w.master.combat.AnswerReaction(t.Context(), rq(&playv1.AnswerReactionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: win.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
+		Slot: &playv1.SpellSlot{Level: 1}, IdempotencyKey: newKey(),
+	})))
+	w.secrets.allowNeedle("Escudo Arcano", w.ana, w.caio)
+	w.secrets.allowNeedle("spell:shield", w.ana, w.caio)
+
+	for _, p := range []*person{w.ana, w.caio} {
+		for _, r := range w.reads(p) {
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+	// The positive control: the master reads the record.
+	enc := must(w.master.combat.GetEncounter(t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	var got *playv1.Combatant
+	for _, c := range enc.GetCombatants() {
+		if c.GetId() == mage.GetId() {
+			got = c
+		}
+	}
+	if got == nil || !got.GetReactionUsed() || got.GetReactionKind() != playv1.ReactionKind_REACTION_KIND_SHIELD || got.GetReactionRound() != enc.GetRound() {
+		t.Fatalf("the master reads %v, want the Mago's Shield spent in round %d", got, enc.GetRound())
+	}
+	found := false
+	for _, r := range w.reads(w.master) {
+		found = found || contains(r.body, `"reactionKind"`)
+	}
+	if !found {
+		t.Error("the master's reads do not hold the record: the canary is unreachable")
+	}
+}

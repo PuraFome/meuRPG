@@ -11,6 +11,7 @@ import { circleLabel } from './combat-grid';
 import { article } from './combat-log';
 import { listNames } from './joint-turn';
 import { ofThe } from './move-plan';
+import { reactionKindName } from './reaction-record';
 import { REACTION_NAMES, openWindows } from './reactions';
 
 /**
@@ -22,32 +23,7 @@ import { REACTION_NAMES, openWindows } from './reactions';
 
 /** The name of the reaction a window offers, as `names_pt.json` writes it. */
 export function reactionName(w: ReactionWindow): string {
-  switch (w.kind) {
-    case ReactionKind.SHIELD:
-      return REACTION_NAMES.shield;
-    case ReactionKind.UNCANNY_DODGE:
-      return REACTION_NAMES.uncannyDodge;
-    case ReactionKind.HELLISH_REBUKE:
-      return REACTION_NAMES.hellishRebuke;
-    case ReactionKind.COUNTERSPELL:
-      return REACTION_NAMES.counterspell;
-    case ReactionKind.CUTTING_WORDS:
-      return REACTION_NAMES.cuttingWords;
-    case ReactionKind.DEFLECT_MISSILES:
-      return REACTION_NAMES.deflectMissiles;
-    case ReactionKind.MANEUVER_REDUCE:
-      return 'Manobra';
-    case ReactionKind.PROTECTION:
-      return REACTION_NAMES.protection;
-    case ReactionKind.FEATHER_FALL:
-      return REACTION_NAMES.featherFall;
-    case ReactionKind.CONCENTRATION_SAVE:
-      return 'Teste de concentração';
-    case ReactionKind.OPPORTUNITY:
-      return 'Ataque de oportunidade';
-    default:
-      return 'Reação';
-  }
+  return reactionKindName(w.kind);
 }
 
 /** The Shield spell's bonus to armor class (SRD 5.1). */

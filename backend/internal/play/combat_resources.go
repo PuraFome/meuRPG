@@ -151,6 +151,11 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 	}); err != nil {
 		return nil, fmt.Errorf("spend the action: %w", err)
 	}
+	if action.GetAction().GetEconomy() == rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION {
+		if err := recordReaction(ctx, c, who.ID, actionKey); err != nil {
+			return nil, err
+		}
+	}
 	c.characterID = &who.CharacterID
 	return &resourceFlow{m: m, v: v, cs: cs, who: who, made: made}, nil
 }

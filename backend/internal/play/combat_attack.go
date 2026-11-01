@@ -665,7 +665,18 @@ func (f *attackFlow) spendEconomy(ctx context.Context) error {
 	}); err != nil {
 		return fmt.Errorf("spend the action: %w", err)
 	}
+	if f.call.asReaction {
+		return recordReaction(ctx, f.c, f.attacker.ID, f.reactionKind())
+	}
 	return nil
+}
+
+// reactionKind is the record of the reaction the attack spends: the opportunity attack, or the throw back.
+func (f *attackFlow) reactionKind() string {
+	if f.call.opportunity() {
+		return reactionOpportunity
+	}
+	return reactionThrowBack
 }
 
 // spendTurn marks in after what the attack spends and writes the counters that are not the economy's own.

@@ -1,4 +1,8 @@
-import { CombatantKind, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  EncounterStatus,
+  ReactionKind,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from './combat-testing';
 import { turnBanner } from './combat-view';
 import { distanceText } from '../units';
@@ -12,6 +16,7 @@ import {
   missingLine,
   npcPlural,
   orderItems,
+  partEconomy,
   passNote,
   playsBefore,
 } from './joint-turn';
@@ -201,6 +206,19 @@ describe('joint turns (MR-013)', () => {
         combatant({ id: 'x', label: 'X', movementLeftFt: 30, speedFt: 30, reactionUsed: true }),
       ),
     ).toBe('Ação, Ação bônus e 9 m · 6 quadrados');
+  });
+
+  it('says which reaction a member spent and in which round', () => {
+    const spent = (over: object) =>
+      partEconomy(combatant({ id: 'x', label: 'X', reactionUsed: true, ...over })).used;
+    expect(spent({ reactionKind: ReactionKind.SHIELD, reactionRound: 2 })).toEqual([
+      'Reação (Escudo Arcano, rodada 2)',
+    ]);
+    expect(spent({ reactionKind: ReactionKind.OPPORTUNITY, reactionRound: 3 })).toEqual([
+      'Reação (Ataque de oportunidade, rodada 3)',
+    ]);
+    expect(spent({ reactionRound: 4 })).toEqual(['Reação (rodada 4)']);
+    expect(spent({})).toEqual(['Reação']);
   });
 
   describe('masterActor, the NPC the master acts for in a mixed joint turn', () => {

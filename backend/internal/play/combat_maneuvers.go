@@ -199,7 +199,7 @@ func (s *Service) answerManeuverReduce(ctx context.Context, c *combatTx, w playd
 	t := windowTriggerOf(w)
 	reduction := clamp32(max(face+opt.Mod, 0), 0, math.MaxInt32)
 	left := clamp32(max(int(t.Damage)-int(reduction), 0), 0, math.MaxInt32)
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.ManeuverReduceKind); err != nil {
 		return err
 	}
 	if _, err := s.spendResource(ctx, c, reactor.CharacterID, opt.Resource, 1); err != nil {

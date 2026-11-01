@@ -620,6 +620,9 @@ func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
 	out.MovementLeftDft = clamp32(movementLeftDFt(c), 0, math.MaxInt32)
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 	out.Disengaged = c.Disengaged
+	if c.ReactionUsed {
+		out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)
+	}
 	out.StandUpCostDft = clamp32(standUpCostDFt(c), 0, math.MaxInt32)
 }
 

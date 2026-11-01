@@ -142,6 +142,12 @@ Hellish Rebuke's second-step prompt carries the aggressor's modifier only for th
 
 Each reaction is one line (`COMBAT_LOG_KIND_REACTION_WINDOW`) with the master's and the players' text; `reaction_answered` and `concentration_save_rolled` are the session event kinds.
 A used Shield keeps `reaction_used` (undoable).
+A spent reaction records its kind and the round in `combatants.reaction_kind` and `reaction_round`.
+The kind is the reaction window's key, `opportunity` for an opportunity attack, or the key of the feature whose action is a reaction.
+`SetCombatantReactionSpent` writes the record where the reaction is spent.
+The start of the combatant's turn clears it, and so does an economy write that gives the reaction back (the undo).
+The view sends `Combatant.reaction_kind` and `reaction_round` to the master, the owner and a joint turn, as it sends `reaction_used`, and never to another player (RN-20).
+`reaction_kind` is `UNSPECIFIED` for a feature's reaction.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.
 
