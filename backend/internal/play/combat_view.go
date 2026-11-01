@@ -439,6 +439,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	if v.master { // the creature of a monster: the master's alone (RN-20)
 		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
 		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c, e)
+		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c)
 	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 		shareEconomy(p, c)
@@ -752,6 +753,8 @@ type masterNPC struct {
 	// legendary is what its stat block says about legendary actions and Legendary
 	// Resistance; the zero value for an NPC without them.
 	legendary rules.LegendaryProfile
+	// limited are the actions of its stat block that Recharge, have uses a day or wait for a rest.
+	limited []rules.ActionPlan
 }
 
 // npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its
@@ -783,7 +786,7 @@ func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encount
 		}
 		out[c.ID] = n
 	}
-	s.addLegendaryProfiles(ctx, m.CampaignID, out)
+	s.addStatBlockProfiles(ctx, m.CampaignID, out)
 	return out
 }
 

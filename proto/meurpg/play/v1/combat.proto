@@ -1975,6 +1975,12 @@ enum EncounterBlockedReason {
   // The same: the creature is no creature with the trait (the combatant is a player's character
   // or its stat block does not have it). Refused before the roll; nothing changes.
   ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
+  // UseCreatureAction and RollAttack with an action of a stat block that has a Recharge: the
+  // action was used and has not recharged. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING = 123;
+  // The same, for an action with uses a day or one that recharges after a rest: every use is
+  // spent. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT = 124;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2821,6 +2827,32 @@ message Combatant {
   // them on. Only the master gets it, and only for such a combatant; a player's copy never
   // has the field, not even empty (RN-20, RN-29).
   LegendaryState legendary = 105;
+
+  // The actions of the creature's stat block that Recharge, have uses a day or recharge after
+  // a rest, each with what it has left, in the stat block's order. Only the master gets it,
+  // and only for a combatant with such actions; a player's copy never has them (RN-20, RN-29).
+  repeated LimitedAction limited_actions = 106;
+}
+
+// LimitedAction is an action of a stat block with a limit and what the creature has left of it.
+// The master's alone.
+message LimitedAction {
+  // The action's key in its stat block, the `action_key` of UseCreatureAction.
+  string action_key = 1;
+  // The SRD's name of the action, in English, and its name in Portuguese ("" when the
+  // content has none).
+  string name = 2;
+  string name_pt = 3;
+  // "recharge", "per_day" or "rest".
+  string kind = 4;
+  // The SRD's words of the limit ("Recharge 5-6", "3/day").
+  string usage = 5;
+  // Whether the action can be used now.
+  bool available = 6;
+  // How many uses the action has (1 for a Recharge action and for one that recharges after a
+  // rest) and how many are left.
+  int32 uses_allowed = 7;
+  int32 uses_left = 8;
 }
 
 // LegendaryState is what a legendary creature has left of its legendary actions this

@@ -9,11 +9,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// addLegendaryProfiles reads the stat block of each monster NPC in npcs for the
-// master's card: its legendary actions and Legendary Resistance. The rules content
+// addStatBlockProfiles reads the stat block of each monster NPC in npcs for the
+// master's card: its legendary actions, Legendary Resistance and limited actions. The rules content
 // is read only when some NPC is a monster; a content that can't be read leaves the
 // cards without them, as a sheet that can't be read leaves a card without a portrait.
-func (s *Service) addLegendaryProfiles(ctx context.Context, campaignID string, npcs map[string]masterNPC) {
+func (s *Service) addStatBlockProfiles(ctx context.Context, campaignID string, npcs map[string]masterNPC) {
 	hasMonster := false
 	for _, n := range npcs {
 		hasMonster = hasMonster || n.monsterKey != ""
@@ -28,8 +28,11 @@ func (s *Service) addLegendaryProfiles(ctx context.Context, campaignID string, n
 	for id, n := range npcs {
 		if p, ok := content.LegendaryProfile(n.monsterKey); ok && p.IsLegendary() {
 			n.legendary = p
-			npcs[id] = n
 		}
+		if plan, ok := content.MonsterPlan(n.monsterKey); ok {
+			n.limited = limitedActionsOf(plan)
+		}
+		npcs[id] = n
 	}
 }
 

@@ -495,6 +495,9 @@ type actionEvent struct {
 	// field names follow the same rule as above.
 	Resisted   bool  `json:"resisted,omitempty"`
 	ResistLeft int32 `json:"resist_left,omitempty"`
+	// LimitKey is the key in the actor's creature_spent that the use of a limited action of its stat block
+	// spent one of: the undo gives the use back.
+	LimitKey string `json:"limit_key,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`
