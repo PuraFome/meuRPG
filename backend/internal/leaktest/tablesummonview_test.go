@@ -349,13 +349,13 @@ func TestASummonedTableCreatureShowsAThirdPlayerItsIdentityAndNothingElse(t *tes
 	w.settle(v.watchers[w.master], v.watchers[w.ana], v.watchers[w.caio])
 	for p, sw := range v.watchers {
 		heard := sw.since(0)
-		real := 0
+		heardReal := 0
 		for _, ev := range heard {
 			if ev.GetCurrentMapChanged() == nil && ev.GetHeartbeat() == nil {
-				real++
+				heardReal++
 			}
 		}
-		if real == 0 && (p == w.master || p == w.ana) {
+		if heardReal == 0 && (p == w.master || p == w.ana) {
 			t.Errorf("%s's stream heard no event besides the marker and the heartbeat: the check proves nothing", p.name)
 		}
 		for _, ev := range heard {
