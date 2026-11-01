@@ -43,7 +43,7 @@ export class LiveSessionState {
   readonly shownNotice = signal('');
   readonly campaignMaps = signal<readonly MapMessage[]>([]);
 
-  /** Goes up when what a player sees may have changed: the master's "Ver como" reads again (his stream never hears `vision_changed`). */
+  /** Goes up when what a player sees may have changed: the master's "Ver como" reads again (the master hears `vision_changed` too, for his light warning). */
   readonly visionTick = signal(0);
   /** The character the master looks as ("Ver como"), the line about that view, and why it went back to "Todos". */
   readonly viewAs = signal<string | null>(null);

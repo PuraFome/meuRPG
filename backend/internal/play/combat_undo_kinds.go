@@ -740,6 +740,7 @@ func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev a
 
 // castZonesBack takes the zones of a cast away, with the questions they had open and the effects their answers added.
 func (u *undoer) castZonesBack(ctx context.Context, castID string) error {
+	u.c.zonesMoved = true // the zone may be a cloud: the fog looks again
 	if err := u.s.closeCastZoneWindows(ctx, u.c, castID); err != nil {
 		return err
 	}

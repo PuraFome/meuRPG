@@ -28,7 +28,7 @@ export const ZONE_PATTERNS: readonly ZonePatternTile[] = [
   { name: 'listras horizontais', d: 'M0 0.1H0.2', tint: 'accent' },
 ];
 
-/** The spells the app keeps, each with a pattern of its own so the six never share one. */
+/** The first six spells the app keeps, each with a pattern of its own so the six never share one. Every other spell takes the hash below. */
 const KNOWN: Readonly<Record<string, number>> = {
   'spell:moonbeam': 0,
   'spell:web': 1,
@@ -40,7 +40,7 @@ const KNOWN: Readonly<Record<string, number>> = {
 
 const HASH_BASE = 31;
 
-/** The pattern of a spell's zone: fixed for the six spells of the catalog, a hash of the key for a table spell. */
+/** The pattern of a spell's zone: fixed for the first six spells of the catalog, a hash of the key for the others. */
 export function zonePattern(spellKey: string): number {
   const known = KNOWN[spellKey];
   if (known !== undefined) {

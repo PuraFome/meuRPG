@@ -324,7 +324,7 @@ type ConditionImmunity struct {
 
 // Senses are a creature's special senses, as a range in feet (0 for none).
 type Senses struct {
-	DarkvisionFt, BlindsightFt, TruesightFt int
+	DarkvisionFt, BlindsightFt, TruesightFt, DevilsSightFt int
 }
 
 // Attack is one attack of a sheet, with real dice.
@@ -532,6 +532,9 @@ type Spell struct {
 	AreaSizeFt           int
 	AreaWidthFt          int
 	SpreadsAroundCorners bool
+	// ZoneSizeFt is the size of the zone this cast lays when it differs from the catalog's: the radius of a Fog Cloud
+	// cast with a higher slot. 0: the catalog's.
+	ZoneSizeFt int
 	// Zone is the area a table spell keeps on the map while it lasts: nil for an SRD spell (the combat knows
 	// the SRD's four) and for a table spell that keeps none.
 	Zone *ZoneRule

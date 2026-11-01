@@ -195,6 +195,9 @@ type combatTx struct {
 	// told are the vitals of the characters whose Wild Shape form or familiar sight
 	// ended: write tells the streams and the fog after the commit (MR-036).
 	told []*playv1.CharacterVitals
+	// zonesMoved says the change put, moved or took away a spell zone that changes what is seen (a cloud, a
+	// darkness): write tells the fog after the commit.
+	zonesMoved bool
 	// master says the master makes the change: the turn that waits for an
 	// opportunity attack's answer never stops him.
 	master bool
@@ -491,11 +494,13 @@ func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *comba
 	}
 	// A turn that started ended some familiar's sight (MR-036): the player's vitals
 	// and the fog's view change.
-	if len(ended.told) > 0 {
-		for _, v := range ended.told {
-			s.publishVitals(campaignID, v)
-		}
-		s.maps.VisionChanged(ctx, campaignID, conv.OrZero(ended.enc.MapID))
+	for _, v := range ended.told {
+		s.publishVitals(campaignID, v)
+	}
+	if len(ended.told) > 0 || ended.zonesMoved {
+		pctx, stop := afterCommit(ctx) // committed: a caller that hangs up must not leave the fog unheard
+		defer stop()
+		s.maps.VisionChanged(pctx, campaignID, conv.OrZero(ended.enc.MapID))
 	}
 }
 

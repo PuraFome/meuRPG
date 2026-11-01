@@ -397,3 +397,25 @@ func TestATableWildShapeEffectRefusals(t *testing.T) {
 		}
 	}
 }
+
+// A beast form has the beast's senses: Devil's Sight is not carried, and it raises no darkvision of the beast to its 120 feet.
+func TestBeastFormDropsDevilsSight(t *testing.T) {
+	t.Parallel()
+	own := []Sense{{Key: "darkvision", RangeFt: 60}, {Key: "devils-sight", RangeFt: 120}}
+	for _, tc := range []struct {
+		name  string
+		beast []Sense
+		want  []Sense
+	}{
+		{"no senses", nil, nil},
+		{"darkvision beast", []Sense{{Key: "darkvision", RangeFt: 30}}, []Sense{{Key: "darkvision", RangeFt: 60}}},
+		{"blindsight beast", []Sense{{Key: "blindsight", RangeFt: 10}}, []Sense{{Key: "blindsight", RangeFt: 10}}},
+	} {
+		if got := beastSenses(own, tc.beast); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: beastSenses() = %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+	if got := beastSenses([]Sense{{Key: "devils-sight", RangeFt: 120}}, []Sense{{Key: "darkvision", RangeFt: 30}}); got[0].RangeFt != 30 {
+		t.Errorf("Devil's Sight raised the beast's darkvision to %d, want 30", got[0].RangeFt)
+	}
+}

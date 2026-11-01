@@ -452,6 +452,7 @@ func (f *castFlow) placeArea(ctx context.Context) error {
 	// spell as it was before the zones (its targets, its effects), and lays nothing.
 	if _, ok := zoneDefOfSpell(f.sp); ok && f.req.GetOrigin() != nil && !isTheatre(f.c.enc) {
 		f.sp.ZoneLaid = true
+		f.sp = withZoneSize(f.sp, f.slotLevel)
 	}
 	f.placedArea = placementOf(f.sp) != playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED && !isTheatre(f.c.enc)
 	switch {

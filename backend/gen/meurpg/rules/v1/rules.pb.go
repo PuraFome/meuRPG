@@ -5468,8 +5468,8 @@ type Sense struct {
 	NamePt string `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// Range in feet, such as 60.
 	RangeFt int32 `protobuf:"varint,3,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
-	// Which sense it is: "darkvision", "blindsight", "tremorsense" or
-	// "truesight". Use it, not `key` (which names what grants the sense: a trait,
+	// Which sense it is: "darkvision", "blindsight", "tremorsense",
+	// "truesight" or "devils-sight". Use it, not `key` (which names what grants the sense: a trait,
 	// or the creature's key for a creature's sense), to tell senses apart.
 	Sense         string `protobuf:"bytes,4,opt,name=sense,proto3" json:"sense,omitempty"`
 	unknownFields protoimpl.UnknownFields

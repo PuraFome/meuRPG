@@ -52,7 +52,7 @@ func (z *zone) occupantsFor(cs []playdb.Combatant, v combatViewer) []string {
 func (z *zone) view(owner playdb.Combatant, round int32, names func(string) string) *playv1.SpellZone {
 	out := &playv1.SpellZone{
 		Id: z.row.ID, SpellKey: z.row.SpellKey, OwnerCombatantId: owner.ID, OwnerLabel: owner.Label,
-		Shape: shapeProto(z.def.shape), SizeFt: clamp32(z.def.sizeFt, 0, math.MaxInt32),
+		Shape: shapeProto(z.def.shape), SizeFt: clamp32(z.sizeFt(), 0, math.MaxInt32),
 		Origin: originProto(z.origin()), Squares: squaresProto(z.squares),
 		Concentration: z.row.Concentration, RoundsLeft: z.roundsLeft(round), Movement: z.def.movement,
 		Visibility: playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_EVERYONE,

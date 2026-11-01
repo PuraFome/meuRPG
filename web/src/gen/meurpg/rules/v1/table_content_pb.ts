@@ -282,7 +282,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   targets: string[];
 
   /**
-   * sense: "darkvision", "blindsight", "tremorsense" or "truesight", and its range.
+   * sense: "darkvision", "blindsight", "tremorsense", "truesight" or "devils-sight", and its range.
    *
    * @generated from field: string sense = 11;
    */
