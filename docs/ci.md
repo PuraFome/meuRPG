@@ -59,7 +59,7 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | `go (integration tests against CockroachDB)` | Waits for every group, the group check and the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
 
-**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-3`, `maps`, `characters`, `pure`, `leak`, `camp` and `rest`.
+**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-4`, `maps`, `characters`, `rules`, `dungeon` (with `rules/puzzle`), `leak` and `rest`.
 The heavy packages are named by hand and `rest` holds everything else, so a new package lands in `rest` and is never skipped.
 The `play` package is split by test: each part runs the tests whose name hashes (`cksum`) to it, so a new test lands in a part by itself and adding one never moves the others.
 A group reads the play tests from the `func` lines of the package's `_test.go` files, so it needs no compile to get its `-run`.
