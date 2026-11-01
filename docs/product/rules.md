@@ -831,7 +831,12 @@ The wait reveals nothing about the roll: a player reads the same wait and the sa
 He sees the failed rolls and turns the failures he chooses, one use each, or lets them stand.
 When every such save passed, he has nothing to offer and lets the cast go on.
 The same dice settle the cast.
-The save of a hit rider (Stunning Strike, an Open Hand technique, a creature's attack rider) is held the same way: the answer to the rider waits for the master alone, whether the save passed or failed, the ki and the effect come with the replay, and a player reads only the wait and then a save that passed or failed (RN-20).
+The save of a hit rider (Stunning Strike, an Open Hand technique, a creature's attack rider) works the same way.
+The monk's player answers the offer and then reads "Esperando o mestre", whatever the save rolled.
+The master sees the failed save, if any, and turns it into a success or lets it stand, one use each.
+The rider then lands as the save finally went: the ki is spent and the effect applies only to a target that failed.
+While one rider waits, no rider offer of the combat is answered.
+A player reads only the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
 The trait is not offered on any other save: a trap's, Turn Undead, Hellish Rebuke or a goading maneuver's.
 A creature a spell zone catches saves at once, with no choice for the master.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).

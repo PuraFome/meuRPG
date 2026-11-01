@@ -196,7 +196,7 @@ func (s *Service) UseHitRider(
 	ctx context.Context,
 	req *connect.Request[playv1.UseHitRiderRequest],
 ) (*connect.Response[playv1.UseHitRiderResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, _, _, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -245,6 +245,9 @@ func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	row, attacker, target, err := s.riderOffer(ctx, c, m, cs, riderID)
 	if err != nil {
+		return actionEvent{}, err
+	}
+	if err := s.riderHeld(ctx, c); err != nil {
 		return actionEvent{}, err
 	}
 	choice, err := riderChoiceOf(row.Kind, msg.GetChoice())

@@ -261,6 +261,10 @@ func (s *Service) settleReplay(ctx context.Context, c *combatTx, h playdb.Reacti
 		return nil
 	case errors.As(err, &done):
 		c.tellActorVitals(done.event)
+		c.pushed = append(pushesOf(done.event.Hits), c.pushed...)
+		if done.event.Rider != nil {
+			c.pushed = append(c.pushed, done.event.Rider.Pushed)
+		}
 		s.completeAnswers(c, windows, st, done.event)
 		return nil
 	case err != nil && clientError(err):
@@ -318,15 +322,13 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
-		case "hit_rider":
-			// The answer of the Legendary Resistance window has nothing to learn from the rider.
 		case "cast":
 			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
 			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {
 				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
 				ref.ev.Before = done.Hits[0].Total + st.reduction
 			}
-		default: // a check: the total it became
+		default: // a check: the total it became (a hit rider's answer has nothing to learn from the rider)
 			ref.ev.After = st.after
 			ref.ev.Before = st.after + st.reduction
 		}

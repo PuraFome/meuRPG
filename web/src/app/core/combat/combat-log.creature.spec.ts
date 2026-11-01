@@ -12,6 +12,8 @@ import {
   SaveOutcome,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { logLine } from './combat-log';
+import { d20TotalText } from './combat-dice';
+import { dcLabel } from '../format/save-dc';
 
 type Over = MessageInitShape<typeof CombatLogEntrySchema>;
 const entry = (over: Over): CombatLogEntry =>
@@ -215,5 +217,37 @@ describe("the line of a creature's rider", () => {
         PLAYER,
       ),
     ).toBe(' usou Garras em Brisa: Brisa falhou no teste; ficou Paralisado');
+  });
+
+  it('tells the master the save he made a success, a monk rider and a creature rider alike, and a player a save that passed', () => {
+    const resisted = {
+      result: HitRiderLogResult.SAVED,
+      numbers: true,
+      d20: 1,
+      saveTotal: 14,
+      dc: 16,
+      resisted: true,
+      resistedLeft: 2,
+    };
+    const monk = (over: Record<string, unknown>, ctx = MASTER) =>
+      logLine(
+        entry({
+          kind: CombatLogKind.HIT_RIDER,
+          actorLabel: 'Toren',
+          targetLabel: 'Draco',
+          hitRider: { choice: HitRiderChoice.STUN, ...over } as never,
+        }),
+        '',
+        ctx,
+      )?.text;
+    expect(monk(resisted)).toBe(
+      ` usou o Golpe Atordoante em Draco: Draco falhou no teste (${d20TotalText(1, 14)} contra ${dcLabel(16)}) e usou Resistência Lendária: sucesso (restam 2)`,
+    );
+    expect(rider({ ...resisted, choice: HitRiderChoice.APPLY })).toBe(
+      ` usou Garras em Brisa: Brisa falhou no teste (${d20TotalText(1, 14)} contra ${dcLabel(16)}) e usou Resistência Lendária: sucesso (restam 2)`,
+    );
+    // The server sends a player none of it: the line is an ordinary save that passed.
+    const plain = { result: HitRiderLogResult.SAVED };
+    expect(monk(plain, PLAYER)).toBe(' usou o Golpe Atordoante em Draco: Draco passou no teste');
   });
 });

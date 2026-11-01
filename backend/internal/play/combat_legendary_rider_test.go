@@ -309,9 +309,8 @@ func TestHitRiderResistance_TwoRidersAreHeldOneAfterTheOther(t *testing.T) {
 	if _, err := a.useRider(t, a.caio, e, stun, stunChoice); err != nil {
 		t.Fatalf("UseHitRider(stun) error = %v", err)
 	}
-	if _, err := a.useRider(t, a.caio, e, open, proneChoice); err == nil {
-		t.Error("the second rider was answered while the first waits")
-	}
+	_, err := a.useRider(t, a.caio, e, open, proneChoice)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING)
 	if _, err := a.resistUse(t, a.master, e, a.windowOf(t, a.master, resistKind), "Draco"); err != nil {
 		t.Fatalf("AnswerReaction() error = %v", err)
 	}
@@ -497,5 +496,95 @@ func TestHitRiderResistance_ACreatureRiderAgainstALegendaryTargetIsHeldToo(t *te
 		if a.windowOf(t, u, resistKind) != nil {
 			t.Error("a player reads the window")
 		}
+	}
+}
+
+// While an answer to a rider waits, every answer to a rider offer of the combat is refused the same way, whatever the
+// offer, the choice or the target (REACTION_PENDING): a decline or another choice on the offer that waits, and an
+// offer on a goblin. The hold stands and the master's answer still replays it with the kept d20.
+func TestHitRiderResistance_NoRiderIsAnsweredWhileOneWaits(t *testing.T) {
+	t.Parallel()
+	a, e, _ := riderDragonFight(t, adultRedDragon)
+	wantHit(t, "the Extra Attack", a.mustAttack(t, a.caio, e, "Toren", unarmed, "Goblin", d20(15)), hit)
+	offers := ridersOfKind(a.get(t, a.caio), playv1.HitRiderKind_HIT_RIDER_KIND_STUNNING_STRIKE)
+	if len(offers) != 2 {
+		t.Fatalf("stun offers = %v, want one on the dragon and one on the goblin", offers)
+	}
+	dragonOffer, goblinOffer := offers[0].GetId(), offers[1].GetId()
+	if offers[0].GetTargetId() != a.id(t, "Draco") {
+		dragonOffer, goblinOffer = goblinOffer, dragonOffer
+	}
+	a.h.roller.queue(1)
+	if _, err := a.useRider(t, a.caio, e, dragonOffer, stunChoice); err != nil {
+		t.Fatalf("UseHitRider() error = %v", err)
+	}
+	blocked := playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING
+	for name, try := range map[string]struct {
+		offer  string
+		choice playv1.HitRiderChoice
+	}{
+		"the same offer declined":     {dragonOffer, playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE},
+		"the same offer, again":       {dragonOffer, stunChoice},
+		"the goblin's offer":          {goblinOffer, stunChoice},
+		"the goblin's offer declined": {goblinOffer, playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE},
+	} {
+		_, err := a.useRider(t, a.caio, e, try.offer, try.choice)
+		if err == nil {
+			t.Errorf("%s: answered while the first waits", name)
+			continue
+		}
+		wantEncounterBlocked(t, err, blocked)
+	}
+	if a.windowOf(t, a.master, resistKind) == nil || a.kiUsed(t) != 0 {
+		t.Fatal("a refused answer touched the hold")
+	}
+	asked := a.h.roller.taken()
+	if _, err := a.resistUse(t, a.master, e, a.windowOf(t, a.master, resistKind)); err != nil {
+		t.Fatalf("AnswerReaction() error = %v", err)
+	}
+	if again := a.h.roller.taken(); again != asked {
+		t.Errorf("the replay rolled %d dice more, want none", again-asked)
+	}
+	if !riderTargetHas(a.get(t, a.master), "Draco", stunnedCond) || a.kiUsed(t) != 1 {
+		t.Errorf("after the replay: stunned %v, ki used %d; want the kept failure to land and 1", riderTargetHas(a.get(t, a.master), "Draco", stunnedCond), a.kiUsed(t))
+	}
+	// Once settled, the goblin's offer is answered as before.
+	a.h.roller.queue(1)
+	if _, err := a.useRider(t, a.caio, e, goblinOffer, stunChoice); err != nil {
+		t.Errorf("the goblin's offer after the replay: %v", err)
+	}
+}
+
+// The Open Hand push of a legendary creature whose failed save the master lets stand moves it when the answer is
+// replayed, and the replay tells the streams: the master hears the creature move.
+func TestHitRiderResistance_TheReplayOfAPushPublishesTheMove(t *testing.T) {
+	t.Parallel()
+	a, e, _ := riderDragonFight(t, adultRedDragon)
+	wantHit(t, "the Extra Attack", a.mustAttack(t, a.caio, e, "Toren", unarmed, "Draco", d20(15)), hit)
+	if _, err := a.action(t, a.caio, e, "Toren", flurry); err != nil {
+		t.Fatalf("Flurry of Blows error = %v", err)
+	}
+	wantHit(t, "a flurry strike", a.mustAttack(t, a.caio, e, "Toren", unarmed, "Draco", d20(15)), hit)
+	open := a.riderOffers(t)[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND]
+	a.h.roller.queue(1) // Strength +8 against DC 16
+	if _, err := a.useRider(t, a.caio, e, open, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PUSH); err != nil {
+		t.Fatalf("UseHitRider(push) error = %v", err)
+	}
+	before := byLabel(t, a.get(t, a.master), "Draco")
+	w := a.master.watch(t, a.campaignID)
+	if _, err := a.resistUse(t, a.master, e, a.windowOf(t, a.master, resistKind)); err != nil {
+		t.Fatalf("AnswerReaction() error = %v", err)
+	}
+	a.master.markCurrentMap(t, a.campaignID, a.mapID, w)
+	moved := false
+	for _, ev := range w.beforeMarker(t) {
+		moved = moved || ev.GetCombatantMoved().GetCombatantId() == before.GetId()
+	}
+	after := byLabel(t, a.get(t, a.master), "Draco")
+	if after.GetCol() == before.GetCol() && after.GetRow() == before.GetRow() {
+		t.Fatalf("the dragon stays at %d,%d, want it pushed", after.GetCol(), after.GetRow())
+	}
+	if !moved {
+		t.Error("the replay of the push published no combatant_moved to the master")
 	}
 }

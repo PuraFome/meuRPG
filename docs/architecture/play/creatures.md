@@ -242,14 +242,21 @@ A hold that is dropped (the combat ends, the cast is no longer possible, the kep
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
 
 **The save of a hit rider** (`combat_legendary_rider.go`).
-The answer to a rider that rolls the save of a creature with the trait and a use left (`UseHitRider`: Stunning Strike, an Open Hand technique, or the rider of a creature's attack, which the master answers) is held the same way, by the same path: the answer runs under a savepoint, keeps the target's roll, rolls its writes back and holds the request in a hold of kind `hit_rider` and a window of kind `legendary_resistance` that only the master reads.
+The answer to a rider that rolls the save of a creature with the trait and a use left is held the same way, by the same path.
+That is `UseHitRider` for Stunning Strike, an Open Hand technique, or the rider of a creature's attack, which the master answers.
+The answer runs under a savepoint, keeps the target's roll, rolls its writes back and holds the request in a hold of kind `hit_rider`.
+The hold has a window of kind `legendary_resistance` that only the master reads.
 The window offers the failed save alone (nothing when it passed), and its trigger names the rider (`roll: "rider"`, the rider's kind as the key).
 The master answers as for a cast; the replay runs the answer again with the kept d20 and, on `USE`, turns the failed save into a success and spends one use in its own transaction.
 The ki, the effect and the closing of the offer are the replay's: until the master answers, the offer stays open, the ki is not spent and the target is not stunned.
-The offer is not answered again while the window waits (`REACTION_PENDING`), so two riders of one hit are held one after the other, each with its own use.
+While a rider's hold stands, any answer to any rider offer of the combat is refused with `REACTION_PENDING`, the same offer declined or switched included.
+The refusal depends only on the hold, never on the target, so it tells a player nothing more than the wait does.
+Two riders of one hit are therefore held one after the other, each with its own use.
+A failed save that a stun immunity turns into a saved one is not offered.
 A decline, a choice with no save (no reactions, a grapple), a target that is not an NPC with the trait and a use left are never held.
 The line of the rider is the ordinary save line for a player: the target saved, with no roll (RN-20).
-The master reads the roll that failed, `resisted` and `resisted_left` on the line (`CombatLogHitRider`).
+The master reads the roll that failed, `resisted` and `resisted_left` on the line (`CombatLogHitRider`), and the web log words it.
+The replay of a push tells the streams that the creature moved.
 A hit rider is not among the undoable kinds ([Undo](undo.md)), so the use a held rider spent is not given back.
 A hold that is dropped (the target leaves, the combat ends, the kept dice no longer fit) spends nothing: the offer stays open.
 

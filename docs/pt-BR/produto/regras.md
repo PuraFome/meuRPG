@@ -831,7 +831,12 @@ A espera não revela nada sobre a rolagem: o jogador lê a mesma espera e o mesm
 Ele vê as rolagens que falharam e transforma as falhas que escolher, um uso cada, ou deixa como estão.
 Quando todos esses testes de resistência passaram, não há nada a oferecer e ele deixa o lançamento seguir.
 Os mesmos dados resolvem o lançamento.
-O teste de resistência do efeito de um golpe (Golpe Atordoante, uma técnica da Mão Aberta, o efeito do ataque de uma criatura) espera do mesmo modo: a resposta ao efeito espera só o mestre, quer o teste tenha passado, quer tenha falhado, o ki e o efeito vêm com a repetição, e o jogador lê só a espera e depois um teste que passou ou falhou (RN-20).
+O teste de resistência de um efeito de acerto (Golpe Atordoante, uma técnica da Mão Aberta, o efeito do ataque de uma criatura) funciona do mesmo modo.
+O jogador do monge responde à oferta e lê "Esperando o mestre", seja qual for a rolagem.
+O mestre vê o teste falhado, se houver, e o transforma em sucesso ou o deixa como está, um uso cada.
+O efeito então vale como o teste terminou: o ki é gasto e o efeito se aplica só a um alvo que falhou.
+Enquanto um efeito espera, nenhuma oferta de efeito de acerto do combate é respondida.
+O jogador lê só a espera e depois um teste que passou ou falhou, nunca a rolagem, os usos nem a característica (RN-20).
 A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, Expulsar Mortos-Vivos, Repreensão Infernal ou uma manobra de provocação.
 Uma criatura que uma zona de magia pega faz o teste de resistência na hora, sem escolha do mestre.
 Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
@@ -909,7 +914,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
 | Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, respondida pelo mestre pela criatura. |
-| Resistência Lendária | A magia de um jogador com teste de resistência, ou o efeito de um golpe que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). |
+| Resistência Lendária | A magia de um jogador com teste de resistência, ou um efeito de acerto que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). |
 
 O Aparar de um monstro é um por rodada, e a rolagem guardada é comparada com a nova classe de armadura.
 Um acerto que não a alcança mais vira erro.

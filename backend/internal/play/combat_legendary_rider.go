@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 
 	"google.golang.org/protobuf/proto"
 
@@ -40,15 +41,29 @@ func (s *Service) guardRider(ctx context.Context, c *combatTx, row playdb.HitRid
 			return nil, nil
 		}
 		capable[target.ID] = true
-		if err := s.reactionGate(ctx, c); err != nil { // a rider that may wait for the master waits for no other window either
-			return nil, err
-		}
 	}
 	sp, err := c.tx.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &resistScope{sp: sp, before: *c, capable: capable}, nil
+}
+
+// riderHeld refuses any answer to a rider offer of the combat while an answer to a rider waits for the master
+// (REACTION_PENDING): the offer that waits cannot be declined or switched, and no other offer is answered. It depends
+// only on the hold, which every player already reads as a wait, never on who the target is. The replay is exempt.
+func (s *Service) riderHeld(ctx context.Context, c *combatTx) error {
+	if c.replay != nil {
+		return nil
+	}
+	holds, err := c.q.ListHeldReactionHolds(ctx, c.enc.ID)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(holds, func(h playdb.ReactionHold) bool { return h.Kind == "hit_rider" }) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
+	}
+	return nil
 }
 
 // abort ends the guard of an answer that failed: what it wrote since the savepoint is rolled back.
@@ -75,7 +90,7 @@ func (s *Service) holdRider(ctx context.Context, c *combatTx, m authz.Membership
 		return actionEvent{}, false, nil
 	}
 	var offers []resistOffer
-	if !re.save.Saved {
+	if !re.save.Saved && re.Result != riderSaved { // a failed save a stun immunity turned into a saved one has nothing to turn
 		offers = append(offers, resistOffer{Who: target.ID, D20: re.save.D20, Total: re.save.Total, DC: re.save.DC})
 	}
 	kept := []keptSave{{Target: target.ID, Roll: *re.save}}
