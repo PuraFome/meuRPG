@@ -1123,15 +1123,21 @@ func (v playerView) strip(body tableBody) {
 	}
 }
 
-// stripSummon takes out of a table spell's or a feature's summon what a player does not read: the table creatures the player holds
-// none of (an SRD creature stays) and the count, its growth and its limit.
+// stripSummon makes a table spell's or a feature's summon what a player may read: only the creature keys, and of those
+// the table creatures a character of the player holds (an SRD creature stays). The player casts from GetSummonOptions,
+// so the rest (the count, its growth, the limit, the turn mode, the role, what is replaced, the cost and the timing) is
+// the master's; a field the message gets later stays hidden until it is named here and in playerSummonFields.
 func (v playerView) stripSummon(m *rulesv1.TableSummon) {
 	if m == nil {
 		return
 	}
-	m.CreatureKeys = slices.DeleteFunc(m.CreatureKeys, func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
-	m.Count, m.CountPerSlotLevel, m.MaxLive = "", 0, 0
+	kept := slices.DeleteFunc(m.GetCreatureKeys(), func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	proto.Reset(m)
+	m.CreatureKeys = kept
 }
+
+// playerSummonFields are the fields of a TableSummon a player reads (stripSummon keeps them and clears every other).
+var playerSummonFields = map[string]bool{"creature_keys": true}
 
 // stripOption takes the hidden keys out of an option: its effects and what it requires.
 func (v playerView) stripOption(b *rulesv1.TableOption) {

@@ -458,7 +458,10 @@ A refusal of a summon's own field is a violation at `.summon.<field>`.
 The target is refused at `.target.kind`, and a cantrip or a spell with damage, healing, a saving throw, an attack or an area at `.summon`.
 `slot()` is legal in a summon's count as in a creature's formulas, and nowhere else.
 An archived or switched-off creature is not offered by a summoning spell and is refused in a cast (`ErrSummonCreature`); the creatures already made keep working.
-A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
+A player reads the summon of a spell or a feature in `ListTableEntries` as a list of creature keys and nothing else.
+Of those keys, a table creature stays only while a live creature of that key belongs to a character of the player; an SRD creature stays.
+The count, its growth, the limit, the turn mode, the role, what is replaced, the cost and the timing are the master's.
+A field that `TableSummon` gets later is the master's until it is named in `playerSummonFields` (`characters/tablecontent.go`).
 The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
 Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.
 
