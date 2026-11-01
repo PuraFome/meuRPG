@@ -42,7 +42,7 @@ When a non-critical blow hits a player character who can cast Shield now (prepar
 The attacker sees "esperando a reação"; the hit player and the master get the notice in `GetEncounter` (`reaction_prompts`, by who sees: the master all, the player their own character's, without the attacker and without the blow's total).
 The player decides without knowing the total, as at a table.
 The Shield window opens after every reaction that lowers the attack roll.
-Cutting Words, Protection and Counterspell hold the action before the d20, and the replay of the held action opens Shield from the hit that is left.
+Cutting Words, Protection and Counterspell hold the action before its outcome is applied, and the replay of the held action opens Shield from the hit that is left.
 A cut that turns the hit into a miss opens no Shield window and spends no slot, and a countered Magic Missile opens none either.
 The master's trigger carries the total after the cut; the player's prompt carries no total and no die.
 A creature whose Innate Spellcasting lists a reaction spell with uses a day (the Couatl's Shield) gets the use as one more `SlotChoice`, with `resource` set to the resource key and `free` and `total` counting uses.
@@ -192,7 +192,7 @@ The throw back of Deflect Missiles writes nothing: answering Deflect recorded it
 The start of the combatant's turn clears the record, and so does an economy write that gives the reaction back (the undo).
 The view sends `Combatant.reaction_kind` and `reaction_round` where it sends `reaction_used`: to the master, to the owner and to the members of a joint turn.
 It never sends them to a player outside the joint turn, and never an NPC's.
-`reaction_kind` is `UNSPECIFIED` only for a feature's reaction.
+`reaction_kind` is `UNSPECIFIED` when the server has no name for the reaction, as for a feature's.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.
 

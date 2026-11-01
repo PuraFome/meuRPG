@@ -5925,7 +5925,7 @@ type Combatant struct {
 	Legendary *LegendaryState `protobuf:"bytes,105,opt,name=legendary,proto3" json:"legendary,omitempty"`
 	// Which reaction was spent while reaction_used is true, and the round it was spent in.
 	// The master's, the owner's and a joint turn's, as reaction_used is; never an NPC's to a player.
-	// OPPORTUNITY for an opportunity attack; UNSPECIFIED only for a feature's reaction, where
+	// OPPORTUNITY for an opportunity attack; UNSPECIFIED when the server has no name for it (a feature's reaction), where
 	// the round alone says when.
 	ReactionKind  ReactionKind `protobuf:"varint,106,opt,name=reaction_kind,json=reactionKind,proto3,enum=meurpg.play.v1.ReactionKind" json:"reaction_kind,omitempty"`
 	ReactionRound int32        `protobuf:"varint,107,opt,name=reaction_round,json=reactionRound,proto3" json:"reaction_round,omitempty"`

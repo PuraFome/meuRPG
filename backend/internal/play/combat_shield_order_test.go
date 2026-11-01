@@ -9,7 +9,7 @@ import (
 )
 
 // The Shield prompt comes after the reactions that lower the roll (#643). The attack roll's windows
-// (Cutting Words, Protection, Counterspell) open before the d20 and hold the action; the Shield window
+// (Cutting Words, Protection, Counterspell) open before the outcome is applied and hold the action; the Shield window
 // is opened by the replay of the held action, from the hit that is left. These tests freeze that order.
 // They need the database (MEURPG_TEST_DATABASE_URL).
 
