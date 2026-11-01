@@ -422,14 +422,7 @@ func (s *Service) endSummons(ctx context.Context, c *combatTx, caster playdb.Com
 	for _, cr := range creatures {
 		ids = append(ids, cr.ID)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
-	}
-	leaving := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
-		return o.CreatureID == nil || !slices.Contains(ids, *o.CreatureID)
-	})
-	if _, _, err := s.dropCombatants(ctx, c, cs, leaving, true); err != nil {
+	if err := s.dropCreatureCombatants(ctx, c, ids); err != nil {
 		return nil, err
 	}
 	if dismissed, err = s.roster.DismissCreatures(ctx, c.tx, c.session.CampaignID, ids, "concentration", c.now); err != nil {
@@ -443,6 +436,43 @@ func (s *Service) endSummons(ctx context.Context, c *combatTx, caster playdb.Com
 		}
 	}
 	return dismissed, nil
+}
+
+// dropCreatureCombatants takes the combatants of the creatures out of the order and the map, the way a
+// dismissal does; an undo brings them back (rejoinCreatures).
+func (s *Service) dropCreatureCombatants(ctx context.Context, c *combatTx, ids []string) error {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	leaving := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
+		return o.CreatureID == nil || !slices.Contains(ids, *o.CreatureID)
+	})
+	_, _, err = s.dropCombatants(ctx, c, cs, leaving, true)
+	return err
+}
+
+// dropReplaced sends away the creatures a cast replaced (the old ones of its own spell, the old concentration's):
+// their combatants leave and each has its line, with the reason the roster dismissed it for. It returns their ids.
+func (s *Service) dropReplaced(ctx context.Context, c *combatTx, caster playdb.Combatant, replaced []link.Creature) ([]string, error) {
+	if len(replaced) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(replaced))
+	for _, cr := range replaced {
+		ids = append(ids, cr.ID)
+	}
+	if err := s.dropCreatureCombatants(ctx, c, ids); err != nil {
+		return nil, err
+	}
+	for _, cr := range replaced {
+		if err := s.creatureEvent(ctx, c, eventCreatureDismissed, caster, actionEvent{
+			Round: c.enc.Round, Actor: caster.ID, OwnerCharacter: caster.CharacterID, Created: []string{cr.ID}, Reason: cr.DismissedReason,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return ids, nil
 }
 
 // creatureEvent writes a creature event (ids only) to the history, inside the
@@ -460,9 +490,16 @@ func (s *Service) creatureEvent(ctx context.Context, c *combatTx, kind string, w
 // their dismissed combatants return to the order, the same ones, with the hit
 // points, conditions and initiative they had.
 func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string) error {
-	revived, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, "concentration")
-	if err != nil || len(revived) == 0 {
-		return err
+	var revived []string
+	for _, reason := range []string{"concentration", "replaced"} { // what a cast dismisses for; ids are the event's own
+		back, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, reason)
+		if err != nil {
+			return err
+		}
+		revived = append(revived, back...)
+	}
+	if len(revived) == 0 {
+		return nil
 	}
 	if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: revived, Dismissed: false}); err != nil {
 		return fmt.Errorf("bring the creatures back: %w", err)

@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Casting a summoning spell (MR-037): Convocar Familiar (1 hour, a
@@ -50,11 +51,15 @@ func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return nil, err
 	}
+	if chk.Table && chk.TurnMode == rules.SummonTurnOwnInitiative && len(chk.Creatures) > 1 && !in.inApp {
+		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE,
+			"each creature rolls its own initiative: set roll_in_app, a typed die is one face")
+	}
 	given, err := summonNames(pick.GetNames(), len(chk.Creatures))
 	if err != nil {
 		return nil, err
 	}
-	if err := s.summonHasRoom(ctx, c, m, caster, concentration, len(chk.Creatures)); err != nil {
+	if err := s.summonHasRoom(ctx, c, m, caster, spellKey, chk, concentration); err != nil {
 		return nil, err
 	}
 	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in, chk: chk, slot: slotLevel}, nil
@@ -78,35 +83,38 @@ func (s *Service) summonRollOK(ctx context.Context, c *combatTx, m authz.Members
 }
 
 // summonHasRoom refuses a cast whose creatures do not fit in the combat. It runs
-// before anything is spent: a combat holds 40 combatants, and the creatures of the
-// concentration this one ends leave first.
-func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, concentration bool, bringing int) error {
+// before anything is spent: a combat holds 40 combatants, and the creatures the
+// cast sends away (the concentration it ends, the creatures of its own spell it
+// replaces) leave first.
+func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, spellKey string, chk link.SummonSpell, concentration bool) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
 	}
-	leaving := 0
-	if concentration {
-		if leaving, err = s.concentrationLeaving(ctx, c, m, caster, cs); err != nil {
-			return err
-		}
+	leaving, err := s.replacedLeaving(ctx, c, m, caster, cs, spellKey, chk.ReplacesSame, concentration)
+	if err != nil {
+		return err
 	}
-	if len(cs)-leaving+bringing > maxCombatants {
+	if len(cs)-leaving+len(chk.Creatures) > maxCombatants {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_MANY_COMBATANTS, "the combat has no room for these creatures")
 	}
 	return nil
 }
 
-// concentrationLeaving counts the creatures of the caster's concentration that are
-// in the combat: they leave when the new concentration starts.
-func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, cs []playdb.Combatant) (int, error) {
-	old, err := s.roster.ConcentrationCreatures(ctx, c.tx, m.CampaignID, caster.CharacterID)
+// replacedLeaving counts the creatures in the combat that a new cast sends away: those of the caster's
+// concentration when the spell concentrates, and those of the same table spell when it replaces its own.
+func (s *Service) replacedLeaving(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, cs []playdb.Combatant, spellKey string, same, concentration bool) (int, error) {
+	if !same && !concentration {
+		return 0, nil
+	}
+	mine, err := s.roster.CharacterCreatures(ctx, c.tx, m.CampaignID, []string{caster.CharacterID})
 	if err != nil {
 		return 0, err
 	}
 	leaving := 0
-	for _, o := range old {
-		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
+	for _, o := range mine {
+		goes := concentration && o.DependsOnConcentration || same && o.Source == summonSourceTable && o.SummonKey == spellKey
+		if goes && slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
 			leaving++
 		}
 	}
@@ -125,6 +133,11 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 	for _, cr := range res.Created {
 		made.Created, made.MonsterKeys = append(made.Created, cr.ID), append(made.MonsterKeys, cr.MonsterKey)
 	}
+	gone, err := s.dropReplaced(ctx, c, caster, res.Replaced)
+	if err != nil {
+		return err
+	}
+	made.Dismissed = append(made.Dismissed, gone...)
 	made.Source, made.OwnerCharacter = summonSourceOf(spellKey, sm.chk), caster.CharacterID
 	rolls, roll, err := s.summonRolls(sm.in, res.Created)
 	if err != nil {

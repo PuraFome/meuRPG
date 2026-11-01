@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
@@ -141,6 +142,9 @@ func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSp
 	} else {
 		rule.countP = p
 	}
+	if n, err := strconv.Atoi(strings.TrimSpace(s.Count)); err == nil && s.MaxLive > 0 && n > s.MaxLive {
+		c.at(key, path, ".summon.max_live", ReasonValue, "the count is %d but the spell keeps at most %d creatures: the first casting would be refused", n, s.MaxLive)
+	}
 	if len(c.list) > 0 {
 		return
 	}
@@ -153,6 +157,9 @@ func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSp
 func checkSummonSpell(c *entryErrors, key, path string, ts *TableSpell) {
 	if ts.Level < 1 {
 		c.at(key, path, ".summon", ReasonValue, "a cantrip does not summon: the cost of a summon is a spell slot")
+	}
+	if ts.Ritual {
+		c.at(key, path, ".ritual", ReasonValue, "a summoning spell is not a ritual: the cost of a summon is a spell slot")
 	}
 	if ts.Target.Kind != TargetSelf {
 		c.at(key, path, ".target.kind", ReasonValue, "a summoning spell has a target of only the caster: the creatures appear next to it")

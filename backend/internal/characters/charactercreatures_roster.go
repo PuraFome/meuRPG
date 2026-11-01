@@ -178,7 +178,9 @@ func (s *Service) dismissReplaced(ctx context.Context, q *charactersdb.Queries, 
 	out := make([]link.Creature, 0, len(old))
 	for _, o := range old {
 		ids = append(ids, o.ID)
-		out = append(out, creatureOf(content, o))
+		cr := creatureOf(content, o)
+		cr.DismissedReason = reason
+		out = append(out, cr)
 	}
 	if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: ids, Reason: reason, At: s.now()}); err != nil {
 		return out, wrap(what, err)

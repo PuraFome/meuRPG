@@ -100,11 +100,11 @@ func TestForPlayerOfEveryKindIsFrozen(t *testing.T) {
 	for _, b := range bodies {
 		e := entryRow{row: charactersdb.CampaignContent{ContentKey: "x:" + b.label}, kind: b.kind, body: b.body}
 		before := proto.Clone(b.body)
-		same := forPlayer(e, nil)
+		same := forPlayer(e, nil, nil)
 		if same.body != e.body {
 			t.Errorf("%s: forPlayer with nothing hidden made a copy, want the entry as it is", b.label)
 		}
-		got := forPlayer(e, frozenHidden)
+		got := forPlayer(e, frozenHidden, nil)
 		if !proto.Equal(b.body, before) {
 			t.Errorf("%s: forPlayer changed the stored body", b.label)
 		}

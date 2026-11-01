@@ -206,7 +206,7 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 			if !l.playerReads(e) {
 				continue
 			}
-			e = forPlayer(e, l.hidden)
+			e = forPlayer(e, l.hidden, l.held)
 		}
 		pe := entryToProto(e, l.uses[e.row.ContentKey])
 		pe.Off = l.content.Off(e.row.ContentKey)

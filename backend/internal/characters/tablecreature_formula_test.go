@@ -344,23 +344,39 @@ func TestMR578_AMalformedSnapshotFallsBackToTheContentOrIsClamped(t *testing.T) 
 }
 
 // A creature whose row is gone (its owner's character was deleted in the middle of a read) has no snapshot: the sheet
-// falls back to the content's static numbers and does not fail.
+// falls back to the content's static numbers and does not fail, whether its entry has formulas or none.
 func TestMR578_ACreatureWithoutARowFallsBackToTheStaticNumbers(t *testing.T) {
 	t.Parallel()
-	tb := newCreatureTable(t)
-	tb.master.addEntry(t, tb.campaign, silverWolf())
-	var sheet link.Sheet
-	var ok bool
-	err := db.InTx(t.Context(), tb.h.pool, func(tx pgx.Tx) error {
-		var err error
-		sheet, ok, err = tb.h.svc.CreatureSheet(t.Context(), tx, tb.campaign, uuid.New().String(), silverWolfKey, "full")
-		return err
-	})
-	if err != nil || !ok {
-		t.Fatalf("CreatureSheet() of a creature with no row = %v, %v, want its sheet", ok, err)
-	}
-	i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == clawKey })
-	if sheet.ArmorClass != 13 || i < 0 || sheet.Attacks[i].ToHit != 0 || sheet.Attacks[i].DiceBonus != 0 {
-		t.Errorf("sheet = armor class %d, attacks %+v, want 13 and a claw with the static +0", sheet.ArmorClass, sheet.Attacks)
+	plain := &rulesv1.TableCreature{NamePt: "Cão Simples", BaseKey: "monster:wolf", ArmorClass: 17}
+	for _, tc := range []struct {
+		name   string
+		entry  *rulesv1.TableCreature
+		key    string
+		wantAC int
+	}{
+		{"an entry with formulas", silverWolf(), silverWolfKey, 13},
+		{"an entry with no formula", plain, "creature:cao-simples@mesa", 17},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tb := newCreatureTable(t)
+			tb.master.addEntry(t, tb.campaign, tc.entry)
+			var sheet link.Sheet
+			var ok bool
+			err := db.InTx(t.Context(), tb.h.pool, func(tx pgx.Tx) error {
+				var err error
+				sheet, ok, err = tb.h.svc.CreatureSheet(t.Context(), tx, tb.campaign, uuid.New().String(), tc.key, "full")
+				return err
+			})
+			if err != nil || !ok {
+				t.Fatalf("CreatureSheet() of a creature with no row = %v, %v, want its sheet", ok, err)
+			}
+			if sheet.ArmorClass != tc.wantAC {
+				t.Errorf("armor class = %d, want the static %d", sheet.ArmorClass, tc.wantAC)
+			}
+			if i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == clawKey }); i >= 0 && (sheet.Attacks[i].ToHit != 0 || sheet.Attacks[i].DiceBonus != 0) {
+				t.Errorf("the claw = %+v, want the static +0", sheet.Attacks[i])
+			}
+		})
 	}
 }

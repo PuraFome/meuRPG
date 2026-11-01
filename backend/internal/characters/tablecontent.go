@@ -1042,18 +1042,28 @@ func parentHidden(e entryRow, hidden func(string) bool) bool {
 // switched off, the SRD's too) in any reference of its body (the classes of a
 // spell, the list a casting reads from, the spells an effect grants or a subclass
 // always prepares).
-func forPlayer(e entryRow, hidden func(string) bool) entryRow {
-	if hidden == nil {
+//
+// A table spell's summon goes without the table creatures the player holds none of, and without its count
+// and limits: a player who casts the spell reads the creatures and the count from GetSummonOptions.
+func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entryRow {
+	if sp, ok := e.body.(*rulesv1.TableSpell); hidden == nil && (!ok || sp.GetSummon() == nil) {
 		return e // nothing is hidden: the entry goes as it is
 	}
+	if hidden == nil {
+		hidden = func(string) bool { return false }
+	}
 	body := proto.Clone(e.body).(tableBody)
-	playerView{hidden: hidden}.strip(body)
+	playerView{hidden: hidden, held: held}.strip(body)
 	e.body = body
 	return e
 }
 
 // playerView takes the hidden keys out of a body a player receives.
-type playerView struct{ hidden func(string) bool }
+type playerView struct {
+	hidden func(string) bool
+	// held are the table creatures the player's characters hold.
+	held map[string]bool
+}
 
 // strip takes the hidden keys out of body, in place, by its kind.
 func (v playerView) strip(body tableBody) {
@@ -1072,6 +1082,7 @@ func (v playerView) strip(body tableBody) {
 		}
 	case *rulesv1.TableSpell:
 		b.ClassKeys = v.visible(b.ClassKeys)
+		v.stripSummon(b.GetSummon())
 	case *rulesv1.TableFeat:
 		v.stripFeat(b)
 	case *rulesv1.TableOption:
@@ -1082,6 +1093,16 @@ func (v playerView) strip(body tableBody) {
 			b.ReplacesFeatureKey = "" // a feature the players do not see is not named to them
 		}
 	}
+}
+
+// stripSummon takes out of a table spell's summon what a player does not read: the table creatures the player holds
+// none of (an SRD creature stays) and the count, its growth and its limit.
+func (v playerView) stripSummon(m *rulesv1.TableSummon) {
+	if m == nil {
+		return
+	}
+	m.CreatureKeys = slices.DeleteFunc(m.CreatureKeys, func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	m.Count, m.CountPerSlotLevel, m.MaxLive = "", 0, 0
 }
 
 // stripOption takes the hidden keys out of an option: its effects and what it requires.

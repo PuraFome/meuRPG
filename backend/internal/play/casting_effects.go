@@ -419,11 +419,7 @@ func (s *Service) summonFor(ctx context.Context, c *combatTx, m authz.Membership
 	defer func() { c.characterID = was }()
 	for _, cr := range sum.Replaced {
 		out.dismissed = append(out.dismissed, cr.ID)
-		reason := "concentration"
-		if cr.Source == "familiar" {
-			reason = "replaced"
-		}
-		if err := insertEvent(ctx, c, eventCreatureDismissed, &m.UserID, nil, actionEvent{OwnerCharacter: plan.g.caster.ID, Created: []string{cr.ID}, Reason: reason}); err != nil {
+		if err := insertEvent(ctx, c, eventCreatureDismissed, &m.UserID, nil, actionEvent{OwnerCharacter: plan.g.caster.ID, Created: []string{cr.ID}, Reason: cr.DismissedReason}); err != nil {
 			return err
 		}
 	}

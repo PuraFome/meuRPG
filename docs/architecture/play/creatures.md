@@ -32,8 +32,14 @@ The creatures have `source` `table` and `summon_key` the spell's key.
 The count is the spell's formula with `slot()` the cast slot, plus the creatures added for each circle above the spell's own.
 A formula creature resolves with `slot()` the cast slot, and its numbers are kept in `character_creatures.stat_block`.
 A summon with its own initiative gives each creature its own `summon_group_id` and its own roll; one with the owner's group roll shares the casting's group.
+The turn mode is read from the spell's rule when it is cast and stays in each creature's group: editing the spell changes no creature already made.
+In a combat, a casting of more than one creature with its own initiative needs `roll_in_app`: one typed die is one face, and a typed face is refused with `SUMMON_NEEDS_INITIATIVE` before anything is spent.
+The `creature_summoned` event keeps the roll of the first creature only; each combatant keeps its own initiative.
 `max_live` refuses a casting that would leave more creatures of the spell than it allows (`CREATURE_LIMIT`).
-A summon that replaces its own dismisses the creatures of the old casting of the spell (reason `replaced`).
+A summon that replaces its own dismisses the creatures of the old casting of the spell (reason `replaced`), in or out of a combat.
+In a combat their combatants leave the order and the map, the room for the new ones counts them as gone, and an undo of the new casting brings the old ones back and removes the new ones.
+A creature is dismissed with the reason the roster gave it, and the line of its dismissal says it.
+The caster reads the key and name of the table creatures a spell offers in `GetSummonOptions` before she holds one; the master and she alone.
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
 

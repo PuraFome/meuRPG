@@ -100,7 +100,7 @@ func TestTheCountOfASummonReadsTheCasterAndIsClamped(t *testing.T) {
 	if got, _ := c.SummonOptions(callOfThePack, 2, b); got.Options[0].Count != 1 {
 		t.Errorf("a Charisma of 6: %+v, want the least, 1 creature", got.Options)
 	}
-	ts.Summon.Count = "50"
+	ts.Summon.Count, ts.Summon.MaxLive = "50", 0
 	if got, _ := tableSummonContent(t, ts).SummonOptions(callOfThePack, 2, b); got.Options[0].Count != MaxTableSummonCount {
 		t.Errorf("a count of 50: %+v, want %d creatures", got.Options, MaxTableSummonCount)
 	}
@@ -128,6 +128,8 @@ func TestATableSummonIsRefusedAtTheFieldThatIsWrong(t *testing.T) {
 		{"too many for each circle", func(s *TableSpell) { s.Summon.CountPerSlotLevel = MaxTableSummonPerSlot + 1 }, ".summon.count_per_slot_level", ReasonValue},
 		{"a limit below 0", func(s *TableSpell) { s.Summon.MaxLive = -1 }, ".summon.max_live", ReasonValue},
 		{"a limit above 40", func(s *TableSpell) { s.Summon.MaxLive = MaxTableSummonLive + 1 }, ".summon.max_live", ReasonValue},
+		{"a static count over the limit", func(s *TableSpell) { s.Summon.Count, s.Summon.MaxLive = "5", 4 }, ".summon.max_live", ReasonValue},
+		{"a ritual", func(s *TableSpell) { s.Ritual = true }, ".ritual", ReasonValue},
 		{"no creature", func(s *TableSpell) { s.Summon.CreatureKeys = nil }, ".summon.creature_keys", ReasonLimit},
 		{"nine creatures", func(s *TableSpell) {
 			s.Summon.CreatureKeys = []string{"monster:wolf", "monster:giant-spider", "monster:bat", "monster:cat", "monster:crab", "monster:frog", "monster:hawk", "monster:lizard", "monster:rat"}

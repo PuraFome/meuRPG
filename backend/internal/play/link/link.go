@@ -811,6 +811,9 @@ type Creature struct {
 	// GroupID is shared by the creatures of one casting that take one initiative roll; a creature that
 	// rolls its own initiative has a group of its own.
 	GroupID string
+	// DismissedReason is why a casting sent it away ("replaced", "concentration"), set on the creatures of
+	// SummonResult.Replaced.
+	DismissedReason string
 	// DependsOnConcentration says it lasts only while the caster concentrates.
 	DependsOnConcentration bool
 	// HitPointsCurrent and HitPointsMax are its own.

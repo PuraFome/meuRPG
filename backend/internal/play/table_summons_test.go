@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -16,8 +17,9 @@ import (
 
 const (
 	tableSilverWolf = "creature:lobo-de-prata@mesa"
-	tablePackSpell  = "spell:matilha-fiel@mesa" // one wolf for each circle of the slot; each wolf rolls its own initiative
-	tableBandSpell  = "spell:bando-unido@mesa"  // two wolves on a concentration; a new casting replaces the old; one roll for both
+	tablePackSpell  = "spell:matilha-fiel@mesa"      // one wolf for each circle of the slot; each wolf rolls its own initiative
+	tableBandSpell  = "spell:bando-unido@mesa"       // two wolves on a concentration; a new casting replaces the old; one roll for both
+	tableHerdSpell  = "spell:alcateia-renovada@mesa" // two wolves, no concentration; a new casting replaces the old; each rolls its own
 )
 
 // tableSummonSpell is a 1st-circle spell of the wizard's list that summons the silver wolf.
@@ -46,9 +48,13 @@ func newTableSummoners(t *testing.T) *armed {
 			CreatureKeys: []string{tableSilverWolf}, Count: "2",
 			TurnMode: rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP, Replaces: rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_SAME_SUMMON,
 		})
+		herd := tableSummonSpell("Alcateia Renovada", &rulesv1.TableSummon{
+			CreatureKeys: []string{tableSilverWolf}, Count: "2",
+			TurnMode: rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE, Replaces: rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_SAME_SUMMON,
+		})
 		band.Concentration = true
 		band.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE, UpTo: true}
-		for _, sp := range []*rulesv1.TableSpell{pack, band} {
+		for _, sp := range []*rulesv1.TableSpell{pack, band, herd} {
 			if err := addTableSpell(t, a, sp); err != nil {
 				t.Fatalf("CreateTableEntry(%s) error = %v", sp.GetNamePt(), err)
 			}
@@ -57,7 +63,7 @@ func newTableSummoners(t *testing.T) *armed {
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 9,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
-			[]string{tablePackSpell, tableBandSpell}, []string{tablePackSpell, tableBandSpell})
+			[]string{tablePackSpell, tableBandSpell, tableHerdSpell}, []string{tablePackSpell, tableBandSpell, tableHerdSpell})
 		a.bri = a.bia.caster(t, a.campaignID, "Sálvia", "class:druid", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 12, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, nil, nil, nil, nil)
 	})
@@ -219,5 +225,69 @@ func TestMR578_ATableSpellSummonsInACombatAndTheUndoTakesItBack(t *testing.T) {
 	a.undoLast(t, e)
 	if usedSlots(a.vitals(t, a.pens), 1) != 0 || len(a.mustCreatures(t, a.ana, a.pens)) != 0 || byLabel(t, a.get(t, a.master), "Pensantus").GetConcentrationSpell() != "" {
 		t.Error("the undo must give the slot and the concentration back and take the creatures away")
+	}
+}
+
+// creatureCombatants are the ids of the creatures in the combat.
+func creatureCombatants(e *playv1.Encounter) []string {
+	var out []string
+	for _, c := range e.GetCombatants() {
+		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_CREATURE {
+			out = append(out, c.GetId())
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// A table spell that replaces its own creatures, in a combat and with no concentration: the old combatants leave the
+// order and the map, the line says "replaced", and an undo of the new casting brings the old ones back.
+func TestMR578_ATableSpellInACombatReplacesItsOwnCombatantsAndTheUndoBringsThemBack(t *testing.T) {
+	t.Parallel()
+	a := newTableSummoners(t)
+	e := a.summonersFight(t)
+	castHerd := func(e *playv1.Encounter, faces ...int) {
+		t.Helper()
+		a.h.roller.queue(faces...)
+		if _, err := a.cast(t, a.ana, e, "Pensantus", tableHerdSpell, slotOfLevel(1), nil, func(r *playv1.CastSpellRequest) {
+			r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: true}
+			r.Summon = &playv1.SummonChoice{CreatureKeys: wolves(2)}
+		}); err != nil {
+			t.Fatalf("CastSpell(%s) error = %v", tableHerdSpell, err)
+		}
+	}
+	// A typed d20 is one face: two creatures that each roll their own initiative need the roller of the app.
+	_, err := a.cast(t, a.ana, e, "Pensantus", tableHerdSpell, slotOfLevel(1), nil, func(r *playv1.CastSpellRequest) {
+		r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: 12}
+		r.Summon = &playv1.SummonChoice{CreatureKeys: wolves(2)}
+	})
+	wantBlockedBy(t, "CastSpell(one typed face for two initiatives)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SUMMON_NEEDS_INITIATIVE)
+	if usedSlots(a.vitals(t, a.pens), 1) != 0 {
+		t.Error("a refused cast spent a slot")
+	}
+	castHerd(e, 4, 16)
+	first := creatureCombatants(a.get(t, a.ana))
+	oldCreatures := a.mustCreatures(t, a.ana, a.pens)
+	if len(first) != 2 || len(oldCreatures) != 2 {
+		t.Fatalf("after the first casting: combatants %v, creatures %d, want two of each", first, len(oldCreatures))
+	}
+
+	castHerd(a.turnOf(t, "Pensantus"), 9, 10)
+	e = a.get(t, a.ana)
+	second := creatureCombatants(e)
+	if len(second) != 2 || slices.ContainsFunc(second, func(id string) bool { return slices.Contains(first, id) }) {
+		t.Fatalf("combatants = %v after the second casting, want only the two new ones (the old were %v)", second, first)
+	}
+	if got := len(a.mustCreatures(t, a.ana, a.pens)); got != 2 {
+		t.Errorf("creatures = %d, want the two new ones", got)
+	}
+	a.undoLast(t, e)
+	e = a.get(t, a.ana)
+	if got := creatureCombatants(e); !slices.Equal(got, first) {
+		t.Errorf("combatants = %v after the undo, want the first casting's %v back and the new ones gone", got, first)
+	}
+	back := a.mustCreatures(t, a.ana, a.pens)
+	if len(back) != 2 || usedSlots(a.vitals(t, a.pens), 1) != 1 {
+		t.Errorf("after the undo: %d creatures and %d slots spent, want the old two and the first casting's slot", len(back), usedSlots(a.vitals(t, a.pens), 1))
 	}
 }
