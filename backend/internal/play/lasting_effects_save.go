@@ -498,6 +498,7 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 	x.ev.D20, x.ev.Modifier, x.ev.Total, x.ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 	// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
 	x.ev.Lucky, x.ev.Indomitable, result.Rerolled = step.Lucky, step.Indomitable, rerollsOf(step.Lucky, step.Indomitable)
+	x.ev.D20Reroll = rerollUse(step.Lucky)
 	return saved, nil
 }
 

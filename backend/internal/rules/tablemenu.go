@@ -53,6 +53,11 @@ type MenuField struct {
 // in Portuguese. Hint is a short explanation where the name alone does not say.
 type MenuValue struct {
 	Key, NamePT, HintPT string
+	// OnlyModes, for a target of a modifier, are the only modifier modes it takes (the critical range is
+	// set, never added); empty means every mode. Min and Max, for the same, bound a literal value of the
+	// modifier (both zero: unbounded). The editor offers nothing else for that target.
+	OnlyModes []string
+	Min, Max  int
 }
 
 // MenuList is a closed list a field takes.
@@ -128,7 +133,9 @@ const (
 	ListRollDieTargets = "roll_die_targets"
 	ListSpellChanges   = "spell_changes"
 	ListAmbushApplies  = "ambush_applies"
-	ListDamageTypes    = "damage_types"
+	// ListRollApplies are the rolls a reroll covers.
+	ListRollApplies = "roll_applies"
+	ListDamageTypes = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
 	ListResistanceConditions = "resistance_conditions"
 	// ListResistanceTypes are the damage types of a resistance effect plus the closed words
@@ -152,7 +159,7 @@ const (
 // menuTypes is the menu's types, in the picker's order, with the copy in
 // Portuguese, in our own words. Only the types of overlayEffectTypes appear.
 var menuTypes = []MenuType{
-	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia.", Fields: []MenuField{
+	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir.", Fields: []MenuField{
 		{Name: "target", Required: true, Kind: "choice", List: ListModifierTargets},
 		{Name: "mode", Required: true, Kind: "choice", List: ListModifierModes},
 		{Name: "value", Required: true, Kind: "formula"},
@@ -345,6 +352,14 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Deixa o jogador rolar de novo um dado que mostrou um valor baixo (até o valor escolhido) numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; a nova rolagem vale, mesmo se for pior. Nos dados de dano o jogador não é perguntado: o app rola de novo, de uma vez, todos os dados da jogada de dano que mostraram o valor escolhido ou menos, e um uso cobre a jogada de dano inteira. Pode gastar usos de um recurso que a entrada define a cada vez (sem recurso, vale sempre).", Fields: []MenuField{
+		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
+		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "cost", Kind: "formula"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
@@ -375,6 +390,7 @@ var (
 		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
+		CriticalRangeTarget: "Margem de acerto crítico (o menor d20 que é crítico)",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -429,8 +445,8 @@ var (
 		"check.all": "Todos os testes de habilidade", "save.all": "Todos os testes de resistência",
 	}
 	tagPrefixes = []MenuValue{
-		{"against:", "Contra…", "Só vale contra o que a etiqueta diz (against:magic); o app lembra e o mestre decide."},
-		{"about:", "Sobre…", "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
+		{Key: "against:", NamePT: "Contra…", HintPT: "Só vale contra o que a etiqueta diz (against:magic); o app lembra e o mestre decide."},
+		{Key: "about:", NamePT: "Sobre…", HintPT: "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
 	}
 )
 
@@ -524,7 +540,12 @@ func (c *content) menuSaves() []MenuValue {
 func (c *content) menuModifierTargets() []MenuValue {
 	var targets []MenuValue
 	for _, k := range modifierTargets {
-		targets = append(targets, MenuValue{Key: k, NamePT: modifierTargetNames[k]})
+		v := MenuValue{Key: k, NamePT: modifierTargetNames[k]}
+		if k == CriticalRangeTarget {
+			v.HintPT = "O menor resultado natural do d20 que é acerto crítico (de 15 a 20; o normal é 20). Só o modo Definir vale; vale o menor entre os efeitos do personagem."
+			v.OnlyModes, v.Min, v.Max = []string{"set"}, MinCriticalRange, MaxCriticalRange
+		}
+		targets = append(targets, v)
 	}
 	targets = append(targets, c.menuSkillRolls()...)
 	return append(targets, c.menuSaves()...)
@@ -635,6 +656,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListRollDieTargets, Values: c.menuRollDieTargets()},
 		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
+		{Name: ListRollApplies, Values: rollAppliesValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceTypes, Values: c.menuResistanceTypes()},
 		{Name: ListResistanceKinds, Values: resistanceKindValues()},

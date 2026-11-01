@@ -232,16 +232,18 @@ message DamagePart {
   int32 resource_left = 19;
 }
 
-// Reroll is a die rolled again: a damage die by Great Weapon Fighting, or a d20 that showed a
-// 1 by the halfling's Lucky (an attack roll, an ability check or a saving throw).
+// Reroll is a die rolled again: a damage die by Great Weapon Fighting or by a table feature's reroll rule, or a d20 rolled
+// again by the halfling's Lucky (a 1), by a table feature's reroll rule that the player chose to use (an attack roll, an
+// ability check or a saving throw), by Indomitable (a saving throw) or by Stroke of Luck (an ability check counted as 20).
 message Reroll {
   // The die, as an index into the roll's `faces` (in the order rolled).
   int32 index = 1;
   int32 from = 2;
   int32 to = 3;
-  // The feature that rolled it again, as a content key: "trait:lucky" for the halfling's
-  // Lucky (its Portuguese name is in the content's names, "Sortudo"). Empty for Great
-  // Weapon Fighting, which only rerolls damage dice.
+  // The feature that rolled it again, as a content key: "trait:lucky" for the halfling's Lucky (its Portuguese name is in
+  // the content's names, "Sortudo"), "feature:indomitable-1-use" for Indomitable, "feature:stroke-of-luck" for Stroke of
+  // Luck, and the key of the table feature (the reroll rule's source) for a die of damage or a d20 rolled again by a
+  // reroll rule. Empty for Great Weapon Fighting, which only rerolls damage dice.
   string source_key = 4;
 }
 

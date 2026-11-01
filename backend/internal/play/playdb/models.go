@@ -374,6 +374,15 @@ type InspirationHold struct {
 	StrokeFailed         bool
 	StrokeAnswerKey      *string
 	StrokeFrom           *int32
+	RerollAsk            bool
+	RerollIndex          *int32
+	RerollAtMost         *int32
+	RerollResource       string
+	RerollCost           int32
+	RerollSource         string
+	RerollAnswerKey      *string
+	RerollFrom           *int32
+	RerollTo             *int32
 }
 
 type OpportunityOffer struct {

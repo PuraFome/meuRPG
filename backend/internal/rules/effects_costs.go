@@ -21,8 +21,8 @@ func (x effectCompiler) strayCosts() error {
 	e := x.e
 	action, hook := e.Type == "grant_action", e.Type == "on_event"
 	switch {
-	case !action && !hook && (e.Heal != "" || e.TempHP != "" || (e.Cost != "" && e.Type != "spell_modifier")):
-		return x.fail("cost, heal and temp_hp belong to grant_action and on_event (cost to spell_modifier too)")
+	case !action && !hook && (e.Heal != "" || e.TempHP != "" || (e.Cost != "" && e.Type != "spell_modifier" && e.Type != "reroll")):
+		return x.fail("cost, heal and temp_hp belong to grant_action and on_event (cost to spell_modifier and reroll too)")
 	case !action && (e.CostMax != "" || e.ValuePerPoint != ""):
 		return x.fail("cost_max and value_per_point belong to grant_action")
 	case !hook && (e.Event != "" || e.Restore != "" || e.HealPercentMax != 0):

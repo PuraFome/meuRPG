@@ -306,6 +306,9 @@ type actionEvent struct {
 	// that counted as 20 (D20 and the dice after it hold the 20 then, and this keeps the d20 it replaced). One use of
 	// the feature was spent; the undo of an attack gives it back. Nil when the roll was not changed.
 	Stroke *strokeUse `json:"stroke,omitempty"`
+	// D20Reroll is the uses the d20 rolled again by a reroll rule spent on a weapon attack, a cast's spell attack or a
+	// saving throw (held_reroll.go); the undo of an attack or a cast gives them back. Nil when none were spent.
+	D20Reroll *damageRerollUse `json:"d20_reroll,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
@@ -697,9 +700,11 @@ type actionEvent struct {
 	// made: the undo of the roll puts it back, so the damage is offered as it was.
 	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
-	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
-	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
-	Steps         []stepGroup `json:"steps,omitempty"`
+	ManeuverSpent []string `json:"maneuver_spent,omitempty"`
+	// DamageReroll is the use of a reroll rule the damage roll spent (combat_damage_reroll.go); an undo gives it back.
+	DamageReroll *damageRerollUse `json:"damage_reroll,omitempty"`
+	OnceBefore   *onceMarks       `json:"once_before,omitempty"`
+	Steps        []stepGroup      `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`

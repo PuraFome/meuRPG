@@ -78,6 +78,7 @@ func deltaAnsweredHold(face, modifier int, lucky bool) undoDelta {
 		"+ db/inspiration_holds[#].indomitable_failed=false", "+ db/inspiration_holds[#].indomitable_from=<nil>", "+ db/inspiration_holds[#].indomitable_to=<nil>",
 		"+ db/inspiration_holds[#].stroke_answer_key=<nil>", "+ db/inspiration_holds[#].stroke_ask=false", "+ db/inspiration_holds[#].stroke_failed=false",
 		"+ db/inspiration_holds[#].stroke_from=<nil>",
+		"+ db/inspiration_holds[#].reroll_answer_key=<nil>", "+ db/inspiration_holds[#].reroll_ask=false", "+ db/inspiration_holds[#].reroll_at_most=<nil>", "+ db/inspiration_holds[#].reroll_cost=0", "+ db/inspiration_holds[#].reroll_from=<nil>", "+ db/inspiration_holds[#].reroll_index=<nil>", "+ db/inspiration_holds[#].reroll_resource=", "+ db/inspiration_holds[#].reroll_source=", "+ db/inspiration_holds[#].reroll_to=<nil>",
 	}
 	if lucky {
 		return append(out, "+ db/inspiration_holds[#].lucky_answer_key=#", "+ db/inspiration_holds[#].lucky_index=0", "+ db/inspiration_holds[#].lucky_to=15")
@@ -523,6 +524,7 @@ var deltaAnsweredInspirationHold = undoDelta{
 	"+ db/inspiration_holds[#].indomitable_failed=false", "+ db/inspiration_holds[#].indomitable_from=<nil>", "+ db/inspiration_holds[#].indomitable_to=<nil>",
 	"+ db/inspiration_holds[#].stroke_answer_key=<nil>", "+ db/inspiration_holds[#].stroke_ask=false", "+ db/inspiration_holds[#].stroke_failed=false",
 	"+ db/inspiration_holds[#].stroke_from=<nil>",
+	"+ db/inspiration_holds[#].reroll_answer_key=<nil>", "+ db/inspiration_holds[#].reroll_ask=false", "+ db/inspiration_holds[#].reroll_at_most=<nil>", "+ db/inspiration_holds[#].reroll_cost=0", "+ db/inspiration_holds[#].reroll_from=<nil>", "+ db/inspiration_holds[#].reroll_index=<nil>", "+ db/inspiration_holds[#].reroll_resource=", "+ db/inspiration_holds[#].reroll_source=", "+ db/inspiration_holds[#].reroll_to=<nil>",
 }
 
 // TestUndoKindSpellCastBardicDie: the spell attack that used a Bardic Inspiration die holds

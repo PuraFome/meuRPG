@@ -576,7 +576,7 @@ Members read the campaign's content, except creatures (below); only the master w
 
 - **A change takes effect at once, locked sheets included.** The sheet recalculates, and whatever fell outside the rules shows on it as a notice ("A classe mudou") with the exact sentences, without blocking other edits. Only the owner and the master read it. It disappears by itself when what it says is fixed. Only the owners of the sheets that use the changed entry are notified.
 - **Nothing is deleted.** The master archives and unarchives; there is no "Apagar". An archived entry keeps working on the sheets that already use it, and is no longer offered as a new choice. The master is never given an archived entry as a new choice either: the screen names the refusal.
-- **Table content never runs code.** Effects come from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, Wild Shape, spell slots, choice, note, granted spell, maneuver die). A feature with only text always holds. The server returns every violation of an entry at once, each pointing at the editor field it belongs to, and a refused save changes nothing.
+- **Table content never runs code.** Effects come from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, Wild Shape, spell slots, choice, note, granted spell, maneuver die, reroll). A feature with only text always holds. The server returns every violation of an entry at once, each pointing at the editor field it belongs to, and a refused save changes nothing.
 - **What players see.** Every enabled playable option, whole (numbers and effects). They look up every enabled spell under "Magias" ([MR-045](stories.md#mr-045-look-up-spells)) and pick on the sheet only from their class's list (each class's list by the level in it, with multiclass).
 - **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses and a switched-off race its subraces, except on a sheet that already has the parent. A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
   The master switches creatures on and off through the API only.
@@ -589,6 +589,36 @@ Members read the campaign's content, except creatures (below); only the master w
 - **Classes.** A table class brings the 20-level table (proficiency bonus, features, cantrips and spells known, slots or pact slots), hit die, saving throws, skills, proficiencies, the ability score improvement levels (4, 8, 12, 16 and 19 by default) and spellcasting (none, full, half or pact). The one-third caster is a subclass that casts. The class editor starts from the server's numbers. Multiclass at creation and level up work with table classes, with the SRD prerequisites as a sheet notice.
 - **Maneuvers.** A maneuver is a die from a resource. After a weapon hit the damage step offers each damage maneuver the character knows, one per attack; it adds the die to the damage (doubled on a critical hit), spends a use, and the master reads its rider on the roll. The die can also start a grapple or reduce a melee hit's damage as a reaction. The die on an attack roll can be registered but is not rolled yet.
 - **Wild Shape.** A table subclass or feature changes the druid's Wild Shape (MR-037): the highest challenge rating of the beasts (a fixed one, or one from the level such as the level divided by 3), how many uses of Wild Shape one change of form costs (none, for a free change), and whether the beast's attacks count as magical. The character takes the most permissive of what it has: the highest rating, the lowest cost, and magical attacks if any feature gives them. The list of forms and the choice agree.
+- **The critical range.**
+  A table modifier "Margem de acerto crítico (o menor d20 que é crítico)" sets the lowest natural d20 that is a critical hit, from 15 to 20.
+  Only the mode "Definir" is accepted, the server refuses the others, and a formula is held between 15 and 20.
+  It counts for weapon attacks only, as Improved Critical does; a spell attack is a critical hit on a 20 only.
+  The lowest of the table's value and of the class features' range (Improved Critical, Superior Critical) wins.
+  The attack hits on that roll and the damage follows the critical rule of the table (RN-24).
+- **Rerolls.**
+  The effect "Rolar de novo" lets a die be rolled again, and the new roll must be used, even when it is worse (SRD 5.1).
+  The master picks the rolls it covers (attack, ability check, saving throw, damage; each once), the highest face that may be rolled again (1 to 20), and optionally a resource the entry or its class defines and the uses each reroll spends (1 by default).
+  With no resource it is free.
+  A cost below 1, a cost the resource's maximum at the character's level can never pay, or a resource the character does not have at that level leaves the reroll out of the sheet.
+  When several rerolls cover a roll, the first one the character can pay serves.
+  - **The d20.** The player is asked "rolar de novo?" after the d20 and before the app says whether the roll succeeds, when the die shows the chosen face or lower and the character can pay.
+    With advantage or disadvantage the die that counts is the one asked about.
+    Answering yes spends the uses and rolls a new d20 that stands, even when it is another low face; answering no spends nothing.
+    It applies to weapon and spell attack rolls, to the scene check, the group check, the saving throw of an effect and the concentration save.
+    It never applies to a contest (a grapple, a shove, an escape), Hide, the Counterspell check, a death save, the initiative, a trap search or a puzzle hint.
+    The app has no screen for the question, so it does not ask: every roll stands as rolled and nothing is held or spent.
+    The question is for the roller's player and the master, as Lucky's is (RN-35).
+  - **Lucky.** A roll that asks the halfling's Lucky question is not offered the reroll, so the two never meet in one roll.
+  - **Damage.** The app rolls the damage dice again by itself and never asks.
+    One use covers one damage roll, and every die that shows the chosen face or lower is rolled again once.
+    A die that Great Weapon Fighting (Combate com Armas Grandes) already rolled again is kept.
+    Damage the player typed from physical dice, and damage held for a reaction window, are not rerolled.
+    For damage with parts (a weapon hit and its extras) the part lists the dice rolled again with the feature that gave the reroll; other damage shows only the new dice.
+    The use is spent with the damage, and undoing the damage gives it back.
+  - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
+  - **Not covered.** A minimum for a roll and a wider critical range for spell attacks do not exist.
+    The master's editor lists "Rolar de novo" but cannot save it: write it through the API.
+    The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**
@@ -672,7 +702,7 @@ A change holds from the next roll, never rewriting what was already rolled.
 - **Table style.** At the top: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. A style only fills in these defaults, which stay editable one by one. More ideas: [MR-046](stories.md#mr-046-table-style-feature-by-feature).
 - **Hit points on level up:** roll, the average, or the player chooses between the two. The server refuses the method the rule does not allow, and a player's sheet above level 1 must follow it at creation ("roll": every level after the first is a roll; "average": none).
 - **Abilities of a new sheet.** The master ticks the ways that hold: the standard array (15, 14, 13, 12, 10, 8), point buy with 27 points, 4d6 dropping the lowest, or typing from 3 to 18 before the race bonus. The 4d6 are rolled and stored by the server, once (a physical-dice player types them, once). A player's sheet is checked against the way they used, for as long as it is a draft; the master's edits are free. Manual ability bonuses cannot get around the way: for a player they may not exceed what the race lets them place plus 2 for each Ability Score Improvement reached. The three ways come from SRD 5.2.1 (the 2024 rules, CC BY 4.0), credited on "Créditos" and labelled "SRD 5.2.1 (regras de 2024)".
-- **The critical hit:** doubled dice (the SRD's) or the maximum of the dice plus a roll. It holds on every critical hit in combat (weapon, spell attack, creature, NPC, monster, trap), with a map or in theatre. The damage step states it ("role os dados duas vezes" or "o máximo mais uma rolagem") and a physical-dice player types only the dice rolled. A weapon attack is a critical hit on a natural 20; a Champion fighter also on 19 from level 3 and on 18 from level 15; a spell attack always needs the 20. A barbarian's critical melee hit rolls extra weapon dice at levels 9, 13 and 17 (Brutal Critical), always rolled, named in the damage line ("Crítico Brutal"). The damage of features the app does not roll (Sneak Attack, Divine Smite) is added by hand.
+- **The critical hit:** doubled dice (the SRD's) or the maximum of the dice plus a roll. It holds on every critical hit in combat (weapon, spell attack, creature, NPC, monster, trap), with a map or in theatre. The damage step states it ("role os dados duas vezes" or "o máximo mais uma rolagem") and a physical-dice player types only the dice rolled. A weapon attack is a critical hit on a natural 20; a Champion fighter also on 19 from level 3 and on 18 from level 15; a table's critical range can widen it further (below); a spell attack always needs the 20. A barbarian's critical melee hit rolls extra weapon dice at levels 9, 13 and 17 (Brutal Critical), always rolled, named in the damage line ("Crítico Brutal"). The damage of features the app does not roll (Sneak Attack, Divine Smite) is added by hand.
 - **Reliable Talent** (rogue 11): on an ability check that adds the proficiency bonus, a d20 of 9 or lower counts as 10. It does not apply to attacks, saving throws, initiative or checks without proficiency. The roll keeps the face that came up and says it was treated as 10. It applies to scene checks, trap searches, puzzle hints, group checks, either side of a contest and a Hide.
 - **Death saves:** seen by everyone, or only by the owner and the master. When hidden, every other player reads only "Caído" on the combatant, in the order, in the log, in the stream, in the summary and in the highlights. Everyone keeps the result: "Estável" and "Morto". Each roll stores whether it was hidden, so changing the rule never reveals or hides what was already written.
 - **Area spells and hidden creatures** (RN-23): reveal, keep hidden, or ask each time.
@@ -794,7 +824,7 @@ In theatre of the mind (RN-25) monsters have no square.
 A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice.
 For the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll.
 A roll that fails becomes a success that spends one use.
-A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and the uses are the combat's (a new combat starts with all of them).
+A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and a monster's uses are the combat's (a new combat starts with all of them).
 The master's log line says the roll and the choice; the player's line says the save succeeded (RN-20).
 When a player's spell with a saving throw reaches it (on one target or many), the cast waits for the master (RN-31), whether the save passed or failed.
 The wait reveals nothing about the roll: a player reads the same wait and the same result either way.
@@ -817,7 +847,7 @@ The players read no spend, only the ordinary attack or movement line (RN-20).
 A hand-made NPC that casts keeps the spell slots and per-day uses it spent, from one combat to the next, until the table's long rest.
 A monster in combat starts each fight with all its slots and uses, because each fight brings a new individual.
 Several copies of one hand-made NPC each start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
-A short rest changes nothing for an NPC.
+A short rest gives a persistent NPC back its actions that recharge after a short or long rest, and nothing else.
 An action of a monster with a limit is enforced by the server: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) and one that returns after a rest.
 A use spends it, in the same change as the attack or the action, and a spent action is refused with nothing changed.
 The refusal says the action has not recharged or has no uses left, to the master and to the player who controls the monster.
@@ -826,7 +856,12 @@ A defeated monster does not roll, and an action with uses a day or after a rest 
 The master and the player who controls the monster read what each limited action has left and a log line with the d6.
 Every other player reads neither, and the turn looks the same to them with or without the roll (RN-20).
 "Desfazer última ação" gives the use back; the roll cannot be undone.
-A hand-made NPC has no stat block, so it keeps no limit, and a monster starts every combat with all its actions.
+A persistent NPC with a stat block (made from a creature) keeps what it spent of its N/day actions and of Legendary Resistance until the table's long rest.
+It keeps an action that recharges after a short or long rest until the next short or long rest.
+The long rest gives back all three, and the short rest gives back only the last.
+Several copies of it start with the count the NPC kept, and it keeps the highest count any copy reached, not the sum.
+A Recharge action and the legendary actions of a round are not kept: a new combat starts with every Recharge action available.
+A monster starts every combat with all its actions and uses, and an NPC with no stat block has no limits.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
