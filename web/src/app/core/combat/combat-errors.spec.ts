@@ -4,6 +4,20 @@ import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { blockedMessage, combatErrorMessage } from './combat-errors';
 
 describe('combat errors', () => {
+  it('says every refusal of the legendary actions in words, and that nothing was spent', () => {
+    for (const reason of [
+      EncounterBlockedReason.LEGENDARY_OWN_TURN,
+      EncounterBlockedReason.LEGENDARY_NONE_LEFT,
+      EncounterBlockedReason.LEGENDARY_OPTION_UNKNOWN,
+      EncounterBlockedReason.LEGENDARY_WRONG_KIND,
+      EncounterBlockedReason.LEGENDARY_UNAVAILABLE,
+      EncounterBlockedReason.LEGENDARY_RESISTANCE_NONE_LEFT,
+      EncounterBlockedReason.LEGENDARY_RESISTANCE_UNAVAILABLE,
+    ]) {
+      expect(blockedMessage({ reason } as never)).toMatch(/[Nn]ada foi gasto\./);
+    }
+  });
+
   it('says a reserved character cannot fight, not that the combat is gone (R2-06)', () => {
     expect(
       blockedMessage({ reason: EncounterBlockedReason.CHARACTER_RESERVED } as never),

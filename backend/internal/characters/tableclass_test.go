@@ -211,8 +211,11 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 		}
 	}
 	senses := lists["senses"]
-	if senses == nil || len(senses.GetValues()) != 4 || senses.GetValues()[0].GetKey() != "darkvision" || senses.GetValues()[0].GetNamePt() != "Visão no escuro" {
+	if senses == nil || len(senses.GetValues()) != 5 || senses.GetValues()[0].GetKey() != "darkvision" || senses.GetValues()[0].GetNamePt() != "Visão no escuro" {
 		t.Errorf("senses = %v", senses)
+	}
+	if last := senses.GetValues()[4]; last.GetKey() != "devils-sight" || last.GetNamePt() != "Visão do diabo" {
+		t.Errorf("last sense = %v, want devils-sight \"Visão do diabo\"", last)
 	}
 	if len(menu.GetHelpers()) != 13 || len(fightingStyles(t, menu)) < 4 {
 		t.Errorf("helpers = %d, fighting styles = %d", len(menu.GetHelpers()), len(fightingStyles(t, menu)))

@@ -7,12 +7,15 @@ import (
 	"slices"
 	"time"
 
+	"connectrpc.com/connect"
+
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // What a zone does to the creature it catches: the saving throw and the damage of the spell, through
@@ -90,6 +93,11 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	if err := k.z.markHit(ctx, c, k.who.ID, k.mark); err != nil {
 		return err
 	}
+	if k.z.def.kind == zoneRetch {
+		if immune, err := s.immuneToRetching(ctx, c, k.who); err != nil || immune {
+			return err // a creature immune to poison succeeds the save by itself: nothing is asked
+		}
+	}
 	if k.z.def.slows {
 		if err := s.slowInZone(ctx, c, cs, k.z, owner, k.who); err != nil {
 			return err
@@ -131,6 +139,8 @@ func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	case k.z.def.kind == zoneDamage:
 		return s.dealZoneDamage(ctx, c, k, saved)
 	case saved:
+	case k.z.def.kind == zoneRetch:
+		return zoneDamageDealt{}, s.retchOnTheTurn(ctx, c, k.who)
 	case k.z.def.kind == zoneProne:
 		return zoneDamageDealt{}, s.knockProne(ctx, c, k, h)
 	default:
@@ -238,6 +248,36 @@ const (
 	webRestrainedKey      = "effect:web-restrained"
 	entangleRestrainedKey = "effect:entangle-restrained"
 )
+
+// immuneToRetching says the creature is immune to what Stinking Cloud's gas does: to poison damage or to the poisoned
+// condition (the SRD data has no "does not need to breathe").
+func (s *Service) immuneToRetching(ctx context.Context, c *combatTx, who playdb.Combatant) (bool, error) {
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, who.CharacterID, conv.OrZero(who.MonsterKey))
+	if err != nil {
+		return false, err
+	}
+	if combat.AdjustForType(poisonProbe, poisonDamage, mods) == 0 {
+		return true, nil
+	}
+	immune, err := c.immuneToCondition(ctx, who, condPoisoned)
+	if isCreature(who) && connect.CodeOf(err) == connect.CodeNotFound {
+		return false, nil // a creature the content does not know has no stat block to be immune by
+	}
+	return immune, err
+}
+
+// poisonProbe is an amount of poison damage large enough that only an immunity takes all of it away.
+const poisonProbe = 100
+
+// retchOnTheTurn uses up the action of the creature's turn: it spends it retching.
+func (s *Service) retchOnTheTurn(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: who.ID, ActionUsed: true, BonusActionUsed: who.BonusActionUsed, ReactionUsed: who.ReactionUsed, Dashed: who.Dashed,
+	}); err != nil {
+		return fmt.Errorf("spend the action: %w", err)
+	}
+	return nil
+}
 
 // knockProne knocks a creature prone: it stays so until it stands up. The condition it had before goes into h,
 // for the undo.

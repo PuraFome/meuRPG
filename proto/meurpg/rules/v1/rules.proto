@@ -1051,8 +1051,8 @@ message Sense {
   string name_pt = 2;
   // Range in feet, such as 60.
   int32 range_ft = 3;
-  // Which sense it is: "darkvision", "blindsight", "tremorsense" or
-  // "truesight". Use it, not `key` (which names what grants the sense: a trait,
+  // Which sense it is: "darkvision", "blindsight", "tremorsense",
+  // "truesight" or "devils-sight". Use it, not `key` (which names what grants the sense: a trait,
   // or the creature's key for a creature's sense), to tell senses apart.
   string sense = 4;
 }
@@ -2301,6 +2301,10 @@ message SlotChoice {
   // How many slots of this kind the character has in all, free or spent, so
   // the app can read "3 of 4 free". 0 when not known.
   int32 total = 4;
+  // The key of the resource whose uses a day this choice spends instead of a
+  // slot (a creature's innate spell, like the Couatl's Shield); then `level` is
+  // the spell's own level and `free` and `total` count the uses. Empty for a slot.
+  string resource = 5;
 }
 
 // ActionOption is a standard or feature action the character can take.

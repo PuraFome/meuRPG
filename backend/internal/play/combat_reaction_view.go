@@ -20,19 +20,21 @@ import (
 // own character sees; everyone else only the line "Esperando ...", written for them.
 
 var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
-	reaction.Shield:             playv1.ReactionKind_REACTION_KIND_SHIELD,
-	reaction.UncannyDodgeKind:   playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE,
-	reaction.HellishRebukeKind:  playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE,
-	reaction.CounterspellKind:   playv1.ReactionKind_REACTION_KIND_COUNTERSPELL,
-	reaction.CuttingWords:       playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS,
-	reaction.DeflectKind:        playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES,
-	reaction.ManeuverReduceKind: playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE,
-	reaction.ProtectionKind:     playv1.ReactionKind_REACTION_KIND_PROTECTION,
-	reaction.FeatherFall:        playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
-	reaction.Concentration:      playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
-	reaction.MasterCheck:        playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
-	reaction.Contest:            playv1.ReactionKind_REACTION_KIND_CONTEST,
-	reaction.EffectSave:         playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
+	reaction.Shield:              playv1.ReactionKind_REACTION_KIND_SHIELD,
+	reaction.UncannyDodgeKind:    playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE,
+	reaction.HellishRebukeKind:   playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE,
+	reaction.CounterspellKind:    playv1.ReactionKind_REACTION_KIND_COUNTERSPELL,
+	reaction.CuttingWords:        playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS,
+	reaction.DeflectKind:         playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES,
+	reaction.ManeuverReduceKind:  playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE,
+	reaction.ProtectionKind:      playv1.ReactionKind_REACTION_KIND_PROTECTION,
+	reaction.FeatherFall:         playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
+	reaction.Concentration:       playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
+	reaction.MasterCheck:         playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
+	reaction.Contest:             playv1.ReactionKind_REACTION_KIND_CONTEST,
+	reaction.EffectSave:          playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
+	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
+	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
@@ -345,6 +347,10 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.concentrationPrompt(w, reactor, out)
 	case reaction.EffectSave:
 		err = wv.effectSavePrompt(w, reactor, out)
+	case reaction.LegendaryResistance:
+		err = wv.resistancePrompt(w, out)
+	case reaction.ParryKind:
+		wv.parryPrompt(w, out)
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}

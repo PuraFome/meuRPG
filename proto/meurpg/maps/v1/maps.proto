@@ -665,14 +665,15 @@ service MapService {
   // ListCharactersInTheDark tells the master which player characters see
   // nothing where they stand on a map: the map has the fog of war on, the square
   // is dark (the base light "Escuro" and no painted light or light source reaches
-  // it, a hidden NPC's light and a carried light included) and the character has
-  // no darkvision, blindsight or truesight to cover it. With "Penumbra" or
-  // "Claro" as the base light, or without the fog, nobody is in the dark and the
-  // list is empty. Only the characters that stand on this map are listed, living
+  // it, a hidden NPC's light and a carried light included, or the square is in a
+  // Darkness) and the character has no darkvision, blindsight, truesight or Devil's Sight
+  // that works there (darkvision does not work in a Darkness). With "Penumbra" or
+  // "Claro" as the base light the list is empty unless a Darkness is up, and
+  // without the fog nobody is in the dark. Only the characters that stand on this map are listed, living
   // ones that have a player. The answer is the master's alone (RN-10): it is
   // worked out from lights a player cannot see. The app reads it again when the
-  // master's stream says `map_changed` or `token_moved` (a carried light, a Luz
-  // point, a token or the map's light changed).
+  // master's stream says `map_changed`, `token_moved` or `vision_changed` (a
+  // carried light, a Luz point, a token, the map's light or a Darkness changed).
   //
   // Errors:
   //   - `not_found`: the map is not in this campaign, the campaign does not
@@ -2251,6 +2252,7 @@ message CharacterInTheDark {
 // DarknessCause says why a character is in the dark.
 enum DarknessCause {
   DARKNESS_CAUSE_UNSPECIFIED = 0;
-  // The square has no light and the character has no sense that sees in the dark.
+  // The square has no light, or is in a Darkness, and the character has no sense
+  // that sees there.
   DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION = 1;
 }

@@ -217,6 +217,7 @@ type Combatant struct {
 	JumpLongBonusDft        int32
 	JumpDoubled             bool
 	TableOnceTurns          []byte
+	CreatureSpent           []byte
 	ReactionKind            *string
 	ReactionRound           *int32
 }

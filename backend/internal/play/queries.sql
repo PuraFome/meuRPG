@@ -226,9 +226,10 @@ WHERE id = $1;
 -- The start of a combatant's own turn (every living member of a joint turn
 -- gets it): movement, action, bonus action, dash, reaction and the attacks
 -- made come back, the Escudo bonus ends, a death save is due again, and the
--- combatant acts ('acting') in the turn that starts.
+-- combatant acts ('acting') in the turn that starts. The legendary actions it
+-- spent come back (creature_spent keeps every other key).
 UPDATE combatants
-SET movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false, reaction_kind = NULL, reaction_round = NULL,
+SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false, reaction_kind = NULL, reaction_round = NULL,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -1497,9 +1498,64 @@ DELETE FROM reaction_windows WHERE encounter_id = $1;
 -- name: DeleteReactionHoldsOfEncounter :exec
 DELETE FROM reaction_holds WHERE encounter_id = $1;
 
--- name: SetCombatantSlotsUsed :exec
--- The slots (and resource uses) a stat block spent in this combat.
-UPDATE combatants SET slots_used = $2 WHERE id = $1;
+-- name: BumpCombatantSlotsUsed :exec
+-- Adds a delta to what a stat block spent under one key in this combat (a slot level,
+-- "pact" or "res:<resource>"), never below 0, on the stored value: two changes in one
+-- transaction both land.
+UPDATE combatants
+SET slots_used = jsonb_set(slots_used, ARRAY[sqlc.arg(key)::text], to_jsonb(GREATEST(COALESCE((slots_used->>sqlc.arg(key)::text)::int, 0) + sqlc.arg(delta)::int, 0)), true)
+WHERE id = sqlc.arg(id);
+
+-- name: SeedCombatantSlotsUsed :one
+-- Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use).
+-- No row when the character has spent nothing.
+UPDATE combatants
+SET slots_used = npc.slots_used
+FROM npc_spell_use npc
+WHERE combatants.id = sqlc.arg(id) AND npc.character_id = combatants.character_id
+RETURNING combatants.slots_used;
+
+-- name: SyncNPCSpellUse :exec
+-- Sets the NPC's own count under one key to the highest count any combatant of that character holds in
+-- this combat, after the combatant's bump: several copies of one hand-made NPC share one row, and the row
+-- keeps what one individual spent, never the sum. The copies each start the next combat with it. A
+-- monster's character (combat_only), a creature and a player write nothing, so each fight of a monster
+-- starts fresh.
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = sqlc.arg(id) AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max((cb.slots_used->>sqlc.arg(key)::text)::int), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
+INSERT INTO npc_spell_use (character_id, slots_used)
+SELECT character_id, jsonb_build_object(sqlc.arg(key)::text, n) FROM top
+ON CONFLICT (character_id) DO UPDATE
+SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[sqlc.arg(key)::text], excluded.slots_used->sqlc.arg(key)::text, true),
+    updated_at = now();
+
+-- name: GetNPCSpellUse :one
+SELECT slots_used FROM npc_spell_use WHERE character_id = $1;
+
+-- name: ClearSetupCombatantsSpellUse :exec
+-- A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too.
+UPDATE combatants
+SET slots_used = '{}'
+FROM encounters e, npc_spell_use npc, characters ch
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
+  AND npc.character_id = combatants.character_id
+  AND ch.id = npc.character_id AND ch.campaign_id = $1;
+
+-- name: ResetNPCSpellUseOfCampaign :exec
+-- The table's long rest: every hand-made NPC of the campaign gets its slots and uses back.
+DELETE FROM npc_spell_use
+USING characters ch
+WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1;
 
 -- name: ReopenReactionWindow :exec
 -- The undo of a reaction's answer: the window waits again.
@@ -1863,3 +1919,12 @@ LIMIT $3;
 UPDATE combatants
 SET table_once_turns = $2
 WHERE id = $1;
+
+-- name: SetCombatantCreatureSpent :exec
+-- What the combatant's stat block has spent: JSON {"<key>": N}.
+UPDATE combatants SET creature_spent = $2 WHERE id = $1;
+
+-- name: GetCombatantCreatureSpent :one
+-- What the combatant's stat block has spent now (JSON), read inside the change's
+-- transaction so two spends in one change add up.
+SELECT creature_spent FROM combatants WHERE id = $1;

@@ -852,7 +852,7 @@ type HitDice struct {
 
 // Sense is a special sense, such as darkvision.
 type Sense struct {
-	// Key is "darkvision", "blindsight", "tremorsense" or "truesight".
+	// Key is "darkvision", "blindsight", "tremorsense", "truesight" or "devils-sight".
 	Key, NamePT string
 	RangeFt     int
 	// Source is the key of what grants it, such as "trait:darkvision".

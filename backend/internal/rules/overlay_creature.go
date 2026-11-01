@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// The table's creatures (issue #578): an entry "creature:<slug>@mesa" is an SRD creature with a few
+// The table's creatures: an entry "creature:<slug>@mesa" is an SRD creature with a few
 // adjustments: its hit points, its armor class, a damage bonus on its attacks and extra traits (text
 // only). The entry becomes a creature of the clone, by its own key, so the creature list and sheet,
 // giving it to a character, combat and "Criar NPC" read it where they read an SRD creature
@@ -42,6 +42,11 @@ type TableCreature struct {
 	ArmorClass  int
 	DamageBonus int
 	Traits      []TableCreatureTrait
+	// The formulas of the creature's numbers, of its owner (see ResolveCreature): empty keeps the
+	// static value (HitPoints, ArmorClass, DamageBonus) or the base's (the attack bonus).
+	// slot() is legal in each. Attacks are the creature's own attack actions (at most MaxCreatureAttacks).
+	HitPointsFormula, ArmorClassFormula, DamageBonusFormula, AttackBonusFormula string
+	Attacks                                                                     []TableCreatureAttack
 }
 
 // TableCreatureTrait is a trait added to a table creature: a name and a text, no effects.
@@ -68,12 +73,17 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 	if o.DamageBonus < MinCreatureDamageBonus || o.DamageBonus > MaxCreatureDamageBonus {
 		c.at(key, path, ".damage_bonus", ReasonValue, "the damage bonus is %d to %d", MinCreatureDamageBonus, MaxCreatureDamageBonus)
 	}
-	checkCreatureTraits(&c, o, base, path)
+	used := usedCreatureNames(base)
+	checkCreatureTraits(&c, o, used, path)
+	spec := b.checkCreatureFormulas(&c, o, used, path)
 	if err := c.err(); err != nil {
 		return err
 	}
 	b.register(o.TableEntry)
-	m := b.deriveCreature(base, o)
+	m, ok := ApplyResolved(base, spec.resolve(nil, 0, true))
+	if !ok {
+		return ovErr(key, "the creature's attacks cannot be written").at(path+".attacks", ReasonValue)
+	}
 	plan, err := b.n.planOf(m)
 	if err != nil {
 		return ovErr(key, "%v", err).at(path, ReasonValue)
@@ -81,6 +91,7 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 	b.ownCreatures()
 	n := b.n
 	n.monsters[key] = m
+	n.creatureSpecs[key] = spec
 	n.monsterPlans[key] = plan
 	if v, ok := n.attacksPerAction[o.BaseKey]; ok {
 		n.attacksPerAction[key] = v
@@ -94,14 +105,9 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 // creaturecasting.go): a table trait with one would not be text only, so the names are refused.
 var readTraitNames = []string{magicWeaponsTrait, "Spellcasting", "Innate Spellcasting"}
 
-// checkCreatureTraits checks the traits: their number, their names (one line, 1 to 80 characters, each
-// with a slug of its own that the base's abilities and actions do not use, as the slug is part of the
-// key of the feature on the sheet) and their texts (1 to 4000 characters).
-func checkCreatureTraits(c *entryErrors, o *TableCreature, base *srd51.Monster, path string) {
-	if len(o.Traits) > MaxCreatureTraits {
-		c.at(o.Key, path, ".traits", ReasonLimit, "%d traits; the limit is %d per creature", len(o.Traits), MaxCreatureTraits)
-		return
-	}
+// usedCreatureNames are the slugs of the base's special abilities and actions: a trait or an attack of
+// the table creature may not repeat them, nor each other.
+func usedCreatureNames(base *srd51.Monster) map[string]bool {
 	used := map[string]bool{}
 	if base != nil {
 		for _, a := range base.SpecialAbilities {
@@ -110,6 +116,17 @@ func checkCreatureTraits(c *entryErrors, o *TableCreature, base *srd51.Monster, 
 		for _, a := range base.Actions {
 			used[slugOf(a.Name)] = true
 		}
+	}
+	return used
+}
+
+// checkCreatureTraits checks the traits: their number, their names (one line, 1 to 80 characters, each
+// with a slug of its own that the base's abilities and actions do not use, as the slug is part of the
+// key of the feature on the sheet) and their texts (1 to 4000 characters).
+func checkCreatureTraits(c *entryErrors, o *TableCreature, used map[string]bool, path string) {
+	if len(o.Traits) > MaxCreatureTraits {
+		c.at(o.Key, path, ".traits", ReasonLimit, "%d traits; the limit is %d per creature", len(o.Traits), MaxCreatureTraits)
+		return
 	}
 	for i, t := range o.Traits {
 		at := fmt.Sprintf(".traits[%d]", i)
@@ -129,39 +146,6 @@ func checkCreatureTraits(c *entryErrors, o *TableCreature, base *srd51.Monster, 
 			c.at(o.Key, path, at+".text_pt", ReasonText, "the text must be 1 to %d characters", maxTextRunes)
 		}
 	}
-}
-
-// deriveCreature is the stat block of o: a copy of the base with the key and name of the entry and its
-// adjustments. What the copy shares with the base (slices of the speeds, of the damage lists) is only
-// read; what it changes is copied first.
-func (b *overlayBuilder) deriveCreature(base *srd51.Monster, o *TableCreature) *srd51.Monster {
-	m := *base
-	m.Key, m.Name = o.Key, o.NamePT
-	if o.HitPoints > 0 {
-		m.HitPoints, m.HitPointsRoll = o.HitPoints, ""
-	}
-	if o.ArmorClass > 0 {
-		// The base's kind of armor class ("natural") and its notes no longer describe the value.
-		m.ArmorClass, m.ArmorClassType, m.ArmorClassDesc, m.ArmorClassItems, m.ArmorClassAlts = o.ArmorClass, "", "", nil, nil
-	}
-	if o.DamageBonus != 0 {
-		m.Actions = slices.Clone(base.Actions)
-		for i := range m.Actions {
-			a := &m.Actions[i]
-			if !a.HasAttack || len(a.Damage) == 0 {
-				continue
-			}
-			a.Damage = slices.Clone(a.Damage)
-			a.Damage[0].Dice = addDiceBonus(a.Damage[0].Dice, o.DamageBonus)
-		}
-	}
-	if len(o.Traits) > 0 {
-		m.SpecialAbilities = slices.Clone(base.SpecialAbilities)
-		for _, t := range o.Traits {
-			m.SpecialAbilities = append(m.SpecialAbilities, srd51.MonsterAbility{Name: t.NamePT, Desc: t.TextPT})
-		}
-	}
-	return &m
 }
 
 // addDiceBonus writes dice ("2d4+2", "1d6", "5") with n more added: "2d4+2" and 3 is "2d4+5". A flat
@@ -197,6 +181,7 @@ func (b *overlayBuilder) ownCreatures() {
 	n.monsterPlans = maps.Clone(n.monsterPlans)
 	n.attacksPerAction = maps.Clone(n.attacksPerAction)
 	n.monsterEntries = slices.Clone(n.monsterEntries)
+	n.creatureSpecs = maps.Clone(n.creatureSpecs)
 }
 
 // sortCreatures puts the creature list back in the order of the Portuguese names, after the table's

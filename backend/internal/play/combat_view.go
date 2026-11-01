@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -437,6 +438,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names)
 	if v.master { // the creature of a monster: the master's alone (RN-20)
 		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
+		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c, e)
 	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 		shareEconomy(p, c)
@@ -750,6 +752,9 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 // portrait and, for a monster of the bestiary, the creature and its ND.
 type masterNPC struct {
 	portrait, monsterKey, challengeRating string
+	// legendary is what its stat block says about legendary actions and Legendary
+	// Resistance; the zero value for an NPC without them.
+	legendary rules.LegendaryProfile
 }
 
 // npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its
@@ -781,6 +786,7 @@ func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encount
 		}
 		out[c.ID] = n
 	}
+	s.addLegendaryProfiles(ctx, m.CampaignID, out)
 	return out
 }
 
@@ -859,6 +865,12 @@ func (s *Service) publishEncounterChangedFor(ctx context.Context, campaignID str
 		return
 	}
 	s.publishEncounterChanged(ctx, campaignID, d.enc)
+}
+
+// publishEncounterChangedToMaster is publishEncounterChanged for a change the players cannot see at all:
+// the hint goes to the master alone, so the players cannot count it.
+func (s *Service) publishEncounterChangedToMaster(campaignID string, enc playdb.Encounter) {
+	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(enc)})
 }
 
 // allHidden says whether every id is a combatant of cs that is hidden now.

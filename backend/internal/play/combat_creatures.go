@@ -55,7 +55,7 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 		}
 		return sheet, err
 	}
-	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack))
+	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack))
 	if err != nil {
 		return link.Sheet{}, err
 	}
@@ -81,7 +81,7 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	} else {
 		var ok bool
 		var err error
-		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack), turnOf(c))
+		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack), turnOf(c))
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (s *Service) saveOf(ctx context.Context, tx pgx.Tx, campaignID string, c pl
 	if !isCreature(c) {
 		return s.roster.CombatSave(ctx, tx, campaignID, c.CharacterID, ability)
 	}
-	return s.roster.CreatureSave(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), ability)
+	return s.roster.CreatureSave(ctx, tx, campaignID, conv.OrZero(c.CreatureID), conv.OrZero(c.MonsterKey), ability)
 }
 
 // mayAttack checks what the spell that brought a creature lets it do: a
@@ -143,10 +143,13 @@ type groupRoll struct {
 }
 
 // concentrationSpellOf is the spell a creature's source depends on for
-// concentration: only Conjurar Animais lasts that way.
-func concentrationSpellOf(source string) string {
-	if source == "conjure_animals" {
+// concentration: Conjurar Animais, and the table spell (summonKey) that made a creature of the source "table".
+func concentrationSpellOf(source, summonKey string) string {
+	switch source {
+	case "conjure_animals":
 		return "spell:conjure-animals"
+	case summonSourceTable:
+		return summonKey
 	}
 	return ""
 }
@@ -270,7 +273,7 @@ func ownerOf(all []playdb.Combatant, cr link.Creature) *playdb.Combatant {
 // seedConcentration makes the creature's owner concentrate on the spell the creature
 // depends on, when the owner has no concentration yet.
 func (s *Service) seedConcentration(ctx context.Context, c *combatTx, cr link.Creature, owner *playdb.Combatant) error {
-	spell := concentrationSpellOf(cr.Source)
+	spell := concentrationSpellOf(cr.Source, cr.SummonKey)
 	if spell == "" || !cr.DependsOnConcentration || owner == nil || owner.ConcentrationSpell != nil {
 		return nil
 	}
@@ -419,14 +422,7 @@ func (s *Service) endSummons(ctx context.Context, c *combatTx, caster playdb.Com
 	for _, cr := range creatures {
 		ids = append(ids, cr.ID)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
-	}
-	leaving := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
-		return o.CreatureID == nil || !slices.Contains(ids, *o.CreatureID)
-	})
-	if _, _, err := s.dropCombatants(ctx, c, cs, leaving, true); err != nil {
+	if err := s.dropCreatureCombatants(ctx, c, ids); err != nil {
 		return nil, err
 	}
 	if dismissed, err = s.roster.DismissCreatures(ctx, c.tx, c.session.CampaignID, ids, "concentration", c.now); err != nil {
@@ -440,6 +436,43 @@ func (s *Service) endSummons(ctx context.Context, c *combatTx, caster playdb.Com
 		}
 	}
 	return dismissed, nil
+}
+
+// dropCreatureCombatants takes the combatants of the creatures out of the order and the map, the way a
+// dismissal does; an undo brings them back (rejoinCreatures).
+func (s *Service) dropCreatureCombatants(ctx context.Context, c *combatTx, ids []string) error {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	leaving := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool {
+		return o.CreatureID == nil || !slices.Contains(ids, *o.CreatureID)
+	})
+	_, _, err = s.dropCombatants(ctx, c, cs, leaving, true)
+	return err
+}
+
+// dropReplaced sends away the creatures a cast replaced (the old ones of its own spell, the old concentration's):
+// their combatants leave and each has its line, with the reason the roster dismissed it for. It returns their ids.
+func (s *Service) dropReplaced(ctx context.Context, c *combatTx, caster playdb.Combatant, replaced []link.Creature) ([]string, error) {
+	if len(replaced) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(replaced))
+	for _, cr := range replaced {
+		ids = append(ids, cr.ID)
+	}
+	if err := s.dropCreatureCombatants(ctx, c, ids); err != nil {
+		return nil, err
+	}
+	for _, cr := range replaced {
+		if err := s.creatureEvent(ctx, c, eventCreatureDismissed, caster, actionEvent{
+			Round: c.enc.Round, Actor: caster.ID, OwnerCharacter: caster.CharacterID, Created: []string{cr.ID}, Reason: cr.DismissedReason,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return ids, nil
 }
 
 // creatureEvent writes a creature event (ids only) to the history, inside the
@@ -457,9 +490,16 @@ func (s *Service) creatureEvent(ctx context.Context, c *combatTx, kind string, w
 // their dismissed combatants return to the order, the same ones, with the hit
 // points, conditions and initiative they had.
 func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string) error {
-	revived, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, "concentration")
-	if err != nil || len(revived) == 0 {
-		return err
+	var revived []string
+	for _, reason := range []string{"concentration", "replaced"} { // what a cast dismisses for; ids are the event's own
+		back, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, reason)
+		if err != nil {
+			return err
+		}
+		revived = append(revived, back...)
+	}
+	if len(revived) == 0 {
+		return nil
 	}
 	if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: revived, Dismissed: false}); err != nil {
 		return fmt.Errorf("bring the creatures back: %w", err)
@@ -539,8 +579,15 @@ func summonNames(raw []string, n int) ([]string, error) {
 	return out, nil
 }
 
-// summonSource is where a creature of the spell came from, as the table says.
-func summonSource(spellKey string) string {
+// summonSourceTable is the source of the creatures of a table spell's summon.
+const summonSourceTable = "table"
+
+// summonSourceOf is where a creature of the spell came from, as the table says: a table spell's summon (chk.Table)
+// or one of the SRD's spells.
+func summonSourceOf(spellKey string, chk link.SummonSpell) string {
+	if chk.Table {
+		return summonSourceTable
+	}
 	switch spellKey {
 	case "spell:find-familiar":
 		return "familiar"
@@ -550,6 +597,19 @@ func summonSource(spellKey string) string {
 		return "conjure_animals"
 	}
 	return ""
+}
+
+// summonOf is the casting to record in the roster: the creatures of the check, from the slot of the circle
+// (0 for a ritual), with the source and, for a table spell, its key and rule.
+func summonOf(campaignID, characterID, spellKey, groupID string, slot int, chk link.SummonSpell, specs []link.CreatureSpec) link.Summon {
+	sm := link.Summon{
+		CampaignID: campaignID, CharacterID: characterID, Source: summonSourceOf(spellKey, chk), GroupID: groupID, Slot: slot,
+		Concentration: chk.Concentration, Creatures: specs,
+	}
+	if chk.Table {
+		sm.SummonKey, sm.OwnInitiative, sm.MaxLive, sm.ReplacesSame = spellKey, chk.TurnMode == rules.SummonTurnOwnInitiative, chk.MaxLive, chk.ReplacesSame
+	}
+	return sm
 }
 
 // summonSpecs are the creatures of a choice, with their names.

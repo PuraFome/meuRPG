@@ -81,6 +81,7 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 	reaction.HellishRebukeKind:  (*reactionFacts).hellishRebuke,
 	reaction.FeatherFall:        (*reactionFacts).featherFall,
 	reaction.Concentration:      (*reactionFacts).concentration,
+	reaction.ParryKind:          (*reactionFacts).parry,
 }
 
 // reactionLine is the line for the viewer, and whether it names the reactor.
@@ -320,6 +321,9 @@ func (f *reactionFacts) concentration() (string, bool) {
 	if !f.seesReactor {
 		return "", false
 	}
+	if f.e.ev.Resisted {
+		return f.resistedConcentration(spell), true
+	}
 	lucky := luckyNote(f.e.ev.Lucky) + indomitableNote(f.e.ev.Indomitable) // the d20 Lucky or Indomitable rolled again, with the numbers
 	if re.Kept {
 		if f.numbers && re.SaveD20 > 0 {
@@ -331,6 +335,17 @@ func (f *reactionFacts) concentration() (string, bool) {
 		return fmt.Sprintf("%s falhou no teste de concentração em %s: %s.%s%s", f.who, spell, f.concentrationRoll(), lucky, f.by), true
 	}
 	return "", false // the line that says the concentration ended is the conditions one
+}
+
+// resistedConcentration is the line of a concentration save the master made a success: the master reads the
+// roll that failed and the choice, a player the line of a save that was kept.
+func (f *reactionFacts) resistedConcentration(spell string) string {
+	re := f.re
+	if !f.v.master {
+		return fmt.Sprintf("%s manteve a concentração em %s.", f.who, spell)
+	}
+	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
+		f.who, spell, re.SaveD20+re.SaveBonus, re.SaveDC, f.e.ev.ResistLeft, f.by)
 }
 
 // concentrationRoll is the roller's save of a concentration as the line says it: the d20, the bonus and

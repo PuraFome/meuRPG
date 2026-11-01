@@ -7,7 +7,7 @@ import {
 import type { SlotChoice } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots } from '../format/text';
 import { metersText } from '../units';
-import { circleLabel } from './combat-grid';
+import { circleLabel, freeLabel, slotTitle } from './combat-grid';
 import { article } from './combat-log';
 import { listNames } from './joint-turn';
 import { ofThe } from './move-plan';
@@ -197,7 +197,7 @@ export function slotOptions(w: ReactionWindow): readonly SlotOption[] {
       ? [
           {
             slot: s.slot,
-            title: s.slot.pact ? `${circleLabel(s.slot.level)} (pacto)` : circleLabel(s.slot.level),
+            title: slotTitle(s.slot),
             effect: s.noCheck ? 'anula sem teste' : `teste de conjuração CD ${s.checkDc}`,
           },
         ]
@@ -277,18 +277,16 @@ function lateText(w: ReactionWindow): string {
   return describeRow(w);
 }
 
-/** "3 de 4 livres" when the total is known, else "3 livres". */
-function freeLabel(slot: SlotChoice): string {
-  if (slot.total > 0)
-    return `${slot.free} de ${slot.total} ${slot.free === 1 ? 'livre' : 'livres'}`;
-  return `${slot.free} ${slot.free === 1 ? 'livre' : 'livres'}`;
-}
-
 /** What the reaction costs the character: its reaction, and the slot a spell takes. */
 function lateCost(w: ReactionWindow): string {
   const slots = w.prompt.case === 'shield' ? w.prompt.value.slots.filter((x) => x.free > 0) : [];
   const slot = [...slots].sort((x, y) => x.level - y.level)[0];
-  const spent = slot ? ` e um espaço de ${circleLabel(slot.level)} (${freeLabel(slot)})` : '';
+  const what = slot?.resource
+    ? 'um uso inato'
+    : slot
+      ? `um espaço de ${circleLabel(slot.level)}`
+      : '';
+  const spent = slot ? ` e ${what} (${freeLabel(slot)})` : '';
   return `Gasta a reação${spent}. O jogador não respondeu em ${LATE_SECONDS} s; você responde por ele.`;
 }
 

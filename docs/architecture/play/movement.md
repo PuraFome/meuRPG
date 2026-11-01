@@ -43,6 +43,24 @@ A spell with the `ignores_cover` type in `effects/spells.json` (Sacred Flame; `C
 An attacker whose table feat has a `ranged_attack` with `ignore_cover` (`link.Traits.SpellAttackIgnoresCover`, `RangedWeaponIgnoresCover`) gets no half or three-quarters cover against its ranged spell or weapon attacks (a thrown weapon beyond its melee reach too; an opportunity attack is melee): `coverView.ignoring` makes that cover none for the roll, the event and the target lists.
 A creature hidden from the players does not count as cover for a player's attack; when the master attacks, all count.
 
+### Legendary moves
+
+A legendary option of kind `move` (`MoveCombatant` with `legendary_option`; see [Combat](combat.md#legendary-actions)) is the master's walk of an NPC off its own turn.
+It is planned like the NPC's own drag: the line, terrain, walls, creatures, doors, drag and crawl, and `TOO_FAR` past the budget.
+The budget is a whole speed of its own.
+It is the whole speed the conditions and effects leave the creature (the better of walking and flying), as at the start of a turn.
+The Dash of its turn does not add to it and what it walked then is not subtracted.
+`LegendaryOption.MoveSpeedPercent` scales it (half for "moves up to half its speed", the tarrasque).
+Each spend gets the whole budget again.
+It does not read the creature's movement of its own turn and does not write it: `movement_used_dft` and the running start stay as they were.
+The undo puts the square back and gives the cost back.
+It is a plain walk (no jump, no forced move, no placement; `invalid_argument`) and needs a map and a placed creature.
+A creature with no square spends the option as text instead ([Combat](combat.md#legendary-actions)).
+It is refused while a reaction window or hold is open (`REACTION_PENDING`).
+It makes no opportunity offer: the offers belong to the mover's own turn, and the vampires' Move says it provokes none.
+Known limit: this holds for every legendary move, including the tarrasque's, which by the SRD would provoke.
+Its event is a normal `combatant_moved` with `spend_cost`; the log reads it as any move.
+
 ## Opportunity attacks
 
 A move that leaves an enemy's reach lands at once and offers an attack to that enemy; the mover's turn waits for the answer (`combat_opportunity.go`).
@@ -91,7 +109,7 @@ The geometry is pure and in `rules/grid/area.go` (`Area.FromPoint`, `Area.FromCa
 
 | Piece | What it does |
 | --- | --- |
-| Which spells | `placementOf(link.Spell)`: the six spells that keep their area ([Spell zones](spell-zones.md)) are laid out as their row in `zoneDefs` says (a cube at a range is a `POINT` for Web). Otherwise a sphere or cylinder at a range is a `POINT`; at range Self it is `CASTER`; a cone, line or cube at range Self is `DIRECTION`; anything else keeps the target list. The shape, size, a line's width (the text's "10 feet wide", else 5 ft) and "spreads around corners" come from `SpellDetails` (`Target`, `AreaWidthFt`, `SpreadsAroundCorners`) through `link.Spell`. `GetTurnOptions.spell_targets[]` carries `placement`, `area_shape`, `area_size_ft`, `area_width_ft`, `range_ft`; in theatre it is always `UNSPECIFIED` |
+| Which spells | `placementOf(link.Spell)`: the nine spells that keep their area ([Spell zones](spell-zones.md)) are laid out as their row in `zoneDefs` says (a cube at a range is a `POINT` for Web). Otherwise a sphere or cylinder at a range is a `POINT`; at range Self it is `CASTER`; a cone, line or cube at range Self is `DIRECTION`; anything else keeps the target list. The shape, size, a line's width (the text's "10 feet wide", else 5 ft) and "spreads around corners" come from `SpellDetails` (`Target`, `AreaWidthFt`, `SpreadsAroundCorners`) through `link.Spell`. `GetTurnOptions.spell_targets[]` carries `placement`, `area_shape`, `area_size_ft`, `area_width_ft`, `range_ft`; in theatre it is always `UNSPECIFIED` |
 | Who is inside | `planArea`: the point (a player's is range-checked and moved to the near side of a wall; the master's is not), the shape's squares, `OpenArea` (a straight line blocked only by total cover, or the spread for a corner spell), then every combatant not defeated and placed on one of those squares whose cover from the origin is not total. Hidden creatures count: the effect applies to all of them |
 | Cover | From the origin, the larger of the map's and the master's mark; `resolveOnTarget` adds it only to a Dexterity save that does not ignore cover. A creature reached only around a corner has the mark alone |
 | Preview and cast | `PreviewSpellArea` runs `planArea` on a player's known terrain and lists only creatures the viewer sees. `CastSpell` runs it on the real terrain in its transaction and builds the hits from it (`targets` is not read); the event keeps the choice (`placed`, `area_col`, `area_row`, `dx`, `dy`) and each hit's `hidden_at_cast`, and the answer draws the area again from the choice. A player's log line leaves out `hidden_at_cast` hits; a placed cast is `Secret` only for a hidden caster |

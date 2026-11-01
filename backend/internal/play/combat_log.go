@@ -60,6 +60,8 @@ type logEntry struct {
 	// stopped the pending damages Escudo stopped (a spell attack or an attack).
 	pend    map[string]*damageLog
 	stopped []string
+	// parried are the pending damages a Parry stopped: a miss for everyone, and the master's line alone says why.
+	parried []string
 	// returned and returnBlocked: the opportunity attack's damage took the mover to
 	// 0 hit points, and it went back to the square it left the reach at (or could
 	// not, because the square was taken: the master's line says so).
@@ -287,6 +289,7 @@ var logHandlers = map[string]logHandler{
 	eventCombatantMoved:          (*logBuilder).moved,
 	eventDoorOpened:              plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED),
 	eventCombatantsAdded:         (*logBuilder).monstersAdded,
+	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -388,7 +391,7 @@ func (b *logBuilder) moved(_ playdb.ListEncounterEventsRow, entry *logEntry) boo
 	if ev.Contest != nil && ev.Contest.Line == contestLineStoodUp { // "se levantou" (combat_standup.go)
 		return contestLogEntry(entry, ev)
 	}
-	if !ev.OnTurn || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
+	if (!ev.OnTurn && ev.SpendCost == 0) || (ev.DistanceFt == 0 && ev.DistanceDFt == 0 && ev.Jump != jumpHigh) {
 		return false // placing a token is not a move of the fight
 	}
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED
@@ -549,11 +552,19 @@ func (b *logBuilder) wildShape(e playdb.ListEncounterEventsRow, entry *logEntry)
 func (b *logBuilder) reactionUsed(e playdb.ListEncounterEventsRow, entry *logEntry) bool {
 	ev := entry.ev
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION
+	parry := ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ParryKind)
+	if parry {
+		entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW // the master's line (reactionLiners); the players get none
+	}
 	// Escudo that stopped the attack takes its damage away; the hit waits for
-	// its roll otherwise, which the roll event says.
+	// its roll otherwise, which the roll event says. A Parry does the same, without saying why to a player.
 	if host, ok := b.byPending[ev.Pending]; ok {
 		host.hosts = append(host.hosts, e.ID)
-		if ev.Stopped {
+		switch {
+		case ev.Stopped && parry:
+			host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
+			host.parried = append(host.parried, ev.Pending)
+		case ev.Stopped:
 			host.setStatus(ev.Pending, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED)
 			host.stopped = append(host.stopped, ev.Pending)
 		}
@@ -585,7 +596,7 @@ func (b *logBuilder) reactionAnswered(e playdb.ListEncounterEventsRow, entry *lo
 	// One line for each reaction used (PM-04c, 10); a "Deixar passar" and the
 	// master's one-tap check are no line.
 	re := entry.ev.Reaction
-	if re == nil || re.Kind == string(reaction.MasterCheck) || (!re.Used && e.Kind == eventReactionAnswered) {
+	if re == nil || re.Kind == string(reaction.MasterCheck) || re.Kind == string(reaction.LegendaryResistance) || (!re.Used && e.Kind == eventReactionAnswered) {
 		return false
 	}
 	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW
@@ -845,6 +856,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:          (*logEntry).fillEffect,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:            (*logEntry).fillResource,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:      (*logEntry).fillMonsters,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -890,6 +902,12 @@ func (e *logEntry) fillMonsters(c *logViewing, out *playv1.CombatLogEntry) bool 
 			CombatantId: it.ID, Label: c.byID[it.ID].Label, HitPoints: it.HitPoints, Rolled: it.Dice != "", Dice: it.Dice, Faces: it.Faces, Modifier: it.Modifier,
 		})
 	}
+	return true
+}
+
+// fillLegendarySpent is the master's line of a spend: the option as the stat block names it and its cost.
+func (e *logEntry) fillLegendarySpent(_ *logViewing, out *playv1.CombatLogEntry) bool {
+	out.LegendarySpent = &playv1.CombatLogLegendarySpent{OptionName: e.ev.SpendName, Cost: e.ev.SpendCost}
 	return true
 }
 
@@ -977,8 +995,9 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 	if c.dice {
 		e.attackDice(out, v)
 	}
-	if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
-		out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
+	if len(e.stopped) > 0 || len(e.parried) > 0 { // Escudo or a Parry stopped it: a miss, with no damage
+		out.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
+		out.StoppedByReaction = len(e.stopped) > 0 || v.master // a player is not told a reaction did it (RN-20)
 	} else if e.ev.Pending != "" {
 		out.Damage = e.damage(c.dice, v.master, v.master || v.owns(c.target), v.saveDCFor(c.target), out)
 		e.dressDamage(out.Damage, v, c.dice, v.master || (c.target.Kind == kindPlayer && v.owns(c.target)), holdsHP(c.target))
@@ -1088,8 +1107,8 @@ func (e *logEntry) fillWildShape(c *logViewing, out *playv1.CombatLogEntry) bool
 	return true
 }
 
-func (e *logEntry) fillReaction(_ *logViewing, out *playv1.CombatLogEntry) bool {
-	out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot)}
+func (e *logEntry) fillReaction(c *logViewing, out *playv1.CombatLogEntry) bool {
+	out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, c.v, c.actor)}
 	return true
 }
 
@@ -1152,7 +1171,7 @@ func (e *logEntry) fillEffectEnd(c *logViewing, out *playv1.CombatLogEntry) bool
 // target's own player's; the caster's d20 the master's and the caster's.
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
-	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {

@@ -202,6 +202,9 @@ const (
 	// CombatServiceUseCreatureActionProcedure is the fully-qualified name of the CombatService's
 	// UseCreatureAction RPC.
 	CombatServiceUseCreatureActionProcedure = "/meurpg.play.v1.CombatService/UseCreatureAction"
+	// CombatServiceSpendLegendaryActionProcedure is the fully-qualified name of the CombatService's
+	// SpendLegendaryAction RPC.
+	CombatServiceSpendLegendaryActionProcedure = "/meurpg.play.v1.CombatService/SpendLegendaryAction"
 )
 
 // CombatServiceClient is a client for the meurpg.play.v1.CombatService service.
@@ -1520,6 +1523,24 @@ type CombatServiceClient interface {
 	//     has no such action, or the action is an attack roll or a Multiattack: those are made with
 	//     TakeAction).
 	UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error)
+	// The master spends the legendary actions of a creature on one of its stat block's options
+	// that the engine does not resolve (kind "text": a gaze, a cantrip, a teleport): the spend is
+	// counted and the master plays the option by hand. An option of kind "attack" is made with
+	// RollAttack (`legendary_option`) and one of kind "move" with MoveCombatant
+	// (`legendary_option`); the three share one rule (SRD 5.1, "Legendary Actions"): a creature
+	// spends them only while another creature has the turn, never on its own turn, never when it is
+	// defeated or incapacitated, at the cost of the option and no more than it has left; they come
+	// back when its own turn starts. Master only, and the line it writes is the master's alone.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: the combat or the combatant is not found; a player gets
+	//     `permission_denied`.
+	//   - `invalid_argument`: no option key.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, LEGENDARY_UNAVAILABLE (the combatant
+	//     has no legendary actions, is defeated or incapacitated), LEGENDARY_OWN_TURN,
+	//     LEGENDARY_OPTION_UNKNOWN, LEGENDARY_WRONG_KIND (an attack or move option) and
+	//     LEGENDARY_NONE_LEFT (the cost is more than what is left). Nothing is spent.
+	SpendLegendaryAction(context.Context, *connect.Request[v1.SpendLegendaryActionRequest]) (*connect.Response[v1.SpendLegendaryActionResponse], error)
 }
 
 // NewCombatServiceClient constructs a client for the meurpg.play.v1.CombatService service. By
@@ -1868,6 +1889,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("UseCreatureAction")),
 			connect.WithClientOptions(opts...),
 		),
+		spendLegendaryAction: connect.NewClient[v1.SpendLegendaryActionRequest, v1.SpendLegendaryActionResponse](
+			httpClient,
+			baseURL+CombatServiceSpendLegendaryActionProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SpendLegendaryAction")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -1928,6 +1955,7 @@ type combatServiceClient struct {
 	endRage                  *connect.Client[v1.EndRageRequest, v1.EndRageResponse]
 	useHitRider              *connect.Client[v1.UseHitRiderRequest, v1.UseHitRiderResponse]
 	useCreatureAction        *connect.Client[v1.UseCreatureActionRequest, v1.UseCreatureActionResponse]
+	spendLegendaryAction     *connect.Client[v1.SpendLegendaryActionRequest, v1.SpendLegendaryActionResponse]
 }
 
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
@@ -2203,6 +2231,11 @@ func (c *combatServiceClient) UseHitRider(ctx context.Context, req *connect.Requ
 // UseCreatureAction calls meurpg.play.v1.CombatService.UseCreatureAction.
 func (c *combatServiceClient) UseCreatureAction(ctx context.Context, req *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error) {
 	return c.useCreatureAction.CallUnary(ctx, req)
+}
+
+// SpendLegendaryAction calls meurpg.play.v1.CombatService.SpendLegendaryAction.
+func (c *combatServiceClient) SpendLegendaryAction(ctx context.Context, req *connect.Request[v1.SpendLegendaryActionRequest]) (*connect.Response[v1.SpendLegendaryActionResponse], error) {
+	return c.spendLegendaryAction.CallUnary(ctx, req)
 }
 
 // CombatServiceHandler is an implementation of the meurpg.play.v1.CombatService service.
@@ -3521,6 +3554,24 @@ type CombatServiceHandler interface {
 	//     has no such action, or the action is an attack roll or a Multiattack: those are made with
 	//     TakeAction).
 	UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error)
+	// The master spends the legendary actions of a creature on one of its stat block's options
+	// that the engine does not resolve (kind "text": a gaze, a cantrip, a teleport): the spend is
+	// counted and the master plays the option by hand. An option of kind "attack" is made with
+	// RollAttack (`legendary_option`) and one of kind "move" with MoveCombatant
+	// (`legendary_option`); the three share one rule (SRD 5.1, "Legendary Actions"): a creature
+	// spends them only while another creature has the turn, never on its own turn, never when it is
+	// defeated or incapacitated, at the cost of the option and no more than it has left; they come
+	// back when its own turn starts. Master only, and the line it writes is the master's alone.
+	//
+	// Errors:
+	//   - `not_found`, `permission_denied`: the combat or the combatant is not found; a player gets
+	//     `permission_denied`.
+	//   - `invalid_argument`: no option key.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, LEGENDARY_UNAVAILABLE (the combatant
+	//     has no legendary actions, is defeated or incapacitated), LEGENDARY_OWN_TURN,
+	//     LEGENDARY_OPTION_UNKNOWN, LEGENDARY_WRONG_KIND (an attack or move option) and
+	//     LEGENDARY_NONE_LEFT (the cost is more than what is left). Nothing is spent.
+	SpendLegendaryAction(context.Context, *connect.Request[v1.SpendLegendaryActionRequest]) (*connect.Response[v1.SpendLegendaryActionResponse], error)
 }
 
 // NewCombatServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -3865,6 +3916,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("UseCreatureAction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceSpendLegendaryActionHandler := connect.NewUnaryHandler(
+		CombatServiceSpendLegendaryActionProcedure,
+		svc.SpendLegendaryAction,
+		connect.WithSchema(combatServiceMethods.ByName("SpendLegendaryAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.CombatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
@@ -3977,6 +4034,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceUseHitRiderHandler.ServeHTTP(w, r)
 		case CombatServiceUseCreatureActionProcedure:
 			combatServiceUseCreatureActionHandler.ServeHTTP(w, r)
+		case CombatServiceSpendLegendaryActionProcedure:
+			combatServiceSpendLegendaryActionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -4204,4 +4263,8 @@ func (UnimplementedCombatServiceHandler) UseHitRider(context.Context, *connect.R
 
 func (UnimplementedCombatServiceHandler) UseCreatureAction(context.Context, *connect.Request[v1.UseCreatureActionRequest]) (*connect.Response[v1.UseCreatureActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.UseCreatureAction is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SpendLegendaryAction(context.Context, *connect.Request[v1.SpendLegendaryActionRequest]) (*connect.Response[v1.SpendLegendaryActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SpendLegendaryAction is not implemented"))
 }

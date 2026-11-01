@@ -749,19 +749,19 @@ func (noRoster) WriteBackCreatures(context.Context, pgx.Tx, string, []link.Creat
 	return errors.New("not in this test")
 }
 
-func (noRoster) CreatureSheet(context.Context, pgx.Tx, string, string, string) (link.Sheet, bool, error) {
+func (noRoster) CreatureSheet(context.Context, pgx.Tx, string, string, string, string) (link.Sheet, bool, error) {
 	return link.Sheet{}, false, nil
 }
 
-func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, string, link.Turn) (*rulesv1.TurnOptions, bool, error) {
+func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, string, string, link.Turn) (*rulesv1.TurnOptions, bool, error) {
 	return nil, false, nil
 }
 
-func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
+func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string, string) (link.Save, error) {
 	return link.Save{}, nil
 }
 
-func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string) (link.SceneOption, error) {
+func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string, string) (link.SceneOption, error) {
 	return link.SceneOption{}, nil
 }
 
@@ -969,6 +969,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["EndSpellZone"] = cc.EndSpellZone(ctx, connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: id}))
 	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	_, combat["UseCreatureAction"] = cc.UseCreatureAction(ctx, connect.NewRequest(&playv1.UseCreatureActionRequest{CampaignId: id}))
+	_, combat["SpendLegendaryAction"] = cc.SpendLegendaryAction(ctx, connect.NewRequest(&playv1.SpendLegendaryActionRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())

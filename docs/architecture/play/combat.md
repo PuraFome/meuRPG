@@ -85,6 +85,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `TakeAction` | The player on their own character, on their turn; the master on any combatant on turn | Standard actions and feature actions; the table's actions that spend several points, heal or give temporary hit points (`spend`, `heal_target_combatant_id`: see [Attacks and damage](attacks-and-damage.md#the-tables-actions-that-spend-heal-and-give-mr-025)) |
 | `AnswerRageEnd`, `EndRage`, `UseHitRider` | The barbarian's player / monk's player; master (also a creature's rider) | See [Attacks and damage](attacks-and-damage.md) |
 | `UseCreatureAction` | The master, for the NPC on turn | A save action or an action with no roll from the NPC's stat block: see [Attacks and damage](attacks-and-damage.md#a-creatures-actions-and-riders) |
+| `SpendLegendaryAction` | Master | The legendary actions of a creature on a text option, at another creature's turn: see [Legendary actions](#legendary-actions) |
 | `MoveCombatant`, `GetMoveOptions`, `SpendMovement`, `StandUp` | See [Movement](movement.md) and [Theatre](theatre.md) | Movement |
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md); the master's `OfferOpportunity` works in both modes | Opportunity attacks |
 | `AnswerReaction`, `MarkReactionRolling`, `ResolveConcentrationSave`, `UseReaction`, `DeclineReaction` | See [Reactions](reactions.md) | Reaction windows |
@@ -96,6 +97,48 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 
 State errors are `failed_precondition` with the `EncounterBlocked` detail and a reason: `MAP_HAS_NO_GRID` (with the `map_id`), `NO_CURRENT_MAP`, `ENCOUNTER_ALREADY_OPEN`, `NOT_IN_SETUP`, `NOT_ACTIVE`, `NOT_YOUR_TURN`, `NOT_PLACED`, `TOO_FAR` (with `missing_ft`), `SQUARE_OCCUPIED`, `WALL_ON_SQUARE`, `NO_FREE_SQUARE`, `TOO_MANY_COMBATANTS`, and in actions `ACTION_USED`, `BONUS_ACTION_USED`, `REACTION_USED`, `ATTACKS_USED`, `ATTACK_ACTION_FIRST`, `NO_SLOT`, `NO_USES`, `TARGET_OUT_OF_REACH`, `TARGET_DEFEATED`, `TARGET_DEAD`, `COMBATANT_DOWN`, `PENDING_DAMAGE`, `REACTION_PENDING`, `DEATH_SAVE_DUE`, `DAMAGE_ALREADY_ROLLED`, `DAMAGE_NOT_ROLLED`, `NOTHING_TO_UNDO`, `WRONG_DICE_MODE` and more (the enum in `combat.proto` is the list).
 Callers never depend on message text; the app turns the code and detail into Portuguese (`combat-errors.ts`).
+
+## Legendary actions
+
+A creature whose stat block has legendary actions has `rules.LegendaryActionsPerRound` (3, SRD 5.1) a round.
+What it spent is kept as `creature_spent.legendary_actions` ([Data](../../data/combat.md)).
+Only the master spends them, one option at a time, at the option's cost.
+Three paths share one rule (`combat_legendary_spend.go`):
+
+| Path | Option kind | What it does |
+| --- | --- | --- |
+| `SpendLegendaryAction(option_key)` | `text` | Counts the cost and writes `legendary_action_spent`, a master-only event and line. The master plays the option by hand. |
+| `RollAttack` with `legendary_option` | `attack` | The attack flow as it is (reaction windows, pending damage, log), made off the creature's own turn. It spends the cost instead of the action, the attacks made, the reaction and the running start. One attack for each spend. It is not a reaction and not the extra action. |
+| `MoveCombatant` with `legendary_option` | `move` | A walk by the usual rules with a budget of its own: see [Movement](movement.md#legendary-moves). |
+
+An option of kind `attack` is `LEGENDARY_WRONG_KIND` in `SpendLegendaryAction`, and so is one of kind `move` while the creature stands on a square.
+The `ActionKey` of an attack option must be the stat block action of the `attack_key` (`LEGENDARY_WRONG_KIND` otherwise).
+
+The rule is checked before anything is rolled, and again with the spend inside the transaction of the action, so a refused action spends nothing.
+It refuses with these reasons:
+
+- `NOT_ACTIVE`: the combat is not running.
+- `LEGENDARY_UNAVAILABLE`: the creature is not an NPC with legendary actions, is defeated, is incapacitated, or is in a Haste lethargy.
+- `LEGENDARY_OWN_TURN`: the creature has the turn.
+- `REACTION_PENDING`: a reaction window or hold is open, so nobody's turn goes on.
+- `LEGENDARY_OPTION_UNKNOWN`: the creature has no such option.
+- `LEGENDARY_WRONG_KIND`: the option is not of the kind the call makes.
+- `LEGENDARY_NONE_LEFT`: the cost is more than what is left.
+
+A creature surprised at the start of the combat cannot spend either.
+A player gets `permission_denied`.
+The actions come back when the creature's own turn starts (`ResetCombatantTurn`).
+A `move` option of a creature with no square (a combat without a map, or a creature not placed) is one the engine cannot walk.
+It is offered as text and spent through `SpendLegendaryAction`, with the master-only line and the undo.
+The master reads `actions_left`, `usable_now` and, on each option, `affordable` in `Combatant.legendary`.
+The text spend is a master-only line (`COMBAT_LOG_KIND_LEGENDARY_SPENT`: creature, option name as the SRD has it, cost).
+Its stream hints, `encounter_changed` and `combat_log_changed`, go to the master alone, and so do those of its undo.
+The players cannot count the spends.
+An attack and a move are the ordinary lines every player reads, with the ordinary hints.
+Their event keeps the cost as `spend_cost`, a name that does not say what paid it (RN-20, RN-29).
+A legendary attack that a reaction window holds spends nothing while it waits.
+The replay the last answer releases spends its cost once, as the master that asked.
+Legendary Resistance is a trait of the same stat block: see [Legendary Resistance](creatures.md#legendary-resistance).
 
 ## How `play` reads the other modules
 

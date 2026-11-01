@@ -1,9 +1,10 @@
 {
-  "cantrips only": "true {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":[\"spell:fire-bolt\"]}",
+  "cantrips only": "true {\"SaveDC\":5,\"AttackBonus\":-3,\"AbilityMod\":-5,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":[\"spell:fire-bolt\"]}",
   "dc and slots": "true {\"SaveDC\":14,\"AttackBonus\":6,\"AbilityMod\":4,\"Slots\":[4,0,2,0,0,0,0,0,0],\"Spells\":[\"spell:shield\",\"spell:magic-missile\",\"spell:counterspell\",\"spell:fireball\",\"spell:fire-bolt\",\"spell:light\"]}",
-  "dc only": "true {\"SaveDC\":12,\"AttackBonus\":4,\"AbilityMod\":2,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":null}",
-  "level 10": "true {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":[\"spell:wish\"]}",
+  "dc only": "false {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":null}",
+  "level 10": "true {\"SaveDC\":5,\"AttackBonus\":-3,\"AbilityMod\":-5,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":[\"spell:wish\"]}",
+  "no ability": "false {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":null}",
   "nothing": "false {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":null}",
-  "slots only": "true {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,1,0,0,0,0,0,0,0],\"Spells\":[\"spell:misty-step\"]}",
+  "slots only": "true {\"SaveDC\":5,\"AttackBonus\":-3,\"AbilityMod\":-5,\"Slots\":[0,1,0,0,0,0,0,0,0],\"Spells\":[\"spell:misty-step\"]}",
   "unknown cantrips": "false {\"SaveDC\":0,\"AttackBonus\":0,\"AbilityMod\":0,\"Slots\":[0,0,0,0,0,0,0,0,0],\"Spells\":null}"
 }
