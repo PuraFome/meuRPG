@@ -169,7 +169,6 @@ A new import in `app.ts`, `app.config.ts`, `app.routes.ts` or `shell/` is the us
 
 The budget counts raw size, which is what the browser parses.
 What the phone downloads is smaller: `npm run build` runs `web/scripts/compress.mjs`, which writes a `.br` and a `.gz` copy of every `.js` and `.css` file, and the server sends the one the browser accepts (see [Performance](performance.md#served-compressed)).
-On the initial chunks of this build, 488 kB raw is 151 kB as gzip and 134 kB as brotli.
 
 ## Web
 
@@ -231,7 +230,7 @@ The shards run the same spec on Chromium, so the three browsers are covered.
 The job starts its own stack (restoring the backup of the `database` job), installs WebKit for the Playwright version `e2e/package-lock.json` pins, makes a certificate with `openssl`, starts `e2e/tls-front.mjs` and runs the config over `https://localhost:8443`.
 It is https because Playwright's WebKit on Linux drops every `Secure` cookie over http, and the app's cookies are all `Secure` (see [Testing](testing.md#end-to-end-tests-playwright)).
 The stack takes its public origin from `E2E_PUBLIC_ORIGIN` (the OIDC redirect address of the API and devidp), `http://localhost:8080` when unset.
-Measured on a 4-vCPU VM, the smoke takes about 12 s on both WebKit projects; the job's own cost is the stack start and the WebKit install, and it runs beside the nine shards, so it lengthens the e2e run only if it ends after the slowest shard.
+The job runs beside the shards, so it lengthens the e2e run only if it ends after the slowest shard.
 The job is in the `report` job's `needs`.
 
 ## Vulnerability scans

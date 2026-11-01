@@ -334,6 +334,10 @@ func TestStaticHandler_PrecompressedAssets(t *testing.T) {
 			wantEncoding: "gzip", wantBody: gz,
 		},
 		{
+			name: "a negative or NaN q-value refuses a coding", path: "/main-ABCD1234.js", acceptEnc: "br;q=-1, gzip;q=NaN", withBr: true, withGz: true,
+			wantEncoding: "", wantBody: plain,
+		},
+		{
 			name: "q=0 on every coding gives the plain file", path: "/main-ABCD1234.js", acceptEnc: "br;q=0, gzip;q=0", withBr: true, withGz: true,
 			wantBody: plain,
 		},

@@ -13,10 +13,12 @@ async function status(url: URL, ignoreHTTPSErrors: boolean): Promise<number> {
     return (await fetch(url)).status;
   }
   return new Promise((resolve, reject) => {
-    https.get(url, { rejectUnauthorized: false }, (res) => {
+    const request = https.get(url, { rejectUnauthorized: false, timeout: 5_000 }, (res) => {
       res.resume();
       resolve(res.statusCode ?? 0);
-    }).on('error', reject);
+    });
+    request.on('timeout', () => request.destroy(new Error(`no answer from ${url}`)));
+    request.on('error', reject);
   });
 }
 

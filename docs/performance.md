@@ -42,7 +42,6 @@ The players are on phones, so the JS and CSS go out compressed.
 `npm run build` writes a `.br` (brotli, quality 11) and a `.gz` (gzip, level 9) copy of every `.js` and `.css` file next to it, keeping a copy only when it is smaller.
 The server (`backend/internal/platform/httpserver/static.go`) picks `.br`, then `.gz`, then the plain file from `Accept-Encoding` (a coding with `q=0` is refused).
 It sets `Content-Encoding` and `Vary: Accept-Encoding`, keeps the content type of the original file and its cache headers, and never encodes `index.html` or the fallback for an app route.
-The initial chunks are 488 kB raw (the budget below counts this), 151 kB gzip and 134 kB brotli.
 The 500 kB budget bounds what the browser parses; the download is the compressed size.
 
 ## Table content at its limits

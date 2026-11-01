@@ -3,7 +3,7 @@
 // A copy is kept only when it is smaller than the original.
 // index.html is never compressed.
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -41,6 +41,8 @@ for (const file of walk(root)) {
     const encoded = encode(data);
     if (encoded.length < data.length) {
       writeFileSync(file + suffix, encoded);
+    } else {
+      rmSync(file + suffix, { force: true });
     }
   }
 }

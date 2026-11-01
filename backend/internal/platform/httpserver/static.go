@@ -263,7 +263,7 @@ func openVariant(r *http.Request, fsPath string) (coding string, f *os.File, mod
 }
 
 // acceptsCoding reports whether the Accept-Encoding header values allow coding.
-// Tokens are case-insensitive, "*" stands for every coding not named, and q=0 refuses one.
+// Tokens are case-insensitive, "*" stands for every coding not named, and a q-value that is not above 0 (q=0, a negative or NaN) refuses one.
 func acceptsCoding(values []string, coding string) bool {
 	wildcard, named := false, false
 	for _, value := range values {
@@ -271,7 +271,7 @@ func acceptsCoding(values []string, coding string) bool {
 			token, q := parseCoding(part)
 			switch token {
 			case coding:
-				if q == 0 {
+				if !(q > 0) {
 					return false
 				}
 				named = true
