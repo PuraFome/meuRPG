@@ -2148,6 +2148,15 @@ describe('CombatView sheets: casting', () => {
       expect(m.opened).toHaveLength(0);
     });
 
+    it('takes a summon option only for the feature that grants it', async () => {
+      const creatures = summons(['spell:conjure-animals']);
+      const m = await mount({ spells: [conjure] }, {}, { creatures });
+      expect(await m.view.sheets.isSummon('spell:conjure-animals', '')).toBe(true);
+      expect(await m.view.sheets.isSummon('spell:conjure-animals', 'feature:other@mesa')).toBe(
+        false,
+      );
+    });
+
     it('does not take a summoning read for a master', async () => {
       const creatures = summons(['spell:conjure-animals']);
       const m = await mount(

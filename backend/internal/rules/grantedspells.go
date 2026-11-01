@@ -48,6 +48,9 @@ type GrantedSpell struct {
 	SaveDC         int
 	// FromLevel is the level the grant starts at.
 	FromLevel int
+	// FeatureSummon says the spell is the summon of a table feature: not a spell the character casts, so the turn's
+	// spell limit does not apply to it.
+	FeatureSummon bool
 }
 
 // grantedSpell checks a granted_spell effect against the content.
@@ -127,6 +130,7 @@ func (x *deriver) grantedSpellOf(a activeEffect) (GrantedSpell, bool) {
 	if !g.AtWill {
 		g.Resource = e.Uses
 	}
+	_, g.FeatureSummon = x.c.featureSummons[e.Spell]
 	x.grantAbility(&g, e)
 	return g, true
 }

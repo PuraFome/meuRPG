@@ -312,10 +312,21 @@ a.mr-list__row:hover .mr-list__name {
   }
 }
 
-// The live region around notices that come and go: it is on the page before
-// the text, so a screen reader announces what arrives. It draws no box.
+// The live region around notices that come and go.
+// It is on the page before the text, so a screen reader announces what arrives.
+// It is a real box, because some WebKit versions drop a `display: contents` element from the accessibility tree.
+// It stacks its children in a column and carries the parent's gap.
 .mr-live {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+  min-width: 0;
+
+  // Empty, it takes no room and adds no gap in a flex parent.
+  // It stays in the accessibility tree, which `display: none` would not allow.
+  &:empty {
+    position: absolute;
+  }
 }
 
 // Screen-reader-only text.

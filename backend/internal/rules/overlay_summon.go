@@ -59,7 +59,12 @@ const (
 // a formula that fails when it runs counts as 1. CountPerSlotLevel creatures are added for each circle above the
 // spell's own, and the sum is clamped to 1..MaxTableSummonCount. TurnMode, Role and Replaces are "" for their first value.
 // MaxLive is 0 (no limit of its own) or the most creatures of this spell the caster keeps; a casting that would
-// pass it is refused. ResourceKey and ResourceCost are reserved for spells paid with a resource; the rules refuse them.
+// pass it is refused.
+//
+// A feature's summon (TableFeature.Summon) is paid with a resource instead of a slot: ResourceKey names a resource
+// of the feature's entry (or its class) and ResourceCost is the uses a casting spends (1; 0 reads as 1). It says its
+// own CastingTime (empty is 1 action), Duration (empty is instantaneous) and Concentration, which a spell takes from
+// itself. slot() is 0 in its count, and CountPerSlotLevel must be 0. A spell's summon has none of these.
 type TableSummon struct {
 	CreatureKeys      []string
 	Count             string
@@ -70,14 +75,20 @@ type TableSummon struct {
 	Replaces          string
 	ResourceKey       string
 	ResourceCost      int
+	CastingTime       TableCastingTime
+	Duration          TableDuration
+	Concentration     bool
 }
 
-// tableSummonRule is a table summon as the content keeps it: the compiled count and the checked fields.
+// tableSummonRule is a table summon as the content keeps it: the compiled count and the checked fields. feature
+// and resource are the feature that gives the summon and the resource a casting spends a use of, empty for a spell's.
 type tableSummonRule struct {
 	countP   *formula.Program
 	turnMode string
 	maxLive  int
 	replaces string
+	feature  string
+	resource string
 }
 
 // SummonRule is what a table spell's summon says beyond the choice of creatures.
@@ -88,6 +99,9 @@ type SummonRule struct {
 	MaxLive int
 	// ReplacesSame says a new casting dismisses the creatures of the old one.
 	ReplacesSame bool
+	// Feature is the key of the feature that gives the summon, and Resource the resource a casting spends one
+	// use of; both are empty for a table spell's summon (its cost is the slot).
+	Feature, Resource string
 }
 
 // SummonRule is the rule of the table spell's summon; false for an SRD summoning spell and for a spell that does
@@ -97,7 +111,7 @@ func (c *Content) SummonRule(spell string) (SummonRule, bool) {
 	if !ok {
 		return SummonRule{}, false
 	}
-	return SummonRule{TurnMode: t.turnMode, MaxLive: t.maxLive, ReplacesSame: t.replaces == SummonReplacesSame}, true
+	return SummonRule{TurnMode: t.turnMode, MaxLive: t.maxLive, ReplacesSame: t.replaces == SummonReplacesSame, Feature: t.feature, Resource: t.resource}, true
 }
 
 // summonCount is how many creatures a casting at the circle brings: the SRD's fixed count and number for each
@@ -112,6 +126,9 @@ func (c *Content) summonCount(spell string, def *summonDef, circle int, b Build)
 	d := Derive(b, c)
 	env := OwnerEnv(d, b.Shield && !d.ShieldIdle)
 	env.Slot = func() int { return circle }
+	if rule.feature != "" {
+		env.Slot = func() int { return 0 } // a feature's summon spends a use, not a slot
+	}
 	if v, err := rule.countP.Int(env); err == nil {
 		n = v
 	}
@@ -119,15 +136,21 @@ func (c *Content) summonCount(spell string, def *summonDef, circle int, b Build)
 }
 
 // addSummon checks a table spell's summon and registers it, nil-safe: a spell with none is not a summoning spell.
-// The violations are the summon's own, each at its path ("summon.count", "summon.creature_keys[1]"...).
-func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSpell) {
+// The violations are the summon's own, each at its path ("summon.count", "summon.creature_keys[1]"...). feature is
+// the key of the feature that gives the summon, "" for a table spell's own.
+func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSpell, feature string) {
 	s := ts.Summon
 	if s == nil {
 		return
 	}
 	checkSummonSpell(c, key, path, ts)
-	rule := &tableSummonRule{turnMode: cmp.Or(s.TurnMode, SummonTurnOwnInitiative), maxLive: s.MaxLive, replaces: cmp.Or(s.Replaces, SummonReplacesNone)}
+	rule := &tableSummonRule{turnMode: cmp.Or(s.TurnMode, SummonTurnOwnInitiative), maxLive: s.MaxLive, replaces: cmp.Or(s.Replaces, SummonReplacesNone), feature: feature}
 	checkSummonModes(c, key, path, s, rule)
+	if feature == "" {
+		checkSpellSummonOnly(c, key, path, s)
+	} else {
+		rule.resource = checkFeatureSummonSpend(c, key, path, s)
+	}
 	b.checkSummonCreatureKeys(c, key, path, s.CreatureKeys)
 	if s.CountPerSlotLevel < 0 || s.CountPerSlotLevel > MaxTableSummonPerSlot {
 		c.at(key, path, ".summon.count_per_slot_level", ReasonValue, "the creatures added for each circle above the spell's own are 0 to %d", MaxTableSummonPerSlot)
@@ -135,21 +158,55 @@ func (b *overlayBuilder) addSummon(c *entryErrors, key, path string, ts *TableSp
 	if s.MaxLive < 0 || s.MaxLive > MaxTableSummonLive {
 		c.at(key, path, ".summon.max_live", ReasonValue, "the most creatures of the spell kept at a time are 0 (no limit of its own) to %d", MaxTableSummonLive)
 	}
-	if strings.TrimSpace(s.Count) == "" {
-		c.at(key, path, ".summon.count", ReasonValue, "the count is a formula (\"2\", \"1 + slot()\")")
-	} else if p, err := b.n.compileSlotted(s.Count); err != nil {
-		c.at(key, path, ".summon.count", ReasonFormula, "the formula does not work: %v", err)
-	} else {
-		rule.countP = p
-	}
-	if n, err := strconv.Atoi(strings.TrimSpace(s.Count)); err == nil && s.MaxLive > 0 && min(n, MaxTableSummonCount) > s.MaxLive {
-		c.at(key, path, ".summon.max_live", ReasonValue, "the count is %d but the spell keeps at most %d creatures: the first casting would be refused", n, s.MaxLive)
-	}
+	rule.countP = b.checkSummonCount(c, key, path, s)
 	if len(c.list) > 0 {
 		return
 	}
 	b.n.summons[key] = &summonDef{spellLevel: ts.Level, creatures: slices.Clone(s.CreatureKeys), perLevel: s.CountPerSlotLevel, attack: SummonAttackFull}
 	b.n.tableSummons[key] = rule
+}
+
+// checkSummonCount compiles the count and checks it against the most creatures the summon keeps.
+func (b *overlayBuilder) checkSummonCount(c *entryErrors, key, path string, s *TableSummon) *formula.Program {
+	var countP *formula.Program
+	if strings.TrimSpace(s.Count) == "" {
+		c.at(key, path, ".summon.count", ReasonValue, "the count is a formula (\"2\", \"1 + slot()\")")
+	} else if p, err := b.n.compileSlotted(s.Count); err != nil {
+		c.at(key, path, ".summon.count", ReasonFormula, "the formula does not work: %v", err)
+	} else {
+		countP = p
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(s.Count)); err == nil && s.MaxLive > 0 && min(n, MaxTableSummonCount) > s.MaxLive {
+		c.at(key, path, ".summon.max_live", ReasonValue, "the count is %d but the spell keeps at most %d creatures: the first casting would be refused", n, s.MaxLive)
+	}
+	return countP
+}
+
+// checkSpellSummonOnly refuses what only a feature's summon says: a spell's cost is its slot, and its casting time,
+// duration and concentration are the spell's own.
+func checkSpellSummonOnly(c *entryErrors, key, path string, s *TableSummon) {
+	if s.ResourceKey != "" || s.ResourceCost != 0 {
+		c.at(key, path, ".summon.resource_key", ReasonValue, "a spell's summon is paid with the spell slot: only a feature's summon spends the use of a resource")
+	}
+	if s.CastingTime != (TableCastingTime{}) || s.Duration != (TableDuration{}) || s.Concentration {
+		c.at(key, path, ".summon", ReasonValue, "the casting time, duration and concentration of a spell's summon are the spell's own")
+	}
+}
+
+// checkFeatureSummonSpend checks what a feature's summon spends and returns the resource: one use of a resource, a
+// casting spending 1 (0 reads as 1); no slot, so nothing is added for a circle above the spell's own. That the
+// resource exists is checked once every entry is there (see pendingEffects.summon).
+func checkFeatureSummonSpend(c *entryErrors, key, path string, s *TableSummon) string {
+	if !validResourceName(s.ResourceKey) {
+		c.at(key, path, ".summon.resource_key", ReasonValue, "a feature's summon spends the uses of a resource of the feature: the resource name has 1 to 40 characters of a-z, 0-9 and _")
+	}
+	if s.ResourceCost != 0 && s.ResourceCost != 1 {
+		c.at(key, path, ".summon.resource_cost", ReasonValue, "a casting spends 1 use of the resource")
+	}
+	if s.CountPerSlotLevel != 0 {
+		c.at(key, path, ".summon.count_per_slot_level", ReasonValue, "a feature's summon spends no slot: no creature is added for a higher circle")
+	}
+	return s.ResourceKey
 }
 
 // checkSummonSpell checks what the spell is next to its summon: a leveled spell that only the caster is the
@@ -169,7 +226,7 @@ func checkSummonSpell(c *entryErrors, key, path string, ts *TableSpell) {
 	}
 }
 
-// checkSummonModes checks the turn mode, the role, what the casting replaces and the reserved fields.
+// checkSummonModes checks the turn mode, the role and what the casting replaces.
 func checkSummonModes(c *entryErrors, key, path string, s *TableSummon, rule *tableSummonRule) {
 	switch rule.turnMode {
 	case SummonTurnOwnInitiative, SummonTurnOwnerRollGroup:
@@ -187,9 +244,6 @@ func checkSummonModes(c *entryErrors, key, path string, s *TableSummon, rule *ta
 	}
 	if rule.replaces != SummonReplacesNone && rule.replaces != SummonReplacesSame {
 		c.at(key, path, ".summon.replaces", ReasonValue, "a new casting replaces nothing or the creatures of the same spell")
-	}
-	if s.ResourceKey != "" || s.ResourceCost != 0 {
-		c.at(key, path, ".summon.resource_key", ReasonValue, "a summon paid with a resource is not available yet: the cost is the spell slot")
 	}
 }
 

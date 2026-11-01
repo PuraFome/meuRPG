@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   afterNextRender,
+  computed,
   inject,
   signal,
   viewChild,
@@ -79,6 +80,32 @@ export class BestiaryCreature {
   private readonly key = creatureKeyOf(this.route.snapshot.paramMap.get('slug') ?? '');
   protected readonly access = signal<BestiaryAccess | { status: 'loading' }>({ status: 'loading' });
   protected readonly state = signal<PageState>({ status: 'loading' });
+  /** The h1 of the screens before the creature (they share one box, so the regions in it stay in the page). */
+  protected readonly heading = computed(() => {
+    const a = this.access();
+    if (a.status === 'forbidden') {
+      return 'Bestiário';
+    }
+    if (a.status === 'not-found') {
+      return 'Campanha não encontrada';
+    }
+    if (a.status === 'error') {
+      return 'Não foi possível abrir o bestiário';
+    }
+    const s = this.state();
+    if (a.status === 'master' && s.status === 'not-found') {
+      return 'Criatura não encontrada';
+    }
+    if (a.status === 'master' && s.status === 'error') {
+      return 'Não foi possível abrir a criatura';
+    }
+    return 'Criatura';
+  });
+  /** Why the creature could not be read. */
+  protected readonly readError = computed(() => {
+    const s = this.state();
+    return s.status === 'error' ? s.message : '';
+  });
   /** The NPC just made, for the confirmation. */
   protected readonly made = signal<CreateNpcResult | null>(null);
 

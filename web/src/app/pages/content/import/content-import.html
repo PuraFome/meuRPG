@@ -6,44 +6,44 @@
     Voltar para o conteúdo da mesa
   </a>
 }
-@switch (a.status) {
-  @case ('loading') {
-    <div>
-      <h1 class="mr-page-title">Importar pacote</h1>
-      <p class="page-status" role="status">
-        <mat-spinner diameter="24" aria-label="Carregando" />
-        Carregando...
-      </p>
+@if (a.status !== 'ok') {
+  <!-- The screens before the import share one box: the h1, a status region and an alert region that stay in the page.
+     The loading text, the "not found" and the failure are said when they replace each other.
+     No heading takes the focus here. -->
+  <div>
+    <h1 class="mr-page-title">{{ a.status === 'not-found' ? 'Campanha não encontrada' : a.status === 'error' ? 'Não foi possível abrir a importação' : 'Importar pacote' }}</h1>
+    <div class="mr-live" role="status">
+      @if (a.status === 'loading') {
+        <p class="page-status">
+          <mat-spinner diameter="24" aria-label="Carregando" />
+          Carregando...
+        </p>
+      }
     </div>
-  }
-  @case ('not-found') {
-    <div>
-      <h1 class="mr-page-title">Campanha não encontrada</h1>
-      <div class="mr-notice mr-notice--neutral" role="alert">
-        <mat-icon aria-hidden="true">search_off</mat-icon>
-        <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
-      </div>
+    <div class="mr-live" role="alert">
+      @if (a.status === 'not-found') {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">search_off</mat-icon>
+          <p><strong>Essa campanha não existe, ou você não é membro dela.</strong> Confira o link com o mestre.</p>
+        </div>
+      } @else if (a.status === 'not-master') {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          <p><strong>Só o mestre importa conteúdo.</strong> O que a mesa tem você lê em “Conteúdo da mesa”.</p>
+        </div>
+      } @else if (a.status === 'error') {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ a.message }}</p>
+        </div>
+      }
     </div>
-  }
-  @case ('not-master') {
-    <div>
-      <h1 class="mr-page-title">Importar pacote</h1>
-      <div class="mr-notice mr-notice--neutral" role="alert">
-        <mat-icon aria-hidden="true">lock</mat-icon>
-        <p><strong>Só o mestre importa conteúdo.</strong> O que a mesa tem você lê em “Conteúdo da mesa”.</p>
-      </div>
-    </div>
-  }
-  @case ('error') {
-    <div>
-      <h1 class="mr-page-title">Não foi possível abrir a importação</h1>
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ a.message }}</p>
-      </div>
+    @if (a.status === 'error') {
       <button matButton="outlined" type="button" class="retry" (click)="retry()">Tentar de novo</button>
-    </div>
-  }
+    }
+  </div>
+}
+@switch (a.status) {
   @case ('ok') {
     <header class="head">
       <h1 class="mr-page-title" tabindex="-1" #title>{{ done() ? 'Pacote importado' : 'Importar pacote' }}</h1>
@@ -52,21 +52,24 @@
 
     <input #picker type="file" class="mr-visually-hidden" tabindex="-1" aria-hidden="true" accept=".json,application/json" (change)="choose(picker)" />
 
-    @if (problem()) {
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <div>
-          <p>{{ problem() }}</p>
-          @if (packProblems().length > 0) {
-            <ul class="problems">
-              @for (p of packProblems(); track p) {
-                <li>{{ p }}</li>
-              }
-            </ul>
-          }
+    <!-- The refusal arrives while the person is on the screen and no heading takes the focus for it, so the alert region is there before the text. -->
+    <div class="mr-live" role="alert">
+      @if (problem()) {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <div>
+            <p>{{ problem() }}</p>
+            @if (packProblems().length > 0) {
+              <ul class="problems">
+                @for (p of packProblems(); track p) {
+                  <li>{{ p }}</li>
+                }
+              </ul>
+            }
+          </div>
         </div>
-      </div>
-    }
+      }
+    </div>
 
     @if (done(); as res) {
       <section class="mr-panel block" aria-labelledby="done-t">
@@ -169,12 +172,15 @@
       <section class="mr-panel block" aria-labelledby="pick-t">
         <h2 class="mr-panel__title" id="pick-t">Escolha o arquivo do pacote</h2>
         <p class="note">Um arquivo .json de até 2 MiB, exportado pelo botão “Exportar” do conteúdo da mesa. Nada é importado antes de você ver o que muda.</p>
-        @if (state().step === 'checking') {
-          <p class="page-status" role="status">
-            <mat-spinner diameter="24" aria-label="Lendo o pacote" />
-            Lendo o pacote...
-          </p>
-        } @else {
+        <div class="mr-live" role="status">
+          @if (state().step === 'checking') {
+            <p class="page-status">
+              <mat-spinner diameter="24" aria-label="Lendo o pacote" />
+              Lendo o pacote...
+            </p>
+          }
+        </div>
+        @if (state().step !== 'checking') {
           <button matButton="filled" type="button" (click)="picker.click()"><mat-icon aria-hidden="true">upload_file</mat-icon>Escolher arquivo</button>
         }
       </section>

@@ -70,6 +70,8 @@ type reactionEvent struct {
 	Kept bool `json:"kept,omitempty"`
 	// Feather Fall: the creatures saved.
 	Saved2 []string `json:"saved_ids,omitempty"`
+	// Slow Fall: the points taken off the fall (Before and After are the damage around it).
+	Reduction int32 `json:"reduction,omitempty"`
 	// A reaction that was not answered but closed ("A Contramágica do Mago 2 fechou")
 	// is no event: only answers are written.
 }
@@ -89,6 +91,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.ManeuverReduceKind:  "Manobra",
 	reaction.ProtectionKind:      "Estilo de Luta: Proteção",
 	reaction.FeatherFall:         "Queda Suave",
+	reaction.SlowFall:            "Queda Lenta",
 	reaction.Concentration:       "Teste de concentração",
 	reaction.MasterCheck:         "Verificação do mestre",
 	reaction.LegendaryResistance: "Resistência Lendária",
@@ -104,6 +107,7 @@ var reactionNameKeys = map[reaction.Kind]string{
 	reaction.CuttingWords:      "feature:cutting-words",
 	reaction.DeflectKind:       "feature:deflect-missiles",
 	reaction.FeatherFall:       "spell:feather-fall",
+	reaction.SlowFall:          slowFallAction,
 	reaction.ProtectionKind:    "feature:fighter-fighting-style-protection",
 }
 

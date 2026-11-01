@@ -158,6 +158,9 @@ type SpellOption struct {
 	// Grant is set for a spell a granted_spell effect gives (grants.go): it is cast
 	// without a slot, spending a use of the grant's resource unless it is at will.
 	Grant *SpellGrant
+	// FeatureSummon is set for the summon of a table feature, which is no spell: the limit of the turn's spells
+	// does not apply to it.
+	FeatureSummon bool
 }
 
 // ActionOption is a standard action or a feature's action.
@@ -517,7 +520,7 @@ func spellReason(turn TurnState, o SpellOption, sp rules.SpellEntry) *Reason {
 	if eo := economyOption(o.Economy, turn); !eo.Enabled {
 		return eo.Reason
 	}
-	if SpellLimited(turn, o.Economy, sp.Level) {
+	if !o.FeatureSummon && SpellLimited(turn, o.Economy, sp.Level) {
 		return &Reason{Code: ReasonBonusActionSpellLimit}
 	}
 	if o.Grant != nil {

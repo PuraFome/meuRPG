@@ -130,6 +130,9 @@ type TableFeature struct {
 	// Their keys are "feature:...@mesa" like a feature's, made by the server. They
 	// do not nest.
 	Options []TableFeature
+	// Summon says the feature brings the table's creatures to its holder, or is nil (see TableSummon). Only a
+	// class, subclass, race or background feature has it, not an option.
+	Summon *TableSummon
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -580,6 +583,10 @@ func (c *Content) Off(key string) bool { return c.c.off[key] }
 // is switched off. A sheet that already has a hidden key keeps it (ADR-0018,
 // section 7); it is only not a choice.
 func (c *Content) Hidden(key string) bool {
+	// The spell of a feature's summon is as hidden as the entry the feature belongs to.
+	if owner, ok := c.c.featureSummons[key]; ok {
+		return c.Hidden(owner)
+	}
 	if c.c.archived[key] || c.c.offOrParent(key) {
 		return true
 	}
@@ -591,6 +598,12 @@ func (c *Content) Hidden(key string) bool {
 		return c.c.archived[s.Race]
 	}
 	return false
+}
+
+// FeatureSummonOwner is the entry a feature's summon belongs to, when the spell key is the hidden spell of one.
+func (c *Content) FeatureSummonOwner(spellKey string) (string, bool) {
+	owner, ok := c.c.featureSummons[spellKey]
+	return owner, ok
 }
 
 // Switchable says whether the key is one the master can switch on or off: a
@@ -667,7 +680,8 @@ func (c *content) isSwitchable(key string) bool {
 		return ok
 	case strings.HasPrefix(key, "spell:"):
 		_, ok := c.spells[key]
-		return ok
+		_, feature := c.featureSummons[key] // the hidden spell of a feature goes with the feature, no entry of its own
+		return ok && !feature
 	case strings.HasPrefix(key, "feat:"):
 		_, ok := c.feats[key]
 		return ok
@@ -845,6 +859,8 @@ type pendingEffects struct {
 	strict bool
 	// path is where the effects are in the Overlay, for errors.
 	path string
+	// summon is set for the feature whose summon lowered to the granted_spell effect at summon.at.
+	summon *pendingSummon
 }
 
 // overlayKind is one table of the Overlay: its name in the paths, the prefix of
@@ -1284,6 +1300,7 @@ func (c *content) cloneForOverlay() *content {
 		n.summons = map[string]*summonDef{}
 	}
 	n.tableSummons = map[string]*tableSummonRule{}
+	n.featureSummons = map[string]string{}
 	n.raceChoice = map[string][]int{}
 	n.raceSets = map[string][][]int{}
 	n.raceSizes = map[string][]string{}

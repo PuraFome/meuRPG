@@ -27,12 +27,19 @@
     </div>
     <div class="col">
       <app-area-step #listTitle [n]="2" title="Quem está na área (você vê todos)" />
+      <!-- Said by a region that is in the page before the step flips. -->
+      <div class="mr-live" role="status">
+        @if (flow.step() === 'list') {
+          @if (nobody() ?? warning(); as notice) {
+            <app-area-notice [notice]="notice" />
+          }
+        }
+      </div>
       @if (flow.step() === 'list') {
         <app-area-list
           [rows]="rows()"
           [count]="count()"
           heading="Na área"
-          [warning]="warning()"
           [nobody]="nobody()"
           [npcs]="npcs()"
           [creatures]="creatures()"

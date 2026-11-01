@@ -56,7 +56,8 @@
   "fall_cuts": [
     {
       "pending_id": "x",
-      "before": 1
+      "before": 1,
+      "prev": "x"
     }
   ],
   "channel": {
@@ -851,7 +852,9 @@
     "pending_id": "x",
     "more_pending_ids": [
       "x"
-    ]
+    ],
+    "resisted": true,
+    "resist_left": 1
   },
   "creature_action": {
     "name": "x",
@@ -1026,6 +1029,7 @@
     "kept": true,
     "saved_ids": [
       "x"
-    ]
+    ],
+    "reduction": 1
   }
 }

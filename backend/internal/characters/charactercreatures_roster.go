@@ -510,6 +510,12 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if !ok {
 		return link.SummonSpell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
+	derived := rules.Derive(b, content)
+	if isFeatureSummon(content, spellKey) && !slices.ContainsFunc(derived.GrantedSpells, func(g rules.GrantedSpell) bool { return g.Spell.Key == spellKey }) {
+		// The spell of a feature's summon is the feature's: a character without the grant gets the answer of an unknown spell,
+		// so a ritual cast cannot probe for the key.
+		return link.SummonSpell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
+	}
 	if circle == 0 {
 		circle = det.Spell.Level
 	}
@@ -520,7 +526,7 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	out := link.SummonSpell{
 		Ritual: choices.Ritual, Concentration: choices.Concentration, CastingUnit: choices.CastingTime.Unit, Level: det.Spell.Level,
 	}
-	st := s.summonStanding(rules.Derive(b, content), spellKey, choices.Ritual)
+	st := s.summonStanding(derived, spellKey, choices.Ritual)
 	out.Known, out.Prepared, out.CanRitual = st.known, st.prepared, st.canRitual
 	made, err := content.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys})
 	if err != nil {
@@ -532,6 +538,7 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if rule, table := content.SummonRule(spellKey); table {
 		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame
 	}
+	out.Feature = isFeatureSummon(content, spellKey)
 	return out, nil
 }
 

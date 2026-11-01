@@ -32,12 +32,14 @@
       </label>
     </div>
 
-    @if (error()) {
-      <div class="mr-notice mr-notice--warning" role="alert">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <p>{{ error() }}</p>
-      </div>
-    }
+    <div class="mr-live" role="alert">
+      @if (error()) {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ error() }}</p>
+        </div>
+      }
+    </div>
 
     @if (busy() && !result()) {
       <p class="mr-muted" role="status">Montando o encontro...</p>

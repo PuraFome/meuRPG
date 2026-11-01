@@ -25,7 +25,7 @@ import {
 } from './cast-sheet/cast-sheet-data';
 import { ZoneMoveSheet, zoneMoveTitle, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
 import { spellKind } from '../../../core/combat/cast-flow';
-import { optionOfRef, splitCastRef } from '../../../core/combat/cast-ref';
+import { castRefOfKey, optionOfRef, splitCastRef } from '../../../core/combat/cast-ref';
 import type { CastPreset } from './target-mode/target-flow';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
@@ -50,7 +50,7 @@ export class CombatSheets {
   /** The held rolls the page already opened its question for: a roll's own sheet registers its hold, so the reading
    * of the screen does not open the question a second time. */
   readonly inspirationHandled = new Set<string>();
-  /** What the player's combatants say a summoning spell is: the keys `GetSummonOptions` lists, read once for the character. */
+  /** The summon options `GetSummonOptions` lists, as cast refs (the spell and the feature that grants it), read once for the character. */
   private summonSpells: Promise<ReadonlySet<string>> | null = null;
   /** The sheets that answer a question of the combat: the reactions and the opportunity attacks. */
   readonly reactions: ReactionSheets;
@@ -128,8 +128,8 @@ export class CombatSheets {
   async cast(ref: string): Promise<void> {
     const { key, grantedBy } = splitCastRef(ref);
     const spell = optionOfRef(this.ctx.options()?.options?.spells ?? [], ref);
-    // A summoning spell and Revivificar have their own sheets, cast with the classes' slots.
-    if (grantedBy === '' && spell?.spell && (await this.isSummon(key))) {
+    // A summoning spell (the classes' or a feature's) and Revivificar have their own sheets.
+    if (spell?.spell && (await this.isSummon(key, grantedBy))) {
       this.summon(key, spell.spell.namePt || spell.spell.name);
       return;
     }
@@ -334,7 +334,7 @@ export class CombatSheets {
     return true;
   }
 
-  private isSummon(key: string): Promise<boolean> {
+  private isSummon(key: string, grantedBy = ''): Promise<boolean> {
     const own = this.ctx.own();
     if (!own) {
       return Promise.resolve(false);
@@ -343,14 +343,15 @@ export class CombatSheets {
     this.summonSpells ??= this.ctx.creatures
       .summonOptions(this.ctx.campaignId(), own.characterId)
       .then(
-        (options) => new Set(options.spells.map((s) => s.spellKey)),
+        (options) =>
+          new Set(options.spells.map((s) => castRefOfKey(s.spellKey, s.grantedBy ?? ''))),
         (err: unknown) => {
           this.summonSpells = null;
           throw err;
         },
       );
     return this.summonSpells.then(
-      (keys) => keys.has(key),
+      (keys) => keys.has(castRefOfKey(key, grantedBy)),
       () => false,
     );
   }

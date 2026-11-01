@@ -55,7 +55,7 @@ func (f *attackFlow) strokeSpec(ctx context.Context) {
 	if !strokeMayApply(f.attacker) {
 		return
 	}
-	blind := len(effectDiceFor(f.modeIn.states, f.attacker.ID, rules.RollAppliesAttack)) > 0
+	blind := len(effectDiceFor(f.modeIn.states, f.attacker.ID, rules.RollAppliesAttack)) > 0 || f.maneuver != nil
 	f.spec.Stroke = attackStrokeRule(func() (int, error) { return f.armorClass(ctx) }, f.criticalFrom(), blind)
 }
 
@@ -90,4 +90,25 @@ func (f *castFlow) strokeArmor(ctx context.Context) func(playdb.Combatant) (int,
 		}
 		return sheet.ArmorClass + int(target.AcBonus) + int(target.EffectAcBonus) + cp.real.bonus(), nil
 	}
+}
+
+// maneuverBack gives back the use of the table die the attack spent.
+func (u *undoer) maneuverBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if who.Kind != kindPlayer {
+		return nil
+	}
+	for _, key := range ev.ManeuverSpent {
+		if err := u.spendResourceBack(ctx, who, key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// usesBack gives back the uses the attack spent: Stroke of Luck's and the table die's.
+func (u *undoer) usesBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if err := u.strokeBack(ctx, who, ev); err != nil {
+		return err
+	}
+	return u.maneuverBack(ctx, who, ev)
 }

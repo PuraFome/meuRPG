@@ -51,13 +51,14 @@ describe('CombatMapCard: "Mover mesmo assim?" (an NPC dragged past its movement)
     expect(el.querySelector('[data-over-ask]')).toBeNull();
   });
 
-  it('says who lacks how much, in an alert, with the two answers', () => {
-    const { fixture, el } = mount({
-      forcedSwitch: true,
-      overAsk: { label: 'Espada voadora 2', missing: '4,5 m' },
-    });
-    const ask = el.querySelector('[data-over-ask]')!;
-    expect(ask.getAttribute('role')).toBe('alert');
+  it('says who lacks how much, in a status region that was there first, with the two answers', () => {
+    const { fixture, el } = mount({ forcedSwitch: true });
+    const live = el.querySelector('.mr-live[role="status"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    fixture.componentRef.setInput('overAsk', { label: 'Espada voadora 2', missing: '4,5 m' });
+    fixture.detectChanges();
+    const ask = live.querySelector('[data-over-ask]')!;
+    expect(ask.hasAttribute('role')).toBe(false);
     expect(plain(ask.textContent)).toContain('Espada voadora 2 não tem movimento para tanto.');
     expect(plain(ask.textContent)).toContain(
       'Faltam 4,5 m do que resta. Mover mesmo assim, sem gastar o movimento?',
@@ -115,14 +116,14 @@ describe('CombatMapCard: "Movimento forçado"', () => {
 
   it('keeps the live region on the page, empty, and fills it with the result of a forced drag', () => {
     const { fixture, el } = mount({ forcedSwitch: true });
-    const region = el.querySelector('[role="status"]')!;
+    const region = el.querySelector('.card__result')!;
     expect(plain(region.textContent)).toBe('');
     fixture.componentRef.setInput(
       'forcedNote',
       'Pensantus foi movido à força. Ninguém recebeu oferta de ataque de oportunidade.',
     );
     fixture.detectChanges();
-    expect(el.querySelector('[role="status"]')).toBe(region);
+    expect(el.querySelector('.card__result')).toBe(region);
     expect(plain(region.textContent)).toContain('Pensantus foi movido à força.');
   });
 
