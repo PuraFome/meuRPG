@@ -431,6 +431,7 @@ Um membro escondido nunca é nomeado: o turno espera a parte do mestre como "Fal
 **Magias e reações.**
 
 - O teste de resistência de um alvo vai ao jogador como uma palavra (passou ou falhou). Os dados vão ao mestre e ao dono de um personagem alvo, nunca de um NPC. A CD vai ao mestre e ao conjurador, e ao dono do alvo que faz o teste quando a regra da mesa "Os jogadores veem a CD dos testes de resistência" está ligada (RN-24).
+- A visão do espaço de magia no log de combate por espectador: a chave e os usos por dia de um uso inato são do mestre e do dono do conjurador, e os outros jogadores leem só que a conjuração foi inata ("conjuração inata").
 - Uma conjuração que toca um combatente escondido não deixa linha para o jogador. O aviso de reação não carrega nem o atacante nem o total do acerto. O jogador não pode mirar em um alvo escondido.
 - **Magias que leem PV** (Sono, Leque Cromático, Palavra de Poder Atordoar, Palavra de Poder Matar, Estabilizar, Cura Completa) são resolvidas com os PV reais, e o jogador ainda vê só palavras. O conjurador vê o próprio total (`5d8 (2, 4, 1, 5, 3) = 15`) e quem foi afetado ("adormeceu", "não foi afetado"), nunca os PV de um alvo nem o motivo. O mestre vê o total, os PV de cada criatura, o que sobrou e o motivo. Os outros jogadores veem só quem foi afetado e a condição. Os alvos são listados na ordem do conjurador, não na ordem do total, que revelaria quem tem menos PV. Palavra de Poder Matar num personagem de jogador o leva a 0 com três falhas, e o mestre confirma a morte (RN-03).
 

@@ -1088,8 +1088,8 @@ func (e *logEntry) fillWildShape(c *logViewing, out *playv1.CombatLogEntry) bool
 	return true
 }
 
-func (e *logEntry) fillReaction(_ *logViewing, out *playv1.CombatLogEntry) bool {
-	out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot)}
+func (e *logEntry) fillReaction(c *logViewing, out *playv1.CombatLogEntry) bool {
+	out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, c.v, c.actor)}
 	return true
 }
 
@@ -1152,7 +1152,7 @@ func (e *logEntry) fillEffectEnd(c *logViewing, out *playv1.CombatLogEntry) bool
 // target's own player's; the caster's d20 the master's and the caster's.
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
-	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {
