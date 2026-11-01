@@ -155,8 +155,11 @@ func (s *Service) workOutOptions(ctx context.Context, m authz.Membership, d *enc
 	if code != none {
 		disableAll(opts, code)
 		s.explainEffectReason(d, who, v, opts, code, s.namesFor(ctx, m.CampaignID))
-	} else if !isTheatre(d.enc) {
-		refuseWallSpells(opts)
+	} else {
+		if !isTheatre(d.enc) {
+			refuseWallSpells(opts)
+		}
+		explainSpellReasons(opts)
 	}
 	return opts, code, nil
 }

@@ -229,7 +229,7 @@ WHERE id = $1;
 -- combatant acts ('acting') in the turn that starts. The legendary actions it
 -- spent come back (creature_spent keeps every other key).
 UPDATE combatants
-SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false,
+SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, reaction_used = false, reaction_kind = NULL, reaction_round = NULL,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
@@ -321,9 +321,19 @@ SET hp_max = $2, hp_max_bonus = $3
 WHERE id = $1;
 
 -- name: SetCombatantEconomy :exec
--- The turn's economy as an action, or its undo, leaves it.
+-- The turn's economy as an action, or its undo, leaves it. A reaction that is not
+-- spent has no record; one that stays spent keeps its record.
 UPDATE combatants
-SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5
+SET action_used = $2, bonus_action_used = $3, reaction_used = $4, dashed = $5,
+    reaction_kind = CASE WHEN $4 THEN reaction_kind END,
+    reaction_round = CASE WHEN $4 THEN reaction_round END
+WHERE id = $1;
+
+-- name: SetCombatantReactionSpent :exec
+-- Which reaction the combatant spent and in which round (after SetCombatantEconomy
+-- marked it used).
+UPDATE combatants
+SET reaction_kind = $2, reaction_round = $3
 WHERE id = $1;
 
 -- name: SetCombatantSpellsCast :exec

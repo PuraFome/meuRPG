@@ -72,7 +72,7 @@ func (s *Service) answerProtection(ctx context.Context, c *combatTx, w playdb.Re
 	if !k.st.Protection {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "the Protection style needs a shield in hand")
 	}
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.ProtectionKind); err != nil {
 		return err
 	}
 	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true}, reaction.ProtectionKind); err != nil {

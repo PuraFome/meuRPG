@@ -59,7 +59,7 @@ func (s *Service) planOfAction(ctx context.Context, c *combatTx, who playdb.Comb
 }
 
 // Limitation: the match of a basic sheet's attack to the action is by name (the sheet keeps no key of the action),
-// so two actions whose names are equal up to the cut share the first one's plan.
+// so two actions whose names are equal up to the cut match none.
 //
 // planOfAttack finds the action of the attacker's stat block that an attack of its sheet is: a creature's
 // attack has the action's key; an NPC made from a stat block has a basic sheet whose attack is named like
@@ -89,14 +89,24 @@ func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb
 	if i < 0 || !ok {
 		return rules.ActionPlan{}, false, nil
 	}
-	name := sheet.Attacks[i].Name
-	j := slices.IndexFunc(monsterPlan.Actions, func(a rules.ActionPlan) bool {
-		return a.Attack != nil && cutName(a.NamePT) == name
-	})
-	if j < 0 {
-		return rules.ActionPlan{}, false, nil
+	plan, ok := planByCutName(monsterPlan, sheet.Attacks[i].Name)
+	return plan, ok, nil
+}
+
+// planByCutName finds the attack action whose name, cut to the length a basic sheet keeps, is name. Two
+// actions that share the cut name cannot be told apart, so none is returned: a limit or a rider is never
+// taken from the wrong one.
+func planByCutName(p *rules.MonsterPlan, name string) (rules.ActionPlan, bool) {
+	var found []rules.ActionPlan
+	for _, a := range p.Actions {
+		if a.Attack != nil && cutName(a.NamePT) == name {
+			found = append(found, a)
+		}
 	}
-	return monsterPlan.Actions[j], true, nil
+	if len(found) != 1 {
+		return rules.ActionPlan{}, false
+	}
+	return found[0], true
 }
 
 // nameOfPlan is the action's name in Portuguese, or its English name when the content has no translation.

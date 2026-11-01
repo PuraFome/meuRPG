@@ -359,6 +359,9 @@ func (f *takeActionFlow) spend(ctx context.Context) error {
 	}); err != nil {
 		return fmt.Errorf("spend the action: %w", err)
 	}
+	if f.economy == rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION {
+		return recordReaction(ctx, f.c, f.who.ID, f.call.actionKey)
+	}
 	return nil
 }
 

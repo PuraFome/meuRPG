@@ -65,7 +65,10 @@ Its event is a normal `combatant_moved` with `spend_cost`; the log reads it as a
 
 A move that leaves an enemy's reach lands at once and offers an attack to that enemy; the mover's turn waits for the answer (`combat_opportunity.go`).
 `play` calls `grid.LeavesReach` (the whole line, the exit square included, and the last square still inside the reach) and the existing attack and damage path.
-In theatre the master makes the offer by hand (see [Theatre of the mind](theatre.md)).
+In theatre the server finds no offer, so the master makes it by hand (see [Theatre of the mind](theatre.md)).
+On a grid the master can also offer one by hand, for a reach the server cannot see (`OfferOpportunity`; no square, and no reach check).
+On a fog map the reactor's player must still see the mover to read the offer; otherwise the master withdraws or skips it.
+A by-hand offer follows the same refusals as a move's: a surprised reactor, a reactor on the mover's side or with its reaction used, a hidden mover, and the same mover and reactor already waiting.
 
 ```mermaid
 sequenceDiagram

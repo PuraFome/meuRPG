@@ -277,6 +277,9 @@ func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev acti
 			return err
 		}
 	}
+	if err := u.limitBack(ctx, ev); err != nil {
+		return err
+	}
 	if ev.SpendCost > 0 { // a legendary attack spent no action, attack or reaction of the creature's: only its cost
 		return u.legendaryBack(ctx, ev)
 	}
@@ -672,7 +675,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack,
+		u.castCounters, u.castDieBack, u.strokeBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack, u.castLimitBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {

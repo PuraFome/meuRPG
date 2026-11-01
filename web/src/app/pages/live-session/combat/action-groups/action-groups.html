@@ -270,7 +270,7 @@
     icon="auto_fix_high"
     [buttonLabel]="'Conjurar ' + spellName(s)"
     [off]="!s.enabled || !!locked()"
-    [reason]="locked() || spellReasonText(s)"
+    [reason]="locked() || reasonText(s.reason)"
     [busy]="busy()"
     [choosing]="choosing() === castRef(s)"
     (press)="cast.emit(castRef(s))"

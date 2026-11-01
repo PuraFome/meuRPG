@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import { EconomyShapes, economyShapes } from './economy-shapes';
 
 const free = { actionUsed: false, bonusActionUsed: false, reactionUsed: false };
@@ -30,6 +31,18 @@ describe('economyShapes', () => {
     const shapes = economyShapes({ ...free, bonusActionUsed: true, reactionUsed: true });
     expect(shapes.map((s) => s.spent)).toEqual([false, true, true]);
     expect(shapes[1].name).toBe('Ação bônus usada');
+  });
+
+  it('names the reaction that was spent and the round', () => {
+    const name = (over: object) => economyShapes({ ...free, reactionUsed: true, ...over })[2].name;
+    expect(name({ reactionKind: ReactionKind.SHIELD, reactionRound: 2 })).toBe(
+      'Reação usada (Escudo Arcano, rodada 2)',
+    );
+    expect(name({ reactionRound: 2 })).toBe('Reação usada (rodada 2)');
+    expect(name({})).toBe('Reação usada');
+    expect(
+      economyShapes({ ...free, reactionKind: ReactionKind.SHIELD, reactionRound: 2 })[2].name,
+    ).toBe('Reação disponível');
   });
 
   it('keeps the Action filled while Extra Attack has attacks left', () => {

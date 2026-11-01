@@ -26,12 +26,30 @@ import (
 // happens (a held action), and the slot of a countered spell is spent all the same:
 // casting it already expended it. The prompt never names the spell or its level.
 
-// spendReaction marks the combatant's reaction as spent.
-func (s *Service) spendReaction(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+// reactionOpportunity is what an opportunity attack records besides a reaction window's key.
+const reactionOpportunity = "opportunity"
+
+// spendReaction marks the combatant's reaction as spent, and records which one it was and the round.
+func (s *Service) spendReaction(ctx context.Context, c *combatTx, who playdb.Combatant, kind reaction.Kind) error {
+	return spendReactionAs(ctx, c, who, string(kind))
+}
+
+// spendReactionAs marks the combatant's reaction as spent and records the kind: a reaction window's key,
+// "opportunity" or the key of the feature whose action is a reaction.
+func spendReactionAs(ctx context.Context, c *combatTx, who playdb.Combatant, kind string) error {
 	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
 		ID: who.ID, ActionUsed: who.ActionUsed, BonusActionUsed: who.BonusActionUsed, ReactionUsed: true, Dashed: who.Dashed,
 	}); err != nil {
 		return fmt.Errorf("spend the reaction: %w", err)
+	}
+	return recordReaction(ctx, c, who.ID, kind)
+}
+
+// recordReaction writes which reaction the combatant spent and the round of the combat (after the economy
+// marked it used).
+func recordReaction(ctx context.Context, c *combatTx, id, kind string) error {
+	if err := c.q.SetCombatantReactionSpent(ctx, playdb.SetCombatantReactionSpentParams{ID: id, ReactionKind: &kind, ReactionRound: &c.enc.Round}); err != nil {
+		return fmt.Errorf("record the reaction: %w", err)
 	}
 	return nil
 }
@@ -239,7 +257,7 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 	if vitals != nil {
 		got.vitals = append(got.vitals, vitals)
 	}
-	if err := s.spendReaction(ctx, c, reactor); err != nil {
+	if err := s.spendReaction(ctx, c, reactor, reaction.CounterspellKind); err != nil {
 		return err
 	}
 	re.Used, re.Slot, re.Countered = true, &slot, check.countered

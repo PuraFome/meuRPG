@@ -473,6 +473,36 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # The one check to require in `main`'s branch protection for this workflow: its name stays the same however the shards
+  # are split. It passes only when every job the plan selected passed, the mobile job included. When the plan selected
+  # nothing (the change touches nothing the workflow judges), every one of them was skipped, and that passes too.
+  # A failed `plan`, or a shard that was cancelled or skipped by mistake, fails it: nothing was judged.
+  gate:
+    name: playwright (every shard passed)
+    needs: [plan, lint, image, database, e2e, mobile]
+    # Not on a fork's push: `plan` is skipped there, and a skipped `plan` would fail the check below.
+    if: ${{ always() && (github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        env:
+          PLAN: ${{ needs.plan.result }}
+          RUN: ${{ needs.plan.outputs.run }}
+          LINT: ${{ needs.lint.result }}
+          IMAGE: ${{ needs.image.result }}
+          DATABASE: ${{ needs.database.result }}
+          SHARDS: ${{ needs.e2e.result }}
+          MOBILE: ${{ needs.mobile.result }}
+        run: |
+          echo "plan: $PLAN (run: $RUN), lint: $LINT, images: $IMAGE, database: $DATABASE, shards: $SHARDS, mobile: $MOBILE"
+          [ "$PLAN" = success ] || exit 1
+          if [ "$RUN" = true ]; then
+            [ "$LINT" = success ] && [ "$IMAGE" = success ] && [ "$DATABASE" = success ] && [ "$SHARDS" = success ] && [ "$MOBILE" = success ]
+          else
+            [ "$LINT" = skipped ] && [ "$IMAGE" = skipped ] && [ "$DATABASE" = skipped ] && [ "$SHARDS" = skipped ] && [ "$MOBILE" = skipped ]
+          fi
+
   # Opens (or adds to) a GitHub issue when a run outside a pull request fails,
   # so a red main or nightly does not go unnoticed.
   report:

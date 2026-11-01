@@ -69,6 +69,12 @@ func newRollsTable(t *testing.T) *rollsTable {
 // before the combat begins (a creature that joins it).
 func newRollsTableWith(t *testing.T, afterHeroes func(rt *rollsTable)) *rollsTable {
 	t.Helper()
+	return newRollsTableFog(t, true, afterHeroes)
+}
+
+// newRollsTableFog is newRollsTableWith on a map with the fog of war on or off.
+func newRollsTableFog(t *testing.T, fog bool, afterHeroes func(rt *rollsTable)) *rollsTable {
+	t.Helper()
 	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	rt := &rollsTable{world: w, got: newAnswers(), ids: map[string]string{}}
 	defer func() {
@@ -90,7 +96,7 @@ func newRollsTableWith(t *testing.T, afterHeroes func(rt *rollsTable)) *rollsTab
 		wall = append(wall, [2]int32{12, int32(row)})
 	}
 	w.paint(w.fogMap, mapsv1.MapLayer_MAP_LAYER_WALL, 1, wall)
-	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(true), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum()})))
+	must(m.maps.SetMapFog(ctx, rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.fogMap, FogEnabled: new(fog), BaseLight: mapsv1.LightLevel_LIGHT_LEVEL_DIM.Enum()})))
 	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
 	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
 

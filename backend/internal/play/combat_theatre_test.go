@@ -519,14 +519,12 @@ func TestRN25_WhatNeedsAMapIsRefused(t *testing.T) {
 	_, err = a.ana.combat.GetMoveOptions(t.Context(), connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Pensantus")}))
 	wantBlockedBy(t, "GetMoveOptions out of turn", err, blockedNotYourTurn)
 
-	// A combat on a map keeps these two out (the server finds the opportunity
-	// attacks there, and a move is a move on the map).
+	// A combat on a map keeps the movement out (a move is a move on the map); the
+	// master's by-hand offer works there too (combat_grid_offer_test.go).
 	g := newArmed(t)
 	ge := g.threeAndAGoblin(t)
 	_, err = g.spend(t, g.caio, ge, "Toren", 5)
 	wantBlockedBy(t, "SpendMovement on a map", err, blockedTheatreOnly)
-	_, err = g.offer(t, g.master, ge, "Toren", "Goblin")
-	wantBlockedBy(t, "OfferOpportunity on a map", err, blockedTheatreOnly)
 	if got := g.get(t, g.master).GetMode(); got != playv1.EncounterMode_ENCOUNTER_MODE_GRID {
 		t.Errorf("a combat started the way it always was has mode %v, want GRID", got)
 	}

@@ -357,6 +357,11 @@ Cascades with the session or the character; the index is by session.
   It holds the creature's id, the round, the option's key and name and `spend_cost`.
   It is the master's alone in the log, the stream and every count.
   An attack or a move made as a legendary option keeps only `spend_cost` on its ordinary event, a number for the undo.
+- A `recharge_rolled` event (the d6 the server rolls for a creature's Recharge action at its turn start) is always `secret` and fogged for everybody, and its row names no user and no character.
+  It holds the creature's combatant id, the round, the action's key and name, `recharge_face` and `recharged`.
+  Its log line is the master's and the creature's controller's; every other player reads nothing of it in the log, the stream or any count.
+  No player's map revision counts it.
+  An attack or an action that spent a limited action keeps `limit_key` on its ordinary event, the key for the undo.
 - A `free_roll_rolled` event is read by everyone when `secret` is false; a secret one is the master's alone, on every path: the list, the stream, the summary and any count (RN-10).
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.

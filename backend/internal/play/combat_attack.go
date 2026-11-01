@@ -178,6 +178,8 @@ type attackFlow struct {
 	attackKey        string
 	// legendary is the option of a legendary attack, as checkLegendary found it.
 	legendary rules.LegendaryOption
+	// plan is the action of the attacker's stat block that the attack is, when it has one.
+	plan      rules.ActionPlan
 	bonusKind combat.BonusKind
 	// coverTarget is the target on the square the mode and the cover are read at: where an opportunity
 	// attack's mover left the reach.
@@ -226,7 +228,7 @@ func (f *attackFlow) run(ctx context.Context) (any, error) {
 // prepare is the part of the attack that checks and reads: who and what, the turn, the attack, the economy
 // and the cover. Nothing is written.
 func (f *attackFlow) prepare(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack, f.checkLegendary} {
+	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack, f.checkLegendary, f.checkLimit} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -243,7 +245,7 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
 func (f *attackFlow) writeAttack(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
+		f.resolve, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -430,6 +432,24 @@ func (f *attackFlow) routineLeft() error {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED, "the Multiattack has no attacks left this turn")
 	}
 	return nil
+}
+
+// checkLimit reads the action of a stat block the attack is and refuses it when it is spent (a Recharge
+// action that has not recharged, an action with no uses left).
+func (f *attackFlow) checkLimit(ctx context.Context) error {
+	plan, ok, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
+	if err != nil || !ok {
+		return err
+	}
+	f.plan = plan
+	return checkActionLimit(plan, f.attacker)
+}
+
+// spendLimit spends the use of a limited action in the transaction of the attack.
+func (f *attackFlow) spendLimit(ctx context.Context) error {
+	var err error
+	f.out.made.LimitKey, err = spendActionLimit(ctx, f.c, f.plan, f.attacker)
+	return err
 }
 
 // checkExtraAction checks the extra action Velocidade gives takes one weapon attack (SRD 5.1, Haste).
@@ -674,6 +694,10 @@ func (f *attackFlow) spendEconomy(ctx context.Context) error {
 		ID: f.attacker.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
 	}); err != nil {
 		return fmt.Errorf("spend the action: %w", err)
+	}
+	if f.call.opportunity() {
+		// The throw back of Deflect Missiles (catchID) spends nothing here: answering Deflect recorded the reaction.
+		return recordReaction(ctx, f.c, f.attacker.ID, reactionOpportunity)
 	}
 	return nil
 }

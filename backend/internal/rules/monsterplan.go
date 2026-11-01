@@ -46,8 +46,8 @@ const (
 	ActionKindOther = "other"
 )
 
-// How often an action may be used (ActionUsage.Kind). The plan only reads the
-// limit; nothing enforces it yet.
+// How often an action may be used (ActionUsage.Kind). The plan reads the limit; the
+// combat keeps what was spent and refuses a spent action.
 const (
 	UsageAtWill = "at_will"
 	// UsageRecharge: usable again on a d6 of RechargeMin or more.
@@ -76,6 +76,31 @@ type ActionUsage struct {
 	Uses        int
 	// Text is the SRD's words ("Recharge 5-6", "3/day"), or "".
 	Text string
+}
+
+// Limited says the action can be spent: it recharges, has uses a day or waits for a rest.
+func (u ActionUsage) Limited() bool {
+	return u.Kind == UsageRecharge || u.Kind == UsagePerDay || u.Kind == UsageRest
+}
+
+// UsesAllowed is how many times the action may be used before it is spent: its uses a
+// day, or 1 for a Recharge action and for one that waits for a rest. 0 for an action
+// that is not limited.
+func (u ActionUsage) UsesAllowed() int {
+	switch u.Kind {
+	case UsagePerDay:
+		return u.Uses
+	case UsageRecharge, UsageRest:
+		return 1
+	}
+	return 0
+}
+
+// RechargedBy says a d6 of this face makes a Recharge action available again: the face
+// is at least RechargeMin ("Recharge 6" is a 6, "Recharge 4-6" a 4, 5 or 6). False for any
+// other kind of limit.
+func (u ActionUsage) RechargedBy(d6 int) bool {
+	return u.Kind == UsageRecharge && d6 >= u.RechargeMin
 }
 
 // ActionDamage is a damage part of an action.

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Starts the CockroachDB the Go integration tests run against, as the `go-db-shard` job of backend.yml does: one node,
-# insecure, in memory, published on 127.0.0.1:26257, with the background work a long-lived database needs turned off.
+# Starts the CockroachDB the Go integration tests run against: one node, insecure, in memory, published on
+# 127.0.0.1:26257, with the background work a long-lived database needs turned off.
+# The `go-db-shard` jobs of backend.yml (the groups behind the `go-db` check) run `go test -race` against it, one group of
+# packages each, and so do those of `repeat-changed`: on a train, on main, nightly and by hand.
+# The composite action `test-database` starts it for them (docs/ci.md, "Which database the tests run on").
+# `flake-check` and `nightly-hunt` call this script directly.
 # The image is the one backend.yml names (COCKROACH_IMAGE there), so the digest lives in one place.
 # Usage: start-cockroach.sh   (from anywhere; needs docker)
 set -euo pipefail
