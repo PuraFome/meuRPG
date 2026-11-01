@@ -653,6 +653,10 @@ type SpellZone struct {
 	HitMarks      []byte
 	CreatedAt     time.Time
 	Def           []byte
+	WallSide      string
+	WallDx        int16
+	WallDy        int16
+	WallLengthFt  int32
 }
 
 type StageNpc struct {

@@ -379,6 +379,8 @@ type actionEvent struct {
 	AreaRow int32 `json:"area_row,omitempty"`
 	Dx      int32 `json:"dx,omitempty"`
 	Dy      int32 `json:"dy,omitempty"`
+	// Wall is the wall a Wall of Fire cast laid, for the same redrawing.
+	Wall *wallSpec `json:"wall,omitempty"`
 	// RevealedHits says the cast made appear the hidden creatures its hits name
 	// (HiddenAtCast), without listing them again: a cast of forty hits would carry their ids
 	// twice and pass the table's 16 KiB. Revealed is the list of an answer to the master's

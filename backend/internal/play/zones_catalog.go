@@ -10,7 +10,7 @@ import (
 )
 
 // The spells that keep an area on the map while they last (SRD 5.1): Spirit Guardians, Moonbeam,
-// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud and Silence. The cast puts a zone on the map (the spell_zones table); what the zone does,
+// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth and Wall of Fire. The cast puts a zone on the map (the spell_zones table); what the zone does,
 // where it stands and how it moves is written here, one row for each spell, in our own words:
 //
 //   - Spirit Guardians: an aura around the caster that goes where the caster goes. A creature that
@@ -38,6 +38,8 @@ import (
 //   - Silence: a sphere of 20 feet of radius at a point, ruling sound. It asks nobody. A creature whose square is
 //     in it is immune to thunder damage and deafened, and a caster there cannot cast a spell with a verbal
 //     component (zones_silence.go).
+//   - Wall of Fire: a wall of fire, a line or a ring that the caster lays from a point (zones_wall.go). A Dexterity save
+//     at the cast for the creatures inside it, fire damage, half on a pass.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
 // inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
@@ -61,6 +63,9 @@ const (
 	zoneRetch
 	// zoneSpikes: no save; a creature that travels through the zone takes damage for every square it enters (Spike Growth).
 	zoneSpikes
+	// zoneWall: a wall of squares the caster lays from the point of origin (zones_wall.go). The creatures inside it make a
+	// saving throw for damage at the cast, half on a pass (Wall of Fire).
+	zoneWall
 )
 
 // zoneSight says how a zone changes what is seen on the map.
@@ -167,6 +172,10 @@ var zoneDefs = map[string]zoneDef{
 		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: silenceFt, silences: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
+	"spell:wall-of-fire": {
+		kind: zoneWall, onCast: true, shape: grid.ShapeLine, sizeFt: wallLineFt, save: "dex",
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
 	"spell:spirit-guardians": {
 		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true, slows: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_CASTER, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER,
@@ -262,6 +271,9 @@ func defOfStored(raw []byte) (zoneDef, bool) {
 		movement: playv1.SpellZoneMovement(j.Movement), save: j.Save, onEnter: j.OnEnter, onStart: j.OnStart, corners: j.Corners,
 	}, true
 }
+
+// burns says the zone deals the damage of its spell to a creature it catches, half of it on a passed save.
+func (d zoneDef) burns() bool { return d.kind == zoneDamage || d.kind == zoneWall }
 
 // area is the zone's shape and size for the geometry of the map.
 func (d zoneDef) area() grid.Area { return grid.Area{Shape: d.shape, SizeFt: d.sizeFt} }

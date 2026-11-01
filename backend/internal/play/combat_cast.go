@@ -204,6 +204,8 @@ type castFlow struct {
 	placedArea bool
 	plan       areaPlan
 	summon     *summoning
+	// wall is the wall the request lays, for a spell that lays one.
+	wall *wallSpec
 	// hidden says the cast shows a hidden creature: the caster or a target.
 	hidden bool
 	// landing is the square a teleport puts the caster on (checkTeleport); nil for any other cast.
@@ -448,6 +450,13 @@ func (f *castFlow) readMap(ctx context.Context) error {
 // placeArea works out who an area spell on a map touches: the caster places it and the server says who is
 // inside (planArea); without a map the caster lists them and the master judges.
 func (f *castFlow) placeArea(ctx context.Context) error {
+	var err error
+	if f.wall, err = wallFor(f.sp, f.req.GetWall(), isTheatre(f.c.enc)); err != nil {
+		return err
+	}
+	if f.wall != nil && f.req.GetOrigin() == nil {
+		return badArea("a wall is laid from the point of origin: set origin")
+	}
 	// A spell that keeps its area on the map lays it only when the request chooses a point: a cast without one is the
 	// spell as it was before the zones (its targets, its effects), and lays nothing.
 	if _, ok := zoneDefOfSpell(f.sp); ok && f.req.GetOrigin() != nil && !isTheatre(f.c.enc) {
@@ -474,7 +483,7 @@ func (f *castFlow) planPlacedArea(ctx context.Context) error {
 		choice = areaChoice{} // centered on the caster: the point only says the cast lays the zone
 	}
 	if f.plan, err = planArea(areaInput{
-		v: f.v, terrain: f.terrain, cs: f.cs, caster: f.caster, sp: f.sp, choice: choice,
+		v: f.v, terrain: f.terrain, cs: f.cs, caster: f.caster, sp: f.sp, choice: choice, wall: f.wall,
 		cover: func(origin, target playdb.Combatant) (coverPair, error) {
 			return f.c.coverOf(ctx, f.v, f.terrain, f.known, origin, target, f.cs)
 		},
@@ -864,6 +873,7 @@ func (f *castFlow) sealPlaced(ctx context.Context) error {
 	if dir := f.req.GetDirection(); dir != nil {
 		made.Dx, made.Dy = dir.GetDx(), dir.GetDy()
 	}
+	made.Wall = f.wall
 	return f.s.settleHidden(ctx, f.c, f.m, f.v, f.plan, f.call.spellKey, f.req.RevealHidden, made)
 }
 

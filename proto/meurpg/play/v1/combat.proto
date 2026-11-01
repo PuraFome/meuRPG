@@ -1975,6 +1975,9 @@ enum EncounterBlockedReason {
   // The same: the creature is no creature with the trait (the combatant is a player's character
   // or its stat block does not have it). Refused before the roll; nothing changes.
   ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
+  // CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
+  // Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED = 123;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -4469,6 +4472,11 @@ message CastSpellRequest {
   // `invalid_argument` or, with no use left, `failed_precondition` with NO_USES. The
   // always-on ones apply without being named. The uses are spent with the slot.
   repeated SpellOptionChoice spell_options = 34;
+  // Wall of Fire on a map with a grid: the wall's shape, size and damaging side. The point of origin
+  // (`origin`) is the line's first square or the ring's center. Required for a spell that lays a wall
+  // (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
+  // (see SpellWall), or sent for any other spell, it is `invalid_argument`.
+  SpellWall wall = 35;
 }
 
 // SpellOptionChoice is a table cast option ticked on a casting.
@@ -4506,6 +4514,33 @@ message SpellOrigin {
 message SpellDirection {
   int32 dx = 1;
   int32 dy = 2;
+}
+
+// SpellWall places a wall (a line or a ring) that a point alone cannot. Today only Wall of Fire reads it.
+// The spell's point of origin is the line's first square, or the ring's center.
+message SpellWall {
+  // True for a ringed wall; false for a straight one.
+  bool ring = 1;
+  // The way a straight wall runs from the point of origin. Unset for a ring.
+  SpellDirection direction = 2;
+  // The straight wall's length or the ring's diameter in feet. 0 means the spell's full size (60 for the
+  // line, 20 for the ring); any other value is a multiple of 5 up to that size.
+  int32 length_ft = 3;
+  // The side that deals the damage: LEFT or RIGHT for a straight wall, INNER or OUTER for a ring.
+  WallSide side = 4;
+}
+
+// WallSide is the side of a wall that deals damage.
+enum WallSide {
+  WALL_SIDE_UNSPECIFIED = 0;
+  // Of a straight wall: the left of the way it runs from the point of origin (north for a wall that runs east).
+  WALL_SIDE_LEFT = 1;
+  // Of a straight wall: the right of the way it runs from the point of origin (south for a wall that runs east).
+  WALL_SIDE_RIGHT = 2;
+  // Of a ring: inside it.
+  WALL_SIDE_INNER = 3;
+  // Of a ring: outside it.
+  WALL_SIDE_OUTER = 4;
 }
 
 // SpellArea is where an area spell landed: the point of origin it really had (the
@@ -4565,6 +4600,8 @@ message PreviewSpellAreaRequest {
   }
   // As CastSpellRequest.granted_by: the grant the spell would be cast through ("" for a spell of the classes).
   string granted_by = 8;
+  // As CastSpellRequest.wall: the wall of a spell that lays one.
+  SpellWall wall = 9;
 }
 
 // PreviewSpellAreaResponse is who an area reaches.

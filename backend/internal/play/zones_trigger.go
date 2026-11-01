@@ -139,7 +139,7 @@ func (s *Service) resolveCatch(ctx context.Context, c *combatTx, cs []playdb.Com
 // spells that burn, the restraint of the web.
 func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant, saved bool, h *castHit) (zoneDamageDealt, error) {
 	switch {
-	case k.z.def.kind == zoneDamage:
+	case k.z.def.burns():
 		return s.dealZoneDamage(ctx, c, k, saved)
 	case saved:
 	case k.z.def.kind == zoneRetch:
