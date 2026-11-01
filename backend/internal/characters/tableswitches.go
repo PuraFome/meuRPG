@@ -331,12 +331,7 @@ func (c *switchCall) contentAfter(ctx context.Context, q *charactersdb.Queries, 
 	if err != nil {
 		return nil, wrap("list the table's content", err)
 	}
-	overlay, err := overlayOf(rows, int(rev))
-	if err != nil {
-		return nil, err
-	}
-	overlay.Off = append(overlay.Off, off...)
-	after, err := c.s.srd.With(overlay)
+	after, err := buildFromRows(c.s.srd, rows, int(rev), off)
 	if err != nil {
 		return nil, wrap("add the table's content to the rules", err)
 	}

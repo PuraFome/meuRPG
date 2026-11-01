@@ -228,8 +228,28 @@ type HitPoints struct {
 // hand-written effects, with every formula already compiled. It is
 // immutable after LoadSRD and safe for concurrent use.
 type Content struct {
-	c *content
+	c       *content
+	refused []Refused
 }
+
+// Refused is a stored entry that the content was built without, and the first
+// thing the engine found wrong with it.
+type Refused struct {
+	Key     string
+	Field   string
+	Reason  string
+	Message string
+}
+
+// WithRefused returns a content that shares c's data and reports refused as the
+// entries it was built without.
+func (c *Content) WithRefused(refused []Refused) *Content {
+	return &Content{c: c.c, refused: refused}
+}
+
+// Refused lists the stored entries the content was built without, in key order.
+// It is empty for a content built from every entry.
+func (c *Content) Refused() []Refused { return c.refused }
 
 // LoadSRD loads the embedded SRD 5.1 snapshot and effects, checks them and
 // compiles every formula. Call it once at startup and fail fast on error:
