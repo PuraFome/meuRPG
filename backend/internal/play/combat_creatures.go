@@ -630,6 +630,10 @@ func (s *Service) checkSummonChoice(ctx context.Context, tx pgx.Tx, campaignID, 
 		// The summon of a feature is cast through the feature's grant, with a use: never with a slot, a ritual or as a known spell.
 		return chk, connect.NewError(connect.CodeInvalidArgument, errors.New("this summon belongs to a feature: cast it with granted_by"))
 	}
+	if err == nil && viaGrant && !chk.Feature {
+		// A summoning spell that a grant gives is cast with the character's classes, not through the grant.
+		return chk, connect.NewError(connect.CodeInvalidArgument, errors.New("a summoning spell is cast with the character's classes, not through a grant"))
+	}
 	return chk, summonErr(err)
 }
 

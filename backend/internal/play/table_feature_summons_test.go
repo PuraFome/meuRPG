@@ -20,7 +20,7 @@ const featureUses = "chamados"
 
 // featureSummonClass is a class whose level 1 feature brings two silver wolves (a formula of the proficiency bonus)
 // with a use of "chamados", two a long rest. The wolves have hit points of slot(), which is 0 for a feature.
-func featureSummonClass() *rulesv1.TableClass {
+func featureSummonClass(castingTime *rulesv1.TableSpellCastingTime) *rulesv1.TableClass {
 	c := &rulesv1.TableClass{
 		NamePt: "Guardião da Matilha", HitDie: 8,
 		SavingThrows: []rulesv1.Ability{rulesv1.Ability_ABILITY_CONSTITUTION, rulesv1.Ability_ABILITY_WISDOM},
@@ -36,7 +36,7 @@ func featureSummonClass() *rulesv1.TableClass {
 				Summon: &rulesv1.TableSummon{
 					CreatureKeys: []string{tableSilverWolf}, Count: "1 + floor(prof() / 2) + slot()", MaxLive: 4,
 					TurnMode: rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE, Replaces: rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_SAME_SUMMON,
-					ResourceKey: featureUses, Concentration: true,
+					ResourceKey: featureUses, Concentration: true, CastingTime: castingTime,
 					Duration: &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE},
 				},
 			}}
@@ -54,7 +54,7 @@ type featureSummoners struct {
 	gaia  *charactersv1.Character
 }
 
-func newFeatureSummoners(t *testing.T) *featureSummoners {
+func newFeatureSummoners(t *testing.T, castingTime ...*rulesv1.TableSpellCastingTime) *featureSummoners {
 	t.Helper()
 	f := &featureSummoners{}
 	f.armed = newArmedWith(t, func(a *armed) {
@@ -70,7 +70,7 @@ func newFeatureSummoners(t *testing.T) *featureSummoners {
 		create(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
 			NamePt: "Lobo de Prata", BaseKey: "monster:wolf", HitPointsFormula: "8 + 4 * slot()",
 		}}})
-		f.class = create(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: featureSummonClass()}})
+		f.class = create(&rulesv1.CreateTableEntryRequest{Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: featureSummonClass(append(castingTime, nil)[0])}})
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
 		f.gaia = a.ana.heroSheet(t, a.campaignID, "Pensantus", &charactersv1.FullSheet{
@@ -366,5 +366,54 @@ func TestMR578_ATableFeatureSummonOpensNoCounterspellWindow(t *testing.T) {
 	}
 	if w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL); w != nil {
 		t.Errorf("the master has a Counterspell window %v for a feature's summon", w)
+	}
+}
+
+// A feature's summon that takes a minute: the use is spent when the casting starts, the master says the time has passed,
+// and the summon choice that comes with the finish makes the creatures; the use is spent once.
+func TestMR578_ATableFeatureSummonOfAMinuteIsFinishedWithTheChoice(t *testing.T) {
+	t.Parallel()
+	f := newFeatureSummoners(t, &rulesv1.TableSpellCastingTime{Unit: rulesv1.CastingTimeUnit_CASTING_TIME_UNIT_MINUTE, Amount: 1})
+	opts := f.featureOptions(t)
+	started, err := f.ana.casting.CastSpellOutsideCombat(t.Context(), connect.NewRequest(&playv1.CastSpellOutsideCombatRequest{
+		CampaignId: f.campaignID, CasterCharacterId: f.gaia.GetId(), SpellKey: opts.GetSpellKey(), GrantedBy: opts.GetGrantedBy(), IdempotencyKey: newKey(),
+	}))
+	if err != nil {
+		t.Fatalf("CastSpellOutsideCombat(a minute) error = %v", err)
+	}
+	cast := started.Msg.GetCast()
+	if cast.GetStatus() != playv1.OutsideCastStatus_OUTSIDE_CAST_STATUS_CASTING || usedOf(f.vitals(t, f.gaia), featureUses) != 1 || len(f.mustCreatures(t, f.ana, f.gaia)) != 0 {
+		t.Fatalf("the start = %v, want a casting, a use spent and no creature yet", cast)
+	}
+	done, err := f.finish(t, f.master, cast.GetId(), func(r *playv1.ConfirmCastTimePassedRequest) {
+		r.Summon = &playv1.SummonChoice{CreatureKeys: wolves(2)}
+	})
+	if err != nil {
+		t.Fatalf("ConfirmCastTimePassed() error = %v", err)
+	}
+	if len(done.GetCreatureIds()) != 2 || len(f.mustCreatures(t, f.ana, f.gaia)) != 2 || usedOf(f.vitals(t, f.gaia), featureUses) != 1 {
+		t.Errorf("the finish = %v, want two wolves and the use spent once", done)
+	}
+
+	// The first casting still holds the concentration: the master ends it before the second one starts.
+	if _, err := f.endSpell(t, f.master, cast.GetId()); err != nil {
+		t.Fatalf("EndActiveSpell() error = %v", err)
+	}
+	if len(f.mustCreatures(t, f.ana, f.gaia)) != 0 {
+		t.Fatalf("the wolves outlast the concentration that ended")
+	}
+
+	// A casting that is given up spends its use all the same, as it spends a slot: nothing gives it back.
+	again, err := f.ana.casting.CastSpellOutsideCombat(t.Context(), connect.NewRequest(&playv1.CastSpellOutsideCombatRequest{
+		CampaignId: f.campaignID, CasterCharacterId: f.gaia.GetId(), SpellKey: opts.GetSpellKey(), GrantedBy: opts.GetGrantedBy(), IdempotencyKey: newKey(),
+	}))
+	if err != nil {
+		t.Fatalf("CastSpellOutsideCombat(second) error = %v", err)
+	}
+	if _, err := f.master.casting.AbandonCast(t.Context(), connect.NewRequest(&playv1.AbandonCastRequest{CampaignId: f.campaignID, CastId: again.Msg.GetCast().GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("AbandonCast() error = %v", err)
+	}
+	if usedOf(f.vitals(t, f.gaia), featureUses) != 2 || len(f.mustCreatures(t, f.ana, f.gaia)) != 0 {
+		t.Errorf("after the abandoned casting: %d uses spent, %d creatures; want 2 and none", usedOf(f.vitals(t, f.gaia), featureUses), len(f.mustCreatures(t, f.ana, f.gaia)))
 	}
 }
