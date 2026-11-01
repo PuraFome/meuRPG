@@ -1,6 +1,6 @@
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 
-/** The refusals of the legendary actions and of Legendary Resistance (#557, the master's alone): what was wrong, and that nothing was spent. */
+/** The refusals of the legendary actions and of Legendary Resistance (the master's alone): what was wrong, and that nothing was spent. */
 export const LEGENDARY_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [
     EncounterBlockedReason.LEGENDARY_OWN_TURN,

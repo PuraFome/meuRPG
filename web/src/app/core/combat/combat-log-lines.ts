@@ -295,7 +295,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return { ...base, hidden: true, icon: 'pets', actor: '', text: monstersAddedText(e) };
     },
   ],
-  // The master spent legendary actions on an option of a stat block that the engine does not resolve (#557): the line is
+  // The master spent legendary actions on an option of a stat block that the engine does not resolve: the line is
   // his alone, with the creature, the option as the stat block names it (SRD, English) and the cost.
   [
     CombatLogKind.LEGENDARY_SPENT,

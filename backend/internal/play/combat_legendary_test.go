@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Legendary creatures (#557, MR-042, RN-20, RN-29): what a stat block with legendary
+// Legendary creatures (MR-042, RN-20, RN-29): what a stat block with legendary
 // actions has spent is kept on the combatant (creature_spent), the master reads what
 // is left and the options, and no player reads any of it. These tests need the
 // database (MEURPG_TEST_DATABASE_URL).
@@ -53,7 +53,7 @@ func (a *armed) spentOf(t *testing.T, id string) map[string]int {
 }
 
 // TestCreatureSpentHelper: a spend adds up, never goes below 0, a key at 0 is dropped,
-// clear forgets one key, and a key the package does not know (#556's) is kept.
+// clear forgets one key, and a key the package does not know (one reserved for the N/day and Recharge actions) is kept.
 func TestCreatureSpentHelper(t *testing.T) {
 	t.Parallel()
 	a, _, id := dragonFight(t)
@@ -81,7 +81,7 @@ func TestCreatureSpentHelper(t *testing.T) {
 	}
 }
 
-// TestCreatureSpentKeepsWhatItDoesNotKnow: a key of another owner (#556's), whatever its
+// TestCreatureSpentKeepsWhatItDoesNotKnow: a key of another owner (one reserved for the N/day and Recharge actions), whatever its
 // value is, comes out of a spend as it went in.
 func TestCreatureSpentKeepsWhatItDoesNotKnow(t *testing.T) {
 	t.Parallel()

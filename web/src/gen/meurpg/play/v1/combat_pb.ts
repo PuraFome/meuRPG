@@ -15168,7 +15168,7 @@ export enum CombatLogKind {
   MONSTERS_ADDED = 24,
 
   /**
-   * The master spent legendary actions on an option of kind "text" (SpendLegendaryAction, #557):
+   * The master spent legendary actions on an option of kind "text" (SpendLegendaryAction):
    * the actor is the creature and `legendary_spent` has the option and its cost ("gastou 2 ações
    * lendárias: Wing Attack"). Only the master gets the line, and no player's log shows it or
    * counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED

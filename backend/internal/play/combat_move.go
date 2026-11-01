@@ -261,7 +261,7 @@ type moveRequest struct {
 	// combatant that has none) are the master's.
 	forced, place bool
 	// legendary is the key of the legendary option of kind "move" the move is made as (the master's, off the
-	// creature's own turn, with a budget of its own, see legendaryMove).
+	// creature's own turn, with a budget of its own, see spendLegendaryMove).
 	legendary string
 }
 

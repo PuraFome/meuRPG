@@ -100,25 +100,44 @@ Callers never depend on message text; the app turns the code and detail into Por
 
 ## Legendary actions
 
-A creature whose stat block has legendary actions has `rules.LegendaryActionsPerRound` (3, SRD 5.1) a round, kept as what it spent (`creature_spent`, key `legendary_actions`: [Data](../../data/combat.md)).
-Only the master spends them, one option at a time, at the option's cost, by three paths that share one rule (`legendarySpend`, `combat_legendary_spend.go`; `legendaryNow` is the timing):
+A creature whose stat block has legendary actions has `rules.LegendaryActionsPerRound` (3, SRD 5.1) a round.
+What it spent is kept as `creature_spent.legendary_actions` ([Data](../../data/combat.md)).
+Only the master spends them, one option at a time, at the option's cost.
+Three paths share one rule (`combat_legendary_spend.go`):
 
 | Path | Option kind | What it does |
 | --- | --- | --- |
-| `SpendLegendaryAction(option_key)` | `text` | Counts the cost and writes `legendary_action_spent`, a master-only event and line; the master plays the option by hand. An option of kind `attack` is `LEGENDARY_WRONG_KIND` here, and so is one of kind `move` while the creature stands on a square |
-| `RollAttack` with `legendary_option` | `attack` | The attack flow as it is (reaction windows, pending damage, log), made off the creature's own turn. The option's `ActionKey` must be the stat block action of the `attack_key` (`LEGENDARY_WRONG_KIND` otherwise). It spends the cost instead of the action, the attacks made, the reaction and the running start; one attack for each spend. Not a reaction and not the extra action |
-| `MoveCombatant` with `legendary_option` | `move` | A walk by the usual rules (terrain, walls, creatures, doors, conditions) and the creature's speed, with a budget of its own: see [Movement](movement.md#legendary-moves) |
+| `SpendLegendaryAction(option_key)` | `text` | Counts the cost and writes `legendary_action_spent`, a master-only event and line. The master plays the option by hand. |
+| `RollAttack` with `legendary_option` | `attack` | The attack flow as it is (reaction windows, pending damage, log), made off the creature's own turn. It spends the cost instead of the action, the attacks made, the reaction and the running start. One attack for each spend. It is not a reaction and not the extra action. |
+| `MoveCombatant` with `legendary_option` | `move` | A walk by the usual rules with a budget of its own: see [Movement](movement.md#legendary-moves). |
 
-The rule, checked before anything is rolled and again, with the spend, inside the transaction of the action (so a refused action spends nothing): the combat is running (`NOT_ACTIVE`); the creature is an NPC with legendary actions that is not defeated and not incapacitated (by the condition itself or by stunned, paralyzed, petrified or unconscious) or in a Haste lethargy (`LEGENDARY_UNAVAILABLE`); it does not have the turn (`LEGENDARY_OWN_TURN`); the option exists (`LEGENDARY_OPTION_UNKNOWN`) and is of the kind the call makes (`LEGENDARY_WRONG_KIND`); and its cost is at most what is left (`LEGENDARY_NONE_LEFT`).
+An option of kind `attack` is `LEGENDARY_WRONG_KIND` in `SpendLegendaryAction`, and so is one of kind `move` while the creature stands on a square.
+The `ActionKey` of an attack option must be the stat block action of the `attack_key` (`LEGENDARY_WRONG_KIND` otherwise).
+
+The rule is checked before anything is rolled, and again with the spend inside the transaction of the action, so a refused action spends nothing.
+It refuses with these reasons:
+
+- `NOT_ACTIVE`: the combat is not running.
+- `LEGENDARY_UNAVAILABLE`: the creature is not an NPC with legendary actions, is defeated, is incapacitated, or is in a Haste lethargy.
+- `LEGENDARY_OWN_TURN`: the creature has the turn.
+- `REACTION_PENDING`: a reaction window or hold is open, so nobody's turn goes on.
+- `LEGENDARY_OPTION_UNKNOWN`: the creature has no such option.
+- `LEGENDARY_WRONG_KIND`: the option is not of the kind the call makes.
+- `LEGENDARY_NONE_LEFT`: the cost is more than what is left.
+
+A creature surprised at the start of the combat cannot spend either.
 A player gets `permission_denied`.
 The actions come back when the creature's own turn starts (`ResetCombatantTurn`).
-A `move` option of a creature with no square (a combat without a map, or a creature not placed) is one the engine cannot walk: it is offered as text and spent through `SpendLegendaryAction` like one, with the master-only line and the undo.
-The master reads, in `Combatant.legendary`, `actions_left`, `usable_now` (the timing above, for the creature as it stands) and `affordable` on each option (cost at most what is left).
+A `move` option of a creature with no square (a combat without a map, or a creature not placed) is one the engine cannot walk.
+It is offered as text and spent through `SpendLegendaryAction`, with the master-only line and the undo.
+The master reads `actions_left`, `usable_now` and, on each option, `affordable` in `Combatant.legendary`.
 The text spend is a master-only line (`COMBAT_LOG_KIND_LEGENDARY_SPENT`: creature, option name as the SRD has it, cost).
-Its stream hints, `encounter_changed` and `combat_log_changed`, go to the master alone, and so do those of its undo: the players cannot count the spends.
+Its stream hints, `encounter_changed` and `combat_log_changed`, go to the master alone, and so do those of its undo.
+The players cannot count the spends.
 An attack and a move are the ordinary lines every player reads, with the ordinary hints.
 Their event keeps the cost as `spend_cost`, a name that does not say what paid it (RN-20, RN-29).
-A legendary attack that a reaction window holds spends nothing while it waits; the replay the last answer releases spends its cost once, as the master that asked.
+A legendary attack that a reaction window holds spends nothing while it waits.
+The replay the last answer releases spends its cost once, as the master that asked.
 Legendary Resistance is a trait of the same stat block: see [Legendary Resistance](creatures.md#legendary-resistance).
 
 ## How `play` reads the other modules

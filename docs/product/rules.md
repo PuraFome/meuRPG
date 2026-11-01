@@ -754,7 +754,9 @@ The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 X
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
 In theatre of the mind (RN-25) monsters have no square.
-A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice: for the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll, and a roll that fails becomes a success that spends one use.
+A monster with Legendary Resistance (3/Day, SRD 5.1) can succeed on a saving throw it fails, at the master's choice.
+For the saves the master rolls for it (an effect's and the concentration's) he asks for the trait with the roll.
+A roll that fails becomes a success that spends one use.
 A roll that succeeds spends nothing, a creature without the trait or without uses left is refused with nothing changed, and the uses are the combat's (a new combat starts with all of them).
 The master's log line says the roll and the choice; the player's line says the save succeeded (RN-20).
 When a player's spell makes it fail a saving throw (on one target or many), the cast waits for the master (RN-31).
@@ -765,6 +767,14 @@ A creature a spell zone catches saves at once, with no choice for the master.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
 The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
 Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
+A creature with legendary actions (SRD 5.1) has 3 a round, as the SRD gives every legendary creature.
+They are the master's alone, and they come back at the start of the creature's own turn.
+The master spends them at the end of another creature's turn, never on the creature's own turn and never while it is incapacitated or defeated.
+Each option costs what the stat block says (1 to 3) against the round's total, and a spend beyond what is left is refused.
+An attack or a move goes through the ordinary attack or movement flow.
+An option the engine cannot resolve is offered as text and still counts.
+No spend is allowed while a reaction window or hold waits for an answer.
+The players read no spend, only the ordinary attack or movement line (RN-20).
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).
 
 ## RN-30: Limits on what an account creates
@@ -809,9 +819,12 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
-| Parry (monster) | A melee weapon attack hits a creature whose stat block has it: +2 to +5 AC against that attack, one per round, answered by the master for the creature. The kept roll is compared with the new armor class; a hit that no longer meets it is a miss. A creature that cannot react, cannot see the attacker or already reacted this round gets no window; neither does a ranged or spell attack or a critical hit. |
-| Legendary Resistance | A player's spell makes a creature with the trait and a use left fail a saving throw: the cast waits for the master alone, who turns the failures he picks or lets them stand (RN-29). |
+| Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, answered by the master for the creature. |
+| Legendary Resistance | A player's spell makes a creature with the trait and a use left fail a saving throw: the cast waits for the master alone (RN-29). |
 
+A monster's Parry is one a round, and the kept roll is compared with the new armor class.
+A hit that no longer meets it is a miss.
+It opens no window when the creature cannot react, cannot see the attacker or already reacted this round, nor for a ranged or spell attack or a critical hit.
 The reactor rolls in the app, types a physical die, or leaves the roll to the master.
 The held action waits until the window is answered, and is dropped if it can no longer happen; only the master reads that.
 The turn waits for open windows.

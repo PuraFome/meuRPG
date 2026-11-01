@@ -43,9 +43,9 @@ func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.En
 	spent := creatureSpentOf(who.CreatureSpent)
 	out := &playv1.LegendaryState{
 		ActionsPerRound:  conv.Int32(p.PerRound),
-		ActionsLeft:      conv.Int32(max(p.PerRound-spent[spentLegendaryActions], 0)),
+		ActionsLeft:      conv.Int32(usesLeft(p.PerRound, spent[spentLegendaryActions])),
 		ResistancePerDay: conv.Int32(p.ResistancePerDay),
-		ResistanceLeft:   conv.Int32(max(p.ResistancePerDay-spent[spentLegendaryResistance], 0)),
+		ResistanceLeft:   conv.Int32(usesLeft(p.ResistancePerDay, spent[spentLegendaryResistance])),
 		UsableNow:        legendaryNow(enc, who, p) == nil,
 	}
 	for _, o := range p.Options {

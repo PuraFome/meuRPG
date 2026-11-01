@@ -25,7 +25,11 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Effect save | An end-of-turn or start-of-turn save of a lasting effect (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
 | Parry | A melee weapon hit on an NPC whose stat block has Parry (see [Parry](#parry)) | The hit's damage roll (`AWAITING_REACTION`) |
-| Legendary Resistance | A player's spell with a saving throw (one target or many) that a creature with the trait and a use left fails (`LEGENDARY_RESISTANCE`; see [Creatures](creatures.md#legendary-resistance), which lists the saves that are not offered it) | The cast, with the d20s and effect dice of its saves. The master's alone, with no reactor: he turns the failures he picks (`creature_ids`, one use each) or passes, and the cast settles with the same dice |
+| Legendary Resistance | A player's spell whose saving throw a creature with the trait and a use left fails (`LEGENDARY_RESISTANCE`) | The cast, with the d20s and effect dice of its saves |
+
+The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
+The cast then settles with the same dice.
+[Creatures](creatures.md#legendary-resistance) lists the saves that are not offered the trait.
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".
 It is the reactor's player, or the master for an NPC's and, to answer for the player, any.
@@ -84,7 +88,7 @@ The window opens when all of this holds:
 - the attack is a melee weapon attack: a melee attack of the attacker's sheet that is not a spell, and, for a thrown melee weapon on a map, a target within the weapon's melee reach;
 - the hit is not a critical one (it hits whatever the armor class);
 - the creature can react: `reaction_used` is false, it is not defeated, surprised or incapacitated (`incapacitating`), and no effect takes its reactions;
-- the creature sees the attacker (`reactorSees`: not blinded, the attacker not invisible, and on a map with fog the creature's senses reach the attacker's square);
+- the creature sees the attacker (not blinded, the attacker not invisible, and on a map with fog the creature's senses reach the attacker's square);
 - the creature has no Shield window for the same hit (a Shield window is opened first).
 
 The app does not know what the creature wields, so the master answers for the "wielding a melee weapon" condition.
@@ -158,6 +162,9 @@ If the call fails the roll goes on with the 30 s clock.
 A player gets only their own windows (`for_you`) and `reaction_wait`, the line the server writes for the whole table ("Esperando o mestre", "Esperando a reação de Pensantus": the name only when the reactor is a player character the reader sees).
 Never which NPC, which reaction or why.
 The Legendary Resistance window has no reactor: a player reads the wait and nothing of the offer, the failed roll, the count or the trait.
+The wait itself is visible: that it opens at all tells a player that the NPC has a reaction or a trait (a Shield, a Parry or Legendary Resistance).
+The app does not hide that timing.
+A legendary spend, attack or move is refused while a window or hold is open (`REACTION_PENDING`), as every other action of the table is.
 The Counterspell prompt carries no spell name or level; a Cutting Words prompt to a bard has no total; the numbers of the trigger (`ReactionTrigger`) are the master's.
 `reaction_window_opened` and `reaction_window_closed` go only to the reactor and the master.
 The table rule "Reações dos inimigos" (`enemy_reactions`) defaults to opening a window only for an enemy that can react; "Sempre" opens the master's check on every one.

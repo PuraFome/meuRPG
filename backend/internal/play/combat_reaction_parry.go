@@ -17,8 +17,9 @@ import (
 )
 
 // Parry (SRD 5.1, the Reactions of the Bandit Captain, Erinyes, Gladiator, Knight, Marilith and Noble): the
-// creature adds a number to its armor class against one melee weapon attack that would hit it, if it sees the
-// attacker and wields a melee weapon. A melee weapon attack that hits an NPC with the reaction waits
+// creature adds a number to its armor class against one melee attack that would hit it, if it sees the
+// attacker and wields a melee weapon. The SRD says "melee attack"; the app offers melee weapon attacks only
+// (its own rule: a melee spell attack is not offered). A melee weapon attack that hits an NPC with the reaction waits
 // (AWAITING_REACTION) in a window of its own kind, answered by the master for the creature, as the Shield of an
 // NPC is. The d20 is kept: the answer compares the stored total with the armor class plus the bonus.
 //
@@ -93,7 +94,12 @@ func (s *Service) answerParry(ctx context.Context, c *combatTx, w playdb.Reactio
 	if err != nil {
 		return err
 	}
-	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
+	attacker, err := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
+	if err != nil {
+		// Removing the attacker deletes its pending damage (ON DELETE CASCADE), so a window never outlives it;
+		// if it did, the answer goes on and the line names nobody.
+		attacker = playdb.Combatant{}
+	}
 	if !use {
 		return s.passParry(ctx, c, w, p, reactor, got)
 	}
@@ -160,8 +166,8 @@ func (s *Service) useParry(ctx context.Context, c *combatTx, w playdb.ReactionWi
 	return nil
 }
 
-// parryBaseAC is the armor class the hit was compared with (cover and an active Shield included). A damage opened
-// before the column existed falls back to the sheet's.
+// parryBaseAC is the armor class the hit was compared with (cover and an active Shield included). A damage with
+// no stored armor class falls back to the sheet's.
 func (s *Service) parryBaseAC(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant) (int32, error) {
 	if p.AttackArmorClass != nil {
 		return *p.AttackArmorClass, nil

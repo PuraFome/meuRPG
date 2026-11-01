@@ -9,7 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// Spending the legendary actions (#557, SRD 5.1 "Legendary Actions", RN-20, RN-29): the master spends
+// Spending the legendary actions (SRD 5.1 "Legendary Actions", RN-20, RN-29): the master spends
 // them on another creature's turn, one option at a time, at the option's cost, by three paths with one
 // rule (a text option, an attack through RollAttack, a move through MoveCombatant). These tests need the
 // database (MEURPG_TEST_DATABASE_URL).

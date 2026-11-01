@@ -621,8 +621,8 @@ type ReactionStats struct {
 // MonsterReaction is a reaction of a stat block. Kind is "parry" (ACBonus is what it
 // adds to the armor class against one melee attack that would hit) or "text".
 type MonsterReaction struct {
-	Key, Name, Text, Kind string
-	ACBonus               int
+	Kind    string
+	ACBonus int
 }
 
 // ReduceManeuver is a table maneuver that takes a die plus an ability modifier off the damage

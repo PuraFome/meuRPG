@@ -244,3 +244,45 @@ func TestLegendarySpend_AnIncapacitatingConditionRefusesTheSpend(t *testing.T) {
 	}
 	a.mustSpendLegendary(t, e, "Draco", "detect")
 }
+
+// While a reaction window waits for the master, no legendary spend goes on: not the text option, not the
+// attack, not the move (REACTION_PENDING), and none of them spends. Only the creature's turn and its action
+// economy are replaced by the legendary rules; the table is held as for any other action.
+func TestLegendarySpend_AnOpenWindowHoldsTheSpend(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, creature, label string
+		spend                 func(a *armed, e *playv1.Encounter) error
+	}{
+		{"text", adultRedDragon, "Draco", func(a *armed, e *playv1.Encounter) error {
+			_, err := a.spendLegendary(t, a.master, e, "Draco", "detect")
+			return err
+		}},
+		{"attack", adultRedDragon, "Draco", func(a *armed, e *playv1.Encounter) error {
+			_, err := a.legendaryAttack(t, e, "Draco", "tail-attack", dragonTail, "Pensantus", 20)
+			return err
+		}},
+		{"move", vampireKey, "Vlad", func(a *armed, e *playv1.Encounter) error {
+			_, err := a.legendaryMove(t, a.master, e, "Vlad", "move", 8, 6)
+			return err
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			a, _ := resistFightWith(t, c.creature, "", c.label)
+			a.h.roller.queue(1)
+			if _, err := a.holdAt(t, c.label); err != nil {
+				t.Fatalf("CastSpell() error = %v", err)
+			}
+			if a.windowOf(t, a.master, resistKind) == nil {
+				t.Fatalf("the master's windows = %v, want the Legendary Resistance window", a.windows(t, a.master))
+			}
+			e := a.get(t, a.master)
+			before := a.events(t)
+			wantBlockedBy(t, "a legendary "+c.name+" with a window open", c.spend(a, e), playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING)
+			if got := a.spentOn(t, c.label); got != 0 || a.events(t) != before {
+				t.Errorf("the refused %s spent %d and wrote %d events, want none", c.name, got, a.events(t)-before)
+			}
+		})
+	}
+}

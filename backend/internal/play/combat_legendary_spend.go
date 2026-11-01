@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Spending the legendary actions of a creature (#557, SRD 5.1, "Legendary Actions"). A creature with
+// Spending the legendary actions of a creature (SRD 5.1, "Legendary Actions"). A creature with
 // legendary actions takes them only while another creature has the turn, never on its own turn,
 // never when it is defeated or incapacitated, and no more than it has left; the master alone spends
 // them. The three ways to spend (the text option of SpendLegendaryAction, the attack of RollAttack
@@ -81,6 +81,9 @@ func (s *Service) legendaryCheck(ctx context.Context, c *combatTx, ask legendary
 	if err := legendaryNow(c.enc, ask.who, p); err != nil {
 		return none, err
 	}
+	if err := s.legendaryTableHeld(ctx, c, ask.who); err != nil {
+		return none, err
+	}
 	opt, err := legendaryOptionOf(p, ask)
 	if err != nil {
 		return none, err
@@ -93,6 +96,19 @@ func (s *Service) legendaryCheck(ctx context.Context, c *combatTx, ask legendary
 		return none, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT, "the creature has fewer legendary actions left than the option costs")
 	}
 	return opt, nil
+}
+
+// legendaryTableHeld refuses a spend while the table waits: the creature is surprised, a question waits for the
+// master, or a reaction window or hold is open (REACTION_PENDING). Only the creature's turn and action economy are
+// replaced by the legendary rules; nobody's turn goes on past a pending question.
+func (s *Service) legendaryTableHeld(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := s.mustNotBeSurprised(ctx, c, who); err != nil {
+		return err
+	}
+	if err := s.mustNotHold(ctx, c); err != nil {
+		return err
+	}
+	return s.mustNotWait(ctx, c, who)
 }
 
 // legendaryOptionOf finds the option the call names, of the kind it makes (and, for an attack, with the

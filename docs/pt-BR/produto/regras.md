@@ -421,7 +421,7 @@ O mestre vê tudo.
 - O mesmo vale para o dano num personagem depois que o mestre o aplica (de magia, de ação de criatura ou de efeito): o dono do alvo e o mestre leem o valor sofrido, os demais jogadores leem o valor como rolado, então a linha nunca diz a que o alvo resiste.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
-- **A característica de uma criatura que transforma uma salvaguarda falhada em sucesso** (Resistência Lendária) é do mestre: o jogador lê que a salvaguarda da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
+- **A característica de uma criatura que transforma um teste de resistência falhado em sucesso** (Resistência Lendária) é do mestre: o jogador lê que o teste de resistência da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.
 
 **Turnos conjuntos.**
@@ -754,17 +754,27 @@ O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.
 O construtor de encontros ([MR-043](historias.md#mr-043-gerar-encontros)) põe seus monstros salvos pelo mesmo caminho com "Começar este combate", e um jogador nunca recebe o encontro salvo.
 No teatro da mente (RN-25) os monstros não têm quadrado.
-Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso numa salvaguarda que falha, por escolha do mestre: nas salvaguardas que o mestre rola por ele (a de um efeito e a de concentração) ele pede a característica junto com a rolagem, e uma rolagem que falha vira sucesso e gasta um uso.
+Um monstro com Resistência Lendária (3/dia, SRD 5.1) pode ter sucesso num teste de resistência que falha, por escolha do mestre.
+Nos testes de resistência que o mestre rola por ele (o de um efeito e o de concentração) ele pede a característica junto com a rolagem.
+Uma rolagem que falha vira sucesso e gasta um uso.
 Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
-A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que a salvaguarda teve sucesso (RN-20).
-Quando a magia de um jogador faz o monstro falhar numa salvaguarda (num alvo ou em vários), o lançamento espera o mestre (RN-31).
+A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que o teste de resistência teve sucesso (RN-20).
+Quando a magia de um jogador faz o monstro falhar num teste de resistência (num alvo ou em vários), o lançamento espera o mestre (RN-31).
 Ele vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, ou deixa como estão.
 Os mesmos dados resolvem o lançamento.
-A característica não é oferecida em nenhuma outra salvaguarda: a de uma armadilha, a do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
-Uma criatura que uma zona de magia pega faz a salvaguarda na hora, sem escolha do mestre.
+A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, o do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
+Uma criatura que uma zona de magia pega faz o teste de resistência na hora, sem escolha do mestre.
 Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
 O mestre lê a oferta e responde pela criatura; o jogador lê só a espera, depois um acerto ou erro comum, nunca a reação, o bônus nem a classe de armadura (RN-20).
 As outras reações dele (Dividir, Grito, Pegar Pedra, Máscara Inquietante...) são texto na ficha da criatura que o app não resolve.
+Uma criatura com ações lendárias (SRD 5.1) tem 3 por rodada, como o SRD dá a toda criatura lendária.
+Elas são só do mestre e voltam no começo do turno da própria criatura.
+O mestre as gasta no fim do turno de outra criatura, nunca no turno da própria criatura e nunca enquanto ela está incapacitada ou derrotada.
+Cada opção custa o que a ficha diz (1 a 3) do total da rodada, e um gasto além do que resta é recusado.
+Um ataque ou um movimento passa pelo fluxo comum de ataque ou de movimento.
+Uma opção que o motor não resolve é oferecida como texto e conta do mesmo jeito.
+Nenhum gasto é permitido enquanto uma janela de reação ou uma espera aguarda resposta.
+Os jogadores não leem nenhum gasto, só a linha comum de ataque ou de movimento (RN-20).
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).
 
 ## RN-30: Limites do que uma conta cria
@@ -809,9 +819,12 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
-| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, uma por rodada, respondida pelo mestre pela criatura. A rolagem guardada é comparada com a nova classe de armadura; um acerto que não a alcança mais vira erro. Uma criatura que não pode reagir, não vê o atacante ou já reagiu na rodada não recebe a janela; nem um ataque à distância ou de magia, nem um acerto crítico. |
-| Resistência Lendária | A magia de um jogador faz uma criatura com a característica e um uso sobrando falhar numa salvaguarda: o lançamento espera só o mestre, que transforma as falhas que escolher ou as deixa como estão (RN-29). |
+| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, respondida pelo mestre pela criatura. |
+| Resistência Lendária | A magia de um jogador faz uma criatura com a característica e um uso sobrando falhar num teste de resistência: o lançamento espera só o mestre (RN-29). |
 
+O Aparar de um monstro é um por rodada, e a rolagem guardada é comparada com a nova classe de armadura.
+Um acerto que não a alcança mais vira erro.
+Não abre janela quando a criatura não pode reagir, não vê o atacante ou já reagiu na rodada, nem para um ataque à distância ou de magia ou um acerto crítico.
 O reator rola no app, digita um dado físico ou deixa a jogada para o mestre.
 A ação em espera aguarda até a janela ser respondida, e é descartada se não puder mais acontecer; só o mestre lê isso.
 O turno espera pelas janelas abertas.

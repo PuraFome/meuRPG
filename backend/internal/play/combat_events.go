@@ -475,14 +475,14 @@ type actionEvent struct {
 	// SpendCost is how many of the actor's allowance of legendary actions the event spent (an
 	// attack, a move or a text option made as a legendary action), and SpendName the stat block's
 	// name of the option, kept on the text option's event alone: the undo gives the cost back, and
-	// the master's line names the option. Neutral names on purpose: no player-visible payload
-	// carries the word (RN-20, RN-29).
+	// the master's line names the option. No player-visible payload carries a word that says the
+	// spend was legendary (RN-20, RN-29), so the field names say only what was spent.
 	SpendCost int32  `json:"spend_cost,omitempty"`
 	SpendName string `json:"spend_name,omitempty"`
 	// Resisted says the actor's saving throw failed and the master made it a success, and ResistLeft
 	// how many uses of the trait the creature had left then. The event keeps the roll that failed and
-	// says "succeeded" in everything a player reads; the master's line alone tells the rest. Neutral
-	// names on purpose, as above.
+	// says "succeeded" in everything a player reads; the master's line alone tells the rest. The
+	// field names follow the same rule as above.
 	Resisted   bool  `json:"resisted,omitempty"`
 	ResistLeft int32 `json:"resist_left,omitempty"`
 

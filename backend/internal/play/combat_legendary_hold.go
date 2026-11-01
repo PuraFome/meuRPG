@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Legendary Resistance on the saves a player's action makes (#557, SRD 5.1, "Legendary Resistance"). A cast
+// Legendary Resistance on the saves a player's action makes (SRD 5.1, "Legendary Resistance"). A cast
 // with a saving throw that a creature with the trait fails waits in a window of the master's alone
 // (reaction.LegendaryResistance), held with the request as any held action is (combat_reaction_hold.go). The
 // hold keeps the saves as they were rolled (holdData.Saves), so the replay lands the same d20 and the same
@@ -75,7 +75,7 @@ type resistScope struct {
 // guardResistance opens the savepoint of a cast that may be held: a spell with a saving throw that has, among
 // its targets, a creature with Legendary Resistance and a use left whose save the master has not decided yet.
 // The replay of an answered window has the savepoint too, so a replay that is dropped leaves nothing.
-// A spell cast by a creature that is not a player's character, and any other cast, is made as it always was.
+// A spell cast by a creature that is not a player's character, and any other cast, has no savepoint and is not held.
 func (f *castFlow) guardResistance(ctx context.Context) (*resistScope, error) {
 	if f.caster.Kind != kindPlayer || f.sp.SaveAbility == "" || f.sp.AttackType != "" || f.sp.HP != nil || f.laysZone() {
 		return nil, nil
@@ -132,7 +132,7 @@ func (s *Service) resistanceOf(ctx context.Context, c *combatTx, who playdb.Comb
 	if err != nil {
 		return 0, 0, err
 	}
-	return p.ResistancePerDay, max(p.ResistancePerDay-spent.count(spentLegendaryResistance), 0), nil
+	return p.ResistancePerDay, usesLeft(p.ResistancePerDay, spent.count(spentLegendaryResistance)), nil
 }
 
 // settle ends the guard: the cast that waits is already rolled back, a cast that failed is rolled back to the
@@ -278,7 +278,7 @@ func intFaces(in []int32) []int {
 
 // resistSpellSave turns the failed save of a target into a success when the master chose to in the window of
 // the held cast, spending the use in the replay's transaction. A save that passed, or a target the master left
-// alone, is as it was.
+// alone, keeps the result it had.
 func (s *Service) resistSpellSave(ctx context.Context, c *combatTx, target playdb.Combatant, hit *castHit, saved bool) (bool, error) {
 	if saved || hit.Save == nil || !c.replay.resists(target.ID) {
 		return saved, nil
@@ -394,17 +394,15 @@ func (wv *windowView) resistancePrompt(w playdb.ReactionWindow, out *playv1.Reac
 		if !ok {
 			continue
 		}
-		key := conv.OrZero(who.MonsterKey)
-		if key == "" {
-			if chars, err := wv.s.roster.CombatCharacters(wv.ctx, nil, wv.m.CampaignID, []string{who.CharacterID}); err == nil && len(chars) > 0 {
-				key = chars[0].MonsterKey
-			}
+		key, err := wv.s.monsterKeyIn(wv.ctx, nil, wv.m.CampaignID, who)
+		if err != nil {
+			return wv.s.dbError(wv.ctx, "read the stat block key", err)
 		}
 		profile, _ := content.LegendaryProfile(key)
 		spent := creatureSpentOf(who.CreatureSpent)
 		p.Offers = append(p.Offers, &playv1.LegendaryResistanceOffer{
 			CombatantId: who.ID, Label: who.Label, D20: o.D20, Total: o.Total, Dc: o.DC,
-			UsesLeft: conv.Int32(max(profile.ResistancePerDay-spent[spentLegendaryResistance], 0)), UsesPerDay: conv.Int32(profile.ResistancePerDay),
+			UsesLeft: conv.Int32(usesLeft(profile.ResistancePerDay, spent[spentLegendaryResistance])), UsesPerDay: conv.Int32(profile.ResistancePerDay),
 		})
 	}
 	out.Prompt = &playv1.ReactionWindow_LegendaryResistance{LegendaryResistance: p}

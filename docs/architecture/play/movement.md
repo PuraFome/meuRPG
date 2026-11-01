@@ -46,10 +46,17 @@ A creature hidden from the players does not count as cover for a player's attack
 ### Legendary moves
 
 A legendary option of kind `move` (`MoveCombatant` with `legendary_option`; see [Combat](combat.md#legendary-actions)) is the master's walk of an NPC off its own turn.
-It is planned like the NPC's own drag (`planNPCWalk`: the line, terrain, walls, creatures, doors, drag and crawl, `TOO_FAR` past the budget) but with a budget of its own (`movementBudgetDFt`): the whole speed the conditions and effects leave it (the better of walking and flying), as at the start of a turn, without the Dash of its turn and without what it walked then, scaled by `LegendaryOption.MoveSpeedPercent` (half for "moves up to half its speed", the tarrasque). Each spend gets that whole budget again.
-So it does not read the creature's movement of its own turn, and it does not write it: `movement_used_dft` and the running start stay as they were (its own turn resets them anyway), and the undo puts the square back and gives the cost back.
+It is planned like the NPC's own drag: the line, terrain, walls, creatures, doors, drag and crawl, and `TOO_FAR` past the budget.
+The budget is a whole speed of its own.
+It is the whole speed the conditions and effects leave the creature (the better of walking and flying), as at the start of a turn.
+The Dash of its turn does not add to it and what it walked then is not subtracted.
+`LegendaryOption.MoveSpeedPercent` scales it (half for "moves up to half its speed", the tarrasque).
+Each spend gets the whole budget again.
+It does not read the creature's movement of its own turn and does not write it: `movement_used_dft` and the running start stay as they were.
+The undo puts the square back and gives the cost back.
 It is a plain walk (no jump, no forced move, no placement; `invalid_argument`) and needs a map and a placed creature.
 A creature with no square spends the option as text instead ([Combat](combat.md#legendary-actions)).
+It is refused while a reaction window or hold is open (`REACTION_PENDING`).
 It makes no opportunity offer: the offers belong to the mover's own turn, and the vampires' Move says it provokes none.
 Known limit: this holds for every legendary move, including the tarrasque's, which by the SRD would provoke.
 Its event is a normal `combatant_moved` with `spend_cost`; the log reads it as any move.

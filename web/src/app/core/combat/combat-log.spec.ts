@@ -1001,7 +1001,7 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
   });
 });
 
-describe('the legendary actions the master spent (#557): a line for the master alone', () => {
+describe('the legendary actions the master spent: a line for the master alone', () => {
   const spent = entry({
     kind: CombatLogKind.LEGENDARY_SPENT,
     actorLabel: 'Draco',

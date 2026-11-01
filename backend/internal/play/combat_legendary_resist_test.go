@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Legendary Resistance (#557, SRD 5.1: "If the creature fails a saving throw, it can choose to succeed
+// Legendary Resistance (SRD 5.1: "If the creature fails a saving throw, it can choose to succeed
 // instead", 3/Day) on the saves the master rolls for the creature: an effect's (RollEffectSave) and a
 // concentration's (ResolveConcentrationSave). A roll that fails becomes a success that spends one use, in
 // the same change; a roll that succeeds spends nothing. These tests need the database

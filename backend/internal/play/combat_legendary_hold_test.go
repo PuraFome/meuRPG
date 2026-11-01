@@ -9,7 +9,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Legendary Resistance on the saves a player's action makes (#557): a cast whose saving throw a dragon fails
+// Legendary Resistance on the saves a player's action makes: a cast whose saving throw a dragon fails
 // waits in a window of the master's alone, with the d20 kept; the master turns the failure into a success or
 // not, and the cast goes on with the very same dice. These tests need the database
 // (MEURPG_TEST_DATABASE_URL).
@@ -26,6 +26,12 @@ func resistFight(t *testing.T, dragons ...string) (*armed, *playv1.Encounter) {
 // resistFightOf is resistFight with the three heroes of one race ("" keeps each one's own).
 func resistFightOf(t *testing.T, race string, dragons ...string) (*armed, *playv1.Encounter) {
 	t.Helper()
+	return resistFightWith(t, adultRedDragon, race, dragons...)
+}
+
+// resistFightWith is resistFightOf with creatures of the named stat block instead of the adult red dragon.
+func resistFightWith(t *testing.T, creature, race string, dragons ...string) (*armed, *playv1.Encounter) {
+	t.Helper()
 	a := newCastersOf(t, 3, race)
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{1},
@@ -36,7 +42,7 @@ func resistFightOf(t *testing.T, race string, dragons ...string) (*armed, *playv
 	for _, name := range dragons {
 		a.h.roller.queue(1)
 		a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) {
-			r.CreatureKey, r.Count, r.Name, r.Hidden = adultRedDragon, 1, name, new(false)
+			r.CreatureKey, r.Count, r.Name, r.Hidden = creature, 1, name, new(false)
 		})
 	}
 	e = a.begin(t, a.get(t, a.master))

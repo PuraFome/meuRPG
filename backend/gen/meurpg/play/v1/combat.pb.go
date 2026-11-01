@@ -2469,7 +2469,7 @@ const (
 	// (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
 	// before the combat begins (round 0).
 	CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED CombatLogKind = 24
-	// The master spent legendary actions on an option of kind "text" (SpendLegendaryAction, #557):
+	// The master spent legendary actions on an option of kind "text" (SpendLegendaryAction):
 	// the actor is the creature and `legendary_spent` has the option and its cost ("gastou 2 ações
 	// lendárias: Wing Attack"). Only the master gets the line, and no player's log shows it or
 	// counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED

@@ -105,11 +105,12 @@ Tests: `TestMR037_TheKindAudit`, `TestMR037_ACreatureAtZeroLeavesAndTheHitPoints
 A creature whose stat block has the Legendary Resistance trait (SRD 5.1, "3/Day") can choose to succeed on a saving throw it fails.
 The number of uses a day is the trait's own, read from the stat block (`LegendaryProfile.ResistancePerDay`).
 The uses spent are kept on the combatant as `creature_spent.legendary_resistance` ([Data](../../data/combat.md)).
-A combat row starts with none spent, so the "day" is the rest between combats at the table: the app carries no use from one combat to the next.
+A combat starts with none spent.
+The "day" is the rest between combats at the table: the app carries no use from one combat to the next.
 It is a trait, not an action: it works on the creature's own turn, on another's, and while the creature is incapacitated.
 Only the master chooses it, and only for a creature that has the trait: a player's character and a creature without it never do.
 
-The saves the master rolls for the creature take the choice with the roll (`legendaryResistOpen`, `legendaryResist.resists`, `combat_legendary_resist.go`):
+The saves the master rolls for the creature take the choice with the roll (`combat_legendary_resist.go`):
 
 | Save | Call | Field |
 | --- | --- | --- |
@@ -125,7 +126,7 @@ A request sent twice spends once, and its retry answers the same.
 
 **Who sees what (RN-20, RN-29).**
 The master reads the roll that failed, the choice and the uses left in the result of the call.
-He reads the uses left in `Combatant.legendary.resistance_left` too.
+The uses left are also on the master's copy of the combatant.
 His log line says it: "falhou no teste (…) e usou Resistência Lendária: sucesso (restam 2)".
 A player reads the line of a save that succeeded, the same one a roll that passed writes.
 The effect ends or the concentration is kept.
@@ -145,6 +146,8 @@ Each turned failure spends one use, in the same change as the cast; an answer th
 A request sent twice spends once.
 No window opens when no creature with the trait failed, when none has a use left, or when the spell has no saving throw.
 A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
+The wait itself is visible, as it is for a Shield on an NPC, so a player who sees it open for a creature can tell that the master was asked something.
+The app does not hide that timing.
 The players' line of the cast is a save that passed.
 A hold that is dropped (the combat ends, the cast is no longer possible, the kept dice no longer fit the save) spends nothing and leaves no part of the cast.
 The undo of the cast gives back the uses it spent, with the slot and the damage ([Undo](undo.md)).
@@ -169,6 +172,7 @@ Nothing is kept in `creature_spent`.
 **Who sees what (RN-20, RN-29).**
 Only the master reads the window, the bonus, the armor class with it and that the creature has the reaction.
 A player reads the neutral wait ("Esperando o mestre") while it is open, as for any NPC that may react.
+The wait itself is visible, so it tells a player that the creature may have a reaction; the app does not hide that timing.
 After the answer a player reads an ordinary attack line: a miss when Parry turned the hit, a hit when it did not, with no armor class and no word of a reaction.
 The master's line says "<name> aparou (+N CA)" with the total and the armor class.
 

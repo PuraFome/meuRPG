@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Legendary actions, Legendary Resistance and monster reactions (#557): the
+// Legendary actions, Legendary Resistance and monster reactions: the
 // stat block's words read into what a combat can offer the master. Pure
 // functions over a Creature; the play package keeps only what was spent.
 

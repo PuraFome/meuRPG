@@ -55,7 +55,7 @@ func creatureReactionStats(content *rules.Content, monsterKey string) link.React
 	}
 	if p, ok := content.LegendaryProfile(monsterKey); ok {
 		for _, r := range p.Reactions {
-			out.MonsterReactions = append(out.MonsterReactions, link.MonsterReaction{Key: r.Key, Name: r.Name, Text: r.Text, Kind: r.Kind, ACBonus: r.ACBonus})
+			out.MonsterReactions = append(out.MonsterReactions, link.MonsterReaction{Kind: r.Kind, ACBonus: r.ACBonus})
 		}
 	}
 	return out

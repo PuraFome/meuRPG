@@ -18,10 +18,10 @@ import (
 //   - "legendary_resistance": uses of Legendary Resistance spent in this combat (the
 //     "day" is the table's rest between combats).
 //   - "use:<action key>" and "recharge:<action key>": reserved for the N/day and
-//     Recharge actions (issue #556); nothing here writes them, and every key this
+//     Recharge actions; nothing here writes them, and every key this
 //     file does not know is kept as it is.
 //
-// The column is new in every combat (a combatant starts with '{}'). The monster's
+// Only what was spent is stored: a combatant starts with '{}' and an absent key is 0. The monster's
 // reaction stays in combatants.reaction_used (one per round, RN-31).
 const (
 	spentLegendaryActions    = "legendary_actions"
@@ -35,8 +35,8 @@ const creatureSpentLimit = 4096
 var errCreatureSpentFull = fmt.Errorf("what the creature spent does not fit in %d bytes", creatureSpentLimit)
 
 // spentValues is the column as stored: every key with its value as written, so a key
-// this package does not know (#556's) comes back out of a change as it went in, whatever
-// its value is.
+// this package does not know (one reserved for the N/day and Recharge actions) comes back out of a
+// change as it went in, whatever its value is.
 type spentValues map[string]json.RawMessage
 
 // count is what was spent under key: 0 when it is absent or not a whole number.
@@ -134,3 +134,6 @@ func jsonbTextLen(compact []byte) int {
 	}
 	return n
 }
+
+// usesLeft is what is left of an allowance of per after spent was used, never below 0.
+func usesLeft(per, spent int) int { return max(per-spent, 0) }

@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Legendary Resistance (#557, SRD 5.1: "If the creature fails a saving throw, it can choose to
+// Legendary Resistance (SRD 5.1: "If the creature fails a saving throw, it can choose to
 // succeed instead", 3/Day). The trait is the master's alone, works while the creature is
 // incapacitated, and is counted in creature_spent ("legendary_resistance"). The saves the master
 // rolls for the creature (an effect's and a concentration's) take the choice with the roll: the
@@ -63,14 +63,14 @@ func (r legendaryResist) resists(ctx context.Context, c *combatTx, who playdb.Co
 	if err != nil {
 		return false, 0, err
 	}
-	if spent.count(spentLegendaryResistance) >= r.perDay {
+	if usesLeft(r.perDay, spent.count(spentLegendaryResistance)) == 0 {
 		return false, 0, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT, "the creature has no Legendary Resistance left")
 	}
 	now, err := bumpCreatureSpent(ctx, c.q, who.ID, spentLegendaryResistance, 1)
 	if err != nil {
 		return false, 0, err
 	}
-	return true, conv.Int32(max(r.perDay-now[spentLegendaryResistance], 0)), nil
+	return true, conv.Int32(usesLeft(r.perDay, now[spentLegendaryResistance])), nil
 }
 
 // resistFailure turns the failed save of an effect into a success when the master chose to.

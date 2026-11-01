@@ -226,7 +226,19 @@ func TestParry_AThrownWeaponIsMeleeOnlyInReach(t *testing.T) {
 	}
 }
 
-// A creature whose stat block has no Parry opens no window, and a player's character with a sheet has none.
+// The same dagger thrown from beyond the reach is a ranged attack: its hit waits for no Parry.
+func TestParry_AThrownWeaponBeyondReachOpensNoWindow(t *testing.T) {
+	t.Parallel()
+	a, e := parryFight(t, knightKey, knight)
+	k := byLabel(t, e, knight)
+	a.put(t, "Toren", k.GetCol()-3, k.GetRow())                                     // 15 ft from the Knight
+	hit := a.mustAttack(t, a.caio, e, "Toren", daggerKey, knight, d20(knightHit+2)) // +2: the half cover the map gives at 15 ft
+	if w := a.windowOf(t, a.master, parryKind); w != nil || hit.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL {
+		t.Errorf("a dagger thrown from 15 ft = window %v, hit %v; want a hit with no window", w, hit.GetRoll())
+	}
+}
+
+// A creature whose stat block has no Parry opens no window.
 func TestParry_ACreatureWithoutTheReactionHasNone(t *testing.T) {
 	t.Parallel()
 	a, e := parryFight(t, "monster:bandit", "Bandido")

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -24,13 +26,18 @@ const maxPlanAttackName = 40
 // monsterKeyOf is the stat block key of an NPC or a creature ("monster:ghoul"), "" when the combatant has
 // none (a player's character, an NPC made by hand).
 func (s *Service) monsterKeyOf(ctx context.Context, c *combatTx, who playdb.Combatant) (string, error) {
+	return s.monsterKeyIn(ctx, c.tx, c.session.CampaignID, who)
+}
+
+// monsterKeyIn is monsterKeyOf outside a write: tx is the open transaction, or nil for a read.
+func (s *Service) monsterKeyIn(ctx context.Context, tx pgx.Tx, campaignID string, who playdb.Combatant) (string, error) {
 	if key := conv.OrZero(who.MonsterKey); key != "" {
 		return key, nil
 	}
 	if who.Kind != kindNPC {
 		return "", nil
 	}
-	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{who.CharacterID})
+	chars, err := s.roster.CombatCharacters(ctx, tx, campaignID, []string{who.CharacterID})
 	if err != nil || len(chars) == 0 {
 		return "", err
 	}
