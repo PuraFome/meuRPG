@@ -39,7 +39,10 @@ func (c *cave) bossFight(t *testing.T, key, label string) *playv1.Encounter {
 }
 
 // lichFight is bossFight with the lich, "Lich".
-func (c *cave) lichFight(t *testing.T) *playv1.Encounter { return c.bossFight(t, lichKey, "Lich") }
+func (c *cave) lichFight(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	return c.bossFight(t, lichKey, "Lich")
+}
 
 // spentBy is the uses of Legendary Resistance the creature has spent.
 func (c *cave) spentBy(t *testing.T, label string) int {
