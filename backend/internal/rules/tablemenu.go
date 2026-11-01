@@ -53,6 +53,11 @@ type MenuField struct {
 // in Portuguese. Hint is a short explanation where the name alone does not say.
 type MenuValue struct {
 	Key, NamePT, HintPT string
+	// OnlyModes, for a target of a modifier, are the only modifier modes it takes (the critical range is
+	// set, never added); empty means every mode. Min and Max, for the same, bound a literal value of the
+	// modifier (both zero: unbounded). The editor offers nothing else for that target.
+	OnlyModes []string
+	Min, Max  int
 }
 
 // MenuList is a closed list a field takes.
@@ -154,7 +159,7 @@ const (
 // menuTypes is the menu's types, in the picker's order, with the copy in
 // Portuguese, in our own words. Only the types of overlayEffectTypes appear.
 var menuTypes = []MenuType{
-	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia.", Fields: []MenuField{
+	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir.", Fields: []MenuField{
 		{Name: "target", Required: true, Kind: "choice", List: ListModifierTargets},
 		{Name: "mode", Required: true, Kind: "choice", List: ListModifierModes},
 		{Name: "value", Required: true, Kind: "formula"},
@@ -446,8 +451,8 @@ var (
 		"check.all": "Todos os testes de habilidade", "save.all": "Todos os testes de resistência",
 	}
 	tagPrefixes = []MenuValue{
-		{"against:", "Contra…", "Só vale contra o que a etiqueta diz (against:magic); o app lembra e o mestre decide."},
-		{"about:", "Sobre…", "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
+		{Key: "against:", NamePT: "Contra…", HintPT: "Só vale contra o que a etiqueta diz (against:magic); o app lembra e o mestre decide."},
+		{Key: "about:", NamePT: "Sobre…", HintPT: "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
 	}
 )
 
@@ -541,7 +546,12 @@ func (c *content) menuSaves() []MenuValue {
 func (c *content) menuModifierTargets() []MenuValue {
 	var targets []MenuValue
 	for _, k := range modifierTargets {
-		targets = append(targets, MenuValue{Key: k, NamePT: modifierTargetNames[k]})
+		v := MenuValue{Key: k, NamePT: modifierTargetNames[k]}
+		if k == CriticalRangeTarget {
+			v.HintPT = "O menor resultado natural do d20 que é acerto crítico (de 15 a 20; o normal é 20). Só o modo Definir vale; vale o menor entre os efeitos do personagem."
+			v.OnlyModes, v.Min, v.Max = []string{"set"}, MinCriticalRange, MaxCriticalRange
+		}
+		targets = append(targets, v)
 	}
 	targets = append(targets, c.menuSkillRolls()...)
 	return append(targets, c.menuSaves()...)

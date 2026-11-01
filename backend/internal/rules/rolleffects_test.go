@@ -2,7 +2,9 @@ package rules
 
 import (
 	"errors"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -52,8 +54,10 @@ func TestDeriveCriticalRangeFromATableModifier(t *testing.T) {
 		{"a formula below 15 is clamped", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "level() - 10"}, 3, 15},
 		{"a formula above 20 is clamped", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "level() + 20"}, 3, 20},
 		{"a false when keeps 20", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18", When: "level() >= 10"}, 3, 20},
+		{"the same effect with its when true lowers it (control)", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18", When: "level() >= 2"}, 3, 18},
 		{"a true when applies", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18", When: "level() >= 3"}, 3, 18},
 		{"a tagged modifier is a hint only", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18", Tags: []string{"against:undead"}}, 3, 20},
+		{"the same modifier untagged lowers it (control)", Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18"}, 3, 18},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -109,8 +113,12 @@ func TestACriticalRangeModifierDoesNotTouchAnyOtherNumber(t *testing.T) {
 	t.Parallel()
 	plain := Derive(rollBuild(3), withOverlay(t, rollOverlay(nil, nil)))
 	with := Derive(rollBuild(3), withOverlay(t, rollOverlay([]Effect{{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18"}}, nil)))
-	if with.ArmorClass != plain.ArmorClass || with.Initiative != plain.Initiative || with.HitPointsMax != plain.HitPointsMax || len(with.Issues) != len(plain.Issues) {
-		t.Errorf("the numbers changed: %+v vs %+v", with.ArmorClass, plain.ArmorClass)
+	if with.CriticalRange != 18 || plain.CriticalRange != 20 {
+		t.Fatalf("critical ranges = %d with, %d without; want 18 and 20", with.CriticalRange, plain.CriticalRange)
+	}
+	with.CriticalRange, plain.CriticalRange = 0, 0 // everything else of the sheet is the same
+	if !reflect.DeepEqual(with, plain) {
+		t.Errorf("the modifier changed more than the critical range:\n with %+v\n plain %+v", with, plain)
 	}
 }
 
@@ -122,21 +130,21 @@ func TestDeriveExposesTheRerollsAndMinimumsInTheOrderOfTheEffects(t *testing.T) 
 	t.Parallel()
 	c := withOverlay(t, rollOverlay(
 		luck(
-			Effect{Type: "reroll", Rolls: []string{RollAttack, RollSave}, AtMost: 2, Resource: rollUses, Cost: "2"},
-			Effect{Type: "roll_minimum", Rolls: []string{RollCheck}, Value: "10"}),
+			Effect{Type: "reroll", Rolls: []string{RollAppliesAttack, RollAppliesSave}, AtMost: 2, Resource: rollUses, Cost: "2"},
+			Effect{Type: "roll_minimum", Rolls: []string{RollAppliesCheck}, Value: "10"}),
 		[]Effect{
 			{Type: "reroll", Rolls: []string{RollDamage}, AtMost: 1},
-			{Type: "roll_minimum", Rolls: []string{RollDamage, RollAttack}, Value: "3", When: "level() >= 3"},
+			{Type: "roll_minimum", Rolls: []string{RollDamage, RollAppliesAttack}, Value: "3", When: "level() >= 3"},
 		}))
 	for range 3 { // the order is stable across derivations
 		d := Derive(rollBuild(3), c)
 		wantR := []RerollRule{
-			{Applies: []string{RollAttack, RollSave}, AtMost: 2, Resource: rollUses, Cost: 2, Source: rollFirst},
+			{Applies: []string{RollAppliesAttack, RollAppliesSave}, AtMost: 2, Resource: rollUses, Cost: 2, Source: rollFirst},
 			{Applies: []string{RollDamage}, AtMost: 1, Cost: 1, Source: rollSecond},
 		}
 		wantM := []RollMinimum{
-			{Applies: []string{RollCheck}, Value: 10, Source: rollFirst},
-			{Applies: []string{RollDamage, RollAttack}, Value: 3, Source: rollSecond},
+			{Applies: []string{RollAppliesCheck}, Value: 10, Source: rollFirst},
+			{Applies: []string{RollDamage, RollAppliesAttack}, Value: 3, Source: rollSecond},
 		}
 		if !slices.EqualFunc(d.Rerolls, wantR, func(a, b RerollRule) bool {
 			return slices.Equal(a.Applies, b.Applies) && a.AtMost == b.AtMost && a.Resource == b.Resource && a.Cost == b.Cost && a.Source == b.Source
@@ -160,11 +168,11 @@ func TestARerollWhoseResourceIsMissingIsDropped(t *testing.T) {
 	c := withOverlay(t, rollOverlay(
 		[]Effect{
 			{Type: "resource", Resource: rollUses, Max: "level() >= 5 ? 2 : 0", Recharge: RechargeLongRest},
-			{Type: "reroll", Rolls: []string{RollAttack}, AtMost: 1, Resource: rollUses},
-			{Type: "reroll", Rolls: []string{RollSave}, AtMost: 1, When: "level() >= 3"},
+			{Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 1, Resource: rollUses},
+			{Type: "reroll", Rolls: []string{RollAppliesSave}, AtMost: 1, When: "level() >= 3"},
 		}, nil))
 	d := Derive(rollBuild(3), c)
-	if len(d.Rerolls) != 1 || d.Rerolls[0].Applies[0] != RollSave {
+	if len(d.Rerolls) != 1 || d.Rerolls[0].Applies[0] != RollAppliesSave {
 		t.Errorf("level 3 rerolls = %+v, want only the free save reroll", d.Rerolls)
 	}
 	if d := Derive(rollBuild(5), c); len(d.Rerolls) != 2 {
@@ -176,12 +184,12 @@ func TestRollEffectRefusalsNameTheirField(t *testing.T) {
 	t.Parallel()
 	const at = "subclasses[0].levels[0].features[0].effects["
 	reroll := func(mut func(e *Effect)) Effect {
-		e := Effect{Type: "reroll", Rolls: []string{RollAttack}, AtMost: 2}
+		e := Effect{Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2}
 		mut(&e)
 		return e
 	}
 	minimum := func(mut func(e *Effect)) Effect {
-		e := Effect{Type: "roll_minimum", Rolls: []string{RollCheck}, Value: "10"}
+		e := Effect{Type: "roll_minimum", Rolls: []string{RollAppliesCheck}, Value: "10"}
 		mut(&e)
 		return e
 	}
@@ -194,14 +202,16 @@ func TestRollEffectRefusalsNameTheirField(t *testing.T) {
 		field, reason string
 	}{
 		{"reroll without rolls", reroll(func(e *Effect) { e.Rolls = nil }), ".rolls", ReasonValue},
-		{"reroll with an unknown roll", reroll(func(e *Effect) { e.Rolls = []string{RollAttack, "initiative"} }), ".rolls", ReasonValue},
-		{"reroll with a repeated roll", reroll(func(e *Effect) { e.Rolls = []string{RollSave, RollSave} }), ".rolls", ReasonValue},
+		{"reroll with an unknown roll", reroll(func(e *Effect) { e.Rolls = []string{RollAppliesAttack, "initiative"} }), ".rolls", ReasonValue},
+		{"reroll with a repeated roll", reroll(func(e *Effect) { e.Rolls = []string{RollAppliesSave, RollAppliesSave} }), ".rolls", ReasonValue},
 		{"reroll at_most 0", reroll(func(e *Effect) { e.AtMost = 0 }), ".at_most", ReasonValue},
 		{"reroll at_most 21", reroll(func(e *Effect) { e.AtMost = 21 }), ".at_most", ReasonValue},
 		{"reroll cost 0", reroll(func(e *Effect) { e.Resource, e.Cost = rollUses, "0" }), ".cost", ReasonValue},
 		{"reroll cost without a resource", reroll(func(e *Effect) { e.Cost = "1" }), ".cost", ReasonValue},
 		{"reroll cost that does not compile", reroll(func(e *Effect) { e.Resource, e.Cost = rollUses, "prof(" }), ".cost", ReasonFormula},
 		{"reroll with an unknown resource", reroll(func(e *Effect) { e.Resource = "fantasma" }), ".resource", ReasonReference},
+		{"reroll with a tag", reroll(func(e *Effect) { e.Tags = []string{"against:magic"} }), ".tags", ReasonValue},
+		{"minimum with a tag", minimum(func(e *Effect) { e.Tags = []string{"about:magic-items"} }), ".tags", ReasonValue},
 		{"reroll with a value", reroll(func(e *Effect) { e.Value = "2" }), ".value", ReasonValue},
 		{"reroll with a stray economy", reroll(func(e *Effect) { e.Economy = "reaction" }), ".economy", ReasonValue},
 		{"reroll with a stray applies", reroll(func(e *Effect) { e.Applies = "attack" }), ".applies", ReasonValue},
@@ -209,6 +219,7 @@ func TestRollEffectRefusalsNameTheirField(t *testing.T) {
 		{"minimum with an unknown roll", minimum(func(e *Effect) { e.Rolls = []string{"saving"} }), ".rolls", ReasonValue},
 		{"minimum value 1", minimum(func(e *Effect) { e.Value = "1" }), ".value", ReasonValue},
 		{"minimum value 21", minimum(func(e *Effect) { e.Value = "21" }), ".value", ReasonValue},
+		// "prof()" is a formula, and a minimum must be a literal whole number.
 		{"minimum value that is a formula", minimum(func(e *Effect) { e.Value = "prof()" }), ".value", ReasonValue},
 		{"minimum without a value", minimum(func(e *Effect) { e.Value = "" }), ".value", ReasonValue},
 		{"minimum with a resource", minimum(func(e *Effect) { e.Resource = rollUses }), ".resource", ReasonValue},
@@ -219,7 +230,7 @@ func TestRollEffectRefusalsNameTheirField(t *testing.T) {
 		{"critical_range with mode add", crit("add", "-1"), ".mode", ReasonValue},
 		{"critical_range with mode max", crit("max", "18"), ".mode", ReasonValue},
 		{"critical_range without a value", crit("set", ""), ".value", ReasonValue},
-		{"rolls on another type", Effect{Type: "ambush", Applies: AmbushUnactedAdvantage, Rolls: []string{RollAttack}}, ".rolls", ReasonValue},
+		{"rolls on another type", Effect{Type: "ambush", Applies: AmbushUnactedAdvantage, Rolls: []string{RollAppliesAttack}}, ".rolls", ReasonValue},
 		{"at_most on another type", Effect{Type: "ambush", Applies: AmbushUnactedAdvantage, AtMost: 3}, ".at_most", ReasonValue},
 	}
 	for _, tc := range cases {
@@ -239,11 +250,11 @@ func TestRollEffectRefusalsNameTheirField(t *testing.T) {
 func TestRollEffectsAreAcceptedWhenRight(t *testing.T) {
 	t.Parallel()
 	for _, e := range []Effect{
-		{Type: "reroll", Rolls: []string{RollAttack, RollCheck, RollSave, RollDamage}, AtMost: 20},
+		{Type: "reroll", Rolls: []string{RollAppliesAttack, RollAppliesCheck, RollAppliesSave, RollDamage}, AtMost: 20},
 		{Type: "reroll", Rolls: []string{RollDamage}, AtMost: 1},
-		{Type: "reroll", Rolls: []string{RollAttack}, AtMost: 2, Resource: rollUses},
-		{Type: "reroll", Rolls: []string{RollAttack}, AtMost: 2, Resource: rollUses, Cost: "prof()", TextPT: "Role de novo.", When: "level() >= 3"},
-		{Type: "roll_minimum", Rolls: []string{RollCheck, RollSave}, Value: "2"},
+		{Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2, Resource: rollUses},
+		{Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2, Resource: rollUses, Cost: "prof()", TextPT: "Role de novo.", When: "level() >= 3"},
+		{Type: "roll_minimum", Rolls: []string{RollAppliesCheck, RollAppliesSave}, Value: "2"},
 		{Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "20", TextPT: "Mínimo."},
 		{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "15"},
 		{Type: "modifier", Target: CriticalRangeTarget, Value: "20"},
@@ -270,8 +281,89 @@ func TestRollEffectsAreOnTheMenu(t *testing.T) {
 	if j < 0 || len(m.Lists[j].Values) != len(rollApplies) {
 		t.Errorf("roll_applies list = %+v", m.Lists)
 	}
+	fields := func(typ string) (names []string) {
+		for _, f := range m.Types[slices.IndexFunc(m.Types, func(mt MenuType) bool { return mt.Type == typ })].Fields {
+			names = append(names, f.Name)
+		}
+		return names
+	}
+	if got, want := fields("reroll"), []string{"rolls", "at_most", "resource", "cost", "when", "text_pt"}; !slices.Equal(got, want) {
+		t.Errorf("reroll fields = %v, want %v", got, want)
+	}
+	if got, want := fields("roll_minimum"), []string{"rolls", "value", "when", "text_pt"}; !slices.Equal(got, want) {
+		t.Errorf("roll_minimum fields = %v, want %v", got, want)
+	}
+	for _, mt := range m.Types {
+		if (mt.Type == "reroll" || mt.Type == "roll_minimum") && !strings.Contains(mt.HintPT, "dado") {
+			t.Errorf("%s hint = %q, want a Portuguese explanation", mt.Type, mt.HintPT)
+		}
+	}
 	k := slices.IndexFunc(m.Lists, func(l MenuList) bool { return l.Name == ListModifierTargets })
-	if k < 0 || !slices.ContainsFunc(m.Lists[k].Values, func(v MenuValue) bool { return v.Key == CriticalRangeTarget && v.NamePT != "" }) {
+	if k < 0 || !slices.ContainsFunc(m.Lists[k].Values, func(v MenuValue) bool {
+		return v.Key == CriticalRangeTarget && v.NamePT != "" && v.HintPT != "" && slices.Equal(v.OnlyModes, []string{"set"}) && v.Min == 15 && v.Max == 20
+	}) {
 		t.Errorf("the modifier targets lack %s", CriticalRangeTarget)
+	}
+}
+
+func TestARerollThatCostsMoreThanTheResourceHasIsDropped(t *testing.T) {
+	t.Parallel()
+	// The resource has 2 uses at level 3 and 4 from level 5: a cost of 3 can be paid only from level 5.
+	c := withOverlay(t, rollOverlay([]Effect{
+		{Type: "resource", Resource: rollUses, Max: "level() >= 5 ? 4 : 2", Recharge: RechargeLongRest},
+		{Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 1, Resource: rollUses, Cost: "3"},
+		{Type: "reroll", Rolls: []string{RollAppliesSave}, AtMost: 1, Resource: rollUses, Cost: "2"},
+	}, nil))
+	if d := Derive(rollBuild(3), c); len(d.Rerolls) != 1 || d.Rerolls[0].Applies[0] != RollAppliesSave {
+		t.Errorf("level 3 rerolls = %+v, want only the one that costs 2", d.Rerolls)
+	}
+	if d := Derive(rollBuild(5), c); len(d.Rerolls) != 2 {
+		t.Errorf("level 5 rerolls = %+v, want both", d.Rerolls)
+	}
+}
+
+// The engine-load path (the SRD content and stored content) checks the effects with the same rules as the
+// table's overlay, without the overlay's field paths.
+func TestRollEffectsThroughTheEngineLoad(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	bad := map[string]*Effect{
+		"reroll without rolls":         {Type: "reroll", AtMost: 2},
+		"reroll with an unknown roll":  {Type: "reroll", Rolls: []string{"initiative"}, AtMost: 2},
+		"reroll with a repeated roll":  {Type: "reroll", Rolls: []string{RollDamage, RollDamage}, AtMost: 2},
+		"reroll at_most 0":             {Type: "reroll", Rolls: []string{RollDamage}},
+		"reroll at_most 21":            {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 21},
+		"reroll cost 0":                {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 2, Resource: "r", Cost: "0"},
+		"reroll cost without resource": {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 2, Cost: "1"},
+		"reroll cost that fails":       {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 2, Resource: "r", Cost: "prof("},
+		"reroll with a value":          {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 2, Value: "2"},
+		"reroll with a tag":            {Type: "reroll", Rolls: []string{RollDamage}, AtMost: 2, Tags: []string{"against:magic"}},
+		"minimum without rolls":        {Type: "roll_minimum", Value: "10"},
+		"minimum value 1":              {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "1"},
+		"minimum value 21":             {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "21"},
+		"minimum without a value":      {Type: "roll_minimum", Rolls: []string{RollDamage}},
+		"minimum with a resource":      {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "5", Resource: "r"},
+		"minimum with a tag":           {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "5", Tags: []string{"about:x"}},
+		"rolls on an ambush":           {Type: "ambush", Applies: AmbushUnactedAdvantage, Rolls: []string{RollDamage}},
+		"at_most on a minimum":         {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "5", AtMost: 3},
+		"critical_range 14":            {Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "14"},
+		"critical_range 21":            {Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "21"},
+		"critical_range add":           {Type: "modifier", Target: CriticalRangeTarget, Mode: "add", Value: "-1"},
+	}
+	for name, e := range bad {
+		if err := srd.c.compileEffect("feature:x", e); err == nil {
+			t.Errorf("%s: the loader accepted it", name)
+		}
+	}
+	for name, e := range map[string]*Effect{
+		"a reroll":             {Type: "reroll", Rolls: []string{RollAppliesAttack, RollDamage}, AtMost: 2},
+		"a reroll with a cost": {Type: "reroll", Rolls: []string{RollAppliesSave}, AtMost: 1, Resource: "r", Cost: "2"},
+		"a minimum":            {Type: "roll_minimum", Rolls: []string{RollAppliesCheck}, Value: "10"},
+		"a critical range":     {Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "18"},
+		"a critical formula":   {Type: "modifier", Target: CriticalRangeTarget, Value: "level() >= 5 ? 18 : 19"},
+	} {
+		if err := srd.c.compileEffect("feature:x", e); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }

@@ -7,16 +7,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
-// The rolls a reroll or a roll_minimum effect covers (its `rolls`): the d20 of an attack roll, of an
-// ability check and of a saving throw, and a die of weapon or spell damage.
-const (
-	RollAttack = "attack"
-	RollCheck  = "check"
-	RollSave   = "save"
-	RollDamage = "damage"
-)
+// RollDamage is, besides the d20 rolls of combateffects.go, a roll a reroll or a roll_minimum covers (its
+// `rolls`): a die of weapon or spell damage.
+const RollDamage = "damage"
 
-var rollApplies = []string{RollAttack, RollCheck, RollSave, RollDamage}
+// rollApplies are the rolls a reroll or roll_minimum covers: RollAppliesAttack, RollAppliesCheck and
+// RollAppliesSave (the d20 rolls) and RollDamage (a die of weapon or spell damage).
+var rollApplies = []string{RollAppliesAttack, RollAppliesCheck, RollAppliesSave, RollDamage}
 
 // The bounds of the numbers of the roll effects.
 const (
@@ -36,7 +33,7 @@ const (
 const CriticalRangeTarget = "critical_range"
 
 // RerollRule is a reroll effect the character has: a die of the covered rolls that shows AtMost or lower may
-// be rolled again, and the new roll must be used (SRD 5.1, Lucky). Each reroll spends Cost uses of Resource
+// be rolled again, and the new roll must be used (the halfling's Lucky trait). Each reroll spends Cost uses of Resource
 // when it names one.
 type RerollRule struct {
 	// Applies are the rolls it covers (Roll*).
@@ -51,7 +48,7 @@ type RerollRule struct {
 }
 
 // RollMinimum is a roll_minimum effect the character has: a die of the covered rolls that shows less than
-// Value counts as Value (the SRD's Reliable Talent and Elemental Adept shape).
+// Value counts as Value (the shape of the SRD's Reliable Talent).
 type RollMinimum struct {
 	// Applies are the rolls it covers (Roll*).
 	Applies []string
@@ -64,6 +61,9 @@ type RollMinimum struct {
 // rollsShape says what is wrong with the list of rolls of a roll effect: the field and why, both "" when
 // right. It is the shared check of the engine's load and of the table's menu.
 func rollsShape(e *Effect) (field, msg string) {
+	if len(e.Tags) > 0 {
+		return "tags", "a " + e.Type + " has no tags: the engine never applies a tagged effect, and these have no hint to show"
+	}
 	if len(e.Rolls) == 0 {
 		return "rolls", "rolls are required: attack, check, save or damage"
 	}
@@ -175,7 +175,7 @@ func (x *deriver) rollEffects() {
 	for _, a := range x.active {
 		e := a.effect
 		switch {
-		case !x.applies(a):
+		case len(e.Tags) > 0 || !x.applies(a):
 		case e.Type == "roll_minimum":
 			n, _ := strconv.Atoi(e.Value)
 			x.d.RollMinimums = append(x.d.RollMinimums, RollMinimum{Applies: slices.Clone(e.Rolls), Value: n, Source: a.owner})
@@ -190,20 +190,24 @@ func (x *deriver) rollEffects() {
 }
 
 // rerollCost is the uses a reroll spends (1 by default), and false when the reroll is dropped: the resource
-// it spends does not exist at this level, or the cost formula failed or gave less than 1.
+// it spends does not exist at this level, the cost formula failed or gave less than 1, or the cost is more than the resource has.
 func (x *deriver) rerollCost(a activeEffect) (int, bool) {
 	e := a.effect
 	if e.Resource == "" {
 		return 1, true
 	}
-	if !slices.ContainsFunc(x.d.Resources, func(r Resource) bool { return r.Key == e.Resource }) {
+	i := slicesIndexResource(x.d.Resources, e.Resource)
+	if i < 0 {
 		return 0, false
 	}
-	if e.cost == nil {
-		return 1, true
+	n := 1
+	if e.cost != nil {
+		var ok bool
+		if n, ok = x.evalInt(e.cost, a); !ok || n < 1 {
+			return 0, false
+		}
 	}
-	n, ok := x.evalInt(e.cost, a)
-	return n, ok && n >= 1
+	return n, n <= x.d.Resources[i].Max // a cost above the uses the resource has could never be paid
 }
 
 // criticalRangeFrom lowers the critical range by a modifier of the critical_range target: the lowest of the
@@ -224,6 +228,6 @@ func rollAppliesValues() []MenuValue {
 }
 
 var rollAppliesNms = map[string]string{
-	RollAttack: "Jogada de ataque (o d20)", RollCheck: "Teste de habilidade (o d20)",
-	RollSave: "Teste de resistência (o d20)", RollDamage: "Dado de dano (de arma ou magia)",
+	RollAppliesAttack: "Jogada de ataque (o d20)", RollAppliesCheck: "Teste de habilidade (o d20)",
+	RollAppliesSave: "Teste de resistência (o d20)", RollDamage: "Dado de dano (de arma ou magia)",
 }

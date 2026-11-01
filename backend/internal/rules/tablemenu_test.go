@@ -151,11 +151,25 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	// Every value of every list is accepted, in the field it goes in.
 	var effects []Effect
 	for _, v := range menuList(t, m, ListModifierTargets) {
-		e := Effect{Type: "modifier", Target: v.Key, Mode: "add", Value: "1"}
-		if v.Key == CriticalRangeTarget {
-			e.Mode, e.Value = "set", "18" // the critical range is set, never added
+		// What the menu says the target takes: its modes (every one by default) and a value within its bounds.
+		value := "1"
+		if v.Max > 0 {
+			value = strconv.Itoa(v.Max)
 		}
-		effects = append(effects, e)
+		for _, mode := range menuList(t, m, ListModifierModes) {
+			e := Effect{Type: "modifier", Target: v.Key, Mode: mode.Key, Value: value}
+			if len(v.OnlyModes) == 0 || slices.Contains(v.OnlyModes, mode.Key) {
+				effects = append(effects, e)
+			} else if _, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{e})}}); err == nil {
+				t.Errorf("target %s takes only %v, yet mode %s is accepted", v.Key, v.OnlyModes, mode.Key)
+			}
+		}
+		if v.Max > 0 {
+			over := Effect{Type: "modifier", Target: v.Key, Mode: "set", Value: strconv.Itoa(v.Max + 1)}
+			if _, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{over})}}); err == nil {
+				t.Errorf("target %s is bounded to %d..%d, yet %s is accepted", v.Key, v.Min, v.Max, over.Value)
+			}
+		}
 	}
 	for _, v := range menuList(t, m, ListRollApplies) {
 		effects = append(effects, Effect{Type: "reroll", Rolls: []string{v.Key}, AtMost: 2}, Effect{Type: "roll_minimum", Rolls: []string{v.Key}, Value: "5"})
@@ -288,8 +302,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
-		"reroll":             {Type: "reroll", Rolls: []string{RollAttack}, AtMost: 2},
-		"roll_minimum":       {Type: "roll_minimum", Rolls: []string{RollCheck}, Value: "10"},
+		"reroll":             {Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2},
+		"roll_minimum":       {Type: "roll_minimum", Rolls: []string{RollAppliesCheck}, Value: "10"},
 		"wild_shape":         {Type: "wild_shape", MaxCR: "1"},
 		"slot_recovery":      {Type: "slot_recovery", Resource: "dados_de_teste", RecoverMaxLevel: "3", RecoverLevels: "2"},
 		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
