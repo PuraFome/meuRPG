@@ -42,7 +42,7 @@ Whichever path rolls the d20 asks the same gate.
 - the master's rolls (the master never waits here);
 - the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's, a Hellish Rebuke's), because the target's player is not rolling, so they are never offered Indomitable (see Indomitable below).
 
-One exception: a spell's save that a creature with Legendary Resistance fails is held for the master, d20s kept ([Creatures](creatures.md#legendary-resistance)).
+One exception: a spell's save against a creature with Legendary Resistance and a use left is held for the master, whether it passed or failed, d20s kept ([Creatures](creatures.md#legendary-resistance)).
 
 For the saves rolled inside someone else's call, a halfling's Lucky is applied automatically: `autoLucky` (`combat_lucky.go`) rolls the first die showing a 1 again in the app, and the reroll is kept in `saveRoll.Lucky` or `actionEvent.Lucky`, shown as `DiceRoll.rerolled`.
 `luckySaver` gives it to a player's character only, never to an NPC.

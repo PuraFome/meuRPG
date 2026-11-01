@@ -784,8 +784,10 @@ Nos testes de resistência que o mestre rola por ele (o de um efeito e o de conc
 Uma rolagem que falha vira sucesso e gasta um uso.
 Uma rolagem que tem sucesso não gasta nada, uma criatura sem a característica ou sem usos é recusada sem nada mudar, e os usos são do combate (um combate novo começa com todos).
 A linha do registro do mestre diz a rolagem e a escolha; a do jogador diz que o teste de resistência teve sucesso (RN-20).
-Quando a magia de um jogador faz o monstro falhar num teste de resistência (num alvo ou em vários), o lançamento espera o mestre (RN-31).
-Ele vê a rolagem que falhou e transforma as falhas que escolher, um uso cada, ou deixa como estão.
+Quando a magia de um jogador com teste de resistência alcança o monstro (num alvo ou em vários), o lançamento espera o mestre (RN-31), quer o teste de resistência tenha passado, quer tenha falhado.
+A espera não revela nada sobre a rolagem: o jogador lê a mesma espera e o mesmo resultado nos dois casos.
+Ele vê as rolagens que falharam e transforma as falhas que escolher, um uso cada, ou deixa como estão.
+Quando todos esses testes de resistência passaram, não há nada a oferecer e ele deixa o lançamento seguir.
 Os mesmos dados resolvem o lançamento.
 A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, o do efeito de uma arma, Expulsar Mortos-Vivos ou Repreensão Infernal.
 Uma criatura que uma zona de magia pega faz o teste de resistência na hora, sem escolha do mestre.
@@ -846,7 +848,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
 | Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, respondida pelo mestre pela criatura. |
-| Resistência Lendária | A magia de um jogador faz uma criatura com a característica e um uso sobrando falhar num teste de resistência: o lançamento espera só o mestre (RN-29). |
+| Resistência Lendária | A magia de um jogador com teste de resistência alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento espera só o mestre (RN-29). |
 
 O Aparar de um monstro é um por rodada, e a rolagem guardada é comparada com a nova classe de armadura.
 Um acerto que não a alcança mais vira erro.

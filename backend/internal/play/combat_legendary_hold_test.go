@@ -217,16 +217,15 @@ func TestLegendaryResistance_DecliningLeavesTheSaveFailedAndSpendsNothing(t *tes
 	}
 }
 
-// A cast with no failed save of a creature that can use the trait opens no window and changes nothing for the
-// table: the dragon's save passes, the creature has no trait, or it has no use left.
-func TestLegendaryResistance_NoWindowWithoutAFailureOfACreatureThatCan(t *testing.T) {
+// A cast at no creature that can use the trait opens no window and changes nothing for the table: the
+// creature has no trait, or it has no use left.
+func TestLegendaryResistance_NoWindowWithoutACreatureThatCan(t *testing.T) {
 	t.Parallel()
 	for name, set := range map[string]struct {
 		target string
 		face   int
 		spent  int
 	}{
-		"the save passes":          {"Draco", 20, 0},
 		"a creature with no trait": {"Goblin", 1, 0},
 		"no use left":              {"Draco", 1, 3},
 	} {
@@ -250,6 +249,77 @@ func TestLegendaryResistance_NoWindowWithoutAFailureOfACreatureThatCan(t *testin
 				t.Errorf("the dragon spent %d uses, want %d", got, set.spent)
 			}
 		})
+	}
+}
+
+// A save that passed against a creature that can use the trait holds the cast all the same, so the wait says
+// nothing about the roll: the window offers nothing to spend, PASS lets the cast land with the save as rolled,
+// and no use is spent.
+func TestLegendaryResistance_APassedSaveHoldsTheCastWithNothingToOffer(t *testing.T) {
+	t.Parallel()
+	a, e := resistFight(t, "Draco")
+	a.h.roller.queue(20, 20) // the dragon's save passes; a second roll would show
+	before := a.events(t)
+	if _, err := a.holdAt(t, "Draco"); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	asked := a.h.roller.taken()
+	w := a.windowOf(t, a.master, resistKind)
+	if w == nil {
+		t.Fatalf("the master's windows = %v, want the Legendary Resistance window", a.windows(t, a.master))
+	}
+	if offers := w.GetLegendaryResistance().GetOffers(); len(offers) != 0 {
+		t.Errorf("the offers = %v, want none: the save passed", offers)
+	}
+	if n := a.events(t); n != before+1 {
+		t.Errorf("the held cast wrote %d events, want 1 (the hold's)", n-before)
+	}
+	if _, found := a.damageTo(t, "Draco"); found || usedSlots(a.vitals(t, a.pens), 1) != 0 {
+		t.Error("the held cast opened damage or spent a slot")
+	}
+	for _, u := range []*user{a.ana, a.caio, a.bia} {
+		if len(a.windows(t, u)) != 0 {
+			t.Errorf("a player reads the windows %v, want none of them", a.windows(t, u))
+		}
+		if wait := a.get(t, u).GetReactionWait(); wait.GetTitlePt() != "Esperando o mestre" {
+			t.Errorf("a player's wait = %q, want \"Esperando o mestre\"", wait.GetTitlePt())
+		}
+	}
+	// Nothing was offered, so a USE is refused whoever it names, with nothing spent and the window still open.
+	events := a.events(t)
+	for _, labels := range [][]string{{"Draco"}, {"Pensantus"}} {
+		if _, err := a.resistUse(t, a.master, e, w, labels...); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("a USE naming %v error = %v, want it refused", labels, err)
+		}
+	}
+	if a.events(t) != events || a.resistSpentBy(t, "Draco") != 0 || a.windowOf(t, a.master, resistKind) == nil {
+		t.Error("the refused answer changed something")
+	}
+	res, err := a.resistUse(t, a.master, e, w)
+	if err != nil {
+		t.Fatalf("AnswerReaction() error = %v", err)
+	}
+	if res.GetResult().GetUsed() {
+		t.Errorf("the result = %v, want the trait declined", res.GetResult())
+	}
+	if again := a.h.roller.taken(); again != asked {
+		t.Errorf("the replay rolled %d dice more, want none", again-asked)
+	}
+	if got := a.resistSpentBy(t, "Draco"); got != 0 {
+		t.Errorf("the dragon spent %d uses, want none", got)
+	}
+	if a.windowOf(t, a.master, resistKind) != nil {
+		t.Error("the window is still open after the answer")
+	}
+	save := a.castSaveOf(t, a.master, a.get(t, a.master), "Draco")
+	if save.GetOutcome() != playv1.SaveOutcome_SAVE_OUTCOME_SAVED || save.GetResisted() || save.GetRoll().GetFaces()[0] != 20 {
+		t.Errorf("the master reads %v, want the 20 as it passed", save)
+	}
+	if half, found := a.damageTo(t, "Draco"); !found || !half {
+		t.Errorf("the dragon's damage is half = %v (found %v), want the half of a save that passed", half, found)
+	}
+	if usedSlots(a.vitals(t, a.pens), 1) != 1 {
+		t.Error("the cast did not spend its slot after the answer")
 	}
 }
 

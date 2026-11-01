@@ -181,16 +181,18 @@ The hints are those of a save that passed, so the stream tells a player nothing 
 The save events are not among the undoable kinds ([Undo](undo.md)), so the use stays spent.
 
 **A player's action that makes the creature save** (`combat_legendary_hold.go`).
-A spell with a saving throw, on one target or many (`CastSpell`), asks the master first when a creature with the trait and a use left fails its save.
+A spell with a saving throw, on one target or many (`CastSpell`), asks the master first when a creature with the trait and a use left is among its targets, whether its save passed or failed.
 The cast is held with the request, in a window of kind `legendary_resistance` that only the master reads and answers (`AnswerReaction`).
-The window offers one choice for each failed save of such a creature: "Usar Resistência Lendária (restam K)", with the d20, the total, the DC and the uses left.
+The window offers one choice for each failed save of such a creature (none when every one passed): "Usar Resistência Lendária (restam K)", with the d20, the total, the DC and the uses left.
 The master chooses the failures to turn (`creature_ids`) or declines (`PASS`).
+A window with nothing to offer takes only `PASS`: a `USE` that names a creature is refused and spends nothing.
 The hold keeps the d20 and the effect dice of every save of the cast, so the answer settles the cast with the same dice and rolls nothing again.
 A turned failure is a save that succeeded, and the cast writes the damage, the conditions and the effects of a success.
 Each turned failure spends one use, in the same change as the cast.
 An answer that names more than the creature has left is refused with `LEGENDARY_RESISTANCE_NONE_LEFT` and changes nothing.
 A request sent twice spends once.
-No window opens when no creature with the trait failed, when none has a use left, or when the spell has no saving throw.
+No window opens when no target has the trait with a use left, or when the spell has no saving throw.
+The pause is the same whatever the save rolled, so the wait reveals nothing about the roll, only what the docs already say: the creature has the trait and a use left.
 A player sees only the neutral wait ("Esperando o mestre"): not the window, the offer, the roll that failed, the count or the trait.
 The wait itself is visible, as it is for a Shield on an NPC, so a player who sees it open for a creature can tell that the master was asked something.
 The app does not hide that timing.

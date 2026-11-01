@@ -17,20 +17,23 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Legendary Resistance on the saves a player's action makes (SRD 5.1, "Legendary Resistance"). A cast
-// with a saving throw that a creature with the trait fails waits in a window of the master's alone
-// (reaction.LegendaryResistance), held with the request as any held action is (combat_reaction_hold.go). The
-// hold keeps the saves as they were rolled (holdData.Saves), so the replay lands the same d20 and the same
-// dice: nothing is rolled twice. The master turns the failures he chooses into successes, each one spending a
-// use in the replay's own transaction (resistSpellSave), and the others stay failures. A cast that no
-// creature with a use left fails is never held. A player reads the wait any held action gives
-// ("Esperando o mestre") and, after, a save that passed.
+// Legendary Resistance on the saves a player's action makes (SRD 5.1, "Legendary Resistance").
+// A cast with a saving throw that targets a creature with the trait and a use left waits in a window of the master's alone (reaction.LegendaryResistance).
+// It waits whether that creature's save passed or failed, so the wait tells a player nothing about the roll.
+// The window is held with the request as any held action is (combat_reaction_hold.go).
+// The hold keeps the saves as they were rolled (holdData.Saves), so the replay lands the same d20 and the same dice: nothing is rolled twice.
+// The window offers only the failed saves.
+// The master turns the failures he chooses into successes, each one spending a use in the replay's own transaction (resistSpellSave), and the others stay as they were.
+// When every such creature passed, the window offers nothing and the master's PASS lets the cast go on.
+// A cast that targets no creature with the trait and a use left is never held.
+// A player reads the wait any held action gives ("Esperando o mestre") and, after, an ordinary save result.
 
 // errResistHeld ends the transaction of a cast that was held for the window: the cast's writes are rolled
 // back and the hold stands for it.
 var errResistHeld = errors.New("the cast waits for the master's Legendary Resistance")
 
 // resistOffer is one failed save of a window: the creature and the roll that failed.
+// A save that passed is never offered.
 type resistOffer struct {
 	Who   string `json:"who"`
 	D20   int32  `json:"d20,omitempty"`
@@ -68,12 +71,12 @@ func (st *replayState) resists(id string) bool {
 type resistScope struct {
 	sp     pgx.Tx
 	before combatTx
-	// capable are the targets whose failed save the master may turn into a success.
+	// capable are the targets with the trait and a use left, whose save holds the cast.
 	capable map[string]bool
 }
 
-// guardResistance opens the savepoint of a cast that may be held: a spell with a saving throw that has, among
-// its targets, a creature with Legendary Resistance and a use left whose save the master has not decided yet.
+// guardResistance opens the savepoint of a cast that may be held.
+// That is a spell with a saving throw that has, among its targets, a creature with Legendary Resistance and a use left whose save the master has not decided yet.
 // The replay of an answered window has the savepoint too, so a replay that is dropped leaves nothing.
 // A spell cast by a creature that is not a player's character, and any other cast, has no savepoint and is not held.
 func (f *castFlow) guardResistance(ctx context.Context) (*resistScope, error) {
@@ -159,8 +162,9 @@ func (g *resistScope) rollback(ctx context.Context, c *combatTx) {
 	*c = g.before
 }
 
-// offerResistance holds the cast when a creature with a use left failed a save: the writes of the cast are
-// rolled back, and the request waits in a window of the master's with the saves as they were rolled.
+// offerResistance holds the cast when a target has the trait and a use left, whether its save passed or failed.
+// The writes of the cast are rolled back, and the request waits in a window of the master's with the saves as they were rolled.
+// The window offers the failed saves of those targets, and none when they all passed.
 func (f *castFlow) offerResistance(ctx context.Context) error {
 	g := f.resist
 	if g == nil {
@@ -168,16 +172,21 @@ func (f *castFlow) offerResistance(ctx context.Context) error {
 	}
 	var offers []resistOffer
 	var kept []keptSave
+	held := false
 	for _, h := range f.out.made.Hits {
 		if h.Save == nil {
 			continue
 		}
 		kept = append(kept, keptSave{Target: h.Target, Roll: *h.Save})
-		if g.capable[h.Target] && !h.Save.Saved {
+		if !g.capable[h.Target] {
+			continue
+		}
+		held = true
+		if !h.Save.Saved {
 			offers = append(offers, resistOffer{Who: h.Target, D20: h.Save.D20, Total: h.Save.Total, DC: h.Save.DC})
 		}
 	}
-	if len(offers) == 0 {
+	if !held {
 		return nil
 	}
 	g.rollback(ctx, f.c)
@@ -370,8 +379,12 @@ func offered(t windowTrigger, id string) bool {
 	return false
 }
 
-// resistGone says no creature of the window is in the combat any more.
+// resistGone says no creature the window offers is in the combat any more.
+// A window that offers none (every save passed) stays until the master answers it.
 func resistGone(t windowTrigger, byID map[string]playdb.Combatant) bool {
+	if len(t.Resist) == 0 {
+		return false
+	}
 	for _, o := range t.Resist {
 		if _, ok := byID[o.Who]; ok {
 			return false

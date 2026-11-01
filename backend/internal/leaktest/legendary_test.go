@@ -2,7 +2,9 @@ package leaktest
 
 import (
 	"bytes"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -259,34 +261,7 @@ func TestACastsLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 	for _, word := range append([]string{"REACTION_KIND_LEGENDARY_RESISTANCE", "legendaryResistance", "Usar Resistência Lendária"}, resistanceWords...) {
 		w.secrets.add(&canary{needle: word, kind: "legendary-resistance-window"})
 	}
-	// Ana's Pensantus is a cleric with Sacred Flame, next to the dragon, on her turn.
-	sheet := w.fullSheet("class:cleric", "race:gnome", 1)
-	sheet.GetFull().BaseScores.Wisdom = 16
-	sheet.GetFull().CantripKeys = []string{"spell:sacred-flame"}
-	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
-		CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: w.pens.GetRevision(), Name: w.pens.GetName(), Sheet: sheet,
-	})))
-	var dragon *playv1.Combatant
-	for _, c := range m.currentEncounter(w).GetCombatants() {
-		if c.GetBestiaryCreatureKey() == dragonKey {
-			dragon = c
-		}
-	}
-	pens := w.combatant(w.pens)
-	for id, sq := range map[string][2]int32{pens.GetId(): {12, 13}, dragon.GetId(): {13, 13}} {
-		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
-	}
-	for range 40 {
-		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
-		if cur.GetCurrentCombatantId() == pens.GetId() {
-			w.encounter = cur
-			break
-		}
-		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: cur.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
-	}
-	if w.encounter.GetCurrentCombatantId() != pens.GetId() {
-		t.Fatal("Pensantus's turn never came")
-	}
+	pens, dragon := w.sacredFlameFight()
 	// The dragon stands beside Toren too, so both players see the creatures around the cast.
 	inSight := []string{"dragon-name", "seen-npc-name", "combatant-id"}
 	w.scriptD20(1)
@@ -401,5 +376,164 @@ func TestACastsLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 	}
 	if !passed {
 		t.Error("Ana's log has no line of a save that passed: the control is missing")
+	}
+}
+
+// sacredFlameFight makes Ana's Pensantus a cleric with Sacred Flame, puts her beside the adult red dragon and
+// passes the turns until it is hers. It returns her combatant and the dragon's.
+func (w *world) sacredFlameFight() (pens, dragon *playv1.Combatant) {
+	w.t.Helper()
+	ctx := w.t.Context()
+	m := w.master
+	// Ana's Pensantus is a cleric with Sacred Flame, next to the dragon, on her turn.
+	sheet := w.fullSheet("class:cleric", "race:gnome", 1)
+	sheet.GetFull().BaseScores.Wisdom = 16
+	sheet.GetFull().CantripKeys = []string{"spell:sacred-flame"}
+	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.pens.GetId(), Revision: w.pens.GetRevision(), Name: w.pens.GetName(), Sheet: sheet,
+	})))
+	for _, c := range m.currentEncounter(w).GetCombatants() {
+		if c.GetBestiaryCreatureKey() == dragonKey {
+			dragon = c
+		}
+	}
+	pens = w.combatant(w.pens)
+	for id, sq := range map[string][2]int32{pens.GetId(): {12, 13}, dragon.GetId(): {13, 13}} {
+		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
+	}
+	for range 40 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == pens.GetId() {
+			w.encounter = cur
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: cur.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	if w.encounter.GetCurrentCombatantId() != pens.GetId() {
+		w.t.Fatal("Pensantus's turn never came")
+	}
+	return pens, dragon
+}
+
+// heldCastRead is everything a player can read of a Sacred Flame at the dragon that waits for the master and
+// then lands: the combat and the log while it waits and after the answer, the answer to the cast itself and the
+// stream hints, as the player's own text.
+type heldCastRead struct {
+	player map[string]string
+	master []reply
+	window *playv1.ReactionWindow
+}
+
+// heldCastRun plays Ana's Sacred Flame at a dragon with three uses left in a world of its own: the dragon rolls
+// face, and the master answers the window (USE on the dragon, or PASS when use is false).
+func heldCastRun(t *testing.T, face int, use bool) heldCastRead {
+	t.Helper()
+	w := newWorld(t)
+	ctx := t.Context()
+	m := w.master
+	pens, dragon := w.sacredFlameFight()
+	w.scriptD20(face)
+	players := []*person{w.ana, w.caio}
+	parts := map[string][]reply{}
+	out := heldCastRead{player: map[string]string{}}
+	got := w.hiddenOnlyEvents(func() {
+		cast := w.ana.call(playv1connect.CombatServiceCastSpellProcedure, &playv1.CastSpellRequest{
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CasterId: pens.GetId(), SpellKey: "spell:sacred-flame", IdempotencyKey: newKey(),
+			Targets: []*playv1.SpellTarget{{CombatantId: dragon.GetId()}},
+		})
+		if !cast.ok() {
+			t.Fatalf("Ana's cast: status %d %s", cast.status, cast.body)
+		}
+		parts[w.ana.name] = append(parts[w.ana.name], cast)
+		enc := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		for _, rw := range enc.GetReactionWindows() {
+			if rw.GetKind() == playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE {
+				out.window = rw
+			}
+		}
+		for _, p := range players {
+			parts[p.name] = append(parts[p.name], w.reads(p)...) // while it waits
+		}
+		if out.window == nil {
+			t.Errorf("the master reads %v, want the Legendary Resistance window", enc.GetReactionWindows())
+			return
+		}
+		req := &playv1.AnswerReactionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: out.window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey()}
+		if use {
+			req.Answer, req.CreatureIds = playv1.ReactionChoice_REACTION_CHOICE_USE, []string{dragon.GetId()}
+		}
+		answer := m.call(playv1connect.CombatServiceAnswerReactionProcedure, req)
+		if !answer.ok() {
+			t.Fatalf("the master's answer: status %d %s", answer.status, answer.body)
+		}
+		for _, p := range players {
+			parts[p.name] = append(parts[p.name], w.reads(p)...) // after the answer
+		}
+		out.master = slices.Concat(w.reads(m), []reply{answer})
+	})
+	for _, p := range players {
+		var text strings.Builder
+		for _, r := range parts[p.name] {
+			text.Write(r.body)
+			text.WriteString("\n")
+		}
+		text.WriteString(strings.Join(got[p.name], "\n"))
+		out.player[p.name] = normalizeRead(text.String())
+	}
+	return out
+}
+
+var (
+	readID   = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
+	readTime = regexp.MustCompile(`\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z`)
+)
+
+// normalizeRead blanks the two things that differ between two worlds by nature: the ids (random UUIDs, named
+// by the order they first appear in) and the timestamps. Nothing else is touched.
+func normalizeRead(s string) string {
+	s = readTime.ReplaceAllString(s, "<time>")
+	seen := map[string]int{}
+	return readID.ReplaceAllStringFunc(s, func(id string) string {
+		if _, ok := seen[id]; !ok {
+			seen[id] = len(seen) + 1
+		}
+		return "<id" + strconv.Itoa(seen[id]) + ">"
+	})
+}
+
+// A dragon with a use left holds Ana's cast whatever it rolled, and the players read the same thing either way:
+// the same wait, the same log, the same answer to the cast and the same stream hints, whether the save passed on
+// its own or failed and the master turned it into a success. Only the ids and the timestamps are normalised.
+// The master reads the two runs differently (the positive controls: a failed roll to offer and a use spent, or
+// nothing to offer and nothing spent).
+func TestAPassedAndAResistedSaveReadTheSameToThePlayers(t *testing.T) {
+	var passed, resisted heldCastRead
+	t.Run("the save passes", func(t *testing.T) { passed = heldCastRun(t, 20, false) })
+	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = heldCastRun(t, 1, true) })
+	for _, name := range []string{"Ana", "Caio"} {
+		if passed.player[name] != resisted.player[name] {
+			t.Errorf("%s reads a passed save and a resisted one differently:\n--- passed\n%s\n--- resisted\n%s", name, passed.player[name], resisted.player[name])
+		}
+		if !strings.Contains(passed.player[name], "Esperando o mestre") {
+			t.Errorf("%s reads no wait in the run where the save passed: the control is missing", name)
+		}
+	}
+	if !strings.Contains(passed.player["Ana"], "SAVE_OUTCOME_SAVED") {
+		t.Error("Ana reads no save that passed: the control is missing")
+	}
+	if n := len(passed.window.GetLegendaryResistance().GetOffers()); n != 0 {
+		t.Errorf("the master's window of the passed save offers %d saves, want none", n)
+	}
+	if n := len(resisted.window.GetLegendaryResistance().GetOffers()); n != 1 {
+		t.Errorf("the master's window of the failed save offers %d saves, want one", n)
+	}
+	for name, run := range map[string]heldCastRead{"passed": passed, "resisted": resisted} {
+		spent := false
+		for _, r := range run.master {
+			spent = spent || contains(r.body, `"resisted":true`)
+		}
+		if spent != (name == "resisted") {
+			t.Errorf("the master's reads of the %s run show a use spent = %v", name, spent)
+		}
 	}
 }
