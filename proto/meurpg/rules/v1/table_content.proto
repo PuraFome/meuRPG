@@ -388,6 +388,13 @@ message TableEffect {
   // (a level 2 slot counts 2). Both are required.
   string recover_max_level = 75;
   string recover_levels = 76;
+  // reroll and roll_minimum: the rolls they cover, one or more of "attack", "check", "save"
+  // (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
+  repeated string rolls = 77;
+  // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
+  // The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
+  // roll_minimum takes its least value in `value` (2 to 20), spends no resource.
+  int32 at_most = 78;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -1566,6 +1573,12 @@ message EffectMenuValue {
   string name_pt = 2;
   // A short explanation where the name alone does not say; often empty.
   string hint_pt = 3;
+  // For a target of a modifier: the only modes it takes (the critical range is "set", never
+  // added); empty means every mode. Mirrors rules.MenuValue.
+  repeated string only_modes = 4;
+  // For the same, the bounds of a literal value; both zero when unbounded.
+  int32 min = 5;
+  int32 max = 6;
 }
 
 // EffectMenuList is a closed list a field takes.
