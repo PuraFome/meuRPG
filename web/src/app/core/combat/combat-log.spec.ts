@@ -1046,19 +1046,25 @@ describe('the legendary actions the master spent: a line for the master alone', 
   });
 });
 
-describe('the Recharge rolls of the creatures: a line for the master alone', () => {
+describe("the Recharge rolls of the creatures: a line for the master and the creature's controller", () => {
+  const roll = (recharged: boolean, hidden = false) =>
+    logLine(
+      entry({
+        kind: CombatLogKind.RECHARGE_ROLLED,
+        actorLabel: 'Draco',
+        hidden,
+        recharge: { actionName: 'Fire Breath', face: 5, recharged },
+      } as never),
+    );
+
   it('says the face and whether the action recharged', () => {
-    const roll = (recharged: boolean) =>
-      logLine(
-        entry({
-          kind: CombatLogKind.RECHARGE_ROLLED,
-          actorLabel: 'Draco',
-          recharge: { actionName: 'Fire Breath', face: 5, recharged },
-        } as never),
-      );
-    expect(roll(true)?.hidden).toBe(true);
     expect(roll(true)?.text).toBe('rolou 5 para Fire Breath: recarregou');
     expect(roll(false)?.text).toBe('rolou 5 para Fire Breath: não recarregou');
+  });
+
+  it("is hidden from the players only in the master's copy, as the server marks it", () => {
+    expect(roll(true, true)?.hidden).toBe(true);
+    expect(roll(true)?.hidden).toBe(false);
   });
 });
 

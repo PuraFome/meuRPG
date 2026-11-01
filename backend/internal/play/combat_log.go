@@ -749,6 +749,11 @@ func (e *logEntry) visibility(v combatViewer, byID map[string]playdb.Combatant, 
 	if e.ev.Contest != nil && e.ev.Contest.Line == contestLineHideRevealed && v.owns(actor) {
 		visible, seen = true, true
 	}
+	// The roll of a Recharge is the line of the master and of the player who controls the creature (RN-29), on
+	// any map: the row is secret and fogged for everybody else.
+	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED && v.owns(actor) {
+		return true, true
+	}
 	return visible && e.hitsVisible(byID), seen
 }
 
@@ -913,7 +918,7 @@ func (e *logEntry) fillLegendarySpent(_ *logViewing, out *playv1.CombatLogEntry)
 	return true
 }
 
-// fillRechargeRolled is the master's line of a Recharge roll: the action, the face and whether it recharged.
+// fillRechargeRolled is the line of a Recharge roll, the master's and the creature's controller's: the action, the face and whether it recharged.
 func (e *logEntry) fillRechargeRolled(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Recharge = &playv1.CombatLogRecharge{ActionName: e.ev.RechargeName, Face: e.ev.RechargeFace, Recharged: e.ev.Recharged}
 	return true

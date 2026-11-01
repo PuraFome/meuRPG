@@ -11,10 +11,11 @@ import (
 )
 
 // What a creature of a stat block has spent of its limited actions (a Recharge action, an action with uses a day,
-// one that recharges after a rest) is the master's alone (RN-20, RN-29): the state, the uses left, the d6 the
-// server rolls at the start of the creature's turn and the line of that roll. A player reads the ordinary
-// action and nothing of the limit, in the combat, the log, the stream's hints and the revision. These tests
-// use the hell hound (Recharge 5-6) and the deva (3/day) of the fixture's combat.
+// one that recharges after a rest) is the master's, and the player's who controls the creature (RN-20, RN-29): the
+// state, the uses left, the d6 the server rolls at the start of the creature's turn and the line of that roll.
+// Every other player reads the ordinary action and nothing of the limit, in the combat, the log, the stream's hints
+// and the revision. These tests use the hell hound (Recharge 5-6) and the deva (3/day) of the fixture's combat,
+// which no player controls; limited_controller_test.go has the creature of a player.
 
 // limitedWords are what no player reads of a creature's limits: the field names, the SRD's words of the limit
 // and the keys of the spent state. The master's answers hold the field names (the positive control).
@@ -119,11 +120,10 @@ func TestALimitedActionsStateIsTheMastersAlone(t *testing.T) {
 	}
 }
 
-// A refused try is the same to a player whatever the creature has spent: only the master may use a creature's
-// action, and the answer a player gets does not tell whether it was spent. (The player who owns a creature of
-// a stat block attacks with it and reads only that it cannot use the action now, the same whatever the limit:
-// TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone in the play package pins it.) The master's refusal
-// names the reason, and nothing changed.
+// A refused try is the same to a player whatever the creature has spent: only the master may use an NPC's
+// action, and the answer a player gets does not tell whether it was spent. The master's refusal names the reason,
+// and nothing changed. (The player who controls a creature reads the reason too:
+// TestTheControllerOfACreatureIsToldWhyItsSpentActionIsRefused.)
 func TestARefusedSpentActionIsTheMastersAlone(t *testing.T) {
 	w := newWorld(t)
 	hound := w.monsterOnTurn("monster:hell-hound", w.secrets.public("limited-name"), false)
@@ -227,7 +227,7 @@ func turnStartOf(t *testing.T, spendBreath bool, face int) turnStart {
 
 // The server rolls the breath's d6 at the start of the hound's turn: the master reads the line (the positive
 // control), and a player's revision, hints and log are those of a turn start with nothing to roll.
-func TestARechargeRollAtTheTurnStartIsTheMastersAlone(t *testing.T) {
+func TestARechargeRollAtTheTurnStartOfAnNPCIsTheMastersAlone(t *testing.T) {
 	control := turnStartOf(t, false, 0)
 	rolled := turnStartOf(t, true, 6)
 	for name := range rolled.rise {

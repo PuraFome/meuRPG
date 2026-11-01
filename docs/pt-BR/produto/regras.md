@@ -424,7 +424,7 @@ O mestre vê tudo.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
 - **A característica de uma criatura que transforma um teste de resistência falhado em sucesso** (Resistência Lendária) é do mestre: o jogador lê que o teste de resistência da criatura teve sucesso, nunca a rolagem que falhou, quantos usos restam nem o nome da característica.
-- **O que uma criatura gastou das ações com limite** (Recarga, N/dia) e a rolagem de Recarga no começo do turno dela são do mestre: o jogador não lê o que resta, a linha do registro nem a rolagem, e o motivo da recusa de uma ação gasta é do mestre: o dono da criatura lê só que ela não pode usar a ação agora, seja qual for o limite.
+- **O que uma criatura gastou das ações com limite** (Recarga, N/dia), a rolagem de Recarga no começo do turno dela e o motivo da recusa de uma ação gasta são do mestre e do jogador que controla a criatura; os outros jogadores não leem nenhum deles.
 - **O que o desenho aceita.** Dividir um turno com um NPC visível mostra que os dois empataram. As cópias de um NPC são numeradas juntas, então revelar Goblin 2 e esconder Goblin 1 mostra que outro existe. O mestre evita a pista escondendo as últimas cópias.
 
 **Turnos conjuntos.**
@@ -819,10 +819,11 @@ Várias cópias de um NPC feito à mão começam com a contagem que o NPC guardo
 Um descanso curto não muda nada para um NPC.
 Uma ação de monstro com limite é imposta pelo servidor: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) e a que volta depois de um descanso.
 Um uso a gasta, na mesma mudança do ataque ou da ação, e uma ação gasta é recusada sem mudar nada.
-A recusa do mestre diz que a ação não recarregou ou não tem mais usos; o dono de um monstro que um jogador controla lê só que ele não pode usar a ação agora.
+A recusa diz que a ação não recarregou ou não tem mais usos, ao mestre e ao jogador que controla o monstro.
 No começo do turno do monstro o servidor rola um d6 para cada ação de Recarga gasta, na ordem da ficha, e uma face dentro do intervalo a deixa disponível de novo.
 Um monstro derrotado não rola, e uma ação com usos por dia ou depois de um descanso não volta num combate.
-O mestre lê o que resta de cada ação com limite e uma linha do registro com o d6; o jogador não lê nenhum dos dois, e o turno parece o mesmo para ele com ou sem a rolagem (RN-20).
+O mestre e o jogador que controla o monstro leem o que resta de cada ação com limite e uma linha do registro com o d6.
+Os outros jogadores não leem nenhum dos dois, e o turno parece o mesmo para eles com ou sem a rolagem (RN-20).
 "Desfazer última ação" devolve o uso; a rolagem não se desfaz.
 Um NPC feito à mão não tem ficha de criatura, então não guarda limite, e um monstro começa todo combate com todas as ações.
 Como é construído: [Arquitetura](../../architecture/play/creatures.md) e [encontros](../../architecture/play/encounters.md).

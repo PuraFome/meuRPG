@@ -17,8 +17,8 @@ const rechargeDie = 6
 // rechargeAtTurnStart rolls a d6 for each Recharge action that a creature of ids spent, in the order of its
 // stat block, when its turn starts: a face that recharges the action makes it available again. A defeated
 // creature does not roll, an action that is available does not, and an action with uses a day or one that waits
-// for a rest never does. Each roll is an event the master alone reads (the row is secret and the log line is
-// his), and nothing is published for it: a turn start already tells everybody that the combat changed.
+// for a rest never does. Each roll is an event the master and the creature's controller read (the row is secret and fogged, and the
+// log line is theirs), and nothing is published for it: a turn start already tells everybody that the combat changed.
 func (s *Service) rechargeAtTurnStart(ctx context.Context, c *combatTx, ids []string, round int32) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {

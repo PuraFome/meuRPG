@@ -1975,9 +1975,9 @@ enum EncounterBlockedReason {
   // The same: the creature is no creature with the trait (the combatant is a player's character
   // or its stat block does not have it). Refused before the roll; nothing changes.
   ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
-  // The master's UseCreatureAction and RollAttack with an action of a stat block that has a
-  // Recharge: the action was used and has not recharged. Nothing is spent. Anyone else reads
-  // CREATURE_ACTION_UNAVAILABLE instead, which says nothing of the limit.
+  // The master's UseCreatureAction and RollAttack, and the RollAttack of the player who controls
+  // the creature, with an action of a stat block that has a Recharge: the action was used and has
+  // not recharged. Nothing is spent. No other player can try the creature's action.
   ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING = 123;
   // The same, for an action with uses a day or one that recharges after a rest: every use is
   // spent. Nothing is spent. The same reading rule.
@@ -2830,8 +2830,9 @@ message Combatant {
   LegendaryState legendary = 105;
 
   // The actions of the creature's stat block that Recharge, have uses a day or recharge after
-  // a rest, each with what it has left, in the stat block's order. Only the master gets it,
-  // and only for a combatant with such actions; a player's copy never has them (RN-20, RN-29).
+  // a rest, each with what it has left, in the stat block's order. Only the master and the
+  // player who controls the creature get it, and only for a combatant with such actions; every
+  // other player's copy never has them (RN-20, RN-29).
   repeated LimitedAction limited_actions = 106;
 }
 
@@ -5242,7 +5243,8 @@ enum CombatLogKind {
   COMBAT_LOG_KIND_LEGENDARY_SPENT = 27;
   // The server rolled the d6 of a Recharge action at the start of its creature's turn ("rolled
   // 5 for Fire Breath: recharged"): the creature (the actor) and `recharge`. Only the master
-  // gets the line, and no player's log shows it or counts it (RN-20, RN-29).
+  // and the player who controls the creature get the line; no other player's log shows it or
+  // counts it (RN-20, RN-29).
   COMBAT_LOG_KIND_RECHARGE_ROLLED = 28;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
@@ -5469,7 +5471,7 @@ message CombatLogEntry {
   CombatLogCreatureAction creature_action = 113;
   // LEGENDARY_SPENT: the option and what it cost. The master's alone.
   CombatLogLegendarySpent legendary_spent = 114;
-  // RECHARGE_ROLLED: the action, the face and the result. The master's alone.
+  // RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
   CombatLogRecharge recharge = 115;
 }
 
@@ -5584,7 +5586,7 @@ message CombatLogLegendarySpent {
   int32 cost = 2;
 }
 
-// CombatLogRecharge is the master's line of a Recharge roll.
+// CombatLogRecharge is the line of a Recharge roll, for the master and the creature's controller.
 message CombatLogRecharge {
   // The action's name, in Portuguese when the content has it, else the SRD's in English.
   string action_name = 1;

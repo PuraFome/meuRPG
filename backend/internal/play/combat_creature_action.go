@@ -180,7 +180,7 @@ func (f *creatureFlow) pickAction(ctx context.Context) error {
 	if plan.Attack != nil || (plan.Kind != actionKindSave && plan.Kind != actionKindOther) || plan.Routines != nil {
 		return unavailable("this action is an attack roll or a Multiattack: make it with the attack")
 	}
-	if err := checkActionLimit(plan, f.actor, true); err != nil {
+	if err := checkActionLimit(plan, f.actor); err != nil {
 		return err
 	}
 	f.plan, f.sp = plan, spellOfPlan(plan)

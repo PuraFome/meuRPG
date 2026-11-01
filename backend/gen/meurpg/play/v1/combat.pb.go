@@ -971,9 +971,9 @@ const (
 	// The same: the creature is no creature with the trait (the combatant is a player's character
 	// or its stat block does not have it). Refused before the roll; nothing changes.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE EncounterBlockedReason = 122
-	// The master's UseCreatureAction and RollAttack with an action of a stat block that has a
-	// Recharge: the action was used and has not recharged. Nothing is spent. Anyone else reads
-	// CREATURE_ACTION_UNAVAILABLE instead, which says nothing of the limit.
+	// The master's UseCreatureAction and RollAttack, and the RollAttack of the player who controls
+	// the creature, with an action of a stat block that has a Recharge: the action was used and has
+	// not recharged. Nothing is spent. No other player can try the creature's action.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING EncounterBlockedReason = 123
 	// The same, for an action with uses a day or one that recharges after a rest: every use is
 	// spent. Nothing is spent. The same reading rule.
@@ -2488,7 +2488,8 @@ const (
 	CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT CombatLogKind = 27
 	// The server rolled the d6 of a Recharge action at the start of its creature's turn ("rolled
 	// 5 for Fire Breath: recharged"): the creature (the actor) and `recharge`. Only the master
-	// gets the line, and no player's log shows it or counts it (RN-20, RN-29).
+	// and the player who controls the creature get the line; no other player's log shows it or
+	// counts it (RN-20, RN-29).
 	CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED CombatLogKind = 28
 	// A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
 	// actor, the target and `contest`, which says what happened. Never a total (RN-20).
@@ -5941,8 +5942,9 @@ type Combatant struct {
 	// has the field, not even empty (RN-20, RN-29).
 	Legendary *LegendaryState `protobuf:"bytes,105,opt,name=legendary,proto3" json:"legendary,omitempty"`
 	// The actions of the creature's stat block that Recharge, have uses a day or recharge after
-	// a rest, each with what it has left, in the stat block's order. Only the master gets it,
-	// and only for a combatant with such actions; a player's copy never has them (RN-20, RN-29).
+	// a rest, each with what it has left, in the stat block's order. Only the master and the
+	// player who controls the creature get it, and only for a combatant with such actions; every
+	// other player's copy never has them (RN-20, RN-29).
 	LimitedActions []*LimitedAction `protobuf:"bytes,106,rep,name=limited_actions,json=limitedActions,proto3" json:"limited_actions,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -18306,7 +18308,7 @@ type CombatLogEntry struct {
 	CreatureAction *CombatLogCreatureAction `protobuf:"bytes,113,opt,name=creature_action,json=creatureAction,proto3" json:"creature_action,omitempty"`
 	// LEGENDARY_SPENT: the option and what it cost. The master's alone.
 	LegendarySpent *CombatLogLegendarySpent `protobuf:"bytes,114,opt,name=legendary_spent,json=legendarySpent,proto3" json:"legendary_spent,omitempty"`
-	// RECHARGE_ROLLED: the action, the face and the result. The master's alone.
+	// RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
 	Recharge      *CombatLogRecharge `protobuf:"bytes,115,opt,name=recharge,proto3" json:"recharge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -19195,7 +19197,7 @@ func (x *CombatLogLegendarySpent) GetCost() int32 {
 	return 0
 }
 
-// CombatLogRecharge is the master's line of a Recharge roll.
+// CombatLogRecharge is the line of a Recharge roll, for the master and the creature's controller.
 type CombatLogRecharge struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The action's name, in Portuguese when the content has it, else the SRD's in English.

@@ -264,23 +264,21 @@ The spend is part of the use (`combat_action_limit.go`).
 It happens in the same change as the attack (`RollAttack`) or the action (`UseCreatureAction`) that uses the action.
 A Multiattack spends nothing of its own: each step is its own call and is limited by its own action key.
 A spent action is refused with nothing changed.
-The master reads `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
+The master and the player who controls the creature read `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
 The refusal comes before any roll, so the master may use another action.
 
 **The roll at the turn start** (`combat_recharge.go`).
 When a creature's turn starts, the server rolls one d6 for each of its spent Recharge actions, in the order of its stat block.
 A face in the action's range makes it available again.
 A defeated creature does not roll, an action that is available does not, and an action with uses a day or after a rest never does.
-Each roll is the event `recharge_rolled`, written secret and with no user and no character, so it is not counted in a player's map revision on a fog map.
+Each roll is the event `recharge_rolled`, written secret and with no user and no character, so it is not counted in any player's map revision on a fog map.
 Nothing is published for it: the turn start already tells everybody that the combat changed.
 
 **Who sees what (RN-20, RN-29).**
-The master reads each limited action with what it has left (`Combatant.limited_actions`) and the roll in his log line ([Combat log](combat-log.md)).
-A player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
-Only the master may use an NPC's action, so only the master is refused for a spent one.
-The player who owns a creature attacks with it and reads only `CREATURE_ACTION_UNAVAILABLE`, "the creature cannot use this action now", the same for every limit.
-Trying again each turn shows nothing of the Recharge roll.
-Another player has no call that reaches the action.
+The master and the player who controls the creature read each limited action with what it has left (`Combatant.limited_actions`), the roll in a log line ([Combat log](combat-log.md)) and the refusal reasons.
+`combatantReader.read` writes the field for the master and for `v.owns(c)`, and `controlledLimits` loads the stat block's limits for the creatures the player controls and nothing else of the master's NPC data.
+Every other player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
+Another player has no call that reaches the creature's action.
 
 **What undo does** ([Undo](undo.md)).
 The undo of the use gives it back: the action is available again or has the use back.

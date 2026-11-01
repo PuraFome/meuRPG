@@ -59,3 +59,28 @@ func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.En
 	}
 	return out
 }
+
+// creatureLimits are the limited actions of the creatures of a stat block that the viewer reads: all of them for the
+// master, the ones the player controls for a player. It holds nothing else of the master's NPC data (RN-29).
+func (s *Service) creatureLimits(ctx context.Context, campaignID string, d *encounterData, v combatViewer) map[string]masterNPC {
+	var mine []playdb.Combatant
+	for _, c := range d.cs {
+		if isCreature(c) && (v.master || v.owns(c)) && conv.OrZero(c.MonsterKey) != "" {
+			mine = append(mine, c)
+		}
+	}
+	if len(mine) == 0 {
+		return nil
+	}
+	content, err := s.roster.RulesContent(ctx, nil, campaignID)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]masterNPC, len(mine))
+	for _, c := range mine {
+		if plan, ok := content.MonsterPlan(conv.OrZero(c.MonsterKey)); ok {
+			out[sheetKey(c)] = masterNPC{limited: limitedActionsOf(plan)}
+		}
+	}
+	return out
+}

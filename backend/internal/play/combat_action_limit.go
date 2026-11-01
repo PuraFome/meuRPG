@@ -40,14 +40,10 @@ func limitSpent(plan rules.ActionPlan, who playdb.Combatant) bool {
 }
 
 // checkActionLimit refuses a limited action the creature has spent. Nothing changes.
-// The master reads why. Anyone else reads only that the creature cannot use the action now, the same
-// for every limit, so trying again each turn tells a player nothing of the Recharge roll (RN-20, RN-29).
-func checkActionLimit(plan rules.ActionPlan, who playdb.Combatant, master bool) error {
+// The master and the player who controls the creature read why; no other player can try the creature's action.
+func checkActionLimit(plan rules.ActionPlan, who playdb.Combatant) error {
 	if !limitSpent(plan, who) {
 		return nil
-	}
-	if !master {
-		return unavailable("the creature cannot use this action now")
 	}
 	if plan.Usage.Kind == rules.UsageRecharge {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING, "the action has not recharged")
@@ -102,8 +98,8 @@ func limitedActionsOf(p *rules.MonsterPlan) []rules.ActionPlan {
 	return out
 }
 
-// limitedActionsView is the master's copy of the limited actions of a creature with what it has spent of
-// them. Players never get it (RN-20, RN-29).
+// limitedActionsView is the copy of the limited actions of a creature with what it has spent of them, for the
+// master and the player who controls the creature. No other player gets it (RN-20, RN-29).
 func limitedActionsView(actions []rules.ActionPlan, who playdb.Combatant) []*playv1.LimitedAction {
 	var out []*playv1.LimitedAction
 	for _, a := range actions {

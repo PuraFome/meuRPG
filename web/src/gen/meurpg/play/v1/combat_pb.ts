@@ -2138,8 +2138,9 @@ export type Combatant = Message<"meurpg.play.v1.Combatant"> & {
 
   /**
    * The actions of the creature's stat block that Recharge, have uses a day or recharge after
-   * a rest, each with what it has left, in the stat block's order. Only the master gets it,
-   * and only for a combatant with such actions; a player's copy never has them (RN-20, RN-29).
+   * a rest, each with what it has left, in the stat block's order. Only the master and the
+   * player who controls the creature get it, and only for a combatant with such actions; every
+   * other player's copy never has them (RN-20, RN-29).
    *
    * @generated from field: repeated meurpg.play.v1.LimitedAction limited_actions = 106;
    */
@@ -9198,7 +9199,7 @@ export type CombatLogEntry = Message<"meurpg.play.v1.CombatLogEntry"> & {
   legendarySpent?: CombatLogLegendarySpent | undefined;
 
   /**
-   * RECHARGE_ROLLED: the action, the face and the result. The master's alone.
+   * RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
    *
    * @generated from field: meurpg.play.v1.CombatLogRecharge recharge = 115;
    */
@@ -9483,7 +9484,7 @@ export const CombatLogLegendarySpentSchema: GenMessage<CombatLogLegendarySpent> 
   messageDesc(file_meurpg_play_v1_combat, 163);
 
 /**
- * CombatLogRecharge is the master's line of a Recharge roll.
+ * CombatLogRecharge is the line of a Recharge roll, for the master and the creature's controller.
  *
  * @generated from message meurpg.play.v1.CombatLogRecharge
  */
@@ -14272,9 +14273,9 @@ export enum EncounterBlockedReason {
   LEGENDARY_RESISTANCE_UNAVAILABLE = 122,
 
   /**
-   * The master's UseCreatureAction and RollAttack with an action of a stat block that has a
-   * Recharge: the action was used and has not recharged. Nothing is spent. Anyone else reads
-   * CREATURE_ACTION_UNAVAILABLE instead, which says nothing of the limit.
+   * The master's UseCreatureAction and RollAttack, and the RollAttack of the player who controls
+   * the creature, with an action of a stat block that has a Recharge: the action was used and has
+   * not recharged. Nothing is spent. No other player can try the creature's action.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING = 123;
    */
@@ -15395,7 +15396,8 @@ export enum CombatLogKind {
   /**
    * The server rolled the d6 of a Recharge action at the start of its creature's turn ("rolled
    * 5 for Fire Breath: recharged"): the creature (the actor) and `recharge`. Only the master
-   * gets the line, and no player's log shows it or counts it (RN-20, RN-29).
+   * and the player who controls the creature get the line; no other player's log shows it or
+   * counts it (RN-20, RN-29).
    *
    * @generated from enum value: COMBAT_LOG_KIND_RECHARGE_ROLLED = 28;
    */

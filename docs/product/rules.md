@@ -424,7 +424,7 @@ The master sees everything.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
 - **A creature's trait that turns a failed saving throw into a success** (Legendary Resistance) is the master's: a player reads that the creature's save succeeded, never the roll that failed, how many uses are left or the name of the trait.
-- **What a creature spent of its limited actions** (Recharge, N/day) and the Recharge roll at the start of its turn are the master's: a player reads no count, no log line and no roll, and the reason a spent action is refused is the master's: the owner of the creature reads only that it cannot use the action now, whatever the limit.
+- **What a creature spent of its limited actions** (Recharge, N/day), the Recharge roll at the start of its turn and the reason a spent action is refused belong to the master and to the player who controls the creature; every other player reads none of them.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.
 
 **Joint turns.**
@@ -819,10 +819,11 @@ Several copies of one hand-made NPC each start with the count the NPC kept, and 
 A short rest changes nothing for an NPC.
 An action of a monster with a limit is enforced by the server: "Recarga 5–6" (SRD 5.1: Recharge 5-6), "3/dia" (3/Day) and one that returns after a rest.
 A use spends it, in the same change as the attack or the action, and a spent action is refused with nothing changed.
-The master's refusal says the action has not recharged or has no uses left; the owner of a monster that a player controls reads only that it cannot use the action now.
+The refusal says the action has not recharged or has no uses left, to the master and to the player who controls the monster.
 At the start of the monster's turn the server rolls a d6 for each spent Recharge action, in the stat block's order, and a face in its range makes it available again.
 A defeated monster does not roll, and an action with uses a day or after a rest does not come back in a combat.
-The master reads what each limited action has left and a log line with the d6; a player reads neither, and the turn looks the same to them with or without the roll (RN-20).
+The master and the player who controls the monster read what each limited action has left and a log line with the d6.
+Every other player reads neither, and the turn looks the same to them with or without the roll (RN-20).
 "Desfazer última ação" gives the use back; the roll cannot be undone.
 A hand-made NPC has no stat block, so it keeps no limit, and a monster starts every combat with all its actions.
 How it is built: [Architecture](../architecture/play/creatures.md) and [encounters](../architecture/play/encounters.md).

@@ -313,7 +313,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       };
     },
   ],
-  // The server rolled a Recharge action's d6 at the start of its creature's turn: the line is the master's alone.
+  // The server rolled a Recharge action's d6 at the start of its creature's turn: the line is the master's and the creature's controller's.
   [
     CombatLogKind.RECHARGE_ROLLED,
     ({ e, base }) => {
@@ -323,7 +323,6 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       }
       return {
         ...base,
-        hidden: true,
         icon: 'casino',
         text: `rolou ${recharge.face} para ${recharge.actionName}: ${recharge.recharged ? 'recarregou' : 'não recarregou'}`,
       };
