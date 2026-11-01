@@ -6,6 +6,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The limits of a stat block's actions are spent and refused (SRD 5.1, "Recharge", "Limited usage"): a Recharge
@@ -67,6 +68,7 @@ func TestActionLimit_RechargeActionIsSpentAndRefused(t *testing.T) {
 		t.Errorf("after the breath the master reads %v, want it spent", l)
 	}
 
+	a.h.roller.queue(1) // the Recharge roll at the turn start fails
 	e = a.ownTurnAgain(t, e, hound)
 	events := a.events(t)
 	_, err := a.useAction(t, a.master, e, hound, fireBreath, []string{"Toren"})
@@ -138,6 +140,7 @@ func TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone(t *testing.T) {
 		t.Fatalf("after the undo %s = %d, want 0 and the action back", key, got)
 	}
 	c.mustAttack(t, c.caio, e, "Teia", spiderWeb, "Goblin", twoD20(15))
+	c.h.roller.queue(1) // the Recharge roll at the turn start fails
 	e = c.ownTurnAgain(t, e, "Teia")
 	events := c.events(t)
 	_, err := c.attack(t, c.caio, e, "Teia", spiderWeb, "Goblin", twoD20(15))
@@ -230,5 +233,27 @@ func TestActionLimit_ASpendThatDoesNotFitIsRefused(t *testing.T) {
 	wantBlockedBy(t, "UseCreatureAction", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE)
 	if d := byLabel(t, a.get(t, a.master), hound); d.GetActionUsed() || a.events(t) != events || a.spentOf(t, id)[breathSpent] != 0 {
 		t.Errorf("the refusal changed something: action used %v, events %d (was %d)", d.GetActionUsed(), a.events(t), events)
+	}
+}
+
+// Two attack actions whose names are equal up to the cut of a basic sheet match no action, so a limit is never
+// taken from the wrong one.
+func TestPlanByCutNameRefusesAnAmbiguousMatch(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("a", maxPlanAttackName)
+	plan := &rules.MonsterPlan{Actions: []rules.ActionPlan{
+		{Key: "x#one", NamePT: long + "b", Attack: &rules.ActionAttack{}},
+		{Key: "x#two", NamePT: long + "c", Attack: &rules.ActionAttack{}},
+		{Key: "x#bite", NamePT: "Mordida", Attack: &rules.ActionAttack{}},
+		{Key: "x#web", NamePT: "Teia"},
+	}}
+	if got, ok := planByCutName(plan, long); ok {
+		t.Errorf("the cut name of two actions matched %s", got.Key)
+	}
+	if got, ok := planByCutName(plan, "Mordida"); !ok || got.Key != "x#bite" {
+		t.Errorf("a name of one action matched %v, %v, want the bite", got.Key, ok)
+	}
+	if _, ok := planByCutName(plan, "Teia"); ok {
+		t.Error("an action with no attack matched")
 	}
 }

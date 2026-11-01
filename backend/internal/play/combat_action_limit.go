@@ -12,7 +12,7 @@ import (
 
 // The limits of a stat block's actions (rules.ActionUsage): a Recharge action, an action with uses a day and
 // one that recharges after a rest. What a creature spent of them is kept in creature_spent (combat_spent.go),
-// only when spent. A creature of a stat block alone has them: an NPC made by hand has no action to limit.
+// only when spent. Only a creature of a stat block has them.
 //
 // A Multiattack is no action that is spent: it is a routine, and each of its steps is made with its own call
 // (RollAttack for an attack, UseCreatureAction for a step that asks a saving throw or rolls nothing). A step

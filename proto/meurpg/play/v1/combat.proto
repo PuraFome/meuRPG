@@ -5235,6 +5235,10 @@ enum CombatLogKind {
   // counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED
   // line, the same one a player reads of any other creature.
   COMBAT_LOG_KIND_LEGENDARY_SPENT = 27;
+  // The server rolled the d6 of a Recharge action at the start of its creature's turn ("rolled
+  // 5 for Fire Breath: recharged"): the creature (the actor) and `recharge`. Only the master
+  // gets the line, and no player's log shows it or counts it (RN-20, RN-29).
+  COMBAT_LOG_KIND_RECHARGE_ROLLED = 28;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5460,6 +5464,8 @@ message CombatLogEntry {
   CombatLogCreatureAction creature_action = 113;
   // LEGENDARY_SPENT: the option and what it cost. The master's alone.
   CombatLogLegendarySpent legendary_spent = 114;
+  // RECHARGE_ROLLED: the action, the face and the result. The master's alone.
+  CombatLogRecharge recharge = 115;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5571,6 +5577,16 @@ message CombatLogLegendarySpent {
   string option_name = 1;
   // How many legendary actions it took.
   int32 cost = 2;
+}
+
+// CombatLogRecharge is the master's line of a Recharge roll.
+message CombatLogRecharge {
+  // The action's name, in Portuguese when the content has it, else the SRD's in English.
+  string action_name = 1;
+  // The d6, 1 to 6.
+  int32 face = 2;
+  // Whether the face made the action available again.
+  bool recharged = 3;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

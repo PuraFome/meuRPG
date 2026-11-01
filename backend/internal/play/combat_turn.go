@@ -165,7 +165,11 @@ func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []str
 	}
 	// The areas spells keep on the map: the ones whose time is out end, the ones that drift move, and
 	// who starts the turn in one is caught.
-	return s.zonesAtTurnStart(ctx, c, ids, round)
+	if err := s.zonesAtTurnStart(ctx, c, ids, round); err != nil {
+		return err
+	}
+	// The Recharge actions the creatures that start their turn have spent roll to be available again.
+	return s.rechargeAtTurnStart(ctx, c, ids, round)
 }
 
 // setCurrent saves where the combat is: the round and the member that the

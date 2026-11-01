@@ -313,6 +313,22 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       };
     },
   ],
+  // The server rolled a Recharge action's d6 at the start of its creature's turn: the line is the master's alone.
+  [
+    CombatLogKind.RECHARGE_ROLLED,
+    ({ e, base }) => {
+      const recharge = e.recharge;
+      if (!recharge) {
+        return null;
+      }
+      return {
+        ...base,
+        hidden: true,
+        icon: 'casino',
+        text: `rolou ${recharge.face} para ${recharge.actionName}: ${recharge.recharged ? 'recarregou' : 'não recarregou'}`,
+      };
+    },
+  ],
   // The master took an extra out of a damage; the reason is only for him and the attacker's player.
   [
     CombatLogKind.DAMAGE_PART_REMOVED,

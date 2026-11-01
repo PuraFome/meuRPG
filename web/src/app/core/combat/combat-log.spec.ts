@@ -1026,6 +1026,22 @@ describe('the legendary actions the master spent: a line for the master alone', 
   });
 });
 
+describe('the Recharge rolls of the creatures: a line for the master alone', () => {
+  it('says the face and whether the action recharged', () => {
+    const roll = (recharged: boolean) =>
+      logLine(
+        entry({
+          kind: CombatLogKind.RECHARGE_ROLLED,
+          actorLabel: 'Draco',
+          recharge: { actionName: 'Fire Breath', face: 5, recharged },
+        } as never),
+      );
+    expect(roll(true)?.hidden).toBe(true);
+    expect(roll(true)?.text).toBe('rolou 5 para Fire Breath: recarregou');
+    expect(roll(false)?.text).toBe('rolou 5 para Fire Breath: não recarregou');
+  });
+});
+
 describe('the monsters the master put in (MR-042, RN-29): a line for the master alone, with the hit points and the dice', () => {
   it("writes the rolled hit points with their dice, and flags the line as the master's alone", () => {
     const line = logLine(
