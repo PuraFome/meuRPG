@@ -3,6 +3,7 @@ package rules
 import (
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -164,5 +165,46 @@ func TestASpellSummonStillTakesNothingOfAFeatureSummon(t *testing.T) {
 				t.Error("a spell's summon with a feature's field was accepted")
 			}
 		})
+	}
+}
+
+func TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet(t *testing.T) {
+	t.Parallel()
+	c := withOverlayOn(t, loadForTest(t), featureSummonOverlay(nil))
+	spell := FeatureSummonSpellKey(packFeature)
+	// A Bard 10 has Magical Secrets: two spells off the list. The feature's spell is not one a sheet lists, as known.
+	b := levelUpCharAt(t, c, "class:bard", "subclass:lore", 10)
+	other := spellsOff(c, 5, "class:bard")
+	b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell)
+	hidden := "full.known_spell_keys[" + strconv.Itoa(len(b.SpellsKnown)-1) + "]"
+	if codes := issueCodes(Derive(b, c)); !slices.Contains(codes, IssueUnknownKey+" "+hidden) {
+		t.Errorf("the feature's spell among the spells known: issues = %v, want %q", codes, IssueUnknownKey+" "+hidden)
+	}
+	b.SpellsKnown = append(slices.Clone(b.SpellsKnown[:len(b.SpellsKnown)-1]), other...)
+	for _, code := range issueCodes(Derive(b, c)) {
+		if strings.HasPrefix(code, IssueUnknownKey+" full.known_spell_keys") {
+			t.Errorf("a real spell off the list (control) was refused: %s", code)
+		}
+	}
+}
+
+func TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused(t *testing.T) {
+	t.Parallel()
+	long := "feature:" + strings.Repeat("a", MaxSlugLength-2)
+	a, b := FeatureSummonSpellKey(long+"x"+tableSuffix), FeatureSummonSpellKey(long+"y"+tableSuffix)
+	if a == b || checkTableKey("spell:", a) != nil || checkTableKey("spell:", b) != nil {
+		t.Errorf("spell keys of two long feature keys = %q, %q; want two different valid keys", a, b)
+	}
+	c := withOverlayOn(t, loadForTest(t), featureSummonOverlay(func(f *TableFeature) { f.Key = long + "x" + tableSuffix }))
+	if _, ok := c.SummonRule(a); !ok {
+		t.Error("the summon of a feature with a long key is not registered under its spell key")
+	}
+	taken := featureSummonOverlay(nil)
+	taken.Spells = []TableSpell{{
+		TableEntry: TableEntry{Key: FeatureSummonSpellKey(packFeature), NamePT: "Outra"}, Level: 1, School: "school:evocation",
+		CastingTime: TableCastingTime{Unit: CastAction}, Range: TableRange{Kind: RangeSelf}, Duration: TableDuration{Kind: DurationInstantaneous}, Target: SpellTarget{Kind: TargetSelf},
+	}}
+	if _, err := loadForTest(t).With(taken); err == nil || !strings.Contains(err.Error(), "taken by another entry") {
+		t.Errorf("a table spell on the feature's summon key: err = %v, want a refusal that says the key is taken", err)
 	}
 }

@@ -196,6 +196,9 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       [[3, 4, 4]],
     );
     expect(el.querySelector('app-slot-picker')).toBeNull();
+    expect(el.textContent).not.toContain('Não há espaço');
+    expect(el.textContent).not.toContain('Sem usos restantes');
+    expect(el.textContent).not.toContain('Magia de');
     await pick('Esqueleto');
     expect((flat(el.querySelector('p.line b')) ?? '').replace(/\u00a0/g, ' ')).toContain(
       'gasta um uso · restam 2',
@@ -210,6 +213,20 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
       grantedBy: 'feature:chamado@mesa',
       summon: { option: 0, creatureKeys: ['monster:skeleton'], names: [] },
     });
+  });
+
+  it("says a feature's summon has no use left, not that the sheet lacks a slot", async () => {
+    const feature = undeadSpell({
+      spellKey: 'spell:feature-chamado@mesa',
+      namePt: 'Chamado dos Mortos',
+      canCastWithSlot: false,
+      grantedBy: 'feature:chamado@mesa',
+      resourceKey: 'chamados',
+      usesLeft: 0,
+    });
+    const { el } = await setup('spell:feature-chamado@mesa', [feature], [[3, 4, 4]]);
+    expect(el.textContent).toContain('Sem usos restantes.');
+    expect(el.textContent).not.toContain('Não há espaço');
   });
 
   it('a refusal stays in the sheet, in words by its typed reason, and a retry keeps the key until a choice changes', async () => {

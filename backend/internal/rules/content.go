@@ -74,7 +74,8 @@ type content struct {
 	// of it is in summons too.
 	tableSummons map[string]*tableSummonRule
 	// featureSummons are the hidden spells of the table features' summons (overlay_featuresummon.go), by spell key,
-	// each with the key of its feature. No catalog lists them.
+	// each with the key of the entry (class, subclass, race, subrace or background) its feature belongs to. No catalog
+	// lists them.
 	featureSummons map[string]string
 	// monsterEntries are the creatures as the lists show them, sorted by
 	// Portuguese name.

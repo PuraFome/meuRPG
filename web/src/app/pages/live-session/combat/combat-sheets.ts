@@ -44,6 +44,11 @@ function aimsOnMap(req: AttackOpen): boolean {
  * attacks) and `ActionSheets` (the dialogs of one purpose). It keeps what the screen must know about the attack sheet
  * (a held roll's question waits for it) and the held rolls whose sheet already opened by itself.
  */
+/** A summon option as the cast ref names it: the spell and the feature that grants it ("" for the character's own). */
+function summonRef(spellKey: string, grantedBy = ''): string {
+  return `${spellKey}|${grantedBy}`;
+}
+
 export class CombatSheets {
   /** The attack sheet is on screen: it is the one that gets the answer of its own roll. */
   readonly attackOpen = signal(false);
@@ -129,7 +134,7 @@ export class CombatSheets {
     const { key, grantedBy } = splitCastRef(ref);
     const spell = optionOfRef(this.ctx.options()?.options?.spells ?? [], ref);
     // A summoning spell (the classes' or a feature's) and Revivificar have their own sheets.
-    if (spell?.spell && (await this.isSummon(key))) {
+    if (spell?.spell && (await this.isSummon(key, grantedBy))) {
       this.summon(key, spell.spell.namePt || spell.spell.name);
       return;
     }
@@ -334,7 +339,7 @@ export class CombatSheets {
     return true;
   }
 
-  private isSummon(key: string): Promise<boolean> {
+  private isSummon(key: string, grantedBy = ''): Promise<boolean> {
     const own = this.ctx.own();
     if (!own) {
       return Promise.resolve(false);
@@ -343,14 +348,14 @@ export class CombatSheets {
     this.summonSpells ??= this.ctx.creatures
       .summonOptions(this.ctx.campaignId(), own.characterId)
       .then(
-        (options) => new Set(options.spells.map((s) => s.spellKey)),
+        (options) => new Set(options.spells.map((s) => summonRef(s.spellKey, s.grantedBy))),
         (err: unknown) => {
           this.summonSpells = null;
           throw err;
         },
       );
     return this.summonSpells.then(
-      (keys) => keys.has(key),
+      (keys) => keys.has(summonRef(key, grantedBy)),
       () => false,
     );
   }

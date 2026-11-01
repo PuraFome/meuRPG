@@ -43,11 +43,11 @@ type summoning struct {
 // the group is rolled (RN-18: in the app, or typed from a physical die, as the
 // campaign's dice setting allows) and the choice is what the spell allows with
 // this slot and this character.
-func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, caster playdb.Combatant, spellKey string, slotLevel int, pick *playv1.SummonChoice, in rollInput, rolled bool, concentration bool) (*summoning, error) {
+func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, caster playdb.Combatant, spellKey string, slotLevel int, pick *playv1.SummonChoice, in rollInput, rolled bool, concentration bool, viaGrant bool) (*summoning, error) {
 	if err := s.summonRollOK(ctx, c, m, v, caster, in, rolled); err != nil {
 		return nil, err
 	}
-	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick, viaGrant)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +335,7 @@ func (s *Service) castSummonTx(ctx context.Context, c *combatTx, r *summonRun) (
 	if err != nil {
 		return nil, err
 	}
-	chk, err := s.checkSummonChoice(ctx, c.tx, r.m.CampaignID, r.call.characterID, r.call.spellKey, cost.circle, r.call.pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, r.m.CampaignID, r.call.characterID, r.call.spellKey, cost.circle, r.call.pick, r.call.grantedBy != "")
 	if err != nil {
 		return nil, err
 	}

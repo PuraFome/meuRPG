@@ -125,6 +125,54 @@ func TestATableFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone(t 
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })
 }
 
+// The spell a feature's summon lowers to belongs to the feature's class: GetSpellDetails answers it to the master and to
+// a player whose character has the class, whether the class is live or archived, and as an unknown spell to every other
+// member. The canary is the feature's name, which the spell carries.
+func TestTheHiddenSpellOfAFeatureSummonIsReadOnlyByTheMasterAndTheClassHolder(t *testing.T) {
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("building the fixture: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	m := w.master
+	featureName := w.secrets.marker("feature-summon-spell-feature-name", w.ana)
+	class := must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: summonerClass(
+			"Guardiã da Matilha", featureName, "O texto da habilidade.",
+			&rulesv1.TableSummon{CreatureKeys: []string{"monster:wolf"}, Count: "2", MaxLive: 4, ResourceKey: "chamados"},
+		)},
+	}))).GetEntry()
+	w.pens = must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Pensantus",
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8},
+			RaceKey:    "race:gnome", Classes: []*charactersv1.ClassLevel{{ClassKey: class.GetKey(), Level: 1}},
+		}}},
+	}))).GetCharacter()
+	w.toren = w.pc(w.caio, "Toren", "race:human")
+	spell := must(w.ana.characters.GetSummonOptions(ctx, rq(&charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetSpells()[0].GetSpellKey()
+	details := func(p *person) reply {
+		return p.call(rulesv1connect.ContentServiceGetSpellDetailsProcedure, &rulesv1.GetSpellDetailsRequest{CampaignId: w.campaign, SpellKey: spell})
+	}
+	check := func(when string) {
+		t.Helper()
+		for _, p := range []*person{m, w.ana} {
+			if r := details(p); !r.ok() || !strings.Contains(string(r.body), featureName) {
+				t.Errorf("%s: %s does not read the hidden spell of the feature (the positive control): %d %s", when, p.name, r.status, shorten(r.body))
+			}
+		}
+		if r := details(w.caio); r.ok() || strings.Contains(string(r.body), featureName) {
+			t.Errorf("%s: Caio, whose character has not the class, reads the feature's hidden spell: %d %s", when, r.status, shorten(r.body))
+		}
+	}
+	check("live class")
+	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: class.GetKey()})))
+	check("archived class")
+}
+
 // summonerClass is a table class whose level 1 feature summons: two uses of "chamados" back on a long rest.
 func summonerClass(name, feature, text string, summon *rulesv1.TableSummon) *rulesv1.TableClass {
 	c := &rulesv1.TableClass{

@@ -87,6 +87,11 @@ export function subtitleOf(i: SubtitleInput): string {
       ]),
     );
   }
+  if (s.grantedBy) {
+    return tight(
+      `Habilidade · ${s.castingTimePt}${i.inCombat && s.concentration ? ' · concentração' : ''}`,
+    );
+  }
   return tight(
     `Magia de ${circleLabel(s.level)}${i.ritual ? ' · ritual' : ''} · ${s.castingTimePt}${i.inCombat && s.concentration ? ' · concentração' : ''}`,
   );

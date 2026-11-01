@@ -2,6 +2,8 @@ package rules
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 )
 
@@ -23,9 +25,17 @@ const featureSummonLevel = 1
 const featureSummonAbility = "int"
 
 // FeatureSummonSpellKey is the key of the hidden spell of a feature's summon: "spell:" and the feature's key
-// without its colon ("spell:feature-class-guardiao-3f9a1c--vigor@mesa").
+// without its colon ("spell:feature-class-guardiao-3f9a1c--vigor@mesa"). A feature key whose spell key would pass the
+// longest slug is cut, with a digest of the whole key in its end, so two long keys never meet.
 func FeatureSummonSpellKey(featureKey string) string {
-	return featureSummonSpellPrefix + strings.Replace(featureKey, ":", "-", 1)
+	key := featureSummonSpellPrefix + strings.Replace(featureKey, ":", "-", 1)
+	slug, ok := strings.CutSuffix(strings.TrimPrefix(key, featureSummonSpellPrefix), tableSuffix)
+	if !ok || len(slug) <= MaxSlugLength {
+		return key
+	}
+	sum := sha256.Sum256([]byte(featureKey))
+	const digest = 8
+	return featureSummonSpellPrefix + slug[:MaxSlugLength-digest-1] + "-" + hex.EncodeToString(sum[:])[:digest] + tableSuffix
 }
 
 // pendingSummon is the resource a lowered summon spends and where its granted_spell effect is among the pending ones.
@@ -37,15 +47,17 @@ type pendingSummon struct {
 // lowerFeatureSummon checks a feature's summon, registers its hidden spell and returns the effects of the feature
 // with the granted_spell effect that gives the spell, and what to check once every entry exists. A feature with no
 // summon goes through as it is.
-func (b *overlayBuilder) lowerFeatureSummon(f *TableFeature, path string, effects []Effect) ([]Effect, *pendingSummon, error) {
+func (b *overlayBuilder) lowerFeatureSummon(f *TableFeature, owner, path string, effects []Effect) ([]Effect, *pendingSummon, error) {
 	s := f.Summon
 	if s == nil {
 		return effects, nil, nil
 	}
 	var c entryErrors
 	spellKey := FeatureSummonSpellKey(f.Key)
-	if err := b.claim(spellKey); err != nil {
-		c.at(f.Key, path, ".summon", ReasonValue, "the key of the summon's spell is taken: rename the feature")
+	if err := checkTableKey(featureSummonSpellPrefix, spellKey); err != nil {
+		c.at(f.Key, path, ".key", ReasonValue, "the feature's summon needs a spell key of its own made from the feature's key, and it is not a valid key")
+	} else if err := b.claim(spellKey); err != nil {
+		c.at(f.Key, path, ".key", ReasonValue, "the key of the feature's summon (%s) is taken by another entry: rename the feature or that entry", spellKey)
 	}
 	ts := &TableSpell{
 		TableEntry: TableEntry{Key: spellKey, NamePT: f.NamePT},
@@ -62,7 +74,7 @@ func (b *overlayBuilder) lowerFeatureSummon(f *TableFeature, path string, effect
 	b.register(ts.TableEntry)
 	b.n.spells[spellKey] = sp
 	b.n.spellTargets[spellKey] = SpellTarget{Kind: TargetSelf}
-	b.n.featureSummons[spellKey] = f.Key
+	b.n.featureSummons[spellKey] = owner
 	grant := Effect{Type: "granted_spell", Spell: spellKey, Uses: s.ResourceKey, Ability: featureSummonAbility}
 	return append(effects[:len(effects):len(effects)], grant), &pendingSummon{resource: s.ResourceKey, at: len(effects)}, nil
 }

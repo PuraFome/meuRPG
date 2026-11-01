@@ -462,7 +462,8 @@ func (s *spellSheet) checkCantripCount() {
 func (s *spellSheet) checkSpell(field, key string, offList bool) (*srd51.Spell, bool) {
 	x, c := s.x, s.c
 	sp, ok := c.spells[key]
-	if !ok {
+	if _, hidden := c.featureSummons[key]; !ok || (hidden && !s.granted[key]) {
+		// The spell of a feature's summon belongs to the feature: only the grant puts it on a sheet.
 		x.issue(IssueUnknownKey, field, "A magia escolhida não existe no conteúdo %s.", c.version)
 		return nil, false
 	}
@@ -494,7 +495,7 @@ func (s *spellSheet) countSecrets() {
 // takeOffList spends one of the Magical Secrets on a spell off the class list.
 func (s *spellSheet) takeOffList(key string) bool {
 	sp := s.c.spells[key]
-	if sp == nil || s.offListLeft <= 0 || s.onClassList(sp) {
+	if _, hidden := s.c.featureSummons[key]; sp == nil || hidden || s.offListLeft <= 0 || s.onClassList(sp) {
 		return false
 	}
 	s.offListLeft--

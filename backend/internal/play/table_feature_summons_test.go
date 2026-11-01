@@ -136,6 +136,9 @@ func TestMR578_ATableFeatureSummonsItsCreaturesOutsideACombatForAUse(t *testing.
 		"a ritual":    func(r *playv1.CastSummonRequest) { r.Ritual = true },
 		"no feature":  func(r *playv1.CastSummonRequest) { r.GrantedBy = "" },
 		"another one": func(r *playv1.CastSummonRequest) { r.GrantedBy = "feature:outra@mesa" },
+		// The feature's spell is not a spell of the character's own: with a slot and no feature it is refused too.
+		"a slot, no feature":   func(r *playv1.CastSummonRequest) { r.GrantedBy, r.Slot = "", slotOfLevel(1) },
+		"a ritual, no feature": func(r *playv1.CastSummonRequest) { r.GrantedBy, r.Ritual = "", true },
 	} {
 		if _, err := f.castFeature(t, f.ana, opts, 2, edit); connect.CodeOf(err) != connect.CodeInvalidArgument {
 			t.Errorf("CastSummon(%s) error = %v, want invalid_argument", name, err)
@@ -316,5 +319,52 @@ func TestMR578_ATableFeatureSummonsThroughCastSpellOutsideCombat(t *testing.T) {
 	}
 	if len(res.GetCreatureIds()) != 2 || usedOf(f.vitals(t, f.gaia), featureUses) != 1 || len(f.mustCreatures(t, f.ana, f.gaia)) != 2 {
 		t.Errorf("the cast = %v, want two wolves and a use spent", res)
+	}
+}
+
+// A feature's summon is no spell for a Counterspell to answer: the Mage next
+// to the guardian has Counterspell and the slot, and the cast still happens at once.
+func TestMR578_ATableFeatureSummonOpensNoCounterspellWindow(t *testing.T) {
+	t.Parallel()
+	f := newFeatureSummoners(t)
+	opts := f.featureOptions(t)
+	e := f.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: f.goblin.GetId()}}, npcRolls: []int{1},
+		players: map[string]int32{"Pensantus": 20, "Sálvia": 15, "Toren": 12}, setup: true,
+	})
+	f.h.roller.queue(1)
+	f.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = "monster:mage", 1 })
+	e = f.get(t, f.master)
+	for label, sq := range map[string][2]int32{"Toren": {6, 5}, "Pensantus": {5, 5}, "Sálvia": {5, 6}, "Goblin": {12, 8}, "Mago": {7, 5}} {
+		if _, err := f.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+			CampaignId: f.campaignID, EncounterId: e.GetId(), CombatantId: f.id(t, label), IdempotencyKey: newKey(), Col: sq[0], Row: sq[1],
+		})); err != nil {
+			t.Fatalf("MoveCombatant(%s) error = %v", label, err)
+		}
+	}
+	for _, shown := range []string{"Mago", "Goblin"} {
+		if _, err := f.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+			CampaignId: f.campaignID, EncounterId: e.GetId(), CombatantId: f.id(t, shown), IdempotencyKey: newKey(), Hidden: false,
+		})); err != nil {
+			t.Fatalf("SetCombatantHidden(%s) error = %v", shown, err)
+		}
+	}
+	f.begin(t, e)
+	e = f.turnOf(t, "Pensantus")
+
+	f.h.roller.queue(4, 16)
+	res, err := f.cast(t, f.ana, e, "Pensantus", opts.GetSpellKey(), nil, nil, func(r *playv1.CastSpellRequest) {
+		r.GrantedBy = opts.GetGrantedBy()
+		r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: true}
+		r.Summon = &playv1.SummonChoice{CreatureKeys: wolves(2)}
+	})
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	if len(res.GetSummonedCombatantIds()) != 2 || usedOf(f.vitals(t, f.gaia), featureUses) != 1 {
+		t.Fatalf("CastSpell() = %v, want the wolves at once and a use spent", res)
+	}
+	if w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_COUNTERSPELL); w != nil {
+		t.Errorf("the master has a Counterspell window %v for a feature's summon", w)
 	}
 }

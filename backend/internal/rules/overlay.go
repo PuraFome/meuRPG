@@ -583,6 +583,10 @@ func (c *Content) Off(key string) bool { return c.c.off[key] }
 // is switched off. A sheet that already has a hidden key keeps it (ADR-0018,
 // section 7); it is only not a choice.
 func (c *Content) Hidden(key string) bool {
+	// The spell of a feature's summon is as hidden as the entry the feature belongs to.
+	if owner, ok := c.c.featureSummons[key]; ok {
+		return c.Hidden(owner)
+	}
 	if c.c.archived[key] || c.c.offOrParent(key) {
 		return true
 	}
@@ -594,6 +598,12 @@ func (c *Content) Hidden(key string) bool {
 		return c.c.archived[s.Race]
 	}
 	return false
+}
+
+// FeatureSummonOwner is the entry a feature's summon belongs to, when the spell key is the hidden spell of one.
+func (c *Content) FeatureSummonOwner(spellKey string) (string, bool) {
+	owner, ok := c.c.featureSummons[spellKey]
+	return owner, ok
 }
 
 // Switchable says whether the key is one the master can switch on or off: a

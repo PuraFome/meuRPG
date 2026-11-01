@@ -162,6 +162,7 @@ func spellHitPointEffect(out *link.Spell, content *rules.Content, spellKey strin
 func spellKinds(out *link.Spell, content *rules.Content, d rules.Derived, det *rules.SpellDetails, spellKey string) {
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
+	_, out.FeatureSummon = content.FeatureSummonOwner(spellKey)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
 	out.HalfOnMiss = content.HalvesOnMiss(spellKey)
 	out.Evocation = det.Spell.School == "school:evocation"
