@@ -19,7 +19,8 @@
 //     or dim), or it is within one of the viewer's senses. Darkvision, within
 //     its range, sees dim light as bright and darkness as dim light, in grey;
 //     blindsight sees regardless of the light, also in grey; truesight sees
-//     darkness and dim light as bright. A viewer always knows
+//     darkness and dim light as bright; Devil's Sight, within its range, sees
+//     darkness as bright and leaves dim light dim. A viewer always knows
 //     its own square. A wall is seen when a seen square touches it (the eight
 //     neighbors).
 //   - A cloud (Fog Cloud, Stinking Cloud) is a heavily obscured area: a line that
@@ -320,8 +321,9 @@ func (l *Lit) squareState(v Viewer, sq grid.Square) State {
 		return Unseen // heavily obscured: what is in a cloud, behind it, or seen from inside it
 	}
 	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt && !l.inMagicDark(sq)
-	truesight := (s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt) || (s.DevilsSightFt > 0 && d2 <= s.DevilsSightFt*s.DevilsSightFt)
-	if state := lightSeen(l.level[n], truesight, darkvision, blindsight); state != Unseen && l.sight.Clear(v.At, sq) {
+	truesight := s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt
+	devils := s.DevilsSightFt > 0 && d2 <= s.DevilsSightFt*s.DevilsSightFt
+	if state := lightSeen(l.level[n], truesight, darkvision, blindsight, devils); state != Unseen && l.sight.Clear(v.At, sq) {
 		return state
 	}
 	return Unseen
@@ -333,7 +335,8 @@ func (l *Lit) clouded(from, sq grid.Square) bool {
 }
 
 // lightSeen is how a square of the light is seen with the senses that reach it.
-func lightSeen(light grid.Light, truesight, darkvision, blindsight bool) State {
+// Devil's Sight sees darkness, magical or not, as bright light; dim light stays dim.
+func lightSeen(light grid.Light, truesight, darkvision, blindsight, devilsSight bool) State {
 	switch {
 	case truesight, light == grid.Bright:
 		return SeenBright
@@ -342,6 +345,8 @@ func lightSeen(light grid.Light, truesight, darkvision, blindsight bool) State {
 		return SeenBright
 	case light == grid.Dim:
 		return SeenDim
+	case devilsSight:
+		return SeenBright
 	case darkvision, blindsight:
 		return SeenGrey
 	}

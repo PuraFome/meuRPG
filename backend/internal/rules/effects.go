@@ -49,7 +49,7 @@ type Effect struct {
 	Roll    string   `json:"roll,omitempty"`
 	Targets []string `json:"targets,omitempty"`
 
-	// sense: Sense is darkvision, blindsight, tremorsense or truesight,
+	// sense: Sense is darkvision, blindsight, tremorsense, truesight or devils-sight,
 	// with RangeFt.
 	Sense   string `json:"sense,omitempty"`
 	RangeFt int    `json:"range_ft,omitempty"`

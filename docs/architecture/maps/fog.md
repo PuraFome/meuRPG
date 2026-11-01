@@ -52,7 +52,9 @@ In `rules/vision`:
 - The SRD heavy obscurement only blinds a creature trying to see something in the area.
 - Blindsight within its range sees through a cloud.
 - A square of magical darkness has no light (`Dark`) and darkvision does not work in it. Truesight, blindsight and Devil's Sight do.
-- Devil's Sight (`Senses.DevilsSightFt`, 120 feet from the warlock invocation) sees darkness as bright within its range, magical or not. It sees through no cloud.
+- Devil's Sight (`Senses.DevilsSightFt`, 120 feet from the warlock invocation) sees darkness as bright within its range, magical or not.
+- Devil's Sight leaves dim light dim, so a passive check in dim light keeps its penalty.
+- Devil's Sight sees through no cloud.
 - A viewer in magical darkness with only darkvision is in the dark; with Devil's Sight it is not (`InTheDark`), which is what the master's light warning reads.
 
 A hidden caster's cloud or Darkness still turns its squares unseen for the players.

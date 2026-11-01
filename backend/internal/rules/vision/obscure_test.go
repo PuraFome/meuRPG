@@ -212,3 +212,52 @@ func TestInTheDarkWithDevilsSight(t *testing.T) {
 		t.Error("control: darkvision in a Darkness is not in the dark")
 	}
 }
+
+// Devil's Sight does not lift dim light: a dim square stays dim within its range, with the passive penalty it carries.
+func TestDevilsSightLeavesDimLightDim(t *testing.T) {
+	t.Parallel()
+	lit := mustCompile(t, vision.Scene{Grid: stripGrid, Base: grid.Dim})
+	at := grid.Square{Col: 4, Row: 2}
+	st := lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 120}}).At(at)
+	if st != vision.SeenDim {
+		t.Errorf("Devil's Sight, dim square in range: state = %v, want SeenDim", st)
+	}
+	if got, want := vision.PassivePenalty(st), vision.PassivePenalty(lit.See(vision.Viewer{At: viewer}).At(at)); got != want || got == 0 {
+		t.Errorf("passive penalty with Devil's Sight = %d, without = %d, want the same and not zero", got, want)
+	}
+}
+
+// A viewer standing inside a Darkness with Devil's Sight sees its surroundings within range, in the Darkness or out of it.
+func TestDevilsSightSeesFromInsideADarkness(t *testing.T) {
+	t.Parallel()
+	dark := []grid.Square{{Col: 1, Row: 2}, {Col: 2, Row: 2}, {Col: 3, Row: 2}, {Col: 7, Row: 2}}
+	lit := mustCompile(t, stripScene(nil, dark))
+	v := lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 15}})
+	for _, sq := range []grid.Square{{Col: 2, Row: 2}, {Col: 3, Row: 2}, {Col: 4, Row: 2}} {
+		if !v.Seen(sq) {
+			t.Errorf("Devil's Sight inside the Darkness does not see %v", sq)
+		}
+	}
+	if v.Seen(grid.Square{Col: 7, Row: 2}) {
+		t.Error("Devil's Sight inside the Darkness sees beyond its range")
+	}
+	if lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DarkvisionFt: 60}}).Seen(grid.Square{Col: 2, Row: 2}) {
+		t.Error("control: darkvision inside the Darkness sees the Darkness")
+	}
+}
+
+// Blindsight still sees through a cloud, and Devil's Sight alone does not, also with both senses together.
+func TestDevilsSightWithBlindsightSeesThroughACloudOnlyByBlindsight(t *testing.T) {
+	t.Parallel()
+	lit := mustCompile(t, stripScene(column(3), nil))
+	behind := grid.Square{Col: 5, Row: 2}
+	if lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 120}}).Seen(behind) {
+		t.Error("Devil's Sight alone sees through the cloud")
+	}
+	if !lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 120, BlindsightFt: 20}}).Seen(behind) {
+		t.Error("blindsight with Devil's Sight does not see through the cloud")
+	}
+	if lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 120, BlindsightFt: 5}}).Seen(behind) {
+		t.Error("blindsight beyond its range sees through the cloud")
+	}
+}

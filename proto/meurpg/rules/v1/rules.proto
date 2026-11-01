@@ -1051,8 +1051,8 @@ message Sense {
   string name_pt = 2;
   // Range in feet, such as 60.
   int32 range_ft = 3;
-  // Which sense it is: "darkvision", "blindsight", "tremorsense" or
-  // "truesight". Use it, not `key` (which names what grants the sense: a trait,
+  // Which sense it is: "darkvision", "blindsight", "tremorsense",
+  // "truesight" or "devils-sight". Use it, not `key` (which names what grants the sense: a trait,
   // or the creature's key for a creature's sense), to tell senses apart.
   string sense = 4;
 }

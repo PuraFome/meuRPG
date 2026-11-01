@@ -2233,8 +2233,8 @@ export type Sense = Message<"meurpg.rules.v1.Sense"> & {
   rangeFt: number;
 
   /**
-   * Which sense it is: "darkvision", "blindsight", "tremorsense" or
-   * "truesight". Use it, not `key` (which names what grants the sense: a trait,
+   * Which sense it is: "darkvision", "blindsight", "tremorsense",
+   * "truesight" or "devils-sight". Use it, not `key` (which names what grants the sense: a trait,
    * or the creature's key for a creature's sense), to tell senses apart.
    *
    * @generated from field: string sense = 4;

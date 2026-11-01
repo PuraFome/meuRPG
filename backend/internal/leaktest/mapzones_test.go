@@ -193,6 +193,13 @@ func (z *zoneTable) onTheMap(p *person, combatantID string) bool {
 	return false
 }
 
+// stateAt is the packed state of a square in the person's view: 0 unseen, 1 a wall, 2 to 4 seen now, 5 remembered.
+func stateAt(res *mapsv1.GetMapVisionResponse, col, row int) byte {
+	cols := int(res.GetGridColumns())
+	i := row*cols + col
+	return res.GetStates()[i/2] >> (4 * (i % 2)) & 0xf
+}
+
 // seenNow says whether the person's view shows the square now: seen in some light, not a wall and not only remembered.
 func seenNow(res *mapsv1.GetMapVisionResponse, col, row int) bool {
 	cols := int(res.GetGridColumns())
@@ -305,6 +312,7 @@ func TestADarknessTakesACreatureOffTheMapOfADarkvisionPlayer(t *testing.T) {
 		t.Errorf("Ana's map still places the creature in the Darkness")
 	}
 	view := z.vision(ana, z.fogMap)
+	requireClean(t, ana.name, "the answer of GetMapVision", jsonOf(view), needles)
 	for _, sq := range [][2]int{{foeCol, foeRow}, {foeCol - 1, foeRow}, {foeCol + 1, foeRow}} {
 		if seenNow(view, sq[0], sq[1]) {
 			t.Errorf("Ana sees (%d,%d) in the Darkness with darkvision\n%s", sq[0], sq[1], strings.Join(picture(view), "\n"))
@@ -382,6 +390,12 @@ func TestAHiddenCastersFogCloudReachesNoPlayerButTheUnseenSquares(t *testing.T) 
 				t.Errorf("%s sees (%d,%d) of the cloud now\n%s", p.name, sq.GetCol(), sq.GetRow(), strings.Join(picture(view), "\n"))
 			}
 		}
+		// What the player saw before the cloud is only remembered now (grey), and nothing of it is seen.
+		for _, sq := range zone.GetSquares() {
+			if got := stateAt(view, int(sq.GetCol()), int(sq.GetRow())); got != 5 {
+				t.Errorf("%s: state of the cloud square (%d,%d) = %d, want 5 (seen before the cloud, remembered)", p.name, sq.GetCol(), sq.GetRow(), got)
+			}
+		}
 		// Behind the cloud, on the line from the player's character, nothing is seen either.
 		if seenNow(view, casterCol, casterRow) {
 			t.Errorf("%s sees (%d,%d), behind the cloud", p.name, casterCol, casterRow)
@@ -408,9 +422,45 @@ func TestAHiddenCastersFogCloudReachesNoPlayerButTheUnseenSquares(t *testing.T) 
 	}
 }
 
+// A square the player never saw is not remembered: the cloud goes up, the master clears what the players remember, and the
+// squares of the cloud (never seen since) stay unseen, neither seen nor remembered. When the cloud ends they are seen now.
+// Before the clearing they were seen and are remembered (the row above), so the clearing is what makes them never seen.
+func TestASquareNeverSeenBecauseOfACloudIsNotRemembered(t *testing.T) {
+	z := newZoneTable(t, true)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ctx := t.Context()
+	z.untilTurn(z.casterC)
+	zone := z.cast(z.master, z.casterC, "spell:fog-cloud", 1, foeCol, foeRow).GetEncounter().GetZones()[0]
+	must(z.master.maps.ForgetMapVision(ctx, rq(&mapsv1.ForgetMapVisionRequest{CampaignId: z.campaign, MapId: z.fogMap})))
+	for _, p := range []*person{z.ana, z.caio} {
+		view := z.vision(p, z.fogMap)
+		if got := stateAt(view, foeCol-6, foeRow); got < 2 || got > 4 {
+			t.Fatalf("%s: a square before the cloud has state %d, want seen now: the row proves nothing", p.name, got)
+		}
+		for _, sq := range zone.GetSquares() {
+			if got := stateAt(view, int(sq.GetCol()), int(sq.GetRow())); got != 0 {
+				t.Errorf("%s: the never-seen cloud square (%d,%d) has state %d, want 0 (not seen, not remembered)\n%s", p.name, sq.GetCol(), sq.GetRow(), got, strings.Join(picture(view), "\n"))
+			}
+		}
+	}
+	must(z.master.combat.EndSpellZone(ctx, rq(&playv1.EndSpellZoneRequest{CampaignId: z.campaign, EncounterId: z.enc.GetId(), ZoneId: zone.GetId(), IdempotencyKey: newKey()})))
+	for _, p := range []*person{z.ana, z.caio} {
+		view := z.vision(p, z.fogMap)
+		for _, sq := range zone.GetSquares() {
+			if !seenNow(view, int(sq.GetCol()), int(sq.GetRow())) {
+				t.Errorf("%s: the cloud square (%d,%d) is not seen after the cloud ended", p.name, sq.GetCol(), sq.GetRow())
+			}
+		}
+	}
+}
+
 // A cloud that ends: while it stands the squares are hidden and the stream of the players carries only hints; when the
-// master ends it the squares are seen again and the stream carries nothing new, no zone, no caster and no square of the
-// cloud. The streams are opened with the cloud up, so everything they hold is what a player gets from here on. The sight
+// master ends it the squares are seen again and the stream carries nothing new: no zone id, no caster or creature (name, id, combatant), no move,
+// and the only fog hint names the map. The streams are opened with the cloud up, so everything they hold is what a player gets from here on. The sight
 // zones are fixed (Fog Cloud, Darkness and Stinking Cloud never move), so what moves is what is inside: the creature and the
 // hidden caster move in the cloud with the master's hand.
 func TestACloudThatEndsLeavesNothingNewInWhatThePlayersReceive(t *testing.T) {
