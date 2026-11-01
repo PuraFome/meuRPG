@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -440,6 +442,9 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
 		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c, e)
 	}
+	if v.master || v.owns(c) { // the limits of a creature: the master's and the player's who controls it (RN-29)
+		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c)
+	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 		shareEconomy(p, c)
 	}
@@ -746,12 +751,15 @@ func (s *Service) armorClasses(ctx context.Context, m authz.Membership, d *encou
 }
 
 // masterNPC is what the master's copy shows of an NPC besides its numbers: its
-// portrait and, for a monster of the bestiary, the creature and its ND.
+// portrait and, for a monster of the bestiary, the creature and its ND. The player who controls a
+// creature of a stat block gets its limited actions alone.
 type masterNPC struct {
 	portrait, monsterKey, challengeRating string
 	// legendary is what its stat block says about legendary actions and Legendary
 	// Resistance; the zero value for an NPC without them.
 	legendary rules.LegendaryProfile
+	// limited are the actions of its stat block that Recharge, have uses a day or wait for a rest.
+	limited []rules.ActionPlan
 }
 
 // npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its
@@ -760,7 +768,7 @@ type masterNPC struct {
 // creature. A sheet that can't be read gives none: the app draws the initials.
 func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encounterData) map[string]masterNPC {
 	if m.Role != authz.RoleMaster {
-		return nil
+		return s.creatureLimits(ctx, m.CampaignID, d, combatViewer{userID: m.UserID})
 	}
 	var ids []string
 	for _, c := range d.cs {
@@ -768,12 +776,12 @@ func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encount
 			ids = append(ids, c.CharacterID)
 		}
 	}
-	if len(ids) == 0 {
-		return nil
-	}
-	chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, ids)
-	if err != nil {
-		return nil
+	var chars []link.Character
+	if len(ids) > 0 {
+		var err error
+		if chars, err = s.roster.CombatCharacters(ctx, nil, m.CampaignID, ids); err != nil {
+			return nil
+		}
 	}
 	out := make(map[string]masterNPC, len(chars))
 	for _, c := range chars {
@@ -783,7 +791,8 @@ func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encount
 		}
 		out[c.ID] = n
 	}
-	s.addLegendaryProfiles(ctx, m.CampaignID, out)
+	s.addStatBlockProfiles(ctx, m.CampaignID, out)
+	maps.Copy(out, s.creatureLimits(ctx, m.CampaignID, d, combatViewer{master: true}))
 	return out
 }
 

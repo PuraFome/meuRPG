@@ -9,11 +9,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// addLegendaryProfiles reads the stat block of each monster NPC in npcs for the
-// master's card: its legendary actions and Legendary Resistance. The rules content
+// addStatBlockProfiles reads the stat block of each monster NPC in npcs for the
+// master's card: its legendary actions, Legendary Resistance and limited actions. The rules content
 // is read only when some NPC is a monster; a content that can't be read leaves the
 // cards without them, as a sheet that can't be read leaves a card without a portrait.
-func (s *Service) addLegendaryProfiles(ctx context.Context, campaignID string, npcs map[string]masterNPC) {
+func (s *Service) addStatBlockProfiles(ctx context.Context, campaignID string, npcs map[string]masterNPC) {
 	hasMonster := false
 	for _, n := range npcs {
 		hasMonster = hasMonster || n.monsterKey != ""
@@ -28,8 +28,11 @@ func (s *Service) addLegendaryProfiles(ctx context.Context, campaignID string, n
 	for id, n := range npcs {
 		if p, ok := content.LegendaryProfile(n.monsterKey); ok && p.IsLegendary() {
 			n.legendary = p
-			npcs[id] = n
 		}
+		if plan, ok := content.MonsterPlan(n.monsterKey); ok {
+			n.limited = limitedActionsOf(plan)
+		}
+		npcs[id] = n
 	}
 }
 
@@ -53,6 +56,31 @@ func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.En
 			Key: o.Key, Name: o.Name, Cost: conv.Int32(o.Cost), Kind: o.Kind, Text: o.Text,
 			Affordable: o.Cost <= int(out.ActionsLeft),
 		})
+	}
+	return out
+}
+
+// creatureLimits are the limited actions of the creatures of a stat block that the viewer reads: all of them for the
+// master, the ones the player controls for a player. It holds nothing else of the master's NPC data (RN-29).
+func (s *Service) creatureLimits(ctx context.Context, campaignID string, d *encounterData, v combatViewer) map[string]masterNPC {
+	var mine []playdb.Combatant
+	for _, c := range d.cs {
+		if isCreature(c) && (v.master || v.owns(c)) && conv.OrZero(c.MonsterKey) != "" {
+			mine = append(mine, c)
+		}
+	}
+	if len(mine) == 0 {
+		return nil
+	}
+	content, err := s.roster.RulesContent(ctx, nil, campaignID)
+	if err != nil {
+		return nil
+	}
+	out := make(map[string]masterNPC, len(mine))
+	for _, c := range mine {
+		if plan, ok := content.MonsterPlan(conv.OrZero(c.MonsterKey)); ok {
+			out[sheetKey(c)] = masterNPC{limited: limitedActionsOf(plan)}
+		}
 	}
 	return out
 }
