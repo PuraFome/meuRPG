@@ -18,8 +18,7 @@ import (
 // The faces stay as they came up, and the roll says what it counted as and which feature did it.
 // These tests need the database (MEURPG_TEST_DATABASE_URL), but the first ones.
 
-// Reliable Talent and the table's minimums compete for the floor of a roll: the highest wins, a tie keeps Reliable Talent,
-// a minimum of another kind or limited to a damage type is not a floor of the roll.
+// Reliable Talent and the table's minimums compete for the floor of a roll: the highest wins, a tie keeps Reliable Talent, a minimum of another kind or limited to a damage type is not a floor of the roll.
 func TestTheFloorOfARollIsTheHighestApplicableMinimum(t *testing.T) {
 	t.Parallel()
 	traits := link.Traits{RollMinimums: []link.RollMinimum{
@@ -55,8 +54,9 @@ func TestTheFloorOfARollIsTheHighestApplicableMinimum(t *testing.T) {
 	}
 }
 
-// The die that counts counts as the floor when it came up lower; the faces stay and the total uses the floor. The other die
-// of a pair does not change the pick.
+// The die that counts counts as the floor when it came up lower.
+// The faces stay and the total uses the floor.
+// The other die of a pair does not change the pick.
 func TestAFloorCountsTheDieThatCountsAndKeepsTheFaces(t *testing.T) {
 	t.Parallel()
 	floor := rollFloor{Value: 10, Source: "feat:ten"}
@@ -93,8 +93,8 @@ func TestAFloorCountsTheDieThatCountsAndKeepsTheFaces(t *testing.T) {
 	}
 }
 
-// minimumTable is the fighters' table (Toren a fighter of level 9, Pensantus a wizard, Brisa a cleric) with a feat that
-// gives one of them a roll_minimum of the rolls; it shows the DC of a save.
+// minimumTable is the fighters' table (Toren a fighter of level 9, Pensantus a wizard, Brisa a cleric) with a feat that gives one of them a roll_minimum of the rolls.
+// It shows the DC of a save.
 func minimumTable(t *testing.T, who string, rolls []string, value string) (a *armed, feat string) {
 	t.Helper()
 	a = fighterTable(t, "")
@@ -133,10 +133,9 @@ func (a *armed) logEntryWith(t *testing.T, u *user, e *playv1.Encounter, pick fu
 	return nil
 }
 
-// A weapon attack with a minimum of 10 whose die shows 1 is not the automatic miss of a natural 1: the die counts 10, the
-// total is 17 and it hits the goblin (AC 15). The faces stay, the roll says what it counted as and which feature did it,
-// the master and the attacker's player read it in the log and nobody else reads the roll; a retry gives the same answer
-// and the undo leaves nothing to put back.
+// A weapon attack with a minimum of 10 whose die shows 1 is not the automatic miss of a natural 1: the die counts 10, the total is 17 and it hits the goblin (AC 15).
+// The faces stay, the roll says what it counted as and which feature did it, the master and the attacker's player read it in the log and nobody else reads the roll.
+// A retry gives the same answer and the undo leaves nothing to put back.
 func TestAWeaponAttackWithAMinimumOf10OnAOneIsNotAnAutomaticMiss(t *testing.T) {
 	t.Parallel()
 	a, feat := minimumTable(t, "Toren", []string{"attack"}, "10")
@@ -226,8 +225,8 @@ func TestAMinimumCountsTheDieThatCountsOfAPairWithAdvantage(t *testing.T) {
 	wantCountedAs(t, "the d20", d, 3, 10, 17, feat)
 }
 
-// A spell attack of a cast counts the minimum too: Guiding Bolt next to the goblin has disadvantage, the 1 of [1, 4]
-// counts and counts as 10, so it hits on 10 + 5; a retry gives the same cast.
+// A spell attack of a cast counts the minimum too: Guiding Bolt next to the goblin has disadvantage, the 1 of [1, 4] counts and counts as 10, so it hits on 10 + 5.
+// A retry gives the same cast.
 func TestASpellAttackOfACastCountsTheMinimum(t *testing.T) {
 	t.Parallel()
 	a, feat := minimumTable(t, "Brisa", []string{"attack"}, "10")
@@ -257,9 +256,7 @@ func TestASpellAttackOfACastCountsTheMinimum(t *testing.T) {
 	}
 }
 
-// The saving throw of an effect counts the minimum: a 3 counted as 10 saves against DC 10 (Toren's Wisdom save is +0),
-// Indomitable is not asked about a save that passed, a retry gives the same result, and the log says what the die counted
-// as to the master and the player who rolled it, and shows the others no roll.
+// The saving throw of an effect counts the minimum: a 3 counted as 10 saves against DC 10 (Toren's Wisdom save is +0), Indomitable is not asked about a save that passed, a retry gives the same result, and the log says what the die counted as to the master and the player who rolled it, and shows the others no roll.
 func TestAnEffectSaveCountsTheMinimum(t *testing.T) {
 	t.Parallel()
 	a, feat := minimumTable(t, "Toren", []string{"save"}, "10")
@@ -301,8 +298,8 @@ func TestAnEffectSaveCountsTheMinimum(t *testing.T) {
 	}
 }
 
-// The concentration save counts the minimum: Pensantus's Constitution save is +1, so a 3 counted as 10 makes 11 against DC
-// 10 and keeps the concentration; the master's log line says both numbers, and a retry gives the same result.
+// The concentration save counts the minimum: Pensantus's Constitution save is +1, so a 3 counted as 10 makes 11 against DC 10 and keeps the concentration.
+// The master's log line says both numbers, and a retry gives the same result.
 func TestAConcentrationSaveCountsTheMinimum(t *testing.T) {
 	t.Parallel()
 	a := multiclassTable(t)
@@ -348,9 +345,8 @@ func dyingTable(t *testing.T, value string) (*armed, *playv1.Encounter, string) 
 	return a, e, feat
 }
 
-// A death save counts the die that counts: a 1 that counts as 10 is an ordinary 10 (a success, not the two failures of a
-// natural 1), a 9 counts 10, a minimum of 2 makes a 1 an ordinary 2 (one failure), and a die that counts 20 brings the
-// character back. Indomitable is not asked about a save that passed on the die that counts.
+// A death save counts the die that counts: a 1 that counts as 10 is an ordinary 10 (a success, not the two failures of a natural 1), a 9 counts 10, a minimum of 2 makes a 1 an ordinary 2 (one failure), and a die that counts 20 brings the character back.
+// Indomitable is not asked about a save that passed on the die that counts.
 func TestADeathSaveCountsTheMinimum(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -416,8 +412,7 @@ func TestADeathSaveCountsTheMinimum(t *testing.T) {
 	}
 }
 
-// The reroll is asked about the face as rolled and the minimum applies to the die that stays: a 2 is offered the reroll,
-// the new 1 counts as 10 and hits, and the roll tells the die it replaced.
+// The reroll is asked about the face as rolled and the minimum applies to the die that stays: a 2 is offered the reroll, the new 1 counts as 10 and hits, and the roll tells the die it replaced.
 func TestTheRerollIsAskedAboutTheFaceAsRolledAndTheMinimumCountsTheNewDie(t *testing.T) {
 	t.Parallel()
 	effects := append(d20RerollEffects("2", 2, "1"), &rulesv1.TableEffect{Type: "roll_minimum", Rolls: []string{"attack"}, Value: "10"})
@@ -497,15 +492,13 @@ func TestASpellSaveOfATargetCountsTheMinimum(t *testing.T) {
 		u    *user
 	}{{"Bia", a.bia}, {"Ana", a.ana}} {
 		sv := a.castSaveOf(t, who.u, e, "Toren")
-		wantNoLeak(t, who.name+"'s roll", sv.GetRoll())
 		if sv.GetRoll() != nil {
 			t.Errorf("%s reads the dice %v, want none", who.name, sv.GetRoll())
 		}
 	}
 }
 
-// A cast held for the master's Legendary Resistance rolls the saves of the other targets once: Toren's 1 counts 20 when the
-// master answers and the cast goes on from the held rolls.
+// A cast held for the master's Legendary Resistance rolls the saves of the other targets once: Toren's 1 counts 20 when the master answers and the cast goes on from the held rolls.
 func TestAHeldCastReplaysTheMinimumOfATargetsSave(t *testing.T) {
 	t.Parallel()
 	a, e := resistFightWith(t, adultRedDragon, "", "Draco")
@@ -562,9 +555,9 @@ func TestTheOfferOfAHeldRollSaysWhatTheDieCountsAs(t *testing.T) {
 	}
 }
 
-// The offer of a roll with only Reliable Talent behind it keeps what it always said: a single d20 shows no counted number,
-// a pair with advantage shows it with Reliable Talent as the source, and a row from before the source was kept reads the same.
-func TestTheOfferOfAHeldRollKeepsWhatReliableTalentAlwaysSaid(t *testing.T) {
+// The offer of a held roll shows the number the d20 counted as and the feature that did it, for one d20 and for a pair.
+// A d20 with no floor behind it is never marked.
+func TestTheOfferOfAHeldRollShowsWhatTheFloorCountedAs(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name       string
@@ -572,9 +565,8 @@ func TestTheOfferOfAHeldRollKeepsWhatReliableTalentAlwaysSaid(t *testing.T) {
 		wantTreat  int32
 		wantSource string
 	}{
-		{"a single d20", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15}, 0, ""},
-		{"a single d20 of Reliable Talent", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15, CountedBy: reliableTalentSource}, 0, ""},
-		{"a pair of a row without source", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15}, 10, reliableTalentSource},
+		{"a single d20 with no floor", heldRoll{Faces: []int{3}, Modifier: 5, Total: 8}, 0, ""},
+		{"a single d20 of Reliable Talent", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15, CountedBy: reliableTalentSource}, 10, reliableTalentSource},
 		{"a pair of Reliable Talent", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15, CountedBy: reliableTalentSource}, 10, reliableTalentSource},
 		{"a single d20 of a table minimum", heldRoll{Faces: []int{3}, Modifier: 5, Total: 15, CountedBy: "feat:ten"}, 10, "feat:ten"},
 		{"a pair of a table minimum", heldRoll{Faces: []int{3, 2}, Modifier: 5, Total: 15, CountedBy: "feat:ten"}, 10, "feat:ten"},
@@ -590,8 +582,7 @@ func TestTheOfferOfAHeldRollKeepsWhatReliableTalentAlwaysSaid(t *testing.T) {
 	}
 }
 
-// A save that fails on the number it counts as is asked about Indomitable: the question shows the face and the number, the
-// new roll replaces the die and counts as it came up.
+// A save that fails on the number it counts as is asked about Indomitable: the question shows the face and the number, the new roll replaces the die and counts as it came up.
 func TestIndomitableIsAskedAboutAFailedEffectSaveThatTheMinimumRaised(t *testing.T) {
 	t.Parallel()
 	a, feat := minimumTable(t, "Toren", []string{"save"}, "8")
@@ -633,30 +624,51 @@ func TestIndomitableIsAskedAboutAFailedConcentrationSaveThatTheMinimumRaised(t *
 	}
 }
 
-// A spell attack hides what it counted as wherever it hides its faces.
+// A spell attack shows what it counted as exactly where it shows its faces.
+// The master and the caster's player read the 1 counted as 10 by the feat, and the others read no roll.
 func TestASpellAttackHidesTheCountedNumberWithTheFaces(t *testing.T) {
 	t.Parallel()
-	a, _ := minimumTable(t, "Brisa", []string{"attack"}, "10")
+	a, feat := minimumTable(t, "Brisa", []string{"attack"}, "10")
 	a.closeFight(t)
 	e := a.turnOf(t, "Brisa")
 	if _, err := a.cast(t, a.bia, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, "Goblin"), d20Faces(1, 4)); err != nil {
 		t.Fatalf("CastSpell() error = %v", err)
 	}
+	rollsOf := func(u *user) (rolls []*playv1.DiceRoll) {
+		for _, l := range logEntries(a.log(t, u, e)) {
+			for _, tg := range l.GetSpell().GetTargets() {
+				if tg.GetAttackRoll() != nil {
+					rolls = append(rolls, tg.GetAttackRoll())
+				}
+			}
+		}
+		return rolls
+	}
 	for _, who := range []struct {
 		name string
 		u    *user
-	}{{"the master", a.master}, {"Bia", a.bia}, {"Caio", a.caio}, {"Ana", a.ana}} {
-		for _, l := range logEntries(a.log(t, who.u, e)) {
-			for _, tg := range l.GetSpell().GetTargets() {
-				wantNoLeak(t, who.name+"'s attack roll", tg.GetAttackRoll())
+	}{{"the master", a.master}, {"Bia", a.bia}} {
+		rolls := rollsOf(who.u)
+		if len(rolls) != 1 {
+			t.Fatalf("%s reads the attack rolls %v, want the one of the cast", who.name, rolls)
+		}
+		wantCountedAs(t, who.name+"'s attack roll", rolls[0], 1, 10, 15, feat)
+	}
+	for _, who := range []struct {
+		name string
+		u    *user
+	}{{"Caio", a.caio}, {"Ana", a.ana}} {
+		for _, roll := range rollsOf(who.u) {
+			if len(roll.GetFaces()) != 0 || roll.TreatedAs != nil || roll.GetTreatedAsSource() != "" {
+				t.Errorf("%s reads the attack roll %v, want no faces and no counted number", who.name, roll)
 			}
 		}
 	}
 }
 
-// The save of a creature's rider counts the target's minimum: the ghoul's claws ask DC 10 of Toren, whose saves have a
-// minimum of 20, so his 2 counts 20 and he is not paralyzed.
-// The master's line and Toren's player read it; another player reads the result alone.
+// The save of a creature's rider counts the target's minimum: the ghoul's claws ask DC 10 of Toren, whose saves have a minimum of 20, so his 2 counts 20 and he is not paralyzed.
+// The master's line and Toren's player read it.
+// Another player reads the result alone.
 func TestACreatureRiderSaveCountsTheMinimum(t *testing.T) {
 	t.Parallel()
 	a, e, ghoul := creatureFight(t, true, "monster:ghoul", false)

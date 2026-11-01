@@ -324,10 +324,11 @@ type actionEvent struct {
 	// Total uses the number it counted as.
 	countedRoll
 
-	// ReliableTalent says the roll of an ability check was made by a character with
-	// Reliable Talent that applied to the check (a skill it is proficient in): each d20
-	// of 9 or lower counted as 10.
-	ReliableTalent bool `json:"reliable_talent,omitempty"`
+	// Floor and FloorBy are the lowest number each d20 of an ability check counted as, and the content key of the feature
+	// that gave it (a table's roll_minimum, Reliable Talent on a skill the character is proficient in).
+	// Both are empty for a check with no floor.
+	Floor   int32  `json:"floor,omitempty"`
+	FloorBy string `json:"floor_by,omitempty"`
 
 	// The damage roll: the dice, their faces, the total and the type. Applied
 	// says an NPC took it at once.
@@ -939,3 +940,6 @@ type creatureActionEvent struct {
 	RepeatSave    bool   `json:"repeat_save,omitempty"`
 	Text          string `json:"text,omitempty"`
 }
+
+// floor is the floor the check was rolled with.
+func (e actionEvent) floor() rollFloor { return rollFloor{Value: int(e.Floor), Source: e.FloorBy} }

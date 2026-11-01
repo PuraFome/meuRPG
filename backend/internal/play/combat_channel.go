@@ -70,6 +70,8 @@ type channelTurn struct {
 	Modifier int32  `json:"modifier"`
 	Total    int32  `json:"total"`
 	Turned   bool   `json:"turned,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it: D20 is what came up and Total uses this one.
+	countedRoll
 }
 
 // readPreserveLife reads the hit points asked of Preserve Life: one entry for each creature, 1 or more points.
@@ -298,9 +300,10 @@ func (f *takeActionFlow) creatureSave(ctx context.Context, target playdb.Combata
 	if err != nil {
 		return nil, err
 	}
+	d20 = floorD20(d20, save.Bonus, floorFor(sheet.Traits, rules.RollAppliesSave, false))
 	return &channelTurn{
 		Target: target.ID, Label: target.Label, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(save.Bonus, math.MinInt32, math.MaxInt32),
-		Total: conv.Int32(d20.Total), Turned: !combat.SaveSucceeded(d20.Total, int(dc)),
+		Total: conv.Int32(d20.Total), Turned: !combat.SaveSucceeded(d20.Total, int(dc)), countedRoll: countedOf(d20),
 	}, nil
 }
 
@@ -341,7 +344,11 @@ func channelProto(ev *channelEvent) *playv1.ChannelDivinityResult {
 		out.Heals = append(out.Heals, &playv1.ChannelDivinityHeal{CombatantId: h.Target, Label: h.Label, Asked: h.Asked, Healed: h.Healed, HitPointsAfter: h.After})
 	}
 	for _, t := range ev.Turns {
-		out.Turns = append(out.Turns, &playv1.ChannelDivinityTurn{CombatantId: t.Target, Label: t.Label, D20: t.D20, Modifier: t.Modifier, Total: t.Total, Turned: t.Turned})
+		turn := &playv1.ChannelDivinityTurn{CombatantId: t.Target, Label: t.Label, D20: t.D20, Modifier: t.Modifier, Total: t.Total, Turned: t.Turned}
+		if t.CountedAs != 0 {
+			turn.TreatedAs, turn.TreatedAsSource = new(t.CountedAs), t.CountedBy
+		}
+		out.Turns = append(out.Turns, turn)
 	}
 	return out
 }

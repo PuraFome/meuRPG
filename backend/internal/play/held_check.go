@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -28,6 +29,8 @@ type preparedCheck struct {
 	n     checkNumbers
 	notes []rollNote
 	mode  combat.CheckMode
+	// floor is the lowest number the check's d20 counts as: the table's minimum of a check, or Reliable Talent.
+	floor rollFloor
 }
 
 // checkHold is what a path tells the gate about its check: the roll it is, the request an answer runs again, and who
@@ -51,7 +54,11 @@ func (s *Service) prepareCheck(ctx context.Context, c *combatTx, who playdb.Comb
 	if err != nil {
 		return preparedCheck{}, err
 	}
-	return preparedCheck{skill: skill, n: n, notes: notes, mode: notesMode(notes)}, nil
+	floor, err := s.floorOfCombatant(ctx, c.tx, c.session.CampaignID, who, rules.RollAppliesCheck, n.Reliable)
+	if err != nil {
+		return preparedCheck{}, err
+	}
+	return preparedCheck{skill: skill, n: n, notes: notes, mode: notesMode(notes), floor: floor}, nil
 }
 
 // cutOf is what the Cutting Words of the windows that were answered take off the roll of a replayed check, 0 for any
@@ -84,7 +91,7 @@ func (s *Service) gateCheck(ctx context.Context, c *combatTx, p preparedCheck, h
 	}
 	return s.heldGate(ctx, s.inspirationGate(c), rollSpec{
 		Kind: h.kind, Key: h.key, Request: h.req, Window: c.replay != nil, Roller: attackRoller(h.m, h.who, c.enc.Round),
-		In: rollInput{inApp: h.in.inApp, typedFaces: h.in.faces}, Modifier: p.n.Bonus - cutOf(c), Mode: rollModeOfCheck(p.mode), Floor: reliableFloor(p.n.Reliable),
+		In: rollInput{inApp: h.in.inApp, typedFaces: h.in.faces}, Modifier: p.n.Bonus - cutOf(c), Mode: rollModeOfCheck(p.mode), Floor: p.floor,
 		Lucky: lucky, MayAsk: mayAsk, Stroke: opposedStrokeRule(),
 	})
 }
@@ -97,7 +104,7 @@ func (s *Service) finishCheck(ctx context.Context, c *combatTx, who playdb.Comba
 		roll = contestRoll{
 			Skill: p.skill, Faces: faces32(gate.Roll.Faces), Modifier: conv.Int32(p.n.Bonus),
 			Total: conv.Int32(gate.Roll.Total), Physical: gate.Roll.Physical, Mode: checkModeKey(p.mode), Notes: p.notes, Unknown: !p.n.Known, Lucky: gate.Lucky, Stroke: gate.Stroke,
-			CountedAs: countedAs(gate.Roll.Face(), countedFace(gate.Roll.Face(), p.n.Reliable)),
+			countedRoll: countedOf(gate.Roll),
 		}
 		if gate.Bonus != nil {
 			roll.BonusSides, roll.BonusFace = gate.Bonus.Sides, gate.Bonus.Face
@@ -105,7 +112,7 @@ func (s *Service) finishCheck(ctx context.Context, c *combatTx, who playdb.Comba
 		roll = markedCut(c, roll)
 	} else {
 		var err error
-		if roll, err = s.rollCheck(in, p.mode, p.n.Bonus, p.skill, p.notes, !p.n.Known, p.n.Reliable); err != nil {
+		if roll, err = s.rollCheck(in, p.mode, p.n.Bonus, p.skill, p.notes, !p.n.Known, p.floor); err != nil {
 			return contestRoll{}, err
 		}
 		roll = cutRoll(c, roll)

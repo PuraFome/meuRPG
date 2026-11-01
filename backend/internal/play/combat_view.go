@@ -492,6 +492,9 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if detail {
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
+		if c.InitiativeCountedAs != nil {
+			out.InitiativeTreatedAs, out.InitiativeTreatedAsSource = c.InitiativeCountedAs, c.InitiativeCountedBy
+		}
 		shareEconomy(out, c)
 		if c.ReactionUsed { // which reaction and when: the owner's and the master's; a joint-turn partner reads reaction_used
 			out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)

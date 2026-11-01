@@ -97,6 +97,9 @@ type sceneRollEvent struct {
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
+	// CountedBy is the content key of the feature whose floor made the d20 that counts count as a higher number (Total uses it).
+	// It is empty when the d20 counted as it came up.
+	CountedBy string `json:"counted_by,omitempty"`
 	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (inspiration_lucky.go):
 	// D20, D20B and Counted are the dice after it, and this keeps the 1 it replaced and where, so
 	// the roll still says "Sortudo: 1 → 14". Nil when nothing was rolled again.
@@ -797,14 +800,14 @@ func (s *Service) sceneRollView(ctx context.Context, v *sceneViewing, r playdb.L
 func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sceneRollEvent, showPassed bool) *playv1.SceneRoll {
 	out := &playv1.SceneRoll{
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
-		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total-ev.BonusFace, ev.Physical),
+		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total-ev.BonusFace, ev.Physical, ev.CountedBy),
 		RolledAt: timestamppb.New(at),
 		Mode:     modeToProto[modeOfKey(ev.RollMode)],
 	}
 	if ev.D20B != 0 {
 		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace, reliableTalentSource)
+		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace, ev.CountedBy)
 	}
 	out.Roll.Total = ev.Total                              // with the Bardic Inspiration die, when the player used it
 	out.Roll.Rerolled = strokeRerolls(ev.Lucky, ev.Stroke) // "Sortudo: 1 → 14", with the d20 it changed
@@ -1037,9 +1040,13 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	floor, err := c.floorOf(ctx, action, opt)
+	if err != nil {
+		return err
+	}
 	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q), rollSpec{
 		Kind: heldSceneCheck, Key: c.key, Request: c.req, Roller: heldRoller{CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, UserID: c.m.UserID},
-		In: c.in, Modifier: bonus, Mode: cm.Mode, Floor: reliableFloor(opt.ReliableTalent), Lucky: opt.Lucky, MayAsk: true,
+		In: c.in, Modifier: bonus, Mode: cm.Mode, Floor: floor, Lucky: opt.Lucky, MayAsk: true,
 		Stroke: checkStrokeRule(action.DC, !scene.ShowDC),
 	})
 	if err != nil {
@@ -1050,6 +1057,15 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 		return nil
 	}
 	return c.write(ctx, session, scene, action, cm, bonus, step)
+}
+
+// floorOf is the floor of the action's d20: the table's minimum of a check or of a saving throw, and Reliable Talent on a check.
+func (c *sceneRollCall) floorOf(ctx context.Context, action link.SceneAction, opt link.SceneOption) (rollFloor, error) {
+	kind := rules.RollAppliesSave
+	if _, isCheck := checkKey(action.Key); isCheck {
+		kind = rules.RollAppliesCheck
+	}
+	return c.s.floorOfCharacter(ctx, c.tx, c.m.CampaignID, c.out.who.ID, kind, opt.ReliableTalent)
 }
 
 // replay answers a retry of the key with the roll it made. It says whether it did.
@@ -1166,7 +1182,7 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 		PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: conv.Int32(bonus), Total: conv.Int32(d20.Total),
 		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
-		Lucky: step.Lucky, Stroke: step.Stroke,
+		Lucky: step.Lucky, Stroke: step.Stroke, CountedBy: d20.CountedBy,
 	}
 	if step.Bonus != nil {
 		ev.BonusSides, ev.BonusFace = step.Bonus.Sides, step.Bonus.Face

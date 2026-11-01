@@ -5970,8 +5970,13 @@ type Combatant struct {
 	// the round alone says when.
 	ReactionKind  ReactionKind `protobuf:"varint,107,opt,name=reaction_kind,json=reactionKind,proto3,enum=meurpg.play.v1.ReactionKind" json:"reaction_kind,omitempty"`
 	ReactionRound int32        `protobuf:"varint,108,opt,name=reaction_round,json=reactionRound,proto3" json:"reaction_round,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The number the initiative d20 counted as when a table's roll_minimum raised it (`initiative_face` is what came
+	// up, `initiative` uses this one), and the feature that did it as a content key. Unset, and empty, when the d20
+	// counted as it came up. Same audience as `initiative_face`.
+	InitiativeTreatedAs       *int32 `protobuf:"varint,109,opt,name=initiative_treated_as,json=initiativeTreatedAs,proto3,oneof" json:"initiative_treated_as,omitempty"`
+	InitiativeTreatedAsSource string `protobuf:"bytes,110,opt,name=initiative_treated_as_source,json=initiativeTreatedAsSource,proto3" json:"initiative_treated_as_source,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -6536,6 +6541,20 @@ func (x *Combatant) GetReactionRound() int32 {
 		return x.ReactionRound
 	}
 	return 0
+}
+
+func (x *Combatant) GetInitiativeTreatedAs() int32 {
+	if x != nil && x.InitiativeTreatedAs != nil {
+		return *x.InitiativeTreatedAs
+	}
+	return 0
+}
+
+func (x *Combatant) GetInitiativeTreatedAsSource() string {
+	if x != nil {
+		return x.InitiativeTreatedAsSource
+	}
+	return ""
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -13820,9 +13839,13 @@ type ChannelDivinityTurn struct {
 	Modifier int32 `protobuf:"varint,4,opt,name=modifier,proto3" json:"modifier,omitempty"`
 	Total    int32 `protobuf:"varint,5,opt,name=total,proto3" json:"total,omitempty"`
 	// True: it failed and is turned for one minute (a lasting effect on it).
-	Turned        bool `protobuf:"varint,6,opt,name=turned,proto3" json:"turned,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Turned bool `protobuf:"varint,6,opt,name=turned,proto3" json:"turned,omitempty"`
+	// The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+	// one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
+	TreatedAs       *int32 `protobuf:"varint,7,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
+	TreatedAsSource string `protobuf:"bytes,8,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ChannelDivinityTurn) Reset() {
@@ -13895,6 +13918,20 @@ func (x *ChannelDivinityTurn) GetTurned() bool {
 		return x.Turned
 	}
 	return false
+}
+
+func (x *ChannelDivinityTurn) GetTreatedAs() int32 {
+	if x != nil && x.TreatedAs != nil {
+		return *x.TreatedAs
+	}
+	return 0
+}
+
+func (x *ChannelDivinityTurn) GetTreatedAsSource() string {
+	if x != nil {
+		return x.TreatedAsSource
+	}
+	return ""
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -26080,7 +26117,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xea\x1c\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xfe\x1d\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -26171,7 +26208,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\tlegendary\x18i \x01(\v2\x1e.meurpg.play.v1.LegendaryStateR\tlegendary\x12F\n" +
 	"\x0flimited_actions\x18j \x03(\v2\x1d.meurpg.play.v1.LimitedActionR\x0elimitedActions\x12A\n" +
 	"\rreaction_kind\x18k \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\freactionKind\x12%\n" +
-	"\x0ereaction_round\x18l \x01(\x05R\rreactionRoundB\r\n" +
+	"\x0ereaction_round\x18l \x01(\x05R\rreactionRound\x127\n" +
+	"\x15initiative_treated_as\x18m \x01(\x05H\tR\x13initiativeTreatedAs\x88\x01\x01\x12?\n" +
+	"\x1cinitiative_treated_as_source\x18n \x01(\tR\x19initiativeTreatedAsSourceB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +
@@ -26180,7 +26219,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x15_hit_points_temporaryB\x0e\n" +
 	"\f_armor_classB \n" +
 	"\x1e_wild_shape_hit_points_currentB\x1c\n" +
-	"\x1a_wild_shape_hit_points_max\"\xe3\x01\n" +
+	"\x1a_wild_shape_hit_points_maxB\x18\n" +
+	"\x16_initiative_treated_as\"\xe3\x01\n" +
 	"\rLimitedAction\x12\x1d\n" +
 	"\n" +
 	"action_key\x18\x01 \x01(\tR\tactionKey\x12\x12\n" +
@@ -26785,14 +26825,18 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
 	"\x05asked\x18\x03 \x01(\x05R\x05asked\x12\x16\n" +
 	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12(\n" +
-	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\xaa\x01\n" +
+	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\x89\x02\n" +
 	"\x13ChannelDivinityTurn\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
 	"\x03d20\x18\x03 \x01(\x05R\x03d20\x12\x1a\n" +
 	"\bmodifier\x18\x04 \x01(\x05R\bmodifier\x12\x14\n" +
 	"\x05total\x18\x05 \x01(\x05R\x05total\x12\x16\n" +
-	"\x06turned\x18\x06 \x01(\bR\x06turned\"\xdc\x02\n" +
+	"\x06turned\x18\x06 \x01(\bR\x06turned\x12\"\n" +
+	"\n" +
+	"treated_as\x18\a \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
+	"\x11treated_as_source\x18\b \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\v_treated_as\"\xdc\x02\n" +
 	"\x1fAdjustCombatantHitPointsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -29179,6 +29223,7 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*TakeActionRequest_TypedSum)(nil),
 	}
 	file_meurpg_play_v1_combat_proto_msgTypes[102].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[106].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[107].OneofWrappers = []any{
 		(*AdjustCombatantHitPointsRequest_Damage)(nil),
 		(*AdjustCombatantHitPointsRequest_Heal)(nil),

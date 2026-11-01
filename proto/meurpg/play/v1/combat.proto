@@ -2852,6 +2852,12 @@ message Combatant {
   // the round alone says when.
   ReactionKind reaction_kind = 107;
   int32 reaction_round = 108;
+
+  // The number the initiative d20 counted as when a table's roll_minimum raised it (`initiative_face` is what came
+  // up, `initiative` uses this one), and the feature that did it as a content key. Unset, and empty, when the d20
+  // counted as it came up. Same audience as `initiative_face`.
+  optional int32 initiative_treated_as = 109;
+  string initiative_treated_as_source = 110;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -4354,6 +4360,10 @@ message ChannelDivinityTurn {
   int32 total = 5;
   // True: it failed and is turned for one minute (a lasting effect on it).
   bool turned = 6;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
+  optional int32 treated_as = 7;
+  string treated_as_source = 8;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.

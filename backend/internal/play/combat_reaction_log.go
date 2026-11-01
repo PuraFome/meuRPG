@@ -305,7 +305,7 @@ func (f *reactionFacts) hellishRebukeMaster() string {
 		result = "falhou"
 	}
 	// The d20 the app rolled again for a halfling player's save (combat_lucky.go), with the numbers.
-	return fmt.Sprintf("%s usou Repreensão Infernal (%s) %s: teste de Destreza 1d20 (%d) + %d = %d contra CD %d: %s; %d de fogo.%s%s", f.who, rebukeCost(re), agg[1:], re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, result, re.Fire, luckyNote(f.e.ev.Lucky), f.by)
+	return fmt.Sprintf("%s usou Repreensão Infernal (%s) %s: teste de Destreza 1d20 (%s) + %d = %d contra CD %d: %s; %d de fogo.%s%s", f.who, rebukeCost(re), agg[1:], f.e.ev.faceText(re.SaveD20), re.SaveBonus, f.e.ev.value(re.SaveD20)+re.SaveBonus, re.SaveDC, result, re.Fire, luckyNote(f.e.ev.Lucky), f.by)
 }
 
 func (f *reactionFacts) featherFall() (string, bool) {
@@ -354,10 +354,7 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 func (f *reactionFacts) concentrationRoll() string {
 	re := f.re
 	counted := f.e.ev.countedRoll
-	roll := fmt.Sprintf("1d20 (%d) + %d = %d", re.SaveD20, re.SaveBonus, counted.value(re.SaveD20)+re.SaveBonus)
-	if counted.CountedAs != 0 { // a minimum made the d20 count as another number: the line says both
-		roll = fmt.Sprintf("1d20 (%d, conta como %d) + %d = %d", re.SaveD20, counted.CountedAs, re.SaveBonus, counted.CountedAs+re.SaveBonus)
-	}
+	roll := fmt.Sprintf("1d20 (%s) + %d = %d", counted.faceText(re.SaveD20), re.SaveBonus, counted.value(re.SaveD20)+re.SaveBonus)
 	if f.v.saveDCFor(f.reactor) {
 		roll += fmt.Sprintf(" contra CD %d", re.SaveDC)
 	}

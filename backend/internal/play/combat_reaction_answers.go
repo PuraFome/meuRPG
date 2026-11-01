@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -389,11 +390,11 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the aggressor is gone"))
 	}
 	aggressor := cs[ai]
-	sv, err := s.rebukeSave(ctx, c, reactor, aggressor, t, req)
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, aggressor)
 	if err != nil {
 		return err
 	}
-	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, aggressor)
+	sv, err := s.rebukeSave(ctx, c, reactor, aggressor, sheet.Traits, t, req)
 	if err != nil {
 		return err
 	}
@@ -438,7 +439,7 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 
 // rebukeSave rolls the aggressor's Dexterity saving throw against the caster's DC. A player rolls in
 // the app (a halfling's 1 is rolled again, combat_lucky.go); an NPC's roll is the master's.
-func (s *Service) rebukeSave(ctx context.Context, c *combatTx, reactor, aggressor playdb.Combatant, t windowTrigger, req *playv1.AnswerReactionRequest) (rebukeSave, error) {
+func (s *Service) rebukeSave(ctx context.Context, c *combatTx, reactor, aggressor playdb.Combatant, traits link.Traits, t windowTrigger, req *playv1.AnswerReactionRequest) (rebukeSave, error) {
 	var sv rebukeSave
 	k, _, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
 	if err != nil {
@@ -459,19 +460,16 @@ func (s *Service) rebukeSave(ctx context.Context, c *combatTx, reactor, aggresso
 			return sv, err
 		}
 	}
-	lucky, err := s.rebukeLucky(ctx, c, aggressor)
-	if err != nil {
-		return sv, err
-	}
 	face, rolled, err := s.d20(in, save.Bonus)
 	if err != nil {
 		return sv, err
 	}
 	// Nobody is asked about a player's save here: a halfling's 1 is rolled again by the app (combat_lucky.go).
-	sv.roll, sv.reroll, err = s.luckySave(d20Roll{Faces: []int{face}, Total: rolled.Total, Physical: rolled.Physical}, save.Bonus, combat.ModeNormal, lucky)
+	sv.roll, sv.reroll, err = s.luckySave(d20Roll{Faces: []int{face}, Total: rolled.Total, Physical: rolled.Physical}, save.Bonus, combat.ModeNormal, luckySaver(aggressor, traits))
 	if err != nil {
 		return sv, err
 	}
+	sv.roll = floorD20(sv.roll, save.Bonus, floorFor(traits, rules.RollAppliesSave, false)) // after Lucky: the d20 that stays is the one floored
 	sv.face = sv.roll.Face()
 	sv.saved = combat.SaveSucceeded(sv.roll.Total, sv.dc)
 	return sv, nil
@@ -486,6 +484,7 @@ func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, agg
 	re.Slot, re.Racial = got.ev.Slot, t.Racial
 	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), conv.Int32(sv.bonus), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
 	re.Level = t.CastLevel
+	got.ev.countedRoll = countedOf(sv.roll)
 	got.ev.Reaction = re
 	// What the fire took off the aggressor: the summary counts it for the reactor.
 	got.ev.Applied, got.ev.Before, got.ev.After = hit.Applied, hit.Before, hit.After
@@ -493,24 +492,10 @@ func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, agg
 	got.ev.Actor, got.ev.Target, got.ev.Round, got.ev.Secret = reactor.ID, aggressor.ID, c.enc.Round, reactor.Hidden || aggressor.Hidden
 }
 
-// rebukeLucky says the app rolls a 1 again on the aggressor's Dexterity save against Hellish
-// Rebuke: a halfling player's character (luckySaver). An NPC's save is the master's, and its sheet
-// is not read.
-func (s *Service) rebukeLucky(ctx context.Context, c *combatTx, aggressor playdb.Combatant) (bool, error) {
-	if aggressor.Kind != kindPlayer {
-		return false, nil
-	}
-	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, aggressor)
-	if err != nil {
-		return false, err
-	}
-	return luckySaver(aggressor, sheet.Traits), nil
-}
-
 // rebukeSaveRoll is the aggressor's save against Hellish Rebuke as the answer shows it, with the d20
 // the app rolled again (Lucky).
 func rebukeSaveRoll(face int, bonus int32, roll d20Roll, reroll *luckyReroll) *playv1.DiceRoll {
-	out := diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, bonus, conv.Int32(roll.Total), roll.Physical)
+	out := countedOf(roll).mark(diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, bonus, conv.Int32(roll.Total), roll.Physical))
 	out.Rerolled = reroll.proto()
 	return out
 }

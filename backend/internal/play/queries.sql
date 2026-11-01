@@ -179,8 +179,9 @@ RETURNING *;
 
 -- name: SetCombatantInitiative :exec
 -- A new roll breaks any tie order decided before (tie_ordered).
+-- initiative_counted_as and initiative_counted_by say what a minimum made the d20 count as (NULL and '' when it counted as it came up).
 UPDATE combatants
-SET initiative = $2, initiative_face = $3, tie_ordered = false
+SET initiative = $2, initiative_face = $3, initiative_counted_as = $4, initiative_counted_by = $5, tie_ordered = false
 WHERE id = $1;
 
 -- name: SetCombatantOrder :exec
@@ -806,6 +807,7 @@ RETURNING *;
 -- joint turn. A new roll breaks any tie order decided before.
 UPDATE combatants
 SET initiative = sqlc.arg(initiative), initiative_face = sqlc.arg(initiative_face),
+    initiative_counted_as = sqlc.arg(initiative_counted_as), initiative_counted_by = sqlc.arg(initiative_counted_by),
     initiative_bonus = sqlc.arg(initiative_bonus), tie_ordered = false
 WHERE encounter_id = sqlc.arg(encounter_id) AND summon_group_id = sqlc.arg(summon_group_id)::UUID;
 
@@ -1115,8 +1117,9 @@ GROUP BY user_id;
 -- name: InsertPuzzleHintTry :one
 -- lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was); bonus_sides and
 -- bonus_face the Bardic Inspiration die the player added (NULL when none was).
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+-- counted_by is the feature whose floor made the d20 that counts count as a higher number ('' when none did).
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face, counted_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 RETURNING *;
 
 -- name: GetPuzzleHintTryByKey :one

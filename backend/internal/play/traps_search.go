@@ -22,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -61,14 +62,14 @@ type trapSearch struct {
 // searchTurn is what the transaction of a search works out before the dice: the character's numbers
 // for the check, its mode and the answer of the held-roll gate.
 type searchTurn struct {
-	c        *combatTx
-	opt      link.SceneOption
-	cm       checkMode
-	names    func(string) string
-	bonus    int
-	reliable bool
-	step     gateResult
-	dieFace  int // the die the player added after rolling: it counts in every total of the search
+	c       *combatTx
+	opt     link.SceneOption
+	cm      checkMode
+	names   func(string) string
+	bonus   int
+	floor   rollFloor // the lowest number each d20 of the search counts as
+	step    gateResult
+	dieFace int // the die the player added after rolling: it counts in every total of the search
 }
 
 // searchDice is the d20 of a search and the totals it is answered with.
@@ -222,7 +223,11 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, ts *trapSearch) err
 	if ts.place, err = s.searcherPlace(ctx, c, ts.who); err != nil {
 		return err
 	}
-	r := &searchTurn{c: c, opt: opt, reliable: opt.ReliableTalent}
+	floor, err := s.floorOfCharacter(ctx, tx, ts.m.CampaignID, ts.who.ID, rules.RollAppliesCheck, opt.ReliableTalent)
+	if err != nil {
+		return err
+	}
+	r := &searchTurn{c: c, opt: opt, floor: floor}
 	held, err := s.prepareSearchRoll(ctx, ts, r)
 	if err != nil || held {
 		return err
@@ -338,7 +343,7 @@ func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTu
 	}
 	step, err := s.heldGate(ctx, env, rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,
-		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: reliableFloor(r.reliable), Lucky: r.opt.Lucky, MayAsk: true,
+		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: r.floor, Lucky: r.opt.Lucky, MayAsk: true,
 	})
 	if err != nil {
 		return false, err
@@ -362,7 +367,7 @@ func (s *Service) rollSearchWithMode(ts *trapSearch, r *searchTurn) (searchDice,
 		if rolled, err = s.d20With(ts.in, r.bonus, r.cm.Mode); err != nil {
 			return searchDice{}, err
 		}
-		rolled = floorD20(rolled, r.bonus, reliableFloor(r.reliable))
+		rolled = floorD20(rolled, r.bonus, r.floor)
 	}
 	d := searchDice{
 		face: rolled.Faces[0], face2: rolled.Faces[1], counted: rolled.Index,
@@ -372,7 +377,7 @@ func (s *Service) rollSearchWithMode(ts *trapSearch, r *searchTurn) (searchDice,
 		return d, nil
 	}
 	if r.cm.Mode == combat.ModeAdvantage {
-		d.totals = append(d.totals, countedFace(d.face, r.reliable)+r.bonus+r.dieFace)
+		d.totals = append(d.totals, countedFace(d.face, r.floor)+r.bonus+r.dieFace)
 	} else {
 		d.totals = append(d.totals, rolled.Total)
 	}
@@ -394,7 +399,7 @@ func (s *Service) rollSearchNormal(ts *trapSearch, r *searchTurn) (searchDice, e
 		d.face, d.roll = r.step.Roll.Face(), dice.Result{Total: r.step.Roll.Total, Physical: r.step.Roll.Physical}
 	} else {
 		var err error
-		if d.face, d.roll, err = s.checkD20(in, r.bonus, r.reliable); err != nil {
+		if d.face, d.roll, err = s.checkD20(in, r.bonus, r.floor); err != nil {
 			return d, err
 		}
 	}
@@ -402,7 +407,7 @@ func (s *Service) rollSearchNormal(ts *trapSearch, r *searchTurn) (searchDice, e
 	switch {
 	case ts.skill != searchPerception:
 	case in.inApp:
-		face2, roll2, err := s.checkD20(rollInput{inApp: true}, r.opt.Bonus, r.reliable)
+		face2, roll2, err := s.checkD20(rollInput{inApp: true}, r.opt.Bonus, r.floor)
 		if err != nil {
 			return d, err
 		}
@@ -410,7 +415,7 @@ func (s *Service) rollSearchNormal(ts *trapSearch, r *searchTurn) (searchDice, e
 		d.totals = append(d.totals, roll2.Total+r.dieFace)
 	case typed2 > 0:
 		d.face2 = typed2
-		d.totals = append(d.totals, countedFace(typed2, r.reliable)+r.opt.Bonus+r.dieFace)
+		d.totals = append(d.totals, countedFace(typed2, r.floor)+r.opt.Bonus+r.dieFace)
 	}
 	return d, nil
 }
@@ -441,7 +446,7 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 func trapSearchEvent(ts *trapSearch, r *searchTurn, d searchDice, found maplink.SearchResult) actionEvent {
 	ev := actionEvent{
 		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: conv.Int32(d.face), Modifier: conv.Int32(r.bonus + r.dieFace), Total: conv.Int32(d.roll.Total),
-		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: conv.Int32(d.face2), ReliableTalent: r.reliable,
+		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: conv.Int32(d.face2), Floor: conv.Int32(r.floor.Value), FloorBy: r.floor.Source,
 		Lucky: r.step.Lucky, // the held d20 Lucky rolled again: the first of a Perception search's two
 	}
 	if r.cm.Mode != combat.ModeNormal {
@@ -474,7 +479,7 @@ func (s *Service) tellTrapSearch(ctx context.Context, ts *trapSearch) {
 func trapSearchAnswer(ts *trapSearch) *playv1.SearchForTrapsResponse {
 	ev := ts.ev
 	out := &playv1.SearchForTrapsResponse{
-		Roll:          checkRoll(ev.D20, ev.Modifier, ev.Physical, ev.ReliableTalent),
+		Roll:          checkRoll(ev.D20, ev.Modifier, ev.Physical, ev.floor()),
 		FoundPointIds: ev.Found,
 		SpentAction:   ev.OnTurn,
 		Mode:          modeToProto[modeOfKey(ev.RollMode)],
@@ -484,9 +489,9 @@ func trapSearchAnswer(ts *trapSearch) *playv1.SearchForTrapsResponse {
 	if ev.RollMode != "" {
 		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total, reliableTalentSource)
+		markTreated(out.Roll, ev.Modifier, ev.Total, ev.FloorBy)
 	} else if ev.D20B != 0 {
-		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.ReliableTalent)
+		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.floor())
 	}
 	out.Roll.Rerolled = ev.Lucky.proto() // "Sortudo: 1 → 14", with the d20 it changed
 	return out

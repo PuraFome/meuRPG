@@ -1,7 +1,6 @@
 package play
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -244,9 +243,10 @@ func attackOfHold(h heldRoll) (attackKey, targetID string) {
 	return "", ""
 }
 
-// heldD20Of is the d20 of a held roll with the roll's bonus as the modifier: both dice of a roll with
-// advantage or disadvantage, the one that counts marked, and the die Lucky rolled again once the player did
-// (the roll's faces are already the new ones then).
+// heldD20Of is the d20 of a held roll, with the roll's bonus as the modifier.
+// A roll with advantage or disadvantage shows both dice, the one that counts marked.
+// Once the player used Lucky, the faces are the new ones.
+// A floor that raised the d20 is shown as the number it counted as, with the feature that did it.
 func heldD20Of(h heldRoll) *playv1.DiceRoll {
 	modifier, total := clamp32(h.Modifier, math.MinInt32, math.MaxInt32), clamp32(h.Total, math.MinInt32, math.MaxInt32)
 	roll := diceRoll(1, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
@@ -254,12 +254,7 @@ func heldD20Of(h heldRoll) *playv1.DiceRoll {
 		roll = diceRoll(pairDice, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
 		roll.CountedIndex = clamp32(h.Counted, 0, 1)
 	}
-	// A row written before counted_by was kept had only Reliable Talent to count it. The offer of a single d20 tells Reliable
-	// Talent's floor no more than it ever did, and a pair always has.
-	source := cmp.Or(h.CountedBy, reliableTalentSource)
-	if len(h.Faces) == pairDice || source != reliableTalentSource {
-		markTreated(roll, modifier, total, source)
-	}
+	markTreated(roll, modifier, total, h.CountedBy)
 	roll.Rerolled = rerolledOf(h).proto()
 	return roll
 }

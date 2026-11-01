@@ -147,9 +147,9 @@ type contestRoll struct {
 	ManeuverName  string `json:"maneuver_name,omitempty"`
 	ManeuverSides int32  `json:"maneuver_sides,omitempty"`
 	ManeuverFace  int32  `json:"maneuver_face,omitempty"`
-	// CountedAs is what Reliable Talent made the d20 that counts (SRD 5.1: a 9 or lower counts as 10 on a check that adds the
-	// proficiency bonus); 0 when the d20 counted as it came up. Total already uses it.
-	CountedAs int32 `json:"counted_as,omitempty"`
+	// countedRoll is the number the d20 that counts counted as when a floor raised it (a table's roll_minimum, Reliable
+	// Talent), and the feature that did it. Faces are as they came up and Total already uses it.
+	countedRoll
 	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (a group check's,
 	// inspiration_lucky.go): Faces hold the new face, and this the 1 it replaced and where.
 	Lucky *luckyReroll `json:"lucky,omitempty"`
@@ -199,7 +199,7 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 		Rerolled: strokeRerolls(r.Lucky, r.Stroke),
 	}
 	if r.CountedAs != 0 {
-		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), reliableTalentSource
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), r.CountedBy
 	}
 	return out
 }
@@ -281,7 +281,7 @@ func (in checkInput) rollInput() rollInput { return rollInput{inApp: in.inApp} }
 // rollCheck rolls a check's d20 (or the pair the mode asks for), or checks the faces typed
 // from physical dice: the dice must match the mode the server worked out, so a stale screen
 // is told to read the options again (aborted).
-func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown, reliable bool) (contestRoll, error) {
+func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown bool, floor rollFloor) (contestRoll, error) {
 	faces := in.faces
 	physical := !in.inApp
 	if in.inApp {
@@ -294,10 +294,13 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 		return contestRoll{}, connect.NewError(connect.CodeAborted, errors.New("the roll's mode changed: read the options again"))
 	}
 	kept := mode.PickD20(faces)
-	counted := countedFace(kept, reliable) // Reliable Talent: a low d20 counts as 10 (the pick is the mode's either way)
+	counted := countedFace(kept, floor) // a low d20 counts as the floor (the pick is the mode's either way)
 	out := contestRoll{
 		Skill: skill, Modifier: conv.Int32(modifier), Total: conv.Int32(counted + modifier),
-		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown, CountedAs: countedAs(kept, counted),
+		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown,
+	}
+	if counted != kept {
+		out.countedRoll = countedRoll{CountedAs: countedAs(kept, counted), CountedBy: floor.Source}
 	}
 	for _, f := range faces {
 		out.Faces = append(out.Faces, clamp32(f, 1, 20))
@@ -477,27 +480,6 @@ func (s *Service) consumeCheckHelp(ctx context.Context, c *combatTx, who playdb.
 		}
 	}
 	return nil
-}
-
-// rollFor rolls a combatant's check of a skill: its number, the circumstances behind the
-// mode, the d20 or the pair; and uses the Help that covered it.
-func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, in checkInput, cs []playdb.Combatant) (contestRoll, error) {
-	n, err := s.numbersOf(ctx, c.tx, c.session.CampaignID, who, skill)
-	if err != nil {
-		return contestRoll{}, err
-	}
-	notes, err := s.checkSources(ctx, c.tx, c.session.CampaignID, c.q, c.enc, who, skill, cs)
-	if err != nil {
-		return contestRoll{}, err
-	}
-	roll, err := s.rollCheck(in, notesMode(notes), n.Bonus, skill, notes, !n.Known, n.Reliable)
-	if err != nil {
-		return contestRoll{}, err
-	}
-	if err := s.consumeCheckHelp(ctx, c, who, skill, cs); err != nil {
-		return contestRoll{}, err
-	}
-	return cutRoll(c, roll), nil
 }
 
 // contestEvent is what a contest or a special action adds to the event it writes: the

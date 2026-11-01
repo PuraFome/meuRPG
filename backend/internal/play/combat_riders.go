@@ -58,7 +58,7 @@ type riderEvent struct {
 	D20    int32  `json:"d20,omitempty"`
 	Total  int32  `json:"total,omitempty"`
 	DC     int32  `json:"dc,omitempty"`
-	// countedRoll is the number the d20 counted as when a minimum raised it (a creature rider's save).
+	// countedRoll is the number the d20 counted as when a minimum raised it.
 	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).
 	Pushed *forcedMove `json:"pushed,omitempty"`
@@ -438,7 +438,8 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return false, err
 	}
-	re.D20, re.Total = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total)
+	d20 = floorD20(d20, save.Bonus, floorFor(sheet.Traits, rules.RollAppliesSave, false))
+	re.D20, re.Total, re.countedRoll = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total), countedOf(d20)
 	return combat.SaveSucceeded(d20.Total, int(dc)), nil
 }
 

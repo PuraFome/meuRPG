@@ -220,6 +220,8 @@ type Combatant struct {
 	CreatureSpent           []byte
 	ReactionKind            *string
 	ReactionRound           *int32
+	InitiativeCountedAs     *int32
+	InitiativeCountedBy     string
 }
 
 type CombatantState struct {
@@ -484,6 +486,7 @@ type PuzzleHintTry struct {
 	LuckyIndex     *int32
 	BonusSides     *int32
 	BonusFace      *int32
+	CountedBy      string
 }
 
 type PuzzleMove struct {
