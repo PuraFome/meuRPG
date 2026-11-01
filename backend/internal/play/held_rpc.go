@@ -62,15 +62,15 @@ func heldRollOfferOf(o heldOffer, who offerRoller) *playv1.HeldRollOffer {
 	if who.Character {
 		out.CharacterId = h.CharacterID
 	}
-	switch {
-	case o.Asks == askLucky:
+	switch o.Asks {
+	case askLucky:
 		out.Question = &playv1.HeldRollOffer_Lucky{Lucky: &playv1.LuckyQuestion{LuckyIndex: derefInt32(h.LuckyIndex)}}
-	case o.Asks == askIndomitable:
+	case askIndomitable:
 		out.Question = &playv1.HeldRollOffer_Indomitable{Indomitable: &playv1.IndomitableQuestion{Failed: h.IndomFailed}}
 		if h.DieUsed != nil { // the total the roller sees counts the die already added
 			out.D20.Total += h.DieUsed.Face
 		}
-	case o.Asks == askStroke:
+	case askStroke:
 		out.Question = &playv1.HeldRollOffer_StrokeOfLuck{StrokeOfLuck: &playv1.StrokeOfLuckQuestion{Failed: h.StrokeFailed}}
 		if h.DieUsed != nil { // the total the roller sees counts the die already added
 			out.D20.Total += h.DieUsed.Face

@@ -313,7 +313,7 @@ func (s *Service) heldGate(ctx context.Context, env gateEnv, spec rollSpec) (gat
 		return gateResult{}, err
 	}
 	if st.Stroke && spec.Stroke.Prepare != nil {
-		if err = spec.Stroke.Prepare(); err != nil {
+		if err := spec.Stroke.Prepare(); err != nil {
 			return gateResult{}, err
 		}
 	}

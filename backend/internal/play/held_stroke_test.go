@@ -354,7 +354,7 @@ func TestAFailedSceneCheckIsAskedAndTheUseCountsTheD20AsATwenty(t *testing.T) {
 
 	// A pass: no question.
 	ok, err := a.rollSceneTyped(t, a.caio, actions[1], newKey(), 20)
-	if err != nil || ok.GetLuckyOffer() != nil || ok.GetHeldRollOffer() != nil || ok.GetRoll() == nil {
+	if err != nil || ok.GetHeldRollOffer() != nil || ok.GetRoll() == nil {
 		t.Fatalf("a passed check = %v, %v; want it written, with no question", ok, err)
 	}
 	// A failure: held, nothing written, the question says it failed.

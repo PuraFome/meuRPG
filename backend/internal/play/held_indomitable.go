@@ -165,7 +165,7 @@ func (q indomitableQuestion) apply(ctx context.Context, ae answering, h heldRoll
 		}
 		roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
 		if ae.c == nil {
-			return h, errors.New("Indomitable outside a combat") //nolint:err113 // the paths that ask it all run in a combat
+			return h, errors.New("the Indomitable question outside a combat") //nolint:err113 // the paths that ask it all run in a combat
 		}
 		if _, err := ae.s.spendResource(ctx, ae.c, ae.spec.Roller.CharacterID, indomitableResource, 1); err != nil {
 			return h, err

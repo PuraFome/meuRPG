@@ -1040,7 +1040,7 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q), rollSpec{
 		Kind: heldSceneCheck, Key: c.key, Request: c.req, Roller: heldRoller{CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, UserID: c.m.UserID},
 		In: c.in, Modifier: bonus, Mode: cm.Mode, Reliable: opt.ReliableTalent, Lucky: opt.Lucky, MayAsk: true,
-		Stroke: checkStrokeRule(int(action.DC), !scene.ShowDC),
+		Stroke: checkStrokeRule(action.DC, !scene.ShowDC),
 	})
 	if err != nil {
 		return err
