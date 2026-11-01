@@ -1134,7 +1134,7 @@ type UseArcaneRecoveryRequest struct {
 	// The slots to recover: how many of each spell level, one entry per level.
 	Slots          []*SpellSlotBack `protobuf:"bytes,3,rep,name=slots,proto3" json:"slots,omitempty"`
 	IdempotencyKey string           `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	// The table feature whose slot_recovery effect the call uses (Recuperação da mesa),
+	// The table feature whose slot_recovery effect the call uses,
 	// spending the effect's resource and keeping to its limits. Empty is the wizard's own
 	// Arcane Recovery.
 	FeatureKey    string `protobuf:"bytes,5,opt,name=feature_key,json=featureKey,proto3" json:"feature_key,omitempty"`

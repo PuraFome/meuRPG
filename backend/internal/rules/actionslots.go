@@ -122,7 +122,7 @@ func (r TableSlotRecovery) Check(slots map[int]int) (int, error) {
 }
 
 // slotRecoveries fills Derived.TableRecoveries from the slot_recovery effects the character has. The
-// highest limits of two effects on one resource do not merge: each stays its own way to recover.
+// limits of two effects do not merge: each is its own entry, and a feature key reads the first.
 func (x *deriver) slotRecoveries() {
 	for _, a := range x.active {
 		if a.effect.Type != "slot_recovery" || !x.applies(a) {

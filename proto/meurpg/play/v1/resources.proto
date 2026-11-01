@@ -479,7 +479,7 @@ message UseArcaneRecoveryRequest {
   // The slots to recover: how many of each spell level, one entry per level.
   repeated SpellSlotBack slots = 3;
   string idempotency_key = 4;
-  // The table feature whose slot_recovery effect the call uses (Recuperação da mesa),
+  // The table feature whose slot_recovery effect the call uses,
   // spending the effect's resource and keeping to its limits. Empty is the wizard's own
   // Arcane Recovery.
   string feature_key = 5;

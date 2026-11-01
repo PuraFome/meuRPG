@@ -524,7 +524,7 @@ export type UseArcaneRecoveryRequest = Message<"meurpg.play.v1.UseArcaneRecovery
   idempotencyKey: string;
 
   /**
-   * The table feature whose slot_recovery effect the call uses (Recuperação da mesa),
+   * The table feature whose slot_recovery effect the call uses,
    * spending the effect's resource and keeping to its limits. Empty is the wizard's own
    * Arcane Recovery.
    *

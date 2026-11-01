@@ -64,7 +64,7 @@ Whoever spends the slot and creates the creatures is the [play module](play/READ
 
 ## Wild Shape
 
-The druid's `wild_shape` effect (in `effects/druid.json`, at levels 2, 4 and 8) carries `max_cr`, `no_fly` and `no_swim`: level 2 allows CR up to 1/4 without flying or swimming, level 4 up to 1/2 without flying, level 8 up to 1.
+The druid's `wild_shape` effect (in `effects/druid.json`, at levels 2, 4 and 8) carries `max_cr` (or `max_cr_from`), `no_fly` and `no_swim`, and a table feature can add `form_cost` and `magical_attacks`: level 2 allows CR up to 1/4 without flying or swimming, level 4 up to 1/2 without flying, level 8 up to 1.
 Loading refuses a `max_cr` that is not a CR and any other field.
 `WildShapeForms(build)` lists the beasts the druid may assume now; `WildShapeAllows` checks one.
 

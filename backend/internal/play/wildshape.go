@@ -496,7 +496,7 @@ func (s *Service) shapeUndo(ctx context.Context, c *combatTx, kind string, ev ac
 // druid is in its own shape.
 func (s *Service) shapeUndoStart(ctx context.Context, c *combatTx, ev actionEvent, who playdb.Combatant, ok bool, keep func(*playv1.CharacterVitals)) error {
 	if ev.Resource != "" {
-		back := ev.PointsSpent // a start written before the cost could change has none: it spent one
+		back := ev.PointsSpent // an event without PointsSpent counts as one use
 		if back <= 0 {
 			back = 1
 		}
