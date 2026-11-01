@@ -1019,14 +1019,23 @@ func TestDevilsSightIsAppliedAndTheOtherInvocationsAreReminders(t *testing.T) {
 		"feature:eldritch-invocation-devils-sight", "feature:eldritch-invocation-agonizing-blast", "feature:eldritch-invocation-armor-of-shadows")
 	b.Cantrips = []string{"spell:eldritch-blast", "spell:mage-hand"}
 	d := Derive(b, c)
-	darkvision := 0
+	devils := 0
 	for _, s := range d.Senses {
-		if s.Key == "darkvision" {
-			darkvision = s.RangeFt
+		if s.Key == "devils-sight" {
+			devils = s.RangeFt
 		}
 	}
-	if darkvision != 120 {
-		t.Errorf("darkvision = %d, want 120 feet from Devil's Sight", darkvision)
+	if devils != 120 {
+		t.Errorf("devils-sight = %d, want 120 feet from Devil's Sight", devils)
+	}
+	// Control: the same warlock without the invocation has no such sense.
+	plain := choiceBuild("race:human", "", ClassLevel{Class: "class:warlock", Level: 5}, "feature:pact-of-the-chain",
+		"feature:eldritch-invocation-agonizing-blast", "feature:eldritch-invocation-armor-of-shadows")
+	plain.Cantrips = b.Cantrips
+	for _, s := range Derive(plain, c).Senses {
+		if s.Key == "devils-sight" {
+			t.Errorf("a warlock without Devil's Sight has the sense: %+v", s)
+		}
 	}
 	atk, ok := attackOf(d, "spell:eldritch-blast")
 	if !ok || atk.Damage != "1d10+1" {

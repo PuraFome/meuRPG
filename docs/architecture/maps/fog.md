@@ -25,7 +25,7 @@ flowchart LR
 - A player sees through their **living character**, on the token's square or, while a combat runs on the map, on the combatant's square (`maps.CombatMaps.CombatPositions`, implemented by `play`; tokens return to their place at the end of combat).
 - With "Visão do grupo" on, everyone sees the union of all player characters' sight.
 - A character without a token on the map sees nothing new (only what they remember); a dead one neither.
-- Senses (darkvision, blindsight, truesight) come from the derived sheet through `maps.CharacterDirectory.PartyVision` (implemented by `characters.Service`). In Wild Shape the beast's senses rule, and the familiar a player is seeing through arrives as `link.PartyMember.Eyes`.
+- Senses (darkvision, blindsight, truesight, Devil's Sight) come from the derived sheet through `maps.CharacterDirectory.PartyVision` (implemented by `characters.Service`). In Wild Shape the beast's senses rule, and the familiar a player is seeing through arrives as `link.PartyMember.Eyes`.
 - The carried light lives on the token (`map_tokens.carried_light`) and moves with the token or the combatant. A token the master hid keeps lighting the map without appearing.
 
 ## The scene and the cache
@@ -51,8 +51,9 @@ In `rules/vision`:
 - Two of these lines are the table's ruling: a viewer inside a cloud sees only its own square, and a line crossing a cloud is blocked.
 - The SRD heavy obscurement only blinds a creature trying to see something in the area.
 - Blindsight within its range sees through a cloud.
-- A square of magical darkness has no light (`Dark`) and darkvision does not work in it. Truesight and blindsight do.
-- A viewer in magical darkness with only darkvision is in the dark (`InTheDark`), which is what the master's light warning reads.
+- A square of magical darkness has no light (`Dark`) and darkvision does not work in it. Truesight, blindsight and Devil's Sight do.
+- Devil's Sight (`Senses.DevilsSightFt`, 120 feet from the warlock invocation) sees darkness as bright within its range, magical or not. It sees through no cloud.
+- A viewer in magical darkness with only darkvision is in the dark; with Devil's Sight it is not (`InTheDark`), which is what the master's light warning reads.
 
 A hidden caster's cloud or Darkness still turns its squares unseen for the players.
 That effect never reveals the caster.
@@ -97,7 +98,7 @@ With the fog on and `base_light = 'bright'` ("Claro"), a player receives the ter
 
 `ListCharactersInTheDark(campaign_id, map_id)` (`maps/darkwarning.go`) tells the master which player characters see nothing where they stand. It is the master's alone: a player gets `permission_denied`, a non-member `not_found` (RN-10), because the answer is worked out from lights a player cannot see.
 
-- **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` (the light is dark there, or the square is in a Darkness) and none of its darkvision, blindsight or truesight covers it.
+- **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` (the light is dark there, or the square is in a Darkness) and none of its darkvision, blindsight, truesight or Devil's Sight covers it.
   Darkvision does not work in a Darkness, so a viewer with only darkvision in one is in the dark. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
 - **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark. Fog off, a map without a grid, a character without a token on this map and a dead character list nobody. "Penumbra" and "Claro" list nobody either, unless a Darkness is up: it makes its squares dark whatever the base light. The cause is always `DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`, for no light and for a Darkness alike. The map's base light name is the master's `Map.base_light`, already in `GetMap`.
 - **When to ask again.** The read has no stream of its own. Every change that moves a light or a character already reaches the master as `map_changed` (a carried light, set or put out, by the master or the owner; a Luz point; a token placed, hidden or shown; painting; the fog and base light) or as `token_moved` (a character's move). A change of what is seen (a Darkness appearing, moving or ending, a Wild Shape, a familiar's eyes) reaches him as `vision_changed` (`SessionMaps.VisionChanged`).

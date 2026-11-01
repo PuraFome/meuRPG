@@ -151,3 +151,64 @@ func TestCompileRefusesZoneLayersOfAnotherGrid(t *testing.T) {
 		}
 	}
 }
+
+// Devil's Sight sees in Darkness, magical or not, within its range, and in no further square; darkvision does not see in the Darkness.
+func TestDevilsSightSeesInDarknessWithinItsRange(t *testing.T) {
+	t.Parallel()
+	magic := []grid.Square{{Col: 4, Row: 2}, {Col: 7, Row: 2}}
+	lit := mustCompile(t, stripScene(nil, magic))
+	devils := lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 15}})
+	if got := devils.At(magic[0]); got != vision.SeenBright {
+		t.Errorf("Devil's Sight, Darkness in range: state = %v, want SeenBright", got)
+	}
+	if devils.Seen(magic[1]) {
+		t.Error("Devil's Sight, Darkness beyond the range: seen")
+	}
+	if lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DarkvisionFt: 120}}).Seen(magic[0]) {
+		t.Error("control: darkvision sees in the Darkness")
+	}
+	if !lit.CanSee(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 15}}, magic[0]) {
+		t.Error("CanSee in the Darkness with Devil's Sight = false")
+	}
+}
+
+// Devil's Sight also sees the ordinary dark within its range.
+func TestDevilsSightSeesTheOrdinaryDark(t *testing.T) {
+	t.Parallel()
+	lit := mustCompile(t, vision.Scene{Grid: stripGrid, Base: grid.Dark})
+	at := grid.Square{Col: 4, Row: 2}
+	if lit.See(vision.Viewer{At: viewer}).Seen(at) {
+		t.Error("control: a viewer without senses sees in the dark")
+	}
+	if !lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 15}}).Seen(at) {
+		t.Error("Devil's Sight does not see the dark in range")
+	}
+	if lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 15}}).Seen(grid.Square{Col: 8, Row: 2}) {
+		t.Error("Devil's Sight sees the dark beyond its range")
+	}
+}
+
+// Devil's Sight sees through no cloud.
+func TestDevilsSightDoesNotSeeThroughACloud(t *testing.T) {
+	t.Parallel()
+	lit := mustCompile(t, stripScene(column(3), nil))
+	v := lit.See(vision.Viewer{At: viewer, Senses: vision.Senses{DevilsSightFt: 120}})
+	for _, col := range []int{3, 5, 8} {
+		if v.Seen(grid.Square{Col: col, Row: 2}) {
+			t.Errorf("column %d seen through a cloud with Devil's Sight", col)
+		}
+	}
+}
+
+// A viewer with Devil's Sight standing in a Darkness is not in the dark.
+func TestInTheDarkWithDevilsSight(t *testing.T) {
+	t.Parallel()
+	at := grid.Square{Col: 6, Row: 2}
+	lit := mustCompile(t, stripScene(nil, []grid.Square{at}))
+	if lit.InTheDark(vision.Viewer{At: at, Senses: vision.Senses{DevilsSightFt: 120}}) {
+		t.Error("InTheDark with Devil's Sight in a Darkness = true, want false")
+	}
+	if !lit.InTheDark(vision.Viewer{At: at, Senses: vision.Senses{DarkvisionFt: 120}}) {
+		t.Error("control: darkvision in a Darkness is not in the dark")
+	}
+}

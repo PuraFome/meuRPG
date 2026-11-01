@@ -302,6 +302,7 @@ func planOn(v combatViewer, actual grid.Terrain, known *grid.Terrain) grid.Terra
 func (f *fogSight) reactorSees(r playdb.Combatant, sheet link.Sheet, at grid.Square) bool {
 	return f.sight.CanSee(squareOfCombatant(r), vision.Senses{
 		DarkvisionFt: sheet.Senses.DarkvisionFt, BlindsightFt: sheet.Senses.BlindsightFt, TruesightFt: sheet.Senses.TruesightFt,
+		DevilsSightFt: sheet.Senses.DevilsSightFt,
 	}, at)
 }
 

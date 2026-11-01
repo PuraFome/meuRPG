@@ -27,7 +27,7 @@
 //     standing in a cloud sees only its own square. A cloud is no wall: it is never
 //     drawn as one. Blindsight sees through it, within its range; truesight does not.
 //   - Magical darkness (Darkness) forces the light of its squares to dark, whatever
-//     lights them. Darkvision does not see in it; blindsight and truesight do.
+//     lights them. Darkvision does not see in it; blindsight, truesight and Devil's Sight do.
 //   - Seen in dim light or in grey is lightly obscured, so a passive check
 //     there is 5 lower (PassivePenalty).
 package vision
@@ -52,6 +52,9 @@ type Senses struct {
 	DarkvisionFt int
 	BlindsightFt int
 	TruesightFt  int
+	// DevilsSightFt is the warlock's Devil's Sight: it sees in darkness, magical or not,
+	// as if it were bright, within its range. It sees through no cloud.
+	DevilsSightFt int
 }
 
 // Viewer is someone who sees: a square and its senses.
@@ -317,7 +320,7 @@ func (l *Lit) squareState(v Viewer, sq grid.Square) State {
 		return Unseen // heavily obscured: what is in a cloud, behind it, or seen from inside it
 	}
 	darkvision := s.DarkvisionFt > 0 && d2 <= s.DarkvisionFt*s.DarkvisionFt && !l.inMagicDark(sq)
-	truesight := s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt
+	truesight := (s.TruesightFt > 0 && d2 <= s.TruesightFt*s.TruesightFt) || (s.DevilsSightFt > 0 && d2 <= s.DevilsSightFt*s.DevilsSightFt)
 	if state := lightSeen(l.level[n], truesight, darkvision, blindsight); state != Unseen && l.sight.Clear(v.At, sq) {
 		return state
 	}
@@ -371,7 +374,7 @@ func (l *Lit) InTheDark(v Viewer) bool {
 		return false
 	}
 	s := v.Senses
-	return (s.DarkvisionFt <= 0 || l.inMagicDark(v.At)) && s.BlindsightFt <= 0 && s.TruesightFt <= 0
+	return (s.DarkvisionFt <= 0 || l.inMagicDark(v.At)) && s.BlindsightFt <= 0 && s.TruesightFt <= 0 && s.DevilsSightFt <= 0
 }
 
 // ownState is how a viewer sees the square it stands on: it always knows it,

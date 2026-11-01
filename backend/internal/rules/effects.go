@@ -311,7 +311,7 @@ var (
 	modifierModes     = []string{"add", "max", "set"}
 	proficiencyLevels = []string{"half", "full", "expertise"}
 	rollModes         = []string{"advantage", "disadvantage"}
-	senses            = []string{"darkvision", "blindsight", "tremorsense", "truesight"}
+	senses            = []string{"darkvision", "blindsight", "tremorsense", "truesight", "devils-sight"}
 	progressions      = []string{"full", "half", "third", "pact"}
 	recharges         = []string{RechargeShortRest, RechargeLongRest, RechargeDawn, RechargeNone, RechargeInitiative, RechargeRestoreOneShort, RechargeRestoreOneLong}
 	choiceKinds       = []string{

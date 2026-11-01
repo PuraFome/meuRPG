@@ -324,7 +324,7 @@ type ConditionImmunity struct {
 
 // Senses are a creature's special senses, as a range in feet (0 for none).
 type Senses struct {
-	DarkvisionFt, BlindsightFt, TruesightFt int
+	DarkvisionFt, BlindsightFt, TruesightFt, DevilsSightFt int
 }
 
 // Attack is one attack of a sheet, with real dice.
