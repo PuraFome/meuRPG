@@ -1,5 +1,5 @@
 import { Component, TemplateRef, signal, viewChild } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { DeferBlockState, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
 import { AuthState, AuthService } from './core/auth/auth.service';
@@ -77,6 +77,10 @@ describe('App', () => {
     expect(links.length).toBe(2);
     expect(links[0].getAttribute('href')).toBe('/campaigns/mirathel/session');
     expect(links[0].textContent).toContain('Ao vivo');
+    // The notice is a deferred block (the first one in the template): it arrives when the browser is idle.
+    expect(el.textContent).not.toContain('A sessão 4 de Mirathel começou.');
+    const [notice] = await fixture.getDeferBlocks();
+    await notice.render(DeferBlockState.Complete);
     expect(el.textContent).toContain('A sessão 4 de Mirathel começou.');
   });
 
