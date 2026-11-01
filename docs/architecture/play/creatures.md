@@ -213,7 +213,7 @@ A spell cast for an NPC is not offered either.
 An action of a stat block with a limit is enforced by the server: a Recharge action, one with uses a day, and one that returns after a rest (`rules.ActionUsage`, SRD 5.1: "Recharge 5-6", "3/Day").
 What a creature spent of them is kept on the combatant in `creature_spent`, under `use:<action key>` and `recharge:<action key>` ([Data](../../data/combat.md)).
 A combat starts with none spent: the "day" is the rest between combats at the table.
-Only a monster put in from the bestiary has a stat block, so a hand-made NPC keeps no state and has no limit.
+Only a creature with a stat block has these limits, so a hand-made NPC keeps no state and has no limit.
 
 | Usage | Spent by | Comes back |
 | --- | --- | --- |
@@ -237,7 +237,7 @@ Nothing is published for it: the turn start already tells everybody that the com
 **Who sees what (RN-20, RN-29).**
 The master reads each limited action with what it has left (`Combatant.limited_actions`) and the roll in his log line ([Combat log](combat-log.md)).
 A player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
-The refusal is the master's for the call.
+Only the master may use an NPC's action, so only the master is refused for a spent one.
 The player who owns a creature (RN-20) uses it and reads the reason of a refusal, since the creature is theirs.
 Another player has no call that reaches the action.
 
