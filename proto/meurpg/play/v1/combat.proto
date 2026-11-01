@@ -3865,6 +3865,15 @@ message RollAttackRequest {
   // (EncounterBlocked LEGENDARY_*) on its own turn, with too few actions left, or for an option
   // that is not an attack or is not this attack. Everything else of the attack is as any other.
   string legendary_option = 102;
+  // A table maneuver die (a superiority_die effect of applies "attack") the player adds to this weapon
+  // attack, like the die of Bless: its key, one of Maneuver.key of the character's derived sheet. The die
+  // is rolled with the roll (in the app, or its face is the last of `extra_die_faces` with physical dice),
+  // added to the total and listed in the roll's `extra_dice`. One use of its resource is spent when the
+  // attack is written, so a roll a reaction window holds spends it on the replay, and an undo gives it back.
+  // Only the character's own weapon attack (an opportunity attack included): `invalid_argument` for an NPC
+  // attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+  string maneuver_key = 103;
 }
 
 // AttackRoll is the attack roll and what it did.

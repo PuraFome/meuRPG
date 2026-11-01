@@ -11307,8 +11307,17 @@ type RollAttackRequest struct {
 	// (EncounterBlocked LEGENDARY_*) on its own turn, with too few actions left, or for an option
 	// that is not an attack or is not this attack. Everything else of the attack is as any other.
 	LegendaryOption string `protobuf:"bytes,102,opt,name=legendary_option,json=legendaryOption,proto3" json:"legendary_option,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// A table maneuver die (a superiority_die effect of applies "attack") the player adds to this weapon
+	// attack, like the die of Bless: its key, one of Maneuver.key of the character's derived sheet. The die
+	// is rolled with the roll (in the app, or its face is the last of `extra_die_faces` with physical dice),
+	// added to the total and listed in the roll's `extra_dice`. One use of its resource is spent when the
+	// attack is written, so a roll a reaction window holds spends it on the replay, and an undo gives it back.
+	// Only the character's own weapon attack (an opportunity attack included): `invalid_argument` for an NPC
+	// attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
+	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+	ManeuverKey   string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollAttackRequest) Reset() {
@@ -11474,6 +11483,13 @@ func (x *RollAttackRequest) GetUseExtraAction() bool {
 func (x *RollAttackRequest) GetLegendaryOption() string {
 	if x != nil {
 		return x.LegendaryOption
+	}
+	return ""
+}
+
+func (x *RollAttackRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
 	}
 	return ""
 }
@@ -26564,7 +26580,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12&\n" +
 	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHit\x12\x19\n" +
 	"\bnot_seen\x18\f \x01(\bR\anotSeenB\x0e\n" +
-	"\f_distance_ft\"\xc2\x05\n" +
+	"\f_distance_ft\"\xe5\x05\n" +
 	"\x11RollAttackRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -26589,7 +26605,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\td20_faces\x18\x0f \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12(\n" +
 	"\x10use_extra_action\x18e \x01(\bR\x0euseExtraAction\x12)\n" +
-	"\x10legendary_option\x18f \x01(\tR\x0flegendaryOptionB\x06\n" +
+	"\x10legendary_option\x18f \x01(\tR\x0flegendaryOption\x12!\n" +
+	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKeyB\x06\n" +
 	"\x04roll\"\xac\x06\n" +
 	"\n" +
 	"AttackRoll\x12\x1f\n" +

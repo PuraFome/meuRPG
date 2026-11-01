@@ -124,11 +124,16 @@ The healed number goes only to the master and the target's player.
 
 ### Table dice on the character's own rolls
 
-The `superiority_die` effects of applies `check`, `save` and `initiative` ([Rules: table content](../rules-table-content.md#maneuvers)) are dice the player adds to a roll of its character. The request names the maneuver (`maneuver_key`: `RollSceneCheck`, `ResolveConcentrationSave`, `RollEffectSave`, `SubmitInitiative`) and the derived sheet lists the choices (`DerivedSheet.roll_dice`: key, sides, resource, `targets` or `ability`). `combat_roll_maneuver.go`:
+The `superiority_die` effects of applies `check`, `save`, `initiative` and `attack` ([Rules: table content](../rules-table-content.md#maneuvers)) are dice the player adds to a roll of its character. The request names the maneuver (`maneuver_key`: `RollSceneCheck`, `ResolveConcentrationSave`, `RollEffectSave`, `SubmitInitiative`, `RollAttack`) and the derived sheet lists the choices (`DerivedSheet.roll_dice`: key, sides, resource, `targets` or `ability`). `combat_roll_maneuver.go`:
 
 - `maneuverForRoll` checks the maneuver is the character's and fits the roll: a `check` die fits the skill (`skill.stealth`) or the ability (`check.dex`) of the check when it lists targets, a `save` die the ability of the save when it names one (the scene's `save:` actions are saves). Anything else is `invalid_argument`; no use left is `NO_USES_LEFT`.
 - On the checks and saves the die joins the dice an effect adds (`effectDie.ManeuverResource`): it is rolled with them (in the app, or typed as the last of `extra_die_faces`), added to the total and shown as a source ("Nome +1d6: 4"). The resource is spent when the roll is written (`spendManeuverDice`, so a roll that waits for a Lucky or Bardic Inspiration question spends nothing), and the event keeps it in `ManeuverSpent`.
+- On a weapon attack (`RollAttack`) the die is added to the attack roll, as Bless's die is, and the use is spent when the attack is written ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)). `maneuverFits` takes any weapon attack; the attack roll refuses a spell attack and an NPC attacker.
 - On the initiative the die is rolled after the d20 is settled (in the app, or `maneuver_face` with physical dice) and added to the total (`initiativeManeuver`).
+
+A maneuver with no die is a feature action (`grant_action` with the pool as its `resource`): it lists under "Habilidades" with its name and cost, `TakeAction` spends one use of the same pool the die maneuvers use and the economy the option declares, the log line names it, and the master's undo gives both back.
+The option with no use left is off with `NO_USES`, and `TakeAction` refuses it with the encounter reason `NO_USES`.
+It has no number to roll: a maneuver that heals or gives temporary hit points by the die is not covered here.
 
 Not covered: the trap search, the puzzle hint, the group check, the checks of a contest, Hide and the Counterspell check, the death save, and the rolls made on someone else's call. Another creature's roll (an ally's) takes no die of the character.
 

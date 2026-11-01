@@ -116,9 +116,16 @@ func (c *content) rollDieTargetsOK(targets []string) (string, bool) {
 	return "", true
 }
 
-// isRollDie says the superiority die goes on a roll of the character: a check, a save or the initiative.
+// isRollDie says the superiority die is checked as a die on a roll of the character: a check, a save or the initiative.
 func isRollDie(applies string) bool {
 	return applies == ManeuverCheck || applies == ManeuverSave || applies == ManeuverInitiative
+}
+
+// IsRollDie says the superiority die goes on a roll of the character the player names (RollDie): a check, a save, the
+// initiative or a weapon attack. An attack die is checked as a die added to an attack, which takes no targets, ability or
+// action.
+func IsRollDie(applies string) bool {
+	return isRollDie(applies) || applies == ManeuverAttack
 }
 
 // hasManeuver says the feature (an option) has a superiority_die effect that applies: the die

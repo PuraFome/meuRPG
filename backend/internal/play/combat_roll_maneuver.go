@@ -16,13 +16,13 @@ import (
 )
 
 // The table dice a player adds to a roll of its own character (the superiority_die effect of applies check,
-// save and initiative, rules/maneuvers.go). The request names the maneuver (maneuver_key); the die is rolled
+// save, initiative and attack, rules/maneuvers.go). The request names the maneuver (maneuver_key); the die is rolled
 // with the roll, as the dice an effect adds are (Bênção), and one use of its resource is spent when the roll is
 // written. The dice an effect adds and this one are listed in that order, which is the order of the physical
 // faces the player types in extra_die_faces.
 
 // maneuverFits says the maneuver goes on a roll of the kind: a check of the skill and the ability (its targets,
-// when it lists any), a save of the ability (its ability, when it names one) or the initiative.
+// when it lists any), a save of the ability (its ability, when it names one), the initiative or a weapon attack.
 func maneuverFits(m link.Maneuver, applies, skillKey, ability string) bool {
 	if m.Applies != applies {
 		return false
@@ -34,6 +34,8 @@ func maneuverFits(m link.Maneuver, applies, skillKey, ability string) bool {
 		})
 	case rules.ManeuverSave:
 		return m.Ability == "" || m.Ability == ability
+	case rules.ManeuverAttack:
+		return true // any weapon attack; the attack roll refuses a spell attack and an NPC attacker (checkManeuver)
 	}
 	return true
 }

@@ -234,7 +234,7 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
 		}
-		if err := u.strokeBack(ctx, who, ev); err != nil {
+		if err := u.usesBack(ctx, who, ev); err != nil {
 			return err
 		}
 		if err := u.meleeHitBack(ctx, who, ev); err != nil {
