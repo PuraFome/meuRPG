@@ -36,7 +36,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
-// anything else (a feature's key, the attack thrown back) is unspecified.
+// anything else (a feature's key) is unspecified.
 func reactionKindOf(recorded *string) playv1.ReactionKind {
 	if recorded == nil {
 		return playv1.ReactionKind_REACTION_KIND_UNSPECIFIED

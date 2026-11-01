@@ -26,11 +26,8 @@ import (
 // happens (a held action), and the slot of a countered spell is spent all the same:
 // casting it already expended it. The prompt never names the spell or its level.
 
-// What a reaction records besides a reaction window's key: the opportunity attack, and the attack thrown back.
-const (
-	reactionOpportunity = "opportunity"
-	reactionThrowBack   = "throw_back"
-)
+// reactionOpportunity is what an opportunity attack records besides a reaction window's key.
+const reactionOpportunity = "opportunity"
 
 // spendReaction marks the combatant's reaction as spent, and records which one it was and the round.
 func (s *Service) spendReaction(ctx context.Context, c *combatTx, who playdb.Combatant, kind reaction.Kind) error {

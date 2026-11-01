@@ -1,5 +1,16 @@
 import { ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
-import { REACTION_NAMES } from './reaction-view';
+
+/** The names of the reactions, as `names_pt.json` writes them. */
+export const REACTION_NAMES = {
+  shield: 'Escudo Arcano',
+  uncannyDodge: 'Esquiva Sobrenatural',
+  hellishRebuke: 'Repreensão Infernal',
+  counterspell: 'Contramágica',
+  cuttingWords: 'Palavras de Interrupção',
+  deflectMissiles: 'Defletir Projéteis',
+  featherFall: 'Queda Suave',
+  protection: 'Proteção',
+} as const;
 
 /** The name of a kind of reaction ("Reação" for one the table has no name for). */
 export function reactionKindName(kind: ReactionKind): string {

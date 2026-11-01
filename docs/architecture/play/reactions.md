@@ -144,10 +144,12 @@ Each reaction is one line (`COMBAT_LOG_KIND_REACTION_WINDOW`) with the master's 
 A used Shield keeps `reaction_used` (undoable).
 A spent reaction records its kind and the round in `combatants.reaction_kind` and `reaction_round`.
 The kind is the reaction window's key, `opportunity` for an opportunity attack, or the key of the feature whose action is a reaction.
-`SetCombatantReactionSpent` writes the record where the reaction is spent.
-The start of the combatant's turn clears it, and so does an economy write that gives the reaction back (the undo).
-The view sends `Combatant.reaction_kind` and `reaction_round` to the master, the owner and a joint turn, as it sends `reaction_used`, and never to another player (RN-20).
-`reaction_kind` is `UNSPECIFIED` for a feature's reaction.
+`spendReactionAs` writes the economy and the record together; `recordReaction` (`SetCombatantReactionSpent`) writes the record where another path spends the reaction.
+The throw back of Deflect Missiles writes nothing: answering Deflect recorded it.
+The start of the combatant's turn clears the record, and so does an economy write that gives the reaction back (the undo).
+The view sends `Combatant.reaction_kind` and `reaction_round` where it sends `reaction_used`: to the master, to the owner and to the members of a joint turn.
+It never sends them to a player outside the joint turn, and never an NPC's.
+`reaction_kind` is `UNSPECIFIED` only for a feature's reaction.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.
 

@@ -2066,8 +2066,9 @@ export type Combatant = Message<"meurpg.play.v1.Combatant"> & {
 
   /**
    * Which reaction was spent while reaction_used is true, and the round it was spent in.
-   * The master's, the owner's and a joint turn's, as reaction_used is. OPPORTUNITY for an
-   * opportunity attack, UNSPECIFIED for a feature's reaction: the round alone says when.
+   * The master's, the owner's and a joint turn's, as reaction_used is; never an NPC's to a player.
+   * OPPORTUNITY for an opportunity attack; UNSPECIFIED only for a feature's reaction, where
+   * the round alone says when.
    *
    * @generated from field: meurpg.play.v1.ReactionKind reaction_kind = 105;
    */
