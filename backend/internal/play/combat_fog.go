@@ -793,10 +793,10 @@ func packCoverSeen(ev *actionEvent) {
 // maxCoverUsers is how many players a cast's hits can name with the bits of a mask.
 const maxCoverUsers = 64
 
-// viewerAfter is the viewer to build a change's answer with. A replay (the same
-// idempotency key) never ran the change's closure, so its viewer knows nothing of the
-// fog; this one is read again from the combat as it stands, for the member the answer
-// is rendered for: the one who answered a held roll, else the caller (heldViewer).
+// viewerAfter is the viewer to build a change's answer with.
+// A replay (the same idempotency key) never ran the change's closure, so its viewer knows nothing of the fog.
+// This one is read again from the combat as it stands.
+// It is for the member the answer is rendered for: the one who answered a held roll, else the caller (heldViewer).
 func (s *Service) viewerAfter(ctx context.Context, m authz.Membership, res combatResult, v combatViewer) (combatViewer, error) {
 	if !res.repeated || res.encounterID == "" {
 		return v, nil

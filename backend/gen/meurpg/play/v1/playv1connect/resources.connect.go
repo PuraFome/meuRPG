@@ -318,8 +318,8 @@ type ResourceServiceClient interface {
 	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
 	// answer after the 10 s wins.
 	//
-	// The response is rendered for the member who answers (the combat, the group check and the DC of a save as that
-	// member reads them), whoever rolled; the same answer given again is rendered the same way.
+	// The response is rendered for the member who answers, whoever rolled.
+	// The same answer given again is rendered the same way.
 	//
 	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
 	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
@@ -790,8 +790,8 @@ type ResourceServiceHandler interface {
 	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
 	// answer after the 10 s wins.
 	//
-	// The response is rendered for the member who answers (the combat, the group check and the DC of a save as that
-	// member reads them), whoever rolled; the same answer given again is rendered the same way.
+	// The response is rendered for the member who answers, whoever rolled.
+	// The same answer given again is rendered the same way.
 	//
 	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
 	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
