@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import { ErrorHandler, Injectable, InjectionToken, inject } from '@angular/core';
-import type { NavigationError } from '@angular/router';
 
 /** The `history.state` key that marks an entry whose page was already reloaded for a chunk load error. */
 export const CHUNK_RELOAD_MARKER = 'chunkReloaded';
@@ -51,30 +50,36 @@ export const PAGE_RELOAD = new InjectionToken<() => void>('PAGE_RELOAD', {
   },
 });
 
-/** Reloads the page once per history entry when a lazy part fails to load after a deploy. */
+/**
+ * Reloads the page once when a lazy part fails to load after a deploy.
+ * The router rewrites `history.state` after every navigation, failed ones included, and drops the marker.
+ * So the service reads the marker when the app starts, before the first navigation, and keeps it in memory.
+ * A page that started on a marked entry never reloads again.
+ */
 @Injectable({ providedIn: 'root' })
 export class ChunkReload {
   private readonly history = inject(DOCUMENT).defaultView?.history;
   private readonly reload = inject(PAGE_RELOAD);
+  private readonly markedAtStart = isMarked(this.history?.state);
 
-  /** Reloads and returns true for a first chunk load error on this entry; returns false otherwise. */
+  /** Reloads and returns true for a chunk load error on a page that has not reloaded for it; returns false otherwise. */
   reloadOnce(err: unknown): boolean {
     const history = this.history;
-    if (!history || !isChunkLoadError(err) || this.isMarked(history.state)) {
+    if (!history || !isChunkLoadError(err) || this.markedAtStart || isMarked(history.state)) {
       return false;
     }
     history.replaceState({ ...(history.state as object | null), [CHUNK_RELOAD_MARKER]: true }, '');
     this.reload();
     return true;
   }
+}
 
-  private isMarked(state: unknown): boolean {
-    return (
-      typeof state === 'object' &&
-      state !== null &&
-      (state as Record<string, unknown>)[CHUNK_RELOAD_MARKER] === true
-    );
-  }
+function isMarked(state: unknown): boolean {
+  return (
+    typeof state === 'object' &&
+    state !== null &&
+    (state as Record<string, unknown>)[CHUNK_RELOAD_MARKER] === true
+  );
 }
 
 /** Reloads on a chunk load error and sends every other error, and a repeated one, to the default handler. */
@@ -87,9 +92,4 @@ export class ChunkReloadErrorHandler extends ErrorHandler {
       super.handleError(error);
     }
   }
-}
-
-/** The router's navigation error handler: a failed `loadComponent` or `loadChildren` reloads once. */
-export function reloadOnChunkNavigationError(failure: NavigationError): void {
-  inject(ChunkReload).reloadOnce(failure.error);
 }

@@ -1,13 +1,13 @@
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter, withNavigationErrorHandler } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 
 import {
   CHUNK_RELOAD_MARKER,
   ChunkReloadErrorHandler,
   PAGE_RELOAD,
   isChunkLoadError,
-  reloadOnChunkNavigationError,
+  ChunkReload,
 } from './chunk-reload';
 
 const CHROME = 'Failed to fetch dynamically imported module: https://x.test/chunk-ABC.js';
@@ -62,10 +62,9 @@ describe('chunk reload', () => {
       providers: [
         { provide: PAGE_RELOAD, useValue: reload },
         { provide: ErrorHandler, useClass: ChunkReloadErrorHandler },
-        provideRouter(
-          [{ path: 'lazy', loadComponent: () => Promise.reject(new TypeError(CHROME)) }],
-          withNavigationErrorHandler(reloadOnChunkNavigationError),
-        ),
+        provideRouter([
+          { path: 'lazy', loadComponent: () => Promise.reject(new TypeError(CHROME)) },
+        ]),
       ],
     });
   });
@@ -109,12 +108,23 @@ describe('chunk reload', () => {
     expect(log).toHaveBeenCalled();
   });
 
-  it('reloads once when a lazy route fails to load', async () => {
-    const router = TestBed.inject(Router);
-    await expect(router.navigateByUrl('/lazy')).rejects.toThrow(CHROME);
-    expect(reload).toHaveBeenCalledTimes(1);
-    expect(history.state).toMatchObject({ [CHUNK_RELOAD_MARKER]: true });
-    await expect(router.navigateByUrl('/lazy')).rejects.toThrow(CHROME);
+  it('does not reload on a page that started on a marked entry, even after the router rewrote the state', () => {
+    history.replaceState({ ...ROUTER_STATE, [CHUNK_RELOAD_MARKER]: true }, '');
+    TestBed.inject(ChunkReload);
+    // The router replaces history.state after each navigation, without the marker.
+    history.replaceState(ROUTER_STATE, '');
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    TestBed.inject(ErrorHandler).handleError(new TypeError(CHROME));
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('reloads for the rejection of a lazy route that fails to load', async () => {
+    const rejection = await TestBed.inject(Router)
+      .navigateByUrl('/lazy')
+      .catch((err: unknown) => err);
+    // The rejection reaches the ErrorHandler through the global listeners; the real history proof is in e2e.
+    expect(isChunkLoadError(rejection)).toBe(true);
+    TestBed.inject(ErrorHandler).handleError(rejection);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 });
