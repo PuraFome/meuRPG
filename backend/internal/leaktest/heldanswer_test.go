@@ -139,7 +139,7 @@ func newAnswerTable(t *testing.T) *answerTable {
 		},
 		{
 			procedure: playv1connect.ContestServiceGetGroupCheckProcedure, allow: members,
-			why: "a player reads their own roll only",
+			why: "the answer follows the table's rules for a player",
 			req: func(w *world) proto.Message { return &playv1.GetGroupCheckRequest{CampaignId: w.campaign} },
 		},
 	}
@@ -239,7 +239,7 @@ func luckyAnswerOf(face int32) *playv1.AnswerHeldRollRequest_Lucky {
 
 // TestAHeldRollsAnswerIsRenderedForWhoAnswers: the master rolls for a player's character, the roll waits for the
 // player, and the answer comes back as the player's own view (nothing of the combat or of the group check the
-// master keeps from players), while the roll lands as the master made it. Each row also looks in the streams.
+// master hides), while the roll lands as the master made it. Each row also looks in the streams.
 func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 	// The master casts Guiding Bolt for Brisa, who holds a die: the cast waits for her answer.
 	castHeld := func(t *testing.T, rt *answerTable) string {

@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
@@ -18,8 +19,7 @@ import (
 // combat or the group check the response carries.
 
 const (
-	// shadowName is the name of an NPC the master keeps off the players' screens, and shadowHP its hit points: the
-	// combat a player reads has neither.
+	// shadowName is the name of an NPC the master hides, and shadowHP its hit points.
 	shadowName = "Sombra-Zeta-Quatro"
 	shadowHP   = 4321
 )
@@ -61,7 +61,7 @@ func wantNoShadow(t *testing.T, what string, e *playv1.Encounter, whole proto.Me
 		t.Fatalf("%s carries no combat", what)
 	}
 	if readsShadow(e) || strings.Contains(protojson.Format(whole), shadowName) {
-		t.Errorf("%s carries the combatant the master keeps hidden", what)
+		t.Errorf("%s carries the hidden combatant", what)
 	}
 }
 
@@ -69,7 +69,7 @@ func wantNoShadow(t *testing.T, what string, e *playv1.Encounter, whole proto.Me
 func wantShadow(t *testing.T, what string, e *playv1.Encounter) {
 	t.Helper()
 	if !readsShadow(e) {
-		t.Errorf("%s lacks the combatant the master keeps hidden, want the master's combat", what)
+		t.Errorf("%s lacks the hidden combatant, want the master's combat", what)
 	}
 }
 
@@ -188,7 +188,7 @@ func TestHeldAnswerRendersTheAnsweringMembersViewOfASave(t *testing.T) {
 }
 
 // TestHeldAnswerRendersTheAnsweringMembersViewOfAGroupCheck: the master rolls for a halfling on a group check that
-// does not show its DC; the player's answer reads her own roll, not the DC or the other rolls.
+// does not show its DC; the answer carries the player's own roll and the table's rules for the DC.
 func TestHeldAnswerRendersTheAnsweringMembersViewOfAGroupCheck(t *testing.T) {
 	t.Parallel()
 	a := newResourceTable(t)
@@ -281,5 +281,31 @@ func TestHeldViewerIsTheCallerOfTheAnswer(t *testing.T) {
 	}
 	if heldViewerIsMaster(withHeldReply(context.Background(), heldReply{as: &roller, caller: &caller}), roller) {
 		t.Error("heldViewerIsMaster() = true for a player's answer of the master's roll")
+	}
+}
+
+// TestAConcentrationSaveAnswerAgainFollowsTheTableRules: the answer to a held concentration save, sent again with the
+// same key, comes back as the first did, with the DC the table's rules show.
+func TestAConcentrationSaveAnswerAgainFollowsTheTableRules(t *testing.T) {
+	t.Parallel()
+	a := newCastersOf(t, 3, "race:halfling")
+	a.setRules(t, func(r *campaignsv1.TableRules) { r.ShowSaveDc = false })
+	a, e := concentratingHitOn(t, a, 6)
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	res, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(1))
+	hold := res.GetHeldRollOffer().GetHoldId()
+	if err != nil || hold == "" {
+		t.Fatalf("ResolveConcentrationSave(1) = %v, %v; want the question", res, err)
+	}
+	key := newKey()
+	withKey := func(r *playv1.AnswerHeldRollRequest) { luckyAnswer(15)(r); r.IdempotencyKey = key }
+	for _, which := range []string{"the first answer", "the same answer again"} {
+		out, err := a.answerHeldRoll(t, a.ana, hold, withKey)
+		if err != nil || out.GetConcentrationSave().GetResult() == nil {
+			t.Fatalf("%s = %v, %v; want the result", which, out, err)
+		}
+		if dc := out.GetConcentrationSave().GetResult().GetDc(); dc != 0 {
+			t.Errorf("%s: dc = %d, want 0 while the table does not show the DC of a save", which, dc)
+		}
 	}
 }

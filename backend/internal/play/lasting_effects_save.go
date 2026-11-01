@@ -491,7 +491,7 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 // settleEffectSave closes the window, does what the answer does to the effect, and writes the
 // event.
 func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep, saved bool) (any, error) {
-	if heldViewerIsMaster(ctx, x.call.m) || c.rules.ShowSaveDC { // the roller's player reads it when the table shows the DC of a save
+	if heldViewerIsMaster(ctx, x.call.m) || c.rules.ShowSaveDC { // the answering member gets it when the table shows the DC of a save
 		dc := x.dc
 		x.run.result.Dc = &dc
 	}

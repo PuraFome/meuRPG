@@ -232,6 +232,15 @@ func (s *Service) concentrationAnswer(ctx context.Context, m authz.Membership, r
 	result := run.result
 	if result == nil && res.repeated {
 		result = concentrationResultOfRetry(res.payload)
+		if result != nil && !heldViewerIsMaster(ctx, m) {
+			rules, err := s.tableRules(ctx, nil, m.CampaignID)
+			if err != nil {
+				return nil, s.dbError(ctx, "read the table's rules", err)
+			}
+			if !rules.ShowSaveDC {
+				result.Dc = 0
+			}
+		}
 	}
 	if result != nil {
 		result.SpellNamePt = s.namesFor(ctx, m.CampaignID)(result.SpellKey)
@@ -320,7 +329,7 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 
 // concentrationOutcome is the save of the window: kept as it is (the master's word) or rolled. It answers
 // whether the concentration is kept, and puts the result in run with the DC only for who reads it: the
-// master, and the roller's player when the table shows the DC of a saving throw.
+// master, and the answering member when the table shows the DC of a saving throw.
 func (s *Service) concentrationOutcome(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, t windowTrigger, ev *actionEvent, run *concentrationRun) (bool, error) {
 	dc := ev.Reaction.SaveDC
 	kept := true
