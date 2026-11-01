@@ -288,6 +288,9 @@ func Main(m *testing.M) {
 // dropAll drops every database this process made, in one statement each, and
 // gives up quietly on a server too busy to answer: the run is over.
 func dropAll(rawURL string) {
+	if errTemplate != nil {
+		return // no template, so no database was made, and the dialect is unknown
+	}
 	conn, err := sql.Open("pgx", rawURL)
 	if err != nil {
 		return

@@ -176,7 +176,7 @@ The rule for what belongs in it: the tests that compare against a stored file or
 
 ```bash
 make db-test-start
-export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable'
+export MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:5433/postgres?sslmode=disable'
 make before-ready
 ```
 
