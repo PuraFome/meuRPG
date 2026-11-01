@@ -2833,8 +2833,8 @@ message Combatant {
   // The master's, the owner's and a joint turn's, as reaction_used is; never an NPC's to a player.
   // OPPORTUNITY for an opportunity attack; UNSPECIFIED when the server has no name for it (a feature's reaction), where
   // the round alone says when.
-  ReactionKind reaction_kind = 106;
-  int32 reaction_round = 107;
+  ReactionKind reaction_kind = 107;
+  int32 reaction_round = 108;
 }
 
 // LegendaryState is what a legendary creature has left of its legendary actions this
