@@ -21,8 +21,6 @@ import (
 const (
 	// silenceImmune is the damage type a creature in Silence is immune to.
 	silenceImmune = "damage-type:thunder"
-	// silenceSource names the immunity in the steps of a damage.
-	silenceSource = "spell:silence"
 	// conditionDeafened is the condition a creature in Silence has.
 	conditionDeafened = "condition:deafened"
 )
@@ -60,8 +58,9 @@ func silencedBy(zs []*zone, c playdb.Combatant) bool {
 }
 
 // silenceImmunity is the immunity to thunder damage that a Silence gives, as a step of the damage.
+// The step names no source, so it tells a player nothing of a hidden caster's spell.
 func silenceImmunity() combat.Modifier {
-	return combat.Modifier{Kind: combat.StepImmunity, Source: silenceSource, DamageTypes: []string{silenceImmune}}
+	return combat.Modifier{Kind: combat.StepImmunity, DamageTypes: []string{silenceImmune}}
 }
 
 // withSilenceDeaf gives each combatant entirely inside a Silence the deafened condition, for the view. The slice
@@ -83,17 +82,40 @@ func withSilenceDeaf(cs []playdb.Combatant, zs []*zone) []playdb.Combatant {
 	return out
 }
 
-// checkSilence refuses a spell with a verbal component to a caster entirely inside a Silence.
-func (f *castFlow) checkSilence(ctx context.Context) error {
-	if !f.sp.Verbal || !placed(f.caster) {
-		return nil
+// errMute is the refusal of a spell with a verbal component to a caster who cannot speak where it stands.
+// It names no spell, so it tells a player nothing of a hidden caster's Silence.
+func errMute() error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the caster cannot speak where it stands: a spell with a verbal component cannot be cast"))
+}
+
+// mutedIn says the combatant is entirely inside a Silence of the combat.
+func mutedIn(ctx context.Context, q *playdb.Queries, encounterID string, who playdb.Combatant) (bool, error) {
+	if !placed(who) {
+		return false, nil
 	}
-	zs, err := listZones(ctx, f.c)
+	zs, err := readZonesOf(ctx, q, encounterID)
+	if err != nil {
+		return false, err
+	}
+	return silencedBy(zs, who), nil
+}
+
+// refuseMuted refuses the cast of a spell with a verbal component to a caster entirely inside a Silence.
+func refuseMuted(ctx context.Context, c *combatTx, caster playdb.Combatant) error {
+	muted, err := mutedIn(ctx, c.q, c.enc.ID, caster)
 	if err != nil {
 		return err
 	}
-	if silencedBy(zs, f.caster) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the caster is inside a Silence: a spell with a verbal component cannot be cast there"))
+	if muted {
+		return errMute()
 	}
 	return nil
+}
+
+// checkSilence is the cast's refusal of a spell with a verbal component.
+func (f *castFlow) checkSilence(ctx context.Context) error {
+	if !f.sp.Verbal {
+		return nil
+	}
+	return refuseMuted(ctx, f.c, f.caster)
 }

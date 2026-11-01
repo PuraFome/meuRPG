@@ -4,11 +4,15 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // Silence (SRD 5.1) keeps a sphere of 20 feet of radius on the map. A creature entirely inside it is immune to thunder
@@ -64,8 +68,11 @@ func TestSilenceRefusesAVerbalSpellToACasterInside(t *testing.T) {
 	c.castSilence(t, 12, 7)
 	c.passTo(t, c.get(t, c.master), "Pensantus")
 	_, err := c.castArea(t, c.ana, "Pensantus", thunderwave, slotOfLevel(1), nil, toward(1, 0))
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "Silence") {
-		t.Fatalf("Thunderwave inside the sphere: error = %v, want failed_precondition naming the Silence", err)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), "verbal") {
+		t.Fatalf("Thunderwave inside the sphere: error = %v, want failed_precondition for the verbal component", err)
+	}
+	if strings.Contains(err.Error(), "Silence") {
+		t.Errorf("the refusal %q names the spell", err)
 	}
 	if byLabel(t, c.get(t, c.master), "Pensantus").GetActionUsed() {
 		t.Error("the refused cast spent the action")
@@ -259,5 +266,43 @@ func TestAHiddenCastersSilenceNamesNeitherTheSpellNorTheCaster(t *testing.T) {
 	}
 	if !slices.Contains(byLabel(t, c.get(t, c.master), "Brisa").GetConditions(), conditionDeafened) {
 		t.Error("the master does not read Brisa's deafness")
+	}
+}
+
+// Revivify has a verbal component: Ilaria inside a Silence cannot cast it, and the refusal costs nothing.
+func TestSilenceRefusesRevivifyToACasterInside(t *testing.T) {
+	t.Parallel()
+	a, e := newMortuary(t)
+	a.dies(t, e, "Toren", a.toren)
+	_, err := playdb.New(a.h.pool).InsertSpellZone(t.Context(), playdb.InsertSpellZoneParams{
+		EncounterID: e.GetId(), OwnerID: a.id(t, "Goblin"), SpellKey: silenceKey, CastID: newKey(), SlotLevel: 2,
+		OriginCol: 3, OriginRow: 4, Squares: squaresToJSON([]grid.Square{{Col: 3, Row: 4}}), Concentration: true, StartedRound: 1, CreatedAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("InsertSpellZone() error = %v", err)
+	}
+	_, err = a.castRevivify(t, a.ana, e, "Ilaria", "Toren")
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("Revivify inside the sphere: error = %v, want failed_precondition", err)
+	}
+	if strings.Contains(err.Error(), "Silence") {
+		t.Errorf("the refusal %q names the spell", err)
+	}
+	if v := a.vitals(t, a.pens); usedSlots(v, 3) != 0 {
+		t.Errorf("slots used after the refusal = %d, want 0", usedSlots(v, 3))
+	}
+}
+
+// A reactor inside a Silence is offered no reaction spell with a verbal component; outside it is.
+func TestSilenceTakesTheVerbalReactionsAway(t *testing.T) {
+	t.Parallel()
+	st := link.ReactionStats{Spells: []string{spellShield, spellHellishRebuke, spellFeatherFall}, SlotsTotal: [9]int{2}}
+	for _, spell := range []string{spellShield, spellHellishRebuke, spellFeatherFall} {
+		if got := (kit{who: playdb.Combatant{Kind: kindNPC}, st: st}).slotsFor(spell); len(got) == 0 {
+			t.Fatalf("slotsFor(%s) outside a Silence = none, want the 1st level slots", spell)
+		}
+		if got := (kit{who: playdb.Combatant{Kind: kindNPC}, st: st, muted: true}).slotsFor(spell); len(got) != 0 {
+			t.Errorf("slotsFor(%s) inside a Silence = %v, want none", spell, got)
+		}
 	}
 }

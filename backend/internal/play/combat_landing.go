@@ -18,9 +18,10 @@ import (
 
 // afterResistance is the damage that lands on the target once its stat block's
 // resistances, vulnerabilities and immunities to the damage type are applied, after
-// the bonuses and the half of a saving throw (SRD 5.1); a Silence the target stands in makes it immune to thunder. Only a target that takes
-// the damage at once and has a stat block is adjusted: an NPC made from a creature
-// and a creature. A player's character keeps its Rage and other resistances as
+// the bonuses and the half of a saving throw (SRD 5.1).
+// A Silence the target stands in makes it immune to thunder.
+// Only a target that takes the damage at once and has a stat block is adjusted:
+// an NPC made from a creature and a creature. A player's character keeps its Rage and other resistances as
 // notes, for the master to apply when he sets the amount (RN-02).
 func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playdb.Combatant, damageType string, amount int32) (int32, error) {
 	if !holdsHP(target) || damageType == "" || amount <= 0 {
@@ -30,11 +31,11 @@ func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playd
 	if err != nil {
 		return 0, err
 	}
-	zs, err := listZones(ctx, c)
+	muted, err := mutedIn(ctx, c.q, c.enc.ID, target)
 	if err != nil {
 		return 0, err
 	}
-	if silencedBy(zs, target) {
+	if muted {
 		mods.Immune = append(slices.Clone(mods.Immune), silenceImmune)
 	}
 	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
