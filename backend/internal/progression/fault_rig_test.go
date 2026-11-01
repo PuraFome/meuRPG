@@ -29,6 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/reqlimit"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
@@ -289,7 +290,7 @@ func newFaultRig(t *testing.T, mode campaignsv1.XpMode, n int) *faultRig {
 		t.Fatalf("New() error = %v", err)
 	}
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
-	svc.Mount(srv.Handle, fakeSessions{}, tb.h.camps, connect.WithRequireConnectProtocolHeader())
+	svc.Mount(srv.Handle, fakeSessions{}, tb.h.camps, reqlimit.HandlerOption())
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	rig.client = func(u *user) progressionv1connect.ProgressionServiceClient {

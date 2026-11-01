@@ -46,7 +46,8 @@ func TestCheckFullSheetRefusesOversizedFeatListsFirst(t *testing.T) {
 	}
 }
 
-// CreateCharacter, PreviewCharacter and UpdateCharacter refuse the oversized feat lists with invalid_argument.
+// CreateCharacter, PreviewCharacter and UpdateCharacter refuse the oversized feat lists: a body over the
+// read limit of the procedure is resource_exhausted, a list one over the limit of the field invalid_argument.
 func TestFeatListsOverTheLimitAreRefusedByTheRPCs(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
@@ -55,14 +56,18 @@ func TestFeatListsOverTheLimitAreRefusedByTheRPCs(t *testing.T) {
 	player := charactersv1.CharacterKind_CHARACTER_KIND_PLAYER
 	anas := ana.create(t, campaign, player, "Gimli", hillDwarfSheet(1))
 	for name, full := range oversizedFeatSheets() {
+		want := connect.CodeResourceExhausted
+		if name == "one over" {
+			want = connect.CodeInvalidArgument
+		}
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: full}}
 		_, err := ana.api.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{CampaignId: campaign, Kind: player, Name: "Teste", Sheet: sheet}))
-		wantCode(t, name+": CreateCharacter()", err, connect.CodeInvalidArgument)
+		wantCode(t, name+": CreateCharacter()", err, want)
 		_, err = ana.preview(t, campaign, "", player, sheet)
-		wantCode(t, name+": PreviewCharacter() new", err, connect.CodeInvalidArgument)
+		wantCode(t, name+": PreviewCharacter() new", err, want)
 		_, err = ana.preview(t, campaign, anas.GetId(), 0, sheet)
-		wantCode(t, name+": PreviewCharacter() edit", err, connect.CodeInvalidArgument)
+		wantCode(t, name+": PreviewCharacter() edit", err, want)
 		_, err = ana.update(t, anas, "Gimli", sheet)
-		wantCode(t, name+": UpdateCharacter()", err, connect.CodeInvalidArgument)
+		wantCode(t, name+": UpdateCharacter()", err, want)
 	}
 }
