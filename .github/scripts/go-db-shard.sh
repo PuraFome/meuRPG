@@ -9,6 +9,10 @@
 #                                 `go list ./...` (nothing skipped, nothing
 #                                 twice) and the play parts together are
 #                                 exactly the play package's tests
+#   go-db-shard.sh --verify-scan  fail unless the tests read from the play
+#                                 package's source are exactly the tests
+#                                 `go test -list` prints (compiles the test
+#                                 binary: about a minute)
 #
 # The heavy packages are named by hand, from the per-package times of the
 # 10/10/2026 run (play 920 s, leaktest 630 s, rules/dungeon 598 s and rules
@@ -17,42 +21,50 @@
 # everything not named here, so a NEW package lands in "rest" on its own and
 # is never skipped. If a group gets too slow, move a package up.
 #
-# The play package alone took 920 s, so it is split by test: play-1 to play-3
+# The play package alone took 920 s, so it is split by test: play-1 to play-4
 # each run the tests whose name hashes (cksum) to their part, with
 # `-run '^(TestA|TestB)$'`. The hash is stable: adding a test never moves the
-# others, and a NEW test lands in a part by itself. --check proves the parts
-# are exactly the tests `go test -list` prints (Test, Fuzz and Example).
+# others, and a NEW test lands in a part by itself. The tests are read from the
+# source, so a group needs no compile to get its `-run`; --check proves each
+# test is in exactly one part, and --verify-scan that the source reading finds
+# exactly the tests `go test -list` prints (Test, Fuzz and Example).
 set -euo pipefail
 
 module=github.com/PuraFome/meuRPG/backend
-play_parts=3
+play_parts=4
 
 case_packages() {
   case "$1" in
     play-[1-9]) echo "$module/internal/play" ;;
     maps) echo "$module/internal/maps" ;;
     characters) echo "$module/internal/characters $module/migrations $module/internal/progression" ;;
-    # The CPU-bound pure packages, kept off the runners of the database ones.
-    pure) echo "$module/internal/rules $module/internal/rules/dungeon $module/internal/rules/puzzle" ;;
+    # The CPU-bound pure packages, kept off the runners of the database ones, in two groups.
+    rules) echo "$module/internal/rules" ;;
+    dungeon) echo "$module/internal/rules/dungeon $module/internal/rules/puzzle" ;;
     leak) echo "$module/internal/leaktest" ;;
-    camp) echo "$module/internal/campaigns $module/internal/campaignpackage" ;;
     rest) echo "" ;;
     *) echo "unknown group: $1" >&2; return 1 ;;
   esac
 }
 
-# play-2 and play-3 name the same package as play-1: only play-1 counts here.
-named_groups="play-1 maps characters pure leak camp"
+# play-2 to play-4 name the same package as play-1: only play-1 counts here.
+named_groups="play-1 maps characters rules dungeon leak"
 
 all_packages() { go list ./... | sort; }
 
 named_packages() { for g in $named_groups; do case_packages "$g" | tr ' ' '\n'; done | sort; }
 
-# The play package's tests (Test*, Fuzz*, Example*), sorted, one per line.
-# `go test -list` compiles the test binary and runs no test.
+# The play package's tests (Test*, Fuzz*, Example*), sorted, one per line, read
+# from the top-level `func` lines of its _test.go files (TestMain is not a test).
 play_tests() {
-  # --check lists once and passes the list on through PLAY_TESTS.
+  # --check reads once and passes the list on through PLAY_TESTS.
   if [ -n "${PLAY_TESTS:-}" ]; then echo "$PLAY_TESTS"; return; fi
+  grep -hE '^func (Test|Fuzz|Example)([A-Z0-9_][A-Za-z0-9_]*)?\(' internal/play/*_test.go \
+    | sed -E 's/^func ([A-Za-z0-9_]+)\(.*/\1/' | grep -vx TestMain | sort -u
+}
+
+# The same list, from `go test -list`, which compiles the test binary and runs no test.
+play_tests_compiled() {
   go test -list '.*' "$module/internal/play" | grep -E '^(Test|Fuzz|Example)[A-Za-z0-9_]*$' | sort
 }
 
@@ -80,6 +92,18 @@ if [ "${1:-}" = "--run" ]; then
     play-[1-9]) run_regex "${2#play-}" ;;
     *) case_packages "$2" >/dev/null; echo "" ;;
   esac
+  exit 0
+fi
+
+if [ "${1:-}" = "--verify-scan" ]; then
+  scanned=$(play_tests)
+  compiled=$(play_tests_compiled)
+  if [ -z "$scanned" ] || [ "$scanned" != "$compiled" ]; then
+    echo "::error::the play tests read from the source are not the tests go test -list prints; fix play_tests in go-db-shard.sh" >&2
+    diff <(echo "$compiled") <(echo "$scanned") >&2 || true
+    exit 1
+  fi
+  echo "OK: $(echo "$scanned" | wc -l | tr -d ' ') play tests, the source reading and go test -list agree."
   exit 0
 fi
 
@@ -127,7 +151,7 @@ if [ "${1:-}" = "--check" ]; then
   exit 0
 fi
 
-group=${1:?usage: go-db-shard.sh <group>|--run <group>|--check}
+group=${1:?usage: go-db-shard.sh <group>|--run <group>|--check|--verify-scan}
 if [ "$group" = rest ]; then
   comm -23 <(all_packages) <(named_packages)
 else

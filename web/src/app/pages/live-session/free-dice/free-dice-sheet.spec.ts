@@ -17,6 +17,7 @@ interface Harness {
   readonly api: FakeFreeDiceClient;
   readonly state: FreeDiceState;
   readonly online: ReturnType<typeof signal<boolean>>;
+  readonly ref: { close: ReturnType<typeof vi.fn>; disableClose: boolean };
 }
 
 async function settle(h: Pick<Harness, 'fixture'>): Promise<void> {
@@ -49,14 +50,15 @@ async function mount(
     online: online.asReadonly(),
     physical: over.physical ?? false,
   };
+  const ref = { close: vi.fn(), disableClose: false };
   TestBed.configureTestingModule({
     providers: [
       { provide: MAT_DIALOG_DATA, useValue: data },
-      { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
+      { provide: MatDialogRef, useValue: ref },
     ],
   });
   const fixture = TestBed.createComponent(FreeDiceSheet);
-  const h = { fixture, el: fixture.nativeElement as HTMLElement, api, state, online };
+  const h = { fixture, el: fixture.nativeElement as HTMLElement, api, state, online, ref };
   await state.refresh();
   await settle(h);
   return h;
@@ -221,6 +223,22 @@ describe('FreeDiceSheet: rolling', () => {
     release();
     await settle({ fixture });
     expect(el.querySelector('.card--rolling')).toBeNull();
+  });
+
+  it('locks the sheet while the server rolls, so the backdrop and Esc do not close it', async () => {
+    let release!: () => void;
+    const { fixture, el, ref } = await mount({
+      setup: (a) => {
+        a.hold = new Promise<void>((r) => (release = r));
+      },
+    });
+    expect(ref.disableClose).toBe(false);
+    click(bigButton(el));
+    await settle({ fixture });
+    expect(ref.disableClose).toBe(true);
+    release();
+    await settle({ fixture });
+    expect(ref.disableClose).toBe(false);
   });
 
   it('marks the discarded d20 in words', async () => {
