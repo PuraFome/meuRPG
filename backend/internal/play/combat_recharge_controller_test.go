@@ -79,7 +79,7 @@ func TestRN29_TheControllerReadsTheLimitsAndTheRollOfItsCreature(t *testing.T) {
 				got := teiaTurn(t, fog, tc.face)
 				for _, who := range []string{"Toren's player", "the master"} { // the positive controls
 					lines := got.rolls[who]
-					if len(lines) != 1 || lines[0].GetFace() != int32(tc.face) || lines[0].GetRecharged() != tc.recharged {
+					if len(lines) != 1 || int(lines[0].GetFace()) != tc.face || lines[0].GetRecharged() != tc.recharged {
 						t.Errorf("face %d: %s reads %v in the log, want one roll that recharged %v", tc.face, who, lines, tc.recharged)
 					}
 					if w := got.web[who]; w == nil || w.GetAvailable() != tc.recharged {
