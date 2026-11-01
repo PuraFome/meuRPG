@@ -46,7 +46,8 @@ WEB_DIR=$ROOT/web/dist/web/browser
 ISSUER=http://idp.localhost:$IDP_PORT
 CLIENT_ID=meurpg-local
 CLIENT_SECRET=meurpg-local-secret
-REDIRECT_URL=http://localhost:$API_PORT/auth/callback
+# PUBLIC_ORIGIN is the origin the browser opens when something in front of the API (e2e/tls-front.mjs) speaks https.
+REDIRECT_URL=${PUBLIC_ORIGIN:-http://localhost:$API_PORT}/auth/callback
 
 # is_running NAME: true when NAME's PID file names a live process.
 is_running() {
