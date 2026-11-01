@@ -613,7 +613,7 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 	}
 	// Two processes that create the same database at the same instant: PostgreSQL answers the second with
 	// 42P04 (duplicate_database) or, from the unique index of its catalog, 23505.
-	if !isCode(err, "42P04") && !(postgres && isCode(err, "23505")) {
+	if !isCode(err, "42P04") && (!postgres || !isCode(err, "23505")) {
 		return false, fmt.Errorf("create the template: %w", err)
 	}
 	// Another process made it: wait until it is complete.
