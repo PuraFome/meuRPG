@@ -451,12 +451,11 @@ func rollOfAnswer(p rollPick, q questionKind) (rollInput, error) {
 		}
 		in.inApp = true
 	case len(p.faces) > 0:
-		for _, f := range p.faces {
-			if f < 1 || f > d20Sides {
-				return in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_faces must be 1 to 20"))
-			}
-			in.typedFaces = append(in.typedFaces, int(f))
+		faces, err := typedFacesOf(p.faces)
+		if err != nil {
+			return in, err
 		}
+		in.typedFaces = faces
 	case p.face != nil:
 		if q != askDie && (*p.face < 1 || *p.face > d20Sides) {
 			return in, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be 1 to 20"))
@@ -468,4 +467,16 @@ func rollOfAnswer(p rollPick, q questionKind) (rollInput, error) {
 		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_face to use the die"))
 	}
 	return in, nil
+}
+
+// typedFacesOf checks the d20 faces typed for a save with advantage or disadvantage.
+func typedFacesOf(faces []int32) ([]int, error) {
+	out := make([]int, 0, len(faces))
+	for _, f := range faces {
+		if f < 1 || f > d20Sides {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_faces must be 1 to 20"))
+		}
+		out = append(out, int(f))
+	}
+	return out, nil
 }
