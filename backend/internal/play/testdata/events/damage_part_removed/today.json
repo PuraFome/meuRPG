@@ -126,6 +126,7 @@
     "level": 1,
     "pact": true
   },
+  "slot_counted": true,
   "grant_use": "x",
   "resource": "x",
   "hits": [
