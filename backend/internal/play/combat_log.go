@@ -556,6 +556,9 @@ func (b *logBuilder) reactionUsed(e playdb.ListEncounterEventsRow, entry *logEnt
 	if parry {
 		entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW // the master's line (reactionLiners); the players get none
 	}
+	if ev.Reaction != nil && ev.Reaction.Kind == string(reaction.SlowFall) {
+		entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW // one line for each reader (reactionLiners)
+	}
 	// Escudo that stopped the attack takes its damage away; the hit waits for
 	// its roll otherwise, which the roll event says. A Parry does the same, without saying why to a player.
 	if host, ok := b.byPending[ev.Pending]; ok {

@@ -66,6 +66,8 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 		wv.cuttingWordsPrompt(f, out)
 	case reaction.FeatherFall:
 		wv.fallPrompt(w, reactor, k, out)
+	case reaction.SlowFall:
+		slowFallPrompt(f, out)
 	case reaction.HellishRebukeKind:
 		wv.hellishPrompt(f, out)
 	}

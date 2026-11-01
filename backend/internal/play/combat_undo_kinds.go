@@ -613,9 +613,12 @@ func (u *undoer) actionStatesBack(ctx context.Context, who playdb.Combatant, ev 
 // actionSpentBack gives back what the action spent: the points Slow Fall took off a
 // fall, the use of a class resource, and the hit points a heal gave.
 func (u *undoer) actionSpentBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	for _, cut := range ev.FallCuts { // the points Slow Fall took off a fall come back
-		if err := u.c.q.SetPendingDamageLanding(ctx, playdb.SetPendingDamageLandingParams{ID: cut.Pending, Amount: &cut.Before}); err != nil {
-			return fmt.Errorf("put back the fall damage: %w", err)
+	if err := u.fallCutsBack(ctx, ev); err != nil {
+		return err
+	}
+	if len(ev.FallCuts) > 0 { // the monk's question about the fall the button closed
+		if err := reopenWindows(ctx, u.c, ev.ClosedWindows); err != nil {
+			return err
 		}
 	}
 	if ev.Resource != "" && who.Kind == kindPlayer {
@@ -964,6 +967,9 @@ func (u *undoer) reactionUsed(ctx context.Context, ev actionEvent) error {
 	if err := u.reactionSpentBack(ctx, who, ev); err != nil {
 		return err
 	}
+	if err := u.fallCutsBack(ctx, ev); err != nil {
+		return err
+	}
 	if err := u.setEconomy(ctx, who, who.ActionUsed, who.BonusActionUsed, ev.ReactionBefore, who.Dashed); err != nil {
 		return err
 	}
@@ -974,6 +980,23 @@ func (u *undoer) reactionUsed(ctx context.Context, ev actionEvent) error {
 		return fmt.Errorf("put back the armor class bonus: %w", err)
 	}
 	return u.hitsWaitAgain(ctx, ev)
+}
+
+// fallCutsBack puts back the points Slow Fall took off a fall, and the status the damage had (a fall that
+// waited for a window waits for it again).
+func (u *undoer) fallCutsBack(ctx context.Context, ev actionEvent) error {
+	for _, cut := range ev.FallCuts {
+		if err := u.c.q.SetPendingDamageLanding(ctx, playdb.SetPendingDamageLandingParams{ID: cut.Pending, Amount: &cut.Before}); err != nil {
+			return fmt.Errorf("put back the fall damage: %w", err)
+		}
+		if cut.Prev == "" {
+			continue
+		}
+		if err := u.setStatus(ctx, cut.Pending, cut.Prev); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // reactionSpentBack gives back the slot and the maneuver uses the reaction spent.
@@ -1006,8 +1029,10 @@ func (u *undoer) reactionSpentBack(ctx context.Context, who playdb.Combatant, ev
 // hitsWaitAgain makes the hit the reaction answered, and the others it stopped, wait
 // for the reaction again.
 func (u *undoer) hitsWaitAgain(ctx context.Context, ev actionEvent) error {
-	if _, err := u.c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: ev.Pending, Status: pendingAwaitingReaction}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("put back the pending damage: %w", err)
+	if ev.Pending != "" { // a reaction to a fall holds no hit
+		if _, err := u.c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: ev.Pending, Status: pendingAwaitingReaction}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("put back the pending damage: %w", err)
+		}
 	}
 	for _, h := range ev.AlsoStopped {
 		if _, err := u.c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: h.Pending, Status: h.PrevStatus}); err != nil && !errors.Is(err, pgx.ErrNoRows) {

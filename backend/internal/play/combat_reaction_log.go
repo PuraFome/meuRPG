@@ -80,6 +80,7 @@ var reactionLiners = map[reaction.Kind]reactionLiner{
 	reaction.CuttingWords:       (*reactionFacts).cuttingWords,
 	reaction.HellishRebukeKind:  (*reactionFacts).hellishRebuke,
 	reaction.FeatherFall:        (*reactionFacts).featherFall,
+	reaction.SlowFall:           (*reactionFacts).slowFall,
 	reaction.Concentration:      (*reactionFacts).concentration,
 	reaction.ParryKind:          (*reactionFacts).parry,
 }

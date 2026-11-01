@@ -87,6 +87,8 @@ func TestClosureReasonsAreTheReactorsOwnFirst(t *testing.T) {
 	}{
 		{"nothing changed", Shield, Facts{}, ReasonNone, false},
 		{"the reaction was spent", FeatherFall, Facts{ReactionUsed: true}, ReasonReactionSpent, true},
+		{"a Slow Fall waits on the monk's reaction", SlowFall, Facts{ReactionUsed: true}, ReasonReactionSpent, true},
+		{"a Slow Fall closes when the fall is gone", SlowFall, Facts{TriggerGone: true}, ReasonTriggerGone, true},
 		{"the reactor fell unconscious", HellishRebukeKind, Facts{Incapacitated: true}, ReasonReactorIncapacitated, true},
 		{"incapacitated beats spent", CounterspellKind, Facts{Incapacitated: true, ReactionUsed: true}, ReasonReactorIncapacitated, true},
 		{"a Parry waits on the creature's reaction", ParryKind, Facts{ReactionUsed: true}, ReasonReactionSpent, true},
