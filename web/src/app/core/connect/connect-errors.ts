@@ -12,8 +12,8 @@ export const SESSION_ENDED = 'Sua sessão acabou. Entre de novo para continuar.'
 export const OUTCOME_UNKNOWN =
   'Não deu para confirmar se a alteração foi salva. Confira na tela antes de tentar de novo.';
 
-/** What a call says when the server refused it for a limit and nothing says which (`resource_exhausted`: the size of the body, a quota or a cap). */
-const REFUSED_BY_A_LIMIT =
+/** What a call says when the server refused it for a limit and nothing says which (`resource_exhausted`: the size of the body, a quota or a cap). It is also what every screen says for a body over its size limit. */
+export const REFUSED_BY_A_LIMIT =
   'O servidor recusou o pedido por um limite. Reduza o conteúdo ou tente de novo mais tarde.';
 
 const GENERIC = 'Não foi possível falar com o servidor agora. Tente de novo em instantes.';
@@ -45,6 +45,10 @@ export function describeConnectError(
   const refused = requestRefusedText(connectErr);
   if (refused !== null) {
     return refused;
+  }
+  // A body over its read limit is `resource_exhausted` too: the screen's own wording names a quota, which is not what happened.
+  if (isSizeRefused(connectErr)) {
+    return REFUSED_BY_A_LIMIT;
   }
   const own = messages[connectErr.code];
   if (own !== undefined) {
@@ -79,6 +83,24 @@ export function requestRefusedText(err: unknown): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * Whether the server refused the call because its body is over the read limit
+ * (docs/architecture/api.md#request-size-limits): `resource_exhausted` with no
+ * `Retry-After` and one of the two wordings of the read error.
+ * The server cannot attach a typed detail to that error, so the web reads the message.
+ * A handler's own quota refusal (a full gallery, 20 actions) has other wording.
+ * `backend/internal/platform/reqlimit` pins both wordings with a real server.
+ */
+export function isSizeRefused(err: unknown): boolean {
+  const e = ConnectError.from(err, Code.Unavailable);
+  return (
+    e.code === Code.ResourceExhausted &&
+    !isRateLimited(e) &&
+    (e.rawMessage.includes('http.MaxBytesReader limit') ||
+      e.rawMessage.includes('larger than configured max'))
+  );
 }
 
 /**
