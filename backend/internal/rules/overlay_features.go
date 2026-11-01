@@ -52,7 +52,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if err != nil {
 		return err
 	}
-	effects, summon, err := b.lowerFeatureSummon(f, k, path, effects)
+	effects, summon, err := b.lowerFeatureSummon(f, path, effects)
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ type pendingSummon struct {
 // lowerFeatureSummon checks a feature's summon, registers its hidden spell and returns the effects of the feature
 // with the granted_spell effect that gives the spell, and what to check once every entry exists. A feature with no
 // summon goes through as it is.
-func (b *overlayBuilder) lowerFeatureSummon(f *TableFeature, k featureKind, path string, effects []Effect) ([]Effect, *pendingSummon, error) {
+func (b *overlayBuilder) lowerFeatureSummon(f *TableFeature, path string, effects []Effect) ([]Effect, *pendingSummon, error) {
 	s := f.Summon
 	if s == nil {
 		return effects, nil, nil

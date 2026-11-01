@@ -449,7 +449,8 @@ The spell is registered with the SRD's summoning spells, so `SummonSpells`, `Sum
 | `role` | `companion` | `mount` is refused |
 | `max_live` | The most creatures of the spell the caster keeps; a casting that would pass it is refused; 0 is no limit of its own | 0 to 40 |
 | `replaces` | `none` (the default) or `same_summon` | |
-| `resource_key`, `resource_cost` | Reserved | Refused |
+| `resource_key`, `resource_cost` | What a feature's summon spends | Refused on a spell (`value` at `.summon.resource_key`) |
+| `casting_time`, `duration`, `concentration` | What a feature's summon takes to cast and how long it lasts | Refused on a spell, which has its own |
 
 The spell is a leveled spell with only the caster as target, and with no attack, saving throw, damage, healing or area.
 It is not a ritual: the cost of a summon is a slot (`value` at `.ritual`).
@@ -460,3 +461,25 @@ An archived or switched-off creature is not offered by a summoning spell and is 
 A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
 The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
 Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.
+
+## Table feature summons
+
+A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
+An option, a feat and a class feature of another kind carry none (`value` at `.summon`).
+The summon is lowered when the content is built (`lowerFeatureSummon`, `rules/overlay_featuresummon.go`): the content keeps a hidden spell for it and a `granted_spell` effect on the feature that gives the spell to its holder.
+The hidden spell is leveled, has the range Self and only the caster as target, and its key is `FeatureSummonSpellKey(feature key)`.
+No list, search or entry shows it, and no other entry can name it.
+So the options, the checks, the concentration, the replacement and the dismissal are a summoning spell's.
+
+| Field | Meaning | Limits |
+| --- | --- | --- |
+| `resource_key` | The resource of the feature's entry that a casting spends a use of | A valid resource name that a `resource` effect of the entry defines, at `.summon.resource_key` (`reference`) |
+| `resource_cost` | Uses a casting spends | 0 or 1 |
+| `casting_time` | Time to cast | An action by default |
+| `duration`, `concentration` | How long the creatures last, and whether the holder concentrates | Instantaneous by default |
+| `count_per_slot_level` | No slot is spent, so nothing is added for a higher circle | Must be 0 |
+
+`slot()` is 0 in the count of a feature's summon and in the formulas of its creatures.
+How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
+A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
+Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.

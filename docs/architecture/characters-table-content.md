@@ -186,7 +186,7 @@ It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `Lis
 Its player view is the whole entry or none: `playerReads` lets a creature row through only for a player who holds its key.
 Nothing is deleted: the way out of an entry is the archive mark or the switch.
 
-- **Where it resolves.** `GiveCreature` accepts its key where it accepts an SRD creature, and a table spell's `summon` brings it ([Table spell summons](rules-table-content.md#table-spell-summons)).
+- **Where it resolves.** `GiveCreature` accepts its key where it accepts an SRD creature, and a table spell's `summon` or a table feature's brings it ([Table spell summons](rules-table-content.md#table-spell-summons), [Table feature summons](rules-table-content.md#table-feature-summons)).
   `GetCreature`, `ListCreatures`, `CreateNpcFromCreature` and the combat read it from the campaign's content.
   The NPC made from it has "criatura da mesa" in its description.
   "Pôr no combate" keeps one combat-only NPC per campaign and creature for the SRD's, whose stat blocks never change.
@@ -198,7 +198,7 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
   Editing the entry changes no creature already held.
   For an entry with no formula, the armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time.
   A held creature shows the entry's current armor class and attacks with its current damage bonus.
-- **Formula creatures.** For an entry with a formula, the creature is created with a snapshot of its numbers (`character_creatures.stat_block`, migration 00297). A creature a table spell summoned has the circle of the cast slot in `slot()`, and `source` `table` with the spell in `summon_key` (migration 00299).
+- **Formula creatures.** For an entry with a formula, the creature is created with a snapshot of its numbers (`character_creatures.stat_block`, migration 00297). A creature a table spell summoned has the circle of the cast slot in `slot()`, and one a table feature summoned has 0, and `source` `table` with the spell in `summon_key` (migration 00299).
   `insertSummoned` derives the recipient's sheet with the campaign's content and active states, makes the environment with `rules.OwnerEnv`, runs `ResolveCreature` with the circle of the slot the spell was cast with (0 for a creature the master gave), stores the JSON and takes `hp_max` from the result.
   `CreatureSheet`, `CreatureTurnOptions`, `CreatureSave` and `CreatureCheck` take the creature's ID and read the snapshot, and so does the list's `armor_class`.
   A creature whose row is gone has the content's static numbers (`TestMR578_ACreatureWithoutARowFallsBackToTheStaticNumbers`).
