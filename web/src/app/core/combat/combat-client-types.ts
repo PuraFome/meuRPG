@@ -130,6 +130,8 @@ export interface DamageResult {
 export interface SlotRef {
   readonly level: number;
   readonly pact: boolean;
+  /** The resource of an innate spell's uses a day, when the spell is cast with one of them and not with a slot. */
+  readonly resource?: string;
 }
 
 /** One Metamagic option of a cast (`MetamagicChoice`): the creatures it needs (Twinned: the second target, Careful: who

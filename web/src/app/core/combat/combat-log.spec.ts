@@ -749,6 +749,26 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     ).toBe(' conjura Escudo Arcano (1º\u00a0nível), com a reação');
     expect(
       logLine(
+        entry({
+          kind: CombatLogKind.REACTION,
+          actorLabel: 'Couatl',
+          keyNamePt: 'Escudo Arcano',
+          spell: { slot: { level: 1, pact: false, resource: 'innate_3_day_shield' } },
+        } as never),
+      )?.text,
+    ).toBe(' conjura Escudo Arcano (conjuração inata), com a reação');
+    expect(
+      logLine(
+        entry({
+          kind: CombatLogKind.REACTION,
+          actorLabel: 'Couatl',
+          keyNamePt: 'Escudo Arcano',
+          spell: { slot: { level: 1, pact: false, resource: 'innate' } },
+        } as never),
+      )?.text,
+    ).toBe(' conjura Escudo Arcano (conjuração inata), com a reação');
+    expect(
+      logLine(
         attack({
           actorLabel: 'Pensantus',
           targetLabel: 'Goblin 1',
@@ -998,6 +1018,31 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     expect(undoLabel(entry({ kind: CombatLogKind.DEATH_SAVE, actorLabel: 'Brisa' } as never))).toBe(
       'o teste contra a morte da Brisa',
     );
+  });
+});
+
+describe('the legendary actions the master spent: a line for the master alone', () => {
+  const spent = entry({
+    kind: CombatLogKind.LEGENDARY_SPENT,
+    actorLabel: 'Draco',
+    legendarySpent: { optionName: 'Wing Attack', cost: 2 },
+  } as never);
+
+  it("names the option and the cost, and flags the line as the master's alone", () => {
+    const line = logLine(spent);
+    expect(line?.hidden).toBe(true);
+    expect(line?.actor).toBe('Draco');
+    expect(line?.text).toBe('gastou 2 ações lendárias: Wing Attack');
+  });
+
+  it('writes a cost of 1 in the singular, and says what an undo takes back', () => {
+    const one = entry({
+      kind: CombatLogKind.LEGENDARY_SPENT,
+      actorLabel: 'Draco',
+      legendarySpent: { optionName: 'Detect', cost: 1 },
+    } as never);
+    expect(logLine(one)?.text).toBe('gastou 1 ação lendária: Detect');
+    expect(undoLabel(one)).toBe('o gasto de ações lendárias do Draco');
   });
 });
 

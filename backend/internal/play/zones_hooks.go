@@ -100,8 +100,9 @@ func (s *Service) catchByID(ctx context.Context, c *combatTx, k zoneCatch, id st
 }
 
 // zoneSquares are the squares a zone covers with its origin at the square, after the walls cut it.
-func zoneSquares(def zoneDef, terrain grid.Terrain, origin grid.Square) []grid.Square {
-	return terrain.OpenArea(origin, def.area().FromPoint(origin), def.corners)
+func zoneSquares(z *zone, terrain grid.Terrain, origin grid.Square) []grid.Square {
+	area := grid.Area{Shape: z.def.shape, SizeFt: z.sizeFt()}
+	return terrain.OpenArea(origin, area.FromPoint(origin), z.def.corners)
 }
 
 // followCaster moves the zones centered on a combatant that moved to where it stands, and catches the
@@ -142,7 +143,7 @@ func (s *Service) followCaster(ctx context.Context, c *combatTx, zs []*zone, own
 // relocate puts a zone with its origin on the square and catches who it now covers and did not before.
 func (s *Service) relocate(ctx context.Context, c *combatTx, z *zone, terrain grid.Terrain, origin grid.Square, mark string, round int32) error {
 	before := z.in
-	if err := z.place(ctx, c, origin, zoneSquares(z.def, terrain, origin)); err != nil {
+	if err := z.place(ctx, c, origin, zoneSquares(z, terrain, origin)); err != nil {
 		return err
 	}
 	cs, err := listCombatants(ctx, c)
@@ -218,6 +219,7 @@ func (s *Service) endZonesOutOfTime(ctx context.Context, c *combatTx, zs []*zone
 		if err := c.q.DeleteSpellZone(ctx, z.row.ID); err != nil {
 			return nil, fmt.Errorf("end the spell zone: %w", err)
 		}
+		c.zoneChanged(z)
 		if err := s.closeZoneWindows(ctx, c, z.row.ID, endDuration); err != nil {
 			return nil, err
 		}

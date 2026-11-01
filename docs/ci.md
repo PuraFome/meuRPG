@@ -8,7 +8,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 
 | Workflow | Runs on | Jobs |
 | --- | --- | --- |
-| `backend` | PRs (all of a train) and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups plus a gate), `go-coverage`, `report` |
+| `backend` | PRs (all of a train) and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups, a group check, a list check and a gate), `go-coverage`, `report` |
 | `web` | `web/`, `.node-version`, the workflow; every pull request of a train | `test and build`, `coverage` |
 | `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change, except in a train; nightly; manual | `plan`, `lint and typecheck`, `images`, `database`, `playwright` shards, `report` |
 | `codeql` | PRs (all of a train) touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
@@ -54,14 +54,18 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | `go (lint)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits) and the [`//nolint` cap](#the-nolint-cap). It runs no `go test`: `go-db` runs every package |
 | `govulncheck (called vulnerabilities)` | `govulncheck ./...` (version pinned): fails on a known vulnerability in a module or in the Go standard library that the code actually calls. See [Vulnerability scans](#vulnerability-scans) |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory database, with `MEURPG_REQUIRE_DB=1`: [PostgreSQL or CockroachDB, by the event](#which-database-the-tests-run-on). Each package has a 25-minute `-timeout` inside the job's 30 |
+| `go-db groups` | Checks once per run that the groups hold every package and every play test exactly once, and that the play tests read from the source are the ones `go test -list` prints. The groups do not wait for it |
 | `go-db cockroach-only list` | Checks the [list of the tests that need CockroachDB](#which-database-the-tests-run-on): every listed test exists and, on PostgreSQL, fails |
-| `go (integration tests against CockroachDB)` | Waits for every group and for the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
+| `go (integration tests against CockroachDB)` | Waits for every group, the group check and the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
 
-**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-3`, `maps`, `characters`, `pure`, `leak`, `camp` and `rest`.
+**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-4`, `maps`, `characters`, `rules`, `dungeon` (with `rules/puzzle`), `leak` and `rest`.
 The heavy packages are named by hand and `rest` holds everything else, so a new package lands in `rest` and is never skipped.
 The `play` package is split by test: each part runs the tests whose name hashes (`cksum`) to it, so a new test lands in a part by itself and adding one never moves the others.
-`go-db-shard.sh --check` (run by every group) fails unless the groups together are exactly `go list ./...` and the play parts together are exactly the tests `go test -list` prints.
+A group reads the play tests from the `func` lines of the package's `_test.go` files, so it needs no compile to get its `-run`.
+`go-db-shard.sh --check` fails unless the groups together are exactly `go list ./...` and the play parts together are exactly the tests read from the source.
+`go-db-shard.sh --verify-scan` fails unless that reading finds exactly the tests `go test -list` prints.
+The `go-db groups` job runs both once per run.
 If a group nears its timeout, move a package between groups in that script.
 The architecture test (`internal/archtest`) runs in `rest`.
 
@@ -86,7 +90,7 @@ It applies the train rule of the [table above](#what-runs-when): a branch named 
 A PostgreSQL run leaves them out by name (`go test -skip`) and prints the list at the start of the step; the CockroachDB runs run every test.
 Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 
-- `check-names` runs in every group: each entry is a top-level test of its package, and no other package has a test with that name.
+- `check-names` runs in the job `go-db cockroach-only list`: each entry is a top-level test of its package, and no other package has a test with that name.
 - `check-list` runs in the job `go-db cockroach-only list` on PostgreSQL: every listed test must fail there.
   A test that passes on PostgreSQL does not need CockroachDB, and leaves the list.
 

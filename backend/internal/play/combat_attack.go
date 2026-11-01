@@ -40,6 +40,9 @@ type attackCall struct {
 	asReaction bool
 	// useExtra says it uses the extra action Haste gives (SRD 5.1, Haste).
 	useExtra bool
+	// legendary is the key of the legendary option the attack is made as (the master's, off the creature's
+	// own turn); it spends the option's cost instead of the action.
+	legendary string
 }
 
 // opportunity says the attack is an opportunity attack: a reaction that is not a throw back.
@@ -62,6 +65,9 @@ func readAttackCall(req *playv1.RollAttackRequest) (attackCall, error) {
 	call.catchID = req.GetCatchWindowId()
 	call.asReaction = req.GetAsReaction() || call.offerID != "" || call.catchID != ""
 	call.useExtra = req.GetUseExtraAction() && !call.asReaction
+	if call.legendary = req.GetLegendaryOption(); call.legendary != "" && (call.asReaction || req.GetUseExtraAction()) {
+		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("a legendary attack is neither a reaction nor the extra action"))
+	}
 	return call, nil
 }
 
@@ -170,7 +176,9 @@ type attackFlow struct {
 	caught           playdb.ReactionWindow
 	attack           link.Attack
 	attackKey        string
-	bonusKind        combat.BonusKind
+	// legendary is the option of a legendary attack, as checkLegendary found it.
+	legendary rules.LegendaryOption
+	bonusKind combat.BonusKind
 	// coverTarget is the target on the square the mode and the cover are read at: where an opportunity
 	// attack's mover left the reach.
 	coverTarget playdb.Combatant
@@ -218,7 +226,7 @@ func (f *attackFlow) run(ctx context.Context) (any, error) {
 // prepare is the part of the attack that checks and reads: who and what, the turn, the attack, the economy
 // and the cover. Nothing is written.
 func (f *attackFlow) prepare(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack} {
+	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack, f.checkLegendary} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -318,9 +326,11 @@ func (f *attackFlow) checkOffer(ctx context.Context) error {
 // stands, the way the caller rolls (RN-18) and that the attacker may attack.
 func (f *attackFlow) checkTiming(ctx context.Context) error {
 	var err error
-	if f.call.asReaction {
+	switch {
+	case f.call.legendary != "": // its moment is the legendary rule's, checked with the attack once it is picked (checkLegendary)
+	case f.call.asReaction:
 		err = f.s.mustReactNow(ctx, f.c, f.attacker, f.call.offerID != "" || f.call.catchID != "")
-	} else {
+	default:
 		err = f.s.mustActNow(ctx, f.c, f.attacker)
 	}
 	if err != nil {
@@ -413,7 +423,7 @@ func (f *attackFlow) checkEconomy(ctx context.Context) error {
 // action) and a player's character the master acts for stay as they were: the master has the last word.
 func (f *attackFlow) routineLeft() error {
 	a := f.attacker
-	if a.Kind != kindNPC || f.call.asReaction || f.call.useExtra || f.attack.Spell {
+	if a.Kind != kindNPC || f.call.asReaction || f.call.useExtra || f.attack.Spell || f.call.legendary != "" {
 		return nil
 	}
 	if f.sheet.AttacksPerAction > 1 && a.ActionUsed && int(a.AttacksMade) >= f.sheet.AttacksPerAction {
@@ -614,7 +624,7 @@ func (f *attackFlow) keepRage(ctx context.Context) error {
 // Targets", "Help").
 func (f *attackFlow) record(ctx context.Context) error {
 	var run int32
-	if !f.call.asReaction {
+	if !f.call.asReaction && f.call.legendary == "" { // a legendary attack is no action of the creature's turn: its running start stays
 		var err error
 		if run, err = breakRun(ctx, f.c, f.attacker); err != nil {
 			return err
@@ -673,6 +683,8 @@ func (f *attackFlow) spendEconomy(ctx context.Context) error {
 func (f *attackFlow) spendTurn(ctx context.Context, after *playdb.Combatant) error {
 	a := f.attacker
 	switch {
+	case f.call.legendary != "":
+		return f.spendLegendary(ctx) // the option's cost, and nothing of the creature's turn
 	case f.call.asReaction:
 		after.ReactionUsed = true
 	case f.call.useExtra:

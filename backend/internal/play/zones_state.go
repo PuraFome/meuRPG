@@ -49,6 +49,29 @@ func readZone(row playdb.SpellZone) (*zone, bool) {
 	return z, true
 }
 
+// zoneChanged notes that the change put, moved or took away the zone: when it changes what is seen, write tells the
+// fog after the commit.
+func (c *combatTx) zoneChanged(z *zone) {
+	if z != nil && z.def.sight != sightNone {
+		c.zonesMoved = true
+	}
+}
+
+// sizeFt is the size of the zone as it was cast: the catalog's, grown by the slot.
+func (z *zone) sizeFt() int { return z.def.sizeAt(z.def.level, int(z.row.SlotLevel)) }
+
+// ownerGone tells the fog that the zones of a combatant that leaves the combat go with it.
+func (c *combatTx) ownerGone(ctx context.Context, ownerID string) error {
+	zs, err := listZones(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, z := range owned(zs, ownerID) {
+		c.zoneChanged(z)
+	}
+	return nil
+}
+
 func (z *zone) setSquares(sq []grid.Square) {
 	z.squares, z.in = sq, make(map[grid.Square]bool, len(sq))
 	for _, s := range sq {
@@ -106,6 +129,7 @@ func (z *zone) place(ctx context.Context, c *combatTx, origin grid.Square, squar
 	z.row.OriginCol, z.row.OriginRow = clamp32(origin.Col, 0, math.MaxInt32), clamp32(origin.Row, 0, math.MaxInt32)
 	z.setSquares(squares)
 	z.row.Squares = squaresToJSON(squares)
+	c.zoneChanged(z)
 	if err := c.q.SetSpellZonePlace(ctx, playdb.SetSpellZonePlaceParams{
 		ID: z.row.ID, OriginCol: z.row.OriginCol, OriginRow: z.row.OriginRow, Squares: z.row.Squares,
 	}); err != nil {

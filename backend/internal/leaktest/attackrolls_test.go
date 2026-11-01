@@ -62,6 +62,13 @@ const (
 // newRollsTable builds the world and starts the combat: Caio's paladin plays first.
 func newRollsTable(t *testing.T) *rollsTable {
 	t.Helper()
+	return newRollsTableWith(t, nil)
+}
+
+// newRollsTableWith is newRollsTable with a step between the heroes and the combat: what a test gives its heroes
+// before the combat begins (a creature that joins it).
+func newRollsTableWith(t *testing.T, afterHeroes func(rt *rollsTable)) *rollsTable {
+	t.Helper()
 	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	rt := &rollsTable{world: w, got: newAnswers(), ids: map[string]string{}}
 	defer func() {
@@ -101,6 +108,9 @@ func newRollsTable(t *testing.T) *rollsTable {
 	w.pens = hero(w.ana, labelPens, []*charactersv1.ClassLevel{{ClassKey: "class:barbarian", Level: 3}}, nil, dagger, shortbow)
 	w.place(w.fogMap, w.toren.GetId(), 3, 5)
 	w.place(w.fogMap, w.pens.GetId(), 10, 10)
+	if afterHeroes != nil {
+		afterHeroes(rt)
+	}
 
 	// The NPC that starts the combat is one of the two the master keeps hidden.
 	hiddenA := w.secrets.marker("hid-EscondidoA")
@@ -117,6 +127,12 @@ func newRollsTable(t *testing.T) *rollsTable {
 		case c.GetCharacterId() == npcA.GetId():
 			rt.ids["EscondidoA"] = c.GetId()
 			w.secrets.id("rolls-hidden-EscondidoA", c.GetId())
+		case c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_CREATURE:
+			// A creature of a hero rolls its group's initiative: 11, between Pensantus's and the wolf's.
+			must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
+				CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: c.GetId(), IdempotencyKey: newKey(),
+				Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: 11},
+			})))
 		case c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER:
 			face := int32(20)
 			if c.GetCharacterId() == w.pens.GetId() {

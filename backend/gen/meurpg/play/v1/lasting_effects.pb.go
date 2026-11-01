@@ -1688,7 +1688,11 @@ type EffectSaveResult struct {
 	// The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
 	// "trait:lucky"), as an index into `d20_faces` (or the one `d20`); `d20` and `d20_faces` hold
 	// the new face. Empty when nothing was rolled again.
-	Rerolled      []*Reroll `protobuf:"bytes,15,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	Rerolled []*Reroll `protobuf:"bytes,15,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	// The master's answer only: the save failed and `use_legendary_resistance` turned it into a success
+	// (`saved` is true; `d20`, `total` and `dc` are the roll that failed), and the uses left after it.
+	Resisted      bool  `protobuf:"varint,16,opt,name=resisted,proto3" json:"resisted,omitempty"`
+	ResistedLeft  int32 `protobuf:"varint,17,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1826,6 +1830,20 @@ func (x *EffectSaveResult) GetRerolled() []*Reroll {
 		return x.Rerolled
 	}
 	return nil
+}
+
+func (x *EffectSaveResult) GetResisted() bool {
+	if x != nil {
+		return x.Resisted
+	}
+	return false
+}
+
+func (x *EffectSaveResult) GetResistedLeft() int32 {
+	if x != nil {
+		return x.ResistedLeft
+	}
+	return 0
 }
 
 // A reason an option of the turn is unavailable because of an effect or a
@@ -2293,7 +2311,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x0esource_name_pt\x18\x02 \x01(\tR\fsourceNamePt\x12\x14\n" +
 	"\x05faces\x18\x03 \x01(\x05R\x05faces\x12\x12\n" +
 	"\x04sign\x18\x04 \x01(\x05R\x04sign\x12\x12\n" +
-	"\x04face\x18\x05 \x01(\x05R\x04face\"\xf9\x03\n" +
+	"\x04face\x18\x05 \x01(\x05R\x04face\"\xba\x04\n" +
 	"\x10EffectSaveResult\x12\x10\n" +
 	"\x03d20\x18\x01 \x01(\x05R\x03d20\x12\x1a\n" +
 	"\bmodifier\x18\x02 \x01(\x05R\bmodifier\x12\x14\n" +
@@ -2311,7 +2329,9 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x02dc\x18\f \x01(\x05H\x00R\x02dc\x88\x01\x01\x12+\n" +
 	"\x11inspiration_sides\x18\r \x01(\x05R\x10inspirationSides\x12)\n" +
 	"\x10inspiration_face\x18\x0e \x01(\x05R\x0finspirationFace\x122\n" +
-	"\brerolled\x18\x0f \x03(\v2\x16.meurpg.play.v1.RerollR\brerolledB\x05\n" +
+	"\brerolled\x18\x0f \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\x1a\n" +
+	"\bresisted\x18\x10 \x01(\bR\bresisted\x12#\n" +
+	"\rresisted_left\x18\x11 \x01(\x05R\fresistedLeftB\x05\n" +
 	"\x03_dc\"K\n" +
 	"\n" +
 	"EffectNote\x12\x17\n" +

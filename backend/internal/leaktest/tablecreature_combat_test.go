@@ -22,6 +22,7 @@ import (
 // comes from, and the creature's sheet (GetCreature) is not found for him. Ana (its owner) and the master read them.
 func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothingElse(t *testing.T) {
 	const hp, ac = 6161, 37
+	const formulaHP, formulaAC = 6260, 36
 	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	ctx := t.Context()
 	defer func() {
@@ -61,6 +62,27 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 	w.secrets.add(&canary{needle: "monster:giant-crab", kind: "fight-creature-base-key"})
 	w.secrets.add(&canary{needle: key + "#claw", kind: "fight-creature-action-key", readers: names([]*person{w.ana})})
 
+	// A live creature whose numbers are formulas of its owner fights beside it, in the same combat: Pensantus (level 3,
+	// proficiency +2) gives it 1000 * 6 + 20 * 3 + 200 hit points and 34 + 2 armor class. Caio, who holds none, reads none of them.
+	formulaEntry := must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
+			NamePt: w.secrets.marker("fight-formula-name", w.ana, w.caio), BaseKey: "monster:giant-crab",
+			HitPointsFormula: "1000 * 6 + 20 * level() + 200", ArmorClassFormula: "34 + prof()",
+			Traits: []*rulesv1.TableCreatureTrait{{NamePt: w.secrets.marker("fight-formula-trait-name", w.ana), TextPt: w.secrets.marker("fight-formula-trait-text", w.ana)}},
+			Attacks: []*rulesv1.TableCreatureAttack{{
+				NamePt: "Garra Rubra", Melee: true, DiceCount: 1, DiceSides: 8, DamageType: "damage-type:slashing", ToHit: "20 + prof()", DamageBonus: "level()",
+			}},
+		}},
+	}))).GetEntry()
+	formulaKey := formulaEntry.GetKey()
+	w.secrets.id("fight-formula-creature-key", formulaKey, w.ana, w.caio)
+	w.giveTableCreature(w.pens, formulaKey)
+	w.secrets.number("fight-formula-creature-hp", formulaHP)
+	w.secrets.number("fight-formula-creature-ac", formulaAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(formulaHP), w.ana)
+	w.secrets.allowNeedle(strconv.Itoa(formulaAC), w.ana)
+	w.secrets.add(&canary{needle: formulaKey + "#garra-rubra", kind: "fight-formula-creature-action-key", readers: names([]*person{w.ana})})
+
 	goblin := must(m.characters.CreateNpcFromCreature(ctx, rq(&charactersv1.CreateNpcFromCreatureRequest{
 		CampaignId: w.campaign, CreatureKey: "monster:goblin", Name: w.secrets.marker("fight-goblin-name"), Kind: charactersv1.CharacterKind_CHARACTER_KIND_MINION, IdempotencyKey: newKey(),
 	}))).GetCharacter()
@@ -76,13 +98,17 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 		})))
 	}
 	w.encounter = must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
-	var creature *playv1.Combatant
+	var creature, formulaCreature *playv1.Combatant
 	for _, c := range w.encounter.GetCombatants() {
 		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_CREATURE {
-			creature = c
+			if c.GetMonsterKey() == formulaKey {
+				formulaCreature = c
+			} else {
+				creature = c
+			}
 		}
 	}
-	if creature == nil {
+	if creature == nil || formulaCreature == nil {
 		t.Fatalf("the creature is not in the combat: %v", w.encounter.GetCombatants())
 	}
 
@@ -104,8 +130,20 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 			},
 		},
 		{
+			procedure: playv1connect.CombatServiceGetTurnOptionsProcedure, label: "the formula table creature", allow: onlyAna, why: "the creature's options are its owner's and the master's",
+			req: func(w *world) proto.Message {
+				return &playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: formulaCreature.GetId()}
+			},
+		},
+		{
 			procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "the archived table creature", allow: onlyAna, why: "a table creature is not found by a player who holds none, archived or not; Ana's character holds it",
 			req: func(w *world) proto.Message { return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: key} },
+		},
+		{
+			procedure: rulesv1connect.ContentServiceGetCreatureProcedure, label: "the formula table creature", allow: onlyAna, why: "a table creature is not found by a player who holds none; Ana's character holds it",
+			req: func(w *world) proto.Message {
+				return &rulesv1.GetCreatureRequest{CampaignId: w.campaign, Key: formulaKey}
+			},
 		},
 		{
 			procedure: rulesv1connect.ContentServiceListCreaturesProcedure, allow: members, ignore: []string{"fight-creature-base-key", "monster-key"}, why: "the SRD's list names the base crab; the table creature is in the list of the master and of Ana, who holds it, and of no one else",
@@ -135,11 +173,23 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 		if c.GetKind() != playv1.CombatantKind_COMBATANT_KIND_CREATURE {
 			continue
 		}
-		if c.GetMonsterKey() != key || !strings.HasPrefix(c.GetMonsterNamePt(), markerPrefix) {
+		if c.GetMonsterKey() != key && c.GetMonsterKey() != formulaKey || !strings.HasPrefix(c.GetMonsterNamePt(), markerPrefix) {
 			t.Errorf("Caio reads the creature as %v, want its table key and name", c)
 		}
 		if c.HitPointsCurrent != nil || c.HitPointsMax != nil || c.ArmorClass != nil {
 			t.Errorf("Caio reads the creature's numbers: %v", c)
+		}
+	}
+	// Positive controls: the master reads the formula creature's numbers in the combat, and Ana in the list of her
+	// character's creatures, so the checks above are not vacuous for a player who is let read them.
+	combat := w.master.call(playv1connect.CombatServiceGetEncounterProcedure, &playv1.GetEncounterRequest{CampaignId: w.campaign})
+	mine := w.ana.call(charactersv1connect.CharacterServiceListCharacterCreaturesProcedure, &charactersv1.ListCharacterCreaturesRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()})
+	for _, kind := range []string{"fight-formula-creature-hp", "fight-formula-creature-ac"} {
+		if !holdsNumber(combat, w.canaryOf(kind)) {
+			t.Errorf("the master's combat does not hold %s", kind)
+		}
+		if !holdsNumber(mine, w.canaryOf(kind)) {
+			t.Errorf("Ana's list of creatures does not hold %s", kind)
 		}
 	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })

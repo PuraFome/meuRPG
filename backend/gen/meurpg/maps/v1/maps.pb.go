@@ -722,7 +722,8 @@ type DarknessCause int32
 
 const (
 	DarknessCause_DARKNESS_CAUSE_UNSPECIFIED DarknessCause = 0
-	// The square has no light and the character has no sense that sees in the dark.
+	// The square has no light, or is in a Darkness, and the character has no sense
+	// that sees there.
 	DarknessCause_DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION DarknessCause = 1
 )
 

@@ -268,7 +268,8 @@ Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20)
 
 `TableCreature` (`rules/overlay_creature.go`) is an SRD creature with a few adjustments.
 Its key is `creature:<slug>@mesa`.
-It names a `BaseKey` (an SRD creature such as `monster:wolf`) and changes `HitPoints`, `ArmorClass`, `DamageBonus` and `Traits`; the rest of the stat block is the base's.
+It names a `BaseKey` (an SRD creature such as `monster:wolf`) and changes `HitPoints`, `ArmorClass`, `DamageBonus` and `Traits`, and adds `Attacks`; the rest of the stat block is the base's.
+Its numbers can be formulas of its owner (below).
 `With` copies the base's stat block, applies the adjustments and registers the copy under the entry's key, so the creature resolves where an SRD creature does: `MonsterDerived`, `CreatureByKey`, `MonsterPlan`, `ListCreatures` and the combat.
 The base is never written: the SRD's maps are copied before the first table creature goes in.
 
@@ -279,6 +280,29 @@ The base is never written: the SRD's maps are copied before the first table crea
 | `ArmorClass` | The creature's armor class. 0 keeps the base's. The kind and the notes of the base's armor class are dropped | 1 to 40 (`MaxCreatureArmorClass`) |
 | `DamageBonus` | A whole number added once to the first damage part of every attack action, so each attack of a Multiattack gets it. 0 adds nothing. A flat damage stops at 0, and dice that end in `+MOD` are left as they are. The text of the action stays the base's | -10 to 30 |
 | `Traits` | Traits added after the base's special abilities, as text only: a name and a text, no effects | At most 10 (`MaxCreatureTraits`); a name of 1 to 80 characters on one line; a text of 1 to 4,000 characters |
+| `HitPointsFormula`, `ArmorClassFormula`, `DamageBonusFormula` | Formulas of the owner that replace `HitPoints`, `ArmorClass` and `DamageBonus` | Results clamped to 1 to 9,999, 1 to 40 and -10 to 30; a result beyond the engine's limit (`formula.MaxResult`, 10,000 in absolute value) is a failed formula and the static value stands |
+| `AttackBonusFormula` | The to-hit of the base's attacks, and of an own attack with no `ToHit` | Clamped to -10 to 30; a result beyond the engine's limit is a failed formula and the base's value stands |
+| `Attacks` | Attack actions added after the base's, keyed `<creature key>#<slug of the name>`, with an attack roll. Not part of the base's Multiattack. A melee attack has a reach (0 is 5 ft., to 30) and no range; a ranged one has a range (1 to 600) and a long range (0 or up to 1,200). The dice are 1 to 20 of a d4, d6, d8, d10, d12 or d20. `DamageType` is a `damage-type:` key of the SRD | At most 8 (`MaxCreatureAttacks`, `limit` at `.attacks`); a name as a trait's, not repeating a trait, a base action or another attack |
+
+### Formulas of the owner
+
+A formula is compiled once, when the overlay is built, with `formula.Compiler.WithSlot`, and kept on the creature's entry.
+A formula that does not compile, or calls a function that does not exist, is `bad_formula` at its field, such as `.attacks[2].to_hit`.
+The environment is `OwnerEnv`: `level()`, `classLevel("<class>")`, `prof()`, `mod("<ability>")`, `score("<ability>")`, `armor()`, `shield()` and `speedwalk()`, with `floor`, `ceil`, `min` and `max`.
+It may also call `slot()`, the circle of the spell slot a spell was cast with.
+A creature given to a character was not made by a slot, so `slot()` is 0 in its formulas; one a spell summoned has the circle of the slot it was cast with.
+`slot()` is legal only in these fields; an effect, a condition and every other formula refuse it.
+The formulas count in the overlay's formula budget.
+The specific beats the general: an own attack's `ToHit` wins over `AttackBonusFormula`, and its `DamageBonus` over the creature's damage bonus.
+An own attack with neither has +0 to hit and the creature's damage bonus.
+
+`Content.ResolveCreature(key, env, slot)` runs the formulas for an owner (`OwnerEnv(derived, shield)` makes the environment from a derived sheet) and clamps each result to its field's range.
+A result beyond the formula engine's limit (`formula.MaxResult`, 10,000 in absolute value) is a failed formula, not a clamped one.
+A formula that fails when it runs keeps the static value and is named in `ResolvedCreature.Failed`.
+`Content.ResolvedDerived` builds the stat block and the plan of the actions from the result; it takes the base, the name, the traits and the shape of the attacks from the entry, and only the numbers from the value it is given.
+`ApplyResolved` writes a result on the base's stat block the same way the static adjustments are written, so a creature with no formula has the same block with or without an owner.
+`CreatureHasFormulas` says whether an entry has any formula.
+The content's own block for a table creature (`MonsterDerived`) runs no formula: its own attacks have +0 to hit and the static damage bonus.
 
 A trait name is refused (`bad_name`) when it repeats a trait or an action of the base, compared by its letters `a` to `z` and digits, or when it is `Magic Weapons`, `Spellcasting` or `Innate Spellcasting`, ignoring case, because the engine reads those names.
 An adjustment out of its range is `bad_value` at its field, a trait text out of its length is `bad_text` and too many traits is `limit`.
@@ -287,7 +311,7 @@ The checks run before anything is built, so a creature reports every refusal at 
 A table creature is left out of every use that depends on the base's challenge rating and XP, which the adjustments may not keep:
 
 - The encounter evaluator, the generator and the swaps (`EvaluateEncounter`, `GenerateEncounter`, `EncounterSwaps`) read the SRD's creatures only.
-- The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only.
+- The summon choices of the SRD spells (`CheckSummon`) accept SRD creatures only; a table spell's `summon` also accepts table creatures.
 - The Wild Shape forms (`WildShapeForms`) are SRD beasts only.
 - The encounter tools refuse a table creature's key as unknown content, because `HasCreature` is true for SRD creatures only.
 
@@ -439,3 +463,29 @@ No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 ## The area a spell keeps on the map
 
 `TableSpell.Zone` (`TableSpellZone`: `Trigger` of `ZoneStartOfTurn`, `ZoneFirstEntry` or `ZoneBoth`, and `FollowsCaster`) is checked by `checkSpellZone` and kept in `Content.spellZones` (`Content.SpellZone`). Refused at `.zone.trigger` (not one of the three), `.zone.follows_caster` (needs the range Self if it follows, a distance if it does not) and `.zone` (a cantrip; a target that is not a sphere, a cylinder or a cube; not exactly one damage type; a spell attack or healing; neither a timed duration nor concentration). The combat reads it through `link.Spell.Zone` ([Spell zones](play/spell-zones.md)).
+
+## Table spell summons
+
+A `TableSpell` may carry a `summon` (`TableSummon`, `rules/overlay_summon.go`): the creatures it brings to its caster.
+The spell is registered with the SRD's summoning spells, so `SummonSpells`, `SummonOptions` and `CheckSummon` read it like any other.
+
+| Field | Meaning | Limits |
+| --- | --- | --- |
+| `creature_keys` | Table creatures or SRD creatures the caster picks from | 1 to 8 (`MaxTableSummonCreatures`), none twice, each one that exists |
+| `count` | A formula of the caster and of `slot()`; one that fails when it runs counts as 1 | The sum with the per-circle part is clamped to 1 to 20 (`MaxTableSummonCount`); a formula that fails to compile is `formula` at `.summon.count`; a plain number above `max_live` (the number clamped to 20) is `value` at `.summon.max_live` |
+| `count_per_slot_level` | Creatures added for each circle above the spell's own | 0 to 10 |
+| `turn_mode` | `own_initiative` (the default) or `owner_roll_group` | `after_owner` is refused |
+| `role` | `companion` | `mount` is refused |
+| `max_live` | The most creatures of the spell the caster keeps; a casting that would pass it is refused; 0 is no limit of its own | 0 to 40 |
+| `replaces` | `none` (the default) or `same_summon` | |
+| `resource_key`, `resource_cost` | Reserved | Refused |
+
+The spell is a leveled spell with only the caster as target, and with no attack, saving throw, damage, healing or area.
+It is not a ritual: the cost of a summon is a slot (`value` at `.ritual`).
+A refusal of a summon's own field is a violation at `.summon.<field>`.
+The target is refused at `.target.kind`, and a cantrip or a spell with damage, healing, a saving throw, an attack or an area at `.summon`.
+`slot()` is legal in a summon's count as in a creature's formulas, and nowhere else.
+An archived or switched-off creature is not offered by a summoning spell and is refused in a cast (`ErrSummonCreature`); the creatures already made keep working.
+A player reads a summoning spell in `ListTableEntries` without its count, its growth and its limit, and with only the table creatures that a character of theirs holds.
+The caster reads the creatures she may pick, with their key and name, in `GetSummonOptions`, before she holds one.
+Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAtTheFieldThatIsWrong`, `TestSlotInASummonCountOnlyInASummonCount`.

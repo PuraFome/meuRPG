@@ -279,10 +279,10 @@ jobs:
   # on its own runner with its own CockroachDB, so the wall time is the
   # slowest group's, not the sum. 07/10/2026, one runner: 1105 s of go test.
   # 10/10/2026, four groups: 18 min for "rest" and "play", which was one
-  # package of 920 s. Now play is split by test (play-1 to play-3), and the
-  # CPU-bound pure packages (pure), leaktest (leak) and campaigns plus
-  # campaignpackage (camp) have runners of their own, so they stop fighting
-  # for four vCPUs. "rest" is still the catch-all for a new package.
+  # package of 920 s. Now play is split by test (play-1 to play-4), and the
+  # CPU-bound pure packages (rules, and dungeon with puzzle) and leaktest
+  # (leak) have runners of their own, so they stop fighting for four vCPUs.
+  # "rest" is still the catch-all for a new package.
   go-db-shard:
     name: go-db ${{ matrix.group }} (tests against CockroachDB)
     needs: changes
@@ -292,7 +292,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [play-1, play-2, play-3, maps, characters, pure, leak, camp, rest]
+        group: [play-1, play-2, play-3, play-4, maps, characters, rules, dungeon, leak, rest]
     defaults:
       run:
         working-directory: backend
@@ -315,13 +315,6 @@ jobs:
           go-version-file: backend/go.mod
           cache: true
           cache-dependency-path: backend/go.sum
-
-      - name: Check that the groups cover every package
-        # Cheap (a `go list`). A new package falls into "rest" on its own;
-        # this fails if a package named in a group was renamed or deleted.
-        run: |
-          ../.github/scripts/go-db-shard.sh --check
-          ../.github/scripts/cockroach-only.sh check-names
 
       - name: Start the test database
         # PostgreSQL in a preflight, CockroachDB in a train, on main, in the nightly run and in a manual run: the action
@@ -377,6 +370,39 @@ jobs:
           retention-days: 3
 
 
+  # The groups cover the packages and the play tests exactly once (go-db-shard.sh --check), and the play tests read
+  # from the source are the ones `go test -list` prints (--verify-scan, which compiles the play tests: about a
+  # minute). The answer is the same for every group, so it is asked once, here, beside the groups: they do not wait
+  # for it, and the go-db check below does.
+  go-db-groups:
+    name: go-db groups (every package and play test in exactly one group)
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Check that the groups cover every package
+        # A new package falls into "rest" on its own; this fails if a package named in a group was renamed or deleted.
+        run: ../.github/scripts/go-db-shard.sh --check
+
+      - name: Check the play tests read from the source
+        run: ../.github/scripts/go-db-shard.sh --verify-scan
+
   # The list of the tests that need CockroachDB itself (backend/cockroach-only-tests.txt) is true: every listed test
   # exists, and every one of them fails on PostgreSQL, so a test that stops needing CockroachDB leaves the list. The
   # other half of the rule, a test outside the list that needs CockroachDB, fails in the groups above. Only on
@@ -424,7 +450,7 @@ jobs:
   # matrix jobs' own names carry the group.
   go-db:
     name: go (integration tests against CockroachDB)
-    needs: [changes, go-db-shard, cockroach-only-list]
+    needs: [changes, go-db-shard, go-db-groups, cockroach-only-list]
     # Not on a fork's push: `changes` is skipped there, and a skipped `changes` would fail the check below.
     if: ${{ always() && (github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
@@ -438,13 +464,14 @@ jobs:
           GO: ${{ needs.changes.outputs.go }}
           RESULT: ${{ needs.go-db-shard.result }}
           LIST: ${{ needs.cockroach-only-list.result }}
+          GROUPS_CHECK: ${{ needs.go-db-groups.result }}
         run: |
-          echo "changes: $CHANGES, go: $GO, go-db groups: $RESULT, cockroach-only list: $LIST"
+          echo "changes: $CHANGES, go: $GO, go-db groups: $RESULT, group check: $GROUPS_CHECK, cockroach-only list: $LIST"
           [ "$CHANGES" = success ] || exit 1
           if [ "$GO" = true ]; then
-            [ "$RESULT" = success ] && [ "$LIST" = success ]
+            [ "$RESULT" = success ] && [ "$LIST" = success ] && [ "$GROUPS_CHECK" = success ]
           else
-            [ "$RESULT" = skipped ] && [ "$LIST" = skipped ]
+            [ "$RESULT" = skipped ] && [ "$LIST" = skipped ] && [ "$GROUPS_CHECK" = skipped ]
           fi
 
   # Merges the groups' coverage profiles into one total and a per-package

@@ -6,8 +6,8 @@
 // formula can only do arithmetic over the character:
 //
 //   - The environment is the Env struct: a closed set of pure functions
-//     (level, classLevel, mod, score, prof, armor, shield, and active, which
-//     only a compiler made with WithStates accepts). Nothing in it
+//     (level, classLevel, mod, score, prof, armor, shield, and active and slot,
+//     which only a compiler made with WithStates or WithSlot accepts). Nothing in it
 //     touches a database, the network, the clock or randomness, and an
 //     unknown name is a compile error.
 //   - Every Expr builtin is disabled. Only floor, ceil, min and max come
@@ -88,6 +88,9 @@ type Env struct {
 	// Active says whether the state of the effect's entry with this name is on for
 	// the character (a gate: only a compiler made with WithStates accepts the call).
 	Active func(name string) bool `expr:"active"`
+	// Slot is the circle (1 to 9) of the spell slot the owner cast with, 0 outside a
+	// slot cast (a gate: only a compiler made with WithSlot accepts the call).
+	Slot func() int `expr:"slot"`
 }
 
 // MaxStateNameBytes bounds the name active() takes; a state is named like a
@@ -148,6 +151,8 @@ type Compiler struct {
 	// states says the compiler accepts active("name"), the gate on a state of the
 	// effect's entry: the `when` of an effect.
 	states bool
+	// slot says the compiler accepts slot(), the circle of the slot a summon was cast with.
+	slot bool
 }
 
 // NewCompiler returns a Compiler that accepts classLevel of these class
@@ -160,7 +165,14 @@ func NewCompiler(classes []string) *Compiler {
 // active("name") in a condition. The plain compiler refuses it: a state only
 // gates the `when` of an effect, never a number.
 func (c *Compiler) WithStates() *Compiler {
-	return &Compiler{classes: c.classes, states: true}
+	return &Compiler{classes: c.classes, states: true, slot: c.slot}
+}
+
+// WithSlot returns a compiler for the same classes that also accepts slot() in a
+// number: the circle of the spell slot the owner cast with, 0 outside a slot cast.
+// The plain compiler refuses it: only a creature the owner summons knows a slot.
+func (c *Compiler) WithSlot() *Compiler {
+	return &Compiler{classes: c.classes, states: c.states, slot: true}
 }
 
 // Compile checks and compiles a formula of the given kind. The error names
@@ -476,6 +488,10 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 	switch callee.Value {
 	case "active":
 		return c.checkActive(n)
+	case "slot":
+		if !c.slot {
+			return errors.New("slot() can only be used in the numbers of a table creature")
+		}
 	case "level", "prof", "armor", "shield", "speedwalk":
 	case "mod", "score":
 		literals, arity = abilities, 1
@@ -492,19 +508,24 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 		return fmt.Errorf("%s takes %d argument(s), got %d", callee.Value, arity, len(n.Arguments))
 	}
 	if literals != nil {
-		s, ok := n.Arguments[0].(*ast.StringNode)
-		if !ok {
-			return fmt.Errorf("the argument of %s must be written as text, such as %s(%q)", callee.Value, callee.Value, literals[0])
-		}
-		if !slices.Contains(literals, s.Value) {
-			return fmt.Errorf("%s does not accept %q", callee.Value, s.Value)
-		}
-		return nil
+		return checkLiteralArg(n, callee.Value, literals)
 	}
 	for _, arg := range n.Arguments {
 		if err := c.check(arg); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// checkLiteralArg checks that the only argument of the call is text written out and one of the literals.
+func checkLiteralArg(n *ast.CallNode, name string, literals []string) error {
+	s, ok := n.Arguments[0].(*ast.StringNode)
+	if !ok {
+		return fmt.Errorf("the argument of %s must be written as text, such as %s(%q)", name, name, literals[0])
+	}
+	if !slices.Contains(literals, s.Value) {
+		return fmt.Errorf("%s does not accept %q", name, s.Value)
 	}
 	return nil
 }

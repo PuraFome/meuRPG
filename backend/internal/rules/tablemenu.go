@@ -395,7 +395,7 @@ var (
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
 	rollNames   = map[string]string{"advantage": "Vantagem", "disadvantage": "Desvantagem"}
-	senseNames  = map[string]string{"darkvision": "Visão no escuro", "blindsight": "Visão às cegas", "tremorsense": "Sentido sísmico", "truesight": "Visão verdadeira"}
+	senseNames  = map[string]string{"darkvision": "Visão no escuro", "blindsight": "Visão às cegas", "tremorsense": "Sentido sísmico", "truesight": "Visão verdadeira", "devils-sight": "Visão do diabo"}
 	rechargeNms = map[string][2]string{
 		"short_rest": {"Descanso curto", ""}, "long_rest": {"Descanso longo", ""}, "dawn": {"Ao amanhecer", ""}, "none": {"Não volta sozinho", ""},
 		RechargeInitiative:      {"Ao rolar iniciativa", "Volta um uso quando o personagem rola iniciativa, mas só se não restar nenhum."},

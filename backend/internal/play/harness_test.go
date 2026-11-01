@@ -453,6 +453,14 @@ func (d testDice) ForcedDice(ctx context.Context, tx pgx.Tx, campaignID, userID 
 type scriptedRoller struct {
 	mu    sync.Mutex
 	faces []int
+	given int
+}
+
+// taken is how many dice the roller has given so far.
+func (r *scriptedRoller) taken() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.given
 }
 
 func (r *scriptedRoller) queue(faces ...int) {
@@ -464,6 +472,7 @@ func (r *scriptedRoller) queue(faces ...int) {
 func (r *scriptedRoller) Roll(sides int) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.given++
 	if len(r.faces) == 0 {
 		return min(10, sides), nil
 	}
@@ -609,7 +618,7 @@ func wantGolden(t *testing.T, path, got string) {
 // stateTables are the tables a golden prints, which markCall snapshots to tell a call that changed nothing.
 var stateTables = []string{
 	"combatants", "combatant_states", "character_vitals", "character_wild_shapes", "pending_damages",
-	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts",
+	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts", "npc_spell_use",
 }
 
 // stateSnapshot is the rows of the stateTables and the number of events as one text.

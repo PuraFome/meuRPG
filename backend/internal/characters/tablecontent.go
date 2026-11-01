@@ -281,10 +281,18 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 func tableCreatureOf(te rules.TableEntry, b *rulesv1.TableCreature) rules.TableCreature {
 	c := rules.TableCreature{
 		TableEntry: te, BaseKey: b.GetBaseKey(), HitPoints: int(b.GetHitPoints()), ArmorClass: int(b.GetArmorClass()),
-		DamageBonus: int(b.GetDamageBonus()),
+		DamageBonus:      int(b.GetDamageBonus()),
+		HitPointsFormula: b.GetHitPointsFormula(), ArmorClassFormula: b.GetArmorClassFormula(),
+		DamageBonusFormula: b.GetDamageBonusFormula(), AttackBonusFormula: b.GetAttackBonusFormula(),
 	}
 	for _, t := range b.GetTraits() {
 		c.Traits = append(c.Traits, rules.TableCreatureTrait{NamePT: t.GetNamePt(), TextPT: t.GetTextPt()})
+	}
+	for _, a := range b.GetAttacks() {
+		c.Attacks = append(c.Attacks, rules.TableCreatureAttack{
+			NamePT: a.GetNamePt(), Melee: a.GetMelee(), ReachFt: int(a.GetReachFt()), RangeFt: int(a.GetRangeFt()), LongRangeFt: int(a.GetLongRangeFt()),
+			DiceCount: int(a.GetDiceCount()), DiceSides: int(a.GetDiceSides()), DamageBonus: a.GetDamageBonus(), DamageType: a.GetDamageType(), ToHit: a.GetToHit(),
+		})
 	}
 	return c
 }
@@ -505,6 +513,19 @@ var (
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY:   rules.ZoneFirstEntry,
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_BOTH:          rules.ZoneBoth,
 	}
+	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP: rules.SummonTurnOwnerRollGroup,
+		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_AFTER_OWNER:      rules.SummonTurnAfterOwner, // the engine refuses it
+	}
+	summonRoleOf = map[rulesv1.TableSummonRole]string{
+		rulesv1.TableSummonRole_TABLE_SUMMON_ROLE_COMPANION: rules.SummonRoleCompanion,
+		rulesv1.TableSummonRole_TABLE_SUMMON_ROLE_MOUNT:     rules.SummonRoleMount, // the engine refuses it
+	}
+	summonReplacesOf = map[rulesv1.TableSummonReplaces]string{
+		rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_NONE:        rules.SummonReplacesNone,
+		rulesv1.TableSummonReplaces_TABLE_SUMMON_REPLACES_SAME_SUMMON: rules.SummonReplacesSame,
+	}
 	shapeOf = map[rulesv1.TableAreaShape]string{
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CONE:     rules.ShapeCone,
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CUBE:     rules.ShapeCube,
@@ -557,7 +578,32 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 	if h := b.GetHeal(); h != nil {
 		s.Heal = &rules.TableSpellHeal{Dice: h.GetDice(), PerSlotLevel: h.GetPerSlotLevel(), AddsModifier: h.GetAddsModifier()}
 	}
+	s.Summon = tableSummonOf(b.GetSummon())
 	return s
+}
+
+// enumOrUnknown is the rules' word for an enum value whose zero is the default (""): a number the map does not
+// know is "unknown", which the rules refuse, and not the default.
+func enumOrUnknown[K ~int32](words map[K]string, k K) string {
+	if k == 0 {
+		return ""
+	}
+	if w, ok := words[k]; ok {
+		return w
+	}
+	return "unknown"
+}
+
+// tableSummonOf is the summon of a table spell's body, nil for none.
+func tableSummonOf(m *rulesv1.TableSummon) *rules.TableSummon {
+	if m == nil {
+		return nil
+	}
+	return &rules.TableSummon{
+		CreatureKeys: m.GetCreatureKeys(), Count: m.GetCount(), CountPerSlotLevel: int(m.GetCountPerSlotLevel()),
+		TurnMode: enumOrUnknown(summonTurnOf, m.GetTurnMode()), Role: enumOrUnknown(summonRoleOf, m.GetRole()), MaxLive: int(m.GetMaxLive()),
+		Replaces: enumOrUnknown(summonReplacesOf, m.GetReplaces()), ResourceKey: m.GetResourceKey(), ResourceCost: int(m.GetResourceCost()),
+	}
 }
 
 // slotsLength refuses a slots list that is not nine counts or none: the engine's
@@ -997,18 +1043,28 @@ func parentHidden(e entryRow, hidden func(string) bool) bool {
 // switched off, the SRD's too) in any reference of its body (the classes of a
 // spell, the list a casting reads from, the spells an effect grants or a subclass
 // always prepares).
-func forPlayer(e entryRow, hidden func(string) bool) entryRow {
-	if hidden == nil {
+//
+// A table spell's summon goes without the table creatures the player holds none of, and without its count
+// and limits: a player who casts the spell reads the creatures and the count from GetSummonOptions.
+func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entryRow {
+	if sp, ok := e.body.(*rulesv1.TableSpell); hidden == nil && (!ok || sp.GetSummon() == nil) {
 		return e // nothing is hidden: the entry goes as it is
 	}
+	if hidden == nil {
+		hidden = func(string) bool { return false }
+	}
 	body := proto.Clone(e.body).(tableBody)
-	playerView{hidden: hidden}.strip(body)
+	playerView{hidden: hidden, held: held}.strip(body)
 	e.body = body
 	return e
 }
 
 // playerView takes the hidden keys out of a body a player receives.
-type playerView struct{ hidden func(string) bool }
+type playerView struct {
+	hidden func(string) bool
+	// held are the table creatures the player's characters hold.
+	held map[string]bool
+}
 
 // strip takes the hidden keys out of body, in place, by its kind.
 func (v playerView) strip(body tableBody) {
@@ -1027,6 +1083,7 @@ func (v playerView) strip(body tableBody) {
 		}
 	case *rulesv1.TableSpell:
 		b.ClassKeys = v.visible(b.ClassKeys)
+		v.stripSummon(b.GetSummon())
 	case *rulesv1.TableFeat:
 		v.stripFeat(b)
 	case *rulesv1.TableOption:
@@ -1037,6 +1094,16 @@ func (v playerView) strip(body tableBody) {
 			b.ReplacesFeatureKey = "" // a feature the players do not see is not named to them
 		}
 	}
+}
+
+// stripSummon takes out of a table spell's summon what a player does not read: the table creatures the player holds
+// none of (an SRD creature stays) and the count, its growth and its limit.
+func (v playerView) stripSummon(m *rulesv1.TableSummon) {
+	if m == nil {
+		return
+	}
+	m.CreatureKeys = slices.DeleteFunc(m.CreatureKeys, func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	m.Count, m.CountPerSlotLevel, m.MaxLive = "", 0, 0
 }
 
 // stripOption takes the hidden keys out of an option: its effects and what it requires.

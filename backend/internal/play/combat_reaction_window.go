@@ -103,6 +103,12 @@ type windowTrigger struct {
 	// PendingKey is the pending damage the trigger is about (a hit's, or the damage
 	// that was rolled and waits).
 	Pending string `json:"pending,omitempty"`
+	// Resist are the failed saving throws a Legendary Resistance window offers; none when every save passed.
+	Resist []resistOffer `json:"resist,omitempty"`
+	// Held are the targets with the trait and a use left that hold the window, whether their saves passed or failed.
+	Held []string `json:"held,omitempty"`
+	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
+	Bonus int32 `json:"bonus,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the
@@ -123,7 +129,8 @@ type windowOutcome struct {
 	Reduction int32 `json:"reduction,omitempty"`
 	Before    int32 `json:"before,omitempty"`
 	After     int32 `json:"after,omitempty"`
-	// Saved lists the creatures a Feather Fall saved.
+	// Saved lists the creatures a Feather Fall saved, or whose failed saving throw the master turned into a
+	// success with Legendary Resistance.
 	Saved []string `json:"saved,omitempty"`
 }
 
@@ -313,7 +320,11 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, true, err
-	case reaction.Shield, reaction.MasterCheck:
+	case reaction.LegendaryResistance:
+		if resistGone(t, byID) {
+			return true, true, nil
+		}
+	case reaction.Shield, reaction.ParryKind, reaction.MasterCheck:
 		if w.PendingDamageID != nil {
 			gone, err = pendingGone(ctx, c, *w.PendingDamageID)
 			return gone, true, err

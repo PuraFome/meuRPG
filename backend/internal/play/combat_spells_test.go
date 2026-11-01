@@ -74,6 +74,12 @@ func newCastersAt(t *testing.T, wizardLevel int32) *armed {
 // tests); "" keeps each one's own.
 func newCastersOf(t *testing.T, wizardLevel int32, race string) *armed {
 	t.Helper()
+	return newCastersGear(t, wizardLevel, race, []string{battleaxe})
+}
+
+// newCastersGear is newCastersOf with the weapons Toren carries.
+func newCastersGear(t *testing.T, wizardLevel int32, race string, torenWeapons []string) *armed {
+	t.Helper()
 	raceOr := func(own string) string {
 		if race == "" {
 			return own
@@ -82,7 +88,7 @@ func newCastersOf(t *testing.T, wizardLevel int32, race string) *armed {
 	}
 	return newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", raceOr("race:human"), 5,
-			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, torenWeapons, nil)
 		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", raceOr("race:gnome"), wizardLevel,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
 			[]string{magicMissileSpell, shieldSpell, sleepSpell, burningHands, holdPerson, webSpell},

@@ -1475,6 +1475,25 @@ service CombatService {
   //     has no such action, or the action is an attack roll or a Multiattack: those are made with
   //     TakeAction).
   rpc UseCreatureAction(UseCreatureActionRequest) returns (UseCreatureActionResponse);
+
+  // The master spends the legendary actions of a creature on one of its stat block's options
+  // that the engine does not resolve (kind "text": a gaze, a cantrip, a teleport): the spend is
+  // counted and the master plays the option by hand. An option of kind "attack" is made with
+  // RollAttack (`legendary_option`) and one of kind "move" with MoveCombatant
+  // (`legendary_option`); the three share one rule (SRD 5.1, "Legendary Actions"): a creature
+  // spends them only while another creature has the turn, never on its own turn, never when it is
+  // defeated or incapacitated, at the cost of the option and no more than it has left; they come
+  // back when its own turn starts. Master only, and the line it writes is the master's alone.
+  //
+  // Errors:
+  //   - `not_found`, `permission_denied`: the combat or the combatant is not found; a player gets
+  //     `permission_denied`.
+  //   - `invalid_argument`: no option key.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, LEGENDARY_UNAVAILABLE (the combatant
+  //     has no legendary actions, is defeated or incapacitated), LEGENDARY_OWN_TURN,
+  //     LEGENDARY_OPTION_UNKNOWN, LEGENDARY_WRONG_KIND (an attack or move option) and
+  //     LEGENDARY_NONE_LEFT (the cost is more than what is left). Nothing is spent.
+  rpc SpendLegendaryAction(SpendLegendaryActionRequest) returns (SpendLegendaryActionResponse);
 }
 
 // EncounterMode is how a combat is played (RN-25, ADR-0017): chosen when it
@@ -1934,6 +1953,28 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON = 114;
   // TakeAction with end_state: the state the action would end is not on. Nothing changes.
   ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON = 115;
+  // SpendLegendaryAction, RollAttack and MoveCombatant with a legendary option: the creature
+  // has the turn. Legendary actions are spent at the end of another creature's turn. Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_OWN_TURN = 116;
+  // The same: the option costs more than the legendary actions the creature has left. Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_NONE_LEFT = 117;
+  // The same: the creature's stat block has no legendary option with that key.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_OPTION_UNKNOWN = 118;
+  // The same: the option is of another kind than the call makes (SpendLegendaryAction takes
+  // text options, RollAttack attack options, MoveCombatant move options), or its attack is
+  // not the `attack_key` named.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_WRONG_KIND = 119;
+  // The same: the combatant is no creature with legendary actions, or it is defeated or
+  // incapacitated.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_UNAVAILABLE = 120;
+  // RollEffectSave and ResolveConcentrationSave with `use_legendary_resistance`: the saving throw
+  // failed and every use of the creature's trait is spent. Nothing changes.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT = 121;
+  // The same: the creature is no creature with the trait (the combatant is a player's character
+  // or its stat block does not have it). Refused before the roll; nothing changes.
+  ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE = 122;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2318,6 +2359,22 @@ message CreatureActionResult {
   repeated CreatureActionTarget targets = 8;
   // The pending damages the action opened. Only the master.
   repeated PendingDamage pending_damages = 9;
+}
+
+// SpendLegendaryActionRequest spends the legendary actions of an option of kind "text".
+message SpendLegendaryActionRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The legendary creature (a UUID): an NPC with legendary actions.
+  string combatant_id = 3;
+  // The option's key in its stat block (LegendaryOption.key, "wing-attack").
+  string option_key = 4;
+  string idempotency_key = 5;
+}
+
+// SpendLegendaryActionResponse returns the combat after the spend.
+message SpendLegendaryActionResponse {
+  Encounter encounter = 1;
 }
 
 // UseCreatureActionResponse returns the combat and what the action did.
@@ -2758,6 +2815,49 @@ message Combatant {
   // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
   // weapon attack.
   HeldRollOffer held_roll_offer = 104;
+
+  // The legendary actions and Legendary Resistance of a creature whose stat block has them
+  // (SRD 5.1, "Legendary Actions"): what it has left and the options the master can spend
+  // them on. Only the master gets it, and only for such a combatant; a player's copy never
+  // has the field, not even empty (RN-20, RN-29).
+  LegendaryState legendary = 105;
+}
+
+// LegendaryState is what a legendary creature has left of its legendary actions this
+// round and of its Legendary Resistance, and the options of its stat block. The master's
+// alone.
+message LegendaryState {
+  // How many legendary actions the creature has a round (3 in the SRD), and how many are
+  // left until its own turn starts.
+  int32 actions_per_round = 1;
+  int32 actions_left = 2;
+  // The uses of Legendary Resistance a day (0: the stat block has none) and how many are
+  // left; a long rest brings them back.
+  int32 resistance_per_day = 3;
+  int32 resistance_left = 4;
+  // The stat block's legendary actions, in its order.
+  repeated LegendaryOption options = 5;
+  // Whether a spend is allowed right now: the combat is running, another creature has the
+  // turn, and this one is neither defeated nor incapacitated. An option can still be
+  // refused for its cost (LegendaryOption.affordable).
+  bool usable_now = 6;
+}
+
+// LegendaryOption is one of the legendary actions of a stat block.
+message LegendaryOption {
+  // A stable key of the option in its stat block ("tail-attack").
+  string key = 1;
+  // The SRD's name without the "(Costs 2 Actions)" suffix, in English.
+  string name = 2;
+  // How many of the creature's legendary actions it takes, 1 to 3.
+  int32 cost = 3;
+  // "attack" (resolved by the attack flow), "move" (by movement) or "text" (the master
+  // resolves it; the spend is still counted).
+  string kind = 4;
+  // The SRD's text of the option, in English.
+  string text = 5;
+  // Whether `cost` fits in the actions left now.
+  bool affordable = 6;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2964,6 +3064,13 @@ message MoveCombatantRequest {
   // begins. col and row are ignored. A player sending it gets `permission_denied`,
   // and a combatant already on the map is refused with `invalid_argument`.
   bool place = 10;
+  // Only the master: the key of a legendary option of kind "move" (LegendaryOption.key) of the
+  // combatant's stat block. The creature walks off its own turn by its usual rules and speed, on
+  // a budget of its own: a full speed that does not use, and does not depend on, the movement of
+  // its own turn, at the cost of the option in legendary actions. A walk only: no jump, no forced
+  // move, no placement. It makes no opportunity offer. Refused (EncounterBlocked LEGENDARY_*) on
+  // its own turn, with too few actions left, or for an option that is not a move.
+  string legendary_option = 11;
 }
 
 // MoveCombatantResponse returns the combat after the move.
@@ -3703,6 +3810,13 @@ message RollAttackRequest {
   // True: the attack is the weapon attack of the extra action an effect gives
   // (Velocidade): it spends that action, not the Attack action, and it is one weapon attack.
   bool use_extra_action = 101;
+  // Only the master: the key of a legendary option of kind "attack" (LegendaryOption.key) of the
+  // attacker's stat block, whose attack is `attack_key`. The attack is made as the option: off the
+  // creature's own turn, at the end of another's, spending the option's cost in legendary actions
+  // instead of the action, the attacks and the reaction. One attack for each spend. Refused
+  // (EncounterBlocked LEGENDARY_*) on its own turn, with too few actions left, or for an option
+  // that is not an attack or is not this attack. Everything else of the attack is as any other.
+  string legendary_option = 102;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -4236,6 +4350,10 @@ message SpellSlot {
   int32 level = 1;
   // True for a Warlock's pact magic slot (level is then its level).
   bool pact = 2;
+  // The resource of an innate spell's uses a day, when the spell is cast with one of
+  // them and not with a slot (level is then the spell's own). Empty for a slot.
+  // Only the master and the caster's owner read the resource itself; any other viewer reads "innate".
+  string resource = 3;
 }
 
 // SpellTarget is one target of a spell.
@@ -4585,6 +4703,12 @@ message SaveResult {
   // The target was spared by the caster's Sculpt Spells: it succeeded without a roll
   // (`outcome` is SAVED, `roll` is unset) and took no damage if the spell halves.
   bool sculpted = 101;
+  // The target failed this save and the master turned it into a success with Legendary Resistance:
+  // `outcome` is SAVED and `roll` is the roll that failed. Only the master reads either; everyone
+  // else reads a save that passed (RN-20, RN-29).
+  bool resisted = 102;
+  // The uses of the trait the creature has left. Only the master.
+  int32 resisted_left = 103;
 }
 
 // SpellTargetResult is what a cast did to one target.
@@ -5096,6 +5220,12 @@ enum CombatLogKind {
   // (2d8 + 2: 3, 4)"). Only the master gets the line, and it also comes from
   // before the combat begins (round 0).
   COMBAT_LOG_KIND_MONSTERS_ADDED = 24;
+  // The master spent legendary actions on an option of kind "text" (SpendLegendaryAction):
+  // the actor is the creature and `legendary_spent` has the option and its cost ("gastou 2 ações
+  // lendárias: Wing Attack"). Only the master gets the line, and no player's log shows it or
+  // counts it (RN-20, RN-29). An option made through the attack or the move is the ATTACK or MOVED
+  // line, the same one a player reads of any other creature.
+  COMBAT_LOG_KIND_LEGENDARY_SPENT = 27;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5319,6 +5449,8 @@ message CombatLogEntry {
   // save gave and the table's reminder. `spell.targets` has the saves and the damage; the spell
   // key is the action's.
   CombatLogCreatureAction creature_action = 113;
+  // LEGENDARY_SPENT: the option and what it cost. The master's alone.
+  CombatLogLegendarySpent legendary_spent = 114;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5400,6 +5532,10 @@ message CombatLogEffect {
   // ENDED: why ("duration", "ended_by_master", "concentration", "saved", "caster_left").
   // EXHAUSTION: "frenzy" when the level came from the end of a Berserker's frenzied rage.
   string reason = 14;
+  // SAVED, the master's line alone: the save failed and the master turned it into a success (`d20`,
+  // `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
+  bool resisted = 16;
+  int32 resisted_left = 17;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -5418,6 +5554,14 @@ enum CombatLogEffectChange {
   // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
   // `reason` zone_enter, zone_start, zone_cast or zone_end, the roll, and the damage in `amount`.
   COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
+}
+
+// CombatLogLegendarySpent is the master's line of a spend of legendary actions.
+message CombatLogLegendarySpent {
+  // The option's name as the stat block has it (SRD 5.1, in English).
+  string option_name = 1;
+  // How many legendary actions it took.
+  int32 cost = 2;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -5815,6 +5959,15 @@ enum ReactionKind {
   // within 5 ft of the reactor, who wields a shield; the reaction gives the attack
   // roll disadvantage. It waits before the d20 is rolled.
   REACTION_KIND_PROTECTION = 15;
+  // Resistência Lendária: a cast whose saving throw a creature with the trait failed waits for
+  // the master, who may turn the failures into successes (SRD 5.1, Legendary Resistance). Only
+  // the master reads and answers it; AnswerReaction USE names the creatures in `creature_ids`,
+  // PASS leaves every save as it was rolled.
+  REACTION_KIND_LEGENDARY_RESISTANCE = 16;
+  // Aparar: a creature whose stat block has Parry adds to its armor class against one melee weapon
+  // attack that would hit it (SRD 5.1, Parry). The hit waits (AWAITING_REACTION) for the master,
+  // who answers for the creature; only the master reads and answers it.
+  REACTION_KIND_PARRY = 17;
 }
 
 enum ReactionWindowStatus {
@@ -5918,6 +6071,10 @@ message ReactionWindow {
     ContestPrompt contest = 31;
     ManeuverReducePrompt maneuver_reduce = 41;
     ProtectionPrompt protection = 42;
+    // Only the master.
+    LegendaryResistancePrompt legendary_resistance = 43;
+    // Only the master.
+    ParryPrompt parry = 44;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -6068,6 +6225,36 @@ message ProtectionPrompt {
   string attacker_label = 1;
   // The creature the attack is aimed at, one of the reactor's neighbors.
   string ally_label = 2;
+}
+
+// ParryPrompt: a melee weapon attack hit a creature whose stat block has Parry. Only the master
+// reads it; the total and the armor class of the hit are in the window's trigger.
+message ParryPrompt {
+  // The pending damage the hit opened.
+  string pending_damage_id = 1;
+  string attacker_label = 2;
+  string attack_name_pt = 3;
+  // What Parry adds to the armor class, and the armor class the hit is compared with again.
+  int32 ac_bonus = 4;
+  int32 armor_class_with_parry = 5;
+}
+
+// LegendaryResistancePrompt: the failed saving throws of a held action that a creature with
+// Legendary Resistance may turn into successes. Only the master reads it.
+message LegendaryResistancePrompt {
+  repeated LegendaryResistanceOffer offers = 1;
+}
+
+message LegendaryResistanceOffer {
+  string combatant_id = 1;
+  string label = 2;
+  // The save that failed, as rolled: the d20, the total and the DC.
+  int32 d20 = 3;
+  int32 total = 4;
+  int32 dc = 5;
+  // The uses of the trait the creature has left, and its uses a day.
+  int32 uses_left = 6;
+  int32 uses_per_day = 7;
 }
 
 message ManeuverReduceOption {
@@ -6228,9 +6415,16 @@ message ReactionResult {
     FeatherFallResult feather_fall = 26;
     ManeuverReduceResult maneuver_reduce = 27;
     ProtectionResult protection = 28;
+    LegendaryResistanceResult legendary_resistance = 29;
+    ParryResult parry = 31;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
+}
+
+// ParryResult: the armor class with Parry stopped the hit (the roll is not rolled again).
+message ParryResult {
+  bool stopped = 1;
 }
 
 message ShieldResult {
@@ -6279,6 +6473,11 @@ message CuttingWordsResult {
 // ProtectionResult: the attack roll that was held now has disadvantage. The result
 // never says what the roll became.
 message ProtectionResult {}
+
+// LegendaryResistanceResult: the creatures whose failed save the master turned into a success.
+message LegendaryResistanceResult {
+  repeated string combatant_ids = 1;
+}
 
 message ManeuverReduceResult {
   string maneuver_key = 1;
@@ -6331,6 +6530,14 @@ message ResolveConcentrationSaveRequest {
   // maneuver the character has not or that does not go on this roll, and with a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 102;
+  // The master's choice, made with the roll: when the saving throw of a creature whose stat block has
+  // Legendary Resistance fails, it succeeds instead and one use is spent, in the same change (SRD 5.1).
+  // A save that succeeds spends nothing and the flag is ignored, as it is on a skipped or kept one. The
+  // master only: a player gets `permission_denied`. Refused with EncounterBlocked
+  // LEGENDARY_RESISTANCE_UNAVAILABLE for a combatant without the trait (before the roll) and
+  // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
+  // the creature is incapacitated.
+  bool use_legendary_resistance = 103;
 }
 
 message ResolveConcentrationSaveResponse {
@@ -6368,6 +6575,10 @@ message ConcentrationSaveResult {
   string spell_name_pt = 5;
   // The Bardic Inspiration die the player added after the d20, already in the total of `save`.
   repeated BonusDie bonus_dice = 6;
+  // The master's answer only: the save failed and `use_legendary_resistance` turned it into a success
+  // (`kept` is true, `save` and `dc` are the roll that failed), and the uses the creature has left.
+  bool resisted = 7;
+  int32 resisted_left = 8;
 }
 
 // RequestRollModeRequest asks the master for a better mode for an attack.

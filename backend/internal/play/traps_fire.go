@@ -751,7 +751,7 @@ func (s *Service) outsideCreatureTarget(ctx context.Context, c *combatTx, effect
 	campaignID := c.session.CampaignID
 	t := trapTarget{id: cr.ID}
 	if trapNeedsAC(effect) {
-		sheet, ok, err := s.roster.CreatureSheet(ctx, c.tx, campaignID, cr.MonsterKey, "")
+		sheet, ok, err := s.roster.CreatureSheet(ctx, c.tx, campaignID, cr.ID, cr.MonsterKey, "")
 		if err != nil {
 			return trapTarget{}, err
 		}
@@ -761,7 +761,7 @@ func (s *Service) outsideCreatureTarget(ctx context.Context, c *combatTx, effect
 		t.armorClass = sheet.ArmorClass
 	}
 	if ability != "" {
-		save, err := s.roster.CreatureSave(ctx, c.tx, campaignID, cr.MonsterKey, ability)
+		save, err := s.roster.CreatureSave(ctx, c.tx, campaignID, cr.ID, cr.MonsterKey, ability)
 		if err != nil {
 			return trapTarget{}, err
 		}

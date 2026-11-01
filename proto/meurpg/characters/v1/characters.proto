@@ -3013,6 +3013,8 @@ enum CreatureSource {
   CREATURE_SOURCE_CONJURE_ANIMALS = 3;
   // Given by the master (GiveCreature).
   CREATURE_SOURCE_MASTER = 4;
+  // A spell of the table's (`summon` of a TableSpell).
+  CREATURE_SOURCE_TABLE = 5;
 }
 
 // CharacterCreature is a creature that belongs to a character (MR-037).
