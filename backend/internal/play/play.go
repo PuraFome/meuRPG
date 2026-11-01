@@ -523,6 +523,11 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
+	// D20Rerolls lets a d20 be held for "rolar de novo?" when a reroll rule covers it (held_reroll.go). False by default
+	// and not set by cmd/api: the web client has no screen for the question (an unknown case of the offer renders the
+	// die's prompt with zero sides, held-roll-prompt.ts and held-text.ts), so the server must not hold a roll for it.
+	// With it off the roll settles as if the player declined: nothing is held, nothing is spent.
+	D20Rerolls bool
 }
 
 // Service implements the PlayService Connect API.
@@ -553,6 +558,8 @@ type Service struct {
 	// conditionNames are the SRD conditions' Portuguese names, by key, for the
 	// labels the master marks (RN-22).
 	conditionNames map[string]string
+	// d20Rerolls is Config.D20Rerolls: the rolls are held for the reroll question (held_reroll.go).
+	d20Rerolls bool
 
 	// hub fans the live events out to the open streams, in memory: one
 	// server instance only (docs/operations/README.md).
@@ -624,22 +631,23 @@ func New(cfg Config) (*Service, error) {
 		return nil, errors.New("play: Roller is required")
 	}
 	s := &Service{
-		pool:      cfg.Pool,
-		queries:   playdb.New(cfg.Pool),
-		sheets:    cfg.Sheets,
-		vitals:    cfg.Vitals,
-		campaigns: cfg.Campaigns,
-		maps:      cfg.Maps,
-		roster:    cfg.Roster,
-		dice:      cfg.Dice,
-		defaults:  cfg.Defaults,
-		terrain:   cfg.Terrain,
-		doors:     doorKeeperOf(cfg.Terrain),
-		roller:    cfg.Roller,
-		logger:    cfg.Logger,
-		now:       cfg.Now,
-		hub:       live.New(cfg.Live.Buffer),
-		live:      cfg.Live,
+		pool:       cfg.Pool,
+		queries:    playdb.New(cfg.Pool),
+		sheets:     cfg.Sheets,
+		vitals:     cfg.Vitals,
+		campaigns:  cfg.Campaigns,
+		maps:       cfg.Maps,
+		roster:     cfg.Roster,
+		dice:       cfg.Dice,
+		defaults:   cfg.Defaults,
+		terrain:    cfg.Terrain,
+		doors:      doorKeeperOf(cfg.Terrain),
+		roller:     cfg.Roller,
+		logger:     cfg.Logger,
+		now:        cfg.Now,
+		hub:        live.New(cfg.Live.Buffer),
+		live:       cfg.Live,
+		d20Rerolls: cfg.D20Rerolls,
 	}
 	s.msgs = newMessageDeps(cfg.Messages)
 	s.conditionNames = map[string]string{}
