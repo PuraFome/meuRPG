@@ -2034,7 +2034,8 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
       );
     const el = (await render()).nativeElement as HTMLElement;
 
-    const alert = el.querySelector('[role="alert"]')!;
+    const alert = el.querySelector('app-owner-changes .mr-notice')!;
+    expect(alert.hasAttribute('role')).toBe(false);
     expect(alert.textContent).toContain('O mestre pediu ajustes.');
     expect(alert.textContent).toContain('“O antecedente não bate com a história.”');
     expect(alert.textContent).toContain(

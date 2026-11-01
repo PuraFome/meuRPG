@@ -8,7 +8,7 @@ import { CombatantToken } from '../combatant-token/combatant-token';
 /**
  * Step 2 of an area spell, "Quem está na área" (PM-02a state 3, PM-02b states 4 and 6, PM-02d state 11): who the server
  * says is inside, each with the state word (never hit points, RN-20) and the cover against the point of origin as text,
- * the ally warning (`role="alert"`) and the count. A player's list holds only what they see (RN-10): nothing here counts
+ * the ally warning (said by a status region) and the count. A player's list holds only what they see (RN-10): nothing here counts
  * or hints at anything else. With nobody inside, the list gives way to the confirmation in place ("Ninguém que você vê
  * está na área."), and the page's buttons become "Conjurar mesmo assim" and "Mudar o local".
  */
@@ -17,18 +17,20 @@ import { CombatantToken } from '../combatant-token/combatant-token';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CombatantToken, MatIconModule],
   template: `
-    @if (nobody(); as n) {
-      <div class="mr-notice mr-notice--warning" role="alert">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <p><strong>{{ n.strong }}</strong> {{ n.rest }}</p>
-      </div>
-    } @else {
-      @if (warning(); as w) {
-        <div class="mr-notice mr-notice--warning" role="alert">
+    <div class="mr-live" role="status">
+      @if (nobody(); as n) {
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <p><strong>{{ n.strong }}</strong> {{ n.rest }}</p>
+        </div>
+      } @else if (warning(); as w) {
+        <div class="mr-notice mr-notice--warning">
           <mat-icon aria-hidden="true">warning</mat-icon>
           <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
         </div>
       }
+    </div>
+    @if (!nobody()) {
       <div class="head">
         <h4 class="head__title">{{ heading() }}</h4>
         <span class="head__count">{{ count() }}</span>

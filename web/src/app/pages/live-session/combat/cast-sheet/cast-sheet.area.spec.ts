@@ -188,7 +188,7 @@ describe('CastSheet: an area spell placed on the map', () => {
     button('Confirmar local')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Quem está na área');
-    expect(plain(el.querySelector('app-area-list [role="alert"]')?.textContent)).toContain(
+    expect(plain(el.querySelector('app-area-list .mr-live')?.textContent)).toContain(
       'Toren está na área.',
     );
     expect(el.querySelectorAll('app-area-list li.row')).toHaveLength(2);
@@ -232,7 +232,7 @@ describe('CastSheet: an area spell placed on the map', () => {
     await placeAt(6, 4);
     button('Confirmar local')!.click();
     await settle();
-    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain(
+    expect(plain(el.querySelector('app-area-list .mr-live')?.textContent)).toContain(
       'Ninguém que você vê está na área. A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
     );
     expect(button('Conjurar Bola de Fogo')).toBeUndefined();
@@ -263,16 +263,21 @@ describe('CastSheet: an area spell without a map', () => {
     const { el, button, settle, castSpell } = await open({ map: false });
     expect(el.querySelector('[role="application"]')).toBeNull();
     expect(plain(el.textContent)).toContain('Quem a magia atinge (pode ser ninguém)');
+    const regions = new Set(el.querySelectorAll('.mr-live[role="status"]'));
+    expect([...regions].every((r) => !r.querySelector('.mr-notice'))).toBe(true);
     button('Conjurar Bola de Fogo')!.click();
     await settle();
     expect(castSpell).not.toHaveBeenCalled();
-    expect(plain(el.querySelector('[role="alert"] p')?.textContent)).toBe(
+    const notice = el.querySelector('.mr-live[role="status"] .mr-notice')!;
+    expect(regions.has(notice.parentElement!)).toBe(true);
+    expect(notice.hasAttribute('role')).toBe(false);
+    expect(plain(notice.querySelector('p')?.textContent)).toBe(
       'Ninguém está marcado. A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
     );
     expect(plain(document.activeElement?.textContent)).toBe('Voltar à lista');
     button('Voltar à lista')!.click();
     await settle();
-    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(el.querySelector('.mr-live .mr-notice')).toBeNull();
     button('Conjurar Bola de Fogo')!.click();
     await settle();
     button('Conjurar mesmo assim')!.click();

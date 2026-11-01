@@ -16,9 +16,10 @@ describe('OwnerChanges', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('tells, as an alert, that the master asked for changes, with the reason quoted and the date', () => {
+  it('tells, as content with no live role, that the master asked for changes, with the reason quoted and the date', () => {
     const { el } = render();
-    const alert = el.querySelector('[role="alert"]')!;
+    const alert = el.querySelector('.mr-notice')!;
+    expect(alert.hasAttribute('role')).toBe(false);
     expect(alert.textContent).toContain('O mestre pediu ajustes.');
     expect(alert.querySelector('blockquote')?.textContent).toBe('“Falta o equipamento.”');
     expect(alert.textContent).toContain(

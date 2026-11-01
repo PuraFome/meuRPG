@@ -288,15 +288,18 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     const { el, settle } = await open((a) =>
       a.failWith.set('party', new ConnectError('down', Code.Unavailable)),
     );
-    expect(flat(el.querySelector('[data-testid=party-failed]'))).toContain(
-      'Não deu para ler o nível do grupo',
-    );
+    const live = el.querySelector('.mr-live[role="status"]')!;
+    const failed = live.querySelector('[data-testid=party-failed]')!;
+    expect(failed.hasAttribute('role')).toBe(false);
+    expect(flat(failed)).toContain('Não deu para ler o nível do grupo');
     expect(el.querySelector('[data-testid=party-help]')).toBeNull();
     expect(flat(el.querySelector('.options'))).not.toContain('ainda não tem personagem');
     api.failWith.clear();
     el.querySelector<HTMLButtonElement>('[data-testid=party-failed] .link')!.click();
     await settle();
     expect(el.querySelector('[data-testid=party-failed]')).toBeNull();
+    expect(el.querySelector('.mr-live[role="status"]')).toBe(live);
+    expect(live.textContent?.trim()).toBe('');
     expect(flat(el.querySelector('.step__value'))).toBe('4');
   });
 

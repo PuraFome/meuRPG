@@ -87,12 +87,14 @@
               <p><strong>Você não vê esse ponto: há uma parede no caminho.</strong> O ponto de origem fica do lado de cá dela.</p>
             </div>
           }
-          @if (ar.warning(); as w) {
-            <div class="mr-notice mr-notice--warning" role="alert">
-              <mat-icon aria-hidden="true">warning</mat-icon>
-              <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
-            </div>
-          }
+          <div class="mr-live" role="status">
+            @if (ar.warning(); as w) {
+              <div class="mr-notice mr-notice--warning">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
+              </div>
+            }
+          </div>
         } @else if (f.step() === 'list') {
           <app-area-step #listTitle [n]="2" title="Quem está na área" />
           @if (data.map; as m) {
@@ -159,13 +161,15 @@
             (pick)="ch.toggleSculpt($event)"
           />
         }
-        @if (s.listAsking()) {
-          <!-- Nobody ticked on a list that may hit nobody (PM-02d state 13): asked in place, nothing spent yet. -->
-          <div class="mr-notice mr-notice--warning" role="alert">
-            <mat-icon aria-hidden="true">warning</mat-icon>
-            <p><strong>{{ ar.nobodyLine().strong }}</strong> {{ ar.nobodyLine().rest }}</p>
-          </div>
-        }
+        <div class="mr-live" role="status">
+          @if (s.listAsking()) {
+            <!-- Nobody ticked on a list that may hit nobody (PM-02d state 13): asked in place, nothing spent yet. -->
+            <div class="mr-notice mr-notice--warning">
+              <mat-icon aria-hidden="true">warning</mat-icon>
+              <p><strong>{{ ar.nobodyLine().strong }}</strong> {{ ar.nobodyLine().rest }}</p>
+            </div>
+          }
+        </div>
       }
       @if (s.teleportFt > 0 && data.map; as m) {
         <!-- A teleport spell on the map (Passo Nebuloso): the player picks the square they land on. -->

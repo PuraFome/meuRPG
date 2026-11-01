@@ -29,7 +29,7 @@ let nextId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="ask" role="group" [attr.aria-labelledby]="id" (keydown.escape)="cancel.emit()">
-      <h3 #titleEl class="ask__title" [id]="id" tabindex="-1">{{ title() }}</h3>
+      <h3 #titleEl class="ask__title" [id]="id" [attr.aria-describedby]="describedBy() || null" tabindex="-1">{{ title() }}</h3>
       <ng-content />
       <div class="ask__pair" [class.ask__pair--row]="row()" [class.ask__pair--equal]="equal()">
         <button matButton="outlined" type="button" (click)="cancel.emit()">{{ cancelLabel() }}</button>
@@ -136,6 +136,8 @@ export class MapAsk {
   readonly equal = input(false);
   /** The words of the safe button ("Voltar" by default). */
   readonly cancelLabel = input('Voltar');
+  /** The id of the text the title points at with `aria-describedby` (a notice inside the question), or `''`. */
+  readonly describedBy = input('');
   readonly cancel = output<void>();
   readonly confirm = output<void>();
 

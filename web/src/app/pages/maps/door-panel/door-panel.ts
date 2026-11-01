@@ -29,8 +29,8 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
   template: `
     <section class="mr-panel dp" aria-labelledby="dp-title">
       @if (standing()) {
-        <app-map-ask [title]="erasing() ? 'Tirar a porta onde há alguém?' : 'Pôr a porta onde há alguém?'" [confirmLabel]="erasing() ? 'Tirar a porta' : 'Pôr a porta'" (cancel)="cancel.emit()" (confirm)="confirm.emit()">
-          <div class="mr-notice mr-notice--warning" role="alert">
+        <app-map-ask [title]="erasing() ? 'Tirar a porta onde há alguém?' : 'Pôr a porta onde há alguém?'" [confirmLabel]="erasing() ? 'Tirar a porta' : 'Pôr a porta'" (cancel)="cancel.emit()" (confirm)="confirm.emit()" describedBy="dp-ask-text">
+          <div id="dp-ask-text" class="mr-notice mr-notice--warning">
             <mat-icon aria-hidden="true">warning</mat-icon>
             @if (erasing()) {
               <p>{{ who() }} nesse quadrado. Com a parede de volta, quem está nele some da vista dos jogadores.</p>

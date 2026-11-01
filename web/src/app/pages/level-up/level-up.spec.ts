@@ -406,6 +406,22 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain(refusalMessage({ reason: LevelUpRefusalReason.ABILITY_SHAPE }));
     });
 
+    it('says an ability past 20 in an alert region that was there first, the notice without a role', async () => {
+      const f = await setup();
+      const live = el(f).querySelector('.mr-live[role="alert"]')!;
+      expect(live.textContent?.trim()).toBe('');
+      client.preview.mockResolvedValue({
+        after: undefined,
+        refusal: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.ABILITY_ABOVE_20 }),
+      });
+      await click(f, pickRow(f, 'Inteligência').querySelector('input'));
+      await vi.advanceTimersByTimeAsync(QUIET_MS);
+      await load(f);
+      const notice = live.querySelector('.mr-notice--danger')!;
+      expect(notice.textContent).toContain('Nenhuma habilidade passa de 20');
+      expect(notice.hasAttribute('role')).toBe(false);
+    });
+
     it('says the level of the class, never the total, in a hit points step of a multiclass sheet', async () => {
       const f = await multiclass();
       await click(f, radio(f, 'Clérigo'));
@@ -1501,6 +1517,9 @@ describe('LevelUpPage', () => {
       expect(text(f)).toContain('Ainda não dá para subir de nível');
       expect(text(f)).toContain('Falta o mestre marcar um marco para este personagem');
       expect(el(f).querySelector('a.blocked__back')?.textContent).toContain('Voltar para a ficha');
+      const notice = el(f).querySelector('.mr-notice--danger')!;
+      expect(notice.textContent).toContain('Falta o mestre marcar um marco');
+      expect(notice.hasAttribute('role')).toBe(false);
       expect(el(f).querySelector('app-steps-bar')).toBeNull();
     });
 

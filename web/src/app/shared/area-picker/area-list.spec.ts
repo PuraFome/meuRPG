@@ -47,7 +47,7 @@ describe('AreaList: who is in the area', () => {
         rest: 'A Bola de Fogo atinge aliados também. Mude o local se não quiser atingi-lo.',
       },
     });
-    const alert = el.querySelector('[role="alert"]');
+    const alert = el.querySelector('.mr-live[role="status"]');
     expect(plain(alert?.textContent)).toContain('Toren está na área.');
     expect(plain(alert?.textContent)).toContain('A Bola de Fogo atinge aliados também.');
     const items = Array.from(el.querySelectorAll('li.row')).map((li) => plain(li.textContent));
@@ -80,7 +80,7 @@ describe('AreaList: who is in the area', () => {
         rest: 'A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
       },
     });
-    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain(
+    expect(plain(el.querySelector('.mr-live[role="status"]')?.textContent)).toContain(
       'Ninguém que você vê está na área. A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
     );
     expect(el.querySelector('ul')).toBeNull();
@@ -94,5 +94,25 @@ describe('AreaList: who is in the area', () => {
     });
     expect(plain(el.querySelector('li.row')?.textContent)).toContain('Escondido');
     expect(plain(el.querySelector('.head__count')?.textContent)).toBe('1 criatura · 1 escondida');
+  });
+});
+
+describe('AreaList: the notices are said by a status region that exists before the text', () => {
+  it('has an empty region first, then the warning inside it, the notice without a role', () => {
+    const fixture = TestBed.createComponent(AreaList);
+    fixture.componentRef.setInput('rows', [row({ ally: true })]);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const live = el.querySelector('.mr-live[role="status"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    fixture.componentRef.setInput('warning', {
+      strong: 'Toren está na área.',
+      rest: 'Mude o local.',
+    });
+    fixture.detectChanges();
+    expect(plain(live.textContent)).toContain('Toren está na área.');
+    const notice = live.querySelector('.mr-notice')!;
+    expect(notice.hasAttribute('role')).toBe(false);
+    expect(el.querySelector('[role="alert"]')).toBeNull();
   });
 });

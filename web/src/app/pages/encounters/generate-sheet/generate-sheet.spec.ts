@@ -238,6 +238,18 @@ describe('GenerateSheet: "Gerar encontro" (MR-043, E10-09 states 4 and 5)', () =
     expect(empty.el.querySelector('[role=alert]')?.textContent).toContain('O grupo está vazio');
   });
 
+  it('says a failed generation in an alert region that was there first, the notice without a role', async () => {
+    const { el, settle, radio } = await setup();
+    const live = el.querySelector('.mr-live[role="alert"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    api.generateFail = buildBlocked(EncounterBuildBlockedReason.NOTHING_FITS);
+    radio('Alta').click();
+    await settle();
+    const notice = live.querySelector('.mr-notice--danger')!;
+    expect(notice.textContent).toContain('Nenhuma criatura desse tipo cabe');
+    expect(notice.hasAttribute('role')).toBe(false);
+  });
+
   it('never says "mortal" and has Bugbear\'s band words only from the guide', async () => {
     const { el } = await setup();
     expect(el.textContent?.toLowerCase()).not.toContain('mortal');
