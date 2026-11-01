@@ -219,6 +219,28 @@ describe('LevelUpPage', () => {
     expect(sent).toMatchObject({ featKey: 'feat:atleta@mesa', abilityIncrease: { strength: 1 } });
   });
 
+  it('says an ability past 20 in the feat branch too, in its own alert region that was there first', async () => {
+    const f = await setup(wizardOptions({ preparedMaxAfter: 3, feats: featOptions() }));
+    await click(
+      f,
+      el(f).querySelector<HTMLInputElement>('input[name="asi-take"][type="radio"]:not(:checked)'),
+    );
+    const live = el(f).querySelector('app-abilities-step .mr-live[role="alert"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    client.preview.mockResolvedValue({
+      after: undefined,
+      refusal: create(LevelUpRefusalSchema, { reason: LevelUpRefusalReason.ABILITY_ABOVE_20 }),
+    });
+    const radios = el(f).querySelectorAll<HTMLInputElement>('app-feat-picker input[type="radio"]');
+    await click(f, radios[1]);
+    await click(f, el(f).querySelector<HTMLInputElement>('.ability input'));
+    await vi.advanceTimersByTimeAsync(QUIET_MS);
+    await load(f);
+    expect(live.querySelector('.mr-notice--danger')?.textContent).toContain(
+      'Nenhuma habilidade passa de 20',
+    );
+  });
+
   it('keeps the step as it is today when the server lists no feats', async () => {
     const f = await setup();
     expect(text(f)).toContain('Incremento no Valor de Habilidade');
@@ -1513,7 +1535,19 @@ describe('LevelUpPage', () => {
           value: create(CharacterBlockedSchema, { reason: CharacterBlockedReason.CANNOT_LEVEL_UP }),
         },
       ]);
-      const f = await setup(wizardOptions(), character({ canLevelUp: false }), blocked);
+      let release!: (c: ReturnType<typeof character>) => void;
+      const gate = new Promise<ReturnType<typeof character>>((r) => (release = r));
+      const f = await setup(wizardOptions(), gate as never, blocked);
+      const status = el(f).querySelector('.mr-live[role="status"]')!;
+      const alert = el(f).querySelector('.mr-live[role="alert"]')!;
+      expect(status.textContent).toContain('Carregando o que o próximo nível dá');
+      expect(alert.textContent?.trim()).toBe('');
+      release(character({ canLevelUp: false }));
+      await load(f);
+      expect(el(f).querySelector('.mr-live[role="alert"]')).toBe(alert);
+      expect(alert.textContent).toContain('Falta o mestre marcar um marco');
+      expect(el(f).querySelector('h1')?.textContent).toContain('Ainda não dá para subir de nível');
+      expect(status.textContent?.trim()).toBe('');
       expect(text(f)).toContain('Ainda não dá para subir de nível');
       expect(text(f)).toContain('Falta o mestre marcar um marco para este personagem');
       expect(el(f).querySelector('a.blocked__back')?.textContent).toContain('Voltar para a ficha');

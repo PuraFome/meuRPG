@@ -2034,7 +2034,7 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
       );
     const el = (await render()).nativeElement as HTMLElement;
 
-    const alert = el.querySelector('app-owner-changes .mr-notice')!;
+    const alert = el.querySelector('.mr-live[role="status"] app-owner-changes .mr-notice')!;
     expect(alert.hasAttribute('role')).toBe(false);
     expect(alert.textContent).toContain('O mestre pediu ajustes.');
     expect(alert.textContent).toContain('“O antecedente não bate com a história.”');
@@ -2120,6 +2120,40 @@ describe('CharacterSheetPage: approval (MR-024)', () => {
     await nextTurn();
     fixture.detectChanges();
     expect(reads).toBe(2);
+    openSessions.set([]);
+  });
+
+  it("says the master's request for changes in the status region that was there with the waiting strip", async () => {
+    let asking = false;
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          state: 'pending',
+          canResubmit: true,
+          ...(asking ? { review: asked('changes_requested') } : {}),
+        }),
+      );
+    openSessions.set([
+      {
+        sessionId: 's1',
+        campaignId: 'camp-1',
+        campaignName: 'Mirathel',
+        sessionNumber: 5,
+        startedAt: new Date(),
+        isMaster: false,
+      },
+    ]);
+    const fixture = await render();
+    const el = fixture.nativeElement as HTMLElement;
+    const live = el.querySelector('.mr-live[role="status"]')!;
+    expect(live.textContent).toContain('Esperando a aprovação do mestre');
+    asking = true;
+    xpWatcher.follow.mock.calls.at(-1)![6]!('char-1');
+    await nextTurn();
+    fixture.detectChanges();
+    expect(el.querySelector('.mr-live[role="status"]')).toBe(live);
+    expect(live.textContent).toContain('O mestre pediu ajustes.');
+    expect(live.textContent).not.toContain('Esperando a aprovação do mestre');
     openSessions.set([]);
   });
 

@@ -56,7 +56,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
       ],
     });
     const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/campaigns/camp-1/treasure', TreasurePage);
+    const page = await harness.navigateByUrl('/campaigns/camp-1/treasure', TreasurePage);
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         harness.detectChanges();
@@ -71,7 +71,7 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
       Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
         (b) => flat(b)?.startsWith(name) || b.getAttribute('aria-label')?.startsWith(name),
       )!;
-    return { el, settle, button };
+    return { el, settle, button, page };
   }
 
   beforeEach(() => {
@@ -282,6 +282,16 @@ describe('TreasurePage: "Gerar tesouro" (MR-044, MR-041, E10-10 states 1, 2 and 
     await settle();
     expect(flat(el.querySelector('.result__seed'))).toBe('Semente 77');
     expect(document.activeElement).toBe(el.querySelector('.result__title'));
+  });
+
+  it('has the status region on the page, empty, before the party fails', async () => {
+    const { el, settle, page } = await open();
+    const live = el.querySelector('.mr-live[role="status"]')!;
+    expect(live.textContent?.trim()).toBe('');
+    (page as unknown as { partyFailed: { set(v: boolean): void } }).partyFailed.set(true);
+    await settle();
+    expect(el.querySelector('.mr-live[role="status"]')).toBe(live);
+    expect(live.querySelector('[data-testid=party-failed]')).not.toBeNull();
   });
 
   it('a party that could not be read says so, with its own sentence and a way to try again, never "sem personagem vivo"', async () => {

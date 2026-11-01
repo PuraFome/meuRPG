@@ -176,7 +176,12 @@ describe('CastSheet: an area spell placed on the map', () => {
         { id: 'g1', label: 'Goblin 1' },
       ]),
     });
+    const regions = new Set(el.querySelectorAll('.mr-live[role="status"]'));
+    expect(el.querySelector('app-area-notice')).toBeNull();
     await placeAt(6, 4);
+    const warned = el.querySelector('app-area-notice')!;
+    expect(regions.has(warned.parentElement!)).toBe(true);
+    expect(warned.querySelector('.mr-notice')?.hasAttribute('role')).toBe(false);
     expect(previewSpellArea).toHaveBeenCalledWith(
       'c',
       'enc',
@@ -188,9 +193,8 @@ describe('CastSheet: an area spell placed on the map', () => {
     button('Confirmar local')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Quem está na área');
-    expect(plain(el.querySelector('app-area-list .mr-live')?.textContent)).toContain(
-      'Toren está na área.',
-    );
+    expect(warned.isConnected).toBe(true);
+    expect(plain(warned.textContent)).toContain('Toren está na área.');
     expect(el.querySelectorAll('app-area-list li.row')).toHaveLength(2);
     expect(document.activeElement?.closest('app-area-step')).not.toBeNull();
     button('Conjurar Bola de Fogo')!.click();
@@ -230,9 +234,12 @@ describe('CastSheet: an area spell placed on the map', () => {
   it('asks in place when nobody the caster sees is inside, with the focus on "Mudar o local"', async () => {
     const { el, button, placeAt, settle, castSpell } = await open({ answer: preview([]) });
     await placeAt(6, 4);
+    const regions = new Set(el.querySelectorAll('.mr-live[role="status"]'));
     button('Confirmar local')!.click();
     await settle();
-    expect(plain(el.querySelector('app-area-list .mr-live')?.textContent)).toContain(
+    const notice = el.querySelector('app-area-notice')!;
+    expect(regions.has(notice.parentElement!)).toBe(true);
+    expect(plain(notice.textContent)).toContain(
       'Ninguém que você vê está na área. A magia gasta o espaço de 3º nível e a sua ação mesmo assim.',
     );
     expect(button('Conjurar Bola de Fogo')).toBeUndefined();

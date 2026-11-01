@@ -87,14 +87,6 @@
               <p><strong>Você não vê esse ponto: há uma parede no caminho.</strong> O ponto de origem fica do lado de cá dela.</p>
             </div>
           }
-          <div class="mr-live" role="status">
-            @if (ar.warning(); as w) {
-              <div class="mr-notice mr-notice--warning">
-                <mat-icon aria-hidden="true">warning</mat-icon>
-                <p><strong>{{ w.strong }}</strong> {{ w.rest }}</p>
-              </div>
-            }
-          </div>
         } @else if (f.step() === 'list') {
           <app-area-step #listTitle [n]="2" title="Quem está na área" />
           @if (data.map; as m) {
@@ -119,7 +111,6 @@
           <app-area-list
             [rows]="ar.rows()"
             [count]="ar.count()"
-            [warning]="ar.warning()"
             [nobody]="ar.asks() ? ar.nobodyLine() : null"
             [note]="ar.coverNote()"
             [npcs]="ch.npcs()"
@@ -134,6 +125,13 @@
             />
           }
         }
+        <!-- Said by a region that is in the page before the step flips: the ally warning, or "Ninguém que você vê está na área." -->
+        <div class="mr-live" role="status">
+          @let areaNotice = f.step() === 'list' ? (ar.asks() ? ar.nobodyLine() : ar.warning()) : ar.placement !== Placement.CASTER ? ar.warning() : null;
+          @if (areaNotice) {
+            <app-area-notice [notice]="areaNotice" />
+          }
+        </div>
         @if (f.error()) {
           <div class="mr-notice mr-notice--danger" role="alert">
             <mat-icon aria-hidden="true">error</mat-icon>

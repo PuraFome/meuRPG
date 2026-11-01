@@ -4,29 +4,37 @@
 </a>
 
 @let st = state();
-@switch (st.status) {
-  @case ('loading') {
-    <h1 class="mr-page-title">Subir de nível</h1>
-    <div class="mr-notice mr-notice--neutral" role="status">
-      <mat-spinner diameter="20" aria-label="Carregando o nível" />
-      <p>Carregando o que o próximo nível dá...</p>
-    </div>
-  }
-  @case ('blocked') {
-    <h1 class="mr-page-title">Ainda não dá para subir de nível</h1>
-    <div class="mr-notice mr-notice--danger">
-      <mat-icon aria-hidden="true">lock</mat-icon>
-      <p>{{ st.message }}</p>
-    </div>
+@if (st.status !== 'ready') {
+  <!-- The three states before the steps share one h1 and two regions that stay in the page, so the loading text, the blocked reason and the failure are said when they replace each other. -->
+  <h1 class="mr-page-title">
+    {{ st.status === 'loading' ? 'Subir de nível' : st.status === 'blocked' ? 'Ainda não dá para subir de nível' : 'Não foi possível abrir o nível' }}
+  </h1>
+  <div class="mr-live" role="status">
+    @if (st.status === 'loading') {
+      <div class="mr-notice mr-notice--neutral">
+        <mat-spinner diameter="20" aria-label="Carregando o nível" />
+        <p>Carregando o que o próximo nível dá...</p>
+      </div>
+    }
+  </div>
+  <div class="mr-live" role="alert">
+    @if (st.status === 'blocked') {
+      <div class="mr-notice mr-notice--danger">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <p>{{ st.message }}</p>
+      </div>
+    } @else if (st.status === 'error') {
+      <div class="mr-notice mr-notice--danger">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ st.message }}</p>
+      </div>
+    }
+  </div>
+  @if (st.status === 'blocked') {
     <a matButton="filled" class="blocked__back" [attr.href]="sheetHref()" (click)="onBlockedBack($event)">Voltar para a ficha</a>
   }
-  @case ('error') {
-    <h1 class="mr-page-title">Não foi possível abrir o nível</h1>
-    <div class="mr-notice mr-notice--danger" role="alert">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ st.message }}</p>
-    </div>
-  }
+}
+@switch (st.status) {
   @case ('ready') {
     @let s = st.session;
     <header class="head">

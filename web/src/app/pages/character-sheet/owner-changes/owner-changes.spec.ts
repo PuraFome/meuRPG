@@ -16,7 +16,7 @@ describe('OwnerChanges', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it('tells, as content with no live role, that the master asked for changes, with the reason quoted and the date', () => {
+  it('tells, with no live role of its own, that the master asked for changes, with the reason quoted and the date', () => {
     const { el } = render();
     const alert = el.querySelector('.mr-notice')!;
     expect(alert.hasAttribute('role')).toBe(false);

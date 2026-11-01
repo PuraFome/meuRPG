@@ -97,17 +97,24 @@ async function open(rule: HiddenAreaHitRule, hiddenInside: boolean) {
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       plain(b.textContent).includes(label),
     )!;
+  const regions = new Set(el.querySelectorAll('.mr-live[role="status"]'));
   const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
   map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
   await settle();
   button('Confirmar local').click();
   await settle();
-  return { el, button, settle, castSpell, close };
+  return { el, button, settle, castSpell, close, regions };
 }
 
 describe("MasterAreaCast: the master casts an NPC's area spell", () => {
   it('names the caster, lists everyone with the hidden one marked, and starts the switch on for "Revelar"', async () => {
-    const { el, button, settle, castSpell, close } = await open(HiddenAreaHitRule.REVEAL, true);
+    const { el, button, settle, castSpell, close, regions } = await open(
+      HiddenAreaHitRule.REVEAL,
+      true,
+    );
+    const notice = el.querySelector('app-area-notice')!;
+    expect(regions.has(notice.parentElement!)).toBe(true);
+    expect(notice.querySelector('.mr-notice')?.hasAttribute('role')).toBe(false);
     expect(plain(el.querySelector('.frame__title')?.textContent)).toBe('Zuk conjura Bola de Fogo');
     expect(plain(el.textContent)).toContain('2 criaturas · 1 escondida');
     expect(plain(el.textContent)).toContain('Goblin 3 é aliado do Zuk.');

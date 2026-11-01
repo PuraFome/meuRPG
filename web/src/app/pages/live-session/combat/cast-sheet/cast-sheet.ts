@@ -26,6 +26,7 @@ import { grantLine } from '../../../../core/combat/combat-options';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AreaList } from '../../../../shared/area-picker/area-list';
+import { AreaNotice } from '../../../../shared/area-picker/area-notice';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
 import { TeleportMap } from '../../../../shared/area-picker/teleport-map';
@@ -80,6 +81,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
   selector: 'app-cast-sheet',
   imports: [
     AreaList,
+    AreaNotice,
     AreaMap,
     AreaStep,
     CastResult,

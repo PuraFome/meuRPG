@@ -850,7 +850,7 @@ async function scanReviewScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(page, `Recusar, a confirmação ${where}`);
 
     await open(playerPage, route);
-    await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toBeVisible();
+    await expect(playerPage.getByRole('status').filter({ hasText: 'O mestre pediu ajustes.' })).toBeVisible();
     await expectScreenPasses(playerPage, `O jogador, ajustes pedidos ${where}`);
     await playerPage.getByRole('button', { name: 'Enviar de novo' }).click();
     await expect(playerPage.getByRole('status').filter({ hasText: 'Ficha enviada de novo.' })).toBeVisible();
@@ -5977,7 +5977,7 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Lâmina de Nanquim');
       await updateEntryRPC(m, campaignId, spell, 'tableSpell', spellBody('Lâmina de Nanquim', { descPt: ['Outro texto.'] }));
       await m.getByRole('button', { name: 'Salvar magia' }).click();
-      await expect(m.getByRole('alert').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
+      await expect(m.getByRole('status').filter({ hasText: 'Esta entrada mudou enquanto você editava.' })).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, a entrada mudou enquanto se editava ${where}`);
     } else {
       await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();
