@@ -916,6 +916,7 @@ These SRD 5.1 traits change the numbers of a combat (Half-Orc, Halfling, Monk, R
   - **The attack roll.** A missed attack, a natural 1 included, becomes a hit.
     It is an ordinary hit, not a critical hit: the d20 is not changed, and the damage is rolled as for any hit.
     The player never learns the target's armor class from the question (RN-20).
+    The miss is judged against the armor class the app knows when the roll is made, so a Shield reaction the target takes later does not open the question.
   - **The check.** The d20 counts as 20, and the total is 20 plus the check's modifier.
   - **Order.** Lucky first, then the Bardic Inspiration die, then Stroke of Luck, on the total that results.
   - **Hidden result.** When the table hides what the question would tell, it comes on every roll the rogue could use it on and says nothing of the result.

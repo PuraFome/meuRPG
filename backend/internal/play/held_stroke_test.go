@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -445,5 +446,280 @@ func TestACheckWithNoDCIsNotAskedAboutStrokeOfLuck(t *testing.T) {
 	res, err := a.rollSceneTyped(t, a.caio, actions[0], newKey(), 2)
 	if err != nil || res.GetHeldRollOffer() != nil || res.GetRoll() == nil {
 		t.Errorf("a roll with no DC = %v, %v; want it written", res, err)
+	}
+}
+
+// strokeArenaTable is the party of the arena (combat_contests_test.go) with Toren a rogue of level 20 (Dexterity 16:
+// Stealth +3, Cunning Action). With elf true he is a high elf with Fire Bolt, the one way a rogue of level 20 makes a
+// spell attack: his levels leave no room for a spellcasting class.
+func strokeArenaTable(t *testing.T, elf bool) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		sheet := &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 12, Dexterity: 16, Constitution: 14, Intelligence: 16, Wisdom: 10, Charisma: 8},
+			RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:rogue", Level: 20}}, WeaponKeys: []string{rapier},
+		}
+		if elf {
+			sheet.RaceKey, sheet.SubraceKey, sheet.CantripKeys = "race:elf", "subrace:high-elf", []string{fireBolt}
+		}
+		res, err := a.caio.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+			CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Toren",
+			Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: sheet}},
+		}))
+		if err != nil {
+			t.Fatalf("CreateCharacter(Toren) error = %v", err)
+		}
+		a.toren = res.Msg.GetCharacter()
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt},
+			[]string{magicMissileSpell}, []string{magicMissileSpell})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores16(), []string{rapier}, nil)
+	})
+}
+
+// A spell attack (Fire Bolt, +9, against the goblin's armor class 12) that misses is held with the question; using
+// the feature makes it an ordinary hit that wounds the goblin and spends the use; the undo of the cast gives it back.
+func TestASpellAttackThatMissesAsksStrokeOfLuckAndTheUndoGivesTheUseBack(t *testing.T) {
+	t.Parallel()
+	a := strokeArenaTable(t, true)
+	c := a.arena(t, arenaPlan{at: map[string][2]int32{"Hobgoblin": {8, 5}}})
+	res, err := a.cast(t, a.caio, c.e, "Toren", fireBolt, nil, a.at(t, "Goblin"), d20Face(2))
+	if err != nil || res.GetCast() != nil {
+		t.Fatalf("CastSpell(2) = %v, %v; want the question and no cast", res, err)
+	}
+	wantStroke(t, "the held spell attack", res.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_SPELL_ATTACK, true)
+	if byLabel(t, a.get(t, a.caio), "Toren").GetActionUsed() {
+		t.Error("the action was spent before the answer")
+	}
+	out, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	targets := out.GetSpellCast().GetCast().GetTargets()
+	if len(targets) != 1 || targets[0].GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || targets[0].GetPendingDamageId() == "" {
+		t.Fatalf("the cast = %v, want a hit with damage to roll", out.GetSpellCast().GetCast())
+	}
+	if rr := targets[0].GetAttackRoll().GetRerolled(); targets[0].GetAttackRoll().GetFaces()[0] != 2 || len(rr) != 1 || rr[0].GetSourceKey() != strokeSourceKey {
+		t.Errorf("the attack roll = %v, want the 2 unchanged, marked as Stroke of Luck's", targets[0].GetAttackRoll())
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Fatalf("stroke_of_luck used = %d, want 1", used)
+	}
+	l := a.log(t, a.master, c.e)
+	if err := a.undo(t, a.master, c.e, l.GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if used := a.strokeUsed(t); used != 0 {
+		t.Errorf("stroke_of_luck used = %d after the undo of the cast, want the use back", used)
+	}
+}
+
+// A spell attack that hits is not asked and spends nothing.
+func TestASpellAttackThatHitsIsNotAskedAboutStrokeOfLuck(t *testing.T) {
+	t.Parallel()
+	a := strokeArenaTable(t, true)
+	c := a.arena(t, arenaPlan{at: map[string][2]int32{"Hobgoblin": {8, 5}}})
+	res, err := a.cast(t, a.caio, c.e, "Toren", fireBolt, nil, a.at(t, "Goblin"), d20Face(19))
+	if err != nil || res.GetHeldRollOffer() != nil || res.GetCast().GetTargets()[0].GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT {
+		t.Fatalf("CastSpell(3) = %v, %v; want the hit settled", res, err)
+	}
+	if used := a.strokeUsed(t); used != 0 {
+		t.Errorf("stroke_of_luck used = %d, want 0", used)
+	}
+}
+
+// A group check whose DC is hidden asks on every roll and says nothing of the result; the answer counts the d20 as 20
+// and the roll stands for the member. With the DC shown, only a failure asks and says so.
+func TestAGroupCheckAsksStrokeOfLuckBlindWithAHiddenDCAndTellsWithAShownOne(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	hidden := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = 15 })
+	held, err := a.rollGroup(t, a.caio, hidden.GetId(), 19)
+	if err != nil || held.GetGroupCheck() != nil {
+		t.Fatalf("RollGroupCheck(19) = %v, %v; want the question alone", held, err)
+	}
+	wantStroke(t, "the hidden group check", held.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK, false)
+	out, err := a.answerHeldRoll(t, a.caio, held.GetHeldRollOffer().GetHoldId(), strokeAnswer(false))
+	if err != nil || out.GetGroupCheck() == nil {
+		t.Fatalf("keeping the 19 = %v, %v; want the roll written", out, err)
+	}
+	if used := a.strokeUsed(t); used != 0 {
+		t.Errorf("stroke_of_luck used = %d after keeping, want 0", used)
+	}
+	a.mustCloseGroup(t, hidden.GetId())
+
+	shown := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc, r.ShowDc = 25, true })
+	held, err = a.rollGroup(t, a.caio, shown.GetId(), 2)
+	if err != nil || held.GetGroupCheck() != nil {
+		t.Fatalf("RollGroupCheck(2) = %v, %v; want the question alone", held, err)
+	}
+	wantStroke(t, "the failed group check", held.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK, true)
+	out, err = a.answerHeldRoll(t, a.caio, held.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	roll := memberOf(out.GetGroupCheck().GetGroupCheck(), a.toren.GetId()).GetRoll()
+	if roll.GetFaces()[0] != 20 || roll.GetTotal() != 20+roll.GetModifier() {
+		t.Errorf("the member's roll = %v, want the d20 counted as 20 plus the modifier", roll)
+	}
+	if rr := roll.GetRerolled(); len(rr) != 1 || rr[0].GetSourceKey() != strokeSourceKey || rr[0].GetFrom() != 2 || rr[0].GetTo() != 20 {
+		t.Errorf("rerolled = %v, want Stroke of Luck: 2 -> 20", rr)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Errorf("stroke_of_luck used = %d, want 1", used)
+	}
+	// The master reads the reroll; another player's view of the check has no roll of Pipo's at all.
+	if r := memberOf(a.groupView(t, a.master), a.toren.GetId()).GetRoll(); len(r.GetRerolled()) != 1 || r.GetRerolled()[0].GetSourceKey() != strokeSourceKey {
+		t.Errorf("the master reads %v, want the Stroke of Luck reroll", r)
+	}
+	if other := a.groupView(t, a.ana); memberOf(other, a.toren.GetId()) != nil {
+		t.Errorf("another player reads Pipo's roll: %v", other)
+	}
+}
+
+// The contest roll of a rogue is opposed, so the question comes blind on any d20 but a 20; using it counts the d20 as 20.
+func TestAContestRollAsksStrokeOfLuckBlind(t *testing.T) {
+	t.Parallel()
+	a := strokeArenaTable(t, false)
+	c := a.arena(t, arenaPlan{})
+	c.h.roller.queue(15)
+	held, err := c.startContest(t, a.caio, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, "Toren"), c.id(t, c.hob), playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE
+	})
+	if err != nil || held.GetContest() != nil {
+		t.Fatalf("StartContest() = %v, %v; want the question alone", held, err)
+	}
+	wantStroke(t, "the contest roll", held.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST, false)
+	out, err := a.answerHeldRoll(t, a.caio, held.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	roll := out.GetContest().GetContest().GetInitiatorRoll()
+	if roll.GetFaces()[0] != 20 || roll.GetTotal() != 20+roll.GetModifier() {
+		t.Errorf("Toren's roll = %v, want the 15 counted as 20 plus the modifier", roll)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Errorf("stroke_of_luck used = %d, want 1", used)
+	}
+}
+
+// Hide is opposed too: the Stealth d20 is asked blind, and using the feature counts it as 20.
+func TestAHideRollAsksStrokeOfLuckBlind(t *testing.T) {
+	t.Parallel()
+	a := strokeArenaTable(t, false)
+	c := a.arena(t, arenaPlan{})
+	held, err := c.hide(t, a.caio, "Toren", cunningHide, 7)
+	if err != nil || held.GetAttempt() != nil {
+		t.Fatalf("Hide() = %v, %v; want the question alone", held, err)
+	}
+	wantStroke(t, "the Hide roll", held.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_HIDE, false)
+	out, err := a.answerHeldRoll(t, a.caio, held.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	roll := out.GetHide().GetAttempt().GetRoll()
+	if roll.GetFaces()[0] != 20 || roll.GetTotal() != 20+roll.GetModifier() {
+		t.Errorf("the Stealth roll = %v, want the 7 counted as 20 plus the modifier", roll)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Errorf("stroke_of_luck used = %d, want 1", used)
+	}
+}
+
+// Dice an effect adds after the gate (Bless) move the total, so the attack question comes blind: it comes even on a
+// roll that hits, and never says the attack failed.
+func TestAnAttackWithBlessAsksStrokeOfLuckAndTellsNothing(t *testing.T) {
+	t.Parallel()
+	for _, face := range []int32{19, 2} {
+		a := strokeTable(t, "", 20)
+		e := a.strokeFight(t)
+		a.mustAddEffect(t, e, "spell:bless", []string{"Pipo"}, a.rounds(t, 10, "Pipo"))
+		res, err := a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", func(r *playv1.RollAttackRequest) { d20(face)(r); r.ExtraDieFaces = []int32{3} })
+		if err != nil {
+			t.Fatalf("RollAttack(%d) error = %v", face, err)
+		}
+		wantStroke(t, "the attack with Bless", res.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, false)
+		if res.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED {
+			t.Fatalf("the attack of %d was settled before the answer: %v", face, res)
+		}
+		if _, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), strokeAnswer(false)); err != nil {
+			t.Fatalf("AnswerHeldRoll() error = %v", err)
+		}
+		if used := a.strokeUsed(t); used != 0 {
+			t.Errorf("stroke_of_luck used = %d after keeping the %d, want 0", used, face)
+		}
+	}
+}
+
+// A Bardic Inspiration die comes before Stroke of Luck: the die is answered first, and the question that follows is about
+// the roll as it stands with the die (a natural 1 misses whatever the total).
+func TestTheBardicDieComesBeforeStrokeOfLuck(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	e := a.strokeFight(t)
+	a.giveCombatantDie(t, "Pipo", e)
+	res, err := a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", d20(1))
+	if err != nil || res.GetHeldRollOffer().GetDie() == nil {
+		t.Fatalf("RollAttack(1) = %v, %v; want the die's question first", res, err)
+	}
+	a.h.roller.queue(3)
+	next, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), dieAnswer(true))
+	if err != nil || next.GetNext() == nil {
+		t.Fatalf("the die's answer = %v, %v; want Stroke of Luck's question next", next, err)
+	}
+	wantStroke(t, "the next question", next.GetNext(), playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, true)
+	if next.GetAttack().GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_UNSPECIFIED {
+		t.Errorf("the attack was settled before Stroke of Luck's answer: %v", next.GetAttack())
+	}
+	if byLabel(t, a.get(t, a.master), "Pipo").GetInspirationDie() != nil {
+		t.Error("Pipo still holds the die after using it")
+	}
+	fin, err := a.answerHeldRoll(t, a.caio, next.GetNext().GetHoldId(), strokeAnswer(true))
+	if err != nil || fin.GetAttack().GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || fin.GetNext() != nil {
+		t.Fatalf("Stroke of Luck's answer = %v, %v; want the hit, settled", fin, err)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Errorf("stroke_of_luck used = %d, want 1", used)
+	}
+}
+
+// The master's answer waits for the player's first 10 seconds; then it spends the player's use.
+func TestTheMastersStrokeOfLuckAnswerWaitsForThePlayerFirst(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	e := a.strokeFight(t)
+	res, err := a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", d20(2))
+	if err != nil {
+		t.Fatalf("RollAttack(2) error = %v", err)
+	}
+	hold := res.GetHeldRollOffer().GetHoldId()
+	if list := a.listHeldRolls(t, a.master); len(list) != 1 {
+		t.Errorf("the master's list = %v, want the question", list)
+	}
+	_, err = a.answerHeldRoll(t, a.master, hold, strokeAnswer(true))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST)
+	a.h.afterThePlayersChance()
+	out, err := a.answerHeldRoll(t, a.master, hold, strokeAnswer(true))
+	if err != nil || out.GetAttack().GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT {
+		t.Fatalf("the master's answer = %v, %v; want the hit", out, err)
+	}
+	if used := a.strokeUsed(t); used != 1 {
+		t.Errorf("stroke_of_luck used = %d, want 1", used)
+	}
+}
+
+// The question is a roll of the character that waits: another roll is refused until it is answered.
+func TestAStrokeOfLuckQuestionBlocksTheNextRoll(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	e := a.strokeFight(t)
+	res, err := a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", d20(2))
+	if err != nil {
+		t.Fatalf("RollAttack(2) error = %v", err)
+	}
+	_, err = a.attack(t, a.caio, e, "Pipo", rapier, "Goblin", d20(15))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_STROKE_OF_LUCK_PENDING)
+	if _, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), strokeAnswer(false)); err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
 	}
 }

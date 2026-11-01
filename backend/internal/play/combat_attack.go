@@ -557,9 +557,7 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 	if err := f.applyProtection(); err != nil {
 		return err
 	}
-	if err := f.strokeSpec(ctx); err != nil {
-		return err
-	}
+	f.strokeSpec(ctx)
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err

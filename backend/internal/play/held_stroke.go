@@ -20,8 +20,9 @@ import (
 // comes after the result is known, so after Lucky's reroll and the Bardic Inspiration die. The roll is held only when
 // the roller has a use left; the gate works out whether the attack missed or the check failed and asks only then.
 // The kinds that ask it: the weapon attack and the single-target spell attack, and the ability checks of a player's
-// character that go through the gate (the scene check, the group check, the trap search, the puzzle hint try, the
-// contest, Hide and the Counterspell check). Initiative, the saving throws and the death save never ask it.
+// character that go through the gate with a rule (the scene check, the group check, the contest, Hide and the
+// Counterspell check). The trap search and the puzzle hint try go through the gate but give it no rule, so they never
+// ask it; initiative, the saving throws and the death save never ask it either.
 
 const (
 	// strokeResource is the resource of the feature (effects/rogue.json: one use, back on a short rest).
@@ -195,7 +196,9 @@ func (q strokeQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 }
 
 // spendUse spends one use of a resource of the roller's character through the vitals: inside the combat's change
-// when the gate runs in one, else in the transaction of the path that rolls.
+// when the gate runs in one, else in the transaction of the path that rolls. Either way the read and the write do not
+// interleave with another spend: every path that reaches the gate locked the open session first
+// (GetOpenGameSessionForUpdate), so two changes of a table take turns, as for every other spend of a use.
 func (s *Service) spendUse(ctx context.Context, env gateEnv, r heldRoller, key string) error {
 	if r.CharacterID == "" {
 		return errors.New("a use outside a character") //nolint:err113 // the paths that ask it all roll for a character

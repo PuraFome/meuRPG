@@ -263,14 +263,18 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
   - The scene check, the group check, the contest check and the Hide check.
   - The ability check of a Counterspell.
 - **Not offered.**
-  - The trap search: it rolls two dice of Perception and its outcome depends on the trap's DC.
-  - The puzzle hint try: its row has no column for the use, and a retry compares the typed faces with the stored ones.
+  - The trap search and the puzzle hint try go through the gate but give it no `strokeRule`, so they never ask.
+    This is a limit of the design so far, not a rule of the feature.
+    The search rolls two dice of Perception and its outcome depends on the trap's DC.
+    The hint try has no column for the use, and a retry compares the typed faces with the stored ones.
   - The saving throws and the death save: the feature is for attacks and ability checks.
   - A cast with several attacks or targets, the initiative and the rolls inside someone else's call.
   - The rolls of the master and of NPCs never ask.
 - **Held only with a use left.** `heldGate` reads the vitals (`strokeAvailable`) only for a roll that may ask. A rogue with no use left, or a character without the feature, is never held.
 - **Miss or failure is the server's.** `strokeRule` (`rollSpec.Stroke`) decides.
   - An attack misses when `combat.ResolveAttackFrom` says so with the armor class read lazily (`Prepare`); a natural 1 misses whatever the bonus.
+  - The miss is judged against the armor class the app knows at the gate, when the roll is held.
+    A Shield reaction the target takes later raises the armor class after that, so it never opens the question for an attack that hit at the gate.
   - A check fails when the total is below the DC.
   - A check with no DC is never asked, and a natural 20 on the d20 never asks, since nothing changes.
   - The question says "Errou o ataque" or "Falhou no teste" only when the roller may know it.

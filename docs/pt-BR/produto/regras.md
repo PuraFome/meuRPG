@@ -916,6 +916,7 @@ Esses traços do SRD 5.1 mudam os números de um combate (Meio-orc, Halfling, Mo
   - **A jogada de ataque.** Um ataque que erra, um 1 natural inclusive, vira um acerto.
     É um acerto comum, não um acerto crítico: o d20 não muda, e o dano é rolado como em qualquer acerto.
     O jogador nunca descobre a classe de armadura do alvo pela pergunta (RN-20).
+    O erro é julgado pela classe de armadura que o app conhece quando a jogada é feita, então uma reação Escudo que o alvo toma depois não abre a pergunta.
   - **O teste.** O d20 conta como 20, e o total é 20 mais o modificador do teste.
   - **Ordem.** Primeiro o Sortudo, depois o dado de Inspiração de Bardo, depois o Golpe de Sorte, sobre o total que resulta.
   - **Resultado escondido.** Quando a mesa esconde o que a pergunta diria, ela vem em toda rolagem em que o ladino tem um uso e não diz nada do resultado.

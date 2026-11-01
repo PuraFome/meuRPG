@@ -51,13 +51,12 @@ func (f *attackFlow) criticalFrom() int {
 }
 
 // strokeSpec tells the gate how the attack misses, when its attacker is a player's character.
-func (f *attackFlow) strokeSpec(ctx context.Context) error {
+func (f *attackFlow) strokeSpec(ctx context.Context) {
 	if !strokeMayApply(f.attacker) {
-		return nil
+		return
 	}
 	blind := len(effectDiceFor(f.modeIn.states, f.attacker.ID, rules.RollAppliesAttack)) > 0
 	f.spec.Stroke = attackStrokeRule(func() (int, error) { return f.armorClass(ctx) }, f.criticalFrom(), blind)
-	return nil
 }
 
 // strokeHit turns the miss into a hit when the player used Stroke of Luck: the d20 is not changed, so the hit is an
