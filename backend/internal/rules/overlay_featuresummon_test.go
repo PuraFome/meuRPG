@@ -182,8 +182,7 @@ func TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet(t *testing.T) {
 	}{
 		{"known", "full.known_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsKnown = append(slices.Clone(b.SpellsKnown), spell) }, func(b Build) int { return len(b.SpellsKnown) - 1 }},
 		{"prepared", "full.prepared_spell_keys", IssueUnknownKey, func(b *Build) { b.SpellsPrepared = append(slices.Clone(b.SpellsPrepared), spell) }, func(b Build) int { return len(b.SpellsPrepared) - 1 }},
-		// A cantrip list reads the level first: the spell is of the first circle, so it is no cantrip.
-		{"cantrips", "full.cantrip_keys", IssueSpellLevel, func(b *Build) { b.Cantrips = append(slices.Clone(b.Cantrips), spell) }, func(b Build) int { return len(b.Cantrips) - 1 }},
+		{"cantrips", "full.cantrip_keys", IssueUnknownKey, func(b *Build) { b.Cantrips = append(slices.Clone(b.Cantrips), spell) }, func(b Build) int { return len(b.Cantrips) - 1 }},
 	} {
 		b := base
 		tc.edit(&b)
@@ -234,5 +233,60 @@ func TestTheHiddenSpellOfAFeatureSummonIsNotSwitchable(t *testing.T) {
 	}
 	if !c.Switchable("spell:fireball") {
 		t.Error("Switchable(spell:fireball) = false, want true (the control)")
+	}
+}
+
+// issuesAt are the issues of a derived sheet at a field, as code and message.
+func issuesAt(d Derived, field string) []string {
+	var out []string
+	for _, i := range d.Issues {
+		if i.Field == field {
+			out = append(out, i.Code+": "+i.Message)
+		}
+	}
+	return out
+}
+
+// A key typed in a spell list or a pick reads exactly like a key the content does not have: the same issue, field and
+// message, so a sheet cannot tell a hidden spell from a missing one.
+func TestTheSpellOfAFeatureSummonReadsAsAnUnknownKeyInEveryListOfASheet(t *testing.T) {
+	t.Parallel()
+	c := withOverlayOn(t, loadForTest(t), featureSummonOverlay(nil))
+	hidden, unknown := FeatureSummonSpellKey(packFeature), "spell:nao-existe"+tableSuffix
+	if _, ok := c.c.spells[hidden]; !ok {
+		t.Fatal("the hidden spell is not registered: the probe proves nothing")
+	}
+	bard := levelUpCharAt(t, c, "class:bard", "subclass:lore", 10)
+	warlock := Build{
+		BaseScores: map[Ability]int{STR: 10, DEX: 14, CON: 14, INT: 12, WIS: 14, CHA: 12},
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
+		Classes: []ClassLevel{{Class: "class:warlock", Level: 3}}, FeatureChoices: []string{"feature:pact-of-the-tome"},
+	}
+	pick := "feature:pact-of-the-tome#cantrips"
+	for _, tc := range []struct {
+		name, field string
+		build       func(key string) Build
+	}{
+		{"cantrips", "full.cantrip_keys[0]", func(k string) Build { b := bard; b.Cantrips = []string{k}; return b }},
+		{"known spells", "full.known_spell_keys[0]", func(k string) Build { b := bard; b.SpellsKnown = []string{k}; return b }},
+		{"prepared spells", "full.prepared_spell_keys[0]", func(k string) Build { b := bard; b.SpellsPrepared = []string{k}; return b }},
+		{"picks", "full.feature_choice_keys[1]", func(k string) Build {
+			b := warlock
+			b.FeatureChoices = []string{"feature:pact-of-the-tome", ScopedChoice(pick, k)}
+			return b
+		}},
+	} {
+		got, want := issuesAt(Derive(tc.build(hidden), c), tc.field), issuesAt(Derive(tc.build(unknown), c), tc.field)
+		if len(want) == 0 {
+			t.Errorf("%s: an unknown key raised no issue at %s (the control)", tc.name, tc.field)
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: the hidden spell raised %q at %s; an unknown key raised %q", tc.name, got, tc.field, want)
+		}
+		for _, i := range Derive(tc.build(hidden), c).Issues {
+			if strings.Contains(i.Message, "feature") && strings.Contains(i.Message, "truque") {
+				t.Errorf("%s: the message gives the hidden spell away: %s", tc.name, i.Message)
+			}
+		}
 	}
 }
