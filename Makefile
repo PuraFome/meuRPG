@@ -23,7 +23,7 @@ ELK_COMPOSE := docker compose -f deploy/elk/compose.yaml
 # machine instead (`make db-native-start`): on a Mac every container runs
 # inside a Linux VM, and the database is by far the heaviest part of the
 # stack. Set it once in your shell (`export LOCAL_DB=native`) or per command
-# (`make up LOCAL_DB=native`). See CONTRIBUTING.md, "CockroachDB nativo".
+# (`make up LOCAL_DB=native`). See docs/development.md, "Native CockroachDB (Mac, optional)".
 LOCAL_DB ?= container
 COMPOSE_FILES := -f $(COMPOSE_FILE)
 
@@ -32,7 +32,7 @@ COMPOSE_FILES := -f $(COMPOSE_FILE)
 # processes on this machine, against the native CockroachDB, with no Docker
 # at all (deploy/local/native.sh): on a Mac that frees the Linux VM's memory
 # for the in-memory test databases. It implies the native database. See
-# CONTRIBUTING.md, "Tudo nativo".
+# docs/development.md, "Everything native (Mac, optional)".
 LOCAL_STACK ?= docker
 ifeq ($(LOCAL_DB),native)
 COMPOSE_FILES += -f deploy/local/compose.native-db.yaml
@@ -190,7 +190,7 @@ elk-logs: ## Follow the ELK stack's own logs (not the API's: use deploy/elk/logs
 	$(ELK_COMPOSE) logs -f
 
 db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native and the integration tests
-	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (CONTRIBUTING.md, \"CockroachDB nativo\")"; exit 1; }
+	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
 	@cockroach version | grep -q 'Build Tag: *$(COCKROACH_VERSION)$$' || echo "warning: cockroach is not $(COCKROACH_VERSION), the version CI and the container use"
 	@mkdir -p "$(COCKROACH_STORE)"
 	@if cockroach sql --insecure --host=localhost:26257 -e 'SELECT 1' >/dev/null 2>&1; then \
@@ -213,7 +213,7 @@ db-native-stop: ## Stop the native CockroachDB started by db-native-start
 	fi
 
 db-test-start: ## Start the test PostgreSQL on localhost:5433 (TEST_PG_PORT=5434 for a second one) for the integration tests
-	@command -v pg_ctl >/dev/null && command -v initdb >/dev/null || { echo "pg_ctl and initdb not found: brew install postgresql@17 and put its bin directory on PATH (CONTRIBUTING.md)"; exit 1; }
+	@command -v pg_ctl >/dev/null && command -v initdb >/dev/null || { echo "pg_ctl and initdb not found: brew install postgresql@17 and put its bin directory on PATH (docs/development.md, \"Test databases\")"; exit 1; }
 	@mkdir -p "$(TEST_PG_DIR)"
 	@if pg_isready -q -h localhost -p $(TEST_PG_PORT); then \
 		echo "The test PostgreSQL is already running on localhost:$(TEST_PG_PORT)"; \
@@ -236,7 +236,7 @@ db-test-stop: ## Stop the test PostgreSQL started by db-test-start (TEST_PG_PORT
 	fi
 
 db-test-cockroach-start: ## Start an in-memory test CockroachDB on localhost:26258 (TEST_DB_PORT=26259 for a second one), for the tests that need it and for the e2e
-	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (CONTRIBUTING.md, \"CockroachDB nativo\")"; exit 1; }
+	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
 	@mkdir -p "$(TEST_DB_DIR)"
 	@if cockroach sql --insecure --host=localhost:$(TEST_DB_PORT) -e 'SELECT 1' >/dev/null 2>&1; then \
 		echo "The test CockroachDB is already running on localhost:$(TEST_DB_PORT)"; \
