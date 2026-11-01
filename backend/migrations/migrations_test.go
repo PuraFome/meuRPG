@@ -33,7 +33,7 @@ func TestMigrationsUpDownUp(t *testing.T) {
 	db := freshDatabase(t)
 	ctx := t.Context()
 
-	provider, err := NewProvider(db)
+	provider, err := NewTestProvider(t.Context(), db)
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
@@ -87,8 +87,12 @@ func freshDatabase(t *testing.T) *sql.DB {
 	// parallel tests can read the same value. The counter makes each name
 	// unique in the process, as dbtest does.
 	name := fmt.Sprintf("meurpg_migrations_test_%d_%d", time.Now().UnixNano(), freshCounter.Add(1))
+	postgres, err := IsPostgres(t.Context(), admin)
+	if err != nil {
+		t.Fatal(err)
+	}
 	exec(t, admin, "CREATE DATABASE "+name)
-	t.Cleanup(func() { exec(t, admin, "DROP DATABASE IF EXISTS "+name+" CASCADE") })
+	t.Cleanup(func() { exec(t, admin, DropDatabaseSQL(postgres, name)) })
 
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -154,7 +158,7 @@ func TestMigrationsAreSafeToRerun(t *testing.T) {
 	db := freshDatabase(t)
 	ctx := t.Context()
 
-	provider, err := NewProvider(db)
+	provider, err := NewTestProvider(t.Context(), db)
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
@@ -173,11 +177,52 @@ func TestMigrationsAreSafeToRerun(t *testing.T) {
 	}
 }
 
-// schema returns the CREATE statements of every table, goose's excluded.
+// schemaQueries read one table's columns, constraints and indexes from the catalog.
+// PostgreSQL has no SHOW CREATE TABLE, so its schema is read this way.
+var schemaQueries = []string{
+	`SELECT column_name || ' ' || data_type || ' ' || is_nullable || ' ' || COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY column_name`,
+	`SELECT conname || ' ' || pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = ('public.' || $1)::regclass ORDER BY conname`,
+	`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = $1 ORDER BY indexname`,
+}
+
+// readSchemaLines writes the lines query returns for table to b.
+func readSchemaLines(t *testing.T, db *sql.DB, b *strings.Builder, table, query string) {
+	t.Helper()
+	rows, err := db.QueryContext(t.Context(), query, table)
+	if err != nil {
+		t.Fatalf("read the schema of %s: %v", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("scan the schema of %s: %v", table, err)
+		}
+		b.WriteString(table + ": " + line + "\n")
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the schema of %s: %v", table, err)
+	}
+}
+
+// schema returns the CREATE statements of every table on CockroachDB, and the columns, constraints and
+// indexes of every table on PostgreSQL, goose's excluded.
 func schema(t *testing.T, db *sql.DB) string {
 	t.Helper()
+	postgres, err := IsPostgres(t.Context(), db)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var b strings.Builder
 	for _, table := range tables(t, db) {
+		if postgres {
+			for _, q := range schemaQueries {
+				readSchemaLines(t, db, &b, table, q)
+			}
+			continue
+		}
+		// SHOW CREATE TABLE prints what the catalog does not: the row-level TTL settings (which
+		// CockroachDB rewrites when a column is added), the column order and the computed columns.
 		var name, create string
 		if err := db.QueryRowContext(t.Context(), "SHOW CREATE TABLE "+table).Scan(&name, &create); err != nil {
 			t.Fatalf("SHOW CREATE TABLE %s: %v", table, err)
@@ -196,7 +241,7 @@ func TestMigrationsDownWorksOnTheatreRows(t *testing.T) {
 	t.Parallel()
 	db := freshDatabase(t)
 	ctx := t.Context()
-	provider, err := NewProvider(db)
+	provider, err := NewTestProvider(t.Context(), db)
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
@@ -264,7 +309,7 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 	t.Parallel()
 	db := freshDatabase(t)
 	ctx := t.Context()
-	provider, err := NewProvider(db)
+	provider, err := NewTestProvider(t.Context(), db)
 	if err != nil {
 		t.Fatalf("NewProvider() error = %v", err)
 	}
@@ -345,7 +390,7 @@ func TestMigrationsBackfillAChainOfEditsOfAnyDepth(t *testing.T) {
 func TestEveryEventKindOfTheCodeIsInTheTable(t *testing.T) {
 	t.Parallel()
 	db := freshDatabase(t)
-	provider, err := NewProvider(db)
+	provider, err := NewTestProvider(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +493,7 @@ func eventKindsInCode(t *testing.T, dir string) map[string]string {
 // deleting a character, an account or a combatant scans the whole table.
 func TestCascadeForeignKeysOfBigTablesAreIndexed(t *testing.T) {
 	sdb := freshDatabase(t)
-	provider, err := NewProvider(sdb)
+	provider, err := NewTestProvider(t.Context(), sdb)
 	if err != nil {
 		t.Fatalf("NewProvider: %v", err)
 	}
@@ -478,7 +523,7 @@ func TestCascadeForeignKeysOfBigTablesAreIndexed(t *testing.T) {
 	bigTables := []string{"session_events", "pending_damages", "combatants"}
 
 	rows := run(`
-		SELECT c.conrelid::regclass::string || '.' || a.attname
+		SELECT c.conrelid::regclass::text || '.' || a.attname
 		FROM pg_constraint c
 		JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
 		WHERE c.contype = 'f' AND c.confdeltype IN ('c','n','d')
