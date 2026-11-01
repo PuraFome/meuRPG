@@ -437,7 +437,7 @@ func (f *attackFlow) routineLeft() error {
 // checkLimit reads the action of a stat block the attack is and refuses it when it is spent (a Recharge
 // action that has not recharged, an action with no uses left).
 func (f *attackFlow) checkLimit(ctx context.Context) error {
-	plan, ok, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
+	plan, ok, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey, true)
 	if err != nil || !ok {
 		return err
 	}

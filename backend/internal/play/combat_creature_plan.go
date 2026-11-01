@@ -64,8 +64,9 @@ func (s *Service) planOfAction(ctx context.Context, c *combatTx, who playdb.Comb
 // the action (cut to the sheet's length).
 // Two actions whose names are equal up to the cut are told apart by the numbers of the sheet's attack (attack
 // bonus, damage, range). When the numbers do not tell them apart either, and one of them is limited, the attack
-// is refused: the limit cannot be enforced on the right action.
-func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb.Combatant, attackKey string) (rules.ActionPlan, bool, error) {
+// is refused when refuse is set (the making of the attack): the limit cannot be enforced on the right action.
+// What follows the attack (its damage, its rider) never refuses.
+func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb.Combatant, attackKey string, refuse bool) (rules.ActionPlan, bool, error) {
 	if attacker.Kind != kindNPC && attacker.Kind != kindCreature {
 		return rules.ActionPlan{}, false, nil
 	}
@@ -90,7 +91,11 @@ func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb
 	if i < 0 || !ok {
 		return rules.ActionPlan{}, false, nil
 	}
-	return planOfSheetAttack(monsterPlan, sheet.Attacks[i])
+	plan, ok, err := planOfSheetAttack(monsterPlan, sheet.Attacks[i])
+	if err != nil && !refuse {
+		return rules.ActionPlan{}, false, nil
+	}
+	return plan, ok, err
 }
 
 // planOfSheetAttack is planOfAttack for an attack of a basic sheet: the refusal of an attack that cannot be told

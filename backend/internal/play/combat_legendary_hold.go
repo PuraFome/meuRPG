@@ -131,6 +131,7 @@ type resistance struct{ perDay, left int }
 // resistancesOf is the Legendary Resistance of each combatant, by ID: zero for a combatant without the
 // trait. The trait works while the creature is incapacitated. The stat block keys are read in one call, the
 // content once, and what each spent is what its row says, so the cost does not grow with the targets.
+// The rows must be read in this change, before anything bumps creature_spent.
 func (s *Service) resistancesOf(ctx context.Context, c *combatTx, whos []playdb.Combatant) (map[string]resistance, error) {
 	out := make(map[string]resistance, len(whos))
 	npcs := slices.DeleteFunc(slices.Clone(whos), func(who playdb.Combatant) bool { return who.Kind != kindNPC })

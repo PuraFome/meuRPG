@@ -939,7 +939,7 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err
 	}
-	plan, planned, err := s.planOfAttack(ctx, c, attacker, attack.Key)
+	plan, planned, err := s.planOfAttack(ctx, c, attacker, attack.Key, false)
 	if err != nil {
 		return err
 	}
