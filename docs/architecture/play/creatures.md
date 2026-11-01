@@ -266,6 +266,8 @@ A Multiattack spends nothing of its own: each step is its own call and is limite
 A spent action is refused with nothing changed.
 The master and the player who controls the creature read `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
 The refusal comes before any roll, so the master may use another action.
+An NPC made from a stat block keeps one attack per action on a basic sheet, which finds its action by name and numbers ([Attacks and damage](attacks-and-damage.md)).
+Two limited actions the sheet cannot tell apart refuse the attack with `CREATURE_ACTION_UNAVAILABLE`, so a limit is never taken from the wrong action.
 
 **The roll at the turn start** (`combat_recharge.go`).
 When a creature's turn starts, the server rolls one d6 for each of its spent Recharge actions, in the order of its stat block.

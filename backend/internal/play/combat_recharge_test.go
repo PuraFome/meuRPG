@@ -1,6 +1,7 @@
 package play
 
 import (
+	"context"
 	"slices"
 	"strconv"
 	"strings"
@@ -333,4 +334,37 @@ func TestRecharge_TheRollAtTheTurnStartCannotBeUndone(t *testing.T) {
 	if a.events(t) != events {
 		t.Errorf("the refused undo wrote events: %d (was %d)", a.events(t), events)
 	}
+}
+
+// The Recharge roll names no user and no character even when the change that rolls it has a character (the
+// turn ended by a player's character): the author is passed to the write, and the change's own character is
+// not touched.
+func TestRecharge_TheEventNamesNoCharacterAndTheChangeKeepsItsOwn(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	a.spendByHand(t, hound, spentRechargePrefix+fireBreath)
+	houndID, toren := a.id(t, hound), a.toren.GetId()
+	a.h.roller.queue(6)
+	a.coreInTx(t, e.GetId(), func(ctx context.Context, c *combatTx) error {
+		cs, err := listCombatants(ctx, c)
+		if err != nil {
+			return err
+		}
+		who, _ := combatantByID(cs, houndID)
+		c.characterID = &toren
+		if err := a.h.svc.rechargeCreature(ctx, c, who, e.GetRound()); err != nil {
+			return err
+		}
+		if c.characterID == nil || *c.characterID != toren {
+			t.Errorf("the change's character is %v after the roll, want Toren's", c.characterID)
+		}
+		var user, character *string
+		if err := c.tx.QueryRow(ctx, `SELECT actor_user_id::text, character_id::text FROM session_events WHERE kind = $1`, eventRechargeRolled).Scan(&user, &character); err != nil {
+			return err
+		}
+		if user != nil || character != nil {
+			t.Errorf("the Recharge event names user %v and character %v, want neither", user, character)
+		}
+		return nil
+	})
 }

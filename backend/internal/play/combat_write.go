@@ -632,6 +632,11 @@ func hashOf(c *combatTx, key *string) *string {
 
 // insertRaw writes an encoded event and returns its ID.
 func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string, body []byte) (string, error) {
+	return insertRawAs(ctx, c, kind, actor, c.characterID, key, body)
+}
+
+// insertRawAs is insertRaw for an event whose author is not the change's: the user and the character it names.
+func insertRawAs(ctx context.Context, c *combatTx, kind string, actor, character, key *string, body []byte) (string, error) {
 	seq, err := c.q.NextSessionEventSeq(ctx, c.session.ID)
 	if err != nil {
 		return "", fmt.Errorf("next event number: %w", err)
@@ -642,7 +647,7 @@ func insertRaw(ctx context.Context, c *combatTx, kind string, actor, key *string
 		encounterID = &c.enc.ID
 	}
 	row, err := insertSessionEvent(ctx, c.q, playdb.InsertSessionEventParams{
-		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: c.characterID,
+		GameSessionID: c.session.ID, Seq: seq, Kind: kind, ActorUserID: actor, CharacterID: character,
 		Payload: body, IdempotencyKey: key, CreatedAt: c.now, EncounterID: encounterID, IdempotencyHash: hashOf(c, key),
 	})
 	if err != nil {
