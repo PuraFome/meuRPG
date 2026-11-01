@@ -2,7 +2,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DungeonOptionRefusedSchema } from '../../../gen/meurpg/maps/v1/dungeons_pb';
 import { MapBlockedReason } from '../../../gen/meurpg/maps/v1/maps_pb';
-import { describeConnectError, isRateLimited } from '../connect/connect-errors';
+import { describeConnectError, isRateLimited, isSizeRefused } from '../connect/connect-errors';
 import { mapBlockedReason } from './map-errors';
 
 /** The options the page has a control for, by the name the server uses in `DungeonOptionRefused`. */
@@ -73,7 +73,7 @@ export function previewFailure(err: unknown): PreviewFailure {
     return { kind: 'refused', field, text: field ? OPTION_TEXT[field] : NO_ROOM_TEXT };
   }
   const code = ConnectError.from(err, Code.Unavailable).code;
-  if (code === Code.ResourceExhausted && !isRateLimited(err)) {
+  if (code === Code.ResourceExhausted && !isRateLimited(err) && !isSizeRefused(err)) {
     // A preview of this campaign is already running: the page asks again with the last options.
     return { kind: 'busy' };
   }
@@ -83,7 +83,9 @@ export function previewFailure(err: unknown): PreviewFailure {
       text: 'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.',
     };
   }
-  // A rate limit says how long to wait; the other codes (and a plain network failure) say the preview could not be made.
+  // A rate limit says how long to wait.
+  // A size refusal says the body is too big.
+  // The other codes, and a plain network failure, say the preview could not be made.
   return {
     kind: 'failed',
     text: describeConnectError(err, { [Code.Unavailable]: 'Não deu para gerar a prévia.' }),

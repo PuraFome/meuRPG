@@ -16,6 +16,8 @@ The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*
 | --- | --- |
 | Cache | A hashed asset (`name-<8 characters>.ext`, from `outputHashing: "all"`) gets `Cache-Control: public, max-age=31536000, immutable`. `index.html` and files copied as they are (`favicon.ico`, `material-symbols/*`) get `no-cache`. |
 | MIME types | The server teaches Go's `mime` package `.webmanifest` (`application/manifest+json`) and `.ico` (`image/x-icon`); the production image has no `mime.types`. |
+| Compression | `.js` and `.css` files have `.br` and `.gz` copies from the build; the server sends the best one the request accepts, with `Vary: Accept-Encoding` ([Performance](../performance.md#served-compressed)). `index.html` is never encoded. |
+| A stale tab | A tab open across a deploy asks for lazy files that no longer exist. The first such failure reloads the page once (`core/system/chunk-reload.ts`); a second failure on the same page shows the error and does not reload. |
 | Legal pages | `/terms`, `/privacy` and `/credits` are lazy routes of the app, public ([Design](../design/README.md#logo-icons-and-footer)). |
 | Dev | `cd web && npm start` runs Angular with `proxy.conf.json`, forwarding the API paths to `localhost:8080`. |
 | Codegen | `make proto` runs `buf generate`; `protoc-gen-es` (Connect-ES v2: one plugin makes messages and services) writes `web/src/gen/`, committed like the Go side. |
@@ -111,6 +113,7 @@ A campaign the user is not a member of and one that does not exist arrive as the
 
 Nothing in `web/` reads or writes `localStorage`, `sessionStorage` or IndexedDB, writes a cookie from JavaScript, or uses a Worker to hold a token or personal data.
 The session lives only in the `__Host-meurpg_session` cookie, `HttpOnly`, which the app's JavaScript never touches.
+The one-reload guard of a stale tab is the entry's own `history.state` plus a flag in memory, so it needs no storage.
 The invite and claim tokens live only in a component field, in memory.
 `web/src/no-web-storage.spec.ts` is the guard: it scans every `.ts` and `.html` in `web/src` (except `gen/` and specs) for those APIs and fails if one appears ([Privacy](../privacy.md)).
 

@@ -31,10 +31,18 @@ How the deployed numbers add up against the memory limit is in [Operations](arch
 | One formula | 1,024 bytes and 256 syntax nodes | `MaxSourceBytes`, `MaxNodes` in `backend/internal/rules/formula/formula.go` |
 | Database pool | 10 connections in production | `defaultMaxConns` in `backend/internal/platform/db/db.go` |
 | Dungeon size | 15 to 199 wide, 15 to 399 high | `Options` in `backend/internal/rules/dungeon/options.go` |
-| Web initial bundle | 500 kB (warning from 490 kB) | `web/angular.json`; see [CI](ci.md#the-web-bundle-budget) |
+| Web initial bundle | 500 kB raw (warning from 490 kB); sent as brotli or gzip | `web/angular.json`; see [CI](ci.md#the-web-bundle-budget) and [Served compressed](#served-compressed) |
 
 Request rate limits and per-account caps are in [Architecture](architecture/api.md#abuse-limits).
 Nothing the tile and scene caches hold is stored on disk or in the database: a restart empties them and they rebuild themselves.
+
+## Served compressed
+
+The players are on phones, so the JS and CSS go out compressed.
+`npm run build` writes a `.br` (brotli, quality 11) and a `.gz` (gzip, level 9) copy of every `.js` and `.css` file next to it, keeping a copy only when it is smaller.
+The server (`backend/internal/platform/httpserver/static.go`) picks `.br`, then `.gz`, then the plain file from `Accept-Encoding` (a coding with `q=0` is refused).
+It sets `Content-Encoding` and `Vary: Accept-Encoding`, keeps the content type of the original file and its cache headers, and never encodes `index.html` or the fallback for an app route.
+The 500 kB budget bounds what the browser parses; the download is the compressed size.
 
 ## Table content at its limits
 
