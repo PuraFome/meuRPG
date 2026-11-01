@@ -25,69 +25,74 @@ type CreatureCasting struct {
 }
 
 var (
-	castingDCRe    = regexp.MustCompile(`spell save DC (\d+), \+(\d+) to hit with spell attacks`)
 	castingSlotsRe = regexp.MustCompile(`(?m)^- (\d+)(?:st|nd|rd|th) level \((\d+) slots?\): (.+)$`)
-	castingCantrip = regexp.MustCompile(`(?m)^- Cantrips \(at will\): (.+)$`)
+	castingCantrip = regexp.MustCompile(`(?mi)^- Cantrips \(at will\): (.+)$`)
 )
 
-// MonsterSpellcasting reads the Spellcasting trait of a creature; false when it
-// has none with slots.
+// MonsterSpellcasting is the reaction view of MonsterCaster: the slots, the prepared spells and the numbers of the
+// Spellcasting trait; false when the creature has none with slots.
 func (c *Content) MonsterSpellcasting(key string) (CreatureCasting, bool) {
-	m, ok := c.c.monsters[key]
-	if !ok {
+	mc, ok := c.MonsterCaster(key)
+	if !ok || mc.Slots == nil {
 		return CreatureCasting{}, false
 	}
-	for _, a := range m.SpecialAbilities {
-		if a.Name != "Spellcasting" {
-			continue
-		}
-		if out, ok := c.c.castingTrait(m.ProficiencyBonus, a.Desc); ok {
-			return out, true
-		}
+	out := CreatureCasting{SaveDC: mc.Spellcasting.SaveDC, AttackBonus: mc.Spellcasting.AttackBonus}
+	out.AbilityMod = out.AttackBonus - c.c.monsters[key].ProficiencyBonus
+	copy(out.Slots[:], mc.Slots)
+	for _, s := range mc.Spells {
+		out.Spells = append(out.Spells, s.Spell.Key)
 	}
-	return CreatureCasting{}, false
+	return out, true
 }
 
-// castingTrait reads a Spellcasting trait's text: its DC and attack bonus,
-// the slots of each level and the spells it lists that the content has.
-// false when it says neither a DC nor a known spell.
-func (c *content) castingTrait(profBonus int, desc string) (CreatureCasting, bool) {
-	out := CreatureCasting{}
-	if dc := castingDCRe.FindStringSubmatch(desc); dc != nil {
-		out.SaveDC, _ = strconv.Atoi(dc[1])
-		out.AttackBonus, _ = strconv.Atoi(dc[2])
-		out.AbilityMod = out.AttackBonus - profBonus
-	}
-	var spells []string
+// castingTrait reads a Spellcasting trait's lists: the slots of each level and the spells it lists that the content
+// has. The numbers are the text reader's (SpellcastingNumbers).
+func (c *content) castingTrait(desc string) (slots [9]int, spells []string) {
 	for _, s := range castingSlotsRe.FindAllStringSubmatch(desc, -1) {
 		level, _ := strconv.Atoi(s[1])
 		n, _ := strconv.Atoi(s[2])
-		if level >= 1 && level <= len(out.Slots) {
-			out.Slots[level-1] = n
+		if level >= 1 && level <= len(slots) {
+			slots[level-1] = n
 		}
 		spells = c.castingSpells(spells, s[3])
 	}
 	if s := castingCantrip.FindStringSubmatch(desc); s != nil {
 		spells = c.castingSpells(spells, s[1])
 	}
-	if out.SaveDC == 0 && len(spells) == 0 {
-		return CreatureCasting{}, false
-	}
-	out.Spells = spells
-	return out, true
+	return slots, spells
 }
 
 // castingSpells adds the spells of a comma list ("shield, magic missile*")
 // that the content has.
 func (c *content) castingSpells(spells []string, list string) []string {
-	for _, name := range strings.Split(list, ",") {
-		name = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(name), "*"))
-		if name == "" {
-			continue
-		}
+	for _, name := range listedSpellNames(list) {
 		if k := "spell:" + slugOf(name); c.spells[k] != nil {
 			spells = append(spells, k)
 		}
 	}
 	return spells
+}
+
+// listedSpellNames are the names of a comma list of spells ("shield, magic missile*, a (b, c)"): the
+// parentheses go first, as their commas are no separator, then the "*" of a spell cast without material components.
+func listedSpellNames(list string) []string {
+	var names []string
+	for _, name := range strings.Split(parenthesisRe.ReplaceAllString(list, ""), ",") {
+		if name = strings.Trim(strings.TrimSuffix(strings.TrimSpace(name), "*"), ";. "); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// castingListNames are the spell names a Spellcasting trait's text lists: the slot lines and the cantrips.
+func castingListNames(desc string) []string {
+	var names []string
+	for _, s := range castingSlotsRe.FindAllStringSubmatch(desc, -1) {
+		names = append(names, listedSpellNames(s[3])...)
+	}
+	if s := castingCantrip.FindStringSubmatch(desc); s != nil {
+		names = append(names, listedSpellNames(s[1])...)
+	}
+	return names
 }

@@ -99,10 +99,35 @@ func (c *content) monsterProblem(m *srd51.Monster) string {
 		return fmt.Sprintf("%q is not a challenge rating", m.ChallengeRating)
 	}
 	for _, check := range [...]func(*srd51.Monster) string{
-		c.skillsProblem, savesProblem, c.conditionImmunitiesProblem, c.damageModsProblem, c.armorClassProblem, c.actionsProblem,
+		c.skillsProblem, savesProblem, c.conditionImmunitiesProblem, c.damageModsProblem, c.armorClassProblem, c.actionsProblem, c.casterProblem,
 	} {
 		if problem := check(m); problem != "" {
 			return problem
+		}
+	}
+	return ""
+}
+
+// casterProblem is the first thing the engine could not read in a Spellcasting or Innate Spellcasting trait: a
+// spell name that is no spell of the content, or a list of spells with neither a casting ability nor a DC.
+func (c *content) casterProblem(m *srd51.Monster) string {
+	for _, a := range m.SpecialAbilities {
+		var names []string
+		switch a.Name {
+		case "Spellcasting":
+			names = castingListNames(a.Desc)
+		case "Innate Spellcasting":
+			names = innateListNames(a.Desc)
+		default:
+			continue
+		}
+		for _, n := range names {
+			if c.spells["spell:"+slugOf(n)] == nil {
+				return fmt.Sprintf("%s lists %q, which is not a spell", a.Name, n)
+			}
+		}
+		if t := SpellcastingNumbers(a.Desc); len(names) > 0 && !t.HasAbility && !t.HasDC && !t.HasAttack {
+			return fmt.Sprintf("%s lists spells but gives no spellcasting ability, save DC or attack bonus", a.Name)
 		}
 	}
 	return ""

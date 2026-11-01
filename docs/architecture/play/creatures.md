@@ -103,6 +103,11 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), which lists no frequency in the data.
   They keep only the description note, and the master casts for them.
   `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
+  `MonsterCaster` is the only reader of a stat block's casting: `MonsterSpellcasting`, the reaction view (Shield, Counterspell), is a thin view of it.
+  `rules.SpellcastingNumbers` is the only reader of the numbers a trait's text writes (level, ability, DC, attack bonus); the NPC's description note prints what it finds.
+  The lists accept "At will" in any case, and a comma inside parentheses does not split a list.
+  A trait with neither a casting ability nor a DC or attack bonus makes no caster.
+  Loading refuses a stat block whose Spellcasting or Innate Spellcasting lists a spell the content does not have, or lists spells with no ability, DC or attack bonus.
   `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
   When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.
   The NPC's slots and uses are counted on the combatant (`combatants.slots_used`, the count a reaction's Shield uses), whatever its sheet.
