@@ -500,6 +500,15 @@ type actionEvent struct {
 	// field names follow the same rule as above.
 	Resisted   bool  `json:"resisted,omitempty"`
 	ResistLeft int32 `json:"resist_left,omitempty"`
+	// LimitKey is the key in the actor's creature_spent that the use of a limited action of its stat block
+	// spent one of: the undo gives the use back.
+	LimitKey string `json:"limit_key,omitempty"`
+	// RechargeFace is the d6 the server rolled for the Recharge action Key at the start of its creature's
+	// turn, Recharged whether it made the action available again, and RechargeName the action's name. The
+	// master reads the event alone.
+	RechargeFace int32  `json:"recharge_face,omitempty"`
+	Recharged    bool   `json:"recharged,omitempty"`
+	RechargeName string `json:"recharge_name,omitempty"`
 
 	// What the undo of an action puts back.
 	ActionBefore   bool `json:"action_before,omitempty"`

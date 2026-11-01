@@ -9,8 +9,8 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | Workflow | Runs on | Jobs |
 | --- | --- | --- |
 | `backend` | PRs (all of a train) and pushes to `main` touching `backend/`, `proto/`, `web/`, the `Makefile`, `.node-version` or the Go CI files; nightly; manual | `changes`, `proto`, `go`, `govulncheck`, `go-db` (nine groups, a group check, a list check and a gate), `go-coverage`, `report` |
-| `web` | `web/`, `.node-version`, the workflow; every pull request of a train | `test and build`, `coverage` |
-| `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change, except in a train; nightly; manual | `plan`, `lint and typecheck`, `images`, `database`, `playwright` shards, `report` |
+| `web` | `web/`, `proto/error-reasons.json`, `.node-version`, the workflow; every pull request of a train | `test and build`, `coverage` |
+| `e2e` | `backend/`, `proto/`, `web/`, `e2e/`, `deploy/local/`, the `Makefile`, `.node-version`, the workflow; never for a Markdown-only change, except in a train; nightly; manual | `plan`, `lint and typecheck`, `images`, `database`, `playwright` shards, `playwright mobile`, `playwright (every shard passed)`, `report` |
 | `codeql` | PRs (all of a train) touching `backend/`, `web/src/`, `e2e/` or workflows; every push to `main`; weekly | Go (built from `backend/`), JavaScript/TypeScript and GitHub Actions, with the `security-extended` queries; findings go to the Security tab |
 | `osv-scan` | Every pull request of a train; changes to a lockfile (`backend/go.mod`, `backend/go.sum`, the `package-lock.json` of `web/`, `e2e/` and `e2e/lint/`), `osv-scanner.toml` or the workflow; pushes to `main`; nightly; manual | `osv-scanner (lockfiles)`, `report` |
 | `workflows-lint` | Changes under `.github/` or to `e2e/lint/package-lock.json`; every pull request of a train | `actionlint` and `zizmor`, at versions pinned by number and sha256; the unit tests of the CI scripts (`node --test`) |
@@ -233,6 +233,15 @@ The stack takes its public origin from `E2E_PUBLIC_ORIGIN` (the OIDC redirect ad
 The job runs beside the shards, so it lengthens the e2e run only if it ends after the slowest shard.
 The job is in the `report` job's `needs`.
 
+### The final gate
+
+`playwright (every shard passed)` is the one check of the `e2e` workflow to require in `main`'s branch protection.
+Its name does not change when the shards are split differently, which the names of the shards do.
+It passes when `plan`, `lint and typecheck`, `images`, `database`, every Playwright shard and the mobile job passed.
+When `plan` selected nothing, it passes if every one of them was skipped.
+It fails when `plan` failed, or when a shard was cancelled or skipped while the plan selected it.
+A run that starts nothing on a fork skips the gate too.
+
 ## Vulnerability scans
 
 Two scans look for known vulnerabilities, and they answer different questions.
@@ -245,6 +254,24 @@ A finding is fixed by a dependency bump. When the parent pins the package exactl
 `web/package.json` overrides: `vite` and `undici` under `@angular/build`; `@modelcontextprotocol/sdk` and `zod` under `@angular/cli`; `undici` under `jsdom`; `minimatch` `^11.0.1` under `eslint`, `@eslint/config-array`, `@typescript-eslint/typescript-estree`, `glob`, `ignore-walk` and `@tufjs/models`; `glob` `^14.0.2` under `@npmcli/package-json` and `cacache`.
 
 `e2e/lint/package.json` overrides: `minimatch` `^11.0.1` under `eslint`, `@eslint/config-array` and `@typescript-eslint/typescript-estree`.
+
+## Trust model
+
+What a change can reach from CI, and why a pull request from anywhere can run it.
+
+- **No workflow uses a secret.**
+  None names `secrets.` or passes `secrets: inherit`, so there is nothing for any pull request to take.
+  The only token is the default `GITHUB_TOKEN`.
+- **No workflow runs on `pull_request_target` or `workflow_run`.**
+  A pull request never runs code with the permissions of the base repository.
+- **The token is read-only (`contents: read`) in every workflow.**
+  The jobs that ask for more do so by name.
+  The `report` jobs (`issues: write`) never run for a pull request, and only in `PuraFome/meuRPG`.
+  `codeql` (`security-events: write`) uploads its results to code scanning.
+- **No job keeps the checkout's credentials** (`persist-credentials: false`), so a later step cannot push.
+- **A cache written by a pull request belongs to that pull request.**
+  `main` restores only caches written on `main`, so a branch cannot change what `main` builds with.
+  `flake-check` runs refs that are not `main`'s and writes no cache ([flake-check](#flake-check)).
 
 ## Pinning and dependencies
 

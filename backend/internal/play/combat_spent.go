@@ -17,15 +17,20 @@ import (
 //     ResetCombatantTurn clears it when the creature's own turn starts.
 //   - "legendary_resistance": uses of Legendary Resistance spent in this combat (the
 //     "day" is the table's rest between combats).
-//   - "use:<action key>" and "recharge:<action key>": reserved for the N/day and
-//     Recharge actions; nothing here writes them, and every key this
-//     file does not know is kept as it is.
+//   - "use:<action key>": uses spent of an action with uses a day, or 1 once an action that
+//     recharges after a rest was used.
+//   - "recharge:<action key>": 1 while a Recharge action is spent.
+//
+// Every key this file does not know is kept as it is.
 //
 // Only what was spent is stored: a combatant starts with '{}' and an absent key is 0. The monster's
 // reaction stays in combatants.reaction_used (one per round, RN-31).
 const (
 	spentLegendaryActions    = "legendary_actions"
 	spentLegendaryResistance = "legendary_resistance"
+	// spentUsePrefix and spentRechargePrefix start the keys of the limited actions of a stat block.
+	spentUsePrefix      = "use:"
+	spentRechargePrefix = "recharge:"
 )
 
 // creatureSpentLimit is the most bytes the column's text has (the table's CHECK).
@@ -35,8 +40,7 @@ const creatureSpentLimit = 4096
 var errCreatureSpentFull = fmt.Errorf("what the creature spent does not fit in %d bytes", creatureSpentLimit)
 
 // spentValues is the column as stored: every key with its value as written, so a key
-// this package does not know (one reserved for the N/day and Recharge actions) comes back out of a
-// change as it went in, whatever its value is.
+// this package does not know comes back out of a change as it went in, whatever its value is.
 type spentValues map[string]json.RawMessage
 
 // count is what was spent under key: 0 when it is absent or not a whole number.

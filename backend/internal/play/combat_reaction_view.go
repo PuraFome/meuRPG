@@ -37,6 +37,18 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
 }
 
+// reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
+// anything else (a feature's key) is unspecified.
+func reactionKindOf(recorded *string) playv1.ReactionKind {
+	if recorded == nil {
+		return playv1.ReactionKind_REACTION_KIND_UNSPECIFIED
+	}
+	if *recorded == reactionOpportunity {
+		return playv1.ReactionKind_REACTION_KIND_OPPORTUNITY
+	}
+	return reactionKindProto[reaction.Kind(*recorded)]
+}
+
 // windowView is what the builders of a caller's windows share.
 type windowView struct {
 	s     *Service
