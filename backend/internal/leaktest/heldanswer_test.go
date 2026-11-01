@@ -339,9 +339,7 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 		run(t, func(t *testing.T, rt *answerTable) {
 			t.Helper()
 			hold := castHeld(t, rt)
-			out := must(rt.caio.resources.AnswerOutsideInspiration(t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{ //nolint:staticcheck // the row covers the deprecated RPC while it exists
-				CampaignId: rt.campaign, HoldId: hold, Use: true, IdempotencyKey: newKey(), Roll: &playv1.AnswerOutsideInspirationRequest_TypedFace{TypedFace: 8},
-			})))
+			out := answerOutsideDie(rt, hold, newKey(), 8)
 			rt.scan(t, rt.caio, "Caio's answer", out)
 			castSettled(t, rt, out.GetSpellCast().GetCast())
 		})
@@ -467,15 +465,23 @@ func TestAHeldRollsAnswerGivenAgainIsRenderedForWhoAnswers(t *testing.T) {
 	t.Run("AnswerHeldRoll", func(t *testing.T) {
 		run(t, func(rt *answerTable, hold, key string) (proto.Message, *playv1.CastSpellResponse) {
 			out := must(rt.caio.resources.AnswerHeldRoll(rt.t.Context(), rq(&playv1.AnswerHeldRollRequest{CampaignId: rt.campaign, HoldId: hold, IdempotencyKey: key, Answer: dieAnswerOf(8)})))
-			return out, out.GetSpellCast()
+			cast := out.GetSpellCast()
+			return out, cast
 		})
 	})
 	t.Run("AnswerOutsideInspiration", func(t *testing.T) {
 		run(t, func(rt *answerTable, hold, key string) (proto.Message, *playv1.CastSpellResponse) {
-			out := must(rt.caio.resources.AnswerOutsideInspiration(rt.t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{ //nolint:staticcheck // the row covers the deprecated RPC while it exists
-				CampaignId: rt.campaign, HoldId: hold, Use: true, IdempotencyKey: key, Roll: &playv1.AnswerOutsideInspirationRequest_TypedFace{TypedFace: 8},
-			})))
-			return out, out.GetSpellCast()
+			out := answerOutsideDie(rt, hold, key, 8)
+			cast := out.GetSpellCast()
+			return out, cast
 		})
 	})
+}
+
+// answerOutsideDie is Caio's answer to the Bardic Inspiration question through the outside-answer RPC, with the die
+// typed from a real die.
+func answerOutsideDie(rt *answerTable, hold, key string, face int32) *playv1.AnswerOutsideInspirationResponse {
+	return must(rt.caio.resources.AnswerOutsideInspiration(rt.t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{ //nolint:staticcheck // the rows cover the deprecated RPC while it exists
+		CampaignId: rt.campaign, HoldId: hold, Use: true, IdempotencyKey: key, Roll: &playv1.AnswerOutsideInspirationRequest_TypedFace{TypedFace: face},
+	})))
 }
