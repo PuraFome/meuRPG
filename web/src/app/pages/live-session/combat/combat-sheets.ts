@@ -128,8 +128,8 @@ export class CombatSheets {
   async cast(ref: string): Promise<void> {
     const { key, grantedBy } = splitCastRef(ref);
     const spell = optionOfRef(this.ctx.options()?.options?.spells ?? [], ref);
-    // A summoning spell and Revivificar have their own sheets, cast with the classes' slots.
-    if (grantedBy === '' && spell?.spell && (await this.isSummon(key))) {
+    // A summoning spell (the classes' or a feature's) and Revivificar have their own sheets.
+    if (spell?.spell && (await this.isSummon(key))) {
       this.summon(key, spell.spell.namePt || spell.spell.name);
       return;
     }

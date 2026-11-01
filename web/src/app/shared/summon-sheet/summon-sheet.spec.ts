@@ -181,6 +181,37 @@ describe('SummonSheet: casting a summon outside combat (E9-10, MR-037)', () => {
     });
   });
 
+  it("casts a feature's summon with no slot and no ritual, naming the feature", async () => {
+    const feature = undeadSpell({
+      spellKey: 'spell:feature-chamado@mesa',
+      namePt: 'Chamado dos Mortos',
+      canCastWithSlot: false,
+      grantedBy: 'feature:chamado@mesa',
+      resourceKey: 'chamados',
+      usesLeft: 2,
+    });
+    const { el, button, pick, settle } = await setup(
+      'spell:feature-chamado@mesa',
+      [feature],
+      [[3, 4, 4]],
+    );
+    expect(el.querySelector('app-slot-picker')).toBeNull();
+    await pick('Esqueleto');
+    expect((flat(el.querySelector('p.line b')) ?? '').replace(/\u00a0/g, ' ')).toContain(
+      'gasta um uso · restam 2',
+    );
+    button('Conjurar Chamado dos Mortos').click();
+    await settle();
+    expect(api.casts).toHaveLength(1);
+    expect(api.casts[0]).toMatchObject({
+      spellKey: 'spell:feature-chamado@mesa',
+      ritual: false,
+      slot: undefined,
+      grantedBy: 'feature:chamado@mesa',
+      summon: { option: 0, creatureKeys: ['monster:skeleton'], names: [] },
+    });
+  });
+
   it('a refusal stays in the sheet, in words by its typed reason, and a retry keeps the key until a choice changes', async () => {
     const { el, button, pick, type, settle } = await setup('spell:find-familiar');
     await type('Nanquim');

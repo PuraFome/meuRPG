@@ -107,6 +107,21 @@ describe('CreaturesPanel (E9-10, MR-037, RN-20)', () => {
     expect(el.querySelector('.count')).toBeNull();
   });
 
+  it("a feature's summon says it spends a use and how many remain, not a slot", async () => {
+    const feature = familiarSpell(undefined, {
+      spellKey: 'spell:feature-chamado@mesa',
+      namePt: 'Chamado da Matilha',
+      canRitual: false,
+      grantedBy: 'feature:chamado@mesa',
+      resourceKey: 'chamados',
+      usesLeft: 2,
+    });
+    const { el, flat } = await setup({ access: { spells: [feature] } });
+    expect(flat(el.querySelector('.cast__cost'))).toContain(
+      'Gasta um uso, restam 2. Só durante uma sessão, fora de combate.',
+    );
+  });
+
   it('a druid without a spell or a creature is told to ask the master, with no cast button', async () => {
     const { el, flat } = await setup({ wildShape: true });
     expect(flat(el.querySelector('.empty'))).toBe(

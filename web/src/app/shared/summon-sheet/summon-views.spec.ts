@@ -204,6 +204,15 @@ describe('summon views: the lines of the sheet', () => {
       '3 criaturas · 1 ação · gasta um espaço de 3º nível (pacto)',
     );
     expect(plain(costLineOf(spell(), false, null, 1))).toBe('1 ação · gasta um espaço de magia');
+    // A feature's summon spends a use and shows how many remain, with no slot in it.
+    const feature = spell({
+      grantedBy: 'feature:chamado@mesa',
+      resourceKey: 'chamados',
+      usesLeft: 2,
+    });
+    expect(plain(costLineOf(feature, false, null, 2))).toBe(
+      '2 criaturas · 1 ação · gasta um uso · restam 2',
+    );
   });
 });
 
