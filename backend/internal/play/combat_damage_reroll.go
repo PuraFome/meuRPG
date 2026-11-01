@@ -117,9 +117,9 @@ func (f *damageFlow) rerollLowDice(atMost int, source string) (bool, error) {
 }
 
 // rerollPartsDice does the same for the dice of the parts, keeping the faces replaced in the part's Rerolled list
-// (source_key: the rule's feature). Only the parts that count are rolled again: a conditional part the target's kind
-// keeps out (the Divine Smite die against a creature that is neither undead nor fiend) changes no damage, and a use
-// spent on it would tell the player what the target is.
+// (source_key: the rule's feature). Every part is rolled again, whether it counts or not: a player reads the dice of a
+// conditional part (the Divine Smite die) as counted whatever the target is, so skipping the part the target's kind
+// keeps out would tell the player what the target is. The total still adds only the parts that count (sumUp).
 func (f *damageFlow) rerollPartsDice(atMost int, source string) (bool, error) {
 	changed := false
 	for i := range f.pr.rolls {
@@ -136,12 +136,9 @@ func (f *damageFlow) rerollPartsDice(atMost int, source string) (bool, error) {
 	return changed, nil
 }
 
-// rerollPartDice rolls again the dice of a part that count and show atMost or lower, but not one that was rolled
+// rerollPartDice rolls again the dice of a part that show atMost or lower, but not one that was rolled
 // again already (Great Weapon Fighting): a die is rolled again once.
 func (s *Service) rerollPartDice(pr *partRoll, atMost int, source string) (bool, error) {
-	if !pr.Counted {
-		return false, nil
-	}
 	changed := false
 	for j, face := range pr.Faces {
 		if int(face) > atMost || slices.ContainsFunc(pr.Rerolled, func(r rerolled) bool { return int(r.Index) == j }) {

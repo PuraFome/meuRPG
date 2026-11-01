@@ -153,7 +153,7 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter,
 	if err != nil {
 		return nil, fmt.Errorf("list the roll mode requests: %w", err)
 	}
-	holds, err := openAttackHolds(ctx, q, enc.ID)
+	holds, err := openAttackHolds(ctx, q, enc.ID, rerolls)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func openInitiativeOf(ctx context.Context, q *playdb.Queries, characterID string
 }
 
 // openAttackHolds are the weapon attacks of a combat that wait for an answer, in the shape of the gate.
-func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string, rerolls bool) ([]heldRoll, error) {
 	rows, err := q.ListOpenAttackHolds(ctx, &encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list the held attacks: %w", err)
@@ -234,7 +234,7 @@ func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string)
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
-	return out, nil
+	return withoutDeadRerolls(out, rerolls), nil
 }
 
 // openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, in the shape of the gate.

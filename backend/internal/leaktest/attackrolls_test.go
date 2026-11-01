@@ -69,7 +69,13 @@ func newRollsTable(t *testing.T) *rollsTable {
 // before the combat begins (a creature that joins it).
 func newRollsTableWith(t *testing.T, afterHeroes func(rt *rollsTable)) *rollsTable {
 	t.Helper()
-	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	return newRollsTableOf(t, false, afterHeroes)
+}
+
+// newRollsTableOf is newRollsTableWith with the d20 rerolls switched on or off.
+func newRollsTableOf(t *testing.T, d20Rerolls bool, afterHeroes func(rt *rollsTable)) *rollsTable {
+	t.Helper()
+	w := &world{stack: newStackOf(t, d20Rerolls), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	rt := &rollsTable{world: w, got: newAnswers(), ids: map[string]string{}}
 	defer func() {
 		if r := recover(); r != nil {

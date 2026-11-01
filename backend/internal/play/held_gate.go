@@ -552,8 +552,8 @@ func (s *Service) gateSettle(ctx context.Context, ae answering, h heldRoll, a he
 		return gateResult{}, err
 	}
 	out := gateResult{Settled: true, Roll: roll, Lucky: rerolledOf(closed), Indomitable: indomitableOf(closed), Stroke: strokeOf(closed, ae.spec)}
-	if out.Indomitable != nil { // the new roll replaces the old: so does what the old one showed
-		out.Lucky = nil
+	if out.Indomitable != nil && luckyOf(closed) != nil { // the new roll replaces the one Lucky made: so does what it showed
+		out.Lucky = nil // (a reroll rule's use is spent and stays told)
 	}
 	if die != nil {
 		if out.Indomitable == nil { // a reroll leaves the die with the roll it was added to: it is spent, not added again

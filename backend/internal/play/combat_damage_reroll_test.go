@@ -1,6 +1,9 @@
 package play
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -385,4 +388,68 @@ func greatWeaponFight(t *testing.T, atMost int32) (*rerollArmed, *playv1.Encount
 type rerollArmed struct {
 	*armed
 	rerollFeatKey string
+}
+
+// A Divine Smite's extra die counts against an undead or a fiend only, and a player reads it as counted whatever the
+// target is. The reroll therefore rolls it again against every target: the player reads the same lines and the same
+// reroll entries for the undead and for the bandit, and only the total differs, by the extra die.
+func TestTheRerollRollsTheSmiteDieAgainEveryTargetAndTheTotalCountsItForTheUndeadOnly(t *testing.T) {
+	t.Parallel()
+	a, _ := smiteTable(t)
+	a.giveFeat(t, a.toren, a.rerollFeat(t, rerollEffects()...))
+	smite := func(target string) *playv1.PendingDamage {
+		t.Helper()
+		res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", battleaxe, target, d20(15))
+		if res.GetPendingDamage() == nil {
+			t.Fatalf("the attack on %s = %v, want a hit", target, res.GetRoll())
+		}
+		a.h.roller.queue(1, 5, 6, 1, 7, 4) // weapon, the smite's two dice, the extra die; then the new faces of the 1s
+		out := a.mustDamage(t, a.caio, a.get(t, a.caio), res.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {
+			inAppDamage(r)
+			r.ExtrasChosen = true
+			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "divine-smite", SlotLevel: 1}}
+		})
+		return out.GetPendingDamage()
+	}
+	lines := func(p *playv1.PendingDamage) []string {
+		var out []string
+		for _, r := range p.GetPartRolls() {
+			s := r.GetPartKey()
+			for _, f := range r.GetFaces() {
+				s += fmt.Sprint(",", f)
+			}
+			for _, rr := range r.GetRerolled() {
+				s += fmt.Sprintf(";%d>%d@%s", rr.GetFrom(), rr.GetTo(), rr.GetSourceKey())
+			}
+			if !r.GetCounted() {
+				s += ";NOT-COUNTED"
+			}
+			out = append(out, s)
+		}
+		return out
+	}
+	undead := smite("Esqueleto")
+	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+	a.passTo(t, a.get(t, a.master), "Toren")
+	human := smite("Bandido")
+	if u, h := lines(undead), lines(human); !slices.Equal(u, h) {
+		t.Fatalf("the player reads %v for the undead and %v for the bandit; want the same lines and reroll entries", u, h)
+	}
+	if l := lines(undead); !slices.ContainsFunc(l, func(s string) bool { return strings.HasPrefix(s, "divine-smite-extra,4;1>4@") }) {
+		t.Errorf("the lines = %v, want the extra die rolled again from 1 to 4", l)
+	}
+	if undead.GetAmount() != human.GetAmount() {
+		t.Errorf("the player reads the amounts %d and %d, want the same", undead.GetAmount(), human.GetAmount())
+	}
+	// The master reads which extra die counted: the rolled-again die is the one that does against the undead only.
+	a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+	for _, r := range a.log(t, a.master, a.get(t, a.master)).GetRounds() {
+		for _, en := range r.GetEntries() {
+			for _, pr := range en.GetDamage().GetParts() {
+				if want := en.GetTargetLabel() == "Esqueleto"; pr.GetPartKey() == "divine-smite-extra" && pr.GetCounted() != want {
+					t.Errorf("the master reads the extra die on %s as counted = %v, want %v", en.GetTargetLabel(), pr.GetCounted(), want)
+				}
+			}
+		}
+	}
 }

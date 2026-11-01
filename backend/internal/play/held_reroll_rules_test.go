@@ -554,3 +554,38 @@ func TestAWeaponAttackQuestionCannotBeAnsweredOnceTheSwitchIsOff(t *testing.T) {
 		t.Error("the action was spent by a refused answer")
 	}
 }
+
+// An effect save rolled again by a reroll rule and then by Indomitable lists both in the result and the log, and the
+// event keeps the uses the reroll spent.
+func TestARerolledSaveThatIndomitableRollsAgainKeepsTheRerollInTheResultAndTheEvent(t *testing.T) {
+	t.Parallel()
+	r := &rerollTable{armed: fighterTable(t, "")}
+	r.feat = r.rerollFeat(t, d20RerollEffects("2", 2, "1")...)
+	r.giveFeat(t, r.toren, r.feat)
+	r.h.svc.d20Rerolls = true
+	r.setRules(t, showSaveDC)
+	e, w := r.holdOnToren(t)
+	res, err := r.rollEffectSave(t, r.caio, e, w.GetId(), effectSaveFace(2))
+	if err != nil || res.GetHeldRollOffer().GetReroll() == nil {
+		t.Fatalf("RollEffectSave(2) = %v, %v; want the reroll question", res, err)
+	}
+	r.h.roller.queue(4) // the new roll still fails the save
+	next, err := r.answerHeldRoll(t, r.caio, res.GetHeldRollOffer().GetHoldId(), rerollAnswer(true))
+	if err != nil || next.GetNext().GetIndomitable() == nil {
+		t.Fatalf("the reroll answer = %v, %v; want Indomitable's question next", next, err)
+	}
+	out, err := r.answerHeldRoll(t, r.caio, next.GetNext().GetHoldId(), indomitableAnswer(true, 17))
+	if err != nil {
+		t.Fatalf("Indomitable's answer error = %v", err)
+	}
+	saved := out.GetEffectSave().GetResult()
+	rr := saved.GetRerolled()
+	if !saved.GetSaved() || len(rr) != 2 || rr[0].GetFrom() != 2 || rr[0].GetTo() != 4 || rr[0].GetSourceKey() != res.GetHeldRollOffer().GetReroll().GetSourceKey() ||
+		rr[1].GetFrom() != 4 || rr[1].GetTo() != 17 || rr[1].GetSourceKey() != indomitableSourceKey {
+		t.Fatalf("the save = %v, want 2 -> 4 by the rule, then 4 -> 17 by Indomitable", saved)
+	}
+	var n int
+	if err := r.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events WHERE payload::TEXT LIKE '%"d20_reroll"%'`).Scan(&n); err != nil || n != 1 {
+		t.Errorf("%d events keep the reroll's uses (%v), want the save's", n, err)
+	}
+}
