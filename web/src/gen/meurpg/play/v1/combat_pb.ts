@@ -11124,8 +11124,9 @@ export type ConcentrationSavePrompt = Message<"meurpg.play.v1.ConcentrationSaveP
 
   /**
    * 10 or half the damage, whichever is higher (SRD). The master's, and the
-   * roller's when the table rule "Os jogadores veem a CD dos testes de
-   * resistência" is on; 0 (absent) for the roller otherwise.
+   * player's it is rendered for (the answering member when they differ from the
+   * roller) when the table rule "Os jogadores veem a CD dos testes de
+   * resistência" is on; 0 (absent) for that player otherwise.
    *
    * @generated from field: int32 dc = 4;
    */
@@ -11946,7 +11947,8 @@ export type ConcentrationSaveResult = Message<"meurpg.play.v1.ConcentrationSaveR
   save?: DiceRoll | undefined;
 
   /**
-   * The save's DC: the master's, and the roller's when the table rule "Os
+   * The save's DC: the master's, and the player's it is rendered for (the
+   * answering member when they differ from the roller) when the table rule "Os
    * jogadores veem a CD dos testes de resistência" is on; 0 (absent) otherwise.
    *
    * @generated from field: int32 dc = 2;

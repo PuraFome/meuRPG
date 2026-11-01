@@ -162,7 +162,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 	if err := call.readBody(req.Msg); err != nil {
 		return nil, err
 	}
-	out := &castOut{v: viewerOf(m)}
+	out := &castOut{v: viewerOf(heldViewer(ctx, m))}
 	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, altKind: eventTrapTriggered, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		return newCastFlow(s, c, m, req.Msg, call, out).run(ctx)
 	})

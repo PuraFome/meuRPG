@@ -309,3 +309,120 @@ func TestAConcentrationSaveAnswerAgainFollowsTheTableRules(t *testing.T) {
 		}
 	}
 }
+
+// withAnswerKey gives the answer the key it is sent under, so the same answer can be sent again.
+func withAnswerKey(key string, answer func(*playv1.AnswerHeldRollRequest)) func(*playv1.AnswerHeldRollRequest) {
+	return func(r *playv1.AnswerHeldRollRequest) { answer(r); r.IdempotencyKey = key }
+}
+
+// labeled says whether the combat names a combatant by the label.
+func labeled(e *playv1.Encounter, label string) bool {
+	for _, c := range e.GetCombatants() {
+		if c.GetLabel() == label {
+			return true
+		}
+	}
+	return false
+}
+
+// TestHeldAnswerGivenAgainRendersTheAnsweringMembersView: an answer sent again after the roll was settled gives the
+// response the first one did, for the member who answers: the roller's membership writes and checks, and the answering
+// member's is what the response is rendered for.
+func TestHeldAnswerGivenAgainRendersTheAnsweringMembersView(t *testing.T) {
+	t.Parallel()
+	t.Run("a cast the master made, answered by the player", func(t *testing.T) {
+		t.Parallel()
+		a, hold := mastersGuidingBolt(t)
+		key := newKey()
+		answer := withAnswerKey(key, typedDie(8))
+		first, err := a.answerHeldRoll(t, a.bia, hold, answer)
+		if err != nil {
+			t.Fatalf("the player's answer: error = %v", err)
+		}
+		wantCastSettled(t, a, first.GetSpellCast().GetCast())
+		// The Goblin is hidden since: a response built for the master would still name it.
+		e := a.get(t, a.master)
+		a.castMasterHides(t, e, "Goblin")
+		goblin := a.id(t, "Goblin")
+		again, err := a.answerHeldRoll(t, a.bia, hold, answer)
+		if err != nil {
+			t.Fatalf("the same answer again: error = %v", err)
+		}
+		got := again.GetSpellCast()
+		wantNoShadow(t, "the answer again", got.GetEncounter(), again)
+		if labeled(got.GetEncounter(), "Goblin") {
+			t.Error("the answer again carries the combat as the master reads it, want the player's")
+		}
+		for _, tr := range got.GetCast().GetTargets() {
+			if tr.GetCombatantId() == goblin {
+				t.Errorf("the answer again names the creature hidden since: %v", got.GetCast())
+			}
+		}
+		if len(got.GetHiddenHits()) != 0 || got.GetPendingRevealId() != "" {
+			t.Errorf("the answer again = hidden hits %v, pending %q; want the player's", got.GetHiddenHits(), got.GetPendingRevealId())
+		}
+		// The master's write is the first answer's: one action spent, the d20 and the die of the first.
+		if !byLabel(t, a.get(t, a.master), "Brisa").GetActionUsed() {
+			t.Error("the action is not spent after the answer again")
+		}
+	})
+	t.Run("a cast the player made, answered by the master", func(t *testing.T) {
+		t.Parallel()
+		a, e := shadowFight(t, "race:halfling", 3, true)
+		a.h.roller.queue(9, 13)
+		held, err := a.castGuidingBolt(t, e)
+		if err != nil || held.GetHeldRollOffer() == nil {
+			t.Fatalf("Brisa's Guiding Bolt = %v, %v; want the die's question", held, err)
+		}
+		a.h.afterThePlayersChance()
+		key := newKey()
+		answer := withAnswerKey(key, dieAnswer(false))
+		hold := held.GetHeldRollOffer().GetHoldId()
+		for _, which := range []string{"the first answer", "the same answer again"} {
+			out, err := a.answerHeldRoll(t, a.master, hold, answer)
+			if err != nil {
+				t.Fatalf("%s: error = %v", which, err)
+			}
+			wantShadow(t, which, out.GetSpellCast().GetEncounter())
+			if got := out.GetSpellCast().GetCast().GetTargets()[0].GetAttackRoll().GetFaces()[0]; got != 9 {
+				t.Errorf("%s: the cast's d20 = %d, want 9", which, got)
+			}
+		}
+	})
+	t.Run("a save the master rolled, answered by Lucky", func(t *testing.T) {
+		t.Parallel()
+		a, hold := mastersEffectSave(t)
+		answer := withAnswerKey(newKey(), luckyAnswer(17))
+		for _, which := range []string{"the first answer", "the same answer again"} {
+			out, err := a.answerHeldRoll(t, a.caio, hold, answer)
+			if err != nil {
+				t.Fatalf("%s: error = %v", which, err)
+			}
+			wantNoShadow(t, which, out.GetEffectSave().GetEncounter(), out)
+			wantSaveSettled(t, out.GetEffectSave())
+		}
+	})
+	t.Run("a group check the master rolled, answered by the player", func(t *testing.T) {
+		t.Parallel()
+		a := newResourceTable(t)
+		dalila, dalilaID := joinDalila(t, a.h, a.master, a.campaignID)
+		const dc = 23
+		view := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.Dc = dc })
+		a.mustRollGroup(t, a.caio, view.GetId(), 17)
+		res, err := a.rollForPlayer(t, a.master, view.GetId(), dalilaID, 1)
+		if err != nil || res.GetHeldRollOffer() == nil {
+			t.Fatalf("RollForPlayer() = %v, %v; want Lucky's question alone", res, err)
+		}
+		answer := withAnswerKey(newKey(), luckyAnswer(14))
+		for _, which := range []string{"the first answer", "the same answer again"} {
+			out, err := a.answerHeldRoll(t, dalila, res.GetHeldRollOffer().GetHoldId(), answer)
+			if err != nil {
+				t.Fatalf("%s: error = %v", which, err)
+			}
+			got := out.GetGroupCheck().GetGroupCheck()
+			if len(got.GetMembers()) != 1 || got.GetMembers()[0].GetCharacterId() != dalilaID || got.GetDc() != 0 || got.GetVerdictKnown() {
+				t.Errorf("%s = %v, want her own roll alone, with no DC", which, got)
+			}
+		}
+	})
+}

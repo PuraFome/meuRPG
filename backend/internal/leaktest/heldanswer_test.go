@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -404,6 +405,77 @@ func TestAHeldRollsAnswerIsRenderedForWhoAnswers(t *testing.T) {
 			if roll.GetFaces()[0] != 14 || len(roll.GetRerolled()) != 1 || !roll.GetRolledByMaster() {
 				t.Errorf("the roll for Pensantus = %v, want the 1 rolled again to 14, still the master's roll", roll)
 			}
+		})
+	})
+}
+
+// logLines is how many lines of the combat's log the master reads.
+func (rt *answerTable) logLines() int {
+	n := 0
+	for _, r := range must(rt.master.combat.ListCombatLog(rt.t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: rt.campaign, EncounterId: rt.encounter.GetId()}))).GetRounds() {
+		n += len(r.GetEntries())
+	}
+	return n
+}
+
+// TestAHeldRollsAnswerGivenAgainIsRenderedForWhoAnswers: the master's cast for a player's character, answered by the
+// player and settled, comes again with the same answer; the second response is the player's view like the first, and
+// the master's write stays as the first answer made it.
+func TestAHeldRollsAnswerGivenAgainIsRenderedForWhoAnswers(t *testing.T) {
+	run := func(t *testing.T, ask func(rt *answerTable, hold, key string) (proto.Message, *playv1.CastSpellResponse)) {
+		t.Helper()
+		rt := newAnswerTable(t)
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("the table: %v", r)
+			}
+		}()
+		watchers := rt.watch()
+		rt.giveDie(labelBrisa)
+		res := must(rt.master.combat.CastSpell(t.Context(), rq(&playv1.CastSpellRequest{
+			CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), CasterId: rt.ids[labelBrisa], SpellKey: "spell:guiding-bolt", Slot: &playv1.SpellSlot{Level: 1},
+			Targets: []*playv1.SpellTarget{{CombatantId: rt.ids[labelGoblin]}}, IdempotencyKey: newKey(), D20Faces: []int32{4, 4},
+		})))
+		if res.GetCast() != nil || res.GetHeldRollOffer() == nil {
+			t.Fatalf("the master's cast = %v, want the die's question and no cast", res)
+		}
+		hold, key := res.GetHeldRollOffer().GetHoldId(), newKey()
+
+		whole, first := ask(rt, hold, key)
+		rt.scan(t, rt.caio, "Caio's first answer", whole)
+		rt.ask(t, "after the first answer")
+		// The master hides the target between the two answers: the answer again is still rendered for who answers.
+		must(rt.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{
+			CampaignId: rt.campaign, EncounterId: rt.encounter.GetId(), CombatantId: rt.ids[labelGoblin], IdempotencyKey: newKey(), Hidden: true,
+		})))
+		lines := rt.logLines()
+		whole, again := ask(rt, hold, key)
+		rt.scan(t, rt.caio, "Caio's answer again", whole)
+		if again.GetCast() == nil || strings.Contains(protojson.Format(whole), rt.ids[labelGoblin]) || again.GetPendingRevealId() != "" || len(again.GetHiddenHits()) != 0 {
+			t.Errorf("the answer again = %v, want the player's view of the combat after the master hid the target", whole)
+		}
+		targets1 := first.GetCast().GetTargets()
+		if len(targets1) != 1 || len(targets1[0].GetBonusDice()) != 1 || targets1[0].GetAttackRoll().GetFaces()[0] != 4 {
+			t.Errorf("the first cast = %v, want the master's d20 of 4 with the player's d8", first.GetCast())
+		}
+		if !rt.combatantOf(labelBrisa).GetActionUsed() || rt.logLines() != lines {
+			t.Errorf("the log has %d lines after the answer again, want the %d it had; action used = %v", rt.logLines(), lines, rt.combatantOf(labelBrisa).GetActionUsed())
+		}
+		rt.ask(t, "after the answer again")
+		rt.finish(t, watchers)
+	}
+	t.Run("AnswerHeldRoll", func(t *testing.T) {
+		run(t, func(rt *answerTable, hold, key string) (proto.Message, *playv1.CastSpellResponse) {
+			out := must(rt.caio.resources.AnswerHeldRoll(rt.t.Context(), rq(&playv1.AnswerHeldRollRequest{CampaignId: rt.campaign, HoldId: hold, IdempotencyKey: key, Answer: dieAnswerOf(8)})))
+			return out, out.GetSpellCast()
+		})
+	})
+	t.Run("AnswerOutsideInspiration", func(t *testing.T) {
+		run(t, func(rt *answerTable, hold, key string) (proto.Message, *playv1.CastSpellResponse) {
+			out := must(rt.caio.resources.AnswerOutsideInspiration(rt.t.Context(), rq(&playv1.AnswerOutsideInspirationRequest{ //nolint:staticcheck // the row covers the deprecated RPC while it exists
+				CampaignId: rt.campaign, HoldId: hold, Use: true, IdempotencyKey: key, Roll: &playv1.AnswerOutsideInspirationRequest_TypedFace{TypedFace: 8},
+			})))
+			return out, out.GetSpellCast()
 		})
 	})
 }

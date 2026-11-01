@@ -795,9 +795,14 @@ const maxCoverUsers = 64
 
 // viewerAfter is the viewer to build a change's answer with. A replay (the same
 // idempotency key) never ran the change's closure, so its viewer knows nothing of the
-// fog; this one is read again from the combat as it stands.
+// fog; this one is read again from the combat as it stands, for the member the answer
+// is rendered for: the one who answered a held roll, else the caller (heldViewer).
 func (s *Service) viewerAfter(ctx context.Context, m authz.Membership, res combatResult, v combatViewer) (combatViewer, error) {
-	if !res.repeated || v.master || res.encounterID == "" {
+	if !res.repeated || res.encounterID == "" {
+		return v, nil
+	}
+	viewedBy := heldViewer(ctx, m)
+	if viewedBy == m && v.master {
 		return v, nil
 	}
 	enc, err := s.queries.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: res.session.ID, ID: res.encounterID})
@@ -808,5 +813,5 @@ func (s *Service) viewerAfter(ctx context.Context, m authz.Membership, res comba
 	if err != nil {
 		return v, fmt.Errorf("list the combatants: %w", err)
 	}
-	return s.viewerFor(ctx, heldViewer(ctx, m), enc, cs)
+	return s.viewerFor(ctx, viewedBy, enc, cs)
 }
