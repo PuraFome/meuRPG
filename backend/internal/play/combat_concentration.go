@@ -333,7 +333,7 @@ func (s *Service) concentrationOutcome(ctx context.Context, c *combatTx, call co
 			return false, err
 		}
 	}
-	if run.result != nil && !c.master && !c.rules.ShowSaveDC {
+	if run.result != nil && !heldViewerIsMaster(ctx, call.m) && !c.rules.ShowSaveDC {
 		run.result.Dc = 0
 	}
 	return kept, nil

@@ -808,5 +808,5 @@ func (s *Service) viewerAfter(ctx context.Context, m authz.Membership, res comba
 	if err != nil {
 		return v, fmt.Errorf("list the combatants: %w", err)
 	}
-	return s.viewerFor(ctx, m, enc, cs)
+	return s.viewerFor(ctx, heldViewer(ctx, m), enc, cs)
 }

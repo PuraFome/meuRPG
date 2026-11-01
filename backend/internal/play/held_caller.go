@@ -37,3 +37,27 @@ func heldRollerOf(ctx context.Context, campaignID string) (authz.Membership, boo
 	}
 	return *a.as, true
 }
+
+// heldCallerOf is the member who answered, in the campaign, when the path runs as another (the roller): the one the
+// response is rendered for.
+func heldCallerOf(ctx context.Context, campaignID string) (authz.Membership, bool) {
+	a, ok := heldReplyOf(ctx)
+	if !ok || a.as == nil || a.caller == nil || a.caller.CampaignID != campaignID {
+		return authz.Membership{}, false
+	}
+	return *a.caller, true
+}
+
+// heldViewer is the member a path renders its response for: the one who answered the held roll, else m. The writes and
+// the checks of the path stay with m, the roller.
+func heldViewer(ctx context.Context, m authz.Membership) authz.Membership {
+	if c, ok := heldCallerOf(ctx, m.CampaignID); ok {
+		return c
+	}
+	return m
+}
+
+// heldViewerIsMaster says the response is rendered for the master.
+func heldViewerIsMaster(ctx context.Context, m authz.Membership) bool {
+	return heldViewer(ctx, m).Role == authz.RoleMaster
+}

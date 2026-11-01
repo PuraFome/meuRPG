@@ -286,7 +286,7 @@ func (f *castFlow) findCaster(ctx context.Context) error {
 	}
 	f.cs = cs
 	f.v = f.c.viewer(f.m, cs)
-	f.out.v = f.v
+	f.out.v = f.c.viewer(heldViewer(ctx, f.m), cs) // what the response reads is the answerer's
 	if f.caster, err = findCombatant(cs, f.call.casterID, f.v); err != nil {
 		return err
 	}
