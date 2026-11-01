@@ -83,7 +83,9 @@ export function previewFailure(err: unknown): PreviewFailure {
       text: 'O gerador demorou demais com essas opções. Diminua o tamanho ou mude o formato.',
     };
   }
-  // A rate limit says how long to wait, a size refusal that the body is too big; the other codes (and a plain network failure) say the preview could not be made.
+  // A rate limit says how long to wait.
+  // A size refusal says the body is too big.
+  // The other codes, and a plain network failure, say the preview could not be made.
   return {
     kind: 'failed',
     text: describeConnectError(err, { [Code.Unavailable]: 'Não deu para gerar a prévia.' }),

@@ -12,7 +12,10 @@ export const SESSION_ENDED = 'Sua sessão acabou. Entre de novo para continuar.'
 export const OUTCOME_UNKNOWN =
   'Não deu para confirmar se a alteração foi salva. Confira na tela antes de tentar de novo.';
 
-/** What a call says when the server refused it for a limit and nothing says which (`resource_exhausted`: the size of the body, a quota or a cap). It is also what every screen says for a body over its size limit. */
+/**
+ * What a call says when the server refused it for a limit and nothing says which (`resource_exhausted`: the size of the body, a quota or a cap).
+ * It is also what every screen says for a body over its size limit.
+ */
 export const REFUSED_BY_A_LIMIT =
   'O servidor recusou o pedido por um limite. Reduza o conteúdo ou tente de novo mais tarde.';
 
