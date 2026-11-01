@@ -275,8 +275,12 @@ export class SummonSheet {
       this.missing() === '' &&
       !this.busy() &&
       this.spell() !== null &&
+      !this.spent() &&
       (!this.needsFace() || this.face() !== null),
   );
+
+  /** A feature's summon with no use left: the server offers no circle for it, and there is nothing to cast. */
+  private readonly spent = computed(() => this.granted() !== '' && this.spell()?.usesLeft === 0);
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() =>
