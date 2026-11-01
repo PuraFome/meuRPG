@@ -2,7 +2,9 @@ package rules
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -581,12 +583,7 @@ func TestResolvedDerivedTrustsTheContentNotTheValue(t *testing.T) {
 	if d, _, ok := c.ResolvedDerived(wild); !ok || d.HitPointsMax != MaxCreatureHitPoints || d.ArmorClass != 1 || d.Attacks[2].AttackBonus != MaxCreatureAttackBonus {
 		t.Errorf("forged numbers: HP %d AC %d (ok %v)", d.HitPointsMax, d.ArmorClass, ok)
 	}
-	// A value with other attacks than the entry's, or a creature the content does not have, is refused.
-	short := good
-	short.Attacks = nil
-	if _, _, ok := c.ResolvedDerived(short); ok {
-		t.Error("a value with no attacks resolved")
-	}
+	// A creature the content does not have is refused.
 	other := good
 	other.Key = wolfKey
 	if _, _, ok := c.ResolvedDerived(other); ok {
@@ -597,6 +594,115 @@ func TestResolvedDerivedTrustsTheContentNotTheValue(t *testing.T) {
 	again, _ := c.ResolveCreature(swarmLord, env, 0)
 	if again.Traits[0].NamePT != "Teia Densa" {
 		t.Errorf("a trait written through a resolved value changed the content: %q", again.Traits[0].NamePT)
+	}
+}
+
+func twoAttacks(names ...string) TableCreature {
+	cr := spiderLord()
+	for i, n := range names {
+		cr.Attacks = append(cr.Attacks, TableCreatureAttack{
+			NamePT: n, Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:piercing",
+			ToHit: fmt.Sprintf("%d + level()", i*10),
+		})
+	}
+	return cr
+}
+
+func attackNumbers(t *testing.T, d Derived) map[string]int {
+	t.Helper()
+	got := map[string]int{}
+	for _, a := range d.Attacks {
+		got[a.Name] = a.AttackBonus
+	}
+	return got
+}
+
+func TestASnapshotSurvivesAnEditOfTheOwnAttacks(t *testing.T) {
+	t.Parallel()
+	env := owner(5, 3, map[string]int{"druid": 5}, map[string]int{"wis": 2})
+	snap, ok := withOverlay(t, creatureOverlay(twoAttacks("Mordida", "Ferrão"))).ResolveCreature(swarmLord, env, 0)
+	if !ok || len(snap.Attacks) != 2 || snap.Attacks[0].Key != swarmLord+"#mordida" {
+		t.Fatalf("snapshot = %+v (ok %v)", snap.Attacks, ok)
+	}
+	// "Mordida" is +5 and "Ferrão" is +15 for this owner; the wolf-like base has attacks of its own.
+	cases := []struct {
+		name    string
+		edited  []string
+		want    map[string]int
+		wantLen int
+	}{
+		{"unchanged", []string{"Mordida", "Ferrão"}, map[string]int{"Mordida": 5, "Ferrão": 15}, 2},
+		{"reordered", []string{"Ferrão", "Mordida"}, map[string]int{"Mordida": 5, "Ferrão": 15}, 2},
+		{"one added", []string{"Mordida", "Ferrão", "Garra"}, map[string]int{"Mordida": 5, "Ferrão": 15, "Garra": 0}, 3},
+		{"one added first", []string{"Garra", "Mordida", "Ferrão"}, map[string]int{"Mordida": 5, "Ferrão": 15, "Garra": 0}, 3},
+		{"one removed", []string{"Ferrão"}, map[string]int{"Ferrão": 15}, 1},
+		{"all removed", nil, map[string]int{}, 0},
+		{"one renamed", []string{"Mordida", "Picada"}, map[string]int{"Mordida": 5, "Picada": 0}, 2},
+	}
+	for _, tc := range cases {
+		c := withOverlay(t, creatureOverlay(twoAttacks(tc.edited...)))
+		d, _, ok := c.ResolvedDerived(snap)
+		if !ok {
+			t.Errorf("%s: not resolved", tc.name)
+			continue
+		}
+		own := map[string]int{}
+		for name, bonus := range attackNumbers(t, d) {
+			if slices.ContainsFunc(tc.edited, func(n string) bool { return n == name }) {
+				own[name] = bonus
+			}
+		}
+		if !reflect.DeepEqual(own, tc.want) {
+			t.Errorf("%s: own attacks = %v, want %v", tc.name, own, tc.want)
+		}
+		// The creature's own numbers never move with the attack list.
+		if d.HitPointsMax != snap.HitPoints || d.ArmorClass != snap.ArmorClass {
+			t.Errorf("%s: HP %d AC %d, want %d %d", tc.name, d.HitPointsMax, d.ArmorClass, snap.HitPoints, snap.ArmorClass)
+		}
+	}
+}
+
+func TestAMalformedSnapshotOfAttacksIsIgnoredOrClamped(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, creatureOverlay(twoAttacks("Mordida", "Ferrão")))
+	good, _ := c.ResolveCreature(swarmLord, owner(5, 3, map[string]int{"druid": 5}, nil), 0)
+	bonus := func(r ResolvedCreature) map[string]int {
+		d, _, ok := c.ResolvedDerived(r)
+		if !ok {
+			t.Fatalf("not resolved: %+v", r.Attacks)
+		}
+		return attackNumbers(t, d)
+	}
+	// Keys that are not the entry's are ignored: both attacks have the static numbers.
+	forged := good
+	forged.Attacks = []ResolvedAttack{
+		{Key: "creature:other#mordida", AttackBonus: 25}, {Key: "", AttackBonus: 25}, {Key: swarmLord + "#../x", AttackBonus: 25},
+	}
+	if got := bonus(forged); got["Mordida"] != 0 || got["Ferrão"] != 0 {
+		t.Errorf("forged keys were used: %v", got)
+	}
+	// Out-of-range numbers are clamped; of two attacks with one key the first counts.
+	wild := good
+	wild.Attacks = []ResolvedAttack{
+		{Key: swarmLord + "#mordida", AttackBonus: 1 << 40, DamageBonusValue: -(1 << 40)},
+		{Key: swarmLord + "#mordida", AttackBonus: -7},
+		{Key: swarmLord + "#ferr-o", AttackBonus: -1 << 40, DamageBonusValue: 1 << 40},
+	}
+	d, _, ok := c.ResolvedDerived(wild)
+	if !ok {
+		t.Fatal("a wild snapshot did not resolve")
+	}
+	got := attackNumbers(t, d)
+	if got["Mordida"] != MaxCreatureAttackBonus || got["Ferrão"] != MinCreatureAttackBonus {
+		t.Errorf("wild numbers = %v", got)
+	}
+	// Many attacks, more than the entry has, do not crash.
+	many := good
+	for range 100 {
+		many.Attacks = append(many.Attacks, good.Attacks...)
+	}
+	if _, _, ok := c.ResolvedDerived(many); !ok {
+		t.Error("a snapshot with many attacks did not resolve")
 	}
 }
 

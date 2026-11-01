@@ -211,3 +211,133 @@ func TestMR578_AFormulaCreatureTravelsInAPackWithEveryField(t *testing.T) {
 		t.Errorf("the imported creature lost a field: %v", got)
 	}
 }
+
+// giveTo gives the creature to the character, or fails the test.
+func (tb *creatureTable) giveTo(t *testing.T, c *charactersv1.Character, key string) *charactersv1.CharacterCreature {
+	t.Helper()
+	got, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: c.GetId(), MonsterKey: key})
+	if err != nil {
+		t.Fatalf("GiveCreature(%s) error = %v", key, err)
+	}
+	return got
+}
+
+func (tb *creatureTable) edit(t *testing.T, key string, body *rulesv1.TableCreature) {
+	t.Helper()
+	entry := tb.master.entries(t, tb.campaign)[key]
+	if _, err := tb.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(tb.campaign, key, entry.GetRevision(), body))); err != nil {
+		t.Fatalf("UpdateTableEntry(%s) error = %v", key, err)
+	}
+}
+
+func TestMR578_ASnapshotIsUsedWheneverTheRowHasOneAndSurvivesAnEditOfTheAttacks(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	tb.master.addEntry(t, tb.campaign, silverWolf())
+	wolf := tb.giveTo(t, tb.pc, silverWolfKey)
+	want := creatureNumbers{hp: 15, ac: 15, toHit: 3, damageBonus: 1}
+	if got := tb.numbersOf(t, tb.owner, tb.pc, wolf.GetId()); got != want {
+		t.Fatalf("the gift = %+v, want %+v", got, want)
+	}
+
+	// The master adds an attack in front of the claw and gives the claw other formulas: the claw keeps its numbers.
+	next := silverWolf()
+	next.HitPointsFormula, next.ArmorClassFormula = "100", "30"
+	next.Attacks = []*rulesv1.TableCreatureAttack{
+		{NamePt: "Mordida de Prata", Melee: true, DiceCount: 1, DiceSides: 4, DamageType: "damage-type:piercing", ToHit: "9"},
+		{NamePt: "Garra de Prata", Melee: true, DiceCount: 1, DiceSides: 6, DamageType: "damage-type:slashing", ToHit: "9", DamageBonus: "9"},
+	}
+	tb.edit(t, silverWolfKey, next)
+	if got := tb.numbersOf(t, tb.owner, tb.pc, wolf.GetId()); got != want {
+		t.Errorf("after an attack was added in front: %+v, want the snapshot %+v", got, want)
+	}
+
+	// The master takes every formula away: the list and the combat both still read the snapshot.
+	plain := silverWolf()
+	plain.HitPointsFormula, plain.ArmorClassFormula = "", ""
+	plain.HitPoints, plain.ArmorClass = 7, 11
+	plain.Attacks[0].ToHit, plain.Attacks[0].DamageBonus = "", ""
+	tb.edit(t, silverWolfKey, plain)
+	if got := tb.numbersOf(t, tb.owner, tb.pc, wolf.GetId()); got != want {
+		t.Errorf("after the entry lost its formulas: %+v, want the snapshot %+v", got, want)
+	}
+	// A creature given now has the entry's static numbers (and no snapshot).
+	fresh := tb.giveTo(t, tb.pc, silverWolfKey)
+	if raw := tb.statBlockOf(t, fresh.GetId()); raw != nil {
+		t.Errorf("a creature of an entry with no formula has a snapshot: %s", raw)
+	}
+}
+
+func TestMR578_TheShieldAndTheActiveStatesOfTheOwnerReachTheFormulas(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	feature := tb.master.addEntry(t, tb.campaign, stanceSubclass(
+		&rulesv1.TableEffect{Type: "resource", Resource: "posturas", Max: "1", Recharge: "short_rest"},
+		&rulesv1.TableEffect{Type: "state", StateName: "postura", DurationRounds: "10", EndsOn: []string{"dismiss"}, Resource: "posturas", Economy: "bonus_action"},
+		&rulesv1.TableEffect{Type: "modifier", Target: "speed.walk", Mode: "add", Value: "10", When: `active("postura")`},
+	))
+	stateKey := feature.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetKey() + "#postura"
+	body := silverWolf()
+	body.HitPointsFormula, body.ArmorClassFormula = "speedwalk()", `10 + (shield() ? 5 : 0)`
+	tb.master.addEntry(t, tb.campaign, body)
+
+	// One fighter (a player has one character) whose shield, weapon and states change between the gifts.
+	hero := tb.other.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", levelUpFighterSheet(5, 6500, feature.GetKey()))
+	read := func(shield bool, weapon string) creatureNumbers {
+		t.Helper()
+		sheet := levelUpFighterSheet(5, 6500, feature.GetKey())
+		sheet.GetFull().Shield = shield
+		sheet.GetFull().WeaponKeys = []string{weapon}
+		if _, err := tb.master.update(t, tb.master.get(t, tb.campaign, hero.GetId()), "Toren", sheet); err != nil {
+			t.Fatalf("changing the fighter's gear: %v", err)
+		}
+		return tb.numbersOf(t, tb.other, hero, tb.giveTo(t, hero, silverWolfKey).GetId())
+	}
+	bare := read(false, "equipment:longsword")
+	shielded := read(true, "equipment:longsword")
+	idle := read(true, "equipment:greatsword")
+	if bare.ac != 10 || shielded.ac != 15 || idle.ac != 10 {
+		t.Errorf("armor class without a shield, with one and with one a two-handed weapon idles = %d, %d, %d; want 10, 15, 10", bare.ac, shielded.ac, idle.ac)
+	}
+
+	// With the state on the walk is faster, which the formula reads.
+	if _, err := tb.h.pool.Exec(t.Context(), `UPDATE characters SET active_states = $2::jsonb WHERE id = $1`, hero.GetId(), `[{"key":"`+stateKey+`","rounds_left":5}]`); err != nil {
+		t.Fatalf("turning the state on: %v", err)
+	}
+	if moving := read(false, "equipment:longsword"); moving.hp != bare.hp+10 {
+		t.Errorf("hit points = speed: %d with the state off, %d on; want 10 more", bare.hp, moving.hp)
+	}
+}
+
+func TestMR578_AMalformedSnapshotFallsBackToTheContentOrIsClamped(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	tb.master.addEntry(t, tb.campaign, silverWolf())
+	wolf := tb.giveTo(t, tb.pc, silverWolfKey)
+	// The content's block, for an owner with no formula run: the wolf's armor class 13 and a claw with +0 to hit.
+	content := creatureNumbers{hp: 15, ac: 13, toHit: 0, damageBonus: 0}
+	cases := []struct {
+		name, raw string
+		want      creatureNumbers
+	}{
+		{"an array", `[1, 2]`, content},
+		{"a string", `"text"`, content},
+		{"a number", `7`, content},
+		{"an empty object", `{}`, content},
+		{"another creature's key", `{"Key": "creature:outra@mesa", "ArmorClass": 30}`, content},
+		{"a field of the wrong type", `{"Key": "` + silverWolfKey + `", "ArmorClass": "alto"}`, content},
+		{"numbers out of range", `{"Key": "` + silverWolfKey + `", "ArmorClass": -3, "HitPoints": 99999999}`, creatureNumbers{hp: 15, ac: 1, toHit: 0, damageBonus: 0}},
+		{
+			"forged attack keys", `{"Key": "` + silverWolfKey + `", "ArmorClass": 20, "Attacks": [{"Key": "x#y", "AttackBonus": 20}, {"Key": "` + clawKey + `", "AttackBonus": 500}, {"Key": "` + clawKey + `", "AttackBonus": 2}]}`,
+			creatureNumbers{hp: 15, ac: 20, toHit: rules.MaxCreatureAttackBonus, damageBonus: 0},
+		},
+	}
+	for _, tc := range cases {
+		if _, err := tb.h.pool.Exec(t.Context(), `UPDATE character_creatures SET stat_block = $2::jsonb WHERE id = $1`, wolf.GetId(), tc.raw); err != nil {
+			t.Fatalf("%s: writing the row: %v", tc.name, err)
+		}
+		if got := tb.numbersOf(t, tb.owner, tb.pc, wolf.GetId()); got != tc.want {
+			t.Errorf("%s: %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+}

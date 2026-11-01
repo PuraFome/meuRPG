@@ -552,7 +552,8 @@ message TableCreature {
   // An attack's own to_hit wins over it.
   // Empty keeps the base's.
   string attack_bonus_formula = 10;
-  // The DC of each action of the base that asks for a saving throw, clamped to 1..30.
+  // The DC of the saving throws of the creature's actions on its sheet, clamped to 1..30.
+  // The DC of a rider or an area of an action keeps the base's value.
   // Empty keeps the base's.
   string save_dc_formula = 11;
   // Attacks added after the base's actions, at most 8.

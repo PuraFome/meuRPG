@@ -73,10 +73,11 @@ func monsterDerivedOf(content *rules.Content, key string, statBlock []byte) (rul
 	return content.MonsterDerived(key)
 }
 
-// statBlockOf is the snapshot of the creature with the ID, or nil: read only for a table creature that has
-// formulas, so every other creature costs no query.
+// statBlockOf is the snapshot of the creature with the ID, or nil. A snapshot is used whenever the row has
+// one, whatever the entry's formulas are now, as the list does; only a table creature can have one, so an
+// SRD creature costs no query.
 func (s *Service) statBlockOf(ctx context.Context, tx pgx.Tx, content *rules.Content, campaignID, creatureID, monsterKey string) ([]byte, error) {
-	if creatureID == "" || !content.CreatureHasFormulas(monsterKey) {
+	if creatureID == "" || !content.IsTableCreature(monsterKey) {
 		return nil, nil
 	}
 	row, err := s.queriesIn(tx).GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: campaignID, ID: creatureID})

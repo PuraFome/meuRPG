@@ -91,8 +91,10 @@ type ResolvedCreature struct {
 }
 
 // ResolvedAttack is a TableCreatureAttack with its to-hit and damage bonus worked out.
+// Key is the key of the attack's action, "<creature key>#<slug of the name>": what a snapshot is matched by.
 type ResolvedAttack struct {
 	TableCreatureAttack
+	Key                           string
 	AttackBonus, DamageBonusValue int
 }
 
@@ -136,6 +138,12 @@ func (c *Content) ResolveCreature(key string, env *formula.Env, slot int) (Resol
 	return s.resolve(env, slot, false), true
 }
 
+// IsTableCreature says whether key is a creature the table added.
+func (c *Content) IsTableCreature(key string) bool {
+	_, ok := c.c.creatureSpecs[key]
+	return ok
+}
+
 // CreatureHasFormulas says whether key is a table creature with a formula in any number or attack: the creature
 // whose numbers depend on its owner. A table creature with none, and an SRD creature, have the same stat block
 // for everyone.
@@ -153,11 +161,12 @@ func (c *Content) CreatureHasFormulas(key string) bool {
 // ResolvedDerived is the stat block of the table creature r for combat: MonsterDerived and the plan of its
 // actions, with r applied (ApplyResolved). What r says about the creature itself (its base, name, traits and
 // the shape of its attacks) is ignored: it comes from the content's entry for r.Key, and only r's numbers are
-// used, clamped to their ranges. ok is false when r.Key is not a table creature, r does not have the entry's
-// attacks, or the stat block cannot be built.
+// used, clamped to their ranges. The own attacks of r are matched to the entry's by their key: an attack in
+// both keeps the numbers of r, one new in the entry has the static numbers, and one the entry lost is dropped.
+// ok is false when r.Key is not a table creature or the stat block cannot be built.
 func (c *Content) ResolvedDerived(r ResolvedCreature) (Derived, *MonsterPlan, bool) {
 	s, table := c.c.creatureSpecs[r.Key]
-	if !table || len(r.Attacks) != len(s.attacks) {
+	if !table {
 		return Derived{}, nil, false
 	}
 	base, ok := c.c.monsters[s.baseKey]
@@ -189,15 +198,27 @@ func (s *creatureSpec) trusted(r ResolvedCreature) ResolvedCreature {
 	if t.HasSaveDC {
 		t.SaveDC = clamp(r.SaveDC, MinCreatureSaveDC, MaxCreatureSaveDC)
 	}
+	own := map[string]ResolvedAttack{}
+	for _, a := range r.Attacks {
+		if _, dup := own[a.Key]; !dup {
+			own[a.Key] = a
+		}
+	}
+	static := s.resolve(nil, 0, true).Attacks
 	for i, a := range s.attacks {
-		t.Attacks = append(t.Attacks, ResolvedAttack{
-			TableCreatureAttack: a.def,
-			AttackBonus:         clamp(r.Attacks[i].AttackBonus, MinCreatureAttackBonus, MaxCreatureAttackBonus),
-			DamageBonusValue:    clamp(r.Attacks[i].DamageBonusValue, MinCreatureDamageBonus, MaxCreatureDamageBonus),
-		})
+		ra := static[i]
+		if got, ok := own[ra.Key]; ok {
+			ra.AttackBonus = clamp(got.AttackBonus, MinCreatureAttackBonus, MaxCreatureAttackBonus)
+			ra.DamageBonusValue = clamp(got.DamageBonusValue, MinCreatureDamageBonus, MaxCreatureDamageBonus)
+		}
+		ra.TableCreatureAttack = a.def
+		t.Attacks = append(t.Attacks, ra)
 	}
 	return t
 }
+
+// attackKey is the key of the action of the own attack called name on the creature key.
+func attackKey(key, name string) string { return key + "#" + slugOf(name) }
 
 func clamp(v, lo, hi int) int { return min(max(v, lo), hi) }
 
@@ -272,7 +293,7 @@ func (s *creatureSpec) resolveNumbers(f *formulaRun, r *ResolvedCreature) {
 // formula, else the creature's. Without an owner no formula is run.
 func (s *creatureSpec) resolveAttacks(f *formulaRun, r *ResolvedCreature, ownerless bool) {
 	for i, a := range s.attacks {
-		ra := ResolvedAttack{TableCreatureAttack: a.def, AttackBonus: r.AttackBonus, DamageBonusValue: r.DamageBonus}
+		ra := ResolvedAttack{TableCreatureAttack: a.def, Key: attackKey(s.key, a.def.NamePT), AttackBonus: r.AttackBonus, DamageBonusValue: r.DamageBonus}
 		if !ownerless {
 			if v, ok := f.int(a.toHitP, fmt.Sprintf(".attacks[%d].to_hit", i), MinCreatureAttackBonus, MaxCreatureAttackBonus); ok {
 				ra.AttackBonus = v

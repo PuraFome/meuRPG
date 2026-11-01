@@ -2202,7 +2202,8 @@ type TableCreature struct {
 	// An attack's own to_hit wins over it.
 	// Empty keeps the base's.
 	AttackBonusFormula string `protobuf:"bytes,10,opt,name=attack_bonus_formula,json=attackBonusFormula,proto3" json:"attack_bonus_formula,omitempty"`
-	// The DC of each action of the base that asks for a saving throw, clamped to 1..30.
+	// The DC of the saving throws of the creature's actions on its sheet, clamped to 1..30.
+	// The DC of a rider or an area of an action keeps the base's value.
 	// Empty keeps the base's.
 	SaveDcFormula string `protobuf:"bytes,11,opt,name=save_dc_formula,json=saveDcFormula,proto3" json:"save_dc_formula,omitempty"`
 	// Attacks added after the base's actions, at most 8.

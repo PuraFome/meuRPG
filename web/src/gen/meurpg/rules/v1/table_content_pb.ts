@@ -1235,7 +1235,8 @@ export type TableCreature = Message<"meurpg.rules.v1.TableCreature"> & {
   attackBonusFormula: string;
 
   /**
-   * The DC of each action of the base that asks for a saving throw, clamped to 1..30.
+   * The DC of the saving throws of the creature's actions on its sheet, clamped to 1..30.
+   * The DC of a rider or an area of an action keeps the base's value.
    * Empty keeps the base's.
    *
    * @generated from field: string save_dc_formula = 11;

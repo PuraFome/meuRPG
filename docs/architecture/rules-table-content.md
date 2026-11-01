@@ -253,7 +253,7 @@ The base is never written: the SRD's maps are copied before the first table crea
 | `Traits` | Traits added after the base's special abilities, as text only: a name and a text, no effects | At most 10 (`MaxCreatureTraits`); a name of 1 to 80 characters on one line; a text of 1 to 4,000 characters |
 | `HitPointsFormula`, `ArmorClassFormula`, `DamageBonusFormula` | Formulas of the owner that replace `HitPoints`, `ArmorClass` and `DamageBonus` | Results clamped to 1 to 9,999, 1 to 40 and -10 to 30 |
 | `AttackBonusFormula` | The to-hit of the base's attacks, and of an own attack with no `ToHit` | Clamped to -10 to 30 |
-| `SaveDCFormula` | The DC of the base's actions that ask for a saving throw | Clamped to 1 to 30 |
+| `SaveDCFormula` | The DC of the saving throws of the creature's actions on its sheet; the DC of a rider or an area of an action keeps the base's | Clamped to 1 to 30 |
 | `Attacks` | Attack actions added after the base's, keyed `<creature key>#<slug of the name>`, with an attack roll. Not part of the base's Multiattack. A melee attack has a reach (0 is 5 ft., to 30) and no range; a ranged one has a range (1 to 600) and a long range (0 or up to 1,200). The dice are 1 to 20 of a d4, d6, d8, d10, d12 or d20. `DamageType` is a `damage-type:` key of the SRD | At most 8 (`MaxCreatureAttacks`, `limit` at `.attacks`); a name as a trait's, not repeating a trait, a base action or another attack |
 
 ### Formulas of the owner

@@ -733,6 +733,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a creature with no formula already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
 - **Given** a creature whose hit points are `5 * level()` and whose armor class is `10 + prof() + mod("dex")`, **when** I give it to a level 3 wizard and to a level 5 fighter, **then** each has the hit points, armor class and attack numbers of its own owner.
 - **Given** a creature given with formulas, **when** its owner gains a level or I edit the formulas, **then** the creature already given keeps its numbers, and one given afterwards has the new ones.
+- **Given** a creature given with formulas, **when** I add, remove, rename or reorder its own attacks, **then** the attacks that stay keep the numbers they were given, a new attack has the entry's static numbers, a removed one is gone, and the creature's hit points, armor class and bonuses do not change.
+- **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
+- **Given** a creature whose save DC is a formula, **then** the saving throws of its actions on its sheet use that DC, and the DC of a rider or an area of an action keeps the base creature's.
 - **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.
 - **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it.
   This holds whether the entry is live, archived or switched off.
