@@ -3,12 +3,19 @@
 // A copy is kept only when it is smaller than the original.
 // index.html is never compressed.
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'web', 'browser');
 const extensions = new Set(['.js', '.css']);
+
+if (!existsSync(root)) {
+  console.error(
+    `compress.mjs: ${root} does not exist. The Angular build did not write its output; run it first (npm run build) and read its errors.`,
+  );
+  process.exit(1);
+}
 
 const variants = [
   {
