@@ -402,3 +402,21 @@ func TestAJointTurnReadsEachOthersRecordAndNeverAnNPCs(t *testing.T) {
 		}
 	})
 }
+
+// TestParryRecordsItsKindAndRoundAndTheUndoClearsIt: the master answers the Knight's Parry. The master reads
+// the kind and the round, no player reads an NPC's, and the undo gives the reaction back with no record.
+func TestParryRecordsItsKindAndRoundAndTheUndoClearsIt(t *testing.T) {
+	t.Parallel()
+	a, e, _, w := parriedHit(t, knightHit)
+	a.wantNoRecord(t, knight, "before Parry")
+	a.mustAnswer(t, a.master, e, w.GetId(), useAnswer(0))
+	round := a.get(t, a.master).GetRound()
+	a.wantRecord(t, knight, "parry", round)
+	a.wantViewRecord(t, a.master, knight, playv1.ReactionKind_REACTION_KIND_PARRY, round)
+	for _, u := range []*user{a.ana, a.bia, a.caio} {
+		a.wantNoViewRecord(t, u, knight)
+	}
+	a.undoLast(t, e)
+	a.wantNoRecord(t, knight, "after the undo")
+	a.wantNoViewRecord(t, a.master, knight)
+}
