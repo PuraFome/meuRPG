@@ -804,7 +804,7 @@ func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sc
 	if ev.D20B != 0 {
 		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace)
+		markTreated(out.Roll, ev.Modifier, ev.Total-ev.BonusFace, reliableTalentSource)
 	}
 	out.Roll.Total = ev.Total                              // with the Bardic Inspiration die, when the player used it
 	out.Roll.Rerolled = strokeRerolls(ev.Lucky, ev.Stroke) // "Sortudo: 1 → 14", with the d20 it changed
@@ -1039,7 +1039,7 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	}
 	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q), rollSpec{
 		Kind: heldSceneCheck, Key: c.key, Request: c.req, Roller: heldRoller{CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, UserID: c.m.UserID},
-		In: c.in, Modifier: bonus, Mode: cm.Mode, Reliable: opt.ReliableTalent, Lucky: opt.Lucky, MayAsk: true,
+		In: c.in, Modifier: bonus, Mode: cm.Mode, Floor: reliableFloor(opt.ReliableTalent), Lucky: opt.Lucky, MayAsk: true,
 		Stroke: checkStrokeRule(action.DC, !scene.ShowDC),
 	})
 	if err != nil {

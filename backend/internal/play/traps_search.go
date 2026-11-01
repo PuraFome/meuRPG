@@ -338,7 +338,7 @@ func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTu
 	}
 	step, err := s.heldGate(ctx, env, rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,
-		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Reliable: r.reliable, Lucky: r.opt.Lucky, MayAsk: true,
+		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: reliableFloor(r.reliable), Lucky: r.opt.Lucky, MayAsk: true,
 	})
 	if err != nil {
 		return false, err
@@ -362,7 +362,7 @@ func (s *Service) rollSearchWithMode(ts *trapSearch, r *searchTurn) (searchDice,
 		if rolled, err = s.d20With(ts.in, r.bonus, r.cm.Mode); err != nil {
 			return searchDice{}, err
 		}
-		rolled = reliableD20(rolled, r.bonus, r.reliable)
+		rolled = floorD20(rolled, r.bonus, reliableFloor(r.reliable))
 	}
 	d := searchDice{
 		face: rolled.Faces[0], face2: rolled.Faces[1], counted: rolled.Index,
@@ -484,7 +484,7 @@ func trapSearchAnswer(ts *trapSearch) *playv1.SearchForTrapsResponse {
 	if ev.RollMode != "" {
 		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total)
+		markTreated(out.Roll, ev.Modifier, ev.Total, reliableTalentSource)
 	} else if ev.D20B != 0 {
 		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.ReliableTalent)
 	}

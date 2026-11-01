@@ -84,7 +84,7 @@ func (s *Service) gateCheck(ctx context.Context, c *combatTx, p preparedCheck, h
 	}
 	return s.heldGate(ctx, s.inspirationGate(c), rollSpec{
 		Kind: h.kind, Key: h.key, Request: h.req, Window: c.replay != nil, Roller: attackRoller(h.m, h.who, c.enc.Round),
-		In: rollInput{inApp: h.in.inApp, typedFaces: h.in.faces}, Modifier: p.n.Bonus - cutOf(c), Mode: rollModeOfCheck(p.mode), Reliable: p.n.Reliable,
+		In: rollInput{inApp: h.in.inApp, typedFaces: h.in.faces}, Modifier: p.n.Bonus - cutOf(c), Mode: rollModeOfCheck(p.mode), Floor: reliableFloor(p.n.Reliable),
 		Lucky: lucky, MayAsk: mayAsk, Stroke: opposedStrokeRule(),
 	})
 }

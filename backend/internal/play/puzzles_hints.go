@@ -322,7 +322,7 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 func (h *hintTryTx) roll(ctx context.Context, plan hintTryPlan) (gateResult, error) {
 	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q), rollSpec{
 		Kind: heldHintTry, Key: h.key, Request: h.raw, Roller: heldRoller{CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, UserID: h.m.UserID},
-		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Reliable: plan.option.ReliableTalent, Lucky: plan.option.Lucky, MayAsk: true,
+		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Floor: reliableFloor(plan.option.ReliableTalent), Lucky: plan.option.Lucky, MayAsk: true,
 	})
 }
 
@@ -408,7 +408,7 @@ func hintRollProto(t playdb.PuzzleHintTry) *playv1.DiceRoll {
 	out := diceRoll(2, 20, pairOf(t.D20, t.D20B, t.Counted), t.Modifier, t.Total, t.Physical)
 	out.CountedIndex = t.Counted
 	out.Rerolled = hintLucky(t).proto()
-	return markTreated(out, t.Modifier, t.Total)
+	return markTreated(out, t.Modifier, t.Total, reliableTalentSource)
 }
 
 // hintFaces are the try's d20 in the order rolled: the pair, or the one.

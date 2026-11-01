@@ -13,7 +13,9 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -57,11 +59,11 @@ func (s *Service) inspirationGate(c *combatTx) gateEnv {
 // answer wins). An NPC's and a creature's never wait for anybody.
 func saveSpec(
 	m authz.Membership, kind heldKind, reactor playdb.Combatant, key string, raw proto.Message,
-	in rollInput, bonus int, mode combat.RollMode, lucky bool,
+	in rollInput, bonus int, mode combat.RollMode, traits link.Traits,
 ) rollSpec {
 	return rollSpec{
 		Kind: kind, Key: key, Request: raw, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: reactor.CharacterID, UserID: m.UserID},
-		In: in, Modifier: bonus, Mode: mode, Lucky: lucky,
+		In: in, Modifier: bonus, Mode: mode, Lucky: traits.Lucky, Floor: floorFor(traits, rules.RollAppliesSave, false),
 		MayAsk: reactor.Kind == kindPlayer && backedByCharacter(reactor) && playedBy(reactor, m),
 	}
 }
@@ -162,11 +164,11 @@ type rollSpec struct {
 	Request proto.Message
 	Roller  heldRoller
 	In      rollInput
-	// Modifier, Mode and Reliable are what the d20 is counted with: the bonus, advantage or disadvantage,
-	// and Reliable Talent.
+	// Modifier, Mode and Floor are what the d20 is counted with: the bonus, advantage or disadvantage, and the lowest
+	// number the die counts as (a table's roll_minimum, Reliable Talent).
 	Modifier int
 	Mode     combat.RollMode
-	Reliable bool
+	Floor    rollFloor
 	// Lucky says the roller is a halfling: a d20 that shows a 1 asks even without a die.
 	Lucky bool
 	// Save is set by a path whose d20 is a saving throw of a player's character that may be rerolled with
@@ -184,7 +186,7 @@ type rollSpec struct {
 type gateResult struct {
 	// Held says the question is to be put to the player: the path writes nothing and answers with it.
 	Held *heldOffer
-	// Settled says the gate decided the d20: Roll is it, with Reliable Talent applied and the die added
+	// Settled says the gate decided the d20: Roll is it, with the floor applied and the die added
 	// when the player used it (Bonus), and Lucky the die rolled again, which the path's event keeps.
 	Settled bool
 	Roll    d20Roll
@@ -343,14 +345,14 @@ func (s *Service) askerState(ctx context.Context, env gateEnv, spec rollSpec) (r
 	return st, nil
 }
 
-// gateD20 rolls the d20 of a roll, counted as the spec says: Reliable Talent applied, the faces as they
+// gateD20 rolls the d20 of a roll, counted as the spec says: the floor applied, the faces as they
 // came up.
 func (s *Service) gateD20(spec rollSpec) (d20Roll, error) {
 	roll, err := s.d20With(spec.In, spec.Modifier, spec.Mode)
 	if err != nil {
 		return d20Roll{}, err
 	}
-	return reliableD20(roll, spec.Modifier, spec.Reliable), nil
+	return floorD20(roll, spec.Modifier, spec.Floor), nil
 }
 
 // gateRoll is the d20 of a roll that waits for nobody: rolled here and settled, for the paths that take
@@ -379,7 +381,7 @@ func (s *Service) gateAsk(ctx context.Context, ae answering) (gateResult, error)
 	if err := s.gateOpen(ctx, ae, stores); err != nil {
 		return gateResult{}, err
 	}
-	// The hold keeps the faces as they came up; the total counts the d20 by Reliable Talent (the offer
+	// The hold keeps the faces as they came up; the total counts the d20 by the floor (the offer
 	// shows it), and a Lucky answer counts the new d20 again.
 	roll, err := s.gateD20(spec)
 	if err != nil {
@@ -444,7 +446,7 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 	spec, r := ae.spec, ae.spec.Roller.in(ae.st)
 	h := heldRoll{
 		CampaignID: r.CampaignID, CharacterID: r.CharacterID, UserID: r.UserID, Key: spec.Key, Kind: spec.Kind, Window: spec.Window,
-		Physical: roll.Physical, Request: body, Faces: roll.Faces, Counted: roll.Index, Modifier: spec.Modifier, Total: roll.Total,
+		Physical: roll.Physical, Request: body, Faces: roll.Faces, Counted: roll.Index, Modifier: spec.Modifier, Total: roll.Total, CountedBy: roll.CountedBy,
 		LuckyIndex: luckyAt,
 	}
 	h.IndomAsk, h.IndomFailed = ae.asksAtOnce(roll, luckyAt)
@@ -535,8 +537,7 @@ func (h heldRoll) answerable(st rollerState, key string) error {
 func (s *Service) gateSettle(ctx context.Context, ae answering, h heldRoll, a heldReply) (gateResult, error) {
 	modifier := ae.spec.Modifier
 	roll := d20Roll{Faces: h.Faces, Index: int(clamp32(h.Counted, 0, len(h.Faces)-1)), Physical: h.Physical}
-	roll.Total = roll.Face() + modifier
-	roll = reliableD20(roll, modifier, ae.spec.Reliable)
+	roll = floorD20(roll, modifier, ae.spec.Floor)
 	die := a.die
 	if h.DieUsed != nil { // answered before Indomitable's question, which kept the roll open
 		die = h.DieUsed

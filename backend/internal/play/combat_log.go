@@ -1025,6 +1025,7 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 		out.AttackRoll = diceRoll(2, 20, pairOf(e.ev.D20, e.ev.D20B, e.ev.Counted), e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		out.AttackRoll.CountedIndex = e.ev.Counted
 	}
+	e.ev.mark(out.AttackRoll)
 	out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.BonusDice = bonusDiceOf(e.ev)

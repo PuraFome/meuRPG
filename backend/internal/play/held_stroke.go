@@ -258,7 +258,7 @@ func (ae answering) asksStrokeAtOnce(roll d20Roll, luckyAt *int32) (ask, told bo
 	if luckyAt != nil || ae.st.Holds || !ae.st.Stroke || ae.rerollAt(roll, luckyAt) != nil {
 		return false, false
 	}
-	return ae.spec.Stroke.decide(roll.Face(), roll.Total)
+	return ae.spec.Stroke.decide(roll.Value(), roll.Total)
 }
 
 // gateStrokeNext is what the gate does when the Lucky and die questions are answered and the roll would settle: when
@@ -279,7 +279,7 @@ func (s *Service) gateStrokeNext(ctx context.Context, ae answering, h heldRoll, 
 	if die != nil {
 		total += int(die.Face)
 	}
-	ask, told := ae.spec.Stroke.decide(roll.Face(), total)
+	ask, told := ae.spec.Stroke.decide(roll.Value(), total)
 	if !ask {
 		return gateResult{}, false, nil
 	}

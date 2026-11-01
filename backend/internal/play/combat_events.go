@@ -93,6 +93,8 @@ type saveRoll struct {
 	Total int32 `json:"total"`
 	DC    int32 `json:"dc"`
 	Saved bool  `json:"saved,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it: D20 and the faces are as they came up.
+	countedRoll
 	// The save rolled with advantage or disadvantage: the other d20, which die counts
 	// (D20 is the one that does) and the mode; Auto says a stunned, paralyzed,
 	// unconscious or petrified target failed a Strength or Dexterity save without rolling.
@@ -129,6 +131,9 @@ type castHit struct {
 	Extra    []effectDie `json:"extra,omitempty"`
 	Physical bool        `json:"physical,omitempty"`
 	Save     *saveRoll   `json:"save,omitempty"`
+	// countedRoll is the number the spell attack's d20 counted as when a minimum raised it: D20 and the faces are as they
+	// came up.
+	countedRoll
 	// Pushed is the forced move a failed save made (combat_forced.go): nil when the target
 	// stayed where it was.
 	Pushed *forcedMove `json:"pushed,omitempty"`
@@ -312,6 +317,10 @@ type actionEvent struct {
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
+
+	// countedRoll says the d20 of an attack or a save counted as another number than it came up (a table's roll_minimum):
+	// D20 and the faces stay as they came up, Total uses the number it counted as.
+	countedRoll
 
 	// ReliableTalent says the roll of an ability check was made by a character with
 	// Reliable Talent that applied to the check (a skill it is proficient in): each d20

@@ -5591,6 +5591,10 @@ message CombatLogEffect {
   // `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
   bool resisted = 16;
   int32 resisted_left = 17;
+  // SAVED and SAVE_FAILED, with the roll: the number the d20 counted as when a table's roll_minimum raised it
+  // (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
+  optional int32 treated_as = 18;
+  string treated_as_source = 19;
 }
 
 // CombatLogEffectChange is what an effect did.

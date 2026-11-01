@@ -453,7 +453,9 @@ func (s *Service) spellAttackD20(ctx context.Context, c *combatTx, sp link.Spell
 		return r, err
 	}
 	// This roll waits for nobody (MayAsk is false): the gate rolls the d20 and settles it.
-	r.step, err = s.heldGate(ctx, combatGate(c), rollSpec{Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: r.choice.Mode})
+	r.step, err = s.heldGate(ctx, combatGate(c), rollSpec{
+		Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: r.choice.Mode, Floor: floorFor(modes.traits, rules.RollAppliesAttack, false),
+	})
 	return r, err
 }
 
@@ -507,7 +509,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 // settles the hit; hit keeps the roll as the cast shows it.
 func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.Membership, sp link.Spell, caster, target playdb.Combatant, cover coverView, hit *castHit, modes *spellModes, rolled spellAttackRolled, bonusFace int) (combat.AttackResult, int, error) {
 	d20 := rolled.step.Roll
-	face := d20.Face()
+	face := d20.Value()
 	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
 	if err != nil {
 		return combat.AttackResult{}, 0, err
@@ -527,7 +529,8 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), conv.Int32(sp.ToHit+bonusFace), conv.Int32(result.Total), d20.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(d20.Face(), 1, 20), conv.Int32(sp.ToHit+bonusFace), conv.Int32(result.Total), d20.Physical
+	hit.countedRoll = countedOf(d20)
 	return result, targetAC, nil
 }
 
@@ -671,6 +674,7 @@ func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell,
 		D20:   clamp32(d20.Face(), 1, 20), Bonus: conv.Int32(save.Bonus), Total: conv.Int32(d20.Total + extraTotal),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
+		countedRoll: countedOf(d20),
 	}
 	return saved, nil
 }

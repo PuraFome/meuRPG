@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -269,11 +270,13 @@ type savedDice struct {
 // saveDice rolls the dice of a target's saving throw against a spell, or lands the dice the held cast rolled
 // for it: the replay of a window's answer never rolls a save twice.
 func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save, mode combat.RollMode, sheet link.Sheet, effects []effectDie) (savedDice, error) {
+	floor := floorFor(sheet.Traits, rules.RollAppliesSave, false)
 	if k := c.replay.keptSave(target.ID); k != nil {
 		out, ok := keptDice(k, save.Bonus, mode, effects)
 		if !ok {
 			return savedDice{}, errKeptDiceMismatch(target.ID)
 		}
+		out.d20 = floorD20(out.d20, save.Bonus, floor)
 		return out, nil
 	}
 	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
@@ -285,6 +288,7 @@ func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save,
 	if err != nil {
 		return savedDice{}, err
 	}
+	d20 = floorD20(d20, save.Bonus, floor)
 	// Bênção and Perdição: a d4 on the target's saving throw.
 	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effects, nil)
 	if err != nil {

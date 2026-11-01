@@ -1,9 +1,11 @@
 package play
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -76,27 +78,86 @@ func treatedRoll(face, modifier, total int32, physical bool) *playv1.DiceRoll {
 	return out
 }
 
-// reliableD20 counts the die of a roll with a mode that counts (the higher with
-// advantage, the lower with disadvantage) by Reliable Talent: the total uses 10 for a
-// 9 or lower. Treating each die before the pick and treating the one picked give the
-// same number, so the pick stays the mode's.
-func reliableD20(r d20Roll, modifier int, reliable bool) d20Roll {
-	if counted := countedFace(r.Face(), reliable); counted != r.Face() {
-		r.Total = counted + modifier
+// rollFloor is the lowest number the d20 of a roll counts as, and the content key of the feature that gives it. The
+// zero value is no floor.
+type rollFloor struct {
+	Value  int
+	Source string
+}
+
+// reliableFloor is Reliable Talent's floor for a check: 10 when the check gets it.
+func reliableFloor(reliable bool) rollFloor {
+	if !reliable {
+		return rollFloor{}
+	}
+	return rollFloor{Value: rules.ReliableTalentFloor, Source: reliableTalentSource}
+}
+
+// floorFor is the floor of a d20 of the kind (rules.RollApplies*) for a character with the traits: the highest of the
+// table's minimums of that kind that are not limited to a damage type, against Reliable Talent's when the check gets it.
+// A tie keeps Reliable Talent.
+func floorFor(traits link.Traits, kind string, reliable bool) rollFloor {
+	best := reliableFloor(reliable)
+	for _, m := range traits.RollMinimums {
+		if m.DamageType == "" && m.Value > best.Value && slices.Contains(m.Applies, kind) {
+			best = rollFloor{Value: m.Value, Source: m.Source}
+		}
+	}
+	return best
+}
+
+// floorD20 counts the die of a roll with a mode that counts (the higher with advantage, the lower with disadvantage)
+// by the floor: the die counts as the floor when it came up lower, and the total uses that number. Treating each die
+// before the pick and treating the one picked give the same number, so the pick stays the mode's. The faces stay as
+// they came up.
+func floorD20(r d20Roll, modifier int, f rollFloor) d20Roll {
+	r.Counted, r.CountedBy = 0, ""
+	r.Total = r.Face() + modifier
+	if f.Value > r.Face() {
+		r.Counted, r.CountedBy = f.Value, f.Source
+		r.Total = f.Value + modifier
 	}
 	return r
 }
 
-// markTreated marks the die of a roll of two d20 that counted, when its total uses
-// another number than the face that came up: Reliable Talent changed it.
-func markTreated(out *playv1.DiceRoll, modifier, total int32) *playv1.DiceRoll {
+// countedRoll is what a stored roll keeps of a floor: the number the die counted as and the feature that did it. Both
+// are zero when the die counted as it came up.
+type countedRoll struct {
+	CountedAs int32  `json:"counted_as,omitempty"`
+	CountedBy string `json:"counted_by,omitempty"`
+}
+
+// countedOf is what a roll keeps of its floor.
+func countedOf(r d20Roll) countedRoll {
+	return countedRoll{CountedAs: clamp32(r.Counted, 0, 20), CountedBy: r.CountedBy}
+}
+
+// value is the number the d20 that showed face counted as.
+func (c countedRoll) value(face int32) int32 {
+	if c.CountedAs != 0 {
+		return c.CountedAs
+	}
+	return face
+}
+
+// mark tells the API that the die counted as another number than it came up; the faces stay as they came up.
+func (c countedRoll) mark(out *playv1.DiceRoll) *playv1.DiceRoll {
+	if c.CountedAs != 0 {
+		out.TreatedAs, out.TreatedAsSource = new(c.CountedAs), c.CountedBy
+	}
+	return out
+}
+
+// markTreated marks the die that counted of a roll, when its total uses another number than the face that came up: a
+// floor (source) changed it.
+func markTreated(out *playv1.DiceRoll, modifier, total int32, source string) *playv1.DiceRoll {
 	faces := out.GetFaces()
 	i := int(out.GetCountedIndex())
 	if i < 0 || i >= len(faces) {
 		return out
 	}
 	if counted := total - modifier; counted != faces[i] {
-		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), reliableTalentSource
+		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), source
 	}
 	return out
 }

@@ -113,9 +113,8 @@ func (h heldRoll) afterLucky(a heldReply, spec rollSpec) heldRoll {
 		to = new(r.To)
 	}
 	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, spec.Mode), Physical: h.Physical}
-	roll.Total = roll.Face() + spec.Modifier
-	roll = reliableD20(roll, spec.Modifier, spec.Reliable)
-	h.Faces, h.Counted, h.Total, h.LuckyTo, h.LuckyAnswerKey = faces, roll.Index, roll.Total, to, &a.key
+	roll = floorD20(roll, spec.Modifier, spec.Floor)
+	h.Faces, h.Counted, h.Total, h.CountedBy, h.LuckyTo, h.LuckyAnswerKey = faces, roll.Index, roll.Total, roll.CountedBy, to, &a.key
 	return h
 }
 
@@ -253,8 +252,8 @@ func heldD20Of(h heldRoll) *playv1.DiceRoll {
 	if len(h.Faces) == pairDice {
 		roll = diceRoll(pairDice, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
 		roll.CountedIndex = clamp32(h.Counted, 0, 1)
-		markTreated(roll, modifier, total)
 	}
+	markTreated(roll, modifier, total, h.CountedBy)
 	roll.Rerolled = rerolledOf(h).proto()
 	return roll
 }

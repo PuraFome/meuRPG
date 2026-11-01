@@ -523,7 +523,7 @@ func (s *Service) mayAskMember(ctx context.Context, tx pgx.Tx, gh *groupHold, sp
 func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, gh *groupHold, spec memberRoll) (roll contestRoll, settled, held bool, err error) {
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
-		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Reliable: spec.reliable, Lucky: spec.lucky, MayAsk: true,
+		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: reliableFloor(spec.reliable), Lucky: spec.lucky, MayAsk: true,
 		Stroke: groupStrokeRule(spec.check),
 	})
 	if err != nil {

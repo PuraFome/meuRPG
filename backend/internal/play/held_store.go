@@ -51,13 +51,16 @@ type heldRoll struct {
 	ID, CampaignID, CharacterID, CombatantID, EncounterID, UserID string
 	// Key is the key of the request that made the roll wait, without the "#window" a reaction
 	// window's replay adds (Window says it did).
-	Key                       string
-	Kind                      heldKind
-	Window                    bool
-	Physical                  bool
-	Request                   []byte
-	Faces                     []int
-	Counted                   int
+	Key      string
+	Kind     heldKind
+	Window   bool
+	Physical bool
+	Request  []byte
+	Faces    []int
+	Counted  int
+	// CountedBy is the feature whose floor the total counts, as the gate that made the offer knows it: not stored, so an offer
+	// read back from the row tells the number the die counted as and no source.
+	CountedBy                 string
 	Modifier                  int
 	Total                     int
 	Round                     *int32

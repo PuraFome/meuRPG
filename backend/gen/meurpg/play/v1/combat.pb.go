@@ -19109,10 +19109,14 @@ type CombatLogEffect struct {
 	Reason string `protobuf:"bytes,14,opt,name=reason,proto3" json:"reason,omitempty"`
 	// SAVED, the master's line alone: the save failed and the master turned it into a success (`d20`,
 	// `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
-	Resisted      bool  `protobuf:"varint,16,opt,name=resisted,proto3" json:"resisted,omitempty"`
-	ResistedLeft  int32 `protobuf:"varint,17,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Resisted     bool  `protobuf:"varint,16,opt,name=resisted,proto3" json:"resisted,omitempty"`
+	ResistedLeft int32 `protobuf:"varint,17,opt,name=resisted_left,json=resistedLeft,proto3" json:"resisted_left,omitempty"`
+	// SAVED and SAVE_FAILED, with the roll: the number the d20 counted as when a table's roll_minimum raised it
+	// (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
+	TreatedAs       *int32 `protobuf:"varint,18,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
+	TreatedAsSource string `protobuf:"bytes,19,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CombatLogEffect) Reset() {
@@ -19262,6 +19266,20 @@ func (x *CombatLogEffect) GetResistedLeft() int32 {
 		return x.ResistedLeft
 	}
 	return 0
+}
+
+func (x *CombatLogEffect) GetTreatedAs() int32 {
+	if x != nil && x.TreatedAs != nil {
+		return *x.TreatedAs
+	}
+	return 0
+}
+
+func (x *CombatLogEffect) GetTreatedAsSource() string {
+	if x != nil {
+		return x.TreatedAsSource
+	}
+	return ""
 }
 
 // CombatLogLegendarySpent is the master's line of a spend of legendary actions.
@@ -27188,7 +27206,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10expires_at_round\x18\n" +
 	" \x01(\x05R\x0eexpiresAtRoundB\t\n" +
 	"\a_healedB\x11\n" +
-	"\x0f_nothing_reason\"\xff\x04\n" +
+	"\x0f_nothing_reason\"\xde\x05\n" +
 	"\x0fCombatLogEffect\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -27208,10 +27226,14 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11exhaustion_before\x18\r \x01(\x05R\x10exhaustionBefore\x12\x16\n" +
 	"\x06reason\x18\x0e \x01(\tR\x06reason\x12\x1a\n" +
 	"\bresisted\x18\x10 \x01(\bR\bresisted\x12#\n" +
-	"\rresisted_left\x18\x11 \x01(\x05R\fresistedLeftB\x06\n" +
+	"\rresisted_left\x18\x11 \x01(\x05R\fresistedLeft\x12\"\n" +
+	"\n" +
+	"treated_as\x18\x12 \x01(\x05H\x03R\ttreatedAs\x88\x01\x01\x12*\n" +
+	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSourceB\x06\n" +
 	"\x04_d20B\b\n" +
 	"\x06_totalB\x05\n" +
-	"\x03_dc\"N\n" +
+	"\x03_dcB\r\n" +
+	"\v_treated_as\"N\n" +
 	"\x17CombatLogLegendarySpent\x12\x1f\n" +
 	"\voption_name\x18\x01 \x01(\tR\n" +
 	"optionName\x12\x12\n" +

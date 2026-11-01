@@ -252,9 +252,8 @@ func (ae answering) rerolled(ctx context.Context, h heldRoll) (heldRoll, error) 
 	from := clamp32(faces[index], 1, d20Sides)
 	faces[index] = face
 	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, ae.spec.Mode)}
-	roll.Total = roll.Face() + ae.spec.Modifier
-	roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
-	h.Faces, h.Counted, h.Total, h.Physical = faces, roll.Index, roll.Total, false
+	roll = floorD20(roll, ae.spec.Modifier, ae.spec.Floor)
+	h.Faces, h.Counted, h.Total, h.CountedBy, h.Physical = faces, roll.Index, roll.Total, roll.CountedBy, false
 	h.RerollFrom, h.RerollTo = new(from), new(clamp32(face, 1, d20Sides))
 	return h, nil
 }

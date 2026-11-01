@@ -345,7 +345,7 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 		return fmt.Sprintf("%s manteve a concentração em %s.", f.who, spell)
 	}
 	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
-		f.who, spell, re.SaveD20+re.SaveBonus, re.SaveDC, f.e.ev.ResistLeft, f.by)
+		f.who, spell, f.e.ev.value(re.SaveD20)+re.SaveBonus, re.SaveDC, f.e.ev.ResistLeft, f.by)
 }
 
 // concentrationRoll is the roller's save of a concentration as the line says it: the d20, the bonus and
@@ -353,7 +353,11 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 // shows the DC of a saving throw).
 func (f *reactionFacts) concentrationRoll() string {
 	re := f.re
-	roll := fmt.Sprintf("1d20 (%d) + %d = %d", re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus)
+	counted := f.e.ev.countedRoll
+	roll := fmt.Sprintf("1d20 (%d) + %d = %d", re.SaveD20, re.SaveBonus, counted.value(re.SaveD20)+re.SaveBonus)
+	if counted.CountedAs != 0 { // a minimum made the d20 count as another number: the line says both
+		roll = fmt.Sprintf("1d20 (%d, conta como %d) + %d = %d", re.SaveD20, counted.CountedAs, re.SaveBonus, counted.CountedAs+re.SaveBonus)
+	}
 	if f.v.saveDCFor(f.reactor) {
 		roll += fmt.Sprintf(" contra CD %d", re.SaveDC)
 	}
