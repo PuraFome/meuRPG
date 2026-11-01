@@ -395,25 +395,43 @@ func TestMR578_ATableFeatureSummonOfAMinuteIsFinishedWithTheChoice(t *testing.T)
 		t.Errorf("the finish = %v, want two wolves and the use spent once", done)
 	}
 
-	// The first casting still holds the concentration: the master ends it before the second one starts.
-	if _, err := f.endSpell(t, f.master, cast.GetId()); err != nil {
-		t.Fatalf("EndActiveSpell() error = %v", err)
-	}
-	if len(f.mustCreatures(t, f.ana, f.gaia)) != 0 {
-		t.Fatalf("the wolves outlast the concentration that ended")
-	}
-
+	// The second casting takes the concentration of the first at its start, and the wolves go with it.
 	// A casting that is given up spends its use all the same, as it spends a slot: nothing gives it back.
 	again, err := f.ana.casting.CastSpellOutsideCombat(t.Context(), connect.NewRequest(&playv1.CastSpellOutsideCombatRequest{
 		CampaignId: f.campaignID, CasterCharacterId: f.gaia.GetId(), SpellKey: opts.GetSpellKey(), GrantedBy: opts.GetGrantedBy(), IdempotencyKey: newKey(),
 	}))
 	if err != nil {
-		t.Fatalf("CastSpellOutsideCombat(second) error = %v", err)
+		t.Fatalf("CastSpellOutsideCombat(second) error = %v (a casting that concentrates ends the first one's concentration)", err)
+	}
+	if n := len(f.mustCreatures(t, f.ana, f.gaia)); n != 0 {
+		t.Fatalf("%d creatures after the second casting started, want none: its concentration ended the first casting's", n)
 	}
 	if _, err := f.master.casting.AbandonCast(t.Context(), connect.NewRequest(&playv1.AbandonCastRequest{CampaignId: f.campaignID, CastId: again.Msg.GetCast().GetId(), IdempotencyKey: newKey()})); err != nil {
 		t.Fatalf("AbandonCast() error = %v", err)
 	}
 	if usedOf(f.vitals(t, f.gaia), featureUses) != 2 || len(f.mustCreatures(t, f.ana, f.gaia)) != 0 {
-		t.Errorf("after the abandoned casting: %d uses spent, %d creatures; want 2 and none", usedOf(f.vitals(t, f.gaia), featureUses), len(f.mustCreatures(t, f.ana, f.gaia)))
+		t.Errorf("after the second casting: %d uses spent, %d creatures; want 2 and none", usedOf(f.vitals(t, f.gaia), featureUses), len(f.mustCreatures(t, f.ana, f.gaia)))
+	}
+}
+
+// A character that does not hold the feature gets, for the feature's spell key cast as a ritual, the answer of a key
+// the content does not have: nothing tells the two apart, so the key cannot be probed for.
+func TestMR578_TheKeyOfAFeatureSummonCannotBeProbedWithARitual(t *testing.T) {
+	f := newFeatureSummoners(t)
+	spell := f.featureOptions(t).GetSpellKey()
+	probe := func(key string) error {
+		_, err := f.bia.play.CastSummon(t.Context(), connect.NewRequest(&playv1.CastSummonRequest{
+			CampaignId: f.campaignID, CharacterId: f.bri.GetId(), SpellKey: key, Ritual: true, IdempotencyKey: newKey(),
+			Summon: &playv1.SummonChoice{CreatureKeys: wolves(1)},
+		}))
+		return err
+	}
+	unknown := probe("spell:nao-existe@mesa")
+	if connect.CodeOf(unknown) != connect.CodeNotFound {
+		t.Fatalf("an unknown key: error = %v, want not_found (the control)", unknown)
+	}
+	got := probe(spell)
+	if connect.CodeOf(got) != connect.CodeOf(unknown) || got.Error() != unknown.Error() {
+		t.Errorf("the feature's key as a ritual: %v; an unknown key: %v; want the same answer", got, unknown)
 	}
 }

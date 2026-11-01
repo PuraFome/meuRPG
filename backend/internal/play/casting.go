@@ -361,11 +361,19 @@ func (s *Service) castOutside(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return castOutcome{}, err
 	}
+	var closed earlierConcentration
+	if long {
+		// Casting takes the caster's concentration from the start (SRD 5.1, "Longer Casting Times"). The old one ends first:
+		// a caster has one concentrating cast at a time, and the new row is that one.
+		if closed.ended, closed.dismissed, closed.vitals, err = s.endOtherConcentration(ctx, c, plan.g.caster, ""); err != nil {
+			return castOutcome{}, err
+		}
+	}
 	if plan.row, err = s.insertCast(ctx, c, m, plan, long); err != nil {
 		return castOutcome{}, err
 	}
 	if long {
-		made, err := s.startLongCast(ctx, c, plan)
+		made, err := s.startLongCast(ctx, c, plan, closed)
 		made.vitals = append(spent, made.vitals...)
 		return made, err
 	}
@@ -462,9 +470,16 @@ func (s *Service) insertCast(ctx context.Context, c *combatTx, m authz.Membershi
 	return row, nil
 }
 
-// startLongCast starts a casting that takes time: it keeps the chosen targets for ConfirmCastTimePassed and
-// takes the caster's concentration from the start.
-func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan) (castOutcome, error) {
+// earlierConcentration is what ending a caster's concentration changed: the casts it ended, the creatures it sent away and
+// the vitals it touched.
+type earlierConcentration struct {
+	ended, dismissed []string
+	vitals           []*playv1.CharacterVitals
+}
+
+// startLongCast starts a casting that takes time: it keeps the chosen targets for ConfirmCastTimePassed. The caster's
+// concentration was taken from the start by the caller, before the row was written: closed is what that ended.
+func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan, closed earlierConcentration) (castOutcome, error) {
 	g, row := plan.g, plan.row
 	// The targets chosen now are the ones ConfirmCastTimePassed takes effect on.
 	chosen := make([]castTarget, 0, len(g.targets))
@@ -478,13 +493,8 @@ func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan)
 	if err := c.q.SetSpellCastTargets(ctx, playdb.SetSpellCastTargetsParams{ID: row.ID, Targets: body}); err != nil {
 		return castOutcome{}, fmt.Errorf("keep the cast's targets: %w", err)
 	}
-	// Casting takes the caster's concentration from the start: it ends any
-	// concentration spell (SRD 5.1, "Longer Casting Times").
-	ended, dismissed, vitals, err := s.endOtherConcentration(ctx, c, g.caster, row.ID)
-	if err != nil {
-		return castOutcome{}, err
-	}
-	made := castOutcome{row: row, ended: ended, dismissed: dismissed, vitals: vitals, guard: g}
+	ended, dismissed := closed.ended, closed.dismissed
+	made := castOutcome{row: row, ended: ended, dismissed: dismissed, vitals: closed.vitals, guard: g}
 	made.ev = castEvent{
 		CastID: row.ID, Caster: g.caster.ID, Key: plan.spell, Secret: g.secret, Slot: plan.slot, Ritual: plan.ritual,
 		Minutes: clamp32(plan.minutes, 0, 1_000_000), Ended: ended, Dismissed: dismissed,
