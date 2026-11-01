@@ -103,21 +103,24 @@ func (s *Service) zonesAfterSteps(ctx context.Context, c *combatTx, steps ...zon
 			return err
 		}
 		for _, z := range zs {
-			if z.def.kind == zoneSpikes {
-				if err := s.spikeCatch(ctx, c, z, st, mark); err != nil {
-					return err
-				}
-				continue
-			}
-			if !z.enteredBy(st) {
-				continue
-			}
-			if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnter, mark: mark, round: c.enc.Round}, st.who); err != nil {
+			if err := s.zoneAfterStep(ctx, c, z, st, mark); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// zoneAfterStep catches the creature that stepped if the step brought it into the zone, or hurts it for the squares it
+// crossed in Spike Growth.
+func (s *Service) zoneAfterStep(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
+	if z.def.kind == zoneSpikes {
+		return s.spikeCatch(ctx, c, z, st, mark)
+	}
+	if !z.enteredBy(st) {
+		return nil
+	}
+	return s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnter, mark: mark, round: c.enc.Round}, st.who)
 }
 
 // catchByID catches the creature with the id, as it stands now.
