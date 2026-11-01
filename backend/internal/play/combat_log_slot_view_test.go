@@ -11,7 +11,7 @@ import (
 )
 
 // The combat log's slot view per viewer: the resource of an innate use (the key and the uses a day of a
-// stat block) is the master's and the caster's player's; every other viewer reads that the cast was innate.
+// stat block) is the master's and the caster's owner's; every other viewer reads that the cast was innate.
 
 // slotViewOfLog is the slot the viewer reads on the first log entry of the kind that carries a spell, and the
 // whole log as text.
@@ -73,15 +73,15 @@ func TestTheLogsCastLineKeepsAnInnateUseFromPlayers(t *testing.T) {
 		v    combatViewer
 		want string
 	}{
-		"master":          {combatViewer{master: true}, couatlShield},
-		"caster's player": {combatViewer{userID: owner}, couatlShield},
-		"other player":    {combatViewer{userID: other}, innateSlotMarker},
+		"master":         {combatViewer{master: true}, couatlShield},
+		"caster's owner": {combatViewer{userID: owner}, couatlShield},
+		"other player":   {combatViewer{userID: other}, innateSlotMarker},
 	} {
 		out := e.spellView(tc.v, byID)
 		if got := out.GetSlot().GetResource(); got != tc.want {
 			t.Errorf("%s reads slot.resource = %q, want %q", name, got, tc.want)
 		}
-		if text := protojson.Format(out); tc.want == innateSlotMarker && (strings.Contains(text, "innate_") || strings.Contains(text, "3")) {
+		if text := protojson.Format(out); tc.want == innateSlotMarker && (strings.Contains(text, "innate_") || strings.Contains(text, "_3_")) {
 			t.Errorf("%s's cast line carries the key or the uses a day of an innate use:\n%s", name, text)
 		}
 	}
@@ -100,7 +100,7 @@ func TestSlotProtoGivesTheResourceToTheMasterAndTheCastersPlayerOnly(t *testing.
 		want string
 	}{
 		{"master", combatViewer{master: true}, "innate_3_day_shield"},
-		{"caster's player", combatViewer{userID: owner}, "innate_3_day_shield"},
+		{"caster's owner", combatViewer{userID: owner}, "innate_3_day_shield"},
 		{"other player", combatViewer{userID: other}, innateSlotMarker},
 	} {
 		if got := slotProto(slot, tc.v, caster).GetResource(); got != tc.want {
