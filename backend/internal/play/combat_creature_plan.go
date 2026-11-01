@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -58,13 +59,14 @@ func (s *Service) planOfAction(ctx context.Context, c *combatTx, who playdb.Comb
 	return plan, ok, nil
 }
 
-// Limitation: the match of a basic sheet's attack to the action is by name (the sheet keeps no key of the action),
-// so two actions whose names are equal up to the cut match none.
-//
 // planOfAttack finds the action of the attacker's stat block that an attack of its sheet is: a creature's
 // attack has the action's key; an NPC made from a stat block has a basic sheet whose attack is named like
 // the action (cut to the sheet's length).
-func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb.Combatant, attackKey string) (rules.ActionPlan, bool, error) {
+// Two actions whose names are equal up to the cut are told apart by the numbers of the sheet's attack (attack
+// bonus, damage, range). When the numbers do not tell them apart either, and one of them is limited, the attack
+// is refused when refuse is set (the making of the attack): the limit cannot be enforced on the right action.
+// What follows the attack (its damage, its rider) never refuses.
+func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb.Combatant, attackKey string, refuse bool) (rules.ActionPlan, bool, error) {
 	if attacker.Kind != kindNPC && attacker.Kind != kindCreature {
 		return rules.ActionPlan{}, false, nil
 	}
@@ -89,25 +91,77 @@ func (s *Service) planOfAttack(ctx context.Context, c *combatTx, attacker playdb
 	if i < 0 || !ok {
 		return rules.ActionPlan{}, false, nil
 	}
-	plan, ok := planByCutName(monsterPlan, sheet.Attacks[i].Name)
+	plan, ok, err := planOfSheetAttack(monsterPlan, sheet.Attacks[i])
+	if err != nil && !refuse {
+		return rules.ActionPlan{}, false, nil
+	}
+	return plan, ok, err
+}
+
+// planOfSheetAttack is planOfAttack for an attack of a basic sheet: the refusal of an attack that cannot be told
+// from another action that has a limit.
+func planOfSheetAttack(p *rules.MonsterPlan, at link.Attack) (rules.ActionPlan, bool, error) {
+	plan, ambiguous, ok := planByCutName(p, at)
+	if ambiguous {
+		return rules.ActionPlan{}, false, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_UNAVAILABLE,
+			"the attack cannot be told from another action of the stat block that has a limit")
+	}
 	return plan, ok, nil
 }
 
-// planByCutName finds the attack action whose name, cut to the length a basic sheet keeps, is name. Two
-// actions that share the cut name cannot be told apart, so none is returned: a limit or a rider is never
-// taken from the wrong one.
-func planByCutName(p *rules.MonsterPlan, name string) (rules.ActionPlan, bool) {
+// planByCutName finds the attack action that a basic sheet's attack is made from: the one whose name, cut to
+// the length a basic sheet keeps, is the attack's. When several share the cut name, the one whose numbers are
+// the attack's. Actions the numbers do not tell apart match none (a limit or a rider is never taken from the
+// wrong one), and ambiguous says that at least one of them is limited.
+func planByCutName(p *rules.MonsterPlan, at link.Attack) (plan rules.ActionPlan, ambiguous, ok bool) {
 	var found []rules.ActionPlan
 	for _, a := range p.Actions {
-		if a.Attack != nil && cutName(a.NamePT) == name {
+		if a.Attack != nil && cutName(a.NamePT) == at.Name {
 			found = append(found, a)
 		}
 	}
-	if len(found) != 1 {
-		return rules.ActionPlan{}, false
+	if len(found) > 1 {
+		found = slices.DeleteFunc(found, func(a rules.ActionPlan) bool { return !sameNumbers(a, at) })
+		if len(found) > 1 {
+			return rules.ActionPlan{}, slices.ContainsFunc(found, func(a rules.ActionPlan) bool { return a.Usage.Limited() }), false
+		}
 	}
-	return found[0], true
+	if len(found) != 1 {
+		return rules.ActionPlan{}, false, false
+	}
+	return found[0], false, true
 }
+
+// sameNumbers says the sheet's attack has the numbers of the action: the attack bonus, the first damage part
+// and the range as basicAttackOf writes them.
+func sameNumbers(a rules.ActionPlan, at link.Attack) bool {
+	if a.Attack == nil || len(a.Damage) == 0 {
+		return false
+	}
+	d := a.Damage[0]
+	return a.Attack.Bonus == at.ToHit && d.Dice.Count == at.DiceCount && d.Dice.Sides == at.DiceSides &&
+		d.Dice.Bonus == at.DiceBonus && d.TypeKey == at.DamageType && sheetRangeOf(a.Attack) == at.RangeFt
+}
+
+// sheetRangeOf is the range a basic sheet writes for the attack: the range of a ranged or thrown attack, else
+// the reach, and 0 for a melee attack at the normal reach.
+func sheetRangeOf(a *rules.ActionAttack) int {
+	reach := a.ReachFt
+	if a.RangeFt > 0 {
+		reach = a.RangeFt
+	}
+	if a.Melee && reach <= normalReachFt {
+		return 0
+	}
+	return min(reach, maxPlanRangeFt)
+}
+
+// normalReachFt is the reach of a melee attack a basic sheet writes as range 0; maxPlanRangeFt the longest
+// range it keeps (characters.maxRangeFt).
+const (
+	normalReachFt  = 5
+	maxPlanRangeFt = 600
+)
 
 // nameOfPlan is the action's name in Portuguese, or its English name when the content has no translation.
 func nameOfPlan(plan rules.ActionPlan) string {

@@ -589,14 +589,14 @@ func (s *Service) startMove(ctx context.Context, a *moveAttempt) error {
 	return a.mustGoSomewhere()
 }
 
-// mustGoSomewhere refuses a player's walk to the square the mover already stands
+// mustGoSomewhere refuses a player's walk, or a legendary move, to the square the mover already stands
 // on: it travels nothing, so there is no movement to spend and no step to log,
 // and an event for it would only be an undo entry that undoes nothing. A jump has
 // its own refusal and a high jump stays where it is by design. The master moves
 // tokens for free, as administration (a token put right, a setup step), and is let
-// through.
+// through. A legendary move is no administration: it is refused too, and spends nothing.
 func (a *moveAttempt) mustGoSomewhere() error {
-	if a.v.master || !a.req.walking() || !placed(a.target) || a.length > 0 {
+	if (a.v.master && a.req.legendary == "") || !a.req.walking() || !placed(a.target) || a.length > 0 {
 		return nil
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("a move needs another square"))

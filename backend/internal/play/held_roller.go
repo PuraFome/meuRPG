@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -37,6 +38,12 @@ type rollerState struct {
 	Indom bool
 	// Stroke says the roller has Stroke of Luck with a use left; the gate reads it for the attacks and checks that ask it.
 	Stroke bool
+	// Rerolls are the reroll rules of the roller's table features that cover the roll and that it can pay (held_reroll.go);
+	// read when the roll is made, only with the switch on.
+	Rerolls []link.RerollRule
+	// RerollsOff says the d20 rerolls switch is off: a reroll question still waiting from when it was on is not waiting
+	// any more, it is forgotten like a stale hold, and the roller is not refused for it.
+	RerollsOff bool
 }
 
 // stateOfCombatant is the state of a roller whose combatant the path already has: the die it holds in
@@ -54,6 +61,12 @@ func stateOfCombatant(c playdb.Combatant, round int32) rollerState {
 // know where it is, the die it holds wherever it is kept (dieOf). It reads through the transaction's
 // queries, so inside a change it sees the change.
 func (s *Service) rollerStateOf(ctx context.Context, env gateEnv, r heldRoller) (rollerState, error) {
+	st, err := s.rollerStateNow(ctx, env, r)
+	st.RerollsOff = !s.d20Rerolls
+	return st, err
+}
+
+func (s *Service) rollerStateNow(ctx context.Context, env gateEnv, r heldRoller) (rollerState, error) {
 	if r.Combatant != nil {
 		return stateOfCombatant(*r.Combatant, r.Round), nil
 	}
@@ -170,15 +183,19 @@ func errDieGone() error {
 // stale says a hold made in a combat no longer has anything to answer: its round is over (or the
 // combat ended), or, in inspiration_holds, the die is not the combatant's any more (used or expired) and
 // no Lucky question waits, which needs no die. A weapon attack is stale only by its round, as it always
-// was in roll_holds, wherever it is kept.
+// was in roll_holds, wherever it is kept. A reroll question still waiting when the switch is off (it was written with the
+// switch on) is stale too, out of combat as well: nothing can answer it in the client.
 func (h heldRoll) stale(st rollerState) bool {
+	if st.RerollsOff && rerollAsks(h) {
+		return true
+	}
 	if h.Round == nil {
 		return false
 	}
 	if st.Die.Combatant == nil || st.Die.Round != *h.Round {
 		return true
 	}
-	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h) && !indomitableAsks(h) && !strokeAsks(h)
+	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h) && !rerollAsks(h) && !indomitableAsks(h) && !strokeAsks(h)
 }
 
 // fromSameRequest says the roll was made by the request with this key (a retry of it), which a reaction
@@ -190,6 +207,9 @@ func (h heldRoll) fromSameRequest(key string) bool { return !h.Window && h.Key =
 func heldRefusal(h heldRoll) error {
 	if luckyAsks(h) {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_LUCKY_PENDING, "answer the Lucky question of the roll first")
+	}
+	if rerollAsks(h) {
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_REROLL_PENDING, "answer the reroll question of the roll first")
 	}
 	if indomitableAsks(h) {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INDOMITABLE_PENDING, "answer the Indomitable question of the roll first")

@@ -76,6 +76,17 @@ type heldRoll struct {
 	StrokeAsk, StrokeFailed bool
 	StrokeAnswerKey         *string
 	StrokeFrom              *int32
+	// The reroll's question (held_reroll.go): asked, the die that showed the low face, the rule it was asked for (its limit,
+	// the resource and cost it spends, the feature that gives it), its answer's key and the d20 that counted before and
+	// after the new roll.
+	RerollAsk            bool
+	RerollIndex          *int32
+	RerollAtMost         *int32
+	RerollResource       string
+	RerollCost           int32
+	RerollSource         string
+	RerollAnswerKey      *string
+	RerollFrom, RerollTo *int32
 	// CreatedAt is when the roll was held.
 	CreatedAt time.Time
 }
@@ -194,6 +205,8 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 		IndomAsk: row.IndomitableAsk, IndomFailed: row.IndomitableFailed, IndomAnswerKey: row.IndomitableAnswerKey,
 		IndomFrom: row.IndomitableFrom, IndomTo: row.IndomitableTo, DieAnswerKey: row.DieAnswerKey, DieUsed: dieUsedOf(row.DieUsed),
 		StrokeAsk: row.StrokeAsk, StrokeFailed: row.StrokeFailed, StrokeAnswerKey: row.StrokeAnswerKey, StrokeFrom: row.StrokeFrom,
+		RerollAsk: row.RerollAsk, RerollIndex: row.RerollIndex, RerollAtMost: row.RerollAtMost, RerollResource: row.RerollResource,
+		RerollCost: row.RerollCost, RerollSource: row.RerollSource, RerollAnswerKey: row.RerollAnswerKey, RerollFrom: row.RerollFrom, RerollTo: row.RerollTo,
 	}
 }
 
@@ -272,6 +285,8 @@ func (st inspirationHoldStore) insert(ctx context.Context, env gateEnv, h heldRo
 		CreatedAt: env.now, Round: h.Round, LuckyIndex: h.LuckyIndex,
 		CombatantID: nilIfEmpty(h.CombatantID), EncounterID: nilIfEmpty(h.EncounterID), WindowHold: h.Window && h.Kind == heldWeaponAttack,
 		IndomitableAsk: h.IndomAsk, IndomitableFailed: h.IndomFailed, StrokeAsk: h.StrokeAsk, StrokeFailed: h.StrokeFailed,
+		RerollAsk: h.RerollAsk, RerollIndex: h.RerollIndex, RerollAtMost: h.RerollAtMost, RerollResource: h.RerollResource,
+		RerollCost: h.RerollCost, RerollSource: h.RerollSource,
 	})
 	if err != nil {
 		return heldRoll{}, fmt.Errorf("hold the roll: %w", err)

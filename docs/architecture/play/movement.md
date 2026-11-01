@@ -57,6 +57,7 @@ The undo puts the square back and gives the cost back.
 It is a plain walk (no jump, no forced move, no placement; `invalid_argument`) and needs a map and a placed creature.
 A creature with no square spends the option as text instead ([Combat](combat.md#legendary-actions)).
 It is refused while a reaction window or hold is open (`REACTION_PENDING`).
+A move to the square the creature stands on is refused (`invalid_argument`) and spends nothing.
 It makes no opportunity offer: the offers belong to the mover's own turn, and the vampires' Move says it provokes none.
 Known limit: this holds for every legendary move, including the tarrasque's, which by the SRD would provoke.
 Its event is a normal `combatant_moved` with `spend_cost`; the log reads it as any move.

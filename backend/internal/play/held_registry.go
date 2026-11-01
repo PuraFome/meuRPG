@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
@@ -32,6 +33,9 @@ type heldKindDef struct {
 	// Today's behavior, pinned by the tests of the group check and of the trap search; they keep rollCheck
 	// and the second die of a Perception search.
 	ownRoll bool
+	// rerollApplies is the word of the reroll rules that cover the kind (rules.RollApplies*: "attack", "check" or "save"),
+	// "" for a kind no reroll rule reaches (held_reroll.go).
+	rerollApplies string
 }
 
 // pinned is the request to keep with a roll: as the caller pinned it, with the dice of the roll.
@@ -50,13 +54,13 @@ func init() {
 	heldRegistry = map[heldKind]heldKindDef{
 		heldWeaponAttack: {
 			ownKindOnly: true,
-			rerun:       rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
+			rerun:       rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces, rerollApplies: rules.RollAppliesAttack,
 		},
-		heldSpellAttack:       {rerun: registerRerun((*Service).CastSpell)},
-		heldEffectSave:        {rerun: registerRerun((*Service).RollEffectSave)},
-		heldConcentrationSave: {rerun: registerRerun((*Service).ResolveConcentrationSave)},
-		heldSceneCheck:        {rerun: registerRerun((*Service).RollSceneCheck)},
-		heldGroupCheck:        {rerun: rerunGroupCheck, ownRoll: true},
+		heldSpellAttack:       {rerun: registerRerun((*Service).CastSpell), rerollApplies: rules.RollAppliesAttack},
+		heldEffectSave:        {rerun: registerRerun((*Service).RollEffectSave), rerollApplies: rules.RollAppliesSave},
+		heldConcentrationSave: {rerun: registerRerun((*Service).ResolveConcentrationSave), rerollApplies: rules.RollAppliesSave},
+		heldSceneCheck:        {rerun: registerRerun((*Service).RollSceneCheck), rerollApplies: rules.RollAppliesCheck},
+		heldGroupCheck:        {rerun: rerunGroupCheck, ownRoll: true, rerollApplies: rules.RollAppliesCheck},
 		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
 		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},

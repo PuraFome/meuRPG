@@ -92,9 +92,6 @@ func (s *Service) rollRecharge(ctx context.Context, c *combatTx, creatureID stri
 	}
 	// The row names no user and no character (the turn ended by someone else), and no player sees it on a map
 	// with the fog: it is written fogged with nobody in seen_by, as a secret event is stamped (c.stamp).
-	keep := c.characterID
-	c.characterID = nil
-	defer func() { c.characterID = keep }()
-	_, err = insertRaw(ctx, c, eventRechargeRolled, nil, nil, body)
+	_, err = insertRawAs(ctx, c, eventRechargeRolled, nil, nil, nil, body)
 	return err
 }

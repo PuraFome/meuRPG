@@ -1,7 +1,13 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
-import { blockedMessage, combatErrorMessage } from './combat-errors';
+import { ResourceBlockedReason } from '../../../gen/meurpg/play/v1/resources_pb';
+import {
+  REROLL_PENDING_TEXT,
+  blockedMessage,
+  combatErrorMessage,
+  pendingQuestionReasonText,
+} from './combat-errors';
 
 describe('combat errors', () => {
   it('says every refusal of the legendary actions in words, and that nothing was spent', () => {
@@ -150,5 +156,18 @@ describe('the reasons slice 6.5c added', () => {
     expect(said(EncounterBlockedReason.DEATH_SAVE_NOT_DUE)).toMatch(/Não há teste/);
     expect(said(EncounterBlockedReason.NOT_DYING)).toMatch(/três testes/);
     expect(said(EncounterBlockedReason.NOT_AWAITING_REACTION)).toMatch(/não espera/);
+  });
+});
+
+describe('the question that holds a roll before a resource is spent', () => {
+  it('says a roll waits for the answer about rolling the d20 again', () => {
+    expect(pendingQuestionReasonText(ResourceBlockedReason.REROLL_PENDING)).toBe(
+      REROLL_PENDING_TEXT,
+    );
+    expect(REROLL_PENDING_TEXT).toMatch(/d20 de novo/);
+  });
+
+  it('says nothing for a reason that is not a pending question', () => {
+    expect(pendingQuestionReasonText(ResourceBlockedReason.UNSPECIFIED)).toBe('');
   });
 });

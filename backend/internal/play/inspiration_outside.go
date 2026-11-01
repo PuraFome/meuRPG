@@ -359,7 +359,7 @@ func (s *Service) outsideOffersOf(ctx context.Context, out *playv1.GetOutsideIns
 	state := rollerState{Die: die, Holds: found}
 	for _, h := range holds {
 		switch asked := askedBy(h, state); {
-		case asked.Asks == askIndomitable || asked.Asks == askStroke: // the one question has no older list
+		case asked.Asks == askIndomitable || asked.Asks == askStroke || asked.Asks == askReroll: // the one question has no older list
 		case asked.Asks == askLucky:
 			out.LuckyOffers = append(out.LuckyOffers, asked.luckyOffer())
 		case found:
@@ -398,6 +398,7 @@ func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID strin
 		return heldDie{}, false, nil, err
 	}
 	state := rollerState{Die: die, Holds: found}
+	all = withoutDeadRerolls(all, s.d20Rerolls)
 	// A weapon attack's question is on its combatant in the combat view, answered by the combat's RPCs, not by these.
 	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.Kind == heldWeaponAttack || h.stale(state) }), nil
 }

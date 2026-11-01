@@ -350,6 +350,9 @@ enum ResourceBlockedReason {
   // A roll is held, waiting for the rogue's answer to Stroke of Luck ("Usar Golpe de Sorte para acertar?" or "...para
   // contar o d20 como 20?", AnswerHeldRoll): the character rolls nothing else that could ask until it is answered.
   RESOURCE_BLOCKED_REASON_STROKE_OF_LUCK_PENDING = 19;
+  // A roll is held, waiting for the answer to a reroll of its d20 ("Rolar de novo?", AnswerHeldRoll), which the character's
+  // reroll rules give: the character rolls nothing else that could ask until it is answered.
+  RESOURCE_BLOCKED_REASON_REROLL_PENDING = 20;
 }
 
 // RestKind is the kind of a rest.
@@ -778,6 +781,7 @@ message AnswerHeldRollRequest {
     DieAnswer die = 5;
     IndomitableAnswer indomitable = 6;
     StrokeOfLuckAnswer stroke_of_luck = 7;
+    RerollAnswer reroll = 8;
   }
 }
 
@@ -826,6 +830,14 @@ message IndomitableAnswer {
 message StrokeOfLuckAnswer {
   // True: use the feature, spending its one use (it comes back on a short or long rest). False: keep the roll.
   bool use = 1;
+}
+
+// RerollAnswer answers the question of a d20 that showed a low face and may be rolled again (SRD 5.1: the die is rolled
+// again and the new roll must be used, even when it is worse). The server rolls the new die itself, so there is no way
+// of rolling to choose.
+message RerollAnswer {
+  // True: roll the die again, spending the rule's uses, and the new roll stands. False: keep the d20.
+  bool reroll = 1;
 }
 
 message AnswerHeldRollResponse {

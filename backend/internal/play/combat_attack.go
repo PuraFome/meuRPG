@@ -437,7 +437,7 @@ func (f *attackFlow) routineLeft() error {
 // checkLimit reads the action of a stat block the attack is and refuses it when it is spent (a Recharge
 // action that has not recharged, an action with no uses left).
 func (f *attackFlow) checkLimit(ctx context.Context) error {
-	plan, ok, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
+	plan, ok, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey, true)
 	if err != nil || !ok {
 		return err
 	}
@@ -677,6 +677,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	if b := f.rolled.Bonus; b != nil {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}
 	}
+	made.D20Reroll = rerollUse(f.rolled.Lucky)
 	made.Lucky = f.rolled.Lucky   // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 	made.Stroke = f.rolled.Stroke // the use of Stroke of Luck: the log says the miss became a hit, the undo gives it back
 	made.ProtectedBy = f.protectedBy()

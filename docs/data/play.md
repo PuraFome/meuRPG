@@ -332,6 +332,9 @@ Indomitable: `indomitable_ask` marks the question asked (after the result of a s
 Stroke of Luck: `stroke_ask` marks the question asked (after the result of an attack or a check is known) and `stroke_failed` whether the roller may be told the roll missed or failed (`false` when the table hides it).
 `stroke_answer_key` is the key of the answer and `stroke_from` the d20 (1 to 20) that counted when the player used the feature, `NULL` when the player kept the roll.
 The check `inspiration_holds_stroke_face_valid` keeps `stroke_from` between 1 and 20.
+Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as the d20 was rolled, `reroll_index` the die that showed the low face (0, or 0 or 1 for a pair), `reroll_at_most` the rule's limit, `reroll_resource` and `reroll_cost` the uses the answer spends (`''` and 0 for a free rule) and `reroll_source` the feature that gives it.
+`reroll_answer_key` is the key of the answer, `reroll_from` and `reroll_to` the faces (1 to 20) before and after the new roll, both `NULL` when the player kept the roll.
+The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
 

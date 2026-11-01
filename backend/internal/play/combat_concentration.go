@@ -467,6 +467,7 @@ func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateRe
 	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, conv.Int32(total), roll.Physical
 	ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
 	ev.Lucky, ev.Indomitable = gate.Lucky, gate.Indomitable // the d20 rolled again: the log says "Sortudo: 1 → 14"
+	ev.D20Reroll = rerollUse(gate.Lucky)
 	run.result = &playv1.ConcentrationSaveResult{
 		Save: diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: spell,
 	}

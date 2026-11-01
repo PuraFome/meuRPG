@@ -168,7 +168,7 @@ func (q *Queries) AnswerInspirationHoldIndomitable(ctx context.Context, arg Answ
 
 const answerInspirationHoldLucky = `-- name: AnswerInspirationHoldLucky :one
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, lucky_answer_key = $5, lucky_to = $6 WHERE id = $1
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to
 `
 
 type AnswerInspirationHoldLuckyParams struct {
@@ -225,8 +225,47 @@ func (q *Queries) AnswerInspirationHoldLucky(ctx context.Context, arg AnswerInsp
 		&i.StrokeFailed,
 		&i.StrokeAnswerKey,
 		&i.StrokeFrom,
+		&i.RerollAsk,
+		&i.RerollIndex,
+		&i.RerollAtMost,
+		&i.RerollResource,
+		&i.RerollCost,
+		&i.RerollSource,
+		&i.RerollAnswerKey,
+		&i.RerollFrom,
+		&i.RerollTo,
 	)
 	return i, err
+}
+
+const answerInspirationHoldReroll = `-- name: AnswerInspirationHoldReroll :exec
+UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, reroll_answer_key = $5, reroll_from = $6, reroll_to = $7 WHERE id = $1
+`
+
+type AnswerInspirationHoldRerollParams struct {
+	ID              string
+	Faces           []int32
+	Counted         int32
+	Total           int32
+	RerollAnswerKey *string
+	RerollFrom      *int32
+	RerollTo        *int32
+}
+
+// The answer to the reroll's question: the d20 after it (the faces, the one that counts and the total) and the faces that
+// counted before and after (NULL when the player kept the roll), with the answer's key. The roll is closed by the
+// answer_key the settled path writes.
+func (q *Queries) AnswerInspirationHoldReroll(ctx context.Context, arg AnswerInspirationHoldRerollParams) error {
+	_, err := q.db.Exec(ctx, answerInspirationHoldReroll,
+		arg.ID,
+		arg.Faces,
+		arg.Counted,
+		arg.Total,
+		arg.RerollAnswerKey,
+		arg.RerollFrom,
+		arg.RerollTo,
+	)
+	return err
 }
 
 const answerInspirationHoldStroke = `-- name: AnswerInspirationHoldStroke :exec
@@ -537,16 +576,35 @@ func (q *Queries) ClearScenePlayers(ctx context.Context, gameSessionID string) e
 	return err
 }
 
-const clearSetupCombatantsSpellUse = `-- name: ClearSetupCombatantsSpellUse :exec
+const clearSetupCombatantsRestUses = `-- name: ClearSetupCombatantsRestUses :exec
 UPDATE combatants
-SET slots_used = '{}'
+SET creature_spent = combatants.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(combatants.creature_spent) k WHERE k LIKE 'rest:%')
 FROM encounters e, npc_spell_use npc, characters ch
 WHERE e.id = combatants.encounter_id AND e.status = 'setup'
   AND npc.character_id = combatants.character_id
   AND ch.id = npc.character_id AND ch.campaign_id = $1
 `
 
-// A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too.
+// The short rest: a combat in setup gives back the actions that recharge after a rest ("rest:" keys) of its NPCs.
+func (q *Queries) ClearSetupCombatantsRestUses(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, clearSetupCombatantsRestUses, campaignID)
+	return err
+}
+
+const clearSetupCombatantsSpellUse = `-- name: ClearSetupCombatantsSpellUse :exec
+UPDATE combatants
+SET slots_used = '{}', creature_spent = combatants.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(combatants.creature_spent) k
+    WHERE k = 'legendary_resistance' OR k LIKE 'use:%' OR k LIKE 'rest:%')
+FROM encounters e, npc_spell_use npc, characters ch
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
+  AND npc.character_id = combatants.character_id
+  AND ch.id = npc.character_id AND ch.campaign_id = $1
+`
+
+// A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too,
+// its slots and uses and the keys of its uses a day, rest actions and Legendary Resistance (the others stay).
 func (q *Queries) ClearSetupCombatantsSpellUse(ctx context.Context, campaignID *string) error {
 	_, err := q.db.Exec(ctx, clearSetupCombatantsSpellUse, campaignID)
 	return err
@@ -1048,6 +1106,19 @@ func (q *Queries) DeleteCombatantStatesOfKind(ctx context.Context, arg DeleteCom
 	return items, nil
 }
 
+const deleteEmptyNPCSpellUseOfCampaign = `-- name: DeleteEmptyNPCSpellUseOfCampaign :exec
+DELETE FROM npc_spell_use
+USING characters ch
+WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1
+  AND npc_spell_use.slots_used = '{}'::jsonb AND npc_spell_use.creature_spent = '{}'::jsonb
+`
+
+// A row of the campaign with nothing spent left goes.
+func (q *Queries) DeleteEmptyNPCSpellUseOfCampaign(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, deleteEmptyNPCSpellUseOfCampaign, campaignID)
+	return err
+}
+
 const deleteEndedCombatantStates = `-- name: DeleteEndedCombatantStates :many
 DELETE FROM combatant_states
 WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
@@ -1340,13 +1411,14 @@ DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
+  AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
 `
 
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 // A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 // round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
-// Lucky question or whose Stroke of Luck question still waits stays: those questions need no die.
+// Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
 func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
 	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
 	return err
@@ -1953,7 +2025,7 @@ func (q *Queries) GetHitRider(ctx context.Context, arg GetHitRiderParams) (HitRi
 }
 
 const getInspirationHold = `-- name: GetInspirationHold :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND id = $2
 `
 
 type GetInspirationHoldParams struct {
@@ -1997,12 +2069,21 @@ func (q *Queries) GetInspirationHold(ctx context.Context, arg GetInspirationHold
 		&i.StrokeFailed,
 		&i.StrokeAnswerKey,
 		&i.StrokeFrom,
+		&i.RerollAsk,
+		&i.RerollIndex,
+		&i.RerollAtMost,
+		&i.RerollResource,
+		&i.RerollCost,
+		&i.RerollSource,
+		&i.RerollAnswerKey,
+		&i.RerollFrom,
+		&i.RerollTo,
 	)
 	return i, err
 }
 
 const getInspirationHoldByKey = `-- name: GetInspirationHoldByKey :one
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2
 `
 
 type GetInspirationHoldByKeyParams struct {
@@ -2046,6 +2127,15 @@ func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspiratio
 		&i.StrokeFailed,
 		&i.StrokeAnswerKey,
 		&i.StrokeFrom,
+		&i.RerollAsk,
+		&i.RerollIndex,
+		&i.RerollAtMost,
+		&i.RerollResource,
+		&i.RerollCost,
+		&i.RerollSource,
+		&i.RerollAnswerKey,
+		&i.RerollFrom,
+		&i.RerollTo,
 	)
 	return i, err
 }
@@ -3948,9 +4038,9 @@ func (q *Queries) InsertImageViewer(ctx context.Context, arg InsertImageViewerPa
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $20, $21, $15, $16, $17, $18, $19)
-RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $26, $27, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to
 `
 
 type InsertInspirationHoldParams struct {
@@ -3973,6 +4063,12 @@ type InsertInspirationHoldParams struct {
 	IndomitableFailed bool
 	StrokeAsk         bool
 	StrokeFailed      bool
+	RerollAsk         bool
+	RerollIndex       *int32
+	RerollAtMost      *int32
+	RerollResource    string
+	RerollCost        int32
+	RerollSource      string
 	CombatantID       *string
 	EncounterID       *string
 }
@@ -4002,6 +4098,12 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.IndomitableFailed,
 		arg.StrokeAsk,
 		arg.StrokeFailed,
+		arg.RerollAsk,
+		arg.RerollIndex,
+		arg.RerollAtMost,
+		arg.RerollResource,
+		arg.RerollCost,
+		arg.RerollSource,
 		arg.CombatantID,
 		arg.EncounterID,
 	)
@@ -4039,6 +4141,15 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		&i.StrokeFailed,
 		&i.StrokeAnswerKey,
 		&i.StrokeFrom,
+		&i.RerollAsk,
+		&i.RerollIndex,
+		&i.RerollAtMost,
+		&i.RerollResource,
+		&i.RerollCost,
+		&i.RerollSource,
+		&i.RerollAnswerKey,
+		&i.RerollFrom,
+		&i.RerollTo,
 	)
 	return i, err
 }
@@ -6405,7 +6516,7 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 }
 
 const listOpenAttackHolds = `-- name: ListOpenAttackHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
 `
 
 // The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
@@ -6452,6 +6563,15 @@ func (q *Queries) ListOpenAttackHolds(ctx context.Context, encounterID *string) 
 			&i.StrokeFailed,
 			&i.StrokeAnswerKey,
 			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
 		); err != nil {
 			return nil, err
 		}
@@ -6631,7 +6751,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 }
 
 const listOpenInspirationHolds = `-- name: ListOpenInspirationHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds
 WHERE answer_key IS NULL
   AND ((encounter_id = $1 AND combatant_id = $2)
     OR (combatant_id IS NULL AND character_id = $3))
@@ -6691,6 +6811,15 @@ func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInsp
 			&i.StrokeFailed,
 			&i.StrokeAnswerKey,
 			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
 		); err != nil {
 			return nil, err
 		}
@@ -6703,7 +6832,7 @@ func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInsp
 }
 
 const listOpenInspirationHoldsOfCampaign = `-- name: ListOpenInspirationHoldsOfCampaign :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // Every roll of the campaign that waits for an answer, for the master's list and the players' own.
@@ -6749,6 +6878,15 @@ func (q *Queries) ListOpenInspirationHoldsOfCampaign(ctx context.Context, campai
 			&i.StrokeFailed,
 			&i.StrokeAnswerKey,
 			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
 		); err != nil {
 			return nil, err
 		}
@@ -6761,7 +6899,7 @@ func (q *Queries) ListOpenInspirationHoldsOfCampaign(ctx context.Context, campai
 }
 
 const listOpenInspirationHoldsOfEncounter = `-- name: ListOpenInspirationHoldsOfEncounter :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // Every roll held in the combat that waits for an answer, whichever roll it is, for the combatants' views.
@@ -6807,6 +6945,15 @@ func (q *Queries) ListOpenInspirationHoldsOfEncounter(ctx context.Context, encou
 			&i.StrokeFailed,
 			&i.StrokeAnswerKey,
 			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
 		); err != nil {
 			return nil, err
 		}
@@ -8126,13 +8273,29 @@ func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeath
 	return err
 }
 
+const resetNPCRestUsesOfCampaign = `-- name: ResetNPCRestUsesOfCampaign :exec
+UPDATE npc_spell_use npc
+SET creature_spent = npc.creature_spent - ARRAY(
+    SELECT k FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%'),
+    updated_at = now()
+FROM characters ch
+WHERE ch.id = npc.character_id AND ch.campaign_id = $1
+  AND EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%')
+`
+
+// The short rest: every hand-made NPC of the campaign gets its rest actions back.
+func (q *Queries) ResetNPCRestUsesOfCampaign(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, resetNPCRestUsesOfCampaign, campaignID)
+	return err
+}
+
 const resetNPCSpellUseOfCampaign = `-- name: ResetNPCSpellUseOfCampaign :exec
 DELETE FROM npc_spell_use
 USING characters ch
 WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1
 `
 
-// The table's long rest: every hand-made NPC of the campaign gets its slots and uses back.
+// The table's long rest: every hand-made NPC of the campaign gets its slots, its uses and its Legendary Resistance back.
 func (q *Queries) ResetNPCSpellUseOfCampaign(ctx context.Context, campaignID *string) error {
 	_, err := q.db.Exec(ctx, resetNPCSpellUseOfCampaign, campaignID)
 	return err
@@ -8274,19 +8437,24 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 
 const seedCombatantSlotsUsed = `-- name: SeedCombatantSlotsUsed :one
 UPDATE combatants
-SET slots_used = npc.slots_used
+SET slots_used = npc.slots_used, creature_spent = combatants.creature_spent || npc.creature_spent
 FROM npc_spell_use npc
 WHERE combatants.id = $1 AND npc.character_id = combatants.character_id
-RETURNING combatants.slots_used
+RETURNING combatants.slots_used, combatants.creature_spent
 `
 
-// Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use).
-// No row when the character has spent nothing.
-func (q *Queries) SeedCombatantSlotsUsed(ctx context.Context, id string) ([]byte, error) {
+type SeedCombatantSlotsUsedRow struct {
+	SlotsUsed     []byte
+	CreatureSpent []byte
+}
+
+// Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use): its
+// slots and uses, and its uses a day and Legendary Resistance. No row when the character has spent nothing.
+func (q *Queries) SeedCombatantSlotsUsed(ctx context.Context, id string) (SeedCombatantSlotsUsedRow, error) {
 	row := q.db.QueryRow(ctx, seedCombatantSlotsUsed, id)
-	var slots_used []byte
-	err := row.Scan(&slots_used)
-	return slots_used, err
+	var i SeedCombatantSlotsUsedRow
+	err := row.Scan(&i.SlotsUsed, &i.CreatureSpent)
+	return i, err
 }
 
 const setCharacterEffectModifiers = `-- name: SetCharacterEffectModifiers :exec
@@ -10173,6 +10341,43 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const syncNPCCreatureSpent = `-- name: SyncNPCCreatureSpent :exec
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = $2 AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max(CASE WHEN jsonb_typeof(cb.creature_spent->$1::text) = 'number' THEN (cb.creature_spent->>$1::text)::int END), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
+INSERT INTO npc_spell_use (character_id, creature_spent)
+SELECT character_id, jsonb_build_object($1::text, n) FROM top
+WHERE n > 0 OR EXISTS (SELECT 1 FROM npc_spell_use own WHERE own.character_id = top.character_id)
+ON CONFLICT (character_id) DO UPDATE
+SET creature_spent = CASE WHEN excluded.creature_spent->$1::text = '0'::jsonb
+        THEN npc_spell_use.creature_spent - $1::text
+        ELSE jsonb_set(npc_spell_use.creature_spent, ARRAY[$1::text], excluded.creature_spent->$1::text, true) END,
+    updated_at = now()
+`
+
+type SyncNPCCreatureSpentParams struct {
+	Key string
+	ID  string
+}
+
+// Sets the NPC's own count under one key of creature_spent ("use:<action key>", "rest:<action key>" or "legendary_resistance") to
+// the highest count any combatant of that character holds in this combat, after the combatant's change: the
+// row keeps what one individual spent, never the sum, and a count that falls to 0 leaves the row. A
+// monster's character (combat_only), a creature and a player write nothing.
+func (q *Queries) SyncNPCCreatureSpent(ctx context.Context, arg SyncNPCCreatureSpentParams) error {
+	_, err := q.db.Exec(ctx, syncNPCCreatureSpent, arg.Key, arg.ID)
+	return err
 }
 
 const syncNPCSpellUse = `-- name: SyncNPCSpellUse :exec

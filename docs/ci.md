@@ -164,6 +164,7 @@ ESLint's bulk suppressions list the old violations as a count per file and rule 
 
 `web/angular.json` fails the production build when the initial chunks pass 500 kB (the "Initial total" line, raw size) and warns from 490 kB; a component's styles warn from 4 kB and fail from 8 kB.
 What a first screen needs stays in the initial chunks (Angular, the router, protobuf-es and Connect, the shell); everything else is a lazy route, a `@defer` or a dynamic `import()`.
+In the shell, the dice overlay, the footer and the session notice are `@defer (on idle)`: a new part of the shell that the first screen does not need goes the same way.
 To see what grew, `cd web && npx ng build --stats-json` writes `dist/web/stats.json` (esbuild's metafile): follow the `imports` of `src/main.ts` to the module.
 A new import in `app.ts`, `app.config.ts`, `app.routes.ts` or `shell/` is the usual cause, in particular a generated `*_pb` file or `@angular/cdk/overlay`.
 

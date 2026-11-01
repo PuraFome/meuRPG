@@ -207,11 +207,16 @@ func (q strokeQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 // interleave with another spend: every path that reaches the gate locked the open session first
 // (GetOpenGameSessionForUpdate), so two changes of a table take turns, as for every other spend of a use.
 func (s *Service) spendUse(ctx context.Context, env gateEnv, r heldRoller, key string) error {
+	return s.spendUses(ctx, env, r, key, 1)
+}
+
+// spendUses is spendUse for the n uses of a rule that costs more than one.
+func (s *Service) spendUses(ctx context.Context, env gateEnv, r heldRoller, key string, n int32) error {
 	if r.CharacterID == "" {
 		return connect.NewError(connect.CodeInternal, errors.New("a use outside a character"))
 	}
 	if env.c != nil {
-		_, err := s.spendResource(ctx, env.c, r.CharacterID, key, 1)
+		_, err := s.spendResource(ctx, env.c, r.CharacterID, key, n)
 		return err
 	}
 	now, err := s.vitals.GetVitalsTx(ctx, env.tx, r.CampaignID, r.CharacterID)
@@ -219,12 +224,12 @@ func (s *Service) spendUse(ctx context.Context, env gateEnv, r heldRoller, key s
 		return fmt.Errorf("read the vitals: %w", err)
 	}
 	left := resourceOf(now, key)
-	if left == nil || left.GetTotal()-left.GetUsed() <= 0 {
+	if left == nil || left.GetTotal()-left.GetUsed() < n {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
 			func(b *playv1.EncounterBlocked) { b.Recharge = left.GetRecharge() })
 	}
 	_, _, err = s.vitals.AdjustVitals(ctx, env.tx, r.CampaignID, r.CharacterID, &playv1.AdjustCharacterVitalsRequest{
-		ResourcesUsed: []*playv1.ResourceUsed{{Key: key, Used: left.GetUsed() + 1}},
+		ResourcesUsed: []*playv1.ResourceUsed{{Key: key, Used: left.GetUsed() + n}},
 	})
 	if err != nil {
 		return fmt.Errorf("spend the use: %w", err)
@@ -250,7 +255,7 @@ func (s *Service) strokeLeft(ctx context.Context, env gateEnv, spec rollSpec) (b
 // else waits for an answer first (no 1 for Lucky, no die) and the attack missed or the check failed (or the roller
 // may not know).
 func (ae answering) asksStrokeAtOnce(roll d20Roll, luckyAt *int32) (ask, told bool) {
-	if luckyAt != nil || ae.st.Holds || !ae.st.Stroke {
+	if luckyAt != nil || ae.st.Holds || !ae.st.Stroke || ae.rerollAt(roll, luckyAt) != nil {
 		return false, false
 	}
 	return ae.spec.Stroke.decide(roll.Face(), roll.Total)

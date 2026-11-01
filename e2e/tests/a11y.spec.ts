@@ -8981,6 +8981,8 @@ async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', w
         // The open section is a 48 px pill, and nothing sits under the nav: the footer's links are not drawn on a live phone screen.
         const pill = await nav.locator('[aria-current="true"]').boundingBox();
         expect(Math.round(pill?.height ?? 0)).toBe(48);
+        // The footer arrives when the browser is idle: wait for it, so the next line judges the CSS and not an absent footer.
+        await expect(page.getByRole('navigation', { name: 'Rodapé', includeHidden: true })).toBeAttached();
         await expect(page.getByRole('link', { name: 'Termos de uso' })).toBeHidden();
       }
     }

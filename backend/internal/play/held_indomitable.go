@@ -207,7 +207,7 @@ func (s *Service) indomitableLeft(ctx context.Context, env gateEnv, spec rollSpe
 // asksAtOnce says the roll is held for Indomitable as soon as it is rolled: the roller has a use, nothing else
 // waits for an answer first (no 1 for Lucky, no die) and the save failed (or the roller may not know).
 func (ae answering) asksAtOnce(roll d20Roll, luckyAt *int32) (ask, told bool) {
-	if luckyAt != nil || ae.st.Holds || !ae.st.Indom {
+	if luckyAt != nil || ae.st.Holds || !ae.st.Indom || ae.rerollAt(roll, luckyAt) != nil {
 		return false, false
 	}
 	return ae.spec.Save.decide(roll.Face(), roll.Total)

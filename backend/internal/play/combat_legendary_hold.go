@@ -85,16 +85,20 @@ func (f *castFlow) guardResistance(ctx context.Context) (*resistScope, error) {
 	}
 	capable := map[string]bool{}
 	replaying := false
+	var undecided []playdb.Combatant
 	for _, t := range f.targs {
 		if f.c.replay.keptSave(t.ID) != nil {
 			replaying = true // decided already: the replay of the window's answer
 			continue
 		}
-		_, left, err := f.s.resistanceOf(ctx, f.c, t)
-		if err != nil {
-			return nil, err
-		}
-		capable[t.ID] = left > 0
+		undecided = append(undecided, t)
+	}
+	resist, err := f.s.resistancesOf(ctx, f.c, undecided)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range undecided {
+		capable[t.ID] = resist[t.ID].left > 0
 	}
 	if !replaying && !anyTrue(capable) {
 		return nil, nil
@@ -121,21 +125,64 @@ func (f *castFlow) laysZone() bool {
 	return ok && f.sp.ZoneLaid
 }
 
-// resistanceOf is the creature's uses of Legendary Resistance a day and what it has left; zero for a
-// combatant without the trait. The trait works while the creature is incapacitated.
-func (s *Service) resistanceOf(ctx context.Context, c *combatTx, who playdb.Combatant) (perDay, left int, err error) {
-	if who.Kind != kindNPC {
-		return 0, 0, nil
+// resistance is a creature's uses of Legendary Resistance a day and what it has left.
+type resistance struct{ perDay, left int }
+
+// resistancesOf is the Legendary Resistance of each combatant, by ID: zero for a combatant without the
+// trait. The trait works while the creature is incapacitated. The stat block keys are read in one call, the
+// content once, and what each spent is what its row says, so the cost does not grow with the targets.
+// The rows must be read in this change, before anything bumps creature_spent.
+func (s *Service) resistancesOf(ctx context.Context, c *combatTx, whos []playdb.Combatant) (map[string]resistance, error) {
+	out := make(map[string]resistance, len(whos))
+	npcs := slices.DeleteFunc(slices.Clone(whos), func(who playdb.Combatant) bool { return who.Kind != kindNPC })
+	if len(npcs) == 0 {
+		return out, nil
 	}
-	p, err := s.legendaryProfileOf(ctx, c, who)
-	if err != nil || p.ResistancePerDay == 0 {
-		return 0, 0, err
-	}
-	spent, err := readCreatureSpent(ctx, c.q, who.ID)
+	keys, err := s.monsterKeysOf(ctx, c, npcs)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-	return p.ResistancePerDay, usesLeft(p.ResistancePerDay, spent.count(spentLegendaryResistance)), nil
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	for _, who := range npcs {
+		if p, _ := content.LegendaryProfile(keys[who.ID]); keys[who.ID] != "" && p.ResistancePerDay > 0 {
+			out[who.ID] = resistance{p.ResistancePerDay, usesLeft(p.ResistancePerDay, parseSpent(who.CreatureSpent).count(spentLegendaryResistance))}
+		}
+	}
+	return out, nil
+}
+
+// monsterKeysOf is monsterKeyOf for several combatants at once, by combatant ID: the keys of those that keep
+// none on the combatant are read in one call.
+func (s *Service) monsterKeysOf(ctx context.Context, c *combatTx, whos []playdb.Combatant) (map[string]string, error) {
+	keys := make(map[string]string, len(whos))
+	var unkeyed []string
+	for _, who := range whos {
+		if key := conv.OrZero(who.MonsterKey); key != "" {
+			keys[who.ID] = key
+		} else {
+			unkeyed = append(unkeyed, who.CharacterID)
+		}
+	}
+	if len(unkeyed) == 0 {
+		return keys, nil
+	}
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, unkeyed)
+	if err != nil {
+		return nil, err
+	}
+	byCharacter := make(map[string]string, len(chars))
+	for _, ch := range chars {
+		byCharacter[ch.ID] = ch.MonsterKey
+	}
+	for _, who := range whos {
+		if keys[who.ID] == "" {
+			keys[who.ID] = byCharacter[who.CharacterID]
+		}
+	}
+	return keys, nil
 }
 
 // settle ends the guard: the cast that waits is already rolled back, a cast that failed is rolled back to the
@@ -359,11 +406,16 @@ func (s *Service) resistChoice(ctx context.Context, c *combatTx, t windowTrigger
 		}
 		chosen = append(chosen, id)
 	}
-	for _, id := range chosen {
-		who, _ := combatantByID(cs, id)
-		if _, left, err := s.resistanceOf(ctx, c, who); err != nil {
-			return nil, err
-		} else if left == 0 {
+	whos := make([]playdb.Combatant, len(chosen))
+	for i, id := range chosen {
+		whos[i], _ = combatantByID(cs, id)
+	}
+	resist, err := s.resistancesOf(ctx, c, whos)
+	if err != nil {
+		return nil, err
+	}
+	for _, who := range whos {
+		if resist[who.ID].left == 0 {
 			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT, "the creature has no Legendary Resistance left")
 		}
 	}

@@ -714,13 +714,16 @@ type Derived struct {
 	// give advantage against a creature that has not had its turn yet, and make a hit on a surprised
 	// creature a critical hit; empty for none.
 	UnactedAdvantage, SurprisedCritical string `json:",omitempty"`
+	// Rerolls are the reroll effects of the character, in the order of the effects (rolleffects.go).
+	Rerolls []RerollRule `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
 	AttacksPerAction int
 	// CriticalRange is the lowest natural d20 that is a critical hit with a
 	// weapon attack: 20, or 19 with Improved Critical and 18 with Superior
-	// Critical.
+	// Critical; the lowest of those and of the critical_range modifiers (15 at
+	// the least).
 	CriticalRange int
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.

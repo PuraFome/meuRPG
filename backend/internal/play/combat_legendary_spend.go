@@ -221,7 +221,7 @@ func (f *attackFlow) checkLegendary(ctx context.Context) error {
 	if f.call.legendary == "" {
 		return nil
 	}
-	plan, _, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey)
+	plan, _, err := f.s.planOfAttack(ctx, f.c, f.attacker, f.attackKey, true)
 	if err != nil {
 		return err
 	}

@@ -95,7 +95,7 @@ func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest
 		return err
 	}
 	answeredBy := func(key *string) bool { return key != nil && *key != req.key }
-	if answeredBy(now.AnswerKey) || (answeredBy(now.LuckyAnswerKey) && now.AnswerKey == nil && req.question == askLucky) {
+	if answeredBy(now.AnswerKey) || (now.AnswerKey == nil && ((answeredBy(now.LuckyAnswerKey) && req.question == askLucky) || (answeredBy(now.RerollAnswerKey) && req.question == askReroll))) {
 		return errAnsweredAlready()
 	}
 	return err
@@ -235,22 +235,28 @@ func (s *Service) holdCombatant(ctx context.Context, h heldRoll) (playdb.Combata
 // key.
 func (h heldRoll) replyTo(req answerRequest) (heldReply, answerState, error) {
 	a := heldReply{holdID: h.ID, key: req.key, question: req.question}
-	if req.question == askLucky {
+	switch req.question {
+	case askLucky:
 		return h.luckyReplyTo(a)
-	}
-	if req.question == askIndomitable {
+	case askIndomitable:
 		return h.indomitableReplyTo(a)
-	}
-	if req.question == askStroke {
+	case askStroke:
 		return h.strokeReplyTo(a)
+	case askReroll:
+		return h.rerollReplyTo(a)
 	}
+	return h.dieReplyTo(a)
+}
+
+// dieReplyTo is replyTo for the Bardic Inspiration die's question, which also reads the questions before it.
+func (h heldRoll) dieReplyTo(a heldReply) (heldReply, answerState, error) {
 	switch {
-	case h.DieAnswerKey != nil && *h.DieAnswerKey == req.key && h.AnswerKey != nil:
+	case h.DieAnswerKey != nil && *h.DieAnswerKey == a.key && h.AnswerKey != nil:
 		// The die's answer again, once Indomitable's question was answered too: the roll as it was resolved.
 		return heldReply{holdID: h.ID, key: *h.AnswerKey, question: askIndomitable}, answerSettled, nil
-	case h.DieAnswerKey != nil && *h.DieAnswerKey == req.key:
+	case h.DieAnswerKey != nil && *h.DieAnswerKey == a.key:
 		return a, answerRepeated, nil // the die was answered; Indomitable's question waits: nothing is rolled
-	case h.AnswerKey != nil && *h.AnswerKey != req.key:
+	case h.AnswerKey != nil && *h.AnswerKey != a.key:
 		return a, answerOpen, errAnsweredAlready()
 	case h.AnswerKey != nil:
 		return a, answerSettled, nil
@@ -258,6 +264,8 @@ func (h heldRoll) replyTo(req answerRequest) (heldReply, answerState, error) {
 		return a, answerOpen, errAnsweredAlready()
 	case luckyAsks(h):
 		return a, answerOpen, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_LUCKY_PENDING, "answer the Lucky question of the roll first")
+	case rerollAsks(h):
+		return a, answerOpen, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_REROLL_PENDING, "answer the reroll question of the roll first")
 	}
 	return a, answerOpen, nil
 }
@@ -326,6 +334,10 @@ func (s *Service) rollAnswer(ctx context.Context, m authz.Membership, h heldRoll
 	}
 	if req.question == askStroke { // nothing is rolled: the answer is only use or keep
 		a.stroke = req.yes
+		return nil
+	}
+	if req.question == askReroll { // the gate rolls the new d20 itself: the answer is only roll again or keep
+		a.again = req.yes
 		return nil
 	}
 	if req.question == askIndomitable { // the gate rolls the d20 the way the save is rolled: only the way is kept here

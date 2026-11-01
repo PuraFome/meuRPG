@@ -175,6 +175,13 @@ const heartbeat = 100 * time.Millisecond
 
 func newStack(t *testing.T) *stack {
 	t.Helper()
+	return newStackOf(t, false)
+}
+
+// newStackOf is newStack with the d20 rerolls switched on or off (play.Config.D20Rerolls): the tests of the reroll
+// question turn it on, every other test runs with it off, as cmd/api does.
+func newStackOf(t *testing.T, d20Rerolls bool) *stack {
+	t.Helper()
 	pool := dbtest.NewPool(t, "meurpg_leaktest_test")
 	s := &stack{t: t, pool: pool, users: identity.NewPostgresStore(pool), hints: &hinttest.Tracker{}, dice: dicetest.New()}
 	logger := slog.New(slog.DiscardHandler)
@@ -209,7 +216,7 @@ func newStack(t *testing.T) *stack {
 	chars.SetGallery(sessionMaps)
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
-		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.After}, Roller: s.dice, Logger: logger, Now: clock.Now,
+		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.After}, Roller: s.dice, Logger: logger, Now: clock.Now, D20Rerolls: d20Rerolls,
 		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
