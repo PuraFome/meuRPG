@@ -173,7 +173,7 @@ func attempt(ctx context.Context, conn TxStarter, opts pgx.TxOptions, fn func(pg
 //go:noinline
 func runAttempt(tx pgx.Tx, fn func(pgx.Tx) error) error { return fn(tx) }
 
-// rollback ends tx even when ctx is already cancelled, but never waits on a hung connection for long.
+// rollback ends tx even when ctx is already canceled, but never waits on a hung connection for long.
 func rollback(ctx context.Context, tx pgx.Tx) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()

@@ -185,27 +185,33 @@ var schemaQueries = []string{
 	`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = $1 ORDER BY indexname`,
 }
 
+// readSchemaLines writes the lines query returns for table to b.
+func readSchemaLines(t *testing.T, db *sql.DB, b *strings.Builder, table, query string) {
+	t.Helper()
+	rows, err := db.QueryContext(t.Context(), query, table)
+	if err != nil {
+		t.Fatalf("read the schema of %s: %v", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("scan the schema of %s: %v", table, err)
+		}
+		b.WriteString(table + ": " + line + "\n")
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the schema of %s: %v", table, err)
+	}
+}
+
 // schema returns the columns, constraints and indexes of every table, goose's excluded.
 func schema(t *testing.T, db *sql.DB) string {
 	t.Helper()
 	var b strings.Builder
 	for _, table := range tables(t, db) {
 		for _, q := range schemaQueries {
-			rows, err := db.QueryContext(t.Context(), q, table)
-			if err != nil {
-				t.Fatalf("read the schema of %s: %v", table, err)
-			}
-			for rows.Next() {
-				var line string
-				if err := rows.Scan(&line); err != nil {
-					t.Fatalf("scan the schema of %s: %v", table, err)
-				}
-				b.WriteString(table + ": " + line + "\n")
-			}
-			if err := rows.Err(); err != nil {
-				t.Fatalf("read the schema of %s: %v", table, err)
-			}
-			_ = rows.Close()
+			readSchemaLines(t, db, &b, table, q)
 		}
 	}
 	return b.String()

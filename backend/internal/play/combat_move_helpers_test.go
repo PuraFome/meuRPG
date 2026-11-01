@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"regexp"
 	"slices"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The characterization of MoveCombatant. These tests freeze what the call does

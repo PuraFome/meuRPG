@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"log/slog"
 	"regexp"
 	"slices"
@@ -16,6 +15,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Helpers of the characterization of AddCharacterEffect and AddLastingEffect: the party, the

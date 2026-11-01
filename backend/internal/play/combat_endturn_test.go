@@ -2,7 +2,6 @@ package play
 
 import (
 	"encoding/base64"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"regexp"
 	"slices"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // These tests freeze what EndTurn does today, branch by branch: every refusal with its code,

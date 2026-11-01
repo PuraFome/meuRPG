@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The characterization of the master's calls on the effects that last (list, change the
