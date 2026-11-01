@@ -1783,6 +1783,51 @@ describe('LiveSession', () => {
       expect(gets()).toBeLessThanOrEqual(before.gets + 2);
     });
 
+    it('reads the master’s dark warning again on vision_changed (a Darkness appearing or ending), and a player never reads it', async () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      await render();
+      const reads = () => maps.calls.filter((c) => c === 'inTheDark map-1').length;
+      // Opening the page schedules one read; let it land so the counts below are only the hints'.
+      await vi.waitFor(() => expect(reads()).toBeGreaterThan(0));
+      const before = reads();
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        source.push({ kind: 'visionChanged', mapId: 'other-map' });
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(reads()).toBe(before);
+        // A Darkness appears and, later, ends: each is only a vision_changed for the map.
+        source.push({ kind: 'visionChanged', mapId: 'map-1' });
+        await vi.advanceTimersByTimeAsync(1000);
+      } finally {
+        vi.useRealTimers();
+      }
+      await vi.waitFor(() => expect(reads()).toBe(before + 1));
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        source.push({ kind: 'visionChanged', mapId: 'map-1' });
+        await vi.advanceTimersByTimeAsync(1000);
+      } finally {
+        vi.useRealTimers();
+      }
+      await vi.waitFor(() => expect(reads()).toBe(before + 2));
+    });
+
+    it('never reads the dark warning for a player on vision_changed (RN-10)', async () => {
+      await render();
+      source.push({ kind: 'visionChanged', mapId: 'map-1' });
+      await tick();
+      await vi.waitFor(() =>
+        expect(maps.calls.filter((c) => c.startsWith('vision map-1 ')).length).toBeGreaterThan(0),
+      );
+      expect(maps.calls.filter((c) => c.startsWith('inTheDark'))).toEqual([]);
+    });
+
     it('reads the combat again on vision_changed during a combat, so an NPC that just came into sight arrives', async () => {
       const get = vi.spyOn(TestBed.inject(CombatClient).turn, 'get').mockResolvedValue(null);
       const fixture = TestBed.createComponent(LiveSession);

@@ -79,7 +79,7 @@ Fog Cloud and Stinking Cloud are clouds (`sightCloud`); Darkness is magical dark
 The squares of these zones reach the fog through `CombatPositions` (`mapseam.go`, `sightZonesOn`): `Clouds` and `MagicDark`.
 `vision.Scene.Clouds` and `MagicDark` are layers of the map's grid; the rules are in [Fog of war](../maps/fog.md#zones-that-block-sight).
 The scene's cache key (`litKeyOf`) hashes both lists, so a zone with other squares is another scene.
-No RPC or event of its own carries it: any change to the squares or the existence of a sight zone tells the fog (`zoneChanged` sets `zonesMoved`, and `tellEnded` calls `VisionChanged` after the commit).
+No RPC or event of its own carries it: any change to the squares or the existence of a sight zone tells the fog (`zoneChanged` sets `zonesMoved`, and `tellEnded` calls `VisionChanged` after the commit, which tells the master's light warning too).
 A hidden caster's cloud still blocks sight.
 
 ## Stinking Cloud

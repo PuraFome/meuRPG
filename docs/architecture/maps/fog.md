@@ -43,13 +43,18 @@ The scene (grid, walls, base light, painted light, light points, carried lights,
 Fog Cloud, Stinking Cloud and Darkness are zones of `play` (RN-37).
 `CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscuredLayer` turns each list of `obscured` into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
 `play` tells `maps` that a zone changed through `VisionChanged`, as Wild Shape and a familiar's sight do, so the revision of what the players see moves and the usual `vision_changed` goes out; no RPC or event of its own carries it.
+`VisionChanged` also sends `vision_changed` to the master, whether or not a player's view moved, because his light warning reads the same scene.
 In `rules/vision`:
 
 - A line that crosses a cloud square is blocked, as a wall blocks it, but the cloud square itself is not a wall.
 - A square in a cloud is not seen from outside, and a viewer in a cloud sees only its own square.
+- Those two lines are the table's ruling. The SRD heavy obscurement only blinds a creature looking toward the area.
 - Blindsight within its range sees through a cloud.
 - A square of magical darkness has no light (`Dark`) and darkvision does not work in it. Truesight and blindsight do.
 - A viewer in magical darkness with only darkvision is in the dark (`InTheDark`), which is what the master's light warning reads.
+
+A hidden caster's cloud or Darkness still turns its squares unseen for the players.
+That effect never reveals the caster: the players get its footprint as unseen squares, with no zone and no caster.
 
 A map without fog never builds a scene, so its zones change nothing about sight.
 The attack rules do not read these squares.
@@ -90,9 +95,9 @@ With the fog on and `base_light = 'bright'` ("Claro"), a player receives the ter
 
 `ListCharactersInTheDark(campaign_id, map_id)` (`maps/darkwarning.go`) tells the master which player characters see nothing where they stand. It is the master's alone: a player gets `permission_denied`, a non-member `not_found` (RN-10), because the answer is worked out from lights a player cannot see.
 
-- **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` and none of its darkvision, blindsight or truesight covers it. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
-- **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark. Fog off, a map without a grid, "Penumbra" and "Claro" (the whole map is at least dim, so every square is lit), a character without a token on this map and a dead character list nobody. The map's base light name is the master's `Map.base_light`, already in `GetMap`.
-- **When to ask again.** The read has no stream of its own. Every change that moves a light or a character already reaches the master as `map_changed` (a carried light, set or put out, by the master or the owner; a Luz point; a token placed, hidden or shown; painting; the fog and base light) or as `token_moved` (a character's move). The master's screen reads again on those two, and a failed read shows no warning.
+- **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` (the light is dark there, or the square is in a Darkness) and none of its darkvision, blindsight or truesight covers it. Darkvision does not work in a Darkness, so a viewer with only darkvision in one is in the dark. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
+- **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark. Fog off, a map without a grid, a character without a token on this map and a dead character list nobody. "Penumbra" and "Claro" list nobody either, unless a Darkness is up: it makes its squares dark whatever the base light. The cause is always `DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`, for no light and for a Darkness alike. The map's base light name is the master's `Map.base_light`, already in `GetMap`.
+- **When to ask again.** The read has no stream of its own. Every change that moves a light or a character already reaches the master as `map_changed` (a carried light, set or put out, by the master or the owner; a Luz point; a token placed, hidden or shown; painting; the fog and base light) or as `token_moved` (a character's move). A Darkness that appears, moves or ends (with its concentration or its time) reaches him as `vision_changed` (`SessionMaps.VisionChanged`). The master's screen reads again on those three (`scheduleVision` reads the warning with the vision), and a failed read shows no warning.
 
 Tests: `TestRN10_DarkWarning_*` (`maps`), `TestInTheDark` (`rules/vision`), and in `leaktest` the row of the reads table and `TestTheDarkWarningIsTheMastersAlone`.
 

@@ -62,12 +62,17 @@ func (sm *SessionMaps) MapShown(ctx context.Context, campaignID, mapID string) {
 }
 
 // VisionChanged tells the fog that what the players of the map see changed without
-// a token moving: a druid took a beast's senses or left them, or a player started
-// or stopped looking through their familiar's eyes (MR-036, MR-037). The play
-// module calls it after the commit. Nothing happens for a map without fog.
+// a token moving: a druid took a beast's senses or left them, a player started or
+// stopped looking through their familiar's eyes, a zone that blocks sight (Fog
+// Cloud, Stinking Cloud, Darkness) appeared, moved or ended with its concentration
+// or its duration, or a combat ended (MR-036, MR-037, RN-37). The play module calls
+// it after the commit. A map without fog tells the players nothing. The master hears
+// `vision_changed` too, whatever the players' views did, because his light warning
+// reads the same scene.
 func (sm *SessionMaps) VisionChanged(ctx context.Context, campaignID, mapID string) {
 	if sm.svc != nil && mapID != "" {
 		sm.svc.refreshVision(ctx, campaignID, mapID)
+		sm.svc.live.Publish(campaignID, false, visionChangedEvent(mapID))
 	}
 }
 
