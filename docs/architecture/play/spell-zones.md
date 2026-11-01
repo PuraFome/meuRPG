@@ -115,6 +115,7 @@ A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `roun
 ## Tests
 
 `zones_grease_test.go` (Grease: the shape, the cast, entering, the end of the turn, the end of the zone and the undo; Entangle: the shape, the cast only, the end with the concentration and the undo) and `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint); `internal/leaktest` classifies `MoveSpellZone`.
+`internal/leaktest` reads the map as a player (`mapzones_test.go`): a Darkness takes a creature off a darkvision player's map while a Devil's Sight player and the master keep it, a hidden caster's Fog Cloud reaches no player but the unseen squares, and a cloud that ends leaves nothing new in the streams.
 The grid cube is in `rules/grid/area_test.go`.
 
 ## The web
