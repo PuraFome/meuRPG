@@ -1,6 +1,6 @@
 -- +goose Up
 -- A melee hit on a creature whose stat block has Parry waits in a reaction window of its own kind: the
--- list of 00291 plus 'parry'. Dropped first by name, so the migration can run twice.
+-- list of 00294 plus 'parry'. Dropped first by name, so the migration can run twice.
 ALTER TABLE reaction_windows
     DROP CONSTRAINT IF EXISTS reaction_windows_kind_valid,
     ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
