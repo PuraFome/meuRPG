@@ -196,10 +196,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [EncounterBlockedReason.DESTINATION_UNAVAILABLE, 'Esse espaço não está disponível'],
   [EncounterBlockedReason.DESTINATION_REQUIRED, 'Escolha no mapa o espaço para onde você vai.'],
   [
-    EncounterBlockedReason.WALL_PLACEMENT_REQUIRED,
-    'Esta magia cria uma muralha: falta dizer a forma, o tamanho e o lado que causa dano. Nada foi gasto.',
-  ],
-  [
     EncounterBlockedReason.CHANNEL_DIVINITY_TARGET,
     'Esse alvo não pode receber o Canalizar Divindade: está longe demais, ou é um morto-vivo ou um constructo.',
   ],
