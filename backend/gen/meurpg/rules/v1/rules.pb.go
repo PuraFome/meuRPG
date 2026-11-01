@@ -9910,8 +9910,9 @@ type DisabledReason struct {
 	// For DISABLED_REASON_CODE_NO_USES: when the uses come back.
 	Recharge Recharge `protobuf:"varint,3,opt,name=recharge,proto3,enum=meurpg.rules.v1.Recharge" json:"recharge,omitempty"`
 	// The reason as the caller may read it ("Você não pode agir.", "Indisponível: Impedido."),
-	// already without a cause a player may not read (RN-20). Only the reasons of effects and
-	// conditions carry it.
+	// already without a cause a player may not read (RN-20). The reasons of effects and
+	// conditions carry it, and so do the reasons of a spell, which name it (all but NO_SLOT,
+	// which repeats on every spell row and keeps the short word the screen has).
 	TextPt string `protobuf:"bytes,100,opt,name=text_pt,json=textPt,proto3" json:"text_pt,omitempty"`
 	// Only the master: the same with the cause.
 	TextMasterPt  string `protobuf:"bytes,101,opt,name=text_master_pt,json=textMasterPt,proto3" json:"text_master_pt,omitempty"`
