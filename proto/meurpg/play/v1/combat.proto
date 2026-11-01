@@ -3895,10 +3895,28 @@ message StrokeOfLuckQuestion {
   bool failed = 1;
 }
 
+// RerollQuestion is "Rolar de novo?" for a d20 that showed a low face when the character has a reroll rule that covers the
+// roll (SRD 5.1: the die is rolled again and the new roll must be used). It comes after the Lucky question and before the
+// die's, on the d20 as rolled. The offer is made only when the rule's uses are there, so the player is never asked for
+// what cannot be paid.
+message RerollQuestion {
+  // The die that showed the low face, as an index into `HeldRollOffer.d20.faces`: the one the answer rolls again (0 for a
+  // single d20; for a pair, the one that counts).
+  int32 reroll_index = 1;
+  // The highest face that may be rolled again: the rule's limit.
+  int32 at_most = 2;
+  // The resource the reroll spends, as a content key; empty for a reroll that costs nothing.
+  string resource = 3;
+  // How many uses of `resource` the reroll spends (0 when it costs nothing).
+  int32 cost = 4;
+  // The feature that gives the reroll, as a content key: the `source_key` of the Reroll the result lists.
+  string source_key = 5;
+}
+
 // HeldRollOffer is the question a roll that waits asks, whichever roll it is: the d20 was rolled and
 // kept, nothing was resolved or written, and the roller decides before the result is told (SRD 5.1:
 // the creature can wait until after it rolls the d20 and must decide before the GM says whether the roll
-// succeeds). The Lucky question comes first; the die's comes after it, on the new roll, and Indomitable's or Stroke of Luck's after the die's (a save and an attack or check never meet, so only one of them comes). It carries
+// succeeds). The Lucky question comes first; a reroll's after it; the die's comes after them, on the new roll, and Indomitable's or Stroke of Luck's after the die's (a save and an attack or check never meet, so only one of them comes). It carries
 // what the roller already sees (the d20, the bonus, the die's size and giver), never a DC, an armor
 // class or an NPC's number. Only whoever may answer it gets it: the roller's player and the master
 // (RN-10, RN-20).
@@ -3921,6 +3939,7 @@ message HeldRollOffer {
     DieQuestion die = 8;
     IndomitableQuestion indomitable = 12;
     StrokeOfLuckQuestion stroke_of_luck = 13;
+    RerollQuestion reroll = 14;
   }
   // The attack and its target; empty for a roll that is not a weapon attack.
   string attack_key = 9;

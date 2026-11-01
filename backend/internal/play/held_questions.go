@@ -16,8 +16,8 @@ import (
 )
 
 // The questions a held roll asks, in the order the SRD puts them on the table: the 1 the halfling's
-// Lucky may roll again comes first, and the Bardic Inspiration die is added to whatever the d20 is after
-// it (combat_lucky.go has the rule). Each question is one link of the chain: it says when it is open,
+// Lucky may roll again comes first, then the reroll the table's features give (held_reroll.go), and the
+// Bardic Inspiration die is added to whatever the d20 is after them (combat_lucky.go has the rule). Each question is one link of the chain: it says when it is open,
 // what it asks and what its answer writes. A question that comes later (the master's reroll, Cutting
 // Words on a check) is one more link with its own columns.
 
@@ -26,6 +26,7 @@ type questionKind int
 
 const (
 	askLucky questionKind = iota + 1
+	askReroll
 	askDie
 	askIndomitable
 	askStroke
@@ -43,7 +44,7 @@ type question interface {
 }
 
 // chain is every question a held roll may ask, first to last.
-var chain = []question{luckyQuestion{}, dieQuestion{}, indomitableQuestion{}, strokeQuestion{}}
+var chain = []question{luckyQuestion{}, rerollQuestion{}, dieQuestion{}, indomitableQuestion{}, strokeQuestion{}}
 
 // askedBy is the question a roll asks now: the first of the chain that waits. A roll that waits for
 // none (the die ran out before a retry read it) still gets the die's: the path decides what to say.
@@ -215,7 +216,7 @@ func (s *Service) outsideOffers(ctx context.Context, tx pgx.Tx, o *heldOffer) (*
 	if o.Asks == askLucky {
 		return nil, o.luckyOffer(), held
 	}
-	if o.Asks == askIndomitable || o.Asks == askStroke { // only the one question, which has no older field
+	if o.Asks == askIndomitable || o.Asks == askStroke || o.Asks == askReroll { // only the one question, which has no older field
 		return nil, nil, held
 	}
 	return s.outsideDieOffer(ctx, tx, *o), nil, held
@@ -253,6 +254,6 @@ func heldD20Of(h heldRoll) *playv1.DiceRoll {
 		roll.CountedIndex = clamp32(h.Counted, 0, 1)
 		markTreated(roll, modifier, total)
 	}
-	roll.Rerolled = luckyOf(h).proto()
+	roll.Rerolled = rerolledOf(h).proto()
 	return roll
 }

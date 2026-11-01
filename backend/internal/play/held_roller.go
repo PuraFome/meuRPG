@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -37,6 +38,9 @@ type rollerState struct {
 	Indom bool
 	// Stroke says the roller has Stroke of Luck with a use left; the gate reads it for the attacks and checks that ask it.
 	Stroke bool
+	// Rerolls are the reroll rules of the roller's table features that cover the roll and that it can pay (held_reroll.go);
+	// read when the roll is made, only with the switch on.
+	Rerolls []link.RerollRule
 }
 
 // stateOfCombatant is the state of a roller whose combatant the path already has: the die it holds in
@@ -178,7 +182,7 @@ func (h heldRoll) stale(st rollerState) bool {
 	if st.Die.Combatant == nil || st.Die.Round != *h.Round {
 		return true
 	}
-	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h) && !indomitableAsks(h) && !strokeAsks(h)
+	return h.checksTheAnswer() && !st.Holds && !luckyAsks(h) && !rerollAsks(h) && !indomitableAsks(h) && !strokeAsks(h)
 }
 
 // fromSameRequest says the roll was made by the request with this key (a retry of it), which a reaction
@@ -190,6 +194,9 @@ func (h heldRoll) fromSameRequest(key string) bool { return !h.Window && h.Key =
 func heldRefusal(h heldRoll) error {
 	if luckyAsks(h) {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_LUCKY_PENDING, "answer the Lucky question of the roll first")
+	}
+	if rerollAsks(h) {
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_REROLL_PENDING, "answer the reroll question of the roll first")
 	}
 	if indomitableAsks(h) {
 		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_INDOMITABLE_PENDING, "answer the Indomitable question of the roll first")

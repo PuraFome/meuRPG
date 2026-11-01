@@ -520,6 +520,12 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
+	// D20Rerolls lets a d20 the character rolls (an attack, an ability check, a saving throw) be held for the question
+	// "rolar de novo?" when a reroll rule of its table features covers it (held_reroll.go). False by default, and
+	// cmd/api does not set it: the web client does not answer that question yet (an unknown case of the offer renders the
+	// die's prompt with zero sides, held-roll-prompt.ts and held-text.ts), so the server must never hold a roll on it
+	// until the screen ships. With it off the roll settles as if the player declined: nothing is held, nothing is spent.
+	D20Rerolls bool
 }
 
 // Service implements the PlayService Connect API.
@@ -550,6 +556,8 @@ type Service struct {
 	// conditionNames are the SRD conditions' Portuguese names, by key, for the
 	// labels the master marks (RN-22).
 	conditionNames map[string]string
+	// d20Rerolls is Config.D20Rerolls: the rolls are held for the reroll question (held_reroll.go).
+	d20Rerolls bool
 
 	// hub fans the live events out to the open streams, in memory: one
 	// server instance only (docs/operations/README.md).
@@ -637,6 +645,8 @@ func New(cfg Config) (*Service, error) {
 		now:       cfg.Now,
 		hub:       live.New(cfg.Live.Buffer),
 		live:      cfg.Live,
+
+		d20Rerolls: cfg.D20Rerolls,
 	}
 	s.msgs = newMessageDeps(cfg.Messages)
 	s.conditionNames = map[string]string{}

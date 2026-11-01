@@ -27,13 +27,7 @@ type damageRerollUse struct {
 // damageRerollRules are the reroll rules of the attacker that cover a die of damage, in the sheet's order. A rule
 // with no resource is free.
 func damageRerollRules(t link.Traits) []link.RerollRule {
-	var out []link.RerollRule
-	for _, r := range t.RerollRules {
-		if r.AtMost > 0 && (r.Resource == "" || r.Cost > 0) && slices.Contains(r.Applies, rules.RollDamage) {
-			out = append(out, r)
-		}
-	}
-	return out
+	return rerollRulesFor(t, rules.RollDamage)
 }
 
 // mayRerollDamage says the roll is one the app can roll again: a player's character, damage (not healing) with dice

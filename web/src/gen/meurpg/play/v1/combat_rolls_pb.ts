@@ -387,8 +387,9 @@ export const DamagePartSchema: GenMessage<DamagePart> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_combat_rolls, 4);
 
 /**
- * Reroll is a die rolled again: a damage die by Great Weapon Fighting, or a d20 that showed a
- * 1 by the halfling's Lucky (an attack roll, an ability check or a saving throw).
+ * Reroll is a die rolled again: a damage die by Great Weapon Fighting or by a table feature's reroll rule, or a d20 rolled
+ * again by the halfling's Lucky (a 1), by a table feature's reroll rule that the player chose to use (an attack roll, an
+ * ability check or a saving throw), by Indomitable (a saving throw) or by Stroke of Luck (an ability check counted as 20).
  *
  * @generated from message meurpg.play.v1.Reroll
  */
@@ -411,9 +412,10 @@ export type Reroll = Message<"meurpg.play.v1.Reroll"> & {
   to: number;
 
   /**
-   * The feature that rolled it again, as a content key: "trait:lucky" for the halfling's
-   * Lucky (its Portuguese name is in the content's names, "Sortudo"). Empty for Great
-   * Weapon Fighting, which only rerolls damage dice.
+   * The feature that rolled it again, as a content key: "trait:lucky" for the halfling's Lucky (its Portuguese name is in
+   * the content's names, "Sortudo"), "feature:indomitable-1-use" for Indomitable, "feature:stroke-of-luck" for Stroke of
+   * Luck, and the key of the table feature (the reroll rule's source) for a die of damage or a d20 rolled again by a
+   * reroll rule. Empty for Great Weapon Fighting, which only rerolls damage dice.
    *
    * @generated from field: string source_key = 4;
    */

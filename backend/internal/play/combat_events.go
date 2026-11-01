@@ -299,6 +299,9 @@ type actionEvent struct {
 	// that counted as 20 (D20 and the dice after it hold the 20 then, and this keeps the d20 it replaced). One use of
 	// the feature was spent; the undo of an attack gives it back. Nil when the roll was not changed.
 	Stroke *strokeUse `json:"stroke,omitempty"`
+	// D20Reroll is the uses the d20 rolled again by a reroll rule spent on a weapon attack or a cast's spell attack
+	// (held_reroll.go); the undo gives them back. Nil when none were spent.
+	D20Reroll *damageRerollUse `json:"d20_reroll,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`

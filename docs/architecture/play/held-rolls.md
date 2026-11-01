@@ -1,9 +1,9 @@
 # Held rolls
 
 A d20 that may wait for a question is rolled, kept, asked about and settled in one place: the held-roll gate.
-The questions are the halfling's Lucky (RN-35), a Bardic Inspiration die, and, after the result, the fighter's Indomitable and the rogue's Stroke of Luck (RN-35).
+The questions are the halfling's Lucky (RN-35), the reroll a table feature gives (behind a switch), a Bardic Inspiration die, and, after the result, the fighter's Indomitable and the rogue's Stroke of Luck (RN-35).
 Lucky and the die are asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
-The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
+The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `held_reroll.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
 ## The thirteen kinds
 
@@ -92,7 +92,7 @@ A hold made in a combat records its `round`; one of an earlier round, or whose c
 
 ## The questions are a chain
 
-`chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `dieQuestion` after it, then `indomitableQuestion` and `strokeQuestion` (the result is known only then).
+`chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `rerollQuestion` after it (the table's reroll rule, below), `dieQuestion` after that, then `indomitableQuestion` and `strokeQuestion` (the result is known only then).
 Each says when it waits (`pending`), what it asks (`offer`) and what its answer writes (`apply`).
 
 - **Lucky** waits while `lucky_index` is set and neither it nor the roll was answered.
@@ -130,7 +130,7 @@ When the owner and the master answer at once, the first answer wins; the other, 
 
 ## The wire
 
-Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it, then `IndomitableQuestion` or `StrokeOfLuckQuestion`) and when the roll was held. The nine answers of the paths carry it as `held_roll_offer` beside the deprecated `inspiration_offer` and `lucky_offer` (and the lists `offers` and `lucky_offers` of the state out of a combat), which are still filled for a tab opened before the one question existed, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
+Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `RerollQuestion` after it, `DieQuestion` after that, then `IndomitableQuestion` or `StrokeOfLuckQuestion`) and when the roll was held. The nine answers of the paths carry it as `held_roll_offer` beside the deprecated `inspiration_offer` and `lucky_offer` (and the lists `offers` and `lucky_offers` of the state out of a combat), which are still filled for a tab opened before the one question existed, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
 
 The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
 
@@ -296,3 +296,30 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
 - **Wire.** `StrokeOfLuckQuestion` in `HeldRollOffer.question`, `StrokeOfLuckAnswer` in `AnswerHeldRollRequest`.
 - **Web.** A card with "Usar" and "Manter" and no roll picker.
   A player outside a combat reads the question again from `ListHeldRolls`, since the older lists of the outside state do not carry it.
+
+## The d20 rolled again by a reroll rule (#573)
+
+A table feature can give a reroll (the engine's `reroll` effect, `link.RerollRule`): `Applies` the kind of roll (`attack`, `check`, `save`), `AtMost` the highest face that may be rolled again, `Resource` and `Cost` the uses it spends (none: free).
+SRD 5.1 says it as it says the halfling's Lucky: the die is rolled again and the new roll must be used, even when it is worse.
+For a d20 the player is asked "rolar de novo?" (`held_reroll.go`).
+The damage dice are not a held roll: the app rolls them again by itself (`combat_damage_reroll.go`).
+
+- **Held only when asked.** The question comes as soon as the d20 is rolled, never later: the d20 that counts shows `AtMost` or lower, no 1 waits for Lucky first (a roll Lucky asked about, and a face it rolled again, are not offered), and the character can pay a rule that covers the kind (the first of its rules in the sheet's order that does).
+  `rerollsLeft` reads the sheet and the vitals only for a roll of a player's character that may ask, of a kind with an applies word.
+  For a pair (advantage or disadvantage) it is the die that counts.
+- **The switch.** Nothing is asked unless `Config.D20Rerolls` is on, which `cmd/api` does not set: the web client does not answer the question yet (an unknown case of the offer renders the die's prompt with zero sides), so the server never holds a roll on it until the screen ships.
+  With it off the roll settles as if the player declined: no hold, nothing spent, nothing written.
+- **Kinds that ask** (`heldKindDef.rerollApplies`): the weapon attack and the spell attack (`attack`), the scene check and the group check (`check`), the effect's saving throw and the concentration save (`save`).
+  The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle hint try never ask it, whatever the character has.
+- **Order.** Lucky, then the reroll, then the Bardic Inspiration die, then Indomitable or Stroke of Luck, which look at the new roll.
+- **Answer.** Rolling again makes the service roll a d20 with its own roller whatever the campaign's dice mode (the answer carries no die; a physical-dice table is not asked to type it, so this is not RN-18 faithful), replaces the face at `reroll_index`, picks the die that counts again by the roll's mode (`countedAfter`), applies Reliable Talent, and spends `Cost` uses of the rule's resource (`spendUses`) in the transaction of the answer.
+  The new roll is final.
+  The rule is kept on the row (limit, resource, cost, source), so the answer reads nothing from the sheet.
+- **Log and undo.** The reroll is carried where Lucky's is (`luckyReroll`, with the rule's `Source` and the uses spent), so every result that lists Lucky's lists it, with the rule's feature as `source_key`.
+  The event of a weapon attack or a cast keeps the uses (`actionEvent.D20Reroll`), and their undo gives them back (`d20RerollBack`).
+  The scene check, the group check and the saves have no undo, so nothing is given back there.
+- **Refusals.** While the question waits, the character's other rolls are refused with `REROLL_PENDING`.
+- **Columns** of `inspiration_holds` (migration 00300): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
+  `DeleteOrphanInspirationHolds` keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
+- **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` in `AnswerHeldRollRequest`.
+- **Web.** Generated types only, no screen.

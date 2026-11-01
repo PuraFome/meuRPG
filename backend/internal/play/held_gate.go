@@ -212,6 +212,8 @@ type heldReply struct {
 	indomitable *rollInput
 	// stroke says the player uses Stroke of Luck; false keeps the roll.
 	stroke bool
+	// again says the player rolls the d20 again for the reroll question (held_reroll.go); false keeps the roll.
+	again bool
 	// as is who the path runs as when another than the roller answers (the master): the roller. Nil when the
 	// answerer is the roller. Only answerHeld sets it, after checking that the caller may answer.
 	as *authz.Membership
@@ -271,12 +273,12 @@ func (s *Service) heldMayWait(ctx context.Context, env gateEnv, spec rollSpec) (
 		return false, err
 	}
 	if a, answer := heldReplyOf(ctx); answer {
-		if a.question != askLucky {
+		if a.question != askLucky && a.question != askReroll {
 			return false, nil
 		}
 		return st.Holds || s.strokeAvailable(ctx, env, spec), nil
 	}
-	return st.Holds || spec.Lucky || s.strokeAvailable(ctx, env, spec), nil
+	return st.Holds || spec.Lucky || s.strokeAvailable(ctx, env, spec) || s.rerollAvailable(ctx, env, spec), nil
 }
 
 // heldModifier is the bonus a held roll was made with, which the answer settles on: the attack's, with a
@@ -304,29 +306,41 @@ func (s *Service) heldGate(ctx context.Context, env gateEnv, spec rollSpec) (gat
 	if !spec.MayAsk {
 		return s.gateRoll(spec)
 	}
-	st, err := s.rollerStateOf(ctx, env, spec.Roller)
+	st, err := s.askerState(ctx, env, spec)
 	if err != nil {
 		return gateResult{}, err
 	}
-	if st.Indom, err = s.indomitableLeft(ctx, env, spec); err != nil {
-		return gateResult{}, err
-	}
-	if st.Stroke, err = s.strokeLeft(ctx, env, spec); err != nil {
-		return gateResult{}, err
-	}
-	if st.Stroke && spec.Stroke.Prepare != nil {
-		if err := spec.Stroke.Prepare(); err != nil {
-			return gateResult{}, err
-		}
-	}
 	ae := answering{s: s, gateEnv: env, spec: spec, st: st}
-	if a, answer := heldReplyOf(ctx); answer {
+	a, answer := heldReplyOf(ctx)
+	if answer {
 		return s.gateAnswer(ctx, ae, a)
 	}
-	if !st.Holds && !spec.Lucky && !st.Indom && !st.Stroke {
+	if ae.st.Rerolls, err = s.rerollsLeft(ctx, env, spec); err != nil {
+		return gateResult{}, err
+	}
+	if !st.Holds && !spec.Lucky && !st.Indom && !st.Stroke && len(ae.st.Rerolls) == 0 {
 		return s.gateRoll(spec)
 	}
 	return s.gateAsk(ctx, ae)
+}
+
+// askerState is what the gate knows of the roller before the roll: the die it holds, and Indomitable's and Stroke of
+// Luck's uses left (the reroll rules are read once the roll is made, not for an answer).
+func (s *Service) askerState(ctx context.Context, env gateEnv, spec rollSpec) (rollerState, error) {
+	st, err := s.rollerStateOf(ctx, env, spec.Roller)
+	if err != nil {
+		return st, err
+	}
+	if st.Indom, err = s.indomitableLeft(ctx, env, spec); err != nil {
+		return st, err
+	}
+	if st.Stroke, err = s.strokeLeft(ctx, env, spec); err != nil {
+		return st, err
+	}
+	if st.Stroke && spec.Stroke.Prepare != nil {
+		return st, spec.Stroke.Prepare()
+	}
+	return st, nil
 }
 
 // gateD20 rolls the d20 of a roll, counted as the spec says: Reliable Talent applied, the faces as they
@@ -375,7 +389,7 @@ func (s *Service) gateAsk(ctx context.Context, ae answering) (gateResult, error)
 	luckyAt := luckyIndexOf(roll.Faces, spec.Lucky)
 	ask, _ := ae.asksAtOnce(roll, luckyAt)
 	strokeAsk, _ := ae.asksStrokeAtOnce(roll, luckyAt)
-	if !ae.st.Holds && luckyAt == nil && !ask && !strokeAsk {
+	if !ae.st.Holds && luckyAt == nil && !ask && !strokeAsk && ae.rerollAt(roll, luckyAt) == nil {
 		return gateResult{Settled: true, Roll: roll}, nil
 	}
 	return s.gateInsert(ctx, ae, stores, roll, luckyAt)
@@ -435,6 +449,7 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 	}
 	h.IndomAsk, h.IndomFailed = ae.asksAtOnce(roll, luckyAt)
 	h.StrokeAsk, h.StrokeFailed = ae.asksStrokeAtOnce(roll, luckyAt)
+	ae.rerollAt(roll, luckyAt).keep(&h)
 	if r.Combatant != nil {
 		h.CombatantID, h.EncounterID, h.Round = r.Combatant.ID, r.Combatant.EncounterID, &r.Round
 		if h.CharacterID == "" {
@@ -459,11 +474,10 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 	if err := h.answerable(ae.st, a.key); err != nil {
 		return gateResult{}, err
 	}
+	if res, own, err := s.gateOwnAnswer(ctx, ae, h, a); own {
+		return res, err
+	}
 	switch {
-	case a.question == askIndomitable:
-		return s.gateIndomitableAnswer(ctx, ae, h, a)
-	case a.question == askStroke:
-		return s.gateStrokeAnswer(ctx, ae, h, a)
 	case a.question == askDie && h.DieAnswerKey != nil && *h.DieAnswerKey == a.key:
 		return gateResult{Held: new(askedBy(h, ae.st))}, nil // the die's answer again, while Indomitable's question waits
 	case a.question != askLucky:
@@ -481,6 +495,24 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil
+}
+
+// gateOwnAnswer applies the answer to a question that settles the roll on its own: Indomitable's, Stroke of Luck's or the
+// reroll's. It says false for any other question.
+func (s *Service) gateOwnAnswer(ctx context.Context, ae answering, h heldRoll, a heldReply) (gateResult, bool, error) {
+	var res gateResult
+	var err error
+	switch a.question {
+	case askIndomitable:
+		res, err = s.gateIndomitableAnswer(ctx, ae, h, a)
+	case askStroke:
+		res, err = s.gateStrokeAnswer(ctx, ae, h, a)
+	case askReroll:
+		res, err = s.gateRerollAnswer(ctx, ae, h, a)
+	default:
+		return res, false, nil
+	}
+	return res, true, err
 }
 
 // answerable refuses an answer to a roll another answer settled, and, in a table that checks its answers,
@@ -516,7 +548,7 @@ func (s *Service) gateSettle(ctx context.Context, ae answering, h heldRoll, a he
 	if err != nil {
 		return gateResult{}, err
 	}
-	out := gateResult{Settled: true, Roll: roll, Lucky: luckyOf(closed), Indomitable: indomitableOf(closed), Stroke: strokeOf(closed, ae.spec)}
+	out := gateResult{Settled: true, Roll: roll, Lucky: rerolledOf(closed), Indomitable: indomitableOf(closed), Stroke: strokeOf(closed, ae.spec)}
 	if out.Indomitable != nil { // the new roll replaces the old: so does what the old one showed
 		out.Lucky = nil
 	}
