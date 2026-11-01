@@ -21,11 +21,20 @@ import (
 // hit it and returns the open Stunning Strike offer with the two combatants.
 func (w *world) stunningStrikeFight() (toren, dragon *playv1.Combatant, rider string) {
 	w.t.Helper()
+	return w.monkStrikeFight(false)
+}
+
+// monkStrikeFight is stunningStrikeFight for a monk of the Open Hand when openHand is set.
+func (w *world) monkStrikeFight(openHand bool) (toren, dragon *playv1.Combatant, rider string) {
+	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
 	sheet := w.fullSheet("class:monk", "race:human", 5)
 	sheet.GetFull().BaseScores.Dexterity = 16
 	sheet.GetFull().BaseScores.Wisdom = 20
+	if openHand {
+		sheet.GetFull().Classes[0].Subclass = &charactersv1.ClassLevel_SubclassKey{SubclassKey: "subclass:open-hand"}
+	}
 	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
 		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
 	})))
@@ -75,6 +84,53 @@ func (w *world) stunCall(rider string) reply {
 	})
 }
 
+// riderScene is a hit rider of an attack on the adult red dragon, open and waiting for its answer: the dragon, the answer
+// to the rider (a call as whoever gives it), the player who gives it (nil when the master does) and the player whose log
+// holds the line of the rider.
+type riderScene struct {
+	dragon *playv1.Combatant
+	answer func() reply
+	owner  *person
+	reader *person
+}
+
+// stunScene is Caio's Stunning Strike at the dragon.
+func (w *world) stunScene() riderScene {
+	w.t.Helper()
+	_, dragon, rider := w.stunningStrikeFight()
+	return riderScene{dragon: dragon, answer: func() reply { return w.stunCall(rider) }, owner: w.caio, reader: w.caio}
+}
+
+// checkWindowStream checks the stream of a master's Legendary Resistance window: the master hears it open and close (the
+// positive control); the players hear neither, nor any hint of the reaction.
+func (w *world) checkWindowStream(t *testing.T, got map[string][]string) {
+	t.Helper()
+	count := func(name string) (opened, closed int) {
+		for _, ev := range got[name] {
+			switch {
+			case strings.HasPrefix(ev, "reaction_window_opened"):
+				opened++
+			case strings.HasPrefix(ev, "reaction_window_closed"):
+				closed++
+			}
+		}
+		return opened, closed
+	}
+	if o, c := count(w.master.name); o < 1 || c < 1 {
+		t.Errorf("the master heard %d openings and %d closings, want at least one of each (%v)", o, c, got[w.master.name])
+	}
+	for _, p := range []*person{w.ana, w.caio} {
+		if o, c := count(p.name); o != 0 || c != 0 {
+			t.Errorf("%s heard %d openings and %d closings of the master's window", p.name, o, c)
+		}
+		for _, ev := range got[p.name] {
+			if strings.Contains(ev, "reaction") {
+				t.Errorf("%s heard %s: the hold sends the players no hint of its own", p.name, ev)
+			}
+		}
+	}
+}
+
 // legendaryWindow is the master's Legendary Resistance window, or nil.
 func (w *world) legendaryWindow() *playv1.ReactionWindow {
 	for _, rw := range must(w.master.combat.GetEncounter(w.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter().GetReactionWindows() {
@@ -90,11 +146,18 @@ func (w *world) legendaryWindow() *playv1.ReactionWindow {
 // stream; Caio reads a save that passed with no number; a player's try to answer the window is refused like an
 // invented window's. The master reads all of it (the positive controls).
 func TestARidersLegendaryResistanceIsTheMastersAlone(t *testing.T) {
+	checkRiderLeak(t, (*world).stunScene)
+}
+
+// checkRiderLeak plays the leak test of one rider scene: see TestARidersLegendaryResistanceIsTheMastersAlone.
+func checkRiderLeak(t *testing.T, build func(*world) riderScene) {
+	t.Helper()
 	w := newWorld(t)
 	for _, word := range append([]string{"REACTION_KIND_LEGENDARY_RESISTANCE", "legendaryResistance", "Usar Resistência Lendária"}, resistanceWords...) {
 		w.secrets.add(&canary{needle: word, kind: "legendary-resistance-rider-window"})
 	}
-	_, dragon, rider := w.stunningStrikeFight()
+	scene := build(w)
+	dragon := scene.dragon
 	inSight := []string{"dragon-name", "seen-npc-name", "combatant-id"}
 	w.scriptD20(1)
 
@@ -104,14 +167,19 @@ func TestARidersLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 	after := map[*person][]reply{}
 	var line *playv1.CombatLogHitRider
 	got := w.hiddenOnlyEvents(func() {
-		held = append(held, w.stunCall(rider))
+		held = append(held, scene.answer())
 		if !held[0].ok() {
-			t.Fatalf("Caio's answer: status %d %s", held[0].status, held[0].body)
+			t.Fatalf("the answer to the rider: status %d %s", held[0].status, held[0].body)
 		}
 		if window = w.legendaryWindow(); window == nil {
 			t.Fatal("the master reads no Legendary Resistance window")
 		}
 		asked = []reply{w.reads(w.ana)[0], w.reads(w.caio)[0]}
+		for _, p := range []*person{w.ana, w.caio} { // the window is the master's: a player's combat lists none, whatever its kind
+			if got := p.currentEncounter(w).GetReactionWindows(); len(got) != 0 {
+				t.Errorf("%s reads the windows %v: the dragon's question is the master's alone", p.name, got)
+			}
+		}
 		for _, p := range []*person{w.ana, w.caio} {
 			asks := p.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
 				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE,
@@ -137,15 +205,15 @@ func TestARidersLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 		}
 		masterReads = w.reads(w.master)
 		masterLog = w.master.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()})
-		for _, e := range w.logOfPerson(w.caio) {
-			if r := e.GetHitRider(); r != nil {
+		for _, e := range w.logOfPerson(scene.reader) {
+			if r := e.GetHitRider(); r != nil && r.GetResult() != playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED {
 				line = r
 			}
 		}
 	})
 	for _, p := range []*person{w.ana, w.caio} {
 		reads := slices.Concat(after[p], asked)
-		if p == w.caio { // the answer to the rider is Caio's own to read
+		if p == scene.owner { // the answer to the rider is its giver's own to read
 			reads = append(reads, held...)
 		}
 		for _, r := range reads {
@@ -154,14 +222,8 @@ func TestARidersLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 			}
 		}
 	}
-	for _, p := range []*person{w.ana, w.caio} {
-		for _, ev := range got[p.name] {
-			if strings.Contains(ev, "reaction") {
-				t.Errorf("%s heard %s: the hold sends the players no hint of its own", p.name, ev)
-			}
-		}
-	}
-	// The positive controls: the master reads the offer, the choice and the count; Caio reads a save that passed.
+	w.checkWindowStream(t, got)
+	// The positive controls: the master reads the offer, the choice and the count; the player reads a save that passed.
 	master := slices.Concat(masterReads, []reply{answer})
 	for _, word := range []string{"resisted", "resistedLeft"} {
 		found := false
@@ -176,28 +238,31 @@ func TestARidersLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 		t.Error("the master's log does not hold the choice: the control is missing")
 	}
 	if line == nil || line.GetResult() != playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_SAVED || line.GetResisted() || line.GetNumbers() || line.GetD20() != 0 {
-		t.Errorf("Caio's rider line = %v, want a save that passed with no number and no trait", line)
+		t.Errorf("%s's rider line = %v, want a save that passed with no number and no trait", scene.reader.name, line)
 	}
 }
 
 // riderRead is everything a player can read of a Stunning Strike at the dragon that waits for the master and then
 // lands: the combat and the log while it waits and after the answer, the answer to the rider itself and the stream
 // hints, as the player's own text.
-func riderRun(t *testing.T, face int, answer heldAnswer) heldCastRead {
+func riderRun(t *testing.T, build func(*world) riderScene, face int, answer heldAnswer) heldCastRead {
 	t.Helper()
 	w := newWorld(t)
 	ctx := t.Context()
-	_, dragon, rider := w.stunningStrikeFight()
+	scene := build(w)
+	dragon := scene.dragon
 	w.scriptD20(face)
 	players := []*person{w.ana, w.caio}
 	parts := map[string][]reply{}
 	out := heldCastRead{player: map[string]string{}}
 	got := w.hiddenOnlyEvents(func() {
-		call := w.stunCall(rider)
+		call := scene.answer()
 		if !call.ok() {
-			t.Fatalf("Caio's answer: status %d %s", call.status, call.body)
+			t.Fatalf("the answer to the rider: status %d %s", call.status, call.body)
 		}
-		parts[w.caio.name] = append(parts[w.caio.name], call)
+		if scene.owner != nil {
+			parts[scene.owner.name] = append(parts[scene.owner.name], call)
+		}
 		out.window = w.legendaryWindow()
 		for _, p := range players {
 			parts[p.name] = append(parts[p.name], w.reads(p)...) // while it waits
@@ -244,9 +309,15 @@ func riderRun(t *testing.T, face int, answer heldAnswer) heldCastRead {
 // or failed and the master turned it into a success. Only the ids and the timestamps are normalised. The master reads the
 // two runs differently (the positive controls: a failed roll to offer and a use spent, or nothing to offer).
 func TestAPassedAndAResistedRiderSaveReadTheSameToThePlayers(t *testing.T) {
+	checkPassedAndResistedRider(t, (*world).stunScene)
+}
+
+// checkPassedAndResistedRider plays the two runs of one rider scene: see TestAPassedAndAResistedRiderSaveReadTheSameToThePlayers.
+func checkPassedAndResistedRider(t *testing.T, build func(*world) riderScene) {
+	t.Helper()
 	var passed, resisted heldCastRead
-	t.Run("the save passes", func(t *testing.T) { passed = riderRun(t, 20, passWindow) })
-	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = riderRun(t, 1, useTrait) })
+	t.Run("the save passes", func(t *testing.T) { passed = riderRun(t, build, 20, passWindow) })
+	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = riderRun(t, build, 1, useTrait) })
 	for _, name := range []string{"Ana", "Caio"} {
 		if passed.player[name] != resisted.player[name] {
 			t.Errorf("%s reads a passed save and a resisted one differently:\n--- passed\n%s\n--- resisted\n%s", name, passed.player[name], resisted.player[name])
@@ -276,8 +347,8 @@ func TestAPassedAndAResistedRiderSaveReadTheSameToThePlayers(t *testing.T) {
 // rolled, so the players read the same thing after the removal for a passed save and for a failed one.
 func TestARemovedDragonEndsThePassedAndTheFailedRiderWaitAlike(t *testing.T) {
 	var passed, failed heldCastRead
-	t.Run("the save passes", func(t *testing.T) { passed = riderRun(t, 20, removeDragon) })
-	t.Run("the save fails", func(t *testing.T) { failed = riderRun(t, 1, removeDragon) })
+	t.Run("the save passes", func(t *testing.T) { passed = riderRun(t, (*world).stunScene, 20, removeDragon) })
+	t.Run("the save fails", func(t *testing.T) { failed = riderRun(t, (*world).stunScene, 1, removeDragon) })
 	for _, name := range []string{"Ana", "Caio"} {
 		if passed.player[name] != failed.player[name] {
 			t.Errorf("%s reads the removal after a passed save and after a failed one differently:\n--- passed\n%s\n--- failed\n%s", name, passed.player[name], failed.player[name])
