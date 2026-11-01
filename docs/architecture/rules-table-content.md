@@ -466,14 +466,13 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 
 A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
 An option, a feat and a class feature of another kind carry none (`value` at `.summon`).
-The summon is lowered when the content is built (`lowerFeatureSummon`, `rules/overlay_featuresummon.go`): the content keeps a hidden spell for it and a `granted_spell` effect on the feature that gives the spell to its holder.
-The hidden spell is leveled, has the range Self and only the caster as target, and its key is `FeatureSummonSpellKey(feature key)`.
-No list, search or entry shows it, and no other entry can name it.
-So the options, the checks, the concentration, the replacement and the dismissal are a summoning spell's.
+The holder casts it as she would a spell, through the same options, checks, concentration, replacement, dismissal and undo.
+It is not a spell of her list: a sheet cannot list it, no list, search or entry shows it, and only the master and a player whose character has the feature's entry read its details.
+A key the feature's key makes for it that another entry holds is refused at `.key`, naming the key.
 
 | Field | Meaning | Limits |
 | --- | --- | --- |
-| `resource_key` | The resource of the feature's entry that a casting spends a use of | A valid resource name that a `resource` effect of the entry defines, at `.summon.resource_key` (`reference`) |
+| `resource_key` | The resource a casting spends a use of | A resource the feature's entry defines with a `resource` effect, or an SRD resource; otherwise `reference` at `.summon.resource_key` |
 | `resource_cost` | Uses a casting spends | 0 or 1 |
 | `casting_time` | Time to cast | An action by default |
 | `duration`, `concentration` | How long the creatures last, and whether the holder concentrates | Instantaneous by default |
@@ -482,4 +481,4 @@ So the options, the checks, the concentration, the replacement and the dismissal
 `slot()` is 0 in the count of a feature's summon and in the formulas of its creatures.
 How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
 A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
-Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.
+Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.

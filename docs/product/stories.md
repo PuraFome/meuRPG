@@ -751,6 +751,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   With no use left the casting is refused, and a long rest brings the uses back.
   The server refuses a resource the feature does not define, a cost above one use, a count per higher circle, a ritual, a mount, acting right after the owner, and a summon on an option or a feat.
   A player who holds none of the creatures reads the feature in the table's list without the table creatures they do not hold and without its count and limit, and no other read shows them (`TestATableFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone`).
+  The spell the feature's summon is cast as reads only to me and to a player whose character has the feature's class, live or archived (`TestTheHiddenSpellOfAFeatureSummonIsReadOnlyByTheMasterAndTheClassHolder`).
+  The summon is cast only through the feature: a Counterspell does not answer it and it is not one of the character's known spells.
   (`TestATableFeatureSummonsThroughTheSpellChecks`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestMR578_ATableFeatureSummonsItsCreaturesOutsideACombatForAUse`, `TestMR578_ATableFeatureSummonsInACombatAndTheUndoGivesTheUseBack`)
 - **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
 - **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.

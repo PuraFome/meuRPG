@@ -45,14 +45,18 @@ The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's entry key) in place of a slot.
-`CastSummon` and `CastSpell` take `granted_by`; `CastSpellOutsideCombat` takes it for a casting that has no creature choice to make.
+`CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.
 `granted_by` refuses a ritual and a slot in the same request (`INVALID_ARGUMENT`).
-The casting spends one use of the feature's resource, and is refused with `NO_USES` when none is left; the feature's `casting_time` is the time it takes (outside combat only what is longer than an action).
+A feature's summon is cast only through its feature: with a slot, as a ritual or with no `granted_by` it is refused, and a sheet cannot list it as a known, prepared or cantrip spell (`unknown_key`).
+The casting spends one use of the feature's resource, and is refused with `NO_USES` when none is left.
+The feature's `casting_time` is the time it takes; outside combat a time longer than an action is allowed, as for a spell.
 The count is the feature's formula with `slot()` 0; a formula creature resolves with `slot()` 0.
 Concentration, `max_live`, the replacement of an old casting and the dismissal are a spell's.
+A feature's summon is not a spell: no Counterspell window opens for it, and it does not count as the turn's spell, so it does not limit the bonus-action spell rule.
 The undo in a combat gives the use back, as it gives a slot back, and removes the creatures.
 `GetSummonOptions` names the feature with `granted_by`, `resource_key` and `uses_left`, and offers its one circle only while a use is left; it still lists the castings it would replace.
 A rest returns the uses by the resource's `recharge`.
+`GetSpellDetails` answers the feature's hidden spell to the master and to a player whose character has the entry (class, subclass, race or background) of the feature, live or archived, and as an unknown spell to every other member.
 
 **`GetSummonOptions`** (read, `IDEMPOTENT`).
 For a player character it answers what the cast sheet draws: for each summoning spell it may cast (on the sheet, prepared or in the spellbook; the Pact of the Chain gives the Find Familiar ritual) the key, the Portuguese name, the level, the time, whether it is a ritual and needs concentration, `can_ritual` and `can_cast_with_slot`; for each level it can use, the options `rules.SummonOptions` gives (the count already with the level, and the forms or the type and maximum CR); the slots (`SummonSlot`, pact ones with `pact`); and per spell what a casting would send away (the living familiar; the creatures of the current concentration).

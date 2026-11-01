@@ -751,6 +751,8 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Sem uso restante a conjuração é recusada, e um descanso longo devolve os usos.
   O servidor recusa um recurso que a habilidade não define, um custo acima de um uso, criaturas por círculo acima, um ritual, uma montaria, agir logo depois do dono e uma invocação numa opção ou num talento.
   Um jogador que não tem nenhuma das criaturas lê a habilidade na lista da mesa sem as criaturas da mesa que não tem e sem a contagem e o limite, e nenhuma outra leitura as mostra.
+  A magia em que a invocação da habilidade é conjurada só é lida por mim e por um jogador cujo personagem tem a classe da habilidade, viva ou arquivada.
+  A invocação só é conjurada pela habilidade: uma Contramágica não a responde e ela não é uma das magias conhecidas do personagem.
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
