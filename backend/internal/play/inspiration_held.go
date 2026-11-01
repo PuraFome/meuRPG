@@ -58,7 +58,7 @@ func (s *Service) holdSpellAttack(
 	spec.Stroke = attackStrokeRule(func() (int, error) { return armor(target) }, 0, blind)
 	_, forced := heldReplyOf(ctx)
 	before, err := s.spellDieBefore(ctx, env, spec, forced)
-	if err != nil || (!forced && !before.Holds && !spec.Lucky && !s.strokeAvailable(ctx, env, spec)) {
+	if err != nil || (!forced && !before.Holds && !spec.Lucky && !s.strokeAvailable(ctx, env, spec) && !s.rerollAvailable(ctx, env, spec)) {
 		return nil, err
 	}
 	// The mode is worked out as spellAttack does, without writing while the roll only waits and as the
@@ -104,6 +104,14 @@ func (s *Service) spellDieBefore(ctx context.Context, env gateEnv, spec rollSpec
 		return st, nil
 	}
 	return st, err
+}
+
+// luckyUsed is the d20 the cast's spell attack rolled again (Lucky, or a reroll rule), for the undo; nil when none.
+func (m *spellModes) luckyUsed() *luckyReroll {
+	if m == nil || m.pre == nil {
+		return nil
+	}
+	return m.pre.step.Lucky
 }
 
 // strokeUsed is the use of Stroke of Luck the cast's spell attack made, for the undo; nil when none.

@@ -332,6 +332,27 @@ func TestLegendarySpend_MoveRefusals(t *testing.T) {
 	}
 }
 
+// A legendary move to the square the creature stands on is refused as an ordinary move to it is, and spends
+// nothing: the actions left are the same, the vampire stays where it was and no event is written. The
+// master's ordinary move to the same square stays free (a token put right).
+func TestLegendarySpend_MoveToTheSameSquareIsRefusedAndSpendsNothing(t *testing.T) {
+	t.Parallel()
+	a, e, vamp := vampireFight(t)
+	e = a.passTo(t, e, "Toren")
+	events := a.events(t)
+	_, err := a.legendaryMove(t, a.master, e, vamp, "move", 10, 5)
+	wantCode(t, "a legendary move to the same square", err, connect.CodeInvalidArgument)
+	if got := a.spentOn(t, vamp); got != 0 || a.events(t) != events {
+		t.Errorf("the refusal left spent = %d (want 0) and %d events (was %d)", got, a.events(t), events)
+	}
+	if _, err := a.legendaryMove(t, a.master, e, vamp, "move", 10, 6); err != nil {
+		t.Errorf("the next legendary move was refused: %v", err)
+	}
+	if got := a.spentOn(t, vamp); got != 1 {
+		t.Errorf("after the walk spent = %d, want 1", got)
+	}
+}
+
 // The undo of each of the three gives the actions back, and only the last action can be undone: a turn that
 // passed in between closes the chain, so an undo cannot cross the reset at the creature's own turn.
 func TestLegendarySpend_UndoGivesTheActionsBack(t *testing.T) {

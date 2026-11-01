@@ -70,6 +70,8 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
+| `reroll` | See [Reroll](#reroll). |
+| `modifier` with target `critical_range` | See [Critical range](#critical-range). |
 | `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
@@ -206,6 +208,33 @@ Checked at its fields: `applies` is one of the two (`.applies`, `bad_value`); an
 `Derive` sets `Derived.UnactedAdvantage` and `Derived.SurprisedCritical` to the key of the feature that gives each.
 Surprise is the master's mark at the start of the combat, which the app already keeps ([Play](play/README.md)); "has not taken a turn" is the combat before it runs, or the first round before the creature's place in the order (`combat.HasNotActed`).
 The advantage is a source of the attack roll ("Name: vantagem neste ataque") and the critical hit is the roll's `critical_on_hit`.
+
+### Reroll
+
+`reroll` (menu name "Rolar de novo"; fields `rolls`, `at_most`, `resource`, `cost`, `when`, `text_pt`; `rules/rolleffects.go`) lets a die be rolled again, and the new roll must be used (SRD 5.1).
+`rolls` lists what it covers: `attack`, `check`, `save` (the d20) and `damage` (a die of weapon or spell damage).
+Checked at its fields (`bad_value` unless said):
+
+- `.rolls` is required, holds only those four words and names none twice;
+- `.at_most` is the highest face that may be rolled again, 1 to 20;
+- `.resource` is one the entry or its class defines (`.resource`, `bad_reference`);
+- `.cost` is an Int formula, 1 when empty, and needs the resource; a literal below 1 is refused;
+- `.value` and `.tags` are refused (a tagged effect is never applied, and a reroll has no hint to show).
+
+`Derive` fills `Derived.Rerolls` in the order of the effects, from the ones whose `when` holds.
+A reroll is left out when its resource does not exist at the character's level, when `cost` fails or gives less than 1, or when `cost` is more than the resource's maximum at that level.
+A rule with no resource is free and has cost 1 in `Derived.Rerolls`.
+The combat link carries them as `Traits.RerollRules` (`Applies`, `AtMost`, `Resource`, `Cost`, `Source`: the key of the feature that gives it).
+How the d20 is asked is in [Held rolls](play/held-rolls.md#the-d20-rolled-again-by-a-reroll-rule); how the damage dice are rolled again is in [Attacks and damage](play/attacks-and-damage.md).
+
+### Critical range
+
+`modifier` with the target `critical_range` (menu name "Margem de acerto crítico (o menor d20 que é crítico)") sets the lowest natural d20 that is a critical hit.
+The mode is `set` (an empty mode is read as `set`; any other is refused at `.mode`), and a literal `value` is 15 to 20 (`.value`); a formula is clamped to 15..20 when it is worked out.
+The menu entry carries `only_modes`, `min` and `max`; the editor does not read them, and the server refuses a mode or a value outside them.
+`Derive` lowers `Derived.CriticalRange` to the lowest of the range the SRD features give and the value of each such modifier whose `when` holds.
+A tagged modifier is a hint only.
+Combat reads `Derived.CriticalRange` for weapon attacks only; a spell attack is a critical hit on a 20.
 
 ## Table options
 

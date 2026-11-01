@@ -70,6 +70,8 @@ func heldRollOfferOf(o heldOffer, who offerRoller) *playv1.HeldRollOffer {
 		if h.DieUsed != nil { // the total the roller sees counts the die already added
 			out.D20.Total += h.DieUsed.Face
 		}
+	case askReroll:
+		out.Question = &playv1.HeldRollOffer_Reroll{Reroll: o.rerollOffer()}
 	case askStroke:
 		out.Question = &playv1.HeldRollOffer_StrokeOfLuck{StrokeOfLuck: &playv1.StrokeOfLuckQuestion{Failed: h.StrokeFailed}}
 		if h.DieUsed != nil { // the total the roller sees counts the die already added
@@ -175,8 +177,11 @@ func answerOfHeldRoll(msg *playv1.AnswerHeldRollRequest) (answerRequest, error) 
 	case *playv1.AnswerHeldRollRequest_StrokeOfLuck:
 		ans.question, ans.yes = askStroke, a.StrokeOfLuck.GetUse()
 		return ans, nil // nothing is rolled: no way of rolling to read
+	case *playv1.AnswerHeldRollRequest_Reroll:
+		ans.question, ans.yes = askReroll, a.Reroll.GetReroll()
+		return ans, nil // the server rolls the new d20 itself: no way of rolling to read
 	default:
-		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable or a stroke of luck answer"))
+		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable, a stroke of luck or a reroll answer"))
 	}
 	if !ans.yes {
 		return ans, nil
@@ -292,7 +297,7 @@ func (s *Service) openHeldRolls(ctx context.Context, campaignID string) ([]heldR
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
-	return out, nil
+	return withoutDeadRerolls(out, s.d20Rerolls), nil
 }
 
 // listedCombat is a combat the list has read: its row and its combatants.
@@ -325,7 +330,7 @@ func (l *heldList) offerOf(ctx context.Context, h heldRoll) (*playv1.HeldRollOff
 	}
 	st := rollerState{Die: die, Holds: found}
 	asked := askedBy(h, st)
-	if h.stale(st) || (asked.Asks != askLucky && asked.Asks != askStroke && !found) {
+	if h.stale(st) || (asked.Asks != askLucky && asked.Asks != askStroke && asked.Asks != askReroll && !found) {
 		return nil, nil
 	}
 	return l.s.outsideHeldRollOffer(ctx, nil, asked), nil

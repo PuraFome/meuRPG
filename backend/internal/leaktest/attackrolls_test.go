@@ -75,7 +75,13 @@ func newRollsTableWith(t *testing.T, afterHeroes func(rt *rollsTable)) *rollsTab
 // newRollsTableFog is newRollsTableWith on a map with the fog of war on or off.
 func newRollsTableFog(t *testing.T, fog bool, afterHeroes func(rt *rollsTable)) *rollsTable {
 	t.Helper()
-	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	return newRollsTableOf(t, false, fog, afterHeroes)
+}
+
+// newRollsTableOf is newRollsTableFog with the d20 rerolls switched on or off.
+func newRollsTableOf(t *testing.T, d20Rerolls, fog bool, afterHeroes func(rt *rollsTable)) *rollsTable {
+	t.Helper()
+	w := &world{stack: newStackOf(t, d20Rerolls), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	rt := &rollsTable{world: w, got: newAnswers(), ids: map[string]string{}}
 	defer func() {
 		if r := recover(); r != nil {
