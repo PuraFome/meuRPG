@@ -190,8 +190,9 @@ The kind is the reaction window's key, `opportunity` for an opportunity attack, 
 `spendReactionAs` writes the economy and the record together; `recordReaction` (`SetCombatantReactionSpent`) writes the record where another path spends the reaction.
 The throw back of Deflect Missiles writes nothing: answering Deflect recorded it.
 The start of the combatant's turn clears the record, and so does an economy write that gives the reaction back (the undo).
-The view sends `Combatant.reaction_kind` and `reaction_round` where it sends `reaction_used`: to the master, to the owner and to the members of a joint turn.
-It never sends them to a player outside the joint turn, and never an NPC's.
+The view sends `Combatant.reaction_kind` and `reaction_round` to the owner and the master only.
+A joint-turn partner reads `reaction_used`, and no other player reads any of the three.
+An NPC's record is the master's.
 `reaction_kind` is `UNSPECIFIED` when the server has no name for the reaction, as for a feature's.
 An undo reopens its window, closes the windows of the damage it takes back and gives an NPC's slot back; the undo of the master's "Não aplicar" on a hit that waited reopens the windows the discard closed (`closed_windows`; see [Undo](undo.md)).
 A held action's event closes the undo chain.

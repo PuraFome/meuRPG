@@ -371,3 +371,87 @@ func TestAnNPCsSpentReactionRecordIsTheMastersAlone(t *testing.T) {
 		t.Error("the master's reads do not hold the record: the canary is unreachable")
 	}
 }
+
+// The record of a player's spent reaction (which one, in which round) is the owner's and the master's. A
+// joint-turn partner reads reaction_used and nothing more, and a player outside the joint turn reads none of
+// the three. The owner's and the master's reads are the positive controls.
+func TestAPlayersSpentReactionRecordIsTheOwnersAndTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	m := w.master
+	sheet := w.fullSheet("class:wizard", "race:tiefling", 3)
+	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
+	})))
+	toren, bandit := w.combatant(w.toren), w.combatant(w.bandit)
+	must(m.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+	w.allow("bandit-name", w.ana, w.caio)
+	w.secrets.allowNeedle(bandit.GetId(), w.ana, w.caio)
+	for id, sq := range map[string][2]int32{toren.GetId(): {12, 14}, bandit.GetId(): {13, 14}} {
+		must(m.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Col: sq[0], Row: sq[1], Forced: true})))
+	}
+	for range 40 {
+		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		if cur.GetCurrentCombatantId() == toren.GetId() {
+			w.encounter = cur
+			break
+		}
+		must(m.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: w.campaign, EncounterId: cur.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: cur.GetCurrentCombatantId(), ExpectedRound: cur.GetRound()})))
+	}
+	if len(w.encounter.GetTurnGroupIds()) < 2 {
+		t.Fatalf("the turn group = %v, want Toren and Pensantus in one joint turn", w.encounter.GetTurnGroupIds())
+	}
+	opts := must(m.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId()})))
+	key := ""
+	for _, a := range opts.GetOptions().GetAttacks() {
+		if a.GetAttack().GetKey() != "" && a.GetAttack().GetSaveDc() == 0 {
+			key = a.GetAttack().GetKey()
+			break
+		}
+	}
+	if key == "" {
+		t.Fatal("the bandit has no attack to make")
+	}
+	hit := must(m.combat.RollAttack(ctx, rq(&playv1.RollAttackRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: bandit.GetId(), AttackKey: key, TargetId: toren.GetId(), IdempotencyKey: newKey(),
+		AsReaction: true, Roll: &playv1.RollAttackRequest_D20Face{D20Face: 19},
+	})))
+	if hit.GetPendingDamage().GetId() == "" {
+		t.Fatalf("the bandit's attack = %v, want a hit", hit.GetRoll())
+	}
+	must(m.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true}})))
+	must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey()})))
+	first := windowOfKind(w.caio, w, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	if first == nil {
+		t.Fatal("the tiefling has no Hellish Rebuke window after the damage")
+	}
+	must(w.caio.combat.AnswerReaction(ctx, rq(&playv1.AnswerReactionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: first.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE, UseRacial: true, IdempotencyKey: newKey(),
+	})))
+	w.secrets.add(&canary{needle: `"reactionKind"`, kind: "reaction-record-kind"})
+	w.secrets.add(&canary{needle: `"reactionRound"`, kind: "reaction-record-round"})
+
+	read := func(p *person) *playv1.Combatant {
+		t.Helper()
+		e := must(p.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+		return w.combatantOf(e, w.toren.GetId())
+	}
+	// The owner and the master read the record.
+	for _, p := range []*person{w.caio, m} {
+		c := read(p)
+		if !c.GetReactionUsed() || c.GetReactionKind() != playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE || c.GetReactionRound() < 1 {
+			t.Errorf("%s reads %v/%v/round %d, want the Hellish Rebuke spent", p.name, c.GetReactionUsed(), c.GetReactionKind(), c.GetReactionRound())
+		}
+	}
+	// The joint-turn partner reads that the reaction is used and nothing more.
+	if c := read(w.ana); !c.GetReactionUsed() || c.GetReactionKind() != playv1.ReactionKind_REACTION_KIND_UNSPECIFIED || c.GetReactionRound() != 0 {
+		t.Errorf("Ana (in the joint turn) reads %v/%v/round %d, want reaction_used and no record", c.GetReactionUsed(), c.GetReactionKind(), c.GetReactionRound())
+	}
+	for _, p := range []*person{w.ana, w.pending} {
+		for _, r := range w.reads(p) {
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+}

@@ -5,7 +5,6 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
-import { reactionRecordText } from './reaction-record';
 import { groupName, ofOwner, pluralName } from './creature-names';
 import { distanceText } from '../units';
 
@@ -295,12 +294,6 @@ export interface PartEconomy {
   readonly used: readonly string[];
 }
 
-/** "Reação (Escudo Arcano, rodada 2)": the reaction the member spent, with its record when the server sent one. */
-function reactionWithRecord(c: Combatant): string {
-  const record = reactionRecordText(c);
-  return record ? `Reação (${record})` : 'Reação';
-}
-
 export function partEconomy(c: Combatant): PartEconomy {
   const left: string[] = [];
   const used: string[] = [];
@@ -309,7 +302,7 @@ export function partEconomy(c: Combatant): PartEconomy {
     ['Ação bônus', c.bonusActionUsed],
     ['Reação', c.reactionUsed],
   ] as const) {
-    (spent ? used : left).push(spent && name === 'Reação' ? reactionWithRecord(c) : name);
+    (spent ? used : left).push(name);
   }
   return { left, movement: c.movementLeftFt > 0 ? distanceText(c.movementLeftFt) : '', used };
 }

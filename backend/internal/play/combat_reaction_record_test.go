@@ -6,8 +6,8 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// A reaction records the kind and the round it was spent in (#643). The record is the master's, the
-// owner's and a joint turn's, like reaction_used. These tests need the database
+// A reaction records the kind and the round it was spent in (#643). The record is the owner's and the
+// master's; a joint-turn partner reads reaction_used. These tests need the database
 // (MEURPG_TEST_DATABASE_URL).
 
 // reactionRecord is what the database holds of a combatant's reaction: whether it is spent, the kind and
@@ -375,10 +375,10 @@ func jointCasters(t *testing.T) (*armed, *playv1.Encounter) {
 	return a, e
 }
 
-// TestAJointTurnReadsEachOthersRecordAndNeverAnNPCs: Pensantus, in a joint turn with Toren and Brisa, spends
-// her Shield; the other two players read its kind and round, and the master does; the players read nothing of
-// an NPC's reaction, in the group or out of it.
-func TestAJointTurnReadsEachOthersRecordAndNeverAnNPCs(t *testing.T) {
+// TestAJointTurnPartnerReadsReactionUsedNotTheRecord: Pensantus, in a joint turn with Toren and Brisa, spends
+// her Shield; her player and the master read its kind and round, the partners read that the reaction is used
+// and nothing more; the players read nothing of an NPC's reaction.
+func TestAJointTurnPartnerReadsReactionUsedNotTheRecord(t *testing.T) {
 	t.Parallel()
 	t.Run("a player in the group", func(t *testing.T) {
 		t.Parallel()
@@ -391,8 +391,14 @@ func TestAJointTurnReadsEachOthersRecordAndNeverAnNPCs(t *testing.T) {
 			t.Fatalf("UseReaction() error = %v", err)
 		}
 		round := a.get(t, a.master).GetRound()
-		for _, u := range []*user{a.master, a.ana, a.caio, a.bia} {
+		for _, u := range []*user{a.master, a.ana} {
 			a.wantViewRecord(t, u, "Pensantus", playv1.ReactionKind_REACTION_KIND_SHIELD, round)
+		}
+		for _, u := range []*user{a.caio, a.bia} {
+			if !byLabel(t, a.get(t, u), "Pensantus").GetReactionUsed() {
+				t.Errorf("a partner does not read that Pensantus's reaction is used")
+			}
+			a.wantNoViewRecord(t, u, "Pensantus")
 		}
 	})
 	t.Run("an NPC out of the group", func(t *testing.T) {

@@ -54,31 +54,6 @@ func ownOrAnyPlayerCharacter(w *world, p *person, m protoreflect.Message) bool {
 	return own(w, p, m) || playerCharacter(w, p, m)
 }
 
-// ownOrJointTurn is true for the caller's own combatant, and for a player's character that is in the same
-// joint turn as a combatant of the caller's: those players read each other's economy.
-func ownOrJointTurn(w *world, p *person, m protoreflect.Message) bool {
-	if own(w, p, m) {
-		return true
-	}
-	if !playerCharacter(w, p, m) {
-		return false
-	}
-	e := must(w.master.combat.GetEncounter(w.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
-	group := map[string]bool{}
-	for _, id := range e.GetTurnGroupIds() {
-		group[id] = true
-	}
-	if !group[m.Get(m.Descriptor().Fields().ByName("id")).String()] {
-		return false
-	}
-	for _, c := range e.GetCombatants() {
-		if c.GetCharacterId() == w.ownCharacter(p).GetId() && group[c.GetId()] {
-			return true
-		}
-	}
-	return false
-}
-
 var masterOnly = []masterOnlyField{
 	// --- maps
 	{"meurpg.maps.v1.Map", "base_light", "the light of an unlit square is the master's setting", nil},
@@ -153,8 +128,8 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.ReactionWindow", "trigger", "the numbers of what happened (total, armor class, damage) are the master's (RN-20)", nil},
 	{"meurpg.play.v1.ReactionWindow", "answer_now", "the order the master answers in is his", nil},
 	{"meurpg.play.v1.Combatant", "death_failures", "the table keeps the death saves to the owner and the master (RN-24)", func(w *world, p *person, m protoreflect.Message) bool { return own(w, p, m) }},
-	{"meurpg.play.v1.Combatant", "reaction_kind", "which reaction a combatant spent is the master's, its player's and a joint turn's; an NPC's never reaches a player", ownOrJointTurn},
-	{"meurpg.play.v1.Combatant", "reaction_round", "the round a combatant spent its reaction in is the master's, its player's and a joint turn's", ownOrJointTurn},
+	{"meurpg.play.v1.Combatant", "reaction_kind", "which reaction a combatant spent is the master's and its player's; a joint-turn partner reads reaction_used only, and an NPC's never reaches a player", own},
+	{"meurpg.play.v1.Combatant", "reaction_round", "the round a combatant spent its reaction in is the master's and its player's", own},
 
 	// --- play: the contests and the special actions (RN-10, RN-20)
 	{"meurpg.play.v1.ContestView", "escape_dc", "the fixed escape DC of a grapple that came from an attack is the master's", nil},
