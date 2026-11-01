@@ -18,6 +18,8 @@ The window and its answer write no line of their own.
 A player reads the line of a save that passed: no roll, no count, no name for the trait.
 A legendary attack or move is the ordinary attack or movement line, which says nothing of the spend.
 No player reads the master's line, the event (`legendary_action_spent`, secret) or the stream change it sends.
+A Recharge roll at a creature's turn start is, for the master, a line (`COMBAT_LOG_KIND_RECHARGE_ROLLED`, `CombatLogEntry.recharge`) with the action, the d6 and whether it recharged.
+No player reads that line, the event (`recharge_rolled`, secret) or any change for it, and the log of a player is the same with or without the roll.
 What a table feature's `on_event` hook gave (the hit points, the temporary hit points, the uses it spent and restored) is in the line the death save (`CombatLogDeathSave.hook`) or the damage (`CombatLogDamage.hook`) already writes, and what a table action gave in the line of the action (`CombatLogDamage` with `healing`, `amount` and `temp_hp_gained`); the master and the character's own player read the numbers and everyone else reads the line without them (RN-10). The event keeps the feature's key, never its name; the line names it.
 Movement lines carry `distance_ft`, `distance_dft` and, for a walk, `spent_dft` with `move_dragging` and `move_crawling`: what the movement really spent (the path's cost doubled again by a drag and by a crawl).
 The line says the second number only when it differs from the distance, with the reason in words (another creature's space and difficult terrain, "arrastando", "rastejando").

@@ -293,3 +293,25 @@ func TestRN20_TheRechargeRollIsNotCountedOnAFogMap(t *testing.T) {
 		t.Errorf("the stored row carries %q as user and character, want neither", rolledRows[0])
 	}
 }
+
+// Without the fog the revision a player reads is the combat's own: it goes up by the same amount across a turn
+// start whether the creature rolled a Recharge or not.
+func TestRN20_TheRechargeRollIsNotCountedWithoutTheFog(t *testing.T) {
+	t.Parallel()
+	rise := func(spent bool) int32 {
+		a, e, hound := houndFight(t, true)
+		if spent {
+			a.spendByHand(t, hound, spentRechargePrefix+fireBreath)
+		}
+		before := a.get(t, a.caio).GetRevision()
+		a.h.roller.queue(6)
+		a.ownTurnAgain(t, e, hound)
+		if lines := len(a.rechargeLines(t, a.master, a.get(t, a.master))); lines != map[bool]int{true: 1, false: 0}[spent] {
+			t.Fatalf("spent %v: the master reads %d roll lines", spent, lines)
+		}
+		return a.get(t, a.caio).GetRevision() - before
+	}
+	if with, without := rise(true), rise(false); with != without {
+		t.Errorf("the revision went up by %d with a roll and by %d without, want the same", with, without)
+	}
+}

@@ -117,7 +117,8 @@ func TestActionLimit_UsesADayAndRestRunOut(t *testing.T) {
 
 // The attack of a Recharge action (a spider's Web, a ranged attack: a creature of a character has it as an
 // attack of its sheet) is spent by its roll and refused on the creature's next turn, and its undo gives the
-// use back. The bite beside it is not limited.
+// use back. The bite beside it is not limited. The player who owns the creature (Toren's) makes these attacks and
+// reads the reason of the refusal: it is their own creature's action, not a secret of the master's.
 func TestActionLimit_AttackRechargeActionIsSpentRefusedAndUndone(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
