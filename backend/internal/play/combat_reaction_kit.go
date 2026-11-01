@@ -105,9 +105,9 @@ func slotsUsedOf(who playdb.Combatant) map[string]int {
 	return out
 }
 
-// slotsFor are the free slots a reaction spell can be cast with, from minLevel
+// slotsFor are the free slots and innate uses a reaction spell can be cast with, from minLevel
 // (at least the spell's own level) up: empty when the combatant does not have the
-// spell or no slot is free.
+// spell or nothing is free.
 func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 	level := reactionSpellLevel[spell]
 	if k.who.Kind == kindPlayer {
@@ -137,9 +137,8 @@ func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
 	return out
 }
 
-// innateChoices are the uses a day of a stat block's innate spell, one choice a resource with uses left,
-// offered beside the slots: the choice has the spell's own
-// level and counts the uses where a slot choice counts slots.
+// innateChoices are the uses a day of a stat block's innate spell, one choice a resource with uses left.
+// They are offered beside the slots, with the spell's own level, and count uses where a slot counts slots.
 func (k kit) innateChoices(spell string) []*rulesv1.SlotChoice {
 	var out []*rulesv1.SlotChoice
 	for _, in := range k.st.Innate {

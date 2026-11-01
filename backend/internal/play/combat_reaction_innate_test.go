@@ -22,7 +22,8 @@ func innateUse(resource string) func(*playv1.AnswerReactionRequest) {
 func couatlHit(t *testing.T) (*armed, *playv1.Encounter, *playv1.RollAttackResponse) {
 	t.Helper()
 	a, e := monsterFight(t, "monster:couatl", "Couatl")
-	return a, e, a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Couatl", d20(14))
+	hit := a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Couatl", d20(14))
+	return a, e, hit
 }
 
 // TestTheCouatlsInnateShieldOpensTheWindowAndStopsTheHit: the Couatl has Shield 3/day as an innate

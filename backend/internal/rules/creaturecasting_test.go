@@ -100,8 +100,8 @@ func monsterWith(t *testing.T, traits ...srd51.MonsterAbility) *Content {
 }
 
 // TestMonsterCastingReactionValuesGolden: what the reaction reads of every SRD caster (save DC, attack bonus,
-// ability modifier, slots, spells) and what MonsterCaster reads (level, granted spells). The golden was
-// produced by the readers before MonsterSpellcasting became a view of MonsterCaster.
+// ability modifier, slots, spells) and what MonsterCaster reads (level, granted spells).
+// A change to these values is a change to what every SRD caster does in a reaction.
 func TestMonsterCastingReactionValuesGolden(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
