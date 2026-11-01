@@ -952,6 +952,7 @@ type programKey struct {
 	src   string
 	kind  formula.Kind
 	gated bool
+	slot  bool
 }
 
 // compileFormula compiles one formula. While a table layer is being added
@@ -960,6 +961,12 @@ type programKey struct {
 // once. The memo is dropped when With is done; the SRD load does not use it.
 func (c *content) compileFormula(src string, kind formula.Kind) (*formula.Program, error) {
 	return c.compileWith(c.compiler, src, kind, false)
+}
+
+// compileSlotted compiles a number of a table creature, which may read slot() (see
+// formula.Compiler.WithSlot).
+func (c *content) compileSlotted(src string) (*formula.Program, error) {
+	return c.compileMemo(c.compiler.WithSlot(), src, formula.Int, false, true)
 }
 
 // compileGated compiles the condition of an effect, which may read a state with
@@ -971,10 +978,14 @@ func (c *content) compileGated(src string) (*formula.Program, error) {
 // compileWith is compileFormula with the compiler chosen; gated tells the memo
 // which of the two programs a text means.
 func (c *content) compileWith(compiler *formula.Compiler, src string, kind formula.Kind, gated bool) (*formula.Program, error) {
+	return c.compileMemo(compiler, src, kind, gated, false)
+}
+
+func (c *content) compileMemo(compiler *formula.Compiler, src string, kind formula.Kind, gated, slot bool) (*formula.Program, error) {
 	if c.programs == nil {
 		return compiler.Compile(src, kind)
 	}
-	key := programKey{src, kind, gated}
+	key := programKey{src, kind, gated, slot}
 	if p, ok := c.programs[key]; ok {
 		return p, nil
 	}

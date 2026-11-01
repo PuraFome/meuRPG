@@ -523,6 +523,57 @@ message TableCreature {
   // ignoring case), and may not be named "Magic Weapons",
   // "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
   repeated TableCreatureTrait traits = 6;
+  // The creature's numbers as formulas of its owner. A formula is evaluated for the owner when the
+  // creature is given or summoned, and may read level(), classLevel("<class>"), prof(), mod("<ability>"),
+  // score("<ability>") and slot(): the circle (1 to 9) of the spell slot the owner cast with, 0 outside a
+  // slot cast. slot() is legal only in these fields, never in an effect or a condition. A formula that does
+  // not compile, or calls a function that does not exist, is refused with its field. An empty formula keeps
+  // the static value; the static fields above stay, and are what a creature with no owner uses (Pôr no
+  // combate, Criar NPC): there the formulas are not evaluated. If a formula fails while it runs, the static
+  // value stands. Each result is rounded down and clamped to the range of its field.
+  //
+  // hit_points_formula: maximum hit points, clamped to 1..9999. Replaces hit_points.
+  string hit_points_formula = 7;
+  // armor_class_formula: armor class, clamped to 1..40. Replaces armor_class.
+  string armor_class_formula = 8;
+  // damage_bonus_formula: the damage bonus of damage_bonus, clamped to -10..30. Replaces damage_bonus.
+  string damage_bonus_formula = 9;
+  // attack_bonus_formula: the to-hit of every attack of the creature, the base's and the ones in
+  // `attacks` that have no to_hit of their own, clamped to -10..30. Empty keeps the base's.
+  string attack_bonus_formula = 10;
+  // save_dc_formula: the DC of every action of the creature that asks for a saving throw, clamped to
+  // 1..30. Empty keeps the base's.
+  string save_dc_formula = 11;
+  // Attacks added after the base's actions, at most 8. Each becomes an action of the creature keyed
+  // "<creature key>#<slug of its name>", with an attack roll, as the SRD creatures' attacks are. They are
+  // not part of the base's Multiattack. A name may not repeat a trait or an action of the base, nor
+  // another attack, compared as the traits' names are.
+  repeated TableCreatureAttack attacks = 12;
+}
+
+// TableCreatureAttack is an attack action of a table creature.
+message TableCreatureAttack {
+  // 1 to 80 characters, on one line.
+  string name_pt = 1;
+  // A melee attack has reach_ft and no range; a ranged one has range_ft and no reach.
+  bool melee = 2;
+  // The reach of a melee attack in feet, 0 (5 ft.) to 30.
+  int32 reach_ft = 3;
+  // The range of a ranged attack in feet, 1 to 600.
+  int32 range_ft = 4;
+  // The long range of a ranged attack, 0 (none) or more than range_ft, up to 1200.
+  int32 long_range_ft = 5;
+  // The damage dice, such as 2d6: 1 to 20 dice of 4, 6, 8, 10, 12 or 20 sides.
+  int32 dice_count = 6;
+  int32 dice_sides = 7;
+  // A formula for the bonus added to this attack's damage, clamped to -10..30. Empty is the creature's
+  // damage bonus.
+  string damage_bonus = 8;
+  // A "damage-type:" key of the SRD, such as "damage-type:slashing".
+  string damage_type = 9;
+  // A formula for the to-hit, clamped to -10..30, used when the creature has no attack_bonus_formula.
+  // Empty is +0.
+  string to_hit = 10;
 }
 
 // TableCreatureTrait is a trait of a table creature: a name and a text, no effects.
