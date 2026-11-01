@@ -12824,7 +12824,9 @@ type TakeActionRequest struct {
 	// (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
 	// cost, the least. The server reads the points left in the same transaction as the use and refuses a number outside
 	// the range with `invalid_argument` (nothing is spent); it never trusts the client with more than this number.
-	// Ignored by an action whose cost is fixed.
+	// Ignored by an action whose cost is fixed. An action that spends a spell slot (Action.spends_slot) reads it as the
+	// level of the slot, 1 to 9: a level with no free slot is refused with `failed_precondition` (ResourceBlocked
+	// NO_FREE_SLOT, nothing is spent) and a level outside 1 to 9 with `invalid_argument`.
 	Spend int32 `protobuf:"varint,103,opt,name=spend,proto3" json:"spend,omitempty"`
 	// A feature action of the table's content that heals or gives temporary hit points (Action.heal, Action.temp_hp):
 	// the combatant that gets them, the actor itself or one ally (another player's character). Empty: the actor. An NPC,
