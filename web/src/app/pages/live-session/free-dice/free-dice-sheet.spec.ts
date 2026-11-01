@@ -225,7 +225,7 @@ describe('FreeDiceSheet: rolling', () => {
     expect(el.querySelector('.card--rolling')).toBeNull();
   });
 
-  it('keeps the backdrop and Esc from closing the sheet while the server rolls', async () => {
+  it('locks the sheet while the server rolls, so the backdrop and Esc do not close it', async () => {
     let release!: () => void;
     const { fixture, el, ref } = await mount({
       setup: (a) => {
