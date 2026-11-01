@@ -307,12 +307,9 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if err != nil {
 		return nil, err
 	}
-	if w.Kind != string(reaction.Concentration) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not a concentration save: use AnswerReaction"))
-	}
-	t := windowTriggerOf(w)
 	master := call.m.Role == authz.RoleMaster
-	if err := refuseSaveAnswer(t, master, call.keep, call.handOver); err != nil {
+	t, err := concentrationTriggerOf(w, call, master)
+	if err != nil {
 		return nil, err
 	}
 	if call.handOver {
@@ -349,6 +346,16 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	c.characterID = &reactor.CharacterID
 	run.made = ev
 	return ev, nil
+}
+
+// concentrationTriggerOf is the trigger of a concentration window, refused when the window is of another
+// kind or the answer is not the answering member's to give.
+func concentrationTriggerOf(w playdb.ReactionWindow, call concentrationCall, master bool) (windowTrigger, error) {
+	if w.Kind != string(reaction.Concentration) {
+		return windowTrigger{}, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not a concentration save: use AnswerReaction"))
+	}
+	t := windowTriggerOf(w)
+	return t, refuseSaveAnswer(t, master, call.keep, call.handOver)
 }
 
 // concentrationOutcome is the save of the window: kept as it is (the master's word) or rolled. It answers
