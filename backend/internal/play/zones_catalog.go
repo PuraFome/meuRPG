@@ -10,7 +10,7 @@ import (
 )
 
 // The spells that keep an area on the map while they last (SRD 5.1): Spirit Guardians, Moonbeam,
-// Cloudkill, Web, Grease and Entangle. The cast puts a zone on the map (the spell_zones table); what the zone does,
+// Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud. The cast puts a zone on the map (the spell_zones table); what the zone does,
 // where it stands and how it moves is written here, one row for each spell, in our own words:
 //
 //   - Spirit Guardians: an aura around the caster that goes where the caster goes. A creature that
@@ -22,16 +22,22 @@ import (
 //     turn to move it.
 //   - Cloudkill: a fog sphere at a point, which creeps away from the caster by two squares at the start
 //     of each of the caster's turns. A Constitution save for poison damage, half on a pass.
-//   - Web: a cube of sticky strands at a point. The cast puts its effect on who is inside, as it always
-//     did; the zone adds who comes in later: a Dexterity save on entering or beginning a turn there, and
+//   - Web: a cube of sticky strands at a point. The cast puts its effect on who is inside;
+//     the zone adds who comes in later: a Dexterity save on entering or beginning a turn there, and
 //     a failure restrains.
 //   - Grease: a 10-foot square at a point, with no concentration. Who stands in it at the cast, comes in
 //     or ends a turn there makes a Dexterity save or falls prone.
 //   - Entangle: a 20-foot square at a point. Only who stands in it at the cast makes a Strength save,
 //     and a failure restrains until the spell ends.
+//   - Fog Cloud: a sphere of 20 feet of radius at a point, heavily obscured, 20 feet more for each slot above
+//     the 1st. It asks nobody; it blocks the sight of the players on a fog map.
+//   - Darkness: a sphere of 15 feet of radius at a point, magical darkness. It asks nobody; no light and no
+//     darkvision see into it.
+//   - Stinking Cloud: a sphere of 20 feet of radius at a point, heavily obscured. A creature whose square is in
+//     it at the start of its turn makes a Constitution save, and a failure spends its action.
 //
 // A creature is hit at most once on a turn by the same zone, whether it came in or began the turn
-// inside. For the first four the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
+// inside. For Spirit Guardians, Moonbeam, Cloudkill and Stinking Cloud the cast itself hits nobody: a creature standing in the area when the spell is cast is hit
 // when it begins its turn there or comes back in.
 
 // zoneKind says what a zone does to the creature it catches.
@@ -44,6 +50,22 @@ const (
 	zoneRestrain
 	// zoneProne: a saving throw; a failure knocks the creature prone (Grease).
 	zoneProne
+	// zoneOpen: no save and no trigger; the zone only changes what is seen (Fog Cloud, Darkness).
+	zoneOpen
+	// zoneRetch: a saving throw at the start of a turn of a creature whose square is inside; a failure spends its action
+	// (Stinking Cloud).
+	zoneRetch
+)
+
+// zoneSight says how a zone changes what is seen on the map.
+type zoneSight int
+
+const (
+	sightNone zoneSight = iota
+	// sightCloud: heavily obscured; a line that crosses it is blocked (Fog Cloud, Stinking Cloud).
+	sightCloud
+	// sightDark: magical darkness; light does not light it and darkvision does not see in it (Darkness).
+	sightDark
 )
 
 // zoneDef is what a spell's zone is.
@@ -69,6 +91,12 @@ type zoneDef struct {
 	// onCast says the zone catches the creatures standing in the area when the spell is cast, and onTurnEnd the
 	// creature that ends its turn inside (Grease).
 	onCast, onTurnEnd bool
+	// sight is what the zone does to what is seen (rules/vision).
+	sight zoneSight
+	// growsFt is how much the size grows for each slot level above the spell's own (Fog Cloud).
+	growsFt int
+	// level is the spell's own level: the slot of that level adds nothing, and each level above it adds growsFt.
+	level int
 	// restrainKey is the effect a failed save puts on the creature of a restraining zone.
 	restrainKey string
 	// slows says a creature the zone catches moves at half speed for the turn (Spirit Guardians), and
@@ -89,6 +117,9 @@ const (
 	webFt             = 20
 	greaseFt          = 10
 	entangleFt        = 20
+	fogCloudFt        = 20
+	darknessFt        = 15
+	stinkingCloudFt   = 20
 )
 
 // moveRangeFt is how far the caster moves an area with an action (Moonbeam), and driftFt how far a
@@ -99,6 +130,18 @@ const (
 )
 
 var zoneDefs = map[string]zoneDef{
+	"spell:fog-cloud": {
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: fogCloudFt, growsFt: fogCloudFt, level: 1, corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:darkness": {
+		kind: zoneOpen, shape: grid.ShapeSphere, sizeFt: darknessFt, corners: true, sight: sightDark,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
+	"spell:stinking-cloud": {
+		kind: zoneRetch, onStart: true, shape: grid.ShapeSphere, sizeFt: stinkingCloudFt, save: "con", corners: true, sight: sightCloud,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	},
 	"spell:spirit-guardians": {
 		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true, slows: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_CASTER, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER,
@@ -126,13 +169,13 @@ var zoneDefs = map[string]zoneDef{
 	},
 }
 
-// zoneDefOf is the zone one of the SRD's six spells keeps.
+// zoneDefOf is the zone one of the SRD's nine spells keeps.
 func zoneDefOf(spellKey string) (zoneDef, bool) {
 	d, ok := zoneDefs[spellKey]
 	return d, ok
 }
 
-// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's six, or the table spell's own
+// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's nine, or the table spell's own
 // area, which the master wrote as the model says. Both are the same value, so the zone is made and worked the
 // same way from either.
 func zoneDefOfSpell(sp link.Spell) (zoneDef, bool) {
@@ -171,7 +214,7 @@ type zoneDefJSON struct {
 	Corners   bool   `json:"corners,omitempty"`
 }
 
-// storedDef is the definition as the zone row keeps it, nil for one of the SRD's six (the code's table is its truth).
+// storedDef is the definition as the zone row keeps it, nil for one of the SRD's nine (the code's table is its truth).
 func storedDef(spellKey string, d zoneDef) []byte {
 	if _, srd := zoneDefOf(spellKey); srd {
 		return nil
@@ -197,6 +240,19 @@ func defOfStored(raw []byte) (zoneDef, bool) {
 
 // area is the zone's shape and size for the geometry of the map.
 func (d zoneDef) area() grid.Area { return grid.Area{Shape: d.shape, SizeFt: d.sizeFt} }
+
+// sizeAt is the size of the zone cast with a slot: the catalog's, plus growsFt for each level above the spell's own.
+func (d zoneDef) sizeAt(spellLevel, slotLevel int) int {
+	return d.sizeFt + d.growsFt*max(slotLevel-spellLevel, 0)
+}
+
+// withZoneSize gives the spell the size its zone has at the slot of the cast.
+func withZoneSize(sp link.Spell, slotLevel int) link.Spell {
+	if d, ok := zoneDefOfSpell(sp); ok && d.growsFt > 0 {
+		sp.ZoneSizeFt = d.sizeAt(sp.Level, slotLevel)
+	}
+	return sp
+}
 
 // notes are the keys of what else the zone does, for the screens.
 func (d zoneDef) notes() []string {

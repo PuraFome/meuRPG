@@ -68,6 +68,8 @@ func hpStateOf(v *playv1.CharacterVitals) hpState {
 type slotRef struct {
 	Level int32 `json:"level"`
 	Pact  bool  `json:"pact,omitempty"`
+	// Resource is the resource of an innate spell's uses a day when the cast spent one of them and no slot.
+	Resource string `json:"resource,omitempty"`
 }
 
 // deathState is a combatant's death save counts and whether its turn's save was
@@ -358,6 +360,9 @@ type actionEvent struct {
 	// is every pending damage the one roll settled.
 	CastID string   `json:"cast_id,omitempty"`
 	Slot   *slotRef `json:"slot,omitempty"`
+	// SlotCounted says an NPC's cast counted Slot on the combatant, so its undo gives it
+	// back; an NPC's cast without it spent nothing and gives nothing back.
+	SlotCounted bool `json:"slot_counted,omitempty"`
 	// GrantUse is the resource a cast through a limited granted_spell effect spent a use of, for the undo.
 	GrantUse   string      `json:"grant_use,omitempty"`
 	Resource   string      `json:"resource,omitempty"`

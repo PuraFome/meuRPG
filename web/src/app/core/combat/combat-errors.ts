@@ -22,6 +22,7 @@ import { describeConnectError } from '../connect/connect-errors';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CLASS_BLOCKED_TEXT } from './combat-errors-class';
 import { LEGENDARY_BLOCKED_TEXT } from './combat-errors-legendary';
+import { SUMMON_BLOCKED_TEXT } from './combat-errors-summon';
 import { LIMITED_ACTION_BLOCKED_TEXT } from './combat-errors-limits';
 import { circleLabel } from './combat-grid';
 import { metersFixed, metersText } from '../units';
@@ -280,10 +281,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     'Essa magia leva mais tempo do que um combate dá. Conjure fora do combate.',
   ],
   [
-    EncounterBlockedReason.SUMMON_CHOICE_INVALID,
-    'Essa escolha não vale para o espaço que você usou. Mude a quantidade, a criatura ou o espaço e tente de novo.',
-  ],
-  [
     EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
     'Com armadura ou escudo sem proficiência não dá para atacar nem conjurar.',
   ],
@@ -295,7 +292,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     EncounterBlockedReason.STATE_NOT_ON,
     'Esse estado já não está ligado. A tela foi atualizada; nada mudou.',
   ],
-  [EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE, 'Falta o d20 da iniciativa das criaturas.'],
   [
     EncounterBlockedReason.CREATURE_CANNOT_ATTACK,
     'Essa criatura não ataca assim: um familiar não ataca, e o do Pacto da Corrente só com a reação.',
@@ -419,6 +415,7 @@ export function blockedMessage(blocked: EncounterBlocked): string {
     BLOCKED_TEXT.get(blocked.reason) ??
     CLASS_BLOCKED_TEXT.get(blocked.reason) ??
     LEGENDARY_BLOCKED_TEXT.get(blocked.reason) ??
+    SUMMON_BLOCKED_TEXT.get(blocked.reason) ??
     LIMITED_ACTION_BLOCKED_TEXT.get(blocked.reason) ??
     BLOCKED_TEXT_WITH_NUMBERS.get(blocked.reason)?.(blocked) ??
     'O combate não está num estado que aceite isso. A tela foi atualizada.'

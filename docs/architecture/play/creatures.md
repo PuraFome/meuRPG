@@ -27,6 +27,23 @@ The creatures are born on free squares next to the caster and enter the order wi
 Refusals: `CASTING_TIME_TOO_LONG` ("Leva 1 hora: conjure fora do combate"), `SUMMON_CHOICE_INVALID`, `SUMMON_NEEDS_INITIATIVE`, and `TOO_MANY_COMBATANTS` before spending the slot (a combat has 40 combatants, counting the creatures of the concentration that ends).
 The group's bonus is the first creature's of the summon, whichever member the player rolls for.
 
+**Table spells.** A table spell with a `summon` goes through `GetSummonOptions`, `CastSummon` and `CastSpell.summon` with the SRD's checks: the slot, concentration, the dismissal of the previous concentration and the undo.
+The creatures have `source` `table` and `summon_key` the spell's key.
+The count is the spell's formula with `slot()` the cast slot, plus the creatures added for each circle above the spell's own.
+A formula creature resolves with `slot()` the cast slot, and its numbers are kept in `character_creatures.stat_block`.
+A summon with its own initiative gives each creature its own `summon_group_id` and its own roll; one with the owner's group roll shares the casting's group.
+The turn mode is read from the spell's rule when it is cast and stays in each creature's group: editing the spell changes no creature already made.
+In a combat, a casting of more than one creature with its own initiative needs `roll_in_app`: one typed die is one face, and a typed face is refused with `SUMMON_NEEDS_INITIATIVE` before anything is spent.
+The `creature_summoned` event keeps the roll of the first creature only; each combatant keeps its own initiative.
+`max_live` refuses a casting that would leave more creatures of the spell than it allows (`CREATURE_LIMIT`).
+A summon that replaces its own dismisses the creatures of the old casting of the spell (reason `replaced`), in or out of a combat.
+In a combat their combatants leave the order and the map, the room for the new ones counts them as gone, and an undo of the new casting brings the old ones back and removes the new ones.
+The line of a dismissal carries the reason the creature was dismissed for.
+`GetSummonOptions` is read by the character's owner and the master, and names the table creatures a spell offers, with key and name, before the owner holds one.
+In a campaign that forces physical dice, a player cannot cast a spell whose creatures each roll their own initiative (the app's roller is refused and a typed die is one face): the master casts it, who is exempt from the forced mode.
+The owner plays the creatures in the same tabs as any summon.
+The undo gives the slot back and removes the creatures.
+
 **`GetSummonOptions`** (read, `IDEMPOTENT`).
 For a player character it answers what the cast sheet draws: for each summoning spell it may cast (on the sheet, prepared or in the spellbook; the Pact of the Chain gives the Find Familiar ritual) the key, the Portuguese name, the level, the time, whether it is a ritual and needs concentration, `can_ritual` and `can_cast_with_slot`; for each level it can use, the options `rules.SummonOptions` gives (the count already with the level, and the forms or the type and maximum CR); the slots (`SummonSlot`, pact ones with `pact`); and per spell what a casting would send away (the living familiar; the creatures of the current concentration).
 It is the same code `CheckSummon` uses (`summonStanding`), so the read and the casting agree; `CastSummon` still checks every choice.
@@ -34,13 +51,26 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
 
 ## Table creatures
 
-A table creature is an SRD creature plus the master's adjustments: hit points, armor class, a damage bonus and extra text traits.
+A table creature is an SRD creature plus the master's adjustments: hit points, armor class, a damage bonus, extra text traits, and attacks of its own.
+Its numbers can also be formulas of its owner (see "Formula creatures" below).
 It is a table entry of kind `creature`, with the key `creature:<slug>@mesa`; the fields and limits are in [Table creatures](../rules-table-content.md#table-creatures).
 The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the creature sheet (`GetCreature`) and the combat read it by its key.
 
 - **What is copied and what is read.** `GiveCreature` copies the entry's maximum HP into `character_creatures.hp_max` when the creature is given.
   Editing the entry later changes no creature already held: it keeps the HP it was given.
-  The armor class (`CharacterCreature.armor_class`) and the actions come from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus.
+  For a creature with no formula, the armor class (`CharacterCreature.armor_class`) and the actions come from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus.
+- **Formula creatures.** An entry with a formula in any number or attack makes a creature whose numbers depend on its owner.
+  When it is given, the owner's sheet is derived with the campaign's content, and `rules.ResolveCreature` runs the formulas with the slot 0.
+  The result is kept as JSON in `character_creatures.stat_block`, and `hp_max` is the resolved hit points.
+  It is a snapshot, like `hp_max`: a later level of the owner or an edit of the entry's formulas changes no creature already held.
+  A creature with a snapshot builds its stat block with `rules.ResolvedDerived`, which takes the numbers from the snapshot and the text (name, traits, attack names) from the content.
+  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry, or renamed (its key follows its name), has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
+  A snapshot is used whenever the row has one, even when the entry has lost all its formulas.
+  The list (`CharacterCreature.armor_class`), the combat sheet, the turn options, the saving throws and the checks of a held creature read the snapshot.
+  A trap that hits a creature outside a combat reads it too.
+  `GetCreature` and `ListCreatures` show the content's owner-less stat block, not a snapshot; the creature list's `armor_class` and the combat show the snapshot.
+  A creature with no formula has no snapshot, and reads the content as described below.
+  "Pôr no combate" and "Criar NPC" have no owner: they use the entry's static fields, and no formula is run.
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.
   Entries are never deleted, so a held creature never loses its key.
@@ -56,13 +86,15 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The holder reads it whatever the entry's state.
   The master reads them all.
   `TestRN20_TableCreatureHitPointsOnlyToOwnerAndMaster` and the leak matrix pin this.
-- **Where it is not used.** The summoning spells offer SRD creatures only.
+- **Where it is used.** A table spell with a `summon` brings table creatures or SRD creatures through the same paths as the SRD's summoning spells (below).
+- **Where it is not used.** The SRD's own summoning spells offer SRD creatures only.
   A table creature is not a Wild Shape form.
   The encounter generator, evaluator and swaps leave it out, because it has the challenge rating and XP of its base, which its adjustments may not keep.
   The encounter tools refuse its key as unknown content: `encounterEntries` answers `failed_precondition` and `GetBattleEncounter` lists the key in `unknown_creature_keys`.
 - **Giving.** The master can give an archived table creature.
-- **Editing and combats.** A held creature in a combat reads its armor class, attacks and traits from the entry every time.
+- **Editing and combats.** A held creature with no formula in a combat reads its armor class, attacks and traits from the entry every time.
   An edit of the entry during the fight changes them at once.
+  A formula creature keeps its numbers and reads only its text from the entry.
   Its hit points are its own, copied when it was given.
   A monster put in a combat with "Pôr no combate" is a combatant made from the combat's NPC for the creature.
   Its armor class, speed, initiative and sheet attacks are the NPC's.
@@ -103,11 +135,18 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), which lists no frequency in the data.
   They keep only the description note, and the master casts for them.
   `rules.Content.MonsterCaster` reads the traits: the slots, the prepared spells and the numbers of Spellcasting, and the innate spells as granted spells (at will, or with a resource of the uses a day, one per spell for "N/day each").
+  `MonsterCaster` is the only reader of a stat block's casting: `MonsterSpellcasting`, the reaction view (Shield, Counterspell), is a thin view of it.
+  `rules.SpellcastingNumbers` is the only reader of the numbers a trait's text writes (level, ability, DC, attack bonus); the NPC's description note prints what it finds.
+  A trait with neither a casting ability nor a DC or attack bonus makes no caster.
+  A DC with no readable spell is no caster.
+  Loading the SRD snapshot refuses a stat block whose Spellcasting or Innate Spellcasting lists a spell the content does not have, or lists spells with no ability, DC or attack bonus (`casterProblem`).
+  That check applies to the SRD snapshot only: a pack or table creature cannot carry a Spellcasting or Innate Spellcasting trait.
   `basicDerived` puts them on the NPC's derived sheet, so `CombatTurnOptions` lists them and `GrantedCombatSpell` casts them with the stat block's save DC and attack bonus.
   When the trait lists no DC, it is 8 plus the proficiency bonus and the spellcasting ability modifier.
   The NPC's slots and uses are counted on the combatant (`combatants.slots_used`, the count a reaction's Shield uses), whatever its sheet.
   A cast spends them, the undo gives them back, and an at-will spell spends nothing.
-  The count lives on the combatant, so a new combat starts fresh.
+  A monster (the `combat_only` NPC of a creature) starts every combat with an empty count.
+  A hand-made NPC keeps its count in `npc_spell_use`: each copy starts a combat with it, each change writes it back as the highest count any copy holds (never the sum), and the table's long rest clears it.
   The master reads the slots and uses left in the options; a player never does.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.

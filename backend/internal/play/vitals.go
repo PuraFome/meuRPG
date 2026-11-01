@@ -41,6 +41,7 @@ type adjustRun struct {
 	check        concentrationCheck // what the damage asks of a spell the character concentrates on
 	castsEnded   bool
 	visionMap    string // the map whose fog the change touches
+	zonesEnded   bool   // a zone that changes what is seen ended with a concentration
 	shapeChanged bool
 }
 
@@ -146,7 +147,7 @@ func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, r
 	}
 	if run.touched != nil {
 		run.visionMap = conv.OrZero(run.touched.MapID)
-		if err := s.followCorrectionInCombat(ctx, tx, q, session, call, *run.touched, before, adjusted); err != nil {
+		if run.zonesEnded, err = s.followCorrectionInCombat(ctx, tx, q, session, call, *run.touched, before, adjusted); err != nil {
 			return err
 		}
 	}
@@ -205,7 +206,7 @@ func (s *Service) publishAdjusted(ctx context.Context, campaignID string, run ad
 	if run.touched != nil {
 		s.publishEncounterChanged(pctx, campaignID, *run.touched)
 	}
-	if run.shapeChanged { // the beast's senses went away: the fog hears of it (MR-036)
+	if run.shapeChanged || run.zonesEnded { // the beast's senses went away, or a cloud did: the fog hears of it (MR-036)
 		s.maps.VisionChanged(pctx, campaignID, run.visionMap)
 	}
 	if run.check.castID != "" && run.castsEnded {
@@ -253,34 +254,37 @@ func (s *Service) touchCombatOf(ctx context.Context, q *playdb.Queries, sessionI
 // concentrating with no save (SRD 5.1, "Duration"), the same end a damage to 0 has. The end is
 // the damage's own (stopConcentrating), so the spell's effects, its creatures and the log line
 // follow; no pending damage is behind it.
-func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, adjusted *playv1.CharacterVitals) error {
+func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, adjusted *playv1.CharacterVitals) (zonesEnded bool, err error) {
 	if adjusted.GetHitPointsCurrent() > 0 {
-		return nil
+		return false, nil
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return false, fmt.Errorf("list the combatants: %w", err)
 	}
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
 		return c.Kind == kindPlayer && c.CharacterID == call.charText && c.ConcentrationSpell != nil
 	})
 	if i < 0 {
-		return nil
+		return false, nil
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), actorUserID: call.m.UserID, svc: s, master: true})
 	if err != nil {
-		return err
+		return false, err
 	}
-	return s.endConcentrationAtZero(ctx, c, cs[i], "")
+	if err := s.endConcentrationAtZero(ctx, c, cs[i], ""); err != nil {
+		return false, err
+	}
+	return c.zonesMoved, nil // the fog is told after the commit (publishAdjusted)
 }
 
 // followCorrectionInCombat is what a correction leaves in the combat the character is in: the
 // concentration of one set to 0 hit points, and the states that ended.
-func (s *Service) followCorrectionInCombat(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, before, adjusted *playv1.CharacterVitals) error {
-	if err := s.endConcentrationOfDownCharacter(ctx, tx, q, session, call, enc, adjusted); err != nil {
-		return err
+func (s *Service) followCorrectionInCombat(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, before, adjusted *playv1.CharacterVitals) (zonesEnded bool, err error) {
+	if zonesEnded, err = s.endConcentrationOfDownCharacter(ctx, tx, q, session, call, enc, adjusted); err != nil {
+		return false, err
 	}
-	return s.followCorrectionStates(ctx, tx, q, session, call, enc, before, adjusted)
+	return zonesEnded, s.followCorrectionStates(ctx, tx, q, session, call, enc, before, adjusted)
 }
 
 // followCorrectionStates is what a correction that ended states leaves in the combat of the

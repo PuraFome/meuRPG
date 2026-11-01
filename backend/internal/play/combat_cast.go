@@ -452,6 +452,7 @@ func (f *castFlow) placeArea(ctx context.Context) error {
 	// spell as it was before the zones (its targets, its effects), and lays nothing.
 	if _, ok := zoneDefOfSpell(f.sp); ok && f.req.GetOrigin() != nil && !isTheatre(f.c.enc) {
 		f.sp.ZoneLaid = true
+		f.sp = withZoneSize(f.sp, f.slotLevel)
 	}
 	f.placedArea = placementOf(f.sp) != playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED && !isTheatre(f.c.enc)
 	switch {
@@ -631,6 +632,7 @@ func (f *castFlow) spendCastSlot(ctx context.Context) error {
 	if slotVitals != nil {
 		f.out.vitals = append(f.out.vitals, slotVitals)
 	}
+	f.out.made.SlotCounted = f.caster.Kind != kindPlayer
 	return nil
 }
 
@@ -760,7 +762,7 @@ func (f *castFlow) bringSummons(ctx context.Context) error {
 	if f.summon == nil {
 		return nil
 	}
-	return f.s.joinSummon(ctx, f.c, f.caster, f.call.spellKey, f.sp.Concentration, f.summon, &f.out.made)
+	return f.s.joinSummon(ctx, f.c, f.caster, f.call.spellKey, f.summon, &f.out.made)
 }
 
 // affect is what the cast does to each target.

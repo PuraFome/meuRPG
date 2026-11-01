@@ -171,9 +171,7 @@
           "from": 1,
           "to": 1
         },
-        "bonus_unknown": true,
-        "resisted": true,
-        "resisted_left": 1
+        "bonus_unknown": true
       },
       "pushed": {
         "target_id": "x",
@@ -469,14 +467,6 @@
     "x"
   ],
   "extra_used": true,
-  "spend_cost": 1,
-  "spend_name": "x",
-  "resisted": true,
-  "resist_left": 1,
-  "limit_key": "x",
-  "recharge_face": 1,
-  "recharged": true,
-  "recharge_name": "x",
   "action_before": true,
   "bonus_before": true,
   "reaction_before": true,
@@ -642,9 +632,7 @@
               "from": 1,
               "to": 1
             },
-            "bonus_unknown": true,
-            "resisted": true,
-            "resisted_left": 1
+            "bonus_unknown": true
           }
         ],
         "save_sources": [
@@ -991,7 +979,6 @@
     "maneuver_name": "x",
     "resource": "x",
     "stopped": true,
-    "bonus": 1,
     "magic": true,
     "save_d20": 1,
     "save_bonus": 1,

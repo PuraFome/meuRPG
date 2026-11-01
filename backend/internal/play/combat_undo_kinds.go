@@ -743,6 +743,7 @@ func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev a
 
 // castZonesBack takes the zones of a cast away, with the questions they had open and the effects their answers added.
 func (u *undoer) castZonesBack(ctx context.Context, castID string) error {
+	u.c.zonesMoved = true // the zone may be a cloud: the fog looks again
 	if err := u.s.closeCastZoneWindows(ctx, u.c, castID); err != nil {
 		return err
 	}
@@ -819,6 +820,9 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 	}
 	if who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
+	}
+	if !ev.SlotCounted { // an NPC's cast that did not count its slot has none to give back
+		return nil
 	}
 	return u.s.giveBackNPCSlot(ctx, u.c, who, *ev.Slot)
 }

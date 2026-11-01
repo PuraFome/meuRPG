@@ -124,8 +124,10 @@
   "cast_id": "x",
   "slot": {
     "level": 1,
-    "pact": true
+    "pact": true,
+    "resource": "x"
   },
+  "slot_counted": true,
   "grant_use": "x",
   "resource": "x",
   "hits": [
@@ -473,10 +475,6 @@
   "spend_name": "x",
   "resisted": true,
   "resist_left": 1,
-  "limit_key": "x",
-  "recharge_face": 1,
-  "recharged": true,
-  "recharge_name": "x",
   "action_before": true,
   "bonus_before": true,
   "reaction_before": true,
@@ -966,7 +964,8 @@
     "by_master": true,
     "slot": {
       "level": 1,
-      "pact": true
+      "pact": true,
+      "resource": "x"
     },
     "racial": true,
     "spell": "x",

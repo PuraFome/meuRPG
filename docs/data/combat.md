@@ -222,7 +222,7 @@ For a `creature`, `character_id` and `user_id` are the **owner's**, and `creatur
 | Conditions | `conditions` (SRD keys, at most 20) and `condition_sources` (JSON), `concentration_spell`, `exhaustion_level` (0 to 6). |
 | What lasting effects leave | `effect_conditions`, `effect_ac_bonus`, `effect_speed_pct` (0 to 400), `effect_speed_add_ft`, `effect_no_action`, `effect_no_move`, `effect_no_reaction` (the Open Hand technique), `hp_max_base`: worked out again after every change to the effects. |
 | Bardic Inspiration | `inspiration_sides`, `inspiration_from`, `inspiration_expires_round`: all `NULL` together or a valid die (6, 8, 10, 12; round at least 1). Ends with the combat. |
-| Spent resources of an NPC | `slots_used` (JSON: slots, pact slots and resource uses an NPC spent in this combat). |
+| Spent resources of an NPC | `slots_used` (JSON: slots, pact slots and resource uses an NPC spent in this combat; a hand-made NPC joins with the count of `npc_spell_use`, see [Characters](characters.md#npc_spell_use)). |
 | Spent by a stat block | `creature_spent`: JSON `{"<key>": N}`, at most 4096 bytes, only what was spent, absent is 0. Keys: `legendary_actions` (taken since the creature's last turn, cleared by `ResetCombatantTurn`) and `legendary_resistance` (uses spent in this combat). `use:<action key>` (uses of an action with N/day or after a rest) and `recharge:<action key>` (1 while a Recharge action is spent) are the limited actions' keys; a Recharge roll that recharges the action at the turn start clears the second (event `recharge_rolled`, [Play](play.md)). A reaction stays in `reaction_used`. |
 | Death | `defeated`, `death_successes`, `death_failures` (0 to 3 each), `death_round`, `death_order_index`, `revivify_blocked` (see below). |
 
@@ -305,14 +305,15 @@ Columns: `source_id` (a Berserker's frenzy has its own combatant as source), `en
 
 ## `spell_zones`
 
-`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease and Entangle.
+`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud.
 A row belongs to the combat (`encounter_id`) and to its caster (`owner_id`), and goes away with either.
-`spell_key` and `cast_id` (the id of the cast that made it, which the undo of the cast finds it by); `slot_level`; `origin_col`, `origin_row` and `squares` (JSON, `[[col,row],...]`, at most 1,024: where it stands now, after the walls cut it).
+`spell_key` and `cast_id` (the id of the cast that made it, which the undo of the cast finds it by); `slot_level`; `origin_col`, `origin_row` and `squares` (JSON, `[[col,row],...]`, at most 4,096: where it stands now, after the walls cut it).
+The limit is 4,096 because Fog Cloud cast with a 9th-level slot is a sphere of 180 feet of radius, 4,053 squares (migration 00296).
 The cast keeps what a trigger needs, so none reads the caster's sheet: `save_ability`, `save_dc`, `damage_dice` (at the slot level, such as `3d8`) and `damage_type` (the one the caster picked).
 `concentration` says the owner's concentration holds the zone; `started_round` and `ends_round` (the round whose start of the owner's turn ends it; `NULL` for one with no time).
 `hit_marks` is JSON, `{combatant id: "<round>:<first combatant of the turn>"}`: the turn each creature was last caught on, so that a zone catches a creature once on a turn.
 A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `:end`, so each kind of catch asks once.
-`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's six, whose definition is the code's.
+`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's nine, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
 
 ## Contest, hold, hide, help, surprise (RN-34)

@@ -4364,6 +4364,10 @@ message SpellSlot {
   int32 level = 1;
   // True for a Warlock's pact magic slot (level is then its level).
   bool pact = 2;
+  // The resource of an innate spell's uses a day, when the spell is cast with one of
+  // them and not with a slot (level is then the spell's own). Empty for a slot.
+  // Only the master and the caster's owner read the resource itself; any other viewer reads "innate".
+  string resource = 3;
 }
 
 // SpellTarget is one target of a spell.

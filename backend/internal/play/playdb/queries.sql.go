@@ -380,6 +380,26 @@ func (q *Queries) AskInspirationHoldStroke(ctx context.Context, arg AskInspirati
 	return err
 }
 
+const bumpCombatantSlotsUsed = `-- name: BumpCombatantSlotsUsed :exec
+UPDATE combatants
+SET slots_used = jsonb_set(slots_used, ARRAY[$1::text], to_jsonb(GREATEST(COALESCE((slots_used->>$1::text)::int, 0) + $2::int, 0)), true)
+WHERE id = $3
+`
+
+type BumpCombatantSlotsUsedParams struct {
+	Key   string
+	Delta int32
+	ID    string
+}
+
+// Adds a delta to what a stat block spent under one key in this combat (a slot level,
+// "pact" or "res:<resource>"), never below 0, on the stored value: two changes in one
+// transaction both land.
+func (q *Queries) BumpCombatantSlotsUsed(ctx context.Context, arg BumpCombatantSlotsUsedParams) error {
+	_, err := q.db.Exec(ctx, bumpCombatantSlotsUsed, arg.Key, arg.Delta, arg.ID)
+	return err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -514,6 +534,21 @@ DELETE FROM game_session_scene_players WHERE game_session_id = $1
 
 func (q *Queries) ClearScenePlayers(ctx context.Context, gameSessionID string) error {
 	_, err := q.db.Exec(ctx, clearScenePlayers, gameSessionID)
+	return err
+}
+
+const clearSetupCombatantsSpellUse = `-- name: ClearSetupCombatantsSpellUse :exec
+UPDATE combatants
+SET slots_used = '{}'
+FROM encounters e, npc_spell_use npc, characters ch
+WHERE e.id = combatants.encounter_id AND e.status = 'setup'
+  AND npc.character_id = combatants.character_id
+  AND ch.id = npc.character_id AND ch.campaign_id = $1
+`
+
+// A combat still in setup holds the count it copied when its NPC joined: the long rest clears it too.
+func (q *Queries) ClearSetupCombatantsSpellUse(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, clearSetupCombatantsSpellUse, campaignID)
 	return err
 }
 
@@ -2116,6 +2151,17 @@ func (q *Queries) GetLatestRestKindInSession(ctx context.Context, gameSessionID 
 	var kind string
 	err := row.Scan(&kind)
 	return kind, err
+}
+
+const getNPCSpellUse = `-- name: GetNPCSpellUse :one
+SELECT slots_used FROM npc_spell_use WHERE character_id = $1
+`
+
+func (q *Queries) GetNPCSpellUse(ctx context.Context, characterID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getNPCSpellUse, characterID)
+	var slots_used []byte
+	err := row.Scan(&slots_used)
+	return slots_used, err
 }
 
 const getOnScreen = `-- name: GetOnScreen :one
@@ -8068,6 +8114,18 @@ func (q *Queries) ResetDeathSavesOfCharacter(ctx context.Context, arg ResetDeath
 	return err
 }
 
+const resetNPCSpellUseOfCampaign = `-- name: ResetNPCSpellUseOfCampaign :exec
+DELETE FROM npc_spell_use
+USING characters ch
+WHERE ch.id = npc_spell_use.character_id AND ch.campaign_id = $1
+`
+
+// The table's long rest: every hand-made NPC of the campaign gets its slots and uses back.
+func (q *Queries) ResetNPCSpellUseOfCampaign(ctx context.Context, campaignID *string) error {
+	_, err := q.db.Exec(ctx, resetNPCSpellUseOfCampaign, campaignID)
+	return err
+}
+
 const restoreHuntersMark = `-- name: RestoreHuntersMark :exec
 INSERT INTO combatant_states (id, encounter_id, combatant_id, kind, source_id, started_round, amount, created_at)
 VALUES ($1, $2, $3, 'hunters_mark_target', $4, $5, 0, $6)
@@ -8200,6 +8258,23 @@ func (q *Queries) SavePuzzleRun(ctx context.Context, arg SavePuzzleRunParams) (P
 		&i.RoundStartedAt,
 	)
 	return i, err
+}
+
+const seedCombatantSlotsUsed = `-- name: SeedCombatantSlotsUsed :one
+UPDATE combatants
+SET slots_used = npc.slots_used
+FROM npc_spell_use npc
+WHERE combatants.id = $1 AND npc.character_id = combatants.character_id
+RETURNING combatants.slots_used
+`
+
+// Gives a hand-made NPC's combatant what its character spent in earlier combats (npc_spell_use).
+// No row when the character has spent nothing.
+func (q *Queries) SeedCombatantSlotsUsed(ctx context.Context, id string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, seedCombatantSlotsUsed, id)
+	var slots_used []byte
+	err := row.Scan(&slots_used)
+	return slots_used, err
 }
 
 const setCharacterEffectModifiers = `-- name: SetCharacterEffectModifiers :exec
@@ -8924,21 +8999,6 @@ type SetCombatantSideParams struct {
 // Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
 func (q *Queries) SetCombatantSide(ctx context.Context, arg SetCombatantSideParams) error {
 	_, err := q.db.Exec(ctx, setCombatantSide, arg.ID, arg.Side)
-	return err
-}
-
-const setCombatantSlotsUsed = `-- name: SetCombatantSlotsUsed :exec
-UPDATE combatants SET slots_used = $2 WHERE id = $1
-`
-
-type SetCombatantSlotsUsedParams struct {
-	ID        string
-	SlotsUsed []byte
-}
-
-// The slots (and resource uses) a stat block spent in this combat.
-func (q *Queries) SetCombatantSlotsUsed(ctx context.Context, arg SetCombatantSlotsUsedParams) error {
-	_, err := q.db.Exec(ctx, setCombatantSlotsUsed, arg.ID, arg.SlotsUsed)
 	return err
 }
 
@@ -10079,6 +10139,41 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const syncNPCSpellUse = `-- name: SyncNPCSpellUse :exec
+WITH me AS (
+    SELECT cb.character_id, cb.encounter_id
+    FROM combatants cb
+    JOIN characters ch ON ch.id = cb.character_id
+    WHERE cb.id = $2 AND cb.kind = 'npc'
+      AND COALESCE(ch.sheet->'basic'->>'combat_only', 'false') <> 'true'
+), top AS (
+    SELECT me.character_id, COALESCE(max((cb.slots_used->>$1::text)::int), 0) AS n
+    FROM me
+    JOIN combatants cb ON cb.character_id = me.character_id AND cb.encounter_id = me.encounter_id
+    GROUP BY me.character_id
+)
+INSERT INTO npc_spell_use (character_id, slots_used)
+SELECT character_id, jsonb_build_object($1::text, n) FROM top
+ON CONFLICT (character_id) DO UPDATE
+SET slots_used = jsonb_set(npc_spell_use.slots_used, ARRAY[$1::text], excluded.slots_used->$1::text, true),
+    updated_at = now()
+`
+
+type SyncNPCSpellUseParams struct {
+	Key string
+	ID  string
+}
+
+// Sets the NPC's own count under one key to the highest count any combatant of that character holds in
+// this combat, after the combatant's bump: several copies of one hand-made NPC share one row, and the row
+// keeps what one individual spent, never the sum. The copies each start the next combat with it. A
+// monster's character (combat_only), a creature and a player write nothing, so each fight of a monster
+// starts fresh.
+func (q *Queries) SyncNPCSpellUse(ctx context.Context, arg SyncNPCSpellUseParams) error {
+	_, err := q.db.Exec(ctx, syncNPCSpellUse, arg.Key, arg.ID)
+	return err
 }
 
 const tallySessionSceneChecks = `-- name: TallySessionSceneChecks :many

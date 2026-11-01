@@ -1,6 +1,6 @@
 # Spell zones
 
-The areas that Spirit Guardians, Moonbeam, Cloudkill, Web, Grease and Entangle keep on the map (RN-37).
+The areas that Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud keep on the map (RN-37).
 The code is `zones_*.go` in `backend/internal/play`; the rules are in [Rules](../../product/rules.md#rn-37-areas-that-spells-keep-on-the-map).
 
 ## The model
@@ -11,7 +11,7 @@ A lasting effect belongs to one target and has its own clock; a zone has no sing
 Its life has three points, each a single call: the cast makes it (`createZone`), the end of a concentration deletes it (`endZonesOf`, called by `endConcentrationEffects`, so every way a concentration ends reaches it, `stopConcentrating` and `endConcentrationAtZero` included), and the start of the caster's turn deletes it when its round is out (`endZonesOutOfTime`).
 The foreign keys delete it with the combat or the caster.
 
-`zoneDefs` (`zones_catalog.go`) is the table of the six spells: kind (damage, restrain or prone), shape and size, how the cast places it (`AreaPlacement`), how it moves, the save, when it catches (`onEnter`, `onStart`, `onCast`, `onTurnEnd`), the effect a restraint puts on a creature (`restrainKey`), whether it spares the caster's side, and whether the cast still hits the creatures inside.
+`zoneDefs` (`zones_catalog.go`) is the table of the nine spells: kind (damage, restrain, prone, open or retch), shape and size (`growsFt` is what a slot above the spell's level adds to the radius, `sizeAt`), how the cast places it (`AreaPlacement`), how it moves, the save, when it catches (`onEnter`, `onStart`, `onCast`, `onTurnEnd`), the effect a restraint puts on a creature (`restrainKey`), whether it spares the caster's side, whether the cast still hits the creatures inside, and what it does to sight (`sight`: none, cloud or dark).
 Another spell with a lingering area is another row, plus its entry in the catalogue of lasting effects if it also puts an effect on its targets.
 `placementOf`, `areaOf` and the area fields of the turn options read the row first, so the preview, the cast and the options lay the area out as the zone does.
 A cube is centred on its point (`Area.FromPoint`, an even side puts the extra square on the larger side).
@@ -27,6 +27,8 @@ A zone is laid only when the request chooses a point (`origin`): `placeArea` the
 `castFlow.affect` hands a placed cast of a zone spell to `affectZone`.
 Moonbeam, Spirit Guardians and Cloudkill hit nobody at the cast.
 Grease and Entangle catch the creatures standing in the area once the zone exists (`catchWhoIsInside`, reason `zone_cast`).
+Fog Cloud and Darkness (`zoneOpen`) catch nobody.
+Stinking Cloud (`zoneRetch`) catches at the start of a turn only.
 Web runs `hitTarget` and `applyLastingSpell`, so the creatures inside get the web's effect.
 `createZone` keeps `plan.origin` and `plan.squares` (what `planArea` worked out, walls included), the caster's DC, the damage at the cast's slot level and the end round (`SpellEffectRounds`).
 The cast's event records every creature a catch at the cast caught, whatever its save: `made.Hits` holds one `castHit` for each, with the save of an NPC, and the conditions a player's character had before for Grease.
@@ -71,6 +73,30 @@ None of the three is undoable (`undoableKinds`), so a move that caught someone c
 - Cloudkill drifts at the start of its caster's turn (`driftZones`): `planPush` from the caster's square, `driftFt` (10) long, so it stops at a wall; a cloud on the caster's own square stays.
 - Moonbeam is moved by `MoveSpellZone` (`zones_move.go`), a keyed `write` of kind `spell_zone_moved`. A player must be the caster's player, on the caster's turn (`mustActNow`), with the action free (it is spent), and within `moveRangeFt` (60) of the zone's origin (`TARGET_OUT_OF_REACH` with `missing_ft`); the square must be on the map and not a wall. The master moves any zone, with none of that. A zone the caller does not read is `not_found`, as one that does not exist. The creatures the new area reaches are caught by `relocate`, the same step that follows and drifts.
 
+## Zones that block sight
+
+Fog Cloud and Stinking Cloud are clouds (`sightCloud`); Darkness is magical darkness (`sightDark`).
+The squares of these zones reach the fog through `CombatPositions` (`mapseam.go`, `sightZonesOn`): `Clouds` and `MagicDark`.
+`vision.Scene.Clouds` and `MagicDark` are layers of the map's grid; the rules are in [Fog of war](../maps/fog.md#zones-that-block-sight).
+The scene's cache key (`litKeyOf`) hashes both lists, so a zone with other squares is another scene.
+No RPC or event of its own carries it: any change to the squares or the existence of a sight zone tells the fog and the master's light warning.
+A hidden caster's cloud still blocks sight.
+
+## Stinking Cloud
+
+A creature that starts its turn with its square in the cloud makes a Constitution save, and on a failure its action for the turn is spent (`retchOnTheTurn`).
+Creatures occupy one square, so "wholly inside" means the creature's square is in the cloud.
+A creature immune to poison damage or to the poisoned condition is not asked (`immuneToRetching`).
+Nothing else counts: no rule reads the creature's type, because the SRD data has none for this.
+The text a player reads when asked is in `zoneSaveText` (`zones_save.go`).
+
+## What a zone does not change in an attack
+
+A cloud or darkness changes what a viewer sees on the map.
+An attack or damage roll gets no advantage or disadvantage from a cloud or a Darkness.
+Who sees whom for a reaction follows them: a reactor that cannot see the mover or the caster does not get an opportunity attack, a Counterspell or a reaction to damage.
+Whether an NPC attacks a player it cannot see with disadvantage is not ruled, nor is any attack rule on a map with the fog off (issue #700, under #640).
+
 ## The save question, the end and the other effects
 
 - **The question.** A zone with a save that catches a player's character (`Kind == kindPlayer`) opens an `EFFECT_SAVE` reaction window with `windowTrigger.Zone` (`askZoneSave`, `zones_save.go`); the answer is `RollEffectSave`, which loads the zone in `loadZoneSave` and settles it in `settleZoneSave` (damage halved on a pass, or the web's restraint) through the same `applyZone` an NPC's catch uses. The prompt (`zoneSavePrompt`) carries `zone_id`, `zone_reason`, the damage type and the half, and the DC only for the master, the caster's player and, with the table rule `show_save_dc` on, the player whose creature rolls the save (`saveDCFor`). The windows of one creature on one turn share a group (`zoneWindowGroup`), so the existing order rule applies, and `openOne` lists a player the first only. A zone that ends closes its windows (`closeZoneWindows`).
@@ -90,6 +116,7 @@ A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `roun
 ## Tests
 
 `zones_grease_test.go` (Grease: the shape, the cast, entering, the end of the turn, the end of the zone and the undo; Entangle: the shape, the cast only, the end with the concentration and the undo) and `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint); `internal/leaktest` classifies `MoveSpellZone`.
+`internal/leaktest` reads the map as a player (`mapzones_test.go`): a Darkness takes a creature off a darkvision player's map while a Devil's Sight player and the master keep it, a hidden caster's Fog Cloud reaches no player but the unseen squares, and a cloud that ends leaves nothing new in the streams.
 The grid cube is in `rules/grid/area_test.go`.
 
 ## The web
@@ -102,7 +129,11 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast` and 
 
 ### The map, the panel and the end
 
-- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern (each of the six catalog spells a fixed one; a table spell a hash of the key) and `zoneLegend` the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
+- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern: the first six catalog spells a fixed one, every other spell a hash of the key.
+  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's and Stinking Cloud on Web's.
+  `zoneLegend` gives the entries the card lists.
+  The layer and its labels are `aria-hidden`; the panel is the accessible version.
+  The move page's map does not draw zones.
 - **Panel.** `pages/live-session/combat/zones-panel` (`app-zones-panel`) lists the zones: the master's column and the player's side column. Its live region (`zoneNotice`) compares the ids of the list with the last one it read. `details_hidden` cards render the name, the area and the caster only.
 - **End.** The panel asks in place and emits `end`; `ZoneFlow` (`zone-flow.ts`, built in `combat-view-parts.ts`) calls `endSpellZone` under the screen's one-call-at-a-time rule (`calls.busy`) and words a refusal with `zoneEndError`.
 - **Move.** "Mover" emits `move`; `ZoneFlow.move` (only for a zone whose view says `canMove`) sets `moving` and asks `CombatSheets.moveZone` to open `ZoneMoveSheet` (`pages/live-session/combat/zone-move`), a bottom sheet on a phone and a dialog from a tablet up (`openSheet`); a scene without a battle map opens nothing and says so in the panel. The sheet holds the picked square and wraps `app-zone-move-map` (`shared/area-picker`): `app-combat-map` in `pickSquares` mode (click, arrows from the zone's origin, Enter) with two `app-area-overlay` layers, the current footprint dimmed and the new one from `zoneMovePreview`. Past `ZONE_MOVE_RANGE_FT` a player's square is drawn refused with the `TARGET_OUT_OF_REACH` wording (`zoneOutOfReach`); the master has none. "Mover a zona" calls `moveSpellZone` once (the client's keyed helper), applies the encounter the server answers, closes on success and says `zoneMoveError` in place on a refusal; `moving` returns to `null` when the sheet closes.

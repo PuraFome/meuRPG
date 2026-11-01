@@ -142,7 +142,7 @@ message TableEffect {
   // "skill.stealth").
   string roll = 9;
   repeated string targets = 10;
-  // sense: "darkvision", "blindsight", "tremorsense" or "truesight", and its range.
+  // sense: "darkvision", "blindsight", "tremorsense", "truesight" or "devils-sight", and its range.
   string sense = 11;
   int32 range_ft = 12;
   // resource: a name for the resource, the formula of its maximum and when it
@@ -534,6 +534,78 @@ message TableCreature {
   // ignoring case), and may not be named "Magic Weapons",
   // "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
   repeated TableCreatureTrait traits = 6;
+  // The numbers below are formulas, evaluated against the sheet of the character that is given the creature.
+  // A formula may read level(), classLevel("<class>"), prof(), mod("<ability>"), score("<ability>"),
+  // armor() (the category of the armor worn), shield() (whether a shield counts) and speedwalk() (the walking speed in feet).
+  // It may also use floor, ceil, min and max.
+  // It may also read slot(): the circle (1 to 9) of the spell slot a spell was cast with.
+  // A creature given to a character was not made by a slot, so slot() is 0 in its formulas;
+  // a creature a table spell summons has the circle of the cast.
+  // slot() is legal only in these fields:
+  // hit_points_formula, armor_class_formula, damage_bonus_formula and attack_bonus_formula,
+  // the to_hit and damage_bonus of an attack, and the count of a spell's summon.
+  // Effects, conditions and every other formula refuse slot().
+  // A formula that does not compile, or calls a function that does not exist, is refused with its field.
+  // A result is rounded down.
+  // A result beyond 10000 or below -10000 is a failed formula, and the static value stands.
+  // Within that limit, the result is clamped to the range of its field.
+  // If a formula fails while it runs, the static value stands.
+  // An empty formula keeps the static value, or the base's when the field has none.
+  // The static fields hit_points, armor_class and damage_bonus are used when the formula is empty or fails.
+  // A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
+  //
+  // The maximum hit points, clamped to 1..9999.
+  // Replaces hit_points.
+  string hit_points_formula = 7;
+  // The armor class, clamped to 1..40.
+  // Replaces armor_class.
+  string armor_class_formula = 8;
+  // The damage bonus, clamped to -10..30.
+  // Replaces damage_bonus.
+  string damage_bonus_formula = 9;
+  // The to-hit of each attack of the base, clamped to -10..30.
+  // Also the to-hit of an attack in `attacks` that has no to_hit of its own.
+  // An attack's own to_hit wins over it.
+  // Empty keeps the base's.
+  string attack_bonus_formula = 10;
+  reserved 11;
+  reserved "save_dc_formula";
+  // Attacks added after the base's actions, at most 8.
+  // Each becomes an action of the creature keyed "<creature key>#<slug of its name>".
+  // It has an attack roll, as the SRD creatures' attacks do.
+  // They are not part of the base's Multiattack.
+  // A name may not repeat a trait or an action of the base, nor another attack.
+  // Names are compared as the traits' names are.
+  repeated TableCreatureAttack attacks = 12;
+}
+
+// TableCreatureAttack is an attack action of a table creature.
+message TableCreatureAttack {
+  // 1 to 80 characters, on one line.
+  string name_pt = 1;
+  // True for a melee attack, which has reach_ft and no range.
+  // False for a ranged attack, which has range_ft and no reach.
+  bool melee = 2;
+  // The reach of a melee attack in feet, 0 (5 ft.) to 30.
+  int32 reach_ft = 3;
+  // The range of a ranged attack in feet, 1 to 600.
+  int32 range_ft = 4;
+  // The long range of a ranged attack, 0 (none) or more than range_ft, up to 1200.
+  int32 long_range_ft = 5;
+  // How many dice of damage, 1 to 20.
+  int32 dice_count = 6;
+  // The sides of each die: 4, 6, 8, 10, 12 or 20.
+  int32 dice_sides = 7;
+  // A formula for the bonus added to this attack's damage, clamped to -10..30.
+  // It wins over the creature's damage bonus.
+  // Empty is the creature's damage bonus.
+  string damage_bonus = 8;
+  // A "damage-type:" key of the SRD, such as "damage-type:slashing".
+  string damage_type = 9;
+  // A formula for the to-hit, clamped to -10..30.
+  // It wins over attack_bonus_formula.
+  // Empty is attack_bonus_formula, or +0 when that is empty too.
+  string to_hit = 10;
 }
 
 // TableCreatureTrait is a trait of a table creature: a name and a text, no effects.
@@ -857,6 +929,67 @@ message TableSpell {
   // Unset: the spell does nothing of the kind. Needs an AREA target of a sphere, a cylinder or a cube,
   // exactly one damage type, a timed duration or a concentration, and no attack and no heal.
   TableSpellZone zone = 18;
+  // The creatures the spell brings to its caster; unset: the spell summons nothing. A summoning
+  // spell is a leveled spell whose target is only the caster (SELF) and that has no attack, no
+  // saving throw, no damage, no healing and no area. It is cast, spent, concentrated on and
+  // dismissed as the SRD's summoning spells are.
+  TableSummon summon = 19;
+}
+
+// TableSummonTurnMode says how the creatures of a casting take their turns in a combat.
+enum TableSummonTurnMode {
+  // Same as OWN_INITIATIVE.
+  TABLE_SUMMON_TURN_MODE_UNSPECIFIED = 0;
+  // Each creature rolls its own initiative and takes its own turn.
+  TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE = 1;
+  // The creatures of a casting take one initiative roll, the owner's player rolls it and they take a
+  // joint turn (as the SRD's Conjure Animals).
+  TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP = 2;
+  // Reserved: the creatures act right after their owner. The server refuses it.
+  TABLE_SUMMON_TURN_MODE_AFTER_OWNER = 3;
+}
+
+// TableSummonRole says what the summoned creatures are to their owner.
+enum TableSummonRole {
+  // Same as COMPANION.
+  TABLE_SUMMON_ROLE_UNSPECIFIED = 0;
+  // The owner's creature: it joins the combat and the map, and its owner plays it.
+  TABLE_SUMMON_ROLE_COMPANION = 1;
+  // Reserved: a creature the owner rides. The server refuses it.
+  TABLE_SUMMON_ROLE_MOUNT = 2;
+}
+
+// TableSummonReplaces says what a new casting of the spell does to the creatures of the old one.
+enum TableSummonReplaces {
+  // Same as NONE.
+  TABLE_SUMMON_REPLACES_UNSPECIFIED = 0;
+  // They stay (up to `max_live`).
+  TABLE_SUMMON_REPLACES_NONE = 1;
+  // They are dismissed ("replaced") and the new ones take their place.
+  TABLE_SUMMON_REPLACES_SAME_SUMMON = 2;
+}
+
+// TableSummon is what a table spell summons. The cost is the spell slot of the cast.
+message TableSummon {
+  // The creatures a casting may choose from, 1 to 8, none twice: table creatures
+  // ("creature:<slug>@mesa") or SRD creatures ("monster:wolf"). The caster picks one of them for each
+  // creature the casting brings.
+  repeated string creature_keys = 1;
+  // How many creatures the casting brings at the spell's own circle: a formula that may read the
+  // caster (mod("cha"), prof()) and slot() (the circle of the slot). A formula that fails when it
+  // runs counts as 1. Required.
+  string count = 2;
+  // How many more for each circle above the spell's own, 0 to 10. The sum with count is clamped to 1 to 20.
+  int32 count_per_slot_level = 3;
+  TableSummonTurnMode turn_mode = 4;
+  TableSummonRole role = 5;
+  // 0, or the most creatures of this spell the caster keeps at a time (1 to 40): a casting that
+  // would pass it is refused. A new casting that replaces the old creatures counts only the new ones.
+  int32 max_live = 6;
+  TableSummonReplaces replaces = 7;
+  // Reserved for spells paid with a resource: the server refuses both today.
+  string resource_key = 8;
+  int32 resource_cost = 9;
 }
 
 // TableSpellZone is what a table spell leaves on the map (the areas of Moonbeam or Spirit Guardians,
