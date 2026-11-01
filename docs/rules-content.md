@@ -96,6 +96,13 @@ A spell or trap outside the SRD never enters.
 Loading refuses a spell that is not from the SRD, an unknown kind, a field the kind does not use, a condition that does not exist, a creature that does not exist, a CR that is not from the SRD and a creature type that is not one.
 The casting time, ritual and concentration come from the spell, not from this file.
 
+### Spells that keep an area on the map
+
+The spells that keep a zone on the map are rows of code, not of `effects/spells.json` ([Spell zones](architecture/play/spell-zones.md)); their table rulings are in [RN-37](product/rules.md#rn-37-areas-that-spells-keep-on-the-map).
+Wall of Fire is placed as a straight line or a ring.
+The SRD does not require the 60-foot wall to be straight, and a bent wall is the master's hand.
+Spike Growth's Perception check, which lets a creature see the camouflaged ground, is not ruled: the master rules it.
+
 ### Corrections
 
 `effects/corrections.json` fixes what the snapshot gets wrong or lacks against the tables and text of SRD 5.1, each entry with its `source` line.
