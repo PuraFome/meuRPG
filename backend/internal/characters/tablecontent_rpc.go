@@ -212,6 +212,11 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 		pe.Off = l.content.Off(e.row.ContentKey)
 		res.Entries = append(res.Entries, pe)
 	}
+	if l.master {
+		for _, r := range l.content.Refused() {
+			res.LeftOut = append(res.LeftOut, &rulesv1.TableContentViolation{Key: r.Key, Field: r.Field, Reason: r.Reason, Message: r.Message})
+		}
+	}
 	slices.SortStableFunc(res.Entries, func(a, b *rulesv1.TableEntry) int {
 		if d := tableKindOrder(a.GetKind()) - tableKindOrder(b.GetKind()); d != 0 {
 			return d

@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -249,4 +250,135 @@ func TestTableSourceFailsWhenTheContentAsAWholeIsRefused(t *testing.T) {
 	if c, err := f.h.svc.content.ContentFor(t.Context(), nil, f.campaign); err == nil {
 		t.Errorf("ContentFor() = %v, nil; want the read to fail over the limit", c)
 	}
+}
+
+// listTable lists the campaign's entries as u, with the response whole.
+func listTable(t *testing.T, u *user, campaign string) (*rulesv1.ListTableEntriesResponse, error) {
+	t.Helper()
+	res, err := u.table.ListTableEntries(t.Context(), connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: campaign}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+// TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut: the master reads the refused entries
+// as left_out (key, field, reason) and still lists them; a player, the master of another
+// campaign and the text of the entries read none of it.
+func TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut(t *testing.T) {
+	t.Parallel()
+	f := newTolerantTable(t)
+	other := f.h.newUser("Outro Mestre")
+	otherCampaign := f.h.newCampaign(other, "Outra Mesa")
+	f.h.refuseStored(f.campaign, f.class.GetKey(), f.sp.GetKey())
+
+	// The positive control: the master reads each refused entry, once, with the engine's field and reason.
+	got, err := listTable(t, f.master, f.campaign)
+	if err != nil {
+		t.Fatalf("master ListTableEntries() error = %v", err)
+	}
+	byKey := map[string]*rulesv1.TableContentViolation{}
+	for _, v := range got.GetLeftOut() {
+		if byKey[v.GetKey()] != nil {
+			t.Errorf("left_out names %s twice", v.GetKey())
+		}
+		byKey[v.GetKey()] = v
+	}
+	want := map[string]struct{ field, reason string }{
+		f.class.GetKey(): {"table_class.hit_die", rules.ReasonValue},
+		f.sp.GetKey():    {"table_spell.level", rules.ReasonValue},
+		f.sub.GetKey():   {"", rules.ReasonReference},
+	}
+	if len(byKey) != len(want) {
+		t.Errorf("left_out = %v, want the keys %v", got.GetLeftOut(), slices.Sorted(maps.Keys(want)))
+	}
+	for k, w := range want {
+		v := byKey[k]
+		if v == nil {
+			t.Errorf("left_out has no %s", k)
+			continue
+		}
+		if v.GetReason() != w.reason || (w.field != "" && v.GetField() != w.field) || v.GetMessage() == "" {
+			t.Errorf("left_out[%s] = %v, want reason %s, field %q, a message", k, v, w.reason, w.field)
+		}
+	}
+	for _, e := range []*rulesv1.TableEntry{f.class, f.sp, f.sub} {
+		if !slices.ContainsFunc(got.GetEntries(), func(x *rulesv1.TableEntry) bool { return x.GetKey() == e.GetKey() }) {
+			t.Errorf("the master's entries lost %s: it must stay to edit or archive", e.GetKey())
+		}
+	}
+
+	// Never the entries' text: not in the message, the field, the reason or the key.
+	for _, v := range got.GetLeftOut() {
+		seen := strings.Join([]string{v.GetKey(), v.GetField(), v.GetReason(), v.GetMessage()}, "\n")
+		for _, e := range []*rulesv1.TableEntry{f.class, f.sub, f.sp} {
+			for _, s := range entryTexts(e) {
+				if strings.Contains(seen, s) {
+					t.Errorf("left_out of %s holds the entry text %q: %s", v.GetKey(), s, seen)
+				}
+			}
+		}
+	}
+
+	// A player of the campaign reads no left_out, and the entries they read are what they were.
+	player, err := listTable(t, f.owner, f.campaign)
+	if err != nil {
+		t.Fatalf("player ListTableEntries() error = %v", err)
+	}
+	if len(player.GetLeftOut()) != 0 {
+		t.Errorf("a player reads left_out %v, want none", player.GetLeftOut())
+	}
+	if _, ok := f.owner.entries(t, f.campaign)[f.race.GetKey()]; !ok {
+		t.Errorf("the player no longer reads the healthy race")
+	}
+	if _, _, err := f.h.svc.setArchived(t.Context(), f.membership(), f.race.GetKey(), true); err != nil {
+		t.Fatalf("archive the race: %v", err)
+	}
+	if _, ok := f.owner.entries(t, f.campaign)[f.race.GetKey()]; ok {
+		t.Errorf("the player reads an archived entry")
+	}
+	if _, ok := f.master.entries(t, f.campaign)[f.race.GetKey()]; !ok {
+		t.Errorf("the master lost the archived entry")
+	}
+
+	// The master of another campaign cannot read this one, and reads nothing of it in their own.
+	if _, err := listTable(t, other, f.campaign); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("another campaign's master reading this table: %v, want not_found", err)
+	}
+	own, err := listTable(t, other, otherCampaign)
+	if err != nil {
+		t.Fatalf("own ListTableEntries() error = %v", err)
+	}
+	if len(own.GetLeftOut()) != 0 || len(own.GetEntries()) != 0 {
+		t.Errorf("another campaign's master reads %v in their own list, want nothing of this one", own)
+	}
+}
+
+// entryTexts are the names and descriptions the entry holds: its strings that are not keys.
+func entryTexts(e *rulesv1.TableEntry) []string {
+	var out []string
+	var walk func(m protoreflect.Message)
+	walk = func(m protoreflect.Message) {
+		m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+			switch {
+			case fd.IsList() && fd.Message() != nil:
+				for i := range v.List().Len() {
+					walk(v.List().Get(i).Message())
+				}
+			case fd.IsList() && fd.Kind() == protoreflect.StringKind:
+				for i := range v.List().Len() {
+					out = append(out, v.List().Get(i).String())
+				}
+			case fd.Message() != nil && !fd.IsMap():
+				walk(v.Message())
+			case fd.Kind() == protoreflect.StringKind && !fd.IsMap():
+				out = append(out, v.String())
+			}
+			return true
+		})
+	}
+	walk(e.ProtoReflect())
+	return slices.DeleteFunc(out, func(s string) bool {
+		return len(s) < 6 || strings.Contains(s, ":") || strings.Contains(s, "@mesa")
+	})
 }
