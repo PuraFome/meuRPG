@@ -232,6 +232,7 @@ func TestEachReactionWindowRecordsItsKindAndRound(t *testing.T) {
 		run   func(t *testing.T) (*armed, *user)
 	}{
 		{"Hellish Rebuke", "hellish_rebuke", "Reator", playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, func(t *testing.T) (*armed, *user) {
+			t.Helper()
 			a, e := reactorFight(t, tieflingFighter)
 			w := hurtReator(t, a, e)
 			a.mustAnswer(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
@@ -240,12 +241,14 @@ func TestEachReactionWindowRecordsItsKindAndRound(t *testing.T) {
 			return a, a.ana
 		}},
 		{"Cutting Words", "cutting_words", "Reator", playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS, func(t *testing.T) (*armed, *user) {
+			t.Helper()
 			a, e := cutAndShield(t)
 			a.mustAttack(t, a.master, e, "Goblin", sword, "Pensantus", d20(12))
 			a.cut(t, e, 3)
 			return a, a.bia
 		}},
 		{"Protection", "protection", "Reator", playv1.ReactionKind_REACTION_KIND_PROTECTION, func(t *testing.T) (*armed, *user) {
+			t.Helper()
 			a, e := protectionFight(t, protector())
 			a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", d20(15))
 			a.h.roller.queue(4)
@@ -253,6 +256,7 @@ func TestEachReactionWindowRecordsItsKindAndRound(t *testing.T) {
 			return a, a.ana
 		}},
 		{"Feather Fall", "feather_fall", "Pensantus", playv1.ReactionKind_REACTION_KIND_FEATHER_FALL, func(t *testing.T) (*armed, *user) {
+			t.Helper()
 			r, e := fallingRig(t)
 			w := r.windowOf(t, r.ana, playv1.ReactionKind_REACTION_KIND_FEATHER_FALL)
 			r.mustAnswer(t, r.ana, e, w.GetId(), func(q *playv1.AnswerReactionRequest) {
@@ -261,6 +265,7 @@ func TestEachReactionWindowRecordsItsKindAndRound(t *testing.T) {
 			return r.armed, r.ana
 		}},
 		{"a reduction maneuver", "maneuver_reduce", "Pensantus", playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE, func(t *testing.T) (*armed, *user) {
+			t.Helper()
 			m := newManeuverTable(t, "4")
 			e := m.passTo(t, m.castersFight(t, 1), "Capitão Goblin")
 			m.h.roller.queue(4)
