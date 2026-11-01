@@ -8,8 +8,8 @@ import {
 import { combatErrorMessage } from '../combat/combat-errors';
 import {
   OUTCOME_UNKNOWN,
-  SESSION_ENDED,
   REFUSED_BY_A_LIMIT,
+  SESSION_ENDED,
   describeConnectError,
   isRateLimited,
   isSizeRefused,

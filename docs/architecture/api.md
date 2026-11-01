@@ -224,7 +224,10 @@ The rule a reader follows:
   Another test fails if a default is changed to 0 or to another number without the test.
   It does not add up a worst case: whoever writes the option chooses the procedure's read limit on purpose, and the test makes sure they did.
 - **The sentences** for `RequestRefused` and for a bare `resource_exhausted` are in `web/src/app/core/connect/connect-errors.ts`, so every screen shows them without wording them.
-- **A size refusal and a quota refusal** are both `resource_exhausted`, and the server cannot attach a detail to Connect's read error. The web tells them apart by the two wordings of its message (`http.MaxBytesReader limit` and `larger than configured max`, `isSizeRefused`), which `platform/reqlimit` pins with a real server. It shows the generic limit text for a size refusal on every screen, never the screen's own quota text.
+- **A size refusal and a quota refusal** are both `resource_exhausted`.
+  The server cannot attach a detail to Connect's read error.
+  The web tells them apart by the two wordings of the message (`http.MaxBytesReader limit` and `larger than configured max`, `isSizeRefused`), which `platform/reqlimit` pins with a real server.
+  It shows the generic limit text for a size refusal on every screen, never the screen's own quota text.
 
 The options are custom (`proto/meurpg/options/v1/limits.proto`) instead of protovalidate.
 The need is two numeric options (`max_items`, `max_len`) and a read limit per procedure, and protovalidate would bring a rules engine and a CEL runtime into the server, the generated code and the build for them.
