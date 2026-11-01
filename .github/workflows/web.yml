@@ -85,9 +85,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      # Verified locally on 2026-09-29: `npm ci --ignore-scripts` installs
-      # cleanly and both `npm test` and `npm run build` still work with it,
-      # so we never run install scripts from third-party packages in CI.
+      # `npm ci --ignore-scripts` installs cleanly, and both `npm test` and
+      # `npm run build` work with it, so CI never runs install scripts from
+      # third-party packages.
       - name: Install dependencies (no install scripts)
         run: npm ci --ignore-scripts
 
@@ -156,9 +156,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: web/package-lock.json
 
-      # Verified locally on 2026-09-29: `npm ci --ignore-scripts` installs
-      # cleanly and both `npm test` and `npm run build` still work with it,
-      # so we never run install scripts from third-party packages in CI.
+      # `npm ci --ignore-scripts` installs cleanly, and both `npm test` and
+      # `npm run build` work with it, so CI never runs install scripts from
+      # third-party packages.
       - name: Install dependencies (no install scripts)
         run: npm ci --ignore-scripts
 

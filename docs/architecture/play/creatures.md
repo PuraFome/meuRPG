@@ -270,6 +270,47 @@ A player's character caught by a zone is asked in a window of its own, and has n
 The choice the master has with the roll of an effect's save does not reach the saves of a zone.
 A spell cast for an NPC is not offered either.
 
+## Limited actions
+
+An action of a stat block with a limit is enforced by the server: a Recharge action, one with uses a day, and one that returns after a rest (`rules.ActionUsage`, SRD 5.1: "Recharge 5-6", "3/Day").
+What a creature spent of them is kept on the combatant in `creature_spent`, under `use:<action key>` and `recharge:<action key>` ([Data](../../data/combat.md)).
+A combat starts with none spent: the "day" is the rest between combats at the table.
+Only a creature with a stat block has these limits, so a hand-made NPC keeps no state and has no limit.
+
+| Usage | Spent by | Comes back |
+| --- | --- | --- |
+| Recharge X-Y | The first use | On a d6 the server rolls at the start of the creature's turn, when the face is in X-Y |
+| N/Day | Each use, up to N | Never in a combat |
+| After a rest | The first use | Never in a combat |
+
+The spend is part of the use (`combat_action_limit.go`).
+It happens in the same change as the attack (`RollAttack`) or the action (`UseCreatureAction`) that uses the action.
+A Multiattack spends nothing of its own: each step is its own call and is limited by its own action key.
+A spent action is refused with nothing changed.
+The master and the player who controls the creature read `CREATURE_ACTION_RECHARGING` for a Recharge action and `CREATURE_ACTION_NO_USES_LEFT` for the others.
+The refusal comes before any roll, so the master may use another action.
+
+**The roll at the turn start** (`combat_recharge.go`).
+When a creature's turn starts, the server rolls one d6 for each of its spent Recharge actions, in the order of its stat block.
+A face in the action's range makes it available again.
+A defeated creature does not roll, an action that is available does not, and an action with uses a day or after a rest never does.
+Each roll is the event `recharge_rolled`, written secret and with no user and no character, so it is not counted in any player's map revision on a fog map.
+Nothing is published for it: the turn start already tells everybody that the combat changed.
+
+**Who sees what (RN-20, RN-29).**
+The master and the player who controls the creature read each limited action with what it has left (`Combatant.limited_actions`), the roll in a log line ([Combat log](combat-log.md)) and the refusal reasons.
+The controller reads the limits of its own creature and nothing else of the master's NPC data.
+Every other player never receives the field, the line, the event or a hint of them: a creature that recharged and one that did not look the same.
+Another player has no call that reaches the creature's action.
+
+**What undo does** ([Undo](undo.md)).
+The undo of the use gives it back: the action is available again or has the use back.
+The roll is not undoable, and it closes the chain like the turn change it belongs to.
+
+**What is not covered.**
+A hand-made NPC keeps nothing across combats, and a monster starts every combat with all its actions.
+A trait with a number a day (Legendary Resistance has its own path above) and a spell's uses are other paths with their own counts.
+
 ## Monster reactions
 
 A stat block's reactions come from its `reactions` (`rules.LegendaryProfile.Reactions`, read by `characters.creatureReactionStats` into `ReactionStats.MonsterReactions`).

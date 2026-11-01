@@ -180,6 +180,9 @@ func (f *creatureFlow) pickAction(ctx context.Context) error {
 	if plan.Attack != nil || (plan.Kind != actionKindSave && plan.Kind != actionKindOther) || plan.Routines != nil {
 		return unavailable("this action is an attack roll or a Multiattack: make it with the attack")
 	}
+	if err := checkActionLimit(plan, f.actor); err != nil {
+		return err
+	}
 	f.plan, f.sp = plan, spellOfPlan(plan)
 	if f.reminder() && len(f.call.targets) > 0 {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("an action with no roll takes no targets"))
@@ -286,7 +289,8 @@ func (f *creatureFlow) spend(ctx context.Context) error {
 	}); err != nil {
 		return fmt.Errorf("spend the action: %w", err)
 	}
-	return nil
+	f.out.made.LimitKey, err = spendActionLimit(ctx, f.c, f.plan, a)
+	return err
 }
 
 // affect is what the action does to each target.
