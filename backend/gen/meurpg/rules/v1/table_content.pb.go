@@ -1051,8 +1051,40 @@ type TableEffect struct {
 	ReachFt       int32  `protobuf:"varint,64,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
 	AttackName    string `protobuf:"bytes,65,opt,name=attack_name,json=attackName,proto3" json:"attack_name,omitempty"`
 	DamageDice    string `protobuf:"bytes,66,opt,name=damage_dice,json=damageDice,proto3" json:"damage_dice,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// wild_shape: changes the druid's Wild Shape. `max_cr` is the highest challenge rating of
+	// the beasts ("0", "1/8", "1/4", "1/2" or a whole number up to 30) or `max_cr_from` an Int
+	// formula for a whole one from the level (such as "floor(level() / 3)"); not both.
+	// `no_fly` and `no_swim` leave out the beasts with those speeds. `form_cost` is an Int
+	// formula for the uses of the Wild Shape resource one change of form costs (empty is 1)
+	// and `magical_attacks` makes the beast form's attacks count as magical. The effect must
+	// set one of the four. The character takes the highest rating (with the limits of the
+	// effect that gives it), the lowest cost, and magical attacks if any effect gives them.
+	MaxCr          string `protobuf:"bytes,67,opt,name=max_cr,json=maxCr,proto3" json:"max_cr,omitempty"`
+	MaxCrFrom      string `protobuf:"bytes,68,opt,name=max_cr_from,json=maxCrFrom,proto3" json:"max_cr_from,omitempty"`
+	FormCost       string `protobuf:"bytes,69,opt,name=form_cost,json=formCost,proto3" json:"form_cost,omitempty"`
+	MagicalAttacks bool   `protobuf:"varint,70,opt,name=magical_attacks,json=magicalAttacks,proto3" json:"magical_attacks,omitempty"`
+	NoFly          bool   `protobuf:"varint,71,opt,name=no_fly,json=noFly,proto3" json:"no_fly,omitempty"`
+	NoSwim         bool   `protobuf:"varint,72,opt,name=no_swim,json=noSwim,proto3" json:"no_swim,omitempty"`
+	// grant_action: the action turns the uses it spends (`resource` and `cost`) into a spell
+	// slot of the level this Int formula gives (1 to 9). The slot is free until the next long
+	// rest, like a slot Flexible Casting makes. It needs `resource` and takes no heal, no
+	// temp_hp and no cost_max.
+	GivesSlot string `protobuf:"bytes,73,opt,name=gives_slot,json=givesSlot,proto3" json:"gives_slot,omitempty"`
+	// grant_action: the action spends a spell slot, at the level the player picks at use
+	// (`spend`, 1 to 9, a level with a free slot), and heals: `heal` at level 1 plus
+	// `value_per_point` (dice, the same sides) for each level above 1. It needs `heal` and
+	// takes no resource, no cost, no cost_max and no temp_hp.
+	SpendsSlot bool `protobuf:"varint,74,opt,name=spends_slot,json=spendsSlot,proto3" json:"spends_slot,omitempty"`
+	// slot_recovery: the character takes back expended spell slots after a short rest, as the
+	// wizard's Arcane Recovery does. A feature has one. `resource` is the resource whose use each
+	// recovery spends (an SRD resource, or one a resource effect of the entry or its class
+	// defines, which gives the uses and the rest they come back on), `recover_max_level` an Int formula for the highest level of a slot it takes
+	// back (1 to 9) and `recover_levels` an Int formula for the combined level of the slots
+	// (a level 2 slot counts 2). Both are required.
+	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
+	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1543,6 +1575,76 @@ func (x *TableEffect) GetAttackName() string {
 func (x *TableEffect) GetDamageDice() string {
 	if x != nil {
 		return x.DamageDice
+	}
+	return ""
+}
+
+func (x *TableEffect) GetMaxCr() string {
+	if x != nil {
+		return x.MaxCr
+	}
+	return ""
+}
+
+func (x *TableEffect) GetMaxCrFrom() string {
+	if x != nil {
+		return x.MaxCrFrom
+	}
+	return ""
+}
+
+func (x *TableEffect) GetFormCost() string {
+	if x != nil {
+		return x.FormCost
+	}
+	return ""
+}
+
+func (x *TableEffect) GetMagicalAttacks() bool {
+	if x != nil {
+		return x.MagicalAttacks
+	}
+	return false
+}
+
+func (x *TableEffect) GetNoFly() bool {
+	if x != nil {
+		return x.NoFly
+	}
+	return false
+}
+
+func (x *TableEffect) GetNoSwim() bool {
+	if x != nil {
+		return x.NoSwim
+	}
+	return false
+}
+
+func (x *TableEffect) GetGivesSlot() string {
+	if x != nil {
+		return x.GivesSlot
+	}
+	return ""
+}
+
+func (x *TableEffect) GetSpendsSlot() bool {
+	if x != nil {
+		return x.SpendsSlot
+	}
+	return false
+}
+
+func (x *TableEffect) GetRecoverMaxLevel() string {
+	if x != nil {
+		return x.RecoverMaxLevel
+	}
+	return ""
+}
+
+func (x *TableEffect) GetRecoverLevels() string {
+	if x != nil {
+		return x.RecoverLevels
 	}
 	return ""
 }
@@ -6806,7 +6908,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\x92\x0f\n" +
+	"\x04body\"\xd2\x11\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6885,7 +6987,19 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\vattack_name\x18A \x01(\tR\n" +
 	"attackName\x12\x1f\n" +
 	"\vdamage_dice\x18B \x01(\tR\n" +
-	"damageDice\"\xc3\x01\n" +
+	"damageDice\x12\x15\n" +
+	"\x06max_cr\x18C \x01(\tR\x05maxCr\x12\x1e\n" +
+	"\vmax_cr_from\x18D \x01(\tR\tmaxCrFrom\x12\x1b\n" +
+	"\tform_cost\x18E \x01(\tR\bformCost\x12'\n" +
+	"\x0fmagical_attacks\x18F \x01(\bR\x0emagicalAttacks\x12\x15\n" +
+	"\x06no_fly\x18G \x01(\bR\x05noFly\x12\x17\n" +
+	"\ano_swim\x18H \x01(\bR\x06noSwim\x12\x1d\n" +
+	"\n" +
+	"gives_slot\x18I \x01(\tR\tgivesSlot\x12\x1f\n" +
+	"\vspends_slot\x18J \x01(\bR\n" +
+	"spendsSlot\x12*\n" +
+	"\x11recover_max_level\x18K \x01(\tR\x0frecoverMaxLevel\x12%\n" +
+	"\x0erecover_levels\x18L \x01(\tR\rrecoverLevels\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
