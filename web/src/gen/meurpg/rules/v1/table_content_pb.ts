@@ -3895,7 +3895,7 @@ export type EffectMenuValue = Message<"meurpg.rules.v1.EffectMenuValue"> & {
 
   /**
    * For a target of a modifier: the only modes it takes (the critical range is "set", never
-   * added); empty means every mode. Mirrors rules.MenuValue.
+   * added); empty means every mode.
    *
    * @generated from field: repeated string only_modes = 4;
    */

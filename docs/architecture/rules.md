@@ -126,6 +126,7 @@ What the engine needs to know is written by hand in `effects/*.json`, in a close
 | `granted_spell` | Table content only. A spell the entry gives apart from the lists of the classes (see [Granted spells](rules-table-content.md#granted-spells)): `Derived.GrantedSpells`, each with its source, uses and casting ability numbers. |
 | `state` | Table content only. A temporary state (a stance, a form) with a name, a duration in rounds, the ways it ends and the cost of turning it on; it becomes `Derived.States` and an action (`state_key`, `state_active`). See [Table content](rules-table-content.md#states). |
 | `weapon_rule`, `pseudo_weapon` | Table content only. A rule that changes the weapon lines (another ability, a bonus, a longer reach) and an attack line of its own, both read where `attacks.go` builds a weapon line. See [Table content](rules-table-content.md#states). |
+| `reroll` | Table content only. Rolls a die again (`rolls`, `at_most`, optional `resource` and `cost`). See [Table content](rules-table-content.md#reroll). |
 | `ambush` | Table content only. Advantage on attack rolls against a creature that has not had its turn yet, or a critical hit on a surprised one (`applies`). See [Table content](rules-table-content.md#ambush). |
 | `superiority_die` | Table content only. A die an option (a maneuver) adds to a roll and that spends a use of a resource. See [Table content](rules-table-content.md#maneuvers). |
 | `ability_increase` | Feats only: `count` different abilities from `from`, `value` 1 or 2 each. |

@@ -3,6 +3,8 @@ package play
 import (
 	"testing"
 
+	"connectrpc.com/connect"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -438,7 +440,7 @@ func TestLuckyGoesFirstAndTheRerollIsNeverAskedOnTheSameRoll(t *testing.T) {
 	}
 }
 
-// A row written before the reroll columns existed has them at their defaults, and reads back as a roll with no reroll
+// A row with the reroll columns at their defaults reads back as a roll with no reroll
 // (nothing asked, nothing rolled again) while its Lucky question is still there.
 func TestARowWithTheRerollColumnsAtTheirDefaultsReadsBackAsNoReroll(t *testing.T) {
 	t.Parallel()
@@ -525,5 +527,30 @@ func TestWithTheSwitchOffNoReaderOffersALeftoverRerollQuestion(t *testing.T) {
 	}
 	if c := byLabel(t, r.get(t, r.master), "Toren"); c.GetHeldRollOffer() != nil {
 		t.Errorf("Toren's combat view for the master = %v, want no question", c.GetHeldRollOffer())
+	}
+}
+
+// A weapon attack held for the reroll while the switch was on cannot be answered by its id once it is off: the answer
+// is refused, nothing is spent and the d20 stays as it was.
+func TestAWeaponAttackQuestionCannotBeAnsweredOnceTheSwitchIsOff(t *testing.T) {
+	t.Parallel()
+	r := usualD20RerollParty(t)
+	e := r.closeFight(t)
+	res, err := r.attack(t, r.caio, e, "Toren", battleaxe, "Goblin", d20(2))
+	if err != nil || res.GetHeldRollOffer().GetReroll() == nil {
+		t.Fatalf("RollAttack(2) = %v, %v; want the reroll question", res, err)
+	}
+	r.h.svc.d20Rerolls = false
+	r.h.roller.queue(17)
+	out, err := r.answerHeldRoll(t, r.caio, res.GetHeldRollOffer().GetHoldId(), rerollAnswer(true))
+	wantCode(t, "the answer with the switch off", err, connect.CodeFailedPrecondition)
+	if out != nil {
+		t.Errorf("the answer = %v, want it refused", out)
+	}
+	if left := r.left(t); left != 2 {
+		t.Errorf("uses left = %d, want none spent", left)
+	}
+	if c := byLabel(t, r.get(t, r.caio), "Toren"); c.GetActionUsed() {
+		t.Error("the action was spent by a refused answer")
 	}
 }

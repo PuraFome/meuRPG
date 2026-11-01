@@ -7172,7 +7172,7 @@ type EffectMenuValue struct {
 	// A short explanation where the name alone does not say; often empty.
 	HintPt string `protobuf:"bytes,3,opt,name=hint_pt,json=hintPt,proto3" json:"hint_pt,omitempty"`
 	// For a target of a modifier: the only modes it takes (the critical range is "set", never
-	// added); empty means every mode. Mirrors rules.MenuValue.
+	// added); empty means every mode.
 	OnlyModes []string `protobuf:"bytes,4,rep,name=only_modes,json=onlyModes,proto3" json:"only_modes,omitempty"`
 	// For the same, the bounds of a literal value; both zero when unbounded.
 	Min           int32 `protobuf:"varint,5,opt,name=min,proto3" json:"min,omitempty"`

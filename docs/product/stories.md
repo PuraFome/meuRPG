@@ -659,9 +659,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a feature of the table with a modifier "Margem de acerto crítico" set to 19 (RN-23), **when** its owner attacks with a weapon and the d20 shows 19, **then** the attack hits and is a critical hit, **and** a spell attack with a 19 is not.
   With a class that already has Improved Critical, the lower of the two counts; a value outside 15 to 20 is refused at its field.
 - **Given** a feature with the effect "Rolar de novo" on attack rolls, at most 2, spending 1 use of a resource of the feature, **when** its owner's d20 shows 2 or lower and a use is left, **then** the player is asked "rolar de novo?" before the roll is said to succeed or fail; "sim" spends the use and the new d20 stands, "não" spends nothing.
-  The question appears once the player's screen for it ships: until then the server does not hold the roll, and the criterion is met only by the API test.
-  The effect is written through the API: the master's editor has no entry for it yet.
-- **Given** a feature with the effect "Rolar de novo" on damage, at most 2, spending 1 use, **when** its owner rolls a weapon's damage and a die shows 1 or 2, **then** the app rolls that die again without asking, the damage line lists it, and the use is spent; **when** the master undoes the damage, **then** the use comes back.
+  The app has no screen for the question, so the server does not hold the roll; the API test covers the criterion.
+  The effect is written through the API: the editor lists it but cannot save it.
+- **Given** a feature with the effect "Rolar de novo" on damage, at most 2, spending 1 use, **when** its owner rolls a weapon's damage and a die shows 1 or 2, **then** the app rolls that die again without asking, the part of the damage lists it, and the use is spent; **when** the master undoes the damage, **then** the use comes back.
   A feature with no resource rerolls for free; a cost the resource can never pay leaves the effect out of the sheet.
 
 **Feats.**

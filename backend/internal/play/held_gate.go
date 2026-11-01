@@ -515,11 +515,14 @@ func (s *Service) gateOwnAnswer(ctx context.Context, ae answering, h heldRoll, a
 	return res, true, err
 }
 
-// answerable refuses an answer to a roll another answer settled, and, in a table that checks its answers,
-// one whose question went stale.
+// answerable refuses an answer to a roll another answer settled, a reroll question of any kind while the switch is off,
+// and, in a table that checks its answers, one whose question went stale.
 func (h heldRoll) answerable(st rollerState, key string) error {
 	if h.AnswerKey != nil && *h.AnswerKey != key {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll was answered already"))
+	}
+	if h.AnswerKey == nil && st.RerollsOff && rerollAsks(h) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll waited too long: the reroll is switched off"))
 	}
 	if h.AnswerKey == nil && h.checksTheAnswer() && h.stale(st) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll waited too long: its round is over"))

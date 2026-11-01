@@ -1706,7 +1706,7 @@ message EffectMenuValue {
   // A short explanation where the name alone does not say; often empty.
   string hint_pt = 3;
   // For a target of a modifier: the only modes it takes (the critical range is "set", never
-  // added); empty means every mode. Mirrors rules.MenuValue.
+  // added); empty means every mode.
   repeated string only_modes = 4;
   // For the same, the bounds of a literal value; both zero when unbounded.
   int32 min = 5;

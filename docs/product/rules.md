@@ -589,7 +589,7 @@ Members read the campaign's content, except creatures (below); only the master w
 - **Wild Shape.** A table subclass or feature changes the druid's Wild Shape (MR-037): the highest challenge rating of the beasts (a fixed one, or one from the level such as the level divided by 3), how many uses of Wild Shape one change of form costs (none, for a free change), and whether the beast's attacks count as magical. The character takes the most permissive of what it has: the highest rating, the lowest cost, and magical attacks if any feature gives them. The list of forms and the choice agree.
 - **The critical range.**
   A table modifier "Margem de acerto crítico (o menor d20 que é crítico)" sets the lowest natural d20 that is a critical hit, from 15 to 20.
-  Only the mode "Definir" is offered, and a formula is held between 15 and 20.
+  Only the mode "Definir" is accepted, the server refuses the others, and a formula is held between 15 and 20.
   It counts for weapon attacks only, as Improved Critical does; a spell attack is a critical hit on a 20 only.
   The lowest of the table's value and of the class features' range (Improved Critical, Superior Critical) wins.
   The attack hits on that roll and the damage follows the critical rule of the table (RN-24).
@@ -597,25 +597,26 @@ Members read the campaign's content, except creatures (below); only the master w
   The effect "Rolar de novo" lets a die be rolled again, and the new roll must be used, even when it is worse (SRD 5.1).
   The master picks the rolls it covers (attack, ability check, saving throw, damage; each once), the highest face that may be rolled again (1 to 20), and optionally a resource the entry or its class defines and the uses each reroll spends (1 by default).
   With no resource it is free.
-  A cost below 1, a cost the resource's maximum at the character's level can never pay, or a resource the character does not have yet leaves the reroll out of the sheet.
+  A cost below 1, a cost the resource's maximum at the character's level can never pay, or a resource the character does not have at that level leaves the reroll out of the sheet.
   When several rerolls cover a roll, the first one the character can pay serves.
   - **The d20.** The player is asked "rolar de novo?" after the d20 and before the app says whether the roll succeeds, when the die shows the chosen face or lower and the character can pay.
     With advantage or disadvantage the die that counts is the one asked about.
     Answering yes spends the uses and rolls a new d20 that stands, even when it is another low face; answering no spends nothing.
     It applies to weapon and spell attack rolls, to the scene check, the group check, the saving throw of an effect and the concentration save.
     It never applies to a contest (a grapple, a shove, an escape), Hide, the Counterspell check, a death save, the initiative, a trap search or a puzzle hint.
-    The player's screen for the question is not built, so the app does not ask: every roll stands as rolled and nothing is held or spent.
+    The app has no screen for the question, so it does not ask: every roll stands as rolled and nothing is held or spent.
     The question is for the roller's player and the master, as Lucky's is (RN-35).
   - **Lucky.** A roll that asks the halfling's Lucky question is not offered the reroll, so the two never meet in one roll.
   - **Damage.** The app rolls the damage dice again by itself and never asks.
     One use covers one damage roll, and every die that shows the chosen face or lower is rolled again once.
     A die that Great Weapon Fighting (Combate com Armas Grandes) already rolled again is kept.
     Damage the player typed from physical dice, and damage held for a reaction window, are not rerolled.
-    The damage line lists the dice rolled again with the feature that gave the reroll.
+    For damage with parts (a weapon hit and its extras) the part lists the dice rolled again with the feature that gave the reroll; other damage shows only the new dice.
     The use is spent with the damage, and undoing the damage gives it back.
   - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
-  - **Not covered.** A minimum for a roll and a wider critical range for spell attacks are not offered.
-    The master's editor has no entry for these two effects yet: they are written through the API.
+  - **Not covered.** A minimum for a roll and a wider critical range for spell attacks do not exist.
+    The master's editor lists "Rolar de novo" but cannot save it: write it through the API.
+    The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**

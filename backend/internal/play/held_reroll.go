@@ -29,9 +29,9 @@ import (
 // The kinds that ask it are the weapon attack and the spell attack ("attack"), the scene check and the group check
 // ("check"), the effect's saving throw and the concentration save ("save"). The kinds that never ask it, whatever the
 // character has, are the trap search, the puzzle hint, Hide, the contests, the Counterspell check, the death save and
-// the initiative; Lucky reaches more of them, and widening this to match is left to a follow-up.
+// the initiative; Lucky reaches more of them; a reroll rule does not.
 //
-// Nothing is asked unless Service.d20Rerolls is on (Config.D20Rerolls): the web client does not answer the question yet,
+// Nothing is asked unless Service.d20Rerolls is on (Config.D20Rerolls): the web client has no screen for the question,
 // so with the switch off the roll settles as if the player declined, with nothing held, spent or written. A question
 // written with the switch on that is still waiting when it goes off is forgotten by the next roll that asks, like a
 // stale hold, and never blocks the roller.
@@ -232,9 +232,8 @@ func (q rerollQuestion) apply(ctx context.Context, ae answering, h heldRoll, a h
 // rerolled is the roll with the die that showed the low face rolled again, and the rule's uses spent.
 //
 // The server rolls the new die itself with its roller, whatever the campaign's dice mode: a player who rolls real dice
-// (RN-18) is not asked to type the new face. The new roll is therefore not RN-18 faithful for a physical-dice table (a
-// known gap: the answer carries no way of typing a face), and it is never claimed to be physical: the hold's Physical
-// flag is cleared, so the result and the log tell the truth about the die.
+// (RN-18) is not asked to type the new face, so the new die does not follow RN-18 at a physical-dice table. It is never
+// claimed to be physical: the hold's Physical flag is cleared, so the result and the log tell the truth about the die.
 func (ae answering) rerolled(ctx context.Context, h heldRoll) (heldRoll, error) {
 	if len(h.Faces) == 0 {
 		return h, connect.NewError(connect.CodeInternal, errors.New("a reroll of a roll with no faces"))

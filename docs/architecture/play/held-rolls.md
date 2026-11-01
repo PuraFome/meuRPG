@@ -330,7 +330,7 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 - **Order.** The reroll comes after Lucky and before the Bardic Inspiration die.
   Indomitable and Stroke of Luck look at the new roll.
 - **Answer.** Rolling again makes the service roll a d20 with its own roller, whatever the campaign's dice mode.
-  The player is not asked to type it, so the new die is not RN-18 faithful at a physical-dice table; this is a known gap.
+  The player is not asked to type it, so the new die does not follow RN-18 at a physical-dice table.
   The new d20 replaces the face asked about, the die that counts is picked again, Reliable Talent applies, the roll's `Physical` flag is cleared, and the rule's uses are spent in the same transaction.
   The new roll is final.
   A free rule (no resource) spends nothing.
@@ -342,4 +342,4 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 - **Columns** of `inspiration_holds` ([Play data](../../data/play.md)): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
   The cleanup of orphan holds keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
 - **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` (`reroll`, a boolean) in `AnswerHeldRollRequest`.
-- **Web.** The generated types exist and there is no screen for the question.
+- **Web.** No screen answers the question; an offer of this kind renders the die's prompt with zero sides.

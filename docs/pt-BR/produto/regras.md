@@ -589,7 +589,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
 - **A margem de acerto crítico.**
   Um modificador da mesa "Margem de acerto crítico (o menor d20 que é crítico)" define o menor d20 natural que é acerto crítico, de 15 a 20.
-  Só o modo "Definir" é oferecido, e uma fórmula fica entre 15 e 20.
+  Só o modo "Definir" é aceito, o servidor recusa os outros, e uma fórmula fica entre 15 e 20.
   Vale só para ataques com arma, como o Crítico Aprimorado; um ataque de magia é crítico só no 20.
   Vale o menor entre o valor da mesa e a margem das características de classe (Crítico Aprimorado, Crítico Superior).
   O ataque acerta nessa rolagem e o dano segue a regra de crítico da mesa (RN-24).
@@ -597,25 +597,26 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   O efeito "Rolar de novo" deixa um dado ser rolado outra vez, e a nova rolagem vale, mesmo se for pior (SRD 5.1).
   O mestre escolhe as jogadas que ele cobre (ataque, teste de habilidade, teste de resistência, dano; cada uma uma vez), a maior face que pode ser rolada de novo (de 1 a 20) e, se quiser, um recurso que a entrada ou a classe define e os usos que cada nova rolagem gasta (1 por padrão).
   Sem recurso, é de graça.
-  Um custo abaixo de 1, um custo que o máximo do recurso no nível do personagem nunca paga, ou um recurso que o personagem ainda não tem deixam o efeito fora da ficha.
+  Um custo abaixo de 1, um custo que o máximo do recurso no nível do personagem nunca paga, ou um recurso que o personagem não tem naquele nível deixam o efeito fora da ficha.
   Quando vários efeitos cobrem a jogada, vale o primeiro que o personagem consegue pagar.
   - **O d20.** O jogador recebe "rolar de novo?" depois do d20 e antes de o app dizer se a jogada tem sucesso, quando o dado mostra a face escolhida ou menos e o personagem consegue pagar.
     Com vantagem ou desvantagem, o dado perguntado é o que vale.
     Responder sim gasta os usos e rola um novo d20 que vale, mesmo se for outra face baixa; responder não não gasta nada.
     Vale para jogadas de ataque com arma e com magia, para o teste de cena, o teste em grupo, o teste de resistência de um efeito e o teste de concentração.
     Nunca vale para uma disputa (agarrar, empurrar, escapar), Esconder-se, o teste do Contramágica, um teste contra a morte, a iniciativa, uma busca por armadilha ou uma dica de enigma.
-    A tela do jogador para a pergunta ainda não existe, então o app não pergunta: toda jogada vale como foi rolada e nada fica retido nem é gasto.
+    O app não tem tela para a pergunta, então ele não pergunta: toda jogada vale como foi rolada e nada fica retido nem é gasto.
     A pergunta é do jogador da rolagem e do mestre, como a do Sortudo (RN-35).
   - **Sortudo.** Uma jogada que faz a pergunta do Sortudo do halfling não recebe a de rolar de novo, então as duas nunca se encontram numa jogada.
   - **Dano.** O app rola os dados de dano de novo sozinho e nunca pergunta.
     Um uso cobre uma jogada de dano, e cada dado que mostra a face escolhida ou menos é rolado de novo uma vez.
     Um dado que o Combate com Armas Grandes já rolou de novo fica como está.
     Dano que o jogador digitou de dados físicos e dano retido por uma janela de reação não são rolados de novo.
-    A linha de dano lista os dados rolados de novo com a característica que deu o efeito.
+    No dano com partes (um golpe de arma e os extras dele) a parte lista os dados rolados de novo com a característica que deu o efeito; os outros danos mostram só os dados novos.
     O uso é gasto junto com o dano, e desfazer o dano o devolve.
   - **Dados físicos.** O app rola o novo d20 e os novos dados de dano sozinho, mesmo numa mesa de dados físicos, então esse dado não é digitado pelo jogador (a RN-18 não vale para ele).
-  - **Fora.** Um mínimo para a jogada e uma margem de crítico maior para ataques de magia não são oferecidos.
-    O editor do mestre ainda não tem entrada para esses dois efeitos: eles se escrevem pela API.
+  - **Não coberto.** Um mínimo para a jogada e uma margem de crítico maior para ataques de magia não existem.
+    O editor do mestre lista "Rolar de novo", mas não consegue salvá-lo: escreva-o pela API.
+    A margem de crítico se escolhe no editor como um modificador, e o servidor recusa qualquer modo que não seja "Definir".
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**

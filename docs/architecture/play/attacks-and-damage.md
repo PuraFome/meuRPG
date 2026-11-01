@@ -115,7 +115,7 @@ Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
 A table `reroll` effect that covers `damage` rolls again each die at or below its `at_most`, once, in the damage step (`combat_damage_reroll.go`); the player is never asked.
 One use of its resource (none for a free rule) covers one damage roll and is spent in the transaction of the damage, and undoing the damage gives it back.
 It skips typed sums, damage held for a reaction window and a die Great Weapon Fighting already rolled again.
-The part lists the dice in `Rerolled` with the rule's feature as `source_key`.
+A roll with parts (a weapon hit and its extras) lists the dice in the part's `Rerolled` with the rule's feature as `source_key`; a roll without parts changes only its faces and total.
 The attack's critical range is `Derived.CriticalRange` for a weapon attack and 20 for a spell attack (`criticalFrom`).
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
