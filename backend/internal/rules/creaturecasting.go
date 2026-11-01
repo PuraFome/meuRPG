@@ -25,7 +25,7 @@ type CreatureCasting struct {
 }
 
 var (
-	castingSlotsRe = regexp.MustCompile(`(?m)^- (\d+)(?:st|nd|rd|th) level \((\d+) slots?\): (.+)$`)
+	castingSlotsRe = regexp.MustCompile(`(?mi)^- (\d+)(?:st|nd|rd|th) level \((\d+) slots?\): (.+)$`)
 	castingCantrip = regexp.MustCompile(`(?mi)^- Cantrips \(at will\): (.+)$`)
 )
 
@@ -78,7 +78,7 @@ func (c *content) castingSpells(spells []string, list string) []string {
 func listedSpellNames(list string) []string {
 	var names []string
 	for _, name := range strings.Split(parenthesisRe.ReplaceAllString(list, ""), ",") {
-		if name = strings.Trim(strings.TrimSuffix(strings.TrimSpace(name), "*"), ";. "); name != "" {
+		if name = strings.Trim(name, "*;. \t"); name != "" {
 			names = append(names, name)
 		}
 	}

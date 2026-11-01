@@ -96,13 +96,13 @@ func (c *Content) MonsterCaster(key string) (MonsterCaster, bool) {
 	return out, true
 }
 
-// numbersOf are the casting ability, the save DC and the attack bonus a trait's text gives: the numbers
+// numbersOf are what a trait's text writes, with the save DC and the attack bonus it gives: the numbers
 // it writes, and, for what it leaves out, 8 or nothing plus the proficiency bonus and the ability modifier.
 // false when the text writes neither an ability nor a DC or an attack bonus: there is nothing to cast with.
-func numbersOf(profBonus int, scores map[Ability]int, desc string) (ability Ability, dc, attack int, ok bool) {
-	t := SpellcastingNumbers(desc)
+func numbersOf(profBonus int, scores map[Ability]int, desc string) (t CastingText, dc, attack int, ok bool) {
+	t = SpellcastingNumbers(desc)
 	if !t.HasAbility && !t.HasDC && !t.HasAttack {
-		return "", 0, 0, false
+		return t, 0, 0, false
 	}
 	mod := modifier(scores[t.Ability])
 	dc, attack = 8+profBonus+mod, profBonus+mod
@@ -118,21 +118,20 @@ func numbersOf(profBonus int, scores map[Ability]int, desc string) (ability Abil
 	case t.HasAttack:
 		attack = t.Attack
 	}
-	return t.Ability, dc, attack, true
+	return t, dc, attack, true
 }
 
 // addSlotCasting adds the Spellcasting trait: the slots, the prepared spells and the numbers.
 func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string) {
-	ability, dc, attack, ok := numbersOf(profBonus, scores, desc)
+	t, dc, attack, ok := numbersOf(profBonus, scores, desc)
 	slots, spells := c.castingTrait(desc)
-	t := SpellcastingNumbers(desc)
 	if !ok || (len(spells) == 0 && !t.HasDC) {
 		return
 	}
 	if t.HasLevel {
 		out.Level = t.Level
 	}
-	out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
+	out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: t.Ability, SaveDC: dc, AttackBonus: attack}
 	out.Slots = slots[:]
 	for _, k := range spells {
 		if e, ok := c.spellEntries[k]; ok {
@@ -144,14 +143,14 @@ func (c *content) addSlotCasting(out *MonsterCaster, key string, profBonus int, 
 // addInnateCasting adds the innate spells of the trait as granted spells: "At will" ones at will, "N/day each"
 // ones with a resource of N uses a spell, and "N/day" ones with one resource of N uses for the whole list.
 func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int, scores map[Ability]int, desc string) {
-	ability, dc, attack, ok := numbersOf(profBonus, scores, desc)
+	t, dc, attack, ok := numbersOf(profBonus, scores, desc)
 	if !ok {
 		return
 	}
 	source := key + innateSourceSuffix
 	// A text that runs its lists together on one line ("... major image 3/day each: ...") gets one list a line.
 	desc = innateBreakRe.ReplaceAllString(desc, "\n$1")
-	base := GrantedSpell{Source: source, SourcePT: "Conjuração inata", Ability: ability, AttackBonus: attack, SaveDC: dc}
+	base := GrantedSpell{Source: source, SourcePT: "Conjuração inata", Ability: t.Ability, AttackBonus: attack, SaveDC: dc}
 	for _, line := range innateLineRe.FindAllStringSubmatch(desc, -1) {
 		perDay, _ := strconv.Atoi(line[2])
 		for _, name := range listedSpellNames(line[4]) {
@@ -163,7 +162,7 @@ func (c *content) addInnateCasting(out *MonsterCaster, key string, profBonus int
 		}
 	}
 	if len(out.Granted) > 0 && out.Spellcasting.Class == "" {
-		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: ability, SaveDC: dc, AttackBonus: attack}
+		out.Spellcasting = Spellcasting{Class: key, ClassNamePT: c.namePT(key), Ability: t.Ability, SaveDC: dc, AttackBonus: attack}
 	}
 }
 

@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -98,38 +99,26 @@ func monsterWith(t *testing.T, traits ...srd51.MonsterAbility) *Content {
 	return &Content{c: &c}
 }
 
-// TestMonsterSpellcastingIsTheViewOfMonsterCaster: the reaction reads the same numbers as the combat turn,
-// for every SRD creature. A reader that diverges from MonsterCaster fails here.
-func TestMonsterSpellcastingIsTheViewOfMonsterCaster(t *testing.T) {
+// TestMonsterCastingReactionValuesGolden: what the reaction reads of every SRD caster (save DC, attack bonus,
+// ability modifier, slots, spells) and what MonsterCaster reads (level, granted spells). The golden was
+// produced by the readers before MonsterSpellcasting became a view of MonsterCaster.
+func TestMonsterCastingReactionValuesGolden(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	seen := 0
+	got := map[string]string{}
 	for _, e := range c.c.monsterEntries {
-		mc, hasCaster := c.MonsterCaster(e.Key)
-		got, ok := c.MonsterSpellcasting(e.Key)
-		if ok != (hasCaster && mc.Slots != nil) {
-			t.Errorf("%s: MonsterSpellcasting = %v, MonsterCaster has slots = %v", e.Key, ok, hasCaster && mc.Slots != nil)
+		r, rok := c.MonsterSpellcasting(e.Key)
+		mc, mok := c.MonsterCaster(e.Key)
+		if !rok && !mok {
 			continue
 		}
-		if !ok {
-			continue
+		reaction := "none"
+		if rok {
+			reaction = fmt.Sprintf("%+v", r)
 		}
-		seen++
-		var want CreatureCasting
-		want.SaveDC, want.AttackBonus = mc.Spellcasting.SaveDC, mc.Spellcasting.AttackBonus
-		want.AbilityMod = mc.Spellcasting.AttackBonus - c.c.monsters[e.Key].ProficiencyBonus
-		copy(want.Slots[:], mc.Slots)
-		for _, s := range mc.Spells {
-			want.Spells = append(want.Spells, s.Spell.Key)
-		}
-		if got.SaveDC != want.SaveDC || got.AttackBonus != want.AttackBonus || got.AbilityMod != want.AbilityMod ||
-			got.Slots != want.Slots || !slices.Equal(got.Spells, want.Spells) {
-			t.Errorf("%s: MonsterSpellcasting = %+v, the view of MonsterCaster = %+v", e.Key, got, want)
-		}
+		got[e.Key] = fmt.Sprintf("reaction %s; caster %v level %d granted %d", reaction, mok, mc.Level, len(mc.Granted))
 	}
-	if seen < 12 {
-		t.Errorf("%d SRD creatures with slots compared, want at least 12", seen)
-	}
+	goldenText(t, "monster-casting-reactions", got)
 }
 
 // TestMonsterCasterReadsParenthesesWithCommas: a comma inside parentheses does not split the list.
@@ -189,7 +178,7 @@ func TestMonsterCasterNeedsAnAbilityOrADC(t *testing.T) {
 		t.Errorf("MonsterSpellcasting = %+v, want none", got)
 	}
 	// With only a DC the attack bonus follows from it.
-	c = monsterWith(t, srd51.MonsterAbility{Name: "Innate Spellcasting", Desc: "Its spell save DC is irrelevant; spell save DC 13.\nAt will: misty step"})
+	c = monsterWith(t, srd51.MonsterAbility{Name: "Innate Spellcasting", Desc: "It has spell save DC 13.\nAt will: misty step"})
 	mc, ok := c.MonsterCaster("monster:x")
 	if !ok || mc.Spellcasting.SaveDC != 13 || mc.Spellcasting.AttackBonus != 5 {
 		t.Errorf("DC only: %+v (%v), want DC 13 and +5", mc.Spellcasting, ok)
