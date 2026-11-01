@@ -1742,7 +1742,7 @@ describe('LiveSession', () => {
       await render();
       const reads = () => maps.calls.filter((c) => c.startsWith('vision map-1 ')).length;
       const gets = () => maps.calls.filter((c) => c.startsWith('get map-1')).length;
-      // Opening the page schedules one read of the vision; let it land so the counts below are only the hints'.
+      // Opening the page reads the vision twice; let both land so the counts below are only the hints'.
       await vi.waitFor(() => expect(reads()).toBe(2));
       const before = {
         reads: reads(),
@@ -1793,8 +1793,10 @@ describe('LiveSession', () => {
       };
       await render();
       const reads = () => maps.calls.filter((c) => c === 'inTheDark map-1').length;
-      // Opening the page reads twice: once when the map and its tokens arrive, and once for the vision hint the snapshot
-      // schedules (the debounce of the loader). Wait for both, so the counts below are only the hints'.
+      // Opening the page reads twice.
+      // The first read comes when the map and its tokens arrive.
+      // The second comes from the vision hint the snapshot schedules.
+      // Wait for both, so the counts below are only the hints'.
       await vi.waitFor(() => expect(reads()).toBe(2));
       const before = reads();
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });

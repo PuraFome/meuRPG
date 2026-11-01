@@ -78,8 +78,9 @@ export class LiveSessionLoader {
     this.visionTimer = setTimeout(() => {
       this.visionTimer = undefined;
       void this.parts.fog.refresh();
-      // A Darkness appearing or ending changes neither the map nor its tokens, so this hint is the only trigger for it;
-      // opening the page and a reconnection read here too, and the watch joins a read already in the air.
+      // This hint is the only trigger for a Darkness appearing or ending: neither changes the map or its tokens.
+      // Opening the page and a reconnection read here too.
+      // The watch folds a burst into one read after the one in the air.
       void this.parts.dark.refresh();
       this.state.visionTick.update((n) => n + 1);
     }, VISION_DEBOUNCE_MS);
