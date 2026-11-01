@@ -2,6 +2,7 @@ package play
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -349,6 +350,11 @@ func TestAZoneAsksTheMasterForAHiddenLichAndNamesItToNoPlayer(t *testing.T) {
 	if w == nil {
 		t.Fatal("the hidden lich in the beam is not asked")
 	}
+	for _, u := range []*user{c.ana, c.caio, c.bia} { // the wait the hidden lich holds names neither it nor the trait
+		if wait := c.get(t, u).GetReactionWait(); strings.Contains(wait.GetTitlePt()+wait.GetDetailPt(), "Lich") {
+			t.Errorf("a player reads the wait %v: it names the hidden lich", wait)
+		}
+	}
 	c.h.roller.queue(5, 5)
 	if _, err := c.answerBoss(t, w, 1, true); err != nil {
 		t.Fatalf("RollEffectSave() error = %v", err)
@@ -365,5 +371,38 @@ func TestAZoneAsksTheMasterForAHiddenLichAndNamesItToNoPlayer(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// The saving throw of a spell zone is against magic (SRD 5.1, "Gnome Cunning": advantage on Intelligence, Wisdom and
+// Charisma saves against magic): the player's gnome, asked the save of a zone, rolls it with advantage, two d20 and
+// the better counts. Moonbeam asks Constitution, so the zone is made to ask Wisdom, as Spirit Guardians does.
+func TestAZoneSaveOfAPlayersGnomeIsAgainstMagic(t *testing.T) {
+	t.Parallel()
+	c := druidCave(t)
+	e := c.zoneFight(t)
+	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(12, 7), nil)
+	c.execSQL(t, `UPDATE spell_zones SET save_ability = 'wis' WHERE spell_key = $1`, moonbeamKey)
+	var w *playv1.ReactionWindow
+	for range 6 { // the turn that begins in the beam waits for the save
+		if w = c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE); w != nil {
+			break
+		}
+		if _, err := c.endTurnRaw(t, c.master, e, true); err != nil {
+			t.Fatalf("EndTurn() error = %v", err)
+		}
+	}
+	if w == nil || w.GetReactorId() != c.id(t, "Pensantus") || w.GetEffectSave().GetZoneId() == "" {
+		t.Fatalf("the gnome in the beam is not asked the save of the zone: %v (ana %v, master %v)", w, c.windows(t, c.ana), c.windows(t, c.master))
+	}
+	c.h.roller.queue(3, 17, 5, 5) // the pair of d20 (advantage), then 2d10 = 10
+	res, err := c.rollEffectSave(t, c.ana, c.get(t, c.master), w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+		r.Roll = &playv1.RollEffectSaveRequest_RollInApp{RollInApp: true}
+	})
+	if err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if got := res.GetResult().GetD20Faces(); !slices.Equal(got, []int32{3, 17}) || res.GetResult().GetD20() != 17 {
+		t.Errorf("the gnome's save = %v, want the pair 3 and 17 with the 17 counted: Gnome Cunning against the magic of the zone", res.GetResult())
 	}
 }

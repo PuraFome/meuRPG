@@ -121,7 +121,7 @@ func TestAZonesLegendaryResistanceIsTheMastersAlone(t *testing.T) {
 		window = w.untilAsked()
 		asked = []reply{w.reads(w.ana)[0], w.reads(w.caio)[0]}
 		for _, p := range []*person{w.ana, w.caio} {
-			asks, fake := w.zoneSave(p, window.GetId(), 1, true), w.zoneSave(p, newKey(), 1, true)
+			asks, fake := w.zoneSave(p, window.GetId(), 1, false), w.zoneSave(p, newKey(), 1, false) // use=false: the refusal comes from the window, not from the choice
 			if asks.ok() || fake.ok() || asks.status != fake.status || !bytes.Equal(asks.body, fake.body) {
 				t.Errorf("%s: a real window is refused with %d %s, an invented one with %d %s: they must read the same", p.name, asks.status, asks.body, fake.status, fake.body)
 			}

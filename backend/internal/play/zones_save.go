@@ -89,7 +89,7 @@ func (s *Service) loadZoneSave(ctx context.Context, c *combatTx, x *effectSaveSt
 	x.ability, x.dc = z.row.SaveAbility, z.row.SaveDc
 	x.ev = actionEvent{Round: c.enc.Round, Secret: owner.Hidden || x.reactor.Hidden, Actor: owner.ID, Target: x.reactor.ID, Key: z.row.SpellKey}
 	x.le = &lastingEvent{Key: z.row.SpellKey, Change: "saved", Targets: []string{x.reactor.ID}, Caster: owner.ID, Reason: x.t.Phase, Ability: x.ability, DC: x.dc}
-	if x.t.Phase == zoneWhyCast { // the answer belongs to the cast: its undo gives back the use the answer spent (resistedBackOfAnswers)
+	if x.t.Phase == zoneWhyCast { // CastID rides on every cast-phase zone answer: the undo of the cast gives back the uses the answers spent (zoneResistsBack)
 		x.ev.CastID = z.row.CastID
 	}
 	return nil

@@ -838,7 +838,7 @@ The rider then lands as the save finally went: the ki is spent and the effect ap
 While one rider waits, no rider offer of the combat is answered.
 A player reads only the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
 The trait is not offered on any other save: a trap's, Turn Undead, Hellish Rebuke or a goading maneuver's.
-The save a spell's area (Moonbeam, Spirit Guardians, Grease, Web) asks of such a creature is asked of the master alone, as it is asked of a player's character: he rolls it and, on a failure, may use the trait.
+The save a spell's area (for example Moonbeam or Spirit Guardians) asks of such a creature is asked of the master alone, as it is asked of a player's character: he rolls it and, on a failure, may use the trait.
 A player reads the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
 A creature without the trait or without a use left is rolled at once.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).

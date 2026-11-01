@@ -837,7 +837,7 @@ O mestre vê o teste falhado, se houver, e o transforma em sucesso ou o deixa co
 O efeito então vale como o teste terminou: o ki é gasto e o efeito se aplica só a um alvo que falhou.
 Enquanto um efeito espera, nenhuma oferta de efeito de acerto do combate é respondida.
 O jogador lê só a espera e depois um teste que passou ou falhou, nunca a rolagem, os usos nem a característica (RN-20).
-O teste de resistência que a área de uma magia (Raio Lunar, Espíritos Guardiões, Área Escorregadia, Teia) pede a essa criatura é pedido só ao mestre, como é pedido ao personagem de um jogador: ele rola e, numa falha, pode usar a característica.
+O teste de resistência que a área de uma magia (por exemplo Raio Lunar ou Espíritos Guardiões) pede a essa criatura é pedido só ao mestre, como é pedido ao personagem de um jogador: ele rola e, numa falha, pode usar a característica.
 O jogador lê a espera e depois um teste que passou ou falhou, nunca a rolagem, os usos nem a característica (RN-20).
 Uma criatura sem a característica ou sem uso sobrando é rolada na hora.
 A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, Expulsar Mortos-Vivos, Repreensão Infernal ou uma manobra de provocação.

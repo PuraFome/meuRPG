@@ -252,7 +252,8 @@ The window offers the failed save alone (nothing when it passed), and its trigge
 The master answers as for a cast; the replay runs the answer again with the kept d20 and, on `USE`, turns the failed save into a success and spends one use in its own transaction.
 The ki, the effect and the closing of the offer are the replay's: until the master answers, the offer stays open, the ki is not spent and the target is not stunned.
 While a rider's hold stands, any answer to any rider offer of the combat is refused with `REACTION_PENDING`, the same offer declined or switched included.
-The refusal depends only on the hold, never on the target, so it tells a player nothing more than the wait does.
+The refusal depends only on the hold, never on the target.
+A player only ever sees the wait and the save's result.
 Two riders of one hit are therefore held one after the other, each with its own use.
 A failed save that a stun immunity turns into a saved one is not offered.
 A decline, a choice with no save (no reactions, a grapple), a target that is not an NPC with the trait and a use left are never held.
