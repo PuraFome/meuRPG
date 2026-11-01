@@ -129,6 +129,7 @@ func (z *zone) place(ctx context.Context, c *combatTx, origin grid.Square, squar
 	z.row.OriginCol, z.row.OriginRow = clamp32(origin.Col, 0, math.MaxInt32), clamp32(origin.Row, 0, math.MaxInt32)
 	z.setSquares(squares)
 	z.row.Squares = squaresToJSON(squares)
+	c.zoneChanged(z)
 	if err := c.q.SetSpellZonePlace(ctx, playdb.SetSpellZonePlaceParams{
 		ID: z.row.ID, OriginCol: z.row.OriginCol, OriginRow: z.row.OriginRow, Squares: z.row.Squares,
 	}); err != nil {

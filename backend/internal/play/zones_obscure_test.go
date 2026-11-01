@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -306,8 +307,8 @@ func TestTheFogHearsOfACloudThatEndsOutsideACombatWrite(t *testing.T) {
 	}
 }
 
-// A zone keeps up to 4,096 squares, enough for Fog Cloud at a 9th-level slot (a sphere of 36 squares of radius, about
-// 4,070); one more is refused by the table's check (migration 00296).
+// A zone keeps up to 4,096 squares, enough for Fog Cloud at a 9th-level slot (a sphere of 36 squares of radius,
+// 4,053 squares); one more is refused by the table's check (migration 00296).
 func TestAZoneKeepsUpTo4096SquaresAndNoMore(t *testing.T) {
 	t.Parallel()
 	c := obscureCave(t)
@@ -345,5 +346,25 @@ func TestTheFogHearsOfACloudWhoseCasterLeavesTheCombat(t *testing.T) {
 	}
 	if clouds, _ := c.combatPositions(t); len(clouds) != 0 {
 		t.Errorf("cloud squares after = %d, want none", len(clouds))
+	}
+}
+
+// The master moving a cloud changes the squares that block sight, and the fog hears of it.
+func TestTheFogHearsOfACloudTheMasterMoves(t *testing.T) {
+	t.Parallel()
+	c := newCaveWith(t, 5, []string{fogCloudKey})
+	c.druidFightWith(t, []string{fogCloudKey}, "Druida")
+	c.mustCastArea(t, c.master, "Druida", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
+	z := c.oneZone(t, c.master, fogCloudKey)
+	was, _ := c.combatPositions(t)
+	before := c.h.vision.n.Load()
+	if _, err := c.moveZone(t, c.master, z.GetId(), 12, 7); err != nil {
+		t.Fatalf("MoveSpellZone() error = %v", err)
+	}
+	if got := c.h.vision.n.Load(); got <= before {
+		t.Errorf("fog refreshes after the master moved the cloud = %d, before %d: the fog was not told", got, before)
+	}
+	if now, _ := c.combatPositions(t); slices.Equal(now, was) {
+		t.Errorf("cloud squares after the move = those before (%d squares): the cloud did not move", len(now))
 	}
 }

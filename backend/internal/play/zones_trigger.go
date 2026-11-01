@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"connectrpc.com/connect"
+
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
@@ -257,7 +259,11 @@ func (s *Service) immuneToRetching(ctx context.Context, c *combatTx, who playdb.
 	if combat.AdjustForType(poisonProbe, poisonDamage, mods) == 0 {
 		return true, nil
 	}
-	return c.immuneToCondition(ctx, who, condPoisoned)
+	immune, err := c.immuneToCondition(ctx, who, condPoisoned)
+	if isCreature(who) && connect.CodeOf(err) == connect.CodeNotFound {
+		return false, nil // a creature the content does not know has no stat block to be immune by
+	}
+	return immune, err
 }
 
 // poisonProbe is an amount of poison damage large enough that only an immunity takes all of it away.

@@ -95,7 +95,7 @@ type zoneDef struct {
 	sight zoneSight
 	// growsFt is how much the size grows for each slot level above the spell's own (Fog Cloud).
 	growsFt int
-	// level is the spell's own level, the first slot level that adds growsFt.
+	// level is the spell's own level: the slot of that level adds nothing, and each level above it adds growsFt.
 	level int
 	// restrainKey is the effect a failed save puts on the creature of a restraining zone.
 	restrainKey string
