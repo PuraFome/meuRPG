@@ -534,6 +534,77 @@ message TableCreature {
   // ignoring case), and may not be named "Magic Weapons",
   // "Spellcasting" or "Innate Spellcasting" (ignoring case): the engine reads those names.
   repeated TableCreatureTrait traits = 6;
+  // The numbers below are formulas, evaluated against the sheet of the character that is given the creature.
+  // A formula may read level(), classLevel("<class>"), prof(), mod("<ability>"), score("<ability>"),
+  // armor() (the category of the armor worn), shield() (whether a shield counts) and speedwalk() (the walking speed in feet).
+  // It may also use floor, ceil, min and max.
+  // It may also read slot(): the circle (1 to 9) of the spell slot a spell was cast with.
+  // A creature given to a character was not made by a slot, so slot() is 0 in its formulas.
+  // slot() is legal only in these fields:
+  // hit_points_formula, armor_class_formula, damage_bonus_formula and attack_bonus_formula,
+  // and the to_hit and damage_bonus of an attack.
+  // Effects, conditions and every other formula refuse slot().
+  // A formula that does not compile, or calls a function that does not exist, is refused with its field.
+  // A result is rounded down.
+  // A result beyond 10000 or below -10000 is a failed formula, and the static value stands.
+  // Within that limit, the result is clamped to the range of its field.
+  // If a formula fails while it runs, the static value stands.
+  // An empty formula keeps the static value, or the base's when the field has none.
+  // The static fields hit_points, armor_class and damage_bonus are used when the formula is empty or fails.
+  // A creature put in a combat or made an NPC without an owner uses only the static fields, and no formula is evaluated.
+  //
+  // The maximum hit points, clamped to 1..9999.
+  // Replaces hit_points.
+  string hit_points_formula = 7;
+  // The armor class, clamped to 1..40.
+  // Replaces armor_class.
+  string armor_class_formula = 8;
+  // The damage bonus, clamped to -10..30.
+  // Replaces damage_bonus.
+  string damage_bonus_formula = 9;
+  // The to-hit of each attack of the base, clamped to -10..30.
+  // Also the to-hit of an attack in `attacks` that has no to_hit of its own.
+  // An attack's own to_hit wins over it.
+  // Empty keeps the base's.
+  string attack_bonus_formula = 10;
+  reserved 11;
+  reserved "save_dc_formula";
+  // Attacks added after the base's actions, at most 8.
+  // Each becomes an action of the creature keyed "<creature key>#<slug of its name>".
+  // It has an attack roll, as the SRD creatures' attacks do.
+  // They are not part of the base's Multiattack.
+  // A name may not repeat a trait or an action of the base, nor another attack.
+  // Names are compared as the traits' names are.
+  repeated TableCreatureAttack attacks = 12;
+}
+
+// TableCreatureAttack is an attack action of a table creature.
+message TableCreatureAttack {
+  // 1 to 80 characters, on one line.
+  string name_pt = 1;
+  // True for a melee attack, which has reach_ft and no range.
+  // False for a ranged attack, which has range_ft and no reach.
+  bool melee = 2;
+  // The reach of a melee attack in feet, 0 (5 ft.) to 30.
+  int32 reach_ft = 3;
+  // The range of a ranged attack in feet, 1 to 600.
+  int32 range_ft = 4;
+  // The long range of a ranged attack, 0 (none) or more than range_ft, up to 1200.
+  int32 long_range_ft = 5;
+  // How many dice of damage, 1 to 20.
+  int32 dice_count = 6;
+  // The sides of each die: 4, 6, 8, 10, 12 or 20.
+  int32 dice_sides = 7;
+  // A formula for the bonus added to this attack's damage, clamped to -10..30.
+  // It wins over the creature's damage bonus.
+  // Empty is the creature's damage bonus.
+  string damage_bonus = 8;
+  // A "damage-type:" key of the SRD, such as "damage-type:slashing".
+  string damage_type = 9;
+  // A formula for the to-hit, clamped to -10..30.
+  // It wins over attack_bonus_formula.
+  // Empty is attack_bonus_formula, or +0 when that is empty too.
+  string to_hit = 10;
 }
 
 // TableCreatureTrait is a trait of a table creature: a name and a text, no effects.

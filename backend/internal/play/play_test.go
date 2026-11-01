@@ -749,19 +749,19 @@ func (noRoster) WriteBackCreatures(context.Context, pgx.Tx, string, []link.Creat
 	return errors.New("not in this test")
 }
 
-func (noRoster) CreatureSheet(context.Context, pgx.Tx, string, string, string) (link.Sheet, bool, error) {
+func (noRoster) CreatureSheet(context.Context, pgx.Tx, string, string, string, string) (link.Sheet, bool, error) {
 	return link.Sheet{}, false, nil
 }
 
-func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, string, link.Turn) (*rulesv1.TurnOptions, bool, error) {
+func (noRoster) CreatureTurnOptions(context.Context, pgx.Tx, string, string, string, string, link.Turn) (*rulesv1.TurnOptions, bool, error) {
 	return nil, false, nil
 }
 
-func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string) (link.Save, error) {
+func (noRoster) CreatureSave(context.Context, pgx.Tx, string, string, string, string) (link.Save, error) {
 	return link.Save{}, nil
 }
 
-func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string) (link.SceneOption, error) {
+func (noRoster) CreatureCheck(context.Context, pgx.Tx, string, string, string, string) (link.SceneOption, error) {
 	return link.SceneOption{}, nil
 }
 

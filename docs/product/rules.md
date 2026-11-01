@@ -588,20 +588,26 @@ Members read the campaign's content, except creatures (below); only the master w
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**
-  A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30) and up to 10 traits that are text only.
+  A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30), up to 10 traits that are text only and up to 8 attacks of its own.
+  Its numbers can be formulas of its owner: hit points, armor class, the damage bonus, the attack bonus, and the to-hit and damage bonus of each own attack.
+  A formula reads the owner's level, class level, proficiency bonus, ability scores and modifiers, armor category, shield and walking speed, and the circle of the spell slot a spell was cast with.
+  A creature given to a character was not made by a slot, so that circle is 0 in its formulas.
+  A result is rounded down and clamped to the range of its field; a result beyond 10,000 or below -10,000 is a failed formula, and the field keeps its static value or the base creature's.
+  The numbers are worked out for the character that is given the creature, and kept: a later level of the owner or an edit of the formulas does not change a creature already given.
+  "Pôr no combate" and "Criar NPC" have no owner, so they use the entry's static numbers and run no formula.
   The SRD creature it comes from never changes.
   A table creature is never the base of another.
   The creature list and sheet, giving it to a character, combat and "Criar NPC" read it by key.
   The master gives it to a character, it joins combats with its numbers, and an NPC can be made from it.
   The hit points are copied when the creature is given, so editing the entry does not change a creature already given.
-  The armor class and the attacks follow the entry.
+  For a creature with no formula, the armor class and the attacks follow the entry.
   A creature entry is the master's: a player reads it, in the creature list and on its sheet, only while one of their characters holds it.
   A holder reads it whether the entry is live, archived or switched off.
   A player who holds none does not find it.
   The creatures already given keep working for their owners.
   The master can give an archived creature.
   Everyone in a combat reads a creature's name and key, as for an SRD summon or an NPC.
-  A creature a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
+  A creature with no formula that a character holds follows the entry in a fight: an edit changes its armor class and attacks at once.
   A monster put in a combat keeps the numbers it joined with: an edit changes the monsters added afterwards, not the ones already in a fight.
   An edit that changes none of the numbers, such as a rename, finds the same NPC.
   Its stat block, hit points and armor class stay with the master and, for the hit points, the owner.

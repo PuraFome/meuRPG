@@ -588,20 +588,26 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
-  Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30) e até 10 traços só de texto.
+  Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30), até 10 traços só de texto e até 8 ataques próprios.
+  Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, e o acerto e o bônus de dano de cada ataque próprio.
+  Uma fórmula lê o nível, o nível de classe, o bônus de proficiência, os valores e modificadores de habilidade, a categoria de armadura, o escudo e o deslocamento de caminhada do dono, e o círculo do espaço de magia com que uma magia foi conjurada.
+  Uma criatura dada a um personagem não foi feita por um espaço, então esse círculo é 0 nas fórmulas dela.
+  Um resultado é arredondado para baixo e fica dentro da faixa do campo; um resultado acima de 10.000 ou abaixo de -10.000 é uma fórmula que falhou, e o campo mantém o valor fixo ou o da criatura base.
+  Os números são calculados para o personagem que recebe a criatura, e guardados: um nível novo do dono ou uma edição das fórmulas não muda uma criatura já dada.
+  "Pôr no combate" e "Criar NPC" não têm dono, então usam os números fixos da entrada e não rodam fórmula.
   A criatura do SRD de que ela parte nunca muda.
   Uma criatura da mesa nunca é a base de outra.
   A lista e a ficha de criaturas, dá-la a um personagem, o combate e "Criar NPC" a leem pela chave.
   O mestre a dá a um personagem, ela entra nos combates com os seus números, e dá para criar um NPC a partir dela.
   Os pontos de vida são copiados quando a criatura é dada, então editar a entrada não muda uma criatura já dada.
-  A classe de armadura e os ataques acompanham a entrada.
+  Numa criatura sem fórmula, a classe de armadura e os ataques acompanham a entrada.
   Uma entrada de criatura é do mestre: um jogador a lê, na lista de criaturas e na ficha dela, só enquanto um personagem dele a tem.
   Quem a tem a lê com a entrada ativa, arquivada ou desligada.
   Um jogador que não tem nenhuma não a encontra.
   As criaturas já dadas continuam funcionando para os donos.
   O mestre pode dar uma criatura arquivada.
   Todos no combate leem o nome e a chave de uma criatura, como numa invocação do SRD ou num NPC.
-  Uma criatura que um personagem tem acompanha a entrada na luta: editar muda a classe de armadura e os ataques dela na hora.
+  Uma criatura sem fórmula que um personagem tem acompanha a entrada na luta: editar muda a classe de armadura e os ataques dela na hora.
   Um monstro posto no combate mantém os números com que entrou: editar muda os monstros postos depois, não os que já estão na luta.
   Uma edição que não muda nenhum dos números, como trocar o nome, acha o mesmo NPC.
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam com o mestre e, no caso dos pontos de vida, com o dono.

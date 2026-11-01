@@ -139,6 +139,8 @@ type content struct {
 	optionPrereq   map[string]TableOptionPrerequisite
 	// creatureOf says, for each table creature, the SRD creature it is made from (overlay_creature.go).
 	creatureOf map[string]CreatureTableEntry
+	// creatureSpecs are the table creatures' adjustments and compiled formulas, by key (overlay_creature_formula.go).
+	creatureSpecs map[string]*creatureSpec
 
 	// The table's layer (overlay.go); every one of these is empty in the
 	// SRD content.

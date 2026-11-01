@@ -34,13 +34,26 @@ Access is as `ListCharacterCreatures`; no HP goes in the response (RN-20).
 
 ## Table creatures
 
-A table creature is an SRD creature plus the master's adjustments: hit points, armor class, a damage bonus and extra text traits.
+A table creature is an SRD creature plus the master's adjustments: hit points, armor class, a damage bonus, extra text traits, and attacks of its own.
+Its numbers can also be formulas of its owner (see "Formula creatures" below).
 It is a table entry of kind `creature`, with the key `creature:<slug>@mesa`; the fields and limits are in [Table creatures](../rules-table-content.md#table-creatures).
 The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the creature sheet (`GetCreature`) and the combat read it by its key.
 
 - **What is copied and what is read.** `GiveCreature` copies the entry's maximum HP into `character_creatures.hp_max` when the creature is given.
   Editing the entry later changes no creature already held: it keeps the HP it was given.
-  The armor class (`CharacterCreature.armor_class`) and the actions come from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus.
+  For a creature with no formula, the armor class (`CharacterCreature.armor_class`) and the actions come from the content every time, so a held creature shows the entry's current armor class and attacks with its current damage bonus.
+- **Formula creatures.** An entry with a formula in any number or attack makes a creature whose numbers depend on its owner.
+  When it is given, the owner's sheet is derived with the campaign's content, and `rules.ResolveCreature` runs the formulas with the slot 0.
+  The result is kept as JSON in `character_creatures.stat_block`, and `hp_max` is the resolved hit points.
+  It is a snapshot, like `hp_max`: a later level of the owner or an edit of the entry's formulas changes no creature already held.
+  A creature with a snapshot builds its stat block with `rules.ResolvedDerived`, which takes the numbers from the snapshot and the text (name, traits, attack names) from the content.
+  The snapshot's own attacks are matched to the entry's by the key of their action (`<creature key>#<slug>`), not by position: one in both keeps the snapshot's numbers, one new in the entry has the static numbers (+0 to hit, the static damage bonus), and one the entry lost is dropped.
+  A snapshot is used whenever the row has one, even when the entry has lost all its formulas.
+  The list (`CharacterCreature.armor_class`), the combat sheet, the turn options, the saving throws and the checks of a held creature read the snapshot.
+  A trap that hits a creature outside a combat reads it too.
+  `GetCreature` and `ListCreatures` show the content's owner-less stat block, not a snapshot; the creature list's `armor_class` and the combat show the snapshot.
+  A creature with no formula has no snapshot, and reads the content as described below.
+  "Pôr no combate" and "Criar NPC" have no owner: they use the entry's static fields, and no formula is run.
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.
   Entries are never deleted, so a held creature never loses its key.
@@ -61,8 +74,9 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The encounter generator, evaluator and swaps leave it out, because it has the challenge rating and XP of its base, which its adjustments may not keep.
   The encounter tools refuse its key as unknown content: `encounterEntries` answers `failed_precondition` and `GetBattleEncounter` lists the key in `unknown_creature_keys`.
 - **Giving.** The master can give an archived table creature.
-- **Editing and combats.** A held creature in a combat reads its armor class, attacks and traits from the entry every time.
+- **Editing and combats.** A held creature with no formula in a combat reads its armor class, attacks and traits from the entry every time.
   An edit of the entry during the fight changes them at once.
+  A formula creature keeps its numbers and reads only its text from the entry.
   Its hit points are its own, copied when it was given.
   A monster put in a combat with "Pôr no combate" is a combatant made from the combat's NPC for the creature.
   Its armor class, speed, initiative and sheet attacks are the NPC's.

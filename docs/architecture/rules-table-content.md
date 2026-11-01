@@ -239,7 +239,8 @@ Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20)
 
 `TableCreature` (`rules/overlay_creature.go`) is an SRD creature with a few adjustments.
 Its key is `creature:<slug>@mesa`.
-It names a `BaseKey` (an SRD creature such as `monster:wolf`) and changes `HitPoints`, `ArmorClass`, `DamageBonus` and `Traits`; the rest of the stat block is the base's.
+It names a `BaseKey` (an SRD creature such as `monster:wolf`) and changes `HitPoints`, `ArmorClass`, `DamageBonus` and `Traits`, and adds `Attacks`; the rest of the stat block is the base's.
+Its numbers can be formulas of its owner (below).
 `With` copies the base's stat block, applies the adjustments and registers the copy under the entry's key, so the creature resolves where an SRD creature does: `MonsterDerived`, `CreatureByKey`, `MonsterPlan`, `ListCreatures` and the combat.
 The base is never written: the SRD's maps are copied before the first table creature goes in.
 
@@ -250,6 +251,29 @@ The base is never written: the SRD's maps are copied before the first table crea
 | `ArmorClass` | The creature's armor class. 0 keeps the base's. The kind and the notes of the base's armor class are dropped | 1 to 40 (`MaxCreatureArmorClass`) |
 | `DamageBonus` | A whole number added once to the first damage part of every attack action, so each attack of a Multiattack gets it. 0 adds nothing. A flat damage stops at 0, and dice that end in `+MOD` are left as they are. The text of the action stays the base's | -10 to 30 |
 | `Traits` | Traits added after the base's special abilities, as text only: a name and a text, no effects | At most 10 (`MaxCreatureTraits`); a name of 1 to 80 characters on one line; a text of 1 to 4,000 characters |
+| `HitPointsFormula`, `ArmorClassFormula`, `DamageBonusFormula` | Formulas of the owner that replace `HitPoints`, `ArmorClass` and `DamageBonus` | Results clamped to 1 to 9,999, 1 to 40 and -10 to 30; a result beyond the engine's limit (`formula.MaxResult`, 10,000 in absolute value) is a failed formula and the static value stands |
+| `AttackBonusFormula` | The to-hit of the base's attacks, and of an own attack with no `ToHit` | Clamped to -10 to 30; a result beyond the engine's limit is a failed formula and the base's value stands |
+| `Attacks` | Attack actions added after the base's, keyed `<creature key>#<slug of the name>`, with an attack roll. Not part of the base's Multiattack. A melee attack has a reach (0 is 5 ft., to 30) and no range; a ranged one has a range (1 to 600) and a long range (0 or up to 1,200). The dice are 1 to 20 of a d4, d6, d8, d10, d12 or d20. `DamageType` is a `damage-type:` key of the SRD | At most 8 (`MaxCreatureAttacks`, `limit` at `.attacks`); a name as a trait's, not repeating a trait, a base action or another attack |
+
+### Formulas of the owner
+
+A formula is compiled once, when the overlay is built, with `formula.Compiler.WithSlot`, and kept on the creature's entry.
+A formula that does not compile, or calls a function that does not exist, is `bad_formula` at its field, such as `.attacks[2].to_hit`.
+The environment is `OwnerEnv`: `level()`, `classLevel("<class>")`, `prof()`, `mod("<ability>")`, `score("<ability>")`, `armor()`, `shield()` and `speedwalk()`, with `floor`, `ceil`, `min` and `max`.
+It may also call `slot()`, the circle of the spell slot a spell was cast with.
+A creature given to a character was not made by a slot, so `slot()` is 0 in its formulas.
+`slot()` is legal only in these fields; an effect, a condition and every other formula refuse it.
+The formulas count in the overlay's formula budget.
+The specific beats the general: an own attack's `ToHit` wins over `AttackBonusFormula`, and its `DamageBonus` over the creature's damage bonus.
+An own attack with neither has +0 to hit and the creature's damage bonus.
+
+`Content.ResolveCreature(key, env, slot)` runs the formulas for an owner (`OwnerEnv(derived, shield)` makes the environment from a derived sheet) and clamps each result to its field's range.
+A result beyond the formula engine's limit (`formula.MaxResult`, 10,000 in absolute value) is a failed formula, not a clamped one.
+A formula that fails when it runs keeps the static value and is named in `ResolvedCreature.Failed`.
+`Content.ResolvedDerived` builds the stat block and the plan of the actions from the result; it takes the base, the name, the traits and the shape of the attacks from the entry, and only the numbers from the value it is given.
+`ApplyResolved` writes a result on the base's stat block the same way the static adjustments are written, so a creature with no formula has the same block with or without an owner.
+`CreatureHasFormulas` says whether an entry has any formula.
+The content's own block for a table creature (`MonsterDerived`) runs no formula: its own attacks have +0 to hit and the static damage bonus.
 
 A trait name is refused (`bad_name`) when it repeats a trait or an action of the base, compared by its letters `a` to `z` and digits, or when it is `Magic Weapons`, `Spellcasting` or `Innate Spellcasting`, ignoring case, because the engine reads those names.
 An adjustment out of its range is `bad_value` at its field, a trait text out of its length is `bad_text` and too many traits is `limit`.

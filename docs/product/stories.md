@@ -730,14 +730,19 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The SRD creature itself never changes, and the entry's base cannot be swapped for another one later.
   The web app has no editor for creatures: they are created through the API or a content pack.
 - **Given** I save a creature with a base the SRD does not have, hit points outside 1 to 9,999, armor class outside 1 to 40, a damage bonus outside -10 to 30, or more than 10 traits, **then** the server refuses each at its field, and a trait named like one of the base's traits or actions, or "Magic Weapons", "Spellcasting" or "Innate Spellcasting", is refused.
-- **Given** a creature already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
+- **Given** a creature with no formula already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
+- **Given** a creature whose hit points are `5 * level()` and whose armor class is `10 + prof() + mod("dex")`, **when** I give it to a level 3 wizard and to a level 5 fighter, **then** each has the hit points, armor class and attack numbers of its own owner.
+- **Given** a creature given with formulas, **when** its owner gains a level or I edit the formulas, **then** the creature already given keeps its numbers, and one given afterwards has the new ones.
+- **Given** a creature given with formulas, **when** I add, remove, rename or reorder its own attacks, **then** the attacks that stay keep the numbers they were given, a new attack has the entry's static numbers, a removed one is gone, and the creature's hit points, armor class and bonuses do not change.
+- **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
+- **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.
 - **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it.
   This holds whether the entry is live, archived or switched off.
   The master reads every entry.
   Archiving or switching it off changes nothing for the creatures already given, and nothing is deleted.
 - **Given** a monster of a table creature in a combat, **when** I edit its entry and put it in the combat again, **then** the new combatant has the entry's current armor class and attacks.
   The monster already there keeps the numbers it joined with.
-- **Given** a table creature that a character holds, in a combat, **when** I edit its entry, **then** its armor class and attacks follow the entry at once.
+- **Given** a table creature with no formula that a character holds, in a combat, **when** I edit its entry, **then** its armor class and attacks follow the entry at once.
   Its hit points stay the ones it was given.
 - **Given** a creature of the table in a combat, **then** its hit points are a number only for the master and its owner's player, and its armor class only for the master; the other players read its state word.
 - **Given** a table creature in a combat, **then** every player there reads its name and key, as for an SRD summon or an NPC.

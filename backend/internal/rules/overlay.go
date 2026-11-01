@@ -1259,6 +1259,7 @@ func (c *content) cloneForOverlay() *content {
 	n.optionSet = map[string]string{}
 	n.classFeatureOf = map[string]ClassFeatureEntry{}
 	n.creatureOf = map[string]CreatureTableEntry{}
+	n.creatureSpecs = map[string]*creatureSpec{}
 	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)

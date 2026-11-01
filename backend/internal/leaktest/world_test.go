@@ -687,13 +687,24 @@ func (w *world) buildTableContent() {
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
 	offRace := create("race-off", race())
-	// Creatures (issue #578). A table creature is the master's alone, whatever its state (RN-23), except to the
+	// Creatures. A table creature is the master's alone, whatever its state (RN-23), except to the
 	// player whose character holds one: that player reads the creature (its name, key, stat block with the trait,
 	// hit points and armor class). Ana's character holds the live one and the archived one, Caio's the one switched
 	// off. Their hit points and armor class are numbers no other answer has.
 	liveCreature := create("creature-live", creature(liveCreatureHP, liveCreatureAC, w.ana), w.ana)
 	archivedCreature := create("creature-archived", creature(archivedCreatureHP, archivedCreatureAC, w.ana), w.ana)
 	offCreature := create("creature-off", creature(offCreatureHP, offCreatureAC, w.caio), w.caio)
+	// A creature whose numbers are formulas of its owner: the formulas give 4747 and 37 whoever the owner is, and
+	// the numbers are worked out when it is given. They are Ana's and the master's, like the static ones.
+	formulaCreature := create("creature-formula", &rulesv1.TableCreature{
+		BaseKey: "monster:giant-crab", HitPointsFormula: "1000 * 4 + 747", ArmorClassFormula: "20 + 17",
+		Traits: []*rulesv1.TableCreatureTrait{{NamePt: w.secrets.marker("creature-formula-trait-name", w.ana), TextPt: w.secrets.marker("creature-formula-trait-text", w.ana)}},
+	}, w.ana)
+	w.giveTableCreature(w.pens, formulaCreature.GetKey())
+	w.secrets.number("formula-creature-hp", formulaCreatureHP)
+	w.secrets.number("formula-creature-ac", formulaCreatureAC, "armor_class")
+	w.secrets.allowNeedle(strconv.Itoa(formulaCreatureHP), w.ana)
+	w.secrets.allowNeedle(strconv.Itoa(formulaCreatureAC), w.ana)
 	w.giveTableCreature(w.pens, liveCreature.GetKey())
 	w.giveTableCreature(w.pens, archivedCreature.GetKey())
 	w.giveTableCreature(w.toren, offCreature.GetKey())
@@ -726,6 +737,9 @@ const (
 	archivedCreatureAC = 36
 	offCreatureHP      = 4343
 	offCreatureAC      = 38
+	// formulaCreatureHP and formulaCreatureAC are what the formulas of the fixture's formula creature give.
+	formulaCreatureHP = 4747
+	formulaCreatureAC = 37
 )
 
 // giveTableCreature has the master give a table creature to a character. Its owner's player reads the creature

@@ -281,10 +281,18 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 func tableCreatureOf(te rules.TableEntry, b *rulesv1.TableCreature) rules.TableCreature {
 	c := rules.TableCreature{
 		TableEntry: te, BaseKey: b.GetBaseKey(), HitPoints: int(b.GetHitPoints()), ArmorClass: int(b.GetArmorClass()),
-		DamageBonus: int(b.GetDamageBonus()),
+		DamageBonus:      int(b.GetDamageBonus()),
+		HitPointsFormula: b.GetHitPointsFormula(), ArmorClassFormula: b.GetArmorClassFormula(),
+		DamageBonusFormula: b.GetDamageBonusFormula(), AttackBonusFormula: b.GetAttackBonusFormula(),
 	}
 	for _, t := range b.GetTraits() {
 		c.Traits = append(c.Traits, rules.TableCreatureTrait{NamePT: t.GetNamePt(), TextPT: t.GetTextPt()})
+	}
+	for _, a := range b.GetAttacks() {
+		c.Attacks = append(c.Attacks, rules.TableCreatureAttack{
+			NamePT: a.GetNamePt(), Melee: a.GetMelee(), ReachFt: int(a.GetReachFt()), RangeFt: int(a.GetRangeFt()), LongRangeFt: int(a.GetLongRangeFt()),
+			DiceCount: int(a.GetDiceCount()), DiceSides: int(a.GetDiceSides()), DamageBonus: a.GetDamageBonus(), DamageType: a.GetDamageType(), ToHit: a.GetToHit(),
+		})
 	}
 	return c
 }

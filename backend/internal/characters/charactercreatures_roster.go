@@ -183,15 +183,23 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 		cast = &sm.GroupID
 	}
 	at := s.now()
+	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
 		d, ok := content.MonsterDerived(spec.MonsterKey)
 		if !ok {
 			return out, fmt.Errorf("%q is not a creature", spec.MonsterKey) // CheckSummon said it was
 		}
-		hp := int32(max(d.HitPointsMax, 1)) //nolint:gosec // an SRD creature has at most 676 hit points
+		var stat []byte
+		if content.CreatureHasFormulas(spec.MonsterKey) {
+			var err error
+			if stat, d.HitPointsMax, err = owner.resolve(ctx, spec.MonsterKey); err != nil {
+				return out, err
+			}
+		}
+		hp := int32(max(d.HitPointsMax, 1)) //nolint:gosec // an SRD creature has at most 676 hit points, a table creature 9999
 		row, err := q.InsertCharacterCreature(ctx, charactersdb.InsertCharacterCreatureParams{
 			CampaignID: sm.CampaignID, CharacterID: sm.CharacterID, MonsterKey: spec.MonsterKey, Name: labels[i], Source: sm.Source,
-			Attack: spec.Attack, SummonGroupID: sm.GroupID, ConcentrationCastID: cast, HpCurrent: hp, HpMax: hp,
+			Attack: spec.Attack, SummonGroupID: sm.GroupID, ConcentrationCastID: cast, HpCurrent: hp, HpMax: hp, StatBlock: stat,
 			// Each a microsecond after the last: the casting's order is the list's order, so "the
 			// first creature of the group" is the same wherever it is read.
 			CreatedAt: at.Add(time.Duration(i) * time.Microsecond),
@@ -509,7 +517,12 @@ func (s *Service) summonStanding(d rules.Derived, spellKey string, ritualSpell b
 // attacks only with its reaction keeps its attacks for the opportunity attack.
 // No creature casts a spell here.
 func creatureDerived(content *rules.Content, key, attack string) (rules.Derived, bool) {
-	d, ok := content.MonsterDerived(key)
+	return creatureDerivedFrom(content, key, attack, nil)
+}
+
+// creatureDerivedFrom is creatureDerived for a creature with the snapshot of its numbers (nil for none).
+func creatureDerivedFrom(content *rules.Content, key, attack string, statBlock []byte) (rules.Derived, bool) {
+	d, ok := monsterDerivedOf(content, key, statBlock)
 	if !ok {
 		return rules.Derived{}, false
 	}
@@ -524,14 +537,19 @@ func creatureDerived(content *rules.Content, key, attack string) (rules.Derived,
 }
 
 // CreatureSheet implements play.CombatRoster: what an attack needs from a
-// creature's stat block (its armor class, its attacks, the standard actions).
-// False for a key that is not an SRD creature.
-func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string) (link.Sheet, bool, error) {
+// creature's stat block (its armor class, its attacks, the standard actions);
+// a creature with a snapshot reads the snapshot's numbers.
+// False for a key that is not a creature of the content (SRD or the table's).
+func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string) (link.Sheet, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.Sheet{}, false, wrap("read rules content", err)
 	}
-	d, ok := creatureDerived(content, monsterKey, attack)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.Sheet{}, false, err
+	}
+	d, ok := creatureDerivedFrom(content, monsterKey, attack, stat)
 	if !ok {
 		return link.Sheet{}, false, nil
 	}
@@ -557,14 +575,18 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, mons
 // CreatureTurnOptions implements play.CombatRoster: what the creature can do
 // now, from its stat block and what it used this turn. A creature that attacks
 // only with its reaction shows its attacks disabled (REACTION_ONLY): the app
-// offers them when a move leaves its reach. False for a key that is not an SRD
-// creature.
-func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error) {
+// offers them when a move leaves its reach. False for a key that is not a
+// creature of the content (SRD or the table's).
+func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, attack string, turn link.Turn) (*rulesv1.TurnOptions, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return nil, false, wrap("read rules content", err)
 	}
-	d, ok := creatureDerived(content, monsterKey, attack)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return nil, false, err
+	}
+	d, ok := creatureDerivedFrom(content, monsterKey, attack, stat)
 	if !ok {
 		return nil, false, nil
 	}
@@ -586,12 +608,16 @@ func (s *Service) CreatureTurnOptions(ctx context.Context, tx pgx.Tx, campaignID
 // CreatureSave implements play.CombatRoster: a creature's saving throw bonus
 // against an ability ("dex"), from its stat block (the listed bonus, or the
 // ability modifier).
-func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, ability string) (link.Save, error) {
+func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, ability string) (link.Save, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.Save{}, wrap("read rules content", err)
 	}
-	d, ok := content.MonsterDerived(monsterKey)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.Save{}, err
+	}
+	d, ok := monsterDerivedOf(content, monsterKey, stat)
 	if !ok {
 		return link.Save{}, nil
 	}
@@ -606,12 +632,16 @@ func (s *Service) CreatureSave(ctx context.Context, tx pgx.Tx, campaignID, monst
 // CreatureCheck implements play.CombatRoster: a creature's bonus in a skill or ability
 // check from its stat block, with the passive score of the skills that have one. Known is
 // false for a key that is not a skill or an ability the stat block gives.
-func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, monsterKey, key string) (link.SceneOption, error) {
+func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, creatureID, monsterKey, key string) (link.SceneOption, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
 		return link.SceneOption{}, wrap("read rules content", err)
 	}
-	d, ok := content.MonsterDerived(monsterKey)
+	stat, err := s.statBlockOf(ctx, tx, content, campaignID, creatureID, monsterKey)
+	if err != nil {
+		return link.SceneOption{}, err
+	}
+	d, ok := monsterDerivedOf(content, monsterKey, stat)
 	if !ok {
 		return link.SceneOption{}, nil
 	}
@@ -690,7 +720,7 @@ func damageTypesOf(mods []rules.CreatureDamageMod, qualifier string) []string {
 
 // CreatureEyes implements play.CombatRoster: what a creature notices with, from
 // its stat block: the passive Perception it lists and its senses (MR-035, MR-037).
-// False for a key that is not an SRD creature.
+// False for a key that is not a creature of the content (SRD or the table's).
 func (s *Service) CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monsterKey string) (maplink.Eyes, bool, error) {
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {

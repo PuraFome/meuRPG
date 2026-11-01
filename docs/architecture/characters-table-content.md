@@ -178,7 +178,8 @@ A player's copy drops a hidden class, a hidden replaced feature and the effects'
 
 ## Table creatures
 
-`TABLE_CONTENT_KIND_CREATURE` (`creature` rows of `campaign_content`, key `creature:<slug>@mesa`, migration 00289) is an SRD creature with adjustments: hit points, armor class, a damage bonus on its attacks and extra text traits.
+`TABLE_CONTENT_KIND_CREATURE` (`creature` rows of `campaign_content`, key `creature:<slug>@mesa`, migration 00289) is an SRD creature with adjustments: hit points, armor class, a damage bonus on its attacks, extra text traits and attacks of its own.
+Its numbers can be formulas of its owner: `tableCreatureOf` maps all of them, and a violation reads like `table_creature.attacks[2].to_hit`.
 `TableCreature` has `base_key` (an SRD creature, which never changes: `immutable` at `table_creature.base_key`) and the adjustments; the limits and refusals are in [Table creatures](rules-table-content.md#table-creatures).
 A base the SRD lacks is refused as `dangling_reference` at `table_creature.base_key`, and an entry over 64 KiB as `size_limit`.
 It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches` lists it with the kind) and pack as the other kinds.
@@ -195,8 +196,16 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
   A monster added after the edit has the entry's current numbers, and the monsters already in a fight keep the ones they joined with.
 - **When a number is copied.** `character_creatures.hp_max` is copied from the entry when the creature is given.
   Editing the entry changes no creature already held.
-  The armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time.
+  For an entry with no formula, the armor class (`CharacterCreature.armor_class`) and the actions are read from the content every time.
   A held creature shows the entry's current armor class and attacks with its current damage bonus.
+- **Formula creatures.** For an entry with a formula, the creature is created with a snapshot of its numbers (`character_creatures.stat_block`, migration 00297).
+  `insertSummoned` derives the recipient's sheet with the campaign's content and active states, makes the environment with `rules.OwnerEnv`, runs `ResolveCreature` with the slot 0, stores the JSON and takes `hp_max` from the result.
+  `CreatureSheet`, `CreatureTurnOptions`, `CreatureSave` and `CreatureCheck` take the creature's ID and read the snapshot, and so does the list's `armor_class`.
+  The snapshot follows neither the owner's later levels nor an edit of the formulas; the text of the creature is read from the content.
+  A snapshot is used whenever the row has one, whatever the entry's formulas are (the list and the combat read it the same way).
+  `rules.ResolvedDerived` matches the snapshot's own attacks to the entry's by the key of their action: one in both keeps the snapshot's numbers, one new in the entry has the static numbers, and one the entry lost is dropped.
+  `GetCreature` and `ListCreatures` show the content's owner-less stat block, not a snapshot; the creature list's `armor_class` and the combat show the snapshot.
+  "Pôr no combate" and "Criar NPC" have no owner and use the entry's static fields.
 - **Archived and switched off.** An archived or switched-off entry keeps resolving for the creatures already held.
   They stay in the owner's list and join combats.
   Archived, switched off or live, a table creature is the master's: a player reads it only while a character of theirs holds a live creature of its key.

@@ -730,14 +730,19 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   A criatura do SRD em si nunca muda, e a base da entrada não pode ser trocada por outra depois.
   O app web não tem editor de criaturas: elas são criadas pela API ou por um pacote de conteúdo.
 - **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
-- **Dado** uma criatura já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
+- **Dado** uma criatura sem fórmula já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
+- **Dado** uma criatura cujos pontos de vida são `5 * level()` e cuja classe de armadura é `10 + prof() + mod("dex")`, **quando** a dou a uma maga de nível 3 e a um guerreiro de nível 5, **então** cada um tem os pontos de vida, a classe de armadura e os números de ataque do seu próprio dono.
+- **Dado** uma criatura dada com fórmulas, **quando** o dono sobe de nível ou edito as fórmulas, **então** a criatura já dada mantém os números, e uma dada depois tem os novos.
+- **Dado** uma criatura dada com fórmulas, **quando** acrescento, removo, renomeio ou reordeno os ataques próprios dela, **então** os ataques que ficam mantêm os números com que foram dados, um ataque novo tem os números fixos da entrada, um removido some, e os pontos de vida, a classe de armadura e os bônus da criatura não mudam.
+- **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
+- **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
   Isso vale com a entrada ativa, arquivada ou desligada.
   O mestre lê todas as entradas.
   Arquivar ou desligar não muda nada para as criaturas já dadas, e nada é apagado.
 - **Dado** um monstro de uma criatura da mesa em combate, **quando** edito a entrada e ponho a criatura de novo no combate, **então** o novo combatente tem a classe de armadura e os ataques atuais da entrada.
   O monstro que já estava ali mantém os números com que entrou.
-- **Dado** uma criatura da mesa que um personagem tem, em combate, **quando** edito a entrada, **então** a classe de armadura e os ataques dela acompanham a entrada na hora.
+- **Dado** uma criatura da mesa sem fórmula que um personagem tem, em combate, **quando** edito a entrada, **então** a classe de armadura e os ataques dela acompanham a entrada na hora.
   Os pontos de vida continuam os que ela recebeu.
 - **Dado** uma criatura da mesa em combate, **então** os pontos de vida dela são um número só para o mestre e o jogador dono, e a classe de armadura só para o mestre; os outros jogadores leem a palavra de estado.
 - **Dado** uma criatura da mesa em combate, **então** todo jogador ali lê o nome e a chave dela, como numa invocação do SRD ou num NPC.
