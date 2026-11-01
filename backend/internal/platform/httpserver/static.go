@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -174,6 +175,10 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
 		defer slowclient.WriteBody(w, staticWriteTimeout)()
+		if isCompressible(fsPath) {
+			serveCompressible(w, r, fsPath)
+			return
+		}
 		http.ServeFile(w, r, fsPath)
 		return
 	}
@@ -203,6 +208,97 @@ func (h *staticHandler) existingAsset(cleanPath string) (string, bool) {
 		return "", false
 	}
 	return fsPath, true
+}
+
+// precompressed lists the encodings the build ships next to its scripts and stylesheets,
+// in the order the server prefers them.
+var precompressed = []struct{ coding, suffix string }{
+	{"br", ".br"},
+	{"gzip", ".gz"},
+}
+
+// isCompressible reports whether the build ships compressed copies of the file at p.
+func isCompressible(p string) bool {
+	ext := filepath.Ext(p)
+	return ext == ".js" || ext == ".css"
+}
+
+// serveCompressible serves the file at fsPath, as its .br or .gz copy when the client accepts that
+// encoding and the copy exists.
+// The content type is always the one of the original file.
+func serveCompressible(w http.ResponseWriter, r *http.Request, fsPath string) {
+	w.Header().Add("Vary", "Accept-Encoding")
+	coding, f, modTime := openVariant(r, fsPath)
+	if f == nil {
+		http.ServeFile(w, r, fsPath)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	w.Header().Set("Content-Encoding", coding)
+	http.ServeContent(w, r, filepath.Base(fsPath), modTime, f)
+}
+
+// openVariant opens the best compressed copy of fsPath that the request accepts.
+// f is nil when there is none.
+func openVariant(r *http.Request, fsPath string) (coding string, f *os.File, modTime time.Time) {
+	accept := r.Header.Values("Accept-Encoding")
+	for _, v := range precompressed {
+		variant := fsPath + v.suffix
+		if !acceptsCoding(accept, v.coding) || !isFile(variant) {
+			continue
+		}
+		// #nosec G304 -- fsPath is inside the web dir (see existingAsset), and suffix is a constant.
+		file, err := os.Open(variant)
+		if err != nil {
+			continue
+		}
+		info, err := file.Stat()
+		if err != nil {
+			_ = file.Close()
+			continue
+		}
+		return v.coding, file, info.ModTime()
+	}
+	return "", nil, time.Time{}
+}
+
+// acceptsCoding reports whether the Accept-Encoding header values allow coding.
+// Tokens are case-insensitive, "*" stands for every coding not named, and q=0 refuses one.
+func acceptsCoding(values []string, coding string) bool {
+	wildcard, named := false, false
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			token, q := parseCoding(part)
+			switch token {
+			case coding:
+				if q == 0 {
+					return false
+				}
+				named = true
+			case "*":
+				wildcard = wildcard || q > 0
+			}
+		}
+	}
+	return named || wildcard
+}
+
+// parseCoding splits one element of an Accept-Encoding header into its lower-case token and its q-value.
+// A missing or malformed q-value counts as 1.
+func parseCoding(part string) (token string, q float64) {
+	fields := strings.Split(part, ";")
+	token = strings.ToLower(strings.TrimSpace(fields[0]))
+	q = 1
+	for _, param := range fields[1:] {
+		key, val, ok := strings.Cut(strings.TrimSpace(param), "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(key), "q") {
+			continue
+		}
+		if parsed, err := strconv.ParseFloat(strings.TrimSpace(val), 64); err == nil {
+			q = parsed
+		}
+	}
+	return token, q
 }
 
 func (h *staticHandler) setSecurityHeaders(w http.ResponseWriter) {
