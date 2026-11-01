@@ -39,7 +39,7 @@ func (a *armed) characterOf(t *testing.T, label string) string {
 }
 
 // bumpCommitted counts a use on a combatant the way a cast does, and commits.
-func (a *armed) bumpCommitted(t *testing.T, label, key string, delta int) {
+func (a *armed) bumpCommitted(t *testing.T, label, key string, delta int32) {
 	t.Helper()
 	cs, err := a.h.svc.queries.ListCombatants(t.Context(), a.get(t, a.master).GetId())
 	if err != nil {
