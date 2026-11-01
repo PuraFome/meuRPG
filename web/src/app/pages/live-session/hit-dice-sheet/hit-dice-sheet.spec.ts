@@ -15,6 +15,7 @@ import {
   ResourceBlockedSchema,
   SpendHitDiceResponseSchema,
   UseArcaneRecoveryResponseSchema,
+  UseNaturalRecoveryResponseSchema,
 } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import type { VitalsVm } from '../../../core/play/live-session.types';
@@ -78,6 +79,7 @@ function blocked(reason: ResourceBlockedReason): ConnectError {
 describe('HitDiceSheet (decisions batch 2 B 6)', () => {
   const spendHitDice = vi.fn();
   const useArcaneRecovery = vi.fn();
+  const useNaturalRecovery = vi.fn();
   const close = vi.fn();
   const apply = vi.fn();
   const live = signal<VitalsVm>(fighterWizard());
@@ -85,6 +87,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
   beforeEach(() => {
     spendHitDice.mockReset();
     useArcaneRecovery.mockReset();
+    useNaturalRecovery.mockReset();
     close.mockReset();
     apply.mockReset();
     live.set(fighterWizard());
@@ -106,7 +109,10 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
     };
     TestBed.configureTestingModule({
       providers: [
-        { provide: ResourceClient, useValue: { spendHitDice, useArcaneRecovery } },
+        {
+          provide: ResourceClient,
+          useValue: { spendHitDice, useArcaneRecovery, useNaturalRecovery },
+        },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
       ],
@@ -459,8 +465,8 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
 
     it('shows the allowance and a picker only for the expended slots of the 1st to the 5th level', () => {
       const { el } = render({}, wizard());
-      expect(flat(el.querySelector('.arcane__title'))).toBe('Recuperação Arcana');
-      expect(flat(el.querySelector('.arcane .note'))).toContain(
+      expect(flat(el.querySelector('.recovery__title'))).toBe('Recuperação Arcana');
+      expect(flat(el.querySelector('.recovery .note'))).toContain(
         'Recupere espaços de magia que somem até 2 níveis; nenhum de 6º nível ou mais.',
       );
       expect(Array.from(el.querySelectorAll('.step__text'), lines)).toEqual([
@@ -471,23 +477,23 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
 
     it('stops at the allowance and at what is expended', () => {
       const { el, fixture } = render({}, wizard());
-      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-arcane-more'));
+      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-recovery-more'));
       more()[0].click(); // a 1st-level slot
       fixture.detectChanges();
-      expect(flat(el.querySelector('.arcane__sum'))).toBe('Total: 1 de 2 níveis');
+      expect(flat(el.querySelector('.recovery__sum'))).toBe('Total: 1 de 2 níveis');
       more()[1].click(); // a 2nd-level slot would make 3
       fixture.detectChanges();
       expect(more().map((b) => b.disabled)).toEqual([false, true]);
       more()[0].click();
       fixture.detectChanges();
-      expect(flat(el.querySelector('.arcane__sum'))).toBe('Total: 2 de 2 níveis');
+      expect(flat(el.querySelector('.recovery__sum'))).toBe('Total: 2 de 2 níveis');
       expect(more().map((b) => b.disabled)).toEqual([true, true]);
     });
 
     it('recovers the picked slots with one key and then says it was used today', async () => {
       useArcaneRecovery.mockResolvedValue(recovered([1, 1, 1]));
       const { el, fixture, settle, button } = render({}, wizard());
-      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-arcane-more'));
+      const more = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.js-recovery-more'));
       more()[0].click();
       more()[0].click();
       fixture.detectChanges();
@@ -508,10 +514,10 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
         used: 1,
         created: 0,
       });
-      expect(flat(el.querySelector('.arcane'))).toContain(
+      expect(flat(el.querySelector('.recovery'))).toContain(
         'Recuperação Arcana: usada; volta no descanso longo.',
       );
-      expect(el.querySelector('.js-arcane-recover')).toBeNull();
+      expect(el.querySelector('.js-recovery-recover')).toBeNull();
     });
 
     it('does not call the server with nothing picked', async () => {
@@ -524,7 +530,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
     it('says why the server refused', async () => {
       useArcaneRecovery.mockRejectedValue(blocked(ResourceBlockedReason.NO_SHORT_REST));
       const { el, fixture, settle, button } = render({}, wizard());
-      el.querySelector<HTMLButtonElement>('.js-arcane-more')!.click();
+      el.querySelector<HTMLButtonElement>('.js-recovery-more')!.click();
       fixture.detectChanges();
       button('Recuperar').click();
       await settle();
@@ -538,7 +544,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
         resources: [{ key: 'arcane_recovery', total: 1, used: 1, recharge: 'long_rest' }],
       });
       const { el } = render({}, spent);
-      expect(flat(el.querySelector('.arcane'))).toContain(
+      expect(flat(el.querySelector('.recovery'))).toContain(
         'Recuperação Arcana: usada; volta no descanso longo.',
       );
       expect(el.querySelector('.step')).toBeNull();
@@ -546,7 +552,126 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
 
     it('is not there for a character without the feature', () => {
       const { el } = render();
-      expect(el.querySelector('.arcane')).toBeNull();
+      expect(el.querySelector('.recovery')).toBeNull();
+    });
+  });
+
+  describe('Recuperação Natural (SRD 5.1, Druid of the Circle of the Land)', () => {
+    /** A level 3 Land druid: allowance 2, three 1st-level slots spent. */
+    const druid = (over: Partial<VitalsVm> = {}): Partial<VitalsVm> => ({
+      arcaneRecoveryAllowance: 0,
+      naturalRecoveryAllowance: 2,
+      resources: [
+        {
+          key: 'natural_recovery',
+          namePt: 'Recuperação Natural',
+          total: 1,
+          used: 0,
+          recharge: 'long_rest',
+        },
+      ],
+      spellSlots: [
+        { level: 1, total: 4, used: 3 },
+        { level: 2, total: 2, used: 0 },
+      ],
+      ...over,
+    });
+
+    it('shows its own section, with the druid allowance, and not the wizard one', () => {
+      const { el } = render({}, druid());
+      expect(Array.from(el.querySelectorAll('.recovery__title'), flat)).toEqual([
+        'Recuperação Natural',
+      ]);
+      expect(flat(el.querySelector('.recovery .note'))).toContain(
+        'Recupere espaços de magia que somem até 2 níveis; nenhum de 6º nível ou mais.',
+      );
+      expect(Array.from(el.querySelectorAll('.step__text'), lines)).toEqual(['1º nível 3 gastos']);
+    });
+
+    it('recovers through its own call, with one key, and then says it was used today', async () => {
+      useNaturalRecovery.mockResolvedValue(
+        create(UseNaturalRecoveryResponseSchema, {
+          recoveredLevels: 2,
+          vitals: create(CharacterVitalsSchema, {
+            characterId: 'pensantus',
+            name: 'Mirta',
+            naturalRecoveryAllowance: 2,
+            resources: [{ key: 'natural_recovery', total: 1, used: 1 }],
+            spellSlots: [{ level: 1, total: 4, used: 1 }],
+            revision: 5,
+          }),
+        }),
+      );
+      const { el, fixture, settle, button } = render({}, druid());
+      const more = () => el.querySelector<HTMLButtonElement>('.js-recovery-more')!;
+      more().click();
+      fixture.detectChanges();
+      more().click();
+      fixture.detectChanges();
+      expect(more().disabled).toBe(true);
+      button('Recuperar').click();
+      await settle();
+
+      expect(useArcaneRecovery).not.toHaveBeenCalled();
+      expect(useNaturalRecovery).toHaveBeenCalledTimes(1);
+      const [campaignId, characterId, slots, key] = useNaturalRecovery.mock.calls[0];
+      expect([campaignId, characterId, slots]).toEqual([
+        'camp',
+        'pensantus',
+        [{ level: 1, count: 2 }],
+      ]);
+      expect(key).toMatch(/^[0-9a-f-]{36}$/);
+      expect(flat(el.querySelector('.recovery'))).toContain(
+        'Recuperação Natural: usada; volta no descanso longo.',
+      );
+      expect(el.querySelector('.js-recovery-recover')).toBeNull();
+    });
+
+    it('names Recuperação Natural in the refusals', async () => {
+      useNaturalRecovery.mockRejectedValue(blocked(ResourceBlockedReason.NO_SHORT_REST));
+      const { el, fixture, settle, button } = render({}, druid());
+      el.querySelector<HTMLButtonElement>('.js-recovery-more')!.click();
+      fixture.detectChanges();
+      button('Recuperar').click();
+      await settle();
+      expect(flat(el.querySelector('[role="alert"] p'))).toBe(
+        'Recuperação Natural só vale depois de um descanso curto.',
+      );
+    });
+
+    it('is not there for a druid without the resource, whatever the allowance', () => {
+      const { el } = render({}, druid({ resources: [] }));
+      expect(el.querySelector('.recovery')).toBeNull();
+    });
+
+    it('keeps the sections of a wizard and a druid apart (a multiclass character)', async () => {
+      const both = druid({
+        arcaneRecoveryAllowance: 1,
+        resources: [
+          {
+            key: 'arcane_recovery',
+            namePt: 'Recuperação Arcana',
+            total: 1,
+            used: 1,
+            recharge: 'long_rest',
+          },
+          {
+            key: 'natural_recovery',
+            namePt: 'Recuperação Natural',
+            total: 1,
+            used: 0,
+            recharge: 'long_rest',
+          },
+        ],
+      });
+      const { el } = render({}, both);
+      expect(Array.from(el.querySelectorAll('.recovery__title'), flat)).toEqual([
+        'Recuperação Arcana',
+        'Recuperação Natural',
+      ]);
+      const sections = Array.from(el.querySelectorAll('.recovery'));
+      expect(flat(sections[0])).toContain('Recuperação Arcana: usada; volta no descanso longo.');
+      expect(sections[1].querySelector('.js-recovery-more')).not.toBeNull();
     });
   });
 });

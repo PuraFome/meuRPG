@@ -58,7 +58,7 @@ func TestSpendHitDiceRequestRefusalsFrozen(t *testing.T) {
 
 func TestArcaneRecoveryRequestRefusalsFrozen(t *testing.T) {
 	t.Parallel()
-	r := newArcaneTable(t)
+	r := newRecoveryTable(t)
 	wiz := r.wizard(t, r.ana, "Pensantus", 4)
 	call := func(edit func(*playv1.UseArcaneRecoveryRequest)) error {
 		req := &playv1.UseArcaneRecoveryRequest{CampaignId: r.campaign, CharacterId: wiz.GetId(), IdempotencyKey: newKey()}

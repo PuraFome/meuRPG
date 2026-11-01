@@ -132,6 +132,28 @@ describe('GroupCheckSheet (board W7-Xc 10)', () => {
     expect(api.groupRolls[0].die).toEqual({ faces: [12] });
   });
 
+  it('follows the campaign’s dice mode: forced app offers only "Rolar no app" and sends no typed value', async () => {
+    const { el, button, settle } = setup(asking(), { diceMode: DiceMode.APP });
+    expect(button('Digitar o resultado')).toBeUndefined();
+    expect(el.querySelector('input[type="text"]')).toBeNull();
+    button('Rolar no app')!.click();
+    await settle();
+    expect(api.groupRolls[0].die).toEqual({ inApp: true });
+  });
+
+  it('follows the campaign’s dice mode: forced physical offers only the typed entry and sends the face, never the total', async () => {
+    const { el, button, settle } = setup(asking(), { diceMode: DiceMode.PHYSICAL });
+    expect(button('Rolar no app')).toBeUndefined();
+    const field = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    field.value = '12';
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    button('Confirmar')!.click();
+    await settle();
+    // The player's +7 is not added: 19 is never sent.
+    expect(api.groupRolls[0].die).toEqual({ faces: [12] });
+  });
+
   it('says "Passou" and the group’s verdict only when the master showed the DC and closed the check', () => {
     const closed = groupCheck({
       open: false,

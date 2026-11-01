@@ -100,6 +100,15 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   - A sheet that is immune to a condition takes none of the effects that give it (a spell's, a rider's, a trap's, a grapple or a shove that knocks prone); the master's own change of the conditions is not blocked.
   - A character's creature has its own hit points. Its damage lands at once, and at 0 it is dismissed.
   - A trap's damage follows the same path. Outside a combat, what waits for the master survives until they apply or discard it.
+- **Wholeness of Body of the Open Hand monk (level 6).**
+  The monk's own action heals three times the monk level in hit points, up to the maximum.
+  It has no roll and no dice to type.
+  It has one use per long rest.
+  A multiclass character counts only the monk levels.
+  It is used in a combat on the monk's turn, and there is no way to use it outside a combat.
+  A monk at 0 hit points is down and cannot use it.
+  Only the owner and the master read the number in the log.
+  The master's undo gives back the hit points, the use and the action.
 - **Channel Divinity of the cleric.** Preserve Life (Life Domain) restores hit points to the creatures within 30 ft that the cleric names (when the cleric names no one, the app shares the points among the party, the most hurt first), up to five times the cleric's level in all, each to no more than half of its maximum; it cannot restore an undead or a construct. Turn Undead makes each undead within 30 ft that can see or hear the cleric make a Wisdom saving throw against the cleric's DC, and the ones that fail are turned for a minute (the master sees each save and who was turned, in the log and on the response; the turned creature carries the effect "Expulso"). Both spend the action and a use.
 - **Spells and resources.** A spell spends its slot (or pact slot) when it is cast, and a resend does not spend twice. A healing spell heals at once, up to the maximum, and raises whoever was at 0. Class and race uses (Second Wind, Action Surge, Rage...) are counted too. A resource without a limit shows "ilimitado".
 - **The master's "Desfazer última ação"** undoes the last action; each undo is itself recorded.
@@ -115,6 +124,7 @@ The master takes a short or a long rest for the table, after a confirmation that
 - The app does not count hours: the master is warned when the session already had a long rest. A rest is refused while a combat runs.
 - Hit dice are kept by die size (SRD, "Multiclassing").
 - **Arcane Recovery** (Wizard): once per long rest, after a short rest, the player chooses expended slots whose combined level is at most half the wizard level, rounded up, none of the 6th level or higher. Only the wizard level counts, and never pact slots. The short rest sheet has a "Recuperação Arcana" section, and afterwards it reads "Recuperação Arcana: usada; volta no descanso longo." A refusal changes nothing.
+- **Natural Recovery** (Druid, Circle of the Land): the same recovery with half the druid level, rounded up. Only the druid level counts, and never pact slots. A druid of another circle does not have it. The short rest sheet has a "Recuperação Natural" section, and afterwards it reads "Recuperação Natural: usada; volta no descanso longo." A refusal changes nothing.
 - **Lay on Hands, Flexible Casting and Metamagic.** Lay on Hands spends points on a touch, or 5 points to cure a poison or a disease; on an undead or a construct the points are spent and the answer says only that nothing happened, so a player learns nothing about its type (RN-10). Flexible Casting turns points into a slot of level 1 to 5 that a long rest takes away, and a slot back into points. The cast sheet offers only the Metamagic options the character knows, with the cost, and a disabled one says why.
 - **Bardic Inspiration.** A bonus action, one die at a time, to another creature within 60 ft that can hear. The die lasts 10 minutes of **game time**, which moves only when the master moves it, a cast takes time or a rest happens. The holder decides after the d20 and before the result: "Usar a Inspiração de Bardo (d8)?". Outside a combat the bard gives it from the session panel ("Inspiração de Bardo", "Dar a …"). When a combat takes the holder in, the die goes with them and comes back when it ends.
 - **Aid** raises the maximum and current hit points of each target by 5 (and 5 more per slot level above the 2nd) until the master ends it ("Encerrar Ajuda"). A long rest ends it for a player's character, a short rest does not. Two Aids do not add up. When it ends, hit points lose only what is above the new maximum, so nobody who still had hit points drops to 0 because of it. The sheet's own maximum is shown ("máximo 38 da ficha"), and the log says "A Ajuda de Sálvia acabou".
@@ -378,7 +388,7 @@ If it does not, everyone uses the type the master picks.
 
 - A change applies from the next roll. NPCs always roll in the app, and the master can type a value.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
-- The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, puzzle hints and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
 - The hit points rolled when a character is created are not part of this rule.
 - Screens: the master's "Dados" panel, the player's "Como você rola os dados", and the roll sheets, which show "Rolar no app" and "Digitar o resultado" in the order of the preference, or only the way a forced mode allows.

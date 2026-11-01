@@ -280,6 +280,7 @@ var notReads = map[string]classified{
 	playv1connect.ResourceServiceGiveBardicInspirationOutsideProcedure:          {playerAction, "a bard's player gives a die to another character of the party with their own character, out of a combat"},
 	playv1connect.ResourceServiceSpendHitDiceProcedure:                          {playerAction, "a player spends a hit die of their own character"},
 	playv1connect.ResourceServiceUseArcaneRecoveryProcedure:                     {playerAction, "a wizard's player recovers slots of their own character"},
+	playv1connect.ResourceServiceUseNaturalRecoveryProcedure:                    {playerAction, "a Land druid's player recovers slots of their own character"},
 	playv1connect.ResourceServiceTakeRestProcedure:                              {masterWrite, masterOnlyWhy},
 	playv1connect.ResourceServiceUseLayOnHandsProcedure:                         {playerAction, "a paladin's player touches a creature with their own combatant"},
 	playv1connect.RevivifyServiceConfirmRevivifyTimeProcedure:                   {masterWrite, masterOnlyWhy},

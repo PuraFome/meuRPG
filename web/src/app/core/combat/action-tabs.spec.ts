@@ -35,6 +35,10 @@ describe('classTabName', () => {
     ).toBe('Chi');
   });
 
+  it('puts the Open Hand\'s Wholeness of Body in the Monk\'s "Chi" tab', () => {
+    expect(classTabName([feature('feature:wholeness-of-body', ActionEconomy.ACTION)])).toBe('Chi');
+  });
+
   it("tells the Paladin's Channel Divinity from the Cleric's", () => {
     expect(
       classTabName([feature('feature:channel-divinity-sacred-weapon', ActionEconomy.ACTION)]),

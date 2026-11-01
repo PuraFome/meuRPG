@@ -1761,9 +1761,13 @@ type CharacterVitals struct {
 	// them with TakeAction (the same card as a granted action); a round of the owner's
 	// turn counts down `rounds_left`; a rest, an incapacity and the end of a combat end
 	// the ones that say so; the master's correction ends one by hand.
-	ActiveStates  []*ActiveState `protobuf:"bytes,103,rep,name=active_states,json=activeStates,proto3" json:"active_states,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ActiveStates []*ActiveState `protobuf:"bytes,103,rep,name=active_states,json=activeStates,proto3" json:"active_states,omitempty"`
+	// The combined level of spell slots the Circle of the Land druid's Natural Recovery
+	// gives back (half the DRUID level, rounded up; SRD 5.1, Druid 2). 0: the character
+	// does not have the feature. Whether the use is left is the `natural_recovery` resource.
+	NaturalRecoveryAllowance int32 `protobuf:"varint,104,opt,name=natural_recovery_allowance,json=naturalRecoveryAllowance,proto3" json:"natural_recovery_allowance,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *CharacterVitals) Reset() {
@@ -1948,6 +1952,13 @@ func (x *CharacterVitals) GetActiveStates() []*ActiveState {
 		return x.ActiveStates
 	}
 	return nil
+}
+
+func (x *CharacterVitals) GetNaturalRecoveryAllowance() int32 {
+	if x != nil {
+		return x.NaturalRecoveryAllowance
+	}
+	return 0
 }
 
 // ActiveState is a temporary state that is on for a character. The numbers about the
@@ -6153,7 +6164,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\baudience\x18\a \x01(\v2\x1d.meurpg.play.v1.ImageAudienceR\baudience\"a\n" +
 	"\rImageAudience\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.meurpg.play.v1.ImageAudienceKindR\x04kind\x12\x19\n" +
-	"\buser_ids\x18\x02 \x03(\tR\auserIds\"\xc0\t\n" +
+	"\buser_ids\x18\x02 \x03(\tR\auserIds\"\xfe\t\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -6181,7 +6192,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x10exhaustion_level\x18d \x01(\x05R\x0fexhaustionLevel\x12(\n" +
 	"\x10armor_class_base\x18e \x01(\x05R\x0earmorClassBase\x12:\n" +
 	"\x19arcane_recovery_allowance\x18f \x01(\x05R\x17arcaneRecoveryAllowance\x12@\n" +
-	"\ractive_states\x18g \x03(\v2\x1b.meurpg.play.v1.ActiveStateR\factiveStates\x1aC\n" +
+	"\ractive_states\x18g \x03(\v2\x1b.meurpg.play.v1.ActiveStateR\factiveStates\x12<\n" +
+	"\x1anatural_recovery_allowance\x18h \x01(\x05R\x18naturalRecoveryAllowance\x1aC\n" +
 	"\x15HitDiceUsedByDieEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xb4\x01\n" +
