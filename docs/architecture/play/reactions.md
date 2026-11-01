@@ -30,7 +30,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
 When every such save passed, the window offers nothing and he passes.
 The cast, or the answer to the rider, then settles with the same dice.
-A zone's save against such a creature has no hold: the master answers the zone's `EFFECT_SAVE` window, which only he reads, with the roll and the choice of the trait.
+A zone's save against such a creature has no hold: the master answers the zone's `EFFECT_SAVE` window, which only the master reads, with the roll and the choice of the trait.
 [Creatures](creatures.md#legendary-resistance) lists the saves that are not offered the trait.
 
 `AnswerReaction` answers a window: "Usar" (with the slot, `use_racial`, the die, the creatures of a Feather Fall) or "Deixar passar".

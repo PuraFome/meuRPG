@@ -60,7 +60,7 @@ func (s *Service) riderHeld(ctx context.Context, c *combatTx) error {
 	if err != nil {
 		return err
 	}
-	if slices.ContainsFunc(holds, func(h playdb.ReactionHold) bool { return h.Kind == "hit_rider" }) {
+	if slices.ContainsFunc(holds, func(h playdb.ReactionHold) bool { return h.Kind == holdHitRider }) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
 	}
 	return nil
@@ -98,7 +98,7 @@ func (s *Service) holdRider(ctx context.Context, c *combatTx, m authz.Membership
 	spec := windowSpec{kind: reaction.LegendaryResistance, trigger: windowTrigger{
 		Actor: attacker.ID, Key: row.Kind, Roll: "rider", Resist: offers, Held: []string{target.ID},
 	}}
-	ev, err := s.holdAction(ctx, c, m, "hit_rider", attacker, msg, holdData{Saves: kept}, []windowSpec{spec}, ev)
+	ev, err := s.holdAction(ctx, c, m, holdHitRider, attacker, msg, holdData{Saves: kept}, []windowSpec{spec}, ev)
 	if err != nil {
 		return actionEvent{}, false, err
 	}

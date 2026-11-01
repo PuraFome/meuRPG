@@ -246,7 +246,7 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		}
 		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
 		return err
-	case "hit_rider":
+	case holdHitRider:
 		return s.replayHeldRider(ctx, m, h)
 	}
 	return s.replayHeldCheck(ctx, m, h)
