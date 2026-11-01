@@ -293,3 +293,270 @@ func TestStaticHandler_FormActionOriginMustBeAbsolute(t *testing.T) {
 		}
 	}
 }
+
+// TestStaticHandler_PrecompressedAssets: a script or stylesheet goes out as its .br or .gz copy when the
+// request accepts that coding, with the type and the caching of the original file.
+func TestStaticHandler_PrecompressedAssets(t *testing.T) {
+	t.Parallel()
+
+	const (
+		plain = "console.log('app')"
+		br    = "fake-brotli-bytes"
+		gz    = "fake-gzip-bytes"
+	)
+
+	tests := []struct {
+		name         string
+		method       string
+		path         string
+		acceptEnc    string
+		withBr       bool
+		withGz       bool
+		wantEncoding string
+		wantBody     string
+		wantType     string
+		wantCache    string
+	}{
+		{
+			name: "br is preferred over gzip", path: "/main-ABCD1234.js", acceptEnc: "gzip, deflate, br", withBr: true, withGz: true,
+			wantEncoding: "br", wantBody: br,
+		},
+		{
+			name: "gzip when there is no br copy", path: "/main-ABCD1234.js", acceptEnc: "gzip, br", withGz: true,
+			wantEncoding: "gzip", wantBody: gz,
+		},
+		{
+			name: "gzip when the client does not accept br", path: "/main-ABCD1234.js", acceptEnc: "gzip", withBr: true, withGz: true,
+			wantEncoding: "gzip", wantBody: gz,
+		},
+		{
+			name: "q=0 refuses a coding", path: "/main-ABCD1234.js", acceptEnc: "br;q=0, gzip", withBr: true, withGz: true,
+			wantEncoding: "gzip", wantBody: gz,
+		},
+		{
+			name: "a negative or NaN q-value refuses a coding", path: "/main-ABCD1234.js", acceptEnc: "br;q=-1, gzip;q=NaN", withBr: true, withGz: true,
+			wantEncoding: "", wantBody: plain,
+		},
+		{
+			name: "q=0 on every coding gives the plain file", path: "/main-ABCD1234.js", acceptEnc: "br;q=0, gzip;q=0", withBr: true, withGz: true,
+			wantBody: plain,
+		},
+		{
+			name: "star accepts br", path: "/main-ABCD1234.js", acceptEnc: "*", withBr: true, withGz: true,
+			wantEncoding: "br", wantBody: br,
+		},
+		{
+			name: "star does not override a refused coding", path: "/main-ABCD1234.js", acceptEnc: "br;q=0, *", withBr: true, withGz: true,
+			wantEncoding: "gzip", wantBody: gz,
+		},
+		{
+			name: "star with q=0 accepts nothing", path: "/main-ABCD1234.js", acceptEnc: "*;q=0", withBr: true, withGz: true,
+			wantBody: plain,
+		},
+		{
+			name: "tokens are case-insensitive", path: "/main-ABCD1234.js", acceptEnc: "BR;Q=0.8", withBr: true,
+			wantEncoding: "br", wantBody: br,
+		},
+		{
+			name: "no Accept-Encoding gives the plain file", path: "/main-ABCD1234.js", withBr: true, withGz: true,
+			wantBody: plain,
+		},
+		{
+			name: "a missing copy falls back to the plain file", path: "/main-ABCD1234.js", acceptEnc: "br, gzip",
+			wantBody: plain,
+		},
+		{
+			name: "an unhashed stylesheet is encoded and revalidated", path: "/material-symbols/outlined.css", acceptEnc: "br", withBr: true,
+			wantEncoding: "br", wantBody: br, wantType: "text/css; charset=utf-8", wantCache: "no-cache",
+		},
+		{
+			name: "HEAD carries the headers and no body", method: http.MethodHead, path: "/main-ABCD1234.js", acceptEnc: "br", withBr: true,
+			wantEncoding: "br", wantBody: "",
+		},
+		{
+			name: "a .br file requested directly is a plain file", path: "/main-ABCD1234.js.br", acceptEnc: "br, gzip", withBr: true,
+			wantBody: br, wantType: "text/plain; charset=utf-8",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := newTestBuild(t)
+			for _, base := range []string{"main-ABCD1234.js", "material-symbols/outlined.css"} {
+				if tt.withBr {
+					writeFile(t, filepath.Join(dir, filepath.FromSlash(base)+".br"), br)
+				}
+				if tt.withGz {
+					writeFile(t, filepath.Join(dir, filepath.FromSlash(base)+".gz"), gz)
+				}
+			}
+			handler, ok, _ := NewStatic(dir)
+			if !ok {
+				t.Fatalf("NewStatic(%q) ok = false, want true", dir)
+			}
+			method := tt.method
+			if method == "" {
+				method = http.MethodGet
+			}
+			req := httptest.NewRequestWithContext(t.Context(), method, tt.path, nil)
+			if tt.acceptEnc != "" {
+				req.Header.Set("Accept-Encoding", tt.acceptEnc)
+			}
+
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			if got := rec.Header().Get("Content-Encoding"); got != tt.wantEncoding {
+				t.Errorf("Content-Encoding = %q, want %q", got, tt.wantEncoding)
+			}
+			if got := rec.Body.String(); got != tt.wantBody && method == http.MethodGet {
+				t.Errorf("body = %q, want %q", got, tt.wantBody)
+			}
+			if method == http.MethodHead && rec.Body.Len() != 0 {
+				t.Errorf("HEAD body = %q, want empty", rec.Body.String())
+			}
+			checkPrecompressedHeaders(t, rec, tt.path, tt.wantType, tt.wantCache)
+		})
+	}
+}
+
+// checkPrecompressedHeaders checks the headers that do not depend on the coding that was chosen.
+func checkPrecompressedHeaders(t *testing.T, rec *httptest.ResponseRecorder, path, wantType, wantCache string) {
+	t.Helper()
+
+	if wantType == "" {
+		wantType = "text/javascript; charset=utf-8"
+	}
+	if wantCache == "" {
+		wantCache = "public, max-age=31536000, immutable"
+	}
+	if got := rec.Header().Get("Content-Type"); got != wantType {
+		t.Errorf("Content-Type = %q, want %q", got, wantType)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != wantCache {
+		t.Errorf("Cache-Control = %q, want %q", got, wantCache)
+	}
+	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
+	}
+	wantVary := "Accept-Encoding"
+	if strings.HasSuffix(path, ".br") {
+		wantVary = ""
+	}
+	if got := rec.Header().Get("Vary"); got != wantVary {
+		t.Errorf("Vary = %q, want %q", got, wantVary)
+	}
+}
+
+// TestStaticHandler_IndexIsNeverEncoded: the app shell goes out as it is even when a compressed copy of it exists.
+func TestStaticHandler_IndexIsNeverEncoded(t *testing.T) {
+	t.Parallel()
+
+	dir := newTestBuild(t)
+	writeFile(t, filepath.Join(dir, "index.html.br"), "fake-brotli-bytes")
+	writeFile(t, filepath.Join(dir, "index.html.gz"), "fake-gzip-bytes")
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	for _, path := range []string{"/", "/campaigns/42"} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+			req.Header.Set("Accept-Encoding", "br, gzip")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if got := rec.Header().Get("Content-Encoding"); got != "" {
+				t.Errorf("Content-Encoding = %q, want none", got)
+			}
+			if got := rec.Body.String(); got != "<html>app shell</html>" {
+				t.Errorf("body = %q, want the plain app shell", got)
+			}
+		})
+	}
+}
+
+// TestStaticHandler_CannotLeaveTheDirectory: a request that climbs out of the build directory never gets
+// a byte of a file next to it, plain or compressed.
+func TestStaticHandler_CannotLeaveTheDirectory(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "web")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "index.html"), "<html>app shell</html>")
+	writeFile(t, filepath.Join(parent, "secret.js"), "SECRET")
+	writeFile(t, filepath.Join(parent, "secret.js.br"), "SECRET-BR")
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	for _, target := range []string{"/../secret.js", "/%2e%2e/secret.js", "/..%2fsecret.js", "/sub/../../secret.js"} {
+		t.Run(target, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+			req.Header.Set("Accept-Encoding", "br")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if strings.Contains(rec.Body.String(), "SECRET") {
+				t.Errorf("body = %q, leaked a file outside the directory", rec.Body.String())
+			}
+			if got := rec.Header().Get("Content-Encoding"); got != "" {
+				t.Errorf("Content-Encoding = %q, want none", got)
+			}
+		})
+	}
+}
+
+// TestStaticHandler_SymlinkOutOfTheDirectory: a symlink in the build directory that points outside it is
+// served neither as a compressed copy nor as a file.
+func TestStaticHandler_SymlinkOutOfTheDirectory(t *testing.T) {
+	t.Parallel()
+
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "web")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, filepath.Join(dir, "index.html"), "<html>app shell</html>")
+	writeFile(t, filepath.Join(dir, "link-ABCD1234.js"), "console.log('plain')")
+	writeFile(t, filepath.Join(parent, "outside.br"), "OUTSIDE")
+	writeFile(t, filepath.Join(parent, "outside.txt"), "OUTSIDE")
+	if err := os.Symlink(filepath.Join("..", "outside.br"), filepath.Join(dir, "link-ABCD1234.js.br")); err != nil {
+		t.Skipf("cannot create a symlink: %v", err)
+	}
+	if err := os.Symlink(filepath.Join("..", "outside.txt"), filepath.Join(dir, "out.txt")); err != nil {
+		t.Skipf("cannot create a symlink: %v", err)
+	}
+	handler, ok, _ := NewStatic(dir)
+	if !ok {
+		t.Fatal("NewStatic ok = false, want true")
+	}
+
+	for _, target := range []string{"/link-ABCD1234.js", "/out.txt"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+		req.Header.Set("Accept-Encoding", "br")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if strings.Contains(rec.Body.String(), "OUTSIDE") {
+			t.Errorf("%s: body = %q, served a file outside the directory", target, rec.Body.String())
+		}
+		if got := rec.Header().Get("Content-Encoding"); got != "" {
+			t.Errorf("%s: Content-Encoding = %q, want none", target, got)
+		}
+	}
+}
