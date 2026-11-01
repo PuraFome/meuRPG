@@ -50,7 +50,7 @@ Every refused business rule returns a Connect code, always the same one for the 
 | `failed_precondition` | The rule does not allow it now: a locked sheet (RN-01), a session that has not started, an unusable invite, an image used on a map. When there is more than one reason, a typed detail says which (`InviteUnusable`, `CharacterBlocked`, `GameSessionBlocked`, `XPBlocked`, `XpModeChangeBlocked`, `ImageInUse`...). |
 | `not_found` | It does not exist, or the caller may not know it exists: a campaign the caller is not a member of, a map hidden from a player (ADR-0011). A pending member gets the same `not_found` outside the few calls they may make. |
 | `invalid_argument` | Invalid input, or a request with a field over its size limit (a `RequestRefused` detail, [Request size limits](#request-size-limits)). |
-| `resource_exhausted` | A quota ran out: a campaign, gallery or map limit, the account's campaign cap, pending image requests, live streams per person. A unary body over its read limit, or a message over the 4 MiB backstop, gets it too (from Connect, with no detail). A rate limit uses the same code with a `Retry-After` header ([Abuse limits](#abuse-limits)). |
+| `resource_exhausted` | A quota ran out: a campaign, gallery or map limit, the account's campaign cap, pending image requests, live streams per person. A unary body over its read limit, or a message over the 4 MiB backstop, gets it too, from Connect and with no detail ([Request size limits](#request-size-limits)). A rate limit uses the same code with a `Retry-After` header ([Abuse limits](#abuse-limits)). |
 | `aborted` | A transaction conflict (`40001`) that persisted after the retries, or a sheet or document that changed since the app read it (stale revision, AIP-154). The app reloads and the person tries again. |
 | `deadline_exceeded`, `canceled`, `unavailable`, `unknown`, `internal` | Infrastructure outcomes, in the next table. |
 
@@ -224,6 +224,11 @@ The rule a reader follows:
   Another test fails if a default is changed to 0 or to another number without the test.
   It does not add up a worst case: whoever writes the option chooses the procedure's read limit on purpose, and the test makes sure they did.
 - **The sentences** for `RequestRefused` and for a bare `resource_exhausted` are in `web/src/app/core/connect/connect-errors.ts`, so every screen shows them without wording them.
+- **A size refusal and a quota refusal** are both `resource_exhausted`.
+  The server cannot attach a detail to Connect's read error.
+  The web tells them apart by the two wordings of the message, `http.MaxBytesReader limit` and `larger than configured max` (`isSizeRefused`).
+  `platform/reqlimit` pins both wordings with a real server.
+  It shows the generic limit text for a size refusal on every screen, never the screen's own quota text.
 
 The options are custom (`proto/meurpg/options/v1/limits.proto`) instead of protovalidate.
 The need is two numeric options (`max_items`, `max_len`) and a read limit per procedure, and protovalidate would bring a rules engine and a CEL runtime into the server, the generated code and the build for them.

@@ -15,6 +15,7 @@
 !web/package-lock.json
 !web/src/
 !web/public/
+!web/scripts/
 !web/angular.json
 !web/tsconfig.json
 !web/tsconfig.app.json

@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -12,11 +13,20 @@ import { routes } from './app.routes';
 import { AuthService } from './core/auth/auth.service';
 import { SESSION_REFRESHER } from './core/auth/session-refresher';
 import { ConfirmGuard } from './core/confirm-guard/confirm-guard';
+import { ChunkReload, ChunkReloadErrorHandler } from './core/system/chunk-reload';
 import { PageTitleStrategy } from './core/title/page-title';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    // A tab left open across a deploy cannot load the old lazy chunks: one reload, guarded in `history.state`.
+    // Every failure reaches the ErrorHandler after the router has settled `history.state`: a lazy route
+    // through the initial navigation's catch or the `unhandledrejection` listener, a `@defer` block directly.
+    { provide: ErrorHandler, useClass: ChunkReloadErrorHandler },
+    // Reads the reload marker before the router's first navigation rewrites `history.state`.
+    provideAppInitializer(() => {
+      inject(ChunkReload);
+    }),
     provideRouter(routes),
     // The transport asks the auth state to read `GetMe` again when a call answers `unauthenticated`; it cannot
     // import `AuthService` (which injects the transport), so it asks for this token.

@@ -56,6 +56,7 @@ make down LOCAL_STACK=native
 - The issuer is still `http://idp.localhost:9090`: macOS resolves any `*.localhost` name to the machine (RFC 6761), and Go uses that resolver on a Mac. Go's own resolver (`GODEBUG=netdns=go`) and Linux do not; use Docker there.
 - Ports 8080 and 9090 must be free.
 - A second environment next to the first: `API_PORT=8180 IDP_PORT=9190 DB_NAME=meurpg_2 deploy/local/native.sh up` uses other ports, another database, `~/.meurpg/run-8180` and `~/.meurpg/images-8180`. Point Playwright at it with `E2E_BASE_URL=http://localhost:8180 E2E_IDP_ORIGIN=http://idp.localhost:9190`. Stop it with `API_PORT=8180 deploy/local/native.sh down`.
+- The stack's public origin is `http://localhost:8080` unless `PUBLIC_ORIGIN` (`native.sh`) or `E2E_PUBLIC_ORIGIN` (compose) says otherwise; the mobile smoke sets it to an https address (see [Testing](testing.md#end-to-end-tests-playwright)).
 
 ## Test databases
 

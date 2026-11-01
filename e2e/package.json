@@ -5,6 +5,8 @@
   "description": "Playwright acceptance tests for MeuRPG, run against the local stack with `make e2e`.",
   "scripts": {
     "test": "playwright test",
+    "test:mobile": "playwright test -c playwright.mobile.config.ts",
+    "tls-front": "node tls-front.mjs",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report",
     "lint:install": "npm ci --ignore-scripts --prefix lint",
