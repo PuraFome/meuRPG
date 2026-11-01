@@ -3208,6 +3208,12 @@ message SummonSpellOptions {
   // Familiar, and the creatures a previous concentration holds for a spell that
   // needs concentration (a new casting ends it, RN-22). Empty when nothing goes.
   repeated ReplacedCreature replaces = 10;
+  // The feature that gives the summon, when it is a feature's: its key. The character casts it with a use of
+  // `resource_key` (`uses_left` remain) instead of a slot, at the one circle in `circles`, and CastSummon
+  // and CastSpell name the feature in `granted_by`. Empty for a spell the character has.
+  string granted_by = 11;
+  string resource_key = 12;
+  int32 uses_left = 13;
 }
 
 // SummonCircle is what a spell may bring at one circle.

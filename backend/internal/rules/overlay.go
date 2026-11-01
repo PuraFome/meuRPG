@@ -130,6 +130,9 @@ type TableFeature struct {
 	// Their keys are "feature:...@mesa" like a feature's, made by the server. They
 	// do not nest.
 	Options []TableFeature
+	// Summon says the feature brings the table's creatures to its holder, or is nil (see TableSummon). Only a
+	// class, subclass, race or background feature has it, not an option.
+	Summon *TableSummon
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -845,6 +848,8 @@ type pendingEffects struct {
 	strict bool
 	// path is where the effects are in the Overlay, for errors.
 	path string
+	// summon is set for the feature whose summon lowered to the granted_spell effect at summon.at.
+	summon *pendingSummon
 }
 
 // overlayKind is one table of the Overlay: its name in the paths, the prefix of
@@ -1284,6 +1289,7 @@ func (c *content) cloneForOverlay() *content {
 		n.summons = map[string]*summonDef{}
 	}
 	n.tableSummons = map[string]*tableSummonRule{}
+	n.featureSummons = map[string]string{}
 	n.raceChoice = map[string][]int{}
 	n.raceSets = map[string][][]int{}
 	n.raceSizes = map[string][]string{}
