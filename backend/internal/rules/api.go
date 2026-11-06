@@ -432,8 +432,14 @@ type SubraceEntry struct {
 	AbilityBonuses map[Ability]int
 	// SkillProficiencies are the skills its traits give, besides the race's.
 	SkillProficiencies []string
-	Archived           bool
-	Off                bool
+	// ReplacesTraitKeys are the traits of the parent race the subrace replaces, and
+	// ReplacedSkillProficiencies the skills of the race's catalog entry that go with them.
+	ReplacesTraitKeys          []string `json:",omitempty"`
+	ReplacedSkillProficiencies []string `json:",omitempty"`
+	// ReplacesAbilityBonuses says the race's ability bonuses, fixed and placed, are gone.
+	ReplacesAbilityBonuses bool `json:",omitempty"`
+	Archived               bool
+	Off                    bool
 }
 
 // ClassEntry is a class in the Catalog.

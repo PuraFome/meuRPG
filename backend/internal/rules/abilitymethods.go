@@ -158,10 +158,10 @@ func sumOf(values []int) int {
 // Score Improvement the classes reached, which the guided level-up and the editor
 // also write there. The points a race lets the player choose (the half-elf's +1 to
 // two abilities) are not manual: they are picks of the choice engine
-// (choicegroups.go) and add to the race's bonus. A table race's own "+2 and +1 to
-// your choice" (raceChoice) has no choice engine behind it: the player places it
-// in the manual bonuses, so its points are free too. A subrace that replaces the
-// race's bonuses leaves none of them.
+// (choicegroups.go) and add to the race's bonus. A table race's "+2 and +1 to your
+// choice" are picks of the choice engine too (racebonuspicks.go).
+// A sheet that placed them in the manual bonuses keeps them, so their points are free.
+// A subrace that replaces the race's bonuses leaves none of them.
 func (c *Content) FreeAbilityPoints(b Build) int {
 	n := c.c.racePlacedPoints(b.Race, b.Subrace)
 	for _, cl := range b.Classes {

@@ -7125,7 +7125,8 @@ type Subrace struct {
 	NamePt string `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// Content key of the race it belongs to, such as "race:gnome".
 	RaceKey string `protobuf:"bytes,4,opt,name=race_key,json=raceKey,proto3" json:"race_key,omitempty"`
-	// The subrace's ability score increases, added to the race's.
+	// The subrace's ability score increases, added to the race's unless
+	// `replaces_ability_bonuses`.
 	AbilityBonuses *AbilityScores `protobuf:"bytes,5,opt,name=ability_bonuses,json=abilityBonuses,proto3" json:"ability_bonuses,omitempty"`
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
@@ -7134,9 +7135,19 @@ type Subrace struct {
 	Off bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	// Content keys of the skills the subrace gives, added to the race's (see
 	// Race.skill_keys).
-	SkillKeys     []string `protobuf:"bytes,8,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SkillKeys []string `protobuf:"bytes,8,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
+	// Content keys of the parent race's traits this subrace replaces: the character
+	// of this subrace does not have them. Empty for most subraces.
+	ReplacesTraitKeys []string `protobuf:"bytes,9,rep,name=replaces_trait_keys,json=replacesTraitKeys,proto3" json:"replaces_trait_keys,omitempty"`
+	// When true, the race's ability bonuses are gone: the fixed ones and the ones the
+	// player places (Race.choice_bonuses, choice_bonus_sets, the half-elf's picks).
+	// `ability_bonuses` stands alone instead of adding to them.
+	ReplacesAbilityBonuses bool `protobuf:"varint,10,opt,name=replaces_ability_bonuses,json=replacesAbilityBonuses,proto3" json:"replaces_ability_bonuses,omitempty"`
+	// The skills in Race.skill_keys that come from the replaced traits alone: this
+	// subrace's character does not have them.
+	ReplacedSkillKeys []string `protobuf:"bytes,11,rep,name=replaced_skill_keys,json=replacedSkillKeys,proto3" json:"replaced_skill_keys,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Subrace) Reset() {
@@ -7221,6 +7232,27 @@ func (x *Subrace) GetOff() bool {
 func (x *Subrace) GetSkillKeys() []string {
 	if x != nil {
 		return x.SkillKeys
+	}
+	return nil
+}
+
+func (x *Subrace) GetReplacesTraitKeys() []string {
+	if x != nil {
+		return x.ReplacesTraitKeys
+	}
+	return nil
+}
+
+func (x *Subrace) GetReplacesAbilityBonuses() bool {
+	if x != nil {
+		return x.ReplacesAbilityBonuses
+	}
+	return false
+}
+
+func (x *Subrace) GetReplacedSkillKeys() []string {
+	if x != nil {
+		return x.ReplacedSkillKeys
 	}
 	return nil
 }
@@ -12931,7 +12963,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11choice_bonus_sets\x18\n" +
 	" \x03(\v2\x19.meurpg.rules.v1.BonusSetR\x0fchoiceBonusSets\x12\x14\n" +
 	"\x05sizes\x18\v \x03(\tR\x05sizes\x12\x12\n" +
-	"\x04size\x18\f \x01(\tR\x04size\"\xf9\x01\n" +
+	"\x04size\x18\f \x01(\tR\x04size\"\x93\x03\n" +
 	"\aSubrace\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -12941,7 +12973,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\barchived\x18\x06 \x01(\bR\barchived\x12\x10\n" +
 	"\x03off\x18\a \x01(\bR\x03off\x12\x1d\n" +
 	"\n" +
-	"skill_keys\x18\b \x03(\tR\tskillKeys\"\x85\x03\n" +
+	"skill_keys\x18\b \x03(\tR\tskillKeys\x12.\n" +
+	"\x13replaces_trait_keys\x18\t \x03(\tR\x11replacesTraitKeys\x128\n" +
+	"\x18replaces_ability_bonuses\x18\n" +
+	" \x01(\bR\x16replacesAbilityBonuses\x12.\n" +
+	"\x13replaced_skill_keys\x18\v \x03(\tR\x11replacedSkillKeys\"\x85\x03\n" +
 	"\x0eCharacterClass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

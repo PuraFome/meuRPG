@@ -123,8 +123,15 @@ func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 		t.Errorf("not offered = %v, want %v", s.NotOffered, wantOut)
 	}
 	p := s.ChoiceProblems(false)
-	if len(p) != 3 || p[0].Code != ChoiceProblemNotOffered || !slices.ContainsFunc(p, func(p ChoiceProblem) bool { return p.OptionKey == f.replacedX }) {
-		t.Errorf("problems = %+v, want the replaced option and the two placed bonuses not offered", p)
+	var gotKeys []string
+	for _, q := range p {
+		if q.Code != ChoiceProblemNotOffered {
+			t.Errorf("problem %+v, want code %s", q, ChoiceProblemNotOffered)
+		}
+		gotKeys = append(gotKeys, q.OptionKey)
+	}
+	if wantKeys := append([]string{f.replacedX}, f.bonusPicks()...); !slices.Equal(slices.Sorted(slices.Values(gotKeys)), slices.Sorted(slices.Values(wantKeys))) {
+		t.Errorf("not offered keys = %v, want %v", gotKeys, wantKeys)
 	}
 }
 
@@ -203,13 +210,13 @@ func TestASubraceThatReplacesTheBonusesDropsTheHalfElfsPicks(t *testing.T) {
 	sub.Race, sub.AbilityBonuses = "race:half-elf", map[Ability]int{WIS: 1}
 	key := AbilityChoiceKey("race:half-elf")
 	picks := []string{ScopedChoice(key, abilityValue(DEX)), ScopedChoice(key, abilityValue(INT))}
-	build := func(c *Content) Build {
+	build := func() Build {
 		return choiceBuild("race:half-elf", sub.Key, ClassLevel{Class: "class:fighter", Level: 1}, picks...)
 	}
 	run := func(replaces bool) (Derived, ChoiceSet) {
 		sub.ReplacesAbilityBonuses = replaces
 		c := withOverlay(t, Overlay{Subraces: []TableSubrace{sub}})
-		return Derive(build(c), c), c.Choices(build(c))
+		return Derive(build(), c), c.Choices(build())
 	}
 	d, s := run(true)
 	if scoreBonus(d, CHA) != 0 || scoreBonus(d, WIS) != 1 || scoreBonus(d, DEX) != 0 || scoreBonus(d, INT) != 0 {
@@ -227,5 +234,46 @@ func TestASubraceThatReplacesTheBonusesDropsTheHalfElfsPicks(t *testing.T) {
 	d, s = run(false)
 	if scoreBonus(d, CHA) != 2 || scoreBonus(d, WIS) != 1 || scoreBonus(d, DEX) != 1 || scoreBonus(d, INT) != 1 || len(s.NotOffered) != 0 {
 		t.Errorf("without the flag: CHA %d WIS %d DEX %d INT %d, not offered %v, want them all", scoreBonus(d, CHA), scoreBonus(d, WIS), scoreBonus(d, DEX), scoreBonus(d, INT), s.NotOffered)
+	}
+}
+
+// TestAReplacingSubraceAsksForNoPlacedBonusesWhenNoneArePicked: the race's placed bonuses are gone, so a sheet
+// with no picks for them is complete; without the flag the same sheet is told to place them.
+func TestAReplacingSubraceAsksForNoPlacedBonusesWhenNoneArePicked(t *testing.T) {
+	t.Parallel()
+	with := newReplaceFixture(t, false, true)
+	if d := Derive(with.build(true), with.c); hasIssue(d, IssueRaceBonus) {
+		t.Errorf("issues = %v, want no race bonus issue", issueCodes(d))
+	}
+	without := newReplaceFixture(t, false, false)
+	if d := Derive(without.build(true), without.c); !hasIssue(d, IssueRaceBonus) {
+		t.Errorf("issues = %v, want a race bonus issue without the flag", issueCodes(d))
+	}
+}
+
+// TestTheCatalogSaysWhatASubraceReplaces: the subrace entry names the replaced traits, the race's skills that go
+// with them (Keen Senses' Perception) and the swap of the bonuses.
+func TestTheCatalogSaysWhatASubraceReplaces(t *testing.T) {
+	t.Parallel()
+	_, sub, _ := tableMisc()
+	sub.Race, sub.ReplacesTraitKeys, sub.ReplacesAbilityBonuses = "race:elf", []string{"trait:keen-senses"}, true
+	c := withOverlay(t, Overlay{Subraces: []TableSubrace{sub}})
+	var got SubraceEntry
+	for _, e := range c.Catalog().Subraces {
+		if e.Key == sub.Key {
+			got = e
+		}
+	}
+	if !slices.Equal(got.ReplacesTraitKeys, sub.ReplacesTraitKeys) || !got.ReplacesAbilityBonuses {
+		t.Errorf("entry = %+v, want Keen Senses replaced and the bonuses swapped", got)
+	}
+	if !slices.Equal(got.ReplacedSkillProficiencies, []string{"skill:perception"}) {
+		t.Errorf("removed skills = %v, want Perception", got.ReplacedSkillProficiencies)
+	}
+	sub.ReplacesTraitKeys, sub.ReplacesAbilityBonuses = nil, false
+	for _, e := range withOverlay(t, Overlay{Subraces: []TableSubrace{sub}}).Catalog().Subraces {
+		if e.Key == sub.Key && (len(e.ReplacesTraitKeys) != 0 || len(e.ReplacedSkillProficiencies) != 0 || e.ReplacesAbilityBonuses) {
+			t.Errorf("entry = %+v, want no replacement", e)
+		}
 	}
 }

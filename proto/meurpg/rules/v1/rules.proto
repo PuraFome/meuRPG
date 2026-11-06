@@ -1408,7 +1408,8 @@ message Subrace {
   string name_pt = 3;
   // Content key of the race it belongs to, such as "race:gnome".
   string race_key = 4;
-  // The subrace's ability score increases, added to the race's.
+  // The subrace's ability score increases, added to the race's unless
+  // `replaces_ability_bonuses`.
   AbilityScores ability_bonuses = 5;
   // The table retired it (see Race.archived).
   bool archived = 6;
@@ -1418,6 +1419,16 @@ message Subrace {
   // Content keys of the skills the subrace gives, added to the race's (see
   // Race.skill_keys).
   repeated string skill_keys = 8;
+  // Content keys of the parent race's traits this subrace replaces: the character
+  // of this subrace does not have them. Empty for most subraces.
+  repeated string replaces_trait_keys = 9;
+  // When true, the race's ability bonuses are gone: the fixed ones and the ones the
+  // player places (Race.choice_bonuses, choice_bonus_sets, the half-elf's picks).
+  // `ability_bonuses` stands alone instead of adding to them.
+  bool replaces_ability_bonuses = 10;
+  // The skills in Race.skill_keys that come from the replaced traits alone: this
+  // subrace's character does not have them.
+  repeated string replaced_skill_keys = 11;
 }
 
 // CharacterClass is a class from the rules content.
