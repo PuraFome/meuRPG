@@ -23,7 +23,7 @@ func TestARefusedUndoSendsTheNumbersOfTheNPCToNoOne(t *testing.T) {
 		Change: &playv1.AdjustCombatantHitPointsRequest_Damage{Damage: 1},
 	})))
 	const changedTemp = 4217 // what the change after the action wrote: a number no other answer matches
-	if _, err := w.stack.pool.Exec(t.Context(), `UPDATE combatants SET hp_temp = $2 WHERE id = $1`, hound.GetId(), changedTemp); err != nil {
+	if _, err := w.pool.Exec(t.Context(), `UPDATE combatants SET hp_temp = $2 WHERE id = $1`, hound.GetId(), changedTemp); err != nil {
 		t.Fatalf("change the hit points: %v", err)
 	}
 	log := must(master.combat.ListCombatLog(t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()})))
