@@ -90,6 +90,10 @@ func readEquipRequest(msg *charactersv1.SetEquippedRequest) (equipRequest, error
 // equipIn is the transaction of SetEquipped: it locks the character, checks the caller
 // and the key, asks play (inside the transaction, before the write) when the state really
 // changes, and writes the sheet with only carried_keys changed.
+//
+// The lock order is the character row, then play's session lock. A combat write takes the
+// session lock first and then key-shares the character row, so a concurrent attack and equip
+// can deadlock; db.InTx retries the one the database aborts (40P01), as for ReviveCharacter.
 func (s *Service) equipIn(ctx context.Context, tx pgx.Tx, m authz.Membership, in equipRequest) (equipped, error) {
 	q := s.queries.WithTx(tx)
 	current, err := visibleForUpdate(ctx, q, m, in.id)
