@@ -960,14 +960,13 @@ message DiceFormula {
   bool adds_modifier = 4;
 }
 
-// DerivedClass is one of a character's classes, with names resolved.
 // RollDie is a table die the character adds to a roll of its own: sent back as the
-// `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave and SubmitInitiative.
+// `maneuver_key` of RollSceneCheck, RollEffectSave, ResolveConcentrationSave, SubmitInitiative and RollAttack.
 message RollDie {
   // The feature (option) that gives it.
   string key = 1;
   string name_pt = 2;
-  // "check", "save" or "initiative".
+  // "check", "save", "initiative" or "attack" (a weapon attack roll).
   string applies = 3;
   // The die's sides, worked out for the character.
   int32 sides = 4;
@@ -981,6 +980,7 @@ message RollDie {
   string text_pt = 8;
 }
 
+// DerivedClass is one of a character's classes, with names resolved.
 message DerivedClass {
   // Content key of the class, such as "class:wizard".
   string class_key = 1;

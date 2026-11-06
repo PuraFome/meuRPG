@@ -132,6 +132,8 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.EffectSaveResult", "resisted_left", "the uses of a creature's trait left are the master's", nil},
 	{"meurpg.play.v1.ConcentrationSaveResult", "resisted", "only the master makes a save a success, and reads that he did", nil},
 	{"meurpg.play.v1.ConcentrationSaveResult", "resisted_left", "the uses of a creature's trait left are the master's", nil},
+	{"meurpg.play.v1.CombatLogHitRider", "resisted", "a rider's save the master made a success reads as a save that passed to a player (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.CombatLogHitRider", "resisted_left", "the uses of a creature's trait left are the master's (RN-20, RN-29)", nil},
 	{"meurpg.play.v1.Combatant", "character_id", "an NPC's character id is the master's", func(w *world, p *person, m protoreflect.Message) bool { return playerCharacter(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "hit_points_current", "an NPC's numbers", func(w *world, p *person, m protoreflect.Message) bool { return ownOrAnyPlayerCharacter(w, p, m) }},
 	{"meurpg.play.v1.Combatant", "hit_points_max", "an NPC's numbers", func(w *world, p *person, m protoreflect.Message) bool { return ownOrAnyPlayerCharacter(w, p, m) }},

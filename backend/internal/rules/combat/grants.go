@@ -51,7 +51,7 @@ func grantedOptions(d rules.Derived, turn TurnState, u Usage) []SpellOption {
 			continue
 		}
 		grant := GrantOf(d, u, g)
-		o := SpellOption{Spell: g.Spell, Economy: spellEconomy(g.Spell.CastingTime), Grant: &grant}
+		o := SpellOption{Spell: g.Spell, Economy: spellEconomy(g.Spell.CastingTime), Grant: &grant, FeatureSummon: g.FeatureSummon}
 		if grant.AlsoWithSlot && g.Spell.Level > 0 {
 			o.Slots = slotChoices(d, u, g.Spell.Level)
 		}

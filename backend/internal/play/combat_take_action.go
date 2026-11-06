@@ -19,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The standard and feature actions that only spend the economy and a use (TakeAction).
@@ -557,6 +558,17 @@ func (f *takeActionFlow) cutFall(ctx context.Context, sheet link.Sheet) error {
 		return err
 	}
 	f.made.FallCuts, f.made.Amount = cuts, taken
+	// The monk's own questions about the fall (Slow Fall, and a Feather Fall it can cast too) close with the
+	// reaction it spent: an undo opens them again.
+	open, err := openWindowsOf(ctx, f.c)
+	if err != nil {
+		return err
+	}
+	for _, w := range open {
+		if k := reaction.Kind(w.Kind); (k == reaction.SlowFall || k == reaction.FeatherFall) && conv.OrZero(w.ReactorID) == f.who.ID {
+			f.made.ClosedWindows = append(f.made.ClosedWindows, w.ID)
+		}
+	}
 	return nil
 }
 

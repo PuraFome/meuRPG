@@ -34,6 +34,7 @@ const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
   ReactionKind.MANEUVER_REDUCE,
   ReactionKind.PROTECTION,
   ReactionKind.FEATHER_FALL,
+  ReactionKind.SLOW_FALL,
 ]);
 
 /**

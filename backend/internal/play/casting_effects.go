@@ -396,7 +396,7 @@ func (s *Service) summonFor(ctx context.Context, c *combatTx, m authz.Membership
 	if plan.slot != nil {
 		circle = int(plan.slot.Level)
 	}
-	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, plan.g.caster.ID, plan.spell, circle, plan.pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, plan.g.caster.ID, plan.spell, circle, plan.pick, plan.grant != nil && plan.slot == nil)
 	if err != nil {
 		return err
 	}

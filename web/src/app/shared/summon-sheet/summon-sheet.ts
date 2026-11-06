@@ -57,7 +57,10 @@ import {
   slotId,
   slotRowsOf,
   subtitleOf,
+  type SummonSheetResult,
 } from './summon-views';
+
+export type { SummonSheetResult };
 
 /** The sheet opened in a combat (Conjurar Animais, MR-037, E9-12): the cast goes through the combat. */
 export interface SummonCombat {
@@ -79,16 +82,6 @@ export interface SummonSheetData {
   readonly spellKey: string;
   /** Set in a combat: the group's initiative roll and the result stage. */
   readonly combat?: SummonCombat;
-}
-
-/** What the sheet answers when it cast: for the panel's live notice. */
-export interface SummonSheetResult {
-  readonly spellName: string;
-  readonly ritual: boolean;
-  readonly castingTime: string;
-  readonly names: readonly string[];
-  readonly count: number;
-  readonly dismissed: number;
 }
 
 /**
@@ -176,6 +169,8 @@ export class SummonSheet {
   /** A ritual spends no slot: the server says whether the character can cast this one as one. */
   protected readonly ritual = computed(() => !this.combat && (this.spell()?.canRitual ?? false));
   protected readonly familiar = computed(() => this.data.spellKey === FIND_FAMILIAR);
+  /** A feature's summon spends a use of the feature's resource: no slot, and the one circle the server lists. */
+  protected readonly granted = computed(() => this.spell()?.grantedBy ?? '');
 
   protected readonly subtitle = computed(() =>
     subtitleOf({
@@ -208,14 +203,14 @@ export class SummonSheet {
 
   /** The slots this spell can use: from its circle up, only the circles the server lists for it. */
   protected readonly slotRows = computed<readonly SlotRow[]>(() =>
-    slotRowsOf(this.spell(), this.options()?.slots ?? []),
+    this.granted() ? [] : slotRowsOf(this.spell(), this.options()?.slots ?? []),
   );
   protected readonly slot = computed(
     () => this.slotRows().find((r) => slotId(r) === this.slotKey()) ?? null,
   );
   /** The circle the cast is made at: the slot's, or the spell's own for a ritual. */
   protected readonly circle = computed(() =>
-    this.ritual() ? (this.spell()?.level ?? 0) : (this.slot()?.level ?? 0),
+    this.ritual() || this.granted() ? (this.spell()?.level ?? 0) : (this.slot()?.level ?? 0),
   );
   protected readonly circleOptions = computed<readonly SummonOption[]>(
     () => this.spell()?.circles.find((c) => c.circle === this.circle())?.options ?? [],
@@ -265,7 +260,7 @@ export class SummonSheet {
   /** What is still missing, in one sentence naming everything; empty when the cast is ready. */
   protected readonly missing = computed(() =>
     missingOf({
-      ritual: this.ritual(),
+      ritual: this.ritual() || this.granted() !== '',
       hasSlot: this.slot() !== null,
       familiar: this.familiar(),
       name: this.name(),
@@ -280,8 +275,12 @@ export class SummonSheet {
       this.missing() === '' &&
       !this.busy() &&
       this.spell() !== null &&
+      !this.spent() &&
       (!this.needsFace() || this.face() !== null),
   );
+
+  /** A feature's summon with no use left: the server offers no circle for it, and there is nothing to cast. */
+  private readonly spent = computed(() => this.granted() !== '' && this.spell()?.usesLeft === 0);
 
   /** "Conjurar como ritual · 1 hora · sem gastar espaço", or what the slot costs. */
   protected readonly costLine = computed(() =>
@@ -403,6 +402,7 @@ export class SummonSheet {
         spellKey: spell.spellKey,
         ritual: this.ritual(),
         slot: this.ritual() || !slot ? undefined : { level: slot.level, pact: slot.pact },
+        ...(spell.grantedBy ? { grantedBy: spell.grantedBy } : {}),
         summon: { option: this.option(), creatureKeys: keys, names },
         idempotencyKey: this.key,
       });
@@ -435,7 +435,7 @@ export class SummonSheet {
   ): Promise<void> {
     const combat = this.combat;
     const slot = this.slot();
-    if (!combat || !slot) {
+    if (!combat || (!slot && !spell.grantedBy)) {
       return;
     }
     const face = this.face();
@@ -445,11 +445,15 @@ export class SummonSheet {
       combat.encounterId,
       combat.casterId,
       spell.spellKey,
-      { level: slot.level, pact: slot.pact },
+      slot ? { level: slot.level, pact: slot.pact } : null,
       [],
       die,
       this.key,
       { option: this.option(), creatureKeys: keys, names },
+      '',
+      undefined,
+      [],
+      spell.grantedBy ? { grantedBy: spell.grantedBy } : {},
     );
     combat.state.apply(res.encounter);
     const made = summonResult(res.encounter, res.summoned);

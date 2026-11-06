@@ -651,8 +651,11 @@ type CastSummonRequest struct {
 	Summon *SummonChoice `protobuf:"bytes,6,opt,name=summon,proto3" json:"summon,omitempty"`
 	// A UUID the app generates once for this casting and sends again on a retry.
 	IdempotencyKey string `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The feature that gives the summon (its key, SummonSpellOptions.granted_by): the casting spends a use of
+	// the feature's resource, and is neither a ritual nor cast with a slot. Empty for the character's own spells.
+	GrantedBy     string `protobuf:"bytes,8,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CastSummonRequest) Reset() {
@@ -734,6 +737,13 @@ func (x *CastSummonRequest) GetIdempotencyKey() string {
 	return ""
 }
 
+func (x *CastSummonRequest) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
+}
+
 // CastSummonResponse returns what the casting made.
 type CastSummonResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -742,7 +752,7 @@ type CastSummonResponse struct {
 	CreatureIds []string `protobuf:"bytes,1,rep,name=creature_ids,json=creatureIds,proto3" json:"creature_ids,omitempty"`
 	// The creatures a new familiar replaced and dismissed (UUIDs), if any.
 	DismissedCreatureIds []string `protobuf:"bytes,2,rep,name=dismissed_creature_ids,json=dismissedCreatureIds,proto3" json:"dismissed_creature_ids,omitempty"`
-	// The caster's vitals after the slot was spent; unset for a ritual.
+	// The caster's vitals after the slot or the use was spent; unset for a ritual.
 	Vitals        *CharacterVitals `protobuf:"bytes,3,opt,name=vitals,proto3" json:"vitals,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -6095,7 +6105,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"\x8d\x01\n" +
 	"\x19StopFamiliarSightResponse\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x127\n" +
-	"\tencounter\x18\x02 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x9a\x02\n" +
+	"\tencounter\x18\x02 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xb9\x02\n" +
 	"\x11CastSummonRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -6104,7 +6114,9 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x06ritual\x18\x04 \x01(\bR\x06ritual\x12-\n" +
 	"\x04slot\x18\x05 \x01(\v2\x19.meurpg.play.v1.SpellSlotR\x04slot\x124\n" +
 	"\x06summon\x18\x06 \x01(\v2\x1c.meurpg.play.v1.SummonChoiceR\x06summon\x12'\n" +
-	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\"\xa6\x01\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18\b \x01(\tR\tgrantedBy\"\xa6\x01\n" +
 	"\x12CastSummonResponse\x12!\n" +
 	"\fcreature_ids\x18\x01 \x03(\tR\vcreatureIds\x124\n" +
 	"\x16dismissed_creature_ids\x18\x02 \x03(\tR\x14dismissedCreatureIds\x127\n" +

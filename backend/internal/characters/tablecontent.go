@@ -416,7 +416,7 @@ func tableFeaturesOf(in []*rulesv1.TableFeature) []rules.TableFeature {
 func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
 	return rules.TableFeature{
 		Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects()),
-		Options: tableFeaturesOf(f.GetOptions()),
+		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()),
 	}
 }
 
@@ -544,14 +544,9 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 	t := b.GetTarget()
 	s := rules.TableSpell{
 		TableEntry: te, Level: int(b.GetLevel()), School: b.GetSchoolKey(),
-		CastingTime: rules.TableCastingTime{
-			Unit: castUnitOf[b.GetCastingTime().GetUnit()], Amount: int(b.GetCastingTime().GetAmount()), TriggerPT: b.GetCastingTime().GetTriggerPt(),
-		},
-		Range: rules.TableRange{Kind: rangeKindOf[b.GetRange().GetKind()], DistanceFt: int(b.GetRange().GetDistanceFt())},
-		Duration: rules.TableDuration{
-			Kind: durationKindOf[b.GetDuration().GetKind()], Amount: int(b.GetDuration().GetAmount()),
-			Unit: durationUnitOf[b.GetDuration().GetUnit()], UpTo: b.GetDuration().GetUpTo(),
-		},
+		CastingTime: tableCastingTimeOf(b.GetCastingTime()),
+		Range:       rules.TableRange{Kind: rangeKindOf[b.GetRange().GetKind()], DistanceFt: int(b.GetRange().GetDistanceFt())},
+		Duration:    tableDurationOf(b.GetDuration()),
 		Components: rules.TableComponents{
 			Verbal: b.GetComponents().GetVerbal(), Somatic: b.GetComponents().GetSomatic(),
 			Material: b.GetComponents().GetMaterial(), MaterialPT: b.GetComponents().GetMaterialPt(),
@@ -582,6 +577,16 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 	return s
 }
 
+// tableCastingTimeOf is how long a table spell, or a feature's summon, takes.
+func tableCastingTimeOf(m *rulesv1.TableSpellCastingTime) rules.TableCastingTime {
+	return rules.TableCastingTime{Unit: castUnitOf[m.GetUnit()], Amount: int(m.GetAmount()), TriggerPT: m.GetTriggerPt()}
+}
+
+// tableDurationOf is how long a table spell, or a feature's summon, lasts.
+func tableDurationOf(m *rulesv1.TableSpellDuration) rules.TableDuration {
+	return rules.TableDuration{Kind: durationKindOf[m.GetKind()], Amount: int(m.GetAmount()), Unit: durationUnitOf[m.GetUnit()], UpTo: m.GetUpTo()}
+}
+
 // enumOrUnknown is the rules' word for an enum value whose zero is the default (""): a number the map does not
 // know is "unknown", which the rules refuse, and not the default.
 func enumOrUnknown[K ~int32](words map[K]string, k K) string {
@@ -603,6 +608,7 @@ func tableSummonOf(m *rulesv1.TableSummon) *rules.TableSummon {
 		CreatureKeys: m.GetCreatureKeys(), Count: m.GetCount(), CountPerSlotLevel: int(m.GetCountPerSlotLevel()),
 		TurnMode: enumOrUnknown(summonTurnOf, m.GetTurnMode()), Role: enumOrUnknown(summonRoleOf, m.GetRole()), MaxLive: int(m.GetMaxLive()),
 		Replaces: enumOrUnknown(summonReplacesOf, m.GetReplaces()), ResourceKey: m.GetResourceKey(), ResourceCost: int(m.GetResourceCost()),
+		CastingTime: tableCastingTimeOf(m.GetCastingTime()), Duration: tableDurationOf(m.GetDuration()), Concentration: m.GetConcentration(),
 	}
 }
 
@@ -1047,7 +1053,7 @@ func parentHidden(e entryRow, hidden func(string) bool) bool {
 // A table spell's summon goes without the table creatures the player holds none of, and without its count
 // and limits: a player who casts the spell reads the creatures and the count from GetSummonOptions.
 func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entryRow {
-	if sp, ok := e.body.(*rulesv1.TableSpell); hidden == nil && (!ok || sp.GetSummon() == nil) {
+	if hidden == nil && !summons(e.body) {
 		return e // nothing is hidden: the entry goes as it is
 	}
 	if hidden == nil {
@@ -1057,6 +1063,28 @@ func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entry
 	playerView{hidden: hidden, held: held}.strip(body)
 	e.body = body
 	return e
+}
+
+// summons says the body brings creatures: a spell with a summon, or an entry with a feature that has one.
+func summons(body tableBody) bool {
+	hasSummon := func(fs []*rulesv1.TableFeature) bool {
+		return slices.ContainsFunc(fs, func(f *rulesv1.TableFeature) bool { return f.GetSummon() != nil })
+	}
+	switch b := body.(type) {
+	case *rulesv1.TableSpell:
+		return b.GetSummon() != nil
+	case *rulesv1.TableClass:
+		return slices.ContainsFunc(b.GetLevels(), func(l *rulesv1.TableClassLevel) bool { return hasSummon(l.GetFeatures()) })
+	case *rulesv1.TableSubclass:
+		return slices.ContainsFunc(b.GetLevels(), func(l *rulesv1.TableSubclassLevel) bool { return hasSummon(l.GetFeatures()) })
+	case *rulesv1.TableRace:
+		return hasSummon(b.GetTraits())
+	case *rulesv1.TableSubrace:
+		return hasSummon(b.GetTraits())
+	case *rulesv1.TableBackground:
+		return b.GetFeature().GetSummon() != nil
+	}
+	return false
 }
 
 // playerView takes the hidden keys out of a body a player receives.
@@ -1096,15 +1124,37 @@ func (v playerView) strip(body tableBody) {
 	}
 }
 
-// stripSummon takes out of a table spell's summon what a player does not read: the table creatures the player holds
-// none of (an SRD creature stays) and the count, its growth and its limit.
+// stripSummon makes a table spell's or a feature's summon what a player may read: the fields named in playerSummonFields
+// and nothing else, and of the creature keys the table creatures a character of the player holds (an SRD creature stays).
+// The player casts from GetSummonOptions, so the rest of the summon (the count, its growth, the limit, the turn mode,
+// the role, what is replaced, the cost and the timing) is the master's; a field the message gets later stays hidden
+// until it is named in the map.
 func (v playerView) stripSummon(m *rulesv1.TableSummon) {
 	if m == nil {
 		return
 	}
-	m.CreatureKeys = slices.DeleteFunc(m.CreatureKeys, func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
-	m.Count, m.CountPerSlotLevel, m.MaxLive = "", 0, 0
+	m.CreatureKeys = slices.DeleteFunc(m.GetCreatureKeys(), func(k string) bool { return rules.IsTableKey(k) && !v.held[k] })
+	from := proto.Clone(m).ProtoReflect()
+	proto.Reset(m)
+	to := m.ProtoReflect()
+	fields := to.Descriptor().Fields()
+	for i := range fields.Len() {
+		fd := fields.Get(i)
+		switch {
+		case !playerSummonFields[string(fd.Name())] || !from.Has(fd):
+		case fd.IsList(): // a list is appended: Set takes only a list this message made
+			list, src := to.Mutable(fd).List(), from.Get(fd).List()
+			for j := range src.Len() {
+				list.Append(src.Get(j))
+			}
+		default:
+			to.Set(fd, from.Get(fd))
+		}
+	}
 }
+
+// playerSummonFields are the fields of a TableSummon a player reads: stripSummon copies these and no other.
+var playerSummonFields = map[string]bool{"creature_keys": true}
 
 // stripOption takes the hidden keys out of an option: its effects and what it requires.
 func (v playerView) stripOption(b *rulesv1.TableOption) {
@@ -1158,6 +1208,7 @@ func (v playerView) visible(keys []string) []string {
 // their options.
 func (v playerView) dropEffects(fs []*rulesv1.TableFeature) {
 	for _, f := range fs {
+		v.stripSummon(f.GetSummon())
 		for _, ef := range f.GetEffects() {
 			ef.Spells = v.visible(ef.Spells)
 			ef.From = v.visible(ef.From)

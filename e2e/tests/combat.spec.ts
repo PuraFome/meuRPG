@@ -1155,7 +1155,7 @@ test('a distância sai em metros e em quadrados: a linha do movimento, a barra d
   }
 });
 
-test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua vez diz que é uma reação', { tag: ['@MR-014'] }, async ({ browser }) => {
+test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua vez diz "Só fora da sua vez"', { tag: ['@MR-014'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   const { m, p, table, campaignId, done } = await actingTable(browser, 'Magias com o ponto de interrogação', playerFirst);
   try {
@@ -1169,7 +1169,7 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     const names = spells.locator('app-action-row .row__name');
     await expect(names).toHaveText(['Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia', 'Escudo Arcano']);
     const shield = groups.locator('app-action-row', { hasText: 'Escudo Arcano' });
-    await expect(shield.getByText('Escudo Arcano é uma reação: o app pergunta quando um ataque acerta você.')).toBeVisible();
+    await expect(shield.getByText('Só fora da sua vez')).toBeVisible();
     await expect(shield.getByRole('button', { name: 'Conjurar Escudo Arcano' })).toHaveAttribute('aria-disabled', 'true');
     await expect(shield.getByText('Reação', { exact: true })).toBeVisible();
 

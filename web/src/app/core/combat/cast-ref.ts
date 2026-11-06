@@ -10,8 +10,12 @@ const GRANTED = '#granted=';
 
 /** The reference of an option: its key, with the grant's source when it is a granted one. */
 export function castRefOf(o: SpellOption): string {
-  const key = o.spell?.key ?? '';
-  return o.grant ? `${key}${GRANTED}${o.grant.sourceKey}` : key;
+  return castRefOfKey(o.spell?.key ?? '', o.grant?.sourceKey ?? '');
+}
+
+/** The reference of a spell key and the source it is cast through (`''` for the classes'). */
+export function castRefOfKey(key: string, grantedBy: string): string {
+  return grantedBy ? `${key}${GRANTED}${grantedBy}` : key;
 }
 
 /** A reference taken apart: the spell's key, and the source of the grant it is cast through (`''` for the classes'). */
