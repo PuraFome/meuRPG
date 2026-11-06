@@ -30,9 +30,9 @@ func damageRerollRules(t link.Traits) []link.RerollRule {
 	return rerollRulesFor(t, rules.RollDamage)
 }
 
-// mayRerollDamage says the roll is one the app can roll again: a player's character, damage (not healing) with dice
-// the app rolled, and not the replay of a roll a reaction window held.
-func (f *damageFlow) mayRerollDamage() bool {
+// mayCountDice says the dice of the roll are ones the app can roll again and floor: a player's character, damage (not
+// healing) with dice the app rolled, and not the replay of a roll a reaction window held (it lands as it was kept).
+func (f *damageFlow) mayCountDice() bool {
 	if f.c.replay != nil || f.p.Healing || !f.call.in.inApp || !strokeMayApply(f.attacker) {
 		return false
 	}
@@ -44,14 +44,14 @@ func (f *damageFlow) mayRerollDamage() bool {
 // rolled) and before the adjustments and the event. One rule serves the roll: the first that has the uses and
 // changes a die.
 func (f *damageFlow) rerollDamage(ctx context.Context) error {
-	if !f.mayRerollDamage() {
+	if !f.mayCountDice() {
 		return nil
 	}
-	sheet, err := f.s.sheetOf(ctx, f.c.tx, f.m.CampaignID, f.attacker)
+	traits, err := f.attackerTraits(ctx)
 	if err != nil {
 		return err
 	}
-	rs := damageRerollRules(sheet.Traits)
+	rs := damageRerollRules(traits)
 	if len(rs) == 0 {
 		return nil
 	}
@@ -92,14 +92,10 @@ func (f *damageFlow) spendReroll(ctx context.Context, r link.RerollRule) error {
 }
 
 // rerollLowDice rolls once more each die of the roll that shows atMost or lower and keeps the new face. It says
-// whether any die was rolled again.
+// whether any die was rolled again. The dice that stay are counted by the table's minimum after (damage_floor.go).
 func (f *damageFlow) rerollLowDice(atMost int, source string) (bool, error) {
 	if f.pr != nil {
-		changed, err := f.rerollPartsDice(atMost, source)
-		if changed {
-			f.roll = f.pr.legacy()
-		}
-		return changed, err
+		return f.rerollPartsDice(atMost, source)
 	}
 	changed := false
 	for i, face := range f.roll.Faces {
@@ -112,6 +108,9 @@ func (f *damageFlow) rerollLowDice(atMost int, source string) (bool, error) {
 		}
 		f.roll.Total += n - face
 		f.roll.Faces[i], changed = n, true
+	}
+	if changed {
+		f.recountDice()
 	}
 	return changed, nil
 }
@@ -130,8 +129,7 @@ func (f *damageFlow) rerollPartsDice(atMost int, source string) (bool, error) {
 		changed = changed || did
 	}
 	if changed {
-		f.pr.byType, f.pr.total = map[string]int{}, 0
-		f.pr.sumUp()
+		f.recountDice() // the floor counts the dice that stay, then the total adds the parts that count
 	}
 	return changed, nil
 }

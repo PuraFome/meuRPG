@@ -179,7 +179,7 @@ func (u *undoer) d20RerollBack(ctx context.Context, who playdb.Combatant, ev act
 func (st inspirationHoldStore) answerReroll(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldReroll(ctx, playdb.AnswerInspirationHoldRerollParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
-		RerollAnswerKey: h.RerollAnswerKey, RerollFrom: h.RerollFrom, RerollTo: h.RerollTo,
+		RerollAnswerKey: h.RerollAnswerKey, RerollFrom: h.RerollFrom, RerollTo: h.RerollTo, CountedBy: h.CountedBy,
 	}); err != nil {
 		return fmt.Errorf("answer the reroll: %w", err)
 	}
@@ -252,9 +252,8 @@ func (ae answering) rerolled(ctx context.Context, h heldRoll) (heldRoll, error) 
 	from := clamp32(faces[index], 1, d20Sides)
 	faces[index] = face
 	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, ae.spec.Mode)}
-	roll.Total = roll.Face() + ae.spec.Modifier
-	roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
-	h.Faces, h.Counted, h.Total, h.Physical = faces, roll.Index, roll.Total, false
+	roll = floorD20(roll, ae.spec.Modifier, ae.spec.Floor)
+	h.Faces, h.Counted, h.Total, h.CountedBy, h.Physical = faces, roll.Index, roll.Total, roll.CountedBy, false
 	h.RerollFrom, h.RerollTo = new(from), new(clamp32(face, 1, d20Sides))
 	return h, nil
 }

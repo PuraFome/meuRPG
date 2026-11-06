@@ -875,6 +875,7 @@
   "ExtraDamages": null,
   "AttacksPerAction": 1,
   "CriticalRange": 20,
+  "SpellCriticalRange": 20,
   "BrutalCriticalDice": 0,
   "SongOfRestSides": 0,
   "WildShape": null,

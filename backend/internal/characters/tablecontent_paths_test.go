@@ -168,3 +168,21 @@ func TestTableContentADuplicateNameIsListedWithTheOtherViolations(t *testing.T) 
 		t.Errorf("update violations = %v, want the duplicate name and the two others", got)
 	}
 }
+
+// TestTableContentAMissingReplacedTraitIsAViolationAtItsIndexNamingTheKey: a subrace that replaces a key its race
+// does not have is refused at replaces_trait_keys[i] with the key in the message.
+func TestTableContentAMissingReplacedTraitIsAViolationAtItsIndexNamingTheKey(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	race := master.addEntry(t, campaign, testRace("Anão das Brumas"))
+	sub := testSubrace("Da Colina", race.GetKey())
+	have := race.GetTableRace().GetTraits()[0].GetKey()
+	sub.ReplacesTraitKeys = []string{have, "trait:nao-existe@mesa"}
+	_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, sub)))
+	vs := violationsOfErr(t, err)
+	if len(vs) != 1 || vs[0].GetField() != "table_subrace.replaces_trait_keys[1]" || vs[0].GetReason() != "dangling_reference" || !strings.Contains(vs[0].GetMessage(), "trait:nao-existe@mesa") {
+		t.Errorf("violations = %v, want one dangling_reference at table_subrace.replaces_trait_keys[1] naming the key", vs)
+	}
+}

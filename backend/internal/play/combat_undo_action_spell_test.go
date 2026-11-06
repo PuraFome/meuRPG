@@ -68,7 +68,7 @@ func deltaAnsweredHold(face, modifier int, lucky bool) undoDelta {
 	}
 	out := undoDelta{
 		"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
-		"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=" + counted, "+ db/inspiration_holds[#].encounter_id=#",
+		"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=" + counted, "+ db/inspiration_holds[#].counted_by=", "+ db/inspiration_holds[#].encounter_id=#",
 		"+ db/inspiration_holds[#].faces[0]=" + strconv.Itoa(face), "+ db/inspiration_holds[#].idempotency_key=#",
 		"+ db/inspiration_holds[#].kind=weapon_attack", "+ db/inspiration_holds[#].modifier=" + strconv.Itoa(modifier),
 		"+ db/inspiration_holds[#].physical=" + physical, "+ db/inspiration_holds[#].request=<blob>", "+ db/inspiration_holds[#].round=1",
@@ -512,7 +512,7 @@ func TestUndoKindActionTakenDisengagedBefore(t *testing.T) {
 // listed, so nobody reads it.
 var deltaAnsweredInspirationHold = undoDelta{
 	"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
-	"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=0", "+ db/inspiration_holds[#].encounter_id=#",
+	"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=0", "+ db/inspiration_holds[#].counted_by=", "+ db/inspiration_holds[#].encounter_id=#",
 	"+ db/inspiration_holds[#].faces[0]=4", "+ db/inspiration_holds[#].idempotency_key=#",
 	"+ db/inspiration_holds[#].kind=spell_attack", "+ db/inspiration_holds[#].lucky_answer_key=<nil>",
 	"+ db/inspiration_holds[#].lucky_index=<nil>", "+ db/inspiration_holds[#].lucky_to=<nil>", "+ db/inspiration_holds[#].modifier=5",

@@ -22,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -424,12 +425,20 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 		return err
 	}
 	spec := memberRoll{check: check, characterID: characterID, in: in, byMaster: byMaster}
+	reliable := false
 	if len(options) == 1 && options[0].Known {
-		spec.bonus, spec.known, spec.lucky, spec.reliable = options[0].Bonus, true, options[0].Lucky, options[0].ReliableTalent
+		spec.bonus, spec.known, spec.lucky, reliable = options[0].Bonus, true, options[0].Lucky, options[0].ReliableTalent
 	}
 	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
 	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
 	ability, isCheck := checkKey(check.SkillKey)
+	kind := rules.RollAppliesSave
+	if isCheck {
+		kind = rules.RollAppliesCheck
+	}
+	if spec.floor, err = s.floorOfCharacter(ctx, tx, campaignID, characterID, kind, reliable); err != nil {
+		return err
+	}
 	spec.mode, err = s.checkModeOf(ctx, tx, campaignID, session.ID, characterID, check.SkillKey, ability, isCheck)
 	if err != nil {
 		return err
@@ -483,7 +492,7 @@ type memberRoll struct {
 	bonus       int
 	known       bool
 	lucky       bool
-	reliable    bool // Reliable Talent counts a low d20 of this check as 10
+	floor       rollFloor // the lowest number the d20 of this check counts as
 	mode        checkMode
 }
 
@@ -504,7 +513,7 @@ func (s *Service) memberRollOf(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 			return roll, false, nil
 		}
 	}
-	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known, spec.reliable)
+	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known, spec.floor)
 	return roll, false, err
 }
 
@@ -523,7 +532,7 @@ func (s *Service) mayAskMember(ctx context.Context, tx pgx.Tx, gh *groupHold, sp
 func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, gh *groupHold, spec memberRoll) (roll contestRoll, settled, held bool, err error) {
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
-		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Reliable: spec.reliable, Lucky: spec.lucky, MayAsk: true,
+		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: spec.floor, Lucky: spec.lucky, MayAsk: true,
 		Stroke: groupStrokeRule(spec.check),
 	})
 	if err != nil {
@@ -540,7 +549,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
 		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
 		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky, Stroke: step.Stroke,
-		CountedAs: countedAs(step.Roll.Face(), countedFace(step.Roll.Face(), spec.reliable)),
+		countedRoll: countedOf(step.Roll),
 	}
 	if step.Bonus != nil {
 		roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face

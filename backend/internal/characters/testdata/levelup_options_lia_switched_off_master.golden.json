@@ -234,6 +234,51 @@
     },
     {
       "desc": [
+        "Escondido."
+      ],
+      "descPt": [
+        "Escondido."
+      ],
+      "descPtOnly": true,
+      "key": "\u003coff-feat\u003e",
+      "name": "Dom escondido",
+      "namePt": "Dom escondido",
+      "prerequisite": {},
+      "qualifies": true,
+      "table": true
+    },
+    {
+      "desc": [
+        "Exigente."
+      ],
+      "descPt": [
+        "Exigente."
+      ],
+      "descPtOnly": true,
+      "key": "\u003cpicky-feat\u003e",
+      "lacksFeatureNamePt": "Dom escondido",
+      "name": "Exigente",
+      "namePt": "Exigente",
+      "prerequisite": {
+        "lacksFeatureKey": "\u003coff-feat\u003e",
+        "races": [
+          "race:dwarf",
+          "race:elf"
+        ]
+      },
+      "table": true,
+      "unmet": [
+        {
+          "keys": [
+            "race:dwarf",
+            "race:elf"
+          ],
+          "kind": "FEAT_UNMET_KIND_RACE"
+        }
+      ]
+    },
+    {
+      "desc": [
         "Só para anões."
       ],
       "descPt": [

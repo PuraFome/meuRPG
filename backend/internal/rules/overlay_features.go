@@ -18,7 +18,7 @@ import (
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
 	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
-	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "choice", "ability_increase", "note",
+	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -63,7 +63,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 		if err := b.writeFeature(f, k, effects, path); err != nil {
 			return err
 		}
-	case "trait:":
+	case traitKeyPrefix:
 		b.writeTrait(f, k)
 	}
 	b.declareResources(k, effects)
@@ -92,14 +92,14 @@ func (b *overlayBuilder) checkFeatureHead(f *TableFeature, prefix, path string) 
 }
 
 // featureOptions registers a feature's option list, when it has one, and returns
-// the feature's effects with its choice of features offering those options (the
-// caller's effects themselves when there is no list).
+// the feature's effects. A class or subclass feature gets its choice of features
+// offering those options; a trait keeps its effects, the options being a choice of one.
 func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path string) ([]Effect, error) {
 	if len(f.Options) == 0 {
 		return f.Effects, nil
 	}
-	if k.prefix != featureKeyPrefix {
-		return nil, ovErr(f.Key, "only a class or subclass feature has an option list").at(path+".options", ReasonEffect)
+	if k.prefix != featureKeyPrefix && k.prefix != traitKeyPrefix {
+		return nil, ovErr(f.Key, "only a class or subclass feature or a race or subrace trait has an option list").at(path+".options", ReasonEffect)
 	}
 	if len(f.Options) > MaxFeatureOptions {
 		return nil, ovErr(f.Key, "%d options; the limit is %d per feature", len(f.Options), MaxFeatureOptions).at(path+".options", ReasonLimit)
@@ -108,11 +108,25 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	if err != nil {
 		return nil, err
 	}
+	if k.prefix == traitKeyPrefix {
+		// A trait's options are a one-time choice of one: no `choice` effect offers them.
+		return f.Effects, checkTraitChoices(f, path)
+	}
 	effects := slices.Clone(f.Effects)
 	if !offerOptions(effects, keys) {
 		return nil, ovErr(f.Key, "a feature with options needs a choice of features to offer them").at(path+".effects", ReasonEffect)
 	}
 	return effects, nil
+}
+
+// checkTraitChoices refuses a choice of features on a trait with options: the trait's options are a choice of one.
+func checkTraitChoices(f *TableFeature, path string) error {
+	for i := range f.Effects {
+		if isFeatureChoice(&f.Effects[i]) {
+			return ovErr(f.Key, "a trait with options is a choice of one: it has no choice of features").at(fmt.Sprintf("%s.effects[%d].choice", path, i), ReasonValue)
+		}
+	}
+	return nil
 }
 
 // offerOptions makes a choice of features with no `from` offer the feature's own
@@ -159,13 +173,22 @@ func (b *overlayBuilder) writeFeature(f *TableFeature, k featureKind, effects []
 
 // writeTrait puts a race's or a subrace's trait in the clone.
 func (b *overlayBuilder) writeTrait(f *TableFeature, k featureKind) {
-	t := &srd51.Trait{Key: f.Key, Name: f.NamePT, Desc: slices.Clone(f.DescPT)}
-	if strings.HasPrefix(k.owner, "subrace:") {
-		t.Subraces = []string{k.owner}
-	} else {
-		t.Races = []string{k.owner}
+	t := newTrait(f, k.owner, "")
+	for i := range f.Options {
+		t.Options = append(t.Options, f.Options[i].Key)
 	}
 	b.n.traits[f.Key] = t
+}
+
+// newTrait is the trait of a race's or a subrace's feature (an option of another trait has its parent).
+func newTrait(f *TableFeature, owner, parent string) *srd51.Trait {
+	t := &srd51.Trait{Key: f.Key, Name: f.NamePT, Desc: slices.Clone(f.DescPT), Parent: parent}
+	if strings.HasPrefix(owner, "subrace:") {
+		t.Subraces = []string{owner}
+	} else {
+		t.Races = []string{owner}
+	}
+	return t
 }
 
 // know records which entry (and class) a feature or option belongs to, for the
@@ -213,48 +236,51 @@ func checkOptionShape(o *TableFeature, at string) error {
 	return nil
 }
 
-// addOptions registers the option list of a feature as features of their own,
+// addOptions registers the option list of a feature as features (traits, for a trait) of their own,
 // each with the feature as its parent, and returns their keys. An option is in no
-// level row: the choice that offers it is the only way to have it.
+// level row or trait list: picking it is the only way to have it.
 func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string) ([]string, error) {
-	n := b.n
 	names := map[string]bool{}
 	keys := make([]string, 0, len(f.Options))
 	for i := range f.Options {
 		o := &f.Options[i]
 		at := fmt.Sprintf("%s.options[%d]", path, i)
-		if err := checkOptionShape(o, at); err != nil {
+		if err := b.addFeatureOption(f, o, k, at, names); err != nil {
 			return nil, err
-		}
-
-		if err := checkTableKey(featureKeyPrefix, o.Key); err != nil {
-			return nil, locate(err, at)
-		}
-		if err := b.claim(o.Key); err != nil {
-			return nil, locate(err, at)
-		}
-		if err := checkEntryName(o.Key, o.NamePT); err != nil {
-			return nil, locate(err, at)
-		}
-		if names[o.NamePT] {
-			return nil, ovErr(o.Key, "two options of %q are named %q", f.NamePT, o.NamePT).at(at+".name_pt", ReasonName)
-		}
-		names[o.NamePT] = true
-		if err := checkText(o.Key, o.DescPT); err != nil {
-			return nil, locate(err, at+".desc_pt")
-		}
-		b.know(o.Key, k)
-		b.optionEntry[o.Key] = k.owner
-		n.namesEN[o.Key], n.namesPT[o.Key] = o.NamePT, o.NamePT
-		n.features[o.Key] = &srd51.Feature{Key: o.Key, Name: o.NamePT, Class: k.class, Subclass: k.subclass, Level: k.level, Desc: slices.Clone(o.DescPT), Parent: f.Key}
-		b.declareResources(k, o.Effects)
-		b.declareStates(o.Key, k.owner, o.Effects)
-		if len(o.Effects) > 0 {
-			b.pending = append(b.pending, pendingEffects{owner: o.Key, entry: k.owner, effects: o.Effects, path: at, strict: b.strict[k.owner]})
 		}
 		keys = append(keys, o.Key)
 	}
 	return keys, nil
+}
+
+// addFeatureOption registers one option of feature f: a feature of its own with f as its parent, or, for
+// a trait, a trait that is in no race's list until it is picked. names holds the names taken.
+func (b *overlayBuilder) addFeatureOption(f, o *TableFeature, k featureKind, at string, names map[string]bool) error {
+	if err := checkOptionShape(o, at); err != nil {
+		return err
+	}
+	if err := b.checkFeatureHead(o, k.prefix, at); err != nil {
+		return err
+	}
+	if names[o.NamePT] {
+		return ovErr(o.Key, "two options of %q are named %q", f.NamePT, o.NamePT).at(at+".name_pt", ReasonName)
+	}
+	names[o.NamePT] = true
+	b.know(o.Key, k)
+	b.optionEntry[o.Key] = k.owner
+	n := b.n
+	n.namesEN[o.Key], n.namesPT[o.Key] = o.NamePT, o.NamePT
+	if k.prefix == traitKeyPrefix {
+		n.traits[o.Key] = newTrait(o, k.owner, f.Key)
+	} else {
+		n.features[o.Key] = &srd51.Feature{Key: o.Key, Name: o.NamePT, Class: k.class, Subclass: k.subclass, Level: k.level, Desc: slices.Clone(o.DescPT), Parent: f.Key}
+	}
+	b.declareResources(k, o.Effects)
+	b.declareStates(o.Key, k.owner, o.Effects)
+	if len(o.Effects) > 0 {
+		b.pending = append(b.pending, pendingEffects{owner: o.Key, entry: k.owner, effects: o.Effects, path: at, strict: b.strict[k.owner]})
+	}
+	return nil
 }
 
 // effectSite is where an effect is, for the errors it gets: the owner's key and
@@ -323,6 +349,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"spell_modifier":   (*overlayBuilder).checkOnTarget,
 	"ambush":           (*overlayBuilder).checkOnTarget,
 	"reroll":           (*overlayBuilder).checkReroll,
+	"roll_minimum":     (*overlayBuilder).checkRollMinimum,
 	"modifier":         (*overlayBuilder).checkModifier,
 	"resource":         (*overlayBuilder).checkResourceEffect,
 	"slot_recovery":    (*overlayBuilder).checkSlotRecovery,
@@ -533,7 +560,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // effects (the spellcasting, the handler) never come from the
 // table.
 var ownFields = map[string][]string{
-	"modifier":     {"target", "mode", "value"},
+	"modifier":     {"target", "mode", "value", "applies"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
@@ -554,8 +581,10 @@ var ownFields = map[string][]string{
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush": {"applies"},
 	// A reroll covers some rolls up to a face and may spend a resource.
-	"reroll":     {"rolls", "at_most", "resource", "cost"},
-	"wild_shape": {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
+	"reroll": {"rolls", "at_most", "resource", "cost"},
+	// A roll_minimum covers some rolls and says the lowest a die counts as.
+	"roll_minimum": {"rolls", "value", "damage_type"},
+	"wild_shape":   {"max_cr", "max_cr_from", "form_cost", "magical_attacks", "no_fly", "no_swim"},
 	// A slot_recovery names the resource each recovery spends and its two limits.
 	"slot_recovery": {"resource", "recover_max_level", "recover_levels"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
@@ -1191,6 +1220,8 @@ func (b *overlayBuilder) addSubrace(ts *TableSubrace, path string) error {
 	bonuses := bonusMap(&c, key, path, ts.AbilityBonuses)
 	sub := &srd51.Subrace{Key: key, Name: ts.NamePT, Race: ts.Race, AbilityBonuses: bonuses}
 	sub.Traits = b.addTraits(&c, key, path, ts.Traits)
+	sub.ReplacesTraitKeys, sub.ReplacesAbilityBonuses = slices.Clone(ts.ReplacesTraitKeys), ts.ReplacesAbilityBonuses
+	b.checkReplacedTraits(&c, ts, path)
 	if err := c.err(); err != nil {
 		return err
 	}
@@ -1201,6 +1232,26 @@ func (b *overlayBuilder) addSubrace(ts *TableSubrace, path string) error {
 	race.Subraces = append(slices.Clone(race.Subraces), key)
 	b.n.races[ts.Race] = &race
 	return nil
+}
+
+// checkReplacedTraits checks that each trait a subrace replaces is a trait of its
+// parent race, once each. A race that does not exist is already reported.
+func (b *overlayBuilder) checkReplacedTraits(c *entryErrors, ts *TableSubrace, path string) {
+	race := b.n.races[ts.Race]
+	if race == nil {
+		return
+	}
+	seen := map[string]bool{}
+	for i, k := range ts.ReplacesTraitKeys {
+		at := fmt.Sprintf(".replaces_trait_keys[%d]", i)
+		switch {
+		case !slices.Contains(race.Traits, k):
+			c.at(ts.Key, path, at, ReasonReference, "the trait %q is not a trait of the race %q", k, ts.Race)
+		case seen[k]:
+			c.at(ts.Key, path, at, ReasonValue, "the trait %q is replaced twice", k)
+		}
+		seen[k] = true
+	}
 }
 
 // addBackground registers a background and its feature. Every field that is wrong

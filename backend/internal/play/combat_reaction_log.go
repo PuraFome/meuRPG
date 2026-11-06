@@ -306,7 +306,7 @@ func (f *reactionFacts) hellishRebukeMaster() string {
 		result = "falhou"
 	}
 	// The d20 the app rolled again for a halfling player's save (combat_lucky.go), with the numbers.
-	return fmt.Sprintf("%s usou Repreensão Infernal (%s) %s: teste de Destreza 1d20 (%d) + %d = %d contra CD %d: %s; %d de fogo.%s%s", f.who, rebukeCost(re), agg[1:], re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, result, re.Fire, luckyNote(f.e.ev.Lucky), f.by)
+	return fmt.Sprintf("%s usou Repreensão Infernal (%s) %s: teste de Destreza 1d20 (%s) + %d = %d contra CD %d: %s; %d de fogo.%s%s", f.who, rebukeCost(re), agg[1:], f.e.ev.faceText(re.SaveD20), re.SaveBonus, f.e.ev.value(re.SaveD20)+re.SaveBonus, re.SaveDC, result, re.Fire, luckyNote(f.e.ev.Lucky), f.by)
 }
 
 func (f *reactionFacts) featherFall() (string, bool) {
@@ -345,8 +345,8 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 	if !f.v.master {
 		return fmt.Sprintf("%s manteve a concentração em %s.", f.who, spell)
 	}
-	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
-		f.who, spell, re.SaveD20+re.SaveBonus, re.SaveDC, f.e.ev.ResistLeft, f.by)
+	return fmt.Sprintf("%s falhou no teste de concentração em %s (rolou %d%s contra CD %d) e usou Resistência Lendária: sucesso (restam %d).%s",
+		f.who, spell, f.e.ev.value(re.SaveD20)+re.SaveBonus, f.e.ev.countedNote(re.SaveD20), re.SaveDC, f.e.ev.ResistLeft, f.by)
 }
 
 // concentrationRoll is the roller's save of a concentration as the line says it: the d20, the bonus and
@@ -354,7 +354,8 @@ func (f *reactionFacts) resistedConcentration(spell string) string {
 // shows the DC of a saving throw).
 func (f *reactionFacts) concentrationRoll() string {
 	re := f.re
-	roll := fmt.Sprintf("1d20 (%d) + %d = %d", re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus)
+	counted := f.e.ev.countedRoll
+	roll := fmt.Sprintf("1d20 (%s) + %d = %d", counted.faceText(re.SaveD20), re.SaveBonus, counted.value(re.SaveD20)+re.SaveBonus)
 	if f.v.saveDCFor(f.reactor) {
 		roll += fmt.Sprintf(" contra CD %d", re.SaveDC)
 	}

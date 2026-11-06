@@ -290,7 +290,7 @@ func concentrationResultOf(ev actionEvent) *playv1.ConcentrationSaveResult {
 			faces = []int32{ev.D20B, ev.D20}
 		}
 	}
-	out.Save = diceRoll(clamp32(len(faces), 1, 2), 20, faces, re.SaveBonus, ev.Total, ev.Physical)
+	out.Save = ev.mark(diceRoll(clamp32(len(faces), 1, 2), 20, faces, re.SaveBonus, ev.Total, ev.Physical))
 	out.Save.Rerolled = ev.rerolls()
 	out.BonusDice = bonusDiceOf(ev)
 	return out
@@ -421,7 +421,7 @@ func (s *Service) rollConcentration(
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
-	spec := saveSpec(call.m, heldConcentrationSave, reactor, call.key, call.msg, call.in, save.Bonus, mode, sheet.Traits.Lucky)
+	spec := saveSpec(call.m, heldConcentrationSave, reactor, call.key, call.msg, call.in, save.Bonus, mode, sheet.Traits)
 	// Indomitable (held_indomitable.go): the dice an effect adds after the gate move the total, so the roller may not
 	// know the result yet, as when the table hides the DC.
 	extras := len(effectDiceFor(states, reactor.ID, rules.RollAppliesSave)) > 0 || call.msg.GetManeuverKey() != ""
@@ -466,10 +466,11 @@ func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateRe
 	re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(roll.Face(), 1, 20), conv.Int32(bonus+delta+bonusFace), kept, kept
 	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, conv.Int32(total), roll.Physical
 	ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
+	ev.countedRoll = countedOf(roll)
 	ev.Lucky, ev.Indomitable = gate.Lucky, gate.Indomitable // the d20 rolled again: the log says "Sortudo: 1 → 14"
 	ev.D20Reroll = rerollUse(gate.Lucky)
 	run.result = &playv1.ConcentrationSaveResult{
-		Save: diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: spell,
+		Save: ev.mark(diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical)), Dc: dc, Kept: kept, SpellKey: spell,
 	}
 	run.result.Save.Rerolled = rerollsOf(gate.Lucky, gate.Indomitable)
 	if gate.Bonus != nil {

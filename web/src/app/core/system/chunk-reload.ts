@@ -14,9 +14,12 @@ const LEAVING_MS = 2000;
 const MAX_CAUSE_DEPTH = 8;
 
 // Chrome and Edge, Safari and WebKit, Firefox: what each engine says when `import()` cannot load a module.
+// WebKit says "Importing a module script failed" for a missing file, and a MIME type error for a file answered with index.html.
+// Only these phrases count. Other module errors do not match and reach the default handler.
 const CHUNK_ERROR_MESSAGES = [
   'failed to fetch dynamically imported module',
   'importing a module script failed',
+  'is not a valid javascript mime type for module script',
   'error loading dynamically imported module',
 ];
 

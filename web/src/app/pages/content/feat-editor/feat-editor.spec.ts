@@ -136,6 +136,9 @@ describe('FeatEditor (MR-025)', () => {
         proficiencyKey: '',
         spellcasting: false,
         raceKey: 'race:human',
+        races: [],
+        size: '',
+        lacksFeatureKey: '',
         level: 4,
       },
       effects: [
