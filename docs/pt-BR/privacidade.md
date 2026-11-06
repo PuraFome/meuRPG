@@ -267,9 +267,9 @@ Um fornecedor fora do Brasil que consiga alcançá-los ainda faz uma transferên
 
 ### O banco do app antigo
 
-A hospedagem do app anterior (o Render para o servidor, o GitHub Pages para as páginas) e o cluster CockroachDB separado dele não fazem parte deste sistema.
-Eles não guardam nenhum dado do app atual.
-Desligá-los, e apagar esse cluster depois da importação única de personagens ([Modelo de dados](../data/README.md)), é tarefa do dono do projeto; os backups dos provedores somem em até 30 dias.
+A hospedagem do app anterior (o Render para o servidor, o GitHub Pages para as páginas) e o cluster CockroachDB separado dele estão desligados e apagados.
+Eles não fazem parte deste sistema e não guardam nenhum dado dele.
+Os backups que o provedor tinha desse cluster somem em até 30 dias depois de ele ser apagado ([Modelo de dados](../data/README.md)).
 
 ### O que as imagens geradas mandam ao Google (MR-039, RN-28)
 
@@ -354,7 +354,6 @@ Dois "sim" pedem um relatório de impacto à proteção de dados (RIPD) antes do
 
 - ImprovMX: o contrato e o mecanismo de transferência, ou a troca dele por e-mail na conta Google da organização.
 - O contrato da LGPD com a Cockroach Labs.
-- Se os backups do CockroachDB Cloud ficam em São Paulo e são guardados por no máximo 30 dias (conferir no console); o plano está em avaliação ([Operação](../operations/reference.md)).
 - O mecanismo de transferência para a Gemini API do Google (Resolução CD/ANPD nº 19/2024).
 - Revisão de um advogado do aviso de privacidade, dos termos e do tratamento do texto livre que fica com o mestre, antes de o app abrir para outras mesas.
 - Exportação e exclusão de conta em autoatendimento, e apagar os arquivos de imagem de uma campanha quando ela é apagada (o prefixo `campaigns/<id>/`). Até existirem, o operador faz a pedido.

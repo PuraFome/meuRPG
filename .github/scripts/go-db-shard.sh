@@ -26,10 +26,12 @@
 # each run the tests whose name hashes (cksum) to their part, with
 # `-run '^(TestA|TestB)$'`. The leaktest package is split the same way, in
 # leak-1 and leak-2: every test builds its own world, so no test needs another
-# to run first. A package is split by adding a line to split_package and
-# split_parts. The hash is stable: adding a test never moves the others, and a
-# NEW test lands in a part by itself. The tests are read from the source, so a
-# group needs no compile to get its `-run`; --check proves each test is in
+# to run first. A package is split by adding its prefix to split_prefixes, its
+# directory to split_dir (when it is not the prefix), its number of parts to
+# split_parts, and its parts to case_packages' pattern. The hash is stable:
+# adding a test never moves the others, and a NEW test lands in a part by
+# itself. The tests are read from the source, so a group needs no compile to
+# get its `-run`; --check proves each test is in
 # exactly one part, and --verify-scan that the source reading finds exactly the
 # tests `go test -list` prints (Test, Fuzz and Example).
 set -euo pipefail

@@ -50,9 +50,13 @@ func (z *zone) occupantsFor(cs []playdb.Combatant, v combatViewer) []string {
 // view is the zone as the API tells it to anyone who sees its caster: the name, the shape, the squares, the
 // concentration and how it moves.
 func (z *zone) view(owner playdb.Combatant, round int32, names func(string) string) *playv1.SpellZone {
+	shape, size := z.def.shape, z.sizeFt()
+	if z.wall != nil {
+		shape, size = z.wall.shape() // the wall the caster laid, not the spell's largest
+	}
 	out := &playv1.SpellZone{
 		Id: z.row.ID, SpellKey: z.row.SpellKey, OwnerCombatantId: owner.ID, OwnerLabel: owner.Label,
-		Shape: shapeProto(z.def.shape), SizeFt: clamp32(z.sizeFt(), 0, math.MaxInt32),
+		Shape: shapeProto(shape), SizeFt: clamp32(size, 0, math.MaxInt32),
 		Origin: originProto(z.origin()), Squares: squaresProto(z.squares),
 		Concentration: z.row.Concentration, RoundsLeft: z.roundsLeft(round), Movement: z.def.movement,
 		Visibility: playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_EVERYONE,

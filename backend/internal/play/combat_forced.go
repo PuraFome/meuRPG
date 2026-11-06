@@ -188,7 +188,7 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 		DistanceFt: clamp32(grid.LengthDFt(from, plan.to)/10, 0, math.MaxInt32), Short: plan.short,
 	}
 	p.remember(target.ID, col, row)
-	p.moved = append(p.moved, zoneStep{who: target.ID, from: &from, path: []grid.Square{plan.to}})
+	p.moved = append(p.moved, zoneStep{who: target.ID, from: &from, path: []grid.Square{plan.to}, travels: true})
 	return &moved, nil
 }
 

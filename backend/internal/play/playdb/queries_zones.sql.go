@@ -13,7 +13,7 @@ import (
 const deleteConcentrationZonesOf = `-- name: DeleteConcentrationZonesOf :many
 DELETE FROM spell_zones
 WHERE owner_id = $1 AND concentration
-RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def
+RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def, wall_side, wall_dx, wall_dy, wall_length_ft
 `
 
 // The zones a caster's concentration holds end with it; the rows that went.
@@ -46,6 +46,10 @@ func (q *Queries) DeleteConcentrationZonesOf(ctx context.Context, ownerID string
 			&i.HitMarks,
 			&i.CreatedAt,
 			&i.Def,
+			&i.WallSide,
+			&i.WallDx,
+			&i.WallDy,
+			&i.WallLengthFt,
 		); err != nil {
 			return nil, err
 		}
@@ -82,7 +86,7 @@ func (q *Queries) DeleteSpellZonesOfCast(ctx context.Context, arg DeleteSpellZon
 }
 
 const getSpellZone = `-- name: GetSpellZone :one
-SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def FROM spell_zones
+SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def, wall_side, wall_dx, wall_dy, wall_length_ft FROM spell_zones
 WHERE id = $1 AND encounter_id = $2
 `
 
@@ -114,6 +118,10 @@ func (q *Queries) GetSpellZone(ctx context.Context, arg GetSpellZoneParams) (Spe
 		&i.HitMarks,
 		&i.CreatedAt,
 		&i.Def,
+		&i.WallSide,
+		&i.WallDx,
+		&i.WallDy,
+		&i.WallLengthFt,
 	)
 	return i, err
 }
@@ -122,9 +130,10 @@ const insertSpellZone = `-- name: InsertSpellZone :one
 
 INSERT INTO spell_zones (
     encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares,
-    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at, def
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def
+    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at, def,
+    wall_side, wall_dx, wall_dy, wall_length_ft
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def, wall_side, wall_dx, wall_dy, wall_length_ft
 `
 
 type InsertSpellZoneParams struct {
@@ -145,6 +154,10 @@ type InsertSpellZoneParams struct {
 	EndsRound     *int32
 	CreatedAt     time.Time
 	Def           []byte
+	WallSide      string
+	WallDx        int16
+	WallDy        int16
+	WallLengthFt  int32
 }
 
 // The areas spells keep on the map (migration 00267).
@@ -167,6 +180,10 @@ func (q *Queries) InsertSpellZone(ctx context.Context, arg InsertSpellZoneParams
 		arg.EndsRound,
 		arg.CreatedAt,
 		arg.Def,
+		arg.WallSide,
+		arg.WallDx,
+		arg.WallDy,
+		arg.WallLengthFt,
 	)
 	var i SpellZone
 	err := row.Scan(
@@ -189,12 +206,16 @@ func (q *Queries) InsertSpellZone(ctx context.Context, arg InsertSpellZoneParams
 		&i.HitMarks,
 		&i.CreatedAt,
 		&i.Def,
+		&i.WallSide,
+		&i.WallDx,
+		&i.WallDy,
+		&i.WallLengthFt,
 	)
 	return i, err
 }
 
 const listSpellZones = `-- name: ListSpellZones :many
-SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def FROM spell_zones
+SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def, wall_side, wall_dx, wall_dy, wall_length_ft FROM spell_zones
 WHERE encounter_id = $1
 ORDER BY created_at, id
 `
@@ -229,6 +250,10 @@ func (q *Queries) ListSpellZones(ctx context.Context, encounterID string) ([]Spe
 			&i.HitMarks,
 			&i.CreatedAt,
 			&i.Def,
+			&i.WallSide,
+			&i.WallDx,
+			&i.WallDy,
+			&i.WallLengthFt,
 		); err != nil {
 			return nil, err
 		}
