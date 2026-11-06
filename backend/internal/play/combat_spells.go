@@ -521,7 +521,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		return combat.AttackResult{}, 0, err
 	}
 	hit.Extra = extra
-	result := combat.ResolveAttack(sp.ToHit+bonusFace+extraTotal, targetAC, face)
+	result := combat.ResolveAttackFrom(sp.ToHit+bonusFace+extraTotal, targetAC, face, modes.traits.SpellCriticalRange)
 	if rolled.step.Stroke != nil && !result.Hit { // Stroke of Luck: the miss the caster turned into a hit
 		result.Hit, result.Fumble = true, false
 	}

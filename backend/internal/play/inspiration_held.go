@@ -56,7 +56,7 @@ func (s *Service) holdSpellAttack(
 	}
 	// Stroke of Luck (held_stroke.go): the rogue of the 20th level is asked about a spell attack that missed.
 	blind := len(effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack)) > 0
-	spec.Stroke = attackStrokeRule(func() (int, error) { return armor(target) }, 0, blind)
+	spec.Stroke = attackStrokeRule(func() (int, error) { return armor(target) }, modes.traits.SpellCriticalRange, blind)
 	_, forced := heldReplyOf(ctx)
 	before, err := s.spellDieBefore(ctx, env, spec, forced)
 	if err != nil || (!forced && !before.Holds && !spec.Lucky && !s.strokeAvailable(ctx, env, spec) && !s.rerollAvailable(ctx, env, spec)) {
