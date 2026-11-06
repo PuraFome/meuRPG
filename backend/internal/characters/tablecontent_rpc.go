@@ -206,7 +206,7 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 			if !l.playerReads(e) {
 				continue
 			}
-			e = forPlayer(e, l.hidden, l.held)
+			e = forPlayer(e, l.hiddenIn(e), l.held)
 		}
 		pe := entryToProto(e, l.uses[e.row.ContentKey])
 		pe.Off = l.content.Off(e.row.ContentKey)
@@ -231,7 +231,35 @@ func (l *tableListing) playerReads(e entryRow) bool {
 		return false // a player never receives a retired or switched off entry, or a draft
 	}
 	// Nor an entry whose class or race is retired or off, unless their sheet uses it.
-	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key)) || l.mine[key]
+	// Nor a feat that asks only for races the player may not read: without them its prerequisite would read as none.
+	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key) && !l.asksOnlyHiddenRaces(e)) || l.mine[key]
+}
+
+// asksOnlyHiddenRaces says the entry is a feat whose prerequisite names races, all hidden and none of them
+// used by a sheet of the player.
+func (l *tableListing) asksOnlyHiddenRaces(e entryRow) bool {
+	feat, ok := e.body.(*rulesv1.TableFeat)
+	if !ok || l.hidden == nil {
+		return false
+	}
+	p := feat.GetPrerequisite()
+	asked := slices.Clone(p.GetRaces())
+	if p.GetRaceKey() != "" {
+		asked = append(asked, p.GetRaceKey())
+	}
+	return len(asked) > 0 && !slices.ContainsFunc(asked, func(k string) bool { return !l.hidden(k) || l.mine[k] })
+}
+
+// hiddenIn is what is hidden to the player inside the entry: when their sheet keeps a hidden
+// entry, the entry's own traits, features and options are not.
+func (l *tableListing) hiddenIn(e entryRow) func(string) bool {
+	key := e.row.ContentKey
+	if l.hidden == nil || !l.mine[key] {
+		return l.hidden
+	}
+	return func(k string) bool {
+		return l.hidden(k) && (l.content.Archived(k) || l.content.Off(k) || !slices.Contains(l.content.Owners(k), key))
+	}
 }
 
 // duplicateName is a violation when another entry of the kind has the name, in

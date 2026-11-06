@@ -81,14 +81,14 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	m.setOff(t, tb.campaign, true, "subclass:champion", "class:wizard", "race:dwarf", "class:rogue", offFeat.GetKey())
 
 	// The master's options are the golden; the player reads the same without what was switched
-	// off or retired: no class that is closed, no list of a switched-off class, and a feat's
-	// race requirement that names no race (RN-10).
+	// off or retired: no class that is closed, no list of a switched-off class, and no feat that asks
+	// only for a race that is closed (RN-10).
 	wantHiddenFromPlayer(t, tb, "toren", toren, tb.other, labels,
 		`-classChoices[class:rogue] -classChoices[class:wizard] -subclasses[<ink-blade>].spellListClassKey -subclasses[subclass:champion]`)
 	wantHiddenFromPlayer(t, tb, "lia", lia, liaPlayer, labels,
-		`-classChoices[class:rogue] -classChoices[class:wizard] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] -spellListClassKey feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE" feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
+		`-classChoices[class:rogue] -classChoices[class:wizard] -feats[<dwarf-feat>] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] -spellListClassKey feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
 	wantHiddenFromPlayer(t, tb, "pensantus", tb.pc, tb.owner, labels,
-		`-classChoices[class:rogue] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE" feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
+		`-classChoices[class:rogue] -feats[<dwarf-feat>] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
 
 	// A new class the table closed: retired for everyone, switched off for a player only.
 	id := tb.pc.GetId()

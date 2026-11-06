@@ -73,7 +73,7 @@ func (s *Service) PreviewChoices(
 		return nil, invalidArgument(fieldErr("sheet.full", "is required: a basic sheet has no choices"))
 	}
 	build := buildOf(full)
-	return connect.NewResponse(choicesToProto(content, build)), nil
+	return connect.NewResponse(choicesToProto(viewContent(content, m), build)), nil
 }
 
 // sheetForChoices is the sheet PreviewChoices reads for a character: the draft the

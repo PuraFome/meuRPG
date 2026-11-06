@@ -585,24 +585,100 @@ func (c *Content) Off(key string) bool { return c.c.off[key] }
 
 // Hidden says whether the players never receive the key: the table retired it,
 // the master switched it off, or it is a subclass or subrace whose class or race
-// is switched off. A sheet that already has a hidden key keeps it (ADR-0018,
-// section 7); it is only not a choice.
-func (c *Content) Hidden(key string) bool {
-	// The spell of a feature's summon is as hidden as the entry the feature belongs to.
-	if owner, ok := c.c.featureSummons[key]; ok {
-		return c.Hidden(owner)
+// is switched off. A trait, feature, background feature or option is hidden with
+// its owner (the race, subrace, class, subclass or background it belongs to); a
+// trait that several races share is hidden once all of them are. A sheet that
+// already has a hidden key keeps it (ADR-0018, section 7); it is only not a choice.
+func (c *Content) Hidden(key string) bool { return c.c.hidden(key) }
+
+// ForPlayer is the same content as a player reads it: the texts of the choice cards and the
+// feats of the level-up options name no hidden race, feat or feature (RN-23), and leave out
+// a feat that asks only for races the player may not read. It shares the data with c.
+func (c *Content) ForPlayer() *Content {
+	if !c.c.table || c.c.player {
+		return c
 	}
-	if c.c.archived[key] || c.c.offOrParent(key) {
+	x := *c.c
+	x.player = true
+	return &Content{c: &x}
+}
+
+// Owners are the entries (races, subraces, classes, subclasses and backgrounds) a
+// trait, feature, background feature or option belongs to; none for any other key.
+func (c *Content) Owners(key string) []string { return c.c.entryOwners(key, 0) }
+
+func (c *content) hidden(key string) bool {
+	// The spell of a feature's summon is as hidden as the entry the feature belongs to.
+	if owner, ok := c.featureSummons[key]; ok {
+		return c.hidden(owner)
+	}
+	if len(c.archived) == 0 && len(c.off) == 0 {
+		return false
+	}
+	if c.archived[key] || c.offOrParent(key) {
 		return true
 	}
 	// The child of a retired class or race is not offered either.
-	if s, ok := c.c.subclasses[key]; ok {
-		return c.c.archived[s.Class]
+	if s, ok := c.subclasses[key]; ok {
+		return c.archived[s.Class]
 	}
-	if s, ok := c.c.subraces[key]; ok {
-		return c.c.archived[s.Race]
+	if s, ok := c.subraces[key]; ok {
+		return c.archived[s.Race]
 	}
-	return false
+	owners := c.entryOwners(key, 0)
+	return len(owners) > 0 && !slices.ContainsFunc(owners, func(o string) bool { return !c.hidden(o) })
+}
+
+// maxOwnerDepth bounds the climb from an option to its parent feature or trait.
+const maxOwnerDepth = 4
+
+// entryOwners are the entries the trait, feature, background feature or option
+// key belongs to: a trait's races and subraces, a feature's subclass or class, the
+// backgrounds whose feature it is; an option has its parent's.
+func (c *content) entryOwners(key string, depth int) []string {
+	if depth > maxOwnerDepth {
+		return nil
+	}
+	var parent string
+	switch {
+	case c.traits[key] != nil:
+		t := c.traits[key]
+		if t.Parent == "" {
+			return append(slices.Clone(t.Races), t.Subraces...)
+		}
+		parent = t.Parent
+	case c.features[key] != nil:
+		f := c.features[key]
+		switch {
+		case f.Parent != "":
+			parent = f.Parent
+		case f.Subclass != "":
+			return []string{f.Subclass}
+		case f.Class != "":
+			return []string{f.Class}
+		}
+	case strings.HasPrefix(key, "background-feature:"):
+		return c.backgroundsOf(key)
+	}
+	if parent == "" {
+		parent = c.optionParents[key]
+	}
+	if parent == "" {
+		return nil
+	}
+	return c.entryOwners(parent, depth+1)
+}
+
+// backgroundsOf are the backgrounds whose feature has the key.
+func (c *content) backgroundsOf(key string) []string {
+	var out []string
+	for k, b := range c.backgrounds {
+		if b.Feature.Key == key {
+			out = append(out, k)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // FeatureSummonOwner is the entry a feature's summon belongs to, when the spell key is the hidden spell of one.

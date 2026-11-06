@@ -24,6 +24,10 @@ type content struct {
 	version  string
 	manifest srd51.Manifest
 
+	// player says the content is the player's view (Content.ForPlayer): the texts it
+	// builds for a card name no hidden race, feat or feature (RN-23).
+	player bool
+
 	abilities     map[Ability]srd51.AbilityScore
 	skills        map[string]*srd51.Skill
 	skillOrder    []string

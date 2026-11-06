@@ -214,6 +214,9 @@ func featOptions(b Build, x *content) []FeatOption {
 		if slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == e.Key }) {
 			continue
 		}
+		if x.asksOnlyHiddenRaces(e.Prerequisite, b) {
+			continue // a player's options do not hint at a feat only a hidden race can take
+		}
 		unmet := x.unmetPrerequisite(e, b, d)
 		out = append(out, FeatOption{FeatEntry: e, Qualifies: len(unmet) == 0, Unmet: unmet, Capped: cappedAbilities(e.Increase, d)})
 	}

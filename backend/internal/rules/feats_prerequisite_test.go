@@ -120,20 +120,20 @@ func TestFeatPrerequisitesOfRacesSizeAndLackedFeatures(t *testing.T) {
 	}
 	// ...and the Portuguese sentences say what failed.
 	mixed := unmetOf(t, c, human, featKeyAll)
-	if text := c.c.featUnmetPT(mixed[0]); text != "Só para Elfo ou Halfling." {
+	if text := c.c.featUnmetPT(mixed[0], Build{}); text != "Só para Elfo ou Halfling." {
 		t.Errorf("race sentence = %q", text)
 	}
-	if text := c.c.featUnmetPT(FeatUnmet{Kind: FeatUnmetSize, Key: "Small"}); text != "Só para tamanho pequeno." {
+	if text := c.c.featUnmetPT(FeatUnmet{Kind: FeatUnmetSize, Key: "Small"}, Build{}); text != "Só para tamanho pequeno." {
 		t.Errorf("size sentence = %q", text)
 	}
-	if text := c.c.featUnmetPT(FeatUnmet{Kind: FeatUnmetLacksFeature, Key: "trait:darkvision"}); !strings.HasPrefix(text, "Não pode ter ") || !strings.Contains(text, c.c.namePT("trait:darkvision")) {
+	if text := c.c.featUnmetPT(FeatUnmet{Kind: FeatUnmetLacksFeature, Key: "trait:darkvision"}, Build{}); !strings.HasPrefix(text, "Não pode ter ") || !strings.Contains(text, c.c.namePT("trait:darkvision")) {
 		t.Errorf("feature sentence = %q", text)
 	}
 	if got := c.c.racesPT([]string{"race:elf", "race:dwarf", "race:halfling"}); got != "Elfo, Anão ou Halfling" {
 		t.Errorf("three races = %q, want \"A, B ou C\"", got)
 	}
 	e, _ := c.Feat(featKeyAll)
-	if got := c.c.featAsksPT(e.Prerequisite); got != "ser Elfo ou Halfling e ter tamanho médio e não ter "+c.c.namePT("feat:grappler")+" e nível 2 ou mais" {
+	if got := c.c.featAsksPT(e.Prerequisite, Build{}); got != "ser Elfo ou Halfling e ter tamanho médio e não ter "+c.c.namePT("feat:grappler")+" e nível 2 ou mais" {
 		t.Errorf("what the feat asks = %q", got)
 	}
 }

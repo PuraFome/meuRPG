@@ -384,7 +384,7 @@ func (s *Service) readLevelUpOptions(ctx context.Context, tx pgx.Tx, m authz.Mem
 	if r.t, err = s.readLevelUpTarget(ctx, tx, m, req.GetCharacterId(), req.GetClassKey()); err != nil {
 		return r, err
 	}
-	if r.offer, err = rules.LevelUpOptions(r.t.build, r.t.classKey, r.t.content); err != nil {
+	if r.offer, err = rules.LevelUpOptions(r.t.build, r.t.classKey, viewContent(r.t.content, m)); err != nil {
 		return r, levelUpRulesError(err)
 	}
 	if r.diceRule, err = s.diceRule(ctx, tx, m); err != nil {
@@ -396,6 +396,14 @@ func (s *Service) readLevelUpOptions(ctx context.Context, tx pgx.Tx, m authz.Mem
 		return r, wrap("read the kept roll", err)
 	}
 	return r, nil
+}
+
+// viewContent is the content as the caller reads its texts: a player's names no hidden entry (RN-23).
+func viewContent(c *rules.Content, m authz.Membership) *rules.Content {
+	if isMaster(m) {
+		return c
+	}
+	return c.ForPlayer()
 }
 
 // levelUpOptionsFor is the options message the caller reads.
@@ -427,7 +435,7 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 	})
 	// Nor an option to swap to that the master retired or switched off.
 	for _, g := range out.SwapGroups {
-		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return t.content.Hidden(k.GetKey()) })
+		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return hiddenOption(t, k.GetKey()) })
 	}
 	// Nor a reference to a hidden class the sheet does not use (a list a table
 	// class or subclass reuses).
@@ -443,6 +451,24 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 			sub.SpellListClassKey = ""
 		}
 	}
+}
+
+// hiddenOption says k is an option the player never receives: retired or switched off itself, or
+// hidden only with an owner that the character's own sheet does not have.
+func hiddenOption(t levelUpTarget, k string) bool {
+	if !t.content.Hidden(k) {
+		return false
+	}
+	if t.content.Archived(k) || t.content.Off(k) {
+		return true
+	}
+	return !slices.ContainsFunc(t.content.Owners(k), func(o string) bool { return sheetHas(t.build, o) })
+}
+
+// sheetHas says the build has the race, subrace, background, class or subclass key.
+func sheetHas(b rules.Build, key string) bool {
+	return key == b.Race || key == b.Subrace || key == b.Background ||
+		slices.ContainsFunc(b.Classes, func(c rules.ClassLevel) bool { return c.Class == key || c.Subclass == key })
 }
 
 // hiddenListOf says k is a hidden class the character's sheet does not have.
