@@ -256,7 +256,7 @@ Where each roll counts it is in [Held rolls](play/held-rolls.md#a-d20-that-count
 
 ### Critical range
 
-`modifier` with the target `critical_range` (menu name "Margem de acerto crítico (o menor d20 que é crítico)") sets the lowest natural d20 that is a critical hit.
+`modifier` with the target `critical_range` (menu name "Margem de acerto crítico") sets the lowest natural d20 that is a critical hit.
 The mode is `set` (an empty mode is read as `set`; any other is refused at `.mode`), and a literal `value` is 15 to 20 (`.value`); a formula is clamped to 15..20 when it is worked out.
 The menu entry carries `only_modes`, `min` and `max`; the editor does not read them, and the server refuses a mode or a value outside them.
 `applies` is the scope: `weapon` (the default, as the SRD's Improved Critical), `spell` or `both`.

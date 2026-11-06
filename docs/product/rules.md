@@ -594,7 +594,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A maneuver with no die is an action under "Habilidades" that spends one use of the same dice and the action it declares.
 - **Wild Shape.** A table subclass or feature changes the druid's Wild Shape (MR-037): the highest challenge rating of the beasts (a fixed one, or one from the level such as the level divided by 3), how many uses of Wild Shape one change of form costs (none, for a free change), and whether the beast's attacks count as magical. The character takes the most permissive of what it has: the highest rating, the lowest cost, and magical attacks if any feature gives them. The list of forms and the choice agree.
 - **The critical range.**
-  A table modifier "Margem de acerto crítico (o menor d20 que é crítico)" sets the lowest natural d20 that is a critical hit, from 15 to 20.
+  A table modifier "Margem de acerto crítico" sets the lowest natural d20 that is a critical hit, from 15 to 20.
   Only the mode "Definir" is accepted, the server refuses the others, and a formula is held between 15 and 20.
   The field "Vale para" says which attacks: weapon attacks (the default, as Improved Critical does), spell attack rolls, or both.
   A spell attack roll is a critical hit on a 20 unless a modifier of the spell scope lowers it; Improved Critical and Superior Critical never do.

@@ -41,7 +41,7 @@ export interface CheckOption {
     .group {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--mr-space-1);
     }
 
     .legend {

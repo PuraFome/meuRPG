@@ -80,13 +80,32 @@ export function rollEffectItem(e: TableEffect, nameOf: (key: string) => string):
   }
 }
 
-/** The roll effects of an entry, as the `effects` of its read; nothing when it has none. */
-export function rollEffectsPart(
+/** When a pool's uses come back, in the few words the "Usos" line has room for. */
+const RECHARGE_SHORT: Readonly<Record<string, string>> = {
+  short_rest: 'descanso curto',
+  long_rest: 'descanso longo',
+  dawn: 'ao amanhecer',
+  none: 'não voltam sozinhos',
+  initiative: 'ao rolar iniciativa',
+};
+
+/** "Usos: 3, descanso longo.": a pool of a plain number of uses. A formula is left to the entry's own text, as `effectLine` does. */
+function usesItem(e: TableEffect): RollItem | null {
+  if (e.type !== 'resource' || !WHOLE.test(e.max)) {
+    return null;
+  }
+  const when = RECHARGE_SHORT[e.recharge];
+  return { title: 'Usos', text: `${e.max}${when ? `, ${when}` : ''}.` };
+}
+
+/** What an entry's effects say under its text, as the `effects` of its read: the roll effects, then the pools; nothing when it has none. */
+export function entryEffectsPart(
   effects: readonly TableEffect[],
   nameOf: (key: string) => string,
 ): { effects?: RollItem[] } {
-  const items = effects
-    .map((e) => rollEffectItem(e, nameOf))
-    .filter((i): i is RollItem => i !== null);
+  const items = [
+    ...effects.map((e) => rollEffectItem(e, nameOf)),
+    ...effects.map((e) => usesItem(e)),
+  ].filter((i): i is RollItem => i !== null);
   return items.length > 0 ? { effects: items } : {};
 }

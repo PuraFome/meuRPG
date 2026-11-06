@@ -36,7 +36,7 @@ export interface SelectOption<T extends string | number = string> {
         matNativeControl
         [attr.data-field]="path() || null"
         [disabled]="disabled()"
-        [attr.aria-describedby]="describedBy()"
+        [attr.aria-describedby]="described()"
         (change)="pick($any($event.target).selectedIndex)"
       >
         @if (placeholder()) {
@@ -79,13 +79,16 @@ export class SelectField<T extends string | number = string> {
   readonly placeholder = input('');
   /** A locked field: it shows its one value and cannot change (a rule fixes it); the line beside it says why. */
   readonly disabled = input(false);
+  /** The id of another element that describes the field (the lock note beside a locked one), read after the note under it. */
+  readonly describedBy = input('');
   readonly valueChange = output<T>();
 
   protected readonly noteId = `fn-s${nextId++}`;
   protected readonly invalid = computed(() => this.issues().length > 0);
-  protected readonly describedBy = computed(() =>
-    this.issues().length > 0 || this.hint() ? this.noteId : null,
-  );
+  protected readonly described = computed(() => {
+    const ids = [this.issues().length > 0 || this.hint() ? this.noteId : '', this.describedBy()];
+    return ids.filter((i) => i !== '').join(' ') || null;
+  });
 
   private readonly control = viewChild<ElementRef<HTMLSelectElement>>('control');
 

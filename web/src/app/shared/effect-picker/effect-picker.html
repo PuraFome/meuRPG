@@ -23,6 +23,7 @@
               [path]="path(f.name)"
               [issues]="issues(f.name)"
               [disabled]="modeLocked(f)"
+              [describedBy]="modeLocked(f) ? lockId(f) : ''"
               (valueChange)="setChoice(f, $event)"
             />
           }
@@ -42,7 +43,6 @@
               [label]="labelOf(f)"
               [options]="resource().options"
               [value]="read(f.name)"
-              [disabled]="resource().locked"
               [path]="path(f.name)"
               [issues]="issuesShown(f.name)"
               (valueChange)="setResource($event)"
@@ -127,7 +127,7 @@
       </div>
       <!-- The hint sits beside its field (a refusal, when there is one, is under the field). -->
       @if (lockNote(f); as lock) {
-        <p class="frow__hint frow__hint--lock"><mat-icon aria-hidden="true">lock</mat-icon>{{ lock }}</p>
+        <p class="frow__hint frow__hint--lock" [id]="lockId(f)"><mat-icon aria-hidden="true">lock</mat-icon>{{ lock }}</p>
       } @else if (issuesShown(f.name).length === 0 && beside(f); as hint) {
         <p class="frow__hint">{{ hint }}</p>
       }

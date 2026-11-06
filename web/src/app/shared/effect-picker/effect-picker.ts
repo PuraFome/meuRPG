@@ -40,7 +40,6 @@ import {
   isCriticalRange,
   refusalTexts,
   resourcePick,
-  targetOption,
 } from './effect-picker-parts';
 
 /**
@@ -146,7 +145,7 @@ export class EffectPicker {
     if (f.name === 'rolls' && f.kind === 'choices') {
       return 'rolls';
     }
-    if (f.kind === 'resource_ref' && type === 'reroll') {
+    if (f.kind === 'resource_ref' && type === 'reroll' && this.resource().list) {
       return 'uses';
     }
     return f.name === 'applies' && type === 'modifier' ? 'cards' : f.kind;
@@ -192,7 +191,12 @@ export class EffectPicker {
         ? CRITICAL_COPY.modeLock
         : 'Este alvo só aceita este modo.';
     }
-    return this.viewOf(f) === 'uses' && this.resource().locked ? RESOURCE_PICK_COPY.locked : '';
+    return '';
+  }
+
+  /** The id of a lock note: the locked control points `aria-describedby` at it. */
+  protected lockId(f: EffectMenuField): string {
+    return `${this.path(f.name)}-lock`;
   }
 
   protected labelOf(f: EffectMenuField): string {
@@ -217,8 +221,8 @@ export class EffectPicker {
     if (this.wide(f)) {
       return '';
     }
-    if (this.viewOf(f) === 'uses') {
-      return this.resource().locked ? '' : RESOURCE_PICK_COPY.hint;
+    if (this.effect().type === 'reroll' && f.name === 'resource') {
+      return RESOURCE_PICK_COPY.hint;
     }
     return f.name === 'from' || f.name === 'spells' ? this.pickHint(f) : this.hintOf(f);
   }
@@ -232,7 +236,7 @@ export class EffectPicker {
       return this.menu().tagHint();
     }
     if (f.name === 'value' && isCriticalRange(this.effect())) {
-      return this.menu().optionOf('modifier_targets', this.effect().target)?.hintPt ?? '';
+      return CRITICAL_COPY.valueHint;
     }
     return undefined;
   }
@@ -290,9 +294,6 @@ export class EffectPicker {
       return this.spellOptions().map((o) => ({ ...o, hint: '' }));
     }
     const menu = this.menu();
-    if (f.name === 'target') {
-      return menu.list(f.list).map(targetOption);
-    }
     const list =
       f.name === 'from' && f.list === ''
         ? this.effect().type === 'spell_modifier'
@@ -403,9 +404,7 @@ export class EffectPicker {
       this.allFields().map((f) => {
         const own =
           f.kind === 'number' && unreadableNumber(e, f.name) ? [this.unreadableText(f)] : [];
-        const stale =
-          f.name === 'resource' && this.resource().stale ? [RESOURCE_PICK_COPY.staleIssue] : [];
-        return [f.name, [...new Set([...this.issues(f.name), ...stale, ...own])]] as const;
+        return [f.name, [...this.issues(f.name), ...own]] as const;
       }),
     );
   });
@@ -442,7 +441,7 @@ export class EffectPicker {
     this.effectChange.emit(f.name === 'choice' ? { ...next, from: [] } : next);
   }
 
-  /** The rolls checked. A damage type holds only on damage alone, and a cost only with a resource: what no longer applies is dropped. */
+  /** The rolls checked. A damage type holds only on damage alone: checking anything else drops it. */
   protected setRolls(rolls: string[]): void {
     const only = rolls.length === 1 && rolls[0] === 'damage';
     this.effectChange.emit({
@@ -452,6 +451,7 @@ export class EffectPicker {
     });
   }
 
+  /** The resource picked from the list; taking it away drops the cost that went with it. */
   protected setResource(resource: string): void {
     this.effectChange.emit({
       ...this.effect(),

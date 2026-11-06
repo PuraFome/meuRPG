@@ -63,9 +63,8 @@ export function rollsMenu(): EffectMenuVm {
   const targets = res.lists.find((l) => l.name === 'modifier_targets')!;
   targets.values.push({
     key: 'critical_range',
-    namePt: 'Crítico a partir do d20',
-    hintPt:
-      'De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver.',
+    namePt: 'Margem de acerto crítico',
+    hintPt: 'O menor d20 natural que é acerto crítico.',
     onlyModes: ['set'],
     min: 15,
     max: 20,

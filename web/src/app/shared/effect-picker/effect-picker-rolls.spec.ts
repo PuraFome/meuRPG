@@ -119,7 +119,7 @@ describe('EffectPicker: reroll, roll minimum and the critical range', () => {
         'Fe (1 por descanso curto)',
       ]);
       expect(select.disabled).toBe(false);
-      expect(text(row('resource'))).toContain('Os recursos que esta entrada define');
+      expect(text(row('resource'))).toContain('O recurso que esta entrada');
       expect(field('cost')).toBeNull();
       expect(pick('resource', 'Sorte Teimosa (3 por descanso longo)').resource).toBe(
         'sorte_teimosa',
@@ -135,28 +135,31 @@ describe('EffectPicker: reroll, roll minimum and the critical range', () => {
       expect(emitted.at(-1)).toMatchObject({ resource: '', cost: '' });
     });
 
-    it('locks "Gasta usos de" on "Nenhum" with the reason when the entry defines no resource', () => {
+    it("is a text with no lock when the entry defines no resource: the server also takes the class's and the SRD's", () => {
       setup(emptyEffect('reroll'));
-      const select = field('resource') as HTMLSelectElement;
-      expect(select.disabled).toBe(true);
-      expect(labels(select)).toEqual(['Nenhum: vale sempre']);
-      expect(text(row('resource'))).toContain(
-        'Esta entrada não define recurso. Para limitar os usos, adicione um efeito Recurso; sem ele, a rerrolagem vale sempre.',
-      );
-      expect(row('resource').querySelector('.frow__hint--lock mat-icon')).not.toBeNull();
+      const input = field('resource') as HTMLInputElement;
+      expect(input.tagName).toBe('INPUT');
+      expect(input.disabled).toBe(false);
+      expect(row('resource').querySelector('.frow__hint--lock')).toBeNull();
+      expect(text(row('resource'))).not.toContain('Esta entrada não define recurso');
+      typeInto('resource', 'recurso_da_classe');
+      expect(emitted.at(-1)!.resource).toBe('recurso_da_classe');
     });
 
-    it('shows a resource the entry no longer defines as refused, and says what to do', () => {
-      const me = { ...emptyEffect('reroll'), resource: 'perdido', cost: '1' };
-      setup(me, { siblings: [me] });
-      const select = field('resource') as HTMLSelectElement;
-      expect(select.disabled).toBe(false);
-      expect(labels(select)).toEqual(['Nenhum: vale sempre', 'Recurso que não existe mais']);
-      expect(select.value).toBe('perdido');
-      expect(select.getAttribute('aria-invalid')).toBe('true');
+    it("keeps a resource the entry does not list as a text, flags nothing itself and words the server's refusal", () => {
+      const me = { ...emptyEffect('reroll'), resource: ' perdido ', cost: '1' };
+      setup(me, {
+        siblings: [me, resource('sorte')],
+        issues: {
+          [`${BASE}.resource`]: ['Isto aponta para algo que não existe mais. Escolha de novo.'],
+        },
+      });
+      expect((field('resource') as HTMLElement).tagName).toBe('INPUT');
       expect(text(row('resource'))).toContain(
-        'Esta entrada não define mais este recurso. Escolha outro, ou Nenhum.',
+        'Esta entrada não define mais este recurso. Escolha outro, ou deixe vazio.',
       );
+      setup(me, { siblings: [me, resource('sorte')] });
+      expect(row('resource').querySelector('.note--issue')).toBeNull();
     });
 
     it("says a server refusal of the rolls, the face, the resource and the cost in the board's words", () => {
@@ -269,6 +272,8 @@ describe('EffectPicker: reroll, roll minimum and the critical range', () => {
       expect(mode.disabled).toBe(true);
       expect(mode.value).toBe('set');
       expect(text(row('mode'))).toContain('A margem de crítico só aceita Definir.');
+      const lock = row('mode').querySelector('.frow__hint--lock')!;
+      expect(mode.getAttribute('aria-describedby')).toContain(lock.id);
       expect(text(row('value').querySelector('mat-label')!)).toBe('Crítico a partir do d20');
       expect(text(row('value'))).toContain('De 15 a 20, um número ou uma fórmula.');
       const cards = Array.from(

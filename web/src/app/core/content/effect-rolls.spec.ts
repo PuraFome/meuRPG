@@ -4,6 +4,7 @@ import {
   TableEffectSchema,
   TableFeatSchema,
   TableClassFeatureSchema,
+  TableOptionSchema,
   TableContentKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
@@ -293,5 +294,51 @@ describe('"Como os jogadores veem" for the effects that change a roll', () => {
       nameOf,
     );
     expect(classFeature.effects?.[0].text).toBe('19 a 20, em armas e magias.');
+  });
+
+  it('adds the pool as "Usos: 3, descanso longo." after the roll lines, in a feat, an option and a class feature', () => {
+    const effects = [
+      effect({ type: 'resource', resource: 'sorte', max: '3', recharge: 'long_rest' }),
+      effect({ type: 'reroll', rolls: ['save'], atMost: 2, resource: 'sorte' }),
+    ];
+    const lines = [
+      { title: 'Rolar de novo', text: 'teste de resistência, com 2 ou menos; gasta 1 uso.' },
+      { title: 'Usos', text: '3, descanso longo.' },
+    ];
+    const kinds = [
+      [
+        TableContentKind.FEAT,
+        { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'A', effects }) },
+      ],
+      [
+        TableContentKind.OPTION,
+        { case: 'tableOption', value: create(TableOptionSchema, { namePt: 'A', effects }) },
+      ],
+      [
+        TableContentKind.CLASS_FEATURE,
+        {
+          case: 'tableClassFeature',
+          value: create(TableClassFeatureSchema, { namePt: 'A', effects }),
+        },
+      ],
+    ] as const;
+    for (const [kind, body] of kinds) {
+      expect(readEntry(entry(kind, 'A', { body } as never), nameOf).effects).toEqual(lines);
+    }
+    const pool = (max: string, recharge: string) =>
+      readEntry(
+        entry(TableContentKind.FEAT, 'A', {
+          body: {
+            case: 'tableFeat',
+            value: create(TableFeatSchema, {
+              namePt: 'A',
+              effects: [effect({ type: 'resource', resource: 'x', max, recharge })],
+            }),
+          },
+        }),
+        nameOf,
+      ).effects;
+    expect(pool('1', 'weird')).toEqual([{ title: 'Usos', text: '1.' }]);
+    expect(pool('prof()', 'long_rest')).toBeUndefined();
   });
 });

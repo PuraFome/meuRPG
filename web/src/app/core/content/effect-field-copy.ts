@@ -164,21 +164,20 @@ export const ROLLS_NOTES: Readonly<Record<string, string>> = {
     'Um dado de dano menor que o valor conta como o seu maior valor: um d4 com mínimo 6 conta 4.',
 };
 
-/** What "Gasta usos de" says of a reroll: the resources the entry defines, none to pick, and a pick the entry no longer has. */
+/** What "Gasta usos de" says of a reroll. The server accepts a resource of the entry, of its class or of the SRD, so the app lists the
+ * entry's own and never judges the rest: a name it does not list stays a text, and the refusal is the server's. */
 export const RESOURCE_PICK_COPY = {
   none: 'Nenhum: vale sempre',
-  hint: 'Os recursos que esta entrada define, no efeito Recurso. "Nenhum": vale sempre, sem gastar.',
-  locked:
-    'Esta entrada não define recurso. Para limitar os usos, adicione um efeito Recurso; sem ele, a rerrolagem vale sempre.',
-  stale: 'Recurso que não existe mais',
-  staleIssue: 'Esta entrada não define mais este recurso. Escolha outro, ou Nenhum.',
+  hint: 'O recurso que esta entrada (ou a classe dela) define, no efeito Recurso. Vazio: vale sempre, sem gastar.',
+  dangling: 'Esta entrada não define mais este recurso. Escolha outro, ou deixe vazio.',
 } as const;
 
-/** The critical range as a modifier target: the board's words over the server's, the lock under "Como muda" and the note under "Vale para". */
+/** The critical range as a modifier target: the value's own words (the server names the target and says what it is), the lock under "Como
+ * muda" and the note under "Vale para". */
 export const CRITICAL_COPY = {
-  target: 'Margem de acerto crítico',
-  targetHint: 'O menor d20 natural que é acerto crítico.',
   value: 'Crítico a partir do d20',
+  valueHint:
+    'De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver.',
   modeLock: 'A margem de crítico só aceita Definir.',
   scopeNote:
     'Só para a margem de crítico. Crítico Aprimorado e Crítico Superior nunca valem para magia.',
@@ -191,7 +190,7 @@ export const EFFECT_REFUSAL_TEXTS: Readonly<Record<string, string>> = {
   'roll_minimum.damage_type':
     'O tipo de dano só vale com o dado de dano sozinho. Desmarque as outras jogadas ou escolha "Qualquer tipo".',
   'reroll.cost': 'O custo é um número de 1 em diante, e pede um recurso.',
-  'reroll.resource': RESOURCE_PICK_COPY.staleIssue,
+  'reroll.resource': RESOURCE_PICK_COPY.dangling,
   'modifier.critical_range.value': 'A margem vai de 15 a 20.',
   'modifier.critical_range.mode': CRITICAL_COPY.modeLock,
 };

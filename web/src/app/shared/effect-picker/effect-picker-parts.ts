@@ -1,13 +1,5 @@
-import {
-  type EffectDraft,
-  type EffectMenuVm,
-  type MenuOption,
-} from '../../core/content/effect-draft';
-import {
-  CRITICAL_COPY,
-  EFFECT_REFUSAL_TEXTS,
-  RESOURCE_PICK_COPY,
-} from '../../core/content/effect-field-copy';
+import { type EffectDraft, type EffectMenuVm } from '../../core/content/effect-draft';
+import { EFFECT_REFUSAL_TEXTS, RESOURCE_PICK_COPY } from '../../core/content/effect-field-copy';
 import { GENERIC_EFFECT_TEXTS } from '../../core/content/content-violation-texts';
 import { CRITICAL_RANGE_TARGET } from '../../core/content/effect-visible';
 import type { SelectOption } from '../form-fields/select-field';
@@ -41,34 +33,28 @@ function resourceLabel(r: EffectDraft, menu: EffectMenuVm): string {
 /** What "Gasta usos de" offers a reroll. */
 export interface ResourcePick {
   readonly options: SelectOption[];
-  /** The entry defines no resource and none is picked: the field shows "Nenhum" and cannot change. */
-  readonly locked: boolean;
-  /** The picked resource is not one the entry defines (any more). */
-  readonly stale: boolean;
+  /** The field is a list: the entry defines a resource, and what is picked is "Nenhum" or one of them. Otherwise it is a text, because the
+   * server also takes the resources of the class and of the SRD, which the picker does not list. */
+  readonly list: boolean;
 }
 
-/** The entry's own resource effects (the siblings of the effect), with "Nenhum" first; a picked name the entry no longer defines is
- * listed too, as what it is, so the field shows the truth and the refusal has a value to point at. */
+/** The entry's own resource effects (the siblings of the effect), with "Nenhum" first. */
 export function resourcePick(
   siblings: readonly EffectDraft[],
   menu: EffectMenuVm,
   current: string,
 ): ResourcePick {
-  const own = siblings.filter((e) => e.type === 'resource' && e.resource.trim() !== '');
   const options: SelectOption[] = [{ value: '', label: RESOURCE_PICK_COPY.none }];
   const seen = new Set<string>();
-  for (const r of own) {
+  for (const r of siblings.filter((e) => e.type === 'resource')) {
     const key = r.resource.trim();
-    if (!seen.has(key)) {
+    if (key !== '' && !seen.has(key)) {
       seen.add(key);
       options.push({ value: key, label: resourceLabel(r, menu) });
     }
   }
-  const stale = current !== '' && !seen.has(current);
-  if (stale) {
-    options.push({ value: current, label: RESOURCE_PICK_COPY.stale });
-  }
-  return { options, locked: seen.size === 0 && !stale, stale };
+  const name = current.trim();
+  return { options, list: seen.size > 0 && (name === '' || seen.has(name)) };
 }
 
 /** The mode a modifier target fixes (the critical range is "set"), or '' when it takes every mode. */
@@ -100,14 +86,4 @@ export function refusalTexts(
   const type = isCriticalRange(e) ? `modifier.${CRITICAL_RANGE_TARGET}` : e.type;
   const own = EFFECT_REFUSAL_TEXTS[`${type}.${field}`];
   return own ? texts.map((t) => (GENERIC_EFFECT_TEXTS.has(t) ? own : t)) : texts;
-}
-
-/** The target's value in the menu, with the critical range in the board's words. */
-export function targetOption(o: MenuOption): SelectOption & { hint: string } {
-  const critical = o.key === CRITICAL_RANGE_TARGET;
-  return {
-    value: o.key,
-    label: critical ? CRITICAL_COPY.target : o.namePt,
-    hint: critical ? CRITICAL_COPY.targetHint : o.hintPt,
-  };
 }

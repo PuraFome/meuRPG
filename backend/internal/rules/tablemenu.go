@@ -400,7 +400,7 @@ var (
 		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
-		CriticalRangeTarget: "Crítico a partir do d20",
+		CriticalRangeTarget: "Margem de acerto crítico",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -552,7 +552,7 @@ func (c *content) menuModifierTargets() []MenuValue {
 	for _, k := range modifierTargets {
 		v := MenuValue{Key: k, NamePT: modifierTargetNames[k]}
 		if k == CriticalRangeTarget {
-			v.HintPT = "De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver."
+			v.HintPT = "O menor d20 natural que é acerto crítico."
 			v.OnlyModes, v.Min, v.Max = []string{"set"}, MinCriticalRange, MaxCriticalRange
 		}
 		targets = append(targets, v)

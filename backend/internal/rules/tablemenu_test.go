@@ -579,7 +579,7 @@ func TestEffectMenuRerollAndCriticalCopy(t *testing.T) {
 		t.Errorf("roll_minimum hint = %q, want a short one", hints["roll_minimum"])
 	}
 	for _, v := range menuList(t, m, ListModifierTargets) {
-		if v.Key == CriticalRangeTarget && (v.NamePT != "Crítico a partir do d20" || v.HintPT != "De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver.") {
+		if v.Key == CriticalRangeTarget && (v.NamePT != "Margem de acerto crítico" || v.HintPT != "O menor d20 natural que é acerto crítico.") {
 			t.Errorf("critical range = %q / %q", v.NamePT, v.HintPT)
 		}
 	}

@@ -6040,17 +6040,18 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
     const critical = await createEntryRPC(m, campaignId, 'tableClassFeature', criticalFeatureBody());
 
     if (width >= 768) {
-      // Just chosen: no roll checked, "Nenhum: vale sempre" locked with its reason (the entry defines no resource).
+      // Just chosen: no roll checked, and "Gasta usos de" a text (the entry defines no resource; the class's and the SRD's are taken too).
       await open(m, `/campaigns/${campaignId}/content/new/feat`);
       await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Rolar de novo' });
       await expect(m.getByRole('group', { name: 'Vale nas jogadas' })).toBeVisible();
-      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeDisabled();
-      await expect(m.getByText('Esta entrada não define recurso.')).toBeVisible();
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeEnabled();
       await expectScreenPasses(m, `Editor de talento, "Rolar de novo" vazio e sem recurso na entrada ${where}`);
       // Refused: nothing checked and no face; the messages sit on their fields and the typed name stays.
       await m.getByLabel('Nome do talento').fill('Sorte Vazia');
       await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Nada foi salvo; o que você digitou continua aqui.')).toBeVisible();
       await expect(m.getByText('Marque ao menos uma jogada.')).toBeVisible();
+      await expect(m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' })).toBeFocused();
       await expect(m.getByLabel('Nome do talento')).toHaveValue('Sorte Vazia');
       await expectScreenPasses(m, `Editor de talento, "Rolar de novo" recusado nas jogadas e na face ${where}`);
       // With its resource: the pool the same feat defines is on the list, and its cost shows.
@@ -6062,10 +6063,13 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
       await expect(m.getByLabel('Custo (usos)', { exact: true })).toHaveValue('1');
       await expect(m.getByText('Rolar de novo:').first()).toBeVisible();
       await expectScreenPasses(m, `Editor de talento, "Rolar de novo" com o recurso da entrada ${where}`);
-      // The pool is taken out (the feat has a second effect): the resource it spent shows as refused.
+      // The pool is taken out (the feat has a second effect) and the save is tried: the server refuses the resource the reroll spent.
       await m.getByRole('button', { name: /Remover o efeito 2/ }).click();
-      await expect(m.getByText('Esta entrada não define mais este recurso. Escolha outro, ou Nenhum.')).toBeVisible();
-      await expectScreenPasses(m, `Editor de talento, o recurso que não existe mais ${where}`);
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Nada foi salvo; o que você digitou continua aqui.')).toBeVisible();
+      await expect(m.getByText('Esta entrada não define mais este recurso. Escolha outro, ou deixe vazio.')).toBeVisible();
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeFocused();
+      await expectScreenPasses(m, `Editor de talento, o recurso que não existe mais, recusado ao salvar ${where}`);
       // The minimum: the damage type is there with damage alone and goes away when another roll is checked.
       await open(m, entryRoute(campaignId, minimum));
       await expect(m.getByLabel('Valor mínimo', { exact: true })).toHaveValue('2');

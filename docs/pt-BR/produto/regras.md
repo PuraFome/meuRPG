@@ -594,7 +594,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Uma manobra sem dado é uma ação em "Habilidades" que gasta um uso dos mesmos dados e a ação que ela declara.
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
 - **A margem de acerto crítico.**
-  Um modificador da mesa "Margem de acerto crítico (o menor d20 que é crítico)" define o menor d20 natural que é acerto crítico, de 15 a 20.
+  Um modificador da mesa "Margem de acerto crítico" define o menor d20 natural que é acerto crítico, de 15 a 20.
   Só o modo "Definir" é aceito, o servidor recusa os outros, e uma fórmula fica entre 15 e 20.
   O campo "Vale para" diz quais ataques: os ataques com arma (o padrão, como o Crítico Aprimorado), as jogadas de ataque de magia, ou os dois.
   Uma jogada de ataque de magia é crítica num 20, a menos que um modificador do escopo de magia o baixe; o Crítico Aprimorado e o Crítico Superior nunca o baixam.
