@@ -135,6 +135,7 @@
       }
     }
   },
+  "hp_kept": true,
   "effect_end": {
     "effect": "x",
     "hp_before": 1,

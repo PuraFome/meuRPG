@@ -648,7 +648,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if !ok {
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
-	u := &undoer{s: s, c: c, cs: cs}
+	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}

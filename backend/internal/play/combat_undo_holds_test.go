@@ -73,6 +73,32 @@ func TestUndoIsRefusedWhenACharactersHitPointsChangedAfterTheAction(t *testing.T
 	}
 }
 
+// TestUndoLeavesWhatAnActionNeverChanged: a heal at full hit points changes no number, so its undo writes none and a
+// change made by someone else afterwards stays.
+func TestUndoLeavesWhatAnActionNeverChanged(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	if _, err := a.adjustHP(t, e, "Goblin", healHP(3)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
+	}
+	last := a.log(t, a.master, e).GetUndoableEventId()
+	var hp int32
+	if err := a.h.pool.QueryRow(t.Context(), `UPDATE combatants SET hp_current = hp_current - 1, hp_temp = 6 WHERE id = $1 RETURNING hp_current`, a.id(t, "Goblin")).Scan(&hp); err != nil {
+		t.Fatalf("change the hit points: %v", err)
+	}
+	if err := a.undo(t, a.master, e, last); err != nil {
+		t.Fatalf("UndoLastAction() error = %v, want it to go through", err)
+	}
+	var gotHP, gotTemp int32
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT hp_current, hp_temp FROM combatants WHERE id = $1`, a.id(t, "Goblin")).Scan(&gotHP, &gotTemp); err != nil {
+		t.Fatalf("read the hit points: %v", err)
+	}
+	if gotHP != hp || gotTemp != 6 {
+		t.Errorf("the goblin has %d and %d temporary after the undo, want the other change kept (%d and 6)", gotHP, gotTemp, hp)
+	}
+}
+
 // TestUndoIsRefusedWhenACharactersTempOrDefeatChangedAfterTheAction: the temporary hit points and the defeat of a
 // player's combatant are held like its hit points.
 func TestUndoIsRefusedWhenACharactersTempOrDefeatChangedAfterTheAction(t *testing.T) {

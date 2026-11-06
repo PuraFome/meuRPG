@@ -25,6 +25,9 @@ type undoer struct {
 	c      *combatTx
 	cs     []playdb.Combatant
 	vitals []*playv1.CharacterVitals
+	// holds and kept are the event's: see leavesHP.
+	holds map[string]hpState
+	kept  bool
 }
 
 // undoDFtPerFt is the tenths of a foot in a foot, the unit a move keeps its distances in.
@@ -108,6 +111,9 @@ func (u *undoer) setAttackState(ctx context.Context, who playdb.Combatant, key s
 }
 
 func (u *undoer) setHP(ctx context.Context, who playdb.Combatant, hp hpState) error {
+	if u.leavesHP(who.ID) {
+		return nil
+	}
 	if err := u.c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: who.ID, HpCurrent: &hp.HP, HpTemp: &hp.Temp, Defeated: hp.Defeated}); err != nil {
 		return fmt.Errorf("put back the hit points: %w", err)
 	}
@@ -147,6 +153,9 @@ func (u *undoer) putVitals(ctx context.Context, who playdb.Combatant, hp hpState
 	now, err := u.s.vitals.GetVitalsTx(ctx, u.c.tx, u.c.session.CampaignID, who.CharacterID)
 	if err != nil {
 		return nil, err
+	}
+	if u.leavesHP(who.ID) {
+		return now, nil
 	}
 	cur, temp := min(hp.HP, now.GetHitPointsMax()), min(hp.Temp, maxTempHitPoints)
 	_, after, err := u.s.vitalsOf(ctx, u.c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &cur, HitPointsTemporary: &temp})

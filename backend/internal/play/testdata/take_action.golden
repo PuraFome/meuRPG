@@ -1,7 +1,7 @@
 == Action Surge ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -10,7 +10,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
 == Action Surge after a Dodge ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -20,7 +20,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
 == Action Surge after the Attack action ==
 ok
 roll 
-event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -30,7 +30,7 @@ damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
 == Action Surge as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -39,7 +39,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
 == Action Surge in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -48,7 +48,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"action_surge": 1}
 == Action Surge in the next turn with two uses ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 2}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 2}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -60,7 +60,7 @@ state unchanged
 == Action Surge twice in a turn with two uses as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1, "surged_before": true}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:action-surge-1-use", "resource": "action_surge", "round": 1, "surged_before": true}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -72,7 +72,7 @@ state unchanged
 == Cunning Action twice as the master ==
 ok
 roll 
-event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:cunning-action:disengage", "round": 1}
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "feature:cunning-action:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -89,7 +89,7 @@ state unchanged
 == Cunning Action: Dash ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:cunning-action:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -97,7 +97,7 @@ combatant Toren | false | true | false | true | false | 0 | false | false | fals
 == Cunning Action: Dash after the action is used ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "feature:cunning-action:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -106,7 +106,7 @@ state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
 == Cunning Action: Dash as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:cunning-action:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -114,7 +114,7 @@ combatant Toren | false | true | false | true | false | 0 | false | false | fals
 == Cunning Action: Disengage ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:disengage", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:cunning-action:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -122,7 +122,7 @@ combatant Toren | false | true | false | false | true | 0 | false | false | fals
 == Cunning Action: Disengage after a Dash ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:cunning-action:disengage", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "feature:cunning-action:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -130,7 +130,7 @@ combatant Toren | true | true | false | true | true | 0 | false | false | false 
 == Cunning Action: Disengage in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:cunning-action:disengage", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:cunning-action:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -141,7 +141,7 @@ state unchanged
 == Dash ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -152,7 +152,7 @@ state unchanged
 == Dash as the master for the player's hero ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -160,7 +160,7 @@ combatant Toren | true | false | false | true | false | 0 | false | false | fals
 == Dash by an NPC as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Goblin", "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Goblin", "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | true | false | false | true | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -168,7 +168,7 @@ combatant Toren | false | false | false | false | false | 0 | false | false | fa
 == Dash in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -176,7 +176,7 @@ combatant Toren | true | false | false | true | false | 0 | false | false | fals
 == Dash with the extra action ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -185,7 +185,7 @@ state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
 == Disengage ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:disengage", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -193,7 +193,7 @@ combatant Toren | true | false | false | false | true | 0 | false | false | fals
 == Disengage by an NPC as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Goblin", "key": "standard:disengage", "round": 1}
+event action_taken {"combatant_id": "Goblin", "hp_kept": true, "key": "standard:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | true | false | false | false | true | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -201,7 +201,7 @@ combatant Toren | false | false | false | false | false | 0 | false | false | fa
 == Disengage in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:disengage", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -209,7 +209,7 @@ combatant Toren | true | false | false | false | true | 0 | false | false | fals
 == Disengage with the extra action ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:disengage", "round": 1}
+event action_taken {"combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -218,7 +218,7 @@ state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
 == Dodge ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -230,7 +230,7 @@ state unchanged
 == Dodge as the master for the player's hero ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -239,7 +239,7 @@ state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
 == Dodge by Pensantus on her turn ==
 ok
 roll 
-event action_taken {"combatant_id": "Pensantus", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Pensantus", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -248,7 +248,7 @@ state Pensantus | dodging | 0 | start_of_turn | - | 1 | Pensantus
 == Dodge by a hidden NPC as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Goblin", "key": "standard:dodge", "round": 1, "secret": true, "state_id": "?"}
+event action_taken {"combatant_id": "Goblin", "hp_kept": true, "key": "standard:dodge", "round": 1, "secret": true, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | true | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -257,7 +257,7 @@ state Goblin | dodging | 0 | start_of_turn | - | 1 | Goblin
 == Dodge by a player's hero below full hit points ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -267,7 +267,7 @@ vitals Toren | 5 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 == Dodge by an NPC as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Goblin", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Goblin", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -276,7 +276,7 @@ state Goblin | dodging | 0 | start_of_turn | - | 1 | Goblin
 == Dodge in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -297,7 +297,7 @@ state unchanged
 == Flurry of Blows after the Attack action ==
 ok
 roll 
-event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "hp_kept": true, "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -307,7 +307,7 @@ damage attack:unarmed-strike | awaiting_roll | -1 | damage-type:bludgeoning
 == Flurry of Blows after the Attack action as the master ==
 ok
 roll 
-event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+event action_taken {"action_before": true, "attack_key_before": "attack:unarmed-strike", "attacks_before": 1, "combatant_id": "Toren", "hp_kept": true, "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -326,7 +326,7 @@ state unchanged
 == Flurry of Blows before the Attack action as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:flurry-of-blows", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -344,7 +344,7 @@ state unchanged
 == Nimble Escape :disengage ==
 ok
 roll 
-event action_taken {"combatant_id": "Ragna", "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+event action_taken {"combatant_id": "Ragna", "hp_kept": true, "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -352,7 +352,7 @@ combatant Ragna | false | true | false | false | true | 0 | false | false | fals
 == Nimble Escape :disengage as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Ragna", "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+event action_taken {"combatant_id": "Ragna", "hp_kept": true, "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -360,7 +360,7 @@ combatant Ragna | false | true | false | false | true | 0 | false | false | fals
 == Nimble Escape :disengage as the master twice ==
 ok
 roll 
-event action_taken {"bonus_before": true, "combatant_id": "Ragna", "disengaged_before": true, "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
+event action_taken {"bonus_before": true, "combatant_id": "Ragna", "disengaged_before": true, "hp_kept": true, "key": "trait:race-goblin-multivers-8b54fb--fuga-agil@mesa:disengage", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -374,7 +374,7 @@ state unchanged
 == Patient Defense ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -384,7 +384,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Patient Defense after the action is used ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -394,7 +394,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Patient Defense as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -404,7 +404,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Patient Defense in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:patient-defense", "resource": "ki", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -423,7 +423,7 @@ state unchanged
 == Rage ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -433,7 +433,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage after the Attack action ==
 ok
 roll 
-event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -444,7 +444,7 @@ damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
 == Rage after the action is used ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"action_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -455,7 +455,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -465,7 +465,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -475,7 +475,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage twice as the master ==
 ok
 roll 
-event action_taken {"bonus_before": true, "combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -488,7 +488,7 @@ state unchanged
 == Rage while concentrating ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "conc_before": "spell:bless", "conc_ended": "spell:bless", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "conc_before": "spell:bless", "conc_ended": "spell:bless", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -498,7 +498,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage with Frenzy by a Berserker ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -508,7 +508,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Rage with Frenzy by a Berserker as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -530,7 +530,7 @@ state unchanged
 == Rage without Frenzy by a Berserker ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:rage", "resource": "rage", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -540,7 +540,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Ready ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:ready", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:ready", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -548,7 +548,7 @@ combatant Toren | true | false | false | false | false | 0 | false | false | fal
 == Reckless Attack ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -557,7 +557,7 @@ state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
 == Reckless Attack after Rage ==
 ok
 roll 
-event action_taken {"bonus_before": true, "combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -571,7 +571,7 @@ state unchanged
 == Reckless Attack after the first attack as the master ==
 ok
 roll 
-event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"action_before": true, "attack_key_before": "equipment:battleaxe", "attacks_before": 1, "combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -581,7 +581,7 @@ damage equipment:battleaxe | awaiting_roll | -1 | damage-type:slashing
 == Reckless Attack as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -590,7 +590,7 @@ state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
 == Reckless Attack in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -599,7 +599,7 @@ state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
 == Reckless Attack twice ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:reckless-attack", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -608,7 +608,7 @@ state Toren | reckless | 0 | start_of_turn | - | 1 | Toren
 == Search ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:search", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:search", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -616,7 +616,7 @@ combatant Toren | true | false | false | false | false | 0 | false | false | fal
 == Search by an NPC as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Goblin", "key": "standard:search", "round": 1}
+event action_taken {"combatant_id": "Goblin", "hp_kept": true, "key": "standard:search", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | true | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -627,7 +627,7 @@ state unchanged
 == Second Wind after the action is used ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"action_before": true, "after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"action_before": true, "after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -637,7 +637,7 @@ vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind as the master against forced real dice ==
 ok healed 4
 roll {"diceCount":1,"diceSides":10,"faces":[2],"modifier":2,"total":4}
-event action_taken {"after": {"hp": 12}, "amount": 4, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [2], "heal": true, "holds": {"Toren": {"hp": 12}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 4}
+event action_taken {"after": {"hp": 12}, "amount": 4, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [2], "heal": true, "holds": {"Toren": {"hp": 12}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 4}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -646,7 +646,7 @@ vitals Toren | 12 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind as the master with a typed sum ==
 ok healed 11
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":11}
-event action_taken {"after": {"hp": 19}, "amount": 11, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 19}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 11}
+event action_taken {"after": {"hp": 19}, "amount": 11, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 19}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 11}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -658,7 +658,7 @@ state unchanged
 == Second Wind as the master with the app's dice ==
 ok healed 10
 roll {"diceCount":1,"diceSides":10,"faces":[8],"modifier":2,"total":10}
-event action_taken {"after": {"hp": 18}, "amount": 10, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [8], "heal": true, "holds": {"Toren": {"hp": 18}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 10}
+event action_taken {"after": {"hp": 18}, "amount": 10, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [8], "heal": true, "holds": {"Toren": {"hp": 18}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 10}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -667,7 +667,7 @@ vitals Toren | 18 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind in a combat without a map ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -679,7 +679,7 @@ state unchanged
 == Second Wind rolled in the app ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"faces":[6],"modifier":2,"total":8}
-event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [6], "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [6], "heal": true, "holds": {"Toren": {"hp": 16}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -688,7 +688,7 @@ vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind rolled in the app at full hit points ==
 ok healed 0
 roll {"diceCount":1,"diceSides":10,"faces":[4],"modifier":2,"total":6}
-event action_taken {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [4], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 6}
+event action_taken {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [4], "heal": true, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 6}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -700,7 +700,7 @@ state unchanged
 == Second Wind rolled in the app when the player prefers real dice ==
 ok healed 5
 roll {"diceCount":1,"diceSides":10,"faces":[3],"modifier":2,"total":5}
-event action_taken {"after": {"hp": 13}, "amount": 5, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [3], "heal": true, "holds": {"Toren": {"hp": 13}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 5}
+event action_taken {"after": {"hp": 13}, "amount": 5, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [3], "heal": true, "holds": {"Toren": {"hp": 13}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 5}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -712,7 +712,7 @@ state unchanged
 == Second Wind typed when the player prefers real dice ==
 ok healed 7
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":7}
-event action_taken {"after": {"hp": 15}, "amount": 7, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 15}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 7}
+event action_taken {"after": {"hp": 15}, "amount": 7, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 15}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 7}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -721,7 +721,7 @@ vitals Toren | 15 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with a typed sum ==
 ok healed 9
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":9}
-event action_taken {"after": {"hp": 17}, "amount": 9, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 17}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 9}
+event action_taken {"after": {"hp": 17}, "amount": 9, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 17}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 9}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -742,7 +742,7 @@ state unchanged
 == Second Wind with temporary hit points ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"after": {"hp": 16, "temp": 5}, "amount": 8, "before": {"hp": 8, "temp": 5}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16, "temp": 5}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16, "temp": 5}, "amount": 8, "before": {"hp": 8, "temp": 5}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16, "temp": 5}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -751,7 +751,7 @@ vitals Toren | 16 | 5 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with the highest typed sum ==
 ok healed 12
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":12}
-event action_taken {"after": {"hp": 20}, "amount": 12, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 20}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 12}
+event action_taken {"after": {"hp": 20}, "amount": 12, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 20}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 12}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -760,7 +760,7 @@ vitals Toren | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with the lowest typed sum ==
 ok healed 3
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":3}
-event action_taken {"after": {"hp": 11}, "amount": 3, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 11}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 3}
+event action_taken {"after": {"hp": 11}, "amount": 3, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 11}}, "hp_kept": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 3}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -790,7 +790,7 @@ state unchanged
 == Slow Fall on a fall that waits ==
 ok
 roll 
-event action_taken {"amount": 20, "closed_windows": ["?"], "combatant_id": "Toren", "fall_cuts": [{"before": 30, "pending_id": "?", "prev": "awaiting_reaction"}], "key": "feature:slow-fall", "round": 1, "run_before": 150}
+event action_taken {"amount": 20, "closed_windows": ["?"], "combatant_id": "Toren", "fall_cuts": [{"before": 30, "pending_id": "?", "prev": "awaiting_reaction"}], "hp_kept": true, "key": "feature:slow-fall", "round": 1, "run_before": 150}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
 combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
@@ -807,7 +807,7 @@ state unchanged
 == Slow Fall twice on a fall that waits as the master ==
 ok
 roll 
-event action_taken {"amount": 10, "combatant_id": "Toren", "fall_cuts": [{"before": 10, "pending_id": "?", "prev": "awaiting_reaction"}], "key": "feature:slow-fall", "reaction_before": true, "round": 1}
+event action_taken {"amount": 10, "combatant_id": "Toren", "fall_cuts": [{"before": 10, "pending_id": "?", "prev": "awaiting_reaction"}], "hp_kept": true, "key": "feature:slow-fall", "reaction_before": true, "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
 combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0
@@ -836,7 +836,7 @@ state unchanged
 == Step of the Wind: Dash ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -845,7 +845,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Step of the Wind: Dash in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "jump_doubled": true, "key": "feature:step-of-the-wind:dash", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -854,7 +854,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Step of the Wind: Disengage ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -863,7 +863,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Step of the Wind: Disengage as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "jump_doubled": true, "key": "feature:step-of-the-wind:disengage", "resource": "ki", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -872,7 +872,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"ki": 1}
 == Use an Object ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:use-an-object", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:use-an-object", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -880,7 +880,7 @@ combatant Toren | true | false | false | false | false | 0 | false | false | fal
 == Use an Object with the extra action ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:use-an-object", "round": 1}
+event action_taken {"combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:use-an-object", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -889,7 +889,7 @@ state Toren | effect | 0 | start_of_turn | 4 | 1 | Toren
 == a Dash after Cunning Action: Dash ==
 ok
 roll 
-event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "standard:dash", "round": 1}
+event action_taken {"bonus_before": true, "combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -903,7 +903,7 @@ state unchanged
 == a Dodge after Action Surge ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?", "surged_before": true}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?", "surged_before": true}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -919,7 +919,7 @@ state unchanged
 == a Dodge with a Frenzy that is only for a rage ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -928,7 +928,7 @@ state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
 == a Dodge with a typed sum that it does not use ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -937,7 +937,7 @@ state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
 == a Dodge with the app's roll that it does not use ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -946,7 +946,7 @@ state Toren | dodging | 0 | start_of_turn | - | 1 | Toren
 == a Search after a Search as the master ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "key": "standard:search", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "standard:search", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -966,7 +966,7 @@ state unchanged
 == a paladin's Divine Sense ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -975,7 +975,7 @@ vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"divine_sense": 1}
 == a paladin's Divine Sense as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "feature:divine-sense", "resource": "divine_sense", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -993,7 +993,7 @@ state unchanged
 == a poisoned and a prone combatant still acts ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1011,7 +1011,7 @@ state unchanged
 == a second Dash as the master ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "key": "standard:dash", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1022,7 +1022,7 @@ state unchanged
 == a second Dodge as the master ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"action_before": true, "combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1187,7 +1187,7 @@ state unchanged
 == the action after the extra action ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "dashed_before": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "dashed_before": true, "hp_kept": true, "key": "standard:dodge", "round": 1, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1200,7 +1200,7 @@ state unchanged
 == the extra action as the master ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1212,7 +1212,7 @@ state unchanged
 == the extra action in a combat without a map ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+event action_taken {"combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1227,7 +1227,7 @@ state unchanged
 == the extra action with the action already used ==
 ok
 roll 
-event action_taken {"action_before": true, "combatant_id": "Toren", "extra_used": true, "key": "standard:dash", "round": 1}
+event action_taken {"action_before": true, "combatant_id": "Toren", "extra_used": true, "hp_kept": true, "key": "standard:dash", "round": 1}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -1240,7 +1240,7 @@ state unchanged
 == the master is not stopped while an opportunity attack waits ==
 ok
 roll 
-event action_taken {"combatant_id": "Toren", "key": "standard:dodge", "round": 1, "run_before": 112, "state_id": "?"}
+event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:dodge", "round": 1, "run_before": 112, "state_id": "?"}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Capitão Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 27 | 0 | false | false | 0
 combatant Escudeiro | false | false | false | false | false | 0 | false | false | false | 0 | - | 11 | 0 | false | false | 0

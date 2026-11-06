@@ -981,7 +981,7 @@ const (
 	// CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
 	// Nothing is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED EncounterBlockedReason = 125
-	// UndoLastAction: a combatant's hit points, temporary hit points or Wild Shape form are not the
+	// UndoLastAction: a combatant's hit points, temporary hit points, Wild Shape pool or defeat are not the
 	// ones the action left, because something else changed them after it (a rest or a level
 	// change, which leave no event). The undo would write the "before" over that change and lose it, so
 	// nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.

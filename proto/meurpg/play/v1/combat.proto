@@ -876,9 +876,10 @@ service CombatService {
   // can be undone: any later event (a turn passing, a move, a correction of
   // the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
   //
-  // An undo writes back the hit points, temporary hit points and Wild Shape form the
+  // An undo writes back the hit points, temporary hit points, Wild Shape pool and defeat the
   // action changed only if each of them still holds what the action left. If something
-  // else changed one since, the whole undo is refused and nothing is written.
+  // else changed one since, the whole undo is refused and nothing is written. It writes
+  // none of these for a combatant the action did not change.
   //
   // Errors:
   //   - `not_found`: the combat is not this campaign's.
@@ -1997,7 +1998,7 @@ enum EncounterBlockedReason {
   // CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
   // Nothing is spent.
   ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED = 125;
-  // UndoLastAction: a combatant's hit points, temporary hit points or Wild Shape form are not the
+  // UndoLastAction: a combatant's hit points, temporary hit points, Wild Shape pool or defeat are not the
   // ones the action left, because something else changed them after it (a rest or a level
   // change, which leave no event). The undo would write the "before" over that change and lose it, so
   // nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.

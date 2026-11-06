@@ -46,9 +46,10 @@ The undone line disappears from the log.
 
 - **The hit points the action left.** An undo is refused when a hit point value it would overwrite is not the one the action left.
   The values are the hit points, the temporary hit points, the Wild Shape pool and the defeat of each combatant whose numbers the action changed.
+  The refusal names the combatants that changed and never says a number; a combatant that can no longer be read counts as changed.
   A refused undo writes nothing.
-  The refusal names the combatants that changed and never says a number.
-  A write that leaves no event, such as a rest, a level change or a direct database change, is what it catches.
+  The undo writes no hit points for a combatant the action did not change, so a change made since stays.
+  A write that leaves no event, such as a rest or a level change, is what the check catches.
   A character's held hit points are cut to the maximum it has now, so a lowered maximum does not refuse the undo.
   An event without held values is not checked, and neither are death saves or conditions, which change only through combat events.
 - **The melee hit mark.** A melee weapon hit marks the turn on the attacker (`combatants.melee_hit_turn`, which the grapple maneuver needs), and the attack's event keeps the mark it replaced (`melee_hit`, `melee_hit_before`).

@@ -948,9 +948,10 @@ type CombatServiceClient interface {
 	// can be undone: any later event (a turn passing, a move, a correction of
 	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
 	//
-	// An undo writes back the hit points, temporary hit points and Wild Shape form the
+	// An undo writes back the hit points, temporary hit points, Wild Shape pool and defeat the
 	// action changed only if each of them still holds what the action left. If something
-	// else changed one since, the whole undo is refused and nothing is written.
+	// else changed one since, the whole undo is refused and nothing is written. It writes
+	// none of these for a combatant the action did not change.
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's.
@@ -2984,9 +2985,10 @@ type CombatServiceHandler interface {
 	// can be undone: any later event (a turn passing, a move, a correction of
 	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
 	//
-	// An undo writes back the hit points, temporary hit points and Wild Shape form the
+	// An undo writes back the hit points, temporary hit points, Wild Shape pool and defeat the
 	// action changed only if each of them still holds what the action left. If something
-	// else changed one since, the whole undo is refused and nothing is written.
+	// else changed one since, the whole undo is refused and nothing is written. It writes
+	// none of these for a combatant the action did not change.
 	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's.

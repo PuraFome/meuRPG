@@ -67,6 +67,7 @@ func (s *Service) withHolds(ctx context.Context, c *combatTx, payload any) (any,
 	if err != nil {
 		return nil, err
 	}
+	ev.HPKept = true
 	for id, now := range after {
 		if before, had := c.hpBefore[id]; had && !before.same(now) {
 			if ev.Holds == nil {
@@ -97,7 +98,8 @@ func (s *Service) checkHolds(ctx context.Context, c *combatTx, ev actionEvent) e
 		if m, ok := maxes[id]; ok {
 			held.HP = min(held.HP, m)
 		}
-		if cur, ok := now[id]; ok && !held.same(cur) {
+		// A combatant that cannot be read now (removed, its character dead or deleted) has changed too.
+		if cur, ok := now[id]; !ok || !held.same(cur) {
 			changed = append(changed, id)
 		}
 	}
@@ -108,4 +110,15 @@ func (s *Service) checkHolds(ctx context.Context, c *combatTx, ev actionEvent) e
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED,
 		"something changed hit points after the action: nothing was undone",
 		func(b *playv1.EncounterBlocked) { b.CombatantIds = changed })
+}
+
+// leavesHP says the undo writes no hit points for the combatant: the event kept its holds and holds
+// none for it, so the action did not change its numbers and there is nothing to put back. Whatever
+// changed them since stays.
+func (u *undoer) leavesHP(id string) bool {
+	if !u.kept {
+		return false
+	}
+	_, held := u.holds[id]
+	return !held
 }

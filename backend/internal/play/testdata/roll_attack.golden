@@ -1,7 +1,7 @@
 == a hit ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[15],"modifier":5,"physical":true,"total":20},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 15, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
+event attack_rolled {"combatant_id": "Toren", "d20": 15, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -10,7 +10,7 @@ damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:sla
 == a miss ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[2],"modifier":5,"physical":true,"total":7},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending 
-event attack_rolled {"combatant_id": "Toren", "d20": 2, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 7}
+event attack_rolled {"combatant_id": "Toren", "d20": 2, "hp_kept": true, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 7}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -18,7 +18,7 @@ combatant Toren | true | false | false | 1 | equipment:battleaxe | false
 == a natural 1 ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[1],"modifier":5,"physical":true,"total":6},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending 
-event attack_rolled {"combatant_id": "Toren", "d20": 1, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 6}
+event attack_rolled {"combatant_id": "Toren", "d20": 1, "hp_kept": true, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 6}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -26,7 +26,7 @@ combatant Toren | true | false | false | 1 | equipment:battleaxe | false
 == a natural 20 ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[20],"modifier":5,"physical":true,"total":25},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_CRITICAL_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 20, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "critical", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 25}
+event attack_rolled {"combatant_id": "Toren", "d20": 20, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "critical", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 25}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -38,7 +38,7 @@ state unchanged
 == an NPC attacks as the master ==
 roll {"attackKey":"basic:0","attackerId":"Goblin","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[14],"modifier":4,"physical":true,"total":18},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetArmorClass":12,"targetId":"Toren"}
 pending {"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"}
-event attack_rolled {"combatant_id": "Goblin", "d20": 14, "key": "basic:0", "modifier": 4, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Toren", "total": 18}
+event attack_rolled {"combatant_id": "Goblin", "d20": 14, "hp_kept": true, "key": "basic:0", "modifier": 4, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Toren", "total": 18}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | true | false | false | 1 | basic:0 | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -53,7 +53,7 @@ state unchanged
 == an attack in a combat without a map ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[16],"modifier":5,"physical":true,"total":21},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 16, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 21}
+event attack_rolled {"combatant_id": "Toren", "d20": 16, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 21}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -71,7 +71,7 @@ state unchanged
 == as the master for the player's character ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[12],"modifier":5,"physical":true,"total":17},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetArmorClass":12,"targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 12, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 17}
+event attack_rolled {"combatant_id": "Toren", "d20": 12, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 17}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -83,7 +83,7 @@ state unchanged
 == with a disadvantage asked for and a reason ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":2,"diceSides":20,"faces":[3,17],"modifier":5,"physical":true,"total":8},"mode":"ROLL_MODE_DISADVANTAGE","modeReason":"Toren está cansado","outcome":"ATTACK_OUTCOME_MISS","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending 
-event attack_rolled {"combatant_id": "Toren", "d20": 3, "d20_b": 17, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "reason_id": "?", "roll_mode": "disadvantage", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 8}
+event attack_rolled {"combatant_id": "Toren", "d20": 3, "d20_b": 17, "hp_kept": true, "key": "equipment:battleaxe", "modifier": 5, "outcome": "miss", "physical": true, "reason_id": "?", "roll_mode": "disadvantage", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 8}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -94,7 +94,7 @@ state unchanged
 == with an extra die ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[15],"modifier":5,"physical":true,"total":20},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 15, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
+event attack_rolled {"combatant_id": "Toren", "d20": 15, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 20}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
@@ -103,7 +103,7 @@ damage equipment:battleaxe | awaiting_roll | false | 1 | 8 | 3 | damage-type:sla
 == with the roll made in the app ==
 roll {"attackKey":"equipment:battleaxe","attackerId":"Toren","cover":"COVER_DEGREE_NONE","criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","d20":{"diceCount":1,"diceSides":20,"faces":[10],"modifier":5,"total":15},"mode":"ROLL_MODE_NORMAL","outcome":"ATTACK_OUTCOME_HIT","suggestedMode":"ROLL_MODE_NORMAL","targetId":"Goblin"}
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}
-event attack_rolled {"combatant_id": "Toren", "d20": 10, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 15}
+event attack_rolled {"combatant_id": "Toren", "d20": 10, "hp_kept": true, "key": "equipment:battleaxe", "melee_hit": true, "modifier": 5, "outcome": "hit", "pending_id": "?", "roll_mode": "normal", "round": 1, "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 15}
 combatant Brisa | false | false | false | 0 | - | false
 combatant Goblin | false | false | false | 0 | - | false
 combatant Pensantus | false | false | false | 0 | - | false
