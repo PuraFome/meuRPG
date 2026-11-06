@@ -15,7 +15,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   ],
   [
     EncounterBlockedReason.UNDO_TARGET_CHANGED,
-    'Não dá para desfazer: os pontos de vida de alguém mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.',
+    'Não dá para desfazer: os pontos de vida de alguém mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito.',
   ],
 ]);
 
@@ -27,5 +27,5 @@ export function undoChangedText(
   const names = blocked.combatantIds.map(labelOf).filter((n): n is string => !!n);
   return names.length === 0
     ? (LIMITED_ACTION_BLOCKED_TEXT.get(blocked.reason) ?? '')
-    : `Não dá para desfazer: os pontos de vida de ${names.join(', ')} mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.`;
+    : `Não dá para desfazer: os pontos de vida de ${names.join(', ')} mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito.`;
 }
