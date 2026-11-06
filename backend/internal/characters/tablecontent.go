@@ -427,7 +427,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			AttackName: e.GetAttackName(), DamageDice: e.GetDamageDice(),
 			MaxCR: e.GetMaxCr(), MaxCRFrom: e.GetMaxCrFrom(), FormCost: e.GetFormCost(), MagicalAttacks: e.GetMagicalAttacks(), NoFly: e.GetNoFly(), NoSwim: e.GetNoSwim(),
 			GivesSlot: e.GetGivesSlot(), SpendsSlot: e.GetSpendsSlot(), RecoverMaxLevel: e.GetRecoverMaxLevel(), RecoverLevels: e.GetRecoverLevels(),
-			Rolls: e.GetRolls(), AtMost: int(e.GetAtMost()),
+			Rolls: e.GetRolls(), AtMost: int(e.GetAtMost()), Name: e.GetName(), Set: e.GetSet(), Cap: int(e.GetCap()),
 			Dice: e.GetDice(), DiceSides: int(e.GetDiceSides()), DamageType: e.GetDamageType(), Weapon: e.GetWeapon(),
 			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
 			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),
@@ -441,7 +441,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 	p := b.GetPrerequisite()
 	return rules.TableFeat{
-		TableEntry: te, DescPT: b.GetDescPt(), Effects: tableEffectsOf(b.GetEffects()),
+		TableEntry: te, DescPT: b.GetDescPt(), Effects: tableEffectsOf(b.GetEffects()), Options: tableFeaturesOf(b.GetOptions()),
 		Prerequisite: rules.FeatPrerequisite{
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
@@ -808,6 +808,15 @@ func slugOfStoredKey(key string) string {
 // path, when the entry is compiled.
 func checkFeatureCount(kind rulesv1.TableContentKind, body tableBody) []*rulesv1.TableContentViolation {
 	limit, what := rules.MaxTableFeatures, "features"
+	if feat, ok := body.(*rulesv1.TableFeat); ok {
+		if n := len(feat.GetOptions()); n > rules.MaxFeatureOptions {
+			return []*rulesv1.TableContentViolation{{
+				Field: bodyField(kind) + ".options", Reason: rules.ReasonLimit,
+				Message: fmt.Sprintf("%d options; the limit is %d", n, rules.MaxFeatureOptions),
+			}}
+		}
+		return nil
+	}
 	switch body.(type) {
 	case *rulesv1.TableRace, *rulesv1.TableSubrace:
 		limit, what = rules.MaxTraits, "traits"
@@ -848,6 +857,7 @@ func importFeatureKeys(entryKey string, body, old tableBody) []*rulesv1.TableCon
 func assignFeatureKeys(entryKey string, body, old tableBody, foreign bool) []*rulesv1.TableContentViolation {
 	a := &keyAssigner{entryKey: entryKey, taken: map[string]bool{}, owned: map[string]bool{}, slugs: map[string]bool{}, byName: map[string]string{}, foreign: foreign}
 	a.collectOld(old)
+	a.collectOldFeat(entryKey, old)
 	var out []*rulesv1.TableContentViolation
 	a.violations = &out
 	switch b := body.(type) {
@@ -867,6 +877,8 @@ func assignFeatureKeys(entryKey string, body, old tableBody, foreign bool) []*ru
 		if f := b.GetFeature(); f != nil {
 			a.assign("table_background", "background-feature:", featureStem("background", entryKey), 0, []*rulesv1.TableFeature{f})
 		}
+	case *rulesv1.TableFeat:
+		a.assignIn("table_feat.options", "feature:", featureStem("feat", entryKey), optionScope(entryKey), b.GetOptions())
 	}
 	return out
 }
@@ -943,6 +955,20 @@ func (a *keyAssigner) collectOld(old tableBody) {
 				a.byName[optionScope(f.GetKey())+"\x00"+o.GetNamePt()] = o.GetKey()
 			}
 		}
+	}
+}
+
+// collectOldFeat is collectOld for the option list of a feat, which has no features: its options
+// are looked up in the scope of the entry's own key.
+func (a *keyAssigner) collectOldFeat(entryKey string, old tableBody) {
+	feat, ok := old.(*rulesv1.TableFeat)
+	if !ok {
+		return
+	}
+	for _, o := range feat.GetOptions() {
+		a.owned[o.GetKey()] = true
+		a.slugs[slugOfStoredKey(o.GetKey())] = true
+		a.byName[optionScope(entryKey)+"\x00"+o.GetNamePt()] = o.GetKey()
 	}
 }
 
@@ -1182,7 +1208,7 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
-	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Options: b.GetOptions()}})
 	if p := b.GetPrerequisite(); p != nil {
 		if v.hidden(p.GetRaceKey()) {
 			p.RaceKey = "" // a race or subrace the players do not see is not named to them

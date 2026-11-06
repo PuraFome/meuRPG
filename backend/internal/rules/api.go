@@ -637,6 +637,10 @@ type Derived struct {
 	// StatBlockConditionImmunities are the condition keys a creature's stat block lists as immune
 	// ("condition:poisoned"); empty for a character. Content.ConditionImmunities lists them with the stat block.
 	StatBlockConditionImmunities []string `json:",omitempty"`
+	// FeatPicks are the valid picks of the named choices of the feats the sheet applies and
+	// that read one (picks.go), by choice key ("feat:x@mesa#ability") to the stored value
+	// ("ability:dex"). Content.Resistances reads them for the effects that name a pick.
+	FeatPicks map[string]string `json:",omitempty"`
 	// ContentVersion is Content.Version() at the time of Derive.
 	ContentVersion string
 	// RaceNamePT and SubraceNamePT name the race and subrace, and

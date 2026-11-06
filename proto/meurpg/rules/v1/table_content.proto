@@ -123,7 +123,7 @@ message TableEffect {
   // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
   // "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
   // "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
-  // "save.<ability>"), how ("add", "max" or "set") and the formula.
+  // "save.<ability>", "score.<ability>"), how ("add", "max" or "set") and the formula.
   string target = 2;
   string mode = 3;
   string value = 4;
@@ -156,7 +156,8 @@ message TableEffect {
   string max = 14;
   string recharge = 15;
   // choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-  // "language", "tool", "feature" or "feat"), how many, and from which keys (for
+  // "language", "tool", "feature", "feat", and, in a feat only, "ability" or "damage_type" with a
+  // `name` and a count of 1), how many, and from which keys (for
   // "feat": feat keys of the SRD or the table; empty is any feat). For
   // extra_attack, `count` is how many attacks the Attack action makes. For
   // ability_increase, `count` is how many different abilities the player picks,
@@ -398,6 +399,19 @@ message TableEffect {
   // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
   // The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
   int32 at_most = 78;
+  // choice of a feat: the name of the pick, 1 to 40 characters of a-z, 0-9 and _, the first a
+  // letter, and not "mesa". Only a choice of kind "ability" or "damage_type" has one; its `count`
+  // is 1. The later effects of the same feat write "@name" for what was picked, in a proficiency
+  // ("save.@name"), a damage_type ("damage-type:@name") or a formula (mod("@name")).
+  string name = 79;
+  // choice of a feat, kind "feature": the editor option set the choice offers instead of a
+  // `from` list (one of the "feat_option_sets" of GetEffectMenu).
+  // The `count` cannot be more than the options of the set.
+  string set = 80;
+  // modifier on a score ("score.str"...): the highest value the effect lifts the score to, from 20
+  // to 30 (24 for the Primal Champion). Required there, mode "add"; no other modifier has one.
+  // A score already above the cap stays as it is.
+  int32 cap = 81;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -451,6 +465,13 @@ message TableFeat {
   FeatPrerequisite prerequisite = 3;
   // At most 20, and at most one ability_increase.
   repeated TableEffect effects = 4;
+  // The option list of the feat: options the player picks, each with a name, a text and effects
+  // of its own, as the options of a class feature. At most 60. The server makes the keys
+  // ("feature:<stem>--<option name>@mesa"; leave them empty for a new option, send them back on
+  // every update). An option applies only while it is picked and the feat is the character's.
+  // A `choice` effect of kind "feature" with an empty `from` offers them. An option does not
+  // read the picks of the feat.
+  repeated TableFeature options = 5;
 }
 
 // TableOption is an option the master adds to an option set of the SRD, as a table

@@ -127,7 +127,11 @@ func (c *Content) Resistances(d Derived) []Resistance {
 			out = append(out, r)
 		}
 		for _, e := range c.c.effects[f.Key] {
-			if e.Type == "resistance" {
+			if e.Type != "resistance" {
+				continue
+			}
+			// A resistance that names a pick counts with the pick written out, or not at all.
+			if e, ok := c.c.resolvePicks(e, d.picksOf(f.Key)); ok {
 				out = append(out, c.c.gatedResistances(d, f.Key, e)...)
 			}
 		}

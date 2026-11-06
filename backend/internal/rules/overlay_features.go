@@ -24,7 +24,7 @@ var overlayEffectTypes = []string{
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
 // the Ability Score Improvement are the class table's, not a feature's.
 var overlayChoiceKinds = []string{
-	"skill", "expertise", "cantrip", "spell", "language", "tool", "feature", "feat",
+	"skill", "expertise", "cantrip", "spell", "language", "tool", "feature", "feat", "ability", "damage_type",
 }
 
 // featureKind is where a feature belongs: a class, a subclass, a race (trait)
@@ -114,6 +114,11 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	}
 	effects := slices.Clone(f.Effects)
 	if !offerOptions(effects, keys) {
+		for i := range effects {
+			if isFeatureChoice(&effects[i]) && effects[i].Set != "" {
+				return nil, ovErr(f.Key, "a choice that offers an option set cannot offer the options of the feature").at(fmt.Sprintf("%s.effects[%d].set", path, i), ReasonValue)
+			}
+		}
 		return nil, ovErr(f.Key, "a feature with options needs a choice of features to offer them").at(path+".effects", ReasonEffect)
 	}
 	return effects, nil
@@ -135,7 +140,7 @@ func offerOptions(effects []Effect, keys []string) bool {
 	offers := false
 	for i := range effects {
 		e := &effects[i]
-		if !isFeatureChoice(e) {
+		if !isFeatureChoice(e) || e.Set != "" { // a choice of a set offers the set, not the feature's own options
 			continue
 		}
 		if len(e.From) == 0 {
@@ -416,11 +421,14 @@ func (b *overlayBuilder) checkChoiceEffect(site effectSite, e *Effect) error {
 	if err := checkChoiceCount(site, e); err != nil {
 		return err
 	}
-	if err := checkChoiceList(site, e); err != nil {
+	if err := b.checkChoiceList(site, e); err != nil {
 		return err
 	}
 	if b.optionEntry[site.owner] != "" {
 		return site.fail(".type", ReasonEffect, "an option does not ask for another choice")
+	}
+	if e.Choice == pickAbility || e.Choice == pickDamageType {
+		return b.checkPickChoice(site, e)
 	}
 	for _, k := range e.From {
 		if err := b.checkChoiceKey(site, e, k); err != nil {
@@ -435,6 +443,9 @@ func checkChoiceCount(site effectSite, e *Effect) error {
 	if !slices.Contains(overlayChoiceKinds, e.Choice) {
 		return site.fail(".choice", ReasonEffect, "choice %q is not on the table's menu", e.Choice)
 	}
+	if (e.Choice == pickAbility || e.Choice == pickDamageType) && !strings.HasPrefix(site.owner, "feat:") {
+		return site.fail(".choice", ReasonValue, "only a feat picks an ability or a damage type")
+	}
 	if e.Count < 1 {
 		return site.fail(".count", ReasonValue, "a choice needs a count of at least 1")
 	}
@@ -446,7 +457,10 @@ func checkChoiceCount(site effectSite, e *Effect) error {
 
 // checkChoiceList checks the list of options or feats a choice offers against
 // the number it asks for.
-func checkChoiceList(site effectSite, e *Effect) error {
+func (b *overlayBuilder) checkChoiceList(site effectSite, e *Effect) error {
+	if e.Set != "" {
+		return b.checkChoiceSet(site, e)
+	}
 	if e.Choice == "feature" && e.Count > len(e.From) {
 		return site.fail(".count", ReasonValue, "a choice of features cannot ask for more than the %d options it lists", len(e.From))
 	}
@@ -458,6 +472,62 @@ func checkChoiceList(site effectSite, e *Effect) error {
 	}
 	if e.Choice == "feature" && len(slices.Compact(slices.Sorted(slices.Values(e.From)))) != len(e.From) {
 		return site.fail(".from", ReasonValue, "the options of a choice are listed once each")
+	}
+	return nil
+}
+
+// checkChoiceSet checks a choice of features that offers an option set.
+// Only a feat offers one, the set exists, and the choice has no list of its own.
+func (b *overlayBuilder) checkChoiceSet(site effectSite, e *Effect) error {
+	if !strings.HasPrefix(site.owner, "feat:") {
+		return site.fail(".set", ReasonValue, "only a feat offers an option set")
+	}
+	switch _, known := optionSetOf(e.Set); {
+	case e.Choice != "feature":
+		return site.fail(".set", ReasonValue, "only a choice of features offers an option set")
+	case !known:
+		return site.fail(".set", ReasonValue, "unknown option set %q", e.Set)
+	case e.Set == tableFeatureSet:
+		return site.fail(".set", ReasonValue, "the set %q is the options of a class feature of the table, not a set to offer", e.Set)
+	case len(e.From) > 0:
+		return site.fail(".set", ReasonValue, "a choice offers a set or a list (from), not both")
+	}
+	if n := len(b.n.optionSetKeys(e.Set)); e.Count > n {
+		return site.fail(".count", ReasonValue, "a choice cannot ask for more than the %d options of the set %q", n, e.Set)
+	}
+	return nil
+}
+
+// checkPickChoice checks a choice of abilities or of damage types.
+// It has a name, lists keys of its kind once each (empty is all of them), and asks for no more than there are.
+func (b *overlayBuilder) checkPickChoice(site effectSite, e *Effect) error {
+	if e.Name == "" {
+		return site.fail(".name", ReasonValue, "a choice of an ability or a damage type needs a name, for the effects that read the pick")
+	}
+	total := len(abilityIndex)
+	if e.Choice == pickDamageType {
+		total = 0
+		for k := range b.n.named {
+			if b.n.isLiveDamageType(k) {
+				total++
+			}
+		}
+	}
+	for i, k := range e.From {
+		switch {
+		case !b.n.pickKeyExists(e.Choice, k) && e.Choice == pickAbility:
+			return site.fail(".from", ReasonValue, "%q is not an ability (str, dex, con, int, wis or cha)", k)
+		case !b.n.pickKeyExists(e.Choice, k):
+			return site.fail(".from", ReasonReference, "%q is not a damage type of the content", k)
+		case slices.Contains(e.From[:i], k):
+			return site.fail(".from", ReasonValue, "%q is listed twice", k)
+		}
+	}
+	if len(e.From) > 0 {
+		total = len(e.From)
+	}
+	if e.Count > total {
+		return site.fail(".count", ReasonValue, "a choice cannot ask for more than the %d it offers", total)
 	}
 	return nil
 }
@@ -560,12 +630,12 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // effects (the spellcasting, the handler) never come from the
 // table.
 var ownFields = map[string][]string{
-	"modifier":     {"target", "mode", "value", "applies"},
+	"modifier":     {"target", "mode", "value", "applies", "cap"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
-	"choice":       {"choice", "count", "from"},
+	"choice":       {"choice", "count", "from", "name", "set"},
 	"extra_attack": {"count"},
 	// A grant_action may cost several uses of its resource, let the player choose how many,
 	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
@@ -633,6 +703,8 @@ var effectFields = []effectField{
 	{"choice", func(e *Effect) bool { return e.Choice != "" }, func(e *Effect) { e.Choice = "" }},
 	{"count", func(e *Effect) bool { return e.Count != 0 }, func(e *Effect) { e.Count = 0 }},
 	{"from", func(e *Effect) bool { return len(e.From) > 0 }, func(e *Effect) { e.From = nil }},
+	{"name", func(e *Effect) bool { return e.Name != "" }, func(e *Effect) { e.Name = "" }},
+	{"set", func(e *Effect) bool { return e.Set != "" }, func(e *Effect) { e.Set = "" }},
 	{"economy", func(e *Effect) bool { return e.Economy != "" }, func(e *Effect) { e.Economy = "" }},
 	{"ability", func(e *Effect) bool { return e.Ability != "" }, func(e *Effect) { e.Ability = "" }},
 	{"applies", func(e *Effect) bool { return e.Applies != "" }, func(e *Effect) { e.Applies = "" }},
@@ -939,6 +1011,7 @@ func oneOfAKind(effectType string) bool {
 func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out []*Effect, failed bool) {
 	out = make([]*Effect, 0, len(p.effects))
 	chosen := map[string]int{}
+	declared := map[string]string{} // the picks the effects so far name (picks.go)
 	for i := range p.effects {
 		e := p.effects[i]
 		at := fmt.Sprintf("%s.effects[%d]", p.path, i)
@@ -950,7 +1023,7 @@ func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out [
 				continue
 			}
 		}
-		if !b.compileEffectAt(c, p, i, at, &e) {
+		if !b.compileEffectAt(c, p, i, at, &e, declared) {
 			failed = true
 			continue
 		}
@@ -960,7 +1033,7 @@ func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out [
 }
 
 // compileEffectAt checks and compiles the effect e, the i-th of the pending ones, and says whether it worked.
-func (b *overlayBuilder) compileEffectAt(c *entryErrors, p pendingEffects, i int, at string, e *Effect) bool {
+func (b *overlayBuilder) compileEffectAt(c *entryErrors, p pendingEffects, i int, at string, e *Effect, declared map[string]string) bool {
 	own := p.summon != nil && p.summon.at == i // the effect a summon lowered to
 	if own && !b.resourceDefined(p.owner, p.summon.resource) {
 		c.add(ovErr(p.owner, "the summon spends %q, which no resource effect of this entry or its class defines", p.summon.resource).at(p.path+".summon.resource_key", ReasonReference))
@@ -970,6 +1043,12 @@ func (b *overlayBuilder) compileEffectAt(c *entryErrors, p pendingEffects, i int
 	if !p.strict {
 		stripUnused(e)
 	}
+	if err := b.checkPicks(effectSite{owner: p.owner, path: at}, e, declared); err != nil {
+		c.add(err)
+		return false
+	}
+	// The checks and the compile judge the key fields with a sample where a token is; the tokens come back after.
+	defer b.n.samplePicks(e)()
 	// The lowered effect is the engine's own: its spell is hidden, so the menu's checks (which name only spells of
 	// the table) do not apply to it.
 	if err := b.checkEffectUnless(own, p.owner, at, e, p.strict); err != nil {

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -631,8 +632,9 @@ func (c *content) sheetHolds(b Build, key string) bool {
 		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
 }
 
-// Owners are the entries (races, subraces, classes, subclasses and backgrounds) a
+// Owners are the entries (races, subraces, classes, subclasses, backgrounds and feats) a
 // trait, feature, background feature or option belongs to; none for any other key.
+// The owner of an option of a feat is the feat.
 func (c *Content) Owners(key string) []string { return c.c.entryOwners(key, 0) }
 
 func (c *content) hidden(key string) bool {
@@ -687,13 +689,21 @@ func (c *content) entryOwners(key string, depth int) []string {
 		}
 	case strings.HasPrefix(key, "background-feature:"):
 		return c.backgroundsOf(key)
+	case depth > 0 && c.feats[key] != nil:
+		// The feat that offers an option is its owner: the option is hidden with the feat.
+		return []string{key}
 	}
 	if p := c.optionParents[key]; p != "" {
 		parents = append(parents, p)
 	}
+	return c.ownersOfAll(parents, depth+1)
+}
+
+// ownersOfAll are the owners of every key in parents, each once.
+func (c *content) ownersOfAll(parents []string, depth int) []string {
 	var out []string
 	for _, p := range parents {
-		for _, o := range c.entryOwners(p, depth+1) {
+		for _, o := range c.entryOwners(p, depth) {
 			if !slices.Contains(out, o) {
 				out = append(out, o)
 			}
@@ -1128,6 +1138,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 	if err := b.checkFeatLacks(); err != nil {
 		return err
 	}
+	b.offerFeatSets()
 	if err := b.compileEffects(); err != nil {
 		return err
 	}
@@ -1182,6 +1193,7 @@ func (b *overlayBuilder) startClone(o *Overlay) *content {
 	slices.Sort(classIndexes)
 	n.compiler = formula.NewCompiler(classIndexes)
 	n.programs = map[programKey]*formula.Program{}
+	n.pickPrograms = &sync.Map{}
 	return n
 }
 

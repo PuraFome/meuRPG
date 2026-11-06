@@ -99,6 +99,9 @@ export function emptyEffect(type = ''): EffectDraft {
     reachM: '',
     attackName: '',
     damageDice: '',
+    name: '',
+    set: '',
+    cap: 0,
   };
 }
 
@@ -172,6 +175,9 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     reachM: rangeMeters(e.reachFt),
     attackName: e.attackName,
     damageDice: e.damageDice,
+    name: e.name,
+    set: e.set,
+    cap: e.cap,
   };
 }
 
