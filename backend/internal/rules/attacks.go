@@ -58,9 +58,12 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	has := func(property string) bool { return slices.Contains(w.Properties, "weapon-property:"+property) }
 	monkWeapon := martialArts && has("monk")
 	// The weapon rules offer other abilities: the best of the options attacks, and the best hurts.
-	t := x.tuneWeapon(x.weaponAbility(kind, has("finesse") || monkWeapon), weaponFacts{
+	sheetMagical, _, _ := x.sheetMarks(key)
+	facts := weaponFacts{
 		name: foldPT(strings.TrimSpace(c.namePT(key))), melee: kind == "melee", finesse: has("finesse"),
-	})
+		magical: sheetMagical,
+	}
+	t := x.tuneWeapon(x.weaponAbility(kind, has("finesse") || monkWeapon), facts)
 	if has("heavy") {
 		x.heavyWeaponHint(key, kind)
 	}
@@ -84,6 +87,7 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		TwoHanded:    has("two-handed"),
 		DamageNotePT: note,
 	}
+	a.Magical, a.Silvered, a.Adamantine = x.weaponMarks(key, facts)
 	monkDie := 0
 	if monkWeapon {
 		monkDie = martialDie
@@ -101,6 +105,35 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	a.DamageDice, _ = ParseDice(a.Damage)
 	a.VersatileDice, _ = ParseDice(a.VersatileDamage)
 	x.d.Attacks = append(x.d.Attacks, a)
+}
+
+// sheetMarks is what the sheet's own mark (full.weapon_marks) says of the carried weapon.
+func (x *deriver) sheetMarks(key string) (magical, silvered, adamantine bool) {
+	for _, m := range x.b.WeaponMarks {
+		if m.Weapon == key {
+			magical, silvered, adamantine = magical || m.Magical, silvered || m.Silvered, adamantine || m.Adamantine
+		}
+	}
+	return magical, silvered, adamantine
+}
+
+// weaponMarks is the ONE place that says whether a carried weapon's attack is magical,
+// silvered or adamantine, for the resistances and immunities to nonmagical attacks. It
+// merges the sheet's mark on the weapon with the marks of the weapon_rule effects whose
+// filter chooses the line (f). The "magic" filter reads only the sheet's own marks
+// (f.magical), never a rule's, so a rule cannot choose itself. Equipment that makes a
+// weapon magical (+1 weapons, #564) must set magical here. The unarmed strike (Ki-Empowered
+// Strikes), a spell attack and a creature's attack do not come through here.
+func (x *deriver) weaponMarks(key string, f weaponFacts) (magical, silvered, adamantine bool) {
+	magical, silvered, adamantine = x.sheetMarks(key)
+	for _, a := range x.active {
+		e := a.effect
+		if e.Type != "weapon_rule" || !(e.Magical || e.Silvered || e.Adamantine) || !e.matchesWeapon(f) || !x.applies(a) {
+			continue
+		}
+		magical, silvered, adamantine = magical || e.Magical, silvered || e.Silvered, adamantine || e.Adamantine
+	}
+	return magical, silvered, adamantine
 }
 
 // weaponAbility is the ability a weapon attacks with: STR, or DEX if it is

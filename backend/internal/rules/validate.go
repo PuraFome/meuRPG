@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -200,7 +201,32 @@ func validateGear(b *Build, c *content) error {
 			return invalid("full.armor_key", "is not a known body armor")
 		}
 	}
-	return checkKeys(c, "full.weapon_keys", b.Weapons, MaxWeapons, isWeapon)
+	if err := checkKeys(c, "full.weapon_keys", b.Weapons, MaxWeapons, isWeapon); err != nil {
+		return err
+	}
+	return checkWeaponMarks(b)
+}
+
+// checkWeaponMarks checks the marks on the weapons carried: at most MaxWeapons, each on a
+// weapon of the sheet, none twice, none empty.
+func checkWeaponMarks(b *Build) error {
+	if len(b.WeaponMarks) > MaxWeapons {
+		return invalid("full.weapon_marks", "must have at most %d entries", MaxWeapons)
+	}
+	seen := make(map[string]bool, len(b.WeaponMarks))
+	for i, m := range b.WeaponMarks {
+		f := fmt.Sprintf("full.weapon_marks[%d]", i)
+		switch {
+		case !slices.Contains(b.Weapons, m.Weapon):
+			return invalid(f+".weapon_key", "is not one of the weapon_keys")
+		case seen[m.Weapon]:
+			return invalid(f+".weapon_key", "repeats an entry")
+		case !m.Silvered && !m.Adamantine && !m.Magical:
+			return invalid(f, "marks nothing: set silvered, adamantine or magical")
+		}
+		seen[m.Weapon] = true
+	}
+	return nil
 }
 
 // validateSpells checks the cantrips and the known and prepared spells.

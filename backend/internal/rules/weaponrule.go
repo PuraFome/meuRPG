@@ -79,8 +79,8 @@ func checkWeaponRule(e *Effect) weaponProblem {
 	if p := checkWeaponNumbers(e); p.found() {
 		return p
 	}
-	if e.AttackAbility == "" && e.DamageAbility == "" && e.AttackBonus == 0 && e.DamageBonus == 0 && e.ReachFt == 0 {
-		return problem(".type", ReasonValue, "a weapon rule changes nothing: give it an ability, a bonus or a reach")
+	if e.AttackAbility == "" && e.DamageAbility == "" && e.AttackBonus == 0 && e.DamageBonus == 0 && e.ReachFt == 0 && !e.Magical && !e.Silvered && !e.Adamantine {
+		return problem(".type", ReasonValue, "a weapon rule changes nothing: give it an ability, a bonus, a reach or a mark")
 	}
 	return weaponProblem{}
 }

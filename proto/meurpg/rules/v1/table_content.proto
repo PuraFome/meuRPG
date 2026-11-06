@@ -348,6 +348,10 @@ message TableEffect {
   // hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
   // a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
   // proficient with, is never an item, and the weapon rules change it like any weapon.
+  // weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
+  // chooses as such for the resistances and immunities to nonmagical attacks; a rule that
+  // sets only marks counts as changing something. The "magic" filter reads the marks of
+  // the sheet itself, never those of a rule. Refused on any other effect.
   string weapon_name = 59;
   string attack_ability = 60;
   string damage_ability = 61;
@@ -394,6 +398,9 @@ message TableEffect {
   // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
   // The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
   int32 at_most = 78;
+  bool magical = 79;
+  bool silvered = 80;
+  bool adamantine = 81;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

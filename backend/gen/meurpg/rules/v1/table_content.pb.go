@@ -1210,6 +1210,10 @@ type TableEffect struct {
 	// hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
 	// a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
 	// proficient with, is never an item, and the weapon rules change it like any weapon.
+	// weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
+	// chooses as such for the resistances and immunities to nonmagical attacks; a rule that
+	// sets only marks counts as changing something. The "magic" filter reads the marks of
+	// the sheet itself, never those of a rule. Refused on any other effect.
 	WeaponName    string `protobuf:"bytes,59,opt,name=weapon_name,json=weaponName,proto3" json:"weapon_name,omitempty"`
 	AttackAbility string `protobuf:"bytes,60,opt,name=attack_ability,json=attackAbility,proto3" json:"attack_ability,omitempty"`
 	DamageAbility string `protobuf:"bytes,61,opt,name=damage_ability,json=damageAbility,proto3" json:"damage_ability,omitempty"`
@@ -1256,6 +1260,9 @@ type TableEffect struct {
 	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
 	// The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
 	AtMost        int32 `protobuf:"varint,78,opt,name=at_most,json=atMost,proto3" json:"at_most,omitempty"`
+	Magical       bool  `protobuf:"varint,79,opt,name=magical,proto3" json:"magical,omitempty"`
+	Silvered      bool  `protobuf:"varint,80,opt,name=silvered,proto3" json:"silvered,omitempty"`
+	Adamantine    bool  `protobuf:"varint,81,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1834,6 +1841,27 @@ func (x *TableEffect) GetAtMost() int32 {
 		return x.AtMost
 	}
 	return 0
+}
+
+func (x *TableEffect) GetMagical() bool {
+	if x != nil {
+		return x.Magical
+	}
+	return false
+}
+
+func (x *TableEffect) GetSilvered() bool {
+	if x != nil {
+		return x.Silvered
+	}
+	return false
+}
+
+func (x *TableEffect) GetAdamantine() bool {
+	if x != nil {
+		return x.Adamantine
+	}
+	return false
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -7537,7 +7565,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\x89\x12\n" +
+	"\x04body\"\xdf\x12\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -7630,7 +7658,12 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x11recover_max_level\x18K \x01(\tR\x0frecoverMaxLevel\x12%\n" +
 	"\x0erecover_levels\x18L \x01(\tR\rrecoverLevels\x12\x14\n" +
 	"\x05rolls\x18M \x03(\tR\x05rolls\x12\x17\n" +
-	"\aat_most\x18N \x01(\x05R\x06atMost\"\x81\x02\n" +
+	"\aat_most\x18N \x01(\x05R\x06atMost\x12\x18\n" +
+	"\amagical\x18O \x01(\bR\amagical\x12\x1a\n" +
+	"\bsilvered\x18P \x01(\bR\bsilvered\x12\x1e\n" +
+	"\n" +
+	"adamantine\x18Q \x01(\bR\n" +
+	"adamantine\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +

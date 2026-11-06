@@ -188,6 +188,12 @@ type Effect struct {
 	ReachFt       int    `json:"reach_ft,omitempty"`
 	AttackName    string `json:"attack_name,omitempty"`
 	DamageDice    string `json:"damage_dice,omitempty"`
+	// Magical, Silvered and Adamantine (weapon_rule only) mark the weapon lines the rule
+	// chooses as magical, silvered or adamantine, for the resistances and immunities to
+	// nonmagical attacks. The "magic" filter reads the sheet's own marks, never these.
+	Magical    bool `json:"magical,omitempty"`
+	Silvered   bool `json:"silvered,omitempty"`
+	Adamantine bool `json:"adamantine,omitempty"`
 
 	// proficiency, level "expertise" on a skill: OnlyProficient doubles the skill
 	// only where the character has its proficiency from another source when the

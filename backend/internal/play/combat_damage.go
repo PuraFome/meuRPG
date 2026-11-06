@@ -475,9 +475,11 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 }
 
 // originOf says where a pending damage comes from, for the resistances that hold for
-// nonmagical attacks only (and not for a silvered or adamantine weapon, when they say so): the damage of a spell is that of a magical attack; an attack
-// of the sheet or the stat block is magical when the sheet says so (a cantrip, a creature
-// with the trait "Magic Weapons"); a damage with no attack of the attacker behind it (a
+// nonmagical attacks only (and, when they say so, not for a silvered or adamantine
+// weapon). The damage of a spell is that of a magical attack. An attack of the sheet or
+// the stat block is magical when the sheet says so (a cantrip, a weapon the sheet or a
+// weapon_rule marks, a creature with the trait "Magic Weapons") and silvered or
+// adamantine by the same marks. A damage with no attack of the attacker behind it (a
 // trap, a hazard, an ongoing effect) is no attack, and those resistances do not cover it.
 func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (combat.Origin, error) {
 	switch {

@@ -89,8 +89,9 @@ type Step struct {
 	DamageType string
 	Before     int
 	After      int
-	// Qualifier is the Modifier's when every source of the step has it: the step holds
-	// only for that kind of damage. It is "" when any source covers every damage.
+	// Qualifier is the Qualifier of the last covering Modifier of the step, so it names the
+	// kind of damage the step holds for when the sources share one. It is "" when any
+	// covering Modifier is plain (covers every damage).
 	Qualifier string
 }
 

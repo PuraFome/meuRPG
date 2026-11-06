@@ -569,7 +569,7 @@ var ownFields = map[string][]string{
 	// A state: its name in the entry, how long it lasts and how it ends, what starting it spends and costs.
 	"state": {"state_name", "duration_rounds", "ends_on", "resource", "economy"},
 	// A weapon rule changes the weapons its filter chooses; a pseudo-weapon is an attack line of its own.
-	"weapon_rule":   {"weapon", "weapon_name", "attack_ability", "damage_ability", "attack_bonus", "damage_bonus", "reach_ft", "while"},
+	"weapon_rule":   {"weapon", "weapon_name", "attack_ability", "damage_ability", "attack_bonus", "damage_bonus", "reach_ft", "magical", "silvered", "adamantine", "while"},
 	"pseudo_weapon": {"attack_name", "weapon", "damage_dice", "damage_type", "ability", "reach_ft", "range_ft", "while"},
 	// breathes_water has no field of its own: only the when that gates it.
 	"breathes_water": {},
@@ -664,6 +664,9 @@ var effectFields = []effectField{
 	{"attack_bonus", func(e *Effect) bool { return e.AttackBonus != 0 }, func(e *Effect) { e.AttackBonus = 0 }},
 	{"damage_bonus", func(e *Effect) bool { return e.DamageBonus != 0 }, func(e *Effect) { e.DamageBonus = 0 }},
 	{"reach_ft", func(e *Effect) bool { return e.ReachFt != 0 }, func(e *Effect) { e.ReachFt = 0 }},
+	{"magical", func(e *Effect) bool { return e.Magical }, func(e *Effect) { e.Magical = false }},
+	{"silvered", func(e *Effect) bool { return e.Silvered }, func(e *Effect) { e.Silvered = false }},
+	{"adamantine", func(e *Effect) bool { return e.Adamantine }, func(e *Effect) { e.Adamantine = false }},
 	{"attack_name", func(e *Effect) bool { return e.AttackName != "" }, func(e *Effect) { e.AttackName = "" }},
 	{"damage_dice", func(e *Effect) bool { return e.DamageDice != "" }, func(e *Effect) { e.DamageDice = "" }},
 	{"rolls", func(e *Effect) bool { return len(e.Rolls) > 0 }, func(e *Effect) { e.Rolls = nil }},

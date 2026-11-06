@@ -393,7 +393,8 @@ type Attack struct {
 	// strike): the resistances and immunities to nonmagical attacks do not cover it.
 	Magical bool
 	// Silvered and Adamantine say the attack's weapon is of that material: the resistances
-	// to nonmagical weapons that aren't silvered (or adamantine) do not cover it.
+	// to nonmagical weapons that aren't silvered (or adamantine) do not cover it. Set only
+	// for a weapon of a character, from the sheet's weapon_marks or a weapon_rule.
 	Silvered   bool `json:",omitempty"`
 	Adamantine bool `json:",omitempty"`
 }
