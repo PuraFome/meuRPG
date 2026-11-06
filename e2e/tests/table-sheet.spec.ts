@@ -419,7 +419,12 @@ test(
       // Ícaro's owner fixes the sheet (the notice says "você, na ficha" for a sheet nobody locked): one skill less, and
       // the notice goes by itself, the numbers matching again. The class is not touched.
       await p.goto(`${sheetOf(campaignId, characterId)}/edit`);
+      // The "Escolhas" tab comes in before "Perícias" once the server answers `PreviewChoices`, and the tabs at 320 px shift
+      // by one place: a press that starts on "Perícias" and ends on the tab that took its place is no click. So wait for
+      // the steps to settle before pressing.
+      await expect(p.getByRole('tab', { name: 'Escolhas' })).toBeVisible();
       await p.getByRole('tab', { name: 'Perícias' }).click();
+      await expect(p.getByRole('tab', { name: 'Perícias' })).toHaveAttribute('aria-selected', 'true');
       await p.getByRole('group', { name: 'Perícias', exact: true }).getByRole('checkbox', { name: 'Furtividade', exact: true }).first().uncheck();
       await p.getByRole('button', { name: 'Salvar ficha' }).click();
       await expect(p).toHaveURL(sheetOf(campaignId, characterId));
