@@ -1,6 +1,6 @@
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 
-/** The refusals of an action of a stat block that is spent (the master and the controller of the creature read them): what is wrong, and that nothing was spent. */
+/** The refusals of an action of a stat block that is spent (the master and the controller of the creature read them), and of armour changed in combat: what is wrong, and that nothing was spent. */
 export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [
     EncounterBlockedReason.CREATURE_ACTION_RECHARGING,
@@ -9,5 +9,9 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   [
     EncounterBlockedReason.CREATURE_ACTION_NO_USES_LEFT,
     'Essa ação da criatura não tem mais usos. Nada foi gasto.',
+  ],
+  [
+    EncounterBlockedReason.ARMOR_IN_COMBAT,
+    'Vestir ou tirar armadura leva minutos: não dá em pleno combate. Nada foi mudado.',
   ],
 ]);

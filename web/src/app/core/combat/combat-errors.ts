@@ -291,10 +291,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     'Com armadura ou escudo sem proficiência não dá para atacar nem conjurar.',
   ],
   [
-    EncounterBlockedReason.ARMOR_IN_COMBAT,
-    'Vestir ou tirar armadura leva minutos: não dá em pleno combate. Nada foi mudado.',
-  ],
-  [
     EncounterBlockedReason.STATE_ALREADY_ON,
     'Esse estado já está ligado. A tela foi atualizada; nada foi gasto.',
   ],
