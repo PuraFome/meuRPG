@@ -12,31 +12,33 @@ import (
 	"testing"
 )
 
-// playv1Exceptions is the list of files outside the play module and the
-// wiring that still import playv1; it can only shrink.
+// playv1Exceptions lists the files outside the play module and the wiring that still import playv1.
+// It can only shrink.
 //
 //go:embed playv1_exceptions.txt
 var playv1Exceptions string
 
-// playv1Path is the import path of the generated play API, under the module path.
-const playv1Path = "gen/meurpg/play/v1"
+// playv1Paths are the import paths of the generated play API, under the module path.
+// The Connect package is checked too, and no file outside the allowed places imports it today.
+var playv1Paths = []string{"gen/meurpg/play/v1", "gen/meurpg/play/v1/playv1connect"}
 
-// playv1Allowed are the places a non-test file may import playv1: the play
-// module and the API wiring.
+// playv1Allowed are the places a non-test file may import playv1.
+// They are the play module and the API wiring.
 var playv1Allowed = []string{"internal/play/", "internal/platform/wiring/", "cmd/"}
 
-// TestPlayV1StaysInPlayAndWiring fails for a non-test file outside the play
-// module and the wiring (cmd/, internal/platform/wiring) that imports
-// gen/meurpg/play/v1 and is not in playv1_exceptions.txt, and for a listed
-// file that no longer does. Test files may import it.
+// TestPlayV1StaysInPlayAndWiring fails for a playv1 import outside the play module and the wiring.
+// The wiring is cmd/ and internal/platform/wiring.
+// A non-test file that playv1_exceptions.txt lists is allowed.
+// A listed file that no longer imports it fails.
+// Test files may import it.
 func TestPlayV1StaysInPlayAndWiring(t *testing.T) {
 	root := os.DirFS(backendRoot)
-	target := modulePath(t, root) + "/" + playv1Path
+	mod := modulePath(t, root) + "/"
 	found := map[string]string{}
 	files := 0
 	for _, top := range []string{"internal", "cmd"} {
 		err := walkGoFiles(root, top, func(path string) error {
-			if strings.HasSuffix(path, "_test.go") {
+			if isTestFile(path) {
 				return nil
 			}
 			files++
@@ -44,13 +46,13 @@ func TestPlayV1StaysInPlayAndWiring(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			bad, err := importsPlayV1Outside(path, src, target)
+			bad, err := importsPlayV1Outside(path, src, mod)
 			if err != nil {
 				return err
 			}
 			if bad {
-				found[path] = fmt.Sprintf("%s imports playv1 (%s) outside the play module and the API wiring: pass the plain types "+
-					"through the module's link package (internal/play/link) and let the API layer map to playv1", path, playv1Path)
+				found[path] = fmt.Sprintf("%s imports playv1 outside the play module and the API wiring: pass the plain types "+
+					"through the module's link package (internal/play/link) and let the API layer map to playv1", path)
 			}
 			return nil
 		})
@@ -65,8 +67,9 @@ func TestPlayV1StaysInPlayAndWiring(t *testing.T) {
 	t.Logf("%d non-test Go files checked for playv1 imports; %d known exceptions", files, len(found))
 }
 
-// importsPlayV1Outside reports whether a file that is not in an allowed place imports target.
-func importsPlayV1Outside(path string, src []byte, target string) (bool, error) {
+// importsPlayV1Outside reports whether a file that is not in an allowed place imports a play API package.
+// The module argument is the module path and a slash.
+func importsPlayV1Outside(path string, src []byte, module string) (bool, error) {
 	for _, ok := range playv1Allowed {
 		if strings.HasPrefix(path, ok) {
 			return false, nil
@@ -77,15 +80,22 @@ func importsPlayV1Outside(path string, src []byte, target string) (bool, error) 
 		return false, err
 	}
 	for _, imp := range f.Imports {
-		if p, err := strconv.Unquote(imp.Path.Value); err == nil && p == target {
-			return true, nil
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		for _, want := range playv1Paths {
+			if p == module+want {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
 }
 
 func TestImportsPlayV1Outside(t *testing.T) {
-	const target = "example.test/backend/" + playv1Path
+	const module = "example.test/backend/"
+	target := module + playv1Paths[0]
 	imp := func(alias string) string {
 		return "package x\nimport " + alias + ` "` + target + "\"\n"
 	}
@@ -99,10 +109,11 @@ func TestImportsPlayV1Outside(t *testing.T) {
 		{"cmd", "cmd/api/main.go", imp("playv1"), false},
 		{"wiring", "internal/platform/wiring/w.go", imp("playv1"), false},
 		{"other import", "internal/maps/a.go", "package x\nimport _ \"example.test/backend/gen/meurpg/maps/v1\"\n", false},
-		{"similar path", "internal/maps/a.go", "package x\nimport _ \"" + target + "connect\"\n", false},
+		{"connect package", "internal/maps/a.go", "package x\nimport _ \"" + module + playv1Paths[1] + "\"\n", true},
+		{"similar path", "internal/maps/a.go", "package x\nimport _ \"" + target + "x\"\n", false},
 	}
 	for _, c := range cases {
-		got, err := importsPlayV1Outside(c.path, []byte(c.src), target)
+		got, err := importsPlayV1Outside(c.path, []byte(c.src), module)
 		if err != nil || got != c.want {
 			t.Errorf("%s: got %v (err %v), want %v", c.name, got, err, c.want)
 		}

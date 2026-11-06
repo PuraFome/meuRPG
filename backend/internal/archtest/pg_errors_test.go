@@ -14,38 +14,34 @@ import (
 	"testing"
 )
 
-// pgErrorsExceptions is the list of files in identity and authz that still
-// read a database error's code themselves; it can only shrink.
+// pgErrorsExceptions lists the files in identity and authz that still read a database error's code.
+// It can only shrink.
 //
 //go:embed pg_errors_exceptions.txt
 var pgErrorsExceptions string
 
-// pgErrorModules are the modules that translate database errors only through
-// the common helper; their sqlc packages are generated and skipped.
+// pgErrorModules are the modules that translate database errors only through the common helper.
+// Their sqlc packages are generated and skipped.
 var (
 	pgErrorModules = []string{"internal/identity", "internal/authz"}
 	pgErrorSkip    = []string{"internal/identity/identitydb", "internal/authz/authzdb"}
 )
 
-var sqlStateLiteral = regexp.MustCompile(`^"\d{5}"$`)
+var sqlStateLiteral = regexp.MustCompile(`^\d{5}$`)
 
-// TestIdentityAuthzTranslateDBErrorsViaHelper fails for a non-test file of
-// internal/identity or internal/authz that imports pgconn or uses PgError,
-// SQLState or a SQLSTATE literal, and that pg_errors_exceptions.txt does not
-// list; and for a listed file that no longer does.
+// TestIdentityAuthzTranslateDBErrorsViaHelper fails when identity or authz reads a database error's code itself.
+// It reads the non-test files of internal/identity and internal/authz.
+// The code is read by an import of pgconn or pgerrcode, a use of PgError or SQLState, or a SQLSTATE-looking literal.
+// A file that pg_errors_exceptions.txt lists is allowed.
+// A listed file that no longer does it fails.
 func TestIdentityAuthzTranslateDBErrorsViaHelper(t *testing.T) {
 	root := os.DirFS(backendRoot)
 	found := map[string]string{}
 	files := 0
 	for _, dir := range pgErrorModules {
 		err := walkGoFiles(root, dir, func(path string) error {
-			if strings.HasSuffix(path, "_test.go") {
+			if skipPgErrorFile(path) {
 				return nil
-			}
-			for _, skip := range pgErrorSkip {
-				if strings.HasPrefix(path, skip+"/") {
-					return nil
-				}
 			}
 			files++
 			src, err := fs.ReadFile(root, path)
@@ -74,8 +70,21 @@ func TestIdentityAuthzTranslateDBErrorsViaHelper(t *testing.T) {
 	t.Logf("%d non-test Go files of identity and authz checked for pgconn, PgError, SQLState and SQLSTATE literals; %d known exceptions", files, len(found))
 }
 
-// pgErrorUses returns what in one file reads a database error's code: the
-// pgconn import, the names PgError and SQLState, a 5-digit string literal.
+// skipPgErrorFile reports whether a path is out of scope: a test file or generated sqlc code.
+func skipPgErrorFile(path string) bool {
+	if isTestFile(path) {
+		return true
+	}
+	for _, skip := range pgErrorSkip {
+		if strings.HasPrefix(path, skip+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// pgErrorUses returns what in one file reads a database error's code.
+// That is the pgconn and pgerrcode imports, the names PgError and SQLState, and a 5-digit string literal.
 func pgErrorUses(path string, src []byte) ([]string, error) {
 	f, err := parser.ParseFile(token.NewFileSet(), path, src, parser.SkipObjectResolution)
 	if err != nil {
@@ -90,8 +99,13 @@ func pgErrorUses(path string, src []byte) ([]string, error) {
 		}
 	}
 	for _, imp := range f.Imports {
-		if p, err := strconv.Unquote(imp.Path.Value); err == nil && p == "github.com/jackc/pgx/v5/pgconn" {
+		p, err := strconv.Unquote(imp.Path.Value)
+		switch {
+		case err != nil:
+		case p == "github.com/jackc/pgx/v5/pgconn":
 			add("imports pgconn")
+		case p == "github.com/jackc/pgerrcode":
+			add("imports pgerrcode")
 		}
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
@@ -101,8 +115,11 @@ func pgErrorUses(path string, src []byte) ([]string, error) {
 				add("uses " + n.Name)
 			}
 		case *ast.BasicLit:
-			if n.Kind == token.STRING && sqlStateLiteral.MatchString(n.Value) {
-				add("literal " + n.Value)
+			if n.Kind != token.STRING {
+				break
+			}
+			if v, err := strconv.Unquote(n.Value); err == nil && sqlStateLiteral.MatchString(v) {
+				add("a 5-character SQLSTATE-looking literal " + n.Value)
 			}
 		}
 		return true
@@ -117,7 +134,11 @@ func TestPgErrorUses(t *testing.T) {
 	}{
 		{"pgconn import", "package x\nimport \"github.com/jackc/pgx/v5/pgconn\"\nvar _ = pgconn.Timeout", "[imports pgconn]"},
 		{"PgError", "package x\nvar e *struct{ PgError int }", "[uses PgError]"},
-		{"SQLState compare", "package x\nfunc f(e interface{ SQLState() string }) bool { return e.SQLState() == \"23505\" }", "[uses SQLState literal \"23505\"]"},
+		{"SQLState compare", "package x\nfunc f(e interface{ SQLState() string }) bool { return e.SQLState() == \"23505\" }", "[uses SQLState a 5-character SQLSTATE-looking literal \"23505\"]"},
+		{"raw string literal", "package x\nvar c = `23505`", "[a 5-character SQLSTATE-looking literal `23505`]"},
+		{"pgerrcode import", "package x\nimport \"github.com/jackc/pgerrcode\"\nvar _ = pgerrcode.UniqueViolation", "[imports pgerrcode]"},
+		{"pgconn alias import", "package x\nimport pg \"github.com/jackc/pgx/v5/pgconn\"\nvar _ pg.PgError", "[imports pgconn uses PgError]"},
+		{"pgconn dot import", "package x\nimport . \"github.com/jackc/pgx/v5/pgconn\"", "[imports pgconn]"},
 		{"ErrNoRows is fine", "package x\nimport (\"errors\"; \"github.com/jackc/pgx/v5\")\nvar _ = errors.Is(nil, pgx.ErrNoRows)", "[]"},
 		{"other number string", "package x\nvar s = \"123456\"; var t = \"12\"", "[]"},
 	}
@@ -125,6 +146,21 @@ func TestPgErrorUses(t *testing.T) {
 		got, err := pgErrorUses("internal/identity/a.go", []byte(c.src))
 		if err != nil || fmt.Sprint(got) != c.want {
 			t.Errorf("%s: got %v (err %v), want %s", c.name, got, err, c.want)
+		}
+	}
+}
+
+func TestSkipPgErrorFile(t *testing.T) {
+	for path, want := range map[string]bool{
+		"internal/identity/a_test.go":            true,
+		"internal/identity/identitydb/db.go":     true,
+		"internal/authz/authzdb/db.go":           true,
+		"internal/identity/store.go":             false,
+		"internal/identity/oidctest/provider.go": false,
+		"internal/authz/authz.go":                false,
+	} {
+		if got := skipPgErrorFile(path); got != want {
+			t.Errorf("skipPgErrorFile(%q) = %v, want %v", path, got, want)
 		}
 	}
 }

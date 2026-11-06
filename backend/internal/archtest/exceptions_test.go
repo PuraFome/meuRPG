@@ -7,9 +7,10 @@ import (
 	"testing"
 )
 
-// parseExceptions reads an exception list: one entry per line, blank lines
-// and lines that start with # are skipped, an entry may be followed by
-// " # why". The entries come back in file order.
+// parseExceptions reads an exception list, one entry per line.
+// Blank lines and lines that start with # are skipped.
+// An entry may be followed by " # why".
+// The entries come back in file order.
 func parseExceptions(text string) []string {
 	var out []string
 	for line := range strings.Lines(text) {
@@ -25,11 +26,12 @@ func parseExceptions(text string) []string {
 	return out
 }
 
-// compareExceptions is the shared rule of the convention tests: an exception
-// list can only shrink. found maps each offender's key to the message that
-// says what to use instead; listed is the file's entries. An offender that
-// the file does not list fails with its message, and an entry that is no
-// longer an offender fails with "remove it". It returns the problems, sorted.
+// compareExceptions is the shared rule of the convention tests: an exception list can only shrink.
+// The found map holds each offender's key and the message that says what to use instead.
+// The listed slice holds the file's entries.
+// An offender that the file does not list fails with its message.
+// An entry that is no longer an offender fails with "remove it".
+// It returns the problems, sorted.
 func compareExceptions(file string, listed []string, found map[string]string) []string {
 	var problems []string
 	if !slices.IsSorted(listed) {

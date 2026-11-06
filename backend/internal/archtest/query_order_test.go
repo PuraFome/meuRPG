@@ -3,7 +3,6 @@ package archtest
 import (
 	_ "embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"regexp"
 	"slices"
@@ -11,8 +10,8 @@ import (
 	"testing"
 )
 
-// queryOrderExceptions is the list of :many queries that still have no
-// ORDER BY; it can only shrink.
+// queryOrderExceptions lists the :many queries that still have no ORDER BY.
+// It can only shrink.
 //
 //go:embed query_order_exceptions.txt
 var queryOrderExceptions string
@@ -23,15 +22,12 @@ var (
 	orderBy    = regexp.MustCompile(`(?i)\bORDER\s+BY\b`)
 )
 
-// TestManyQueriesHaveOrderBy fails when a :many query in
-// internal/<module>/queries.sql has no ORDER BY in its outermost statement and
-// query_order_exceptions.txt does not list it, and when a listed query has one
-// now.
+// TestManyQueriesHaveOrderBy fails for a :many query with no ORDER BY in its outermost statement.
+// It reads the query files that sqlc.yaml lists.
+// A query that query_order_exceptions.txt lists is allowed.
+// A listed query that has an ORDER BY now fails.
 func TestManyQueriesHaveOrderBy(t *testing.T) {
-	matches, err := fs.Glob(os.DirFS(backendRoot), "internal/*/queries.sql")
-	if err != nil || len(matches) == 0 {
-		t.Fatalf("found no internal/*/queries.sql (err %v): is backendRoot right?", err)
-	}
+	matches := sqlcQueryFiles(t)
 	found := map[string]string{}
 	many := 0
 	for _, m := range matches {
@@ -39,7 +35,7 @@ func TestManyQueriesHaveOrderBy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		module := strings.Split(m, "/")[1]
+		module := moduleOfQueryFile(m)
 		n, unordered := unorderedManyQueries(string(src))
 		many += n
 		for _, name := range unordered {
@@ -51,7 +47,7 @@ func TestManyQueriesHaveOrderBy(t *testing.T) {
 		}
 	}
 	failProblems(t, compareExceptions("query_order_exceptions.txt", parseExceptions(queryOrderExceptions), found))
-	t.Logf("%d :many queries in %d queries.sql files checked; %d known exceptions", many, len(matches), len(found))
+	t.Logf("%d :many queries in %d sqlc query files checked; %d known exceptions", many, len(matches), len(found))
 }
 
 // unorderedManyQueries returns how many :many queries the file holds and the
