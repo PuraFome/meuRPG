@@ -56,15 +56,15 @@ func AuditTableContent(ctx context.Context, pool *pgxpool.Pool, srd *rules.Conte
 	return report, nil
 }
 
-// buildFailure is a campaign whose content does not build, whatever is left out.
-type buildFailure struct{ reason string }
+// buildFailureError is a campaign whose content does not build, whatever is left out.
+type buildFailureError struct{ reason string }
 
-func (f *buildFailure) Error() string { return "the content does not build: " + f.reason }
+func (f *buildFailureError) Error() string { return "the content does not build: " + f.reason }
 
 // auditFailureReason is the reason code of a campaign the audit could not check:
 // the engine's, or "database" for a failed read.
 func auditFailureReason(err error) string {
-	if bf, ok := errors.AsType[*buildFailure](err); ok {
+	if bf, ok := errors.AsType[*buildFailureError](err); ok {
 		return bf.reason
 	}
 	return "database"
@@ -93,7 +93,7 @@ func auditCampaign(ctx context.Context, pool *pgxpool.Pool, srd *rules.Content, 
 		}
 		c, err := buildFromRows(srd, rows, int(revision), off)
 		if err != nil {
-			return &buildFailure{reason: buildFailureReason(err)}
+			return &buildFailureError{reason: buildFailureReason(err)}
 		}
 		refused = c.Refused()
 		return nil
