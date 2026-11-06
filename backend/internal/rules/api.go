@@ -73,6 +73,7 @@ const (
 	MaxClasses        = 12
 	MaxSkillKeys      = 18 // SkillProficiencies, Expertise, and at most 2 custom background skills
 	MaxWeapons        = 20
+	MaxCarried        = MaxWeapons + 2 // the armor, the shield and the weapons
 	MaxCantrips       = 30
 	MaxKnownSpells    = 200
 	MaxPreparedSpells = 100
@@ -147,6 +148,11 @@ type Build struct {
 	MageArmor bool
 	// Weapons are the weapons carried, for the sheet's attacks.
 	Weapons []string
+	// Carried lists the armor, the shield (shieldKey) and the weapons of the
+	// sheet that are carried, not equipped: they count for no armor class,
+	// attack or property. Empty means all are equipped, and the field is then
+	// left out of a Build's JSON, as for a sheet from before it existed.
+	Carried []string `json:",omitempty"`
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
 	// character knows (the wizard's spellbook, the sorcerer's known
 	// spells). SpellsPrepared are the prepared ones, for classes that

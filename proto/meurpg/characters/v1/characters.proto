@@ -1519,6 +1519,12 @@ message FullSheet {
   // "<choice key>#<n>" ("feature:favored-enemy-1-type#1"). At most 12 entries, each 1
   // to 40 characters, one line. The rules never read the text.
   map<string, string> feature_choice_text = 34;
+  // Keys among armor_key, weapon_keys and "equipment:shield" (when shield is
+  // true) that are carried, not equipped: a carried piece is listed on the
+  // sheet but counts for no armor class, attack or property. At most 22, no
+  // repeats. Empty means everything listed is equipped, which is what every
+  // sheet stored before the field means.
+  repeated string carried_keys = 35;
   // A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
   // of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
   CuttingWordsAsk cutting_words_ask = 40;

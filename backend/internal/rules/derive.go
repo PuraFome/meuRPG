@@ -103,6 +103,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	d := &Derived{ContentVersion: c.version}
 	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive}
 
+	x.equip()
 	x.resolve()
 	x.resolveArmor()
 	x.names()

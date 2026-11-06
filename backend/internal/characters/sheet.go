@@ -554,6 +554,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		Armor:               f.GetArmorKey(),
 		Shield:              f.GetShield(),
 		Weapons:             f.GetWeaponKeys(),
+		Carried:             f.GetCarriedKeys(),
 		Cantrips:            f.GetCantripKeys(),
 		SpellsKnown:         f.GetKnownSpellKeys(),
 		SpellsPrepared:      f.GetPreparedSpellKeys(),

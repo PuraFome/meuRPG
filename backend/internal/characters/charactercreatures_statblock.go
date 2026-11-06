@@ -40,7 +40,7 @@ func (s *Service) ownerEnv(ctx context.Context, q *charactersdb.Queries, content
 	}
 	b := buildWithStates(sheet.GetFull(), stateKeysOf(rows[0].ActiveStates))
 	d := rules.Derive(b, content)
-	return rules.OwnerEnv(d, b.Shield && !d.ShieldIdle), nil
+	return rules.OwnerEnv(d, b.ShieldOn() && !d.ShieldIdle), nil
 }
 
 // lazyOwner is the formula environment of the character that is given creatures, worked out on the first

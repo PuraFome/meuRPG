@@ -3,6 +3,7 @@ package characters
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -252,12 +253,12 @@ func (s *Service) tellGearChange(ctx context.Context, tx pgx.Tx, campaignID, cha
 	if s.reviewHost == nil {
 		return nil, nil
 	}
-	before, after := stored.GetArmorKey(), next.GetArmorKey()
+	before, after := buildOf(stored).ArmorOn(), buildOf(next).ArmorOn()
 	switch {
 	case after != "" && before != after:
 		// A character that dons armor loses Mage Armor.
 		return s.reviewHost.ArmorWorn(ctx, tx, campaignID, characterID)
-	case before != after || stored.GetShield() != next.GetShield():
+	case before != after || buildOf(stored).ShieldOn() != buildOf(next).ShieldOn() || !slices.Equal(stored.GetCarriedKeys(), next.GetCarriedKeys()):
 		// A shield (or armor taken off) changes what Mage Armor gives.
 		return s.reviewHost.GearChanged(ctx, tx, campaignID, characterID)
 	}

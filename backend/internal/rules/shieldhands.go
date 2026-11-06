@@ -20,7 +20,7 @@ const (
 func (x *deriver) wieldsTwoHanded() bool {
 	return slices.ContainsFunc(x.b.Weapons, func(key string) bool {
 		eq, ok := x.c.equipment[key]
-		return ok && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty)
+		return ok && !x.b.IsCarried(key) && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty)
 	})
 }
 

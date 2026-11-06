@@ -208,7 +208,7 @@ func (s *Service) MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, charac
 		return link.MageArmor{}, s.dbError(ctx, "read rules content", err)
 	}
 	b := buildWithStates(full, stateKeysOf(rows[0].ActiveStates))
-	if b.Armor != "" {
+	if b.ArmorOn() != "" {
 		return link.MageArmor{Applies: true, Wears: true}, nil
 	}
 	b.MageArmor = true

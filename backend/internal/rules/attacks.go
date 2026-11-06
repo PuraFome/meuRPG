@@ -34,6 +34,9 @@ func (x *deriver) attacks() {
 	martialArts := x.hasHandler("monk.martial_arts") && x.armorCategory == "none" && !x.b.Shield
 	martialDie := x.martialArtsDie()
 	for i, key := range x.b.Weapons {
+		if x.b.IsCarried(key) {
+			continue
+		}
 		x.weaponAttack(i, key, martialArts, martialDie)
 	}
 	for _, key := range x.b.Cantrips {

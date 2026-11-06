@@ -124,7 +124,7 @@ func (c *Content) summonCount(spell string, def *summonDef, circle int, b Build)
 	}
 	n := 1
 	d := Derive(b, c)
-	env := OwnerEnv(d, b.Shield && !d.ShieldIdle)
+	env := OwnerEnv(d, b.ShieldOn() && !d.ShieldIdle)
 	env.Slot = func() int { return circle }
 	if rule.feature != "" {
 		env.Slot = func() int { return 0 } // a feature's summon spends a use, not a slot

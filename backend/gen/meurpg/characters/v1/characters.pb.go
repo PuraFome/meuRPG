@@ -3067,6 +3067,12 @@ type FullSheet struct {
 	// "<choice key>#<n>" ("feature:favored-enemy-1-type#1"). At most 12 entries, each 1
 	// to 40 characters, one line. The rules never read the text.
 	FeatureChoiceText map[string]string `protobuf:"bytes,34,rep,name=feature_choice_text,json=featureChoiceText,proto3" json:"feature_choice_text,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Keys among armor_key, weapon_keys and "equipment:shield" (when shield is
+	// true) that are carried, not equipped: a carried piece is listed on the
+	// sheet but counts for no armor class, attack or property. At most 22, no
+	// repeats. Empty means everything listed is equipped, which is what every
+	// sheet stored before the field means.
+	CarriedKeys []string `protobuf:"bytes,35,rep,name=carried_keys,json=carriedKeys,proto3" json:"carried_keys,omitempty"`
 	// A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
 	// of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
 	CuttingWordsAsk CuttingWordsAsk `protobuf:"varint,40,opt,name=cutting_words_ask,json=cuttingWordsAsk,proto3,enum=meurpg.characters.v1.CuttingWordsAsk" json:"cutting_words_ask,omitempty"`
@@ -3353,6 +3359,13 @@ func (x *FullSheet) GetFeatSlots() map[string]string {
 func (x *FullSheet) GetFeatureChoiceText() map[string]string {
 	if x != nil {
 		return x.FeatureChoiceText
+	}
+	return nil
+}
+
+func (x *FullSheet) GetCarriedKeys() []string {
+	if x != nil {
+		return x.CarriedKeys
 	}
 	return nil
 }
@@ -12916,7 +12929,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x0eCharacterSheet\x125\n" +
 	"\x04full\x18\x01 \x01(\v2\x1f.meurpg.characters.v1.FullSheetH\x00R\x04full\x128\n" +
 	"\x05basic\x18\x02 \x01(\v2 .meurpg.characters.v1.BasicSheetH\x00R\x05basicB\t\n" +
-	"\acontent\"\xba\x10\n" +
+	"\acontent\"\xdd\x10\n" +
 	"\tFullSheet\x12?\n" +
 	"\vbase_scores\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\n" +
 	"baseScores\x12\x19\n" +
@@ -12957,7 +12970,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\tfeat_keys\x18  \x03(\tR\bfeatKeys\x12M\n" +
 	"\n" +
 	"feat_slots\x18! \x03(\v2..meurpg.characters.v1.FullSheet.FeatSlotsEntryR\tfeatSlots\x12f\n" +
-	"\x13feature_choice_text\x18\" \x03(\v26.meurpg.characters.v1.FullSheet.FeatureChoiceTextEntryR\x11featureChoiceText\x12Q\n" +
+	"\x13feature_choice_text\x18\" \x03(\v26.meurpg.characters.v1.FullSheet.FeatureChoiceTextEntryR\x11featureChoiceText\x12!\n" +
+	"\fcarried_keys\x18# \x03(\tR\vcarriedKeys\x12Q\n" +
 	"\x11cutting_words_ask\x18( \x01(\x0e2%.meurpg.characters.v1.CuttingWordsAskR\x0fcuttingWordsAsk\x12\x12\n" +
 	"\x04size\x18) \x01(\tR\x04size\x1aC\n" +
 	"\x15ContentBaselinesEntry\x12\x10\n" +
