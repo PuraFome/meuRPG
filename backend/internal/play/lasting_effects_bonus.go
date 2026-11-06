@@ -49,7 +49,7 @@ func bonusSources(bonuses []effectBonus, names func(string) string, master, owns
 	for _, b := range bonuses {
 		name := names(b.Key)
 		if (b.Hidden || (b.OwnerOnly && !owns)) && !master {
-			name = "Outra fonte"
+			name = otherSourceTx
 		}
 		out = append(out, &playv1.AdvantageSource{
 			Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE, TextPt: fmt.Sprintf("%s %+d", name, b.Value),

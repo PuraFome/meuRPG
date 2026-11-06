@@ -563,7 +563,7 @@ func hidingNames(names func(string) string, mods []combat.Modifier) func(string)
 	}
 	return func(key string) string {
 		if slices.Contains(hidden, key) {
-			return "Outra fonte"
+			return otherSourceTx
 		}
 		return names(key)
 	}

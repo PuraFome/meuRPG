@@ -128,7 +128,6 @@ func TestATableSpellRollBonusRaisesAnAttackASaveAndACheck(t *testing.T) {
 			t.Errorf("%s: bonuses = %+v, want +%d from the spell", c.what, cm.Bonuses, c.wantBonus)
 		}
 	}
-
 }
 
 // The bonus only counts for the rolls it names.

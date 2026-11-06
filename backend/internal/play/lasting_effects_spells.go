@@ -102,7 +102,7 @@ func (s *Service) applyLastingSpell(
 // took hold of. The pool is not added to: the target keeps the larger (SRD 5.1, "Temporary Hit Points").
 // The row then keeps, as its temp_hp, the pool it set, or no temp_hp when it raised nothing, so the end
 // of the effect clears only what this effect put there (never a pool from False Life or another effect),
-// and it reads it from its own row, not from the catalogue. The effect that raised the pool last owns it:
+// and it reads it from its own row, not from the catalog. The effect that raised the pool last owns it:
 // the temp_hp claim of the other effects on the target is dropped.
 func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent, prior map[string]int) error {
 	for _, r := range rows {
@@ -182,7 +182,7 @@ func claimedTempHP(mods []rules.EffectModifier, pool int) []byte {
 	if pool > 0 {
 		out = append(out, rules.EffectModifier{Kind: rules.ModifierTempHP, Value: pool})
 	}
-	body, _ := json.Marshal(out) //nolint:errcheck // plain structs
+	body, _ := json.Marshal(out)
 	return body
 }
 

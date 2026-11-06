@@ -343,8 +343,10 @@ func TestATableSpellEffectDoesNotLeakItsNumbers(t *testing.T) {
 	a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) {
 		s.Effect.Visibility = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER
 		s.Effect.PlayerLabelPt = "Marcado"
-	}, &tableMod{Kind: modTemp, Value: 77}, &tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
-		AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK)})
+	}, &tableMod{Kind: modTemp, Value: 77}, &tableMod{
+		Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
+		AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK),
+	})
 	e := a.castersFight(t, 1)
 	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
 
@@ -587,8 +589,10 @@ func TestATableSpellOwnerOnlyBonusIsOutraFonteInAnotherPlayersSave(t *testing.T)
 			a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) {
 				s.Effect.Visibility = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER
 			},
-				&tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
-					AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE)})
+				&tableMod{
+					Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
+					AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE),
+				})
 			e := a.markOn(t, "Toren")
 			a.passTo(t, e, "Brisa")
 			a.h.roller.queue(11)
@@ -613,8 +617,10 @@ func TestATableSpellCharacterEffectDoesNotLeakItsNumbersOutsideACombat(t *testin
 	t.Parallel()
 	a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) { s.Effect.PlayerLabelPt = "Marcado" },
 		&tableMod{Kind: modTemp, Value: 77},
-		&tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
-			AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK)})
+		&tableMod{
+			Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
+			AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK),
+		})
 	a.mustCastOut(t, a.ana, a.pens, tableMark, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
 	read := func(u *user) *playv1.CharacterEffect {
 		res, err := u.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: a.campaignID}))
@@ -653,7 +659,7 @@ func TestATableSpellEffectOfAnUnseenCasterNamesNoCaster(t *testing.T) {
 	row := playdb.CombatantState{SourceKind: &kind, SourceKey: &source, SourceID: &caster.ID, DurationKind: &rounds}
 	end := int32(11)
 	row.EndsRound, row.EndsCombatantID = &end, &caster.ID
-	names := func(k string) string { return "Marca de Nanquim" }
+	names := func(_ string) string { return "Marca de Nanquim" }
 	player := &effectViewer{v: combatViewer{}, d: &encounterData{}, names: names, byID: map[string]playdb.Combatant{caster.ID: caster}}
 	master := &effectViewer{v: combatViewer{master: true}, d: &encounterData{}, names: names, byID: map[string]playdb.Combatant{caster.ID: caster}}
 	if got := player.originOf(row, caster, false); strings.Contains(got, "Pensantus") {
