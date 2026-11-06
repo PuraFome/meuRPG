@@ -28,7 +28,7 @@ type AuditReport struct {
 // It only reads and keeps nothing: a campaign's content is dropped before the next.
 // A line has the campaign ID, the entry key and kind and the reason code, never the entry's text.
 // A campaign it cannot check is logged and counted, and the audit goes on.
-// It returns an error only when the list of campaigns cannot be read.
+// It returns an error when the list of campaigns cannot be read or ctx ends before the last campaign.
 func AuditTableContent(ctx context.Context, pool *pgxpool.Pool, srd *rules.Content, logger *slog.Logger) (AuditReport, error) {
 	q := charactersdb.New(pool)
 	ids, err := q.ListCampaignsWithContent(ctx)
@@ -37,6 +37,9 @@ func AuditTableContent(ctx context.Context, pool *pgxpool.Pool, srd *rules.Conte
 	}
 	var report AuditReport
 	for _, id := range ids {
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
 		report.Campaigns++
 		n, err := auditCampaign(ctx, pool, srd, logger, id)
 		if err != nil {

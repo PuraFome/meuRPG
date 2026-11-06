@@ -156,7 +156,7 @@ func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id
 	c, err := buildFromRows(s.srd, rows, int(revision), off)
 	if err != nil {
 		if errors.Is(err, errTooManyPasses) {
-			s.logger.WarnContext(ctx, "table content kept being refused", slog.String("campaign_id", id))
+			s.logger.ErrorContext(ctx, "table content kept being refused", slog.String("campaign_id", id), slog.Any("error", err))
 		}
 		return nil, wrap("add the table's content to the rules", err)
 	}

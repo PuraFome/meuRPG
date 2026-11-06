@@ -526,13 +526,15 @@ A later revision of the effects, or a package, can make it invalid.
 `TableSource` then builds the content again without the entries the rules refuse (`buildTolerant`).
 It blames each violation that names an entry by its key, leaves that entry out and builds again, up to 16 passes.
 A subclass of a class left out fails the next pass with `dangling_reference` and is left out too.
-A violation with no entry key, or one that does not stop after 16 passes, fails the read and logs `table content kept being refused`; the read never returns a part.
+A violation with no entry key fails the read.
+A build that is still refused after 16 passes fails the read and logs `table content kept being refused` at `ERROR`.
+The read never returns a part.
 A campaign with no refused entry costs one build.
 `Content.Refused()` lists what was left out, and is cached with the content for its revision.
 `ListTableEntriesResponse.left_out` gives it to the master of the campaign and to nobody else.
 A sheet that uses a left-out entry gets `unknown_key`, as for an entry that does not exist.
-A write of the master that repairs a left-out entry is accepted, as are archiving, unarchiving and the option switches; a write is refused only for its own violation.
+A write of the master that repairs a left-out entry is accepted, as are archiving, unarchiving and the option switches; a write is refused for its own violations and for the healthy entries it breaks.
 An import is checked over the stored entries as they are stored, so a pack that breaks one is refused.
-Rows that cannot be decoded still fail the listing, the export and the import.
+Rows that cannot be decoded fail the listing, the export, the import and every write.
 The deploy audit of the same rules is in the [runbook](../operations/runbook.md#entries-a-new-revision-would-leave-out).
 Tests: `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.

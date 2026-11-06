@@ -264,7 +264,7 @@ type stored struct {
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
 // stored are the entries before the write.
-// One the rules already refuse there is left out of the check.
+// Entries of stored that the rules already refuse are left out of the check.
 func (s *Service) checkOverlay(stored, entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused

@@ -1320,7 +1320,7 @@ message ListTableEntriesResponse {
   int32 table_revision = 2;
   // The content version the revision makes, such as "srd51@0123456789ab+fx.12+mesa.7".
   string content_version = 3;
-  // The entries the rules refuse now, which are left out of the campaign's
+  // The entries the rules refuse, which are left out of the campaign's
   // content. Each violation's `key` says the entry (the key starts with its
   // kind), and `field` and `reason` are the engine's, with the codes of
   // TableContentViolation. The entry itself is still in `entries`, so the master

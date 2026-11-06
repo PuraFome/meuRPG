@@ -49,7 +49,7 @@ flowchart LR
 3. **Migrate.** Point the job at the new image. Execute it when `backend/migrations/` changed since the commit that runs now; with nothing new, goose applies nothing, so running it is harmless. If it fails, stop and read its log ([read the logs](#read-the-logs)): the running revision is untouched.
 
    ```bash
-   gcloud run jobs update meurpg-migrate --image=$IMAGE --region=$REGION
+   gcloud run jobs update meurpg-migrate --image=$IMAGE --region=$REGION --memory=1Gi
    gcloud run jobs execute meurpg-migrate --region=$REGION --wait
    ```
 
@@ -131,8 +131,10 @@ Cloud Logging keeps the logs for 30 days in its `_Default` bucket. The log never
 After `up` succeeds, `/app/migrate` runs the stored table content of every campaign through the rules of the new image.
 It reads one campaign at a time, keeps nothing and writes nothing.
 It never fails the job: a campaign it cannot check is logged at `ERROR` and counted.
-The job has 1 GiB of memory, enough for the SRD and the largest campaign, and the audit shares the job's 15-minute task timeout.
+The job has 1 GiB of memory (`--memory=1Gi` on create and on each update), which must hold the SRD and the largest campaign (`TestLiveContentMemoryAtMaximumText` measures one).
+The job's task timeout is 15 minutes, and the audit stops after 10 (`table content audit stopped` at `ERROR`), so a slow audit does not fail the job.
 Each command of the audit has the API's 30-second `statement_timeout`.
+The audit runs while the migration lock is held.
 
 ```bash
 gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="meurpg-migrate" AND jsonPayload.message:"table content audit"' --freshness=1d

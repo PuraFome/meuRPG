@@ -46,6 +46,9 @@ func TestAuditTableContentOfAHealthyCampaignLogsNoEntry(t *testing.T) {
 	if _, err := AuditTableContent(t.Context(), f.h.pool, f.h.svc.content.(*TableSource).srd, slog.New(slog.NewJSONHandler(&buf, nil))); err != nil {
 		t.Fatalf("AuditTableContent() error = %v", err)
 	}
+	if !strings.Contains(buf.String(), `"campaigns":1,"left_out":0,"failed":0`) {
+		t.Errorf("the summary does not say 1 campaign and 0 left out:\n%s", buf.String())
+	}
 	if strings.Contains(buf.String(), f.campaign) {
 		t.Errorf("a healthy campaign is named in the log:\n%s", buf.String())
 	}

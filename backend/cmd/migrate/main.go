@@ -10,9 +10,10 @@
 //	DATABASE_URL=postgresql://... migrate up      # apply all pending migrations
 //	DATABASE_URL=postgresql://... migrate down    # roll back the latest one
 //	DATABASE_URL=postgresql://... migrate status  # list applied and pending
-//	DATABASE_URL=postgresql://... migrate audit-content  # log the table entries the rules would leave out
+//	DATABASE_URL=postgresql://... migrate audit-content  # log the entries the rules would leave out
 //
-// `up` runs the audit after it succeeds. The audit only reads and never fails the job.
+// `up` runs the audit after it succeeds.
+// The audit only reads, stops after auditTimeout, and logs its errors instead of failing the job.
 package main
 
 import (
@@ -23,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	// The pgx driver for database/sql, which goose needs.
@@ -117,9 +119,14 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 	return nil
 }
 
+// auditTimeout bounds the audit, so that a slow one leaves the job's own timeout alone.
+const auditTimeout = 10 * time.Minute
+
 // auditContent logs the table entries the rules in this image would leave out.
 // It reads only, and a failure is logged: the audit never fails the job.
 func auditContent(ctx context.Context, logger *slog.Logger, cfg config.Config) {
+	ctx, cancel := context.WithTimeout(ctx, auditTimeout)
+	defer cancel()
 	srd, err := rules.LoadSRD()
 	if err != nil {
 		logger.ErrorContext(ctx, "table content audit skipped: cannot load the rules", "error", err)
@@ -132,7 +139,7 @@ func auditContent(ctx context.Context, logger *slog.Logger, cfg config.Config) {
 	}
 	defer pool.Close()
 	if _, err := characters.AuditTableContent(ctx, pool, srd, logger); err != nil {
-		logger.ErrorContext(ctx, "table content audit failed", "error", err)
+		logger.ErrorContext(ctx, "table content audit stopped", "error", err)
 	}
 }
 

@@ -2684,7 +2684,7 @@ export type ListTableEntriesResponse = Message<"meurpg.rules.v1.ListTableEntries
   contentVersion: string;
 
   /**
-   * The entries the rules refuse now, which are left out of the campaign's
+   * The entries the rules refuse, which are left out of the campaign's
    * content. Each violation's `key` says the entry (the key starts with its
    * kind), and `field` and `reason` are the engine's, with the codes of
    * TableContentViolation. The entry itself is still in `entries`, so the master

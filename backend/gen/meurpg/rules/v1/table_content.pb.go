@@ -4847,7 +4847,7 @@ type ListTableEntriesResponse struct {
 	TableRevision int32 `protobuf:"varint,2,opt,name=table_revision,json=tableRevision,proto3" json:"table_revision,omitempty"`
 	// The content version the revision makes, such as "srd51@0123456789ab+fx.12+mesa.7".
 	ContentVersion string `protobuf:"bytes,3,opt,name=content_version,json=contentVersion,proto3" json:"content_version,omitempty"`
-	// The entries the rules refuse now, which are left out of the campaign's
+	// The entries the rules refuse, which are left out of the campaign's
 	// content. Each violation's `key` says the entry (the key starts with its
 	// kind), and `field` and `reason` are the engine's, with the codes of
 	// TableContentViolation. The entry itself is still in `entries`, so the master
