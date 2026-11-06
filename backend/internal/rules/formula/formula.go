@@ -153,6 +153,9 @@ type Compiler struct {
 	states bool
 	// slot says the compiler accepts slot(), the circle of the slot a summon was cast with.
 	slot bool
+	// picks are the names of the picks of a feat (a choice effect with a name) the
+	// literal "@name" may stand for in mod() and score(); see WithPicks.
+	picks []string
 }
 
 // NewCompiler returns a Compiler that accepts classLevel of these class
@@ -165,14 +168,26 @@ func NewCompiler(classes []string) *Compiler {
 // active("name") in a condition. The plain compiler refuses it: a state only
 // gates the `when` of an effect, never a number.
 func (c *Compiler) WithStates() *Compiler {
-	return &Compiler{classes: c.classes, states: true, slot: c.slot}
+	return &Compiler{classes: c.classes, states: true, slot: c.slot, picks: c.picks}
 }
 
 // WithSlot returns a compiler for the same classes that also accepts slot() in a
 // number: the circle of the spell slot the owner cast with, 0 outside a slot cast.
 // The plain compiler refuses it: only a creature the owner summons knows a slot.
 func (c *Compiler) WithSlot() *Compiler {
-	return &Compiler{classes: c.classes, states: c.states, slot: true}
+	return &Compiler{classes: c.classes, states: c.states, slot: true, picks: c.picks}
+}
+
+// PickPrefix starts the literal of a pick in mod() and score(): "@ability" stands for
+// the ability the player picked in the choice named "ability". The compiler keeps the
+// literal as it is; the Env's Mod and Score receive it and resolve it for the character.
+const PickPrefix = "@"
+
+// WithPicks returns a compiler for the same classes that also accepts mod("@name") and
+// score("@name") for each of the names (the pick of a choice of the same entry). Any
+// other "@..." literal, and "@name" anywhere but those two calls, is refused.
+func (c *Compiler) WithPicks(names []string) *Compiler {
+	return &Compiler{classes: c.classes, states: c.states, slot: c.slot, picks: slices.Clone(names)}
 }
 
 // Compile checks and compiles a formula of the given kind. The error names
@@ -494,7 +509,7 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 		}
 	case "level", "prof", "armor", "shield", "speedwalk":
 	case "mod", "score":
-		literals, arity = abilities, 1
+		literals, arity = c.abilityLiterals(), 1
 	case "classLevel":
 		literals, arity = c.classes, 1
 	case "floor", "ceil":
@@ -516,6 +531,19 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 		}
 	}
 	return nil
+}
+
+// abilityLiterals are the texts mod() and score() accept: the abilities, and the
+// "@name" of each pick the compiler was given.
+func (c *Compiler) abilityLiterals() []string {
+	if len(c.picks) == 0 {
+		return abilities
+	}
+	out := slices.Clone(abilities)
+	for _, name := range c.picks {
+		out = append(out, PickPrefix+name)
+	}
+	return out
 }
 
 // checkLiteralArg checks that the only argument of the call is text written out and one of the literals.

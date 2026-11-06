@@ -370,10 +370,12 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
+	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras). Num talento, também uma habilidade ou um tipo de dano: dê um nome à escolha e escreva @nome nos efeitos seguintes do talento (por exemplo, a proficiência save.@habilidade). Em vez da lista, uma escolha de opções pode oferecer um conjunto inteiro do SRD (campo conjunto).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
 		{Name: "from", Kind: "choices"},
+		{Name: "name", Kind: "text"},
+		{Name: "set", Kind: "text"},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -448,7 +450,7 @@ var (
 	choiceNames = map[string]string{
 		"skill": "Perícias", "expertise": "Especialização", "cantrip": "Truques", "spell": "Magias",
 		"language": "Idiomas", "tool": "Ferramentas", "feature": "Uma opção de uma lista do SRD",
-		"feat": "Talentos",
+		"feat": "Talentos", "ability": "Habilidades", "damage_type": "Tipos de dano",
 	}
 	rollTargetNames = map[string]string{
 		"attack": "Ataques", "death_save": "Testes contra a morte", "initiative": "Iniciativa",

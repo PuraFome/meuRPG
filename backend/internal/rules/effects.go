@@ -93,6 +93,15 @@ type Effect struct {
 	Count  int      `json:"count,omitempty"`
 	From   []string `json:"from,omitempty"`
 
+	// choice, picks of a feat (picks.go). Name names the choice within its entry (a-z,
+	// 0-9 and _), so a later effect of the same entry can write "@name" for what was
+	// picked. Set, on a choice of kind "feature", is an option set (optionSetDefs) whose
+	// every option the choice offers, instead of the From list. The kinds "ability" (From
+	// are ability keys, empty is all six) and "damage_type" (From are "damage-type:" keys,
+	// empty is all of the content) exist for these picks.
+	Name string `json:"name,omitempty"`
+	Set  string `json:"set,omitempty"`
+
 	// grant_action: an action for "Sua vez" (MR-014). Economy is action,
 	// bonus_action, reaction, free or movement. It becomes Derived.Actions
 	// (package combat reads it); the standard actions are in
@@ -301,6 +310,11 @@ type Effect struct {
 	// whenStates maps the names the `when` formula reads with active() to those keys.
 	entry, stateKey, gateKey string
 	whenStates               map[string]string
+
+	// picks are the names a feat's earlier choices gave, with the kind of each ("ability",
+	// "damage_type"...): the "@name" tokens of this effect (picks.go) refer to them. Set on
+	// the compiled copy, and kept on it for the engine that resolves the tokens.
+	picks map[string]string
 }
 
 // The closed sets of the effect schema.
@@ -326,7 +340,7 @@ var (
 	recharges         = []string{RechargeShortRest, RechargeLongRest, RechargeDawn, RechargeNone, RechargeInitiative, RechargeRestoreOneShort, RechargeRestoreOneLong}
 	choiceKinds       = []string{
 		"skill", "expertise", "cantrip", "spell", "subclass", "feature",
-		"language", "tool", "ability_score_improvement", "feat",
+		"language", "tool", "ability_score_improvement", "feat", "ability", "damage_type",
 	}
 	economies = []string{"action", "bonus_action", "reaction", "free", "movement"}
 	// maneuverApplies is where a superiority die goes: the damage of a weapon attack
@@ -368,11 +382,21 @@ func (x effectCompiler) compile(src string, kind formula.Kind) (*formula.Program
 	if src == "" {
 		return nil, nil
 	}
-	p, err := x.c.compileFormula(src, kind)
+	p, err := x.compileFormula(src, kind)
 	if err != nil {
 		return nil, x.fail("formula %q: %v", src, err)
 	}
 	return p, nil
+}
+
+// compileFormula is the content's compileFormula, except that the effect of a feat that
+// has named picks also accepts mod("@name") and score("@name") for them (not memoized:
+// the program depends on the names).
+func (x effectCompiler) compileFormula(src string, kind formula.Kind) (*formula.Program, error) {
+	if len(x.e.picks) == 0 {
+		return x.c.compileFormula(src, kind)
+	}
+	return x.c.compiler.WithPicks(sortedKeys(x.e.picks)).Compile(src, kind)
 }
 
 // takesOnly says the effect sets nothing but the fields strip takes off a copy
@@ -380,7 +404,7 @@ func (x effectCompiler) compile(src string, kind formula.Kind) (*formula.Program
 func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 	other := *x.e
 	// What the overlay resolves for the state gate (gate.go) is not a field the author set.
-	other.entry, other.stateKey, other.gateKey, other.whenStates = "", "", "", nil
+	other.entry, other.stateKey, other.gateKey, other.whenStates, other.picks = "", "", "", nil, nil
 	strip(&other)
 	return reflect.DeepEqual(other, Effect{})
 }
@@ -484,6 +508,9 @@ func (x effectCompiler) strayFields() error {
 	}
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
+	}
+	if e.Type != "choice" && (e.Name != "" || e.Set != "") {
+		return x.fail("name and set belong to choice")
 	}
 	if err := x.strayOwnFields(); err != nil {
 		return err
@@ -780,8 +807,16 @@ func (x effectCompiler) choice() error {
 	if !slices.Contains(choiceKinds, e.Choice) || e.Count < 0 {
 		return x.fail("unknown choice %q", e.Choice)
 	}
+	if e.Name != "" && !validPickName(e.Name) {
+		return x.fail("name %q: a name has 1 to %d characters of a-z, 0-9 and _", e.Name, formula.MaxStateNameBytes)
+	}
+	if e.Set != "" {
+		if _, known := optionSetOf(e.Set); !known || e.Choice != "feature" || len(e.From) > 0 {
+			return x.fail("set %q is the option set of a choice of features with no from", e.Set)
+		}
+	}
 	for _, k := range e.From {
-		if !x.c.exists(k) {
+		if !x.c.pickKeyExists(e.Choice, k) {
 			return x.fail("unknown key %q in from", k)
 		}
 	}

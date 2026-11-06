@@ -44,6 +44,8 @@ const (
 	MaxSlugLength = 60
 	// MaxFeatureOptions is the most options one feature's list has.
 	MaxFeatureOptions = 60
+	// MaxFeatOptions is the most options one feat's list has: the same as a feature's.
+	MaxFeatOptions = MaxFeatureOptions
 
 	maxNameRunes      = 80
 	maxTextParagraphs = 50

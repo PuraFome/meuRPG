@@ -258,6 +258,13 @@ type Feat struct {
 	Races        []string `json:"races,omitempty"`
 	Size         string   `json:"size,omitempty"`
 	LacksFeature string   `json:"lacks_feature,omitempty"`
+	// Options, OptionsChoose and OptionSet make the feat an offerer, as a class feature
+	// that has options is (Feature.Options): the keys of the options its choice of
+	// features lists (OptionsChoose how many the player picks), or the name of the option
+	// set it offers whole. A table feat's own; the SRD's have none.
+	Options       []string `json:"options,omitempty"`
+	OptionsChoose int      `json:"options_choose,omitempty"`
+	OptionSet     string   `json:"option_set,omitempty"`
 }
 
 // Proficiency is something a character can be proficient in.
