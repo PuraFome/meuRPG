@@ -637,6 +637,11 @@ var modifierChecks = map[string]func(m EffectModifier) error{
 	ModifierConditionImmunity: checkConditionImmunity,
 	ModifierTurnTempHP:        checkTurnTempHP,
 	ModifierExtraAction:       checkExtraAction,
+	ModifierRollBonus:         checkRollBonus,
+	ModifierTempHP:            checkTempHP,
+	ModifierResistance:        checkResistanceModifier,
+	ModifierSaveDisadvantage:  checkSaveDisadvantage,
+	ModifierCheckDisadvantage: checkCheckDisadvantage,
 }
 
 // checkModifier checks one modifier's fields against its kind.
@@ -824,6 +829,11 @@ func checkExtraAction(m EffectModifier) error {
 // instantaneous spell, whose clock is its target's next turn (Zombaria Viciosa:
 // until the end of it). The result is shared and must not be modified.
 func (c *Content) CombatSpellEffect(spellKey string) (*EffectDef, bool) {
+	if d, ok := c.c.tableSpellEffects[spellKey]; ok {
+		// A table spell that is archived or switched off no longer puts anything on anyone.
+		hidden := c.c.archived[spellKey] || c.c.off[spellKey]
+		return d, !hidden
+	}
 	if c.c.combatEffects == nil {
 		return nil, false
 	}

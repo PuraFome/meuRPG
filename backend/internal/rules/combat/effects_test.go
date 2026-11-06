@@ -309,3 +309,115 @@ func TestAGoadedAttackerHasDisadvantageAgainstOthersButNotAgainstItsSource(t *te
 		t.Errorf("an effect that spares nobody: sources = %+v, want the disadvantage", plain.Sources)
 	}
 }
+
+func TestRollBonusSumsTheFlatBonusesOfTheRoll(t *testing.T) {
+	t.Parallel()
+	mods := []rules.EffectModifier{
+		{Kind: rules.ModifierRollBonus, Value: 2, AppliesTo: []string{rules.RollAppliesAttack, rules.RollAppliesSave}},
+		{Kind: rules.ModifierRollBonus, Value: -1, AppliesTo: []string{rules.RollAppliesAttack}},
+		{Kind: rules.ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{rules.RollAppliesAttack}},
+		{Kind: rules.ModifierACBonus, Value: 5},
+	}
+	for _, tt := range []struct {
+		appliesTo string
+		want      int
+	}{
+		{rules.RollAppliesAttack, 1}, {rules.RollAppliesSave, 2}, {rules.RollAppliesCheck, 0}, {"", 0},
+	} {
+		if got := RollBonus(mods, tt.appliesTo); got != tt.want {
+			t.Errorf("RollBonus(%q) = %d, want %d", tt.appliesTo, got, tt.want)
+		}
+	}
+	if RollBonus(nil, rules.RollAppliesAttack) != 0 {
+		t.Error("no modifiers, no bonus")
+	}
+}
+
+func TestTempHPIsTheHighestAndDoesNotStack(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name string
+		mods []rules.EffectModifier
+		want int
+	}{
+		{"none", nil, 0},
+		{"one", []rules.EffectModifier{{Kind: rules.ModifierTempHP, Value: 5}}, 5},
+		{"two", []rules.EffectModifier{{Kind: rules.ModifierTempHP, Value: 5}, {Kind: rules.ModifierTempHP, Value: 8}}, 8},
+		{"the per-turn ones are another thing", []rules.EffectModifier{{Kind: rules.ModifierTurnTempHP, Value: 9}}, 0},
+	} {
+		if got := TempHP(tt.mods); got != tt.want {
+			t.Errorf("%s: TempHP = %d, want %d", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestResistancesAndTheirKinds(t *testing.T) {
+	t.Parallel()
+	fire := rules.EffectModifier{Kind: rules.ModifierResistance, DamageTypes: []string{"damage-type:fire"}}
+	coldImmune := rules.EffectModifier{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindImmune, DamageTypes: []string{"damage-type:cold"}}
+	acidVulnerable := rules.EffectModifier{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindVulnerable, DamageTypes: []string{"damage-type:acid"}}
+	everything := rules.EffectModifier{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindResist, DamageTypes: []string{rules.DamageTypeAll}}
+	weapons := rules.EffectModifier{Kind: rules.ModifierResistance, DamageTypes: []string{rules.DamageTypeNonmagicalBPS}}
+	other := rules.EffectModifier{Kind: rules.ModifierTempHP, Value: 3}
+
+	if got := Resistances([]rules.EffectModifier{other, fire, other, coldImmune}); len(got) != 2 || got[0].DamageTypes[0] != "damage-type:fire" {
+		t.Errorf("Resistances = %+v", got)
+	}
+	if Resistances(nil) != nil {
+		t.Error("no modifiers, no resistances")
+	}
+	for _, tt := range []struct {
+		name                       string
+		mods                       []rules.EffectModifier
+		damage                     string
+		magical                    bool
+		resist, immune, vulnerable bool
+	}{
+		{"fire resisted", []rules.EffectModifier{fire}, "damage-type:fire", true, true, false, false},
+		{"empty kind is resist, other type untouched", []rules.EffectModifier{fire}, "damage-type:cold", true, false, false, false},
+		{"immune", []rules.EffectModifier{coldImmune}, "damage-type:cold", false, false, true, false},
+		{"vulnerable", []rules.EffectModifier{acidVulnerable}, "damage-type:acid", false, false, false, true},
+		{"all covers any type", []rules.EffectModifier{everything}, "damage-type:psychic", true, true, false, false},
+		{"nonmagical slashing", []rules.EffectModifier{weapons}, "damage-type:slashing", false, true, false, false},
+		{"magical slashing is not covered", []rules.EffectModifier{weapons}, "damage-type:slashing", true, false, false, false},
+		{"nonmagical fire is not a weapon", []rules.EffectModifier{weapons}, "damage-type:fire", false, false, false, false},
+		{"resistant and vulnerable", []rules.EffectModifier{fire, {Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindVulnerable, DamageTypes: []string{"damage-type:fire"}}}, "damage-type:fire", true, true, false, true},
+		{"not a resistance", []rules.EffectModifier{other}, "damage-type:fire", true, false, false, false},
+	} {
+		resist, immune, vulnerable := DamageKinds(tt.mods, tt.damage, tt.magical)
+		if resist != tt.resist || immune != tt.immune || vulnerable != tt.vulnerable {
+			t.Errorf("%s: DamageKinds = %v %v %v, want %v %v %v", tt.name, resist, immune, vulnerable, tt.resist, tt.immune, tt.vulnerable)
+		}
+	}
+}
+
+func TestAdvantageAndDisadvantageFromModifiers(t *testing.T) {
+	t.Parallel()
+	attack := []rules.EffectModifier{{Kind: rules.ModifierAttackAdvantage}}
+	save := []rules.EffectModifier{{Kind: rules.ModifierSaveDisadvantage, Abilities: []string{"wis", "cha"}}}
+	check := []rules.EffectModifier{{Kind: rules.ModifierCheckDisadvantage, Abilities: []string{"str"}}}
+	// Advantage and the disadvantage kinds do not stand in for one another.
+	wrong := []rules.EffectModifier{
+		{Kind: rules.ModifierSaveAdvantage, Abilities: []string{"wis", "str"}},
+		{Kind: rules.ModifierCheckAdvantage, Abilities: []string{"wis", "str"}},
+		{Kind: rules.ModifierAttackDisadvantage},
+	}
+	if !HasAttackAdvantage(attack) || HasAttackAdvantage(nil) || HasAttackAdvantage(wrong) {
+		t.Error("HasAttackAdvantage")
+	}
+	for _, tt := range []struct {
+		ability string
+		save    bool
+		check   bool
+	}{{"wis", true, false}, {"cha", true, false}, {"str", false, true}, {"dex", false, false}} {
+		if got := SaveDisadvantage(save, tt.ability); got != tt.save {
+			t.Errorf("SaveDisadvantage(%s) = %v", tt.ability, got)
+		}
+		if got := HasCheckDisadvantage(check, tt.ability); got != tt.check {
+			t.Errorf("HasCheckDisadvantage(%s) = %v", tt.ability, got)
+		}
+		if SaveDisadvantage(wrong, tt.ability) || HasCheckDisadvantage(wrong, tt.ability) {
+			t.Errorf("the advantage kinds count as disadvantage for %s", tt.ability)
+		}
+	}
+}

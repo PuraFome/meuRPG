@@ -356,8 +356,8 @@ func SaveDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
 	})
 }
 
-// CheckDisadvantage says the modifiers give disadvantage on an ability check of the ability.
-func CheckDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
+// HasCheckDisadvantage says the modifiers give disadvantage on an ability check of the ability.
+func HasCheckDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
 	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
 		return m.Kind == rules.ModifierCheckDisadvantage && slices.Contains(m.Abilities, ability)
 	})

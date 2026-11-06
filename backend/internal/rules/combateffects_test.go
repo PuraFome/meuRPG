@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -198,5 +199,101 @@ func TestLoadCombatEffectsRefuses(t *testing.T) {
 	c.namesPT["effect:orphan"] = "Órfão"
 	if err := c.loadCombatEffects(fixtureFile(conds, ``, `"effect:x":{}`)); err == nil {
 		t.Error("a Portuguese name for an effect the file does not have was accepted")
+	}
+}
+
+func TestCheckModifierNewKinds(t *testing.T) {
+	t.Parallel()
+	atk := []string{RollAppliesAttack}
+	good := map[string]EffectModifier{
+		"a bonus on attacks":        {Kind: ModifierRollBonus, Value: 1, AppliesTo: atk},
+		"a penalty on all rolls":    {Kind: ModifierRollBonus, Value: -20, AppliesTo: []string{RollAppliesAttack, RollAppliesSave, RollAppliesCheck}},
+		"temporary hit points":      {Kind: ModifierTempHP, Value: 1000},
+		"resistance, kind left out": {Kind: ModifierResistance, DamageTypes: []string{"damage-type:fire"}},
+		"immunity to everything":    {Kind: ModifierResistance, ResistanceKind: ResistanceKindImmune, DamageTypes: []string{DamageTypeAll}},
+		"vulnerability":             {Kind: ModifierResistance, ResistanceKind: ResistanceKindVulnerable, DamageTypes: []string{"damage-type:cold", "damage-type:fire"}},
+		"nonmagical weapons":        {Kind: ModifierResistance, DamageTypes: []string{DamageTypeNonmagicalBPS}},
+		"attack advantage":          {Kind: ModifierAttackAdvantage},
+		"save disadvantage":         {Kind: ModifierSaveDisadvantage, Abilities: []string{"wis"}},
+		"check disadvantage":        {Kind: ModifierCheckDisadvantage, Abilities: []string{"str", "dex"}},
+	}
+	for name, m := range good {
+		if err := checkModifier(m); err != nil {
+			t.Errorf("%s: refused: %v", name, err)
+		}
+	}
+	bad := map[string]struct {
+		m     EffectModifier
+		field string
+	}{
+		"a bonus of 0":              {EffectModifier{Kind: ModifierRollBonus, AppliesTo: atk}, "value"},
+		"a bonus of 21":             {EffectModifier{Kind: ModifierRollBonus, Value: 21, AppliesTo: atk}, "value"},
+		"a penalty of -21":          {EffectModifier{Kind: ModifierRollBonus, Value: -21, AppliesTo: atk}, "value"},
+		"a bonus on nothing":        {EffectModifier{Kind: ModifierRollBonus, Value: 1}, "applies_to"},
+		"a bonus on damage":         {EffectModifier{Kind: ModifierRollBonus, Value: 1, AppliesTo: []string{"damage"}}, "applies_to"},
+		"a bonus on a repeat":       {EffectModifier{Kind: ModifierRollBonus, Value: 1, AppliesTo: []string{"save", "save"}}, "applies_to"},
+		"no temporary hit points":   {EffectModifier{Kind: ModifierTempHP}, "value"},
+		"too many temporary points": {EffectModifier{Kind: ModifierTempHP, Value: 1001}, "value"},
+		"a resistance of no kind":   {EffectModifier{Kind: ModifierResistance, ResistanceKind: "shrug", DamageTypes: []string{DamageTypeAll}}, "resistance_kind"},
+		"a resistance to nothing":   {EffectModifier{Kind: ModifierResistance}, "damage_types"},
+		"nonmagical with others":    {EffectModifier{Kind: ModifierResistance, DamageTypes: []string{DamageTypeNonmagicalBPS, "damage-type:fire"}}, "damage_types"},
+		"a save with no ability":    {EffectModifier{Kind: ModifierSaveDisadvantage}, "abilities"},
+		"a save of a made-up one":   {EffectModifier{Kind: ModifierSaveDisadvantage, Abilities: []string{"luck"}}, ""},
+		"a check with no ability":   {EffectModifier{Kind: ModifierCheckDisadvantage}, "abilities"},
+		"an unknown kind":           {EffectModifier{Kind: "fly"}, "kind"},
+	}
+	for name, tc := range bad {
+		err := checkModifier(tc.m)
+		if err == nil {
+			t.Errorf("%s: accepted", name)
+			continue
+		}
+		want := ""
+		if tc.field != "" {
+			want = "." + tc.field
+		}
+		if got := modifierFieldSuffix(err); got != want {
+			t.Errorf("%s: field %q, want %q", name, got, want)
+		}
+	}
+}
+
+func TestCheckModifierContentKnowsTheDamageTypes(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t).c
+	for _, types := range [][]string{{"damage-type:fire"}, {DamageTypeAll}, {DamageTypeNonmagicalBPS}} {
+		if err := c.checkModifierContent(EffectModifier{Kind: ModifierResistance, DamageTypes: types}); err != nil {
+			t.Errorf("%v: %v", types, err)
+		}
+	}
+	for _, types := range [][]string{{"damage-type:boredom"}, {"fire"}, {"damage-type:fire", "damage-type:fire"}, {DamageTypeAll, "damage-type:fire"}} {
+		if err := c.checkModifierContent(EffectModifier{Kind: ModifierResistance, DamageTypes: types}); err == nil {
+			t.Errorf("%v: accepted", types)
+		}
+	}
+}
+
+func TestEffectTagsPT(t *testing.T) {
+	t.Parallel()
+	got := EffectTagsPT([]EffectModifier{
+		{Kind: ModifierACBonus, Value: 2},
+		{Kind: ModifierRollBonus, Value: 1, AppliesTo: []string{RollAppliesAttack}},
+		{Kind: ModifierRollBonus, Value: -2, AppliesTo: []string{RollAppliesSave, RollAppliesCheck}},
+		{Kind: ModifierTempHP, Value: 5},
+		{Kind: ModifierResistance, DamageTypes: []string{"damage-type:fire", "damage-type:cold"}},
+		{Kind: ModifierResistance, ResistanceKind: ResistanceKindImmune, DamageTypes: []string{DamageTypeAll}},
+		{Kind: ModifierResistance, ResistanceKind: ResistanceKindVulnerable, DamageTypes: []string{"damage-type:thunder"}},
+		{Kind: ModifierAttackAdvantage},
+		{Kind: ModifierSaveDisadvantage, Abilities: []string{"wis", "cha"}},
+		{Kind: ModifierCheckDisadvantage, Abilities: []string{"str"}},
+		{Kind: ModifierNoMove},
+	})
+	want := []string{
+		"CA +2", "+1 em ataques", "-2 em resistências e testes", "PV temporários: 5", "Resistência a fogo, frio",
+		"Imunidade a todo dano", "Vulnerabilidade a trovejante", "Vantagem em ataques",
+		"Desvantagem em resistências (SAB e CAR)", "Desvantagem em testes (FOR)", "Sem deslocamento",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("EffectTagsPT =\n %q\nwant\n %q", got, want)
 	}
 }
