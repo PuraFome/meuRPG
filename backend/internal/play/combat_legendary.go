@@ -53,7 +53,7 @@ func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.En
 	}
 	for _, o := range p.Options {
 		out.Options = append(out.Options, &playv1.LegendaryOption{
-			Key: o.Key, Name: o.Name, Cost: conv.Int32(o.Cost), Kind: o.Kind, Text: o.Text,
+			Key: o.Key, Name: o.Name, NamePt: o.NamePT, AttackKey: o.ActionKey, Cost: conv.Int32(o.Cost), Kind: o.Kind, Text: o.Text,
 			Affordable: o.Cost <= int(out.ActionsLeft),
 		})
 	}

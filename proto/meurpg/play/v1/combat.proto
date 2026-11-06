@@ -2925,6 +2925,12 @@ message LegendaryOption {
   string text = 5;
   // Whether `cost` fits in the actions left now.
   bool affordable = 6;
+  // The option's name in Portuguese, the only one the app shows ("Ataque de cauda"). It is
+  // `name` when the content has no Portuguese name (homebrew content).
+  string name_pt = 7;
+  // For kind "attack": the key of the stat block action the option makes, the
+  // `RollAttack.attack_key` of the attack with `legendary_option`. Empty for the other kinds.
+  string attack_key = 8;
 }
 
 // Participant is who joins a combat: a character of the campaign.

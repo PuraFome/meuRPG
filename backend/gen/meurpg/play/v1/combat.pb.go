@@ -6868,7 +6868,13 @@ type LegendaryOption struct {
 	// The SRD's text of the option, in English.
 	Text string `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
 	// Whether `cost` fits in the actions left now.
-	Affordable    bool `protobuf:"varint,6,opt,name=affordable,proto3" json:"affordable,omitempty"`
+	Affordable bool `protobuf:"varint,6,opt,name=affordable,proto3" json:"affordable,omitempty"`
+	// The option's name in Portuguese, the only one the app shows ("Ataque de cauda"). It is
+	// `name` when the content has no Portuguese name (homebrew content).
+	NamePt string `protobuf:"bytes,7,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// For kind "attack": the key of the stat block action the option makes, the
+	// `RollAttack.attack_key` of the attack with `legendary_option`. Empty for the other kinds.
+	AttackKey     string `protobuf:"bytes,8,opt,name=attack_key,json=attackKey,proto3" json:"attack_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6943,6 +6949,20 @@ func (x *LegendaryOption) GetAffordable() bool {
 		return x.Affordable
 	}
 	return false
+}
+
+func (x *LegendaryOption) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
+func (x *LegendaryOption) GetAttackKey() string {
+	if x != nil {
+		return x.AttackKey
+	}
+	return ""
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -26604,7 +26624,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fresistance_left\x18\x04 \x01(\x05R\x0eresistanceLeft\x129\n" +
 	"\aoptions\x18\x05 \x03(\v2\x1f.meurpg.play.v1.LegendaryOptionR\aoptions\x12\x1d\n" +
 	"\n" +
-	"usable_now\x18\x06 \x01(\bR\tusableNow\"\x93\x01\n" +
+	"usable_now\x18\x06 \x01(\bR\tusableNow\"\xcb\x01\n" +
 	"\x0fLegendaryOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -26613,7 +26633,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x04text\x18\x05 \x01(\tR\x04text\x12\x1e\n" +
 	"\n" +
 	"affordable\x18\x06 \x01(\bR\n" +
-	"affordable\"n\n" +
+	"affordable\x12\x17\n" +
+	"\aname_pt\x18\a \x01(\tR\x06namePt\x12\x1d\n" +
+	"\n" +
+	"attack_key\x18\b \x01(\tR\tattackKey\"n\n" +
 	"\vParticipant\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x1b\n" +
