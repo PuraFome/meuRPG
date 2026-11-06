@@ -406,7 +406,9 @@ A player never reads the name of a hidden race, feat or feature, in a key or in 
 That holds for the player's copy of a feat, the level-up options and the texts of the feat-choice cards.
 A feat that asks only for hidden races is not offered to a player and is not in their copy, because without the races its prerequisite would read as none.
 A feat that asks for some visible races and some hidden ones names the visible ones only.
-In the level-up options and the cards, a feat that asks for the sheet's own race still names it to that sheet.
+What a sheet has is named to it: the race, subrace, feat or feature it holds, and the traits, features and options of the entries it keeps.
+That holds in the level-up options, the cards and the player's copies of the entries.
+A condition on a hidden feature the sheet does not have reads as a text that names nothing, never as no condition.
 The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.json`) is in the same `feats` map.
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.
@@ -434,7 +436,7 @@ The options screen has no creature group, so creatures are switched through the 
 
 - `Content.Off(key)` is the key's own switch.
 - `Content.Hidden(key)` is what the player does not receive: archived, switched off, the subclass or subrace of a class or race that is switched off or archived, or a trait, feature, background feature or option of a hidden race, subrace, class, subclass or background (`Content.Owners` names those).
-  A trait that several races share is hidden once all of them are.
+  A trait that several races share, and an option that several classes offer, is hidden once all its owners are.
   The children keep their own switch, so turning the class back on returns each subclass as it was.
 - A parent only hides the children of whoever does not have it: `Content.OffKeys(build)` lists the switched-off keys a sheet uses, and a subclass (or subrace) under a switched-off class (or race) counts only when the sheet does not have that class (or race).
   A sheet that already has the switched-off class keeps reaching its subclass level; a new sheet cannot take the class, so not the subclass either.

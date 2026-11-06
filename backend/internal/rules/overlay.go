@@ -13,6 +13,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 // The table's own content: classes, subclasses, races, subraces, backgrounds,
@@ -603,6 +604,25 @@ func (c *Content) ForPlayer() *Content {
 	return &Content{c: &x}
 }
 
+// SheetHas says the build has the key: its race, subrace, background, class or subclass, a feat, a
+// pick, or a trait, feature or option of one of those entries. A hidden key the sheet has is not
+// hidden from it (ADR-0018, section 7).
+func (c *Content) SheetHas(b Build, key string) bool { return c.c.sheetHas(b, key) }
+
+func (c *content) sheetHas(b Build, key string) bool {
+	if key == "" {
+		return false
+	}
+	if key == b.Race || key == b.Subrace || key == b.Background || slices.Contains(b.Feats, key) || slices.Contains(b.FeatureChoices, key) ||
+		slices.ContainsFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == key || cl.Subclass == key }) {
+		return true
+	}
+	if slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key }) {
+		return true
+	}
+	return slices.ContainsFunc(c.entryOwners(key, 0), func(o string) bool { return c.sheetHas(b, o) })
+}
+
 // Owners are the entries (races, subraces, classes, subclasses and backgrounds) a
 // trait, feature, background feature or option belongs to; none for any other key.
 func (c *Content) Owners(key string) []string { return c.c.entryOwners(key, 0) }
@@ -634,39 +654,55 @@ const maxOwnerDepth = 4
 
 // entryOwners are the entries the trait, feature, background feature or option
 // key belongs to: a trait's races and subraces, a feature's subclass or class, the
-// backgrounds whose feature it is; an option has its parent's.
+// backgrounds whose feature it is; an option has the owners of every feature that
+// offers it (a table option several classes offer belongs to all of them).
 func (c *content) entryOwners(key string, depth int) []string {
 	if depth > maxOwnerDepth {
 		return nil
 	}
-	var parent string
+	var parents []string
 	switch {
 	case c.traits[key] != nil:
 		t := c.traits[key]
 		if t.Parent == "" {
 			return append(slices.Clone(t.Races), t.Subraces...)
 		}
-		parent = t.Parent
+		parents = []string{t.Parent}
 	case c.features[key] != nil:
 		f := c.features[key]
-		switch {
-		case f.Parent != "":
-			parent = f.Parent
-		case f.Subclass != "":
-			return []string{f.Subclass}
-		case f.Class != "":
-			return []string{f.Class}
+		if f.Parent != "" {
+			parents = []string{f.Parent}
+		}
+		parents = append(parents, c.offeredBy[key]...)
+		if len(parents) == 0 {
+			return c.featureEntry(f)
 		}
 	case strings.HasPrefix(key, "background-feature:"):
 		return c.backgroundsOf(key)
 	}
-	if parent == "" {
-		parent = c.optionParents[key]
+	if p := c.optionParents[key]; p != "" {
+		parents = append(parents, p)
 	}
-	if parent == "" {
-		return nil
+	var out []string
+	for _, p := range parents {
+		for _, o := range c.entryOwners(p, depth+1) {
+			if !slices.Contains(out, o) {
+				out = append(out, o)
+			}
+		}
 	}
-	return c.entryOwners(parent, depth+1)
+	return out
+}
+
+// featureEntry is the subclass or class a feature sits in.
+func (c *content) featureEntry(f *srd51.Feature) []string {
+	switch {
+	case f.Subclass != "":
+		return []string{f.Subclass}
+	case f.Class != "":
+		return []string{f.Class}
+	}
+	return nil
 }
 
 // backgroundsOf are the backgrounds whose feature has the key.

@@ -95,8 +95,8 @@ func cardText(t *testing.T, s ChoiceSet) (string, []string) {
 func TestFeatCardsNameNoHiddenEntryToAPlayer(t *testing.T) {
 	t.Parallel()
 	c := hiddenCardsTable(t)
-	// The sheet holds the hidden feat, picked the feat that asks only for the hidden race and is no Elfo Escarlate.
-	b := cardsBuild([]string{cardOnlyHidden}, cardHiddenFeat)
+	// The sheet picked the feat that asks only for the hidden race, is no Elfo Escarlate and holds nothing hidden.
+	b := cardsBuild([]string{cardOnlyHidden})
 	hiddenWords := []string{hiddenRaceName, hiddenTraitName, hiddenFeatName, "race:anao-das-brumas", "dom-oculto", "pele-de-bruma"}
 
 	master, masterKeys := cardText(t, c.Choices(b))
@@ -112,7 +112,7 @@ func TestFeatCardsNameNoHiddenEntryToAPlayer(t *testing.T) {
 		}
 	}
 	// What the player reads: the visible race only, and a text that names nothing for a condition they may not read.
-	for _, want := range []string{"Só para " + visibleRaceName + ".", hiddenUnmetPT} {
+	for _, want := range []string{"Só para " + visibleRaceName + ".", hiddenUnmetPT, "Pede: " + hiddenAskPT + "."} {
 		if !strings.Contains(player, want) {
 			t.Errorf("the player's card lacks %q:\n%s", want, player)
 		}
@@ -165,5 +165,29 @@ func TestFeatOptionsOfAPlayerLeaveOutAFeatOnlyAHiddenRaceCanTake(t *testing.T) {
 	}
 	if player := keys(c.ForPlayer()); slices.Contains(player, cardOnlyHidden) || !slices.Contains(player, cardMixed) {
 		t.Errorf("the player's feat options = %v, want the mixed feat and not the one of the hidden race", player)
+	}
+}
+
+// A player who holds a hidden feat, or a trait of a hidden race, reads its name where the condition is theirs; a condition
+// they may not read is never dropped from the text.
+func TestFeatCardsNameAHiddenFeatOrTraitTheSheetHas(t *testing.T) {
+	t.Parallel()
+	c := hiddenCardsTable(t).ForPlayer()
+	holder, _ := cardText(t, c.Choices(cardsBuild(nil, cardHiddenFeat)))
+	for _, want := range []string{"Não pode ter " + hiddenFeatName + ".", "Pede: não ter " + hiddenFeatName + "."} {
+		if !strings.Contains(holder, want) {
+			t.Errorf("the holder's card lacks %q:\n%s", want, holder)
+		}
+	}
+	// The sheet of the hidden race reads the trait it has.
+	own := cardsBuild(nil)
+	own.Race = "race:anao-das-brumas" + tableSuffix
+	if !c.c.sheetHas(own, cardHiddenTrait) || !strings.Contains(c.c.featAsksPT(FeatPrerequisite{LacksFeature: cardHiddenTrait}, own), hiddenTraitName) {
+		t.Errorf("the sheet of the hidden race does not read its own trait: %q", c.c.featAsksPT(FeatPrerequisite{LacksFeature: cardHiddenTrait}, own))
+	}
+	// Whoever does not hold it reads a placeholder in the "Pede:" clause, not nothing.
+	other := cardsBuild(nil)
+	if got := c.c.featAsksPT(FeatPrerequisite{LacksFeature: cardHiddenTrait, Level: 4}, other); got != hiddenAskPT+" e nível 4 ou mais" {
+		t.Errorf("the clause for a trait the sheet does not have = %q", got)
 	}
 }

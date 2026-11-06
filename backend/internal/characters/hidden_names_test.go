@@ -11,7 +11,6 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -77,7 +76,7 @@ var hiddenWords = []string{
 	hiddenRaceName, hiddenTraitName, hiddenFeatName, hiddenRaceStem, hiddenTraitStem, hiddenFeatStem,
 }
 
-// wantNames fails for each word the message carries (or lacks, with present set), in its text form and JSON-ish.
+// wantNames fails for each word the message does not carry (present) or carries (not present), searched in its prototext.
 func wantNames(t *testing.T, what string, m proto.Message, present bool, words ...string) {
 	t.Helper()
 	text := prototext.MarshalOptions{Multiline: true}.Format(m)
@@ -154,7 +153,7 @@ func TestAPlayersFeatCardsAtCreationNameNoHiddenEntry(t *testing.T) {
 	wantNames(t, "the master's cards", master, true, mixedName, onlyHiddenName, hiddenFeatName, hiddenRaceName)
 	wantNames(t, "the player's cards", player, false, hiddenWords...)
 	wantNames(t, "the player's cards", player, false, tb.race, tb.feat, onlyHiddenName)
-	wantNames(t, "the player's cards", player, true, mixedName, openFeatName, "Pede: ser "+visibleRaceName+".", "Só para "+visibleRaceName+".")
+	wantNames(t, "the player's cards", player, true, mixedName, openFeatName, "Pede: ser "+visibleRaceName+" e uma condição que a mesa não mostra.", "Só para "+visibleRaceName+".")
 }
 
 // A hidden owner hides its features and options from a player, except where the player's own sheet has the owner
@@ -181,11 +180,10 @@ func TestAnOptionOfAHiddenOwnerIsKeptWhereTheSheetHasTheOwner(t *testing.T) {
 	if !hiddenOption(wizard, feature) {
 		t.Errorf("the fighter's option %s is not hidden from a wizard", feature)
 	}
-	// In the listing, the entry a player's sheet keeps shows its own features and options, and not another's.
-	l := &tableListing{content: content, hidden: content.Hidden, mine: map[string]bool{"class:fighter": true}}
-	kept := l.hiddenIn(entryRow{row: charactersdb.CampaignContent{ContentKey: "class:fighter"}})
-	other := l.hiddenIn(entryRow{row: charactersdb.CampaignContent{ContentKey: "class:wizard"}})
+	// In the listing, what a sheet's entry owns is read by that player and not by another.
+	kept := (&tableListing{content: content, hidden: content.Hidden, mine: map[string]bool{"class:fighter": true}}).hiddenIn()
+	other := (&tableListing{content: content, hidden: content.Hidden, mine: map[string]bool{"class:wizard": true}}).hiddenIn()
 	if kept(feature) || !other(feature) {
-		t.Errorf("hidden inside the kept class = %v, inside another entry = %v; want false and true", kept(feature), other(feature))
+		t.Errorf("hidden for the fighter = %v, for the wizard = %v; want false and true", kept(feature), other(feature))
 	}
 }

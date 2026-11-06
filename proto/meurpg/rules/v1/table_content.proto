@@ -1270,7 +1270,7 @@ service TableContentService {
   // default. An off option is treated as an archived one for the players, in every
   // read (the catalog, ListTableEntries, ListSpells, GetSpellDetails, the level-up
   // options, the references inside other entries): they never receive it, and the
-  // subclasses of an off class and the subraces of an off race go with it. A sheet
+  // subclasses of an off class, the subraces of an off race and the traits, features and options of an off entry go with it. A sheet
   // that already has it keeps working, and an unrelated edit is never refused; a
   // player's new choice of it is refused (CharacterBlocked SWITCHED_OFF_CONTENT,
   // LevelUpRefusal SWITCHED_OFF_CHOICE). The master sees everything, with `off`.

@@ -274,8 +274,12 @@ func (c *content) featAsksPT(p FeatPrerequisite, b Build) string {
 	if p.Size != "" {
 		out = append(out, "ter tamanho "+strings.ToLower(sizeNamePT[p.Size]))
 	}
-	if p.LacksFeature != "" && !c.hiddenFromPlayer(p.LacksFeature) {
-		out = append(out, "não ter "+c.namePT(p.LacksFeature))
+	if p.LacksFeature != "" {
+		if c.hiddenTo(b, p.LacksFeature) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, "não ter "+c.namePT(p.LacksFeature))
+		}
 	}
 	if p.Level > 0 {
 		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
@@ -334,8 +338,10 @@ const (
 	hiddenUnmetPT = "Pede uma condição que a mesa não mostra."
 )
 
-// hiddenFromPlayer says the view is a player's and the key is one they never receive.
-func (c *content) hiddenFromPlayer(key string) bool { return c.player && c.hidden(key) }
+// hiddenTo says the view is a player's and the key is one they never receive, which the sheet b does not have.
+func (c *content) hiddenTo(b Build, key string) bool {
+	return c.player && c.hidden(key) && !c.sheetHas(b, key)
+}
 
 // shownRaces are the races or subraces of keys that the view may name: all of them, except in a
 // player's view the hidden ones that are not the race or subrace of the sheet b.
@@ -343,7 +349,7 @@ func (c *content) shownRaces(b Build, keys []string) []string {
 	if !c.player {
 		return keys
 	}
-	return slices.DeleteFunc(slices.Clone(keys), func(k string) bool { return c.hidden(k) && b.Race != k && b.Subrace != k })
+	return slices.DeleteFunc(slices.Clone(keys), func(k string) bool { return c.hiddenTo(b, k) })
 }
 
 // asksOnlyHiddenRaces says the view is a player's and the prerequisite asks for races, none of which
@@ -381,7 +387,7 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 	case FeatUnmetSize:
 		return "Só para tamanho " + strings.ToLower(sizeNamePT[u.Key]) + "."
 	case FeatUnmetLacksFeature:
-		if c.hiddenFromPlayer(u.Key) {
+		if c.hiddenTo(b, u.Key) {
 			return hiddenUnmetPT
 		}
 		return "Não pode ter " + c.namePT(u.Key) + "."

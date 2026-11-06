@@ -459,16 +459,12 @@ func hiddenOption(t levelUpTarget, k string) bool {
 	if !t.content.Hidden(k) {
 		return false
 	}
-	if t.content.Archived(k) || t.content.Off(k) {
-		return true
-	}
-	return !slices.ContainsFunc(t.content.Owners(k), func(o string) bool { return sheetHas(t.build, o) })
+	return t.content.Archived(k) || t.content.Off(k) || !t.content.SheetHas(t.build, k)
 }
 
-// sheetHas says the build has the race, subrace, background, class or subclass key.
-func sheetHas(b rules.Build, key string) bool {
-	return key == b.Race || key == b.Subrace || key == b.Background ||
-		slices.ContainsFunc(b.Classes, func(c rules.ClassLevel) bool { return c.Class == key || c.Subclass == key })
+// hiddenToSheet says k is hidden from the player and the character's own sheet does not have it.
+func hiddenToSheet(t levelUpTarget, k string) bool {
+	return k != "" && t.content.Hidden(k) && !t.content.SheetHas(t.build, k)
 }
 
 // hiddenListOf says k is a hidden class the character's sheet does not have.
@@ -478,7 +474,7 @@ func hiddenListOf(t levelUpTarget, k string) bool {
 
 // hiddenRaceOf says k is a hidden race or subrace that is not the character's.
 func hiddenRaceOf(t levelUpTarget, k string) bool {
-	return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
+	return hiddenToSheet(t, k)
 }
 
 // hideFeatRace blanks the hidden races and the hidden feature a feat names, in its prerequisite and
@@ -489,7 +485,7 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 	}
 	if p := f.GetPrerequisite(); p != nil {
 		p.Races = slices.DeleteFunc(p.Races, func(k string) bool { return hiddenRaceOf(t, k) })
-		if t.content.Hidden(p.GetLacksFeatureKey()) {
+		if hiddenToSheet(t, p.GetLacksFeatureKey()) {
 			p.LacksFeatureKey, f.LacksFeatureNamePt = "", ""
 		}
 	}
@@ -501,7 +497,7 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 			}
 			u.Keys = slices.DeleteFunc(u.Keys, func(k string) bool { return hiddenRaceOf(t, k) })
 		case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE:
-			if t.content.Hidden(u.GetKey()) {
+			if hiddenToSheet(t, u.GetKey()) {
 				u.Key, u.NamePt = "", ""
 			}
 		}

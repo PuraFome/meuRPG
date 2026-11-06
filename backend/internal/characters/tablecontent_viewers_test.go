@@ -272,7 +272,6 @@ func TestTableEntriesOfEveryViewer(t *testing.T) {
 		`background:guarda-de-farol@mesa: -charactersUsing -tableBackground.feature.effects[0].spells[1] tableBackground.feature.effects[0].spells[0]="spell:fire-bolt"`,
 		`spell:raio-arquivado@mesa: absent`,
 		`spell:raio-de-teste@mesa: -charactersUsing -tableSpell.classKeys[2] tableSpell.classKeys[1]="class:guardiao-do-vale@mesa"`,
-		`feat:punho-de-ferro@mesa: -tableFeat.prerequisite.raceKey`,
 		`feat:talento-desligado@mesa: absent`,
 	})
 	wantDiffs(t, "davi, without a sheet", viewerDiffs(t, master.GetEntries(), davi.GetEntries()), []string{
