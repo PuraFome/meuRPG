@@ -31,3 +31,16 @@ func characterEffects[R characterEffectRow](rows []R) []playdb.CharacterEffect {
 	}
 	return out
 }
+
+// spellZoneRow is a row type of a query on spell_zones.
+type spellZoneRow interface {
+	playdb.DeleteConcentrationZonesOfRow
+}
+
+func spellZones[R spellZoneRow](rows []R) []playdb.SpellZone {
+	out := make([]playdb.SpellZone, len(rows))
+	for i, r := range rows {
+		out[i] = playdb.SpellZone(r)
+	}
+	return out
+}
