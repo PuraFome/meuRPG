@@ -605,6 +605,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Um dado rolado de novo ("Rolar de novo", RN-23) é rolado primeiro, e o mínimo conta o dado que fica.
   - **O d20.** A jogada guarda a face que saiu e diz que ela conta como o mínimo, e qual característica fez isso.
     O número vale para tudo que lê o dado: o total, um acerto crítico ou um erro num 20 ou 1 natural, e o 1 ou o 20 de um teste contra a morte.
+    O Sortudo do halfling olha a face que saiu: um 1 que conta como 12 ainda oferece o Sortudo, e o novo dado recebe o mínimo de novo.
     Vale nas jogadas de ataque, nos testes de cena e em grupo, na busca por armadilhas, na dica de quebra-cabeça, nos dois lados de uma disputa, no Esconder-se, no teste da Contramágica, na iniciativa e nos testes de resistência que o app rola, o teste contra a morte incluído.
   - **Dano.** Um dado de dano menor que o valor conta como o seu maior valor (um d4 sob um mínimo de 6 conta como 4).
     Conta todo dado que o app rolou para um personagem de jogador no dano de arma ou de magia, e o fogo da Repreensão Infernal, quer a parte conte no total, quer não.

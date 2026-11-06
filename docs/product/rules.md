@@ -605,6 +605,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A die rolled again (RN-23 "Rolar de novo") is rolled first, and the minimum counts the die that stays.
   - **The d20.** The roll keeps the face that came up and says it counts as the minimum, and which feature did it.
     The number counts for everything that reads the die: the total, a critical hit or a miss on a natural 20 or 1, and the 1 or 20 of a death save.
+    Halfling Lucky looks at the face that came up: a 1 that counts as 12 still offers Lucky, and the new die is floored again.
     It covers the attack rolls, the scene and group checks, the trap search, the puzzle hint, either side of a contest, a Hide, the Counterspell check, the initiative and the saving throws the app rolls, the death save included.
   - **Damage.** A die of damage smaller than the value counts as its own highest face (a d4 under a minimum of 6 counts as 4).
     It counts every die the app rolled for a player's character in a weapon or spell damage, and the fire of Hellish Rebuke, whether the part counts in the total or not.
