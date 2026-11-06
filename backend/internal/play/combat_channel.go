@@ -300,11 +300,17 @@ func (f *takeActionFlow) creatureSave(ctx context.Context, target playdb.Combata
 	if err != nil {
 		return nil, err
 	}
-	d20 = floorD20(d20, save.Bonus, floorFor(sheet.Traits, rules.RollAppliesSave, false))
+	return turnedSave(target, save.Bonus, d20, dc, floorFor(sheet.Traits, rules.RollAppliesSave, false)), nil
+}
+
+// turnedSave is the save of an undead against Turn Undead: the d20 that counts is counted by the floor (a table's roll_minimum),
+// the faces stay as they came up, and the total decides whether it is turned.
+func turnedSave(target playdb.Combatant, bonus int, d20 d20Roll, dc int32, floor rollFloor) *channelTurn {
+	d20 = floorD20(d20, bonus, floor)
 	return &channelTurn{
-		Target: target.ID, Label: target.Label, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(save.Bonus, math.MinInt32, math.MaxInt32),
+		Target: target.ID, Label: target.Label, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32),
 		Total: conv.Int32(d20.Total), Turned: !combat.SaveSucceeded(d20.Total, int(dc)), countedRoll: countedOf(d20),
-	}, nil
+	}
 }
 
 // turn puts the effect "turned" on the undead that failed, for a minute, and keeps its rows for the undo.
