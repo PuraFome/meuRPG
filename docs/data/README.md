@@ -12,6 +12,7 @@ See also [Privacy](../privacy.md#the-legacy-app-database).
 Each table belongs to one module, which is the only code that writes it.
 A module reads another module's data through that module's interface, never by joining its tables (see [Architecture](../architecture/README.md)).
 The `play` module's tables are split over three pages because there are 35 of them.
+`TestQueriesTouchOnlyOwnTables` reads the table map of this section, so a new table must be added to its module's row.
 
 | Module | Page | Tables |
 | --- | --- | --- |
@@ -54,6 +55,10 @@ A module page repeats one only where its table breaks or sharpens it.
 - **Text with `CHECK`, not `ENUM`.** A closed set of values (`role`, `status`, `kind`, `mode`...) is a `TEXT` column with a `CHECK`, so adding a value is a small migration.
   Where the set grows often (`session_events.kind`) it is a reference table instead (see [Reference tables](#reference-tables)).
   A few `kind` columns have no `CHECK` on purpose, because the code is the list (`puzzles.kind`).
+- **Every `:many` query ends in `ORDER BY` with a stable key**: the primary key, or `created_at` then the key.
+  An `UPDATE`/`DELETE ... RETURNING` that is `:many` wraps in `WITH changed AS (...) SELECT ... FROM changed ORDER BY ...`.
+  The tests run on PostgreSQL, whose insertion order hides what CockroachDB's order exposes.
+  `TestManyQueriesHaveOrderBy` enforces it.
 - **Sizes are checked twice.** The API limit (in characters) is enforced by the server, and a looser `CHECK` (in bytes) is the last defence.
 - **Ids are UUIDs.** Most primary keys are `UUID DEFAULT gen_random_uuid()`.
   `gallery_images.id` has no default, because the API needs the id before it writes the files.

@@ -1,0 +1,3 @@
+# :many queries whose outermost statement has no ORDER BY. One entry per line,
+# sorted: module/QueryName, as in the "-- name:" line of the module's queries.sql.
+# The list can only shrink. Add an ORDER BY with a stable key instead of a new entry.
