@@ -139,7 +139,8 @@ export function draftToFeat(d: FeatDraft, menu: EffectMenuVm): FeatInit {
       proficiencyKey: d.proficiencyKey,
       spellcasting: d.spellcasting,
       raceKey: d.raceKey,
-      races: d.races,
+      // The single race the master typed replaces the list: the server refuses both.
+      races: d.raceKey ? [] : d.races,
       size: d.size,
       lacksFeatureKey: d.lacksFeatureKey,
       level: level === '' ? 0 : Number(level),

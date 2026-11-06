@@ -30,7 +30,7 @@ const (
 	FeatUnmetProficiency = "proficiency"
 	// FeatUnmetSpellcasting: the character cannot cast any spell.
 	FeatUnmetSpellcasting = "spellcasting"
-	// FeatUnmetRace: the character is not of the race or subrace in Key.
+	// FeatUnmetRace: the character is not of the race or subrace in Key, or of any in Keys.
 	FeatUnmetRace = "race"
 	// FeatUnmetLevel: the character level is below Value.
 	FeatUnmetLevel = "level"
@@ -85,10 +85,12 @@ type FeatUnmet struct {
 	// Abilities are the minimums not met (see the kinds).
 	Abilities []AbilityMinimum
 	// Key is the proficiency, the race, the size or the feature, and Value the level.
-	// Keys are the races a feat that asks for one of several lists (Key is empty then).
-	Key   string
-	Keys  []string `json:",omitempty"`
-	Value int
+	// Keys are the races when the feat lists several (Key is empty then).
+	Key  string
+	Keys []string `json:",omitempty"`
+	// NamePT is the name of the feature in Key (kind lacks_feature).
+	NamePT string `json:",omitempty"`
+	Value  int
 }
 
 // FeatIncrease is the feat's ability_increase effect: the player chooses Count
@@ -112,6 +114,8 @@ type FeatEntry struct {
 	DescPT                    []string
 	DescPTMissing, DescPTOnly bool
 	Prerequisite              FeatPrerequisite
+	// LacksFeatureNamePT is the Portuguese name of Prerequisite.LacksFeature.
+	LacksFeatureNamePT string `json:",omitempty"`
 	// Increase is the ability increase the feat gives, or nil.
 	Increase *FeatIncrease
 	// Table says the feat is the table's own; Archived that the table retired it
@@ -151,6 +155,9 @@ func (c *content) featEntry(f *srd51.Feat) FeatEntry {
 			Spellcasting: f.Spellcasting, Race: f.Race, Races: slices.Clone(f.Races), Size: f.Size, LacksFeature: f.LacksFeature, Level: f.Level,
 		},
 		Table: isTableKey(f.Key), Archived: c.archived[f.Key], Off: c.off[f.Key],
+	}
+	if f.LacksFeature != "" {
+		e.LacksFeatureNamePT = c.namePT(f.LacksFeature)
 	}
 	e.DescPT, e.DescPTMissing, e.DescPTOnly = c.textPT(f.Key, f.Desc)
 	for _, ef := range c.effects[f.Key] {
@@ -269,7 +276,7 @@ func (c *content) unmetPrerequisite(e FeatEntry, b Build, d Derived) []FeatUnmet
 	if u, unmet := unmetAnyOf(p, score); unmet {
 		out = append(out, u)
 	}
-	return append(out, unmetOthers(p, b, d)...)
+	return append(out, c.unmetOthers(p, b, d)...)
 }
 
 // unmetMinimums are the abilities under their minimum, one entry each, in the
@@ -303,7 +310,7 @@ func unmetAnyOf(p FeatPrerequisite, score map[Ability]int) (FeatUnmet, bool) {
 
 // unmetOthers are the proficiency, the spellcasting, the race, the size, the feature
 // and the level the character lacks, in that order.
-func unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
+func (c *content) unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
 	var out []FeatUnmet
 	if p.Proficiency != "" && !hasProficiency(d, p.Proficiency) {
 		out = append(out, FeatUnmet{Kind: FeatUnmetProficiency, Key: p.Proficiency})
@@ -318,7 +325,7 @@ func unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
 		out = append(out, FeatUnmet{Kind: FeatUnmetSize, Key: p.Size})
 	}
 	if p.LacksFeature != "" && ownedBy(b, d)(p.LacksFeature) {
-		out = append(out, FeatUnmet{Kind: FeatUnmetLacksFeature, Key: p.LacksFeature})
+		out = append(out, FeatUnmet{Kind: FeatUnmetLacksFeature, Key: p.LacksFeature, NamePT: c.namePT(p.LacksFeature)})
 	}
 	if p.Level > 0 && d.TotalLevel < p.Level {
 		out = append(out, FeatUnmet{Kind: FeatUnmetLevel, Value: p.Level})

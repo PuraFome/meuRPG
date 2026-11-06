@@ -119,12 +119,17 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
       return `Precisa de proficiência em ${nameOf(u.key)}.`;
     case FeatUnmetKind.SPELLCASTING:
       return 'Precisa poder conjurar ao menos uma magia.';
-    case FeatUnmetKind.RACE:
-      return `Precisa ser ${listWith((u.key ? [u.key] : u.keys).map(nameOf), 'ou')}.`;
+    case FeatUnmetKind.RACE: {
+      // A race the players cannot see is not named: with none left there is nothing to say.
+      const races = (u.key ? [u.key] : u.keys).map(nameOf);
+      return races.length > 0
+        ? `Precisa ser ${listWith(races, 'ou')}.`
+        : 'Não atende ao pré-requisito.';
+    }
     case FeatUnmetKind.SIZE:
       return `Precisa ter tamanho ${sizeName(u.key)}.`;
     case FeatUnmetKind.LACKS_FEATURE:
-      return `Não pode ter ${nameOf(u.key)}.`;
+      return u.key ? `Não pode ter ${u.namePt || nameOf(u.key)}.` : 'Não atende ao pré-requisito.';
     case FeatUnmetKind.LEVEL:
       return `Precisa do nível ${u.value} ou mais.`;
     default:

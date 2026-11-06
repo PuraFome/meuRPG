@@ -96,6 +96,18 @@ describe('what a feat asks, in Portuguese', () => {
     expect(unmet({ kind: FeatUnmetKind.LACKS_FEATURE, key: 'trait:darkvision' })).toBe(
       'Não pode ter Visão no Escuro.',
     );
+    expect(unmet({ kind: FeatUnmetKind.LACKS_FEATURE, key: 'x', namePt: 'Dom do Mar' })).toBe(
+      'Não pode ter Dom do Mar.',
+    );
+    // What the players cannot see is blanked by the server: no empty name is written.
+    expect(unmet({ kind: FeatUnmetKind.LACKS_FEATURE })).toBe('Não atende ao pré-requisito.');
+    expect(unmet({ kind: FeatUnmetKind.RACE })).toBe('Não atende ao pré-requisito.');
+    expect(prerequisiteParts(create(FeatPrerequisiteSchema, { size: 'Large' }), nameOf)).toEqual([
+      'ter tamanho grande',
+    ]);
+    expect(unmet({ kind: FeatUnmetKind.RACE, keys: ['race:elf', 'race:dwarf', 'race:elf'] })).toBe(
+      'Precisa ser Elfo, Anão ou Elfo.',
+    );
     expect(unmet({ kind: FeatUnmetKind.LEVEL, value: 8 })).toBe('Precisa do nível 8 ou mais.');
   });
 });

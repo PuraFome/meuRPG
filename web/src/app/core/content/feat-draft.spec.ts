@@ -65,6 +65,15 @@ describe('the feat form (MR-025)', () => {
     });
   });
 
+  it('drops the kept races when the master types the single race', () => {
+    const draft = featToDraft(
+      create(TableFeatSchema, { prerequisite: { races: ['race:elf', 'race:dwarf'] } }),
+    );
+    expect(draftToFeat({ ...draft, raceKey: 'race:human' }, menu()).prerequisite?.races).toEqual(
+      [],
+    );
+  });
+
   it('sends a prerequisite that asks nothing as empty, and keeps no key on the feat', () => {
     const init = draftToFeat(
       { ...emptyFeat(), feature: { ...emptyFeat().feature, name: '  Livre ' } },

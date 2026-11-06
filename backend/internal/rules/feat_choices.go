@@ -292,13 +292,16 @@ func (c *content) featAsksPT(p FeatPrerequisite) string {
 	return strings.Join(out, " e ")
 }
 
-// racesPT are the races or subraces in Portuguese, with "ou" between them.
+// racesPT are the races or subraces in Portuguese: "A", "A ou B", "A, B ou C".
 func (c *content) racesPT(keys []string) string {
 	names := make([]string, len(keys))
 	for i, k := range keys {
 		names[i] = c.namePT(k)
 	}
-	return strings.Join(names, " ou ")
+	if len(names) < 2 {
+		return strings.Join(names, "")
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " ou " + names[len(names)-1]
 }
 
 // featUnmetPT says in a sentence what a character lacks for one condition of a feat.

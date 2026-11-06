@@ -461,8 +461,8 @@ message FeatPrerequisite {
   // The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
   // one the player picked. Empty asks nothing.
   string size = 8;
-  // A feature or trait key the character must NOT have (a class feature, a race trait, a
-  // feat...). Empty asks nothing.
+  // A feature, trait or feat key the character must NOT have. It is judged before the
+  // feat's own grants. Empty asks nothing.
   string lacks_feature_key = 9;
 }
 
@@ -488,7 +488,7 @@ enum FeatUnmetKind {
   FEAT_UNMET_KIND_PROFICIENCY = 3;
   // The character cannot cast any spell.
   FEAT_UNMET_KIND_SPELLCASTING = 4;
-  // The character is not of the race or subrace in `key`.
+  // The character is not of the race or subrace in `key`, or of any in `keys`.
   FEAT_UNMET_KIND_RACE = 5;
   // The character level is below `value`.
   FEAT_UNMET_KIND_LEVEL = 6;
@@ -519,6 +519,9 @@ message FeatUnmet {
   // The races or subraces of which the character is none, when the feat asks for one of
   // several (kind RACE); empty when `key` has the single race.
   repeated string keys = 5;
+  // The Portuguese name of `key` for a kind LACKS_FEATURE (the app's catalog has no
+  // features); empty when the players cannot see that feature, and then `key` is empty too.
+  string name_pt = 6;
 }
 
 // FeatOption is a feat a character may take, for the feat picker (the guided
@@ -558,6 +561,9 @@ message FeatOption {
   // True when the text exists only in Portuguese (a table feat): `desc` already is the
   // Portuguese, and there is no English to offer.
   bool desc_pt_only = 13;
+  // The Portuguese name of `prerequisite.lacks_feature_key`; empty when it is not set or
+  // the players cannot see that feature.
+  string lacks_feature_name_pt = 14;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.

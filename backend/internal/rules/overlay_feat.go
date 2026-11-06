@@ -64,7 +64,7 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 }
 
 // checkFeatPrerequisite reports what is wrong with a feat's prerequisite, each
-// problem at its own field. The keys it names (a proficiency, a race or subrace)
+// problem at its own field. The proficiency, the races and the lacked feature it names
 // may be the SRD's or the table's.
 func (b *overlayBuilder) checkFeatPrerequisite(c *entryErrors, f *srd51.Feat, key, path string) {
 	checkFeatScores(c, key, path, ".prerequisite.minimums", f.Minimums)

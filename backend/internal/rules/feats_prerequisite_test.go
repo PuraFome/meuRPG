@@ -98,7 +98,7 @@ func TestFeatPrerequisitesOfRacesSizeAndLackedFeatures(t *testing.T) {
 		{"lacks: a high elf has it", highElf, featKeyNoDark, []FeatUnmet{{Kind: FeatUnmetLacksFeature, Key: "trait:darkvision"}}},
 		{"lacks: a feat the character took", grappler, featKeyNoGrappler, []FeatUnmet{{Kind: FeatUnmetLacksFeature, Key: "feat:grappler"}}},
 		{"lacks: a feat the character did not take", human, featKeyNoGrappler, nil},
-		{"every condition fails, in order", human, featKeyAll, []FeatUnmet{{Kind: FeatUnmetRace, Keys: []string{"race:elf", "race:halfling"}}}},
+		{"a human meets the size, the feature and the level, and fails only the races", human, featKeyAll, []FeatUnmet{{Kind: FeatUnmetRace, Keys: []string{"race:elf", "race:halfling"}}}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -128,6 +128,9 @@ func TestFeatPrerequisitesOfRacesSizeAndLackedFeatures(t *testing.T) {
 	}
 	if text := c.c.featUnmetPT(FeatUnmet{Kind: FeatUnmetLacksFeature, Key: "trait:darkvision"}); !strings.HasPrefix(text, "Não pode ter ") || !strings.Contains(text, c.c.namePT("trait:darkvision")) {
 		t.Errorf("feature sentence = %q", text)
+	}
+	if got := c.c.racesPT([]string{"race:elf", "race:dwarf", "race:halfling"}); got != "Elfo, Anão ou Halfling" {
+		t.Errorf("three races = %q, want \"A, B ou C\"", got)
 	}
 	e, _ := c.Feat(featKeyAll)
 	if got := c.c.featAsksPT(e.Prerequisite); got != "ser Elfo ou Halfling e ter tamanho médio e não ter "+c.c.namePT("feat:grappler")+" e nível 2 ou mais" {

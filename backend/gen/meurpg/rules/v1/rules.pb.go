@@ -337,7 +337,7 @@ const (
 	FeatUnmetKind_FEAT_UNMET_KIND_PROFICIENCY FeatUnmetKind = 3
 	// The character cannot cast any spell.
 	FeatUnmetKind_FEAT_UNMET_KIND_SPELLCASTING FeatUnmetKind = 4
-	// The character is not of the race or subrace in `key`.
+	// The character is not of the race or subrace in `key`, or of any in `keys`.
 	FeatUnmetKind_FEAT_UNMET_KIND_RACE FeatUnmetKind = 5
 	// The character level is below `value`.
 	FeatUnmetKind_FEAT_UNMET_KIND_LEVEL FeatUnmetKind = 6
@@ -3123,8 +3123,8 @@ type FeatPrerequisite struct {
 	// The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
 	// one the player picked. Empty asks nothing.
 	Size string `protobuf:"bytes,8,opt,name=size,proto3" json:"size,omitempty"`
-	// A feature or trait key the character must NOT have (a class feature, a race trait, a
-	// feat...). Empty asks nothing.
+	// A feature, trait or feat key the character must NOT have. It is judged before the
+	// feat's own grants. Empty asks nothing.
 	LacksFeatureKey string `protobuf:"bytes,9,opt,name=lacks_feature_key,json=lacksFeatureKey,proto3" json:"lacks_feature_key,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -3354,7 +3354,10 @@ type FeatUnmet struct {
 	Value int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// The races or subraces of which the character is none, when the feat asks for one of
 	// several (kind RACE); empty when `key` has the single race.
-	Keys          []string `protobuf:"bytes,5,rep,name=keys,proto3" json:"keys,omitempty"`
+	Keys []string `protobuf:"bytes,5,rep,name=keys,proto3" json:"keys,omitempty"`
+	// The Portuguese name of `key` for a kind LACKS_FEATURE (the app's catalog has no
+	// features); empty when the players cannot see that feature, and then `key` is empty too.
+	NamePt        string `protobuf:"bytes,6,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3424,6 +3427,13 @@ func (x *FeatUnmet) GetKeys() []string {
 	return nil
 }
 
+func (x *FeatUnmet) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
 // FeatOption is a feat a character may take, for the feat picker (the guided
 // level-up now; the creation of a character above level 1 next): the feat, whether
 // this character qualifies, and what it lacks when it does not. The server does
@@ -3461,9 +3471,12 @@ type FeatOption struct {
 	DescPtMissing bool `protobuf:"varint,12,opt,name=desc_pt_missing,json=descPtMissing,proto3" json:"desc_pt_missing,omitempty"`
 	// True when the text exists only in Portuguese (a table feat): `desc` already is the
 	// Portuguese, and there is no English to offer.
-	DescPtOnly    bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DescPtOnly bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
+	// The Portuguese name of `prerequisite.lacks_feature_key`; empty when it is not set or
+	// the players cannot see that feature.
+	LacksFeatureNamePt string `protobuf:"bytes,14,opt,name=lacks_feature_name_pt,json=lacksFeatureNamePt,proto3" json:"lacks_feature_name_pt,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *FeatOption) Reset() {
@@ -3585,6 +3598,13 @@ func (x *FeatOption) GetDescPtOnly() bool {
 		return x.DescPtOnly
 	}
 	return false
+}
+
+func (x *FeatOption) GetLacksFeatureNamePt() string {
+	if x != nil {
+		return x.LacksFeatureNamePt
+	}
+	return ""
 }
 
 // DerivedSheet is everything the server computes from a character's full
@@ -12672,13 +12692,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05value\x18\x03 \x01(\x05R\x05value\"^\n" +
 	"\x0eAbilityMinimum\x122\n" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12\x18\n" +
-	"\aminimum\x18\x02 \x01(\x05R\aminimum\"\xba\x01\n" +
+	"\aminimum\x18\x02 \x01(\x05R\aminimum\"\xd3\x01\n" +
 	"\tFeatUnmet\x122\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.meurpg.rules.v1.FeatUnmetKindR\x04kind\x12=\n" +
 	"\tabilities\x18\x02 \x03(\v2\x1f.meurpg.rules.v1.AbilityMinimumR\tabilities\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\x05R\x05value\x12\x12\n" +
-	"\x04keys\x18\x05 \x03(\tR\x04keys\"\xef\x03\n" +
+	"\x04keys\x18\x05 \x03(\tR\x04keys\x12\x17\n" +
+	"\aname_pt\x18\x06 \x01(\tR\x06namePt\"\xa2\x04\n" +
 	"\n" +
 	"FeatOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
@@ -12695,7 +12716,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
 	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
-	"descPtOnly\"\xcd\x13\n" +
+	"descPtOnly\x121\n" +
+	"\x15lacks_feature_name_pt\x18\x0e \x01(\tR\x12lacksFeatureNamePt\"\xcd\x13\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +

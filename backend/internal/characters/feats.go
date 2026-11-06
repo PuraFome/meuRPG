@@ -45,6 +45,7 @@ func featOptionOf(o rules.FeatOption) *rulesv1.FeatOption {
 			ProficiencyKey: p.Proficiency, Spellcasting: p.Spellcasting, RaceKey: p.Race, Level: i32(p.Level),
 			Races: p.Races, Size: p.Size, LacksFeatureKey: p.LacksFeature,
 		},
+		LacksFeatureNamePt: o.LacksFeatureNamePT,
 	}
 	if len(p.Minimums) > 0 {
 		out.Prerequisite.Minimums = abilityScores(p.Minimums)
@@ -62,7 +63,7 @@ func featOptionOf(o rules.FeatOption) *rulesv1.FeatOption {
 		out.CappedAbilities = append(out.CappedAbilities, abilityToProto[a])
 	}
 	for _, u := range o.Unmet {
-		pu := &rulesv1.FeatUnmet{Kind: featUnmetKinds[u.Kind], Key: u.Key, Keys: u.Keys, Value: i32(u.Value)}
+		pu := &rulesv1.FeatUnmet{Kind: featUnmetKinds[u.Kind], Key: u.Key, Keys: u.Keys, NamePt: u.NamePT, Value: i32(u.Value)}
 		for _, a := range u.Abilities {
 			pu.Abilities = append(pu.Abilities, &rulesv1.AbilityMinimum{Ability: abilityToProto[a.Ability], Minimum: i32(a.Minimum)})
 		}

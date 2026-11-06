@@ -1202,6 +1202,9 @@ func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 			p.RaceKey = "" // a race or subrace the players do not see is not named to them
 		}
 		p.Races = v.visible(p.Races)
+		if v.hidden(p.GetLacksFeatureKey()) {
+			p.LacksFeatureKey = "" // nor a feature the players do not see
+		}
 	}
 }
 

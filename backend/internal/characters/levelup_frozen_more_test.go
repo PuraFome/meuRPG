@@ -52,6 +52,12 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 		NamePt: "Sangue de anão", DescPt: []string{"Só para anões."},
 		Prerequisite: &rulesv1.FeatPrerequisite{RaceKey: "race:dwarf"},
 	})
+	// A feat that asks for the hidden dwarf or the visible elf and not to have a feat the master switches off.
+	offFeat := m.addEntry(t, tb.campaign, &rulesv1.TableFeat{NamePt: "Dom escondido", DescPt: []string{"Escondido."}})
+	pickyFeat := m.addEntry(t, tb.campaign, &rulesv1.TableFeat{
+		NamePt: "Exigente", DescPt: []string{"Exigente."},
+		Prerequisite: &rulesv1.FeatPrerequisite{Races: []string{"race:dwarf", "race:elf"}, LacksFeatureKey: offFeat.GetKey()},
+	})
 	// Toren, Fighter 2 going to 3, picks the subclass; Lia, Fighter 3 of the ink blade,
 	// goes to 4 with the wizard's list.
 	toren := tb.other.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", levelUpFighterSheet(2, 900, ""))
@@ -64,6 +70,7 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	labels := map[string]string{
 		tb.pc.GetId(): "<pensantus>", toren.GetId(): "<toren>", lia.GetId(): "<lia>", tb.campaign: "<campaign>",
 		ink.GetKey(): "<ink-blade>", guardian.GetKey(): "<guardian>", dwarfFeat.GetKey(): "<dwarf-feat>",
+		offFeat.GetKey(): "<off-feat>", pickyFeat.GetKey(): "<picky-feat>",
 	}
 
 	// The master retires the guardian and switches off the champion, the wizard, the
@@ -71,7 +78,7 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	if _, err := m.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: tb.campaign, Key: guardian.GetKey()})); err != nil {
 		t.Fatalf("ArchiveTableEntry() error = %v", err)
 	}
-	m.setOff(t, tb.campaign, true, "subclass:champion", "class:wizard", "race:dwarf", "class:rogue")
+	m.setOff(t, tb.campaign, true, "subclass:champion", "class:wizard", "race:dwarf", "class:rogue", offFeat.GetKey())
 
 	// The master's options are the golden; the player reads the same without what was switched
 	// off or retired: no class that is closed, no list of a switched-off class, and a feat's
@@ -79,9 +86,9 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	wantHiddenFromPlayer(t, tb, "toren", toren, tb.other, labels,
 		`-classChoices[class:rogue] -classChoices[class:wizard] -subclasses[<ink-blade>].spellListClassKey -subclasses[subclass:champion]`)
 	wantHiddenFromPlayer(t, tb, "lia", lia, liaPlayer, labels,
-		`-classChoices[class:rogue] -classChoices[class:wizard] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -spellListClassKey feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE"`)
+		`-classChoices[class:rogue] -classChoices[class:wizard] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] -spellListClassKey feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE" feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
 	wantHiddenFromPlayer(t, tb, "pensantus", tb.pc, tb.owner, labels,
-		`-classChoices[class:rogue] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE"`)
+		`-classChoices[class:rogue] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -feats[<off-feat>] -feats[<picky-feat>].lacksFeatureNamePt -feats[<picky-feat>].prerequisite.lacksFeatureKey -feats[<picky-feat>].prerequisite.races[1] -feats[<picky-feat>].unmet[0].keys[1] feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE" feats[<picky-feat>].prerequisite.races[0]="race:elf" feats[<picky-feat>].unmet[0].keys[0]="race:elf"`)
 
 	// A new class the table closed: retired for everyone, switched off for a player only.
 	id := tb.pc.GetId()

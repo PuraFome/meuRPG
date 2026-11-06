@@ -455,7 +455,7 @@ func hiddenRaceOf(t levelUpTarget, k string) bool {
 	return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
 }
 
-// hideFeatRace blanks the hidden race a feat asks for, in its prerequisite and
+// hideFeatRace blanks the hidden races and the hidden feature a feat names, in its prerequisite and
 // in what the character does not meet.
 func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 	if hiddenRaceOf(t, f.GetPrerequisite().GetRaceKey()) {
@@ -463,15 +463,22 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 	}
 	if p := f.GetPrerequisite(); p != nil {
 		p.Races = slices.DeleteFunc(p.Races, func(k string) bool { return hiddenRaceOf(t, k) })
+		if t.content.Hidden(p.GetLacksFeatureKey()) {
+			p.LacksFeatureKey, f.LacksFeatureNamePt = "", ""
+		}
 	}
 	for _, u := range f.GetUnmet() {
-		if u.GetKind() != rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
-			continue
+		switch u.GetKind() {
+		case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE:
+			if hiddenRaceOf(t, u.GetKey()) {
+				u.Key = ""
+			}
+			u.Keys = slices.DeleteFunc(u.Keys, func(k string) bool { return hiddenRaceOf(t, k) })
+		case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE:
+			if t.content.Hidden(u.GetKey()) {
+				u.Key, u.NamePt = "", ""
+			}
 		}
-		if hiddenRaceOf(t, u.GetKey()) {
-			u.Key = ""
-		}
-		u.Keys = slices.DeleteFunc(u.Keys, func(k string) bool { return hiddenRaceOf(t, k) })
 	}
 }
 
