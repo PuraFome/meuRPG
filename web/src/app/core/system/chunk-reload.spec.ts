@@ -20,6 +20,9 @@ const DEFER_ERROR = new Error(
   `NG0750: Loading dependencies for \`@defer\` block failed.\n\nThe loading resulted in the following error:\n\n${CHROME}`,
 );
 
+/** What a production build reports for a failed `@defer`: only the code. */
+const DEFER_PROD_ERROR = Object.assign(new Error('NG0750'), { code: -750 });
+
 describe('isChunkLoadError', () => {
   it.each([CHROME, WEBKIT, FIREFOX])('recognises %s', (message) => {
     expect(isChunkLoadError(new TypeError(message))).toBe(true);
@@ -37,7 +40,7 @@ describe('isChunkLoadError', () => {
   });
 
   it('recognises a failed @defer block by its code when a production build keeps no message', () => {
-    expect(isChunkLoadError(Object.assign(new Error('NG0750'), { code: -750 }))).toBe(true);
+    expect(isChunkLoadError(DEFER_PROD_ERROR)).toBe(true);
     expect(isChunkLoadError(Object.assign(new Error('NG0200'), { code: -200 }))).toBe(false);
   });
 
@@ -109,7 +112,7 @@ describe('chunk reload', () => {
   });
 
   it('reloads for a production @defer error that carries only its code', () => {
-    TestBed.inject(ErrorHandler).handleError(Object.assign(new Error('NG0750'), { code: -750 }));
+    TestBed.inject(ErrorHandler).handleError(DEFER_PROD_ERROR);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
@@ -118,7 +121,7 @@ describe('chunk reload', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     window.dispatchEvent(new Event('beforeunload'));
     TestBed.inject(ErrorHandler).handleError(new TypeError(WEBKIT));
-    TestBed.inject(ErrorHandler).handleError(Object.assign(new Error('NG0750'), { code: -750 }));
+    TestBed.inject(ErrorHandler).handleError(DEFER_PROD_ERROR);
     expect(reload).not.toHaveBeenCalled();
     expect(history.state).toEqual(ROUTER_STATE);
     expect(log).not.toHaveBeenCalled();

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ErrorHandler, Injectable, InjectionToken, inject } from '@angular/core';
+import { DestroyRef, ErrorHandler, Injectable, InjectionToken, inject } from '@angular/core';
 
 /** The `history.state` key that marks an entry whose page was already reloaded for a chunk load error. */
 export const CHUNK_RELOAD_MARKER = 'chunkReloaded';
@@ -8,8 +8,8 @@ const CHUNK_ERROR_NAME = 'ChunkLoadError';
 // Angular's `RuntimeError` code for a `@defer` block whose dependencies failed to load. A production build keeps only
 // the code in the text ("NG0750"): the failed import is not in it, so the code is the only sign.
 const DEFER_LOADING_FAILED_CODE = -750;
-// Chromium and WebKit reject a pending `import()` right after `beforeunload` when a navigation cancels it. That
-// rejection is not a stale deploy, so the page does not reload for it. The flag lasts this long, in case the page stays.
+// WebKit rejects a pending `import()` right after `beforeunload` when a navigation cancels it. That rejection is not a
+// stale deploy, so the page neither reloads nor logs it. The flag lasts this long, in case the page stays.
 const LEAVING_MS = 2000;
 const MAX_CAUSE_DEPTH = 8;
 
@@ -76,9 +76,17 @@ export class ChunkReload {
   private leaving = false;
 
   constructor() {
-    inject(DOCUMENT).defaultView?.addEventListener('beforeunload', () => {
+    const view = inject(DOCUMENT).defaultView;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onLeaving = () => {
       this.leaving = true;
-      setTimeout(() => (this.leaving = false), LEAVING_MS);
+      clearTimeout(timer);
+      timer = setTimeout(() => (this.leaving = false), LEAVING_MS);
+    };
+    view?.addEventListener('beforeunload', onLeaving);
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(timer);
+      view?.removeEventListener('beforeunload', onLeaving);
     });
   }
 
@@ -111,7 +119,7 @@ function isMarked(state: unknown): boolean {
   );
 }
 
-/** Reloads on a chunk load error and sends every other error, and a repeated one, to the default handler. */
+/** Reloads on a chunk load error, drops one the page is leaving over, and sends every other error, and a repeated one, to the default handler. */
 @Injectable()
 export class ChunkReloadErrorHandler extends ErrorHandler {
   private readonly chunkReload = inject(ChunkReload);

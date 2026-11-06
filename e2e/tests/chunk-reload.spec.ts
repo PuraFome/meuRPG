@@ -67,7 +67,7 @@ for (const [answer, gone] of Object.entries(goneAnswers)) {
 test('uma parte preguiçosa cancelada por outra navegação não recarrega a página', async ({ page }) => {
   let holdNewScripts = false;
   const loadedScripts = new Set<string>();
-  const held: Array<() => Promise<void>> = [];
+  let held = 0;
   await page.route('**/*.js', (route) => {
     const url = route.request().url();
     if (!holdNewScripts || loadedScripts.has(url)) {
@@ -75,10 +75,12 @@ test('uma parte preguiçosa cancelada por outra navegação não recarrega a pá
       return route.continue();
     }
     // Answered by the test, never by the server: the import stays pending until the navigation cancels it.
-    held.push(() => route.abort().catch(() => undefined));
+    held++;
     return undefined;
   });
 
+  const logged: string[] = [];
+  page.on('console', (message) => logged.push(message.text()));
   const documents: string[] = [];
   page.on('request', (request) => {
     if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
@@ -92,11 +94,13 @@ test('uma parte preguiçosa cancelada por outra navegação não recarrega a pá
 
   holdNewScripts = true;
   await footer.getByRole('link', { name: 'Termos de uso' }).click();
-  await expect.poll(() => held.length).toBeGreaterThan(0);
+  await expect.poll(() => held).toBeGreaterThan(0);
 
   // The new page loads its own scripts as usual; the held ones stay pending until the navigation cancels them.
   holdNewScripts = false;
   await page.goto('/privacy');
   await expect(page.getByRole('heading', { level: 1, name: 'Privacidade' })).toBeVisible();
   expect(documents).toEqual(['/', '/privacy']);
+  // The cancelled import is not an error the page reports.
+  expect(logged.filter((text) => /^ERROR .*(dynamically imported module|module script|NG0750)/i.test(text))).toEqual([]);
 });
