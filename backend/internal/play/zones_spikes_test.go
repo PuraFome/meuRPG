@@ -203,6 +203,6 @@ func TestSpikeGrowthHurtsWhoIsDraggedThrough(t *testing.T) {
 		t.Errorf("damages of the grappler = %v, want one of 4 dice: squares 10 and 11", got)
 	}
 	if got := c.spikeDamagesOf(t, "Brisa"); len(got) != 1 || got[0] == 0 {
-		t.Errorf("damages of the dragged creature = %v, want one: it travelled into the spikes", got)
+		t.Errorf("damages of the dragged creature = %v, want one: it traveled into the spikes", got)
 	}
 }
