@@ -459,6 +459,7 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 		Prerequisite: rules.FeatPrerequisite{
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
+			Races: p.GetRaces(), Size: p.GetSize(), LacksFeature: p.GetLacksFeatureKey(),
 		},
 	}
 }
@@ -1196,8 +1197,11 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
-	if p := b.GetPrerequisite(); v.hidden(p.GetRaceKey()) {
-		p.RaceKey = "" // a race or subrace the players do not see is not named to them
+	if p := b.GetPrerequisite(); p != nil {
+		if v.hidden(p.GetRaceKey()) {
+			p.RaceKey = "" // a race or subrace the players do not see is not named to them
+		}
+		p.Races = v.visible(p.Races)
 	}
 }
 

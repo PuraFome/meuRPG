@@ -461,10 +461,17 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 	if hiddenRaceOf(t, f.GetPrerequisite().GetRaceKey()) {
 		f.Prerequisite.RaceKey = ""
 	}
+	if p := f.GetPrerequisite(); p != nil {
+		p.Races = slices.DeleteFunc(p.Races, func(k string) bool { return hiddenRaceOf(t, k) })
+	}
 	for _, u := range f.GetUnmet() {
-		if hiddenRaceOf(t, u.GetKey()) && u.GetKind() == rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
+		if u.GetKind() != rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
+			continue
+		}
+		if hiddenRaceOf(t, u.GetKey()) {
 			u.Key = ""
 		}
+		u.Keys = slices.DeleteFunc(u.Keys, func(k string) bool { return hiddenRaceOf(t, k) })
 	}
 }
 

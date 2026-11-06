@@ -253,6 +253,11 @@ type Feat struct {
 	Spellcasting bool           `json:"spellcasting,omitempty"`
 	Race         string         `json:"race,omitempty"`
 	Level        int            `json:"level,omitempty"`
+	// Races are race or subrace keys of which the character must be one; Size is the
+	// size the character must have and LacksFeature a feature key it must not have.
+	Races        []string `json:"races,omitempty"`
+	Size         string   `json:"size,omitempty"`
+	LacksFeature string   `json:"lacks_feature,omitempty"`
 }
 
 // Proficiency is something a character can be proficient in.

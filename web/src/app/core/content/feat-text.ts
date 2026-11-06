@@ -54,6 +54,18 @@ function listWith(items: readonly string[], word: 'e' | 'ou'): string {
     : `${items.slice(0, -1).join(', ')} ${word} ${items[items.length - 1]}`;
 }
 
+const SIZE_NAMES: Readonly<Record<string, string>> = {
+  Tiny: 'miúdo',
+  Small: 'pequeno',
+  Medium: 'médio',
+  Large: 'grande',
+};
+
+/** "médio", for a size the server writes in English ("Medium"); an unknown size is shown as it came. */
+function sizeName(size: string): string {
+  return SIZE_NAMES[size] ?? size;
+}
+
 /** The conditions of a prerequisite, one phrase each ("Força 13 e Destreza 13", "proficiência em Armadura média"); none when it asks nothing. */
 export function prerequisiteParts(p: FeatPrerequisite | undefined, nameOf: KeyName): string[] {
   if (!p) {
@@ -74,8 +86,15 @@ export function prerequisiteParts(p: FeatPrerequisite | undefined, nameOf: KeyNa
   if (p.spellcasting) {
     parts.push('poder conjurar ao menos uma magia');
   }
-  if (p.raceKey) {
-    parts.push(`ser ${nameOf(p.raceKey)}`);
+  const races = [...(p.raceKey ? [p.raceKey] : []), ...p.races.filter((r) => r !== p.raceKey)];
+  if (races.length > 0) {
+    parts.push(`ser ${listWith(races.map(nameOf), 'ou')}`);
+  }
+  if (p.size) {
+    parts.push(`ter tamanho ${sizeName(p.size)}`);
+  }
+  if (p.lacksFeatureKey) {
+    parts.push(`não ter ${nameOf(p.lacksFeatureKey)}`);
   }
   if (p.level > 0) {
     parts.push(`nível ${p.level} ou mais`);
@@ -101,7 +120,11 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
     case FeatUnmetKind.SPELLCASTING:
       return 'Precisa poder conjurar ao menos uma magia.';
     case FeatUnmetKind.RACE:
-      return `Precisa ser ${nameOf(u.key)}.`;
+      return `Precisa ser ${listWith((u.key ? [u.key] : u.keys).map(nameOf), 'ou')}.`;
+    case FeatUnmetKind.SIZE:
+      return `Precisa ter tamanho ${sizeName(u.key)}.`;
+    case FeatUnmetKind.LACKS_FEATURE:
+      return `Não pode ter ${nameOf(u.key)}.`;
     case FeatUnmetKind.LEVEL:
       return `Precisa do nível ${u.value} ou mais.`;
     default:

@@ -498,6 +498,27 @@ describe("the refusals of a feat, on the feat editor's fields", () => {
     expect(violationText(v('table_feat.prerequisite.race_key', 'dangling_reference'), feat)).toBe(
       'Esta raça ou sub-raça não existe mais. Escolha outra.',
     );
+    expect(violationText(v('table_feat.prerequisite.races[1]', 'dangling_reference'), feat)).toBe(
+      'Esta raça ou sub-raça não existe mais. Escolha outra.',
+    );
+    expect(violationText(v('table_feat.prerequisite.races[2]', 'bad_value'), feat)).toBe(
+      'Cada raça ou sub-raça entra uma vez só.',
+    );
+    expect(violationText(v('table_feat.prerequisite.races', 'bad_value'), feat)).toBe(
+      'Use a lista de raças ou a raça única, não as duas.',
+    );
+    expect(violationText(v('table_feat.prerequisite.races', 'limit'), feat)).toBe(
+      'Uma lista de raças vai até 20.',
+    );
+    expect(violationText(v('table_feat.prerequisite.size', 'bad_value'), feat)).toBe(
+      'Escolha um tamanho: Miúdo, Pequeno, Médio ou Grande.',
+    );
+    expect(
+      violationText(v('table_feat.prerequisite.lacks_feature_key', 'dangling_reference'), feat),
+    ).toBe('Este traço, característica ou talento não existe. Escolha outro.');
+    expect(violationText(v('table_feat.prerequisite.lacks_feature_key', 'bad_value'), feat)).toBe(
+      'Um talento não pode pedir que ele mesmo não esteja na ficha.',
+    );
     expect(violationText(v('table_feat.effects[1]', 'limit'), feat)).toBe(
       'Um talento tem só um aumento de habilidade.',
     );

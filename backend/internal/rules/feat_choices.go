@@ -277,13 +277,28 @@ func (c *content) featAsksPT(p FeatPrerequisite) string {
 	if p.Spellcasting {
 		out = append(out, "conseguir conjurar magias")
 	}
-	if p.Race != "" {
-		out = append(out, "ser "+c.namePT(p.Race))
+	if races := prerequisiteRaces(p); len(races) > 0 {
+		out = append(out, "ser "+c.racesPT(races))
+	}
+	if p.Size != "" {
+		out = append(out, "ter tamanho "+strings.ToLower(sizeNamePT[p.Size]))
+	}
+	if p.LacksFeature != "" {
+		out = append(out, "não ter "+c.namePT(p.LacksFeature))
 	}
 	if p.Level > 0 {
 		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
 	}
 	return strings.Join(out, " e ")
+}
+
+// racesPT are the races or subraces in Portuguese, with "ou" between them.
+func (c *content) racesPT(keys []string) string {
+	names := make([]string, len(keys))
+	for i, k := range keys {
+		names[i] = c.namePT(k)
+	}
+	return strings.Join(names, " ou ")
 }
 
 // featUnmetPT says in a sentence what a character lacks for one condition of a feat.
@@ -303,7 +318,14 @@ func (c *content) featUnmetPT(u FeatUnmet) string {
 	case FeatUnmetSpellcasting:
 		return "Precisa conseguir conjurar magias."
 	case FeatUnmetRace:
-		return "Só para " + c.namePT(u.Key) + "."
+		if u.Key != "" {
+			return "Só para " + c.namePT(u.Key) + "."
+		}
+		return "Só para " + c.racesPT(u.Keys) + "."
+	case FeatUnmetSize:
+		return "Só para tamanho " + strings.ToLower(sizeNamePT[u.Key]) + "."
+	case FeatUnmetLacksFeature:
+		return "Não pode ter " + c.namePT(u.Key) + "."
 	case FeatUnmetLevel:
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
 	}

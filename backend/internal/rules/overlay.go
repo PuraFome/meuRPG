@@ -832,6 +832,8 @@ type overlayBuilder struct {
 	classSubLevel map[string]int
 	// pending are the effects to compile once every entry exists.
 	pending []pendingEffects
+	// featLacks are the features the feats ask the character not to have.
+	featLacks []featLack
 	// strict is Overlay.Strict as a set.
 	strict map[string]bool
 	// optionEntry is the entry of every option of a feature list, by option key;
@@ -1001,6 +1003,9 @@ func (b *overlayBuilder) build(o Overlay) error {
 	}
 	b.sortCreatures()
 	if err := b.applyClassFeatures(); err != nil {
+		return err
+	}
+	if err := b.checkFeatLacks(); err != nil {
 		return err
 	}
 	if err := b.compileEffects(); err != nil {

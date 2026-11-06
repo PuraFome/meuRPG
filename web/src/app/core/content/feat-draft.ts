@@ -49,6 +49,13 @@ export interface FeatDraft {
   proficiencyKey: string;
   spellcasting: boolean;
   raceKey: string;
+  /**
+   * The conditions the editor has no input for yet (any of several races, a size, a feature to lack): kept as the
+   * feat has them, so saving the feat does not drop them.
+   */
+  races: string[];
+  size: string;
+  lacksFeatureKey: string;
   /** As typed; empty asks nothing. */
   level: string;
 }
@@ -61,6 +68,9 @@ export function emptyFeat(): FeatDraft {
     proficiencyKey: '',
     spellcasting: false,
     raceKey: '',
+    races: [],
+    size: '',
+    lacksFeatureKey: '',
     level: '',
   };
 }
@@ -72,6 +82,17 @@ function scoresOf(s: AbilityScores | undefined): Scores {
     out[a] = v > 0 ? String(v) : '';
   }
   return out;
+}
+
+/** The conditions the form has no input for, as the feat has them. */
+function passedThrough(
+  p: TableFeat['prerequisite'],
+): Pick<FeatDraft, 'races' | 'size' | 'lacksFeatureKey'> {
+  return {
+    races: [...(p?.races ?? [])],
+    size: p?.size ?? '',
+    lacksFeatureKey: p?.lacksFeatureKey ?? '',
+  };
 }
 
 export function featToDraft(f: TableFeat): FeatDraft {
@@ -88,6 +109,7 @@ export function featToDraft(f: TableFeat): FeatDraft {
     proficiencyKey: p?.proficiencyKey ?? '',
     spellcasting: p?.spellcasting ?? false,
     raceKey: p?.raceKey ?? '',
+    ...passedThrough(p),
     level: p && p.level > 0 ? String(p.level) : '',
   };
 }
@@ -117,6 +139,9 @@ export function draftToFeat(d: FeatDraft, menu: EffectMenuVm): FeatInit {
       proficiencyKey: d.proficiencyKey,
       spellcasting: d.spellcasting,
       raceKey: d.raceKey,
+      races: d.races,
+      size: d.size,
+      lacksFeatureKey: d.lacksFeatureKey,
       level: level === '' ? 0 : Number(level),
     },
     effects: d.feature.effects.map((e) => draftToEffect(e, menu)),

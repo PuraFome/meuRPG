@@ -454,6 +454,16 @@ message FeatPrerequisite {
   string race_key = 5;
   // The least total character level; 0 asks nothing.
   int32 level = 6;
+  // Races or subraces of which the character must be one (any of them is enough). A
+  // subrace character also satisfies its parent race's key. Alone it is read like
+  // `race_key`; the table refuses a feat that sets both.
+  repeated string races = 7;
+  // The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
+  // one the player picked. Empty asks nothing.
+  string size = 8;
+  // A feature or trait key the character must NOT have (a class feature, a race trait, a
+  // feat...). Empty asks nothing.
+  string lacks_feature_key = 9;
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):
@@ -483,6 +493,10 @@ enum FeatUnmetKind {
   // The character level is below `value`.
   FEAT_UNMET_KIND_LEVEL = 6;
   reserved 7;
+  // The character's size is not the one in `key`.
+  FEAT_UNMET_KIND_SIZE = 8;
+  // The character has the feature in `key`, which the feat asks them not to have.
+  FEAT_UNMET_KIND_LACKS_FEATURE = 9;
 }
 
 // AbilityMinimum is an ability and the score asked of it.
@@ -496,10 +510,15 @@ message AbilityMinimum {
 message FeatUnmet {
   FeatUnmetKind kind = 1;
   repeated AbilityMinimum abilities = 2;
-  // The proficiency or the race the character lacks.
+  // The proficiency or the race the character lacks; the size the feat asks for; the
+  // feature the character has and must not. Empty for a race kind that lists several races
+  // (see `keys`).
   string key = 3;
   // The level the character lacks.
   int32 value = 4;
+  // The races or subraces of which the character is none, when the feat asks for one of
+  // several (kind RACE); empty when `key` has the single race.
+  repeated string keys = 5;
 }
 
 // FeatOption is a feat a character may take, for the feat picker (the guided
@@ -1417,7 +1436,8 @@ message Subrace {
   // off race is hidden from the players too, and keeps this mark false.
   bool off = 7;
   // Content keys of the skills the subrace gives, added to the race's (see
-  // Race.skill_keys).
+  // Race.skill_keys). The race's skills that come from a trait this subrace replaces
+  // are in `replaced_skill_keys`.
   repeated string skill_keys = 8;
   // Content keys of the parent race's traits this subrace replaces: the character
   // of this subrace does not have them. Empty for most subraces.

@@ -34,6 +34,11 @@ const (
 	FeatUnmetRace = "race"
 	// FeatUnmetLevel: the character level is below Value.
 	FeatUnmetLevel = "level"
+	// FeatUnmetSize: the character's size is not the one in Key.
+	FeatUnmetSize = "size"
+	// FeatUnmetLacksFeature: the character has the feature in Key, which the feat asks
+	// them not to have.
+	FeatUnmetLacksFeature = "lacks_feature"
 )
 
 // FeatPrerequisite is what a feat asks of a character. Every condition that is set
@@ -50,13 +55,21 @@ type FeatPrerequisite struct {
 	Spellcasting bool
 	// Race is a race or subrace key; the character's race or subrace must be it.
 	Race string
+	// Races are race or subrace keys of which the character's race or subrace must be one.
+	// It is read together with Race (the table refuses a feat that sets both). A subrace
+	// character is of its parent race too.
+	Races []string `json:",omitempty"`
+	// Size is the size the character must have ("Medium"); empty is not asked.
+	Size string `json:",omitempty"`
+	// LacksFeature is a feature or trait key the character must not have; empty is not asked.
+	LacksFeature string `json:",omitempty"`
 	// Level is the least total character level; 0 is not asked.
 	Level int
 }
 
 // IsZero says the prerequisite asks nothing.
 func (p FeatPrerequisite) IsZero() bool {
-	return len(p.Minimums) == 0 && len(p.AnyOf) == 0 && p.Proficiency == "" && !p.Spellcasting && p.Race == "" && p.Level == 0
+	return len(p.Minimums) == 0 && len(p.AnyOf) == 0 && p.Proficiency == "" && !p.Spellcasting && p.Race == "" && len(p.Races) == 0 && p.Size == "" && p.LacksFeature == "" && p.Level == 0
 }
 
 // AbilityMinimum is an ability and the score asked of it.
@@ -71,8 +84,10 @@ type FeatUnmet struct {
 	Kind string
 	// Abilities are the minimums not met (see the kinds).
 	Abilities []AbilityMinimum
-	// Key is the proficiency or race the character lacks, and Value the level.
+	// Key is the proficiency, the race, the size or the feature, and Value the level.
+	// Keys are the races a feat that asks for one of several lists (Key is empty then).
 	Key   string
+	Keys  []string `json:",omitempty"`
 	Value int
 }
 
@@ -133,7 +148,7 @@ func (c *content) featEntry(f *srd51.Feat) FeatEntry {
 		Key: f.Key, Name: f.Name, NamePT: c.namePT(f.Key), Desc: slices.Clone(f.Desc),
 		Prerequisite: FeatPrerequisite{
 			Minimums: abilityMap(f.Minimums), AnyOf: abilityMap(f.AnyOf), Proficiency: f.Proficiency,
-			Spellcasting: f.Spellcasting, Race: f.Race, Level: f.Level,
+			Spellcasting: f.Spellcasting, Race: f.Race, Races: slices.Clone(f.Races), Size: f.Size, LacksFeature: f.LacksFeature, Level: f.Level,
 		},
 		Table: isTableKey(f.Key), Archived: c.archived[f.Key], Off: c.off[f.Key],
 	}
@@ -286,8 +301,8 @@ func unmetAnyOf(p FeatPrerequisite, score map[Ability]int) (FeatUnmet, bool) {
 	return FeatUnmet{Kind: FeatUnmetAbilityAnyOf, Abilities: all}, !met
 }
 
-// unmetOthers are the proficiency, the spellcasting, the race and the level the
-// character lacks, in that order.
+// unmetOthers are the proficiency, the spellcasting, the race, the size, the feature
+// and the level the character lacks, in that order.
 func unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
 	var out []FeatUnmet
 	if p.Proficiency != "" && !hasProficiency(d, p.Proficiency) {
@@ -296,13 +311,47 @@ func unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
 	if p.Spellcasting && len(d.Spellcasting) == 0 && d.PactMagic == nil && len(d.Spells) == 0 {
 		out = append(out, FeatUnmet{Kind: FeatUnmetSpellcasting})
 	}
-	if p.Race != "" && b.Race != p.Race && b.Subrace != p.Race {
-		out = append(out, FeatUnmet{Kind: FeatUnmetRace, Key: p.Race})
+	if u, unmet := unmetRace(p, b); unmet {
+		out = append(out, u)
+	}
+	if p.Size != "" && d.Size != p.Size {
+		out = append(out, FeatUnmet{Kind: FeatUnmetSize, Key: p.Size})
+	}
+	if p.LacksFeature != "" && ownedBy(b, d)(p.LacksFeature) {
+		out = append(out, FeatUnmet{Kind: FeatUnmetLacksFeature, Key: p.LacksFeature})
 	}
 	if p.Level > 0 && d.TotalLevel < p.Level {
 		out = append(out, FeatUnmet{Kind: FeatUnmetLevel, Value: p.Level})
 	}
 	return out
+}
+
+// prerequisiteRaces are the races and subraces the prerequisite asks for: Race and Races
+// together, each once.
+func prerequisiteRaces(p FeatPrerequisite) []string {
+	var out []string
+	if p.Race != "" {
+		out = append(out, p.Race)
+	}
+	for _, r := range p.Races {
+		if !slices.Contains(out, r) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// unmetRace is the race part, unmet when the character's race (a subrace's parent
+// included) and its subrace are none of the races asked.
+func unmetRace(p FeatPrerequisite, b Build) (FeatUnmet, bool) {
+	asked := prerequisiteRaces(p)
+	if len(asked) == 0 || slices.Contains(asked, b.Race) || slices.Contains(asked, b.Subrace) {
+		return FeatUnmet{}, false
+	}
+	if len(asked) == 1 {
+		return FeatUnmet{Kind: FeatUnmetRace, Key: asked[0]}, true
+	}
+	return FeatUnmet{Kind: FeatUnmetRace, Keys: asked}, true
 }
 
 // hasProficiency says whether the sheet has the proficiency key, or one that
@@ -352,19 +401,27 @@ func checkPrerequisiteScores(name string, set map[string]int) (field, msg string
 	return "", ""
 }
 
-// checkFeatKeys checks the proficiency and the race (or subrace) a prerequisite
-// names exist.
+// checkFeatKeys checks the proficiency, the races (or subraces), the size and the feature a
+// prerequisite names exist.
 func (c *content) checkFeatKeys(f *srd51.Feat) (field, msg string) {
 	if f.Proficiency != "" {
 		if _, ok := c.proficiencies[f.Proficiency]; !ok {
 			return "proficiency", fmt.Sprintf("unknown proficiency %q", f.Proficiency)
 		}
 	}
-	if f.Race != "" {
-		_, race := c.races[f.Race]
-		_, subrace := c.subraces[f.Race]
-		if !race && !subrace {
-			return "race", fmt.Sprintf("unknown race or subrace %q", f.Race)
+	for _, r := range append([]string{f.Race}, f.Races...) {
+		if _, race := c.races[r]; r != "" && !race {
+			if _, subrace := c.subraces[r]; !subrace {
+				return "race", fmt.Sprintf("unknown race or subrace %q", r)
+			}
+		}
+	}
+	if f.Size != "" && !slices.Contains(raceSizes, f.Size) {
+		return "size", fmt.Sprintf("unknown size %q", f.Size)
+	}
+	if k := f.LacksFeature; k != "" {
+		if !c.isFeatureKey(k) {
+			return "lacks_feature", fmt.Sprintf("unknown feature %q", k)
 		}
 	}
 	return "", ""
