@@ -206,20 +206,6 @@ func decodeRow(row charactersdb.CampaignContent) (entryRow, error) {
 	return entryRow{row: row, kind: kind, body: body}, nil
 }
 
-// overlayOf is the rules.Overlay of a campaign's stored entries at a revision.
-func overlayOf(rows []charactersdb.CampaignContent, revision int) (rules.Overlay, error) {
-	entries := make([]entryRow, 0, len(rows))
-	for _, r := range rows {
-		e, err := decodeRow(r)
-		if err != nil {
-			return rules.Overlay{}, err
-		}
-		entries = append(entries, e)
-	}
-	o, _ := overlayFromEntries(entries, revision)
-	return o, nil
-}
-
 // overlayIndex says, for each kind's slice of an Overlay, which entry is at each
 // index, so an OverlayError's "classes[2]" names an entry.
 type overlayIndex map[string][]entryRow

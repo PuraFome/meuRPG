@@ -35,9 +35,34 @@ const (
 	casterCol, casterRow   = 14, 5
 )
 
+// hiddenCaster is the hidden NPC wizard of the fixture: its level and the spells it knows.
+type hiddenCaster struct {
+	level  int32
+	spells []string
+}
+
+// fogCaster is the wizard of the Fog Cloud rows.
+var fogCaster = &hiddenCaster{level: 5, spells: []string{"spell:fog-cloud"}}
+
+// wallCaster is a wizard of the level that casts Wall of Fire (4th-level slot), and Silence.
+var wallCaster = &hiddenCaster{level: 7, spells: []string{"spell:wall-of-fire", "spell:silence"}}
+
+// spikeCaster is a caster of the level that casts Spike Growth (2nd-level slot).
+var spikeCaster = &hiddenCaster{level: 5, spells: []string{"spell:spike-growth"}}
+
 // newZoneTable builds the fixture. withCaster adds a hidden NPC wizard that knows Fog Cloud.
 func newZoneTable(t *testing.T, withCaster bool) *zoneTable {
 	t.Helper()
+	if withCaster {
+		return newZoneTableOf(t, fogCaster)
+	}
+	return newZoneTableOf(t, nil)
+}
+
+// newZoneTableOf is newZoneTable with the hidden caster given (nil for none).
+func newZoneTableOf(t *testing.T, caster *hiddenCaster) *zoneTable {
+	t.Helper()
+	withCaster := caster != nil
 	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
 	z := &zoneTable{world: w}
 	defer func() {
@@ -84,8 +109,8 @@ func newZoneTable(t *testing.T, withCaster bool) *zoneTable {
 			CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_ENEMY, Name: z.casterName,
 			Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 				BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8},
-				RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:wizard", Level: 5}},
-				KnownSpellKeys: []string{"spell:fog-cloud"}, PreparedSpellKeys: []string{"spell:fog-cloud"},
+				RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:wizard", Level: caster.level}},
+				KnownSpellKeys: caster.spells, PreparedSpellKeys: caster.spells,
 			}}},
 		}))).GetCharacter()
 		participants = append(participants, &playv1.Participant{CharacterId: z.caster.GetId(), Hidden: new(true)})
@@ -156,11 +181,16 @@ func (z *zoneTable) untilTurn(combatantID string) {
 }
 
 // cast casts a spell on a point as the caster's own side: a player through their client, the hidden NPC through the master's.
-func (z *zoneTable) cast(by *person, casterCombatant, spell string, slot int32, col, row int32) *playv1.CastSpellResponse {
-	return must(by.combat.CastSpell(z.t.Context(), rq(&playv1.CastSpellRequest{
+// edit changes the request (a wall's placement).
+func (z *zoneTable) cast(by *person, casterCombatant, spell string, slot int32, col, row int32, edit ...func(*playv1.CastSpellRequest)) *playv1.CastSpellResponse {
+	req := &playv1.CastSpellRequest{
 		CampaignId: z.campaign, EncounterId: z.enc.GetId(), CasterId: casterCombatant, SpellKey: spell, Slot: &playv1.SpellSlot{Level: slot}, IdempotencyKey: newKey(),
 		Area: &playv1.CastSpellRequest_Origin{Origin: &playv1.SpellOrigin{Col: col, Row: row}},
-	})))
+	}
+	for _, f := range edit {
+		f(req)
+	}
+	return must(by.combat.CastSpell(z.t.Context(), rq(req)))
 }
 
 // read is everything of the combat and the map a person receives: the map with its tokens, the combat and its log.
@@ -528,4 +558,265 @@ func TestACloudThatEndsLeavesNothingNewInWhatThePlayersReceive(t *testing.T) {
 	if combatants, _ := moved(events[master]); !slices.Contains(combatants, z.casterC) || !slices.Contains(combatants, z.foeC) {
 		t.Errorf("the master's stream does not say who moved in the cloud: %v", combatants)
 	}
+}
+
+// southWall is the wall from its point to the south, damaging on the west side: the creatures 10 feet west of it are hurt
+// at the end of their turn.
+func southWall(r *playv1.CastSpellRequest) {
+	r.Wall = &playv1.SpellWall{Direction: &playv1.SpellDirection{Dy: 1}, Side: playv1.WallSide_WALL_SIDE_RIGHT}
+}
+
+const wallCol, wallRow = 5, 3
+
+// castHiddenWall has the hidden wizard cast Wall of Fire at its turn and returns the zone the master reads.
+func (z *zoneTable) castHiddenWall() *playv1.SpellZone {
+	z.untilTurn(z.casterC)
+	cast := z.cast(z.master, z.casterC, "spell:wall-of-fire", 4, wallCol, wallRow, southWall)
+	zones := cast.GetEncounter().GetZones()
+	if len(zones) != 1 || len(zones[0].GetSquares()) == 0 {
+		z.t.Fatalf("the master's cast holds the zones %v, want the wall with its squares", zones)
+	}
+	z.zoneID = zones[0].GetId()
+	return zones[0]
+}
+
+// seenWallSquares are the squares of the zone that the person sees now.
+func seenWallSquares(res *mapsv1.GetMapVisionResponse, zone *playv1.SpellZone) []*playv1.SpellOrigin {
+	var out []*playv1.SpellOrigin
+	for _, sq := range zone.GetSquares() {
+		if seenNow(res, int(sq.GetCol()), int(sq.GetRow())) {
+			out = append(out, sq)
+		}
+	}
+	return out
+}
+
+// A Wall of Fire cast by a hidden NPC: no player receives the zone, the caster or anything of them, in the combat, on the map
+// or in the stream, and the wall blocks sight like a Fog Cloud: the squares a player saw before it are not seen now.
+// The master's combat holds the zone and its caster, and the player's map the squares before the wall: the positive controls.
+func TestAHiddenCastersWallOfFireReachesNoPlayerButTheUnseenSquares(t *testing.T) {
+	z := newZoneTableOf(t, wallCaster)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ana, caio, master := z.ana, z.caio, z.master
+	watchers := z.streamsOf()
+	before := map[*person]*mapsv1.GetMapVisionResponse{ana: z.vision(ana, z.fogMap), caio: z.vision(caio, z.fogMap)}
+
+	zone := z.castHiddenWall()
+	needles := []string{z.casterName, z.caster.GetId(), z.casterC, z.zoneID}
+
+	requireHolds(t, master.name, "the master's combat with the wall", z.read(master), needles)
+	if zs := z.zonesOf(master); len(zs) != 1 || zs[0].GetVisibility() != playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_MASTER_ONLY {
+		t.Fatalf("the master reads zones %v, want the hidden caster's wall marked for the master alone", zs)
+	}
+	for _, p := range []*person{ana, caio} {
+		if zs := z.zonesOf(p); len(zs) != 0 {
+			t.Errorf("%s reads the zones %v of a hidden caster", p.name, zs)
+		}
+		requireClean(t, p.name, "the map and the combat with the hidden caster's wall", z.read(p), needles)
+		view := z.vision(p, z.fogMap)
+		requireClean(t, p.name, "the answer of GetMapVision", jsonOf(view), needles)
+		was := seenWallSquares(before[p], zone)
+		if len(was) == 0 {
+			t.Fatalf("%s saw no square of the wall before the cast, so the scan proves nothing", p.name)
+		}
+		if now := seenWallSquares(view, zone); len(now) != 0 {
+			t.Errorf("%s sees the squares %v of the wall now\n%s", p.name, now, strings.Join(picture(view), "\n"))
+		}
+		if seenNow(view, foeCol, foeRow) || z.onTheMap(p, z.foeC) {
+			t.Errorf("%s still sees the creature behind the wall at (%d,%d)", p.name, foeCol, foeRow)
+		}
+		if slices.Contains(z.tokensOf(p), z.caster.GetId()) || z.onTheMap(p, z.casterC) {
+			t.Errorf("%s's map places the hidden caster", p.name)
+		}
+		if !seenNow(view, wallCol-2, wallRow+2) {
+			t.Errorf("%s does not see a square before the wall: the row proves nothing", p.name)
+		}
+	}
+
+	z.forceMove(z.casterC, casterCol+1, casterRow)
+	events := z.endAndCollect(watchers)
+	for _, p := range []*person{ana, caio} {
+		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
+		if combatants, tokens := moved(events[p]); slices.Contains(combatants, z.casterC) || slices.Contains(tokens, z.caster.GetId()) {
+			t.Errorf("%s's stream says the hidden caster moved: %v %v", p.name, combatants, tokens)
+		}
+	}
+	if combatants, _ := moved(events[master]); !slices.Contains(combatants, z.casterC) {
+		t.Errorf("the master's stream does not say the hidden caster moved: %v", combatants)
+	}
+}
+
+// The damage a hidden caster's wall leaves to roll at the end of a player's turn names the caster to the master alone:
+// the player ends the turn, reads their turn options, and later takes the damage, and nothing they receive holds the caster.
+// The master's turn options for the caster, with the damage and its attacker, are the positive control.
+func TestTheDamageOfAHiddenCastersWallAtATurnEndNamesNoCasterToThePlayer(t *testing.T) {
+	z := newZoneTableOf(t, wallCaster)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ctx := t.Context()
+	ana, caio, master := z.ana, z.caio, z.master
+	watchers := z.streamsOf()
+	z.castHiddenWall()
+	needles := []string{z.casterName, z.caster.GetId(), z.casterC, z.zoneID}
+	opts := func(p *person, combatantID string) *playv1.GetTurnOptionsResponse {
+		return must(p.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: combatantID})))
+	}
+
+	// Ana's wizard stands 10 feet west of the wall: ending the turn there leaves damage to roll, from the hidden caster.
+	z.untilTurn(z.wizardC)
+	cur := must(master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: z.campaign}))).GetEncounter()
+	end := must(ana.combat.EndTurn(ctx, rq(&playv1.EndTurnRequest{CampaignId: z.campaign, EncounterId: z.enc.GetId(), IdempotencyKey: newKey(), ExpectedCombatantId: z.wizardC, ExpectedRound: cur.GetRound()})))
+	requireClean(t, ana.name, "the answer to ending the turn", jsonOf(end), needles)
+
+	pending := opts(master, z.casterC).GetPendingDamages()
+	if len(pending) != 1 || pending[0].GetAttackerId() != z.casterC || pending[0].GetTargetId() != z.wizardC {
+		t.Fatalf("the master's turn options for the caster hold the damages %v, want one on the wizard from the caster", pending)
+	}
+	reads := func(when string) {
+		t.Helper()
+		requireClean(t, ana.name, "the map and the combat "+when, z.read(ana), needles)
+		requireClean(t, ana.name, "the turn options of her wizard "+when, jsonOf(opts(ana, z.wizardC)), needles)
+		requireClean(t, caio.name, "the map and the combat "+when, z.read(caio), needles)
+	}
+	reads("with the damage to roll")
+
+	// The master rolls it and applies 1 point, so the wizard stays up: the answers the player hears are clean too.
+	rolled := must(master.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), PendingDamageId: pending[0].GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true},
+	})))
+	if rolled.GetPendingDamage().GetAttackerId() != z.casterC {
+		t.Errorf("the master's roll does not name the caster as the attacker: %v", rolled.GetPendingDamage())
+	}
+	one := int32(1)
+	must(master.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), PendingDamageId: pending[0].GetId(), IdempotencyKey: newKey(), Amount: &one,
+	})))
+	reads("with the damage taken")
+
+	events := z.endAndCollect(watchers)
+	for _, p := range []*person{ana, caio} {
+		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
+	}
+}
+
+// conditionsOf is the conditions of the combatant, and their names, as the person's combat reads them.
+func (z *zoneTable) conditionsOf(p *person, combatantID string) []string {
+	for _, c := range must(p.combat.GetEncounter(z.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: z.campaign}))).GetEncounter().GetCombatants() {
+		if c.GetId() == combatantID {
+			return append(slices.Clone(c.GetConditions()), c.GetConditionNamesPt()...)
+		}
+	}
+	z.t.Fatalf("%s does not read the combatant %s", p.name, combatantID)
+	return nil
+}
+
+// A hidden caster's Silence deafens the creature inside: the master and that creature's player read the condition, another
+// player does not, and none of them receives the spell, the caster or the zone. The deafened wizard's own player is the
+// positive control, and so is the master's copy of the warlock outside the sphere: the sphere is what deafens.
+func TestAHiddenCastersSilenceDeafensInTheMastersAndTheOwnersViewAlone(t *testing.T) {
+	z := newZoneTableOf(t, wallCaster)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ana, caio, master := z.ana, z.caio, z.master
+	watchers := z.streamsOf()
+	z.untilTurn(z.casterC)
+	// 20 feet around (3,3): the wizard at (3,5) is inside, the warlock at (3,9) and the creature at (9,5) are not.
+	cast := z.cast(master, z.casterC, "spell:silence", 2, wizardCol, wizardRow-2)
+	zones := cast.GetEncounter().GetZones()
+	if len(zones) != 1 {
+		t.Fatalf("the master's cast holds %d zones, want the sphere", len(zones))
+	}
+	z.zoneID = zones[0].GetId()
+	needles := []string{z.casterName, z.caster.GetId(), z.casterC, z.zoneID, "spell:silence", "Silence", "Silêncio"}
+	const deafened = "condition:deafened"
+
+	if got := z.conditionsOf(master, z.wizardC); !slices.Contains(got, deafened) {
+		t.Fatalf("the master reads the wizard's conditions %v, want deafened: the sphere did not deafen it", got)
+	}
+	if got := z.conditionsOf(master, z.warlockC); slices.Contains(got, deafened) {
+		t.Errorf("the master reads the warlock outside the sphere deafened: %v", got)
+	}
+	if got := z.conditionsOf(ana, z.wizardC); !slices.Contains(got, deafened) {
+		t.Errorf("Ana reads her wizard's conditions %v, want deafened: it is her own", got)
+	}
+	if got := z.conditionsOf(caio, z.wizardC); len(got) != 0 {
+		t.Errorf("Caio reads Ana's wizard with the conditions %v, want none: the deafness has no sign outside", got)
+	}
+	for _, p := range []*person{ana, caio} {
+		if zs := z.zonesOf(p); len(zs) != 0 {
+			t.Errorf("%s reads the zones %v of a hidden caster", p.name, zs)
+		}
+		text := z.read(p)
+		requireClean(t, p.name, "the map and the combat with the hidden caster's Silence", text, needles)
+		requireClean(t, p.name, "the answer of GetMapVision", jsonOf(z.vision(p, z.fogMap)), needles)
+	}
+	if text := z.read(caio); strings.Contains(text, deafened) {
+		t.Errorf("Caio's map and combat hold %q: another player's deafness", deafened)
+	}
+	requireHolds(t, master.name, "the master's combat with the Silence", z.read(master), []string{z.casterC, z.zoneID})
+
+	events := z.endAndCollect(watchers)
+	for _, p := range []*person{ana, caio} {
+		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
+	}
+	if strings.Contains(bytesOf(events[caio]), deafened) {
+		t.Errorf("Caio's stream holds %q: another player's deafness", deafened)
+	}
+}
+
+// A Spike Growth cast by a hidden NPC that then walks in it: no player receives the zone, the caster, the damage the walk
+// left to roll, or the line of the move (zone_move), in the combat, the log, the map or the stream. The master's combat
+// holds the zone, the caster and the damage: the positive control (the caster is the master's own creature).
+func TestAHiddenCastersSpikeGrowthAndItsWalkReachNoPlayer(t *testing.T) {
+	z := newZoneTableOf(t, spikeCaster)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ctx := t.Context()
+	ana, caio, master := z.ana, z.caio, z.master
+	watchers := z.streamsOf()
+
+	z.untilTurn(z.casterC)
+	cast := z.cast(master, z.casterC, "spell:spike-growth", 2, casterCol, casterRow)
+	zones := cast.GetEncounter().GetZones()
+	if len(zones) != 1 {
+		t.Fatalf("the master's cast holds the zones %v, want the spikes", zones)
+	}
+	z.zoneID = zones[0].GetId()
+	// The hidden caster walks two squares inside its own spikes, on its turn: the walk leaves damage to roll and a zone line.
+	must(master.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.casterC, IdempotencyKey: newKey(), Col: casterCol - 2, Row: casterRow,
+	})))
+	needles := []string{z.casterName, z.caster.GetId(), z.casterC, z.zoneID}
+
+	requireHolds(t, master.name, "the master's combat with the spikes and the walk", z.read(master), needles)
+	if zs := z.zonesOf(master); len(zs) != 1 || zs[0].GetVisibility() != playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_MASTER_ONLY {
+		t.Fatalf("the master reads zones %v, want the hidden caster's spikes marked for the master alone", zs)
+	}
+	for _, p := range []*person{ana, caio} {
+		if zs := z.zonesOf(p); len(zs) != 0 {
+			t.Errorf("%s reads the zones %v of a hidden caster", p.name, zs)
+		}
+		requireClean(t, p.name, "the map, the combat and its log with the hidden caster's spikes and walk", z.read(p), needles)
+		if slices.Contains(z.tokensOf(p), z.caster.GetId()) || z.onTheMap(p, z.casterC) {
+			t.Errorf("%s's map places the hidden caster", p.name)
+		}
+	}
+	events := z.endAndCollect(watchers)
+	for _, p := range []*person{ana, caio} {
+		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
+	}
+	requireHolds(t, master.name, "the master's stream", bytesOf(events[master]), []string{z.casterC}) // the stream names the combatant, not the name
 }

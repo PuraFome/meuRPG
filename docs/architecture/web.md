@@ -17,7 +17,7 @@ The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*
 | Cache | A hashed asset (`name-<8 characters>.ext`, from `outputHashing: "all"`) gets `Cache-Control: public, max-age=31536000, immutable`. `index.html` and files copied as they are (`favicon.ico`, `material-symbols/*`) get `no-cache`. |
 | MIME types | The server teaches Go's `mime` package `.webmanifest` (`application/manifest+json`) and `.ico` (`image/x-icon`); the production image has no `mime.types`. |
 | Compression | `.js` and `.css` files have `.br` and `.gz` copies from the build; the server sends the best one the request accepts, with `Vary: Accept-Encoding` ([Performance](../performance.md#served-compressed)). `index.html` is never encoded. |
-| A stale tab | A tab open across a deploy asks for lazy files that no longer exist. The first such failure reloads the page once (`core/system/chunk-reload.ts`); a second failure on the same page shows the error and does not reload. |
+| A stale tab | A tab open across a deploy asks for lazy files that no longer exist. The first such failure reloads the page once (`core/system/chunk-reload.ts`), for a lazy route and for a `@defer` block; a second failure on the same page shows the error and does not reload. A load that a navigation cancels (`beforeunload` fired) does not reload the page. |
 | Legal pages | `/terms`, `/privacy` and `/credits` are lazy routes of the app, public ([Design](../design/README.md#logo-icons-and-footer)). |
 | Dev | `cd web && npm start` runs Angular with `proxy.conf.json`, forwarding the API paths to `localhost:8080`. |
 | Codegen | `make proto` runs `buf generate`; `protoc-gen-es` (Connect-ES v2: one plugin makes messages and services) writes `web/src/gen/`, committed like the Go side. |

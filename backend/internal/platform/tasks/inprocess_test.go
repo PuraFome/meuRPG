@@ -32,9 +32,9 @@ func TestInProcessRunsATrackedGoroutine(t *testing.T) {
 	}
 	short, cancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
 	defer cancel()
-	begin := time.Now()
 	p.Wait(short)
-	if time.Since(begin) < 25*time.Millisecond {
+	// The task is still blocked, so Wait may return only because short ended.
+	if short.Err() == nil {
 		t.Error("Wait returned while the task ran")
 	}
 	close(release)

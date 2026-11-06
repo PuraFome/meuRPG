@@ -212,6 +212,11 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 		pe.Off = l.content.Off(e.row.ContentKey)
 		res.Entries = append(res.Entries, pe)
 	}
+	if l.master {
+		for _, r := range l.content.Refused() {
+			res.LeftOut = append(res.LeftOut, &rulesv1.TableContentViolation{Key: r.Key, Field: r.Field, Reason: r.Reason, Message: r.Message})
+		}
+	}
 	slices.SortStableFunc(res.Entries, func(a, b *rulesv1.TableEntry) int {
 		if d := tableKindOrder(a.GetKind()) - tableKindOrder(b.GetKind()); d != 0 {
 			return d
@@ -296,10 +301,19 @@ type stored struct {
 // checkOverlay builds the campaign's whole overlay with the entries (the write's
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
-func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
+// stored are the entries before the write.
+// Entries of stored that the rules already refuse are left out of the check.
+func (s *Service) checkOverlay(stored, entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
+	if err != nil && !onlyThisEntry(violationsOf(err, idx, key)) {
+		if rest, ok := withoutStoredLeftOut(s.srd, stored, entries, revision, key); ok {
+			overlay, idx = overlayFromEntries(rest, revision)
+			overlay.Strict = []string{key}
+			content, err = s.srd.With(overlay)
+		}
+	}
 	if err != nil {
 		return nil, errRefusedContent(append(slices.Clone(lead), violationsOf(err, idx, key)...))
 	}
@@ -457,7 +471,7 @@ func (c *createCall) run(ctx context.Context, tx pgx.Tx) error {
 		CampaignID: c.campaignID, ContentKey: key, Kind: kindPrefix(c.kind), NamePt: c.body.GetNamePt(), Data: st.data,
 		Revision: rev, CreatedAt: now, UpdatedAt: now,
 	}
-	if _, err := c.s.checkOverlay(withRow(entries, st, row), int(rev), key, lead...); err != nil {
+	if _, err := c.s.checkOverlay(entries, withRow(entries, st, row), int(rev), key, lead...); err != nil {
 		return err
 	}
 	if row, err = c.insert(ctx, q, st, rev, now); err != nil {
@@ -678,7 +692,7 @@ func (c *updateCall) check(ctx context.Context, q *charactersdb.Queries, cur cha
 	now := c.s.now()
 	next := cur
 	next.NamePt, next.Data, next.Revision, next.UpdatedAt = c.body.GetNamePt(), st.data, rev, now
-	content, err := c.s.checkOverlay(withRow(entries, st, next), int(rev), c.key, lead...)
+	content, err := c.s.checkOverlay(entries, withRow(entries, st, next), int(rev), c.key, lead...)
 	if err != nil {
 		return updatePlan{}, err
 	}
@@ -926,6 +940,6 @@ func (s *Service) recheckOverlay(ctx context.Context, q *charactersdb.Queries, c
 	if err != nil {
 		return err
 	}
-	_, err = s.checkOverlay(entries, int(rev), key)
+	_, err = s.checkOverlay(entries, entries, int(rev), key)
 	return err
 }
