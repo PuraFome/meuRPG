@@ -527,7 +527,7 @@ func (f *castFlow) planSummon(ctx context.Context) error {
 		return nil
 	}
 	var err error
-	f.summon, err = f.s.prepareSummon(ctx, f.c, f.m, f.v, f.caster, f.call.spellKey, f.slotLevel, f.req.GetSummon(), f.call.in, f.call.rolled, f.sp.Concentration)
+	f.summon, err = f.s.prepareSummon(ctx, f.c, f.m, f.v, f.caster, f.call.spellKey, f.slotLevel, f.req.GetSummon(), f.call.in, f.call.rolled, f.sp.Concentration, f.call.grantedBy != "" && f.slot == nil)
 	return err
 }
 
@@ -579,6 +579,9 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 // holdForWindow lets the cast wait for a reaction window: it answers true, with the event that holds it, when
 // it does.
 func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
+	if f.sp.FeatureSummon {
+		return false, nil // a feature's summon is no spell to counter
+	}
 	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs, f.sp.AttackType != "") //nolint:gosec // a slot level, 0 to 9
 	if err != nil {
 		return false, err
@@ -691,7 +694,7 @@ func (f *castFlow) spendEconomy(ctx context.Context) error {
 // the turn's spells as they were.
 func (f *castFlow) noteSpellCast(ctx context.Context) error {
 	sp, caster := f.sp, f.caster
-	if combat.IsFreeCantrip(sp.Economy, sp.Level) {
+	if sp.FeatureSummon || combat.IsFreeCantrip(sp.Economy, sp.Level) {
 		return nil
 	}
 	spellCast, bonusSpellCast := caster.SpellCast || sp.Economy != rules.EconomyBonusAction, caster.BonusSpellCast || sp.Economy == rules.EconomyBonusAction

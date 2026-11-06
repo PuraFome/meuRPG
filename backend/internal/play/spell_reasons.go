@@ -5,8 +5,9 @@ import (
 )
 
 // explainSpellReasons writes, on every disabled spell line of the turn, the sentence of its reason
-// with the spell's name in it. NO_SLOT keeps the short word of the screen: it repeats on every spell
-// row and the slot rows above the list are the one explanation. The sentence is the same for the
+// with the spell's name in it. NO_SLOT, REACTION_ONLY_WHEN_HIT and REACTION_ONLY keep the short words of
+// the screen: NO_SLOT repeats on every spell row (the slot rows above the list are the one explanation), and
+// a reaction row already says that the app asks when the trigger happens. The sentence is the same for the
 // master and for a player: nothing in it is a cause a player may not read (RN-20).
 func explainSpellReasons(o *rulesv1.TurnOptions) {
 	for _, sp := range o.GetSpells() {
@@ -44,10 +45,6 @@ func spellNameOf(n namedByKey) string {
 // spellReasonSentence is the sentence of a spell's reason, empty for the codes that keep the screen's words.
 func spellReasonSentence(code rulesv1.DisabledReasonCode, name string, economy rulesv1.ActionEconomy) string {
 	switch code {
-	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT:
-		return name + " é uma reação: o app pergunta quando um ataque acerta você."
-	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY:
-		return name + " é uma reação: o app pergunta quando o gatilho acontece."
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG:
 		return name + " demora demais para conjurar em um combate."
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT:

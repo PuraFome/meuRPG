@@ -198,6 +198,21 @@ function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptVi
   };
 }
 
+function slowFallPrompt(f: PromptOf<'slowFall'>, rodada: string): PromptView {
+  const name = REACTION_NAMES.slowFall;
+  return {
+    title: 'Você está caindo',
+    subtitle: joinDots([`queda de ${metersText(f.fallFt)}`, rodada]),
+    icon: 'arrow_downward',
+    name,
+    question: `Usar ${name}? O dano da queda diminui em ${f.reduction} (5 vezes o seu nível de monge), no máximo até 0. ${REACTION_SPENT}`,
+    costs: ['Reação', 'Sem espaço de magia'],
+    note: 'O dano da queda espera a sua resposta.',
+    useLabel: `Usar ${name}`,
+    ariaLabel: `Você está caindo: usar ${name}?`,
+  };
+}
+
 function concentrationSavePrompt(c: PromptOf<'concentrationSave'>, rodada: string): PromptView {
   const spell = c.spellNamePt;
   const source = c.sourceLabel ? `${c.sourceLabel} · ` : '';
@@ -229,6 +244,7 @@ const PROMPTS: { [K in PromptCase]?: (value: PromptOf<K>, rodada: string) => Pro
   maneuverReduce: maneuverReducePrompt,
   protection: protectionPrompt,
   featherFall: featherFallPrompt,
+  slowFall: slowFallPrompt,
   concentrationSave: concentrationSavePrompt,
 };
 

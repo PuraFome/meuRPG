@@ -84,32 +84,56 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	if !ok || !k.z.asks(k.why) || !k.z.catches(owner, k.who, k.mark) {
 		return nil
 	}
+	if proceed, err := s.markCaught(ctx, c, cs, k, owner); err != nil || !proceed {
+		return err
+	}
+	if k.z.row.SaveAbility == "" {
+		return s.catchWithoutSave(ctx, c, k, owner)
+	}
+	asked, err := s.asksTheSave(ctx, c, k.who)
+	if err != nil {
+		return err
+	}
+	if asked {
+		return s.askZoneSave(ctx, c, k, owner) // the creature is asked (zones_save.go)
+	}
+	return s.resolveCatch(ctx, c, cs, k, owner)
+}
+
+// markCaught writes that the zone hit the creature on this turn and does what the zone does before the save (the
+// slowing). It says whether the catch goes on: a creature the web holds or has a save for already is not asked twice,
+// and one immune to poison succeeds the retching save by itself.
+func (s *Service) markCaught(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant) (bool, error) {
 	if k.z.def.kind == zoneRestrain {
-		held, err := s.heldByZone(ctx, c, k.z, owner, k.who)
-		if err != nil || held {
-			return err // a creature the web holds or has a save for already is not asked twice
+		if held, err := s.heldByZone(ctx, c, k.z, owner, k.who); err != nil || held {
+			return false, err
 		}
 	}
 	if err := k.z.markHit(ctx, c, k.who.ID, k.mark); err != nil {
-		return err
+		return false, err
 	}
 	if k.z.def.kind == zoneRetch {
 		if immune, err := s.immuneToRetching(ctx, c, k.who); err != nil || immune {
-			return err // a creature immune to poison succeeds the save by itself: nothing is asked
+			return false, err // nothing is asked
 		}
 	}
 	if k.z.def.slows {
 		if err := s.slowInZone(ctx, c, cs, k.z, owner, k.who); err != nil {
-			return err
+			return false, err
 		}
 	}
-	switch {
-	case k.z.row.SaveAbility == "":
-		return s.catchWithoutSave(ctx, c, k, owner)
-	case k.who.Kind == kindPlayer:
-		return s.askZoneSave(ctx, c, k, owner) // a player's character is asked (zones_save.go)
+	return true, nil
+}
+
+// asksTheSave says the zone asks the creature for its saving throw instead of rolling it at once: a player's
+// character rolls its own, and an NPC with Legendary Resistance and a use left is the master's to roll, so that the
+// master may turn a failed save into a success (combat_legendary_resist.go). Every other NPC is rolled by the server.
+func (s *Service) asksTheSave(ctx context.Context, c *combatTx, who playdb.Combatant) (bool, error) {
+	if who.Kind == kindPlayer {
+		return true, nil
 	}
-	return s.resolveCatch(ctx, c, cs, k, owner)
+	resist, err := s.resistancesOf(ctx, c, []playdb.Combatant{who})
+	return resist[who.ID].left > 0, err
 }
 
 // resolveCatch is the saving throw of a creature the zone caught, what it brings and its line.

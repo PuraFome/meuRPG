@@ -42,23 +42,24 @@ func wantSameReasonText(t *testing.T, a *armed, player *user, e *playv1.Encounte
 	}
 }
 
-// TestSpellReasonsNameTheSpell: every reason a spell gets, but NO_SLOT, carries a sentence with the
-// spell's name, the same for the master and for the player. NO_SLOT keeps the short word of the screen.
+// TestSpellReasonsNameTheSpell: every reason a spell gets, but NO_SLOT and the two reaction ones, carries a
+// sentence with the spell's name, the same for the master and for the player. Those three keep the short
+// words of the screen (a reaction row already says that the app asks when the trigger happens).
 func TestSpellReasonsNameTheSpell(t *testing.T) {
 	t.Parallel()
 	code := rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT
-	t.Run("REACTION_ONLY_WHEN_HIT", func(t *testing.T) {
+	t.Run("REACTION_ONLY_WHEN_HIT keeps the short word", func(t *testing.T) {
 		t.Parallel()
 		a := newCasters(t)
 		e := a.castersFight(t, 1)
-		wantSameReasonText(t, a, a.ana, e, "Pensantus", shieldSpell, code, "Escudo Arcano é uma reação: o app pergunta quando um ataque acerta você.")
+		wantSameReasonText(t, a, a.ana, e, "Pensantus", shieldSpell, code, "")
 	})
-	t.Run("REACTION_ONLY", func(t *testing.T) {
+	t.Run("REACTION_ONLY keeps the short word", func(t *testing.T) {
 		t.Parallel()
 		c := newCave(t)
 		e := c.fight(t)
 		c.passTo(t, e, "Pensantus")
-		wantSameReasonText(t, c.armed, c.ana, e, "Pensantus", featherFallSpell, rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY, "Queda Suave é uma reação: o app pergunta quando o gatilho acontece.")
+		wantSameReasonText(t, c.armed, c.ana, e, "Pensantus", featherFallSpell, rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_ONLY, "")
 	})
 	t.Run("CASTING_TIME_TOO_LONG", func(t *testing.T) {
 		t.Parallel()
@@ -114,10 +115,10 @@ func TestRN20_SpellReasonsNameNoOtherCharactersSpell(t *testing.T) {
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
 
-	// Positive control: the owner reads her own spell names in the reason.
+	// Positive control: the owner reads her own spell names in her options (Shield's reason keeps the short words).
 	own := protojson.Format(a.mustOptions(t, a.ana, e, "Pensantus"))
-	if !strings.Contains(own, "Escudo Arcano é uma reação") {
-		t.Fatalf("Pensantus's player reads her options as %s, want the Shield sentence", own)
+	if !strings.Contains(own, "Escudo Arcano") || !strings.Contains(own, "Mísseis Mágicos") {
+		t.Fatalf("Pensantus's player reads her options as %s, want her spell names", own)
 	}
 	// Canary: another player is refused, and what Toren's player reads of his own turn has no one else's spell.
 	_, err := a.options(t, a.caio, e, "Pensantus")
@@ -139,8 +140,8 @@ func TestRN20_SpellReasonsNameNoOtherCharactersSpell(t *testing.T) {
 		players: map[string]int32{"Pensantus": 10, "Toren": 9, "Brisa": 8},
 	}) // the Mago Oculto keeps its first turn, hidden
 	master := protojson.Format(b.mustOptions(t, b.master, eb, "Mago Oculto"))
-	if !strings.Contains(master, "Escudo Arcano é uma reação") || !strings.Contains(master, "Convocar Familiar demora demais") {
-		t.Errorf("the master reads the NPC caster's options as %s, want the sentences naming its spells", master)
+	if !strings.Contains(master, "Escudo Arcano") || !strings.Contains(master, "Convocar Familiar demora demais") {
+		t.Errorf("the master reads the NPC caster's options as %s, want its spell names and the sentence naming one", master)
 	}
 	_, err = b.options(t, b.ana, eb, "Mago Oculto")
 	wantCode(t, "a player's GetTurnOptions for a hidden NPC", err, connect.CodeNotFound)

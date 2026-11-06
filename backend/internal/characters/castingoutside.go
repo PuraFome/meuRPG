@@ -173,6 +173,7 @@ func (s *Service) OutsideSpell(ctx context.Context, tx pgx.Tx, campaignID, chara
 	secs, _ := det.Duration.Seconds()
 	out.DurationSeconds = secs
 	out.Effect, _ = castingEffect(content, det)
+	out.FeatureSummon = isFeatureSummon(content, spellKey)
 	h := combat.HealFeaturesOf(d.Features)
 	out.Healing = link.HealFeatures{Disciple: h.Disciple, Blessed: h.Blessed, Supreme: h.Supreme}
 	return out, nil

@@ -158,9 +158,9 @@ func rerollUse(r *luckyReroll) *damageRerollUse {
 	return &damageRerollUse{Resource: r.Resource, Cost: r.Cost}
 }
 
-// rollUsesBack gives back the uses the d20 of an attack spent: Stroke of Luck's and a reroll rule's.
+// rollUsesBack gives back the uses the d20 of an attack spent: Stroke of Luck's, a maneuver die's and a reroll rule's.
 func (u *undoer) rollUsesBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	if err := u.strokeBack(ctx, who, ev); err != nil {
+	if err := u.usesBack(ctx, who, ev); err != nil {
 		return err
 	}
 	return u.d20RerollBack(ctx, who, ev)

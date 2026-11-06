@@ -287,12 +287,19 @@ func isWeapon(c *content, k string) bool {
 
 func isCantrip(c *content, k string) bool {
 	s, ok := c.spells[k]
-	return ok && s.Level == 0
+	return ok && s.Level == 0 && !c.isFeatureSpell(k)
 }
 
 func isLeveledSpell(c *content, k string) bool {
 	s, ok := c.spells[k]
-	return ok && s.Level > 0
+	return ok && s.Level > 0 && !c.isFeatureSpell(k)
+}
+
+// isFeatureSpell says the key is the hidden spell of a feature's summon. A sheet never lists it (the grant puts it
+// there), so a list that holds it is refused as a list holding a key the content does not have.
+func (c *content) isFeatureSpell(k string) bool {
+	_, ok := c.featureSummons[k]
+	return ok
 }
 
 // isFeat: a feat of the SRD or the table.

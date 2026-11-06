@@ -192,9 +192,10 @@ func TestLegendaryResistance_AHoldThatCannotBeReplayedIsDropped(t *testing.T) {
 	}
 }
 
-// The save of a creature a spell zone catches is rolled by the server at once, with no choice for the master: a
-// dragon inside the web when it is cast that fails it is restrained, no window opens and no use is spent.
-func TestLegendaryResistance_AZoneSaveIsNotOffered(t *testing.T) {
+// The save of a creature with Legendary Resistance and a use left that a spell zone catches is asked of the master, who
+// may use the trait on a failed roll (zones_legendary_test.go): a dragon that walks into the web and fails the save the
+// master types is not restrained when the master uses the trait, and one use is spent.
+func TestLegendaryResistance_AZoneSaveIsOfferedToTheMaster(t *testing.T) {
 	t.Parallel()
 	c := zoneCave(t)
 	e := c.zoneFight(t)
@@ -207,14 +208,24 @@ func TestLegendaryResistance_AZoneSaveIsNotOffered(t *testing.T) {
 	c.passTo(t, c.get(t, c.master), "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", webKey, slotOfLevel(2), at(18, 3), nil)
 	c.passTo(t, c.get(t, c.master), "Draco")
-	c.h.roller.queue(1)
 	if _, err := c.move(t, c.master, "Draco", 20, 5); err != nil {
 		t.Fatalf("MoveCombatant() error = %v", err)
 	}
-	if ws := c.windows(t, c.master); len(ws) != 0 {
-		t.Errorf("the master reads the windows %v, want none: the zone's save is rolled at once", ws)
+	w := c.windowOf(t, c.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatalf("the master reads the windows %v, want the dragon's save against the web", c.windows(t, c.master))
 	}
-	if cardOf(t, byLabel(t, c.get(t, c.master), "Draco"), "effect:web-restrained") == nil || c.resistSpentBy(t, "Draco") != 0 {
-		t.Errorf("the dragon is not restrained or spent %d uses, want the failure to stand", c.resistSpentBy(t, "Draco"))
+	if ws := c.windows(t, c.ana); len(ws) != 0 {
+		t.Errorf("a player reads the windows %v, want none: the question is the master's", ws)
+	}
+	res, err := c.rollEffectSave(t, c.master, c.get(t, c.master), w.GetId(), resisting(effectSaveFace(1)))
+	if err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	if r := res.GetResult(); !r.GetSaved() || !r.GetResisted() || r.GetResistedLeft() != 2 {
+		t.Errorf("the master's result = %v, want the failed 1 made a success with 2 uses left", r)
+	}
+	if cardOf(t, byLabel(t, c.get(t, c.master), "Draco"), "effect:web-restrained") != nil || c.resistSpentBy(t, "Draco") != 1 {
+		t.Errorf("the dragon is restrained or spent %d uses, want it free with one use spent", c.resistSpentBy(t, "Draco"))
 	}
 }

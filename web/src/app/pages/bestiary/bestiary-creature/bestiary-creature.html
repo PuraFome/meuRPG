@@ -4,79 +4,61 @@
 </a>
 
 @let a = access();
-@switch (a.status) {
-  @case ('loading') {
-    <div>
-      <h1 class="mr-page-title">Criatura</h1>
-      <p class="page-status" role="status">
-        <mat-spinner diameter="24" aria-label="Carregando a criatura" />
-        Carregando a ficha da criatura...
-      </p>
-    </div>
-  }
-  @case ('not-found') {
-    <div>
-      <h1 class="mr-page-title">Campanha não encontrada</h1>
-      <div class="mr-notice mr-notice--neutral" role="alert">
-        <mat-icon aria-hidden="true">search_off</mat-icon>
-        <p>
-          <strong>Essa campanha não existe, ou você não é membro dela.</strong>
-          Confira o link com o mestre.
+@let m = a.status === 'master' ? state() : null;
+@if (m?.status !== 'ready') {
+  <!-- Every screen before the creature shares one box: the h1, a status region and an alert region that stay in the page.
+     The loading text is the status; "not found", "only the master" and the failure are alerts, because the person cannot use the screen. -->
+  <div>
+    <h1 class="mr-page-title">{{ heading() }}</h1>
+    <div class="mr-live" role="status">
+      @if (a.status === 'loading' || m?.status === 'loading') {
+        <p class="page-status">
+          <mat-spinner diameter="24" aria-label="Carregando a criatura" />
+          Carregando a ficha da criatura...
         </p>
-      </div>
+      }
     </div>
-  }
-  @case ('forbidden') {
-    <div>
-      <h1 class="mr-page-title">Bestiário</h1>
-      <div class="mr-notice mr-notice--neutral" role="status">
-        <mat-icon aria-hidden="true">lock</mat-icon>
-        <p><strong>Só o mestre usa o bestiário da campanha.</strong></p>
-      </div>
-    </div>
-  }
-  @case ('error') {
-    <div>
-      <h1 class="mr-page-title">Não foi possível abrir o bestiário</h1>
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ a.message }}</p>
-      </div>
-      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
-    </div>
-  }
-  @case ('master') {
-    @let s = state();
-    @switch (s.status) {
-      @case ('loading') {
-        <div>
-          <h1 class="mr-page-title">Criatura</h1>
-          <p class="page-status" role="status">
-            <mat-spinner diameter="24" aria-label="Carregando a criatura" />
-            Carregando a ficha da criatura...
+    <div class="mr-live" role="alert">
+      @if (a.status === 'forbidden') {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          <p><strong>Só o mestre usa o bestiário da campanha.</strong></p>
+        </div>
+      } @else if (a.status === 'not-found') {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">search_off</mat-icon>
+          <p>
+            <strong>Essa campanha não existe, ou você não é membro dela.</strong>
+            Confira o link com o mestre.
           </p>
         </div>
-      }
-      @case ('not-found') {
-        <div>
-          <h1 class="mr-page-title">Criatura não encontrada</h1>
-          <div class="mr-notice mr-notice--neutral" role="alert">
-            <mat-icon aria-hidden="true">search_off</mat-icon>
-            <p>Essa criatura não existe no bestiário. Volte à lista e procure de novo.</p>
-          </div>
+      } @else if (a.status === 'error') {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ a.message }}</p>
+        </div>
+      } @else if (m?.status === 'not-found') {
+        <div class="mr-notice mr-notice--neutral">
+          <mat-icon aria-hidden="true">search_off</mat-icon>
+          <p>Essa criatura não existe no bestiário. Volte à lista e procure de novo.</p>
+        </div>
+      } @else if (m?.status === 'error') {
+        <div class="mr-notice mr-notice--danger">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ readError() }}</p>
         </div>
       }
-      @case ('error') {
-        <div>
-          <h1 class="mr-page-title">Não foi possível abrir a criatura</h1>
-          <div class="mr-notice mr-notice--danger" role="alert">
-            <mat-icon aria-hidden="true">error</mat-icon>
-            <p>{{ s.message }}</p>
-          </div>
-          <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
-        </div>
-      }
-      @case ('ready') {
+    </div>
+    @if (a.status === 'error') {
+      <button matButton="outlined" type="button" class="retry" (click)="start()">Tentar de novo</button>
+    } @else if (m?.status === 'error') {
+      <button matButton="outlined" type="button" class="retry" (click)="load()">Tentar de novo</button>
+    }
+  </div>
+}
+@if (a.status === 'master') {
+  @let s = state();
+  @if (s.status === 'ready') {
         @let c = s.creature;
         @let t = typeLine(c);
         <header class="head">
@@ -153,5 +135,3 @@
         </div>
       }
     }
-  }
-}

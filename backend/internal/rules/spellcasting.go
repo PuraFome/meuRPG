@@ -266,6 +266,9 @@ func (s *spellSheet) collectPicks() {
 		if !ok || !strings.HasPrefix(spell, "spell:") || !s.x.grantsSpells(choiceKey) {
 			continue
 		}
+		if _, hidden := s.c.featureSummons[spell]; hidden {
+			continue // a pick never names the spell of a feature's summon
+		}
 		s.granted[spell] = true
 		if sp := s.c.spells[spell]; sp != nil && sp.Level == 0 {
 			s.grantedCantrips = append(s.grantedCantrips, spell)
@@ -424,10 +427,20 @@ func (s *spellSheet) addCantrips() {
 	}
 }
 
+// sheetSpell is the spell a key written on the sheet names. The spell of a feature's summon belongs to the feature:
+// only the grant puts it on a sheet, so a key typed in a list reads as an unknown one.
+func (s *spellSheet) sheetSpell(key string) (*srd51.Spell, bool) {
+	sp, ok := s.c.spells[key]
+	if _, hidden := s.c.featureSummons[key]; !ok || (hidden && !s.granted[key]) {
+		return nil, false
+	}
+	return sp, true
+}
+
 func (s *spellSheet) addCantrip(i int, key string) {
 	x, c := s.x, s.c
 	field := fmt.Sprintf("full.cantrip_keys[%d]", i)
-	sp, ok := c.spells[key]
+	sp, ok := s.sheetSpell(key)
 	if !ok {
 		x.issue(IssueUnknownKey, field, "A magia escolhida não existe no conteúdo %s.", c.version)
 		return
@@ -461,7 +474,7 @@ func (s *spellSheet) checkCantripCount() {
 // a cantrip, the sheet casts its level and it is on a list the character reads.
 func (s *spellSheet) checkSpell(field, key string, offList bool) (*srd51.Spell, bool) {
 	x, c := s.x, s.c
-	sp, ok := c.spells[key]
+	sp, ok := s.sheetSpell(key)
 	if !ok {
 		x.issue(IssueUnknownKey, field, "A magia escolhida não existe no conteúdo %s.", c.version)
 		return nil, false
@@ -494,7 +507,7 @@ func (s *spellSheet) countSecrets() {
 // takeOffList spends one of the Magical Secrets on a spell off the class list.
 func (s *spellSheet) takeOffList(key string) bool {
 	sp := s.c.spells[key]
-	if sp == nil || s.offListLeft <= 0 || s.onClassList(sp) {
+	if _, hidden := s.c.featureSummons[key]; sp == nil || hidden || s.offListLeft <= 0 || s.onClassList(sp) {
 		return false
 	}
 	s.offListLeft--

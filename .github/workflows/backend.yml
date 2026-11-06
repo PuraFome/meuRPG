@@ -279,10 +279,10 @@ jobs:
   # on its own runner with its own CockroachDB, so the wall time is the
   # slowest group's, not the sum. 07/10/2026, one runner: 1105 s of go test.
   # 10/10/2026, four groups: 18 min for "rest" and "play", which was one
-  # package of 920 s. Now play is split by test (play-1 to play-4), and the
-  # CPU-bound pure packages (rules, and dungeon with puzzle) and leaktest
-  # (leak) have runners of their own, so they stop fighting for four vCPUs.
-  # "rest" is still the catch-all for a new package.
+  # package of 920 s. Now play is split by test (play-1 to play-4), leaktest
+  # too (leak-1 and leak-2), and the CPU-bound pure packages (rules, and
+  # dungeon with puzzle) have runners of their own, so they stop fighting for
+  # four vCPUs. "rest" is still the catch-all for a new package.
   go-db-shard:
     name: go-db ${{ matrix.group }} (tests against CockroachDB)
     needs: changes
@@ -292,7 +292,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [play-1, play-2, play-3, play-4, maps, characters, rules, dungeon, leak, rest]
+        group: [play-1, play-2, play-3, play-4, maps, characters, rules, dungeon, leak-1, leak-2, rest]
     defaults:
       run:
         working-directory: backend
@@ -370,12 +370,12 @@ jobs:
           retention-days: 3
 
 
-  # The groups cover the packages and the play tests exactly once (go-db-shard.sh --check), and the play tests read
-  # from the source are the ones `go test -list` prints (--verify-scan, which compiles the play tests: about a
-  # minute). The answer is the same for every group, so it is asked once, here, beside the groups: they do not wait
+  # The groups cover the packages and the tests of the split packages (play, leaktest) exactly once
+  # (go-db-shard.sh --check), and the tests read from the source are the ones `go test -list` prints (--verify-scan,
+  # which compiles those tests: about a minute). The answer is the same for every group, so it is asked once, here, beside the groups: they do not wait
   # for it, and the go-db check below does.
   go-db-groups:
-    name: go-db groups (every package and play test in exactly one group)
+    name: go-db groups (every package and split-package test in exactly one group)
     needs: changes
     if: ${{ needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-26.04
@@ -400,7 +400,7 @@ jobs:
         # A new package falls into "rest" on its own; this fails if a package named in a group was renamed or deleted.
         run: ../.github/scripts/go-db-shard.sh --check
 
-      - name: Check the play tests read from the source
+      - name: Check the split packages' tests read from the source
         run: ../.github/scripts/go-db-shard.sh --verify-scan
 
   # The list of the tests that need CockroachDB itself (backend/cockroach-only-tests.txt) is true: every listed test

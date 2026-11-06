@@ -1,10 +1,13 @@
 @if (encounter(); as e) {
-  @if (error()) {
-    <div class="mr-notice mr-notice--danger view-notice" role="alert">
-      <mat-icon aria-hidden="true">error</mat-icon>
-      <p>{{ error() }}</p>
-    </div>
-  }
+  <!-- The failure of an action stops the person: an alert region that is there before the text. -->
+  <div class="mr-live" role="alert">
+    @if (error()) {
+      <div class="mr-notice mr-notice--danger view-notice">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ error() }}</p>
+      </div>
+    }
+  </div>
 
   <!-- A window that closed by itself says why, once, for whoever it was for (never that another reactor acted). -->
   <div class="view-notices" role="status" aria-live="polite">

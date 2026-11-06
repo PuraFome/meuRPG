@@ -157,14 +157,18 @@
   }
 
   @if (forcedSwitch() && !preview()) {
-    @if (overAsk(); as ask) {
-      <div class="mr-notice mr-notice--warning card__ask" role="alert" data-over-ask>
-        <mat-icon aria-hidden="true">straighten</mat-icon>
-        <p>
-          <strong>{{ ask.label }} não tem movimento para tanto.</strong>
-          Faltam {{ ask.missing }} do que resta. Mover mesmo assim, sem gastar o movimento?
-        </p>
-      </div>
+    <div class="mr-live" role="status">
+      @if (overAsk(); as ask) {
+        <div class="mr-notice mr-notice--warning card__ask" data-over-ask>
+          <mat-icon aria-hidden="true">straighten</mat-icon>
+          <p>
+            <strong>{{ ask.label }} não tem movimento para tanto.</strong>
+            Faltam {{ ask.missing }} do que resta. Mover mesmo assim, sem gastar o movimento?
+          </p>
+        </div>
+      }
+    </div>
+    @if (overAsk()) {
       <div class="card__ask-actions">
         <button matButton="outlined" type="button" (click)="overAskConfirm.emit()">Mover mesmo assim</button>
         <button matButton type="button" (click)="overAskCancel.emit()">Cancelar</button>

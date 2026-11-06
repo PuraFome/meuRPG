@@ -168,7 +168,7 @@ func newCaveSubclass(t *testing.T, wizardLevel int32, subclass string, spells []
 // newCaveSubclassOf is newCaveSubclass with the hero Toren made by toren.
 func newCaveSubclassOf(t *testing.T, wizardLevel int32, subclass string, spells []string, toren func(a *armed) *charactersv1.Character) *cave {
 	t.Helper()
-	a := newArmedWith(t, func(a *armed) {
+	return newCaveFrom(t, func(a *armed) {
 		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
 			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
 		}
@@ -181,6 +181,12 @@ func newCaveSubclassOf(t *testing.T, wizardLevel int32, subclass string, spells 
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:halfling", 2,
 			&rulesv1.AbilityScores{Strength: 8, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, []string{cureWounds})
 	})
+}
+
+// newCaveFrom is the cave with the three heroes (a.toren, a.pens, a.bri) made by heroes.
+func newCaveFrom(t *testing.T, heroes func(a *armed)) *cave {
+	t.Helper()
+	a := newArmedWith(t, heroes)
 	c := &cave{armed: a, terrain: &caveTerrain{}}
 	a.h.svc.terrain = c.terrain
 	c.goblins = a.master.sizedNPC(t, a.campaignID, "Goblin", 7, 12, rulesv1.CreatureSize_CREATURE_SIZE_SMALL)

@@ -632,6 +632,42 @@ describe('ReactionSheet', () => {
     });
   });
 
+  describe('Queda Lenta', () => {
+    const slow = () =>
+      win('slowFall', { fallFt: 30, reduction: 20 }, { kind: ReactionKind.SLOW_FALL });
+
+    it('is a plain use or pass sheet: no slot, no creatures to choose', async () => {
+      api.answerReaction.mockResolvedValue({
+        encounter: encounter(),
+        result: {
+          used: true,
+          nextWindowId: '',
+          result: { case: 'slowFall', value: { reduction: 20 } },
+        },
+      });
+      const { fixture, el } = setup(slow());
+      expect(el.querySelector('h2')?.textContent).toBe('Você está caindo');
+      expect(el.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+      expect(el.querySelectorAll('input[type="radio"]').length).toBe(0);
+      expect(button(el, 'Deixar passar')).toBeDefined();
+      button(el, 'Usar Queda Lenta').click();
+      await flush(fixture);
+      expect(sent()[3]).toEqual({ use: true });
+      expect(plain(el.textContent)).toContain('O dano da queda diminuiu em 20.');
+    });
+
+    it('passes without using it', async () => {
+      api.answerReaction.mockResolvedValue({
+        encounter: encounter(),
+        result: { used: false, nextWindowId: '', result: { case: undefined } },
+      });
+      const { fixture, el } = setup(slow());
+      button(el, 'Deixar passar').click();
+      await flush(fixture);
+      expect(sent()[3]).toEqual({ use: false });
+    });
+  });
+
   describe('the concentration save', () => {
     const save = (mode: Record<string, unknown> = {}) =>
       win(

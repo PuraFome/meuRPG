@@ -6,8 +6,8 @@ import { MapAsk } from './map-ask';
 @Component({
   imports: [MapAsk],
   template: `
-    <app-map-ask title="Mudar a grade?" confirmLabel="Apagar e mudar a grade" [ready]="ready" (cancel)="events.push('cancel')" (confirm)="events.push('confirm')">
-      <p>O que vai embora.</p>
+    <app-map-ask title="Mudar a grade?" describedBy="why" confirmLabel="Apagar e mudar a grade" [ready]="ready" (cancel)="events.push('cancel')" (confirm)="events.push('confirm')">
+      <p id="why">O que vai embora.</p>
     </app-map-ask>
   `,
 })
@@ -35,6 +35,11 @@ describe('MapAsk: an in-place question', () => {
     expect(title.textContent?.trim()).toBe('Mudar a grade?');
     expect(document.activeElement).toBe(title);
     expect(title.hasAttribute('data-ring')).toBe(true);
+  });
+
+  it('points its focused title at the text it was given', async () => {
+    const { el } = await open();
+    expect(el.querySelector('h3')!.getAttribute('aria-describedby')).toBe('why');
   });
 
   it('has "Voltar" first and the filled button after it, and nothing happens before the second click', async () => {

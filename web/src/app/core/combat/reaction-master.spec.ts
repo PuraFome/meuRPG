@@ -43,6 +43,38 @@ function counter(id: string, reactor: string, label: string, over: object = {}) 
 }
 
 describe("the master's cards for the reaction windows", () => {
+  it('a fall names the pit, not an actor the trigger does not have', () => {
+    for (const kind of [ReactionKind.FEATHER_FALL, ReactionKind.SLOW_FALL]) {
+      const e = encounter({
+        combatants,
+        reactionWindows: [
+          reactionWindow({
+            id: 'a',
+            kind,
+            reactorId: 'pen',
+            reactorLabel: 'Pensantus',
+            reactorIsPlayer: true,
+            groupId: 'g',
+            trigger: {} as never,
+          } as never),
+          reactionWindow({
+            id: 'b',
+            kind,
+            reactorId: 'nael',
+            reactorLabel: 'Nael',
+            reactorIsPlayer: true,
+            groupId: 'g',
+            trigger: {} as never,
+          } as never),
+        ],
+      } as never);
+      const card = reactionCards(e)[0];
+      expect(card.type === 'queue' && plain(card.subtitle)).toBe(
+        'Queda num fosso · na ordem da iniciativa',
+      );
+    }
+  });
+
   it('groups the windows of one action in a queue, in the order given, the first to answer and the others after it', () => {
     const e = encounter({
       combatants,
@@ -313,6 +345,14 @@ describe("what the master's held actions say", () => {
     expect(reactionName(reactionWindow({ id: 'x', kind: ReactionKind.FEATHER_FALL }))).toBe(
       'Queda Suave',
     );
+    expect(reactionName(reactionWindow({ id: 'x', kind: ReactionKind.SLOW_FALL }))).toBe(
+      'Queda Lenta',
+    );
+    expect(
+      describeRow(
+        reactionWindow({ id: 'x', kind: ReactionKind.SLOW_FALL, reactorLabel: 'Toren' } as never),
+      ).replace(/\u00a0/g, ' '),
+    ).toBe('Queda Lenta · Toren cai');
     expect(describeRow(reactionWindow({ id: 'x', kind: ReactionKind.DEFLECT_MISSILES }))).toContain(
       'Defletir Projéteis',
     );

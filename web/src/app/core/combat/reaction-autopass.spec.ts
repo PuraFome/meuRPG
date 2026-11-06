@@ -45,6 +45,10 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(autoPasses(win('w', ReactionKind.SHIELD, { unanswered: true }))).toBe(false);
   });
 
+  it("passes a monk's Queda Lenta like any other optional reaction", () => {
+    expect(autoPasses(win('w', ReactionKind.SLOW_FALL))).toBe(true);
+  });
+
   it('passes an optional player window once, at 30 s, with the auto-pass key', () => {
     const clock = new AutoPassClock();
     const w = win('w1', ReactionKind.CUTTING_WORDS);
