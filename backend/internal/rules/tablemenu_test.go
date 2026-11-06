@@ -167,6 +167,9 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		}
 		for _, mode := range menuList(t, m, ListModifierModes) {
 			e := Effect{Type: "modifier", Target: v.Key, Mode: mode.Key, Value: value}
+			if strings.HasPrefix(v.Key, "score.") {
+				e.Cap = 24 // a score modifier asks for its cap
+			}
 			if len(v.OnlyModes) == 0 || slices.Contains(v.OnlyModes, mode.Key) {
 				effects = append(effects, e)
 			} else if _, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{e})}}); err == nil {

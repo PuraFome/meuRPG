@@ -630,7 +630,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // effects (the spellcasting, the handler) never come from the
 // table.
 var ownFields = map[string][]string{
-	"modifier":     {"target", "mode", "value", "applies"},
+	"modifier":     {"target", "mode", "value", "applies", "cap"},
 	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
