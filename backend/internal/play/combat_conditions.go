@@ -167,6 +167,8 @@ func (s *Service) markConditions(ctx context.Context, c *combatTx, target *playd
 // withoutDerivedDeaf drops the deafened condition the master's list carries when only a Silence gives it:
 // the stored list does not have it and the creature is entirely inside a Silence.
 // The condition a Silence gives is read from the zone and never stored, so it ends with the zone or the step out.
+// A real deafened the master adds inside a Silence is dropped without a word, and is lost once the creature leaves:
+// the derived condition and the stored one cannot be told apart, and the master may add it again outside.
 func (s *Service) withoutDerivedDeaf(ctx context.Context, c *combatTx, target playdb.Combatant, conditions []string) ([]string, error) {
 	if !slices.Contains(conditions, conditionDeafened) || slices.Contains(target.Conditions, conditionDeafened) {
 		return conditions, nil

@@ -114,6 +114,7 @@ Creatures occupy one square, so "entirely inside" is the creature's square in th
   It ends with the step out or with the zone, and it stays while another Silence covers the creature.
   A deafness a creature already has from another source is left as it is.
   `deafened` is an owner-only condition (`ownerOnlyConditions`): only the master and the creature's player read it.
+  A `condition:deafened` the master adds by hand to a creature inside a Silence is dropped (`withoutDerivedDeaf`) and is not kept for when the creature leaves.
   The rules that read the stored condition (a bard's cut of the reaction, the hearing of the Channel Divinity, the hearing flags of the combatant's options) do not see the derived one.
 - Sound that passes through the sphere, and objects inside it, are not ruled.
 - Whether Subtle Spell lets a caster cast a verbal spell inside a Silence is the master's to rule: the engine has no component model for it, so the app refuses the cast.
@@ -125,12 +126,15 @@ It asks no saving throw and the cast hits nobody.
 A creature that moves through the area takes 2d4 piercing damage for every square it enters inside it (`spikeCatch`).
 The damage is a pending damage awaiting its roll, with the caster as attacker, rolled by whoever rolls the caster's damage (`catchWithoutSave`).
 A move of several squares is one pending damage with the dice multiplied by the squares crossed inside.
-Only a movement that crosses squares counts: a walk, a push and a shove (`zoneStep.travels`).
+Only a movement that crosses squares counts: a walk, a push, a shove and the drag of a grappled creature (`zoneStep.travels`).
+The dragged creature is hurt for the squares it travels, and its grappler for its own.
+A creature that flies is not hurt, as difficult terrain costs it nothing (`spikeCatch` reads `moverOf(who).Flier`).
 A jump, a teleport and the master's placement hurt nobody, because the creature crosses no square.
 It spares nobody, the caster included.
 It is not once for each turn: the creature is hurt again on every move, so it has no hit mark.
 A creature that starts inside, or is put inside, is hurt only when it moves.
-The Perception check that lets a creature see the camouflaged ground is not ruled; the master rules it.
+The zone shows to every player.
+The Perception check that lets a creature see the camouflaged ground is not ruled; the master rules who noticed it.
 
 ## Wall of Fire
 

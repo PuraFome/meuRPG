@@ -101,7 +101,8 @@ The casting time, ritual and concentration come from the spell, not from this fi
 The spells that keep a zone on the map are rows of code, not of `effects/spells.json` ([Spell zones](architecture/play/spell-zones.md)); their table rulings are in [RN-37](product/rules.md#rn-37-areas-that-spells-keep-on-the-map).
 Wall of Fire is placed as a straight line or a ring.
 The SRD does not require the 60-foot wall to be straight, and a bent wall is the master's hand.
-Spike Growth's Perception check, which lets a creature see the camouflaged ground, is not ruled: the master rules it.
+Spike Growth's zone shows to every player.
+The Perception check that lets a creature see the camouflaged ground is not ruled: the master rules who noticed it.
 
 ### Corrections
 

@@ -418,6 +418,7 @@ func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState
 
 // spikeCatch hurts a creature for each square it crossed in a Spike Growth.
 // Nobody is spared, and the same creature is hurt again on every move.
+// A flier is not: it moves over the ground, as difficult terrain costs it nothing.
 func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep) error {
 	n := z.spikesIn(st)
 	if n == 0 {
@@ -429,7 +430,7 @@ func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneS
 	}
 	who, ok := combatantByID(cs, st.who)
 	owner, okOwner := combatantByID(cs, z.row.OwnerID)
-	if !ok || !okOwner || !placed(who) || who.Defeated {
+	if !ok || !okOwner || !placed(who) || who.Defeated || moverOf(who).Flier {
 		return nil
 	}
 	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, round: c.enc.Round, times: n}, owner)

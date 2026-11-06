@@ -164,3 +164,45 @@ func TestSpikeGrowthDoesNotHurtWhoJumpsIn(t *testing.T) {
 		t.Errorf("the jump hurt Toren: %v, want none", got)
 	}
 }
+
+// A creature that flies moves over the spikes, as difficult terrain costs it nothing (combat_move.go): it takes no damage and
+// the log has no line of it. A walker is charged (the tests above).
+func TestSpikeGrowthDoesNotHurtAFlier(t *testing.T) {
+	t.Parallel()
+	c := spikeCave(t)
+	c.castSpikes(t, 14, 7)
+	c.mustMove(t, c.master, "Ogro", 11, 7)
+	c.execSQL(t, `UPDATE combatants SET speed_fly_ft = 60 WHERE id = $1`, c.id(t, "Ogro"))
+	c.walkOgre(t, 13, 7)
+	if got := c.spikeDamagesOf(t, "Ogro"); len(got) != 0 {
+		t.Errorf("damages of the flying ogre = %v, want none", got)
+	}
+	var lines int
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events WHERE kind = $1`, eventZoneTriggered).Scan(&lines); err != nil {
+		t.Fatalf("count the zone lines: %v", err)
+	}
+	if lines != 0 {
+		t.Errorf("the log has %d zone lines for the flier, want none", lines)
+	}
+}
+
+// A grappled creature dragged through the spikes takes the damage for the squares it travels, the grappler for its own.
+func TestSpikeGrowthHurtsWhoIsDraggedThrough(t *testing.T) {
+	t.Parallel()
+	c := spikeCave(t)
+	c.castSpikes(t, 14, 7) // columns 10 to 18
+	c.mustMove(t, c.master, "Toren", 8, 7, func(r *playv1.MoveCombatantRequest) { r.Forced = true })
+	c.mustMove(t, c.master, "Brisa", 7, 8)
+	c.setConditions(t, c.get(t, c.master), "Brisa", "condition:grappled")
+	c.execSQL(t, `INSERT INTO combat_holds (grappled_id, encounter_id, grappler_id, escape_dc, created_at) SELECT $1, encounter_id, $2, 10, now() FROM combatants WHERE id = $1`, c.id(t, "Brisa"), c.id(t, "Toren"))
+	c.execSQL(t, `UPDATE combatants SET speed_ft = 90 WHERE id = $1`, c.id(t, "Toren")) // a drag costs twice, the spikes twice again
+	if _, err := c.move(t, c.caio, "Toren", 11, 7); err != nil {
+		t.Fatalf("MoveCombatant(Toren drags Brisa to 11,7) error = %v", err)
+	}
+	if got := c.spikeDamagesOf(t, "Toren"); len(got) != 1 || got[0] != 4 {
+		t.Errorf("damages of the grappler = %v, want one of 4 dice: squares 10 and 11", got)
+	}
+	if got := c.spikeDamagesOf(t, "Brisa"); len(got) != 1 || got[0] == 0 {
+		t.Errorf("damages of the dragged creature = %v, want one: it travelled into the spikes", got)
+	}
+}

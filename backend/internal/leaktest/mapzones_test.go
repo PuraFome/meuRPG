@@ -47,6 +47,9 @@ var fogCaster = &hiddenCaster{level: 5, spells: []string{"spell:fog-cloud"}}
 // wallCaster is a wizard of the level that casts Wall of Fire (4th-level slot), and Silence.
 var wallCaster = &hiddenCaster{level: 7, spells: []string{"spell:wall-of-fire", "spell:silence"}}
 
+// spikeCaster is a caster of the level that casts Spike Growth (2nd-level slot).
+var spikeCaster = &hiddenCaster{level: 5, spells: []string{"spell:spike-growth"}}
+
 // newZoneTable builds the fixture. withCaster adds a hidden NPC wizard that knows Fog Cloud.
 func newZoneTable(t *testing.T, withCaster bool) *zoneTable {
 	t.Helper()
@@ -769,4 +772,51 @@ func TestAHiddenCastersSilenceDeafensInTheMastersAndTheOwnersViewAlone(t *testin
 	if strings.Contains(bytesOf(events[caio]), deafened) {
 		t.Errorf("Caio's stream holds %q: another player's deafness", deafened)
 	}
+}
+
+// A Spike Growth cast by a hidden NPC that then walks in it: no player receives the zone, the caster, the damage the walk
+// left to roll, or the line of the move (zone_move), in the combat, the log, the map or the stream. The master's combat
+// holds the zone, the caster and the damage: the positive control (the caster is the master's own creature).
+func TestAHiddenCastersSpikeGrowthAndItsWalkReachNoPlayer(t *testing.T) {
+	z := newZoneTableOf(t, spikeCaster)
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("%v", r)
+		}
+	}()
+	ctx := t.Context()
+	ana, caio, master := z.ana, z.caio, z.master
+	watchers := z.streamsOf()
+
+	z.untilTurn(z.casterC)
+	cast := z.cast(master, z.casterC, "spell:spike-growth", 2, casterCol, casterRow)
+	zones := cast.GetEncounter().GetZones()
+	if len(zones) != 1 {
+		t.Fatalf("the master's cast holds the zones %v, want the spikes", zones)
+	}
+	z.zoneID = zones[0].GetId()
+	// The hidden caster walks two squares inside its own spikes, on its turn: the walk leaves damage to roll and a zone line.
+	must(master.combat.MoveCombatant(ctx, rq(&playv1.MoveCombatantRequest{
+		CampaignId: z.campaign, EncounterId: z.enc.GetId(), CombatantId: z.casterC, IdempotencyKey: newKey(), Col: casterCol - 2, Row: casterRow,
+	})))
+	needles := []string{z.casterName, z.caster.GetId(), z.casterC, z.zoneID}
+
+	requireHolds(t, master.name, "the master's combat with the spikes and the walk", z.read(master), needles)
+	if zs := z.zonesOf(master); len(zs) != 1 || zs[0].GetVisibility() != playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_MASTER_ONLY {
+		t.Fatalf("the master reads zones %v, want the hidden caster's spikes marked for the master alone", zs)
+	}
+	for _, p := range []*person{ana, caio} {
+		if zs := z.zonesOf(p); len(zs) != 0 {
+			t.Errorf("%s reads the zones %v of a hidden caster", p.name, zs)
+		}
+		requireClean(t, p.name, "the map, the combat and its log with the hidden caster's spikes and walk", z.read(p), needles)
+		if slices.Contains(z.tokensOf(p), z.caster.GetId()) || z.onTheMap(p, z.casterC) {
+			t.Errorf("%s's map places the hidden caster", p.name)
+		}
+	}
+	events := z.endAndCollect(watchers)
+	for _, p := range []*person{ana, caio} {
+		requireClean(t, p.name, "the stream", bytesOf(events[p]), needles)
+	}
+	requireHolds(t, master.name, "the master's stream", bytesOf(events[master]), []string{z.casterC}) // the stream names the combatant, not the name
 }
