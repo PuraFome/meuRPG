@@ -1,0 +1,169 @@
+package characters
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"slices"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// Equipping and stowing gear (#562): each armor, shield and weapon the sheet lists is
+// equipped or carried, and only the equipped ones count. The set of carried keys is the
+// sheet's carried_keys; SetEquipped is the one call that moves a piece in or out of it
+// outside the editor, and it changes nothing else on the sheet.
+
+// equipRequest is a SetEquipped request whose shape is checked.
+type equipRequest struct {
+	id, key string
+	equip   bool
+}
+
+// equipped is what SetEquipped's transaction leaves: the row as it stands, whether the
+// call changed the sheet, and what play asks to run after the commit.
+type equipped struct {
+	row        charactersdb.Character
+	carried    []string
+	changed    bool
+	afterGear  func(ctx context.Context)
+	changeInfo EquipChange
+}
+
+// SetEquipped implements charactersv1connect.CharacterServiceHandler.
+func (s *Service) SetEquipped(
+	ctx context.Context,
+	req *connect.Request[charactersv1.SetEquippedRequest],
+) (*connect.Response[charactersv1.SetEquippedResponse], error) {
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	in, err := readEquipRequest(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	var done equipped
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		done, err = s.equipIn(ctx, tx, m, in)
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "equip a character's gear", err)
+	}
+	if done.changed {
+		logging.Event(ctx, s.logger, "character.equipped", slog.String("character_id", in.id), slog.String("kind", string(done.changeInfo.Kind)), slog.Bool("equip", in.equip))
+		if done.afterGear != nil {
+			done.afterGear(ctx)
+		}
+	}
+	return connect.NewResponse(&charactersv1.SetEquippedResponse{CarriedKeys: done.carried, Revision: done.row.Revision}), nil
+}
+
+// readEquipRequest checks what needs no database, in order: the character's id (an id
+// that is no UUID names nothing) and the key.
+func readEquipRequest(msg *charactersv1.SetEquippedRequest) (equipRequest, error) {
+	id, ok := uid.Canonical(msg.GetCharacterId())
+	if !ok {
+		return equipRequest{}, errCharacterNotFound()
+	}
+	if msg.GetKey() == "" {
+		return equipRequest{}, invalidArgument(fieldErr("key", "is required"))
+	}
+	return equipRequest{id: id, key: msg.GetKey(), equip: msg.GetEquipped()}, nil
+}
+
+// equipIn is the transaction of SetEquipped: it locks the character, checks the caller
+// and the key, asks play (inside the transaction, before the write) when the state really
+// changes, and writes the sheet with only carried_keys changed.
+func (s *Service) equipIn(ctx context.Context, tx pgx.Tx, m authz.Membership, in equipRequest) (equipped, error) {
+	q := s.queries.WithTx(tx)
+	current, err := visibleForUpdate(ctx, q, m, in.id)
+	if err != nil {
+		return equipped{}, err
+	}
+	if current.Status == statusDead {
+		return equipped{}, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD, current.ID)
+	}
+	stored, err := loadSheet(current.ID, current.Sheet)
+	if err != nil {
+		return equipped{}, err
+	}
+	full := stored.GetFull()
+	if full == nil {
+		return equipped{}, invalidArgument(fieldErr("character_id", "is a character with a basic sheet, which has no gear to equip"))
+	}
+	change, err := equipChangeOf(full, in)
+	if err != nil {
+		return equipped{}, err
+	}
+	if slices.Contains(full.GetCarriedKeys(), in.key) == !in.equip {
+		return equipped{row: current, carried: full.GetCarriedKeys()}, nil // already as asked: nothing changes
+	}
+	if s.reviewHost != nil {
+		if err := s.reviewHost.EquipInCombat(ctx, tx, m.CampaignID, current.ID, m.UserID, change); err != nil {
+			return equipped{}, err
+		}
+	}
+	return s.writeCarried(ctx, tx, m, current, full, change)
+}
+
+// equipChangeOf names the piece of gear the request moves, or refuses a key the sheet
+// does not list (the armor, a weapon, or the shield when it has one).
+func equipChangeOf(full *charactersv1.FullSheet, in equipRequest) (EquipChange, error) {
+	change := EquipChange{Key: in.key, Equip: in.equip}
+	switch {
+	case in.key == rules.ShieldKey && full.GetShield():
+		change.Kind = EquipShield
+	case in.key == full.GetArmorKey():
+		change.Kind = EquipArmor
+	case slices.Contains(full.GetWeaponKeys(), in.key):
+		change.Kind = EquipWeapon
+	default:
+		return change, invalidArgument(fieldErr("key", "is not the armor, the shield or a weapon of the sheet"))
+	}
+	return change, nil
+}
+
+// writeCarried stores the sheet with the piece moved in or out of carried_keys, and
+// tells play what the equipped armor and shield became.
+func (s *Service) writeCarried(ctx context.Context, tx pgx.Tx, m authz.Membership, current charactersdb.Character, full *charactersv1.FullSheet, change EquipChange) (equipped, error) {
+	next := proto.CloneOf(full)
+	if change.Equip {
+		next.CarriedKeys = slices.DeleteFunc(next.CarriedKeys, func(k string) bool { return k == change.Key })
+	} else {
+		next.CarriedKeys = append(next.CarriedKeys, change.Key)
+	}
+	if err := rules.ValidateCarried(buildOf(next)); err != nil {
+		return equipped{}, wrap("check the carried keys", err)
+	}
+	doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: next}})
+	if err != nil {
+		return equipped{}, wrap("encode a sheet", err)
+	}
+	row, err := s.queries.WithTx(tx).UpdateCharacterSheet(ctx, charactersdb.UpdateCharacterSheetParams{
+		CampaignID: m.CampaignID, ID: current.ID, Revision: current.Revision, Name: current.Name, Sheet: doc, Now: s.now(),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return equipped{}, errStaleRevision()
+	}
+	if err != nil {
+		return equipped{}, wrap("update sheet", err)
+	}
+	after, err := s.tellGearChange(ctx, tx, m.CampaignID, current.ID, full, next)
+	if err != nil {
+		return equipped{}, err
+	}
+	return equipped{row: row, carried: next.CarriedKeys, changed: true, afterGear: after, changeInfo: change}, nil
+}

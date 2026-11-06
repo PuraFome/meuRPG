@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -46,6 +47,12 @@ func (s *Service) reviveCombatant(ctx context.Context, c *combatTx, who playdb.C
 		}
 	}
 	return touch(ctx, c)
+}
+
+// EquipInCombat implements characters.ReviewHost. It accepts every change for now: the
+// combat's economy for equipping and stowing gear is not written yet.
+func (s *Service) EquipInCombat(context.Context, pgx.Tx, string, string, string, link.EquipChange) error {
+	return nil
 }
 
 // ReviveInCombat implements characters.ReviewHost: the character's combatant in the campaign's

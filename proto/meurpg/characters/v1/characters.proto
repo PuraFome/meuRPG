@@ -316,6 +316,35 @@ service CharacterService {
   //   - `permission_denied`: the caller is a player.
   rpc SetStoryEditing(SetStoryEditingRequest) returns (SetStoryEditingResponse);
 
+  // SetEquipped equips or stows one piece of the sheet's gear: the body armor
+  // (armor_key), a weapon (weapon_keys) or the shield ("equipment:shield"),
+  // by adding the key to the sheet's carried_keys (stowed) or taking it out
+  // (equipped). Only equipped pieces count for armor class, attacks and
+  // properties. It changes nothing else on the sheet, so it is no way
+  // around the sheet's lock.
+  //
+  // The character's owner and the campaign's master may call it, on a draft,
+  // a pending sheet and a locked one alike: the lock (RN-01) is on the
+  // editor, not on what a character wields. A dead character cannot, and a
+  // player never reaches an NPC or another player's character.
+  //
+  // Asking for the state the piece already has changes nothing: the
+  // revision stays, play is not told and no combat action is spent. A change
+  // adds one to the revision like any sheet change. In a combat, play may
+  // refuse it or spend the turn's action for it (see ReviewHost.EquipInCombat
+  // in backend/internal/characters/review.go).
+  //
+  // Errors:
+  //   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or
+  //     the shield when it has one (InvalidField, field "key"), or the sheet
+  //     is a basic one.
+  //   - `not_found`: the character is not in this campaign, the caller may
+  //     not see it, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `failed_precondition`: the character is dead (CharacterBlocked with
+  //     reason CHARACTER_DEAD), or play refused the change in the combat.
+  rpc SetEquipped(SetEquippedRequest) returns (SetEquippedResponse);
+
   // MarkCharacterDead records that a player character died (RN-03). Only
   // the campaign's master may call it.
   //
@@ -2078,6 +2107,25 @@ message SetStoryEditingRequest {
 message SetStoryEditingResponse {
   // The character, with story_editing_allowed as set.
   Character character = 1;
+}
+
+// SetEquippedRequest says which piece of gear the character wields now.
+message SetEquippedRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The piece: the sheet's armor_key, one of its weapon_keys, or
+  // "equipment:shield" when it has a shield.
+  string key = 3;
+  // true equips the piece, false stows it (it is carried, not wielded).
+  bool equipped = 4;
+}
+
+// SetEquippedResponse returns the gear as it stands.
+message SetEquippedResponse {
+  // The sheet's carried_keys after the call.
+  repeated string carried_keys = 1;
+  // The character's revision after the call.
+  int32 revision = 2;
 }
 
 // MarkCharacterDeadRequest names the character that died.

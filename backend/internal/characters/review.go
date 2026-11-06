@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // "Pedir ajustes" (RN-15, MR-024).
@@ -381,10 +382,28 @@ type ReviewHost interface {
 	// the shield) is worked out again from the gear it wears now. It returns what to call after
 	// the commit, or nil.
 	GearChanged(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (afterCommit func(ctx context.Context), err error)
+	// EquipInCombat tells play that the character equips or stows a piece of gear, inside
+	// the transaction that writes the sheet and before it writes, only when the state really
+	// changes. Play may refuse (a coded error, which aborts the write) or spend the turn's
+	// economy for the change in the combat that holds the character.
+	EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, change EquipChange) error
 	// PublishEncounterChanged tells every stream that the combat changed. Call it after the
 	// commit.
 	PublishEncounterChanged(ctx context.Context, campaignID, encounterID string)
 }
+
+// EquipKind, EquipChange and the kinds are package link's, which play shares.
+type (
+	EquipKind   = link.EquipKind
+	EquipChange = link.EquipChange
+)
+
+// The kinds of gear SetEquipped moves.
+const (
+	EquipWeapon = link.EquipWeapon
+	EquipShield = link.EquipShield
+	EquipArmor  = link.EquipArmor
+)
 
 // SetReviewHost connects the play module.
 func (s *Service) SetReviewHost(h ReviewHost) { s.reviewHost = h }

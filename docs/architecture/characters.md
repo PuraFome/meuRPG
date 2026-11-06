@@ -82,6 +82,7 @@ What a player may see and change is then decided from the character's row (`canS
 | `PreviewCharacter` | A new NPC sheet and a character it sees and may edit; `permission_denied` for a new player sheet | A new player sheet and their own character while the sheet is not locked | A new player sheet; another player's is `not_found` | `not_found` | `unauthenticated` | A new player sheet and their own pending character |
 | `PreviewChoices` | Yes | A new sheet and their own character | `not_found` | `not_found` | `unauthenticated` | A new player sheet and their own pending character |
 | `CompleteCharacterChoices` | Yes | Yes, their own | `not_found` | `not_found` | `unauthenticated` | `not_found` |
+| `SetEquipped` | Yes | Yes, their own, locked sheet included | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GetCampaignOpenChoices` | Yes | `not_found` | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GetAbilityRolls`, `RollAbilityScores` | `permission_denied` | Yes | Yes | `not_found` | `unauthenticated` | Yes |
 | `GetLevelUpOptions`, `PreviewLevelUp` (while `can_level_up`) | Yes | Yes | `not_found` | `not_found` | `unauthenticated` | `not_found` |
@@ -187,6 +188,7 @@ The questions and their rules are `rules`' (see [Class and race choices](rules.m
 | RPC | What it does |
 | --- | --- |
 | `PreviewChoices` | The groups, counts, spell sources (patron and Magical Secrets lists) and refusals for a draft or a locked sheet. Read-only; the draft's overlay is made by `sheetForChoices`. In the pending-member allowlist, because a pending member edits their own draft. |
+| `SetEquipped` | Moves one piece of the sheet's gear (`armor_key`, a `weapon_keys` entry or `equipment:shield`) in or out of `carried_keys`, the pieces carried but not equipped; only equipped pieces count for armor class, attacks and properties. Changes nothing else, so the RN-01 lock does not apply; a dead character is refused. Idempotent by state: asking for the state it has changes nothing. Inside the transaction it asks play (`ReviewHost.EquipInCombat`) before writing. |
 | `CompleteCharacterChoices` | A locked sheet's missing picks (`ChoicePick`), judged by the same engine; changes nothing else (RN-01). Idempotent by key, one transaction, writes the session event `character_choices_completed`. |
 | `GetCampaignOpenChoices` | For the master: the characters with open choices (`OpenChoicesCharacter`). |
 

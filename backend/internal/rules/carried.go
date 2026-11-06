@@ -2,6 +2,13 @@ package rules
 
 import "slices"
 
+// ShieldKey is the key under which the shield is carried or equipped (Build.Carried).
+const ShieldKey = shieldKey
+
+// ValidateCarried checks Build.Carried alone: each key is the sheet's armor, its shield
+// (when it has one) or a weapon it lists, with no repeats, at most MaxCarried.
+func ValidateCarried(b Build) error { return validateCarried(&b) }
+
 // listsGear says key is the armor, the shield (when the sheet has one) or a weapon the
 // sheet lists, equipped or carried.
 func (b Build) listsGear(key string) bool {
