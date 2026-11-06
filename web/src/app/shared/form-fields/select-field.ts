@@ -35,6 +35,7 @@ export interface SelectOption<T extends string | number = string> {
         #control
         matNativeControl
         [attr.data-field]="path() || null"
+        [disabled]="disabled()"
         [attr.aria-describedby]="describedBy()"
         (change)="pick($any($event.target).selectedIndex)"
       >
@@ -76,6 +77,8 @@ export class SelectField<T extends string | number = string> {
   readonly hint = input('');
   /** A disabled first option ("Escolha…") for a value that is not chosen yet. */
   readonly placeholder = input('');
+  /** A locked field: it shows its one value and cannot change (a rule fixes it); the line beside it says why. */
+  readonly disabled = input(false);
   readonly valueChange = output<T>();
 
   protected readonly noteId = `fn-s${nextId++}`;

@@ -94,6 +94,9 @@ export interface EffectDraft {
   reachM: string;
   attackName: string;
   damageDice: string;
+  /** reroll and roll_minimum: the rolls it covers ("attack", "check", "save", "damage"). reroll: the highest d20 face it rolls again. */
+  rolls: string[];
+  atMost: number;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

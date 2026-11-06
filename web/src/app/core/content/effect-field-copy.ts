@@ -65,6 +65,8 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   no_crit_doubling: 'Não dobra no acerto crítico',
   applies_to: 'Vale para',
   spell_change: 'O que muda na magia',
+  rolls: 'Vale nas jogadas',
+  at_most: 'Rola de novo se tirar até',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
@@ -115,6 +117,7 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
   counts_as_known:
     'A magia aparece também entre as conhecidas da ficha, sem gastar nenhuma escolha da classe.',
+  at_most: 'De 1 a 20. Um dado com este valor ou menos pode ser rolado de novo, uma vez.',
 };
 
 /** The label or hint of a field where one type reads it differently from the rest (`ability` is a maneuver's modifier, and a granted spell's casting ability). */
@@ -129,6 +132,8 @@ export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<s
       count: 'Dados a mais por nível acima',
       damage_type: 'Tipo do dano somado',
     },
+    modifier: { applies: 'Vale para' },
+    roll_minimum: { value: 'Valor mínimo' },
     // A state's resource is spent once at each start; a pseudo-weapon names its kind, its ability and its reach in the words of an attack.
     state: { resource: 'Gasta um uso de' },
     pseudo_weapon: {
@@ -140,8 +145,53 @@ export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<s
   };
 
 export const EFFECT_TYPE_FIELD_HINTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  roll_minimum: {
+    value: 'De 2 a 20. Um dado que mostrar menos conta como este valor.',
+    damage_type:
+      'Opcional, só com o dado de dano sozinho: o mínimo vale só nos dados deste tipo. "Qualquer tipo": em todos.',
+  },
   granted_spell: {
     ability:
       'Dá o bônus de ataque da magia (proficiência + modificador) e a CD de resistência (8 + o mesmo).',
   },
+};
+
+/** The line under "Vale nas jogadas" of each type that asks it. */
+export const ROLLS_NOTES: Readonly<Record<string, string>> = {
+  reroll:
+    'No d20 o jogador responde "rolar de novo?" antes do resultado. No dado de dano o app rola de novo sozinho, sem perguntar, e um uso cobre a jogada inteira.',
+  roll_minimum:
+    'Um dado de dano menor que o valor conta como o seu maior valor: um d4 com mínimo 6 conta 4.',
+};
+
+/** What "Gasta usos de" says of a reroll: the resources the entry defines, none to pick, and a pick the entry no longer has. */
+export const RESOURCE_PICK_COPY = {
+  none: 'Nenhum: vale sempre',
+  hint: 'Os recursos que esta entrada define, no efeito Recurso. "Nenhum": vale sempre, sem gastar.',
+  locked:
+    'Esta entrada não define recurso. Para limitar os usos, adicione um efeito Recurso; sem ele, a rerrolagem vale sempre.',
+  stale: 'Recurso que não existe mais',
+  staleIssue: 'Esta entrada não define mais este recurso. Escolha outro, ou Nenhum.',
+} as const;
+
+/** The critical range as a modifier target: the board's words over the server's, the lock under "Como muda" and the note under "Vale para". */
+export const CRITICAL_COPY = {
+  target: 'Margem de acerto crítico',
+  targetHint: 'O menor d20 natural que é acerto crítico.',
+  value: 'Crítico a partir do d20',
+  modeLock: 'A margem de crítico só aceita Definir.',
+  scopeNote:
+    'Só para a margem de crítico. Crítico Aprimorado e Crítico Superior nunca valem para magia.',
+} as const;
+
+/** What a refusal says of a field that other types share, where the effect says which type it is (the server's reason has no type): the
+ * words replace the general ones (`GENERIC_EFFECT_TEXTS`). Keyed by "type.field", "modifier.critical_range.field" for the critical range. */
+export const EFFECT_REFUSAL_TEXTS: Readonly<Record<string, string>> = {
+  'roll_minimum.value': 'O valor mínimo vai de 2 a 20.',
+  'roll_minimum.damage_type':
+    'O tipo de dano só vale com o dado de dano sozinho. Desmarque as outras jogadas ou escolha "Qualquer tipo".',
+  'reroll.cost': 'O custo é um número de 1 em diante, e pede um recurso.',
+  'reroll.resource': RESOURCE_PICK_COPY.staleIssue,
+  'modifier.critical_range.value': 'A margem vai de 15 a 20.',
+  'modifier.critical_range.mode': CRITICAL_COPY.modeLock,
 };

@@ -99,6 +99,8 @@ export function emptyEffect(type = ''): EffectDraft {
     reachM: '',
     attackName: '',
     damageDice: '',
+    rolls: [],
+    atMost: 0,
   };
 }
 
@@ -172,6 +174,8 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     reachM: rangeMeters(e.reachFt),
     attackName: e.attackName,
     damageDice: e.damageDice,
+    rolls: [...e.rolls],
+    atMost: e.atMost,
   };
 }
 
@@ -190,6 +194,8 @@ export interface MenuOption {
   readonly key: string;
   readonly namePt: string;
   readonly hintPt: string;
+  /** A modifier target: the only modes it takes (the critical range is "set"); empty or absent is every mode. */
+  readonly onlyModes?: readonly string[];
 }
 
 /** The menu the pickers read, from `GetEffectMenu`. */
@@ -245,6 +251,11 @@ export class EffectMenuVm {
 
   fieldsOf(type: string): readonly EffectMenuField[] {
     return this.typeOf(type)?.fields ?? [];
+  }
+
+  /** The value of a closed list with its key (`undefined` when the menu has no such value). */
+  optionOf(list: string, key: string): MenuOption | undefined {
+    return this.list(list).find((v) => v.key === key);
   }
 
   /** The closed list a field points at. */
@@ -363,6 +374,8 @@ const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
   conditions: (d) => d.conditions.length === 0,
   applies_to: (d) => d.appliesTo === '',
   spell_change: (d) => d.spellChange === '',
+  rolls: (d) => d.rolls.length === 0,
+  at_most: (d) => d.atMost <= 0,
 };
 
 /** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty: the table's own, else the draft's string of that name. */

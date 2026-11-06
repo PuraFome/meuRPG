@@ -63,7 +63,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
-import { archiveEntryRPC, costsRaceBody, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, costsRaceBody, createEntryRPC, criticalFeatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
@@ -6018,6 +6018,101 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
+});
+
+/**
+ * The master's effect editor for the rolls (MR-025, RN-23; issue #573): "Rolar de novo" empty and with its resource, "Valor mínimo no
+ * dado" with the damage type that goes away when another roll is checked, a refusal on the rolls, the critical range with its lock and
+ * the scope cards, and what the master reads on a phone and a player reads. The entries come through the API.
+ */
+async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade rolagens ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const reroll = await createEntryRPC(m, campaignId, 'tableFeat', rerollFeatBody());
+    const minimum = await createEntryRPC(m, campaignId, 'tableFeat', minimumFeatBody());
+    const critical = await createEntryRPC(m, campaignId, 'tableClassFeature', criticalFeatureBody());
+
+    if (width >= 768) {
+      // Just chosen: no roll checked, "Nenhum: vale sempre" locked with its reason (the entry defines no resource).
+      await open(m, `/campaigns/${campaignId}/content/new/feat`);
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Rolar de novo' });
+      await expect(m.getByRole('group', { name: 'Vale nas jogadas' })).toBeVisible();
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeDisabled();
+      await expect(m.getByText('Esta entrada não define recurso.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" vazio e sem recurso na entrada ${where}`);
+      // Refused: nothing checked and no face; the messages sit on their fields and the typed name stays.
+      await m.getByLabel('Nome do talento').fill('Sorte Vazia');
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Marque ao menos uma jogada.')).toBeVisible();
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Sorte Vazia');
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" recusado nas jogadas e na face ${where}`);
+      // With its resource: the pool the same feat defines is on the list, and its cost shows.
+      await open(m, entryRoute(campaignId, reroll));
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Sorte Teimosa');
+      await expect(m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' })).toBeChecked();
+      await expect(m.getByLabel('Rola de novo se tirar até', { exact: true })).toHaveValue('2');
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toHaveValue('sorte_teimosa');
+      await expect(m.getByLabel('Custo (usos)', { exact: true })).toHaveValue('1');
+      await expect(m.getByText('Rolar de novo:').first()).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" com o recurso da entrada ${where}`);
+      // The pool is taken out (the feat has a second effect): the resource it spent shows as refused.
+      await m.getByRole('button', { name: /Remover o efeito 2/ }).click();
+      await expect(m.getByText('Esta entrada não define mais este recurso. Escolha outro, ou Nenhum.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, o recurso que não existe mais ${where}`);
+      // The minimum: the damage type is there with damage alone and goes away when another roll is checked.
+      await open(m, entryRoute(campaignId, minimum));
+      await expect(m.getByLabel('Valor mínimo', { exact: true })).toHaveValue('2');
+      await expect(m.getByLabel('Tipo de dano', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Valor mínimo no dado" com o tipo de dano ${where}`);
+      await m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' }).check();
+      await expect(m.getByLabel('Tipo de dano', { exact: true })).toHaveCount(0);
+      await expectScreenPasses(m, `Editor de talento, o tipo de dano some com outra jogada marcada ${where}`);
+      // The critical range: "Como muda" locked on Definir, the value and the three scope cards.
+      await open(m, entryRoute(campaignId, critical));
+      await expect(m.getByLabel('Nome da característica')).toHaveValue('Olho Treinado');
+      await expect(m.getByLabel('Como muda', { exact: true })).toBeDisabled();
+      await expect(m.getByText('A margem de crítico só aceita Definir.')).toBeVisible();
+      await expect(m.getByLabel('Crítico a partir do d20', { exact: true })).toHaveValue('19');
+      await expect(m.getByRole('radio', { name: /Armas e magias/ })).toBeChecked();
+      await expectScreenPasses(m, `Editor de característica de classe, a margem de crítico com o "Vale para" ${where}`);
+    } else {
+      await open(m, entryRoute(campaignId, reroll));
+      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expect(m.getByText('jogada de ataque e teste de resistência, com 2 ou menos; gasta 1 uso.')).toBeVisible();
+      await expectScreenPasses(m, `Talento com "Rolar de novo", lido pelo mestre no celular ${where}`);
+    }
+
+    await open(p, entryRoute(campaignId, reroll));
+    await expect(p.getByText('jogada de ataque e teste de resistência, com 2 ou menos; gasta 1 uso.')).toBeVisible();
+    await expectScreenPasses(p, `Talento com "Rolar de novo", visto por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, minimum));
+    await expect(p.getByText('dado de dano de fogo, no mínimo 2.')).toBeVisible();
+    await expectScreenPasses(p, `Talento com valor mínimo, visto por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, critical));
+    await expect(p.getByText('19 a 20, em armas e magias.')).toBeVisible();
+    await expectScreenPasses(p, `Característica com margem de crítico, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as rolagens no editor de efeitos passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'light', 1280);
+});
+
+test('as rolagens no editor de efeitos passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'dark', 1024);
+});
+
+test('as rolagens lidas pelo mestre e pelo jogador passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'light', 390);
 });
 
 // Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the

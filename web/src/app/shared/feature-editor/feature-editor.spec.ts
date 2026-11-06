@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft } from '../../core/content/feature-draft';
 import { menu } from '../../core/content/content-testing-menu';
+import { rollsMenu } from '../../core/content/content-testing-menu-rolls';
 import { FeatureEditor } from './feature-editor';
 
 describe('FeatureEditor (a trait, a feature)', () => {
@@ -31,6 +32,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       index?: number;
       count?: number;
       isOption?: boolean;
+      menu?: ReturnType<typeof menu>;
     } = {},
   ) {
     emitted.length = 0;
@@ -38,7 +40,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
     TestBed.resetTestingModule();
     fixture = TestBed.createComponent(FeatureEditor);
     fixture.componentRef.setInput('feature', feature);
-    fixture.componentRef.setInput('menu', menu());
+    fixture.componentRef.setInput('menu', over.menu ?? menu());
     fixture.componentRef.setInput('basePath', 'table_race.traits[1]');
     fixture.componentRef.setInput('issuesOf', (path: string) => over.issues?.[path] ?? []);
     fixture.componentRef.setInput('removeLabel', over.removeLabel ?? 'Remover traço');
@@ -160,5 +162,30 @@ describe('FeatureEditor (a trait, a feature)', () => {
         b.getAttribute('aria-label')?.startsWith('Subir'),
       ),
     ).toBe(false);
+  });
+
+  it('offers a reroll the resources of its own entry, wherever the resource effect sits in the list', () => {
+    setup(
+      {
+        ...emptyFeature(),
+        name: 'Sorte Teimosa',
+        effects: [
+          { ...emptyEffect('reroll'), rolls: ['attack'], atMost: 2 },
+          {
+            ...emptyEffect('resource'),
+            resource: 'sorte_teimosa',
+            max: '3',
+            recharge: 'long_rest',
+          },
+        ],
+      },
+      { menu: rollsMenu() },
+    );
+    const select = field('effects[0].resource') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => text(o))).toEqual([
+      'Nenhum: vale sempre',
+      'Sorte Teimosa (3 por descanso longo)',
+    ]);
+    expect(select.disabled).toBe(false);
   });
 });
