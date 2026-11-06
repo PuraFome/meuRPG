@@ -50,7 +50,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 
 | Type | Notes |
 | --- | --- |
-| `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). |
+| `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). A `modifier` on `score.<ability>` is an `add` with a `cap` from 20 to 30 (`MaxNormalScore` to `MaxScore`), and no other modifier has a cap. A score above its cap stays as it is. |
 | `proficiency` with `only_proficient` | A switch of the effect with level `expertise` on a skill (`skill:*` is every skill): the skill is doubled only where the character already has its proficiency from another source when the sheet is worked out (the race, the background, the sheet's picks or another feature), never from the effect itself or from another `only_proficient` effect. Without the switch the effect doubles the skill, proficient or not. Any other level, a target that is not a skill and any other effect type refuse it at `.only_proficient` (`bad_value`). It is a `yes_no` field of the proficiency type in the effect menu. |
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
@@ -67,7 +67,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
 | `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
-| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
+| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
@@ -92,6 +92,26 @@ The pick is stored with the sheet's choices and checked against the options; one
 A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
 The character picks one option, never more.
 Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
+
+**Feat options and picks.**
+A feat may carry `TableFeat.options`, at most 60 (`MaxFeatureOptions`), checked like a class feature's option list.
+Each option is a feature with a server-made key (`feature:<stem>--<option name>@mesa`).
+It applies only while the character has the feat and has picked it.
+A `feature` choice of the feat with an empty `from` offers them; a feat has one choice of options.
+That choice may instead name `set`, one of the SRD's option sets but `table_feature`, and offers every option of the set, the table's included.
+A `set` choice cannot ask for more than the options of the set (`.count`, `bad_value`), and only a feat has `set`.
+An option of a feat never reads the feat's picks.
+
+A choice of kind `ability` or `damage_type` is a pick, and only a feat has one.
+It needs a `name` (1 to 40 of `a-z`, `0-9` and `_`, the first a letter, and not `mesa`), picks one (`count` 1), and lists `from` keys of its kind once each (empty is all six abilities or all damage types).
+Only these two kinds have a name, and a feat's names are unique.
+A later effect of the same feat writes `@name` for the local part of the pick (`ability:dex` is `dex`, `damage-type:fire` is `fire`), in `proficiency` (`save.@name`), `target`, `targets`, `ability`, `attack_ability`, `damage_ability`, `damage_type`, `damage_types` and `except` (`damage-type:@name`), and in the formulas of the fields `pickFields` lists as `mod("@name")` and `score("@name")`.
+A token for a name the feat has not declared before it, of the wrong kind, or a `@name` anywhere else is refused at the field (`bad_value`).
+The compiler accepts the literal only for checking; `Derive` writes the pick into a copy of the effect and compiles its formulas again (the programs are kept per content), and `Resistances` does the same.
+An effect whose pick is missing or not offered does not apply.
+The pick is a choice of the choice engine with the key `<feat>#<name>`, stored as `<feat>#<name>=ability:dex`, and `Derived.FeatPicks` holds the valid ones.
+A caller of `Content.Resistances` passes the `Derived` that `Derive` made for the same sheet, since the picks come from it.
+A feat's options and picks are hidden with the feat; a hidden option stays named for a sheet that holds it.
 
 ### Maneuvers
 

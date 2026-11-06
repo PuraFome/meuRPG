@@ -178,6 +178,15 @@ The catalog says what a subrace replaces (`replaces_trait_keys`, `replaces_abili
 A player's copy of a subrace drops the replaced keys that are hidden (an archived or switched-off entry).
 The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonuses` or the options of a trait; they are written through a pack or the API.
 
+## Feat options and picks
+
+`TableFeat.options` is a list of `TableFeature`, at most 60, and `TableEffect` carries `name`, `set` and `cap`; `tableFeatOf` and `tableEffectsOf` copy them to the engine.
+The server makes the keys of the options like a feature's (`feature:feat-<start of name>-<hash>--<option name>@mesa`), keeps them on update and refuses one the entry never had (`immutable`); a pack keeps the ones that start with the entry's own stem.
+A violation inside an option names `table_feat.options[j].effects[k]...`.
+A player's copy takes hidden keys out of the options' effects too.
+The picks of a feat are stored in `feature_choice_keys` and judged with the other choices: a player's save with a pick or an option the feat does not offer is `CHOICE_NOT_OFFERED`.
+The editor menu offers the `score.<ability>` targets (mode `add`, with `cap`), the kinds `ability` and `damage_type`, `name`, and `set` as a closed list that leaves out `table_feature`.
+
 ## Table options
 
 `TABLE_CONTENT_KIND_OPTION` (`option` rows of `campaign_content`, key `option:<set>:<slug>@mesa`) is an option the master adds to one of the SRD's option sets: an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense, or, in the set `table_feature`, an option of a table feature's option list (`table_option.offered_by` is that feature's key).
