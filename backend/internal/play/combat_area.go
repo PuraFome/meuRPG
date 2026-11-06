@@ -134,6 +134,8 @@ type areaPlan struct {
 	squares       []grid.Square
 	targets       []areaTarget
 	corners       bool
+	// wall is how a wall was laid (Wall of Fire); nil for any other area.
+	wall *wallSpec
 }
 
 // areaCoverFn is the cover a target has against an origin: a combatant standing on
@@ -150,6 +152,8 @@ type areaInput struct {
 	sp      link.Spell
 	choice  areaChoice
 	cover   areaCoverFn
+	// wall is the wall the caster laid, for a spell that lays one.
+	wall *wallSpec
 }
 
 func badArea(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
@@ -164,7 +168,7 @@ func planArea(in areaInput) (areaPlan, error) {
 		return areaPlan{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the caster must be on the map")
 	}
 	from := squareOfCombatant(in.caster)
-	plan := areaPlan{asked: from, origin: from, corners: in.sp.SpreadsAroundCorners}
+	plan := areaPlan{asked: from, origin: from, corners: in.sp.SpreadsAroundCorners, wall: in.wall}
 	raw, err := plan.place(in, placement, from)
 	if err != nil {
 		return areaPlan{}, err
@@ -188,6 +192,9 @@ func (p *areaPlan) place(in areaInput, placement playv1.AreaPlacement, from grid
 		p.asked = *in.choice.origin
 		if err := p.settleOrigin(in, from); err != nil {
 			return nil, err
+		}
+		if in.wall != nil {
+			return in.wall.laid(in.terrain, p.origin), nil
 		}
 		return area.FromPoint(p.origin), nil
 	case playv1.AreaPlacement_AREA_PLACEMENT_DIRECTION:
@@ -399,6 +406,10 @@ func (s *Service) previewPlan(
 	if err != nil {
 		return areaPlan{}, err
 	}
+	wall, err := wallFor(sp, msg.GetWall(), msg.GetOrigin())
+	if err != nil {
+		return areaPlan{}, err
+	}
 	terrain, err := s.terrainOf(ctx, nil, m.CampaignID, enc)
 	if err != nil {
 		return areaPlan{}, s.dbError(ctx, "read the terrain", err)
@@ -411,7 +422,7 @@ func (s *Service) previewPlan(
 	// edge of an area they are told about (RN-10).
 	terrain = planOn(v, terrain, known)
 	return planArea(areaInput{
-		v: v, terrain: terrain, cs: cs, caster: caster, sp: sp, choice: choice,
+		v: v, terrain: terrain, cs: cs, caster: caster, sp: sp, choice: choice, wall: wall,
 		cover: func(origin, target playdb.Combatant) (coverPair, error) {
 			cv := coverAgainst(terrain, origin, target, coverPool(cs, v))
 			return coverPair{real: cv, shown: cv}, nil
@@ -485,7 +496,7 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 		choice.origin = &sq
 	}
 	plan, err := planArea(areaInput{
-		v: v, terrain: terrain, cs: nil, caster: caster, sp: sp, choice: choice,
+		v: v, terrain: terrain, cs: nil, caster: caster, sp: sp, choice: choice, wall: ev.Wall,
 		cover: func(_, _ playdb.Combatant) (coverPair, error) { return coverPair{}, nil },
 	})
 	if err != nil {

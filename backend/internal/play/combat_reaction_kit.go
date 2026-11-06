@@ -58,7 +58,12 @@ type kit struct {
 	down bool
 	// surprised says the combatant is surprised and takes no reaction yet.
 	surprised bool
+	// muted says the combatant stands entirely inside a Silence: it casts no reaction spell with a verbal component.
+	muted bool
 }
+
+// verbalReactions are the reaction spells with a verbal component (Counterspell has none).
+var verbalReactions = []string{spellShield, spellHellishRebuke, spellFeatherFall}
 
 // kitOf reads a combatant's reactions, inside tx (nil for a read). ok is false for
 // a combatant that has none: a creature of a character, or a sheet that is gone.
@@ -87,7 +92,19 @@ func (s *Service) kitOf(ctx context.Context, tx pgx.Tx, campaignID string, who p
 	if k.surprised, err = s.surprisedReactor(ctx, tx, who); err != nil {
 		return kit{}, false, err
 	}
+	if k.muted, err = s.mutedReactor(ctx, tx, who); err != nil {
+		return kit{}, false, err
+	}
 	return k, true, nil
+}
+
+// mutedReactor says the combatant stands entirely inside a Silence of its combat (tx nil for a read).
+func (s *Service) mutedReactor(ctx context.Context, tx pgx.Tx, who playdb.Combatant) (bool, error) {
+	q := s.queries
+	if tx != nil {
+		q = q.WithTx(tx)
+	}
+	return mutedIn(ctx, q, who.EncounterID, who)
 }
 
 // canReact says the combatant has its reaction and is able to use it: not spent,
@@ -105,10 +122,18 @@ func slotsUsedOf(who playdb.Combatant) map[string]int {
 	return out
 }
 
+// mutedFor says the combatant cannot cast the reaction spell: it stands in a Silence and the spell has a verbal component.
+func (k kit) mutedFor(spell string) bool {
+	return k.muted && slices.Contains(verbalReactions, spell)
+}
+
 // slotsFor are the free slots and innate uses a reaction spell can be cast with, from minLevel
 // (at least the spell's own level) up: empty when the combatant does not have the
 // spell or nothing is free.
 func (k kit) slotsFor(spell string) []*rulesv1.SlotChoice {
+	if k.mutedFor(spell) {
+		return nil
+	}
 	level := reactionSpellLevel[spell]
 	if k.who.Kind == kindPlayer {
 		if k.opts == nil {

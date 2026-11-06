@@ -1082,11 +1082,28 @@ func (s *Service) checkSmiteSlot(ctx context.Context, e extraCheck, mark *playv1
 // ---- resistance, vulnerability and immunity ----
 
 // modifiersOf lists the resistances, vulnerabilities and immunities that apply to the
-// damage a combatant takes: a creature's or an NPC's from its stat block, a player's
-// character's from its race, its features and its rage (SRD 5.1, "Damage Resistance
-// and Vulnerability"). Rage's resistance holds only while the state lasts and no heavy
-// armor is worn.
+// damage a combatant takes: its own (ownModifiersOf) and the immunity to thunder damage
+// of a Silence it stands in.
 func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID string, states map[string][]playdb.CombatantState, who playdb.Combatant) ([]combat.Modifier, error) {
+	out, err := s.ownModifiersOf(ctx, c, campaignID, states, who)
+	if err != nil {
+		return nil, err
+	}
+	muted, err := mutedIn(ctx, c.q, c.enc.ID, who)
+	if err != nil {
+		return nil, err
+	}
+	if muted {
+		out = append(out, silenceImmunity())
+	}
+	return out, nil
+}
+
+// ownModifiersOf are the modifiers the combatant brings: a creature's or an NPC's from its stat block,
+// a player's character's from its race, its features and its rage (SRD 5.1, "Damage Resistance
+// and Vulnerability").
+// Rage's resistance holds only while the state lasts and no heavy armor is worn.
+func (s *Service) ownModifiersOf(ctx context.Context, c *combatTx, campaignID string, states map[string][]playdb.CombatantState, who playdb.Combatant) ([]combat.Modifier, error) {
 	if holdsHP(who) {
 		return s.statBlockModifiers(ctx, c, campaignID, who)
 	}
