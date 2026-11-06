@@ -527,7 +527,7 @@ func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingD
 	}
 	rolledTotal := clamp32(total, 0, math.MaxInt32)
 	if _, err := c.q.SetPendingDamageRolled(ctx, playdb.SetPendingDamageRolledParams{
-		ID: p.ID, Status: status, Faces: faces32(roll.Faces), Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c), RollTotal: &rolledTotal,
+		ID: p.ID, Status: status, Faces: faces32(roll.Faces), Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c), RollTotal: &rolledTotal, CountedDice: emptyJSONList,
 	}); err != nil {
 		return hit, nil, fmt.Errorf("save the damage roll: %w", err)
 	}

@@ -479,9 +479,9 @@ ORDER BY created_at, id;
 -- name: SetPendingDamageRolled :one
 -- The roll of a pending damage: 'rolled' for a player's character (waits for
 -- the master), 'applied' for an NPC. amount is what lands, roll_total the roll
--- before a half damage halves it.
+-- before a half damage halves it. counted_dice are the dice a table minimum raised.
 UPDATE pending_damages
-SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7
+SET status = $2, faces = $3, physical = $4, amount = $5, resolved_at = $6, roll_total = $7, counted_dice = $8
 WHERE id = $1
 RETURNING *;
 
@@ -519,7 +519,7 @@ RETURNING *;
 -- wrote a JSON null over the empty list, which goes back to the empty list here.
 UPDATE pending_damages
 SET status = 'awaiting_roll', faces = '{}', physical = false, amount = NULL, resolved_at = NULL, roll_total = NULL, taken = NULL,
-    part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL,
+    counted_dice = '[]', part_rolls = '[]', steps = '[]', after_steps = NULL, landed_before = NULL,
     parts = COALESCE(NULLIF(parts, 'null'::JSONB), '[]'::JSONB)
 WHERE id = $1
 RETURNING *;

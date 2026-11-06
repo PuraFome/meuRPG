@@ -1340,6 +1340,7 @@ func (e *logEntry) damage(dice, master, targetsOwn, showDC bool, out *playv1.Com
 	if dice {
 		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice, e.dmg.SavageDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
+		d.Roll.CountedDice = countedProto(e.dmg.CountedDice)
 	}
 	if e.applied != nil { // the master's apply of a character's damage
 		e.damageApplied(d, master, targetsOwn, showDC)

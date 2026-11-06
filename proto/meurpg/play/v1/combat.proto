@@ -3470,6 +3470,10 @@ message DiceRoll {
   // "trait:lucky", from 1 to the new face): an attack roll, an ability check or a saving
   // throw. `faces` holds the faces that count.
   repeated Reroll rerolled = 10;
+  // The dice of a damage roll that counted as another number than they showed (a table roll_minimum):
+  // `faces` keeps what came up, `total` uses what counted. Only a damage with no parts of its own sets it (the dice of a
+  // hit with parts are in each part's `counted_dice`).
+  repeated CountedDie counted_dice = 11;
   // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
   // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
   // player, on an effect the master hides, `source_name_pt` is "Outra fonte" and the

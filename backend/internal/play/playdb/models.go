@@ -439,6 +439,7 @@ type PendingDamage struct {
 	AfterSteps       *int32
 	EffectSourceKey  *string
 	SavageDice       int32
+	CountedDice      []byte
 }
 
 type Puzzle struct {

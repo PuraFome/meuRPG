@@ -762,6 +762,14 @@
           "source_key": "x"
         }
       ],
+      "counted_dice": [
+        {
+          "i": 1,
+          "face": 1,
+          "to": 1,
+          "source_key": "x"
+        }
+      ],
       "resource": "x",
       "rider": "x"
     }
@@ -774,6 +782,14 @@
     "resource": "x",
     "cost": 1
   },
+  "counted_dice": [
+    {
+      "i": 1,
+      "face": 1,
+      "to": 1,
+      "source_key": "x"
+    }
+  ],
   "once_before": {
     "sneak": "x",
     "colossus": "x",

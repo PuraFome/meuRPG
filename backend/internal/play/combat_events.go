@@ -719,8 +719,11 @@ type actionEvent struct {
 	ManeuverSpent []string `json:"maneuver_spent,omitempty"`
 	// DamageReroll is the use of a reroll rule the damage roll spent (combat_damage_reroll.go); an undo gives it back.
 	DamageReroll *damageRerollUse `json:"damage_reroll,omitempty"`
-	OnceBefore   *onceMarks       `json:"once_before,omitempty"`
-	Steps        []stepGroup      `json:"steps,omitempty"`
+	// CountedDice are the dice of a damage roll with no parts that a table minimum raised, next to Faces as they came up.
+	// A roll with parts keeps them in each part (damage_floor.go).
+	CountedDice []countedDie `json:"counted_dice,omitempty"`
+	OnceBefore  *onceMarks   `json:"once_before,omitempty"`
+	Steps       []stepGroup  `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`

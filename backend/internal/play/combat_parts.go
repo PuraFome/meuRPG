@@ -106,6 +106,8 @@ type partRoll struct {
 	// Conditional is the part's, kept for the audience of the roll.
 	Conditional bool       `json:"conditional,omitempty"`
 	Rerolled    []rerolled `json:"rerolled,omitempty"`
+	// Floored are the dice a table minimum raised, next to Faces as they came up; Sum adds what they count as (damage_floor.go).
+	Floored []countedDie `json:"counted_dice,omitempty"`
 	// Resource and Rider are a table maneuver's: the resource it spent and the line only
 	// the master reads.
 	Resource string `json:"resource,omitempty"`
@@ -507,6 +509,7 @@ func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamageP
 	for _, rr := range r.Rerolled {
 		pr.Rerolled = append(pr.Rerolled, &playv1.Reroll{Index: rr.Index, From: rr.From, To: rr.To, SourceKey: rr.SourceKey})
 	}
+	pr.CountedDice = countedProto(r.Floored)
 	_ = damageTypePT
 	return pr
 }
