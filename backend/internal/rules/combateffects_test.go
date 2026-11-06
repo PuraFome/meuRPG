@@ -238,7 +238,9 @@ func TestCheckModifierNewKinds(t *testing.T) {
 		"a resistance to nothing":   {EffectModifier{Kind: ModifierResistance}, "damage_types"},
 		"nonmagical with others":    {EffectModifier{Kind: ModifierResistance, DamageTypes: []string{DamageTypeNonmagicalBPS, "damage-type:fire"}}, "damage_types"},
 		"a save with no ability":    {EffectModifier{Kind: ModifierSaveDisadvantage}, "abilities"},
-		"a save of a made-up one":   {EffectModifier{Kind: ModifierSaveDisadvantage, Abilities: []string{"luck"}}, ""},
+		"a save of a made-up one":   {EffectModifier{Kind: ModifierSaveDisadvantage, Abilities: []string{"luck"}}, "abilities"},
+		"a repeated ability":        {EffectModifier{Kind: ModifierCheckAdvantage, Abilities: []string{"str", "str"}}, "abilities"},
+		"a repeated roll":           {EffectModifier{Kind: ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{"save", "save"}}, "applies_to"},
 		"a check with no ability":   {EffectModifier{Kind: ModifierCheckDisadvantage}, "abilities"},
 		"an unknown kind":           {EffectModifier{Kind: "fly"}, "kind"},
 	}

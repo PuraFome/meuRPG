@@ -150,9 +150,9 @@ type EffectModifier struct {
 	// "dash"...), and MaxWeaponAttacks how many weapon attacks that action makes.
 	Allowed          []string `json:"allowed,omitempty"`
 	MaxWeaponAttacks int      `json:"max_weapon_attacks,omitempty"`
-	// ResistanceKind (a ResistanceKind* constant, empty is resist) and DamageTypes (damage type keys, or
-	// DamageTypeAll or DamageTypeNonmagicalBPS alone) are for ModifierResistance; Kind is taken by the
-	// modifier's own.
+	// ResistanceKind is a ResistanceKind* constant (empty is resist) and DamageTypes the damage type keys, or
+	// DamageTypeAll or DamageTypeNonmagicalBPS alone; both are for ModifierResistance. They are not named
+	// Kind because that field is the modifier's own kind.
 	ResistanceKind string   `json:"resistance_kind,omitempty"`
 	DamageTypes    []string `json:"damage_types,omitempty"`
 }
@@ -526,13 +526,24 @@ func checkEffectModifiers(c *content, d *EffectDef, _ *combatEffects, bad effect
 }
 
 // checkModifierContent checks what a modifier names that only the content knows: the damage types of a
-// resistance. checkModifier has already checked its shape.
+// resistance, the conditions of an immunity and the skill of a check bonus. checkModifier has already
+// checked its shape.
 func (c *content) checkModifierContent(m EffectModifier) error {
-	if m.Kind != ModifierResistance {
-		return nil
-	}
-	if msg := c.checkDamageTypes(&Effect{DamageTypes: m.DamageTypes}); msg != "" {
-		return modifierField("damage_types", "resistance %s", msg)
+	switch m.Kind {
+	case ModifierResistance:
+		if msg := c.checkDamageTypes(&Effect{DamageTypes: m.DamageTypes}); msg != "" {
+			return modifierField("damage_types", "resistance %s", msg)
+		}
+	case ModifierConditionImmunity:
+		for j, k := range m.Conditions {
+			if !c.isCondition(k) {
+				return modifierField(fmt.Sprintf("conditions[%d]", j), "%q is not an SRD condition", k)
+			}
+		}
+	case ModifierCheckBonus:
+		if c.skills[m.Skill] == nil {
+			return modifierField("skill", "%q is not an SRD skill", m.Skill)
+		}
 	}
 	return nil
 }
@@ -617,6 +628,13 @@ func checkEffectFooter(_ *content, d *EffectDef, _ *combatEffects, bad effectFai
 const (
 	// minModifierDie is the smallest die a roll_die adds: a d2.
 	minModifierDie = 2
+	// maxModifierDie is the largest, a d100.
+	maxModifierDie = 100
+	// maxACBonus, maxSpeedAdd and maxCheckBonus bound the flat numbers of ac_bonus, speed_add (feet) and
+	// check_bonus (either sign).
+	maxACBonus    = 20
+	maxSpeedAdd   = 120
+	maxCheckBonus = 20
 	// maxBaseAC is the highest armor class a base_ac may set.
 	maxBaseAC = 60
 	// maxSpeedPercent is the highest speed_multiplier, in percent.
@@ -678,15 +696,7 @@ func checkRollBonus(m EffectModifier) error {
 	if len(m.AppliesTo) == 0 {
 		return modifierField("applies_to", "roll_bonus needs applies_to")
 	}
-	for i, a := range m.AppliesTo {
-		switch {
-		case a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck:
-			return modifierField("applies_to", "applies_to %q: only attack, save and check", a)
-		case slices.Contains(m.AppliesTo[:i], a):
-			return modifierField("applies_to", "applies_to %q is listed twice", a)
-		}
-	}
-	return nil
+	return checkAppliesTo(m.AppliesTo)
 }
 
 func checkTempHP(m EffectModifier) error {
@@ -696,8 +706,9 @@ func checkTempHP(m EffectModifier) error {
 	return nil
 }
 
-// checkResistanceModifier checks the shape of a resistance; the damage types are checked against the
-// content (checkModifierContent).
+// checkResistanceModifier checks the kind of a resistance, that it names damage types and that
+// DamageTypeNonmagicalBPS stands alone. Whether the keys are damage types, and the rest of DamageTypeAll's
+// rule, is checkModifierContent's, which has the content.
 func checkResistanceModifier(m EffectModifier) error {
 	if !slices.Contains(ResistanceKinds, m.ResistanceKind) {
 		return modifierField("resistance_kind", "resistance_kind is resist, immune or vulnerable")
@@ -726,12 +737,23 @@ func checkCheckDisadvantage(m EffectModifier) error {
 }
 
 func checkRollDie(m EffectModifier) error {
-	if m.Die < minModifierDie || (m.Sign != 1 && m.Sign != -1) || len(m.AppliesTo) == 0 {
-		return fmt.Errorf("roll_die needs die, sign (1 or -1) and applies_to")
+	if m.Die > maxModifierDie {
+		return modifierField("die", "roll_die is at most a d%d", maxModifierDie)
 	}
-	for _, a := range m.AppliesTo {
-		if a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck {
-			return fmt.Errorf("applies_to %q: only attack, save and check", a)
+	if m.Die < minModifierDie || (m.Sign != 1 && m.Sign != -1) || len(m.AppliesTo) == 0 {
+		return modifierField("die", "roll_die needs die, sign (1 or -1) and applies_to")
+	}
+	return checkAppliesTo(m.AppliesTo)
+}
+
+// checkAppliesTo refuses a roll that is not attack, save or check, and a repeated one.
+func checkAppliesTo(applies []string) error {
+	for i, a := range applies {
+		switch {
+		case a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck:
+			return modifierField("applies_to", "applies_to %q: only attack, save and check", a)
+		case slices.Contains(applies[:i], a):
+			return modifierField("applies_to", "applies_to %q is listed twice", a)
 		}
 	}
 	return nil
@@ -739,7 +761,10 @@ func checkRollDie(m EffectModifier) error {
 
 func checkCheckBonus(m EffectModifier) error {
 	if m.Skill == "" || m.Value == 0 {
-		return fmt.Errorf("check_bonus needs a skill and a value")
+		return modifierField("skill", "check_bonus needs a skill and a value")
+	}
+	if m.Value < -maxCheckBonus || m.Value > maxCheckBonus {
+		return modifierField("value", "check_bonus is from -20 to 20")
 	}
 	return nil
 }
@@ -752,15 +777,21 @@ func checkBaseAC(m EffectModifier) error {
 }
 
 func checkSpeedAdd(m EffectModifier) error {
+	if m.Value > maxSpeedAdd {
+		return modifierField("value", "speed_add is at most %d feet", maxSpeedAdd)
+	}
 	if m.Value < 1 {
-		return fmt.Errorf("speed_add needs a value in feet")
+		return modifierField("value", "speed_add needs a value in feet")
 	}
 	return nil
 }
 
 func checkACBonus(m EffectModifier) error {
+	if m.Value > maxACBonus {
+		return modifierField("value", "ac_bonus is at most %d", maxACBonus)
+	}
 	if m.Value < 1 {
-		return fmt.Errorf("ac_bonus needs a value")
+		return modifierField("value", "ac_bonus needs a value")
 	}
 	return nil
 }
@@ -788,9 +819,12 @@ func checkCheckAdvantage(m EffectModifier) error {
 
 // checkModifierAbilities refuses an ability key that is not one of the six.
 func checkModifierAbilities(abilities []string) error {
-	for _, a := range abilities {
-		if !slices.Contains(saveAbilities, a) {
-			return fmt.Errorf("unknown ability %q", a)
+	for i, a := range abilities {
+		switch {
+		case !slices.Contains(saveAbilities, a):
+			return modifierField("abilities", "unknown ability %q", a)
+		case slices.Contains(abilities[:i], a):
+			return modifierField("abilities", "ability %q is listed twice", a)
 		}
 	}
 	return nil
@@ -805,7 +839,10 @@ func checkConditionImmunity(m EffectModifier) error {
 
 func checkTurnTempHP(m EffectModifier) error {
 	if !m.FromCaster && m.Value < 1 {
-		return fmt.Errorf("turn_temp_hp needs a value, or from_caster")
+		return modifierField("value", "turn_temp_hp needs a value, or from_caster")
+	}
+	if m.Value > maxTempHP {
+		return modifierField("value", "turn_temp_hp is at most %d", maxTempHP)
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -178,5 +179,145 @@ func TestTableSpellEffectOnAFailedSaveAndOnAHitIsAccepted(t *testing.T) {
 		if _, err := withEffectSpell(t, mutate); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// oneMod is a spell whose effect is the single modifier.
+func oneMod(m EffectModifier) func(*TableSpell) {
+	return func(ts *TableSpell) { ts.Effect.Modifiers = []EffectModifier{m} }
+}
+
+func TestTableSpellEffectOldKindsThroughWith(t *testing.T) {
+	t.Parallel()
+	atk := []string{RollAppliesAttack}
+	cases := []struct {
+		name  string
+		ok    EffectModifier
+		bad   EffectModifier
+		field string
+	}{
+		{
+			"condition_immunity",
+			EffectModifier{Kind: ModifierConditionImmunity, Conditions: []string{"condition:frightened"}},
+			EffectModifier{Kind: ModifierConditionImmunity, Conditions: []string{"condition:frightened", "condition:bored"}},
+			".effect.modifiers[0].conditions[1]",
+		},
+		{
+			"check_bonus",
+			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: 5},
+			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:boredom", Value: 5},
+			".effect.modifiers[0].skill",
+		},
+		{
+			"check_bonus too big",
+			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: -20},
+			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: -2000000000},
+			".effect.modifiers[0].value",
+		},
+		{
+			"roll_die",
+			EffectModifier{Kind: ModifierRollDie, Die: 4, Sign: 1, AppliesTo: atk},
+			EffectModifier{Kind: ModifierRollDie, Die: 1000000, Sign: 1, AppliesTo: atk},
+			".effect.modifiers[0].die",
+		},
+		{
+			"roll_die repeat",
+			EffectModifier{Kind: ModifierRollDie, Die: 100, Sign: -1, AppliesTo: []string{"attack", "save"}},
+			EffectModifier{Kind: ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{"attack", "attack"}},
+			".effect.modifiers[0].applies_to",
+		},
+		{
+			"speed_add",
+			EffectModifier{Kind: ModifierSpeedAdd, Value: 120},
+			EffectModifier{Kind: ModifierSpeedAdd, Value: 1000000000},
+			".effect.modifiers[0].value",
+		},
+		{
+			"speed_multiplier",
+			EffectModifier{Kind: ModifierSpeedMultiplier, Value: 50},
+			EffectModifier{Kind: ModifierSpeedMultiplier, Value: 401},
+			".effect.modifiers[0]",
+		},
+		{
+			"ac_bonus",
+			EffectModifier{Kind: ModifierACBonus, Value: 20},
+			EffectModifier{Kind: ModifierACBonus, Value: 2147483647},
+			".effect.modifiers[0].value",
+		},
+		{
+			"save_advantage",
+			EffectModifier{Kind: ModifierSaveAdvantage, Abilities: []string{"wis"}},
+			EffectModifier{Kind: ModifierSaveAdvantage, Abilities: []string{"wis", "wis"}},
+			".effect.modifiers[0].abilities",
+		},
+		{
+			"check_advantage",
+			EffectModifier{Kind: ModifierCheckAdvantage, Abilities: []string{"str"}},
+			EffectModifier{Kind: ModifierCheckAdvantage, Abilities: []string{"luck"}},
+			".effect.modifiers[0].abilities",
+		},
+		{
+			"attack_disadvantage",
+			EffectModifier{Kind: ModifierAttackDisadvantage},
+			EffectModifier{Kind: ModifierAttackDisadvantage, Once: true},
+			".effect.modifiers[0].once",
+		},
+		{
+			"turn_temp_hp",
+			EffectModifier{Kind: ModifierTurnTempHP, Value: 1000},
+			EffectModifier{Kind: ModifierTurnTempHP, Value: 1001},
+			".effect.modifiers[0].value",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := withEffectSpell(t, oneMod(tc.ok)); err != nil {
+				t.Fatalf("refused: %v", err)
+			}
+			_, err := withEffectSpell(t, oneMod(tc.bad))
+			if err == nil {
+				t.Fatal("accepted")
+			}
+			if !namesField(err, tc.field) {
+				t.Errorf("fields %q, want one ending in %q", refusedFields(err), tc.field)
+			}
+		})
+	}
+}
+
+func TestTableSpellEffectDoesNotChangeTheSRD(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	before := slices.Sorted(maps.Keys(srd.c.combatEffects.spells))
+	if _, err := withEffectSpell(t, nil); err != nil {
+		t.Fatal(err)
+	}
+	// With starts from a fresh load, so compare on the one the table was built from.
+	c, err := srd.With(Overlay{Revision: 1, Spells: []TableSpell{effectSpell(nil)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := slices.Sorted(maps.Keys(srd.c.combatEffects.spells))
+	if !slices.Equal(before, after) {
+		t.Errorf("the SRD spells with effects changed: %q -> %q", before, after)
+	}
+	if got := slices.Sorted(maps.Keys(c.c.combatEffects.spells)); !slices.Equal(before, got) {
+		t.Errorf("the table content's shared SRD map changed: %q", got)
+	}
+}
+
+func TestTableSpellEffectIsACopyOfTheEntry(t *testing.T) {
+	t.Parallel()
+	ts := effectSpell(nil)
+	c, err := loadForTest(t).With(Overlay{Revision: 1, Spells: []TableSpell{ts}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts.Effect.Modifiers[0].AppliesTo[0] = RollAppliesCheck
+	ts.Effect.Modifiers[0].Value = 19
+	d, _ := c.CombatSpellEffect(ts.Key)
+	if d.Modifiers[0].AppliesTo[0] != RollAppliesAttack || d.Modifiers[0].Value != 2 {
+		t.Errorf("the registered effect followed the caller's entry: %+v", d.Modifiers[0])
 	}
 }

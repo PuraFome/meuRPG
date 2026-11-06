@@ -21,6 +21,10 @@ var (
 	resistanceVerbsPT = map[string]string{
 		ResistanceKindResist: "Resistência a", ResistanceKindImmune: "Imunidade a", ResistanceKindVulnerable: "Vulnerabilidade a",
 	}
+	abilityLabelsPT = map[string]string{
+		ModifierSaveAdvantage: "Vantagem em resistências", ModifierSaveDisadvantage: "Desvantagem em resistências",
+		ModifierCheckAdvantage: "Vantagem em testes", ModifierCheckDisadvantage: "Desvantagem em testes",
+	}
 	// fixedTagsPT are the kinds whose label has no number or list in it.
 	fixedTagsPT = map[string]string{
 		ModifierNoMove: "Sem deslocamento", ModifierNoAction: "Sem ações", ModifierNoReaction: "Sem reações",
@@ -74,10 +78,7 @@ func modifierTagPT(m EffectModifier) string {
 
 // abilityTagPT is the label of the kinds that name abilities ("Vantagem em resistências (SAB)").
 func abilityTagPT(m EffectModifier) string {
-	what := map[string]string{
-		ModifierSaveAdvantage: "Vantagem em resistências", ModifierSaveDisadvantage: "Desvantagem em resistências",
-		ModifierCheckAdvantage: "Vantagem em testes", ModifierCheckDisadvantage: "Desvantagem em testes",
-	}[m.Kind]
+	what := abilityLabelsPT[m.Kind]
 	if what == "" || len(m.Abilities) == 0 {
 		return what
 	}
@@ -115,7 +116,7 @@ func joinPT(keys []string, words map[string]string) string {
 			ws[i] = k
 		}
 	}
-	if len(ws) < 2 {
+	if len(ws) <= 1 {
 		return strings.Join(ws, "")
 	}
 	return strings.Join(ws[:len(ws)-1], ", ") + " e " + ws[len(ws)-1]
