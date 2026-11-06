@@ -88,7 +88,9 @@ Six modifier kinds are read by the play module for SRD and table effects alike.
   A step of an effect the master hides reads "Outra fonte" to everyone but the master (`Modifier.Hidden`).
 - **`temp_hp`.**
   `giveEffectTempHP` gives the temporary hit points when the effect lands and keeps the higher pool.
-  The row keeps the pool the effect set as its claim, and none when it raised nothing.
+  The row keeps the spell's own number in `value`, which the card shows.
+  The pool the effect set is the row's `claim`, and a row that raised nothing, or found no one to give to, is `unclaimed` (`combat.TempHPClaim`).
+  A row stored before the claim existed claims its `value`.
   The cast records the pool before it and the claims it took from older effects, so the undo gives them back.
   The end clears the pool only while it is no larger than the claim of the row that ends.
   Outside a combat the same holds on the vitals of each character the cast reaches (`giveCharacterTempHP`, `afterCharacterEffectsGone`).
@@ -98,7 +100,8 @@ Who reads what:
 - The master and the target's player read the card, with its tags.
 - The other players read the label alone: the names of the conditions they may read, or `player_label_pt`.
   They read no number behind it, in a combat or out of one.
-- An effect the master hides, or whose audience is `owner`, names itself to no one else in the sources of a roll ("Outra fonte").
+  Out of a combat, `ListCharacterEffects` leaves out the owner-only conditions (`ownerOnlyConditions`) and the row of an owner-only condition, as the combat does.
+- An effect the master hides, or whose audience is `owner`, names itself to no one else in the sources of a roll ("Outra fonte"; `hasUnreadEffect`).
 - An effect from a caster the viewer does not see names no caster.
 
 Tests: `lasting_effects_tablespell_test.go` and `lasting_effects_cast_test.go`.

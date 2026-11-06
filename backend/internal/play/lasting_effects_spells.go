@@ -107,34 +107,37 @@ func (s *Service) applyLastingSpell(
 func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent, prior map[string]int) error {
 	for _, r := range rows {
 		mods := effectModifiers(r)
-		amount := combat.TempHP(mods)
+		if combat.TempHP(mods) <= 0 {
+			continue
+		}
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
 		j := slices.IndexFunc(targs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
-		if amount <= 0 {
-			continue
-		}
-		if i < 0 || j < 0 { // not given here: the end has nothing of this effect to take back
-			if err := s.setClaim(ctx, c, r, mods, 0); err != nil {
+		pool := 0 // not given here (i or j not found): the end has nothing of this effect to take back
+		if i >= 0 && j >= 0 {
+			var err error
+			if pool, err = s.giveRowTempHP(ctx, c, cs[i], r, mods, made, j, prior[r.CombatantID]); err != nil {
 				return err
 			}
-			continue
 		}
-		t, err := s.readFxTarget(ctx, c, cs[i])
-		if err != nil {
-			return err
-		}
-		if amount <= t.temp {
-			// Nothing raised. A recast of the same spell keeps the claim of the cast it replaced, so the pool
-			// that cast gave still goes when this one ends.
-			amount = prior[r.CombatantID]
-		} else if err := s.takeOverTempHP(ctx, c, t, r, amount, made, j); err != nil {
-			return err
-		}
-		if err := s.setClaim(ctx, c, r, mods, amount); err != nil {
+		if err := s.setClaim(ctx, c, r, mods, pool); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// giveRowTempHP gives one row's temporary hit points and returns the pool the row claims. When nothing was
+// raised a recast of the same spell keeps the claim of the cast it replaced (inherited).
+func (s *Service) giveRowTempHP(ctx context.Context, c *combatTx, who playdb.Combatant, r playdb.CombatantState, mods []rules.EffectModifier, made *actionEvent, hit, inherited int) (int, error) {
+	t, err := s.readFxTarget(ctx, c, who)
+	if err != nil {
+		return 0, err
+	}
+	amount := combat.TempHP(mods)
+	if amount <= t.temp {
+		return inherited, nil
+	}
+	return amount, s.takeOverTempHP(ctx, c, t, r, amount, made, hit)
 }
 
 // priorTempClaims are the temp_hp claims, by combatant, of the effects of the same spell another casting left:
@@ -198,7 +201,7 @@ func claimedTempHP(mods []rules.EffectModifier, pool int) []byte {
 			out[i].Claim, out[i].Unclaimed = pool, pool == 0
 		}
 	}
-	body, _ := json.Marshal(out) //nolint:errcheck // plain structs
+	body, _ := json.Marshal(out)
 	return body
 }
 
