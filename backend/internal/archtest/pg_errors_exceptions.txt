@@ -1,0 +1,4 @@
+# Non-test files of internal/identity and internal/authz that read a database
+# error's code themselves (pgconn, PgError, SQLState, a SQLSTATE literal). One
+# path per line, relative to backend/, sorted.
+# The list can only shrink. Use db.IsUniqueViolation instead of a new entry.
