@@ -402,8 +402,11 @@ The sheet judges it on what the character owns (`lostFeats`).
 The guided level-up refuses an unmet feat with `LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE`.
 A feat chosen inside a level-up is refused with `LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE`.
 The choice paths, feat choices at creation included, refuse it with `CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET`.
-The player's copy of a feat and the level-up options blank a hidden race and a hidden feat named by `lacks_feature_key`.
-A trait of a hidden entry is not blanked, and neither are the texts of the feat-choice cards.
+A player never reads the name of a hidden race, feat or feature, in a key or in a text.
+That holds for the player's copy of a feat, the level-up options and the texts of the feat-choice cards.
+A feat that asks only for hidden races is not offered to a player and is not in their copy, because without the races its prerequisite would read as none.
+A feat that asks for some visible races and some hidden ones names the visible ones only.
+In the level-up options and the cards, a feat that asks for the sheet's own race still names it to that sheet.
 The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.json`) is in the same `feats` map.
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.
@@ -430,10 +433,12 @@ The options screen has no creature group, so creatures are switched through the 
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.
-- `Content.Hidden(key)` is what the player does not receive: archived, switched off, or the subclass or subrace of a class or race that is switched off or archived.
+- `Content.Hidden(key)` is what the player does not receive: archived, switched off, the subclass or subrace of a class or race that is switched off or archived, or a trait, feature, background feature or option of a hidden race, subrace, class, subclass or background (`Content.Owners` names those).
+  A trait that several races share is hidden once all of them are.
   The children keep their own switch, so turning the class back on returns each subclass as it was.
 - A parent only hides the children of whoever does not have it: `Content.OffKeys(build)` lists the switched-off keys a sheet uses, and a subclass (or subrace) under a switched-off class (or race) counts only when the sheet does not have that class (or race).
   A sheet that already has the switched-off class keeps reaching its subclass level; a new sheet cannot take the class, so not the subclass either.
+- `Content.ForPlayer()` is the content as a player reads it: the feat-choice cards and the feats of the level-up options built from it name no hidden entry.
 - `Content.AnyHidden()` lets a caller that only filters skip the work when nothing is hidden.
 
 ## "A classe mudou"
