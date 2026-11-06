@@ -10,6 +10,8 @@ How a screen is designed and reviewed is in [Design](../design/README.md).
 `platform/httpserver.NewStatic` serves `index.html` and the build's files from `WEB_DIR` (`/app/web` in the image).
 Without a valid `WEB_DIR` the server starts API-only and logs a line; that is the normal case outside the Docker image (`make run`, for example).
 A path that is not an API path falls back to `index.html`, so the Angular router takes over.
+A path whose last segment has the build's file shape (`name-<8 upper-case letters or digits>.ext`) never falls back: when the file does not exist, it gets a 404 with `Cache-Control: no-store`.
+A client route must not end in that shape.
 The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*`, `/downloads/*`, `/healthz` and `/readyz`: an unknown path under them is a plain 404, never the page.
 
 | Aspect | Behaviour |
