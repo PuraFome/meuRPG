@@ -114,6 +114,11 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	}
 	effects := slices.Clone(f.Effects)
 	if !offerOptions(effects, keys) {
+		for i := range effects {
+			if isFeatureChoice(&effects[i]) && effects[i].Set != "" {
+				return nil, ovErr(f.Key, "a choice that offers an option set cannot offer the options of the feature").at(fmt.Sprintf("%s.effects[%d].set", path, i), ReasonValue)
+			}
+		}
 		return nil, ovErr(f.Key, "a feature with options needs a choice of features to offer them").at(path+".effects", ReasonEffect)
 	}
 	return effects, nil
@@ -416,7 +421,7 @@ func (b *overlayBuilder) checkChoiceEffect(site effectSite, e *Effect) error {
 	if err := checkChoiceCount(site, e); err != nil {
 		return err
 	}
-	if err := checkChoiceList(site, e); err != nil {
+	if err := b.checkChoiceList(site, e); err != nil {
 		return err
 	}
 	if b.optionEntry[site.owner] != "" {
@@ -452,9 +457,9 @@ func checkChoiceCount(site effectSite, e *Effect) error {
 
 // checkChoiceList checks the list of options or feats a choice offers against
 // the number it asks for.
-func checkChoiceList(site effectSite, e *Effect) error {
+func (b *overlayBuilder) checkChoiceList(site effectSite, e *Effect) error {
 	if e.Set != "" {
-		return checkChoiceSet(site, e)
+		return b.checkChoiceSet(site, e)
 	}
 	if e.Choice == "feature" && e.Count > len(e.From) {
 		return site.fail(".count", ReasonValue, "a choice of features cannot ask for more than the %d options it lists", len(e.From))
@@ -473,7 +478,7 @@ func checkChoiceList(site effectSite, e *Effect) error {
 
 // checkChoiceSet checks a choice of features that offers an option set.
 // Only a feat offers one, the set exists, and the choice has no list of its own.
-func checkChoiceSet(site effectSite, e *Effect) error {
+func (b *overlayBuilder) checkChoiceSet(site effectSite, e *Effect) error {
 	if !strings.HasPrefix(site.owner, "feat:") {
 		return site.fail(".set", ReasonValue, "only a feat offers an option set")
 	}
@@ -486,6 +491,9 @@ func checkChoiceSet(site effectSite, e *Effect) error {
 		return site.fail(".set", ReasonValue, "the set %q is the options of a class feature of the table, not a set to offer", e.Set)
 	case len(e.From) > 0:
 		return site.fail(".set", ReasonValue, "a choice offers a set or a list (from), not both")
+	}
+	if n := len(b.n.optionSetKeys(e.Set)); e.Count > n {
+		return site.fail(".count", ReasonValue, "a choice cannot ask for more than the %d options of the set %q", n, e.Set)
 	}
 	return nil
 }

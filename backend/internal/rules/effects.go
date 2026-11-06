@@ -96,6 +96,7 @@ type Effect struct {
 	// choice, picks of a feat (picks.go).
 	// Name names the choice within its entry (a-z, 0-9 and _).
 	// A later effect of the same feat writes "@name" for what was picked.
+	// Only a choice of an ability or a damage type has a name.
 	// Set, on a choice of kind "feature", is an option set (optionSetDefs).
 	// The choice then offers every option of the set instead of the From list.
 	// The kinds "ability" and "damage_type" are a feat's alone and need a Name.
@@ -314,7 +315,8 @@ type Effect struct {
 
 	// picks are the names of the feat's earlier choices, with the kind of each.
 	// The "@name" tokens of this effect refer to them (picks.go).
-	// Set on an effect that reads a token, and kept for Derive, which resolves the tokens.
+	// Set on an effect that reads a token, and kept for Derive, which writes the pick into the
+	// effect's fields and formulas before they run.
 	picks map[string]string
 }
 
@@ -817,8 +819,11 @@ func (x effectCompiler) choice() error {
 	if !slices.Contains(choiceKinds, e.Choice) || e.Count < 0 {
 		return x.fail("unknown choice %q", e.Choice)
 	}
+	if e.Name != "" && e.Choice != pickAbility && e.Choice != pickDamageType {
+		return x.fail("only a choice of an ability or a damage type has a name")
+	}
 	if e.Name != "" && !validPickName(e.Name) {
-		return x.fail("name %q: a name has 1 to %d characters of a-z, 0-9 and _", e.Name, formula.MaxStateNameBytes)
+		return x.fail("name %q: a name has 1 to %d characters of a-z, 0-9 and _, and starts with a letter", e.Name, formula.MaxStateNameBytes)
 	}
 	if e.Set != "" {
 		if _, known := optionSetOf(e.Set); !known || e.Choice != "feature" || len(e.From) > 0 {

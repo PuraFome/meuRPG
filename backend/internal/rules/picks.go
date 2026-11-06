@@ -38,7 +38,10 @@ var reservedPickName = strings.TrimPrefix(tableSuffix, "@")
 
 // validPickName says whether s can name a pick.
 // It follows the rules of a state's name and is not the table suffix.
-func validPickName(s string) bool { return formula.ValidStateName(s) && s != reservedPickName }
+// It starts with a letter, so "feat:x#1" is never the key of a text of the feat (ChoiceTextKey).
+func validPickName(s string) bool {
+	return formula.ValidStateName(s) && s[0] >= 'a' && s[0] <= 'z' && s != reservedPickName
+}
 
 // pickField is a field of an Effect where a token may stand.
 // attr is its name in the effect.
@@ -184,8 +187,10 @@ func checkPickName(site effectSite, e *Effect, declared map[string]string) error
 		return site.fail(".name", ReasonValue, "only a choice has a name")
 	case !strings.HasPrefix(site.owner, "feat:"):
 		return site.fail(".name", ReasonValue, "only a choice of a feat has a name: only a feat reads its picks")
+	case e.Choice != pickAbility && e.Choice != pickDamageType:
+		return site.fail(".name", ReasonValue, "only a choice of an ability or a damage type has a name")
 	case !validPickName(e.Name):
-		return site.fail(".name", ReasonValue, "a name has 1 to %d characters of a-z, 0-9 and _, and is not %q", formula.MaxStateNameBytes, reservedPickName)
+		return site.fail(".name", ReasonValue, "a name has 1 to %d characters of a-z, 0-9 and _, starts with a letter, and is not %q", formula.MaxStateNameBytes, reservedPickName)
 	}
 	if e.Count != 1 {
 		return site.fail(".count", ReasonValue, "a named choice picks one: @%s stands for a single pick", e.Name)
@@ -367,13 +372,25 @@ func (c *content) recompilePick(e *Effect, f pickField) bool {
 	if *prog == nil || *f.strings(e)[0] == (*prog).Source() {
 		return true
 	}
+	gated := f.attr == "when"
+	src := *f.strings(e)[0]
+	key := programKey{src, (*prog).Kind(), gated, false}
+	if c.pickPrograms != nil {
+		if p, ok := c.pickPrograms.Load(key); ok {
+			*prog = p.(*formula.Program)
+			return true
+		}
+	}
 	compiler := c.compiler
-	if f.attr == "when" {
+	if gated {
 		compiler = compiler.WithStates()
 	}
-	p, err := compiler.Compile(*f.strings(e)[0], (*prog).Kind())
+	p, err := compiler.Compile(src, key.kind)
 	if err != nil {
 		return false
+	}
+	if c.pickPrograms != nil {
+		c.pickPrograms.Store(key, p)
 	}
 	*prog = p
 	return true

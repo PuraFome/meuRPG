@@ -20,7 +20,7 @@ type TableFeat struct {
 	Prerequisite FeatPrerequisite
 	Effects      []Effect
 	// Options is the feat's option list, as a class feature's (TableFeature.Options): up
-	// to MaxFeatOptions options, each a feature "feature:...@mesa" whose effects apply
+	// to MaxFeatureOptions options, each a feature "feature:...@mesa" whose effects apply
 	// only while it is picked. They do not nest. The feat's choice of features lists
 	// them in `from` (or, with none, offers all of them), or offers an option set (Effect.Set).
 	Options []TableFeature

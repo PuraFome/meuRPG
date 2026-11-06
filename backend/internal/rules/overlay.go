@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -1186,6 +1187,7 @@ func (b *overlayBuilder) startClone(o *Overlay) *content {
 	slices.Sort(classIndexes)
 	n.compiler = formula.NewCompiler(classIndexes)
 	n.programs = map[programKey]*formula.Program{}
+	n.pickPrograms = &sync.Map{}
 	return n
 }
 

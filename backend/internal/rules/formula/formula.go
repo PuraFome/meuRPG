@@ -182,13 +182,15 @@ func (c *Compiler) WithSlot() *Compiler {
 }
 
 // PickPrefix starts the literal of a pick in mod() and score(): "@ability" stands for
-// the ability the player picked in the choice named "ability". The compiler keeps the
-// literal as it is; the Env's Mod and Score receive it and resolve it for the character.
+// the ability the player picked in the choice named "ability". The compiler accepts the
+// literal so a table can be checked at import; it is never evaluated. The caller
+// writes the pick into the formula text and compiles it again before it runs.
 const PickPrefix = "@"
 
 // WithPicks returns a compiler for the same classes that also accepts mod("@name") and
-// score("@name") for each of the names (the pick of a choice of the same entry). Any
-// other "@..." literal, and "@name" anywhere but those two calls, is refused.
+// score("@name") for each of the names (the pick of a choice of the same entry), for
+// validation only. Any other "@..." literal, and "@name" anywhere but those two calls,
+// is refused.
 func (c *Compiler) WithPicks(names []string) *Compiler {
 	return &Compiler{classes: c.classes, states: c.states, slot: c.slot, picks: slices.Clone(names)}
 }

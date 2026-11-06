@@ -202,7 +202,6 @@ func TestAFeatOffersAnOptionSet(t *testing.T) {
 	if keys := optionKeys(ch); !slices.Contains(keys, doubleGuard) || !slices.Contains(keys, "feature:fighter-fighting-style-defense") {
 		t.Fatalf("options = %v", keys)
 	}
-	baseAC := Derive(b, c).ArmorClass
 	b.FeatureChoices = []string{"feature:fighter-fighting-style-defense"}
 	d := Derive(b, c)
 	if len(c.Choices(b).ChoiceProblems(true)) != 0 {
@@ -211,7 +210,6 @@ func TestAFeatOffersAnOptionSet(t *testing.T) {
 	if !slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == "feature:fighter-fighting-style-defense" }) {
 		t.Errorf("the picked style is not on the sheet: %+v", d.Features)
 	}
-	_ = baseAC
 	b.FeatureChoices = []string{doubleGuard}
 	if d := Derive(b, c); !slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == doubleGuard }) {
 		t.Errorf("the table's style is not on the sheet: %+v", d.Features)
