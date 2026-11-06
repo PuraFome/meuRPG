@@ -94,6 +94,10 @@ export interface EffectDraft {
   reachM: string;
   attackName: string;
   damageDice: string;
+  /** choice (in a feat): the name later effects refer to as @name, the option set it offers, and for a score modifier the highest score it may lift. */
+  name: string;
+  set: string;
+  cap: number;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

@@ -28,6 +28,7 @@ export function menuResponse(): GetEffectMenuResponse {
           field('target', 'choice', true, 'modifier_targets'),
           field('mode', 'choice', true, 'modifier_modes'),
           field('value', 'formula', true),
+          field('cap', 'number', false, '', 20, 30),
           field('when', 'condition'),
           field('tags', 'tags', false, 'tag_prefixes'),
           field('text_pt', 'text'),
@@ -90,6 +91,8 @@ export function menuResponse(): GetEffectMenuResponse {
         fields: [
           field('choice', 'choice', true, 'choice_kinds'),
           field('count', 'number', true, '', 1),
+          field('name', 'text'),
+          field('set', 'text'),
           field('from', 'choices'),
           field('when', 'condition'),
           field('text_pt', 'text'),
