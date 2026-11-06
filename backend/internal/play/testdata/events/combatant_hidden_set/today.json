@@ -122,6 +122,17 @@
       "hp": 1
     }
   },
+  "holds": {
+    "x": {
+      "hp": 1,
+      "temp": 1,
+      "defeated": true,
+      "shape": {
+        "beast": "x",
+        "hp": 1
+      }
+    }
+  },
   "effect_end": {
     "effect": "x",
     "hp_before": 1,

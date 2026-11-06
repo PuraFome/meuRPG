@@ -627,7 +627,7 @@ state unchanged
 == Second Wind after the action is used ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"action_before": true, "after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"action_before": true, "after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -637,7 +637,7 @@ vitals Toren | 16 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind as the master against forced real dice ==
 ok healed 4
 roll {"diceCount":1,"diceSides":10,"faces":[2],"modifier":2,"total":4}
-event action_taken {"after": {"hp": 12}, "amount": 4, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [2], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 4}
+event action_taken {"after": {"hp": 12}, "amount": 4, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [2], "heal": true, "holds": {"Toren": {"hp": 12}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 4}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -646,7 +646,7 @@ vitals Toren | 12 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind as the master with a typed sum ==
 ok healed 11
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":11}
-event action_taken {"after": {"hp": 19}, "amount": 11, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 11}
+event action_taken {"after": {"hp": 19}, "amount": 11, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 19}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 11}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -658,7 +658,7 @@ state unchanged
 == Second Wind as the master with the app's dice ==
 ok healed 10
 roll {"diceCount":1,"diceSides":10,"faces":[8],"modifier":2,"total":10}
-event action_taken {"after": {"hp": 18}, "amount": 10, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [8], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 10}
+event action_taken {"after": {"hp": 18}, "amount": 10, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [8], "heal": true, "holds": {"Toren": {"hp": 18}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 10}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -667,7 +667,7 @@ vitals Toren | 18 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind in a combat without a map ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -679,7 +679,7 @@ state unchanged
 == Second Wind rolled in the app ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"faces":[6],"modifier":2,"total":8}
-event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [6], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16}, "amount": 8, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [6], "heal": true, "holds": {"Toren": {"hp": 16}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -700,7 +700,7 @@ state unchanged
 == Second Wind rolled in the app when the player prefers real dice ==
 ok healed 5
 roll {"diceCount":1,"diceSides":10,"faces":[3],"modifier":2,"total":5}
-event action_taken {"after": {"hp": 13}, "amount": 5, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [3], "heal": true, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 5}
+event action_taken {"after": {"hp": 13}, "amount": 5, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "faces": [3], "heal": true, "holds": {"Toren": {"hp": 13}}, "key": "feature:second-wind", "modifier": 2, "resource": "second_wind", "round": 1, "total": 5}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -712,7 +712,7 @@ state unchanged
 == Second Wind typed when the player prefers real dice ==
 ok healed 7
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":7}
-event action_taken {"after": {"hp": 15}, "amount": 7, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 7}
+event action_taken {"after": {"hp": 15}, "amount": 7, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 15}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 7}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -721,7 +721,7 @@ vitals Toren | 15 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with a typed sum ==
 ok healed 9
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":9}
-event action_taken {"after": {"hp": 17}, "amount": 9, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 9}
+event action_taken {"after": {"hp": 17}, "amount": 9, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 17}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 9}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -742,7 +742,7 @@ state unchanged
 == Second Wind with temporary hit points ==
 ok healed 8
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":8}
-event action_taken {"after": {"hp": 16, "temp": 5}, "amount": 8, "before": {"hp": 8, "temp": 5}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
+event action_taken {"after": {"hp": 16, "temp": 5}, "amount": 8, "before": {"hp": 8, "temp": 5}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 16, "temp": 5}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 8}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -751,7 +751,7 @@ vitals Toren | 16 | 5 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with the highest typed sum ==
 ok healed 12
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":12}
-event action_taken {"after": {"hp": 20}, "amount": 12, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 12}
+event action_taken {"after": {"hp": 20}, "amount": 12, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 20}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 12}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
@@ -760,7 +760,7 @@ vitals Toren | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"second_wind": 1}
 == Second Wind with the lowest typed sum ==
 ok healed 3
 roll {"diceCount":1,"diceSides":10,"modifier":2,"physical":true,"total":3}
-event action_taken {"after": {"hp": 11}, "amount": 3, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 3}
+event action_taken {"after": {"hp": 11}, "amount": 3, "before": {"hp": 8}, "combatant_id": "Toren", "death_before": {}, "dice_count": 1, "dice_sides": 10, "heal": true, "holds": {"Toren": {"hp": 11}}, "key": "feature:second-wind", "modifier": 2, "physical": true, "resource": "second_wind", "round": 1, "total": 3}
 combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
 combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
 combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0

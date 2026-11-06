@@ -45,7 +45,7 @@ The undone line disappears from the log.
 ## What the befores hold
 
 - **The hit points the action left.** An undo is refused when a hit point value it would overwrite is not the one the action left.
-  The values are the hit points, the temporary hit points, the Wild Shape pool and the defeat of each combatant the action changed, and of its actor and target.
+  The values are the hit points, the temporary hit points, the Wild Shape pool and the defeat of each combatant whose numbers the action changed.
   A refused undo writes nothing.
   The refusal names the combatants that changed and never says a number.
   A write that leaves no event, such as a rest, a level change or a direct database change, is what it catches.

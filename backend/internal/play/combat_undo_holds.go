@@ -56,8 +56,8 @@ func (s *Service) hpSnapshot(ctx context.Context, c *combatTx) (map[string]hpSta
 }
 
 // withHolds keeps in the event of an undoable change the hit points it left on each combatant
-// whose hit points it changed, and on the ones the event names as actor and target, whose numbers
-// its undo writes back even when the action left them as they were. Without a snapshot from before the change it keeps nothing.
+// whose hit points it changed. An action that left a combatant's numbers as they were holds none for
+// it: its undo writes the same numbers back and a later change to them is not checked. Without a snapshot from before the change it keeps nothing.
 func (s *Service) withHolds(ctx context.Context, c *combatTx, payload any) (any, error) {
 	ev, ok := payload.(actionEvent)
 	if !ok || c.hpBefore == nil {
@@ -68,8 +68,7 @@ func (s *Service) withHolds(ctx context.Context, c *combatTx, payload any) (any,
 		return nil, err
 	}
 	for id, now := range after {
-		before, had := c.hpBefore[id]
-		if had && (!before.same(now) || id == ev.Actor || id == ev.Target) {
+		if before, had := c.hpBefore[id]; had && !before.same(now) {
 			if ev.Holds == nil {
 				ev.Holds = map[string]hpState{}
 			}
