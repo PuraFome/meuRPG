@@ -61,10 +61,12 @@ import {
 import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
+import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
 import { Fold } from '../../../../shared/fold/fold';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
+import { THROW_BACK_KEY } from '../attack-sheet/attack-sheet-data';
 import { ActionRow, type RowEconomy } from './action-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { GroupState } from './group-state';
@@ -152,6 +154,9 @@ export class ActionGroups {
   readonly contestAttacks = input<readonly ContestAttackOption[]>([]);
   /** The contest facts of the turn: grappled (and who can escape), hidden, surprised (W7-X). */
   readonly contest = input<ContestTurnState | undefined>(undefined);
+
+  /** The table dice (Golpe Certeiro) a weapon attack of the player's own turn may take, with the uses left (`GetTurnOptions.maneuver_dice`); none for an NPC. */
+  readonly maneuverDice = input<readonly ListedDie[]>([]);
 
   /** The extra action an effect gives (Velocidade): its line, what it may be and why it is not there; `null` without one. */
   readonly extraAction = input<ExtraActionOption | null>(null);
@@ -248,6 +253,14 @@ export class ActionGroups {
       this.spentWord(),
       this.canUse,
     ),
+  );
+  /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */
+  protected readonly maneuverNote = computed(() =>
+    this.attackParts().open.some(
+      (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.key !== THROW_BACK_KEY,
+    )
+      ? maneuverLine(this.maneuverDice(), 'list')
+      : '',
   );
   protected readonly spellParts = computed(() =>
     partByEconomy(

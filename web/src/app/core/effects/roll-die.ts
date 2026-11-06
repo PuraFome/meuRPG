@@ -97,3 +97,43 @@ export interface DieUses {
 export function attackDieCost(die: RollDie, uses: DieUses): string {
   return `d${die.sides} somado ao ataque · gasta 1 de ${uses.resourceNamePt} · restam ${uses.left}`;
 }
+
+/** What a weapon-attack die listing needs: the die and its pool (`ManeuverDieOption`). */
+export interface ListedDie {
+  readonly die?: RollDie;
+  readonly resourceNamePt: string;
+  readonly usesLeft: number;
+}
+
+function usesWord(left: number): string {
+  return left > 0 ? `restam ${left}` : 'sem usos';
+}
+
+/**
+ * The one line that says a table die may join a weapon attack: "Golpe Certeiro (d8) pode entrar num ataque com arma:
+ * você marca ao rolar. Reserva de Golpes: restam 2." (`where: 'list'`), or "... pode entrar neste ataque: ... Restam 2."
+ * (`where: 'attack'`, the pool is named only when the dice come from more than one). The recharge is never named: the
+ * options do not carry it. `''` without dice.
+ */
+export function maneuverLine(dice: readonly ListedDie[], where: 'list' | 'attack'): string {
+  const listed = dice.filter((d) => d.die);
+  if (!listed.length) {
+    return '';
+  }
+  const names = listed.map((d) => `${d.die?.namePt} (d${d.die?.sides})`);
+  const who =
+    names.length === 1
+      ? `${names[0]} pode`
+      : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]} podem`;
+  const pools = new Map<string, number>();
+  for (const d of listed) {
+    pools.set(d.resourceNamePt, d.usesLeft);
+  }
+  const lead = `${who} entrar ${where === 'list' ? 'num ataque com arma' : 'neste ataque'}: você marca ao rolar.`;
+  if (where === 'attack' && pools.size === 1) {
+    const left = [...pools.values()][0];
+    return `${lead} ${left > 0 ? `Restam ${left}.` : 'Sem usos.'}`;
+  }
+  const tail = [...pools].map(([pool, left]) => `${pool}: ${usesWord(left)}.`).join(' ');
+  return `${lead} ${tail}`;
+}

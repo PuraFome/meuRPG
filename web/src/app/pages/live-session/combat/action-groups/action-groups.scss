@@ -267,3 +267,21 @@ app-fold {
     min-height: 44px;
   }
 }
+
+// The one line above the weapon rows: a table die may join a weapon attack (information, not a control).
+.maneuver-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
