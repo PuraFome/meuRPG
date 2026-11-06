@@ -175,6 +175,7 @@ func TestAFeatConditionOnAHiddenEntryIsMarkedHidden(t *testing.T) {
 		{"a hidden feature", &rulesv1.FeatUnmet{Kind: lacks, Key: rangerFeature, NamePt: "Olhar de teste"}, rules.Build{}, "", nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			content := c
 			if tc.unmet.GetKind() == lacks {
 				content = ownersContent(t, "class:ranger")
