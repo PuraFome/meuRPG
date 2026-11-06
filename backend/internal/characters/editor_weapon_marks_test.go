@@ -50,3 +50,31 @@ func TestUpdateCharacterWeaponMarksAreCheckedAndRoundTrip(t *testing.T) {
 	}
 	check("the read after the save", res.Msg.GetCharacter())
 }
+
+// TestWeaponMarksFollowTheSheetLock: RN-01 locks the whole sheet for its owner, weapon marks included;
+// the master still changes them.
+func TestWeaponMarksFollowTheSheetLock(t *testing.T) {
+	t.Parallel()
+	et := newEditorTable(t, nil)
+	pc := et.editorStandardFighter(t)
+	marked := func(c *charactersv1.Character, mark *charactersv1.WeaponMark) *charactersv1.UpdateCharacterRequest {
+		req := editorSaveOf(c)
+		req.Sheet = editorClone(c.GetSheet(), func(f *charactersv1.FullSheet) {
+			f.WeaponKeys = []string{"equipment:rapier"}
+			f.WeaponMarks = []*charactersv1.WeaponMark{mark}
+		})
+		return req
+	}
+	if _, err := editorUpdate(et.dona, marked(pc, &charactersv1.WeaponMark{WeaponKey: "equipment:rapier", Magical: true})); err != nil {
+		t.Fatalf("the owner's mark before the lock: %v", err)
+	}
+	et.h.lockSheets(et.campaign)
+	current := et.dona.get(t, et.campaign, pc.GetId())
+	req := marked(current, &charactersv1.WeaponMark{WeaponKey: "equipment:rapier", Silvered: true})
+	_, err := editorUpdate(et.dona, req)
+	wantEditorRefusal(t, "the owner's mark change on a locked sheet", err,
+		`failed_precondition: the sheet is locked: a game session has started, so only the master edits it | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_SHEET_LOCKED character_id="`+pc.GetId()+`"}`)
+	if _, err := editorUpdate(et.master, req); err != nil {
+		t.Errorf("the master's mark change on a locked sheet: %v", err)
+	}
+}
