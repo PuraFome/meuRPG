@@ -39,7 +39,7 @@ func newKey() string { return uuid.New().String() }
 // adjust calls AdjustCharacterVitals as u, with a new idempotency key.
 func (u *user) adjust(t *testing.T, campaignID, characterID string, edit func(*playv1.AdjustCharacterVitalsRequest)) (*playv1.CharacterVitals, error) {
 	t.Helper()
-	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey()}
+	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey(), ExpectedRevision: u.revisionOf(t, campaignID, characterID)}
 	edit(req)
 	res, err := u.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req))
 	if err != nil {
@@ -419,6 +419,7 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	call := func(key, characterID string, hp int32) (*playv1.CharacterVitals, error) {
 		res, err := master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 			CampaignId: campaign, CharacterId: characterID, IdempotencyKey: key, HitPointsCurrent: new(hp),
+			ExpectedRevision: master.revisionOf(t, campaign, characterID),
 		}))
 		if err != nil {
 			return nil, err
@@ -491,17 +492,22 @@ func TestSessionEventsAreOrderedPerSession(t *testing.T) {
 	const perCharacter = 3
 	var wg sync.WaitGroup
 	errs := make(chan error, len(pcs)*perCharacter)
-	start := dbtest.NewBarrier(len(pcs) * perCharacter)
+	start := dbtest.NewBarrier(len(pcs))
+	// A correction has to say which revision it read, so the corrections of one character
+	// follow each other; the characters' run side by side.
 	for _, pc := range pcs {
-		for _, temporary := range []int32{1, 2, 3} {
-			wg.Go(func() {
-				start.Wait()
+		revision := *master.revisionOf(t, campaign, pc.GetId())
+		wg.Go(func() {
+			start.Wait()
+			for _, temporary := range []int32{1, 2, 3} {
 				_, err := master.play.AdjustCharacterVitals(context.Background(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 					CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: new(temporary),
+					ExpectedRevision: &revision,
 				}))
 				errs <- err
-			})
-		}
+				revision++
+			}
+		})
 	}
 	wg.Wait()
 	close(errs)
@@ -1064,4 +1070,17 @@ func TestWatchGameSessionReplacesTheOldestStreamPastTheCap(t *testing.T) {
 			}
 		}
 	}
+}
+
+// revisionOf is the revision of a character's vitals as u reads them in the live session: what the
+// caller of AdjustCharacterVitals has to send as expected_revision.
+func (u *user) revisionOf(t *testing.T, campaignID, characterID string) *int32 {
+	t.Helper()
+	for _, v := range u.liveSession(t, campaignID).GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
+	t.Fatalf("no vitals for character %s", characterID)
+	return nil
 }

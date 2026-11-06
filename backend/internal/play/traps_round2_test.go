@@ -752,7 +752,7 @@ func TestAKeyReusedForAnotherVitalsOrSearchRequestIsRefused(t *testing.T) {
 
 	adjust := func(hp int32, key string) error {
 		_, err := r.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-			CampaignId: r.campaignID, CharacterId: r.pens.GetId(), IdempotencyKey: key, HitPointsCurrent: proto.Int32(hp),
+			CampaignId: r.campaignID, CharacterId: r.pens.GetId(), IdempotencyKey: key, ExpectedRevision: r.master.revisionOf(t, r.campaignID, r.pens.GetId()), HitPointsCurrent: proto.Int32(hp),
 		}))
 		return err
 	}

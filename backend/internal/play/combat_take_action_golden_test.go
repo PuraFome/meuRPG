@@ -321,7 +321,7 @@ func takeActionHeroTemp(t *testing.T, a *armed, _ *playv1.Encounter) {
 	t.Helper()
 	temp := int32(5)
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: &temp,
+		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.toren.GetId()), HitPointsTemporary: &temp,
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

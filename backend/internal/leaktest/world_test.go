@@ -447,7 +447,7 @@ func (w *world) buildCombat() {
 	// Pensantus falls, and Ana rolls a death save on her turn: a failure.
 	pens := w.combatantOf(e, w.pens.GetId())
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: w.campaign, CharacterId: w.pens.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(0),
+		CampaignId: w.campaign, CharacterId: w.pens.GetId(), IdempotencyKey: newKey(), ExpectedRevision: m.revisionOf(w, w.pens.GetId()), HitPointsCurrent: proto.Int32(0),
 	})))
 	for range 60 {
 		cur := must(m.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()

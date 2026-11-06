@@ -219,6 +219,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     EncounterBlockedReason.NOTHING_TO_UNDO,
     'Não há mais nada para desfazer: só a última ação pode ser desfeita.',
   ],
+  [
+    EncounterBlockedReason.UNDO_TARGET_CHANGED,
+    'Não dá para desfazer: os pontos de vida de alguém mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.',
+  ],
   [EncounterBlockedReason.COMBATANT_DOWN, 'Quem está caído não age.'],
   [
     EncounterBlockedReason.REACTION_PENDING,
@@ -413,6 +417,17 @@ function tooFarText(blocked: EncounterBlocked): string {
   return blocked.jumpLimitDft > 0
     ? `Longe demais para o seu salto: ele vai até ${metersFixed(blocked.jumpLimitDft / 10)}${blocked.jumpRunningStart ? ' com corrida' : ' parado'}. Faltam ${missing}.`
     : `Esse caminho custa mais do que o movimento que sobra: faltam ${missing}.`;
+}
+
+/** The refusal of "Desfazer" because the hit points changed after the action, naming who changed (`labelOf` gives the name of a combatant). */
+export function undoChangedText(
+  blocked: EncounterBlocked,
+  labelOf: (id: string) => string | undefined,
+): string {
+  const names = blocked.combatantIds.map(labelOf).filter((n): n is string => !!n);
+  return names.length === 0
+    ? blockedMessage(blocked)
+    : `Não dá para desfazer: os pontos de vida de ${names.join(', ')} mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.`;
 }
 
 /** Why a move was refused, for the reach line under the map (E6-10). */

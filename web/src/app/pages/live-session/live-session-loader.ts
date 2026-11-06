@@ -268,6 +268,11 @@ export class LiveSessionLoader {
     }
   }
 
+  /** The vitals on the page again, for a screen that found them changed. */
+  rereadVitals(): Promise<void> {
+    return this.readVitals(this.state.campaignId(), this.generation);
+  }
+
   /** The vitals again, from the snapshot, without reading the rest of the page. */
   async readVitals(campaignId: string, generation: number): Promise<void> {
     try {

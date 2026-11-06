@@ -25,6 +25,7 @@ import {
   toShownImageVm,
   toVitalsVm,
 } from './live-session-source.live';
+import { isStaleVitals } from './live-error';
 
 function tooLong(): ConnectError {
   return new ConnectError('request over its size limit', Code.InvalidArgument, undefined, [
@@ -64,6 +65,27 @@ describe('classifyLiveError', () => {
     expect(classifyLiveError(new ConnectError('no open session', Code.FailedPrecondition))).toBe(
       'transient',
     );
+  });
+});
+
+describe('LiveSessionSourceLive.adjustVitals', () => {
+  it('sends the revision the master read, and isStaleVitals reads only `aborted`', async () => {
+    const sent: unknown[] = [];
+    TestBed.configureTestingModule({
+      providers: [LiveSessionSourceLive, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const source = TestBed.inject(LiveSessionSourceLive);
+    (source as unknown as { play: unknown }).play = {
+      adjustCharacterVitals: async (req: unknown) => {
+        sent.push(req);
+        return { vitals: create(CharacterVitalsSchema, { characterId: 'c1', revision: 8 }) };
+      },
+    };
+    await source.adjustVitals('camp', 'c1', 'key', { hitPointsCurrent: 3 }, 7);
+    expect(sent[0]).toMatchObject({ characterId: 'c1', hitPointsCurrent: 3, expectedRevision: 7 });
+    expect(isStaleVitals(new ConnectError('x', Code.Aborted))).toBe(true);
+    expect(isStaleVitals(new ConnectError('x', Code.InvalidArgument))).toBe(false);
+    expect(isStaleVitals(new TypeError('Failed to fetch'))).toBe(false);
   });
 });
 
