@@ -1,0 +1,83 @@
+#!/bin/bash
+# pre-push hook of the cloud sessions that work on the fork (vfraga/meuRPG). It lives on the fork's
+# main only (the train build drops .claude/), and cloud-session-start.sh installs it in .git/hooks.
+#
+# When a push carries a `ready:` commit, it runs the linters CI runs, on what the branch changed since
+# origin/main: `make lint`, the complexity limits and the //nolint cap for backend/ and proto/, the web
+# lint, format check and dependency rules (depcruise) for web/, the e2e lint for e2e/. A preflight starts only at `ready:`, so it
+# then never fails on lint or format alone. Every other push (progress commits, work in between)
+# passes untouched, so a session's signs of life never wait on unfinished code; so do pushes to
+# status/* and pr-screenshots, and branch deletions.
+#
+# A failed check stops the push and prints the check's last lines. Fix them and push again; never
+# push with --no-verify.
+set -uo pipefail
+# Git runs a hook with GIT_DIR set and GIT_WORK_TREE unset. In a linked worktree that makes make lint's
+# --new-from-merge-base read paths against backend/ and flag files the branch never touched: drop them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+zero=0000000000000000000000000000000000000000
+head=$(git rev-parse HEAD)
+git fetch -q origin main || { echo "pre-push: git fetch origin main failed" >&2; exit 1; }
+lint=0
+while read -r _ local_sha remote_ref remote_sha; do
+  case "$remote_ref" in refs/heads/status/* | refs/heads/pr-screenshots) continue ;; esac
+  [ "$local_sha" = "$zero" ] && continue
+  base=$remote_sha
+  [ "$base" = "$zero" ] && base=origin/main
+  # Read the subjects first: with pipefail, `git log | grep -q` fails at random when grep exits early.
+  subjects=$(git log --format=%s "$base..$local_sha" 2>/dev/null)
+  grep -q '^ready:' <<<"$subjects" || continue
+  if [ "$local_sha" != "$head" ]; then
+    echo "pre-push: ${remote_ref#refs/heads/} carries ready: but is not the commit checked out here; push it from its own checkout, so the linters read its files." >&2
+    exit 1
+  fi
+  lint=1
+done
+[ $lint = 1 ] || exit 0
+echo "pre-push: this push carries ready:, so the linters CI runs go first." >&2
+# The web lint runs out of memory with the VM's default Node heap, and with 4 GiB, on a large change.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}"
+
+changed=$(git diff --name-only origin/main...HEAD)
+[ -n "$(git status --porcelain --untracked-files=no)" ] && echo "pre-push: the working tree has uncommitted changes; the linters read them too." >&2
+
+failed=0
+check() {
+  local name=$1 out start=$SECONDS
+  shift
+  if out=$("$@" 2>&1); then
+    echo "pre-push: $name passed ($((SECONDS - start)) s)" >&2
+  else
+    echo "pre-push: $name FAILED:" >&2
+    echo "$out" | tail -40 >&2
+    failed=1
+  fi
+}
+needs_modules() {
+  [ -d "$1/node_modules" ] && return 0
+  echo "pre-push: $1/node_modules is missing: run npm ci in $1/ and push again." >&2
+  failed=1
+  return 1
+}
+
+if grep -qE '^(backend|proto)/' <<<"$changed"; then
+  check "make lint" make lint
+fi
+if grep -q '^backend/' <<<"$changed"; then
+  check "complexity limits" bash -c 'cd backend && ../.github/scripts/go-complexity.sh'
+  check "nolint cap" bash -c 'cd backend && ../.github/scripts/nolint-cap.sh'
+fi
+if grep -qE '^(web|proto)/' <<<"$changed" && needs_modules web; then
+  check "web lint" bash -c 'cd web && npm run -s lint'
+  check "web format" bash -c 'cd web && npm run -s format:check'
+  check "web depcruise" bash -c 'cd web && npm run -s depcruise'
+fi
+if grep -q '^e2e/' <<<"$changed" && needs_modules e2e; then
+  [ -d e2e/lint/node_modules ] || (cd e2e && npm run -s lint:install >/dev/null 2>&1)
+  check "e2e lint" bash -c 'cd e2e && npm run -s lint && npm run -s lint:test'
+fi
+
+[ $failed = 0 ] || echo "pre-push: push stopped. Fix the findings above and push again." >&2
+exit $failed

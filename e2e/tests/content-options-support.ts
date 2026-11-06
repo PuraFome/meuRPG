@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-import { callRPC } from './support';
+import { callRPC, shellSettled } from './support';
 
 // Setup for the "Opções para os jogadores" specs (Etapa 10, slice 10.11c, MR-025, RN-23, RN-10): the switches are turned
 // through the API where a test proves what the players read, and on the screen where it proves the screen.
@@ -41,6 +41,8 @@ export async function catalogJSON(page: Page, campaignId: string): Promise<{ rac
 
 /** The names the Raça field of the character editor offers, read from the open list (it is closed again). */
 export async function raceOptions(page: Page): Promise<string[]> {
+  // The session notice of another open session pushes the form down when it renders: the click must find the form still.
+  await shellSettled(page);
   const field = page.getByLabel('Raça', { exact: true });
   await field.click();
   await expect(page.getByRole('option').first()).toBeVisible();

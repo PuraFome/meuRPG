@@ -55,8 +55,9 @@ import { UserMenu } from './shell/user-menu/user-menu';
  *
  * The dice overlay (`RollOverlay`) is in a `@defer (on idle)` in the template: it needs the generated rules and contest
  * code, which would be about 70 kB of the initial bundle, and nothing rolls before a page that can roll has loaded.
- * The footer and the session notice are in a `@defer (on idle)` too: neither is needed to use the first screen. The
- * footer arrives at the bottom of the page, and the notice shows only once the poll has found an open session.
+ * The footer is in a `@defer (on idle)` too: it is not needed to use the first screen, and it arrives at the bottom of
+ * the page. The session notice is not deferred: it sits above the page and pushes it down, so it shows as soon as the
+ * poll has found an open session, not after the browser is idle.
  *
  * On a player's session page the bar also shows "Anotações" (E8-06): the
  * page turns it on through `SessionNotes`, a small service with no generated
