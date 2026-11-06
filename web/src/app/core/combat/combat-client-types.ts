@@ -253,6 +253,8 @@ export interface AnswerResult {
 export interface AttackEffects {
   readonly extraDieFaces?: readonly number[];
   readonly useExtraAction?: boolean;
+  /** The weapon-attack table die ticked (`RollAttackRequest.maneuver_key`); empty for none. */
+  readonly maneuverKey?: string;
 }
 
 /** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the

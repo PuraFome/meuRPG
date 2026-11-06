@@ -86,3 +86,14 @@ export function rollDieCost(die: RollDie): string {
     ? `d${die.sides}`
     : `d${die.sides} · gasta 1 uso de ${die.resource.replace(/_/g, ' ')}`;
 }
+
+/** The uses of the pool a table die spends from, as the turn options list them (`ManeuverDieOption`). */
+export interface DieUses {
+  readonly left: number;
+  readonly resourceNamePt: string;
+}
+
+/** "d8 somado ao ataque · gasta 1 de Reserva de Golpes · restam 2": what the tick on a weapon attack says it costs. */
+export function attackDieCost(die: RollDie, uses: DieUses): string {
+  return `d${die.sides} somado ao ataque · gasta 1 de ${uses.resourceNamePt} · restam ${uses.left}`;
+}

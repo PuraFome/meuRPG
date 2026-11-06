@@ -32,6 +32,7 @@ import { ResourceClient } from '../../../../core/resources/resources-client';
 import { metersText } from '../../../../core/units';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
+import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
@@ -84,6 +85,7 @@ export type { AttackSheetData } from './attack-sheet-types';
     MatButtonModule,
     MatIconModule,
     MultiRoll,
+    RollDieOffer,
     RollModePicker,
     HeldRollPrompt,
     RollPicker,
@@ -140,7 +142,32 @@ export class AttackSheet {
     modeChoice: () => this.mode.choice(),
   });
   protected readonly extraFields = this.rolls.extraFields;
+  /** What the player types with physical dice besides the d20: the effects' d4, then the table die ticked. */
+  protected readonly typedFields = this.rolls.typedFields;
   protected readonly extraFaces = this.rolls.extraFaces;
+  /** The weapon-attack table dice (Golpe Certeiro) the offer lists; none for a spell attack or an NPC. */
+  protected readonly maneuverDice = computed(() =>
+    this.rolls.maneuverDice().flatMap((o) => (o.die ? [o.die] : [])),
+  );
+  protected readonly maneuverUses = this.rolls.maneuverUses;
+  protected readonly maneuverKey = computed(() => this.rolls.maneuver()?.key ?? '');
+  protected readonly maneuverLegend = computed(() =>
+    this.maneuverDice().length > 1
+      ? 'Dado da manobra neste ataque'
+      : 'Dados das suas características',
+  );
+  /** With the table die ticked and its face typed, the total adds it: "12 + 6 + 5 = 23". */
+  protected readonly typedFormula = (d20: number): { text: string; total: number } | null => {
+    const face = this.rolls.maneuver() ? (this.extraFaces().at(-1) ?? null) : null;
+    if (face === null) {
+      return null;
+    }
+    const bonus = this.attack.attackBonus;
+    const total = d20 + bonus + face;
+    const mod = bonus === 0 ? '' : ` ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}`;
+    return { text: `${d20}${mod} + ${face} = ${total}`, total };
+  };
+  protected readonly maneuverTicked = computed(() => this.rolls.maneuver() !== null);
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
@@ -194,7 +221,7 @@ export class AttackSheet {
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   protected readonly d20Formula = computed(() => {
     const r = this.s.roll()?.d20;
-    return r ? d20Formula(r) : '';
+    return r ? d20Formula(r, true) : '';
   });
   /** The d20 is rolled but a reaction holds the result: "Esperando o mestre. O resultado do seu ataque sai quando ele responder." */
   protected readonly held = computed(() => heldWait(this.s.roll(), this.data.state.encounter()));
@@ -322,6 +349,10 @@ export class AttackSheet {
 
   protected rollAttack(die: AttackDie | PairDie): Promise<void> {
     return this.rolls.rollAttack(die);
+  }
+
+  protected useDie(key: string): void {
+    this.rolls.useDie(key);
   }
 
   protected rollAttackTyped(face: number): Promise<void> {

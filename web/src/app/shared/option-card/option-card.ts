@@ -24,13 +24,13 @@ export type OptionCardKind = 'checkbox' | 'radio' | 'fixed';
         <ng-container *ngTemplateOutlet="text" />
       </div>
     } @else {
-      <label class="opt" [class.opt--on]="checked()" [class.opt--off]="!!why()">
+      <label class="opt" [class.opt--on]="checked()" [class.opt--off]="!!why() || disabled()">
         <input
           class="mr-visually-hidden"
           [type]="kind()"
           [name]="name() || null"
           [checked]="checked()"
-          [disabled]="!!why()"
+          [disabled]="!!why() || disabled()"
           [attr.aria-describedby]="sub() ? subId : null"
           (change)="chosen.emit()"
         />
@@ -75,6 +75,8 @@ export class OptionCard {
   readonly sub = input('');
   /** Why it cannot be taken now; set, the card is grey and dashed and the input is off. */
   readonly why = input('');
+  /** Off like `why` but with no reason written inside the card (the caller says it on a line of its own). */
+  readonly disabled = input(false);
   readonly chosen = output<void>();
 
   protected readonly subId = `option-card-${nextId++}`;
