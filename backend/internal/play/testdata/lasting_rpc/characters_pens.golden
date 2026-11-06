@@ -10,7 +10,10 @@
    "id": "\u003ccfx:condition:prone@bri\u003e",
    "secondsLeft": 3661,
    "sourceKey": "condition:prone",
-   "sourceNamePt": "Derrubado"
+   "sourceNamePt": "Derrubado",
+   "tagsPt": [
+    "No chão"
+   ]
   },
   {
    "characterId": "\u003cchar:pens\u003e",
