@@ -78,16 +78,16 @@ func TestRunRefusals(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"no argument", withURL, nil, "usage: migrate <up|down|status>"},
-		{"two arguments", withURL, []string{"up", "down"}, "usage: migrate <up|down|status>"},
-		{"no argument and no database", config.Config{}, nil, "usage: migrate <up|down|status>"},
+		{"no argument", withURL, nil, "usage: migrate <up|down|status|audit-content>"},
+		{"two arguments", withURL, []string{"up", "down"}, "usage: migrate <up|down|status|audit-content>"},
+		{"no argument and no database", config.Config{}, nil, "usage: migrate <up|down|status|audit-content>"},
 		{"no database", config.Config{}, []string{"up"}, "DATABASE_URL is required"},
 		{"no database, unknown command", config.Config{}, []string{"sideways"}, "DATABASE_URL is required"},
 		{"broken database URL", config.Config{DatabaseURL: "postgresql://h:99999999/x"}, []string{"status"}, "DATABASE_URL is not a valid PostgreSQL connection string"},
 		// The command is checked after the connection is opened (lazily: nothing
 		// is sent), so an unknown one needs a valid URL to be named.
-		{"unknown command", withURL, []string{"sideways"}, `unknown command "sideways"; usage: migrate <up|down|status>`},
-		{"command in upper case", withURL, []string{"UP"}, `unknown command "UP"; usage: migrate <up|down|status>`},
+		{"unknown command", withURL, []string{"sideways"}, `unknown command "sideways"; usage: migrate <up|down|status|audit-content>`},
+		{"command in upper case", withURL, []string{"UP"}, `unknown command "UP"; usage: migrate <up|down|status|audit-content>`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -149,7 +149,8 @@ func TestRunOnADatabase(t *testing.T) {
 	}
 
 	status("applied")
-	upOrDown("up", "severity=INFO message=database is up to date applied=0")
+	const auditLine = "severity=INFO message=table content audit done campaigns=0 left_out=0 failed=0"
+	upOrDown("up", "severity=INFO message=database is up to date applied=0", auditLine)
 	upOrDown("down", latestLine("severity=INFO message=migration rolled back "))
 	status("pending")
 	// A database from dbtest continues goose's ids on a copy of the template's
@@ -161,7 +162,7 @@ func TestRunOnADatabase(t *testing.T) {
 	}
 	upOrDown("up",
 		latestLine("severity=INFO message=migration applied ")+" duration_ms=*",
-		"severity=INFO message=database is up to date applied=1")
+		"severity=INFO message=database is up to date applied=1", auditLine)
 	status("applied")
 }
 

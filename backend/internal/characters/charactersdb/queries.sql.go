@@ -1738,6 +1738,32 @@ func (q *Queries) ListCampaignSheets(ctx context.Context, campaignID string) ([]
 	return items, nil
 }
 
+const listCampaignsWithContent = `-- name: ListCampaignsWithContent :many
+SELECT DISTINCT campaign_id::TEXT AS campaign_id FROM campaign_content
+ORDER BY 1
+`
+
+// The campaigns that have table content, for the deploy audit (AuditTableContent).
+func (q *Queries) ListCampaignsWithContent(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCampaignsWithContent)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var campaign_id string
+		if err := rows.Scan(&campaign_id); err != nil {
+			return nil, err
+		}
+		items = append(items, campaign_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCharacterNames = `-- name: ListCharacterNames :many
 SELECT id, name FROM characters
 WHERE campaign_id = $1::UUID

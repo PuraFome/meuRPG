@@ -175,6 +175,7 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter,
 	if err != nil {
 		return nil, err
 	}
+	cs = withSilenceDeaf(cs, zones)
 	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones}, nil
 }
 

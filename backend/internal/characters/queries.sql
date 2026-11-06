@@ -862,6 +862,11 @@ SET archived_at = CASE WHEN sqlc.arg(archived)::BOOL THEN sqlc.arg(now)::TIMESTA
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND content_key = sqlc.arg(content_key)
 RETURNING *;
 
+-- name: ListCampaignsWithContent :many
+-- The campaigns that have table content, for the deploy audit (AuditTableContent).
+SELECT DISTINCT campaign_id::TEXT AS campaign_id FROM campaign_content
+ORDER BY 1;
+
 -- name: ListContentOff :many
 -- The keys the master switched off for the players ("Opções para os jogadores"),
 -- sorted. Read in the caller's transaction, with the revision.

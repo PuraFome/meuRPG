@@ -49,7 +49,7 @@ flowchart LR
 3. **Migrate.** Point the job at the new image. Execute it when `backend/migrations/` changed since the commit that runs now; with nothing new, goose applies nothing, so running it is harmless. If it fails, stop and read its log ([read the logs](#read-the-logs)): the running revision is untouched.
 
    ```bash
-   gcloud run jobs update meurpg-migrate --image=$IMAGE --region=$REGION
+   gcloud run jobs update meurpg-migrate --image=$IMAGE --region=$REGION --memory=1Gi
    gcloud run jobs execute meurpg-migrate --region=$REGION --wait
    ```
 
@@ -125,6 +125,28 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 ```
 
 Cloud Logging keeps the logs for 30 days in its `_Default` bucket. The log never holds a password, a token or an e-mail ([Privacy](../privacy.md#logs-in-elk)).
+
+## Entries a new revision would leave out
+
+After `up` succeeds, `/app/migrate` runs the stored table content of every campaign through the rules of the new image.
+It reads one campaign at a time, keeps nothing and writes nothing.
+It never fails the job: a campaign it cannot check is logged at `ERROR` and counted.
+The job has 1 GiB of memory (`--memory=1Gi` on create and on each update), which must hold the SRD and the largest campaign (`TestLiveContentMemoryAtMaximumText` measures one).
+The job's task timeout is 15 minutes, and the audit stops after 10 (`table content audit stopped` at `ERROR`), so a slow audit does not fail the job.
+Each command of the audit has the API's 30-second `statement_timeout`.
+The audit runs after the migration lock is released.
+
+```bash
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="meurpg-migrate" AND jsonPayload.message:"table content audit"' --freshness=1d
+```
+
+- `table content audit: entry would be left out` (`WARN`): `campaign_id`, `entry_key`, `kind` and the `reason` code of one entry. No text of the entry is logged.
+- `table content audit: campaign not checked` (`ERROR`): `campaign_id` and a `reason` code (`database` for a failed read). The campaign's content does not build as a whole, or could not be read.
+- `table content audit done` (`INFO`): `campaigns` checked, `left_out` entries over all of them (0 when all is well) and `failed` campaigns.
+
+A line is no reason to stop the deploy: the campaign reads without that entry.
+The master sees the entry in `left_out` of the table content list and repairs or archives it.
+`/app/migrate audit-content` runs the audit alone.
 
 ## Alerts
 
@@ -300,7 +322,7 @@ The job runs the image's `/app/migrate up` before each new revision gets traffic
 ```bash
 gcloud run jobs create meurpg-migrate --image=$IMAGE --service-account=$SA \
   --command=/app/migrate --args=up --set-secrets=DATABASE_URL=database-url:latest \
-  --max-retries=0 --task-timeout=15m
+  --max-retries=0 --task-timeout=15m --memory=1Gi
 gcloud run jobs execute meurpg-migrate --wait
 ```
 

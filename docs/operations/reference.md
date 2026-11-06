@@ -66,7 +66,7 @@ Only the service account `meurpg-api` reads them (`roles/secretmanager.secretAcc
 With `max-instances=1`, 10 is the whole load on the cluster; if the instances grow, instances times `pool_max_conns` is what counts.
 A request waits for a free connection, and the wait ends when a holder lets go (no holder keeps one longer than 30 s).
 A request that asks for a second connection while its transaction holds the first stalls the pool; the symptom is `context canceled` or `context deadline exceeded` in simple reads together with a slow request ([architecture](../architecture/transactions.md#transactions-and-the-connection-pool)).
-`migrate` has its own connection and no `statement_timeout`; two `migrate up` runs wait for each other on a lease lock ([data](../data/README.md#migration-lock)).
+`migrate` has its own connection and no `statement_timeout`, except for the table content audit, which uses the API's pool settings. Two `migrate up` runs wait for each other on a lease lock ([data](../data/README.md#migration-lock)).
 
 ## The client IP
 
@@ -197,4 +197,6 @@ The costs as configured. These are estimates for deciding architecture, not a bi
 | Gemini images | Per image of output on the configured model, plus input tokens; capped by the two image limits | [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing) |
 | CockroachDB | The project owner's plan; changing plan loses the legacy Unlimited plan | The cluster console |
 
-Backups stay in São Paulo and are kept for 30 days at most, to meet the deletion deadline in [Privacy](../privacy.md).
+Backups are the managed backups of the CockroachDB Cloud Basic plan, which the plan does not let us configure: one every 24 hours, kept for 30 days, stored in one of the cluster's regions ([Managed backups in Basic clusters](https://www.cockroachlabs.com/docs/cockroachcloud/managed-backups-basic)).
+The cluster's only region is São Paulo, so the backups stay there.
+The 30 days meet the deletion deadline in [Privacy](../privacy.md).
