@@ -6,6 +6,7 @@ import {
   FullSheet as GenFullSheet,
   HitPointsMethod as GenHitPointsMethod,
   Item,
+  WeaponMark,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
 import {
@@ -178,6 +179,9 @@ export function toFullSheetInit(v: CharacterFormValue) {
     armorKey: v.armor,
     shield: v.shield,
     weaponKeys: v.weapons,
+    // The form has no UI for the marks (silvered, adamantine, magical): a new sheet has none, and a save of a loaded
+    // one keeps the marks of the weapons still carried (`mergeFullSheetInit`).
+    weaponMarks: [] as WeaponMark[],
     cantripKeys: v.cantrips,
     knownSpellKeys: v.spellsKnown,
     preparedSpellKeys: v.spellsPrepared,
@@ -233,7 +237,9 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
       value: { ...kept, ...init.background.value },
     };
   }
-  return { ...rest, ...init };
+  // The server refuses a mark whose weapon is not in weapon_keys, so a weapon the player removed takes its mark along.
+  const weaponMarks = original.weaponMarks.filter((m) => init.weaponKeys.includes(m.weaponKey));
+  return { ...rest, ...init, weaponMarks };
 }
 
 /** Exported for `character-editor-source.live.spec.ts`. */

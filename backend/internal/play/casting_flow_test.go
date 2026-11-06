@@ -575,7 +575,7 @@ func TestCastingOutside_DamageAsksForTheConcentrationSaveAndZeroEndsIt(t *testin
 	full := a.vitals(t, a.bri).GetHitPointsMax()
 	adjust := func(hp int32) *playv1.AdjustCharacterVitalsResponse {
 		res, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-			CampaignId: a.campaignID, CharacterId: a.bri.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: &hp,
+			CampaignId: a.campaignID, CharacterId: a.bri.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.bri.GetId()), HitPointsCurrent: &hp,
 		}))
 		if err != nil {
 			t.Fatalf("AdjustCharacterVitals() error = %v", err)

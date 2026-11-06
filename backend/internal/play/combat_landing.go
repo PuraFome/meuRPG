@@ -11,6 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -40,7 +41,28 @@ func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playd
 			mods.Immune = append(slices.Clone(mods.Immune), silenceImmune)
 		}
 	}
+	rows, err := c.q.ListCombatantStates(ctx, c.enc.ID)
+	if err != nil {
+		return 0, fmt.Errorf("list the states: %w", err)
+	}
+	mods = withEffectResistances(mods, effectModsOf(statesOf(rows), target.ID), damageType)
 	return clamp32(combat.AdjustForType(int(amount), damageType, mods), 0, math.MaxInt32), nil
+}
+
+// withEffectResistances adds the resistance, immunity or vulnerability the effects' modifiers give to
+// the damage type. Nonmagical resistances do not cover this damage: it is no attack.
+func withEffectResistances(mods combat.TypeModifiers, effects []rules.EffectModifier, damageType string) combat.TypeModifiers {
+	resist, immune, vulnerable := combat.DamageKinds(effects, damageType, true)
+	if resist {
+		mods.Resistant = append(slices.Clone(mods.Resistant), damageType)
+	}
+	if immune {
+		mods.Immune = append(slices.Clone(mods.Immune), damageType)
+	}
+	if vulnerable {
+		mods.Vulnerable = append(slices.Clone(mods.Vulnerable), damageType)
+	}
+	return mods
 }
 
 // landDamage puts a rolled damage or heal on its target, as far as the target's

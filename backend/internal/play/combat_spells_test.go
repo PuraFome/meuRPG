@@ -267,7 +267,7 @@ func (a *armed) mustCast(t *testing.T, u *user, e *playv1.Encounter, caster, spe
 // correct is the master's correction of a character's vitals.
 func (a *armed) correct(t *testing.T, c *charactersv1.Character, edit func(*playv1.AdjustCharacterVitalsRequest)) *playv1.CharacterVitals {
 	t.Helper()
-	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: a.campaignID, CharacterId: c.GetId(), IdempotencyKey: newKey()}
+	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: a.campaignID, CharacterId: c.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, c.GetId())}
 	edit(req)
 	res, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req))
 	if err != nil {
@@ -1590,7 +1590,7 @@ func TestSecondWindAndActionSurge(t *testing.T) {
 	if used, _ := resourceUsed(a.vitals(t, a.toren), "action_surge"); used != 0 {
 		t.Errorf("action_surge used after the correction = %d, want 0", used)
 	}
-	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), ResourcesUsed: []*playv1.ResourceUsed{{Key: "rage", Used: 1}}}
+	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.toren.GetId()), ResourcesUsed: []*playv1.ResourceUsed{{Key: "rage", Used: 1}}}
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req)); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("a correction of a resource the character does not have: %v, want invalid_argument", err)
 	}

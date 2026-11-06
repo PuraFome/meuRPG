@@ -47,6 +47,10 @@ func (*hostSpy) ArmorWorn(context.Context, pgx.Tx, string, string) (func(context
 	return nil, nil
 }
 
+func (*hostSpy) EquipInCombat(context.Context, pgx.Tx, string, string, string, EquipChange) (func(context.Context), error) {
+	return nil, nil
+}
+
 func (*hostSpy) PublishEncounterChanged(context.Context, string, string) {}
 
 func (h *hostSpy) told() []string {

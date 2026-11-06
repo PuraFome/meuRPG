@@ -263,7 +263,7 @@ func TestTheFogHearsOfACloudThatEndsOutsideACombatWrite(t *testing.T) {
 			}
 			zero := int32(0)
 			if _, err := c.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-				CampaignId: c.campaignID, CharacterId: char, IdempotencyKey: newKey(), HitPointsCurrent: &zero,
+				CampaignId: c.campaignID, CharacterId: char, IdempotencyKey: newKey(), ExpectedRevision: c.master.revisionOf(t, c.campaignID, char), HitPointsCurrent: &zero,
 			})); err != nil {
 				t.Fatalf("AdjustCharacterVitals() error = %v", err)
 			}

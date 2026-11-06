@@ -120,7 +120,7 @@ func TestAdjustingVitalsInACombatRaisesItsRevision(t *testing.T) {
 	e := a.castersFight(t, 1)
 	before := a.get(t, a.caio).GetRevision()
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(0),
+		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.toren.GetId()), HitPointsCurrent: proto.Int32(0),
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

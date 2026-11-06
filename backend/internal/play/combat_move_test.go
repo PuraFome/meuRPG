@@ -1440,7 +1440,7 @@ func TestADownPlayerCannotMove(t *testing.T) {
 	c := newCave(t)
 	c.fight(t) // Toren is first on turn
 	if _, err := c.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: c.campaignID, CharacterId: c.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(0),
+		CampaignId: c.campaignID, CharacterId: c.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: c.master.revisionOf(t, c.campaignID, c.toren.GetId()), HitPointsCurrent: proto.Int32(0),
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

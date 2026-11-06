@@ -77,6 +77,9 @@ function fullyPopulatedFullSheet(): FullSheet {
     armorKey: '',
     shield: false,
     weaponKeys: ['equipment:quarterstaff', 'equipment:dagger'],
+    // The editor has no control for it: a save sends it back as read (SetEquipped writes it).
+    carriedKeys: ['equipment:dagger'],
+    weaponMarks: [],
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [
       'spell:magic-missile',
@@ -163,6 +166,8 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       armorKey: loaded.armorKey,
       shield: loaded.shield,
       weaponKeys: loaded.weaponKeys,
+      carriedKeys: loaded.carriedKeys,
+      weaponMarks: loaded.weaponMarks,
       cantripKeys: loaded.cantripKeys,
       knownSpellKeys: loaded.knownSpellKeys,
       preparedSpellKeys: loaded.preparedSpellKeys,
@@ -409,6 +414,34 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
         ],
       }).classes,
     ).toHaveLength(3);
+  });
+
+  it('keeps the marks of the weapons still carried and drops the mark of a weapon the player removed', () => {
+    const mark = (weaponKey: string, silvered: boolean, magical: boolean) => ({
+      $typeName: 'meurpg.characters.v1.WeaponMark' as const,
+      weaponKey,
+      silvered,
+      adamantine: false,
+      magical,
+    });
+    const loaded: FullSheet = {
+      ...fullyPopulatedFullSheet(),
+      weaponKeys: ['equipment:quarterstaff', 'equipment:dagger'],
+      weaponMarks: [
+        mark('equipment:quarterstaff', false, true),
+        mark('equipment:dagger', true, false),
+      ],
+    };
+    const form = toFormFullSheet('Pensantus', loaded);
+    // Untouched: both marks go back as loaded.
+    expect(mergeFullSheetInit(loaded, form).weaponMarks).toEqual(loaded.weaponMarks);
+    // The dagger is removed: the server refuses a mark of a weapon not carried, so its mark must not be sent.
+    const withoutDagger = { ...form, weapons: ['equipment:quarterstaff'] };
+    const merged = mergeFullSheetInit(loaded, withoutDagger);
+    expect(merged.weaponKeys).toEqual(['equipment:quarterstaff']);
+    expect(merged.weaponMarks).toEqual([mark('equipment:quarterstaff', false, true)]);
+    // No weapon left: no mark left.
+    expect(mergeFullSheetInit(loaded, { ...form, weapons: [] }).weaponMarks).toEqual([]);
   });
 
   it('CreateCharacter (no loaded message) is exactly toFullSheetInit — nothing to merge yet', () => {

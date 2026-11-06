@@ -8,6 +8,8 @@ export interface AdjustVitalsData {
   readonly sub: string;
   /** Whose screen shows the change; `null` when they have no name. */
   readonly playerName: string | null;
+  /** Reads the vitals on the page again: the correction found them changed. */
+  readonly onStale?: () => void;
 }
 
 /** How the sheet closed: saved (with the new vitals), or the session
