@@ -98,6 +98,10 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 State errors are `failed_precondition` with the `EncounterBlocked` detail and a reason: `MAP_HAS_NO_GRID` (with the `map_id`), `NO_CURRENT_MAP`, `ENCOUNTER_ALREADY_OPEN`, `NOT_IN_SETUP`, `NOT_ACTIVE`, `NOT_YOUR_TURN`, `NOT_PLACED`, `TOO_FAR` (with `missing_ft`), `SQUARE_OCCUPIED`, `WALL_ON_SQUARE`, `NO_FREE_SQUARE`, `TOO_MANY_COMBATANTS`, and in actions `ACTION_USED`, `BONUS_ACTION_USED`, `REACTION_USED`, `ATTACKS_USED`, `ATTACK_ACTION_FIRST`, `NO_SLOT`, `NO_USES`, `TARGET_OUT_OF_REACH`, `TARGET_DEFEATED`, `TARGET_DEAD`, `COMBATANT_DOWN`, `PENDING_DAMAGE`, `REACTION_PENDING`, `DEATH_SAVE_DUE`, `DAMAGE_ALREADY_ROLLED`, `DAMAGE_NOT_ROLLED`, `NOTHING_TO_UNDO`, `WRONG_DICE_MODE` and more (the enum in `combat.proto` is the list).
 Callers never depend on message text; the app turns the code and detail into Portuguese (`combat-errors.ts`).
 
+### Equipping and stowing gear
+
+`CharacterService.SetEquipped` asks play, inside its own transaction and before it writes, through `ReviewHost.EquipInCombat` (`equip_combat.go`). Without a running combat that holds the character it is free. In one, for the player (SRD 5.1, "Other Activity on Your Turn"): it must be the character's turn (the refusals of the attacks: `NOT_YOUR_TURN`, `COMBATANT_DOWN`); the first weapon drawn or stowed in the turn uses the free object interaction (`combatants.object_interaction_used`, cleared by `ResetCombatantTurn`); a second weapon, or the shield, costs the action (`ACTION_USED` when it is spent; an extra action that allows using an object pays instead); body armor is refused (`ARMOR_IN_COMBAT`). The master has the last word: no turn, no economy, armor included. A change writes no combat log line and is not in the undo; the combat streams are told after the commit.
+
 ## Legendary actions
 
 A creature whose stat block has legendary actions has `rules.LegendaryActionsPerRound` (3, SRD 5.1) a round.
