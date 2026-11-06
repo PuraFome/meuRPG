@@ -286,3 +286,12 @@ The free-text background follows SRD 5.1's "Customizing a Background": the sheet
 What is missing is a `Derive` notice (`missing`, one per part), never an error, and only when the sheet already has some of the new parts.
 `Derive` applies it: the tools become proficiencies, the languages enter `Languages`, the feature enters `Features` (`background-feature:custom`, origin `background:custom`), and the equipment comes out in `DerivedSheet.background_equipment_pt`.
 Level-up changes none of it (`full.custom_background` is locked).
+
+## The lasting effect of a table spell
+
+`TableSpell.effect` (`TableSpellEffect`, with `TableEffectModifier`) goes through `tableSpellEffectOf` into the overlay.
+Storage is the protojson of the entry, so there is no column and no migration.
+An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
+The violation is `table_spell.effect.modifiers[1].value` and the like.
+The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and has no field for `effect`: the effect is written through the API until the editor has a block for it.
+How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
