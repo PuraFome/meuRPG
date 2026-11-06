@@ -81,6 +81,19 @@ const (
 	// ModifierAttackDisadvantage gives the creature's attack rolls disadvantage. With Once, its
 	// next attack roll spends the effect, hit or miss (Vicious Mockery). It takes no other field.
 	ModifierAttackDisadvantage = "attack_disadvantage"
+	// ModifierRollBonus adds a flat Value to the rolls of AppliesTo (a +1 to attack rolls). It is not the die of
+	// roll_die, and it is not check_bonus, which is for one skill.
+	ModifierRollBonus = "roll_bonus"
+	// ModifierTempHP gives Value temporary hit points when the effect lands; turn_temp_hp gives them each turn.
+	ModifierTempHP = "temp_hp"
+	// ModifierResistance gives the creature resistance, immunity or vulnerability (Kind) to the DamageTypes.
+	ModifierResistance = "resistance"
+	// ModifierAttackAdvantage gives the creature's attack rolls advantage.
+	ModifierAttackAdvantage = "attack_advantage"
+	// ModifierSaveDisadvantage gives disadvantage on the saving throws of Abilities.
+	ModifierSaveDisadvantage = "save_disadvantage"
+	// ModifierCheckDisadvantage gives disadvantage on the ability checks of Abilities.
+	ModifierCheckDisadvantage = "check_disadvantage"
 )
 
 // EffectGoaded is the effect a failed goad puts on the target: disadvantage on its attack rolls against
@@ -137,6 +150,11 @@ type EffectModifier struct {
 	// "dash"...), and MaxWeaponAttacks how many weapon attacks that action makes.
 	Allowed          []string `json:"allowed,omitempty"`
 	MaxWeaponAttacks int      `json:"max_weapon_attacks,omitempty"`
+	// ResistanceKind (a ResistanceKind* constant, empty is resist) and DamageTypes (damage type keys, or
+	// DamageTypeAll or DamageTypeNonmagicalBPS alone) are for ModifierResistance; Kind is taken by the
+	// modifier's own.
+	ResistanceKind string   `json:"resistance_kind,omitempty"`
+	DamageTypes    []string `json:"damage_types,omitempty"`
 }
 
 // EffectDuration is how long an effect lasts.
@@ -260,7 +278,7 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP, ModifierAttackDisadvantage}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP, ModifierAttackDisadvantage, ModifierRollBonus, ModifierTempHP, ModifierResistance, ModifierAttackAdvantage, ModifierSaveDisadvantage, ModifierCheckDisadvantage}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
@@ -495,11 +513,26 @@ func checkEffectConditions(_ *content, d *EffectDef, all *combatEffects, bad eff
 	return nil
 }
 
-func checkEffectModifiers(_ *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
+func checkEffectModifiers(c *content, d *EffectDef, _ *combatEffects, bad effectFail) error {
 	for i, m := range d.Modifiers {
 		if err := checkModifier(m); err != nil {
 			return bad("modifiers[%d]: %v", i, err)
 		}
+		if err := c.checkModifierContent(m); err != nil {
+			return bad("modifiers[%d]: %v", i, err)
+		}
+	}
+	return nil
+}
+
+// checkModifierContent checks what a modifier names that only the content knows: the damage types of a
+// resistance. checkModifier has already checked its shape.
+func (c *content) checkModifierContent(m EffectModifier) error {
+	if m.Kind != ModifierResistance {
+		return nil
+	}
+	if msg := c.checkDamageTypes(&Effect{DamageTypes: m.DamageTypes}); msg != "" {
+		return modifierField("damage_types", "resistance %s", msg)
 	}
 	return nil
 }
@@ -609,12 +642,82 @@ var modifierChecks = map[string]func(m EffectModifier) error{
 // checkModifier checks one modifier's fields against its kind.
 func checkModifier(m EffectModifier) error {
 	if !slices.Contains(modifierKinds, m.Kind) {
-		return fmt.Errorf("unknown kind %q", m.Kind)
+		return modifierField("kind", "unknown kind %q", m.Kind)
 	}
 	if check, ok := modifierChecks[m.Kind]; ok {
 		return check(m)
 	}
 	return nil
+}
+
+// modifierFieldError is a refusal of one field of a modifier, so a caller that reports by field (a table
+// spell's effect) names it.
+type modifierFieldError struct{ field, msg string }
+
+func (e *modifierFieldError) Error() string { return e.msg }
+
+func modifierField(field, format string, a ...any) error {
+	return &modifierFieldError{field: field, msg: fmt.Sprintf(format, a...)}
+}
+
+// The bounds of a roll_bonus and a temp_hp.
+const (
+	maxRollBonus = 20
+	maxTempHP    = 1000
+)
+
+func checkRollBonus(m EffectModifier) error {
+	if m.Value == 0 || m.Value < -maxRollBonus || m.Value > maxRollBonus {
+		return modifierField("value", "roll_bonus needs a value from 1 to 20, or -20 to -1")
+	}
+	if len(m.AppliesTo) == 0 {
+		return modifierField("applies_to", "roll_bonus needs applies_to")
+	}
+	for i, a := range m.AppliesTo {
+		switch {
+		case a != RollAppliesAttack && a != RollAppliesSave && a != RollAppliesCheck:
+			return modifierField("applies_to", "applies_to %q: only attack, save and check", a)
+		case slices.Contains(m.AppliesTo[:i], a):
+			return modifierField("applies_to", "applies_to %q is listed twice", a)
+		}
+	}
+	return nil
+}
+
+func checkTempHP(m EffectModifier) error {
+	if m.Value < 1 || m.Value > maxTempHP {
+		return modifierField("value", "temp_hp needs a value from 1 to 1000")
+	}
+	return nil
+}
+
+// checkResistanceModifier checks the shape of a resistance; the damage types are checked against the
+// content (checkModifierContent).
+func checkResistanceModifier(m EffectModifier) error {
+	if !slices.Contains(ResistanceKinds, m.ResistanceKind) {
+		return modifierField("resistance_kind", "resistance_kind is resist, immune or vulnerable")
+	}
+	if len(m.DamageTypes) == 0 {
+		return modifierField("damage_types", "resistance needs damage_types")
+	}
+	if slices.Contains(m.DamageTypes, DamageTypeNonmagicalBPS) && len(m.DamageTypes) > 1 {
+		return modifierField("damage_types", "damage_types: %q cannot be mixed with other damage types", DamageTypeNonmagicalBPS)
+	}
+	return nil
+}
+
+func checkSaveDisadvantage(m EffectModifier) error {
+	if len(m.Abilities) == 0 {
+		return modifierField("abilities", "save_disadvantage needs abilities")
+	}
+	return checkModifierAbilities(m.Abilities)
+}
+
+func checkCheckDisadvantage(m EffectModifier) error {
+	if len(m.Abilities) == 0 {
+		return modifierField("abilities", "check_disadvantage needs abilities")
+	}
+	return checkModifierAbilities(m.Abilities)
 }
 
 func checkRollDie(m EffectModifier) error {

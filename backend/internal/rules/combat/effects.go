@@ -268,3 +268,97 @@ func TurnTempHP(modifiers []rules.EffectModifier) int {
 	}
 	return n
 }
+
+// ---- table spells' lasting effects ----
+
+// RollBonus is what the modifiers add, flat, to a roll of the kind appliesTo
+// (rules.RollAppliesAttack, ...Save or ...Check): the sum of the roll_bonus ones.
+func RollBonus(modifiers []rules.EffectModifier, appliesTo string) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierRollBonus && slices.Contains(m.AppliesTo, appliesTo) {
+			n += m.Value
+		}
+	}
+	return n
+}
+
+// TempHP is the temporary hit points the modifiers give when the effect lands: the highest, since they
+// do not stack (SRD 5.1, "Temporary Hit Points").
+func TempHP(modifiers []rules.EffectModifier) int {
+	n := 0
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierTempHP {
+			n = max(n, m.Value)
+		}
+	}
+	return n
+}
+
+// Resistances are the resistance modifiers among the modifiers, in order.
+func Resistances(modifiers []rules.EffectModifier) []rules.EffectModifier {
+	var out []rules.EffectModifier
+	for _, m := range modifiers {
+		if m.Kind == rules.ModifierResistance {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// nonmagicalBPS are the damage types rules.DamageTypeNonmagicalBPS covers.
+var nonmagicalBPS = []string{"damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"}
+
+// DamageKinds says which of the resistance kinds (rules.ResistanceKind*) the modifiers put on a damage
+// type ("damage-type:fire"); magical says whether the damage comes from a magical source, which
+// nonmagical_bps does not cover. A creature may be both resistant and vulnerable: the caller halves,
+// then doubles (SRD 5.1, "Damage Resistance and Vulnerability").
+func DamageKinds(modifiers []rules.EffectModifier, damageType string, magical bool) (resist, immune, vulnerable bool) {
+	for _, m := range Resistances(modifiers) {
+		if !covers(m.DamageTypes, damageType, magical) {
+			continue
+		}
+		switch m.ResistanceKind {
+		case rules.ResistanceKindImmune:
+			immune = true
+		case rules.ResistanceKindVulnerable:
+			vulnerable = true
+		default:
+			resist = true
+		}
+	}
+	return resist, immune, vulnerable
+}
+
+func covers(types []string, damageType string, magical bool) bool {
+	for _, t := range types {
+		switch {
+		case t == rules.DamageTypeAll, t == damageType:
+			return true
+		case t == rules.DamageTypeNonmagicalBPS && !magical && slices.Contains(nonmagicalBPS, damageType):
+			return true
+		}
+	}
+	return false
+}
+
+// HasAttackAdvantage says the modifiers give the creature's attack rolls advantage.
+func HasAttackAdvantage(modifiers []rules.EffectModifier) bool {
+	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierAttackAdvantage
+	})
+}
+
+// SaveDisadvantage says the modifiers give disadvantage on a saving throw of the ability.
+func SaveDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
+	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierSaveDisadvantage && slices.Contains(m.Abilities, ability)
+	})
+}
+
+// CheckDisadvantage says the modifiers give disadvantage on an ability check of the ability.
+func CheckDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
+	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
+		return m.Kind == rules.ModifierCheckDisadvantage && slices.Contains(m.Abilities, ability)
+	})
+}
