@@ -32,3 +32,15 @@ func Recover(logger *slog.Logger, what string, onPanic ...func()) {
 		f()
 	}
 }
+
+// Go is the way the server starts a goroutine.
+// It runs fn in a new goroutine with Recover deferred directly inside.
+// A panic in fn is logged and the process lives.
+// onPanic runs after the log line.
+// What must still happen after a panic is deferred inside fn.
+func Go(logger *slog.Logger, what string, fn func(), onPanic ...func()) {
+	go func() {
+		defer Recover(logger, what, onPanic...)
+		fn()
+	}()
+}

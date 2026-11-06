@@ -38,3 +38,32 @@ func TestRecoverDoesNothingWithoutAPanic(t *testing.T) {
 		t.Errorf("logged %q without a panic", logs.String())
 	}
 }
+
+func TestGoLogsAPanicAndTheProcessLives(t *testing.T) {
+	t.Parallel()
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	failed := make(chan struct{})
+
+	safego.Go(logger, "panicking job", func() { panic("bad data") }, func() { close(failed) })
+	<-failed // onPanic runs after the log line, so the log is complete here
+
+	for _, want := range []string{"level=ERROR", "panicking job", "bad data", "stack="} {
+		if !strings.Contains(logs.String(), want) {
+			t.Errorf("log %q misses %q", logs.String(), want)
+		}
+	}
+}
+
+func TestGoRunsAFunctionThatDoesNotPanic(t *testing.T) {
+	t.Parallel()
+	var logs bytes.Buffer
+	ran := make(chan struct{})
+	onPanicRan := false
+
+	safego.Go(slog.New(slog.NewTextHandler(&logs, nil)), "calm job", func() { close(ran) }, func() { onPanicRan = true })
+	<-ran
+	if onPanicRan {
+		t.Error("onPanic ran without a panic")
+	}
+}
