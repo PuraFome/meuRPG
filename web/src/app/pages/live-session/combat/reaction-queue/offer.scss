@@ -18,10 +18,9 @@
     margin: 0;
   }
 
-  // Waiting for its turn: dashed, grey, nothing to press.
+  // Waiting for its turn: a dashed frame and nothing to press; only the overline, the pill and the wait line go grey.
   &--later {
     border: 1px dashed var(--mr-control-line);
-    color: var(--mr-ink-muted);
   }
 }
 
@@ -109,15 +108,12 @@
   }
 }
 
-// Decline first, then the primary; at 390 px each takes its own line, 48 px high.
+// Decline first, then the primary, side by side in two equal columns from 390 px up (the 1280 px side panel is about 298 px
+// wide inside its card); a long label wraps inside its button, which is 48 px high (44 px from 768 px).
 .offer__btns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-}
-
-.offer__btns--stack {
-  grid-template-columns: 1fr;
 }
 
 .btn {
@@ -149,4 +145,10 @@
   font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
+}
+
+.lr-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
 }

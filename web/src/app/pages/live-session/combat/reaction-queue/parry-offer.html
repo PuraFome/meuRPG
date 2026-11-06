@@ -6,7 +6,9 @@
 >
   <header class="offer__head">
     <span class="offer__over"><mat-icon aria-hidden="true">stop</mat-icon>{{ card().overline }}</span>
-    <span class="offer__pill" data-testid="queue-badge">{{ badge() }}</span>
+    @if (badge(); as b) {
+      <span class="offer__pill" data-testid="queue-badge">{{ b }}</span>
+    }
   </header>
   <p class="offer__who">{{ card().reactor }}</p>
   <h3 class="offer__title" [id]="'parry-' + card().id">{{ card().title }}</h3>
@@ -34,7 +36,7 @@
           disabledInteractive
           (click)="answer(false)"
         >
-          {{ sending() === 'pass' ? 'Deixando passar...' : card().passLabel }}
+          {{ sending() === 'pass' ? 'Deixando passar…' : card().passLabel }}
         </button>
         <button
           matButton="filled"
@@ -45,14 +47,13 @@
           disabledInteractive
           (click)="answer(true)"
         >
-          {{ sending() === 'use' ? 'Aparando...' : card().useLabel }}
+          {{ sending() === 'use' ? 'Aparando…' : card().useLabel }}
         </button>
       </div>
     }
-  } @else if (waiting()) {
+  } @else if (badge() === 'Depois' && waiting()) {
     <p class="offer__wait">
       <mat-icon aria-hidden="true">block</mat-icon>{{ waiting() }}
     </p>
   }
-  <span class="mr-visually-hidden" role="status" aria-live="polite">{{ said() }}</span>
 </section>

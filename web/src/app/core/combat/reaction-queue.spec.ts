@@ -82,6 +82,17 @@ describe('the master queue "Esperando você"', () => {
     expect(q.legendary[0].waiting).toContain('Depois das duas janelas acima');
   });
 
+  it('says "trava a mesa" for one window and "uma de cada vez" for several', () => {
+    const one = encounter({
+      combatants: [dragon, tor, captain],
+      currentCombatantId: 't',
+      reactionWindows: [parry],
+    } as never);
+    expect(masterQueue(one).count).toBe(1);
+    expect(masterQueue(one).hint).toBe('trava a mesa');
+    expect(masterQueue(e).hint).toBe('uma de cada vez');
+  });
+
   it('puts the window to answer now first even when the server lists it later', () => {
     const swapped = encounter({
       combatants: [dragon, tor, captain],

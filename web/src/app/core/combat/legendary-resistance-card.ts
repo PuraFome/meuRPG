@@ -14,7 +14,7 @@ export interface ResistanceOfferRow {
   /** "Dragão vermelho adulto falhou: d20 4 + 6 = 10 contra CD 15". */
   readonly failed: string;
   readonly checkboxLabel: string;
-  /** "vira sucesso · gasta 1 · restam 3 de 3 hoje". */
+  /** Many creatures: "vira sucesso · gasta 1 · restam 3 de 3 hoje". One creature: "Resistência Lendária: restam 3 de 3 hoje · usar gasta 1". */
   readonly line: string;
   readonly checked: false;
 }
@@ -26,9 +26,12 @@ export interface LegendaryResistanceCard {
   readonly title: string;
   /** "Relâmpago de Pensantus · teste de resistência, CD 15. A magia espera a sua resposta; os dados já foram rolados.". */
   readonly source: string;
+  /** `one`: a single failing creature, no checkbox, the primary button uses it. `many`: a checkbox per creature. */
+  readonly mode: 'one' | 'many';
   readonly rows: readonly ResistanceOfferRow[];
   /** First, and the default: every save stays as it was rolled. */
   readonly declineLabel: string;
+  /** "Usar Resistência Lendária" for one creature, "Usar nas marcadas" for many. */
   readonly confirmLabel: string;
   readonly footer: string;
 }
@@ -67,11 +70,12 @@ export function legendaryResistanceCard(
     return null;
   }
   const offers = w.prompt.value.offers;
+  const one = offers.length === 1;
   return {
     id: w.id,
     overline: 'Resistência Lendária',
-    title:
-      offers.length === 1 ? 'Transformar a falha em sucesso?' : 'Transformar falhas em sucesso?',
+    title: one ? 'Transformar a falha em sucesso?' : 'Transformar falhas em sucesso?',
+    mode: one ? 'one' : 'many',
     source: sourceLine(
       w,
       actorIsPlayer,
@@ -82,24 +86,30 @@ export function legendaryResistanceCard(
       label: o.label,
       failed: `${o.label} falhou: ${rollText(o.d20, o.total, o.treatedAs)} contra CD ${o.dc}`,
       checkboxLabel: 'Usar Resistência Lendária',
-      line: `vira sucesso · gasta 1 · restam ${o.usesLeft} de ${o.usesPerDay} hoje`,
+      line: one
+        ? `Resistência Lendária: restam ${o.usesLeft} de ${o.usesPerDay} hoje · usar gasta 1`
+        : `vira sucesso · gasta 1 · restam ${o.usesLeft} de ${o.usesPerDay} hoje`,
       checked: false as const,
     })),
     declineLabel: 'Deixar como rolou',
-    confirmLabel: 'Usar nas marcadas',
+    confirmLabel: one ? 'Usar Resistência Lendária' : 'Usar nas marcadas',
     footer: 'Os jogadores veem “Esperando o mestre” e, depois, um teste que passou.',
   };
 }
 
-/** The creatures to send with "Usar nas marcadas": the ticked ones that the window offers, in the window's order. */
+/** The creatures to send with the primary button: the only creature of a single window, or the ticked ones that the
+ * window offers, in the window's order. */
 export function resistanceIds(
   card: LegendaryResistanceCard,
   ticked: ReadonlySet<string>,
 ): readonly string[] {
+  if (card.mode === 'one') {
+    return card.rows.map((r) => r.combatantId);
+  }
   return card.rows.filter((r) => ticked.has(r.combatantId)).map((r) => r.combatantId);
 }
 
-/** "Usar nas marcadas" is offered only with something ticked; "Deixar como rolou" always. */
+/** The primary button works for a single creature; with many it is offered only with something ticked. "Deixar como rolou" always. */
 export function canConfirmResistance(card: LegendaryResistanceCard, ticked: ReadonlySet<string>) {
   return resistanceIds(card, ticked).length > 0;
 }

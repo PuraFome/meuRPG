@@ -72,6 +72,20 @@ describe('the Legendary Resistance window', () => {
     );
   });
 
+  it('has no checkbox for one creature: a plain line and a primary that uses it', () => {
+    const one = legendaryResistanceCard(window([offer('d', 'Dragão vermelho adulto', 4, 10)]));
+    if (!one) {
+      throw new Error('no card');
+    }
+    expect(one.mode).toBe('one');
+    expect(one.rows[0].line).toBe('Resistência Lendária: restam 3 de 3 hoje · usar gasta 1');
+    expect(one.confirmLabel).toBe('Usar Resistência Lendária');
+    expect(one.declineLabel).toBe('Deixar como rolou');
+    expect(canConfirmResistance(one, new Set())).toBe(true);
+    expect(resistanceIds(one, new Set())).toEqual(['d']);
+    expect(two?.mode).toBe('many');
+  });
+
   it('does not invent a DC the offers do not share, and has no card without its prompt', () => {
     const c = legendaryResistanceCard(
       window([offer('d', 'A', 4, 10), offer('v', 'B', 7, 11, 1, { dc: 17 })]),

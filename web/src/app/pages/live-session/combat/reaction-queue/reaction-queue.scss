@@ -267,6 +267,9 @@
 }
 
 .qhead__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
   font-size: var(--mr-font-22);

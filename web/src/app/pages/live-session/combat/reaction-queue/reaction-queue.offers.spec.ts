@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { CombatantKind, ReactionKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -9,6 +10,7 @@ import { combatant, encounter, reactionWindow } from '../../../../core/combat/co
 import { EffectsClient } from '../../../../core/effects/effects-client';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { settle } from '../../../../../test-settle';
+import { ParryOffer } from './parry-offer';
 import { ReactionQueue } from './reaction-queue';
 
 const plain = (text: string | null | undefined) =>
@@ -162,13 +164,36 @@ describe("the master's offers in the queue (#557)", () => {
     it('counts the windows that block, with "uma de cada vez", "Agora" first and "Depois" after', () => {
       const { el } = setup([parry(), resistance(false)]);
       const head = el.querySelector('[data-testid="queue-header"]');
-      expect(plain(head?.querySelector('h2')?.textContent)).toBe('Esperando você');
-      expect(plain(head?.querySelector('.qhead__count')?.textContent)).toBe('2');
+      const h2 = head?.querySelector('h2');
+      expect(plain(h2?.textContent)).toBe('Esperando você 2 (2 janelas)');
+      expect(h2?.querySelector('.qhead__count')?.getAttribute('aria-hidden')).toBe('true');
+      expect(plain(h2?.querySelector('.mr-visually-hidden')?.textContent)).toBe('(2 janelas)');
       expect(plain(head?.querySelector('.qhead__hint')?.textContent)).toBe('uma de cada vez');
       expect(texts(el, '[data-testid="queue-badge"]')).toEqual(['Agora', 'Depois']);
       expect(
         plain(el.querySelector('[data-testid="resistance-offer"] .offer__wait')?.textContent),
       ).toContain('Depois da janela acima.');
+    });
+
+    it('says "trava a mesa" for a single window', () => {
+      const { el } = setup([parry()]);
+      expect(plain(el.querySelector('.qhead__hint')?.textContent)).toBe('trava a mesa');
+      expect(plain(el.querySelector('h2')?.textContent)).toContain('(1 janela)');
+    });
+
+    it('draws no pill and no buttons for a card without a badge', () => {
+      const { fixture } = setup([parry()]);
+      const queued = fixture.debugElement.query(By.directive(ParryOffer));
+      const own = TestBed.createComponent(ParryOffer);
+      own.componentRef.setInput('card', queued.componentInstance.card());
+      own.componentRef.setInput('encounter', encounter({ id: 'enc' } as never));
+      own.componentRef.setInput('campaignId', 'camp');
+      own.componentRef.setInput('state', new CombatState());
+      own.componentRef.setInput('badge', null);
+      own.detectChanges();
+      const el = own.nativeElement as HTMLElement;
+      expect(el.querySelector('[data-testid="queue-badge"]')).toBeNull();
+      expect(el.querySelectorAll('button')).toHaveLength(0);
     });
 
     it('offers buttons only on the window to answer now', () => {
@@ -208,7 +233,7 @@ describe("the master's offers in the queue (#557)", () => {
       expect(api.answerParry).toHaveBeenCalledWith('camp', 'enc', 'p', false, expect.any(String));
     });
 
-    it('shows the sending state: both buttons dashed and inert, "Aparando..."', async () => {
+    it('shows the sending state: both buttons dashed and inert, "Aparando…"', async () => {
       const { fixture, el } = setup([parry()]);
       let release: (v: unknown) => void = () => undefined;
       api.answerParry.mockImplementationOnce(() => new Promise((r) => (release = r)));
@@ -216,7 +241,7 @@ describe("the master's offers in the queue (#557)", () => {
       fixture.detectChanges();
       expect(texts(el, '[data-testid="parry-offer"] button')).toEqual([
         'Deixar passar',
-        'Aparando...',
+        'Aparando…',
       ]);
       const buttons = Array.from(
         el.querySelectorAll<HTMLButtonElement>('[data-testid="parry-offer"] button'),
@@ -226,6 +251,33 @@ describe("the master's offers in the queue (#557)", () => {
       expect(api.answerParry).toHaveBeenCalledTimes(1);
       release(await done());
       await settle(fixture);
+    });
+
+    it('announces the answer from the queue region, not from the card that goes away', async () => {
+      const { fixture, el } = setup([parry()]);
+      button(el, 'Aparar (+2 CA)').click();
+      await settle(fixture);
+      expect(el.querySelector('[data-testid="parry-offer"] [role="status"]')).toBeNull();
+      expect(plain(el.querySelector(':scope > [role="status"]')?.textContent)).toBe(
+        'Golpe aparado.',
+      );
+    });
+
+    it('moves the focus to "Tentar de novo" and back to the first answer on a retry', async () => {
+      const { fixture, el } = setup([parry()]);
+      document.body.append(el);
+      api.answerParry.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
+      button(el, 'Aparar (+2 CA)').click();
+      await settle(fixture);
+      expect(document.activeElement).toBe(button(el, 'Tentar de novo'));
+      let release: (v: unknown) => void = () => undefined;
+      api.answerParry.mockImplementationOnce(() => new Promise((r) => (release = r)));
+      button(el, 'Tentar de novo').click();
+      await settle(fixture);
+      expect(document.activeElement).toBe(button(el, 'Deixar passar'));
+      release(await done());
+      await settle(fixture);
+      el.remove();
     });
 
     it('keeps the offer on a lost connection and retries with the same key', async () => {
@@ -318,6 +370,54 @@ describe("the master's offers in the queue (#557)", () => {
       );
     });
 
+    it('has no checkbox for a single creature: the primary uses it', async () => {
+      const w = reactionWindow({
+        ...resistance(),
+        prompt: {
+          case: 'legendaryResistance',
+          value: { offers: [offer('d', 'Dragão vermelho adulto', 10, 3)] },
+        },
+      } as never);
+      const { fixture, el } = setup([w]);
+      expect(el.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
+      expect(plain(el.querySelector('.lr__line')?.textContent)).toBe(
+        'Resistência Lendária: restam 3 de 3 hoje · usar gasta 1',
+      );
+      expect(texts(el, '[data-testid="resistance-offer"] button')).toEqual([
+        'Deixar como rolou',
+        'Usar Resistência Lendária',
+      ]);
+      button(el, 'Usar Resistência Lendária').click();
+      await settle(fixture);
+      expect(api.answerLegendaryResistance).toHaveBeenCalledWith(
+        'camp',
+        'enc',
+        'lr',
+        { creatureIds: ['d'] },
+        expect.any(String),
+      );
+    });
+
+    it('names each checkbox by its creature, inside a group labelled by the title', () => {
+      const { el } = setup([resistance()]);
+      const group = el.querySelector('[role="group"]');
+      expect(group?.getAttribute('aria-labelledby')).toBe(el.querySelector('h3')?.id);
+      const box = el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1];
+      const name = el.querySelector(`#${box.getAttribute('aria-labelledby')}`);
+      expect(plain(name?.textContent)).toBe('Usar Resistência Lendária em Vampiro');
+    });
+
+    it('locks the rows while "Tentar de novo" waits, so the retry resends the same answer', async () => {
+      const { fixture, el } = setup([resistance()]);
+      api.answerLegendaryResistance.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
+      el.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+      fixture.detectChanges();
+      button(el, 'Usar nas marcadas').click();
+      await settle(fixture);
+      const boxes = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+      expect(boxes.every((b) => b.disabled)).toBe(true);
+    });
+
     it('shows the sending state and locks the rows', async () => {
       const { fixture, el } = setup([resistance()]);
       let release: (v: unknown) => void = () => undefined;
@@ -328,7 +428,7 @@ describe("the master's offers in the queue (#557)", () => {
       fixture.detectChanges();
       expect(texts(el, '[data-testid="resistance-offer"] button')).toEqual([
         'Deixar como rolou',
-        'Usando...',
+        'Usando…',
       ]);
       expect(el.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(true);
       release(await done());

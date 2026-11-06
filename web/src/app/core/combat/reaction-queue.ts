@@ -23,7 +23,7 @@ export interface MasterQueue {
   readonly count: number;
   /** "Esperando você (2)", or `''` when nothing blocks the table. */
   readonly header: string;
-  /** "uma de cada vez". */
+  /** "trava a mesa" for one window, "uma de cada vez" for several. */
   readonly hint: string;
   readonly items: readonly QueueItem[];
   /** After the windows; "Opcional" when nothing blocks the table. */
@@ -79,7 +79,7 @@ export function masterQueue(e: Encounter): MasterQueue {
     title: 'Esperando você',
     count: mine.length,
     header: mine.length > 0 ? `Esperando você (${mine.length})` : '',
-    hint: 'uma de cada vez',
+    hint: mine.length > 1 ? 'uma de cada vez' : 'trava a mesa',
     items,
     legendary: legendaryCards(e, { ahead: mine.length, playerWaits: openWindows(e).length > 0 }),
   };

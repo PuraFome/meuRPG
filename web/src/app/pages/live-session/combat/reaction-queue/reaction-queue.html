@@ -1,8 +1,11 @@
     @if (showHeader()) {
       <header class="qhead" data-testid="queue-header">
         <mat-icon aria-hidden="true">hourglass_top</mat-icon>
-        <h2 class="qhead__title">{{ queue().title }}</h2>
-        <span class="qhead__count" [attr.aria-label]="count() + (count() === 1 ? ' janela' : ' janelas')">{{ count() }}</span>
+        <h2 class="qhead__title">
+          {{ queue().title }}
+          <span class="qhead__count" aria-hidden="true">{{ count() }}</span>
+          <span class="mr-visually-hidden">{{ ' (' + count() + (count() === 1 ? ' janela' : ' janelas') + ')' }}</span>
+        </h2>
         <span class="qhead__hint">{{ hint() }}</span>
       </header>
     }
@@ -15,7 +18,8 @@
             [encounter]="encounter()"
             [campaignId]="campaignId()"
             [state]="state()"
-            [badge]="item.badge ?? 'Depois'"
+            (announce)="said.set($event)"
+            [badge]="item.badge"
             [waiting]="item.waiting"
           />
         }
@@ -25,7 +29,8 @@
             [encounter]="encounter()"
             [campaignId]="campaignId()"
             [state]="state()"
-            [badge]="item.badge ?? 'Depois'"
+            (announce)="said.set($event)"
+            [badge]="item.badge"
             [waiting]="item.waiting"
           />
         }

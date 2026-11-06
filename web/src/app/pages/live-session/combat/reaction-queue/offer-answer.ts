@@ -1,3 +1,4 @@
+import { type Injector, afterNextRender } from '@angular/core';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -21,4 +22,12 @@ export function offerFailure(err: unknown, what: string): OfferFailure {
   return code === Code.Unavailable || code === Code.DeadlineExceeded
     ? { text: CONNECTION_TEXT, connection: true }
     : { text: combatErrorMessage(err, what), connection: false };
+}
+
+/** After the card redraws, focus its first answer button or its "Tentar de novo": the button that was pressed may be gone. */
+export function focusInitial(host: HTMLElement, injector: Injector): void {
+  afterNextRender(
+    () => host.querySelector<HTMLElement>('[data-initial]:not([disabled])')?.focus(),
+    { injector },
+  );
 }
