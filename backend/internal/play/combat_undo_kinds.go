@@ -911,7 +911,7 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 func (u *undoer) castHitTargetBack(ctx context.Context, h castHit) error {
 	target, ok := u.find(h.Target)
 	switch {
-	case ok && h.Fx != "":
+	case ok && (h.Fx != "" || h.Restore != nil): // an effect's temporary hit points leave no Fx
 		return u.castTargetBack(ctx, target, h)
 	case ok && h.CondSet:
 		return u.setConditionsBack(ctx, target.ID, h.CondBefore)

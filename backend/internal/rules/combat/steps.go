@@ -38,6 +38,8 @@ type Modifier struct {
 	// Qualifier limits it: "" covers every damage of its types, QualifierNonmagical only
 	// the damage of a nonmagical attack.
 	Qualifier string `json:",omitempty"`
+	// Hidden says the source is an effect the master keeps from the players: a player reads no name for it.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // Origin says where a damage comes from, for the modifiers that depend on it. The zero

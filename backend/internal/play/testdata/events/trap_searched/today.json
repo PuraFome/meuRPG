@@ -800,7 +800,8 @@
           "DamageTypes": [
             "x"
           ],
-          "Qualifier": "x"
+          "Qualifier": "x",
+          "hidden": true
         }
       ],
       "origin": {

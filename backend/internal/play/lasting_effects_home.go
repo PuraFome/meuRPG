@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Where an effect lives (RN-22). An effect belongs to the character it is on: in a running
@@ -39,7 +40,7 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		return err
 	}
 	def, ok := content.CombatSpellEffect(plan.spell)
-	if !ok || def.Applies != "all" || len(plan.g.targets) == 0 {
+	if !ok || def.Applies != "all" || len(s.effectTargetsAll(plan)) == 0 { // a spell on the caster alone has no targets listed
 		return nil
 	}
 	seconds, kind := castClockOf(plan, def)
@@ -62,6 +63,9 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		}
 		clock := castClock{seconds: seconds, kind: kind}
 		if err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock); err != nil {
+			return err
+		}
+		if err := s.giveCharacterTempHP(ctx, c, t.ID, mods); err != nil {
 			return err
 		}
 		touched = append(touched, t.ID)
@@ -383,16 +387,43 @@ func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.C
 	}
 }
 
+// giveCharacterTempHP gives a character the temporary hit points of a temp_hp modifier of a spell cast outside a
+// combat. They do not stack: it keeps the larger of what it had and what the effect gives (SRD 5.1,
+// "Temporary Hit Points"). They go when the effect does (afterCharacterEffectsGone).
+func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, characterID string, mods []rules.EffectModifier) error {
+	amount := combat.TempHP(mods)
+	if amount <= 0 {
+		return nil
+	}
+	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID)
+	if err != nil || int(v.GetHitPointsTemporary()) >= amount {
+		return nil //nolint:nilerr // a character with no vitals has no hit points to give
+	}
+	temp := clamp32(amount, 0, maxTempHitPoints)
+	_, got, err := s.vitalsOf(ctx, c, characterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+	if err != nil {
+		return err
+	}
+	if got != nil {
+		c.told = append(c.told, got)
+	}
+	return nil
+}
+
 // afterCharacterEffectsGone does what follows effects that ended on characters out of a combat:
-// the temporary hit points a spell gave go with it (SRD 5.1, Heroism).
+// the temporary hit points a spell gave go with it (SRD 5.1, Heroism). Those of temp_hp go only if the character
+// has no more than the effect gave.
 func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, rows []playdb.CharacterEffect) error {
 	none := int32(0)
 	for _, r := range rows {
-		if !slices.ContainsFunc(modifiersOf(r.Modifiers), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
+		mods := modifiersOf(r.Modifiers)
+		turn := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
+		given := combat.TempHP(mods)
+		if !turn && given == 0 {
 			continue
 		}
 		v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.CharacterID)
-		if err != nil || v.GetHitPointsTemporary() == 0 {
+		if err != nil || v.GetHitPointsTemporary() == 0 || (!turn && int(v.GetHitPointsTemporary()) > given) {
 			continue
 		}
 		if _, got, err := s.vitalsOf(ctx, c, r.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &none}); err != nil {

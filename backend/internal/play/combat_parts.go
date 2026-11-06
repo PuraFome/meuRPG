@@ -512,13 +512,17 @@ func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamageP
 }
 
 // stepsProto writes the steps the modifiers take the damage through, in Portuguese.
-func stepsProto(groups []stepGroup, ignored []string, names func(string) string, damageTypePT func(string) string) []*playv1.DamageStep {
+func stepsProto(groups []stepGroup, ignored []string, names func(string) string, damageTypePT func(string) string, master bool) []*playv1.DamageStep {
 	var out []*playv1.DamageStep
 	for _, g := range groups {
+		gnames := names
+		if !master { // an effect the master hides is "Outra fonte" to a player (RN-10)
+			gnames = hidingNames(names, g.Mods)
+		}
 		_, steps := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored, g.From)
 		for _, st := range steps {
 			out = append(out, &playv1.DamageStep{
-				Kind: stepKindProto(st.Kind), SourceKeys: st.Sources, LabelPt: stepLabel(st, names, damageTypePT),
+				Kind: stepKindProto(st.Kind), SourceKeys: shownSourceKeys(st.Sources, g.Mods, master), LabelPt: stepLabel(st, gnames, damageTypePT),
 				Before: clamp32(st.Before, 0, math.MaxInt32), After: clamp32(st.After, 0, math.MaxInt32), DamageTypeKey: st.DamageType,
 			})
 		}
@@ -527,7 +531,7 @@ func stepsProto(groups []stepGroup, ignored []string, names func(string) string,
 			for _, m := range g.Mods {
 				if m.Source == ig && m.Covers(g.DamageType, g.From) {
 					out = append(out, &playv1.DamageStep{
-						Kind: stepKindProto(m.Kind), SourceKeys: []string{m.Source}, LabelPt: stepLabel(combat.Step{Kind: m.Kind, Sources: []string{m.Source}, DamageType: g.DamageType, Qualifier: m.Qualifier}, names, damageTypePT),
+						Kind: stepKindProto(m.Kind), SourceKeys: shownSourceKeys([]string{m.Source}, g.Mods, master), LabelPt: stepLabel(combat.Step{Kind: m.Kind, Sources: []string{m.Source}, DamageType: g.DamageType, Qualifier: m.Qualifier}, gnames, damageTypePT),
 						Before: g.Before, After: g.Before, DamageTypeKey: g.DamageType, Ignored: true,
 					})
 				}
@@ -535,6 +539,40 @@ func stepsProto(groups []stepGroup, ignored []string, names func(string) string,
 		}
 	}
 	return out
+}
+
+// hiddenSources are the keys of the modifiers that come from an effect the master hides.
+func hiddenSources(mods []combat.Modifier) []string {
+	var out []string
+	for _, m := range mods {
+		if m.Hidden {
+			out = append(out, m.Source)
+		}
+	}
+	return out
+}
+
+// hidingNames is names with "Outra fonte" for the sources the master hides.
+func hidingNames(names func(string) string, mods []combat.Modifier) func(string) string {
+	hidden := hiddenSources(mods)
+	if len(hidden) == 0 {
+		return names
+	}
+	return func(key string) string {
+		if slices.Contains(hidden, key) {
+			return "Outra fonte"
+		}
+		return names(key)
+	}
+}
+
+// shownSourceKeys are the keys of a step's sources a viewer may read: a player gets none of an effect the master hides.
+func shownSourceKeys(keys []string, mods []combat.Modifier, master bool) []string {
+	if master {
+		return keys
+	}
+	hidden := hiddenSources(mods)
+	return slices.DeleteFunc(slices.Clone(keys), func(k string) bool { return slices.Contains(hidden, k) })
 }
 
 func stepKindProto(kind string) playv1.DamageStepKind {
@@ -1104,7 +1142,10 @@ func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID strin
 func effectResistancesOf(states map[string][]playdb.CombatantState, id string) []combat.Modifier {
 	var out []combat.Modifier
 	for _, st := range effectsOn(states, id) {
-		out = append(out, combat.EffectResistances(conv.OrZero(st.SourceKey), effectModifiers(st))...)
+		for _, m := range combat.EffectResistances(conv.OrZero(st.SourceKey), effectModifiers(st)) {
+			m.Hidden = !st.PlayerVisible
+			out = append(out, m)
+		}
 	}
 	return out
 }
@@ -1202,7 +1243,7 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 			group := stepGroup{DamageType: t, Before: clamp32(byType[t], 0, math.MaxInt32), From: from}
 			for _, m := range mods {
 				if m.Covers(t, from) {
-					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}, Qualifier: m.Qualifier})
+					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}, Qualifier: m.Qualifier, Hidden: m.Hidden})
 				}
 			}
 			out.groups = append(out.groups, group)
@@ -1254,7 +1295,7 @@ func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.P
 	out.PartRolls = partRollsProto(p, v.master, dtPT)
 	if i >= 0 && (v.master || (cs[i].Kind == kindPlayer && v.owns(cs[i]))) {
 		if groups := readStepGroups(p.Steps); len(groups) > 0 {
-			out.Steps = stepsProto(groups, nil, s.namesFor(ctx, campaignID), dtPT)
+			out.Steps = stepsProto(groups, nil, s.namesFor(ctx, campaignID), dtPT, v.master)
 			out.AmountAfterSteps = p.AfterSteps
 		}
 	}

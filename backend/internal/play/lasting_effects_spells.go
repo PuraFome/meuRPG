@@ -89,6 +89,36 @@ func (s *Service) applyLastingSpell(
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
+	return s.giveEffectTempHP(ctx, c, cs, rows, targs, made)
+}
+
+// giveEffectTempHP gives the temporary hit points a temp_hp modifier of the effect gives each target it
+// took hold of. They do not stack: a target keeps the larger of what it had and what the effect gives (SRD 5.1,
+// "Temporary Hit Points"). The hit keeps the hit points before, for the cast's undo.
+func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent) error {
+	for _, r := range rows {
+		amount := combat.TempHP(effectModifiers(r))
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
+		j := slices.IndexFunc(targs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
+		if amount <= 0 || i < 0 || j < 0 {
+			continue
+		}
+		t, err := s.readFxTarget(ctx, c, cs[i])
+		if err != nil {
+			return err
+		}
+		var given castHit
+		v, err := s.giveTempHP(ctx, c, t, amount, &given)
+		if err != nil {
+			return err
+		}
+		if v != nil {
+			c.told = append(c.told, v)
+		}
+		if made.Hits[j].Restore == nil {
+			made.Hits[j].Restore, made.Hits[j].DeathBefore = given.Restore, given.DeathBefore
+		}
+	}
 	return nil
 }
 

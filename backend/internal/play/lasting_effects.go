@@ -616,10 +616,16 @@ func (s *Service) afterEffectRowEnded(ctx context.Context, c *combatTx, cs []pla
 			return err
 		}
 	}
-	// The temporary hit points the spell gave go with it (SRD 5.1, Heroism).
-	if slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
-		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
-			if err := s.clearTempHP(ctx, c, cs[i]); err != nil {
+	// The temporary hit points the spell gave go with it (SRD 5.1, Heroism). Those of temp_hp go only if the
+	// target has no more than the effect gave: more came from somewhere else.
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
+		limit := combat.TempHP(def.Modifiers)
+		turn := slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
+		if turn {
+			limit = 0
+		}
+		if turn || limit > 0 {
+			if err := s.clearTempHP(ctx, c, cs[i], limit); err != nil {
 				return err
 			}
 		}
@@ -783,7 +789,7 @@ func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) [
 // advantage (a table spell's), "" for none.
 func effectAttackAdvantage(states map[string][]playdb.CombatantState, id string) string {
 	for _, st := range effectsOn(states, id) {
-		if combat.HasAttackAdvantage(effectModifiers(st)) {
+		if st.SpentAt == nil && combat.HasAttackAdvantage(effectModifiers(st)) {
 			return conv.OrZero(st.SourceKey)
 		}
 	}

@@ -25,11 +25,20 @@ func rollKinds(kinds ...rulesv1.TableEffectRollKind) []rulesv1.TableEffectRollKi
 // newMarkCasters is the party of newTableCasters with the one spell Marca de Nanquim, which leaves the modifiers.
 func newMarkCasters(t *testing.T, mods ...*tableMod) *armed {
 	t.Helper()
+	return newMarkCastersWith(t, nil, mods...)
+}
+
+// newMarkCastersWith lets the test reshape the spell (a self target, a save, an attack) before it is written.
+func newMarkCastersWith(t *testing.T, shape func(*rulesv1.TableSpell), mods ...*tableMod) *armed {
+	t.Helper()
 	return newArmedWith(t, func(a *armed) {
 		mark := tableSpell("Marca de Nanquim", 1, "class:wizard", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_RANGED, tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_CREATURE))
 		mark.Concentration = true
 		mark.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE, UpTo: true}
 		mark.Effect = &rulesv1.TableSpellEffect{Modifiers: mods, Visibility: rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC}
+		if shape != nil {
+			shape(mark)
+		}
 		if _, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: mark},
 		})); err != nil {
