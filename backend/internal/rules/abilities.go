@@ -54,7 +54,8 @@ func (x *deriver) abilities() {
 	x.abilityChoiceHint(len(picked))
 }
 
-// raceBonuses are the fixed ability bonuses of the race and the subrace.
+// raceBonuses are the fixed ability bonuses of the race and the subrace. A subrace that
+// replaces them has its own only.
 func (x *deriver) raceBonuses() map[Ability]int {
 	raceBonus := map[Ability]int{}
 	add := func(bonuses map[string]int) {
@@ -64,7 +65,7 @@ func (x *deriver) raceBonuses() map[Ability]int {
 			}
 		}
 	}
-	if x.race != nil {
+	if x.race != nil && (x.subrace == nil || !x.subrace.ReplacesAbilityBonuses) {
 		add(x.race.AbilityBonuses)
 	}
 	if x.subrace != nil {

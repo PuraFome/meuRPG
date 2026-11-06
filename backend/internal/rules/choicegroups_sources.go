@@ -24,7 +24,7 @@ func (cb *choiceBuilder) race() {
 	if x.race == nil {
 		return
 	}
-	cb.raceSource(x.race.Key, x.race.Traits)
+	cb.raceSource(x.race.Key, x.raceTraitKeys())
 	if x.subrace != nil {
 		cb.raceSource(x.subrace.Key, x.subrace.Traits)
 	}
