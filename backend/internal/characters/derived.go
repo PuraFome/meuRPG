@@ -527,11 +527,11 @@ func openChoices(d rules.Derived) []*charactersv1.OpenChoice {
 }
 
 // rollDiceToProto lists the table dice that go on the character's own rolls: the maneuvers of applies check,
-// save and initiative.
+// save, initiative and attack.
 func rollDiceToProto(ms []rules.Maneuver) []*rulesv1.RollDie {
 	var out []*rulesv1.RollDie
 	for _, m := range ms {
-		if m.Applies != rules.ManeuverCheck && m.Applies != rules.ManeuverSave && m.Applies != rules.ManeuverInitiative {
+		if !rules.IsRollDie(m.Applies) {
 			continue
 		}
 		out = append(out, &rulesv1.RollDie{

@@ -31,17 +31,12 @@ func (s *Service) GetSpellDetails(
 	if !ok {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
-	// A spell the master archived or switched off is not shown to a player (RN-23),
-	// unless one of their own sheets in the campaign uses it: it answers as an
-	// unknown spell.
-	if content.Hidden(req.Msg.GetSpellKey()) && !isMaster(m) {
-		uses, err := s.callerUses(ctx, m, req.Msg.GetSpellKey())
-		if err != nil {
-			return nil, s.dbError(ctx, "read the caller's sheets", err)
-		}
-		if !uses {
-			return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
-		}
+	visible, err := s.spellVisible(ctx, m, content, req.Msg.GetSpellKey())
+	if err != nil {
+		return nil, s.dbError(ctx, "read the caller's sheets", err)
+	}
+	if !visible {
+		return nil, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
 	out := spellDetailsToProto(d)
 	if !isMaster(m) {
@@ -50,6 +45,22 @@ func (s *Service) GetSpellDetails(
 	}
 	out.HitPointEffect = hitPointEffect(content, req.Msg.GetSpellKey(), d.Spell.Level)
 	return connect.NewResponse(&rulesv1.GetSpellDetailsResponse{Spell: out}), nil
+}
+
+// spellVisible says whether the caller reads the spell. The spell of a feature's summon is the feature's: the master and
+// a player whose character uses the entry of the feature read it. Any other spell the master archived or switched off is
+// not shown to a player (RN-23), unless one of their own sheets in the campaign uses it.
+func (s *Service) spellVisible(ctx context.Context, m authz.Membership, content *rules.Content, key string) (bool, error) {
+	if isMaster(m) {
+		return true, nil
+	}
+	if owner, ok := content.FeatureSummonOwner(key); ok {
+		return s.callerUses(ctx, m, owner)
+	}
+	if content.Hidden(key) {
+		return s.callerUses(ctx, m, key)
+	}
+	return true, nil
 }
 
 var hpEffectKindToProto = map[string]rulesv1.SpellHitPointEffectKind{

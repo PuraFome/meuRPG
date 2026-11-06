@@ -352,6 +352,8 @@ func (s *Service) finishWithGrant(ctx context.Context, c *combatTx, m authz.Memb
 		return plan, err
 	}
 	plan.osp.Spell = sp
+	grant := plan.osp.Grants[i]
+	plan.grant = &grant // the finish needs it to know the cast goes through the grant
 	return plan, nil
 }
 

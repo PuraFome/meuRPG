@@ -20,10 +20,12 @@ import (
 // fall are answered or closed, and then lands (an NPC's) or waits for the master (a
 // player's character's), as every trap damage does.
 
-// fallWindows lists the windows a fall opens: one for each combatant that has the
-// spell and a slot, the reaction, and is within 60 feet of a faller it sees (itself
-// included), in the initiative order.
-func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Combatant, fallers []playdb.Combatant, point string, fallFt int32) ([]windowSpec, error) {
+// fallWindows lists the windows a fall opens, in the initiative order: for each combatant that has
+// the reaction, a Feather Fall one when it has the spell and a slot and is within 60 feet of a faller
+// it sees (itself included), and a Slow Fall one when it is a monk of level 4 or higher whose own fall
+// damage is rolled (falls is the damage of each faller, by combatant). The reactor has one reaction:
+// the first answer closes the other window.
+func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Combatant, fallers []playdb.Combatant, falls map[string]int32, point string, fallFt int32) ([]windowSpec, error) {
 	ids := make([]string, len(fallers))
 	for i, f := range fallers {
 		ids[i] = f.ID
@@ -37,22 +39,33 @@ func (s *Service) fallWindows(ctx context.Context, c *combatTx, cs []playdb.Comb
 		if err != nil {
 			return nil, err
 		}
-		if !ok || !k.canReact() || len(k.slotsFor(spellFeatherFall)) == 0 {
+		if !ok || !k.canReact() {
 			continue
 		}
-		near, err := s.nearestFaller(ctx, c, cs, r, fallers)
+		feather, err := s.featherFallSpec(ctx, c, cs, fallers, k, r, windowTrigger{Falling: ids, FallFt: fallFt, Trap: point})
 		if err != nil {
 			return nil, err
 		}
-		if near < 0 {
-			continue
+		specs = append(specs, feather...)
+		if spec, ok := slowFallSpec(k, &r, falls, point, fallFt); ok {
+			specs = append(specs, spec)
 		}
-		specs = append(specs, windowSpec{
-			kind: reaction.FeatherFall, reactor: &r,
-			trigger: windowTrigger{Falling: ids, FallFt: fallFt, Trap: point, Distance: near},
-		})
 	}
 	return specs, nil
+}
+
+// featherFallSpec is the Feather Fall window of a reactor that has the spell and a slot and sees a
+// faller within 60 feet (none otherwise).
+func (s *Service) featherFallSpec(ctx context.Context, c *combatTx, cs []playdb.Combatant, fallers []playdb.Combatant, k kit, r playdb.Combatant, t windowTrigger) ([]windowSpec, error) {
+	if len(k.slotsFor(spellFeatherFall)) == 0 {
+		return nil, nil
+	}
+	near, err := s.nearestFaller(ctx, c, cs, r, fallers)
+	if err != nil || near < 0 {
+		return nil, err
+	}
+	t.Distance = near
+	return []windowSpec{{kind: reaction.FeatherFall, reactor: &r, trigger: t}}, nil
 }
 
 // nearestFaller is how far the reactor is from the nearest faller it sees, in feet: 0 when it is

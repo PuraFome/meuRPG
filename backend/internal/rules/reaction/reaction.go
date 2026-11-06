@@ -121,8 +121,11 @@ const (
 	// against a neighbor of the shield-bearer.
 	ProtectionKind Kind = "protection"
 	FeatherFall    Kind = "feather_fall"
-	Concentration  Kind = "concentration_save"
-	MasterCheck    Kind = "master_check"
+	// SlowFall is the monk's Slow Fall (level 4): a reaction when it falls that takes five times its
+	// monk level off the falling damage.
+	SlowFall      Kind = "slow_fall"
+	Concentration Kind = "concentration_save"
+	MasterCheck   Kind = "master_check"
 	// Contest is a grapple, a shove or an escape that waits for a roll or a choice.
 	Contest Kind = "contest"
 	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).

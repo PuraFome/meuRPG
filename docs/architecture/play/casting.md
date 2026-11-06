@@ -78,8 +78,9 @@ The disabled spell row carries a `DisabledReason` that says which side blocks it
 
 **The sentence of a disabled spell.** `GetTurnOptions` writes `DisabledReason.text_pt` on every disabled spell line and on a spell attack (`explainSpellReasons`, `spell_reasons.go`).
 The sentence names the spell and is the same for the master and for a player.
-The reasons that carry it are `REACTION_ONLY_WHEN_HIT`, `REACTION_ONLY`, `CASTING_TIME_TOO_LONG`, `BONUS_ACTION_SPELL_LIMIT` and `ARMOR_NOT_PROFICIENT`.
+The reasons that carry it are `CASTING_TIME_TOO_LONG`, `BONUS_ACTION_SPELL_LIMIT` and `ARMOR_NOT_PROFICIENT`.
 `NO_SLOT` has no sentence: it repeats on every spell row, and the screen shows the short word "Sem espaço".
+`REACTION_ONLY_WHEN_HIT` and `REACTION_ONLY` have none either: the row already says that the app asks, and the screen shows "Só fora da sua vez" or "Só quando o gatilho acontecer".
 An effect or a condition writes its own sentence instead (`explainEffectReason`), and it wins when the combatant cannot act.
 
 **Concentration.** A concentration spell puts its name in `concentration_spell`; casting another swaps it, and the log says which ended (see [Attacks and damage](attacks-and-damage.md#conditions-and-concentration)).

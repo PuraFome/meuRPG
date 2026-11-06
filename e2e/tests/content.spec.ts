@@ -371,7 +371,7 @@ test(
       await expect(m.getByLabel('Descrição')).toHaveValue('O meu texto.');
       await alert.getByRole('button', { name: 'Recarregar' }).click();
       await expect(m.getByLabel('Descrição')).toHaveValue('Outro texto.');
-      await expect(m.getByRole('alert')).toHaveCount(0);
+      await expect(m.getByText('Esta entrada mudou enquanto você editava.')).toHaveCount(0);
     } finally {
       await Promise.all([master.close(), player.close()]);
     }

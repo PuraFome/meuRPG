@@ -13,12 +13,11 @@ import (
 
 // Slow Fall (SRD 5.1, Monk, level 4): the monk uses its reaction when it falls to reduce
 // any falling damage it takes by five times its monk level. The fall of a combat is a
-// pit trap whose damage waits for the master (or for a Feather Fall window). The
-// feature's button, the reaction, takes the points off that damage: the pit fall
-// pending against the monk that has not landed yet. A fall that already landed cannot
-// be reduced (the master applies a player's fall damage by hand, so the monk has the
-// time to ask first). Unlike Feather Fall, the monk is not asked by a window: it uses
-// the button when the fall happens.
+// pit trap whose damage waits for the windows of the fall (combat_slowfall_window.go asks the
+// monk). The feature's button, the reaction, is the fallback: it takes the points off the
+// pit fall pending against the monk that has not landed yet, also one the monk was not asked
+// about. A fall that already landed cannot be reduced (the master applies a player's fall
+// damage by hand, so the monk has the time to ask first).
 
 // slowFallAction is the monk's feature action.
 const slowFallAction = "feature:slow-fall"
@@ -34,6 +33,8 @@ const slowFallPerLevel = 5
 type fallCut struct {
 	Pending string `json:"pending_id"`
 	Before  int32  `json:"before"`
+	// Prev is the status the damage had (a fall that waited for a window goes back to waiting).
+	Prev string `json:"prev,omitempty"`
 }
 
 // errNoFall is Slow Fall's refusal when nothing falls.
@@ -103,7 +104,7 @@ func reduceFall(ctx context.Context, c *combatTx, fall []playdb.PendingDamage, m
 		if err := c.q.SetPendingDamageLanding(ctx, playdb.SetPendingDamageLandingParams{ID: p.ID, Amount: &now}); err != nil {
 			return nil, 0, fmt.Errorf("take the fall damage down: %w", err)
 		}
-		cuts = append(cuts, fallCut{Pending: p.ID, Before: *p.Amount})
+		cuts = append(cuts, fallCut{Pending: p.ID, Before: *p.Amount, Prev: p.Status})
 		left, taken = left-cut, taken+cut
 	}
 	return cuts, taken, nil

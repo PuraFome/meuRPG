@@ -110,7 +110,8 @@ func (c *content) choiceValueKnown(value string) bool {
 		return ok
 	case strings.HasPrefix(value, "spell:"):
 		_, ok := c.spells[value]
-		return ok
+		_, hidden := c.featureSummons[value] // the spell of a feature's summon is no pick: it reads as an unknown key
+		return ok && !hidden
 	}
 	return false
 }

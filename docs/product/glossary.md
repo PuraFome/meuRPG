@@ -240,7 +240,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Efeito | Lasting effect | Something a spell or the master puts on a creature for a while: a condition with an end, a bonus, an extra action. Counted in rounds in combat and in game time outside (RN-22). |
 | Tempo de jogo | Game time | Time in the fiction; a round is 6 seconds. It moves outside combat only when the master moves it. |
 | Janela de reação | Reaction window | The question "you may react?" that holds the triggering action until answered. A player reads only their own; for an NPC's, "Esperando o mestre". |
-| Reação | Reaction | An action once per round, returning at the start of the combatant's turn: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave and the opportunity attack. |
+| Reação | Reaction | An action once per round, returning at the start of the combatant's turn: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta and the opportunity attack. |
 | Registro do combate | Combat log | What happened, last round first. A player gets only what they see; the master gets everything, with "Só o mestre vê" (RN-20). |
 | Destaques do combate | Combat highlights | The end-of-combat screen: who dealt the most damage, healed the most, took the most, landed the most killing blows and critical hits. Ties name everyone (MR-032). |
 | Surpresa | Surprise | A creature that cannot move, act or react until its first turn ends (RN-34). |

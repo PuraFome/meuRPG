@@ -43,11 +43,11 @@ type summoning struct {
 // the group is rolled (RN-18: in the app, or typed from a physical die, as the
 // campaign's dice setting allows) and the choice is what the spell allows with
 // this slot and this character.
-func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, caster playdb.Combatant, spellKey string, slotLevel int, pick *playv1.SummonChoice, in rollInput, rolled bool, concentration bool) (*summoning, error) {
+func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, caster playdb.Combatant, spellKey string, slotLevel int, pick *playv1.SummonChoice, in rollInput, rolled bool, concentration bool, viaGrant bool) (*summoning, error) {
 	if err := s.summonRollOK(ctx, c, m, v, caster, in, rolled); err != nil {
 		return nil, err
 	}
-	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, m.CampaignID, caster.CharacterID, spellKey, slotLevel, pick, viaGrant)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,11 @@ func (s *Service) prepareSummon(ctx context.Context, c *combatTx, m authz.Member
 	if err := s.summonHasRoom(ctx, c, m, caster, spellKey, chk, concentration); err != nil {
 		return nil, err
 	}
-	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in, chk: chk, slot: slotLevel}, nil
+	slot := slotLevel
+	if chk.Feature {
+		slot = 0 // a feature's summon spends no slot: slot() is 0 in what it makes
+	}
+	return &summoning{creatures: summonSpecs(chk.Creatures, given), in: in, chk: chk, slot: slot}, nil
 }
 
 // summonRollOK checks who casts and how the group's initiative comes: a player's
@@ -239,6 +243,9 @@ type summonCall struct {
 	pick        *playv1.SummonChoice
 	ritual      bool
 	slot        *playv1.SpellSlot
+	// grantedBy is the feature that gives the summon ("" for a spell of the character's own): the casting spends
+	// a use of the feature's resource.
+	grantedBy string
 }
 
 // parseSummonCall checks the fields of a CastSummon request, in the order the
@@ -260,11 +267,16 @@ func parseSummonCall(msg *playv1.CastSummonRequest) (summonCall, error) {
 	if pick == nil {
 		return summonCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("summon must say what the spell brings"))
 	}
-	ritual := msg.GetRitual()
-	if ritual != (msg.GetSlot() == nil) {
+	ritual, grantedBy := msg.GetRitual(), msg.GetGrantedBy()
+	switch {
+	case len(grantedBy) > summonKeyMaxLen:
+		return summonCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("granted_by must name the feature that gives the summon"))
+	case grantedBy != "" && (ritual || msg.GetSlot() != nil):
+		return summonCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("a summon given by a feature spends a use of the feature: it is neither a ritual nor cast with a slot"))
+	case grantedBy == "" && ritual != (msg.GetSlot() == nil):
 		return summonCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("a ritual is cast with no slot, and any other casting needs one"))
 	}
-	return summonCall{key: key, characterID: characterID, spellKey: spellKey, pick: pick, ritual: ritual, slot: msg.GetSlot()}, nil
+	return summonCall{key: key, characterID: characterID, spellKey: spellKey, pick: pick, ritual: ritual, slot: msg.GetSlot(), grantedBy: grantedBy}, nil
 }
 
 // summonRun is what a CastSummon works with inside its transaction, and what the
@@ -319,11 +331,11 @@ func (s *Service) castSummonTx(ctx context.Context, c *combatTx, r *summonRun) (
 	if err := s.summonNotInCombat(ctx, c, r.call.characterID); err != nil {
 		return nil, err
 	}
-	slot, circle, err := s.summonSlot(ctx, c, r)
+	cost, err := s.summonCost(ctx, c, r)
 	if err != nil {
 		return nil, err
 	}
-	chk, err := s.checkSummonChoice(ctx, c.tx, r.m.CampaignID, r.call.characterID, r.call.spellKey, circle, r.call.pick)
+	chk, err := s.checkSummonChoice(ctx, c.tx, r.m.CampaignID, r.call.characterID, r.call.spellKey, cost.circle, r.call.pick, r.call.grantedBy != "")
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +346,7 @@ func (s *Service) castSummonTx(ctx context.Context, c *combatTx, r *summonRun) (
 	if err != nil {
 		return nil, err
 	}
-	if err := s.summonWrite(ctx, c, r, slot, chk, given); err != nil {
+	if err := s.summonWrite(ctx, c, r, cost, chk, given); err != nil {
 		return nil, err
 	}
 	return r.made, nil
@@ -380,52 +392,82 @@ func (s *Service) summonNotInCombat(ctx context.Context, c *combatTx, characterI
 	return nil
 }
 
-// summonSlot is the slot (none for a ritual) and its circle, through the
-// character's options: the spell must be one it has prepared, and a slot of that
-// circle free.
-func (s *Service) summonSlot(ctx context.Context, c *combatTx, r *summonRun) (*slotRef, int, error) {
+// summonPrice is what a CastSummon spends: a slot of the circle, or a use of a resource of the feature that gives the
+// summon (resource), or nothing for a ritual (circle 0).
+type summonPrice struct {
+	slot     *slotRef
+	circle   int
+	resource string
+}
+
+// summonCost is the price of the cast, through the character's options: the spell must be one it has prepared, and a
+// slot of that circle free; a feature's summon, one it has with a use of its resource left.
+func (s *Service) summonCost(ctx context.Context, c *combatTx, r *summonRun) (summonPrice, error) {
 	if r.call.ritual {
-		return nil, 0, nil
+		return summonPrice{}, nil
 	}
 	opts, err := s.roster.CombatTurnOptions(ctx, c.tx, r.m.CampaignID, r.call.characterID, link.Turn{})
 	if err != nil {
-		return nil, 0, err
+		return summonPrice{}, err
 	}
-	cast, err := castableOf(opts, r.call.spellKey, "")
+	cast, err := castableOf(opts, r.call.spellKey, r.call.grantedBy)
 	if err != nil {
-		return nil, 0, err
+		return summonPrice{}, err
 	}
 	// The casting time and the economy do not matter outside a combat.
 	if !cast.enabled && cast.reason.GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG {
 		if err := castError(cast.reason, true); err != nil {
-			return nil, 0, err
+			return summonPrice{}, err
 		}
+	}
+	if r.call.grantedBy != "" {
+		return grantedSummonPrice(cast)
 	}
 	slot, err := slotOf(r.call.slot, cast)
 	if err != nil {
-		return nil, 0, err
+		return summonPrice{}, err
 	}
 	if slot == nil {
-		return nil, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("this spell needs a slot"))
+		return summonPrice{}, connect.NewError(connect.CodeInvalidArgument, errors.New("this spell needs a slot"))
 	}
-	return slot, int(slot.Level), nil
+	return summonPrice{slot: slot, circle: int(slot.Level)}, nil
 }
 
-// summonWrite spends the slot, makes the creatures and writes what the event
-// keeps for an undo, and the dismissal of the ones they replace.
-func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, slot *slotRef, chk link.SummonSpell, given []string) error {
-	characterID, spellKey := r.call.characterID, r.call.spellKey
-	var err error
-	if slot != nil {
-		if r.vitals, err = s.spendSlot(ctx, c, characterID, *slot, 1); err != nil {
-			return err
-		}
+// grantedSummonPrice is the price of a feature's summon: one use of the grant's resource, at the spell's own circle.
+func grantedSummonPrice(cast castable) (summonPrice, error) {
+	g := cast.grant
+	if g == nil || g.GetAtWill() || g.GetResource() == "" {
+		return summonPrice{}, connect.NewError(connect.CodeInvalidArgument, errors.New("granted_by is not a feature that gives this summon"))
 	}
-	sum, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(r.m.CampaignID, characterID, spellKey, uuid.New().String(), int(castSlotLevel(slot)), chk, summonSpecs(chk.Creatures, given)))
+	if g.GetUsesLeft() < 1 {
+		return summonPrice{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "the feature has no use left")
+	}
+	return summonPrice{circle: int(cast.level), resource: g.GetResource()}, nil
+}
+
+// summonWrite spends the slot or the use, makes the creatures and writes what the event
+// keeps for an undo, and the dismissal of the ones they replace.
+func (s *Service) summonWrite(ctx context.Context, c *combatTx, r *summonRun, cost summonPrice, chk link.SummonSpell, given []string) error {
+	characterID, spellKey, slot := r.call.characterID, r.call.spellKey, cost.slot
+	var err error
+	switch {
+	case slot != nil:
+		r.vitals, err = s.spendSlot(ctx, c, characterID, *slot, 1)
+	case cost.resource != "":
+		r.vitals, err = s.spendResource(ctx, c, characterID, cost.resource, 1)
+	}
+	if err != nil {
+		return grantUseError(err)
+	}
+	made := 0
+	if !chk.Feature {
+		made = int(castSlotLevel(slot))
+	}
+	sum, err := s.roster.SummonCreatures(ctx, c.tx, summonOf(r.m.CampaignID, characterID, spellKey, uuid.New().String(), made, chk, summonSpecs(chk.Creatures, given)))
 	if err != nil {
 		return err
 	}
-	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSourceOf(spellKey, chk), Ritual: r.call.ritual, Key: spellKey, Slot: slot}
+	r.made = actionEvent{OwnerCharacter: characterID, Source: summonSourceOf(spellKey, chk), Ritual: r.call.ritual, Key: spellKey, Slot: slot, GrantUse: cost.resource}
 	for _, cr := range sum.Created {
 		r.made.Created, r.made.MonsterKeys = append(r.made.Created, cr.ID), append(r.made.MonsterKeys, cr.MonsterKey)
 	}

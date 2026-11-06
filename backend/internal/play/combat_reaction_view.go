@@ -29,6 +29,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.ManeuverReduceKind:  playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE,
 	reaction.ProtectionKind:      playv1.ReactionKind_REACTION_KIND_PROTECTION,
 	reaction.FeatherFall:         playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
+	reaction.SlowFall:            playv1.ReactionKind_REACTION_KIND_SLOW_FALL,
 	reaction.Concentration:       playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
 	reaction.MasterCheck:         playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
 	reaction.Contest:             playv1.ReactionKind_REACTION_KIND_CONTEST,

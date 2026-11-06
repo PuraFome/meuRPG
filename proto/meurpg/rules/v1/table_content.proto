@@ -422,6 +422,10 @@ message TableFeature {
   // entry, `from` may list the keys of these options (a later level's "2 more").
   // Options do not nest, and only a class or subclass feature has them. At most 60.
   repeated TableFeature options = 5;
+  // The creatures the feature brings to its holder, or unset. The holder casts it like a summoning spell, with
+  // a use of a resource of the feature (`summon.resource_key`) instead of a slot: the same options, checks,
+  // concentration, replacement and dismissal. A class, subclass, race or background feature has it; an option does not.
+  TableSummon summon = 6;
 }
 
 // TableFeat is a feat (MR-025): an optional rule of the game that a character takes
@@ -993,9 +997,17 @@ message TableSummon {
   // would pass it is refused. A new casting that replaces the old creatures counts only the new ones.
   int32 max_live = 6;
   TableSummonReplaces replaces = 7;
-  // Reserved for spells paid with a resource: the server refuses both today.
+  // What a feature's summon spends: the name of a resource the feature's entry (or its class) defines with a
+  // `resource` effect, and how many uses a casting costs (1; 0 is read as 1). Both are for a feature's summon
+  // alone; a spell's summon is paid with the spell slot, and the server refuses them there.
   string resource_key = 8;
   int32 resource_cost = 9;
+  // The next three are for a feature's summon alone (a spell has its own): how long the casting takes
+  // (empty is 1 action), how long the creatures last (empty is instantaneous) and whether the caster concentrates
+  // on them (needs a timed duration).
+  TableSpellCastingTime casting_time = 10;
+  TableSpellDuration duration = 11;
+  bool concentration = 12;
 }
 
 // TableSpellZone is what a table spell leaves on the map (the areas of Moonbeam or Spirit Guardians,

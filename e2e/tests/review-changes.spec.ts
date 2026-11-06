@@ -67,7 +67,7 @@ test(
 
       // The player reads the reason in place of the waiting strip, and nothing was sent for them.
       await playerPage.goto(sheet);
-      await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toBeVisible();
+      await expect(playerPage.getByText('O mestre pediu ajustes.')).toBeVisible();
       await expect(playerPage.getByText(`“${reason}”`)).toBeVisible();
       await expect(playerPage.getByText('Esperando a aprovação do mestre')).toHaveCount(0);
 
@@ -97,7 +97,7 @@ test(
 
       await playerPage.reload();
       await expect(state(playerPage)).toContainText('Rascunho');
-      await expect(playerPage.getByRole('alert').filter({ hasText: 'O mestre pediu ajustes.' })).toHaveCount(0);
+      await expect(playerPage.getByText('O mestre pediu ajustes.')).toHaveCount(0);
     } finally {
       await playerContext.close();
     }

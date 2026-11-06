@@ -264,6 +264,13 @@ func TestEachReactionWindowRecordsItsKindAndRound(t *testing.T) {
 			})
 			return r.armed, r.ana
 		}},
+		{"Slow Fall", "slow_fall", "Toren", playv1.ReactionKind_REACTION_KIND_SLOW_FALL, func(t *testing.T) (*armed, *user) {
+			t.Helper()
+			r, e := slowFallRig(t, 4, "6d6", false, fiveSixTimes()...)
+			r.torenFalls(t)
+			r.mustAnswer(t, r.caio, e, r.windowOf(t, r.caio, playv1.ReactionKind_REACTION_KIND_SLOW_FALL).GetId(), use)
+			return r.armed, r.caio
+		}},
 		{"a reduction maneuver", "maneuver_reduce", "Pensantus", playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE, func(t *testing.T) (*armed, *user) {
 			t.Helper()
 			m := newManeuverTable(t, "4")
