@@ -431,7 +431,7 @@ A player never reads the name of a hidden race, feat or feature, in a key or in 
 That holds for the player's copy of a feat, the level-up options and the texts of the feat-choice cards.
 A feat that asks only for hidden races is not offered to a player and is not in their copy, because without the races its prerequisite would read as none.
 A feat that asks for some visible races and some hidden ones names the visible ones only.
-A condition on something the player may not read comes with `hidden` (`FeatUnmet.hidden`, `FeatOption.lacks_feature_hidden`) set and the key and name empty, so the app writes "a condition the table does not show".
+A condition on something the player may not read comes with `hidden` (`FeatUnmet.hidden`, `FeatOption.lacks_feature_hidden`) set and the key and name empty, so the app shows a neutral condition, never a name.
 The `race` kind is hidden only when every asked race is.
 The master's view is never hidden.
 What a sheet has is named to it: the race, subrace, feat or feature it holds, and the traits, features and options of the entries it keeps.

@@ -710,7 +710,7 @@ func (c *content) menuLackableFeatures() []MenuValue {
 		}
 	}
 	for _, k := range sortedKeys(c.backgrounds) {
-		if f := c.backgrounds[k].Feature.Key; f != "" && !isTableKey(k) {
+		if f := c.backgrounds[k].Feature.Key; f != "" && !isTableKey(f) {
 			add(f, "antecedente do SRD")
 		}
 	}
