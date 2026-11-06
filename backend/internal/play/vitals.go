@@ -123,6 +123,16 @@ func errStaleVitals() error {
 	return connect.NewError(connect.CodeAborted, errors.New("the character's numbers changed since you read them: read them again and try again"))
 }
 
+// retryOfCorrection answers a key that was already used: the same character's correction is a
+// retry, another character's is a mistake.
+func retryOfCorrection(done playdb.GetSessionEventByIdempotencyKeyRow, call adjustCall, run *adjustRun) error {
+	if done.CharacterID == nil || *done.CharacterID != call.charText {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
+	run.repeated = true // a retry of a correction already made
+	return nil
+}
+
 // adjustWrite is the transaction of AdjustCharacterVitals: lock, retry, the change, the
 // event, the beast form that ended, the combat that shows it, the concentration.
 func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, run *adjustRun) error {
@@ -136,11 +146,7 @@ func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, r
 		return err
 	}
 	if again {
-		if done.CharacterID == nil || *done.CharacterID != call.charText {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-		}
-		run.repeated = true // a retry of a correction already made
-		return nil
+		return retryOfCorrection(done, call, run)
 	}
 	if err := s.checkExpectedRevision(ctx, tx, call); err != nil {
 		return err
