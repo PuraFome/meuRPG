@@ -253,3 +253,45 @@
     min-width: 0;
   }
 }
+
+// "Esperando você (n)": the title, the count and "uma de cada vez", over the master's cards (#557).
+.qhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+
+  > .mat-icon {
+    flex: none;
+  }
+}
+
+.qhead__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: var(--mr-font-22);
+  font-weight: 700;
+  line-height: 27px;
+}
+
+.qhead__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+}
+
+.qhead__hint {
+  margin-left: auto;
+  font-size: var(--mr-font-13);
+  color: var(--mr-ink-muted);
+}
