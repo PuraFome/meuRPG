@@ -58,7 +58,13 @@ export function contestIdOf(w: ReactionWindow): string {
 
 /** The window a player answers now: the first one that is theirs to answer. */
 export function windowForPlayer(e: Encounter): ReactionWindow | undefined {
-  return openWindows(e).find((w) => w.forYou);
+  return openWindows(e).find((w) => w.forYou && !masterOffer(w));
+}
+
+/** Parry and Legendary Resistance are the master's own offers (the server marks them `for_you` for the master, who reads
+ * them as cards): never a player's sheet, nor the generic reaction sheet. */
+function masterOffer(w: ReactionWindow): boolean {
+  return w.prompt.case === 'parry' || w.prompt.case === 'legendaryResistance';
 }
 
 /** The window whose sheet opens by itself for a player: the first they answer that has a prompt of its own (the
@@ -67,6 +73,7 @@ export function sheetWindow(e: Encounter): ReactionWindow | undefined {
   return openWindows(e).find(
     (w) =>
       w.forYou &&
+      !masterOffer(w) &&
       w.prompt.case !== undefined &&
       w.prompt.case !== 'masterCheck' &&
       w.prompt.case !== 'hellishRebukeSave',

@@ -49,10 +49,12 @@ function sourceLine(w: ReactionWindow, actorIsPlayer: boolean, dcs: readonly num
   const t = w.trigger;
   const same = dcs.length > 0 && dcs.every((d) => d === dcs[0]);
   const save = same ? `teste de resistência, CD ${dcs[0]}` : 'teste de resistência';
-  const what = t?.actionNamePt
-    ? `${t.actionNamePt}${t.actorLabel ? ` ${actorIsPlayer ? `de ${t.actorLabel}` : ofThe([t.actorLabel])}` : ''}`
-    : 'Uma magia';
-  return `${what} · ${save}. A magia espera a sua resposta; os dados já foram rolados.`;
+  const wait = 'espera a sua resposta; os dados já foram rolados.';
+  if (!t?.actionNamePt) {
+    return `${save[0].toUpperCase()}${save.slice(1)}. A ação ${wait}`;
+  }
+  const by = t.actorLabel ? ` ${actorIsPlayer ? `de ${t.actorLabel}` : ofThe([t.actorLabel])}` : '';
+  return `${t.actionNamePt}${by} · ${save}. A magia ${wait}`;
 }
 
 /** The card of a window of kind LEGENDARY_RESISTANCE, or `null` for a window without its prompt. `actorIsPlayer`: the

@@ -50,4 +50,10 @@ describe("the master's Parry window", () => {
     expect(parryCard(w, false)?.title.replace(/\u00a0/g, ' ')).toBe('Aparar o golpe do Goblin 1?');
     expect(parryCard(reactionWindow({ id: 'x', kind: ReactionKind.PARRY }))).toBeNull();
   });
+
+  it('names a player attacker without an article, in the title and the text', () => {
+    const c = parryCard(parry(16), true);
+    expect(c?.title).toBe('Aparar o golpe de Tor?');
+    expect(c?.text.startsWith('Tor acertou com a Espada longa')).toBe(true);
+  });
 });

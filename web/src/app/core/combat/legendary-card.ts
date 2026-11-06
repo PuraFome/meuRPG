@@ -1,5 +1,8 @@
-import { type Combatant, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
-import { openWindows } from './reactions';
+import {
+  type Combatant,
+  type Encounter,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 
 /**
  * The master's card of a legendary creature's actions (#557): what is left of the round, the options of its stat block
@@ -75,28 +78,48 @@ export const LEGENDARY_UNUSABLE = 'Incapacitado: a criatura não pode usar açõ
 
 const WORDS: Readonly<Record<number, string>> = { 2: 'duas', 3: 'três', 4: 'quatro', 5: 'cinco' };
 
+/** What blocks the table, counted once for the whole queue: the windows the master answers (`ahead`), and whether any
+ * window is open at all (`playerWaits`: a player's own question, which holds the table but is not his to answer). */
+export interface TableHold {
+  readonly ahead: number;
+  readonly playerWaits: boolean;
+}
+
+export const NO_HOLD: TableHold = { ahead: 0, playerWaits: false };
+
+/** "da janela acima" / "das duas janelas acima": where the windows ahead are. */
+export function windowsAbove(n: number): string {
+  return n === 1 ? 'da janela acima' : `das ${WORDS[n] ?? n} janelas acima`;
+}
+
+/** Why the card waits: behind the master's windows, or on a player's reaction when the master has nothing to answer. */
+export function waitingBehind(hold: TableHold): string {
+  if (hold.ahead > 0) {
+    return `Depois ${windowsAbove(hold.ahead)}: enquanto uma reação espera, nada anda.`;
+  }
+  return hold.playerWaits ? 'Esperando a reação de um jogador.' : '';
+}
+
+/** Why the server says the creature cannot spend now, said for the case: the combat, a fallen creature, or the rest. */
+function unusableReason(e: Encounter, c: Combatant): string {
+  if (e.status !== EncounterStatus.ACTIVE) {
+    return 'O combate não está em andamento.';
+  }
+  return c.defeated ? 'Caído: a criatura não pode usar ações lendárias agora.' : LEGENDARY_UNUSABLE;
+}
+
 function legendaryOf(c: Combatant) {
   const l = c.legendary;
   return l && l.options.length > 0 ? l : null;
 }
 
-/** "Depois da janela acima: ..." / "Depois das duas janelas acima: ...", for the n windows that hold the table. */
-export function waitingBehind(n: number): string {
-  if (n <= 0) {
-    return '';
-  }
-  const behind = n === 1 ? 'da janela acima' : `das ${WORDS[n] ?? n} janelas acima`;
-  return `Depois ${behind}: enquanto uma reação espera, nada anda.`;
-}
-
 function rowOf(
   o: NonNullable<Combatant['legendary']>['options'][number],
   left: number,
-  usableNow: boolean,
+  unusable: string,
 ): LegendaryRow {
   const action: LegendaryAction =
     o.kind === 'attack' ? 'attack' : o.kind === 'move' ? 'move' : 'spend';
-  const affordable = o.affordable && o.cost <= left;
   return {
     key: o.key,
     // Never `o.name` (English): the server sends the Portuguese one, even for homebrew that has no other.
@@ -107,18 +130,30 @@ function rowOf(
     action,
     attackKey: action === 'attack' ? o.attackKey : '',
     detail: action === 'spend' ? 'Você resolve: o app só conta o gasto.' : '',
-    disabled: !usableNow || !affordable,
-    reason: !usableNow ? LEGENDARY_UNUSABLE : !affordable ? `Custa ${o.cost}; restam ${left}.` : '',
+    // The server says whether the cost fits (`affordable`); the cost is only spelled out when it is the reason.
+    disabled: unusable !== '' || !o.affordable,
+    reason:
+      unusable ||
+      (o.affordable
+        ? ''
+        : o.cost > left
+          ? `Custa ${o.cost}; restam ${left}.`
+          : 'Indisponível agora.'),
   };
 }
 
 /** The card of one legendary creature that does not have the turn, or `null` for any other combatant. */
-export function legendaryCard(e: Encounter, c: Combatant): LegendaryCard | null {
+export function legendaryCard(
+  e: Encounter,
+  c: Combatant,
+  hold: TableHold = NO_HOLD,
+): LegendaryCard | null {
   const l = legendaryOf(c);
   if (!l || c.id === e.currentCombatantId) {
     return null;
   }
-  const blocking = openWindows(e).length;
+  const unusable = l.usableNow ? '' : unusableReason(e, c);
+  const blocked = hold.ahead > 0 || hold.playerWaits;
   const turn = e.combatants.find((x) => x.id === e.currentCombatantId);
   const left = Math.max(0, Math.min(l.actionsLeft, l.actionsPerRound));
   return {
@@ -130,20 +165,20 @@ export function legendaryCard(e: Encounter, c: Combatant): LegendaryCard | null 
     total: l.actionsPerRound,
     counts: `${left} de ${l.actionsPerRound}`,
     recovery: 'voltam no começo do turno dele',
-    badge: blocking > 0 || !l.usableNow ? 'Depois' : 'Opcional',
+    badge: blocked || !l.usableNow ? 'Depois' : 'Opcional',
     hint: `Use no fim do turno de ${turn?.label || 'outra criatura'}, uma opção de cada vez.`,
-    blocked: blocking > 0,
-    waiting: waitingBehind(blocking),
-    unusable: l.usableNow ? '' : LEGENDARY_UNUSABLE,
+    blocked,
+    waiting: waitingBehind(hold),
+    unusable,
     usableNow: l.usableNow,
-    rows: l.options.map((o) => rowOf(o, left, l.usableNow)),
+    rows: l.options.map((o) => rowOf(o, left, unusable)),
   };
 }
 
 /** The cards of every legendary creature of the combat that may be offered now (none while the combat is not running). */
-export function legendaryCards(e: Encounter): readonly LegendaryCard[] {
+export function legendaryCards(e: Encounter, hold: TableHold = NO_HOLD): readonly LegendaryCard[] {
   return e.combatants.flatMap((c) => {
-    const card = legendaryCard(e, c);
+    const card = legendaryCard(e, c, hold);
     return card ? [card] : [];
   });
 }
@@ -171,15 +206,41 @@ export function legendaryRecovered(e: Encounter, c: Combatant): LegendaryRecover
   };
 }
 
-/** The English option name of the stat block to its Portuguese one, for the log's lines (`CombatLogLegendarySpent.option_name`). */
-export function legendaryNames(e: Encounter): ReadonlyMap<string, string> {
-  const names = new Map<string, string>();
+/** The options' names of each legendary creature: its id, then the English name of the stat block to the Portuguese one. */
+export type LegendaryNames = ReadonlyMap<string, ReadonlyMap<string, string>>;
+
+/** The names of the creatures in the combat now, added to the ones already known: a creature that left the combat keeps
+ * its names, so its old log lines still read in Portuguese. */
+export function legendaryNames(e: Encounter, known: LegendaryNames = new Map()): LegendaryNames {
+  const all = new Map(known);
   for (const c of e.combatants) {
+    const names = new Map<string, string>();
     for (const o of c.legendary?.options ?? []) {
       if (o.name && o.namePt) {
         names.set(o.name, o.namePt);
       }
     }
+    if (names.size > 0) {
+      all.set(c.id, names);
+    }
   }
-  return names;
+  return all;
+}
+
+/** The Portuguese name of the option a log line spent (`CombatLogLegendarySpent.option_name` is the SRD's English): the
+ * actor's own option, else the one name every known creature gives it. `null` when it cannot be known (the line would
+ * need `CombatLogLegendarySpent.name_pt` from the server). */
+export function legendaryOptionName(
+  names: LegendaryNames | undefined,
+  actorId: string,
+  english: string,
+): string | null {
+  const own = names?.get(actorId)?.get(english);
+  if (own) {
+    return own;
+  }
+  const others = new Set(
+    [...(names?.values() ?? [])].flatMap((m) => (m.has(english) ? [m.get(english) as string] : [])),
+  );
+  return others.size === 1 ? [...others][0] : null;
 }

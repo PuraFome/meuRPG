@@ -8,6 +8,7 @@ import { ofThe } from './move-plan';
  * says which it is. The numbers are the master's only (`ReactionWindow.trigger`, `ParryPrompt`). Pure, no DOM.
  */
 export interface ParryCard {
+  // The trigger has no natural-roll flag: the text never claims a natural 20 or 1 changes the result.
   readonly id: string;
   readonly overline: string;
   /** The creature that parries. */

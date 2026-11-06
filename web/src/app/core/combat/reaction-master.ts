@@ -7,14 +7,15 @@ import type { SlotChoice } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots } from '../format/text';
 import { metersText } from '../units';
 import { circleLabel, freeLabel, slotTitle } from './combat-grid';
-import { article } from './combat-log';
+import { article } from '../format/article';
 import { ofThe } from './move-plan';
 import { combatantIsPlayer, ofReactor } from './reaction-bar';
-export { heldReason, windowsBarText } from './reaction-bar';
 import { type ParryCard, parryCard } from './parry-card';
 import { type LegendaryResistanceCard, legendaryResistanceCard } from './legendary-resistance-card';
 import { reactionKindName } from './reaction-record';
 import { REACTION_NAMES, openWindows } from './reactions';
+
+export { heldReason, windowsBarText } from './reaction-bar';
 
 /**
  * The master's side of the reaction windows (PM-04): every open window, grouped by the action that provoked it, in

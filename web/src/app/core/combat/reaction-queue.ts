@@ -1,6 +1,7 @@
 import { type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
-import { legendaryCards, type LegendaryCard } from './legendary-card';
+import { legendaryCards, type LegendaryCard, windowsAbove } from './legendary-card';
 import { type ReactionCard, reactionCards } from './reaction-master';
+import { openWindows } from './reactions';
 
 /**
  * The master's "Esperando você" queue (#557): the cards he must answer, one at a time, and the legendary cards after them.
@@ -29,8 +30,6 @@ export interface MasterQueue {
   readonly legendary: readonly LegendaryCard[];
 }
 
-const WORDS: Readonly<Record<number, string>> = { 2: 'duas', 3: 'três', 4: 'quatro', 5: 'cinco' };
-
 /** Whether the master has to answer the card (a player's own question is the player's). */
 export function isMasterTurn(card: ReactionCard): boolean {
   switch (card.type) {
@@ -44,19 +43,27 @@ export function isMasterTurn(card: ReactionCard): boolean {
 }
 
 function waitingNote(position: number): string {
-  if (position <= 0) {
-    return '';
+  return position <= 0 ? '' : `Depois ${windowsAbove(position)}.`;
+}
+
+/** Whether the card is the one to answer now: its window (or a row's) has `answerNow`. */
+function answersNow(c: ReactionCard): boolean {
+  switch (c.type) {
+    case 'queue':
+      return c.rows.some((r) => r.window.answerNow);
+    case 'single':
+    case 'unanswered':
+      return c.row.window.answerNow;
+    default:
+      return c.window.answerNow;
   }
-  return position === 1
-    ? 'Depois da janela acima.'
-    : `Depois das ${WORDS[position] ?? position} janelas acima.`;
 }
 
 /** The master's queue of the combat. */
 export function masterQueue(e: Encounter): MasterQueue {
   const cards = reactionCards(e);
   const mine = cards.filter(isMasterTurn);
-  const first = mine.find((c) => 'window' in c && c.window.answerNow) ?? mine[0];
+  const first = mine.find(answersNow) ?? mine[0];
   const ordered = first ? [first, ...mine.filter((c) => c !== first)] : [];
   const items: QueueItem[] = [...ordered, ...cards.filter((c) => !ordered.includes(c))].map(
     (card) => {
@@ -74,6 +81,6 @@ export function masterQueue(e: Encounter): MasterQueue {
     header: mine.length > 0 ? `Esperando você (${mine.length})` : '',
     hint: 'uma de cada vez',
     items,
-    legendary: legendaryCards(e),
+    legendary: legendaryCards(e, { ahead: mine.length, playerWaits: openWindows(e).length > 0 }),
   };
 }

@@ -1,4 +1,8 @@
-import { CombatantKind, ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  EncounterStatus,
+  ReactionKind,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, reactionWindow } from './combat-testing';
 import {
   LEGENDARY_UNUSABLE,
@@ -6,6 +10,8 @@ import {
   legendaryCards,
   legendaryFolded,
   legendaryNames,
+  legendaryOptionName,
+  NO_HOLD,
   legendaryRecovered,
   waitingBehind,
 } from './legendary-card';
@@ -121,14 +127,16 @@ describe("the master's legendary actions card", () => {
       currentCombatantId: 't',
       reactionWindows: [win('a'), win('b')],
     });
-    const card = legendaryCard(e, e.combatants[0]);
+    const card = legendaryCard(e, e.combatants[0], { ahead: 2, playerWaits: true });
     expect(card?.badge).toBe('Depois');
     expect(card?.blocked).toBe(true);
     expect(card?.waiting).toBe(
       'Depois das duas janelas acima: enquanto uma reação espera, nada anda.',
     );
-    expect(waitingBehind(1)).toBe('Depois da janela acima: enquanto uma reação espera, nada anda.');
-    expect(waitingBehind(0)).toBe('');
+    expect(waitingBehind({ ahead: 1, playerWaits: true })).toBe(
+      'Depois da janela acima: enquanto uma reação espera, nada anda.',
+    );
+    expect(waitingBehind(NO_HOLD)).toBe('');
   });
 
   it('folds to "Ações lendárias · 3 de 3" as plain data', () => {
@@ -160,8 +168,76 @@ describe("the master's legendary actions card", () => {
     expect(legendaryRecovered(e, e.combatants[0])?.resistance).toBe('');
   });
 
-  it('maps the English option names of the log to the Portuguese ones', () => {
-    const e = encounter({ combatants: [dragon()] });
-    expect(legendaryNames(e).get('Wing Attack')).toBe('Ataque de asas');
+  it('says a player waits when the table is held but the master has nothing to answer', () => {
+    const e = encounter({ combatants: [dragon({ actionsLeft: 3 }), tor], currentCombatantId: 't' });
+    const card = legendaryCard(e, e.combatants[0], { ahead: 0, playerWaits: true });
+    expect(card?.waiting).toBe('Esperando a reação de um jogador.');
+    expect(card?.blocked).toBe(true);
+    expect(card?.badge).toBe('Depois');
+  });
+
+  it('words the unusable reason for a fallen creature and for a combat that is not running', () => {
+    const fallen = { ...dragon({ usableNow: false }), defeated: true } as never;
+    const e = encounter({ combatants: [fallen, tor], currentCombatantId: 't' });
+    expect(legendaryCard(e, e.combatants[0])?.unusable).toBe(
+      'Caído: a criatura não pode usar ações lendárias agora.',
+    );
+    const over = encounter({
+      status: EncounterStatus.ENDED,
+      combatants: [dragon({ usableNow: false }), tor],
+      currentCombatantId: '',
+    });
+    expect(legendaryCard(over, over.combatants[0])?.unusable).toBe(
+      'O combate não está em andamento.',
+    );
+  });
+
+  it('trusts the server on what is affordable and spells the cost only when it is the reason', () => {
+    const odd = [{ ...options[0], affordable: false, cost: 1 }];
+    const e = encounter({
+      combatants: [dragon({ options: odd, actionsLeft: 2 }), tor],
+      currentCombatantId: 't',
+    });
+    const row = legendaryCard(e, e.combatants[0])?.rows[0];
+    expect(row?.disabled).toBe(true);
+    expect(row?.reason).toBe('Indisponível agora.');
+    const ok = [{ ...options[2], affordable: true, cost: 2 }];
+    const f = encounter({
+      combatants: [dragon({ options: ok, actionsLeft: 1 }), tor],
+      currentCombatantId: 't',
+    });
+    expect(legendaryCard(f, f.combatants[0])?.rows[0].disabled).toBe(false);
+  });
+});
+
+describe('the Portuguese name of a spent option in the log', () => {
+  const other = combatant({
+    id: 'd2',
+    label: 'Outro',
+    legendary: {
+      actionsPerRound: 3,
+      actionsLeft: 3,
+      resistancePerDay: 0,
+      resistanceLeft: 0,
+      usableNow: true,
+      options: [{ ...options[2], namePt: 'Golpe de asa' }],
+    },
+  } as never);
+
+  it('keeps two creatures with the same English option name apart', () => {
+    const e = encounter({ combatants: [dragon(), other] });
+    const names = legendaryNames(e);
+    expect(legendaryOptionName(names, 'd', 'Wing Attack')).toBe('Ataque de asas');
+    expect(legendaryOptionName(names, 'd2', 'Wing Attack')).toBe('Golpe de asa');
+  });
+
+  it('keeps the names of a creature that left the combat, and guesses none that is ambiguous', () => {
+    const before = legendaryNames(encounter({ combatants: [dragon(), other] }));
+    const after = legendaryNames(encounter({ combatants: [other] }), before);
+    expect(legendaryOptionName(after, 'd', 'Wing Attack')).toBe('Ataque de asas');
+    // An actor nobody knows: the one name only if every creature agrees, else unknown (never a wrong creature's).
+    expect(legendaryOptionName(before, 'gone', 'Wing Attack')).toBeNull();
+    expect(legendaryOptionName(before, 'gone', 'Detect')).toBe('Detectar');
+    expect(legendaryOptionName(undefined, 'd', 'Detect')).toBeNull();
   });
 });

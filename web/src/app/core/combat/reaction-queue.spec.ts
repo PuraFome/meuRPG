@@ -103,4 +103,52 @@ describe('the master queue "Esperando você"', () => {
     expect(q.header).toBe('');
     expect(q.legendary[0].badge).toBe('Opcional');
   });
+
+  it('says a player holds the table when the master has nothing to answer, and the header stays empty', () => {
+    const playerWindow = reactionWindow({
+      id: 'sh',
+      kind: ReactionKind.SHIELD,
+      reactorId: 't',
+      reactorLabel: 'Tor',
+      reactorIsPlayer: true,
+      groupId: 'g3',
+      prompt: { case: 'shield', value: { slots: [] } },
+    } as never);
+    const q = masterQueue(
+      encounter({
+        combatants: [dragon, tor],
+        currentCombatantId: 't',
+        reactionWindows: [playerWindow],
+      }),
+    );
+    expect(q.count).toBe(0);
+    expect(q.header).toBe('');
+    expect(q.legendary[0].waiting).toBe('Esperando a reação de um jogador.');
+    expect(q.legendary[0].waiting).not.toContain('janela acima');
+  });
+
+  it('honours the answerNow of a queue row and of a single card', () => {
+    const npc = (id: string, now: boolean, group: string) =>
+      reactionWindow({
+        id,
+        kind: ReactionKind.SHIELD,
+        reactorId: 'c',
+        reactorLabel: 'Capitão bandido',
+        groupId: group,
+        answerNow: now,
+        prompt: { case: 'shield', value: { slots: [] } },
+      } as never);
+    const q = masterQueue(
+      encounter({
+        combatants: [dragon, tor, captain],
+        currentCombatantId: 't',
+        reactionWindows: [npc('a', false, 'ga'), npc('b', true, 'gb')],
+      }),
+    );
+    expect(q.items.map((i) => (i.card.type === 'single' ? i.card.row.window.id : ''))).toEqual([
+      'b',
+      'a',
+    ]);
+    expect(q.items[0].badge).toBe('Agora');
+  });
 });

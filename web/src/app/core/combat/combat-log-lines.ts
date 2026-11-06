@@ -9,6 +9,7 @@ import { creatureActionText } from './combat-log-creature';
 import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
 import { luckyText } from './lucky';
+import { legendaryOptionName } from './legendary-card';
 import {
   actionText,
   channelNotes,
@@ -309,7 +310,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         ...base,
         hidden: true,
         icon: 'bolt',
-        text: `gastou ${spent.cost} ${actions}: ${ctx.legendaryNames?.get(spent.optionName) ?? spent.optionName}`,
+        text: `gastou ${spent.cost} ${actions}: ${legendaryOptionName(ctx.legendaryNames, e.actorId, spent.optionName) ?? spent.optionName}`,
       };
     },
   ],

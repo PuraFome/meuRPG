@@ -92,4 +92,28 @@ describe('"Se falhar, usar Resistência Lendária" on the master\'s own save', (
     expect(resistanceBox({ resistanceLeft: 0, resistancePerDay: 0 })).toBeNull();
     expect(resistanceBox(undefined)).toBeNull();
   });
+
+  it('uses a neutral source when the trigger has no action name', () => {
+    const w = reactionWindow({
+      id: 'n',
+      kind: ReactionKind.LEGENDARY_RESISTANCE,
+      trigger: { actorId: 'x', actorLabel: 'Tor', actionNamePt: '' } as never,
+      prompt: { case: 'legendaryResistance', value: { offers: [offer('d', 'A', 4, 10)] } },
+    } as never);
+    expect(legendaryResistanceCard(w)?.source).toBe(
+      'Teste de resistência, CD 15. A ação espera a sua resposta; os dados já foram rolados.',
+    );
+  });
+
+  it('names a spell of an NPC caster with its article', () => {
+    const w = reactionWindow({
+      id: 'n2',
+      kind: ReactionKind.LEGENDARY_RESISTANCE,
+      trigger: { actorId: 'm', actorLabel: 'Mago 1', actionNamePt: 'Relâmpago' } as never,
+      prompt: { case: 'legendaryResistance', value: { offers: [offer('d', 'A', 4, 10)] } },
+    } as never);
+    expect(legendaryResistanceCard(w, false)?.source.replace(/\u00a0/g, ' ')).toContain(
+      'Relâmpago do Mago 1 ·',
+    );
+  });
 });

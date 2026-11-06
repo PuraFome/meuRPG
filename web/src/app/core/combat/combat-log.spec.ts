@@ -1038,6 +1038,7 @@ describe('the legendary actions the master spent: a line for the master alone', 
   it('writes a cost of 1 in the singular, and says what an undo takes back', () => {
     const one = entry({
       kind: CombatLogKind.LEGENDARY_SPENT,
+      actorId: 'd1',
       actorLabel: 'Draco',
       legendarySpent: { optionName: 'Detect', cost: 1 },
     } as never);
@@ -1046,7 +1047,7 @@ describe('the legendary actions the master spent: a line for the master alone', 
     const ctx = {
       master: true,
       players: new Set<string>(),
-      legendaryNames: new Map([['Detect', 'Detectar']]),
+      legendaryNames: new Map([['d1', new Map([['Detect', 'Detectar']])]]),
     };
     expect(logLine(one, '', ctx)?.text).toBe('gastou 1 ação lendária: Detectar');
     expect(logLine({ ...one, hidden: true } as never, '', ctx)?.hidden).toBe(true);
