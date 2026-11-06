@@ -416,7 +416,11 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	if w.Step == stepSecond { // the master only rolled the aggressor's save: the choice was the reactor's
 		byMaster = t.ByMaster
 	}
-	hit, vit, err := s.landRolled(ctx, c, p, aggressor, fire, share)
+	fire, counted, err := s.floorRebuke(ctx, c, reactor, fire)
+	if err != nil {
+		return err
+	}
+	hit, vit, err := s.landRolled(ctx, c, p, aggressor, fire, counted, share)
 	if err != nil {
 		return err
 	}
@@ -504,7 +508,7 @@ func rebukeSaveRoll(face int, bonus int32, roll d20Roll, reroll *luckyReroll) *p
 // Hellish Rebuke): the resistances of its target, the hit points or, for a player's
 // character, the master's apply (RN-02), as RollDamage does for its own. share is how much of
 // the roll the target takes.
-func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, roll dice.Result, share combat.SaveShare) (damageHit, *playv1.CharacterVitals, error) {
+func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, roll dice.Result, counted []countedDie, share combat.SaveShare) (damageHit, *playv1.CharacterVitals, error) {
 	total := max(roll.Total, 0)
 	amount := clamp32(total, 0, math.MaxInt32)
 	switch share {
@@ -527,7 +531,7 @@ func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingD
 	}
 	rolledTotal := clamp32(total, 0, math.MaxInt32)
 	if _, err := c.q.SetPendingDamageRolled(ctx, playdb.SetPendingDamageRolledParams{
-		ID: p.ID, Status: status, Faces: faces32(roll.Faces), Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c), RollTotal: &rolledTotal, CountedDice: emptyJSONList,
+		ID: p.ID, Status: status, Faces: faces32(roll.Faces), Physical: roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c), RollTotal: &rolledTotal, CountedDice: countedColumn(counted),
 	}); err != nil {
 		return hit, nil, fmt.Errorf("save the damage roll: %w", err)
 	}

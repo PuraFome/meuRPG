@@ -23,9 +23,13 @@ const (
 	minimumAttack = 12
 	minimumDamage = 7
 	// Numbers that turn up all over an answer are searched in the fields that name them.
-	kindMinimumSrc    = "minimum-source"
-	kindMinimumD20    = "minimum-d20-counted"
-	kindMinimumDamage = "minimum-damage-counted"
+	// minimumShot is the number the d6 of Pensantus's shortbow counts as: a damage with no parts of its own.
+	minimumShot        = 6
+	kindMinimumShot    = "minimum-shot-counted"
+	kindMinimumSrc     = "minimum-source"
+	kindMinimumShotSrc = "minimum-shot-source"
+	kindMinimumD20     = "minimum-d20-counted"
+	kindMinimumDamage  = "minimum-damage-counted"
 )
 
 // minimumFeat gives Toren the table feat with a minimum for the attack d20 and one for the dice of damage, and returns its key.
@@ -48,9 +52,26 @@ func (rt *rollsTable) minimumFeat() string {
 	return entry.GetKey()
 }
 
+// shotFeat gives Pensantus, Ana's barbarian, a feat with a minimum for the dice of damage and returns its key.
+func (rt *rollsTable) shotFeat() string {
+	ctx := rt.t.Context()
+	entry := must(rt.master.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: rt.campaign, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{
+			NamePt: "Piso do Arco", DescPt: []string{"Um talento da mesa."},
+			Effects: []*rulesv1.TableEffect{{Type: "roll_minimum", Rolls: []string{"damage"}, Value: "6"}},
+		}},
+	}))).GetEntry()
+	sheet := rt.pens.GetSheet()
+	sheet.GetFull().FeatKeys = append(sheet.GetFull().GetFeatKeys(), entry.GetKey())
+	rt.pens = must(rt.master.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: rt.campaign, CharacterId: rt.pens.GetId(), Revision: rt.pens.GetRevision(), Name: rt.pens.GetName(), Sheet: sheet,
+	}))).GetCharacter()
+	return entry.GetKey()
+}
+
 func TestRollMinimumReachesOnlyWhoMayReadIt(t *testing.T) {
-	var feat string
-	rt := newRollsTableOf(t, true, true, func(rt *rollsTable) { feat = rt.minimumFeat() })
+	var feat, shotFeat string
+	rt := newRollsTableOf(t, true, true, func(rt *rollsTable) { feat, shotFeat = rt.minimumFeat(), rt.shotFeat() })
 	w, m, caio, ana := rt.world, rt.master, rt.caio, rt.ana
 	rt.buildRows()
 	defer func() {
@@ -61,6 +82,8 @@ func TestRollMinimumReachesOnlyWhoMayReadIt(t *testing.T) {
 	w.secrets.add(&canary{needle: feat, kind: kindMinimumSrc, readers: names([]*person{caio})})
 	w.secrets.add(&canary{needle: "12", kind: kindMinimumD20, numeric: true, value: minimumAttack, fields: []string{"treated_as"}, readers: names([]*person{caio})})
 	w.secrets.add(&canary{needle: "7", kind: kindMinimumDamage, numeric: true, value: minimumDamage, fields: []string{"counted_as"}, readers: names([]*person{caio})})
+	w.secrets.add(&canary{needle: shotFeat, kind: kindMinimumShotSrc, readers: names([]*person{ana})})
+	w.secrets.add(&canary{needle: "6", kind: kindMinimumShot, numeric: true, value: minimumShot, fields: []string{"counted_as"}, readers: names([]*person{ana})})
 	for _, label := range []string{labelToren, labelPens, "Esqueleto", "Arbusto", "Bandido", "Lobo"} {
 		w.secrets.id("minimum-combatant", rt.ids[label], ana, caio)
 	}
@@ -114,6 +137,39 @@ func TestRollMinimumReachesOnlyWhoMayReadIt(t *testing.T) {
 	for _, en := range rt.attackLines(ana, "Esqueleto") {
 		if len(en.GetDamage().GetParts()) != 0 {
 			t.Errorf("Ana reads the parts %v, want nothing of another player's damage", partLines(en))
+		}
+	}
+
+	// 3. Pensantus's shortbow has no parts: the d6 shows a 1 and counts as 6. The plain roll's counted die is Ana's (the roller)
+	// and the master's, in the answer, the pending damage and the log; Caio reads none of it.
+	rt.endTurn(caio)
+	rt.toTurn(labelPens)
+	shot := rt.mustAttack(ana, labelPens, shortbow, "Bandido", []int32{15, 15}, nil)
+	if shot.GetPendingDamage() == nil {
+		t.Fatalf("Pensantus's shot = %v, want a hit", shot.GetRoll())
+	}
+	w.dice.ScriptFor(t, 6, 1)
+	dealt := rt.damage(ana, shot.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) { r.Roll = &playv1.RollDamageRequest_RollInApp{RollInApp: true} }).GetPendingDamage()
+	counted := dealt.GetRoll().GetCountedDice()
+	if len(counted) != 1 || counted[0].GetCountedAs() != minimumShot || counted[0].GetSourceKey() != shotFeat {
+		t.Fatalf("Ana's damage = %v, want the 1 counted as %d by her feat", dealt.GetRoll(), minimumShot)
+	}
+	rt.ask(t, "the shot counted the minimum")
+	for who, p := range map[string]*person{"the master": m, "Ana": ana} {
+		lines := rt.attackLines(p, "Bandido")
+		var roll *playv1.DiceRoll
+		for _, en := range lines {
+			if en.GetDamage().GetRoll() != nil && en.GetActorId() == rt.ids[labelPens] {
+				roll = en.GetDamage().GetRoll()
+			}
+		}
+		if roll == nil || len(roll.GetCountedDice()) != 1 || roll.GetCountedDice()[0].GetSourceKey() != shotFeat {
+			t.Errorf("%s reads the shot's roll %v, want the counted die with its source in the log (the positive control)", who, roll)
+		}
+	}
+	for _, en := range rt.attackLines(caio, "Bandido") {
+		if en.GetActorId() == rt.ids[labelPens] && len(en.GetDamage().GetRoll().GetCountedDice()) != 0 {
+			t.Errorf("Caio reads the counted dice %v of another player's shot, want none", en.GetDamage().GetRoll().GetCountedDice())
 		}
 	}
 

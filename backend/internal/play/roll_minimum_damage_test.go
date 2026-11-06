@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -87,6 +88,23 @@ func (a *armed) damageLine(t *testing.T, u *user, e *playv1.Encounter) *playv1.C
 	}
 	if out == nil {
 		t.Fatal("the log has no damage line with dice")
+	}
+	return out
+}
+
+// spellDamageLine is the damage of the last spell-target line of the log as u reads it.
+func (a *armed) spellDamageLine(t *testing.T, u *user, e *playv1.Encounter) *playv1.CombatLogDamage {
+	t.Helper()
+	var out *playv1.CombatLogDamage
+	for _, en := range logEntries(a.log(t, u, e)) {
+		for _, tg := range en.GetSpell().GetTargets() {
+			if tg.GetDamage() != nil {
+				out = tg.GetDamage()
+			}
+		}
+	}
+	if out == nil {
+		t.Fatal("the log has no damage line of a cast")
 	}
 	return out
 }
@@ -437,5 +455,119 @@ func TestDamageWithoutAMinimumIsNotMarked(t *testing.T) {
 	dmg := r.hit(t, r.turnOf(t, "Toren"), 17, inAppDamage, 3)
 	if got := dmg.GetRoll().GetCountedDice(); len(got) != 0 {
 		t.Errorf("counted dice = %v, want none", got)
+	}
+}
+
+// A held damage with parts keeps its counted dice through the hold: the windows decide on the counted total and the
+// replay lands the part as it was kept.
+func TestHeldDamageWithPartsKeepsTheCountedDice(t *testing.T) {
+	t.Parallel()
+	r := newMinimumTable(t, battleaxe, minimumDamage("4", ""), &rulesv1.TableEffect{Type: "extra_damage", Applies: "any_target", Value: "3", TextPt: "Dano extra."})
+	r.setRules(t, enemyReactionsAlways)
+	e := r.turnOf(t, "Toren")
+	held := r.mustAttack(t, r.caio, e, "Toren", battleaxe, "Capitão Goblin", d20(17))
+	if !held.GetRoll().GetHeldForReaction() {
+		t.Fatalf("the attack = %v, want it held for the master's check", held.GetRoll())
+	}
+	answerChecks(t, r.armed, e)
+	pending := r.firstPending(t)
+	r.h.roller.queue(1)
+	r.mustDamage(t, r.caio, e, pending, marking(r.feat))
+	answerChecks(t, r.armed, e)
+	r.wantDamage(t, &playv1.PendingDamage{Id: pending}, 10) // 4, the +3 of Strength and the extra 3
+	for who, u := range map[string]*user{"the master": r.master, "Caio": r.caio} {
+		var weapon *playv1.DamagePartRoll
+		for _, pr := range r.damageLine(t, u, r.get(t, r.master)).GetParts() {
+			if pr.GetPartKey() == "weapon" {
+				weapon = pr
+			}
+		}
+		if weapon == nil || weapon.GetSum() != 4 {
+			t.Fatalf("%s reads the weapon part %v, want its 1 counted as 4", who, weapon)
+		}
+		wantCountedDice(t, who+"'s weapon part", weapon.GetCountedDice(), r.feat, [3]int32{0, 1, 4})
+	}
+}
+
+// The fire of a Hellish Rebuke is damage the app rolls for the warlock: its dice count the warlock's minimum, and the
+// fire type decides which minimum covers it. The stored roll keeps the faces and the counted dice, and the same answer
+// sent again gives the same.
+func TestHellishRebukeFireCountsTheMinimum(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, kind string
+		want       int32
+	}{{"fire minimum", fireType, 19}, {"cold minimum", "damage-type:cold", 12}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var feat string
+			a, e := reactorFight(t, func(t *testing.T, a *armed) *charactersv1.Character {
+				t.Helper()
+				warlock := pactWarlock(t, a)
+				feat = a.rerollFeat(t, minimumDamage("5", tc.kind))
+				a.giveFeat(t, warlock, feat)
+				return warlock
+			})
+			w := hurtReator(t, a, e)
+			a.mustAnswer(t, a.ana, e, w.GetId(), useWith(func(r *playv1.AnswerReactionRequest) { r.Slot = &playv1.SpellSlot{Level: 2, Pact: true} }))
+			save := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+			a.h.roller.queue(2, 9, 1) // the fire: 3d10
+			key := newKey()
+			answer := func() *playv1.HellishRebukeResult {
+				done := a.mustAnswer(t, a.master, e, save.GetId(), func(r *playv1.AnswerReactionRequest) {
+					typedAnswer(2)(r)
+					r.IdempotencyKey = key
+				})
+				return done.GetResult().GetHellishRebuke()
+			}
+			first := answer()
+			answer() // sent again: the stored answer, no second roll
+			if first.GetSaved() || first.GetDamage() != tc.want {
+				t.Fatalf("the result = %v, want the failed save and %d fire", first, tc.want)
+			}
+			var raw []byte
+			var faces []int32
+			var rows int
+			if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM pending_damages WHERE attack_key = $1`, spellHellishRebuke).Scan(&rows); err != nil || rows != 1 {
+				t.Fatalf("fire pending damages = %d (%v), want 1", rows, err)
+			}
+			if err := a.h.pool.QueryRow(t.Context(), `SELECT counted_dice, faces FROM pending_damages WHERE attack_key = $1`, spellHellishRebuke).Scan(&raw, &faces); err != nil {
+				t.Fatalf("read the fire's pending damage: %v", err)
+			}
+			got := readCountedDice(raw)
+			if len(faces) != 3 || faces[0] != 2 || faces[1] != 9 || faces[2] != 1 {
+				t.Errorf("faces = %v, want 2, 9, 1 as they came up", faces)
+			}
+			if tc.kind != fireType {
+				if len(got) != 0 {
+					t.Errorf("counted dice = %v, want none for another type", got)
+				}
+				return
+			}
+			if len(got) != 2 || got[0].Face != 2 || got[0].To != 5 || got[1].Index != 2 || got[1].To != 5 || got[0].SourceKey != feat {
+				t.Errorf("counted dice = %v, want the 2 and the 1 counted as 5 by %s", got, feat)
+			}
+		})
+	}
+}
+
+// A cast's damage (Sacred Flame, no parts) is rolled for the whole cast and logged by target: the caster's player and the
+// master read the counted die with the faces, another player reads no dice.
+func TestSpellDamageLogShowsTheCountedDice(t *testing.T) {
+	t.Parallel()
+	a := fighterTable(t, "")
+	feat := a.rerollFeat(t, minimumDamage("6", "damage-type:radiant"))
+	a.giveFeat(t, a.bri, feat)
+	e := a.closeFight(t)
+	a.passTo(t, e, "Brisa")
+	flame := a.mustCast(t, a.bia, e, "Brisa", sacredFlame, nil, a.at(t, "Goblin"), noCastRoll)
+	a.h.roller.queue(2)
+	p := a.mustDamage(t, a.bia, e, flame.GetCast().GetPendingDamages()[0].GetId(), inAppDamage).GetPendingDamage()
+	wantCountedDice(t, "the answer", p.GetRoll().GetCountedDice(), feat, [3]int32{0, 2, 6})
+	for who, u := range map[string]*user{"the master": a.master, "Bia": a.bia} {
+		wantCountedDice(t, who+"'s spell log", a.spellDamageLine(t, u, e).GetRoll().GetCountedDice(), feat, [3]int32{0, 2, 6})
+	}
+	if got := a.spellDamageLine(t, a.caio, e).GetRoll(); got != nil {
+		t.Errorf("Caio reads the dice %v of another player's spell, want none", got)
 	}
 }

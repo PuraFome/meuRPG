@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"slices"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -64,7 +66,7 @@ func (pr *partRoll) recount(f rollFloor) {
 	if len(pr.Faces) == 0 {
 		return
 	}
-	pr.Sum, pr.Floored = countDamageDice(pr.Faces, pr.Sides, f)
+	pr.Sum, pr.CountedDice = countDamageDice(pr.Faces, pr.Sides, f)
 }
 
 // countedProto is the dice a floor changed, as the API tells them.
@@ -139,4 +141,20 @@ func (f *damageFlow) recountDice() {
 	sum, counted := countDamageDice(faces, clamp32(f.expr.Sides, 0, 100), damageFloorFor(f.minimums, f.p.DamageType))
 	f.counted = counted
 	f.roll.Total = int(sum) + f.roll.Modifier
+}
+
+// floorRebuke counts the dice of the fire a Hellish Rebuke rolled by the minimums of the reactor, a player's character:
+// the same rules as the damage roll, the fire being damage-type:fire. It answers the roll with the total of what they
+// count as, and the dice the floor changed.
+func (s *Service) floorRebuke(ctx context.Context, c *combatTx, reactor playdb.Combatant, roll dice.Result) (dice.Result, []countedDie, error) {
+	if !strokeMayApply(reactor) || len(roll.Faces) == 0 {
+		return roll, nil, nil
+	}
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil {
+		return roll, nil, err
+	}
+	sum, counted := countDamageDice(faces32(roll.Faces), clamp32(roll.Expr.Sides, 0, 100), damageFloorFor(sheet.Traits.RollMinimums, "damage-type:fire"))
+	roll.Total = int(sum) + roll.Modifier
+	return roll, counted, nil
 }

@@ -1262,6 +1262,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	r := d.roll
 	if v.master || v.owns(caster) { // the caster's dice, as for an attack's damage
 		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
+		out.Roll.CountedDice = countedProto(r.CountedDice) // with the faces: the roller's and the master's
 	}
 	if d.applied != nil { // the master's apply of a character's damage
 		d.viewApplied(out, v, target)
