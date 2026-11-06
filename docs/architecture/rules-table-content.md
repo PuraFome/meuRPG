@@ -71,6 +71,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
+| `roll_minimum` | See [Roll minimum](#roll-minimum). |
 | `modifier` with target `critical_range` | See [Critical range](#critical-range). |
 | `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
@@ -227,14 +228,38 @@ A rule with no resource is free and has cost 1 in `Derived.Rerolls`.
 The combat link carries them as `Traits.RerollRules` (`Applies`, `AtMost`, `Resource`, `Cost`, `Source`: the key of the feature that gives it).
 How the d20 is asked is in [Held rolls](play/held-rolls.md#the-d20-rolled-again-by-a-reroll-rule); how the damage dice are rolled again is in [Attacks and damage](play/attacks-and-damage.md).
 
+### Roll minimum
+
+`roll_minimum` (menu name "Valor mínimo no dado"; fields `rolls`, `value`, `damage_type`, `when`, `text_pt`; `rules/rolleffects.go`) makes a die that shows less than `value` count as `value`.
+`rolls` is the list of [Reroll](#reroll): `attack`, `check`, `save` (the d20) and `damage` (a die of weapon or spell damage).
+Checked at its fields (`bad_value` unless said):
+
+- `.rolls` is required, holds only those four words and names none twice;
+- `.value` is a literal from 2 to 20 (`MinRollMinimum`, `MaxRollMinimum`), never a formula;
+- `.damage_type` is a damage type of the content (`bad_reference`) and is accepted only when `rolls` is exactly `["damage"]`;
+- `.at_most`, `.resource`, `.cost` and `.tags` are refused (a tagged effect is never applied, and a minimum has no hint to show).
+
+`Derive` fills `Derived.RollMinimums` in the order of the effects, from the ones whose `when` holds.
+The combat link carries them as `Traits.RollMinimums` (`Applies`, `Value`, `DamageType`, `Source`: the key of the feature that gives it).
+The highest applicable minimum wins.
+For a d20, Reliable Talent's 10 competes with the table's minimums, and a tie keeps Reliable Talent.
+For a die of damage, a minimum with a `damage_type` counts only on the dice of that type, and one without counts on all of them.
+A die of damage smaller than `value` counts as its own highest face.
+A reroll comes first and the minimum counts the die that stays.
+The minimum counts the die for every rule that reads it: the total, a critical hit or a miss on a natural 20 or 1, and the 1 or 20 of a death save.
+Where each roll counts it is in [Held rolls](play/held-rolls.md#a-d20-that-counts-as-another-number) and [Attacks and damage](play/attacks-and-damage.md#the-damage-minimum).
+
 ### Critical range
 
 `modifier` with the target `critical_range` (menu name "Margem de acerto crítico (o menor d20 que é crítico)") sets the lowest natural d20 that is a critical hit.
 The mode is `set` (an empty mode is read as `set`; any other is refused at `.mode`), and a literal `value` is 15 to 20 (`.value`); a formula is clamped to 15..20 when it is worked out.
 The menu entry carries `only_modes`, `min` and `max`; the editor does not read them, and the server refuses a mode or a value outside them.
-`Derive` lowers `Derived.CriticalRange` to the lowest of the range the SRD features give and the value of each such modifier whose `when` holds.
+`applies` is the scope: `weapon` (the default, as the SRD's Improved Critical), `spell` or `both`.
+The list `critical_scopes` carries the three words; any other word is refused at `.applies`, and `applies` on any other target is refused at `.applies`.
+`Derive` lowers `Derived.CriticalRange` (the weapon attacks) to the lowest of the range the SRD features give and the value of each `weapon` or `both` modifier whose `when` holds.
+It lowers `Derived.SpellCriticalRange` (the spell attack rolls), which starts at 20, to the lowest value of each `spell` or `both` modifier whose `when` holds; Improved Critical and Superior Critical never lower it.
 A tagged modifier is a hint only.
-Combat reads `Derived.CriticalRange` for weapon attacks only; a spell attack is a critical hit on a 20.
+Combat reads `Derived.CriticalRange` for a weapon attack and `Traits.SpellCriticalRange` (0 is 20) for a spell attack roll.
 
 ## Table options
 

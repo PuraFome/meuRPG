@@ -54,7 +54,7 @@ The gate answers with a `gateResult`:
 
 - **zero:** only for the two paths that roll their own die (the registry's `ownRoll`): the group check, whose `rollCheck` picks the die, and the trap search, whose Perception search rolls a second die. Every other path gets `Held` or `Settled`, also when nothing is asked, because the gate rolls the d20 itself;
 - **`Held`:** the roll waits and nothing but the hold is written; the response carries the question (`lucky_offer` or `inspiration_offer`);
-- **`Settled`:** the gate decided the d20, with Reliable Talent applied, the Bardic Inspiration die added (`Bonus`) and the die Lucky rolled again (`Lucky`), for the path's event to keep.
+- **`Settled`:** the gate decided the d20, with the floor of its kind applied (Reliable Talent or a table's minimum), the Bardic Inspiration die added (`Bonus`) and the die Lucky rolled again (`Lucky`), for the path's event to keep.
 
 The weapon attack asks `heldBlocked` first, before a reaction window can hold the roll, and `heldMayWait` for the mode's dry run (`chooseMode` writes the mode's reason only when the roll goes on, via `keepReason`).
 
@@ -304,6 +304,21 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
 - **Wire.** `StrokeOfLuckQuestion` in `HeldRollOffer.question`, `StrokeOfLuckAnswer` in `AnswerHeldRollRequest`.
 - **Web.** A card with "Usar" and "Manter" and no roll picker.
   A player outside a combat reads the question again from `ListHeldRolls`, since the older lists of the outside state do not carry it.
+
+## A d20 that counts as another number
+
+A held d20 that counts as another number than it showed says so in the question: the offer's `d20` keeps the face as it came up in `faces`, and sets `treated_as` (the number it counts as) and `treated_as_source` (the content key of the feature that did it).
+The floor is Reliable Talent's or a table's [`roll_minimum`](../rules-table-content.md#roll-minimum), whichever is higher; a tie keeps Reliable Talent.
+The roll's total uses the number it counts as, so every question that follows reads the same d20.
+Each kind asks for the floor of its own roll: `attack` for the weapon and spell attack, `check` for a skill check, `save` for a saving throw and the death save.
+
+- **The row.** `inspiration_holds.counted_by` keeps the content key of the feature whose floor the total counts, next to the faces and the total.
+  It is empty when the d20 counts as it came up.
+  The question reads the same when it is asked, read again and retried.
+- **After an answer.** An answer that rolls a new d20 (Lucky, a reroll rule) counts the new face by the floor again, and the row keeps the new `counted_by`.
+  Stroke of Luck counts the d20 as 20, which is no floor's, so the row's `counted_by` is cleared.
+- **Who reads it.** The offer goes to the roller's player and the master only, who already read the face; nobody else reads `treated_as`.
+- **Wire.** `DiceRoll.treated_as` and `DiceRoll.treated_as_source` of the offer's `d20`.
 
 ## The d20 rolled again by a reroll rule
 

@@ -594,9 +594,24 @@ Members read the campaign's content, except creatures (below); only the master w
 - **The critical range.**
   A table modifier "Margem de acerto crítico (o menor d20 que é crítico)" sets the lowest natural d20 that is a critical hit, from 15 to 20.
   Only the mode "Definir" is accepted, the server refuses the others, and a formula is held between 15 and 20.
-  It counts for weapon attacks only, as Improved Critical does; a spell attack is a critical hit on a 20 only.
-  The lowest of the table's value and of the class features' range (Improved Critical, Superior Critical) wins.
+  The field "Vale para" says which attacks: weapon attacks (the default, as Improved Critical does), spell attack rolls, or both.
+  A spell attack roll is a critical hit on a 20 unless a modifier of the spell scope lowers it; Improved Critical and Superior Critical never do.
+  The lowest of the table's value and of the class features' range (Improved Critical, Superior Critical) wins for weapon attacks.
   The attack hits on that roll and the damage follows the critical rule of the table (RN-24).
+- **The minimum of a roll.**
+  The effect "Valor mínimo no dado" makes a die that shows less than the chosen value count as that value, from 2 to 20.
+  The master picks the rolls it covers (attack, ability check, saving throw, damage; each once) and, only when it covers damage alone, a damage type.
+  The highest minimum the character has wins, and a tie with Reliable Talent keeps Reliable Talent.
+  A die rolled again (RN-23 "Rolar de novo") is rolled first, and the minimum counts the die that stays.
+  - **The d20.** The roll keeps the face that came up and says it counts as the minimum, and which feature did it.
+    The number counts for everything that reads the die: the total, a critical hit or a miss on a natural 20 or 1, and the 1 or 20 of a death save.
+    It covers the attack rolls, the scene and group checks, the trap search, the puzzle hint, either side of a contest, a Hide, the Counterspell check, the initiative and the saving throws the app rolls, the death save included.
+  - **Damage.** A die of damage smaller than the value counts as its own highest face (a d4 under a minimum of 6 counts as 4).
+    It counts every die the app rolled for a player's character in a weapon or spell damage, and the fire of Hellish Rebuke, whether the part counts in the total or not.
+    With a damage type, only the dice of that type count it.
+    Damage the player typed, a sum with no dice, a heal, the damage of a zone, of a lasting effect or of a trap, and the damage of a creature or an NPC are not covered.
+    The damage line shows the face that came up and what it counts as.
+  - **Who reads it.** The roller's player and the master, who already read the face; another player reads neither the face nor the number.
 - **Rerolls.**
   The effect "Rolar de novo" lets a die be rolled again, and the new roll must be used, even when it is worse (SRD 5.1).
   The master picks the rolls it covers (attack, ability check, saving throw, damage; each once), the highest face that may be rolled again (1 to 20), and optionally a resource the entry or its class defines and the uses each reroll spends (1 by default).
@@ -618,8 +633,7 @@ Members read the campaign's content, except creatures (below); only the master w
     For damage with parts (a weapon hit and its extras) the part lists the dice rolled again with the feature that gave the reroll; other damage shows only the new dice.
     The use is spent with the damage, and undoing the damage gives it back.
   - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
-  - **Not covered.** A minimum for a roll and a wider critical range for spell attacks do not exist.
-    The master's editor lists "Rolar de novo" but cannot save it: write it through the API.
+  - **Not covered.** The master's editor lists "Rolar de novo" but cannot save it: write it through the API.
     The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
@@ -704,8 +718,8 @@ A change holds from the next roll, never rewriting what was already rolled.
 - **Table style.** At the top: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. A style only fills in these defaults, which stay editable one by one. More ideas: [MR-046](stories.md#mr-046-table-style-feature-by-feature).
 - **Hit points on level up:** roll, the average, or the player chooses between the two. The server refuses the method the rule does not allow, and a player's sheet above level 1 must follow it at creation ("roll": every level after the first is a roll; "average": none).
 - **Abilities of a new sheet.** The master ticks the ways that hold: the standard array (15, 14, 13, 12, 10, 8), point buy with 27 points, 4d6 dropping the lowest, or typing from 3 to 18 before the race bonus. The 4d6 are rolled and stored by the server, once (a physical-dice player types them, once). A player's sheet is checked against the way they used, for as long as it is a draft; the master's edits are free. Manual ability bonuses cannot get around the way: for a player they may not exceed what the race lets them place plus 2 for each Ability Score Improvement reached. The three ways come from SRD 5.2.1 (the 2024 rules, CC BY 4.0), credited on "Créditos" and labelled "SRD 5.2.1 (regras de 2024)".
-- **The critical hit:** doubled dice (the SRD's) or the maximum of the dice plus a roll. It holds on every critical hit in combat (weapon, spell attack, creature, NPC, monster, trap), with a map or in theatre. The damage step states it ("role os dados duas vezes" or "o máximo mais uma rolagem") and a physical-dice player types only the dice rolled. A weapon attack is a critical hit on a natural 20; a Champion fighter also on 19 from level 3 and on 18 from level 15; a table's critical range can widen it further (below); a spell attack always needs the 20. A barbarian's critical melee hit rolls extra weapon dice at levels 9, 13 and 17 (Brutal Critical), always rolled, named in the damage line ("Crítico Brutal"). The damage of features the app does not roll (Sneak Attack, Divine Smite) is added by hand.
-- **Reliable Talent** (rogue 11): on an ability check that adds the proficiency bonus, a d20 of 9 or lower counts as 10. It does not apply to attacks, saving throws, initiative or checks without proficiency. The roll keeps the face that came up and says it was treated as 10. It applies to scene checks, trap searches, puzzle hints, group checks, either side of a contest and a Hide.
+- **The critical hit:** doubled dice (the SRD's) or the maximum of the dice plus a roll. It holds on every critical hit in combat (weapon, spell attack, creature, NPC, monster, trap), with a map or in theatre. The damage step states it ("role os dados duas vezes" or "o máximo mais uma rolagem") and a physical-dice player types only the dice rolled. A weapon attack is a critical hit on a natural 20; a Champion fighter also on 19 from level 3 and on 18 from level 15; a table's critical range can widen it further, for weapon attacks, spell attack rolls or both (below); a spell attack needs the 20 unless the table's range lowers it. A barbarian's critical melee hit rolls extra weapon dice at levels 9, 13 and 17 (Brutal Critical), always rolled, named in the damage line ("Crítico Brutal"). The damage of features the app does not roll (Sneak Attack, Divine Smite) is added by hand.
+- **Reliable Talent** (rogue 11): on an ability check that adds the proficiency bonus, a d20 of 9 or lower counts as 10. It does not apply to attacks, saving throws, initiative or checks without proficiency. The roll keeps the face that came up and says it was treated as 10. It applies to scene checks, trap searches, puzzle hints, group checks, either side of a contest and a Hide. A table's minimum for checks (RN-23) competes with it: the higher counts, and a tie keeps Reliable Talent.
 - **Death saves:** seen by everyone, or only by the owner and the master. When hidden, every other player reads only "Caído" on the combatant, in the order, in the log, in the stream, in the summary and in the highlights. Everyone keeps the result: "Estável" and "Morto". Each roll stores whether it was hidden, so changing the rule never reveals or hides what was already written.
 - **Area spells and hidden creatures** (RN-23): reveal, keep hidden, or ask each time.
 - **Enemy reactions** (RN-31): "Só quando um inimigo pode reagir" or "Sempre".

@@ -378,6 +378,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
    * ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
    * attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
    * thrown weapon used at range).
+   * A modifier on "critical_range" uses `applies` for its scope: "weapon" (the default),
+   * "spell" (the attack roll of a spell) or "both".
    *
    * @generated from field: string applies = 22;
    */
@@ -452,6 +454,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
    * `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
    * "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
    * unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+   * roll_minimum: `value` is the lowest the die counts as (a literal, 2 to 20), and `damage_type`
+   * limits it to the dice of that type, only when `rolls` is exactly "damage".
    *
    * @generated from field: string dice = 44;
    */
@@ -823,7 +827,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   recoverLevels: string;
 
   /**
-   * reroll: the rolls it covers, one or more of "attack", "check", "save"
+   * reroll and roll_minimum: the rolls it covers, one or more of "attack", "check", "save"
    * (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
    *
    * @generated from field: repeated string rolls = 77;
