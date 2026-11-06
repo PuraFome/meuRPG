@@ -1,6 +1,9 @@
-import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  type EncounterBlocked,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 
-/** The refusals of an action of a stat block that is spent (the master and the controller of the creature read them): what is wrong, and that nothing was spent. */
+/** The refusals of an action of a stat block that is spent (the master and the controller of the creature read them): what is wrong, and that nothing was spent. The refusal of an undo whose hit points changed is here too: nothing was undone. */
 export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [
     EncounterBlockedReason.CREATURE_ACTION_RECHARGING,
@@ -10,4 +13,19 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
     EncounterBlockedReason.CREATURE_ACTION_NO_USES_LEFT,
     'Essa ação da criatura não tem mais usos. Nada foi gasto.',
   ],
+  [
+    EncounterBlockedReason.UNDO_TARGET_CHANGED,
+    'Não dá para desfazer: os pontos de vida de alguém mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.',
+  ],
 ]);
+
+/** The same refusal naming who changed (`labelOf` gives the name of a combatant on screen). */
+export function undoChangedText(
+  blocked: EncounterBlocked,
+  labelOf: (id: string) => string | undefined,
+): string {
+  const names = blocked.combatantIds.map(labelOf).filter((n): n is string => !!n);
+  return names.length === 0
+    ? (LIMITED_ACTION_BLOCKED_TEXT.get(blocked.reason) ?? '')
+    : `Não dá para desfazer: os pontos de vida de ${names.join(', ')} mudaram depois dessa ação, e desfazer apagaria essa mudança. Nada foi desfeito. A tela foi atualizada.`;
+}

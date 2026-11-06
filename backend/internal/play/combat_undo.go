@@ -425,6 +425,10 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
+	// Before anything is written: the hit points the action left must still be there.
+	if err := s.checkHolds(ctx, c, ev); err != nil {
+		return nil, err
+	}
 	run.unpushed = pushesOf(ev.Hits)
 	if id := creatureToPutBack(ev); id != "" {
 		if err := run.noteSnapBack(ctx, c, id); err != nil {

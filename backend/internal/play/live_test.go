@@ -342,7 +342,10 @@ func TestRN02_MasterAdjustsVitalsDuringSession(t *testing.T) {
 
 	// What may not be adjusted: an NPC, or a character that does not exist.
 	for name, id := range map[string]string{"an NPC": npc.GetId(), "a made-up character": newKey(), "not a UUID": "x"} {
-		_, err = master.adjust(t, campaign, id, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(1) })
+		// They have no vitals to read a revision from: any revision gets to the lookup that refuses them.
+		_, err = master.adjust(t, campaign, id, func(r *playv1.AdjustCharacterVitalsRequest) {
+			r.HitPointsCurrent, r.ExpectedRevision = proto.Int32(1), proto.Int32(0)
+		})
 		wantCode(t, "AdjustCharacterVitals("+name+")", err, connect.CodeNotFound)
 	}
 
@@ -382,11 +385,14 @@ func TestRN02_MasterAdjustsVitalsDuringSession(t *testing.T) {
 		t.Errorf("session_events = %d rows after refused calls, want still 3", n)
 	}
 
-	// A dead character is no longer at the table.
+	// A dead character is no longer at the table. The revision is the one read while it was.
+	warlockRevision := master.revisionOf(t, campaign, warlock.GetId())
 	if _, err := master.characters.MarkCharacterDead(t.Context(), connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: warlock.GetId()})); err != nil {
 		t.Fatalf("MarkCharacterDead() error = %v", err)
 	}
-	_, err = master.adjust(t, campaign, warlock.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.PactSlotsUsed = proto.Int32(0) })
+	_, err = master.adjust(t, campaign, warlock.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) {
+		r.PactSlotsUsed, r.ExpectedRevision = proto.Int32(0), warlockRevision
+	})
 	wantCode(t, "AdjustCharacterVitals(dead)", err, connect.CodeNotFound)
 	if n := len(master.liveSession(t, campaign).GetVitals()); n != 1 {
 		t.Errorf("master's vitals after a death = %d characters, want 1", n)

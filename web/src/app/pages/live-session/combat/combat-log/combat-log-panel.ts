@@ -17,14 +17,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { EncounterBlockedReason, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  type Encounter,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
-import {
-  combatErrorMessage,
-  encounterBlocked,
-  undoChangedText,
-} from '../../../../core/combat/combat-errors';
+import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
+import { undoChangedText } from '../../../../core/combat/combat-errors-limits';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import {

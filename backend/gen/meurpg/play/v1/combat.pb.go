@@ -978,6 +978,11 @@ const (
 	// The same, for an action with uses a day or one that recharges after a rest: every use is
 	// spent. Nothing is spent. The same reading rule.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT EncounterBlockedReason = 124
+	// UndoLastAction: a combatant's hit points, temporary hit points or Wild Shape form are not the
+	// ones the action left, because something else changed them after it (a rest, a correction, a
+	// trap of another fight). The undo would write the "before" over that change and lose it, so
+	// nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED EncounterBlockedReason = 126
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1088,6 +1093,7 @@ var (
 		122: "ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE",
 		123: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING",
 		124: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT",
+		126: "ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1195,6 +1201,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE": 122,
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING":       123,
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT":     124,
+		"ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED":              126,
 	}
 )
 
@@ -3315,6 +3322,7 @@ type EncounterBlocked struct {
 	// MAP_HAS_NO_GRID: the map that needs a grid (a UUID).
 	MapId string `protobuf:"bytes,3,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	// INITIATIVE_MISSING: the combatants that have no initiative (UUIDs).
+	// UNDO_TARGET_CHANGED: the combatants whose hit points changed since the action (UUIDs).
 	CombatantIds []string `protobuf:"bytes,4,rep,name=combatant_ids,json=combatantIds,proto3" json:"combatant_ids,omitempty"`
 	// NO_SLOT: the lowest slot level that would do.
 	MinLevel int32 `protobuf:"varint,5,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
@@ -28039,7 +28047,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\x8a(\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xbc(\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -28146,7 +28154,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"7ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_NONE_LEFT\x10y\x12=\n" +
 	"9ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE\x10z\x127\n" +
 	"3ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING\x10{\x129\n" +
-	"5ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT\x10|*\x91\x03\n" +
+	"5ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT\x10|\x120\n" +
+	",ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED\x10~*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

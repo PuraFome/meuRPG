@@ -353,6 +353,10 @@ type actionEvent struct {
 	// master's hand.
 	Before *hpState `json:"before,omitempty"`
 	After  *hpState `json:"after,omitempty"`
+	// Holds is the hit points each combatant had when the action ended, for those whose hit points it
+	// changed (combatant ID to state): an undo checks them before it writes the "before" back
+	// (combat_undo_holds.go). Absent in events from before it was kept: those are not checked.
+	Holds map[string]hpState `json:"holds,omitempty"`
 
 	// EffectEnd is the effect a combat_effect_ended event is about.
 	EffectEnd *effectEnd `json:"effect_end,omitempty"`
