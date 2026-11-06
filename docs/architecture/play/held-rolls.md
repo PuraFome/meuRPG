@@ -104,7 +104,7 @@ A hold made in a combat records its `round`; one of an earlier round, or whose c
 Each says when it waits (`pending`), what it asks (`offer`) and what its answer writes (`apply`).
 
 - **Lucky** waits while `lucky_index` is set and neither it nor the roll was answered.
-  Its answer replaces the die that showed the 1, counts the d20 again by the roll's mode and Reliable Talent, writes the faces and the Lucky columns, and is never asked again.
+  Its answer replaces the die that showed the 1, counts the d20 again by the roll's mode and its floor (Reliable Talent or a table's minimum), writes the faces and the Lucky columns, and is never asked again.
 - **The die** waits while the roller holds one and nothing is answered.
   Its answer is final: it spends the die when the player used it and closes the row under the answer's key.
 
@@ -310,13 +310,14 @@ It is offered after the result, a new link of the chain (`held_stroke.go`, `comb
 A held d20 that counts as another number than it showed says so in the question: the offer's `d20` keeps the face as it came up in `faces`, and sets `treated_as` (the number it counts as) and `treated_as_source` (the content key of the feature that did it).
 The floor is Reliable Talent's or a table's [`roll_minimum`](../rules-table-content.md#roll-minimum), whichever is higher; a tie keeps Reliable Talent.
 The roll's total uses the number it counts as, so every question that follows reads the same d20.
-Each kind asks for the floor of its own roll: `attack` for the weapon and spell attack, `check` for a skill check, `save` for a saving throw and the death save.
+Each kind asks for the floor of its own roll: `attack` for the weapon and spell attack, `check` for a skill check, the initiative and the Counterspell check, `save` for a saving throw and the death save.
 
 - **The row.** `inspiration_holds.counted_by` keeps the content key of the feature whose floor the total counts, next to the faces and the total.
   It is empty when the d20 counts as it came up.
   The question reads the same when it is asked, read again and retried.
 - **After an answer.** An answer that rolls a new d20 (Lucky, a reroll rule) counts the new face by the floor again, and the row keeps the new `counted_by`.
-  Stroke of Luck counts the d20 as 20, which is no floor's, so the row's `counted_by` is cleared.
+  Stroke of Luck on a check counts the d20 as 20, which is no floor's, so the row's `counted_by` is cleared.
+  On an attack it changes no d20, so the row keeps `counted_by`.
 - **Who reads it.** The offer goes to the roller's player and the master only, who already read the face; nobody else reads `treated_as`.
 - **Wire.** `DiceRoll.treated_as` and `DiceRoll.treated_as_source` of the offer's `d20`.
 
@@ -346,7 +347,7 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
   Indomitable and Stroke of Luck look at the new roll.
 - **Answer.** Rolling again makes the service roll a d20 with its own roller, whatever the campaign's dice mode.
   The player is not asked to type it, so the new die does not follow RN-18 at a physical-dice table.
-  The new d20 replaces the face asked about, the die that counts is picked again, Reliable Talent applies, the roll's `Physical` flag is cleared, and the rule's uses are spent in the same transaction.
+  The new d20 replaces the face asked about, the die that counts is picked again, the floor applies, the roll's `Physical` flag is cleared, and the rule's uses are spent in the same transaction.
   The new roll is final.
   A free rule (no resource) spends nothing.
   The rule is kept on the row (limit, resource, cost, source), so the answer reads nothing from the sheet.

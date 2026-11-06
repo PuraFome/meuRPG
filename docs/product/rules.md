@@ -609,7 +609,8 @@ Members read the campaign's content, except creatures (below); only the master w
   - **Damage.** A die of damage smaller than the value counts as its own highest face (a d4 under a minimum of 6 counts as 4).
     It counts every die the app rolled for a player's character in a weapon or spell damage, and the fire of Hellish Rebuke, whether the part counts in the total or not.
     With a damage type, only the dice of that type count it.
-    Damage the player typed, a sum with no dice, a heal, the damage of a zone, of a lasting effect or of a trap, and the damage of a creature or an NPC are not covered.
+    Damage the player typed from physical dice is never floored, while a typed d20 is.
+    A sum with no dice, a heal, the damage of a zone, of a lasting effect or of a trap, and the damage of a creature or an NPC are not covered.
     The damage line shows the face that came up and what it counts as.
   - **Who reads it.** The roller's player and the master, who already read the face; another player reads neither the face nor the number.
 - **Rerolls.**
@@ -633,7 +634,7 @@ Members read the campaign's content, except creatures (below); only the master w
     For damage with parts (a weapon hit and its extras) the part lists the dice rolled again with the feature that gave the reroll; other damage shows only the new dice.
     The use is spent with the damage, and undoing the damage gives it back.
   - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
-  - **Not covered.** The master's editor lists "Rolar de novo" but cannot save it: write it through the API.
+  - **Not covered.** The master's editor lists "Rolar de novo" and "Valor mínimo no dado" but cannot save them: write them through the API.
     The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".

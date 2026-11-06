@@ -105,7 +105,7 @@ A reroll runs first, on the face that came up, and the minimum counts the dice t
 `faces` keep what came up; `total` and each part's `sum` use what the dice count as.
 The dice the minimum changed are listed as `counted_dice` (`CountedDie`: `index`, `face`, `counted_as`, `source_key`); a die it did not change is not listed.
 A damage with parts keeps them in each part's `counted_dice`, and a damage with no parts of its own in `pending_damages.counted_dice` ([Combat data](../../data/combat.md#pending_damages)).
-A damage typed from physical dice has no faces the app rolled, and a typed sum has none at all, so nothing is floored.
+A damage roll of typed physical dice is never floored, because the app did not roll the dice, while a typed d20 is.
 The damage of a zone, of a lasting effect, of a trap, and of a creature or an NPC does not count a minimum.
 Whoever reads the faces of a roll reads `counted_dice`: the roller's player and the master, never another player.
 

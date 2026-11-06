@@ -609,7 +609,8 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   - **Dano.** Um dado de dano menor que o valor conta como o seu maior valor (um d4 sob um mínimo de 6 conta como 4).
     Conta todo dado que o app rolou para um personagem de jogador no dano de arma ou de magia, e o fogo da Repreensão Infernal, quer a parte conte no total, quer não.
     Com um tipo de dano, só os dados desse tipo o contam.
-    Não são cobertos o dano digitado pelo jogador, uma soma sem dados, uma cura, o dano de uma zona, de um efeito duradouro ou de uma armadilha, e o dano de uma criatura ou de um NPC.
+    O dano digitado de dados físicos nunca recebe o mínimo, enquanto um d20 digitado recebe.
+    Não são cobertos uma soma sem dados, uma cura, o dano de uma zona, de um efeito duradouro ou de uma armadilha, e o dano de uma criatura ou de um NPC.
     A linha de dano mostra a face que saiu e como ela conta.
   - **Quem lê.** O jogador que rola e o mestre, que já leem a face; outro jogador não lê a face nem o número.
 - **Rolar de novo.**
@@ -633,7 +634,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
     No dano com partes (um golpe de arma e os extras dele) a parte lista os dados rolados de novo com a característica que deu o efeito; os outros danos mostram só os dados novos.
     O uso é gasto junto com o dano, e desfazer o dano o devolve.
   - **Dados físicos.** O app rola o novo d20 e os novos dados de dano sozinho, mesmo numa mesa de dados físicos, então esse dado não é digitado pelo jogador (a RN-18 não vale para ele).
-  - **Não coberto.** O editor do mestre lista "Rolar de novo", mas não consegue salvá-lo: escreva-o pela API.
+  - **Não coberto.** O editor do mestre lista "Rolar de novo" e "Valor mínimo no dado", mas não consegue salvá-los: escreva-os pela API.
     A margem de crítico se escolhe no editor como um modificador, e o servidor recusa qualquer modo que não seja "Definir".
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
