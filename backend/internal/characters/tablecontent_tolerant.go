@@ -1,7 +1,6 @@
 package characters
 
 import (
-	"errors"
 	"slices"
 	"strings"
 
@@ -9,14 +8,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
-
-// maxTolerantPasses bounds how many times a content is rebuilt.
-// Each pass leaves out the entries the engine refused in the pass before.
-const maxTolerantPasses = 16
-
-// errTooManyPasses is what buildTolerant returns when the passes run out.
-// No partial content is served.
-var errTooManyPasses = errors.New("the content kept being refused after leaving entries out")
 
 // leftOut is a stored entry that the content was built without.
 // It carries every violation the engine found in it.
@@ -29,29 +20,31 @@ type leftOut struct {
 // buildTolerant is srd.With the overlay of entries, built without the entries the engine refuses.
 // The entries that depend on a refused one are left out too.
 // An error that names no entry, or names an entry in strict, is returned as it is.
+// Each pass leaves out at least one live entry or returns, so the loop ends after at most len(entries)+1 builds.
+// The engine stops at the first entry it refuses, so a pass cannot name more than one culprit.
 func buildTolerant(srd *rules.Content, entries []entryRow, revision int, off []string, strict ...string) (*rules.Content, []leftOut, error) {
-	return buildPasses(maxTolerantPasses, srd, entries, revision, off, strict)
+	content, out, _, err := buildCounting(srd, entries, revision, off, strict)
+	return content, out, err
 }
 
-// buildPasses is buildTolerant with the number of passes it may take.
-func buildPasses(passes int, srd *rules.Content, entries []entryRow, revision int, off, strict []string) (*rules.Content, []leftOut, error) {
+// buildCounting is buildTolerant that also says how many builds it took.
+func buildCounting(srd *rules.Content, entries []entryRow, revision int, off, strict []string) (*rules.Content, []leftOut, int, error) {
 	var out []leftOut
 	live := entries
-	for range passes {
+	for builds := 1; ; builds++ {
 		overlay, idx := overlayFromEntries(live, revision)
 		overlay.Off = off
 		content, err := srd.With(overlay)
 		if err == nil {
-			return content.WithRefused(refusedOf(out)), out, nil
+			return content.WithRefused(refusedOf(out)), out, builds, nil
 		}
 		blamed, ok := blameLive(violationsOf(err, idx, ""), live, strict)
 		if !ok {
-			return nil, nil, err
+			return nil, nil, builds, err
 		}
 		out = append(out, blamed...)
 		live = withoutKeys(live, blamed)
 	}
-	return nil, nil, errTooManyPasses
 }
 
 // blameLive groups the violations by the live entry they name.

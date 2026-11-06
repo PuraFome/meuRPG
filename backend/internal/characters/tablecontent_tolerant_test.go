@@ -1,7 +1,7 @@
 package characters
 
 import (
-	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -78,17 +78,29 @@ func TestBuildTolerantFailsWhenTheErrorNamesNoEntryOrAStrictOne(t *testing.T) {
 	}
 }
 
-func TestBuildTolerantFailsWhenThePassesRunOut(t *testing.T) {
+// TestBuildTolerantLeavesOutManyRefusedEntries: 20 refused spells of one pack leave the campaign
+// readable. The engine names one entry a build, so it takes 21 builds: one a spell, and the last one clean.
+func TestBuildTolerantLeavesOutManyRefusedEntries(t *testing.T) {
 	t.Parallel()
 	srd := loadRules(t)
-	entries := []entryRow{
-		storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS, "class:guardiao@mesa", "", testClass("Guardião")),
-		storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS, "subclass:caminho@mesa", "Caminho", testSubclass("Caminho", "class:guardiao@mesa")),
+	const refused = 20
+	entries := []entryRow{storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_RACE, "race:gnomo@mesa", "Gnomo", testRace("Gnomo"))}
+	for i := range refused {
+		sp := testSpell(fmt.Sprintf("Raio %d", i), "class:wizard")
+		sp.Level = 12
+		entries = append(entries, storedEntry(rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL, fmt.Sprintf("spell:raio%02d@mesa", i), sp.NamePt, sp))
 	}
-	if _, _, err := buildPasses(2, srd, entries, 1, nil, nil); !errors.Is(err, errTooManyPasses) {
-		t.Errorf("two passes: error = %v, want errTooManyPasses (the subclass needs a third)", err)
+	content, out, builds, err := buildCounting(srd, entries, 1, nil, nil)
+	if err != nil {
+		t.Fatalf("buildCounting() error = %v, want the content without the %d spells", err, refused)
 	}
-	if _, out, err := buildPasses(3, srd, entries, 1, nil, nil); err != nil || len(out) != 2 {
-		t.Errorf("three passes: %v, %v; want both left out", out, err)
+	if len(out) != refused || len(content.Refused()) != refused {
+		t.Errorf("left out %d, Refused() %d; want %d", len(out), len(content.Refused()), refused)
+	}
+	if builds != refused+1 {
+		t.Errorf("builds = %d, want %d (one per refused spell and the clean one)", builds, refused+1)
+	}
+	if content.NamePT("race:gnomo@mesa") != "Gnomo" {
+		t.Errorf("the healthy race is not in the content")
 	}
 }

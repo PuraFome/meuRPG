@@ -12,7 +12,7 @@
 //	DATABASE_URL=postgresql://... migrate status  # list applied and pending
 //	DATABASE_URL=postgresql://... migrate audit-content  # log the entries the rules would leave out
 //
-// `up` runs the audit after it succeeds.
+// `up` runs the audit after it succeeds and releases the migration lock.
 // The audit only reads, stops after auditTimeout, and logs its errors instead of failing the job.
 package main
 
@@ -93,17 +93,21 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		return fmt.Errorf("load migrations: %w", err)
 	}
 
+	// The audit gets the signal context, not the lock's: it runs after the lock is released.
+	signalCtx := ctx
+	release := func() {}
 	if command == "up" || command == "down" {
-		runCtx, release, err := migrations.AcquireLock(ctx, db, migrations.LockOptions{Logger: logger})
+		runCtx, rel, err := migrations.AcquireLock(ctx, db, migrations.LockOptions{Logger: logger})
 		if err != nil {
 			return fmt.Errorf("lock: %w", err)
 		}
+		release = rel
 		defer release()
 		ctx = runCtx
 	}
 
 	if command == "audit-content" {
-		auditContent(ctx, logger, cfg)
+		auditContent(signalCtx, logger, cfg)
 		return nil
 	}
 	apply, ok := commands[command]
@@ -114,7 +118,8 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		return err
 	}
 	if command == "up" {
-		auditContent(ctx, logger, cfg)
+		release()
+		auditContent(signalCtx, logger, cfg)
 	}
 	return nil
 }

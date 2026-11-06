@@ -134,13 +134,14 @@ It never fails the job: a campaign it cannot check is logged at `ERROR` and coun
 The job has 1 GiB of memory (`--memory=1Gi` on create and on each update), which must hold the SRD and the largest campaign (`TestLiveContentMemoryAtMaximumText` measures one).
 The job's task timeout is 15 minutes, and the audit stops after 10 (`table content audit stopped` at `ERROR`), so a slow audit does not fail the job.
 Each command of the audit has the API's 30-second `statement_timeout`.
-The audit runs while the migration lock is held.
+The audit runs after the migration lock is released.
 
 ```bash
 gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="meurpg-migrate" AND jsonPayload.message:"table content audit"' --freshness=1d
 ```
 
 - `table content audit: entry would be left out` (`WARN`): `campaign_id`, `entry_key`, `kind` and the `reason` code of one entry. No text of the entry is logged.
+- `table content audit: campaign not checked` (`ERROR`): `campaign_id` and a `reason` code (`database` for a failed read). The campaign's content does not build as a whole, or could not be read.
 - `table content audit done` (`INFO`): `campaigns` checked, `left_out` entries over all of them (0 when all is well) and `failed` campaigns.
 
 A line is no reason to stop the deploy: the campaign reads without that entry.

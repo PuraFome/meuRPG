@@ -524,10 +524,11 @@ Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureS
 A write is checked, so a stored entry is valid when it is saved.
 A later revision of the effects, or a package, can make it invalid.
 `TableSource` then builds the content again without the entries the rules refuse (`buildTolerant`).
-It blames each violation that names an entry by its key, leaves that entry out and builds again, up to 16 passes.
+It blames each violation that names an entry by its key, leaves that entry out and builds again.
+Each build leaves out at least one live entry or ends the read, so a campaign takes at most one build more than it has entries.
+The engine stops at the first entry it refuses, so 20 refused entries take 21 builds.
 A subclass of a class left out fails the next pass with `dangling_reference` and is left out too.
-A violation with no entry key fails the read.
-A build that is still refused after 16 passes fails the read and logs `table content kept being refused` at `ERROR`.
+A violation with no entry key, or one that names an entry that is not live, fails the read.
 The read never returns a part.
 A campaign with no refused entry costs one build.
 `Content.Refused()` lists what was left out, and is cached with the content for its revision.
@@ -537,4 +538,4 @@ A write of the master that repairs a left-out entry is accepted, as are archivin
 An import is checked over the stored entries as they are stored, so a pack that breaks one is refused.
 Rows that cannot be decoded fail the listing, the export, the import and every write.
 The deploy audit of the same rules is in the [runbook](../operations/runbook.md#entries-a-new-revision-would-leave-out).
-Tests: `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.
+Tests: `TestBuildTolerantLeavesOutManyRefusedEntries`, `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.

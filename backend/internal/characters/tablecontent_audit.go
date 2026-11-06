@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -44,7 +45,8 @@ func AuditTableContent(ctx context.Context, pool *pgxpool.Pool, srd *rules.Conte
 		n, err := auditCampaign(ctx, pool, srd, logger, id)
 		if err != nil {
 			report.Failed++
-			logger.ErrorContext(ctx, "table content audit: campaign not checked", slog.String("campaign_id", id), slog.Any("error", err))
+			// The error text can echo what a master typed: log the reason code only.
+			logger.ErrorContext(ctx, "table content audit: campaign not checked", slog.String("campaign_id", id), slog.String("reason", auditFailureReason(err)))
 			continue
 		}
 		report.LeftOut += n
@@ -54,15 +56,29 @@ func AuditTableContent(ctx context.Context, pool *pgxpool.Pool, srd *rules.Conte
 	return report, nil
 }
 
+// buildFailure is a campaign whose content does not build, whatever is left out.
+type buildFailure struct{ reason string }
+
+func (f *buildFailure) Error() string { return "the content does not build: " + f.reason }
+
+// auditFailureReason is the reason code of a campaign the audit could not check:
+// the engine's, or "database" for a failed read.
+func auditFailureReason(err error) string {
+	if bf, ok := errors.AsType[*buildFailure](err); ok {
+		return bf.reason
+	}
+	return "database"
+}
+
 // auditCampaign logs the entries of one campaign the rules would leave out, and counts them.
 func auditCampaign(ctx context.Context, pool *pgxpool.Pool, srd *rules.Content, logger *slog.Logger, id string) (int, error) {
 	var refused []rules.Refused
 	kinds := map[string]string{}
-	err := db.InTx(ctx, pool, func(tx pgx.Tx) error {
+	err := db.ReadTx(ctx, pool, func(tx pgx.Tx) error {
 		q := charactersdb.New(pool).WithTx(tx)
-		revision, err := q.GetContentRevision(ctx, id)
+		revision, err := contentRevision(ctx, q, id)
 		if err != nil {
-			return fmt.Errorf("read the content revision: %w", err)
+			return err
 		}
 		rows, err := q.ListCampaignContent(ctx, id)
 		if err != nil {
@@ -77,7 +93,7 @@ func auditCampaign(ctx context.Context, pool *pgxpool.Pool, srd *rules.Content, 
 		}
 		c, err := buildFromRows(srd, rows, int(revision), off)
 		if err != nil {
-			return err
+			return &buildFailure{reason: buildFailureReason(err)}
 		}
 		refused = c.Refused()
 		return nil
@@ -91,4 +107,14 @@ func auditCampaign(ctx context.Context, pool *pgxpool.Pool, srd *rules.Content, 
 			slog.String("kind", kinds[r.Key]), slog.String("reason", r.Reason))
 	}
 	return len(refused), nil
+}
+
+// buildFailureReason is the reason code of the first violation of err, without its message.
+func buildFailureReason(err error) string {
+	if oe, ok := asOverlayError(err); ok {
+		if vs := oe.Violations(); len(vs) > 0 && vs[0].Reason != "" {
+			return vs[0].Reason
+		}
+	}
+	return rules.ReasonOverlay
 }
