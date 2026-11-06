@@ -88,7 +88,7 @@ func TestAManeuverDieOnAnAttackIsTheAttackersAndTheMastersAlone(t *testing.T) {
 		}
 	}
 	res, err := caio.combat.GetTurnOptions(t.Context(), rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), CombatantId: rt.ids[labelPens]}))
-	if connect.CodeOf(err) != connect.CodePermissionDenied || len(res.GetMsg().GetManeuverDice()) != 0 {
+	if connect.CodeOf(err) != connect.CodePermissionDenied || (res != nil && len(res.Msg.GetManeuverDice()) != 0) {
 		t.Errorf("Caio reads Ana's turn options = %v, %v; want permission_denied and no die", res, err)
 	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, rt.got) })

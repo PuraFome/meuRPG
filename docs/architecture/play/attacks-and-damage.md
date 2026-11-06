@@ -30,6 +30,9 @@ A replay refused because the pool changed is dropped, and only the master reads 
 A natural 1 still misses, and a critical hit does not double the die.
 The die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.
 An opportunity attack and an attack as a reaction take the die like any other.
+`GetTurnOptionsResponse.maneuver_dice` lists those dice for a player's character, each with the name of its resource pool and the uses left.
+A die with no use left stays listed with `uses_left` 0.
+An NPC gets none.
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
 
