@@ -112,16 +112,6 @@ A family is never a unit in a rarity its variants do not have, except the Crysta
 Loading refuses a category or item that does not exist, a repeated one and one the category already covers.
 The SRD 5.2.1 value table halves a consumable, except the Spell scroll, which `SpellScroll` marks; the treasure generator applies it through `Content.MagicItemValue`.
 
-## Carried and equipped gear
-
-A piece of gear the sheet lists is equipped unless `Build.Carried` holds its key.
-The keys are `armor_key`, a `weapon_keys` entry and `rules.ShieldKey` (`equipment:shield`); `ValidateCarried` refuses any other key, a repeat and more than `MaxCarried`.
-The empty list means everything is equipped, so a sheet without it derives as before.
-The deriver drops a carried armor and a carried shield before it derives (`equip`), so armor class, the Mage Armor check and the shield's bonus read only what is worn.
-A carried weapon stays listed and makes no attack and does not count as two-handed.
-`Build.IsCarried`, `ArmorOn`, `ShieldOn` and `ShieldCounts` are the readers.
-Who may change the list and what a running combat charges is in [Characters](characters.md) and [Combat](play/combat.md#equipping-and-stowing-gear).
-
 ## Trap and light presets
 
 `effects/traps.json` (the SRD's eight sample traps, in our words and with the SRD's numbers, plus the severity table and the damage per level) and `effects/lights.json` (the SRD's lights, in feet) are handwritten and checked on load.

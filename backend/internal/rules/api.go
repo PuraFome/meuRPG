@@ -150,8 +150,8 @@ type Build struct {
 	Weapons []string
 	// Carried lists the armor, the shield (shieldKey) and the weapons of the
 	// sheet that are carried, not equipped: they count for no armor class,
-	// attack or property. Empty means all are equipped, and the field is then
-	// left out of a Build's JSON, as for a sheet from before it existed.
+	// attack or property. Empty means all are equipped; the field is left out
+	// of a Build's JSON when empty.
 	Carried []string `json:",omitempty"`
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
 	// character knows (the wizard's spellbook, the sorcerer's known

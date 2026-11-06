@@ -418,9 +418,10 @@ type CharacterServiceClient interface {
 	//
 	// Asking for the state the piece already has changes nothing: the
 	// revision stays, play is not told and no combat action is spent. A change
-	// adds one to the revision like any sheet change. In a combat, play may
-	// refuse it or spend the turn's action for it (see ReviewHost.EquipInCombat
-	// in backend/internal/characters/review.go).
+	// adds one to the revision like any sheet change. In a running combat the
+	// turn's economy applies to the owner: it must be their turn, body armor is
+	// refused, the first weapon drawn or stowed in the turn is free, and a second
+	// weapon or the shield costs the action. The master is unrestricted.
 	//
 	// Errors:
 	//   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or
@@ -1752,9 +1753,10 @@ type CharacterServiceHandler interface {
 	//
 	// Asking for the state the piece already has changes nothing: the
 	// revision stays, play is not told and no combat action is spent. A change
-	// adds one to the revision like any sheet change. In a combat, play may
-	// refuse it or spend the turn's action for it (see ReviewHost.EquipInCombat
-	// in backend/internal/characters/review.go).
+	// adds one to the revision like any sheet change. In a running combat the
+	// turn's economy applies to the owner: it must be their turn, body armor is
+	// refused, the first weapon drawn or stowed in the turn is free, and a second
+	// weapon or the shield costs the action. The master is unrestricted.
 	//
 	// Errors:
 	//   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or

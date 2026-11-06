@@ -100,7 +100,13 @@ Callers never depend on message text; the app turns the code and detail into Por
 
 ### Equipping and stowing gear
 
-`CharacterService.SetEquipped` asks play, inside its own transaction and before it writes, through `ReviewHost.EquipInCombat` (`equip_combat.go`). Without a running combat that holds the character it is free. In one, for the player (SRD 5.1, "Other Activity on Your Turn"): it must be the character's turn (the refusals of the attacks: `NOT_YOUR_TURN`, `COMBATANT_DOWN`); the first weapon drawn or stowed in the turn uses the free object interaction (`combatants.object_interaction_used`, cleared by `ResetCombatantTurn`); a second weapon, or the shield, costs the action (`ACTION_USED` when it is spent; an extra action that allows using an object pays instead); body armor is refused (`ARMOR_IN_COMBAT`). The master has the last word: no turn, no economy, armor included. A change writes no combat log line and is not in the undo, so the master's undo of an earlier event can give back the action an equip spent.
+Equipping or stowing gear costs nothing outside a running combat that holds the character.
+In a combat the player may do it only on their turn, with the same refusals as an attack.
+The first weapon drawn or stowed in a turn uses the free object interaction (`combatants.object_interaction_used`, cleared by `ResetCombatantTurn`).
+A second weapon, or the shield, costs the action (`ACTION_USED` when it is spent); an extra action that allows using an object pays instead.
+Body armor is refused (`ARMOR_IN_COMBAT`), as donning it takes minutes (SRD 5.1).
+The master has the last word: no turn, no economy, armor included.
+A change writes no combat log line and is not in the undo, so the master's undo of an earlier event can give back the action an equip spent.
 The encounter revision goes up with a change, and the combat streams are told after the commit.
 
 ## Legendary actions
