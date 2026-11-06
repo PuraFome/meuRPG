@@ -733,7 +733,11 @@ func (s *Service) outsideCharacterTarget(ctx context.Context, c *combatTx, effec
 	if err != nil {
 		return trapTarget{}, err
 	}
-	t.save, t.saveKnown = save.Bonus, save.Known
+	bonus, err := s.outsideSaveBonus(ctx, c.tx, ch.ID)
+	if err != nil {
+		return trapTarget{}, err
+	}
+	t.save, t.saveKnown = save.Bonus+bonus, save.Known
 	if t.saveDice, err = s.outsideSaveDice(ctx, c.tx, ch.ID); err != nil {
 		return trapTarget{}, err
 	}

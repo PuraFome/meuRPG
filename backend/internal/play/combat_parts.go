@@ -1082,8 +1082,8 @@ func (s *Service) checkSmiteSlot(ctx context.Context, e extraCheck, mark *playv1
 // ---- resistance, vulnerability and immunity ----
 
 // modifiersOf lists the resistances, vulnerabilities and immunities that apply to the
-// damage a combatant takes: its own (ownModifiersOf) and the immunity to thunder damage
-// of a Silence it stands in.
+// damage a combatant takes: its own (ownModifiersOf), those of its lasting effects and the immunity to
+// thunder damage of a Silence it stands in.
 func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID string, states map[string][]playdb.CombatantState, who playdb.Combatant) ([]combat.Modifier, error) {
 	out, err := s.ownModifiersOf(ctx, c, campaignID, states, who)
 	if err != nil {
@@ -1096,7 +1096,17 @@ func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID strin
 	if muted {
 		out = append(out, silenceImmunity())
 	}
-	return out, nil
+	return append(out, effectResistancesOf(states, who.ID)...), nil
+}
+
+// effectResistancesOf are the resistances, immunities and vulnerabilities the effects on a combatant
+// give (a table spell's): the same steps as a race's or a stat block's.
+func effectResistancesOf(states map[string][]playdb.CombatantState, id string) []combat.Modifier {
+	var out []combat.Modifier
+	for _, st := range effectsOn(states, id) {
+		out = append(out, combat.EffectResistances(conv.OrZero(st.SourceKey), effectModifiers(st))...)
+	}
+	return out
 }
 
 // ownModifiersOf are the modifiers the combatant brings: a creature's or an NPC's from its stat block,

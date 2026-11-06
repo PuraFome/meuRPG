@@ -362,3 +362,24 @@ func HasCheckDisadvantage(modifiers []rules.EffectModifier, ability string) bool
 		return m.Kind == rules.ModifierCheckDisadvantage && slices.Contains(m.Abilities, ability)
 	})
 }
+
+// EffectResistances are the modifiers the resistance effects among the modifiers make, from the
+// effect source (its key), for the damage steps. nonmagical_bps becomes the three physical types
+// limited to nonmagical attacks.
+func EffectResistances(source string, modifiers []rules.EffectModifier) []Modifier {
+	var out []Modifier
+	for _, m := range Resistances(modifiers) {
+		mod := Modifier{Kind: StepResistance, Source: source, DamageTypes: m.DamageTypes}
+		switch m.ResistanceKind {
+		case rules.ResistanceKindImmune:
+			mod.Kind = StepImmunity
+		case rules.ResistanceKindVulnerable:
+			mod.Kind = StepVulnerability
+		}
+		if slices.Contains(m.DamageTypes, rules.DamageTypeNonmagicalBPS) {
+			mod.DamageTypes, mod.Qualifier = slices.Clone(nonmagicalBPS), QualifierNonmagical
+		}
+		out = append(out, mod)
+	}
+	return out
+}

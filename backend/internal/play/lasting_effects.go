@@ -760,18 +760,34 @@ func windowReasonOf(reason string) reaction.Reason {
 	return reaction.ReasonEffectEnded
 }
 
-// effectSaveAdvantage are the abilities the effects on a combatant give advantage on the saving
-// throws of (Velocidade: Destreza).
-func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) []string {
+// abilitiesOfKind are the abilities the effects on a combatant give through the modifiers of the kind.
+func abilitiesOfKind(states map[string][]playdb.CombatantState, id, kind string) []string {
 	var out []string
 	for _, st := range effectsOn(states, id) {
 		for _, m := range effectModifiers(st) {
-			if m.Kind == rules.ModifierSaveAdvantage {
+			if m.Kind == kind {
 				out = append(out, m.Abilities...)
 			}
 		}
 	}
 	return out
+}
+
+// effectSaveAdvantage are the abilities the effects on a combatant give advantage on the saving
+// throws of (Velocidade: Destreza).
+func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) []string {
+	return abilitiesOfKind(states, id, rules.ModifierSaveAdvantage)
+}
+
+// effectAttackAdvantage is the key of the first effect on a combatant that gives its attack rolls
+// advantage (a table spell's), "" for none.
+func effectAttackAdvantage(states map[string][]playdb.CombatantState, id string) string {
+	for _, st := range effectsOn(states, id) {
+		if combat.HasAttackAdvantage(effectModifiers(st)) {
+			return conv.OrZero(st.SourceKey)
+		}
+	}
+	return ""
 }
 
 // effectAttackDisadvantage is the key of the effect on a combatant that gives its attack rolls
@@ -798,15 +814,7 @@ func effectAttackDisadvantage(states map[string][]playdb.CombatantState, id stri
 // effectCheckAdvantage are the abilities the effects on a combatant give advantage on the ability
 // checks of (Aprimorar Habilidade).
 func effectCheckAdvantage(states map[string][]playdb.CombatantState, id string) []string {
-	var out []string
-	for _, st := range effectsOn(states, id) {
-		for _, m := range effectModifiers(st) {
-			if m.Kind == rules.ModifierCheckAdvantage {
-				out = append(out, m.Abilities...)
-			}
-		}
-	}
-	return out
+	return abilitiesOfKind(states, id, rules.ModifierCheckAdvantage)
 }
 
 // ex0 says the level of exhaustion takes the speed to 0 (SRD 5.1, Conditions: level 5).

@@ -418,6 +418,7 @@ func (s *Service) rollConcentration(
 		return false, err
 	}
 	mode := combat.Resolve(concentrationSources(creatureFacts(reactor, states, sheet.Traits)))
+	save = withRollBonus(save, states, reactor.ID, rules.RollAppliesSave)
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.

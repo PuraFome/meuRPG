@@ -1,6 +1,10 @@
 package combat
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
 
 // The steps that take a damage from what was rolled to what lands (SRD 5.1,
 // "Damage Resistance and Vulnerability"): resistance and vulnerability apply
@@ -29,7 +33,7 @@ type Modifier struct {
 	Kind string
 	// Source is its key: "race:tiefling", "feature:rage", "monster:skeleton".
 	Source string
-	// DamageTypes are the damage type keys it covers.
+	// DamageTypes are the damage type keys it covers; rules.DamageTypeAll covers every type.
 	DamageTypes []string
 	// Qualifier limits it: "" covers every damage of its types, QualifierNonmagical only
 	// the damage of a nonmagical attack.
@@ -50,7 +54,7 @@ type Origin struct {
 
 // Covers says the modifier applies to a damage of this type from this origin.
 func (m Modifier) Covers(damageType string, from Origin) bool {
-	if !slices.Contains(m.DamageTypes, damageType) {
+	if !slices.Contains(m.DamageTypes, damageType) && !slices.Contains(m.DamageTypes, rules.DamageTypeAll) {
 		return false
 	}
 	switch m.Qualifier {

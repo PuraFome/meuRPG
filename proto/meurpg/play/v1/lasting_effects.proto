@@ -53,6 +53,18 @@ enum EffectModifierKind {
   EFFECT_MODIFIER_KIND_NO_ACTION = 7;
   // The creature can't take reactions (the Open Hand technique).
   EFFECT_MODIFIER_KIND_NO_REACTION = 20;
+  // A flat bonus (value) to the rolls in applies_to.
+  EFFECT_MODIFIER_KIND_ROLL_BONUS = 21;
+  // Temporary hit points (value) when the effect lands.
+  EFFECT_MODIFIER_KIND_TEMP_HP = 22;
+  // Resistance, immunity or vulnerability (resistance_kind) to damage_types.
+  EFFECT_MODIFIER_KIND_RESISTANCE = 23;
+  // Advantage on the creature's attack rolls.
+  EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE = 24;
+  // Disadvantage on the saving throws of abilities.
+  EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE = 25;
+  // Disadvantage on the ability checks of abilities.
+  EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 26;
 }
 
 // EffectRollKind is a roll an effect's die touches.
@@ -60,6 +72,7 @@ enum EffectRollKind {
   EFFECT_ROLL_KIND_UNSPECIFIED = 0;
   EFFECT_ROLL_KIND_ATTACK = 1;
   EFFECT_ROLL_KIND_SAVE = 2;
+  EFFECT_ROLL_KIND_CHECK = 3;
 }
 
 // EffectAudience is which players read a visible effect.
@@ -103,6 +116,10 @@ message EffectModifier {
   // weapon attacks it makes.
   repeated string allowed_actions = 7;
   int32 max_weapon_attacks = 8;
+  // RESISTANCE: "resist", "immune" or "vulnerable", and the damage types it covers
+  // ("damage-type:fire", or "all", or "nonmagical_bps").
+  string resistance_kind = 9;
+  repeated string damage_types = 10;
 }
 
 // EffectEnd is the moment an effect ends: the turn of a combatant in a round.

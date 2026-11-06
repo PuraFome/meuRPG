@@ -191,6 +191,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 			if err != nil {
 				return nil, err
 			}
+			save = withRollBonus(save, states, c.ID, rules.RollAppliesSave)
 			out[i].save, out[i].saveKnown = save.Bonus, save.Known
 		}
 	}

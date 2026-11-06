@@ -488,32 +488,40 @@ func durationKindOf(k playv1.EffectDurationKind) string {
 	return ""
 }
 
+// modifierKindProto maps the kinds of modifier a card shows.
+var modifierKindProto = map[string]playv1.EffectModifierKind{
+	rules.ModifierRollDie:           playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ROLL_DIE,
+	rules.ModifierACBonus:           playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_AC_BONUS,
+	rules.ModifierSpeedMultiplier:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER,
+	rules.ModifierSaveAdvantage:     playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE,
+	rules.ModifierExtraAction:       playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_EXTRA_ACTION,
+	rules.ModifierNoMove:            playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_MOVE,
+	rules.ModifierNoAction:          playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_ACTION,
+	rules.ModifierNoReaction:        playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_REACTION,
+	rules.ModifierRollBonus:         playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ROLL_BONUS,
+	rules.ModifierTempHP:            playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_TEMP_HP,
+	rules.ModifierResistance:        playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_RESISTANCE,
+	rules.ModifierAttackAdvantage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE,
+	rules.ModifierSaveDisadvantage:  playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE,
+	rules.ModifierCheckDisadvantage: playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE,
+}
+
+// rollKindProto maps the rolls a modifier touches.
+var rollKindProto = map[string]playv1.EffectRollKind{
+	rules.RollAppliesAttack: playv1.EffectRollKind_EFFECT_ROLL_KIND_ATTACK,
+	rules.RollAppliesSave:   playv1.EffectRollKind_EFFECT_ROLL_KIND_SAVE,
+	rules.RollAppliesCheck:  playv1.EffectRollKind_EFFECT_ROLL_KIND_CHECK,
+}
+
 func modifierProto(m rules.EffectModifier) *playv1.EffectModifier {
-	out := &playv1.EffectModifier{Die: clamp32(m.Die, 0, 100), Sign: clamp32(m.Sign, -1, 1), Value: clamp32(m.Value, 0, 1000), Abilities: m.Abilities, AllowedActions: m.Allowed, MaxWeaponAttacks: clamp32(m.MaxWeaponAttacks, 0, 10)}
-	switch m.Kind {
-	case rules.ModifierRollDie:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ROLL_DIE
-	case rules.ModifierACBonus:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_AC_BONUS
-	case rules.ModifierSpeedMultiplier:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER
-	case rules.ModifierSaveAdvantage:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE
-	case rules.ModifierExtraAction:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_EXTRA_ACTION
-	case rules.ModifierNoMove:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_MOVE
-	case rules.ModifierNoAction:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_ACTION
-	case rules.ModifierNoReaction:
-		out.Kind = playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_NO_REACTION
+	out := &playv1.EffectModifier{
+		Kind: modifierKindProto[m.Kind], Die: clamp32(m.Die, 0, 100), Sign: clamp32(m.Sign, -1, 1), Value: clamp32(m.Value, -1000, 1000),
+		Abilities: m.Abilities, AllowedActions: m.Allowed, MaxWeaponAttacks: clamp32(m.MaxWeaponAttacks, 0, 10),
+		ResistanceKind: m.ResistanceKind, DamageTypes: m.DamageTypes,
 	}
 	for _, a := range m.AppliesTo {
-		switch a {
-		case rules.RollAppliesAttack:
-			out.AppliesTo = append(out.AppliesTo, playv1.EffectRollKind_EFFECT_ROLL_KIND_ATTACK)
-		case rules.RollAppliesSave:
-			out.AppliesTo = append(out.AppliesTo, playv1.EffectRollKind_EFFECT_ROLL_KIND_SAVE)
+		if k, ok := rollKindProto[a]; ok {
+			out.AppliesTo = append(out.AppliesTo, k)
 		}
 	}
 	return out

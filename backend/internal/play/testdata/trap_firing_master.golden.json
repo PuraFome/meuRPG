@@ -140,7 +140,7 @@
           {
             "effect": "ROLL_MODE_DISADVANTAGE",
             "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
-            "textPt": "Efeito ativo: vantagem no teste de resistência"
+            "textPt": "Efeito ativo: desvantagem no teste de resistência"
           }
         ]
       },
@@ -168,7 +168,7 @@
             {
               "effect": "ROLL_MODE_DISADVANTAGE",
               "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
-              "textPt": "Efeito ativo: vantagem no teste de resistência"
+              "textPt": "Efeito ativo: desvantagem no teste de resistência"
             }
           ]
         },
@@ -204,7 +204,7 @@
             {
               "effect": "ROLL_MODE_DISADVANTAGE",
               "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
-              "textPt": "Efeito ativo: vantagem no teste de resistência"
+              "textPt": "Efeito ativo: desvantagem no teste de resistência"
             },
             {
               "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
@@ -227,7 +227,7 @@
             {
               "effect": "ROLL_MODE_DISADVANTAGE",
               "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
-              "textPt": "Efeito ativo: vantagem no teste de resistência"
+              "textPt": "Efeito ativo: desvantagem no teste de resistência"
             }
           ]
         },
@@ -252,7 +252,7 @@
             {
               "effect": "ROLL_MODE_DISADVANTAGE",
               "kind": "ADVANTAGE_SOURCE_KIND_EFFECT_SAVE",
-              "textPt": "Efeito ativo: vantagem no teste de resistência"
+              "textPt": "Efeito ativo: desvantagem no teste de resistência"
             }
           ]
         }

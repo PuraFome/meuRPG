@@ -67,18 +67,15 @@ func outsideEffectsOf(rows []playdb.CharacterEffect, skillKey string, check bool
 	}
 	for _, r := range rows {
 		mods := modifiersOf(r.Modifiers)
-		if n := combat.CheckBonus(mods, skillKey); n != 0 && check {
+		n := combat.RollBonus(mods, applies)
+		if check {
+			n += combat.CheckBonus(mods, skillKey)
+		}
+		if n != 0 {
 			of.bonuses = append(of.bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible})
 		}
 		of.creature.Conditions = append(of.creature.Conditions, r.ConditionKeys...)
-		for _, m := range mods {
-			switch m.Kind {
-			case rules.ModifierSaveAdvantage:
-				of.creature.SaveAdvantage = append(of.creature.SaveAdvantage, m.Abilities...)
-			case rules.ModifierCheckAdvantage:
-				of.creature.CheckAdvantage = append(of.creature.CheckAdvantage, m.Abilities...)
-			}
-		}
+		addAbilityEffects(&of.creature, mods)
 		for _, d := range combat.EffectDice(r.SourceKey, mods, applies) {
 			of.dice = append(of.dice, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !r.PlayerVisible, Once: d.Once, EffectID: r.ID, CharacterID: r.CharacterID})
 		}
@@ -88,6 +85,22 @@ func outsideEffectsOf(rows []playdb.CharacterEffect, skillKey string, check bool
 		}
 	}
 	return of
+}
+
+// addAbilityEffects puts on the creature the abilities the modifiers give advantage or disadvantage on.
+func addAbilityEffects(c *combat.Creature, mods []rules.EffectModifier) {
+	for _, m := range mods {
+		switch m.Kind {
+		case rules.ModifierSaveAdvantage:
+			c.SaveAdvantage = append(c.SaveAdvantage, m.Abilities...)
+		case rules.ModifierCheckAdvantage:
+			c.CheckAdvantage = append(c.CheckAdvantage, m.Abilities...)
+		case rules.ModifierSaveDisadvantage:
+			c.SaveDisadvantage = append(c.SaveDisadvantage, m.Abilities...)
+		case rules.ModifierCheckDisadvantage:
+			c.CheckDisadvantage = append(c.CheckDisadvantage, m.Abilities...)
+		}
+	}
 }
 
 // hideFor says which sources come from an effect the master hides.
@@ -131,16 +144,7 @@ func (s *Service) withEffectDice(in rollInput, typed []int32, cm *checkMode, bon
 // shownCheck writes the sources of a check or a saving throw: the mode's, and each die an
 // effect added ("Bênção +1d4: 3"). What an effect the master hides gives reads "Outra fonte".
 func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSource {
-	out := shownSourcesHiding(cm.Sources, names, cm.hide)
-	for _, b := range cm.Bonuses {
-		name := names(b.Key)
-		if b.Hidden {
-			name = "Outra fonte"
-		}
-		out = append(out, &playv1.AdvantageSource{
-			Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE, TextPt: fmt.Sprintf("%s %+d", name, b.Value),
-		})
-	}
+	out := append(shownSourcesHiding(cm.Sources, names, cm.hide), bonusSources(cm.Bonuses, names, false)...)
 	return append(out, effectDieSources(cm.Rolled, names, false)...)
 }
 
@@ -163,7 +167,7 @@ func effectDieSources(dd []effectDie, names func(string) string, master bool) []
 	return out
 }
 
-// effectBonus is a fixed bonus an effect adds to a check.
+// effectBonus is a fixed bonus an effect adds to a roll.
 type effectBonus struct {
 	Key    string
 	Value  int
@@ -184,4 +188,18 @@ func (s *Service) outsideSaveDice(ctx context.Context, tx pgx.Tx, characterID st
 		}
 	}
 	return out, nil
+}
+
+// outsideSaveBonus is the flat bonus the effects on a character out of a combat add to its saving
+// throws (a table spell's roll_bonus), for a trap that fires on it.
+func (s *Service) outsideSaveBonus(ctx context.Context, tx pgx.Tx, characterID string) (int, error) {
+	rows, err := s.queriesIn(tx).ListCharacterEffects(ctx, []string{characterID})
+	if err != nil {
+		return 0, fmt.Errorf("list the character's effects: %w", err)
+	}
+	n := 0
+	for _, r := range rows {
+		n += combat.RollBonus(modifiersOf(r.Modifiers), rules.RollAppliesSave)
+	}
+	return n, nil
 }
