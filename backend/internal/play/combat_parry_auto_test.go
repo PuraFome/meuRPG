@@ -356,3 +356,138 @@ func TestSetMonsterReactionMode_IsIdempotent(t *testing.T) {
 		t.Errorf("the master reads %q for a mode change, want no line", line)
 	}
 }
+
+// The armor class the hit is compared with is the one that counts: the Knight's 18 plus an active Shield spell (+5),
+// the master's cover (+2) or a Haste (+2). Each row has the lowest total the Parry turns (the hit reached the armor
+// class) and the one that it does not.
+func TestParryAuto_ThresholdFollowsTheArmorClassOfTheHit(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name         string
+		prep         func(a *armed, e *playv1.Encounter)
+		turned, over int32 // the d20 faces: Toren adds 6
+	}{
+		{"an active Shield spell", func(a *armed, _ *playv1.Encounter) {
+			a.execSQL(t, `UPDATE combatants SET ac_bonus = 5 WHERE id = $1`, a.id(t, knight))
+		}, 18, 19}, // 24 against 23 (25 with Parry), then 25
+		{"half cover", func(a *armed, e *playv1.Encounter) {
+			if _, err := a.master.combat.SetCombatantCover(t.Context(), connect.NewRequest(&playv1.SetCombatantCoverRequest{
+				CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, knight), IdempotencyKey: newKey(), Cover: playv1.CoverDegree_COVER_DEGREE_HALF,
+			})); err != nil {
+				t.Fatalf("SetCombatantCover() error = %v", err)
+			}
+		}, 15, 16}, // 21 against 20 (22 with Parry), then 22
+		{"a Haste", func(a *armed, _ *playv1.Encounter) {
+			a.execSQL(t, `UPDATE combatants SET effect_ac_bonus = 2 WHERE id = $1`, a.id(t, knight))
+		}, 15, 16},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			a, e := autoParryFight(t, knightKey, knight)
+			c.prep(a, e)
+			hit := a.mustAttack(t, a.caio, e, "Toren", battleaxe, knight, d20(c.turned))
+			if hit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_MISS || !a.reactionUsedBy(t, knight) {
+				t.Errorf("the hit at the armor class = %v, reaction spent %v; want it parried", hit.GetRoll().GetOutcome(), a.reactionUsedBy(t, knight))
+			}
+			b, f := autoParryFight(t, knightKey, knight)
+			c.prep(b, f)
+			over := b.mustAttack(t, b.caio, f, "Toren", battleaxe, knight, d20(c.over))
+			if over.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || b.reactionUsedBy(t, knight) {
+				t.Errorf("the hit at the armor class with Parry = %v, reaction spent %v; want it to land and the reaction free", over.GetRoll().GetOutcome(), b.reactionUsedBy(t, knight))
+			}
+		})
+	}
+}
+
+// A hit that Stroke of Luck made is not parried: the rogue spent the feature on a hit, and the Knight's Parry would
+// have turned it again.
+func TestParryAuto_AStrokeOfLuckHitIsNotParried(t *testing.T) {
+	t.Parallel()
+	a := strokeTable(t, "", 20)
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Pipo": 20, "Toren": 14, "Orla": 10}, setup: true,
+	})
+	a.h.roller.queue(1)
+	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = knightKey, 1 })
+	e = a.get(t, a.master)
+	for label, sq := range map[string][2]int32{"Pipo": {6, 5}, "Toren": {3, 4}, "Orla": {5, 3}, "Goblin": {12, 8}, knight: {7, 5}} {
+		if _, err := a.master.combat.MoveCombatant(t.Context(), connect.NewRequest(&playv1.MoveCombatantRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Col: sq[0], Row: sq[1],
+		})); err != nil {
+			t.Fatalf("MoveCombatant(%s) error = %v", label, err)
+		}
+	}
+	for _, shown := range []string{knight, "Goblin"} {
+		if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, shown), IdempotencyKey: newKey(), Hidden: false,
+		})); err != nil {
+			t.Fatalf("SetCombatantHidden(%s) error = %v", shown, err)
+		}
+	}
+	e = a.begin(t, e)
+	res, err := a.attack(t, a.caio, e, "Pipo", rapier, knight, d20(2)) // 11 against the Knight's 18: a miss, and Stroke is offered
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	wantStroke(t, "the held attack", res.GetHeldRollOffer(), playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK, true)
+	out, err := a.answerHeldRoll(t, a.caio, res.GetHeldRollOffer().GetHoldId(), strokeAnswer(true))
+	if err != nil {
+		t.Fatalf("AnswerHeldRoll() error = %v", err)
+	}
+	r := out.GetAttack()
+	if r.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || r.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL {
+		t.Errorf("the Stroke of Luck hit = %v / %v, want a hit whose damage waits for its roll", r.GetRoll().GetOutcome(), r.GetPendingDamage().GetStatus())
+	}
+	if a.reactionUsedBy(t, knight) {
+		t.Error("the Knight parried a hit Stroke of Luck made")
+	}
+}
+
+// A retry of the attack with the same key answers from the first call and spends the Knight's reaction once.
+func TestParryAuto_ARetryWithTheSameKeyParriesOnce(t *testing.T) {
+	t.Parallel()
+	a, e := autoParryFight(t, knightKey, knight)
+	req := &playv1.RollAttackRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), AttackerId: a.id(t, "Toren"), AttackKey: battleaxe, TargetId: a.id(t, knight), IdempotencyKey: newKey(),
+		Roll: &playv1.RollAttackRequest_D20Face{D20Face: knightHit},
+	}
+	first, err := a.caio.combat.RollAttack(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	count := `SELECT count(*) FROM session_events WHERE kind = 'reaction_used'`
+	var before, after int
+	if err := a.h.pool.QueryRow(t.Context(), count).Scan(&before); err != nil {
+		t.Fatalf("count the events: %v", err)
+	}
+	again, err := a.caio.combat.RollAttack(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("the retry error = %v", err)
+	}
+	if err := a.h.pool.QueryRow(t.Context(), count).Scan(&after); err != nil {
+		t.Fatalf("count the events: %v", err)
+	}
+	if before != 1 || after != 1 || again.Msg.GetRoll().GetOutcome() != first.Msg.GetRoll().GetOutcome() || again.Msg.GetEncounter().GetRevision() != first.Msg.GetEncounter().GetRevision() {
+		t.Errorf("Parry events %d then %d, outcomes %v then %v; want one Parry and the same answer", before, after, first.Msg.GetRoll().GetOutcome(), again.Msg.GetRoll().GetOutcome())
+	}
+	if !a.reactionUsedBy(t, knight) {
+		t.Error("the Knight's reaction is not spent")
+	}
+}
+
+// Switching the creature to "Perguntar" after its Parry does not close the undo chain: the attack is still the last
+// action, and undoing it gives the reaction back.
+func TestParryAuto_TheModeSwitchDoesNotCloseTheUndoChain(t *testing.T) {
+	t.Parallel()
+	a, e := autoParryFight(t, knightKey, knight)
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, knight, d20(knightHit))
+	a.setParryAsk(t, e, knight, true)
+	a.undoLast(t, e)
+	if a.reactionUsedBy(t, knight) {
+		t.Error("the Knight's reaction is still spent after the undo")
+	}
+	if got := a.reactionLines(t, a.master, e); len(got) != 0 {
+		t.Errorf("the master still reads %q after the undo", got)
+	}
+}

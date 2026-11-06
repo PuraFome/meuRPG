@@ -28,7 +28,9 @@ type parryUsed struct {
 	Event string `json:"event"`
 }
 
-// parryAsks says the master asked to answer the creature's Parry in a window.
+// parryAsks says the master asked to answer the creature's Parry in a window. The view, the attack and the write
+// of SetMonsterReactionMode read the same column, combatants.creature_spent; the write reads it again inside its own
+// transaction, and the attack reads the combatant its transaction loaded under the session's lock.
 func parryAsks(who playdb.Combatant) bool {
 	return parseSpent(who.CreatureSpent).count(spentParryAsk) == 1
 }
@@ -37,6 +39,17 @@ func parryAsks(who playdb.Combatant) bool {
 // before the attack's event: the result becomes a miss, so no damage opens and no rider is offered.
 func (f *attackFlow) autoParry(ctx context.Context) error {
 	if !f.result.Hit || f.result.Critical || f.rolled.Stroke != nil || f.target.Kind != kindNPC || parryAsks(f.target) {
+		return nil
+	}
+	// An ordinary monster has no Parry: one read of its stat block settles it, before the kit's other queries.
+	st, err := f.s.roster.ReactionStats(ctx, f.c.tx, f.m.CampaignID, f.target.CharacterID)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if _, ok := parryOf(st); !ok {
 		return nil
 	}
 	k, ok, err := f.s.kitOf(ctx, f.c.tx, f.m.CampaignID, f.target)

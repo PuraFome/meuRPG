@@ -862,7 +862,7 @@ O jogador lê a espera e depois um teste que passou ou falhou, nunca a rolagem, 
 Uma criatura sem a característica ou sem uso sobrando é rolada na hora.
 A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, Expulsar Mortos-Vivos, Repreensão Infernal ou uma manobra de provocação.
 Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
-O servidor decide o Aparar sozinho, sem janela, para que uma espera nunca diga aos jogadores quais NPCs têm a reação (RN-10): quando o bônus transforma um acerto em erro, é um erro e os jogadores leem "<nome> aparou o ataque.", sem número; quando não transformaria, nada muda e nada espera.
+O servidor decide o Aparar sozinho, sem janela, para que uma espera nunca diga aos jogadores quais NPCs têm a reação (RN-10): quando o bônus transforma um acerto em erro, é um erro e os jogadores leem um erro mais a linha "<nome> aparou o ataque.", sem número, quando veem a criatura e o atacante; quando não transformaria, nada muda e nada espera.
 O mestre lê os números no registro e pode pôr uma criatura em "Perguntar" para responder por ela numa janela; o jogador nunca lê o modo, o bônus nem a classe de armadura (RN-20).
 As outras reações dele (Dividir, Grito, Pegar Pedra, Máscara Inquietante...) são texto na ficha da criatura que o app não resolve.
 Uma criatura com ações lendárias (SRD 5.1) tem 3 por rodada, como o SRD dá a toda criatura lendária.

@@ -371,7 +371,7 @@ The only thing kept in `creature_spent` is the master's mode, the key `parry_ask
 **Who sees what (RN-20, RN-29).**
 Only the master reads the mode (`Combatant.parry_ask`), the window of "Perguntar", the bonus, the armor class with it and that the creature has the reaction.
 A hit the Parry does not turn reads to a player exactly as a hit on a creature with no Parry: no wait, no window, no status.
-When the Parry turns a hit a player reads an ordinary miss with no armor class, and the line "<name> aparou o ataque.", with no number.
+When the Parry turns a hit a player reads a miss with no armor class, plus the line "<name> aparou o ataque.", with no number.
 In "Perguntar" a player reads the neutral wait ("Esperando o mestre") while the window is open, as for any NPC that may react, then an ordinary hit or miss.
 The master's line says "<name> aparou (+N CA): T contra CA A, o ataque errou." with the total and the armor class.
 

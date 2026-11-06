@@ -87,17 +87,21 @@ The opportunity attack is `RollAttack` with `as_reaction`: a melee attack off tu
 The server decides an NPC's Parry on its own, with no window (`autoParry`, `combat_parry_auto.go`).
 A window would tell the players, by the wait, which NPCs have a reaction (RN-10).
 The decision is made where the attack is resolved, before the attack's event is written.
-It parries when a melee weapon attack hits an NPC whose stat block has Parry and the Parry's bonus turns the hit into a miss: the attack total is below the armor class the hit was compared with (cover and an active Shield included) plus the bonus.
-Then the server spends the creature's reaction (`spendReaction`) and the attack is a miss, exactly as an ordinary miss reads: no pending damage opens and no rider is offered.
+It parries when a melee weapon attack hits an NPC whose stat block has Parry and the Parry's bonus turns the hit into a miss.
+That is, the attack total is below the armor class the hit was compared with plus the bonus.
+That armor class includes cover, an active Shield spell and an effect's armor class bonus.
+Then the server spends the creature's reaction (`spendReaction`) and the attack is a miss: no pending damage opens and no rider is offered.
+The attack reads as a miss to a player, plus one line of the Parry.
 When the bonus would not turn the hit, nothing happens: the hit goes on to its damage, the reaction stays free and nothing waits.
-A critical hit is never parried (it hits whatever the armor class), and neither is a hit made with a Stroke of Luck.
+A critical hit is never parried: it hits whatever the armor class.
+A hit made with Stroke of Luck is not parried either: the rogue spent the feature on a hit.
 The creature has one reaction a round, so a second hit of the same round finds it spent; it returns in `ResetCombatantTurn` at the start of the creature's turn.
 
 The server parries when all of this holds:
 
 - the target is an NPC with a Parry in its stat block (`ReactionStats.MonsterReactions`) and its mode is not "Perguntar";
 - the attack is a melee weapon attack: a melee attack of the attacker's sheet that is not a spell, and, for a thrown melee weapon on a map, a target within the weapon's melee reach;
-- the hit is not a critical one;
+- the hit is not a critical one, and was not made with Stroke of Luck;
 - the creature can react: `reaction_used` is false, it is not defeated, surprised or incapacitated (`incapacitating`), and no effect takes its reactions;
 - the creature sees the attacker (not blinded, the attacker not invisible, and on a map with fog the creature's senses reach the attacker's square);
 - the creature has no Shield slot (a creature that can cast Shield keeps its Shield window);
@@ -105,7 +109,8 @@ The server parries when all of this holds:
 
 The app does not know what the creature wields, so it takes it that the creature wields a melee weapon.
 The Parry's line is a `reaction_used` event (`reaction.auto`, no pending damage) written just before the attack's own event, and the attack's event keeps it (`parried`).
-The undo of the attack gives the reaction back and takes the line along (`UndoneAlso`), so the Parry never closes the undo chain.
+The undo of the attack gives the reaction back and takes the line along (`UndoneAlso`).
+The line is never an action of its own to undo.
 
 ### "Perguntar"
 
