@@ -12,6 +12,9 @@ import {
 
 const CHROME = 'Failed to fetch dynamically imported module: https://x.test/chunk-ABC.js';
 const WEBKIT = 'Importing a module script failed.';
+/** What WebKit throws when the server answers a lazy file with index.html: a TypeError with no code and no cause. */
+const WEBKIT_HTML =
+  "'text/html' is not a valid JavaScript MIME type for module script 'https://x.test/chunk-ABC.js'.";
 const FIREFOX = 'error loading dynamically imported module: https://x.test/chunk-ABC.js';
 const ROUTER_STATE = { navigationId: 3 };
 
@@ -42,6 +45,19 @@ describe('isChunkLoadError', () => {
   it('recognises a failed @defer block by its code when a production build keeps no message', () => {
     expect(isChunkLoadError(DEFER_PROD_ERROR)).toBe(true);
     expect(isChunkLoadError(Object.assign(new Error('NG0200'), { code: -200 }))).toBe(false);
+  });
+
+  it('recognises the WebKit error for a lazy file that the server answered with HTML', () => {
+    expect(isChunkLoadError(new TypeError(WEBKIT_HTML))).toBe(true);
+    expect(isChunkLoadError(new TypeError(WEBKIT_HTML.replace('text/html', 'text/plain')))).toBe(
+      true,
+    );
+  });
+
+  it('rejects the MIME and module errors of a real bug in a module', () => {
+    expect(isChunkLoadError(new SyntaxError("Unexpected token '<'"))).toBe(false);
+    expect(isChunkLoadError(new TypeError('Cannot read properties of undefined'))).toBe(false);
+    expect(isChunkLoadError(new TypeError("'text/html' is not a valid value"))).toBe(false);
   });
 
   it('rejects other errors and values', () => {
@@ -104,6 +120,14 @@ describe('chunk reload', () => {
     history.replaceState(null, '');
     handler.handleError(new TypeError(CHROME));
     expect(reload).toHaveBeenCalledTimes(2);
+  });
+
+  it('reloads once for the WebKit error of a lazy file answered with HTML', () => {
+    const handler = TestBed.inject(ErrorHandler);
+    handler.handleError(new TypeError(WEBKIT_HTML));
+    expect(reload).toHaveBeenCalledTimes(1);
+    handler.handleError(new TypeError(WEBKIT_HTML));
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it('reloads for a failed @defer block error', () => {

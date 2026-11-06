@@ -244,6 +244,8 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
   See [CI](ci.md#end-to-end).
 - `e2e/tests/mobile-smoke.spec.ts` (sign in, the "Dados" sheet, the live flow across hiding and showing the tab) also runs on WebKit and on an iPhone.
   `e2e/playwright.mobile.config.ts` has only those two projects; the default config stays on Chromium, because the shards install only Chromium.
+  The WebKit project also runs `e2e/tests/chunk-reload.spec.ts` (the stale-tab recovery).
+  WebKit words a failed lazy import its own way, so Chromium alone cannot show that the recovery knows it.
   `cd e2e && npm run test:mobile` runs it after `npx playwright install webkit` (with `--with-deps` on a machine that lacks the libraries).
   It runs over https: Playwright's WebKit on Linux drops every `Secure` cookie that arrives over http, `localhost` included, and every cookie of the app is `Secure`.
   `e2e/tls-front.mjs` is the https front: it streams each request to the stack, leaves Host and Origin as the browser sent them, and drops the HSTS header (which covers subdomains and would make WebKit open devidp over https).
