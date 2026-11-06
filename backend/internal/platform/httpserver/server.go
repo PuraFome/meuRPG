@@ -192,7 +192,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	serveErr := make(chan error, 1)
 	safego.Go(s.logger, "serve http", func() {
 		serveErr <- s.httpServer.Serve(ln)
-	}, func() { serveErr <- errors.New("the http server panicked") })
+	}, func() { serveErr <- errors.New("panicked") })
 	s.logger.InfoContext(ctx, "http server started", "addr", ln.Addr().String())
 
 	select {

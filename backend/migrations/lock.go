@@ -114,7 +114,8 @@ func AcquireLock(ctx context.Context, db *sql.DB, opt LockOptions) (context.Cont
 
 	runCtx, cancel := context.WithCancelCause(ctx)
 	stopped := make(chan struct{})
-	safego.Go(opt.Logger, "keep the migration lock", func() { heartbeat(runCtx, cancel, db, holder, opt, leaseFrom, stopped) })
+	safego.Go(opt.Logger, "keep the migration lock", func() { heartbeat(runCtx, cancel, db, holder, opt, leaseFrom, stopped) },
+		func() { cancel(errors.New("the migration lock heartbeat panicked")) })
 
 	var released bool
 	release := func() {

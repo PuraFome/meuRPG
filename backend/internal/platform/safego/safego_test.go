@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"testing/synctest"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
 )
@@ -57,13 +58,18 @@ func TestGoLogsAPanicAndTheProcessLives(t *testing.T) {
 
 func TestGoRunsAFunctionThatDoesNotPanic(t *testing.T) {
 	t.Parallel()
-	var logs bytes.Buffer
-	ran := make(chan struct{})
-	onPanicRan := false
+	synctest.Test(t, func(t *testing.T) {
+		var logs bytes.Buffer
+		ran, onPanicRan := false, false
 
-	safego.Go(slog.New(slog.NewTextHandler(&logs, nil)), "calm job", func() { close(ran) }, func() { onPanicRan = true })
-	<-ran
-	if onPanicRan {
-		t.Error("onPanic ran without a panic")
-	}
+		safego.Go(slog.New(slog.NewTextHandler(&logs, nil)), "calm job", func() { ran = true }, func() { onPanicRan = true })
+		synctest.Wait() // the goroutine, Recover included, has ended
+
+		if !ran {
+			t.Error("fn did not run")
+		}
+		if onPanicRan || logs.Len() != 0 {
+			t.Errorf("onPanic ran or logged %q without a panic", logs.String())
+		}
+	})
 }
