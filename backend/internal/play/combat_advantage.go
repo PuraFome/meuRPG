@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -160,9 +161,11 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
-		AttackDisadvantage: attackDisadvantage, AttackDisadvantageSpares: spares,
-		ArmorUntrained: traits.ArmorUntrained,
-		TaggedSaves:    taggedSavesOf(traits.TaggedSaves),
+		AttackDisadvantage: attackDisadvantage, AttackDisadvantageSpares: spares, AttackAdvantage: effectAttackAdvantage(states, c.ID),
+		SaveDisadvantage:  abilitiesOfKind(states, c.ID, rules.ModifierSaveDisadvantage),
+		CheckDisadvantage: abilitiesOfKind(states, c.ID, rules.ModifierCheckDisadvantage),
+		ArmorUntrained:    traits.ArmorUntrained,
+		TaggedSaves:       taggedSavesOf(traits.TaggedSaves),
 	}
 }
 
@@ -292,6 +295,7 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	for _, src := range shown.Sources {
 		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}
+	out.Shown = append(out.Shown, bonusSources(rollBonusesOf(f.states, attacker.ID, rules.RollAppliesAttack), names, v.master, true)...)
 	return out
 }
 
@@ -541,8 +545,6 @@ var staticSentences = map[string]string{
 	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
 	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
 	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
-	combat.SourceEffectSave:       "Efeito ativo: vantagem no teste de resistência",
-	combat.SourceEffectCheck:      "Efeito ativo: vantagem em testes de habilidade",
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
@@ -554,6 +556,10 @@ func (c textContext) otherSentence(src combat.Source) string {
 	switch src.Kind {
 	case combat.SourceDangerSense:
 		return fmt.Sprintf("%s: vantagem em testes de resistência de Destreza contra efeitos que você vê", c.names("feature:danger-sense"))
+	case combat.SourceEffectSave:
+		return "Efeito ativo: " + modeWord(src.Effect) + " no teste de resistência"
+	case combat.SourceEffectCheck:
+		return "Efeito ativo: " + modeWord(src.Effect) + " em testes de habilidade"
 	case combat.SourceRestrainedSave:
 		return fmt.Sprintf("%s: desvantagem em testes de resistência de Destreza", c.cond(src.Condition))
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
@@ -566,6 +572,14 @@ func (c textContext) otherSentence(src combat.Source) string {
 		return fmt.Sprintf("%s: %s no teste de resistência %s", c.names(src.Condition), mode, c.againstSentence(src.Against))
 	}
 	return ""
+}
+
+// modeWord is "vantagem" or "desvantagem".
+func modeWord(m combat.RollMode) string {
+	if m == combat.ModeDisadvantage {
+		return "desvantagem"
+	}
+	return "vantagem"
 }
 
 // againstSentence is what a saving throw with a racial advantage is against, in Portuguese.

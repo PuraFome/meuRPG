@@ -301,6 +301,7 @@ export abstract class LiveSessionSource {
     characterId: string,
     idempotencyKey: string,
     change: VitalsChange,
+    expectedRevision: number,
   ): Promise<VitalsVm>;
   abstract endSession(campaignId: string, sessionId: string): Promise<void>;
   /** `SetCurrentMap`: the map the session shows (`null` clears it). */

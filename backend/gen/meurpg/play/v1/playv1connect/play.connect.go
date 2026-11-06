@@ -416,6 +416,8 @@ type PlayServiceClient interface {
 	//     not a UUID or was already used for another character, or a value
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
+	//   - `aborted`: expected_revision is absent or is not the revision of the
+	//     character's vitals now. Nothing is written.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
 	// NudgePlayer is the master's "Chamar a atenção": it makes the player of one
 	// character feel an alert on their own screen (vibration, a chime, a shake
@@ -1868,6 +1870,8 @@ type PlayServiceHandler interface {
 	//     not a UUID or was already used for another character, or a value
 	//     outside 0 to its maximum. The message names the field, such as
 	//     `spell_slots_used[0].used`.
+	//   - `aborted`: expected_revision is absent or is not the revision of the
+	//     character's vitals now. Nothing is written.
 	AdjustCharacterVitals(context.Context, *connect.Request[v1.AdjustCharacterVitalsRequest]) (*connect.Response[v1.AdjustCharacterVitalsResponse], error)
 	// NudgePlayer is the master's "Chamar a atenção": it makes the player of one
 	// character feel an alert on their own screen (vibration, a chime, a shake

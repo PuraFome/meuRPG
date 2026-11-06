@@ -26,8 +26,8 @@ const (
 	WeaponRanged = "ranged"
 	// WeaponFinesse chooses the weapons with the finesse property.
 	WeaponFinesse = "finesse"
-	// WeaponMagic chooses the weapon lines the sheet marks as magical (Attack.Magical):
-	// the unarmed strike of a monk with Ki-Empowered Strikes.
+	// WeaponMagic chooses the weapon lines the sheet marks as magical: a weapon the sheet's
+	// weapon_marks mark magical and the unarmed strike of a monk with Ki-Empowered Strikes.
 	WeaponMagic = "magic"
 	// WeaponNamed chooses the weapon whose Portuguese name is WeaponName, ignoring case
 	// and accents.
@@ -79,8 +79,8 @@ func checkWeaponRule(e *Effect) weaponProblem {
 	if p := checkWeaponNumbers(e); p.found() {
 		return p
 	}
-	if e.AttackAbility == "" && e.DamageAbility == "" && e.AttackBonus == 0 && e.DamageBonus == 0 && e.ReachFt == 0 {
-		return problem(".type", ReasonValue, "a weapon rule changes nothing: give it an ability, a bonus or a reach")
+	if e.AttackAbility == "" && e.DamageAbility == "" && e.AttackBonus == 0 && e.DamageBonus == 0 && e.ReachFt == 0 && !e.Magical && !e.Silvered && !e.Adamantine {
+		return problem(".type", ReasonValue, "a weapon rule changes nothing: give it an ability, a bonus, a reach or a mark")
 	}
 	return weaponProblem{}
 }

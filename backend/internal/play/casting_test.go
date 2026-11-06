@@ -145,7 +145,7 @@ func wantCastingBlocked(t *testing.T, call string, err error, reason playv1.Cast
 func (a *armed) hurt(t *testing.T, c *charactersv1.Character, hp int32) {
 	t.Helper()
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: a.campaignID, CharacterId: c.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: &hp,
+		CampaignId: a.campaignID, CharacterId: c.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, c.GetId()), HitPointsCurrent: &hp,
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

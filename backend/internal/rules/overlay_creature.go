@@ -31,7 +31,42 @@ const (
 	MaxCreatureDamageBonus = 30
 	// MaxCreatureTraits is the most traits one creature adds.
 	MaxCreatureTraits = 10
+	// MaxCreatureDamageMods is the most resistance, immunity and vulnerability entries one creature adds.
+	MaxCreatureDamageMods = 12
 )
+
+// The kinds of a TableCreatureDamageMod.
+const (
+	DamageModResist     = "resist"
+	DamageModImmune     = "immune"
+	DamageModVulnerable = "vulnerable"
+)
+
+// damageModQualifiers maps the qualifier words of a table creature (underscores) to the SRD's
+// (srd51.Qualifier*, hyphens). It is the only place the two spellings meet.
+var damageModQualifiers = map[string]string{
+	"nonmagical":                   srd51.QualifierNonmagical,
+	"nonmagical_unless_silvered":   srd51.QualifierNonmagicalUnlessSilvered,
+	"nonmagical_unless_adamantine": srd51.QualifierNonmagicalUnlessAdamantine,
+}
+
+// damageModNotes are the SRD's English notes of each qualifier.
+var damageModNotes = map[string]string{
+	srd51.QualifierNonmagical:                 "from nonmagical attacks",
+	srd51.QualifierNonmagicalUnlessSilvered:   "from nonmagical weapons that aren't silvered",
+	srd51.QualifierNonmagicalUnlessAdamantine: "from nonmagical weapons that aren't adamantine",
+}
+
+// physicalDamageTypes are the damage types a qualifier may limit.
+var physicalDamageTypes = []string{"damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"}
+
+// TableCreatureDamageMod is a resistance, immunity or vulnerability entry of a table creature.
+// Kind is DamageMod*; Qualifier is "" or a key of damageModQualifiers.
+type TableCreatureDamageMod struct {
+	Kind        string
+	DamageTypes []string
+	Qualifier   string
+}
 
 // TableCreature is an SRD creature (BaseKey) with adjustments. A zero HitPoints or ArmorClass keeps
 // the base's; DamageBonus 0 adds nothing.
@@ -42,6 +77,8 @@ type TableCreature struct {
 	ArmorClass  int
 	DamageBonus int
 	Traits      []TableCreatureTrait
+	// DamageMods are added to the base's vulnerabilities, resistances and immunities.
+	DamageMods []TableCreatureDamageMod
 	// The formulas of the creature's numbers, of its owner (see ResolveCreature): empty keeps the
 	// static value (HitPoints, ArmorClass, DamageBonus) or the base's (the attack bonus).
 	// slot() is legal in each. Attacks are the creature's own attack actions (at most MaxCreatureAttacks).
@@ -75,6 +112,7 @@ func (b *overlayBuilder) addCreature(o *TableCreature, path string) error {
 	}
 	used := usedCreatureNames(base)
 	checkCreatureTraits(&c, o, used, path)
+	b.checkCreatureDamageMods(&c, o, path)
 	spec := b.checkCreatureFormulas(&c, o, used, path)
 	if err := c.err(); err != nil {
 		return err
@@ -146,6 +184,80 @@ func checkCreatureTraits(c *entryErrors, o *TableCreature, used map[string]bool,
 			c.at(o.Key, path, at+".text_pt", ReasonText, "the text must be 1 to %d characters", maxTextRunes)
 		}
 	}
+}
+
+// checkCreatureDamageMods checks the entries: their number, their kind, their damage types (SRD keys, each
+// once, at least 1) and their qualifier (only resist or immune, only physical damage types).
+func (b *overlayBuilder) checkCreatureDamageMods(c *entryErrors, o *TableCreature, path string) {
+	if len(o.DamageMods) > MaxCreatureDamageMods {
+		c.at(o.Key, path, ".damage_mods", ReasonLimit, "%d entries; the limit is %d per creature", len(o.DamageMods), MaxCreatureDamageMods)
+		return
+	}
+	for i, m := range o.DamageMods {
+		at := fmt.Sprintf(".damage_mods[%d]", i)
+		kindOK := slices.Contains([]string{DamageModResist, DamageModImmune, DamageModVulnerable}, m.Kind)
+		if !kindOK {
+			c.at(o.Key, path, at+".kind", ReasonValue, "the kind is %q, %q or %q", DamageModResist, DamageModImmune, DamageModVulnerable)
+		}
+		if len(m.DamageTypes) == 0 {
+			c.at(o.Key, path, at+".damage_types", ReasonValue, "name at least 1 damage type")
+		}
+		physical, typesOK := b.checkDamageModTypes(c, o, path, at, m)
+		// The qualifier is judged only against a valid kind and valid damage types, so one bad entry is one violation.
+		if m.Qualifier == "" || !kindOK || !typesOK {
+			continue
+		}
+		checkDamageModQualifier(c, o, path, at, m, physical)
+	}
+}
+
+// checkDamageModTypes checks the damage types of one entry (SRD keys, each once). It returns whether all of
+// them are physical and whether all of them are SRD damage types.
+func (b *overlayBuilder) checkDamageModTypes(c *entryErrors, o *TableCreature, path, at string, m TableCreatureDamageMod) (physical, typesOK bool) {
+	seen := map[string]bool{}
+	physical, typesOK = true, true
+	for j, t := range m.DamageTypes {
+		ta := fmt.Sprintf("%s.damage_types[%d]", at, j)
+		if dt, found := b.base.named[t]; !found || dt == nil || !strings.HasPrefix(t, "damage-type:") {
+			c.at(o.Key, path, ta, ReasonReference, "damage type %q is not in the SRD", truncateRunes(t, 40))
+			typesOK = false
+		} else if seen[t] {
+			c.at(o.Key, path, ta, ReasonValue, "the damage type %q is already in this entry", truncateRunes(t, 40))
+		}
+		seen[t] = true
+		physical = physical && slices.Contains(physicalDamageTypes, t)
+	}
+	return physical, typesOK
+}
+
+// checkDamageModQualifier checks the qualifier of one entry (a known one, only on a resistance or an
+// immunity, only for physical damage types).
+func checkDamageModQualifier(c *entryErrors, o *TableCreature, path, at string, m TableCreatureDamageMod, physical bool) {
+	switch _, known := damageModQualifiers[m.Qualifier]; {
+	case !known:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "the qualifier is empty, \"nonmagical\", \"nonmagical_unless_silvered\" or \"nonmagical_unless_adamantine\"")
+	case m.Kind != DamageModResist && m.Kind != DamageModImmune:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "only a resistance or an immunity has a qualifier")
+	case !physical:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "a qualifier is for bludgeoning, piercing and slashing damage only")
+	}
+}
+
+// srdDamageMods writes the entries as the SRD writes a stat block's, to be added to its lists.
+func srdDamageMods(mods []TableCreatureDamageMod) (vulnerable, resist, immune []srd51.MonsterDamageMod) {
+	for _, m := range mods {
+		q := damageModQualifiers[m.Qualifier]
+		e := srd51.MonsterDamageMod{Types: slices.Clone(m.DamageTypes), Qualifier: q, Note: damageModNotes[q]}
+		switch m.Kind {
+		case DamageModResist:
+			resist = append(resist, e)
+		case DamageModImmune:
+			immune = append(immune, e)
+		case DamageModVulnerable:
+			vulnerable = append(vulnerable, e)
+		}
+	}
+	return vulnerable, resist, immune
 }
 
 // addDiceBonus writes dice ("2d4+2", "1d6", "5") with n more added: "2d4+2" and 3 is "2d4+5". A flat

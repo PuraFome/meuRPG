@@ -3,6 +3,7 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import type { AbilityScores } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   type TableFeat,
+  type TableFeature,
   type TableFeatSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import {
@@ -58,6 +59,11 @@ export interface FeatDraft {
   lacksFeatureKey: string;
   /** As typed; empty asks nothing. */
   level: string;
+  /**
+   * The feat's own option list: the editor has no input for it yet, so it is kept as the feat has it and saving the feat
+   * does not drop it.
+   */
+  options: TableFeature[];
 }
 
 export function emptyFeat(): FeatDraft {
@@ -72,6 +78,7 @@ export function emptyFeat(): FeatDraft {
     size: '',
     lacksFeatureKey: '',
     level: '',
+    options: [],
   };
 }
 
@@ -111,6 +118,7 @@ export function featToDraft(f: TableFeat): FeatDraft {
     raceKey: p?.raceKey ?? '',
     ...passedThrough(p),
     level: p && p.level > 0 ? String(p.level) : '',
+    options: [...f.options],
   };
 }
 
@@ -146,6 +154,7 @@ export function draftToFeat(d: FeatDraft, menu: EffectMenuVm): FeatInit {
       level: level === '' ? 0 : Number(level),
     },
     effects: d.feature.effects.map((e) => draftToEffect(e, menu)),
+    ...(d.options.length > 0 ? { options: d.options } : {}),
   };
 }
 

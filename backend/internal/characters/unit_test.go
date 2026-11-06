@@ -135,6 +135,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListCharacters"] = c.ListCharacters(ctx, connect.NewRequest(&charactersv1.ListCharactersRequest{CampaignId: id}))
 	_, calls["UpdateCharacter"] = c.UpdateCharacter(ctx, connect.NewRequest(&charactersv1.UpdateCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["UpdateCharacterStory"] = c.UpdateCharacterStory(ctx, connect.NewRequest(&charactersv1.UpdateCharacterStoryRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SetEquipped"] = c.SetEquipped(ctx, connect.NewRequest(&charactersv1.SetEquippedRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetStoryEditing"] = c.SetStoryEditing(ctx, connect.NewRequest(&charactersv1.SetStoryEditingRequest{CampaignId: id, CharacterId: id}))
 	_, calls["MarkCharacterDead"] = c.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetMasterNotes"] = c.GetMasterNotes(ctx, connect.NewRequest(&charactersv1.GetMasterNotesRequest{CampaignId: id, CharacterId: id}))

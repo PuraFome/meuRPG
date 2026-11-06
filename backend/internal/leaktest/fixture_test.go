@@ -12,6 +12,7 @@ import (
 	"runtime"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -254,4 +255,17 @@ func (w *world) join(pending bool, people ...*person) {
 		must(p.campaigns.AcceptInvite(w.t.Context(), rq(&campaignsv1.AcceptInviteRequest{Token: inv.GetToken()})))
 	}
 	w.secrets.add(&canary{needle: inv.GetToken(), kind: "invite-token"})
+}
+
+// revisionOf is the revision of a character's vitals as p reads them in the live session: what the
+// caller of AdjustCharacterVitals has to send as expected_revision.
+func (p *person) revisionOf(w *world, characterID string) *int32 {
+	w.t.Helper()
+	for _, v := range must(p.play.GetLiveSession(w.t.Context(), rq(&playv1.GetLiveSessionRequest{CampaignId: w.campaign}))).GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
+	w.t.Fatalf("no vitals for character %s", characterID)
+	return nil
 }

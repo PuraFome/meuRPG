@@ -258,7 +258,10 @@ func (bg *budget) classFeatures(o *Overlay) error {
 func (bg *budget) feats(o *Overlay) error {
 	for fi := range o.Feats {
 		tf := &o.Feats[fi]
-		if err := bg.feature(fmt.Sprintf("feats[%d]", fi), &TableFeature{Key: tf.Key, Effects: tf.Effects}); err != nil {
+		if len(tf.Options) > MaxFeatureOptions {
+			return ovErr(tf.Key, "%d options; the limit is %d per feat", len(tf.Options), MaxFeatureOptions).at(fmt.Sprintf("feats[%d].options", fi), ReasonLimit)
+		}
+		if err := bg.feature(fmt.Sprintf("feats[%d]", fi), &TableFeature{Key: tf.Key, Effects: tf.Effects, Options: tf.Options}); err != nil {
 			return err
 		}
 	}

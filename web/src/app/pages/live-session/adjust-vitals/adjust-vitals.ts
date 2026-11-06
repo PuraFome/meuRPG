@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { isStaleVitals } from '../../../core/play/live-error';
 import { LiveSessionSource, VitalsChange } from '../../../core/play/live-session.types';
 import { dieName } from '../../../core/resources/hit-dice-text';
 import { slotLevelLabel, usedWords, whoSeesTheChange } from '../../../core/play/vitals';
@@ -190,6 +191,7 @@ export class AdjustVitals {
         this.v.characterId,
         this.lastTry.key,
         change,
+        this.v.revision,
       );
       this.close({ kind: 'saved', vitals });
     } catch (err) {
@@ -198,6 +200,16 @@ export class AdjustVitals {
   }
 
   private describe(err: unknown): SaveState {
+    if (isStaleVitals(err)) {
+      // The numbers on this sheet are older than the character's: a combat, a rest or another correction changed them.
+      this.data.onStale?.();
+      return {
+        status: 'error',
+        title: `Os números de ${this.v.name} mudaram desde que você abriu o "Ajustar".`,
+        detail:
+          'A tela foi atualizada. Feche, abra "Ajustar" de novo e confira os números antes de salvar.',
+      };
+    }
     switch (this.source.classifyError(err)) {
       case 'no-session':
         return { status: 'ended' };

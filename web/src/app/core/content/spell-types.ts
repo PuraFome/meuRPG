@@ -1,7 +1,12 @@
 import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 
-import type { TableSpellSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type {
+  TableSpellEffect,
+  TableSpellSchema,
+  TableSpellZone,
+  TableSummon,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 
 /**
  * The spell editor's form (MR-025, RN-23, E10-01 states 4, 4b and 5) and what it sends. A table spell is a
@@ -64,6 +69,15 @@ export interface SpellDraft {
   otherDamage: readonly OtherDamage[];
   /** What was typed in a count field when it is not how the number is written back ("+2", "007", text no number); never sent. */
   typed?: Partial<Record<SpellCountField, string>>;
+  /** What the form has no control for: the stored effect, zone and summon go back as they were loaded. */
+  kept?: KeptSpellFields;
+}
+
+/** The parts of a spell the editor cannot show yet; saving sends them untouched. */
+export interface KeptSpellFields {
+  readonly effect?: TableSpellEffect;
+  readonly zone?: TableSpellZone;
+  readonly summon?: TableSummon;
 }
 
 export interface OtherDamage {

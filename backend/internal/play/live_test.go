@@ -39,7 +39,7 @@ func newKey() string { return uuid.New().String() }
 // adjust calls AdjustCharacterVitals as u, with a new idempotency key.
 func (u *user) adjust(t *testing.T, campaignID, characterID string, edit func(*playv1.AdjustCharacterVitalsRequest)) (*playv1.CharacterVitals, error) {
 	t.Helper()
-	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey()}
+	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey(), ExpectedRevision: u.revisionIfOpen(campaignID, characterID)}
 	edit(req)
 	res, err := u.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req))
 	if err != nil {
@@ -342,7 +342,10 @@ func TestRN02_MasterAdjustsVitalsDuringSession(t *testing.T) {
 
 	// What may not be adjusted: an NPC, or a character that does not exist.
 	for name, id := range map[string]string{"an NPC": npc.GetId(), "a made-up character": newKey(), "not a UUID": "x"} {
-		_, err = master.adjust(t, campaign, id, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsCurrent = proto.Int32(1) })
+		// They have no vitals to read a revision from: any revision gets to the lookup that refuses them.
+		_, err = master.adjust(t, campaign, id, func(r *playv1.AdjustCharacterVitalsRequest) {
+			r.HitPointsCurrent, r.ExpectedRevision = proto.Int32(1), proto.Int32(0)
+		})
 		wantCode(t, "AdjustCharacterVitals("+name+")", err, connect.CodeNotFound)
 	}
 
@@ -382,11 +385,14 @@ func TestRN02_MasterAdjustsVitalsDuringSession(t *testing.T) {
 		t.Errorf("session_events = %d rows after refused calls, want still 3", n)
 	}
 
-	// A dead character is no longer at the table.
+	// A dead character is no longer at the table. The revision is the one read while it was.
+	warlockRevision := master.revisionOf(t, campaign, warlock.GetId())
 	if _, err := master.characters.MarkCharacterDead(t.Context(), connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: campaign, CharacterId: warlock.GetId()})); err != nil {
 		t.Fatalf("MarkCharacterDead() error = %v", err)
 	}
-	_, err = master.adjust(t, campaign, warlock.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.PactSlotsUsed = proto.Int32(0) })
+	_, err = master.adjust(t, campaign, warlock.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) {
+		r.PactSlotsUsed, r.ExpectedRevision = proto.Int32(0), warlockRevision
+	})
 	wantCode(t, "AdjustCharacterVitals(dead)", err, connect.CodeNotFound)
 	if n := len(master.liveSession(t, campaign).GetVitals()); n != 1 {
 		t.Errorf("master's vitals after a death = %d characters, want 1", n)
@@ -416,9 +422,11 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	stream := player.watch(t, campaign)
 	stream.ready(t)
 
-	call := func(key, characterID string, hp int32) (*playv1.CharacterVitals, error) {
+	// A retry carries the revision the first call did, whatever came after.
+	call := func(key, characterID string, hp int32, revision *int32) (*playv1.CharacterVitals, error) {
 		res, err := master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 			CampaignId: campaign, CharacterId: characterID, IdempotencyKey: key, HitPointsCurrent: new(hp),
+			ExpectedRevision: revision,
 		}))
 		if err != nil {
 			return nil, err
@@ -426,11 +434,12 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 		return res.Msg.GetVitals(), nil
 	}
 	keyA, keyB := newKey(), newKey()
-	first, err := call(keyA, pc.GetId(), 3)
+	readPC := master.revisionOf(t, campaign, pc.GetId())
+	first, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}
-	again, err := call(keyA, pc.GetId(), 3)
+	again, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil || !proto.Equal(first, again) {
 		t.Errorf("the same call again = %v, %v; want the same answer %v", again, err, first)
 	}
@@ -439,10 +448,10 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	}
 	// Later changes win: a late retry answers with the vitals as they are
 	// now, and does not undo them.
-	if _, err := call(keyB, pc.GetId(), 5); err != nil {
+	if _, err := call(keyB, pc.GetId(), 5, master.revisionOf(t, campaign, pc.GetId())); err != nil {
 		t.Fatalf("AdjustCharacterVitals(another key) error = %v", err)
 	}
-	late, err := call(keyA, pc.GetId(), 3)
+	late, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil || late.GetHitPointsCurrent() != 5 || late.GetRevision() != 2 {
 		t.Errorf("a late retry = %v, %v; want the current vitals (5 hit points, revision 2)", late, err)
 	}
@@ -451,10 +460,10 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	}
 	// The key belongs to that change: using it for another character is a
 	// mistake, not a retry.
-	_, err = call(keyA, otherPC.GetId(), 3)
+	_, err = call(keyA, otherPC.GetId(), 3, master.revisionOf(t, campaign, otherPC.GetId()))
 	wantCode(t, "AdjustCharacterVitals(the key of another change)", err, connect.CodeInvalidArgument)
 	// Nor is it a retry when it comes with other numbers for the same character.
-	_, err = call(keyA, pc.GetId(), 4)
+	_, err = call(keyA, pc.GetId(), 4, readPC)
 	wantCode(t, "AdjustCharacterVitals(the key with other hit points)", err, connect.CodeInvalidArgument)
 	if v := master.liveSession(t, campaign).GetVitals(); len(v) == 0 || v[0].GetHitPointsCurrent() != 5 {
 		t.Errorf("vitals after the refused call = %v, want them as they were", v)
@@ -491,17 +500,22 @@ func TestSessionEventsAreOrderedPerSession(t *testing.T) {
 	const perCharacter = 3
 	var wg sync.WaitGroup
 	errs := make(chan error, len(pcs)*perCharacter)
-	start := dbtest.NewBarrier(len(pcs) * perCharacter)
+	start := dbtest.NewBarrier(len(pcs))
+	// A correction has to say which revision it read, so the corrections of one character
+	// follow each other; the characters' run side by side.
 	for _, pc := range pcs {
-		for _, temporary := range []int32{1, 2, 3} {
-			wg.Go(func() {
-				start.Wait()
+		revision := *master.revisionOf(t, campaign, pc.GetId())
+		wg.Go(func() {
+			start.Wait()
+			for _, temporary := range []int32{1, 2, 3} {
 				_, err := master.play.AdjustCharacterVitals(context.Background(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 					CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: new(temporary),
+					ExpectedRevision: &revision,
 				}))
 				errs <- err
-			})
-		}
+				revision++
+			}
+		})
 	}
 	wg.Wait()
 	close(errs)
@@ -1064,4 +1078,32 @@ func TestWatchGameSessionReplacesTheOldestStreamPastTheCap(t *testing.T) {
 			}
 		}
 	}
+}
+
+// revisionOf is the revision of a character's vitals as u reads them in the live session: what the
+// caller of AdjustCharacterVitals has to send as expected_revision.
+func (u *user) revisionOf(t *testing.T, campaignID, characterID string) *int32 {
+	t.Helper()
+	for _, v := range u.liveSession(t, campaignID).GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
+	t.Fatalf("no vitals for character %s", characterID)
+	return nil
+}
+
+// revisionIfOpen is revisionOf, or nil when there is no open session to read it from (the correction
+// is refused for that before its revision is looked at).
+func (u *user) revisionIfOpen(campaignID, characterID string) *int32 {
+	res, err := u.play.GetLiveSession(context.Background(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaignID}))
+	if err != nil {
+		return nil
+	}
+	for _, v := range res.Msg.GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
+	return nil
 }

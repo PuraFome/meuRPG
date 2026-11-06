@@ -123,7 +123,7 @@ message TableEffect {
   // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
   // "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
   // "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
-  // "save.<ability>"), how ("add", "max" or "set") and the formula.
+  // "save.<ability>", "score.<ability>"), how ("add", "max" or "set") and the formula.
   string target = 2;
   string mode = 3;
   string value = 4;
@@ -156,7 +156,8 @@ message TableEffect {
   string max = 14;
   string recharge = 15;
   // choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-  // "language", "tool", "feature" or "feat"), how many, and from which keys (for
+  // "language", "tool", "feature", "feat", and, in a feat only, "ability" or "damage_type" with a
+  // `name` and a count of 1), how many, and from which keys (for
   // "feat": feat keys of the SRD or the table; empty is any feat). For
   // extra_attack, `count` is how many attacks the Attack action makes. For
   // ability_increase, `count` is how many different abilities the player picks,
@@ -352,6 +353,12 @@ message TableEffect {
   // hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
   // a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
   // proficient with, is never an item, and the weapon rules change it like any weapon.
+  // weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
+  // chooses as such for the resistances and immunities to nonmagical attacks, the unarmed
+  // strike included; a rule that sets only marks counts as changing something. The "magic"
+  // filter reads only the marks of the sheet itself (FullSheet.weapon_marks) and
+  // Ki-Empowered Strikes: never those of a rule, and not the equipment. A pseudo_weapon
+  // line is never marked by a weapon_rule. Refused on any other effect.
   string weapon_name = 59;
   string attack_ability = 60;
   string damage_ability = 61;
@@ -398,6 +405,25 @@ message TableEffect {
   // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
   // The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
   int32 at_most = 78;
+  // choice of a feat: the name of the pick, 1 to 40 characters of a-z, 0-9 and _, the first a
+  // letter, and not "mesa". Only a choice of kind "ability" or "damage_type" has one; its `count`
+  // is 1. The later effects of the same feat write "@name" for what was picked, in a proficiency
+  // ("save.@name"), a damage_type ("damage-type:@name") or a formula (mod("@name")).
+  string name = 79;
+  // choice of a feat, kind "feature": the editor option set the choice offers instead of a
+  // `from` list (one of the "feat_option_sets" of GetEffectMenu).
+  // The `count` cannot be more than the options of the set.
+  string set = 80;
+  // modifier on a score ("score.str"...): the highest value the effect lifts the score to, from 20
+  // to 30 (24 for the Primal Champion). Required there, mode "add"; no other modifier has one.
+  // A score already above the cap stays as it is.
+  int32 cap = 81;
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as magical.
+  bool magical = 82;
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as silvered.
+  bool silvered = 83;
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
+  bool adamantine = 84;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -451,6 +477,13 @@ message TableFeat {
   FeatPrerequisite prerequisite = 3;
   // At most 20, and at most one ability_increase.
   repeated TableEffect effects = 4;
+  // The option list of the feat: options the player picks, each with a name, a text and effects
+  // of its own, as the options of a class feature. At most 60. The server makes the keys
+  // ("feature:<stem>--<option name>@mesa"; leave them empty for a new option, send them back on
+  // every update). An option applies only while it is picked and the feat is the character's.
+  // A `choice` effect of kind "feature" with an empty `from` offers them. An option does not
+  // read the picks of the feat.
+  repeated TableFeature options = 5;
 }
 
 // TableOption is an option the master adds to an option set of the SRD, as a table
@@ -595,6 +628,28 @@ message TableCreature {
   // A name may not repeat a trait or an action of the base, nor another attack.
   // Names are compared as the traits' names are.
   repeated TableCreatureAttack attacks = 12;
+  // Resistances, immunities and vulnerabilities, at most 12 entries.
+  // Each entry is added to the base's lists.
+  // It never replaces or narrows them.
+  // If the base already resists a type, a qualified entry for that type does not remove the base's resistance.
+  // An entry that breaks a rule below is refused.
+  // Editing the entries changes the creatures already given, which read them from the entry.
+  repeated TableCreatureDamageMod damage_mods = 13;
+}
+
+// TableCreatureDamageMod is one entry of a table creature's resistances, immunities or vulnerabilities.
+message TableCreatureDamageMod {
+  // Must be "resist", "immune" or "vulnerable".
+  // Any other value is refused.
+  string kind = 1;
+  // "damage-type:" keys of the SRD, each once in the entry, at least 1.
+  repeated string damage_types = 2;
+  // Must be "", "nonmagical", "nonmagical_unless_silvered" or "nonmagical_unless_adamantine".
+  // Empty means none.
+  // Any other value is refused.
+  // A qualifier is allowed only for kind "resist" or "immune".
+  // It is allowed only when every damage type is bludgeoning, piercing or slashing.
+  string qualifier = 3;
 }
 
 // TableCreatureAttack is an attack action of a table creature.
@@ -961,6 +1016,12 @@ message TableSpell {
   // saving throw, no damage, no healing and no area. It is cast, spent, concentrated on and
   // dismissed as the SRD's summoning spells are.
   TableSummon summon = 19;
+  // What the spell leaves on its targets while it lasts, in the shapes of the SRD's lasting effects;
+  // unset: the spell leaves nothing. It lasts as the spell does, so the duration cannot be instantaneous.
+  // It needs at least one condition or modifier. A spell whose target is only the caster (SELF) has
+  // no save and no attack, so its effect applies to ALL. Every refusal is at the effect or at a field
+  // inside it ("table_spell.effect.modifiers[1].value"; see TableSpellEffect).
+  TableSpellEffect effect = 20;
 }
 
 // TableSummonTurnMode says how the creatures of a casting take their turns in a combat.
@@ -1036,6 +1097,127 @@ message TableSpellZone {
   // The area is centered on the caster and goes where the caster goes. It needs the range Self; without
   // it the area is placed at a point within range and stays there.
   bool follows_caster = 2;
+}
+
+// TableSpellEffect is the lasting effect a table spell leaves on its targets (a +2 on attack rolls, resistance
+// to fire, the poisoned condition). Limits: at most 8 conditions and at most 8 modifiers. Each condition is an
+// SRD condition key, listed once. A refusal is at the field it is about: `effect.applies`, `effect.conditions[i]`,
+// `effect.modifiers[i]` (and the modifier's own field after it), `effect.player_label_pt`, `effect.visibility`.
+message TableSpellEffect {
+  // Whom the effect reaches. Unset is ALL. FAILED_SAVE needs a `save` on the spell and HIT needs an `attack`;
+  // a spell that only affects the caster takes ALL.
+  TableEffectApplies applies = 1;
+  // SRD condition keys the targets get ("condition:poisoned").
+  repeated string conditions = 2;
+  repeated TableEffectModifier modifiers = 3;
+  // The short label the other players read, at most 30 characters.
+  string player_label_pt = 4 [(meurpg.options.v1.max_len) = 120];
+  // Who sees the effect on the creature. Unset is OWNER.
+  TableEffectAudience visibility = 5;
+}
+
+// TableEffectApplies says which targets of a table spell get its effect.
+enum TableEffectApplies {
+  TABLE_EFFECT_APPLIES_UNSPECIFIED = 0;
+  // Every target.
+  TABLE_EFFECT_APPLIES_ALL = 1;
+  // The targets that fail the spell's saving throw.
+  TABLE_EFFECT_APPLIES_FAILED_SAVE = 2;
+  // The targets the spell's attack hits.
+  TABLE_EFFECT_APPLIES_HIT = 3;
+}
+
+// TableEffectAudience says who sees a table spell's effect on a creature.
+enum TableEffectAudience {
+  TABLE_EFFECT_AUDIENCE_UNSPECIFIED = 0;
+  // The whole table sees it on the creature.
+  TABLE_EFFECT_AUDIENCE_PUBLIC = 1;
+  // Only the creature's player and the master.
+  TABLE_EFFECT_AUDIENCE_OWNER = 2;
+}
+
+// TableEffectModifierKind is what one modifier of a table spell's effect does. The set is closed: a condition goes
+// in the effect's `conditions`, not in a modifier. The fields each kind reads are
+// on TableEffectModifier. The SRD's base armor class and extra action are not offered: the engine works them
+// out itself, and a table spell cannot take its value from the caster or ask the caster to choose.
+enum TableEffectModifierKind {
+  TABLE_EFFECT_MODIFIER_KIND_UNSPECIFIED = 0;
+  // Adds (sign 1) or subtracts (sign -1) a die to the rolls of `applies_to`. Needs die, sign, applies_to.
+  TABLE_EFFECT_MODIFIER_KIND_ROLL_DIE = 1;
+  // Adds a flat `value` to the armor class, 1 to 20.
+  TABLE_EFFECT_MODIFIER_KIND_AC_BONUS = 2;
+  // Adds `value` feet to the speed, 1 to 120.
+  TABLE_EFFECT_MODIFIER_KIND_SPEED_ADD = 3;
+  // Multiplies the speed by `value` percent, 0 to 400.
+  TABLE_EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER = 4;
+  // Adds `value` (-20 to 20, not 0) to the checks of one `skill` (an SRD skill key).
+  TABLE_EFFECT_MODIFIER_KIND_CHECK_BONUS = 5;
+  // Advantage on the saving throws of `abilities`.
+  TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE = 6;
+  // Advantage on the ability checks of `abilities`.
+  TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE = 7;
+  // Disadvantage on the creature's attack rolls. It reads no other field.
+  TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE = 8;
+  // 9 to 13 were condition immunity, no move, no action, no reaction and temporary hit points each turn.
+  // Conditions go in the effect's `conditions`.
+  reserved 9, 10, 11, 12, 13;
+  reserved "TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY", "TABLE_EFFECT_MODIFIER_KIND_NO_MOVE", "TABLE_EFFECT_MODIFIER_KIND_NO_ACTION", "TABLE_EFFECT_MODIFIER_KIND_NO_REACTION", "TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP";
+  // Adds a flat `value` (-20 to 20, not 0) to the rolls of `applies_to`. Needs value and applies_to.
+  TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS = 14;
+  // `value` temporary hit points when the effect lands, 1 to 1000.
+  TABLE_EFFECT_MODIFIER_KIND_TEMP_HP = 15;
+  // Resistance, immunity or vulnerability (`resistance_kind`) to the `damage_types`.
+  TABLE_EFFECT_MODIFIER_KIND_RESISTANCE = 16;
+  // Advantage on the creature's attack rolls. It reads no other field.
+  TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE = 17;
+  // Disadvantage on the saving throws of `abilities`.
+  TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE = 18;
+  // Disadvantage on the ability checks of `abilities`.
+  TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 19;
+}
+
+// TableEffectRollKind is a kind of roll a modifier reaches.
+enum TableEffectRollKind {
+  TABLE_EFFECT_ROLL_KIND_UNSPECIFIED = 0;
+  TABLE_EFFECT_ROLL_KIND_ATTACK = 1;
+  TABLE_EFFECT_ROLL_KIND_SAVE = 2;
+  TABLE_EFFECT_ROLL_KIND_CHECK = 3;
+}
+
+// TableResistanceKind is what a resistance modifier gives against its damage types.
+enum TableResistanceKind {
+  // Unset is RESIST.
+  TABLE_RESISTANCE_KIND_UNSPECIFIED = 0;
+  TABLE_RESISTANCE_KIND_RESIST = 1;
+  TABLE_RESISTANCE_KIND_IMMUNE = 2;
+  TABLE_RESISTANCE_KIND_VULNERABLE = 3;
+}
+
+// TableEffectModifier is one thing a table spell's effect does. Set the fields its `kind` reads; the others are ignored. A
+// refusal is at the field that is wrong, or at the modifier when it is the kind or the value as a whole.
+message TableEffectModifier {
+  // Required.
+  TableEffectModifierKind kind = 1;
+  // The die of ROLL_DIE: a d2 to a d100.
+  int32 die = 2;
+  // 1 adds the die, -1 subtracts it (ROLL_DIE).
+  int32 sign = 3;
+  // The number of AC_BONUS, SPEED_ADD, SPEED_MULTIPLIER, CHECK_BONUS, ROLL_BONUS and TEMP_HP;
+  // each kind has its own range (see the kinds).
+  int32 value = 4;
+  // The rolls ROLL_DIE and ROLL_BONUS reach: at least one, each once.
+  repeated TableEffectRollKind applies_to = 5;
+  // The ability keys ("str", "dex", "con", "int", "wis", "cha") of SAVE_ADVANTAGE, CHECK_ADVANTAGE,
+  // SAVE_DISADVANTAGE and CHECK_DISADVANTAGE: at least one, each once.
+  repeated string abilities = 6 [(meurpg.options.v1.max_len) = 16];
+  // The SRD condition keys of CONDITION_IMMUNITY: at least one.
+  repeated string conditions = 7 [(meurpg.options.v1.max_len) = 64];
+  // The SRD skill key of CHECK_BONUS ("skill:stealth").
+  string skill = 8 [(meurpg.options.v1.max_len) = 64];
+  // RESISTANCE only. Unset is RESIST.
+  TableResistanceKind resistance_kind = 9;
+  // RESISTANCE only: SRD damage type keys, each once, or "all" or "nonmagical_bps" alone. At least one.
+  repeated string damage_types = 10 [(meurpg.options.v1.max_len) = 64];
 }
 
 // TableZoneTrigger is when a table spell's area catches a creature.

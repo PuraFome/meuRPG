@@ -245,6 +245,13 @@ type Creature struct {
 	// AttackDisadvantage is the key of the effect that lasts that gives its own attack rolls
 	// disadvantage (Vicious Mockery: "spell:vicious-mockery"), "" for none.
 	AttackDisadvantage string
+	// AttackAdvantage is the key of the effect that lasts that gives its own attack rolls advantage
+	// (a table spell's), "" for none.
+	AttackAdvantage string
+	// SaveDisadvantage and CheckDisadvantage are the abilities an effect that lasts gives it
+	// disadvantage on the saving throws and the ability checks of.
+	SaveDisadvantage  []string
+	CheckDisadvantage []string
 	// ArmorUntrained says it wears armor or a shield it is not proficient with: disadvantage
 	// on the checks, saves and weapon attacks that use Strength or Dexterity (SRD 5.1, "Armor").
 	ArmorUntrained bool
@@ -486,14 +493,18 @@ func sceneRules(s AttackScene) []sourceRule {
 	}
 }
 
-// attackerEffectSources are the disadvantages an effect that lasts gives the attacker's own
-// attack rolls (SRD 5.1, Vicious Mockery: the next attack roll the creature makes before the end
-// of its next turn). The effect is the source, keyed by its own key.
+// attackerEffectSources are the advantage and the disadvantage an effect that lasts gives the
+// attacker's own attack rolls (SRD 5.1, Vicious Mockery: the next attack roll the creature makes
+// before the end of its next turn). The effect is the source, keyed by its own key.
 func attackerEffectSources(s AttackScene) []Source {
-	if s.Attacker.AttackDisadvantage == "" || (s.Attacker.AttackDisadvantageSpares != "" && s.Attacker.AttackDisadvantageSpares == s.Target.ID) {
-		return nil
+	var out []Source
+	if s.Attacker.AttackAdvantage != "" {
+		out = append(out, Source{Kind: SourceEffectAttack, Effect: ModeAdvantage, Condition: s.Attacker.AttackAdvantage})
 	}
-	return []Source{{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: s.Attacker.AttackDisadvantage}}
+	if s.Attacker.AttackDisadvantage != "" && (s.Attacker.AttackDisadvantageSpares == "" || s.Attacker.AttackDisadvantageSpares != s.Target.ID) {
+		out = append(out, Source{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: s.Attacker.AttackDisadvantage})
+	}
+	return out
 }
 
 // rangedSources are the disadvantages of a ranged attack: beyond the normal range, and
@@ -572,6 +583,7 @@ func saveRules(s SaveScene) []sourceRule {
 	c := s.Creature
 	return []sourceRule{
 		{slices.Contains(c.SaveAdvantage, s.Ability), SourceEffectSave, ModeAdvantage, ""},
+		{slices.Contains(c.SaveDisadvantage, s.Ability), SourceEffectSave, ModeDisadvantage, ""},
 		{c.Exhaustion >= exhaustionAttackLevel, SourceExhaustionSave, ModeDisadvantage, ""},
 	}
 }
@@ -611,6 +623,7 @@ func checkRules(s SaveScene) []sourceRule {
 	c := s.Creature
 	return []sourceRule{
 		{slices.Contains(c.CheckAdvantage, s.Ability), SourceEffectCheck, ModeAdvantage, ""},
+		{slices.Contains(c.CheckDisadvantage, s.Ability), SourceEffectCheck, ModeDisadvantage, ""},
 		{c.Exhaustion >= exhaustionCheckLevel, SourceExhaustionCheck, ModeDisadvantage, ""},
 		{s.StealthArmor && s.Ability == dexterityAbility, SourceStealthArmor, ModeDisadvantage, ""},
 		{c.Has(conditionPoisoned), SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned},
