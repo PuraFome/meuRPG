@@ -348,7 +348,7 @@ The roll is not undoable, and it closes the chain like the turn change it belong
 A persistent NPC with a stat block is a character of kind NPC that is not `combat_only`, made from a creature.
 It keeps its `use:<action key>` and `legendary_resistance` counts from one combat to the next, until the table's long rest.
 It keeps its `rest:<action key>` counts until the next short or long rest.
-The counts are in `npc_spell_use.creature_spent` ([Data](../../data/characters.md#npc_spell_use)), beside the slots of its spells.
+The counts are in `npc_spell_use.creature_spent` ([Data](../../data/combat.md#npc_spell_use)), beside the slots of its spells.
 `bumpCreatureSpent` writes them back with `SyncNPCCreatureSpent` after each change of those keys (an undo too): the row keeps the highest count any copy holds in the combat, never the sum, and a key that falls to 0 leaves it.
 `SeedCombatantSlotsUsed` gives each copy the row when it joins a combat, and the table's long rest deletes the row; a short rest removes its `rest:` keys ([Rests](rests-and-resources.md)).
 `recharge:<action key>` and `legendary_actions` are not kept: a new combat starts with every Recharge action available.
