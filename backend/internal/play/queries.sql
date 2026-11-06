@@ -849,7 +849,8 @@ WITH changed AS (
 SELECT id FROM changed ORDER BY id;
 
 -- name: SetCreatureCombatantLabel :many
--- A creature's new name on its combatant, in the combat that is not ended. Returns the combats, by ID.
+-- A creature's new name on its combatant, in the combat that is not ended.
+-- Returns the combats, by ID.
 WITH changed AS (
     UPDATE combatants
     SET label = sqlc.arg(label)
@@ -1306,7 +1307,8 @@ SELECT id FROM changed ORDER BY id;
 
 -- name: DeleteCombatantStatesBySource :many
 -- The states a source gave (the marks of a ranger who stopped concentrating), with what
--- the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark), oldest first.
+-- the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark).
+-- Oldest first.
 WITH changed AS (
     DELETE FROM combatant_states
     WHERE source_id = $1 AND kind = $2
@@ -1806,7 +1808,8 @@ UPDATE character_effects SET modifiers = $2 WHERE id = $1;
 UPDATE combatant_states SET modifiers = $2 WHERE id = $1 AND kind = 'effect';
 
 -- name: DeleteLongRestEffectsOfCampaign :many
--- A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests. Oldest first.
+-- A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+-- Oldest first.
 WITH changed AS (
     DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING *
 )
@@ -1831,7 +1834,8 @@ ORDER BY cs.created_at, cs.id;
 
 -- name: DeleteCharacterEffectsOfSpell :many
 -- The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
--- Effects): the effects of the other castings go. Returns their IDs.
+-- Effects): the effects of the other castings go.
+-- Returns their IDs.
 WITH changed AS (
     DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id
 )

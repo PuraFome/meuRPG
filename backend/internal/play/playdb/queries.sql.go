@@ -1037,7 +1037,8 @@ type DeleteCharacterEffectsOfSpellParams struct {
 }
 
 // The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
-// Effects): the effects of the other castings go. Returns their IDs.
+// Effects): the effects of the other castings go.
+// Returns their IDs.
 func (q *Queries) DeleteCharacterEffectsOfSpell(ctx context.Context, arg DeleteCharacterEffectsOfSpellParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfSpell, arg.CharacterID, arg.SourceKey, arg.GroupID)
 	if err != nil {
@@ -1121,7 +1122,8 @@ type DeleteCombatantStatesBySourceRow struct {
 }
 
 // The states a source gave (the marks of a ranger who stopped concentrating), with what
-// the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark), oldest first.
+// the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark).
+// Oldest first.
 func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteCombatantStatesBySourceParams) ([]DeleteCombatantStatesBySourceRow, error) {
 	rows, err := q.db.Query(ctx, deleteCombatantStatesBySource, arg.SourceID, arg.Kind)
 	if err != nil {
@@ -1519,7 +1521,8 @@ type DeleteLongRestEffectsOfCampaignRow struct {
 	CreatedAt          time.Time
 }
 
-// A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests. Oldest first.
+// A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
+// Oldest first.
 func (q *Queries) DeleteLongRestEffectsOfCampaign(ctx context.Context, campaignID string) ([]DeleteLongRestEffectsOfCampaignRow, error) {
 	rows, err := q.db.Query(ctx, deleteLongRestEffectsOfCampaign, campaignID)
 	if err != nil {
@@ -9487,7 +9490,8 @@ type SetCreatureCombatantLabelParams struct {
 	CampaignID string
 }
 
-// A creature's new name on its combatant, in the combat that is not ended. Returns the combats, by ID.
+// A creature's new name on its combatant, in the combat that is not ended.
+// Returns the combats, by ID.
 func (q *Queries) SetCreatureCombatantLabel(ctx context.Context, arg SetCreatureCombatantLabelParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, setCreatureCombatantLabel, arg.Label, arg.CreatureID, arg.CampaignID)
 	if err != nil {

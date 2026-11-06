@@ -332,8 +332,8 @@ WHERE map_id = $1 AND id = $2
 RETURNING *;
 
 -- name: ListMapTokens :many
--- The map's tokens. The handler orders them by character and filters them
--- for a player.
+-- The map's tokens, by character.
+-- The handler filters them for a player.
 SELECT * FROM map_tokens
 WHERE map_id = $1
 ORDER BY character_id;

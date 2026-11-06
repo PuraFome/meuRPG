@@ -3371,8 +3371,8 @@ WHERE map_id = $1
 ORDER BY character_id
 `
 
-// The map's tokens. The handler orders them by character and filters them
-// for a player.
+// The map's tokens, by character.
+// The handler filters them for a player.
 func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, error) {
 	rows, err := q.db.Query(ctx, listMapTokens, mapID)
 	if err != nil {
