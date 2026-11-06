@@ -188,6 +188,8 @@ message TableEffect {
   // ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
   // attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
   // thrown weapon used at range).
+  // A modifier on "critical_range" uses `applies` for its scope: "weapon" (the default),
+  // "spell" (the attack roll of a spell) or "both".
   string applies = 22;
   string ability = 23;
   // ranged_attack (a table feat that makes its owner a sharper shot; the SRD has none):
@@ -229,6 +231,8 @@ message TableEffect {
   // `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
   // "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
   // unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+  // roll_minimum: `value` is the lowest the die counts as (a literal, 2 to 20), and `damage_type`
+  // limits it to the dice of that type, only when `rolls` is exactly "damage".
   string dice = 44;
   int32 dice_sides = 45;
   string damage_type = 46;
@@ -388,7 +392,7 @@ message TableEffect {
   // (a level 2 slot counts 2). Both are required.
   string recover_max_level = 75;
   string recover_levels = 76;
-  // reroll: the rolls it covers, one or more of "attack", "check", "save"
+  // reroll and roll_minimum: the rolls it covers, one or more of "attack", "check", "save"
   // (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
   repeated string rolls = 77;
   // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.

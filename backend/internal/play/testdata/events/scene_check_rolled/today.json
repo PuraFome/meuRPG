@@ -16,6 +16,7 @@
   "roll_mode": "x",
   "bonus_sides": 1,
   "bonus_face": 1,
+  "counted_by": "x",
   "lucky": {
     "index": 1,
     "from": 1,

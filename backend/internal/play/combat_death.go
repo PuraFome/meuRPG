@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -171,7 +172,7 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 	gate, err := s.heldGate(ctx, s.inspirationGate(c), rollSpec{
 		Kind: heldDeathSave, Key: call.key, Request: call.msg, Roller: attackRoller(call.m, who, c.enc.Round), In: call.in,
 		Mode: combat.ModeNormal, Lucky: sheet.Traits.Lucky, MayAsk: playedBy(who, call.m),
-		Save: &saveRule{Death: true},
+		Save: &saveRule{Death: true}, Floor: floorFor(sheet.Traits, rules.RollAppliesSave, false),
 	})
 	if err != nil {
 		return nil, err
@@ -181,10 +182,14 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 		return nil, nil
 	}
 	roll := gate.Roll
-	face, bonus := roll.Face(), roll.Total-roll.Face()
+	// The rules read the number the die counts as (Value), not the face that came up (Face).
+	// A 1 that counts as 10 is an ordinary 10: a success, not the two failures of a natural 1.
+	// A die that counts as 20 brings the character back.
+	// The event keeps the face as rolled, for the log.
+	face, bonus := roll.Value(), roll.Total-roll.Value()
 	r := combat.DeathSaveWith(face, bonus, int(who.DeathSuccesses), int(who.DeathFailures))
 	out.made = actionEvent{
-		Round: c.enc.Round, Actor: who.ID, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, 0, math.MaxInt32), Total: clamp32(roll.Total, 0, math.MaxInt32),
+		Round: c.enc.Round, Actor: who.ID, D20: clamp32(roll.Face(), 1, 20), countedRoll: countedOf(roll), Modifier: clamp32(bonus, 0, math.MaxInt32), Total: clamp32(roll.Total, 0, math.MaxInt32),
 		Physical: roll.Physical, DeathOutcome: deathOutcomeOf(face, bonus), DeathBefore: deathOf(who), DeathHidden: c.rules.DeathSavesHidden,
 		Lucky: gate.Lucky, Indomitable: gate.Indomitable,
 	}
@@ -285,7 +290,7 @@ func deathRoll(ev actionEvent) *playv1.DiceRoll {
 	}
 	roll := diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, total, ev.Physical)
 	roll.Rerolled = ev.rerolls()
-	return roll
+	return ev.mark(roll)
 }
 
 // deathSaveProto builds the DeathSave an event tells. "Dying" is the master's:

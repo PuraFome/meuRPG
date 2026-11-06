@@ -161,6 +161,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	t.RerollRules = rerollRulesOf(d)
+	t.RollMinimums, t.SpellCriticalRange = rollMinimumsOf(d), spellCriticalRangeOf(d)
 	return t
 }
 
@@ -205,4 +206,21 @@ func rerollRulesOf(d rules.Derived) (rerolls []link.RerollRule) {
 		rerolls = append(rerolls, link.RerollRule{Applies: r.Applies, AtMost: r.AtMost, Resource: r.Resource, Cost: r.Cost, Source: r.Source})
 	}
 	return rerolls
+}
+
+// rollMinimumsOf are the lowest values a die counts as that the character's table features give.
+func rollMinimumsOf(d rules.Derived) (minimums []link.RollMinimum) {
+	for _, m := range d.RollMinimums {
+		minimums = append(minimums, link.RollMinimum{Applies: m.Applies, Value: m.Value, DamageType: m.DamageType, Source: m.Source})
+	}
+	return minimums
+}
+
+// spellCriticalRangeOf is the character's critical range for a spell attack roll; 0 (the default, 20) when
+// nothing lowers it, like Sheet.CriticalRange of a basic sheet.
+func spellCriticalRangeOf(d rules.Derived) int {
+	if d.SpellCriticalRange >= rules.MaxCriticalRange {
+		return 0
+	}
+	return d.SpellCriticalRange
 }

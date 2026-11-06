@@ -1031,6 +1031,7 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 		out.AttackRoll = diceRoll(2, 20, pairOf(e.ev.D20, e.ev.D20B, e.ev.Counted), e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		out.AttackRoll.CountedIndex = e.ev.Counted
 	}
+	e.ev.mark(out.AttackRoll)
 	out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.BonusDice = bonusDiceOf(e.ev)
@@ -1261,6 +1262,7 @@ func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv
 	r := d.roll
 	if v.master || v.owns(caster) { // the caster's dice, as for an attack's damage
 		out.Roll = diceRoll(r.DiceCount, r.DiceSides, r.Faces, r.Modifier, r.Total, r.Physical)
+		out.Roll.CountedDice = countedProto(r.CountedDice) // with the faces: the roller's and the master's
 	}
 	if d.applied != nil { // the master's apply of a character's damage
 		d.viewApplied(out, v, target)
@@ -1339,6 +1341,7 @@ func (e *logEntry) damage(dice, master, targetsOwn, showDC bool, out *playv1.Com
 	if dice {
 		d.ExtraDiceCount, d.ExtraDiceNamePt = e.dmg.ExtraDice, extraDiceName(e.dmg.ExtraDice, e.dmg.SavageDice)
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
+		d.Roll.CountedDice = countedProto(e.dmg.CountedDice)
 	}
 	if e.applied != nil { // the master's apply of a character's damage
 		e.damageApplied(d, master, targetsOwn, showDC)

@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -39,6 +40,8 @@ type resistOffer struct {
 	D20   int32  `json:"d20,omitempty"`
 	Total int32  `json:"total,omitempty"`
 	DC    int32  `json:"dc,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it.
+	countedRoll
 }
 
 // keptSave is a target's saving throw as the hold keeps it: every number the replay needs to land the very
@@ -230,7 +233,7 @@ func (f *castFlow) offerResistance(ctx context.Context) error {
 		}
 		held = append(held, h.Target)
 		if !h.Save.Saved {
-			offers = append(offers, resistOffer{Who: h.Target, D20: h.Save.D20, Total: h.Save.Total, DC: h.Save.DC})
+			offers = append(offers, resistOffer{Who: h.Target, D20: h.Save.D20, Total: h.Save.Total, DC: h.Save.DC, countedRoll: h.Save.countedRoll})
 		}
 	}
 	if len(held) == 0 {
@@ -269,11 +272,13 @@ type savedDice struct {
 // saveDice rolls the dice of a target's saving throw against a spell, or lands the dice the held cast rolled
 // for it: the replay of a window's answer never rolls a save twice.
 func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save, mode combat.RollMode, sheet link.Sheet, effects []effectDie) (savedDice, error) {
+	floor := floorFor(sheet.Traits, rules.RollAppliesSave, false)
 	if k := c.replay.keptSave(target.ID); k != nil {
 		out, ok := keptDice(k, save.Bonus, mode, effects)
 		if !ok {
 			return savedDice{}, errKeptDiceMismatch(target.ID)
 		}
+		out.d20 = floorD20(out.d20, save.Bonus, floor)
 		return out, nil
 	}
 	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
@@ -285,6 +290,7 @@ func (s *Service) saveDice(c *combatTx, target playdb.Combatant, save link.Save,
 	if err != nil {
 		return savedDice{}, err
 	}
+	d20 = floorD20(d20, save.Bonus, floor)
 	// Bênção and Perdição: a d4 on the target's saving throw.
 	extra, extraTotal, err := s.rollEffectDice(rollInput{inApp: true}, effects, nil)
 	if err != nil {
@@ -480,6 +486,10 @@ func (wv *windowView) resistancePrompt(w playdb.ReactionWindow, out *playv1.Reac
 			CombatantId: who.ID, Label: who.Label, D20: o.D20, Total: o.Total, Dc: o.DC,
 			UsesLeft: conv.Int32(usesLeft(profile.ResistancePerDay, spent[spentLegendaryResistance])), UsesPerDay: conv.Int32(profile.ResistancePerDay),
 		})
+		if o.CountedAs != 0 {
+			last := p.Offers[len(p.Offers)-1]
+			last.TreatedAs, last.TreatedAsSource = new(o.CountedAs), legacySource(o.CountedBy)
+		}
 	}
 	out.Prompt = &playv1.ReactionWindow_LegendaryResistance{LegendaryResistance: p}
 	return nil

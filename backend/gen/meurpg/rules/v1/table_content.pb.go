@@ -1050,6 +1050,8 @@ type TableEffect struct {
 	// ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
 	// attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
 	// thrown weapon used at range).
+	// A modifier on "critical_range" uses `applies` for its scope: "weapon" (the default),
+	// "spell" (the attack roll of a spell) or "both".
 	Applies string `protobuf:"bytes,22,opt,name=applies,proto3" json:"applies,omitempty"`
 	Ability string `protobuf:"bytes,23,opt,name=ability,proto3" json:"ability,omitempty"`
 	// ranged_attack (a table feat that makes its owner a sharper shot; the SRD has none):
@@ -1091,6 +1093,8 @@ type TableEffect struct {
 	// `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
 	// "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
 	// unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+	// roll_minimum: `value` is the lowest the die counts as (a literal, 2 to 20), and `damage_type`
+	// limits it to the dice of that type, only when `rolls` is exactly "damage".
 	Dice           string `protobuf:"bytes,44,opt,name=dice,proto3" json:"dice,omitempty"`
 	DiceSides      int32  `protobuf:"varint,45,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
 	DamageType     string `protobuf:"bytes,46,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
@@ -1250,7 +1254,7 @@ type TableEffect struct {
 	// (a level 2 slot counts 2). Both are required.
 	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
 	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
-	// reroll: the rolls it covers, one or more of "attack", "check", "save"
+	// reroll and roll_minimum: the rolls it covers, one or more of "attack", "check", "save"
 	// (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
 	Rolls []string `protobuf:"bytes,77,rep,name=rolls,proto3" json:"rolls,omitempty"`
 	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
