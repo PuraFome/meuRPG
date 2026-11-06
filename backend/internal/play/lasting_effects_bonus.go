@@ -20,7 +20,7 @@ func rollBonusesOf(states map[string][]playdb.CombatantState, id, applies string
 	var out []effectBonus
 	for _, st := range effectsOn(states, id) {
 		if n := combat.RollBonus(effectModifiers(st), applies); n != 0 {
-			out = append(out, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+			out = append(out, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible, OwnerOnly: st.Audience == audienceOwner})
 		}
 	}
 	return out
@@ -42,12 +42,13 @@ func withRollBonus(save link.Save, states map[string][]playdb.CombatantState, id
 }
 
 // bonusSources writes the bonuses as sources of the roll ("Bênção +1"). What an effect the master
-// hides gives reads "Outra fonte" to a player; the master reads the name.
-func bonusSources(bonuses []effectBonus, names func(string) string, master bool) []*playv1.AdvantageSource {
+// hides, or that only the creature's player reads when the reader is not that player (owns), gives
+// "Outra fonte" to a player; the master reads the name.
+func bonusSources(bonuses []effectBonus, names func(string) string, master, owns bool) []*playv1.AdvantageSource {
 	var out []*playv1.AdvantageSource
 	for _, b := range bonuses {
 		name := names(b.Key)
-		if b.Hidden && !master {
+		if (b.Hidden || (b.OwnerOnly && !owns)) && !master {
 			name = "Outra fonte"
 		}
 		out = append(out, &playv1.AdvantageSource{

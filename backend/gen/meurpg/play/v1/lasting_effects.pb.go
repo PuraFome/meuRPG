@@ -250,7 +250,7 @@ func (EffectModifierKind) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{2}
 }
 
-// EffectRollKind is a roll an effect's die touches.
+// EffectRollKind is a roll an effect's die or flat bonus (ROLL_DIE, ROLL_BONUS) touches.
 type EffectRollKind int32
 
 const (
@@ -515,13 +515,14 @@ type EffectModifier struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  EffectModifierKind     `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.play.v1.EffectModifierKind" json:"kind,omitempty"`
 	// ROLL_DIE: the faces of the die (4: a d4), its sign (1 or -1) and the rolls it
-	// touches.
+	// touches. ROLL_BONUS reads applies_to too.
 	Die       int32            `protobuf:"varint,2,opt,name=die,proto3" json:"die,omitempty"`
 	Sign      int32            `protobuf:"varint,3,opt,name=sign,proto3" json:"sign,omitempty"`
 	AppliesTo []EffectRollKind `protobuf:"varint,4,rep,packed,name=applies_to,json=appliesTo,proto3,enum=meurpg.play.v1.EffectRollKind" json:"applies_to,omitempty"`
-	// AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent.
+	// AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent. ROLL_BONUS: the flat bonus, negative for a
+	// penalty. TEMP_HP: the temporary hit points. Clamped to -1000..1000.
 	Value int32 `protobuf:"varint,5,opt,name=value,proto3" json:"value,omitempty"`
-	// SAVE_ADVANTAGE: the abilities ("dex").
+	// SAVE_ADVANTAGE, CHECK_ADVANTAGE, SAVE_DISADVANTAGE and CHECK_DISADVANTAGE: the abilities ("dex").
 	Abilities []string `protobuf:"bytes,6,rep,name=abilities,proto3" json:"abilities,omitempty"`
 	// EXTRA_ACTION: the standard actions it may be ("attack", "dash"...) and how many
 	// weapon attacks it makes.

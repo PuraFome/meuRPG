@@ -193,7 +193,6 @@ func oneMod(m EffectModifier) func(*TableSpell) {
 
 func TestTableSpellEffectOldKindsThroughWith(t *testing.T) {
 	t.Parallel()
-	atk := []string{RollAppliesAttack}
 	cases := []struct {
 		name  string
 		ok    EffectModifier

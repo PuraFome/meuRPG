@@ -538,7 +538,8 @@ func (TableEffectAudience) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{7}
 }
 
-// TableEffectModifierKind is what one modifier of a table spell's effect does. The fields each kind reads are
+// TableEffectModifierKind is what one modifier of a table spell's effect does. The set is closed: a condition goes
+// in the effect's `conditions`, not in a modifier. The fields each kind reads are
 // on TableEffectModifier. The SRD's base armor class and extra action are not offered: the engine works them
 // out itself, and a table spell cannot take its value from the caster or ask the caster to choose.
 type TableEffectModifierKind int32
@@ -561,16 +562,6 @@ const (
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE TableEffectModifierKind = 7
 	// Disadvantage on the creature's attack rolls. It reads no other field.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE TableEffectModifierKind = 8
-	// Immunity to the SRD `conditions`.
-	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY TableEffectModifierKind = 9
-	// The creature cannot move.
-	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_NO_MOVE TableEffectModifierKind = 10
-	// The creature cannot take actions.
-	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_NO_ACTION TableEffectModifierKind = 11
-	// The creature cannot take reactions.
-	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_NO_REACTION TableEffectModifierKind = 12
-	// `value` temporary hit points at the start of each of the creature's turns, 1 to 1000.
-	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP TableEffectModifierKind = 13
 	// Adds a flat `value` (-20 to 20, not 0) to the rolls of `applies_to`. Needs value and applies_to.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS TableEffectModifierKind = 14
 	// `value` temporary hit points when the effect lands, 1 to 1000.
@@ -597,11 +588,6 @@ var (
 		6:  "TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE",
 		7:  "TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE",
 		8:  "TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE",
-		9:  "TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY",
-		10: "TABLE_EFFECT_MODIFIER_KIND_NO_MOVE",
-		11: "TABLE_EFFECT_MODIFIER_KIND_NO_ACTION",
-		12: "TABLE_EFFECT_MODIFIER_KIND_NO_REACTION",
-		13: "TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP",
 		14: "TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS",
 		15: "TABLE_EFFECT_MODIFIER_KIND_TEMP_HP",
 		16: "TABLE_EFFECT_MODIFIER_KIND_RESISTANCE",
@@ -619,11 +605,6 @@ var (
 		"TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE":      6,
 		"TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE":     7,
 		"TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE": 8,
-		"TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY":  9,
-		"TABLE_EFFECT_MODIFIER_KIND_NO_MOVE":             10,
-		"TABLE_EFFECT_MODIFIER_KIND_NO_ACTION":           11,
-		"TABLE_EFFECT_MODIFIER_KIND_NO_REACTION":         12,
-		"TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP":        13,
 		"TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS":          14,
 		"TABLE_EFFECT_MODIFIER_KIND_TEMP_HP":             15,
 		"TABLE_EFFECT_MODIFIER_KIND_RESISTANCE":          16,
@@ -5000,7 +4981,7 @@ type TableEffectModifier struct {
 	Die int32 `protobuf:"varint,2,opt,name=die,proto3" json:"die,omitempty"`
 	// 1 adds the die, -1 subtracts it (ROLL_DIE).
 	Sign int32 `protobuf:"varint,3,opt,name=sign,proto3" json:"sign,omitempty"`
-	// The number of AC_BONUS, SPEED_ADD, SPEED_MULTIPLIER, CHECK_BONUS, ROLL_BONUS, TURN_TEMP_HP and TEMP_HP;
+	// The number of AC_BONUS, SPEED_ADD, SPEED_MULTIPLIER, CHECK_BONUS, ROLL_BONUS and TEMP_HP;
 	// each kind has its own range (see the kinds).
 	Value int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// The rolls ROLL_DIE and ROLL_BONUS reach: at least one, each once.
@@ -8752,7 +8733,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x13TableEffectAudience\x12%\n" +
 	"!TABLE_EFFECT_AUDIENCE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cTABLE_EFFECT_AUDIENCE_PUBLIC\x10\x01\x12\x1f\n" +
-	"\x1bTABLE_EFFECT_AUDIENCE_OWNER\x10\x02*\xa3\a\n" +
+	"\x1bTABLE_EFFECT_AUDIENCE_OWNER\x10\x02*\xad\a\n" +
 	"\x17TableEffectModifierKind\x12*\n" +
 	"&TABLE_EFFECT_MODIFIER_KIND_UNSPECIFIED\x10\x00\x12'\n" +
 	"#TABLE_EFFECT_MODIFIER_KIND_ROLL_DIE\x10\x01\x12'\n" +
@@ -8762,19 +8743,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"&TABLE_EFFECT_MODIFIER_KIND_CHECK_BONUS\x10\x05\x12-\n" +
 	")TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE\x10\x06\x12.\n" +
 	"*TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE\x10\a\x122\n" +
-	".TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE\x10\b\x121\n" +
-	"-TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY\x10\t\x12&\n" +
-	"\"TABLE_EFFECT_MODIFIER_KIND_NO_MOVE\x10\n" +
-	"\x12(\n" +
-	"$TABLE_EFFECT_MODIFIER_KIND_NO_ACTION\x10\v\x12*\n" +
-	"&TABLE_EFFECT_MODIFIER_KIND_NO_REACTION\x10\f\x12+\n" +
-	"'TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP\x10\r\x12)\n" +
+	".TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE\x10\b\x12)\n" +
 	"%TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS\x10\x0e\x12&\n" +
 	"\"TABLE_EFFECT_MODIFIER_KIND_TEMP_HP\x10\x0f\x12)\n" +
 	"%TABLE_EFFECT_MODIFIER_KIND_RESISTANCE\x10\x10\x12/\n" +
 	"+TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE\x10\x11\x120\n" +
 	",TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE\x10\x12\x121\n" +
-	"-TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE\x10\x13*\xa3\x01\n" +
+	"-TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE\x10\x13\"\x04\b\t\x10\t\"\x04\b\n" +
+	"\x10\n" +
+	"\"\x04\b\v\x10\v\"\x04\b\f\x10\f\"\x04\b\r\x10\r*-TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY*\"TABLE_EFFECT_MODIFIER_KIND_NO_MOVE*$TABLE_EFFECT_MODIFIER_KIND_NO_ACTION*&TABLE_EFFECT_MODIFIER_KIND_NO_REACTION*'TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP*\xa3\x01\n" +
 	"\x13TableEffectRollKind\x12&\n" +
 	"\"TABLE_EFFECT_ROLL_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTABLE_EFFECT_ROLL_KIND_ATTACK\x10\x01\x12\x1f\n" +

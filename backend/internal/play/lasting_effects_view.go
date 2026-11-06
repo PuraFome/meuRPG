@@ -340,7 +340,7 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 // cardNotes puts the tags, how to break free and what the effect changes on its card.
 func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantState, def *rules.EffectDef) {
 	if def != nil {
-		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(effectModifiers(f))...), spentTagsPT(f)...)
+		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
 		out.BreakFreeAbility = def.BreakFree
 	}
 	for _, k := range f.ConditionKeys {
@@ -348,7 +348,7 @@ func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantS
 			out.ChangesPt = append(out.ChangesPt, info.ChangesPT...)
 		}
 	}
-	out.ChangesPt = append(out.ChangesPt, narratedNotesPT(effectModifiers(f))...)
+	out.ChangesPt = append(out.ChangesPt, narratedNotesPT(conv.OrZero(f.SourceKey), effectModifiers(f))...)
 }
 
 // originOf says whose it is, without naming a caster the viewer does not see.
@@ -548,7 +548,10 @@ var abilityPT = map[string]string{"str": "Força", "dex": "Destreza", "con": "Co
 
 // modifierTagsPT are the tags the modifiers of an effect add to the file's: the ability an
 // Aprimorar Habilidade was cast for.
-func modifierTagsPT(mods []rules.EffectModifier) []string {
+func modifierTagsPT(key string, mods []rules.EffectModifier) []string {
+	if isTableKey(key) {
+		return nil // a table spell's tags already name the abilities (EffectTagsPT)
+	}
 	var out []string
 	for _, m := range mods {
 		if m.Kind != rules.ModifierCheckAdvantage {
@@ -582,7 +585,10 @@ var enhanceNotesPT = map[string]string{
 }
 
 // narratedNotesPT are the lines of what the effect gives that the table plays by narration.
-func narratedNotesPT(mods []rules.EffectModifier) []string {
+func narratedNotesPT(key string, mods []rules.EffectModifier) []string {
+	if isTableKey(key) {
+		return nil // the notes are the SRD spell's own
+	}
 	var out []string
 	for _, m := range mods {
 		if m.Kind != rules.ModifierCheckAdvantage {
@@ -596,3 +602,6 @@ func narratedNotesPT(mods []rules.EffectModifier) []string {
 	}
 	return out
 }
+
+// isTableKey says the key is a spell, option or other entry the table wrote ("...@mesa").
+func isTableKey(key string) bool { return strings.HasSuffix(key, "@mesa") }

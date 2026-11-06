@@ -11,6 +11,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The effect of a table spell when it is cast (RN-22, #579): who gets it, the temporary hit points and the armor
@@ -569,4 +571,118 @@ func TestATableSpellRecastKeepsTheClaimOnTheTempHP(t *testing.T) {
 			t.Errorf("temporary hit points = %d after the end, want 0", v.GetHitPointsTemporary())
 		}
 	})
+}
+
+// RN-10: a bonus of an effect only the creature's player reads (the table spell's default) is not named in the
+// save the caster's player is answered (it reads "Outra fonte" or nothing), and the master reads the spell.
+func TestATableSpellOwnerOnlyBonusIsOutraFonteInAnotherPlayersSave(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		who      string
+		master   bool
+		wantName bool
+	}{{"caster's player", false, false}, {"master", true, true}} {
+		t.Run(c.who, func(t *testing.T) {
+			t.Parallel()
+			a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) {
+				s.Effect.Visibility = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER
+			},
+				&tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
+					AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE)})
+			e := a.markOn(t, "Toren")
+			a.passTo(t, e, "Brisa")
+			a.h.roller.queue(11)
+			u := a.bia
+			if c.master {
+				u = a.master
+			}
+			cast := a.mustCast(t, u, e, "Brisa", sacredFlame, nil, a.at(t, "Toren"), noCastRoll)
+			texts := sourceTextsOf(cast.GetCast().GetTargets()[0].GetSave().GetSources())
+			if got := strings.Contains(texts, "Marca de Nanquim"); got != c.wantName {
+				t.Errorf("sources = %q, names the spell = %v, want %v", texts, got, c.wantName)
+			}
+			if c.wantName && !strings.Contains(texts, "+13") {
+				t.Errorf("sources = %q, want the +13", texts)
+			}
+		})
+	}
+}
+
+// RN-10: out of a combat, another player reads the label of a public effect on a character, never its numbers.
+func TestATableSpellCharacterEffectDoesNotLeakItsNumbersOutsideACombat(t *testing.T) {
+	t.Parallel()
+	a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) { s.Effect.PlayerLabelPt = "Marcado" },
+		&tableMod{Kind: modTemp, Value: 77},
+		&tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS, Value: 13,
+			AppliesTo: rollKinds(rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK)})
+	a.mustCastOut(t, a.ana, a.pens, tableMark, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
+	read := func(u *user) *playv1.CharacterEffect {
+		res, err := u.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: a.campaignID}))
+		if err != nil {
+			t.Fatalf("ListCharacterEffects() error = %v", err)
+		}
+		for _, f := range res.Msg.GetEffects() {
+			if f.GetCharacterId() == a.toren.GetId() {
+				return f
+			}
+		}
+		return nil
+	}
+	for name, u := range map[string]*user{"master": a.master, "owner": a.caio} {
+		f := read(u)
+		if f == nil || !strings.Contains(strings.Join(f.GetTagsPt(), " "), "77") || !strings.Contains(strings.Join(f.GetTagsPt(), " "), "13") {
+			t.Errorf("%s reads %v, want the numbers", name, f)
+		}
+	}
+	f := read(a.bia)
+	if f == nil {
+		t.Fatal("another player does not read the public effect at all")
+	}
+	if got := strings.Join(f.GetTagsPt(), " "); got != "Marcado" {
+		t.Errorf("another player reads the tags %q, want only the label", got)
+	}
+}
+
+// RN-10: a table effect whose caster the viewer cannot see names no caster to that viewer. A player's combatant is
+// never hidden, so no fixture can make the table spell's caster unseen; the builders of the card's origin and clock
+// are read directly with a table-spell row.
+func TestATableSpellEffectOfAnUnseenCasterNamesNoCaster(t *testing.T) {
+	t.Parallel()
+	caster := playdb.Combatant{ID: "c1", Label: "Pensantus"}
+	kind, rounds, source := "spell", rules.EffectDurationRounds, tableMark
+	row := playdb.CombatantState{SourceKind: &kind, SourceKey: &source, SourceID: &caster.ID, DurationKind: &rounds}
+	end := int32(11)
+	row.EndsRound, row.EndsCombatantID = &end, &caster.ID
+	names := func(k string) string { return "Marca de Nanquim" }
+	player := &effectViewer{v: combatViewer{}, d: &encounterData{}, names: names, byID: map[string]playdb.Combatant{caster.ID: caster}}
+	master := &effectViewer{v: combatViewer{master: true}, d: &encounterData{}, names: names, byID: map[string]playdb.Combatant{caster.ID: caster}}
+	if got := player.originOf(row, caster, false); strings.Contains(got, "Pensantus") {
+		t.Errorf("origin for a player = %q, names the caster", got)
+	}
+	if got := player.clockText(row, caster, false); strings.Contains(got, "Pensantus") {
+		t.Errorf("clock for a player = %q, names the caster", got)
+	}
+	if got := master.originOf(row, caster, true); !strings.Contains(got, "Pensantus") {
+		t.Errorf("origin for the master = %q, want the caster", got)
+	}
+}
+
+// The card of a table spell's check_advantage names the ability once, and carries none of the SRD's notes.
+func TestATableSpellCheckAdvantageIsTaggedOnce(t *testing.T) {
+	t.Parallel()
+	a := newMarkCasters(t, &tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE, Abilities: []string{"str"}})
+	e := a.markOn(t, "Toren")
+	card := cardOf(t, byLabel(t, a.get(t, a.master), "Toren"), tableMark)
+	if card == nil {
+		t.Fatalf("no card on Toren in %v", e)
+	}
+	n := 0
+	for _, tag := range card.GetTagsPt() {
+		if strings.HasPrefix(tag, "Vantagem em testes") {
+			n++
+		}
+	}
+	if n != 1 || len(card.GetChangesPt()) != 0 && strings.Contains(strings.Join(card.GetChangesPt(), " "), "Touro") {
+		t.Errorf("tags %q, changes %q; want one tag and no SRD note", card.GetTagsPt(), card.GetChangesPt())
+	}
 }

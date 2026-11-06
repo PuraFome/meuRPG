@@ -394,9 +394,6 @@ func TestResistancesAndTheirKinds(t *testing.T) {
 func TestAdvantageAndDisadvantageFromModifiers(t *testing.T) {
 	t.Parallel()
 	attack := []rules.EffectModifier{{Kind: rules.ModifierAttackAdvantage}}
-	save := []rules.EffectModifier{{Kind: rules.ModifierSaveDisadvantage, Abilities: []string{"wis", "cha"}}}
-	check := []rules.EffectModifier{{Kind: rules.ModifierCheckDisadvantage, Abilities: []string{"str"}}}
-	// Advantage and the disadvantage kinds do not stand in for one another.
 	wrong := []rules.EffectModifier{
 		{Kind: rules.ModifierSaveAdvantage, Abilities: []string{"wis", "str"}},
 		{Kind: rules.ModifierCheckAdvantage, Abilities: []string{"wis", "str"}},
@@ -404,20 +401,5 @@ func TestAdvantageAndDisadvantageFromModifiers(t *testing.T) {
 	}
 	if !HasAttackAdvantage(attack) || HasAttackAdvantage(nil) || HasAttackAdvantage(wrong) {
 		t.Error("HasAttackAdvantage")
-	}
-	for _, tt := range []struct {
-		ability string
-		save    bool
-		check   bool
-	}{{"wis", true, false}, {"cha", true, false}, {"str", false, true}, {"dex", false, false}} {
-		if got := SaveDisadvantage(save, tt.ability); got != tt.save {
-			t.Errorf("SaveDisadvantage(%s) = %v", tt.ability, got)
-		}
-		if got := HasCheckDisadvantage(check, tt.ability); got != tt.check {
-			t.Errorf("HasCheckDisadvantage(%s) = %v", tt.ability, got)
-		}
-		if SaveDisadvantage(wrong, tt.ability) || HasCheckDisadvantage(wrong, tt.ability) {
-			t.Errorf("the advantage kinds count as disadvantage for %s", tt.ability)
-		}
 	}
 }

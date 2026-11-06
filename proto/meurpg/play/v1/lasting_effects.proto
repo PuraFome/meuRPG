@@ -67,7 +67,7 @@ enum EffectModifierKind {
   EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 26;
 }
 
-// EffectRollKind is a roll an effect's die touches.
+// EffectRollKind is a roll an effect's die or flat bonus (ROLL_DIE, ROLL_BONUS) touches.
 enum EffectRollKind {
   EFFECT_ROLL_KIND_UNSPECIFIED = 0;
   EFFECT_ROLL_KIND_ATTACK = 1;
@@ -104,13 +104,14 @@ enum EffectEndScope {
 message EffectModifier {
   EffectModifierKind kind = 1;
   // ROLL_DIE: the faces of the die (4: a d4), its sign (1 or -1) and the rolls it
-  // touches.
+  // touches. ROLL_BONUS reads applies_to too.
   int32 die = 2;
   int32 sign = 3;
   repeated EffectRollKind applies_to = 4;
-  // AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent.
+  // AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent. ROLL_BONUS: the flat bonus, negative for a
+  // penalty. TEMP_HP: the temporary hit points. Clamped to -1000..1000.
   int32 value = 5;
-  // SAVE_ADVANTAGE: the abilities ("dex").
+  // SAVE_ADVANTAGE, CHECK_ADVANTAGE, SAVE_DISADVANTAGE and CHECK_DISADVANTAGE: the abilities ("dex").
   repeated string abilities = 6;
   // EXTRA_ACTION: the standard actions it may be ("attack", "dash"...) and how many
   // weapon attacks it makes.

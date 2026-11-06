@@ -175,7 +175,7 @@ func checkBonusesOf(states map[string][]playdb.CombatantState, combatantID, skil
 			n += combat.CheckBonus(mods, skillKey)
 		}
 		if n != 0 {
-			bonuses = append(bonuses, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+			bonuses = append(bonuses, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible, OwnerOnly: st.Audience == audienceOwner})
 		}
 	}
 	return bonuses

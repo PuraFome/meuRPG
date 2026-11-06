@@ -349,20 +349,6 @@ func HasAttackAdvantage(modifiers []rules.EffectModifier) bool {
 	})
 }
 
-// SaveDisadvantage says the modifiers give disadvantage on a saving throw of the ability.
-func SaveDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
-	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
-		return m.Kind == rules.ModifierSaveDisadvantage && slices.Contains(m.Abilities, ability)
-	})
-}
-
-// HasCheckDisadvantage says the modifiers give disadvantage on an ability check of the ability.
-func HasCheckDisadvantage(modifiers []rules.EffectModifier, ability string) bool {
-	return slices.ContainsFunc(modifiers, func(m rules.EffectModifier) bool {
-		return m.Kind == rules.ModifierCheckDisadvantage && slices.Contains(m.Abilities, ability)
-	})
-}
-
 // EffectResistances are the modifiers the resistance effects among the modifiers make, from the
 // effect source (its key), for the damage steps. nonmagical_bps becomes the three physical types
 // limited to nonmagical attacks.

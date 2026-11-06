@@ -72,7 +72,7 @@ func outsideEffectsOf(rows []playdb.CharacterEffect, skillKey string, check bool
 			n += combat.CheckBonus(mods, skillKey)
 		}
 		if n != 0 {
-			of.bonuses = append(of.bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible})
+			of.bonuses = append(of.bonuses, effectBonus{Key: r.SourceKey, Value: n, Hidden: !r.PlayerVisible, OwnerOnly: r.Audience == audienceOwner})
 		}
 		of.creature.Conditions = append(of.creature.Conditions, r.ConditionKeys...)
 		addAbilityEffects(&of.creature, mods)
@@ -144,7 +144,7 @@ func (s *Service) withEffectDice(in rollInput, typed []int32, cm *checkMode, bon
 // shownCheck writes the sources of a check or a saving throw: the mode's, and each die an
 // effect added ("Bênção +1d4: 3"). What an effect the master hides gives reads "Outra fonte".
 func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSource {
-	out := append(shownSourcesHiding(cm.Sources, names, cm.hide), bonusSources(cm.Bonuses, names, false)...)
+	out := append(shownSourcesHiding(cm.Sources, names, cm.hide), bonusSources(cm.Bonuses, names, false, true)...)
 	return append(out, effectDieSources(cm.Rolled, names, false)...)
 }
 
@@ -172,6 +172,8 @@ type effectBonus struct {
 	Key    string
 	Value  int
 	Hidden bool
+	// OwnerOnly says only the master and the character's player read the effect (RN-10).
+	OwnerOnly bool
 }
 
 // outsideSaveDice are the dice the effects on a character out of a combat add to its saving

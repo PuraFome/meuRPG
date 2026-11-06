@@ -295,7 +295,7 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	for _, src := range shown.Sources {
 		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}
-	out.Shown = append(out.Shown, bonusSources(rollBonusesOf(f.states, attacker.ID, rules.RollAppliesAttack), names, v.master)...)
+	out.Shown = append(out.Shown, bonusSources(rollBonusesOf(f.states, attacker.ID, rules.RollAppliesAttack), names, v.master, true)...)
 	return out
 }
 

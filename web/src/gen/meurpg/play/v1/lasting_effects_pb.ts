@@ -36,7 +36,7 @@ export type EffectModifier = Message<"meurpg.play.v1.EffectModifier"> & {
 
   /**
    * ROLL_DIE: the faces of the die (4: a d4), its sign (1 or -1) and the rolls it
-   * touches.
+   * touches. ROLL_BONUS reads applies_to too.
    *
    * @generated from field: int32 die = 2;
    */
@@ -53,14 +53,15 @@ export type EffectModifier = Message<"meurpg.play.v1.EffectModifier"> & {
   appliesTo: EffectRollKind[];
 
   /**
-   * AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent.
+   * AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent. ROLL_BONUS: the flat bonus, negative for a
+   * penalty. TEMP_HP: the temporary hit points. Clamped to -1000..1000.
    *
    * @generated from field: int32 value = 5;
    */
   value: number;
 
   /**
-   * SAVE_ADVANTAGE: the abilities ("dex").
+   * SAVE_ADVANTAGE, CHECK_ADVANTAGE, SAVE_DISADVANTAGE and CHECK_DISADVANTAGE: the abilities ("dex").
    *
    * @generated from field: repeated string abilities = 6;
    */
@@ -1280,7 +1281,7 @@ export const EffectModifierKindSchema: GenEnum<EffectModifierKind> = /*@__PURE__
   enumDesc(file_meurpg_play_v1_lasting_effects, 2);
 
 /**
- * EffectRollKind is a roll an effect's die touches.
+ * EffectRollKind is a roll an effect's die or flat bonus (ROLL_DIE, ROLL_BONUS) touches.
  *
  * @generated from enum meurpg.play.v1.EffectRollKind
  */

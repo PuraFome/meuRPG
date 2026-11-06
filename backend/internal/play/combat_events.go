@@ -121,13 +121,13 @@ type saveRoll struct {
 	ResistedLeft int32 `json:"resisted_left,omitempty"`
 }
 
-// castHit is what a cast did to one target.
 // claimBack is an effect row and the modifiers it had before another effect took its temporary hit points over.
 type claimBack struct {
 	ID   string          `json:"id"`
 	Mods json.RawMessage `json:"mods"`
 }
 
+// castHit is what a cast did to one target.
 type castHit struct {
 	Target string `json:"target_id"`
 	Darts  int32  `json:"darts,omitempty"`

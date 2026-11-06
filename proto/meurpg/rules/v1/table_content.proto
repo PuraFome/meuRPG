@@ -1081,7 +1081,8 @@ enum TableEffectAudience {
   TABLE_EFFECT_AUDIENCE_OWNER = 2;
 }
 
-// TableEffectModifierKind is what one modifier of a table spell's effect does. The fields each kind reads are
+// TableEffectModifierKind is what one modifier of a table spell's effect does. The set is closed: a condition goes
+// in the effect's `conditions`, not in a modifier. The fields each kind reads are
 // on TableEffectModifier. The SRD's base armor class and extra action are not offered: the engine works them
 // out itself, and a table spell cannot take its value from the caster or ask the caster to choose.
 enum TableEffectModifierKind {
@@ -1146,7 +1147,7 @@ message TableEffectModifier {
   int32 die = 2;
   // 1 adds the die, -1 subtracts it (ROLL_DIE).
   int32 sign = 3;
-  // The number of AC_BONUS, SPEED_ADD, SPEED_MULTIPLIER, CHECK_BONUS, ROLL_BONUS, TURN_TEMP_HP and TEMP_HP;
+  // The number of AC_BONUS, SPEED_ADD, SPEED_MULTIPLIER, CHECK_BONUS, ROLL_BONUS and TEMP_HP;
   // each kind has its own range (see the kinds).
   int32 value = 4;
   // The rolls ROLL_DIE and ROLL_BONUS reach: at least one, each once.

@@ -658,8 +658,8 @@ var modifierChecks = map[string]func(m EffectModifier) error{
 	ModifierRollBonus:         checkRollBonus,
 	ModifierTempHP:            checkTempHP,
 	ModifierResistance:        checkResistanceModifier,
-	ModifierSaveDisadvantage:  checkSaveDisadvantage,
-	ModifierCheckDisadvantage: checkCheckDisadvantage,
+	ModifierSaveDisadvantage:  checkAbilityDisadvantage,
+	ModifierCheckDisadvantage: checkAbilityDisadvantage,
 }
 
 // checkModifier checks one modifier's fields against its kind.
@@ -722,16 +722,10 @@ func checkResistanceModifier(m EffectModifier) error {
 	return nil
 }
 
-func checkSaveDisadvantage(m EffectModifier) error {
+// checkAbilityDisadvantage is the check of save_disadvantage and check_disadvantage: the abilities it holds for.
+func checkAbilityDisadvantage(m EffectModifier) error {
 	if len(m.Abilities) == 0 {
-		return modifierField("abilities", "save_disadvantage needs abilities")
-	}
-	return checkModifierAbilities(m.Abilities)
-}
-
-func checkCheckDisadvantage(m EffectModifier) error {
-	if len(m.Abilities) == 0 {
-		return modifierField("abilities", "check_disadvantage needs abilities")
+		return modifierField("abilities", "%s needs abilities", m.Kind)
 	}
 	return checkModifierAbilities(m.Abilities)
 }
