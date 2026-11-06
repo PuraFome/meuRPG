@@ -1756,7 +1756,9 @@ message EffectMenuList {
   // "abilities" (the six abilities, for an ability_increase's `from`),
   // "ability_increase_amounts" (its `value`: "1" or "2"), "state_ends" (a state's
   // `ends_on`), "state_economies" (its `economy`), "weapon_filters" (a weapon_rule's
-  // `weapon`) or "weapon_kinds" (a pseudo_weapon's).
+  // `weapon`), "weapon_kinds" (a pseudo_weapon's) or "lackable_features" (the SRD
+  // features, traits and feats a feat's `prerequisite.lacks_feature_key` may name; `hint_pt` is where
+  // each comes from, and the table's own entries are not in it).
   string name = 1;
   repeated EffectMenuValue values = 2;
 }

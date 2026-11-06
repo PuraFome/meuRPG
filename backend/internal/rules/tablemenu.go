@@ -156,6 +156,9 @@ const (
 	ListStateEconomies = "state_economies"
 	ListWeaponFilters  = "weapon_filters"
 	ListWeaponKinds    = "weapon_kinds"
+	// ListLackableFeatures are the SRD features, traits and feats a feat's `prerequisite.lacks_feature_key`
+	// may name besides the table's own, which the editor already holds.
+	ListLackableFeatures = "lackable_features"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -679,7 +682,45 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListStateEconomies, Values: namedMenu(stateEconomies, func(k string) string { return economyNms[k] })},
 		{Name: ListWeaponFilters, Values: namedMenuHint(weaponFilters, weaponFilterNms)},
 		{Name: ListWeaponKinds, Values: namedMenuHint(weaponKinds, weaponFilterNms)},
+		{Name: ListLackableFeatures, Values: c.menuLackableFeatures()},
 	}
+}
+
+// menuLackableFeatures are the SRD keys isFeatureKey accepts in a feat's lacks_feature: the class and
+// subclass features, the racial traits, the background features and the feats, by Portuguese name. The
+// table's entries (keys ending in "@mesa") are left out, and each value's hint says where it comes from.
+func (c *content) menuLackableFeatures() []MenuValue {
+	var out []MenuValue
+	add := func(key, hint string) {
+		out = append(out, MenuValue{Key: key, NamePT: c.namePT(key), HintPT: hint})
+	}
+	for _, k := range sortedKeys(c.features) {
+		if isTableKey(k) {
+			continue
+		}
+		hint := c.namePT(c.features[k].Class)
+		if n := c.features[k].Level; n > 0 {
+			hint += fmt.Sprintf(", nível %d", n)
+		}
+		add(k, hint)
+	}
+	for _, k := range sortedKeys(c.traits) {
+		if !isTableKey(k) {
+			add(k, "traço do SRD")
+		}
+	}
+	for _, k := range sortedKeys(c.backgrounds) {
+		if f := c.backgrounds[k].Feature.Key; f != "" && !isTableKey(k) {
+			add(f, "antecedente do SRD")
+		}
+	}
+	for _, k := range sortedKeys(c.feats) {
+		if !isTableKey(k) {
+			add(k, "talento do SRD")
+		}
+	}
+	sortMenuByName(out)
+	return out
 }
 
 // menuGrantAbilities are the casting abilities of a granted spell, and the pick the player makes.

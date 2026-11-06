@@ -7346,7 +7346,9 @@ type EffectMenuList struct {
 	// "abilities" (the six abilities, for an ability_increase's `from`),
 	// "ability_increase_amounts" (its `value`: "1" or "2"), "state_ends" (a state's
 	// `ends_on`), "state_economies" (its `economy`), "weapon_filters" (a weapon_rule's
-	// `weapon`) or "weapon_kinds" (a pseudo_weapon's).
+	// `weapon`), "weapon_kinds" (a pseudo_weapon's) or "lackable_features" (the SRD
+	// features, traits and feats a feat's `prerequisite.lacks_feature_key` may name; `hint_pt` is where
+	// each comes from, and the table's own entries are not in it).
 	Name          string             `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Values        []*EffectMenuValue `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields

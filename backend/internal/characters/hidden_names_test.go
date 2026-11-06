@@ -111,6 +111,16 @@ func TestAPlayersLevelUpOptionsNameNoHiddenEntry(t *testing.T) {
 		t.Errorf("the feat of the hidden race: player %v, master %v; want the master's only", optionOf(player, tb.onlyHidden), optionOf(master, tb.onlyHidden))
 	}
 	wantNames(t, "the player's options", player, false, onlyHiddenName, tb.onlyHidden)
+	// The condition on a hidden feat or trait reads as hidden to the player (no key, no name) and as itself to the master.
+	for _, tc := range []struct{ name, key, feature string }{{"hidden feat", tb.lacksFeat, tb.feat}, {"hidden trait", tb.lacksTrait, tb.trait}} {
+		got, control := optionOf(player, tc.key), optionOf(master, tc.key)
+		if got.GetPrerequisite().GetLacksFeatureKey() != "" || got.GetLacksFeatureNamePt() != "" || !got.GetLacksFeatureHidden() {
+			t.Errorf("%s: the player's option = key %q name %q hidden %v, want empty and hidden", tc.name, got.GetPrerequisite().GetLacksFeatureKey(), got.GetLacksFeatureNamePt(), got.GetLacksFeatureHidden())
+		}
+		if control.GetPrerequisite().GetLacksFeatureKey() != tc.feature || control.GetLacksFeatureNamePt() == "" || control.GetLacksFeatureHidden() {
+			t.Errorf("%s: the master's option = key %q name %q hidden %v, want the key and the name, not hidden", tc.name, control.GetPrerequisite().GetLacksFeatureKey(), control.GetLacksFeatureNamePt(), control.GetLacksFeatureHidden())
+		}
+	}
 	if got := optionOf(player, tb.mixed).GetPrerequisite().GetRaces(); len(got) != 1 {
 		t.Errorf("the mixed feat's races for the player = %v, want only the visible one", got)
 	}

@@ -563,3 +563,46 @@ func TestEffectMenuNamesArePortuguese(t *testing.T) {
 		t.Errorf("%d menu values with no Portuguese name: %v", len(missing), sortedKeys(missing))
 	}
 }
+
+// TestLackableFeaturesAreTheSRDKeysAFeatMayName: the list holds exactly the SRD keys a feat's
+// lacks_feature accepts (each one passes isFeatureKey), by name, with where each comes from, and a
+// table entry never appears in it.
+func TestLackableFeaturesAreTheSRDKeysAFeatMayName(t *testing.T) {
+	overlay := Overlay{Revision: 1, Feats: []TableFeat{{
+		TableEntry: TableEntry{Key: "feat:livre" + tableSuffix, NamePT: "Livre"}, DescPT: []string{"Texto."},
+	}}}
+	for name, c := range map[string]*Content{"srd": loadForTest(t), "with a table feat": withOverlay(t, overlay)} {
+		t.Run(name, func(t *testing.T) {
+			values := menuList(t, c.EffectMenu(), ListLackableFeatures)
+			if len(values) < 300 {
+				t.Fatalf("the list has %d values, want the SRD's features, traits and feats", len(values))
+			}
+			byKey := map[string]MenuValue{}
+			for _, v := range values {
+				byKey[v.Key] = v
+				if !c.c.isFeatureKey(v.Key) || isTableKey(v.Key) || v.NamePT == "" || v.HintPT == "" {
+					t.Errorf("value %+v: want an SRD key isFeatureKey accepts, a name and an origin", v)
+				}
+			}
+			if len(byKey) != len(values) {
+				t.Errorf("the list has %d values for %d keys", len(values), len(byKey))
+			}
+			for key, hint := range map[string]string{
+				"feature:stunning-strike": "Monge, nível 5", "feat:grappler": "talento do SRD",
+			} {
+				if got := byKey[key].HintPT; got != hint {
+					t.Errorf("hint of %s = %q, want %q", key, got, hint)
+				}
+			}
+			for key := range c.c.traits {
+				if !isTableKey(key) && byKey[key].HintPT != "traço do SRD" {
+					t.Errorf("trait %s: hint = %q, want %q", key, byKey[key].HintPT, "traço do SRD")
+					break
+				}
+			}
+			if _, ok := byKey["feat:livre"+tableSuffix]; ok {
+				t.Error("the list names a table feat")
+			}
+		})
+	}
+}
