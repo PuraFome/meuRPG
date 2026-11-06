@@ -1008,12 +1008,12 @@ type Attack struct {
 	// immunities to nonmagical attacks: true for a spell, and for a creature's
 	// weapon attack when its stat block has the trait "Magic Weapons"; for a weapon of
 	// a character, when the sheet's mark or a weapon_rule says so (weaponMarks), and for
-	// the unarmed strike with Ki-Empowered Strikes.
+	// the unarmed strike, when a weapon_rule says so or it has Ki-Empowered Strikes.
 	Magical bool `json:",omitempty"`
 	// Silvered and Adamantine say the attack's weapon is of that material, for the
 	// resistances and immunities to nonmagical attacks that exempt it. A character's
-	// weapon has them from the sheet's mark or a weapon_rule (weaponMarks); a creature's
-	// attack has neither.
+	// weapon has them from the sheet's mark or a weapon_rule (weaponMarks), and the unarmed
+	// strike from a weapon_rule; a creature's attack has neither.
 	Silvered   bool `json:",omitempty"`
 	Adamantine bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in

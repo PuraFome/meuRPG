@@ -94,7 +94,16 @@ The master can also correct hit points, temporary hit points, spell slots (and p
 - **Who reads what.** A player reads the numbers of their own character only. The master reads everyone's.
 - **Values last** from one session to the next. The maximums come from the sheet, and a character whose hit points were never set is at full hit points whatever the maximum becomes.
 - **Damage.** Temporary hit points go first, and hit points stop at 0 (RN-03).
-  - On an NPC, a monster or a character's creature the damage lands at once, after resistances, vulnerabilities and immunities of its SRD creature (immunity makes it 0, resistance halves it rounded down, vulnerability doubles it). A resistance or immunity "from nonmagical attacks" applies to an attack that is not magical, and not to a spell, to an attack of a creature whose weapon attacks are magical, or to damage that is no attack (a trap, a zone, a burning effect). A weapon of a character is not magical, and neither is an unarmed strike, except a monk's from level 6 (Ki-Empowered Strikes, also as a multiclass monk): it counts as magical for these resistances and immunities and for nothing else, with no bonus to hit or damage, and not for a monk weapon. An entry that also names a material (silvered, adamantine) is not applied, because an attack carries no material: the master corrects the hit points by hand.
+  - On an NPC, a monster or a character's creature the damage lands at once, after resistances, vulnerabilities and immunities of its SRD creature (immunity makes it 0, resistance halves it rounded down, vulnerability doubles it).
+    A resistance or immunity "from nonmagical attacks" applies to an attack that is not magical.
+    It does not apply to a spell, to an attack of a creature whose weapon attacks are magical, or to damage that is no attack (a trap, a zone, a burning effect).
+    A character's weapon is nonmagical unless the sheet or a weapon rule marks it magical, silvered or adamantine.
+    The three qualifiers of a stat block (nonmagical, except silvered, except adamantine) are applied by the weapon's material.
+    Only the Ki-Empowered unarmed strike (monk from level 6, also as a multiclass monk) is magical without a mark.
+    That magic counts for these resistances and immunities and for nothing else: no bonus to hit or damage, and not for a monk weapon.
+    The marks are written through the sheet API and by the weapon rule effect of a table feature, which marks the weapons its filter picks and the unarmed strike.
+    The sheet form has no control for the marks yet.
+    The master's log names the reason ("Resistência a perfurante de ataque não mágico nem prateado"). The player sees only the damage.
   - On a player character the rolled damage **waits for the master**, who applies it ("Aplicar 5 de dano") or discards it ("Não aplicar"). The master may apply a different amount (a resistance the app does not apply). The log keeps both numbers for the master, and the player sees only what they took.
   - What the character's own sheet protects is applied to the rolled damage as steps the master reads, before the master applies it: a race, feat or feature of the table with resistance, immunity or vulnerability to damage types (or, "from nonmagical attacks", to bludgeoning, piercing and slashing), and the barbarian's rage. Immunity makes it 0, then resistance halves it (rounded down), then vulnerability doubles it; the same protection from two sources counts once. An attack of a sheet or a stat block that is not marked magical counts as nonmagical.
   - A sheet that is immune to a condition takes none of the effects that give it (a spell's, a rider's, a trap's, a grapple or a shove that knocks prone); the master's own change of the conditions is not blocked.
@@ -419,7 +428,7 @@ The master sees everything.
 
 - A hidden NPC does not come at all: not in the order, not on the map, and its turn shows as "Vez do mestre".
 - The combat log omits any line involving a hidden combatant, an NPC's dice and its hit points.
-- A creature's resistances, vulnerabilities and immunities (the nonmagical ones too, listed as "Resistência a perfurante de ataque não mágico") are the master's. The damage a player reads on an NPC is the damage as rolled, so neither a halved total nor a missing line tells what the target resists.
+- A creature's resistances, vulnerabilities and immunities (the nonmagical ones too, listed as "Resistência a perfurante de ataque não mágico" or "... de ataque não mágico nem prateado") are the master's. The damage a player reads on an NPC is the damage as rolled, so neither a halved total nor a missing line tells what the target resists.
 - The same holds for damage on a character after the master applies it (a spell's, a creature action's or a rider's): the target's owner and the master read the amount taken, every other player reads the amount as rolled, so the line never tells what the target resists.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.

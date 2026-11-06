@@ -202,31 +202,44 @@ func (b *overlayBuilder) checkCreatureDamageMods(c *entryErrors, o *TableCreatur
 		if len(m.DamageTypes) == 0 {
 			c.at(o.Key, path, at+".damage_types", ReasonValue, "name at least 1 damage type")
 		}
-		seen := map[string]bool{}
-		physical, typesOK := true, true
-		for j, t := range m.DamageTypes {
-			ta := fmt.Sprintf("%s.damage_types[%d]", at, j)
-			if dt, found := b.base.named[t]; !found || dt == nil || !strings.HasPrefix(t, "damage-type:") {
-				c.at(o.Key, path, ta, ReasonReference, "damage type %q is not in the SRD", truncateRunes(t, 40))
-				typesOK = false
-			} else if seen[t] {
-				c.at(o.Key, path, ta, ReasonValue, "the damage type %q is already in this entry", truncateRunes(t, 40))
-			}
-			seen[t] = true
-			physical = physical && slices.Contains(physicalDamageTypes, t)
-		}
+		physical, typesOK := b.checkDamageModTypes(c, o, path, at, m)
 		// The qualifier is judged only against a valid kind and valid damage types, so one bad entry is one violation.
 		if m.Qualifier == "" || !kindOK || !typesOK {
 			continue
 		}
-		switch _, known := damageModQualifiers[m.Qualifier]; {
-		case !known:
-			c.at(o.Key, path, at+".qualifier", ReasonValue, "the qualifier is empty, \"nonmagical\", \"nonmagical_unless_silvered\" or \"nonmagical_unless_adamantine\"")
-		case m.Kind != DamageModResist && m.Kind != DamageModImmune:
-			c.at(o.Key, path, at+".qualifier", ReasonValue, "only a resistance or an immunity has a qualifier")
-		case !physical:
-			c.at(o.Key, path, at+".qualifier", ReasonValue, "a qualifier is for bludgeoning, piercing and slashing damage only")
+		checkDamageModQualifier(c, o, path, at, m, physical)
+	}
+}
+
+// checkDamageModTypes checks the damage types of one entry (SRD keys, each once). It returns whether all of
+// them are physical and whether all of them are SRD damage types.
+func (b *overlayBuilder) checkDamageModTypes(c *entryErrors, o *TableCreature, path, at string, m TableCreatureDamageMod) (physical, typesOK bool) {
+	seen := map[string]bool{}
+	physical, typesOK = true, true
+	for j, t := range m.DamageTypes {
+		ta := fmt.Sprintf("%s.damage_types[%d]", at, j)
+		if dt, found := b.base.named[t]; !found || dt == nil || !strings.HasPrefix(t, "damage-type:") {
+			c.at(o.Key, path, ta, ReasonReference, "damage type %q is not in the SRD", truncateRunes(t, 40))
+			typesOK = false
+		} else if seen[t] {
+			c.at(o.Key, path, ta, ReasonValue, "the damage type %q is already in this entry", truncateRunes(t, 40))
 		}
+		seen[t] = true
+		physical = physical && slices.Contains(physicalDamageTypes, t)
+	}
+	return physical, typesOK
+}
+
+// checkDamageModQualifier checks the qualifier of one entry (a known one, only on a resistance or an
+// immunity, only for physical damage types).
+func checkDamageModQualifier(c *entryErrors, o *TableCreature, path, at string, m TableCreatureDamageMod, physical bool) {
+	switch _, known := damageModQualifiers[m.Qualifier]; {
+	case !known:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "the qualifier is empty, \"nonmagical\", \"nonmagical_unless_silvered\" or \"nonmagical_unless_adamantine\"")
+	case m.Kind != DamageModResist && m.Kind != DamageModImmune:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "only a resistance or an immunity has a qualifier")
+	case !physical:
+		c.at(o.Key, path, at+".qualifier", ReasonValue, "a qualifier is for bludgeoning, piercing and slashing damage only")
 	}
 }
 

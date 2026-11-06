@@ -268,23 +268,26 @@ const kiEmpoweredStrikes = "feature:ki-empowered-strikes"
 
 // unarmedStrike adds the unarmed strike line: STR (DEX too for a monk with
 // Martial Arts), proficient, 1 + modifier bludgeoning, or the monk die plus
-// modifier. With Ki-Empowered Strikes it counts as magical for the resistances
-// and immunities to nonmagical attacks, and for nothing else.
+// modifier. For the resistances and immunities to nonmagical attacks it is magical
+// with Ki-Empowered Strikes or when a weapon_rule marks it magical, and silvered or
+// adamantine when a weapon_rule marks it so (weaponMarks); the marks count for nothing else.
 func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	ab := STR
 	if martialArts && x.mods[DEX] > x.mods[STR] {
 		ab = DEX
 	}
-	magical := HasFeature(*x.d, kiEmpoweredStrikes)
+	ki := HasFeature(*x.d, kiEmpoweredStrikes)
 	namePT := x.c.namePT(UnarmedStrikeKey)
-	t := x.tuneWeapon(ab, weaponFacts{name: foldPT(strings.TrimSpace(namePT)), melee: true, magical: magical})
+	facts := weaponFacts{name: foldPT(strings.TrimSpace(namePT)), melee: true, magical: ki}
+	t := x.tuneWeapon(ab, facts)
+	magical, silvered, adamantine := x.weaponMarks(UnarmedStrikeKey, facts)
 	mod := x.mods[t.damageAbility]
 	a := Attack{
 		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: namePT, Kind: "weapon", Ability: t.attackAbility,
 		AttackBonus: x.mods[t.attackAbility] + x.prof + t.attackBonus, Proficient: true,
 		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
 		Melee: true, RangeFt: max(unarmedReachFt, t.reachFt), MartialArts: martialArts, AbilityMod: mod,
-		Magical: magical,
+		Magical: magical || ki, Silvered: silvered, Adamantine: adamantine,
 	}
 	if t.reachFt > 0 {
 		a.ReachFt = t.reachFt

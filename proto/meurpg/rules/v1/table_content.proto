@@ -353,11 +353,11 @@ message TableEffect {
   // a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
   // proficient with, is never an item, and the weapon rules change it like any weapon.
   // weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
-  // chooses as such for the resistances and immunities to nonmagical attacks; a rule that
-  // sets only marks counts as changing something. The "magic" filter reads only the marks
-  // of the sheet itself (FullSheet.weapon_marks): never those of a rule, and not the
-  // equipment. A pseudo_weapon line is never marked by a weapon_rule. Refused on any
-  // other effect.
+  // chooses as such for the resistances and immunities to nonmagical attacks, the unarmed
+  // strike included; a rule that sets only marks counts as changing something. The "magic"
+  // filter reads only the marks of the sheet itself (FullSheet.weapon_marks) and
+  // Ki-Empowered Strikes: never those of a rule, and not the equipment. A pseudo_weapon
+  // line is never marked by a weapon_rule. Refused on any other effect.
   string weapon_name = 59;
   string attack_ability = 60;
   string damage_ability = 61;
@@ -404,11 +404,11 @@ message TableEffect {
   // reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
   // The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
   int32 at_most = 78;
-  // weapon_rule only: the weapon lines the filter chooses count as magical.
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as magical.
   bool magical = 79;
-  // weapon_rule only: the weapon lines the filter chooses count as silvered.
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as silvered.
   bool silvered = 80;
-  // weapon_rule only: the weapon lines the filter chooses count as adamantine.
+  // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
   bool adamantine = 81;
 }
 

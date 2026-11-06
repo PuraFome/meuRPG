@@ -477,3 +477,44 @@ func TestWeaponRuleReachNeverChangesTheThrowingRange(t *testing.T) {
 		}
 	}
 }
+
+// A weapon_rule marks the unarmed strike like any weapon line its filter chooses (the sheet has no
+// mark entry for it); Ki-Empowered Strikes keeps it magical; a pseudo_weapon is never marked.
+func TestWeaponRuleMarksTheUnarmedStrike(t *testing.T) {
+	t.Parallel()
+	unarmedName := baseAttacks(t)[UnarmedStrikeKey].NamePT
+	for _, tc := range []struct {
+		name   string
+		effect Effect
+	}{
+		{"any", Effect{Type: "weapon_rule", Weapon: WeaponAny, Silvered: true}},
+		{"melee", Effect{Type: "weapon_rule", Weapon: WeaponMelee, Silvered: true}},
+		{"named", Effect{Type: "weapon_rule", Weapon: WeaponNamed, WeaponName: unarmedName, Silvered: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := ruleAttacks(t, ruleBuild(), tc.effect)
+			if got := a[UnarmedStrikeKey]; !got.Silvered || got.Magical || got.Adamantine {
+				t.Errorf("unarmed strike = silvered %v, magical %v, adamantine %v; want only silvered", got.Silvered, got.Magical, got.Adamantine)
+			}
+		})
+	}
+	// A rule that names another weapon leaves it alone.
+	a := ruleAttacks(t, ruleBuild(), Effect{Type: "weapon_rule", Weapon: WeaponNamed, WeaponName: "Rapieira", Silvered: true})
+	if a[UnarmedStrikeKey].Silvered {
+		t.Error("a rule for the rapier silvered the unarmed strike")
+	}
+	// Ki-Empowered Strikes stays magical, with or without a rule, and a rule adds its marks.
+	monk := ruleBuild() // a fighter of the rule's subclass, and a monk 6 as a multiclass
+	monk.Classes = append(monk.Classes, ClassLevel{Class: "class:monk", Level: 6})
+	for _, withRule := range []bool{false, true} {
+		effects := []Effect{{Type: "note", TextPT: "Sem regra."}}
+		if withRule {
+			effects = []Effect{{Type: "weapon_rule", Weapon: WeaponAny, Silvered: true}}
+		}
+		got := ruleAttacks(t, monk, effects...)[UnarmedStrikeKey]
+		if !got.Magical || got.Silvered != withRule {
+			t.Errorf("monk 6 and fighter 3, rule %v: unarmed strike magical %v, silvered %v; want magical and silvered %v", withRule, got.Magical, got.Silvered, withRule)
+		}
+	}
+}

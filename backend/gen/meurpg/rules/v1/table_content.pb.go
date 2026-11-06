@@ -1215,11 +1215,11 @@ type TableEffect struct {
 	// a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
 	// proficient with, is never an item, and the weapon rules change it like any weapon.
 	// weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
-	// chooses as such for the resistances and immunities to nonmagical attacks; a rule that
-	// sets only marks counts as changing something. The "magic" filter reads only the marks
-	// of the sheet itself (FullSheet.weapon_marks): never those of a rule, and not the
-	// equipment. A pseudo_weapon line is never marked by a weapon_rule. Refused on any
-	// other effect.
+	// chooses as such for the resistances and immunities to nonmagical attacks, the unarmed
+	// strike included; a rule that sets only marks counts as changing something. The "magic"
+	// filter reads only the marks of the sheet itself (FullSheet.weapon_marks) and
+	// Ki-Empowered Strikes: never those of a rule, and not the equipment. A pseudo_weapon
+	// line is never marked by a weapon_rule. Refused on any other effect.
 	WeaponName    string `protobuf:"bytes,59,opt,name=weapon_name,json=weaponName,proto3" json:"weapon_name,omitempty"`
 	AttackAbility string `protobuf:"bytes,60,opt,name=attack_ability,json=attackAbility,proto3" json:"attack_ability,omitempty"`
 	DamageAbility string `protobuf:"bytes,61,opt,name=damage_ability,json=damageAbility,proto3" json:"damage_ability,omitempty"`
@@ -1266,11 +1266,11 @@ type TableEffect struct {
 	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
 	// The effect may name a `resource` (and a `cost` in uses) that each reroll spends.
 	AtMost int32 `protobuf:"varint,78,opt,name=at_most,json=atMost,proto3" json:"at_most,omitempty"`
-	// weapon_rule only: the weapon lines the filter chooses count as magical.
+	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as magical.
 	Magical bool `protobuf:"varint,79,opt,name=magical,proto3" json:"magical,omitempty"`
-	// weapon_rule only: the weapon lines the filter chooses count as silvered.
+	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as silvered.
 	Silvered bool `protobuf:"varint,80,opt,name=silvered,proto3" json:"silvered,omitempty"`
-	// weapon_rule only: the weapon lines the filter chooses count as adamantine.
+	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
 	Adamantine    bool `protobuf:"varint,81,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

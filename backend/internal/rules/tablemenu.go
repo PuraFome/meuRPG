@@ -287,7 +287,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo, ou a marca de mágica, de prata ou de adamantina nas armas que o filtro escolhe (vale contra as resistências a ataques não mágicos). Vale também para as armas da característica.", Fields: []MenuField{
+	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo, ou a marca de mágica, de prata ou de adamantina nas armas que o filtro escolhe, o golpe desarmado incluído (vale contra as resistências a ataques não mágicos). Vale também para as armas da característica, menos as marcas.", Fields: []MenuField{
 		{Name: "weapon", Required: true, Kind: "choice", List: ListWeaponFilters},
 		{Name: "weapon_name", Kind: "text"},
 		{Name: "attack_ability", Kind: "choice", List: ListAbilities, AlwaysShown: true},

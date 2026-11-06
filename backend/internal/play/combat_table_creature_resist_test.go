@@ -15,12 +15,11 @@ const tableResistantKey = "creature:lobo-espectral@mesa"
 // tableResistantHP is the hit points of the table creature below.
 const tableResistantHP = 40
 
-// tableResistantHit rolls a rapier hit with 6 piercing (9 with the modifier) on a table creature built on the
-// SRD wolf (it resists nothing) with a resistance to piercing from nonmagical weapons that aren't silvered, and
-// returns its hit points afterwards.
-func tableResistantHit(t *testing.T, mark *charactersv1.WeaponMark) int32 {
-	t.Helper()
-	a, e, target := partsFight(t, func(a *armed) {
+// tableResistantSetup is the setup of a fight against a table creature built on the SRD wolf (it resists
+// nothing) with a resistance to piercing from nonmagical weapons that aren't silvered, and a Toren whose
+// rapier has the given mark.
+func tableResistantSetup(t *testing.T, mark *charactersv1.WeaponMark) func(a *armed) {
+	return func(a *armed) {
 		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
 				NamePt: "Lobo Espectral", BaseKey: "monster:wolf", HitPoints: tableResistantHP,
@@ -35,12 +34,8 @@ func tableResistantHit(t *testing.T, mark *charactersv1.WeaponMark) int32 {
 		if got := res.Msg.GetEntry().GetKey(); got != tableResistantKey {
 			t.Fatalf("the creature's key = %q, want %q", got, tableResistantKey)
 		}
-		a.toren = a.caio.markedHero(t, a.campaignID, "Toren", mark)
-	}, tableResistantKey)
-	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, target, d20(15))
-	a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), typedDamage(6))
-	hp, _, _ := a.hp(t, target)
-	return hp
+		markedToren(t, mark)(a)
+	}
 }
 
 // A table creature's resistance with the silvered qualifier reaches combat as an SRD stat block's does: a plain
@@ -60,7 +55,7 @@ func TestTableCreatureSilveredResistanceHalvesAPlainBlowOnly(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := tableResistantHit(t, tt.mark); got != tt.want {
+			if got := hitFor(t, tableResistantSetup(t, tt.mark), tableResistantKey); got != tt.want {
 				t.Errorf("hit points after the blow = %d, want %d", got, tt.want)
 			}
 		})
