@@ -3123,8 +3123,9 @@ type FeatPrerequisite struct {
 	// The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
 	// one the player picked. Empty asks nothing.
 	Size string `protobuf:"bytes,8,opt,name=size,proto3" json:"size,omitempty"`
-	// A feature, trait or feat key the character must NOT have. It is judged before the
-	// feat's own grants. Empty asks nothing.
+	// A feature, trait or feat key the character must NOT have. Empty asks nothing.
+	// The guided level-up judges it before the feat's grants. The sheet judges it on what
+	// the character owns.
 	LacksFeatureKey string `protobuf:"bytes,9,opt,name=lacks_feature_key,json=lacksFeatureKey,proto3" json:"lacks_feature_key,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

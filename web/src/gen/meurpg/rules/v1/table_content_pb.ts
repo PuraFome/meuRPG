@@ -896,8 +896,8 @@ export type TableFeature = Message<"meurpg.rules.v1.TableFeature"> & {
    * Options do not nest. A class or subclass feature has them, and so does a race or
    * subrace trait: there they are a one-time "one of" choice (the option traits are
    * "trait:<stem>--<option name>@mesa", inactive until picked), stored with the
-   * sheet's choices and validated against the options; no `choice` effect is needed
-   * (the character picks one). At most 60.
+   * sheet's choices and validated against the options. A `choice` effect of kind
+   * "feature" on such a trait is refused (bad_value): the character picks one. At most 60.
    *
    * @generated from field: repeated meurpg.rules.v1.TableFeature options = 5;
    */
@@ -1921,7 +1921,8 @@ export type TableSubrace = Message<"meurpg.rules.v1.TableSubrace"> & {
   /**
    * When true, the parent race's ability bonuses are swapped whole for this
    * subrace's `ability_bonuses`: they are never added on top of the race's. The
-   * bonuses the player places on abilities (the race's choice_bonuses) go with them.
+   * bonuses the player places (the race's choice_bonuses and choice_bonus_sets, and the
+   * Half-Elf's style picks) go with them.
    *
    * @generated from field: bool replaces_ability_bonuses = 6;
    */

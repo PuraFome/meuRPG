@@ -171,10 +171,11 @@ flowchart LR
 A replaced trait is not owned: its effects, its choice and its options are gone, and a stored pick for them is reported as not offered.
 The skills that only a replaced trait gives are gone too.
 The ability bonuses are the race's and the subrace's added, or the subrace's alone when it has `replaces_ability_bonuses`.
-Then the race's fixed bonuses and the ones the player places are gone together, no pick is asked for them, and the points the player may place on abilities are none.
+Then the race's fixed bonuses and the ones the player places are gone together, no pick is asked for them, and the race's share of the points the player places on abilities is none.
+The class's Ability Score Improvement points remain.
 
 The catalog says what a subrace replaces (`replaces_trait_keys`, `replaces_ability_bonuses`, and `replaced_skill_keys` for the race's skills that go with the traits), and the editor's preview follows it.
-A player's copy of a subrace names only the replaced traits the player may see.
+A player's copy of a subrace drops the replaced keys that are hidden (an archived or switched-off entry).
 The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonuses` or the options of a trait; they are written through a pack or the API.
 
 ## Table options

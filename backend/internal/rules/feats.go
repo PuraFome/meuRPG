@@ -416,20 +416,27 @@ func (c *content) checkFeatKeys(f *srd51.Feat) (field, msg string) {
 			return "proficiency", fmt.Sprintf("unknown proficiency %q", f.Proficiency)
 		}
 	}
-	for _, r := range append([]string{f.Race}, f.Races...) {
-		if _, race := c.races[r]; r != "" && !race {
-			if _, subrace := c.subraces[r]; !subrace {
-				return "race", fmt.Sprintf("unknown race or subrace %q", r)
-			}
-		}
+	if r, ok := c.unknownRace(append([]string{f.Race}, f.Races...)); !ok {
+		return "race", fmt.Sprintf("unknown race or subrace %q", r)
 	}
 	if f.Size != "" && !slices.Contains(raceSizes, f.Size) {
 		return "size", fmt.Sprintf("unknown size %q", f.Size)
 	}
-	if k := f.LacksFeature; k != "" {
-		if !c.isFeatureKey(k) {
-			return "lacks_feature", fmt.Sprintf("unknown feature %q", k)
-		}
+	if k := f.LacksFeature; k != "" && !c.isFeatureKey(k) {
+		return "lacks_feature", fmt.Sprintf("unknown feature %q", k)
 	}
 	return "", ""
+}
+
+// unknownRace gives the first key (an empty one is skipped) that is neither a race nor a
+// subrace of the content, and false; true when all exist.
+func (c *content) unknownRace(keys []string) (string, bool) {
+	for _, r := range keys {
+		_, race := c.races[r]
+		_, subrace := c.subraces[r]
+		if r != "" && !race && !subrace {
+			return r, false
+		}
+	}
+	return "", true
 }

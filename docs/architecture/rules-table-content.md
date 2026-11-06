@@ -88,8 +88,9 @@ The choice engine deals one pool of picks to choices that share options, in leve
 A race or subrace trait may carry options too, but there they are a one-time choice of one, not a choice of features.
 Each option is a trait with a server-made key (`trait:<stem>--<option name>@mesa`) that no race lists: it is gained only when picked.
 The pick is stored with the sheet's choices and checked against the options; one outside them is reported as not offered.
-A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`): the character picks one option, never more.
-Refused, each at its field: options on a background feature, nested options, options with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
+A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
+The character picks one option, never more.
+Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
 
 ### Maneuvers
 
@@ -377,8 +378,14 @@ The catalog lists no always-prepared spell for an expanded subclass.
 - **Race and subrace** (2014 format): ability bonuses, size, speed, darkvision (a sense of the race itself), languages and how many to choose, and the traits as features with effects from the menu. The bonuses the player places come as `choice_bonuses` (one set, each bonus 1 to 4, at most six) or as `choice_bonus_sets` (up to four sets of 1 to 6 bonuses of +1 or +2, no two the same; a race has one or the other, refused at `.choice_bonus_sets`): the player picks them in "Escolhas", as the half-elf's +1s: a choice of the set when the race has several (`race:x#bonus-set=bonus-set:1`) and, for each distinct bonus of the set, a choice of as many abilities as the set has of it (`race:x#bonus-2=ability:str`). Each ability takes one bonus (a repeated pick is refused as unmet and gives nothing, and the other choices do not offer the ability), `Derive` adds the picks to the race's own bonuses, and the issue `race_bonus` says so until the picks fill the set. A sheet that placed the bonuses in the manual ones before they were picks, covering a set, stands for the picks. `sizes` (`Small`, `Medium`, once each, with the race's own `size` among them) are the sizes the player picks one from, kept in `FullSheet.size`; empty is the race's own size, a size the race does not offer is the issue `race_size`, and `Derived.Size` is the size that counts (the Small heavy-weapon reminder and the combatant's size read it).
   "+2 and +1 of your choice" is the master's option (`ChoiceBonuses`, a single set): the player picks the abilities in "Escolhas" and `Derive` warns (`race_bonus`) until they are picked.
   A subrace adds its bonuses and traits to the race's, unless it replaces some:
-  - `replaces_trait_keys` lists traits of the parent race (SRD or table) that the subrace takes the place of. Each key must be a trait of the parent race and appear once, else the entry is refused at `table_subrace.replaces_trait_keys[i]` naming the key; the list has at most 60 keys (`MaxTraits`). A replaced trait is not owned by the character: its effects, choice and options are gone, and a stored pick for them is reported as not offered. The skills that only a replaced trait gives are gone too.
-  - `replaces_ability_bonuses` swaps the race's ability bonuses whole for the subrace's: the fixed ones and the ones the player places (`choice_bonuses`, `choice_bonus_sets`, the half-elf's picks) are never added under the subrace's, and the sheet asks no pick for them.
+  - `replaces_trait_keys` lists traits of the parent race (SRD or table) that the subrace takes the place of.
+    Each key must be a trait of the parent race and appear once.
+    A wrong key refuses the entry at `table_subrace.replaces_trait_keys[i]`, naming the key.
+    The list has at most 60 keys (`MaxTraits`).
+    A replaced trait is not owned by the character; see [Characters: table content](characters-table-content.md#the-sheet-of-a-race-and-a-subrace).
+  - `replaces_ability_bonuses` swaps the race's ability bonuses whole for the subrace's.
+    The fixed ones and the ones the player places (`choice_bonuses`, `choice_bonus_sets`, the half-elf's picks) are never added under the subrace's.
+    The sheet asks no pick for them.
 
   How the sheet merges the two is in [Characters: table content](characters-table-content.md#the-sheet-of-a-race-and-a-subrace).
 - **Background:** two skills, tools, languages to choose, the equipment as text and the feature, usually a note.
@@ -387,11 +394,16 @@ The catalog lists no always-prepared spell for an expanded subclass.
 ## Feat
 
 `TableFeat` (`feat:<name>@mesa`) has a name, text, a `FeatPrerequisite` and effects (the feat owns them; it has no features).
-The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key or a list of them of which one is enough (a subrace satisfies its parent race's key; a feat sets the key or the list, never both, and the list repeats no key), a size (`Tiny`, `Small`, `Medium` or `Large`, the one the sheet counts), a feature, trait or feat key the character must not have (judged before the feat's own grants, never the feat itself), a total level.
+The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key or a list of them of which one is enough (a subrace satisfies its parent race's key; a feat sets the key or the list, never both, and the list repeats no key), a size (`Tiny`, `Small`, `Medium` or `Large`, the one the sheet counts), a feature, trait or feat key the character must not have (never the feat itself), a total level.
 Each key must exist, SRD or table; the table refuses a wrong one at its own field of `prerequisite`, when the master writes the feat and when a pack brings it.
 `Content.Feats`, `FeatOptions(build)` and `CheckFeat` answer who qualifies and what they lack (`FeatUnmet`; the kinds `race`, `size` and `lacks_feature` are among them).
-Level-up and the feat choices, creation included, refuse an unmet prerequisite with `PREREQUISITE_UNMET`.
-A player never reads the key of a race, subrace or feature that is hidden from them, in the prerequisite or in what they lack.
+The guided level-up judges a lacked feature before the feat's own grants.
+The sheet judges it on what the character owns (`lostFeats`).
+The guided level-up refuses an unmet feat with `LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE`.
+A feat chosen inside a level-up is refused with `LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE`.
+The choice paths, feat choices at creation included, refuse it with `CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET`.
+The player's copy of a feat and the level-up options blank a hidden race and a hidden feat named by `lacks_feature_key`.
+A trait of a hidden entry is not blanked, and neither are the texts of the feat-choice cards.
 The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.json`) is in the same `feats` map.
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.

@@ -730,8 +730,9 @@ export type FeatPrerequisite = Message<"meurpg.rules.v1.FeatPrerequisite"> & {
   size: string;
 
   /**
-   * A feature, trait or feat key the character must NOT have. It is judged before the
-   * feat's own grants. Empty asks nothing.
+   * A feature, trait or feat key the character must NOT have. Empty asks nothing.
+   * The guided level-up judges it before the feat's grants. The sheet judges it on what
+   * the character owns.
    *
    * @generated from field: string lacks_feature_key = 9;
    */
