@@ -25,7 +25,7 @@ func (h hpState) same(o hpState) bool {
 }
 
 // hpSnapshot reads the hit points of every combatant of the combat: its own for an NPC or a
-// creature, its character's vitals for a player. A character that cannot be read (dead, gone)
+// creature, its character's vitals and defeat for a player. A character that cannot be read (dead, gone)
 // is left out. The second map has the maximum hit points of the characters.
 func (s *Service) hpSnapshot(ctx context.Context, c *combatTx) (map[string]hpState, map[string]int32, error) {
 	cs, err := listCombatants(ctx, c)
@@ -48,13 +48,16 @@ func (s *Service) hpSnapshot(ctx context.Context, c *combatTx) (map[string]hpSta
 			}
 			return nil, nil, err
 		}
-		out[who.ID], maxes[who.ID] = hpStateOf(v), v.GetHitPointsMax()
+		st := hpStateOf(v)
+		st.Defeated = who.Defeated
+		out[who.ID], maxes[who.ID] = st, v.GetHitPointsMax()
 	}
 	return out, maxes, nil
 }
 
 // withHolds keeps in the event of an undoable change the hit points it left on each combatant
-// whose hit points it changed. Without a snapshot from before the change it keeps nothing.
+// whose hit points it changed, and on the ones the event names as actor and target, whose numbers
+// its undo writes back even when the action left them as they were. Without a snapshot from before the change it keeps nothing.
 func (s *Service) withHolds(ctx context.Context, c *combatTx, payload any) (any, error) {
 	ev, ok := payload.(actionEvent)
 	if !ok || c.hpBefore == nil {
@@ -65,7 +68,8 @@ func (s *Service) withHolds(ctx context.Context, c *combatTx, payload any) (any,
 		return nil, err
 	}
 	for id, now := range after {
-		if before, had := c.hpBefore[id]; had && !before.same(now) {
+		before, had := c.hpBefore[id]
+		if had && (!before.same(now) || id == ev.Actor || id == ev.Target) {
 			if ev.Holds == nil {
 				ev.Holds = map[string]hpState{}
 			}

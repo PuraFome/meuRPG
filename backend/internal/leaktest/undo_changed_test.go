@@ -3,6 +3,7 @@ package leaktest
 import (
 	"bytes"
 	"net/http"
+	"regexp"
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -27,14 +28,15 @@ func TestARefusedUndoSendsTheNumbersOfTheNPCToNoOne(t *testing.T) {
 	}
 	log := must(master.combat.ListCombatLog(t.Context(), rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()})))
 	undo := &playv1.UndoLastActionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), ExpectedEventId: log.GetUndoableEventId(), IdempotencyKey: newKey()}
-	needle := []byte("4217")
+	// Not inside an id or a timestamp: the number alone.
+	needle := regexp.MustCompile(`(^|[^0-9A-Za-z-])4217($|[^0-9A-Za-z-])`)
 
 	for _, p := range []*person{w.ana, w.caio} {
 		r := p.call(playv1connect.CombatServiceUndoLastActionProcedure, undo)
 		if r.status != http.StatusForbidden {
 			t.Errorf("%s: the undo answered %d %s, want 403", p.name, r.status, r.body)
 		}
-		if bytes.Contains(r.body, needle) {
+		if needle.Match(r.body) {
 			t.Errorf("%s: the refusal carries the hit points: %s", p.name, r.body)
 		}
 	}
@@ -42,12 +44,12 @@ func TestARefusedUndoSendsTheNumbersOfTheNPCToNoOne(t *testing.T) {
 	if refused.status != http.StatusBadRequest || !bytes.Contains(refused.body, []byte("UNDO_TARGET_CHANGED")) || !bytes.Contains(refused.body, []byte(hound.GetId())) {
 		t.Errorf("master: the refusal is %d %s, want UNDO_TARGET_CHANGED naming the hound", refused.status, refused.body)
 	}
-	if bytes.Contains(refused.body, needle) {
+	if needle.Match(refused.body) {
 		t.Errorf("the master's refusal carries the hit points: %s", refused.body)
 	}
 	for _, p := range []*person{w.ana, w.caio} {
 		for _, r := range w.readsOf(p) {
-			if bytes.Contains(r.body, needle) {
+			if needle.Match(r.body) {
 				t.Errorf("%s reads the hound's hit points after the refused undo: %s", p.name, r.body)
 			}
 		}

@@ -159,7 +159,7 @@ The request log wraps the response in a `statusRecorder` that passes `Flush` thr
 ## The master's correction of vitals
 
 `AdjustCharacterVitals` changes only the values in the request, each from 0 up to the maximum (temporary HP up to 999).
-It requires `expected_revision`, the revision of the vitals the master saw (0 is a revision).
+It requires `expected_revision`, the revision of the vitals the master saw (a revision of 0 is valid).
 An absent or changed revision is `aborted` and nothing is written.
 The check runs in the same transaction as the write, so two corrections from one revision let one win.
 The "Ajustar" sheet also returns spent uses of resources (`resources_used`), sets the hit dice by size (`hit_dice_used_by_die`, or the older sum `hit_dice_used`, never both) and, for a druid in a beast form, the beast's hit points (`wild_shape_hit_points_current`; 0 ends the form).

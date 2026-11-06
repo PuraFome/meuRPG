@@ -44,13 +44,13 @@ The undone line disappears from the log.
 
 ## What the befores hold
 
-- **The hit points the action left.** The undo writes the hit points, temporary hit points, Wild Shape pool and defeat the action found.
-  Each event keeps what its action left (`holds`), for every combatant whose hit points the action changed.
-  The undo reads them in its own transaction, and when any differs now, it writes nothing and answers `UNDO_TARGET_CHANGED` with the ids of who changed (`checkHolds`).
-  This covers a change the chain does not see, such as a correction of a character's vitals that left no event in the way.
-  The refusal names the combatants and never says a number.
+- **The hit points the action left.** An undo is refused when a hit point value it would overwrite is not the one the action left.
+  The values are the hit points, the temporary hit points, the Wild Shape pool and the defeat of each combatant the action changed, and of its actor and target.
+  The check and the undo are one transaction, so a refused undo writes nothing.
+  The refusal names the combatants that changed and never says a number.
+  A write that leaves no event, such as a rest, a level change or a direct database change, is what it catches.
   A character's held hit points are cut to the maximum it has now, so a lowered maximum does not refuse the undo.
-  An event without `holds` is not checked.
+  An event without held values is not checked, and neither are death saves or conditions, which change only through combat events.
 - **The melee hit mark.** A melee weapon hit marks the turn on the attacker (`combatants.melee_hit_turn`, which the grapple maneuver needs), and the attack's event keeps the mark it replaced (`melee_hit`, `melee_hit_before`).
   The undo puts that one back: undoing the second hit of a turn leaves the first one's mark, undoing the only hit takes the maneuver away.
 - **The parts of a damage.** A roll that has no parts of its own leaves `pending_damages.parts` as the hit left it (`ClearPendingDamageRoll` gives back the empty list).

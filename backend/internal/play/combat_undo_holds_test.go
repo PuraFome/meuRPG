@@ -73,6 +73,30 @@ func TestUndoIsRefusedWhenACharactersHitPointsChangedAfterTheAction(t *testing.T
 	}
 }
 
+// TestUndoIsRefusedWhenACharactersTempOrDefeatChangedAfterTheAction: the temporary hit points and the defeat of a
+// player's combatant are held like its hit points.
+func TestUndoIsRefusedWhenACharactersTempOrDefeatChangedAfterTheAction(t *testing.T) {
+	t.Parallel()
+	for name, change := range map[string]string{
+		"temporary hit points": `UPDATE character_vitals SET hit_points_temporary = 5 WHERE character_id = $1`,
+		"defeat":               `UPDATE combatants SET defeated = NOT defeated WHERE character_id = $1`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := newArmed(t)
+			e, last := appliedDamageOnToren(t, a)
+			if _, err := a.h.pool.Exec(t.Context(), change, a.toren.GetId()); err != nil {
+				t.Fatalf("change the %s: %v", name, err)
+			}
+			err := a.undo(t, a.master, e, last)
+			wantCode(t, "UndoLastAction after the change", err, connect.CodeFailedPrecondition)
+			if b := blockedOf(t, err); b.GetReason() != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED {
+				t.Errorf("reason = %v, want UNDO_TARGET_CHANGED", b.GetReason())
+			}
+		})
+	}
+}
+
 // TestUndoIsRefusedWhenANpcsHitPointsChangedAfterTheAction is the same for a combatant that holds its own hit points.
 func TestUndoIsRefusedWhenANpcsHitPointsChangedAfterTheAction(t *testing.T) {
 	t.Parallel()
