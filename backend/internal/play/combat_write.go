@@ -373,7 +373,7 @@ func (s *Service) changeInTx(ctx context.Context, tx pgx.Tx, w combatWrite, sigh
 	if err != nil {
 		return err
 	}
-	if w.encounterID != "" && slices.Contains(undoableKinds, w.kind) {
+	if w.encounterID != "" && slices.Contains(undoableKinds, w.kind) && !slices.Contains(leavesHPAlone, w.kind) {
 		if c.hpBefore, _, err = s.hpSnapshot(ctx, c); err != nil {
 			return err
 		}

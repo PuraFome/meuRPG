@@ -36,6 +36,12 @@ var undoableKinds = []string{
 	eventLegendarySpent,
 }
 
+// leavesHPAlone are the undoable kinds whose undo never writes hit points: they keep no holds.
+var leavesHPAlone = []string{
+	eventAttackRolled, eventDamageDiscarded, eventReactionDeclined, eventConditionsSet,
+	eventCombatantMoved, eventFamiliarSight, eventHideResolved, eventLegendarySpent,
+}
+
 // recentEvents is how many of the session's latest events the search for the
 // last action reads: each undo leaves two rows behind, so this allows dozens.
 const recentEvents = 100

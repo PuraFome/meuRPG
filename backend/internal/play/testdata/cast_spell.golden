@@ -186,11 +186,11 @@ damage Nael | Tavo | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | damage
 vitals Nael | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 == a careful spell for a creature not hit ==
 refused invalid_argument: a protected creature must be one of the spell's targets
-event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "hp_kept": true, "round": 1, "row": 9}
-event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4}
-event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "on_turn": true, "round": 1, "row": 9}
-event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
-event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 9}
+event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 9}
+event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -273,9 +273,9 @@ hidden hits {}
 pending reveal false
 held false
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4, "secret": true}
-event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 5}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4, "secret": true}
+event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -326,9 +326,9 @@ hidden hits {"hiddenHits":["Capitão Goblin"]}
 pending reveal false
 held false
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4, "secret": true}
-event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 5}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4, "secret": true}
+event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:burning-hands", "placed": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | true | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -348,9 +348,9 @@ hidden hits {"hiddenHits":["Capitão Goblin"]}
 pending reveal false
 held false
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4, "secret": true}
-event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 5}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4, "secret": true}
+event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -371,9 +371,9 @@ hidden hits {"hiddenHits":["Capitão Goblin"]}
 pending reveal false
 held false
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4, "secret": true}
-event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 5}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4, "secret": true}
+event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -396,11 +396,11 @@ summoned 0
 hidden hits {}
 pending reveal false
 held false
-event combatant_moved {"col": 18, "combatant_id": "Capitão Goblin", "distance_dft": 743, "distance_ft": 74, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "hp_kept": true, "round": 1, "row": 1}
-event combatant_moved {"col": 17, "combatant_id": "Goblin", "distance_dft": 667, "distance_ft": 66, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 1}
-event combatant_moved {"col": 1, "combatant_id": "Nael", "distance_dft": 141, "distance_ft": 14, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "on_turn": true, "round": 1, "row": 1}
-event combatant_moved {"col": 6, "combatant_id": "Orla", "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
-event combatant_moved {"col": 5, "combatant_id": "Tavo", "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 18, "combatant_id": "Capitão Goblin", "distance_dft": 743, "distance_ft": 74, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 1}
+event combatant_moved {"col": 17, "combatant_id": "Goblin", "distance_dft": 667, "distance_ft": 66, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 1}
+event combatant_moved {"col": 1, "combatant_id": "Nael", "distance_dft": 141, "distance_ft": 14, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 1}
+event combatant_moved {"col": 6, "combatant_id": "Orla", "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 5, "combatant_id": "Tavo", "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
 event spell_cast {"cast_id": "?", "combatant_id": "Nael", "concentrate": true, "hits": [{"lasting": "applied", "save": {"bonus_unknown": true, "d20": 10, "dc": 14, "roll_mode": "normal", "total": 10}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:hold-person", "lasting": {"change": "added", "effects": ["?"], "key": "spell:hold-person", "targets": ["Goblin"]}, "res": {"keys": ["feature:metamagic-distant-spell"], "kind": "metamagic", "spent": 1}, "round": 1, "slot": {"level": 2}}
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:paralyzed} | {condition:paralyzed} | - | false | false | false | {} | false | false
@@ -605,11 +605,11 @@ summoned 0
 hidden hits {}
 pending reveal false
 held false
-event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "hp_kept": true, "round": 1, "row": 9}
-event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4}
-event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "on_turn": true, "round": 1, "row": 9}
-event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
-event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 9}
+event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 9}
+event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
 event spell_cast {"area_col": 4, "area_row": 4, "cast_id": "?", "combatant_id": "Nael", "hits": [{"pending_id": "?", "save": {"bonus_unknown": true, "counted": 1, "d20": 2, "d20_b": 18, "dc": 14, "roll_mode": "disadvantage", "total": 2}, "target_id": "Goblin"}], "hp_kept": true, "key": "spell:fireball", "placed": true, "res": {"keys": ["feature:metamagic-heightened-spell"], "kind": "metamagic", "spent": 3}, "round": 1, "slot": {"level": 3}}
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -944,11 +944,11 @@ refused invalid_argument: this spell comes out of the caster: set direction
 state unchanged
 == a spell out of range with no distant option ==
 refused failed_precondition: the target is beyond the spell's range
-event combatant_moved {"col": 18, "combatant_id": "Capitão Goblin", "distance_dft": 743, "distance_ft": 74, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "hp_kept": true, "round": 1, "row": 1}
-event combatant_moved {"col": 17, "combatant_id": "Goblin", "distance_dft": 667, "distance_ft": 66, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 1}
-event combatant_moved {"col": 1, "combatant_id": "Nael", "distance_dft": 141, "distance_ft": 14, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "on_turn": true, "round": 1, "row": 1}
-event combatant_moved {"col": 6, "combatant_id": "Orla", "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
-event combatant_moved {"col": 5, "combatant_id": "Tavo", "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 18, "combatant_id": "Capitão Goblin", "distance_dft": 743, "distance_ft": 74, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 1}
+event combatant_moved {"col": 17, "combatant_id": "Goblin", "distance_dft": 667, "distance_ft": 66, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 1}
+event combatant_moved {"col": 1, "combatant_id": "Nael", "distance_dft": 141, "distance_ft": 14, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 1}
+event combatant_moved {"col": 6, "combatant_id": "Orla", "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 5, "combatant_id": "Tavo", "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -2594,8 +2594,8 @@ summoned 0
 hidden hits {}
 pending reveal false
 held false
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "fx_kind": "hp_threshold", "fx_limit": 100, "hits": [{"fx": "affected", "hp_before": 7, "restore": {"hp": 7}, "target_id": "Goblin"}], "holds": {"Goblin": {"defeated": true, "hp": 0}}, "hp_kept": true, "key": "spell:power-word-kill", "round": 1, "slot": {"level": 9}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -2612,8 +2612,8 @@ summoned 0
 hidden hits {}
 pending reveal false
 held false
-event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "hp_kept": true, "round": 1, "row": 4}
-event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "hp_kept": true, "round": 1, "row": 3}
+event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_dft": 150, "distance_ft": 15, "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "fx_kind": "hp_threshold", "fx_limit": 100, "hits": [{"death_before": {}, "fx": "affected", "hp_before": 44, "restore": {"hp": 44}, "target_id": "Toren"}], "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "spell:power-word-kill", "round": 1, "slot": {"level": 9}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false

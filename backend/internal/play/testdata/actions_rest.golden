@@ -812,7 +812,7 @@ vitals Toren | active | 14 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == discard Toren's hit on the goblin ==
 pending {"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Goblin"}
-event damage_discarded {"combatant_id": "Toren", "hp_kept": true, "key": "equipment:battleaxe", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Goblin"}
+event damage_discarded {"combatant_id": "Toren", "key": "equipment:battleaxe", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Goblin"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -820,7 +820,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage equipment:battleaxe | discarded | false | damage-type:slashing | -1 | -1 | false | -1 | [] | -1 | true | false
 == discard a critical hit ==
 pending {"amount":8,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":8},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 8, "combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 8, "combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -828,7 +828,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage basic:0 | discarded | true | damage-type:slashing | 8 | -1 | false | -1 | [] | -1 | true | false
 == discard a damage that waits for the Uncanny Dodge ==
 pending {"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Reator"}
-event damage_discarded {"combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Reator"}
+event damage_discarded {"combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Reator"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Reator | <nil> | <nil> | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
@@ -838,7 +838,7 @@ window uncanny_dodge | open | - | 1 | {"actor": "Goblin", "damage": 6, "distance
 hold damage | held | {"rolled": {"physical": true, "total": 6}}
 == discard a healing ==
 pending {"attackKey":"spell:cure-wounds","attackerId":"Brisa","bonus":3,"castId":"?","diceCount":1,"diceSides":8,"healing":true,"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"combatant_id": "Brisa", "hp_kept": true, "key": "spell:cure-wounds", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Toren"}
+event damage_discarded {"combatant_id": "Brisa", "key": "spell:cure-wounds", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 6 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -848,7 +848,7 @@ vitals Brisa | active | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0 | {}
 damage spell:cure-wounds | discarded | false |  | -1 | -1 | true | -1 | [] | -1 | true | true
 == discard a hit not rolled yet ==
 pending {"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Toren"}
+event damage_discarded {"combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -856,7 +856,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage basic:0 | discarded | false | damage-type:slashing | -1 | -1 | false | -1 | [] | -1 | true | false
 == discard a hit of a hidden goblin ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 6, "combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "secret": true, "target_id": "Toren"}
+event damage_discarded {"amount": 6, "combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "secret": true, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | true | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -864,7 +864,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage basic:0 | discarded | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == discard a hit on the wizard ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Pensantus"}
-event damage_discarded {"amount": 6, "combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Pensantus"}
+event damage_discarded {"amount": 6, "combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Pensantus"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -872,7 +872,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage basic:0 | discarded | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == discard a raging barbarian's hit ==
 pending {"amount":6,"amountAfterSteps":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_DISCARDED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_discarded {"amount": 6, "combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Brisa"}
+event damage_discarded {"amount": 6, "combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -881,7 +881,7 @@ vitals Brisa | active | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | discarded | false | damage-type:slashing | 6 | -1 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == discard a rolled hit ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 6, "combatant_id": "Goblin", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 6, "combatant_id": "Goblin", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -889,7 +889,7 @@ combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | fa
 damage basic:0 | discarded | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == discard an opportunity attack ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin 1","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 6, "combatant_id": "Goblin 1", "hp_kept": true, "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 6, "combatant_id": "Goblin 1", "key": "basic:0", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 4 | 7 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 12 | 13 | false | false | false
 combatant Escudeiro | 11 | 0 | false | 0 | 0 | - | false | false | 3 | 8 | false | false | false
@@ -917,7 +917,7 @@ refused permission_denied: only the campaign's master can do this
 state unchanged
 == discard the fire of Flame Strike ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 4, "combatant_id": "Brisa", "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 4, "combatant_id": "Brisa", "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -928,7 +928,7 @@ damage spell:flame-strike | awaiting_roll | false | damage-type:radiant | -1 | -
 damage spell:flame-strike | discarded | false | damage-type:fire | 4 | -1 | false | 0 | [] | -1 | true | true
 == discard the fire of Flame Strike on Toren who concentrates ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 4, "combatant_id": "Brisa", "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 4, "combatant_id": "Brisa", "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -939,7 +939,7 @@ damage spell:flame-strike | awaiting_roll | false | damage-type:radiant | -1 | -
 damage spell:flame-strike | discarded | false | damage-type:fire | 4 | -1 | false | 0 | [] | -1 | true | true
 == discard the radiant of Flame Strike after the fire landed ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","concentrationDc":10,"damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 4, "combatant_id": "Brisa", "concentration_dc": 10, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 4, "combatant_id": "Brisa", "concentration_dc": 10, "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -951,7 +951,7 @@ damage spell:flame-strike | applied | false | damage-type:fire | 10 | -1 | false
 damage spell:flame-strike | discarded | false | damage-type:radiant | 4 | -1 | false | 0 | [] | -1 | true | true
 == discard the radiant of Flame Strike after the fire landed on Toren who does not concentrate ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Toren"}
-event damage_discarded {"amount": 4, "combatant_id": "Brisa", "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
+event damage_discarded {"amount": 4, "combatant_id": "Brisa", "key": "spell:flame-strike", "pending_id": "?", "prev_status": "rolled", "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
