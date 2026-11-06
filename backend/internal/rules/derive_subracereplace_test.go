@@ -18,7 +18,7 @@ type replaceFixture struct {
 func newReplaceFixture(t *testing.T, replaces, swapBonuses bool) replaceFixture {
 	t.Helper()
 	race, sub, _ := tableMisc()
-	race.ChoiceBonuses, race.LanguageChoices = nil, 0
+	race.LanguageChoices = 0
 	f := replaceFixture{race: race, subrace: sub}
 	f.kept, f.replaced, f.own = "trait:forca-do-rio"+tableSuffix, "trait:marca-do-vale"+tableSuffix, sub.Traits[0].Key
 	f.keptA, f.keptB = "trait:rio-a"+tableSuffix, "trait:rio-b"+tableSuffix
@@ -41,6 +41,14 @@ func newReplaceFixture(t *testing.T, replaces, swapBonuses bool) replaceFixture 
 	}
 	f.c = withOverlay(t, Overlay{Races: []TableRace{f.race}, Subraces: []TableSubrace{f.subrace}})
 	return f
+}
+
+// bonusPicks are the picks of the race's placed bonuses (+2 on Strength, +1 on Intelligence).
+func (f replaceFixture) bonusPicks() []string {
+	return []string{
+		ScopedChoice(BonusChoiceKey(f.race.Key, 2), abilityValue(STR)),
+		ScopedChoice(BonusChoiceKey(f.race.Key, 1), abilityValue(INT)),
+	}
 }
 
 func (f replaceFixture) build(subrace bool, picks ...string) Build {
@@ -66,7 +74,7 @@ func scoreBonus(d Derived, a Ability) int {
 func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 	t.Parallel()
 	f := newReplaceFixture(t, true, true)
-	b := f.build(true, f.keptB, f.replacedX)
+	b := f.build(true, append([]string{f.keptB, f.replacedX}, f.bonusPicks()...)...)
 	d := Derive(b, f.c)
 
 	var got []string
@@ -88,6 +96,12 @@ func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 	if scoreBonus(d, CON) != 0 || scoreBonus(d, WIS) != 0 || scoreBonus(d, DEX) != 2 {
 		t.Errorf("bonuses CON %d WIS %d DEX %d, want 0, 0 and 2: the subrace's replace the race's", scoreBonus(d, CON), scoreBonus(d, WIS), scoreBonus(d, DEX))
 	}
+	if scoreBonus(d, STR) != 0 || scoreBonus(d, INT) != 0 || hasIssue(d, IssueRaceBonus) {
+		t.Errorf("the race's placed bonuses apply or are asked for: STR %d INT %d, issues %v", scoreBonus(d, STR), scoreBonus(d, INT), issueCodes(d))
+	}
+	if n := f.c.FreeAbilityPoints(b); n != 0 {
+		t.Errorf("free ability points = %d, want 0: the race's placed bonuses are gone", n)
+	}
 	if !hasIssueAt(d, IssueUnknownKey, "full.feature_choice_keys[1]") {
 		t.Errorf("no issue for the pick of the replaced trait: %v", issueCodes(d))
 	}
@@ -105,12 +119,12 @@ func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 	if !slices.Equal(keys, []string{f.kept}) {
 		t.Errorf("the race's choices = %v, want only %s", keys, f.kept)
 	}
-	if !slices.Equal(s.NotOffered, []string{f.replacedX}) {
-		t.Errorf("not offered = %v, want %s", s.NotOffered, f.replacedX)
+	if wantOut := append([]string{f.replacedX}, f.bonusPicks()...); !slices.Equal(slices.Sorted(slices.Values(s.NotOffered)), slices.Sorted(slices.Values(wantOut))) {
+		t.Errorf("not offered = %v, want %v", s.NotOffered, wantOut)
 	}
 	p := s.ChoiceProblems(false)
-	if len(p) != 1 || p[0].Code != ChoiceProblemNotOffered || p[0].OptionKey != f.replacedX {
-		t.Errorf("problems = %+v, want %s not offered", p, f.replacedX)
+	if len(p) != 3 || p[0].Code != ChoiceProblemNotOffered || !slices.ContainsFunc(p, func(p ChoiceProblem) bool { return p.OptionKey == f.replacedX }) {
+		t.Errorf("problems = %+v, want the replaced option and the two placed bonuses not offered", p)
 	}
 }
 
@@ -118,9 +132,13 @@ func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 func TestReplacingTraitsWithoutTheFlagKeepsTheBonusesAdditive(t *testing.T) {
 	t.Parallel()
 	f := newReplaceFixture(t, true, false)
-	d := Derive(f.build(true), f.c)
-	if scoreBonus(d, CON) != 1 || scoreBonus(d, DEX) != 2 {
-		t.Errorf("bonuses CON %d DEX %d, want 1 and 2", scoreBonus(d, CON), scoreBonus(d, DEX))
+	b := f.build(true, f.bonusPicks()...)
+	d := Derive(b, f.c)
+	if scoreBonus(d, CON) != 1 || scoreBonus(d, DEX) != 2 || scoreBonus(d, STR) != 2 || scoreBonus(d, INT) != 1 {
+		t.Errorf("bonuses CON %d DEX %d STR %d INT %d, want 1, 2, 2 and 1", scoreBonus(d, CON), scoreBonus(d, DEX), scoreBonus(d, STR), scoreBonus(d, INT))
+	}
+	if n := len(f.c.Choices(b).NotOffered); n != 0 {
+		t.Errorf("%d picks not offered without the flag, want none", n)
 	}
 	if hasFeature(d, f.replaced) {
 		t.Errorf("the replaced trait is on the sheet")
@@ -174,5 +192,40 @@ func TestTheOptionsOfAReplacedTraitCannotBePicked(t *testing.T) {
 	}
 	if len(without.NotOffered) != 0 {
 		t.Errorf("not offered = %v without the subrace, want none", without.NotOffered)
+	}
+}
+
+// TestASubraceThatReplacesTheBonusesDropsTheHalfElfsPicks: the half-elf's +1 to two abilities go with
+// the race's bonuses; without the flag they stay.
+func TestASubraceThatReplacesTheBonusesDropsTheHalfElfsPicks(t *testing.T) {
+	t.Parallel()
+	_, sub, _ := tableMisc()
+	sub.Race, sub.AbilityBonuses = "race:half-elf", map[Ability]int{WIS: 1}
+	key := AbilityChoiceKey("race:half-elf")
+	picks := []string{ScopedChoice(key, abilityValue(DEX)), ScopedChoice(key, abilityValue(INT))}
+	build := func(c *Content) Build {
+		return choiceBuild("race:half-elf", sub.Key, ClassLevel{Class: "class:fighter", Level: 1}, picks...)
+	}
+	run := func(replaces bool) (Derived, ChoiceSet) {
+		sub.ReplacesAbilityBonuses = replaces
+		c := withOverlay(t, Overlay{Subraces: []TableSubrace{sub}})
+		return Derive(build(c), c), c.Choices(build(c))
+	}
+	d, s := run(true)
+	if scoreBonus(d, CHA) != 0 || scoreBonus(d, WIS) != 1 || scoreBonus(d, DEX) != 0 || scoreBonus(d, INT) != 0 {
+		t.Errorf("bonuses CHA %d WIS %d DEX %d INT %d, want the subrace's WIS +1 alone", scoreBonus(d, CHA), scoreBonus(d, WIS), scoreBonus(d, DEX), scoreBonus(d, INT))
+	}
+	if slices.ContainsFunc(s.Groups, func(g ChoiceGroup) bool {
+		return slices.ContainsFunc(g.Choices, func(ch Choice) bool { return ch.Key == key })
+	}) || !slices.Equal(slices.Sorted(slices.Values(s.NotOffered)), slices.Sorted(slices.Values(picks))) {
+		t.Errorf("the abilities are offered, or not offered = %v, want %v", s.NotOffered, picks)
+	}
+	if slices.ContainsFunc(d.Hints, func(h Hint) bool { return h.Source == "race:half-elf" }) {
+		t.Errorf("a hint asks for the half-elf's picks: %v", d.Hints)
+	}
+
+	d, s = run(false)
+	if scoreBonus(d, CHA) != 2 || scoreBonus(d, WIS) != 1 || scoreBonus(d, DEX) != 1 || scoreBonus(d, INT) != 1 || len(s.NotOffered) != 0 {
+		t.Errorf("without the flag: CHA %d WIS %d DEX %d INT %d, not offered %v, want them all", scoreBonus(d, CHA), scoreBonus(d, WIS), scoreBonus(d, DEX), scoreBonus(d, INT), s.NotOffered)
 	}
 }

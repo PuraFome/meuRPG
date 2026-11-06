@@ -160,12 +160,10 @@ func sumOf(values []int) int {
 // two abilities) are not manual: they are picks of the choice engine
 // (choicegroups.go) and add to the race's bonus. A table race's own "+2 and +1 to
 // your choice" (raceChoice) has no choice engine behind it: the player places it
-// in the manual bonuses, so its points are free too.
+// in the manual bonuses, so its points are free too. A subrace that replaces the
+// race's bonuses leaves none of them.
 func (c *Content) FreeAbilityPoints(b Build) int {
-	n := 0
-	for _, set := range c.c.raceBonusSets(b.Race) {
-		n = max(n, sumOf(set)) // the player picks one set: the largest is the most it can place
-	}
+	n := c.c.racePlacedPoints(b.Race, b.Subrace)
 	for _, cl := range b.Classes {
 		rows := c.c.classLevels[cl.Class]
 		for level := 1; level <= cl.Level && level <= len(rows); level++ {

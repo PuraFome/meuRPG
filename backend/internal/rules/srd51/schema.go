@@ -83,6 +83,7 @@ type Subrace struct {
 	// ReplacesTraitKeys are trait keys of the parent race this subrace replaces.
 	ReplacesTraitKeys []string `json:"replaces_trait_keys,omitempty"`
 	// ReplacesAbilityBonuses swaps the parent's ability bonuses whole for AbilityBonuses.
+	// The ones the player places on abilities (the half-elf's picks) go with them.
 	ReplacesAbilityBonuses bool `json:"replaces_ability_bonuses,omitempty"`
 }
 

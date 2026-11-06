@@ -1920,7 +1920,8 @@ export type TableSubrace = Message<"meurpg.rules.v1.TableSubrace"> & {
 
   /**
    * When true, the parent race's ability bonuses are swapped whole for this
-   * subrace's `ability_bonuses`: they are never added on top of the race's.
+   * subrace's `ability_bonuses`: they are never added on top of the race's. The
+   * bonuses the player places on abilities (the race's choice_bonuses) go with them.
    *
    * @generated from field: bool replaces_ability_bonuses = 6;
    */

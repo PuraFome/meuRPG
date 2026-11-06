@@ -3485,7 +3485,8 @@ type TableSubrace struct {
 	// (SRD or table) and appear once. At most 60 (the limit of traits).
 	ReplacesTraitKeys []string `protobuf:"bytes,5,rep,name=replaces_trait_keys,json=replacesTraitKeys,proto3" json:"replaces_trait_keys,omitempty"`
 	// When true, the parent race's ability bonuses are swapped whole for this
-	// subrace's `ability_bonuses`: they are never added on top of the race's.
+	// subrace's `ability_bonuses`: they are never added on top of the race's. The
+	// bonuses the player places on abilities (the race's choice_bonuses) go with them.
 	ReplacesAbilityBonuses bool `protobuf:"varint,6,opt,name=replaces_ability_bonuses,json=replacesAbilityBonuses,proto3" json:"replaces_ability_bonuses,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache

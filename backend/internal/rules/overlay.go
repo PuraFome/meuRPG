@@ -293,6 +293,7 @@ type TableSubrace struct {
 	// ReplacesTraitKeys are trait keys of the parent race this subrace replaces.
 	ReplacesTraitKeys []string
 	// ReplacesAbilityBonuses swaps the parent's ability bonuses whole for AbilityBonuses.
+	// The ones the player places on abilities (ChoiceBonuses, the half-elf's picks) go with them.
 	ReplacesAbilityBonuses bool
 }
 
