@@ -488,7 +488,7 @@ func (wv *windowView) resistancePrompt(w playdb.ReactionWindow, out *playv1.Reac
 		})
 		if o.CountedAs != 0 {
 			last := p.Offers[len(p.Offers)-1]
-			last.TreatedAs, last.TreatedAsSource = new(o.CountedAs), o.CountedBy
+			last.TreatedAs, last.TreatedAsSource = new(o.CountedAs), legacySource(o.CountedBy)
 		}
 	}
 	out.Prompt = &playv1.ReactionWindow_LegendaryResistance{LegendaryResistance: p}

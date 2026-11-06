@@ -346,7 +346,7 @@ func channelProto(ev *channelEvent) *playv1.ChannelDivinityResult {
 	for _, t := range ev.Turns {
 		turn := &playv1.ChannelDivinityTurn{CombatantId: t.Target, Label: t.Label, D20: t.D20, Modifier: t.Modifier, Total: t.Total, Turned: t.Turned}
 		if t.CountedAs != 0 {
-			turn.TreatedAs, turn.TreatedAsSource = new(t.CountedAs), t.CountedBy
+			turn.TreatedAs, turn.TreatedAsSource = new(t.CountedAs), legacySource(t.CountedBy)
 		}
 		out.Turns = append(out.Turns, turn)
 	}

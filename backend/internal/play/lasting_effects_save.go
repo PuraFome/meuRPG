@@ -502,7 +502,7 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 	x.ev.D20, x.ev.Modifier, x.ev.Total, x.ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 	x.ev.countedRoll = countedOf(d20)
 	if x.ev.CountedAs != 0 {
-		result.TreatedAs, result.TreatedAsSource = new(x.ev.CountedAs), x.ev.CountedBy
+		result.TreatedAs, result.TreatedAsSource = new(x.ev.CountedAs), legacySource(x.ev.CountedBy)
 	}
 	// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
 	x.ev.Lucky, x.ev.Indomitable, result.Rerolled = step.Lucky, step.Indomitable, rerollsOf(step.Lucky, step.Indomitable)
@@ -627,7 +627,7 @@ func savedResultOf(res combatResult, made actionEvent, showDC bool) *playv1.Effe
 		out.InspirationSides, out.InspirationFace = ev.Res.Sides, ev.Res.Face
 	}
 	if ev.CountedAs != 0 {
-		out.TreatedAs, out.TreatedAsSource = new(ev.CountedAs), ev.CountedBy
+		out.TreatedAs, out.TreatedAsSource = new(ev.CountedAs), legacySource(ev.CountedBy)
 	}
 	if showDC && le.DC != 0 {
 		dc := le.DC

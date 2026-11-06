@@ -217,7 +217,7 @@ func (x *deriver) rollEffects() {
 		switch {
 		case len(e.Tags) > 0 || !x.applies(a):
 		case e.Type == "roll_minimum":
-			x.d.RollMinimums = append(x.d.RollMinimums, RollMinimum{Applies: slices.Clone(e.Rolls), Value: x.literal(e.Value), DamageType: e.DamageType, Source: a.owner})
+			x.d.RollMinimums = append(x.d.RollMinimums, RollMinimum{Applies: slices.Clone(e.Rolls), Value: literalValue(e.Value), DamageType: e.DamageType, Source: a.owner})
 		case e.Type == "reroll":
 			if cost, ok := x.rerollCost(a); ok {
 				x.d.Rerolls = append(x.d.Rerolls, RerollRule{
@@ -249,8 +249,8 @@ func (x *deriver) rerollCost(a activeEffect) (int, bool) {
 	return n, n <= x.d.Resources[i].Max // a cost above the uses the resource has could never be paid
 }
 
-// literal is the number of a literal value the shape check has accepted.
-func (*deriver) literal(s string) int {
+// literalValue is the number of a literal value the shape check has accepted.
+func literalValue(s string) int {
 	n, _ := strconv.Atoi(s)
 	return n
 }

@@ -199,7 +199,7 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 		Rerolled: strokeRerolls(r.Lucky, r.Stroke),
 	}
 	if r.CountedAs != 0 {
-		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), r.CountedBy
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), legacySource(r.CountedBy)
 	}
 	return out
 }

@@ -69,9 +69,7 @@ func checkRoll(face, modifier int32, physical bool, f rollFloor) *playv1.DiceRol
 func treatedRoll(face, modifier, total int32, physical bool, source string) *playv1.DiceRoll {
 	out := diceRoll(1, 20, []int32{face}, modifier, total, physical)
 	if counted := total - modifier; counted != face {
-		if src := legacySource(source); src != "" {
-			out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), src
-		}
+		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), legacySource(source)
 	}
 	return out
 }
@@ -188,7 +186,7 @@ func (c countedRoll) faceText(face int32) string {
 // mark tells the API that the die counted as another number than it came up; the faces stay as they came up.
 func (c countedRoll) mark(out *playv1.DiceRoll) *playv1.DiceRoll {
 	if c.CountedAs != 0 {
-		out.TreatedAs, out.TreatedAsSource = new(c.CountedAs), c.CountedBy
+		out.TreatedAs, out.TreatedAsSource = new(c.CountedAs), legacySource(c.CountedBy)
 	}
 	return out
 }

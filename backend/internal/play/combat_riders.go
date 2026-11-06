@@ -555,7 +555,7 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 func riderNumbersProto(out *playv1.CombatLogHitRider, r *riderEvent, showDC bool) {
 	out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
 	if r.CountedAs != 0 {
-		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), r.CountedBy
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), legacySource(r.CountedBy)
 	}
 	if showDC { // the DC is the master's, and the target's player's when the table shows it
 		out.Dc = r.DC
