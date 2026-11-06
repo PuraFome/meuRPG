@@ -126,6 +126,25 @@ gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name=
 
 Cloud Logging keeps the logs for 30 days in its `_Default` bucket. The log never holds a password, a token or an e-mail ([Privacy](../privacy.md#logs-in-elk)).
 
+## Entries a new revision would leave out
+
+After `up` succeeds, `/app/migrate` runs the stored table content of every campaign through the rules of the new image.
+It reads one campaign at a time, keeps nothing and writes nothing.
+It never fails the job: a campaign it cannot check is logged at `ERROR` and counted.
+The job has 1 GiB of memory, enough for the SRD and the largest campaign, and the audit shares the job's 15-minute task timeout.
+Each command of the audit has the API's 30-second `statement_timeout`.
+
+```bash
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="meurpg-migrate" AND jsonPayload.message:"table content audit"' --freshness=1d
+```
+
+- `table content audit: entry would be left out` (`WARN`): `campaign_id`, `entry_key`, `kind` and the `reason` code of one entry. No text of the entry is logged.
+- `table content audit done` (`INFO`): `campaigns` checked, `left_out` entries over all of them (0 when all is well) and `failed` campaigns.
+
+A line is no reason to stop the deploy: the campaign reads without that entry.
+The master sees the entry in `left_out` of the table content list and repairs or archives it.
+`/app/migrate audit-content` runs the audit alone.
+
 ## Alerts
 
 Create the two budgets and the uptime check once. Budgets go to the billing account's administrators; they never stop a cost.
@@ -300,7 +319,7 @@ The job runs the image's `/app/migrate up` before each new revision gets traffic
 ```bash
 gcloud run jobs create meurpg-migrate --image=$IMAGE --service-account=$SA \
   --command=/app/migrate --args=up --set-secrets=DATABASE_URL=database-url:latest \
-  --max-retries=0 --task-timeout=15m
+  --max-retries=0 --task-timeout=15m --memory=1Gi
 gcloud run jobs execute meurpg-migrate --wait
 ```
 

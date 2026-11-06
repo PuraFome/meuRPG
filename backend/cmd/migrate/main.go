@@ -10,6 +10,9 @@
 //	DATABASE_URL=postgresql://... migrate up      # apply all pending migrations
 //	DATABASE_URL=postgresql://... migrate down    # roll back the latest one
 //	DATABASE_URL=postgresql://... migrate status  # list applied and pending
+//	DATABASE_URL=postgresql://... migrate audit-content  # log the table entries the rules would leave out
+//
+// `up` runs the audit after it succeeds. The audit only reads and never fails the job.
 package main
 
 import (
@@ -26,12 +29,15 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
+	"github.com/PuraFome/meuRPG/backend/internal/characters"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/migrations"
 )
 
-const usage = "usage: migrate <up|down|status>"
+const usage = "usage: migrate <up|down|status|audit-content>"
 
 func main() {
 	cfg, err := config.Load(os.Getenv)
@@ -94,11 +100,40 @@ func run(logger *slog.Logger, cfg config.Config, args []string) error {
 		ctx = runCtx
 	}
 
+	if command == "audit-content" {
+		auditContent(ctx, logger, cfg)
+		return nil
+	}
 	apply, ok := commands[command]
 	if !ok {
 		return fmt.Errorf("unknown command %q; %s", command, usage)
 	}
-	return apply(ctx, logger, provider)
+	if err := apply(ctx, logger, provider); err != nil {
+		return err
+	}
+	if command == "up" {
+		auditContent(ctx, logger, cfg)
+	}
+	return nil
+}
+
+// auditContent logs the table entries the rules in this image would leave out.
+// It reads only, and a failure is logged: the audit never fails the job.
+func auditContent(ctx context.Context, logger *slog.Logger, cfg config.Config) {
+	srd, err := rules.LoadSRD()
+	if err != nil {
+		logger.ErrorContext(ctx, "table content audit skipped: cannot load the rules", "error", err)
+		return
+	}
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL.Reveal())
+	if err != nil {
+		logger.ErrorContext(ctx, "table content audit skipped: cannot connect", "error", err)
+		return
+	}
+	defer pool.Close()
+	if _, err := characters.AuditTableContent(ctx, pool, srd, logger); err != nil {
+		logger.ErrorContext(ctx, "table content audit failed", "error", err)
+	}
 }
 
 // commands are what run can do, by the name given on the command line.
