@@ -1042,6 +1042,14 @@ describe('the legendary actions the master spent: a line for the master alone', 
       legendarySpent: { optionName: 'Detect', cost: 1 },
     } as never);
     expect(logLine(one)?.text).toBe('gastou 1 ação lendária: Detect');
+    // With the combat's legendary names the line reads the option in Portuguese, and it stays the master's alone.
+    const ctx = {
+      master: true,
+      players: new Set<string>(),
+      legendaryNames: new Map([['Detect', 'Detectar']]),
+    };
+    expect(logLine(one, '', ctx)?.text).toBe('gastou 1 ação lendária: Detectar');
+    expect(logLine({ ...one, hidden: true } as never, '', ctx)?.hidden).toBe(true);
     expect(undoLabel(one)).toBe('o gasto de ações lendárias do Draco');
   });
 });

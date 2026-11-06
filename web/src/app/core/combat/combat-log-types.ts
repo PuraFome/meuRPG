@@ -66,6 +66,8 @@ export interface LogContext {
   readonly players: ReadonlySet<string>;
   /** The combat is played without a map (RN-25): a move is "gastou 6,0 m de movimento", and the start says so. */
   readonly theatre?: boolean;
+  /** The legendary options' names, English (as the SRD's stat block has them) to Portuguese (`legendaryNames`). */
+  readonly legendaryNames?: ReadonlyMap<string, string>;
 }
 
 export const NO_CONTEXT: LogContext = { master: false, players: new Set() };

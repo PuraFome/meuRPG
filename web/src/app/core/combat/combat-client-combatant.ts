@@ -34,6 +34,29 @@ export class CombatCombatantCalls {
     };
   }
 
+  /** The master spends the legendary actions of an option of kind "text" (`SpendLegendaryAction`). */
+  async spendLegendaryAction(
+    campaignId: string,
+    encounterId: string,
+    combatantId: string,
+    optionKey: string,
+    key?: string,
+  ): Promise<Encounter> {
+    const res = await this.base.keyed(
+      ['spendLegendaryAction', campaignId, encounterId, combatantId, optionKey],
+      (sent) =>
+        this.base.client.spendLegendaryAction({
+          campaignId,
+          encounterId,
+          combatantId,
+          optionKey,
+          idempotencyKey: sent,
+        }),
+      key,
+    );
+    return need(res.encounter, 'SpendLegendaryAction');
+  }
+
   /** The master confirms a death (three failed death saves). It cannot be undone. */
   async confirmDeath(
     campaignId: string,

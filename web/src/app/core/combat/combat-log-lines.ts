@@ -299,7 +299,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   // his alone, with the creature, the option as the stat block names it (SRD, English) and the cost.
   [
     CombatLogKind.LEGENDARY_SPENT,
-    ({ e, base }) => {
+    ({ e, base, ctx }) => {
       const spent = e.legendarySpent;
       if (!spent) {
         return null;
@@ -309,7 +309,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         ...base,
         hidden: true,
         icon: 'bolt',
-        text: `gastou ${spent.cost} ${actions}: ${spent.optionName}`,
+        text: `gastou ${spent.cost} ${actions}: ${ctx.legendaryNames?.get(spent.optionName) ?? spent.optionName}`,
       };
     },
   ],
