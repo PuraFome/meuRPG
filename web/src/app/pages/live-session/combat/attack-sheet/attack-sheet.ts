@@ -156,18 +156,34 @@ export class AttackSheet {
       ? 'Dado da manobra neste ataque'
       : 'Dados das suas características',
   );
-  /** With the table die ticked and its face typed, the total adds it: "12 + 6 + 5 = 23". */
+  /** The extra dice typed beside the d20 (the effects' d4, then the table die), each with its sign. */
+  private typedExtras(): readonly { face: number; sign: number }[] | null {
+    const fields = this.typedFields();
+    const faces = this.extraFaces();
+    if (fields.length === 0 || faces.length !== fields.length || faces.some((f) => f === null)) {
+      return null;
+    }
+    return fields.map((f, i) => ({ face: faces[i] as number, sign: f.sign }));
+  }
+  /** With extra dice typed and all their faces there, the total adds them: "12 + 6 + 5 = 23". */
   protected readonly typedFormula = (d20: number): { text: string; total: number } | null => {
-    const face = this.rolls.maneuver() ? (this.extraFaces().at(-1) ?? null) : null;
-    if (face === null) {
+    const extras = this.typedExtras();
+    if (!extras) {
       return null;
     }
     const bonus = this.attack.attackBonus;
-    const total = d20 + bonus + face;
+    const total = d20 + bonus + extras.reduce((n, e) => n + e.sign * e.face, 0);
     const mod = bonus === 0 ? '' : ` ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}`;
-    return { text: `${d20}${mod} + ${face} = ${total}`, total };
+    const text = extras.map((e) => ` ${e.sign < 0 ? '−' : '+'} ${e.face}`).join('');
+    return { text: `${d20}${mod}${text} = ${total}`, total };
   };
-  protected readonly maneuverTicked = computed(() => this.rolls.maneuver() !== null);
+  /** Any extra die is asked beside the d20: the total and the confirm button read it. */
+  protected readonly hasExtras = computed(() => this.typedFields().length > 0);
+  /** The attack bonus with the typed extra dice, for the total of the two d20. */
+  protected readonly pairModifier = computed(() => {
+    const extras = this.typedExtras();
+    return this.attack.attackBonus + (extras?.reduce((n, e) => n + e.sign * e.face, 0) ?? 0);
+  });
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 

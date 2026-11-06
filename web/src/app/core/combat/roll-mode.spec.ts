@@ -173,6 +173,25 @@ describe('requests and rolls', () => {
     expect(d20Formula(one)).toBe('1d20 (9) + 5 = 14');
   });
 
+  it('names the extra dice of a d20 when asked, for one die and for the pair', () => {
+    const extraDice = [
+      { sourceKey: 'm', sourceNamePt: 'Golpe Certeiro', faces: 8, sign: 1, face: 5 },
+    ];
+    const one = {
+      diceCount: 1,
+      diceSides: 20,
+      faces: [12],
+      countedIndex: 0,
+      modifier: 6,
+      total: 23,
+      extraDice,
+    } as never;
+    expect(d20Formula(one)).toBe('1d20 (12) + 6 + 1d8 (5) = 23');
+    expect(d20Formula(one, true)).toBe('1d20 (12) + 6 + Golpe Certeiro 1d8 (5) = 23');
+    const pair = { ...(one as object), diceCount: 2, faces: [12, 3], countedIndex: 0 } as never;
+    expect(d20Formula(pair, true)).toBe('12 + 6 + Golpe Certeiro 1d8 (5) = 23');
+  });
+
   it('writes a resistance step', () => {
     expect(
       stepLine({

@@ -91,8 +91,9 @@ function heldOf(e: Encounter, held: HeldRollOffer | undefined) {
 }
 
 /**
- * The table dice a weapon attack may take (`maneuver_dice` of the options): only the character's own weapon attack, an
- * opportunity attack included. A spell attack, an NPC's or a creature's attack, and the monk's throw back get none.
+ * The table dice a weapon attack may take (`maneuver_dice` of the options): `own` is true when a player rolls it (not the
+ * master); then a weapon attack gets the dice the server listed, an opportunity attack included. A spell attack, a roll
+ * of the master and the monk's throw back get none. That an NPC or a creature has none is the server's list.
  */
 export function maneuverDiceOf(
   options: GetTurnOptionsResponse | null | undefined,

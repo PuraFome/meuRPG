@@ -14,7 +14,7 @@ let nextId = 0;
  *
  * The weapon attack also gives `uses` (the pool each die spends from and what is left): the line then says the uses left, a
  * die with none is off with "Sem usos de ..." under the group, and with `exclusive` and two dice or more the choice is a
- * radio group that starts on "Nenhum".
+ * radio group that starts on "Nenhum" (a card of one line; what it means is read by a screen reader from the group).
  */
 @Component({
   selector: 'app-roll-die-offer',
@@ -22,7 +22,7 @@ let nextId = 0;
   imports: [MatIconModule, OptionCard],
   template: `
     @if (dice().length > 0) {
-      <fieldset class="offer">
+      <fieldset class="offer" [attr.aria-describedby]="radios() ? group + '-nenhum' : null">
         @if (legend()) {
           <legend class="offer__legend">{{ legend() }}</legend>
         } @else {
@@ -33,10 +33,12 @@ let nextId = 0;
             kind="radio"
             [name]="group"
             title="Nenhum"
-            sub="O ataque sai sem dado de manobra."
             [checked]="picked() === ''"
             (chosen)="picked.set('')"
           />
+        }
+        @if (radios()) {
+          <span class="mr-visually-hidden" [id]="group + '-nenhum'">O ataque sai sem dado de manobra.</span>
         }
         @for (d of dice(); track d.key) {
           <app-option-card
@@ -45,12 +47,13 @@ let nextId = 0;
             [title]="'Usar ' + d.namePt"
             [sub]="cost(d)"
             [disabled]="empty(d)"
+            [describedBy]="empty(d) ? noneId(d) : ''"
             [checked]="picked() === d.key"
             (chosen)="choose(d)"
           />
         }
-        @for (r of spent(); track r) {
-          <p class="offer__none"><mat-icon aria-hidden="true">block</mat-icon>Sem usos de {{ r }}.</p>
+        @for (r of spent(); track r; let i = $index) {
+          <p class="offer__none" [id]="group + '-none-' + i"><mat-icon aria-hidden="true">block</mat-icon>Sem usos de {{ r }}.</p>
         }
       </fieldset>
     }
@@ -122,6 +125,12 @@ export class RollDieOffer {
   protected cost(d: RollDie): string {
     const u = this.uses()[d.key];
     return u ? attackDieCost(d, u) : rollDieCost(d);
+  }
+
+  /** The id of the "Sem usos de ..." line that says why the die is off. */
+  protected noneId(d: RollDie): string {
+    const u = this.uses()[d.key];
+    return `${this.group}-none-${this.spent().indexOf(u?.resourceNamePt ?? '')}`;
   }
 
   protected empty(d: RollDie): boolean {

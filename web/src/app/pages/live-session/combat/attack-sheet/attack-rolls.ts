@@ -290,7 +290,6 @@ export class AttackRolls {
     this.s.error.set(refusal.message);
   }
 
-  /** The faces of the d4 typed for a roll from physical dice; none for the app's dice, `null` while one is missing (the sheet says so). */
   /** Reads the attacker's table dice again, so the offer says how many uses are left. */
   private async refreshUses(): Promise<void> {
     const { data } = this.s;
@@ -306,6 +305,7 @@ export class AttackRolls {
     }
   }
 
+  /** The faces of the d4 typed for a roll from physical dice; none for the app's dice, `null` while one is missing (the sheet says so). */
   private typedExtra(die: AttackDie | PairDie): readonly number[] | null {
     const fields = this.typedFields();
     if ('inApp' in die || fields.length === 0) {

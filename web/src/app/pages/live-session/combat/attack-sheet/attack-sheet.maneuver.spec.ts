@@ -15,7 +15,17 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../../../gen/meurpg/play/v1/resources_pb';
-import { type Attack, RollDieSchema } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  AttackKind,
+  AttackSchema,
+  RollDieSchema,
+} from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  EffectModifierKind,
+  EffectRollKind,
+  LastingEffectSchema,
+} from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
 import { CombatState } from '../../../../core/combat/combat-state';
@@ -23,18 +33,28 @@ import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 
 const plain = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim();
-const longsword = {
+const longsword = create(AttackSchema, {
   key: 'attack:longsword',
   name: 'Longsword',
   namePt: 'Espada longa',
   attackBonus: 6,
-  saveDc: 0,
   rangeFt: 5,
-  longRangeFt: 0,
   damage: '1d8 + 3',
   damageTypePt: 'cortante',
-  kind: 1,
-} as unknown as Attack;
+  kind: AttackKind.WEAPON,
+});
+const blessing = create(LastingEffectSchema, {
+  id: 'e1',
+  sourceNamePt: 'Bênção',
+  modifiers: [
+    {
+      kind: EffectModifierKind.ROLL_DIE,
+      die: 4,
+      sign: 1,
+      appliesTo: [EffectRollKind.ATTACK],
+    },
+  ],
+});
 
 const option = (key: string, name: string, usesLeft: number): ManeuverDieOption =>
   create(ManeuverDieOptionSchema, {
@@ -47,13 +67,21 @@ const certeiro = option('golpe', 'Golpe Certeiro', 2);
 describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () => {
   const api = { rollAttack: vi.fn(), turnOptions: vi.fn() };
 
-  function setup(opts: { dice?: readonly ManeuverDieOption[]; diceMode?: DiceMode } = {}) {
+  function setup(
+    opts: {
+      dice?: readonly ManeuverDieOption[];
+      diceMode?: DiceMode;
+      advantage?: boolean;
+      effects?: unknown[];
+    } = {},
+  ) {
     const toren = combatant({
       id: 't',
       label: 'Toren',
       kind: CombatantKind.PLAYER,
       side: CombatantSide.PARTY,
       mine: true,
+      effects: opts.effects ?? [],
     } as never);
     const state = new CombatState();
     state.apply(
@@ -69,16 +97,31 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
       attackerId: 't',
       round: 3,
       attack: longsword,
-      targets: [],
       diceMode: opts.diceMode ?? DiceMode.PLAYERS_CHOOSE,
       preference: DicePreference.APP,
       state,
-      opportunity: {
-        offerId: 'o1',
-        targetId: 'cap',
-        targetLabel: 'Capitão bandido',
-        byMaster: false,
-      },
+      ...(opts.advantage
+        ? {
+            target: 'cap',
+            targets: [
+              {
+                combatantId: 'cap',
+                label: 'Capitão bandido',
+                rollMode: RollMode.ADVANTAGE,
+                sources: [],
+              },
+            ] as never,
+          }
+        : {
+            targets: [],
+            asReaction: true,
+            opportunity: {
+              offerId: 'o1',
+              targetId: 'cap',
+              targetLabel: 'Capitão bandido',
+              byMaster: false,
+            },
+          }),
       ...(opts.dice ? { maneuverDice: opts.dice } : {}),
     };
     TestBed.configureTestingModule({
@@ -145,6 +188,9 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     ticked.fixture.detectChanges();
     ticked.button('Rolar no app').click();
     await ticked.settle();
+    // An opportunity attack: it spends the reaction, names the offer, and carries the die all the same.
+    expect(api.rollAttack.mock.calls[0][7]).toBe(true);
+    expect(api.rollAttack.mock.calls[0][8]).toBe('o1');
     expect(api.rollAttack.mock.calls[0][11]).toEqual({
       extraDieFaces: [],
       useExtraAction: false,
@@ -224,5 +270,35 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     expect(plain(el.textContent)).toContain('Sem usos de Reserva de Golpes.');
     expect(box().disabled).toBe(true);
     expect(box().checked).toBe(false);
+  });
+
+  it('adds the typed d8 to the total of the two d20 too (advantage)', async () => {
+    const { fixture, el, box, fill } = setup({
+      dice: [certeiro],
+      diceMode: DiceMode.PHYSICAL,
+      advantage: true,
+    });
+    box().click();
+    fixture.detectChanges();
+    fill('Resultado do d8', '5');
+    fill('Primeiro d20', '12');
+    fill('Segundo d20', '4');
+    expect(plain(el.textContent)).toContain('23');
+    expect(plain(el.querySelector('.type__sum')?.textContent)).toContain('23');
+  });
+
+  it('adds the d4 of an effect to the total with the die', () => {
+    const { fixture, el, box, fill } = setup({
+      dice: [certeiro],
+      diceMode: DiceMode.PHYSICAL,
+      effects: [blessing],
+    });
+    box().click();
+    fixture.detectChanges();
+    fill('Resultado do d4 (Bênção)', '3');
+    fill('Resultado do d8', '5');
+    fill('Role 1d20', '12');
+    expect(plain(el.textContent)).toContain('12 + 6 + 3 + 5 = 26');
+    expect(plain(el.textContent)).toContain('Confirmar 26');
   });
 });

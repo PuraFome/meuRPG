@@ -94,6 +94,8 @@ describe('RollDieOffer', () => {
     expect(plain(el.querySelector('.offer__none')?.textContent)).toContain(
       'blockSem usos de Reserva de Golpes.',
     );
+    const why = el.querySelector('.offer__none')!;
+    expect(inputs()[0].getAttribute('aria-describedby')).toContain(why.id);
     inputs()[0].click();
     f.detectChanges();
     expect(host.picked()).toBe('');
@@ -111,7 +113,11 @@ describe('RollDieOffer', () => {
     expect(inputs().map((i) => i.type)).toEqual(['radio', 'radio', 'radio']);
     expect(new Set(inputs().map((i) => i.name)).size).toBe(1);
     expect(plain(el.querySelector('.opt')?.textContent)).toContain('Nenhum');
-    expect(plain(el.textContent)).toContain('O ataque sai sem dado de manobra.');
+    // One line on the card; the meaning of "Nenhum" is read from the group.
+    const hint = el.querySelector('.mr-visually-hidden[id$="-nenhum"]')!;
+    expect(plain(hint.textContent)).toBe('O ataque sai sem dado de manobra.');
+    expect(el.querySelector('fieldset')?.getAttribute('aria-describedby')).toBe(hint.id);
+    expect(plain(el.querySelector('.opt')?.textContent)).toBe('Nenhum');
     expect(inputs().map((i) => i.checked)).toEqual([true, false, false]);
     inputs()[2].click();
     f.detectChanges();

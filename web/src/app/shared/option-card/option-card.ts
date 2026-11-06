@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 let nextId = 0;
@@ -31,7 +31,7 @@ export type OptionCardKind = 'checkbox' | 'radio' | 'fixed';
           [name]="name() || null"
           [checked]="checked()"
           [disabled]="!!why() || disabled()"
-          [attr.aria-describedby]="sub() ? subId : null"
+          [attr.aria-describedby]="describedByIds()"
           (change)="chosen.emit()"
         />
         <span class="opt__box" [class.opt__box--round]="kind() === 'radio'" aria-hidden="true">
@@ -77,7 +77,12 @@ export class OptionCard {
   readonly why = input('');
   /** Off like `why` but with no reason written inside the card (the caller says it on a line of its own). */
   readonly disabled = input(false);
+  /** The id of a line outside the card that says more about it ("Sem usos de ..."); read after the sub line. */
+  readonly describedBy = input('');
   readonly chosen = output<void>();
 
   protected readonly subId = `option-card-${nextId++}`;
+  protected readonly describedByIds = computed(
+    () => [this.sub() ? this.subId : '', this.describedBy()].filter(Boolean).join(' ') || null,
+  );
 }

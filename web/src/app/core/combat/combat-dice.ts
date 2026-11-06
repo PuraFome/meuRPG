@@ -16,7 +16,9 @@ function modifierText(modifier: number): string {
   return ` ${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`;
 }
 
-/** The dice an effect added to a roll (Bênção, Perdição), written after the modifier: " + 1d4 (3)", and what they add up to. */
+/** The dice an effect added to a roll (Bênção, Perdição), written after the modifier: " + 1d4 (3)", and what they add up to.
+ * `named` writes the source before each die (" + Golpe Certeiro 1d8 (5)", " + Bênção 1d4 (3)"): the attack sheet's result
+ * names every die, effects included. */
 export function extraDiceText(
   roll: Pick<DiceRoll, 'extraDice'>,
   named = false,
@@ -33,7 +35,7 @@ export function extraDiceText(
   };
 }
 
-/** A roll as the formula the table reads, the total included. */
+/** A roll as the formula the table reads, the total included; `named` is as in `extraDiceText`. */
 export function rollFormula(roll: DiceRoll, named = false): string {
   // A d20 a feature raised says so (Talento Confiável): what came up, what it counted as, and the feature.
   const treated = treatedFormula(roll);
