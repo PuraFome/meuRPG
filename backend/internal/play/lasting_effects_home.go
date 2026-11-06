@@ -410,8 +410,8 @@ func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row play
 		return nil
 	}
 	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, row.CharacterID)
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		return nil // no vitals: no hit points to give
+	if connect.CodeOf(err) == connect.CodeNotFound { // no vitals: no hit points to give, and nothing to take back
+		return c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: row.ID, Modifiers: claimedTempHP(mods, 0)})
 	}
 	if err != nil {
 		return err
@@ -434,7 +434,7 @@ func (s *Service) priorCharacterClaim(ctx context.Context, c *combatTx, characte
 	n := 0
 	for _, o := range all {
 		if o.SourceKey == plan.spell && o.GroupID != plan.row.ID {
-			n = max(n, combat.TempHP(modifiersOf(o.Modifiers)))
+			n = max(n, combat.TempHPClaim(modifiersOf(o.Modifiers)))
 		}
 	}
 	return n, nil
@@ -454,7 +454,7 @@ func (s *Service) raiseCharacterTempHP(ctx context.Context, c *combatTx, row pla
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	for _, o := range others {
-		if o.ID == row.ID || combat.TempHP(modifiersOf(o.Modifiers)) == 0 {
+		if o.ID == row.ID || combat.TempHPClaim(modifiersOf(o.Modifiers)) == 0 {
 			continue
 		}
 		if err := c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: o.ID, Modifiers: claimedTempHP(modifiersOf(o.Modifiers), 0)}); err != nil {
@@ -472,7 +472,7 @@ func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, ro
 	for _, r := range rows {
 		mods := modifiersOf(r.Modifiers)
 		turn := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
-		given := combat.TempHP(mods)
+		given := combat.TempHPClaim(mods)
 		if !turn && given == 0 {
 			continue
 		}

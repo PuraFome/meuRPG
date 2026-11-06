@@ -56,6 +56,9 @@ func (s *Service) ListCharacterEffects(
 		if !master && !playerReadsCharacterEffect(r, owned[r.CharacterID]) {
 			continue
 		}
+		if !master && !owned[r.CharacterID] && slices.Contains(ownerOnlyConditions, r.SourceKey) {
+			continue // the condition itself is the source: its name is the leak
+		}
 		out.Effects = append(out.Effects, characterEffectProto(r, name, names, content, master, owned[r.CharacterID]))
 	}
 	return connect.NewResponse(out), nil
@@ -102,6 +105,9 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		e.SecondsLeft = r.SecondsLeft
 	}
 	for _, k := range r.ConditionKeys {
+		if !master && !own && slices.Contains(ownerOnlyConditions, k) {
+			continue // no sign on the outside: the owner's and the master's (RN-10)
+		}
 		e.ConditionNamesPt = append(e.ConditionNamesPt, names(k))
 	}
 	if !master && !own {

@@ -155,6 +155,11 @@ type EffectModifier struct {
 	// Kind because that field is the modifier's own kind.
 	ResistanceKind string   `json:"resistance_kind,omitempty"`
 	DamageTypes    []string `json:"damage_types,omitempty"`
+	// Claim and Unclaimed are kept by the engine on a ModifierTempHP row: the pool this effect set (what its end may
+	// take back) and that it set none. Value stays the spell's own number. Neither is set for a row without them,
+	// which claims Value.
+	Claim     int  `json:"claim,omitempty"`
+	Unclaimed bool `json:"unclaimed,omitempty"`
 }
 
 // EffectDuration is how long an effect lasts.

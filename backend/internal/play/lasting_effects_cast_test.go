@@ -13,6 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The effect of a table spell when it is cast (RN-22, #579): who gets it, the temporary hit points and the armor
@@ -690,5 +691,94 @@ func TestATableSpellCheckAdvantageIsTaggedOnce(t *testing.T) {
 	}
 	if n != 1 || len(card.GetChangesPt()) != 0 && strings.Contains(strings.Join(card.GetChangesPt(), " "), "Touro") {
 		t.Errorf("tags %q, changes %q; want one tag and no SRD note", card.GetTagsPt(), card.GetChangesPt())
+	}
+}
+
+// RN-10: a public effect that poisons a character out of a combat shows another player nothing of the poison
+// (no condition name, no label); the master and the character's player read it.
+func TestATableSpellOwnerOnlyConditionDoesNotLeakOutsideACombat(t *testing.T) {
+	t.Parallel()
+	a := newMarkCastersWith(t, func(s *rulesv1.TableSpell) { s.Effect.Conditions = []string{"condition:poisoned"} }, &tableMod{Kind: modAC, Value: 2})
+	a.mustCastOut(t, a.ana, a.pens, tableMark, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
+	read := func(u *user) *playv1.CharacterEffect {
+		res, err := u.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: a.campaignID}))
+		if err != nil {
+			t.Fatalf("ListCharacterEffects() error = %v", err)
+		}
+		for _, f := range res.Msg.GetEffects() {
+			if f.GetCharacterId() == a.toren.GetId() {
+				return f
+			}
+		}
+		return nil
+	}
+	for name, u := range map[string]*user{"master": a.master, "owner": a.caio} {
+		if f := read(u); f == nil || !strings.Contains(strings.Join(f.GetConditionNamesPt(), " "), "Envenenado") {
+			t.Errorf("%s reads %v, want the poison", name, f)
+		}
+	}
+	if f := read(a.bia); f != nil && strings.Contains(f.String(), "Envenenado") {
+		t.Errorf("another player reads the poison: %v", f)
+	}
+}
+
+// The effects on a creature that only its player reads count as unread for any other viewer, and the master
+// and the player read them.
+func TestHasUnreadEffectByAudience(t *testing.T) {
+	t.Parallel()
+	user := "u1"
+	toren := playdb.Combatant{ID: "t", UserID: &user}
+	states := map[string][]playdb.CombatantState{"t": {{ID: "e", Kind: "effect", PlayerVisible: true, Audience: audienceOwner}}}
+	for _, c := range []struct {
+		name string
+		v    combatViewer
+		want bool
+	}{
+		{"another player", combatViewer{userID: "u2"}, true},
+		{"the owner", combatViewer{userID: "u1"}, false},
+	} {
+		if got := hasUnreadEffect(states, toren, c.v); got != c.want {
+			t.Errorf("%s: unread = %v, want %v", c.name, got, c.want)
+		}
+	}
+	states["t"][0].Audience = "all"
+	if hasUnreadEffect(states, toren, combatViewer{userID: "u2"}) {
+		t.Error("a public effect is unread by another player")
+	}
+}
+
+// The temp_hp row keeps the spell's own number for the card and the claim apart.
+func TestTempHPClaimIsApartFromTheValue(t *testing.T) {
+	t.Parallel()
+	mods := []rules.EffectModifier{{Kind: rules.ModifierTempHP, Value: 5}}
+	if got := combat.TempHPClaim(mods); got != 5 {
+		t.Errorf("a row with no claim claims its value: %d", got)
+	}
+	for pool, want := range map[int]int{0: 0, 3: 3} {
+		var back []rules.EffectModifier
+		if err := json.Unmarshal(claimedTempHP(mods, pool), &back); err != nil {
+			t.Fatal(err)
+		}
+		if back[0].Value != 5 || combat.TempHPClaim(back) != want {
+			t.Errorf("pool %d: %+v claims %d, want value 5 and claim %d", pool, back[0], combat.TempHPClaim(back), want)
+		}
+	}
+}
+
+// A card keeps the spell's number when the effect raised nothing.
+func TestATableSpellCardKeepsTheSpellsTempHPWhenNothingWasRaised(t *testing.T) {
+	t.Parallel()
+	a := newSelfMark(t)
+	e := a.castersFight(t, 1)
+	a.setTemp(t, a.pens, 8)
+	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+	card := cardOf(t, byLabel(t, a.get(t, a.ana), "Pensantus"), tableMark)
+	if card == nil || !strings.Contains(strings.Join(card.GetTagsPt(), " "), "5") {
+		t.Errorf("card = %v, want the spell's 5 temporary hit points in the tags", card)
+	}
+	for _, m := range card.GetModifiers() {
+		if m.GetKind() == playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_TEMP_HP && m.GetValue() != 5 {
+			t.Errorf("the card's temp_hp = %d, want 5", m.GetValue())
+		}
 	}
 }

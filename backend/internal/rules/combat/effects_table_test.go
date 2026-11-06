@@ -98,3 +98,16 @@ func TestAResistanceToAllCoversEveryDamageType(t *testing.T) {
 		t.Errorf("Adjust = %d with %d steps, want 5 with one", got, len(steps))
 	}
 }
+
+// Resistance and vulnerability to one type: the damage is halved, then doubled (SRD 5.1, Damage Resistance and
+// Vulnerability: resistance first, so 5 lands as 4).
+func TestResistanceThenVulnerabilityOnOneType(t *testing.T) {
+	t.Parallel()
+	mods := EffectResistances("effect:a", []rules.EffectModifier{
+		{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindResist, DamageTypes: []string{"damage-type:fire"}},
+		{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindVulnerable, DamageTypes: []string{"damage-type:fire"}},
+	})
+	if got, _ := Adjust(5, "damage-type:fire", mods, nil, Origin{}); got != 4 {
+		t.Errorf("5 fire damage = %d, want 4 (halved to 2, doubled)", got)
+	}
+}

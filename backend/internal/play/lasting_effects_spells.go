@@ -110,7 +110,13 @@ func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb
 		amount := combat.TempHP(mods)
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
 		j := slices.IndexFunc(targs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
-		if amount <= 0 || i < 0 || j < 0 {
+		if amount <= 0 {
+			continue
+		}
+		if i < 0 || j < 0 { // not given here: the end has nothing of this effect to take back
+			if err := s.setClaim(ctx, c, r, mods, 0); err != nil {
+				return err
+			}
 			continue
 		}
 		t, err := s.readFxTarget(ctx, c, cs[i])
@@ -124,8 +130,8 @@ func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb
 		} else if err := s.takeOverTempHP(ctx, c, t, r, amount, made, j); err != nil {
 			return err
 		}
-		if err := c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: r.ID, Modifiers: claimedTempHP(mods, amount)}); err != nil {
-			return fmt.Errorf("keep the temporary hit points the effect gave: %w", err)
+		if err := s.setClaim(ctx, c, r, mods, amount); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -141,10 +147,17 @@ func (s *Service) priorTempClaims(ctx context.Context, c *combatTx, key, group s
 	out := map[string]int{}
 	for _, o := range all {
 		if conv.OrZero(o.SourceKey) == key && conv.OrZero(o.GroupID) != group {
-			out[o.CombatantID] = max(out[o.CombatantID], combat.TempHP(effectModifiers(o)))
+			out[o.CombatantID] = max(out[o.CombatantID], combat.TempHPClaim(effectModifiers(o)))
 		}
 	}
 	return out, nil
+}
+
+func (s *Service) setClaim(ctx context.Context, c *combatTx, r playdb.CombatantState, mods []rules.EffectModifier, pool int) error {
+	if err := c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: r.ID, Modifiers: claimedTempHP(mods, pool)}); err != nil {
+		return fmt.Errorf("keep the temporary hit points the effect gave: %w", err)
+	}
+	return nil
 }
 
 // takeOverTempHP raises the pool of the target to amount and takes the temp_hp claim off its other effects.
@@ -165,7 +178,7 @@ func (s *Service) takeOverTempHP(ctx context.Context, c *combatTx, t fxTarget, r
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	for _, o := range all {
-		if o.CombatantID != r.CombatantID || o.ID == r.ID || combat.TempHP(effectModifiers(o)) == 0 {
+		if o.CombatantID != r.CombatantID || o.ID == r.ID || combat.TempHPClaim(effectModifiers(o)) == 0 {
 			continue
 		}
 		made.Hits[hit].Claims = append(made.Hits[hit].Claims, claimBack{ID: o.ID, Mods: o.Modifiers})
@@ -176,13 +189,16 @@ func (s *Service) takeOverTempHP(ctx context.Context, c *combatTx, t fxTarget, r
 	return nil
 }
 
-// claimedTempHP is the modifiers with the temp_hp that is the pool the effect set: none when pool is 0.
+// claimedTempHP is the modifiers with the claim on their temp_hp set to the pool the effect set (none when pool is 0).
+// The modifier's value stays the spell's own number, which the card shows.
 func claimedTempHP(mods []rules.EffectModifier, pool int) []byte {
-	out := slices.DeleteFunc(slices.Clone(mods), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTempHP })
-	if pool > 0 {
-		out = append(out, rules.EffectModifier{Kind: rules.ModifierTempHP, Value: pool})
+	out := slices.Clone(mods)
+	for i := range out {
+		if out[i].Kind == rules.ModifierTempHP {
+			out[i].Claim, out[i].Unclaimed = pool, pool == 0
+		}
 	}
-	body, _ := json.Marshal(out)
+	body, _ := json.Marshal(out) //nolint:errcheck // plain structs
 	return body
 }
 

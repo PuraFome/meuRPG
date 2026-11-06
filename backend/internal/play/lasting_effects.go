@@ -620,7 +620,7 @@ func (s *Service) afterEffectRowEnded(ctx context.Context, c *combatTx, cs []pla
 	// target has no more than the row says it set (giveEffectTempHP): more came from somewhere else.
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
 		mods := effectModifiers(st)
-		limit := combat.TempHP(mods)
+		limit := combat.TempHPClaim(mods)
 		turn := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
 		if turn {
 			limit = 0

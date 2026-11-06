@@ -295,6 +295,22 @@ func TempHP(modifiers []rules.EffectModifier) int {
 	return n
 }
 
+// TempHPClaim is the temporary hit points the effect set on its target, which its end may take back: the claim
+// the engine kept on the temp_hp modifier, or its value for a row with none, and nothing when it set none.
+func TempHPClaim(modifiers []rules.EffectModifier) int {
+	n := 0
+	for _, m := range modifiers {
+		switch {
+		case m.Kind != rules.ModifierTempHP || m.Unclaimed:
+		case m.Claim > 0:
+			n = max(n, m.Claim)
+		default:
+			n = max(n, m.Value)
+		}
+	}
+	return n
+}
+
 // Resistances are the resistance modifiers among the modifiers, in order.
 func Resistances(modifiers []rules.EffectModifier) []rules.EffectModifier {
 	var out []rules.EffectModifier
