@@ -70,9 +70,9 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 	return nil
 }
 
-// featOptions registers the feat's option list, when it has one, as a class feature's is
-// (featureOptions), and returns the feat's effects, with the choice of features that has no
-// `from` offering the options. A problem is reported at the option's own path.
+// featOptions registers the feat's option list, when it has one, as featureOptions does for a feature.
+// It returns the feat's effects, with the choice of features that has no `from` offering the options.
+// A problem is reported at the option's own path.
 func (b *overlayBuilder) featOptions(c *entryErrors, tf *TableFeat, k featureKind, path string) []Effect {
 	if len(tf.Options) == 0 {
 		return tf.Effects
@@ -86,10 +86,11 @@ func (b *overlayBuilder) featOptions(c *entryErrors, tf *TableFeat, k featureKin
 	return effects
 }
 
-// writeFeatOfferer makes the feat the offerer of the options its choice of features
-// lists, as writeFeature does for a class feature: the feat's Options, OptionsChoose (or
-// OptionSet, for a choice that offers a whole set) say what it offers, and offeredBy
-// says, for each option, that the feat is who offers it. A feat offers one choice of options.
+// writeFeatOfferer makes the feat the offerer of the options its choice of features lists, as writeFeature does.
+// The feat's Options and OptionsChoose say what it offers, or OptionSet for a whole set.
+// offeredBy says, for each listed option, that the feat offers it.
+// For a set, offerFeatSets does that once every option has joined.
+// A feat offers one choice of options.
 func (b *overlayBuilder) writeFeatOfferer(c *entryErrors, feat *srd51.Feat, effects []Effect, path string) {
 	offers := false
 	for i := range effects {

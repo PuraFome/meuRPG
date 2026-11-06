@@ -438,6 +438,9 @@ func checkChoiceCount(site effectSite, e *Effect) error {
 	if !slices.Contains(overlayChoiceKinds, e.Choice) {
 		return site.fail(".choice", ReasonEffect, "choice %q is not on the table's menu", e.Choice)
 	}
+	if (e.Choice == pickAbility || e.Choice == pickDamageType) && !strings.HasPrefix(site.owner, "feat:") {
+		return site.fail(".choice", ReasonValue, "only a feat picks an ability or a damage type")
+	}
 	if e.Count < 1 {
 		return site.fail(".count", ReasonValue, "a choice needs a count of at least 1")
 	}
@@ -468,9 +471,12 @@ func checkChoiceList(site effectSite, e *Effect) error {
 	return nil
 }
 
-// checkChoiceSet checks a choice of features that offers an option set: the set exists
-// (and is one of the SRD's features'), and the choice has no list of its own.
+// checkChoiceSet checks a choice of features that offers an option set.
+// Only a feat offers one, the set exists, and the choice has no list of its own.
 func checkChoiceSet(site effectSite, e *Effect) error {
+	if !strings.HasPrefix(site.owner, "feat:") {
+		return site.fail(".set", ReasonValue, "only a feat offers an option set")
+	}
 	switch _, known := optionSetOf(e.Set); {
 	case e.Choice != "feature":
 		return site.fail(".set", ReasonValue, "only a choice of features offers an option set")
@@ -484,9 +490,12 @@ func checkChoiceSet(site effectSite, e *Effect) error {
 	return nil
 }
 
-// checkPickChoice checks a choice of abilities or of damage types: it lists keys of its
-// kind once each (empty is all of them), and asks for no more than there are.
+// checkPickChoice checks a choice of abilities or of damage types.
+// It has a name, lists keys of its kind once each (empty is all of them), and asks for no more than there are.
 func (b *overlayBuilder) checkPickChoice(site effectSite, e *Effect) error {
+	if e.Name == "" {
+		return site.fail(".name", ReasonValue, "a choice of an ability or a damage type needs a name, for the effects that read the pick")
+	}
 	total := len(abilityIndex)
 	if e.Choice == pickDamageType {
 		total = 0

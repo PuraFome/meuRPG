@@ -141,6 +141,9 @@ type Program struct {
 // Source returns the formula's text.
 func (p *Program) Source() string { return p.source }
 
+// Kind is the kind the formula was compiled as.
+func (p *Program) Kind() Kind { return p.kind }
+
 // ActiveNames are the state names the formula reads with active(), sorted, once each.
 func (p *Program) ActiveNames() []string { return slices.Clone(p.states) }
 
