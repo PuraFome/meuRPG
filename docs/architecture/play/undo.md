@@ -44,6 +44,13 @@ The undone line disappears from the log.
 
 ## What the befores hold
 
+- **The hit points the action left.** The undo writes the hit points, temporary hit points, Wild Shape pool and defeat the action found.
+  Each event keeps what its action left (`holds`), for every combatant whose hit points the action changed.
+  The undo reads them in its own transaction, and when any differs now, it writes nothing and answers `UNDO_TARGET_CHANGED` with the ids of who changed (`checkHolds`).
+  This covers a change the chain does not see, such as a correction of a character's vitals that left no event in the way.
+  The refusal names the combatants and never says a number.
+  A character's held hit points are cut to the maximum it has now, so a lowered maximum does not refuse the undo.
+  An event without `holds` is not checked.
 - **The melee hit mark.** A melee weapon hit marks the turn on the attacker (`combatants.melee_hit_turn`, which the grapple maneuver needs), and the attack's event keeps the mark it replaced (`melee_hit`, `melee_hit_before`).
   The undo puts that one back: undoing the second hit of a turn leaves the first one's mark, undoing the only hit takes the maneuver away.
 - **The parts of a damage.** A roll that has no parts of its own leaves `pending_damages.parts` as the hit left it (`ClearPendingDamageRoll` gives back the empty list).
