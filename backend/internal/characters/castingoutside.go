@@ -207,10 +207,15 @@ func (s *Service) MageArmorAC(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return link.MageArmor{}, s.dbError(ctx, "read rules content", err)
 	}
-	b := buildWithStates(full, stateKeysOf(rows[0].ActiveStates))
+	return mageArmorOf(buildWithStates(full, stateKeysOf(rows[0].ActiveStates)), content), nil
+}
+
+// mageArmorOf is what Mage Armor does to the sheet b: nothing while it wears armor, else
+// the armor class it gives.
+func mageArmorOf(b rules.Build, content *rules.Content) link.MageArmor {
 	if b.ArmorOn() != "" {
-		return link.MageArmor{Applies: true, Wears: true}, nil
+		return link.MageArmor{Applies: true, Wears: true}
 	}
 	b.MageArmor = true
-	return link.MageArmor{Applies: true, AC: rules.Derive(b, content).ArmorClass}, nil
+	return link.MageArmor{Applies: true, AC: rules.Derive(b, content).ArmorClass}
 }

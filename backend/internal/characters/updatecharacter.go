@@ -3,7 +3,6 @@ package characters
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -253,14 +252,35 @@ func (s *Service) tellGearChange(ctx context.Context, tx pgx.Tx, campaignID, cha
 	if s.reviewHost == nil {
 		return nil, nil
 	}
-	before, after := buildOf(stored).ArmorOn(), buildOf(next).ArmorOn()
-	switch {
-	case after != "" && before != after:
+	switch gearChangeOf(stored, next) {
+	case gearArmorWorn:
 		// A character that dons armor loses Mage Armor.
 		return s.reviewHost.ArmorWorn(ctx, tx, campaignID, characterID)
-	case before != after || buildOf(stored).ShieldOn() != buildOf(next).ShieldOn() || !slices.Equal(stored.GetCarriedKeys(), next.GetCarriedKeys()):
+	case gearChanged:
 		// A shield (or armor taken off) changes what Mage Armor gives.
 		return s.reviewHost.GearChanged(ctx, tx, campaignID, characterID)
 	}
 	return nil, nil
+}
+
+// gearChange is what a save changed of the equipped armor and shield.
+type gearChange int
+
+const (
+	gearUnchanged gearChange = iota
+	gearArmorWorn            // armor is equipped now that was not
+	gearChanged              // the armor taken off or the shield put on or off
+)
+
+// gearChangeOf compares the armor and shield equipped (a carried piece is not worn) in
+// two versions of a sheet. A weapon carried or equipped changes nothing Mage Armor reads.
+func gearChangeOf(stored, next *charactersv1.FullSheet) gearChange {
+	before, after := buildOf(stored), buildOf(next)
+	switch {
+	case after.ArmorOn() != "" && before.ArmorOn() != after.ArmorOn():
+		return gearArmorWorn
+	case before.ArmorOn() != after.ArmorOn() || before.ShieldOn() != after.ShieldOn():
+		return gearChanged
+	}
+	return gearUnchanged
 }

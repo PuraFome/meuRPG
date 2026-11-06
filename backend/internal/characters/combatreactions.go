@@ -84,7 +84,7 @@ func fullReactionStats(d rules.Derived, full *charactersv1.FullSheet) link.React
 		case "trait:infernal-legacy":
 			out.InfernalLegacy = d.TotalLevel >= infernalLegacyLevel
 		case "feature:fighter-fighting-style-protection", "feature:fighting-style-protection":
-			out.Protection = buildOf(full).ShieldOn() && !d.ShieldIdle
+			out.Protection = buildOf(full).ShieldCounts(d)
 		}
 	}
 	out.MonkLevel, _ = lastClassLevel(d, "class:monk")

@@ -3,6 +3,8 @@ package rules
 import (
 	"errors"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -183,15 +185,97 @@ func TestValidateCarried(t *testing.T) {
 	}
 }
 
-// A sheet without carried_keys derives as it always did.
+// A sheet without carried_keys derives as it always did: everything it lists counts.
 func TestNoCarriedKeysDerivesAsBefore(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	b := shieldFighter("equipment:longsword", "equipment:greatsword")
-	b.Carried = nil
-	nilD := Derive(b, c)
-	b.Carried = []string{}
-	if !reflect.DeepEqual(nilD, Derive(b, c)) {
-		t.Errorf("empty Carried derives differently from nil")
+	tests := []struct {
+		name        string
+		weapons     []string
+		wantAC      int
+		wantIdle    bool
+		wantAttacks []string
+	}{
+		{"one-handed weapon", []string{"equipment:longsword"}, 18, false, []string{"equipment:longsword", UnarmedStrikeKey}},
+		{"two-handed weapon", []string{"equipment:greatsword"}, 16, true, []string{"equipment:greatsword", UnarmedStrikeKey}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			b := shieldFighter(tt.weapons...)
+			d := Derive(b, c)
+			var keys []string
+			for _, a := range d.Attacks {
+				keys = append(keys, a.Key)
+			}
+			if d.ArmorClass != tt.wantAC || d.ShieldIdle != tt.wantIdle || !slices.Equal(keys, tt.wantAttacks) || d.ArmorCategory != "heavy" {
+				t.Errorf("AC %d idle %v attacks %v category %q, want %d %v %v heavy", d.ArmorClass, d.ShieldIdle, keys, d.ArmorCategory, tt.wantAC, tt.wantIdle, tt.wantAttacks)
+			}
+			b.Carried = []string{}
+			if !reflect.DeepEqual(d, Derive(b, c)) {
+				t.Errorf("empty Carried derives differently from nil")
+			}
+		})
+	}
+}
+
+// A carried armor key is not resolved, so an unknown one is silent until it is equipped.
+func TestCarriedUnknownArmorIsSilent(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := standard("class:fighter", 1)
+	b.Armor = "equipment:nope"
+	if len(issueCodes(Derive(b, c))) == 0 {
+		t.Fatalf("an equipped unknown armor raises no issue")
+	}
+	b.Carried = []string{"equipment:nope"}
+	for _, code := range issueCodes(Derive(b, c)) {
+		if strings.HasPrefix(code, IssueUnknownKey) {
+			t.Errorf("carried unknown armor raised %q", code)
+		}
+	}
+}
+
+// The level-up refuses a change of carried_keys, and clone copies the slice.
+func TestCarriedIsLockedInTheLevelUp(t *testing.T) {
+	t.Parallel()
+	before := shieldFighter("equipment:longsword")
+	before.Carried = []string{"equipment:longsword"}
+	for name, edit := range map[string]func(*Build){
+		"an entry dropped": func(b *Build) { b.Carried = nil },
+		"an entry added":   func(b *Build) { b.Carried = append(b.Carried, shieldKey) },
+	} {
+		after := before.clone()
+		edit(&after)
+		if err := checkLocked(before, after); err == nil || err.Field != "full.carried_keys" {
+			t.Errorf("%s: checkLocked = %v", name, err)
+		}
+	}
+	if err := checkLocked(before, before.clone()); err != nil {
+		t.Errorf("a copy: %v", err)
+	}
+	after := before.clone()
+	after.Carried[0] = shieldKey
+	if before.Carried[0] != "equipment:longsword" {
+		t.Errorf("clone shares the Carried slice")
+	}
+}
+
+// ShieldCounts, which the owner environment and the summon count read, is false for a
+// carried shield and for an idle one.
+func TestShieldCounts(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := shieldFighter("equipment:longsword")
+	if !b.ShieldCounts(Derive(b, c)) {
+		t.Errorf("equipped shield does not count")
+	}
+	b.Carried = []string{shieldKey}
+	if b.ShieldCounts(Derive(b, c)) {
+		t.Errorf("carried shield counts")
+	}
+	b = shieldFighter("equipment:greatsword")
+	if b.ShieldCounts(Derive(b, c)) {
+		t.Errorf("idle shield counts")
 	}
 }

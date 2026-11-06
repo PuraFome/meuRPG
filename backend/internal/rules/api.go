@@ -136,8 +136,8 @@ type Build struct {
 	Size string
 	// HitPoints says how levels after the first add hit points.
 	HitPoints HitPoints
-	// Armor is the worn body armor, or empty. Shield says whether a shield
-	// is carried.
+	// Armor is the body armor the sheet lists, or empty. Shield says whether
+	// the sheet lists a shield. Carried says which of them are not equipped.
 	Armor  string
 	Shield bool
 	// MageArmor says Mage Armor is on the character right now (SRD 5.1, Mage
@@ -146,7 +146,7 @@ type Build struct {
 	// not a part of the sheet, so the caller sets it from the game session and
 	// the sheet never stores it.
 	MageArmor bool
-	// Weapons are the weapons carried, for the sheet's attacks.
+	// Weapons are the weapons the sheet lists, for its attacks (equipped ones only).
 	Weapons []string
 	// Carried lists the armor, the shield (shieldKey) and the weapons of the
 	// sheet that are carried, not equipped: they count for no armor class,

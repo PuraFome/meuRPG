@@ -13,6 +13,8 @@ import (
 // away; nothing in it outlives the call, and nothing is shared between
 // calls except the read-only content.
 type deriver struct {
+	// b is the Build derived; equip() blanks its Armor and Shield when they are carried,
+	// so they are the equipped ones.
 	b Build
 	c *content
 	d *Derived
