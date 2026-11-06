@@ -73,7 +73,7 @@ Stories marked *Later* in [Stories](product/stories.md):
 | [MR-046](product/stories.md#mr-046-table-style-feature-by-feature) | Table style, feature by feature. |
 | [MR-047](product/stories.md#mr-047-more-puzzles) | More puzzles. |
 
-Other work: a list of past sessions with the summary of each, importing the characters of the old database, and the infrastructure items below.
+Other work: a list of past sessions with the summary of each, and the infrastructure items below.
 
 ## Infrastructure not built yet
 
