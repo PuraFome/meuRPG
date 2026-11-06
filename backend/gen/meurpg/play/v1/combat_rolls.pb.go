@@ -1206,7 +1206,9 @@ type CountedDie struct {
 	// The number the die counted as; the roll's sum and total use this one.
 	CountedAs int32 `protobuf:"varint,3,opt,name=counted_as,json=countedAs,proto3" json:"counted_as,omitempty"`
 	// The table feature that did it, as a content key.
-	SourceKey     string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	SourceKey string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	// The name of that feature (see `Reroll.source_name`).
+	SourceName    string `protobuf:"bytes,5,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1265,6 +1267,13 @@ func (x *CountedDie) GetCountedAs() int32 {
 func (x *CountedDie) GetSourceKey() string {
 	if x != nil {
 		return x.SourceKey
+	}
+	return ""
+}
+
+func (x *CountedDie) GetSourceName() string {
+	if x != nil {
+		return x.SourceName
 	}
 	return ""
 }
@@ -1823,7 +1832,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"source_key\x18\x04 \x01(\tR\tsourceKey\x12\x1f\n" +
 	"\vsource_name\x18\x05 \x01(\tR\n" +
-	"sourceName\"t\n" +
+	"sourceName\"\x95\x01\n" +
 	"\n" +
 	"CountedDie\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
@@ -1831,7 +1840,9 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"counted_as\x18\x03 \x01(\x05R\tcountedAs\x12\x1d\n" +
 	"\n" +
-	"source_key\x18\x04 \x01(\tR\tsourceKey\"\xac\x03\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\x12\x1f\n" +
+	"\vsource_name\x18\x05 \x01(\tR\n" +
+	"sourceName\"\xac\x03\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +

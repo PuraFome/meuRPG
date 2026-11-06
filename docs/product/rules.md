@@ -637,8 +637,8 @@ Members read the campaign's content, except creatures (below); only the master w
     For damage with parts (a weapon hit and its extras) the part lists the dice rolled again with the feature that gave the reroll; other damage shows only the new dice.
     The use is spent with the damage, and undoing the damage gives it back.
   - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
-  - **The feature's name.** A roll that a reroll or a minimum changed names the entry in Portuguese next to its key, for the roller's player and the master.
-    Another player is never given the name, and an entry the master retired or switched off has none for anyone: the roll then reads "uma característica".
+  - **The feature's name.** The roller's player and the master read the name of the entry that changed a roll (a reroll or a minimum) next to the roll.
+    Another player never reads it, and nobody reads the name of an entry the master retired or switched off.
   - **Not covered.** The master's editor lists "Rolar de novo" and "Valor mínimo no dado" but cannot save them: write them through the API.
     The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.

@@ -263,6 +263,8 @@ message CountedDie {
   int32 counted_as = 3;
   // The table feature that did it, as a content key.
   string source_key = 4;
+  // The name of that feature (see `Reroll.source_name`).
+  string source_name = 5;
 }
 
 // DamagePartRoll is what one part of a damage rolled.

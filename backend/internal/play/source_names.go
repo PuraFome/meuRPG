@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	"connectrpc.com/connect"
@@ -16,47 +15,70 @@ import (
 // what has run (RN-10, RN-20): it follows the key and appears only where the key is already there, which is the roller's
 // player and the master. An entry the master retired or switched off has no name (RN-23).
 
-// sourceNamePair is a key field of a message and the field that carries its name.
-type sourceNamePair struct{ key, name protoreflect.FieldDescriptor }
+// sourceNamePair is a key field of a message type and the field that carries its name.
+type sourceNamePair struct{ key, name protoreflect.Name }
 
-// sourcePairs are the key and name fields of a message type, none for a type with no pair.
-var sourcePairs sync.Map // protoreflect.FullName -> []sourceNamePair
-
-func pairsOf(md protoreflect.MessageDescriptor) []sourceNamePair {
-	if v, ok := sourcePairs.Load(md.FullName()); ok {
-		return v.([]sourceNamePair)
-	}
-	var out []sourceNamePair
-	fields := md.Fields()
-	for i := range fields.Len() {
-		k := fields.Get(i)
-		if k.Kind() != protoreflect.StringKind || k.IsList() || (k.Name() != "source_key" && !strings.HasSuffix(string(k.Name()), "treated_as_source")) {
-			continue
-		}
-		suffix := "_name"
-		if k.Name() == "source_key" {
-			suffix = ""
-		}
-		want := strings.TrimSuffix(string(k.Name()), "_key") + suffix
-		if k.Name() == "source_key" {
-			want = "source_name"
-		}
-		if n := fields.ByName(protoreflect.Name(want)); n != nil && n.Kind() == protoreflect.StringKind && !n.IsList() {
-			out = append(out, sourceNamePair{key: k, name: n})
-		}
-	}
-	sourcePairs.Store(md.FullName(), out)
-	return out
+// namedSourceFields is every message type that names a feature next to its content key. A test fails when a message of the
+// protos has such a pair that is missing here, so a new field cannot go unnamed by accident.
+var namedSourceFields = map[protoreflect.FullName][]sourceNamePair{
+	"meurpg.play.v1.Reroll":                   {{"source_key", "source_name"}},
+	"meurpg.play.v1.CountedDie":               {{"source_key", "source_name"}},
+	"meurpg.play.v1.RerollQuestion":           {{"source_key", "source_name"}},
+	"meurpg.play.v1.DiceRoll":                 {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.CheckRoll":                {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.EffectSaveResult":         {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.CombatLogHitRider":        {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.CombatLogEffect":          {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.ChannelDivinityTurn":      {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.LegendaryResistanceOffer": {{"treated_as_source", "treated_as_source_name"}},
+	"meurpg.play.v1.Combatant":                {{"initiative_treated_as_source", "initiative_treated_as_source_name"}},
 }
 
-// namedSources are the messages of a tree that carry a key to name, with their pairs.
+// canName says whether a response of this type can hold a message that names a source: the type itself or any message
+// reachable through its fields. It is worked out once per type, so the walk skips the answers that cannot.
+var canName sync.Map // protoreflect.FullName -> bool
+
+func canNameSources(md protoreflect.MessageDescriptor) bool {
+	if v, ok := canName.Load(md.FullName()); ok {
+		return v.(bool)
+	}
+	ok := reaches(md, map[protoreflect.FullName]bool{})
+	canName.Store(md.FullName(), ok)
+	return ok
+}
+
+func reaches(md protoreflect.MessageDescriptor, seen map[protoreflect.FullName]bool) bool {
+	if _, ok := namedSourceFields[md.FullName()]; ok {
+		return true
+	}
+	if seen[md.FullName()] {
+		return false
+	}
+	seen[md.FullName()] = true
+	fields := md.Fields()
+	for i := range fields.Len() {
+		fd := fields.Get(i)
+		if fd.IsMap() {
+			fd = fd.MapValue()
+		}
+		if m := fd.Message(); m != nil && reaches(m, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+// namedSource is a message of a response that carries a key to name.
 type namedSource struct {
 	msg   protoreflect.Message
 	pairs []sourceNamePair
 }
 
 func collectSources(m protoreflect.Message, out *[]namedSource) {
-	if ps := pairsOf(m.Descriptor()); len(ps) > 0 {
+	if !canNameSources(m.Descriptor()) {
+		return
+	}
+	if ps := namedSourceFields[m.Descriptor().FullName()]; len(ps) > 0 {
 		*out = append(*out, namedSource{msg: m, pairs: ps})
 	}
 	m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
@@ -82,30 +104,32 @@ func collectSources(m protoreflect.Message, out *[]namedSource) {
 
 // nameSources fills the names of the keys a response carries, with the names the campaign's content gives.
 func (s *Service) nameSources(ctx context.Context, campaignID string, res proto.Message) {
+	if campaignID == "" || !canNameSources(res.ProtoReflect().Descriptor()) {
+		return
+	}
 	var found []namedSource
 	collectSources(res.ProtoReflect(), &found)
-	var keyed []namedSource
+	fieldOf := func(m protoreflect.Message, n protoreflect.Name) protoreflect.FieldDescriptor {
+		return m.Descriptor().Fields().ByName(n)
+	}
+	var namer func(string) string
 	for _, f := range found {
 		for _, p := range f.pairs {
-			if f.msg.Get(p.key).String() != "" {
-				keyed = append(keyed, f)
-				break
+			key := f.msg.Get(fieldOf(f.msg, p.key)).String()
+			if key == "" {
+				continue
 			}
-		}
-	}
-	if len(keyed) == 0 || campaignID == "" {
-		return
-	}
-	namer, err := s.roster.SourceNames(ctx, nil, campaignID)
-	if err != nil {
-		s.logger.WarnContext(ctx, "play: cannot read the content names of the rolls", "error", err)
-		return
-	}
-	for _, f := range keyed {
-		for _, p := range f.pairs {
-			if key := f.msg.Get(p.key).String(); key != "" {
-				f.msg.Set(p.name, protoreflect.ValueOfString(namer(key)))
+			if namer == nil {
+				// Read once, and only for an answer that holds a key. The handler's own content read is inside its closed
+				// transaction and not handed on, so this asks the live source, which keeps the built content and reads at most
+				// the campaign's revision.
+				var err error
+				if namer, err = s.roster.SourceNames(ctx, nil, campaignID); err != nil {
+					s.logger.WarnContext(ctx, "play: cannot read the content names of the rolls", "error", err)
+					return
+				}
 			}
+			f.msg.Set(fieldOf(f.msg, p.name), protoreflect.ValueOfString(namer(key)))
 		}
 	}
 }

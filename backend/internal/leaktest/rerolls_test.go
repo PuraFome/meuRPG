@@ -272,6 +272,30 @@ func TestRerollQuestionsReachOnlyWhoMayReadThem(t *testing.T) {
 		}
 	}
 
+	// 6. The retired feat still serves the sheet that has it: a new low attack asks the question with the key and no name, to
+	// the roller and to the master, and not at all to Ana.
+	rt.toTurn(labelToren)
+	again := rt.mustAttack(caio, labelToren, dagger, "Lobo", []int32{rerollHeldFace}, nil).GetHeldRollOffer()
+	rt.ask(t, "the retired feat asks its question")
+	for who, p := range map[string]*person{"the master": m, "Caio": caio} {
+		got := rt.combatantOf(p, labelToren).GetHeldRollOffer().GetReroll()
+		if again == nil || got.GetSourceKey() != feat || got.GetSourceName() != "" || got.GetSides() != 20 {
+			t.Errorf("%s reads the question %v of the retired feat, want its key, no name and a d20", who, got)
+		}
+		for _, o := range rt.listHeld(p) {
+			if o.GetReroll().GetSourceName() != "" {
+				t.Errorf("%s lists the retired feat as %q, want no name", who, o.GetReroll().GetSourceName())
+			}
+		}
+	}
+	if got := rt.combatantOf(ana, labelToren).GetHeldRollOffer(); got != nil {
+		t.Errorf("Ana reads %v on Toren, want nothing", got)
+	}
+	must(caio.resources.AnswerHeldRoll(t.Context(), rq(&playv1.AnswerHeldRollRequest{
+		CampaignId: w.campaign, HoldId: again.GetHoldId(), IdempotencyKey: newKey(),
+		Answer: &playv1.AnswerHeldRollRequest_Reroll{Reroll: &playv1.RerollAnswer{Reroll: false}},
+	})))
+
 	// The end: the stream told the master and the roller of the steps, and carried no question to Ana.
 	must(m.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), IdempotencyKey: newKey()})))
 	must(m.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
