@@ -2,13 +2,18 @@ package play
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 )
 
 // Equipping and stowing gear in a combat (#562, SRD 5.1 "Other Activity on Your Turn"): the
@@ -232,4 +237,102 @@ func TestEquipMageArmorWithStowedArmorInACombat(t *testing.T) {
 	// And in the combat the armor stays off the table for her.
 	_, err = a.swap(dani, ilha, leatherArmorKey, true)
 	wantBlockedBy(t, "donning armor in the combat", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT)
+}
+
+// A change of the combat bumps its revision, and the encounter_changed the stream carries is the new one.
+func TestEquipBumpsTheEncounterRevisionAndTellsTheStream(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	e = a.passTo(t, e, "Reator")
+	master, err := a.h.svc.hub.Subscribe(a.campaignID, live.Subscriber{UserID: a.master.id, Master: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer master.Close()
+	before := a.get(t, a.master).GetRevision()
+	a.mustSwap(t, a.ana, a.pens, shieldItem, false)
+	now := a.get(t, a.master).GetRevision()
+	if now <= before {
+		t.Fatalf("revision %d -> %d, want it to go up", before, now)
+	}
+	told := int32(-1)
+	for {
+		select {
+		case ev := <-master.Events():
+			master.Taken(ev)
+			if ch := ev.Message.GetEncounterChanged(); ch != nil {
+				told = ch.GetRevision()
+			}
+			continue
+		default:
+		}
+		break
+	}
+	if told != now {
+		t.Errorf("the stream carried revision %d, want %d", told, now)
+	}
+	// The master's change is a change of the combat too.
+	a.mustSwap(t, a.master, a.pens, daggerKey, false)
+	if got := a.get(t, a.master).GetRevision(); got <= now {
+		t.Errorf("revision after the master's change = %d, want more than %d", got, now)
+	}
+}
+
+// What the combat spent is undone with the transaction: a failure after the spend leaves the
+// flag and the action as they were.
+func TestEquipSpendRollsBackWithTheTransaction(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	a.passTo(t, e, "Reator")
+	boom := errors.New("the sheet write failed")
+	for _, change := range []link.EquipChange{
+		{Key: daggerKey, Kind: link.EquipWeapon},
+		{Key: shieldItem, Kind: link.EquipShield},
+	} {
+		err := db.InTx(t.Context(), a.h.pool, func(tx pgx.Tx) error {
+			if _, err := a.h.svc.EquipInCombat(t.Context(), tx, a.campaignID, a.pens.GetId(), a.ana.id, change); err != nil {
+				return err
+			}
+			return boom
+		})
+		if !errors.Is(err, boom) {
+			t.Fatalf("%s: error = %v", change.Key, err)
+		}
+		a.wantTurn(t, "after the rolled back "+change.Key, false, false)
+	}
+}
+
+// Haste's extra action pays for a swap that would cost the action when the action is used.
+func TestEquipHasteExtraActionPays(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	e = a.passTo(t, e, "Reator")
+	a.mustAddEffect(t, e, "spell:haste", []string{"Reator"}, a.rounds(t, 3, "Reator"))
+	a.mustSwap(t, a.ana, a.pens, shieldItem, false) // the action
+	a.wantTurn(t, "the shield with the action", false, true)
+	a.mustSwap(t, a.ana, a.pens, longswordKey, false) // the free interaction
+	a.mustSwap(t, a.ana, a.pens, daggerKey, false)    // the extra action
+	var extra bool
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT extra_action_used FROM combatants WHERE id = $1`, a.id(t, "Reator")).Scan(&extra); err != nil || !extra {
+		t.Fatalf("extra action used = %v (%v), want it spent on the swap", extra, err)
+	}
+	_, err := a.swap(a.ana, a.pens, shieldItem, true)
+	wantBlockedBy(t, "one more with both spent", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED)
+}
+
+// While the combat is still in setup nothing is spent and nothing is refused, armor included.
+func TestEquipInTheSetupOfACombatIsFree(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.pens = a.shieldBearer(t, "Reator", nil, []string{longswordKey, daggerKey})
+	})
+	a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Reator": 18}, reveal: []string{"Goblin"},
+		at: map[string][2]int32{"Goblin": {4, 3}, "Reator": {4, 4}}, setup: true,
+	})
+	for _, key := range []string{chainMailKey, shieldItem, longswordKey, daggerKey} {
+		a.mustSwap(t, a.ana, a.pens, key, false)
+	}
+	a.wantTurn(t, "after four changes in the setup", false, false)
 }

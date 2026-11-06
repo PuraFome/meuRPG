@@ -63,6 +63,10 @@ The numbers the system calculates are never editable.
 - **What the master sees first.** Before starting a session, the master is told which sheets still have skills or spells to choose, and confirms. The lock does not wait for them.
 - **Reserved characters** ([MR-049](stories.md#mr-049-reserved-characters-and-claim-links)) have no player to lock out. They lock with the first session that starts after a player claims them.
 - **Refusal.** A locked sheet, a dead character or a locked story refuses the player's edit. The screen shows the sheet read-only.
+- **Equipping is not an edit.** Equipping or stowing armour, a shield or a weapon the sheet already lists is not an edit of the sheet: the owner does it after the lock, when the combat rules allow.
+  - Outside a combat it is free.
+  - In a combat, only on the owner's turn: the first weapon drawn or stowed in the turn is free, the second weapon and the shield cost the action, and armour is refused.
+  - The master equips and stows at any time, with no cost.
 - **Feats.** Only the master adds or removes a feat in the sheet editor. A player's feats come from the guided level-up, and a player's save that changes them is refused.
 
 **The level-up exception** ([MR-040](stories.md#mr-040-level-up-from-the-sheet)).

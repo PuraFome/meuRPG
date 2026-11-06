@@ -36,24 +36,30 @@ func (s *Service) EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, char
 	if who == nil {
 		return nil, nil
 	}
-	told := func(ctx context.Context) { s.publishEncounterChanged(ctx, campaignID, enc) }
-	if conv.OrZero(who.UserID) != actorUserID {
-		return told, nil // the master
-	}
-	if change.Kind == link.EquipArmor {
-		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT, "body armor takes minutes to don or doff: not in a combat")
-	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), actorUserID: actorUserID, svc: s})
 	if err != nil {
 		return nil, err
 	}
-	if err := s.mustActNow(ctx, c, *who); err != nil {
+	if conv.OrZero(who.UserID) == actorUserID { // the owner is bound by the turn; the master has the last word
+		if err := s.mayEquip(ctx, c, *who, change); err != nil {
+			return nil, err
+		}
+	}
+	if err := touch(ctx, c); err != nil { // as every change of a combat: the stream carries the new revision
 		return nil, err
 	}
-	if err := s.payEquip(ctx, c, *who, change); err != nil {
-		return nil, err
+	return func(ctx context.Context) { s.publishEncounterChanged(ctx, campaignID, c.enc) }, nil
+}
+
+// mayEquip checks a player's change against the combat and spends what it costs.
+func (s *Service) mayEquip(ctx context.Context, c *combatTx, who playdb.Combatant, change link.EquipChange) error {
+	if change.Kind == link.EquipArmor {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT, "body armor takes minutes to don or doff: not in a combat")
 	}
-	return told, nil
+	if err := s.mustActNow(ctx, c, who); err != nil {
+		return err
+	}
+	return s.payEquip(ctx, c, who, change)
 }
 
 // wearerIn is the combatant of the player's character in cs, nil when it is not in the combat.

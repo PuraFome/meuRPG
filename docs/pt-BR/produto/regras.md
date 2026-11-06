@@ -63,6 +63,10 @@ Os números que o sistema calcula nunca são editáveis.
 - **O que o mestre vê primeiro.** Antes de iniciar uma sessão, o mestre é avisado de quais fichas ainda têm perícias ou magias a escolher, e confirma. A trava não espera por elas.
 - **Personagens reservados** ([MR-049](historias.md#mr-049-personagens-reservados-e-links-para-assumir)) não têm jogador para trancar do lado de fora. Eles travam com a primeira sessão que começa depois que um jogador os assume.
 - **Recusa.** Uma ficha travada, um personagem morto ou uma história travada recusa a edição do jogador. A tela mostra a ficha só para leitura.
+- **Equipar não é editar.** Equipar ou guardar a armadura, o escudo ou uma arma que a ficha já lista não é uma edição da ficha: o dono faz isso depois da trava, quando as regras de combate permitem.
+  - Fora de combate é de graça.
+  - Em combate, só na vez do dono: a primeira arma sacada ou guardada no turno é grátis, a segunda arma e o escudo gastam a ação, e a armadura é recusada.
+  - O mestre equipa e guarda a qualquer momento, sem custo.
 - **Talentos.** Só o mestre adiciona ou remove um talento no editor da ficha. Os talentos de um jogador vêm da subida de nível guiada, e um salvamento do jogador que os altere é recusado.
 
 **A exceção da subida de nível** ([MR-040](historias.md#mr-040-subir-de-nível-pela-ficha)).
