@@ -55,7 +55,7 @@ A module page repeats one only where its table breaks or sharpens it.
 - **Text with `CHECK`, not `ENUM`.** A closed set of values (`role`, `status`, `kind`, `mode`...) is a `TEXT` column with a `CHECK`, so adding a value is a small migration.
   Where the set grows often (`session_events.kind`) it is a reference table instead (see [Reference tables](#reference-tables)).
   A few `kind` columns have no `CHECK` on purpose, because the code is the list (`puzzles.kind`).
-- **Every `:many` query ends in `ORDER BY` with a stable key**: the primary key, or `created_at` then the key.
+- **Every `:many` query has an outermost `ORDER BY` with a stable key**: the primary key, or `created_at` then the key.
   An `UPDATE`/`DELETE ... RETURNING` that is `:many` wraps in `WITH changed AS (...) SELECT ... FROM changed ORDER BY ...`.
   The tests run on PostgreSQL, whose insertion order hides what CockroachDB's order exposes.
   `TestManyQueriesHaveOrderBy` enforces it.

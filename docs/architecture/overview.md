@@ -99,7 +99,7 @@ Five conventions of the backend each have a test in `backend/internal/archtest` 
 | A query touches only its own module's tables | `TestQueriesTouchOnlyOwnTables` | `table_owner_exceptions.txt` |
 | `playv1` is imported only by the play module and the API wiring | `TestPlayV1StaysInPlayAndWiring` | `playv1_exceptions.txt` |
 | Identity and authz translate database errors through the helper | `TestIdentityAuthzTranslateDBErrorsViaHelper` | `pg_errors_exceptions.txt` |
-| Every `:many` query ends in an `ORDER BY` | `TestManyQueriesHaveOrderBy` | `query_order_exceptions.txt` |
+| Every `:many` query has an outermost `ORDER BY` | `TestManyQueriesHaveOrderBy` | `query_order_exceptions.txt` |
 
 An exception list only shrinks: a new offender fails the test, and so does a listed entry that is no longer an offender.
 
