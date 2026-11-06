@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -117,4 +118,29 @@ func (u *user) ruleHero(t *testing.T, a *armed, feature string, effect *rulesv1.
 	}
 	return u.heroWith(t, a.campaignID, "Toren", classLevel("class:fighter", 5, res.Msg.GetEntry().GetKey()),
 		abilities(16, 12, 14, 10, 8), []string{rapier}, nil, nil)
+}
+
+// The weapon is removed from the sheet after the hit and before the damage: the attack key is gone,
+// and the damage still counts as an attack with no mark, so a wight's resistance applies.
+func TestAttackLostFromTheSheetStillCountsAsAPlainAttack(t *testing.T) {
+	t.Parallel()
+	const wightHP = 45
+	a, e, target := partsFight(t, markedToren(t, &charactersv1.WeaponMark{WeaponKey: rapier, Silvered: true}), "monster:wight")
+	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, target, d20(15))
+	got, err := a.master.characters.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId()}))
+	if err != nil {
+		t.Fatalf("GetCharacter() error = %v", err)
+	}
+	c := got.Msg.GetCharacter()
+	sheet := proto.CloneOf(c.GetSheet())
+	sheet.GetFull().WeaponKeys, sheet.GetFull().WeaponMarks = nil, nil
+	if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: c.GetId(), Revision: c.GetRevision(), Name: c.GetName(), Sheet: sheet,
+	})); err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), typedDamage(6))
+	if hp, _, _ := a.hp(t, target); hp != wightHP-4 {
+		t.Errorf("hit points after the blow = %d, want %d: the lost attack must count as an unmarked attack, halved by the wight", hp, wightHP-4)
+	}
 }

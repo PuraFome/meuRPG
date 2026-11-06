@@ -717,9 +717,8 @@ func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, crea
 // DamageModifiers implements play.CombatRoster: the damage types the target
 // takes double, half or none of, from its stat block. A creature's key is given;
 // an NPC made from a creature has it on its basic sheet; anyone else (a player's
-// character, an NPC typed by hand) has none. Only the plain entries count: one
-// with a condition other than "from nonmagical attacks" (silvered, adamantine) is left
-// to the master, who changes the amount that lands.
+// character, an NPC typed by hand) has none. The entries limited to nonmagical attacks,
+// with or without an exception for silvered or adamantine weapons, are kept apart.
 func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error) {
 	if monsterKey == "" {
 		id, ok := uid.Canonical(characterID)

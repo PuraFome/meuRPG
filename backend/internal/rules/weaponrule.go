@@ -26,8 +26,8 @@ const (
 	WeaponRanged = "ranged"
 	// WeaponFinesse chooses the weapons with the finesse property.
 	WeaponFinesse = "finesse"
-	// WeaponMagic chooses the weapon lines the sheet marks as magical (Attack.Magical):
-	// the unarmed strike of a monk with Ki-Empowered Strikes.
+	// WeaponMagic chooses the weapon lines the sheet marks as magical: a weapon the sheet's
+	// weapon_marks mark magical and the unarmed strike of a monk with Ki-Empowered Strikes.
 	WeaponMagic = "magic"
 	// WeaponNamed chooses the weapon whose Portuguese name is WeaponName, ignoring case
 	// and accents.

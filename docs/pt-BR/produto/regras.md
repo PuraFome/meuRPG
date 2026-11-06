@@ -58,6 +58,7 @@ O jogador edita a própria ficha até o início da primeira sessão da campanha.
 Depois disso, só o mestre e o sistema a alteram.
 Um personagem criado depois (o substituto de um morto, ou o de quem entrou tarde) continua editável até o início da próxima sessão.
 Os números que o sistema calcula nunca são editáveis.
+As marcas de uma arma (mágica, prateada, adamantina) seguem a mesma regra das armas que a ficha leva: o dono as define enquanto a ficha é editável, o mestre sempre, e o dono não pode depois da trava.
 
 - **A história.** A história do personagem (personalidade, aparência, passado, aliados) tem a própria trava: depois que a ficha trava, o jogador só a edita quando o mestre a libera, personagem por personagem, até o início da próxima sessão ou até o mestre travá-la de novo.
 - **O que o mestre vê primeiro.** Antes de iniciar uma sessão, o mestre é avisado de quais fichas ainda têm perícias ou magias a escolher, e confirma. A trava não espera por elas.
@@ -102,7 +103,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
     Só o golpe desarmado dos Golpes de Chi (monge a partir do nível 6, também como monge multiclasse) é mágico sem marca.
     Essa magia vale para essas resistências e imunidades e para mais nada: sem bônus de acerto ou de dano, e não vale para uma arma de monge.
     As marcas são escritas pela API da ficha e pelo efeito de regra de arma de uma característica da mesa, que marca as armas que o filtro escolhe e o golpe desarmado.
-    O formulário da ficha ainda não tem controle para as marcas.
+    As marcas são definidas pela API da ficha e pelas regras de arma; o formulário da ficha não as edita.
     O registro do mestre diz o motivo ("Resistência a perfurante de ataque não mágico nem prateado"). O jogador vê só o dano.
   - Num personagem de jogador, o dano rolado **espera o mestre**, que o aplica ("Aplicar 5 de dano") ou o descarta ("Não aplicar"). O mestre pode aplicar um valor diferente (uma resistência que o app não aplica). O registro guarda os dois números para o mestre, e o jogador vê só o que sofreu.
   - O que a própria ficha do personagem protege é aplicado ao dano rolado como passos que o mestre lê, antes de o mestre aplicá-lo: uma raça, um talento ou uma característica da mesa com resistência, imunidade ou vulnerabilidade a tipos de dano (ou, "de ataques não mágicos", a contundente, perfurante e cortante), e a fúria do bárbaro. A imunidade leva a 0, depois a resistência divide por dois (arredondando para baixo), depois a vulnerabilidade dobra; a mesma proteção de duas fontes conta uma vez só. Um ataque de uma ficha ou de um bloco de estatísticas que não é marcado como mágico conta como não mágico.
