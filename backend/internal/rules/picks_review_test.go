@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/formula"
 )
 
 // A name is only for a choice of an ability or a damage type, and starts with a letter.
@@ -186,5 +188,110 @@ func TestAPickOfAFeatTakenThroughAChoiceOfFeats(t *testing.T) {
 	}
 	if d := Derive(b, c); !saveOf(d, DEX).Proficient {
 		t.Error("the effect did not apply after the pick")
+	}
+}
+
+// Two picks of one kind are numbered in the order of the feat's effects, and a label never shows the master's name.
+func TestPicksOfOneKindAreNumbered(t *testing.T) {
+	t.Parallel()
+	const key = "feat:duplo" + tableSuffix
+	o := featWith(key,
+		Effect{Type: "choice", Choice: "ability", Name: "primeira", Count: 1},
+		Effect{Type: "choice", Choice: "ability", Name: "segunda", Count: 1},
+		Effect{Type: "choice", Choice: "damage_type", Name: "tipo", Count: 1},
+	)
+	o.Strict = nil
+	c := withOverlay(t, o)
+	b := pensantus()
+	b.Feats = []string{key}
+	set := c.Choices(b)
+	for name, want := range map[string]string{"primeira": "Habilidade (1ª)", "segunda": "Habilidade (2ª)", "tipo": "Tipo de dano"} {
+		ch := choiceOf(t, set, PickChoiceKey(key, name))
+		if ch.TitlePT != want || strings.Contains(ch.LabelPT, name) || !strings.HasPrefix(ch.LabelPT, want) {
+			t.Errorf("%s: title %q label %q, want the title %q", name, ch.TitlePT, ch.LabelPT, want)
+		}
+	}
+	for _, p := range set.ChoiceProblems(true) {
+		if strings.Contains(p.LabelPT, "primeira") || strings.Contains(p.LabelPT, "segunda") {
+			t.Errorf("a problem names the master's name: %+v", p)
+		}
+	}
+	two := featWith(key,
+		Effect{Type: "choice", Choice: "damage_type", Name: "a", Count: 1},
+		Effect{Type: "choice", Choice: "damage_type", Name: "b", Count: 1},
+	)
+	two.Strict = nil
+	b2 := pensantus()
+	b2.Feats = []string{key}
+	set = withOverlay(t, two).Choices(b2)
+	if got := choiceOf(t, set, PickChoiceKey(key, "b")).TitlePT; got != "Tipo de dano (2º)" {
+		t.Errorf("title = %q", got)
+	}
+}
+
+// A held feat that gains a named pick (the table changed): a level-up is refused, in words that name the choice,
+// until the pick is made.
+func TestALevelUpWaitsForThePickOfAHeldFeat(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, resilientOverlay("str", "dex"))
+	before := torenLevelUp()
+	before.Feats = []string{resilientKey}
+	avg := LevelUpHitPoints{Average: true}
+	take := func(picks ...string) error {
+		after, err := ApplyLevelUp(before, LevelUpChoices{Class: "class:fighter", HitPoints: avg, FeatureChoices: picks}, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return CheckLevelUp(before, after, c)
+	}
+	err := take()
+	if err == nil {
+		t.Fatal("a level-up with the pick of a held feat open was accepted")
+	}
+	if strings.Contains(err.Error(), "#") || strings.Contains(err.Error(), resilientKey) {
+		t.Errorf("the refusal shows a raw key: %v", err)
+	}
+	if err := take(resilientPick("ability:dex")); err != nil {
+		t.Errorf("with the pick: %v", err)
+	}
+}
+
+// A stored damage type pick under a feature that asks none is not offered, and applies nothing.
+func TestAStrayDamageTypePickIsNotOffered(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, resilientOverlay())
+	b := resilientBuild(16, resilientPick("ability:dex"))
+	b.FeatureChoices = append(b.FeatureChoices, ScopedChoice("feature:fighter-fighting-style-defense", "damage-type:fire"))
+	if !slices.ContainsFunc(c.Choices(b).ChoiceProblems(false), func(p ChoiceProblem) bool { return p.Code == ChoiceProblemNotOffered }) {
+		t.Error("a damage type pick on an unrelated feature is not reported")
+	}
+	if rs := c.Resistances(Derive(b, c)); len(rs) != 0 {
+		t.Errorf("resistances = %+v", rs)
+	}
+}
+
+// A formula that fails to compile with its pick is compiled once, not on every sheet.
+func TestAFailedPickRecompileIsRemembered(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, resilientOverlay()).c
+	prog, err := c.compiler.Compile("1", formula.Int)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := pickFields[slices.IndexFunc(pickFields, func(f pickField) bool { return f.attr == "value" })]
+	for range 2 {
+		e := &Effect{Value: "1 +"}
+		*f.program(e) = prog
+		if c.recompilePick(e, f) {
+			t.Fatal("a formula that does not compile was accepted")
+		}
+	}
+	key := programKey{"1 +", formula.Int, false, false}
+	got, ok := c.pickPrograms.Load(key)
+	if !ok {
+		t.Fatal("the failure is not remembered")
+	}
+	if _, failed := got.(failedPick); !failed {
+		t.Errorf("remembered %T, want the failure", got)
 	}
 }

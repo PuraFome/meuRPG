@@ -632,8 +632,9 @@ func (c *content) sheetHolds(b Build, key string) bool {
 		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
 }
 
-// Owners are the entries (races, subraces, classes, subclasses and backgrounds) a
+// Owners are the entries (races, subraces, classes, subclasses, backgrounds and feats) a
 // trait, feature, background feature or option belongs to; none for any other key.
+// The owner of an option of a feat is the feat.
 func (c *Content) Owners(key string) []string { return c.c.entryOwners(key, 0) }
 
 func (c *content) hidden(key string) bool {

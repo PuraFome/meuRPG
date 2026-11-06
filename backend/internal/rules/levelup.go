@@ -1359,11 +1359,15 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
 // or nil for one the sheet already had. late says the choice was left open by an
 // earlier level.
 func choiceProblemRefusal(p ChoiceProblem, late, had bool) *LevelUpError {
+	name := p.LabelPT // a feat's pick has no key a reader knows
+	if name == "" {
+		name = p.ChoiceKey
+	}
 	switch {
 	case p.Code == ChoiceProblemMissing && late:
-		return refuse(levelUpChoicesField, LevelUpReasonLateChoice, "%s was left open by an earlier level and is still open", p.ChoiceKey)
+		return refuse(levelUpChoicesField, LevelUpReasonLateChoice, "%s was left open by an earlier level and is still open", name)
 	case p.Code == ChoiceProblemMissing:
-		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "%s needs %d options, got %d", p.ChoiceKey, p.Required, p.Picked)
+		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "%s needs %d options, got %d", name, p.Required, p.Picked)
 	case had:
 		// A problem the sheet already had is not the level's.
 		return nil

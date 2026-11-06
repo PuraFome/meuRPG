@@ -377,10 +377,11 @@ func (c *content) recompilePick(e *Effect, f pickField) bool {
 	key := programKey{src, (*prog).Kind(), gated, false}
 	if c.pickPrograms != nil {
 		if p, ok := c.pickPrograms.Load(key); ok {
-			if cached, isProgram := p.(*formula.Program); isProgram {
+			cached, isProgram := p.(*formula.Program)
+			if isProgram {
 				*prog = cached
-				return true
 			}
+			return isProgram // anything else is a compile that failed before
 		}
 	}
 	compiler := c.compiler
@@ -389,6 +390,9 @@ func (c *content) recompilePick(e *Effect, f pickField) bool {
 	}
 	p, err := compiler.Compile(src, key.kind)
 	if err != nil {
+		if c.pickPrograms != nil {
+			c.pickPrograms.Store(key, failedPick{})
+		}
 		return false
 	}
 	if c.pickPrograms != nil {
@@ -397,6 +401,9 @@ func (c *content) recompilePick(e *Effect, f pickField) bool {
 	*prog = p
 	return true
 }
+
+// failedPick is what pickPrograms keeps for a text that did not compile, so it is not compiled again.
+type failedPick struct{}
 
 // optionSetKeys are the options of an option set the content has: the SRD's and the table's that joined it.
 func (c *content) optionSetKeys(set string) []string {

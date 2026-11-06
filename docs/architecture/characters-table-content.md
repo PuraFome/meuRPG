@@ -184,6 +184,7 @@ The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonu
 The server makes the keys of the options like a feature's (`feature:feat-<start of name>-<hash>--<option name>@mesa`), keeps them on update and refuses one the entry never had (`immutable`); a pack keeps the ones that start with the entry's own stem.
 A violation inside an option names `table_feat.options[j].effects[k]...`.
 A player's copy takes hidden keys out of the options' effects too.
+A feat's own options hide only with the feat; only the options of an option set hide one by one.
 The picks of a feat are stored in `feature_choice_keys` and judged with the other choices: a player's save with a pick or an option the feat does not offer is `CHOICE_NOT_OFFERED`.
 The editor menu offers the `score.<ability>` targets (mode `add`, with `cap`), the kinds `ability` and `damage_type`, `name`, and `set` as a closed list that leaves out `table_feature`.
 

@@ -113,7 +113,9 @@ A formula that reads a pick is checked when the content is imported and uses the
 An effect whose pick is missing or not offered does not apply.
 The pick is a choice of the choice engine with the key `<feat>#<name>`, stored as `<feat>#<name>=ability:dex`, and `Derived.FeatPicks` holds the valid picks of the feats that read one.
 `Content.Resistances` must be given the `Derived` of the same sheet, since the picks come from it.
-A feat's options and picks are hidden with the feat; a hidden option stays named for a sheet that holds it.
+A feat's own options hide only with the feat.
+Only the options of an option set hide one by one.
+A hidden option stays named for a sheet that holds it.
 
 ### Maneuvers
 
