@@ -261,6 +261,12 @@
           "hp": 1
         }
       },
+      "claims": [
+        {
+          "id": "x",
+          "mods": {}
+        }
+      ],
       "max_before": 1,
       "death_before": {
         "successes": 1,

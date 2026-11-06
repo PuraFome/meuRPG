@@ -63,11 +63,15 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 			continue
 		}
 		clock := castClock{seconds: seconds, kind: kind}
+		prior, err := s.priorCharacterClaim(ctx, c, t.ID, plan)
+		if err != nil {
+			return err
+		}
 		row, err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock)
 		if err != nil {
 			return err
 		}
-		if err := s.giveCharacterTempHP(ctx, c, row, mods); err != nil {
+		if err := s.giveCharacterTempHP(ctx, c, row, mods, prior); err != nil {
 			return err
 		}
 		touched = append(touched, t.ID)
@@ -395,7 +399,7 @@ func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.C
 // "Temporary Hit Points"). As in a combat (giveEffectTempHP), the row keeps the pool it set, or no temp_hp
 // when it raised nothing, and takes the claim off the character's other effects; they go when the row does
 // (afterCharacterEffectsGone).
-func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, mods []rules.EffectModifier) error {
+func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, mods []rules.EffectModifier, prior int) error {
 	amount := combat.TempHP(mods)
 	if amount <= 0 {
 		return nil
@@ -408,11 +412,27 @@ func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row play
 		return err
 	}
 	if int(v.GetHitPointsTemporary()) >= amount {
-		amount = 0
+		amount = prior // a recast keeps the claim of the cast it replaced
 	} else if err := s.raiseCharacterTempHP(ctx, c, row, amount); err != nil {
 		return err
 	}
 	return c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: row.ID, Modifiers: claimedTempHP(mods, amount)})
+}
+
+// priorCharacterClaim is the temp_hp claim of the same spell's effect another casting left on the character,
+// which the recast replaces.
+func (s *Service) priorCharacterClaim(ctx context.Context, c *combatTx, characterID string, plan castPlan) (int, error) {
+	all, err := c.q.ListCharacterEffects(ctx, []string{characterID})
+	if err != nil {
+		return 0, fmt.Errorf("list the effects: %w", err)
+	}
+	n := 0
+	for _, o := range all {
+		if o.SourceKey == plan.spell && o.GroupID != plan.row.ID {
+			n = max(n, combat.TempHP(modifiersOf(o.Modifiers)))
+		}
+	}
+	return n, nil
 }
 
 func (s *Service) raiseCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, amount int) error {

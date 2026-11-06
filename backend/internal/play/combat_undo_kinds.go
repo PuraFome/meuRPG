@@ -944,6 +944,11 @@ func (u *undoer) castTargetBack(ctx context.Context, target playdb.Combatant, h 
 			return err
 		}
 	}
+	for _, cl := range h.Claims { // the temp_hp claims the cast took over
+		if err := u.c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: cl.ID, Modifiers: cl.Mods}); err != nil {
+			return fmt.Errorf("put back the claim of an effect: %w", err)
+		}
+	}
 	if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
 		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: conv.OrZero(h.BonusBefore)}); err != nil {
 			return fmt.Errorf("put back the maximum hit points: %w", err)

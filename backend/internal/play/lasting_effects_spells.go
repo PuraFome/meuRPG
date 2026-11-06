@@ -76,6 +76,10 @@ func (s *Service) applyLastingSpell(
 	if err != nil {
 		return err
 	}
+	prior, err := s.priorTempClaims(ctx, c, sp.Key, made.CastID)
+	if err != nil {
+		return err
+	}
 	var rows []playdb.CombatantState
 	for i, g := range groups {
 		made1, err := s.addEffects(ctx, c, cs, effectSpec{
@@ -91,7 +95,7 @@ func (s *Service) applyLastingSpell(
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
-	return s.giveEffectTempHP(ctx, c, cs, rows, targs, made)
+	return s.giveEffectTempHP(ctx, c, cs, rows, targs, made, prior)
 }
 
 // giveEffectTempHP gives the temporary hit points a temp_hp modifier of the effect gives each target it
@@ -100,7 +104,7 @@ func (s *Service) applyLastingSpell(
 // of the effect clears only what this effect put there (never a pool from False Life or another effect),
 // and it reads it from its own row, not from the catalogue. The effect that raised the pool last owns it:
 // the temp_hp claim of the other effects on the target is dropped.
-func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent) error {
+func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent, prior map[string]int) error {
 	for _, r := range rows {
 		mods := effectModifiers(r)
 		amount := combat.TempHP(mods)
@@ -114,7 +118,9 @@ func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb
 			return err
 		}
 		if amount <= t.temp {
-			amount = 0 // nothing raised: nothing to take back
+			// Nothing raised. A recast of the same spell keeps the claim of the cast it replaced, so the pool
+			// that cast gave still goes when this one ends.
+			amount = prior[r.CombatantID]
 		} else if err := s.takeOverTempHP(ctx, c, t, r, amount, made, j); err != nil {
 			return err
 		}
@@ -123,6 +129,22 @@ func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb
 		}
 	}
 	return nil
+}
+
+// priorTempClaims are the temp_hp claims, by combatant, of the effects of the same spell another casting left:
+// the recast replaces them (dropSameSpell) and inherits what they claimed.
+func (s *Service) priorTempClaims(ctx context.Context, c *combatTx, key, group string) (map[string]int, error) {
+	all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects: %w", err)
+	}
+	out := map[string]int{}
+	for _, o := range all {
+		if conv.OrZero(o.SourceKey) == key && conv.OrZero(o.GroupID) != group {
+			out[o.CombatantID] = max(out[o.CombatantID], combat.TempHP(effectModifiers(o)))
+		}
+	}
+	return out, nil
 }
 
 // takeOverTempHP raises the pool of the target to amount and takes the temp_hp claim off its other effects.
@@ -146,6 +168,7 @@ func (s *Service) takeOverTempHP(ctx context.Context, c *combatTx, t fxTarget, r
 		if o.CombatantID != r.CombatantID || o.ID == r.ID || combat.TempHP(effectModifiers(o)) == 0 {
 			continue
 		}
+		made.Hits[hit].Claims = append(made.Hits[hit].Claims, claimBack{ID: o.ID, Mods: o.Modifiers})
 		if err := c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: o.ID, Modifiers: claimedTempHP(effectModifiers(o), 0)}); err != nil {
 			return fmt.Errorf("drop the claim of an older effect: %w", err)
 		}

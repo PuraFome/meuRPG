@@ -118,6 +118,12 @@ type saveRoll struct {
 }
 
 // castHit is what a cast did to one target.
+// claimBack is an effect row and the modifiers it had before another effect took its temporary hit points over.
+type claimBack struct {
+	ID   string          `json:"id"`
+	Mods json.RawMessage `json:"mods"`
+}
+
 type castHit struct {
 	Target string `json:"target_id"`
 	Darts  int32  `json:"darts,omitempty"`
@@ -205,6 +211,9 @@ type castHit struct {
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
 	Restore *hpState `json:"restore,omitempty"`
+	// Claims are the effect rows of the target whose temp_hp claim the cast took over: the undo writes
+	// their modifiers back.
+	Claims []claimBack `json:"claims,omitempty"`
 	// MaxBefore is the maximum hit points an NPC had before a spell raised them
 	// (Ajuda), for the undo.
 	MaxBefore   *int32      `json:"max_before,omitempty"`

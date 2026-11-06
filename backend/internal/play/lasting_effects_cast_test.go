@@ -180,9 +180,9 @@ func TestATableSpellTempHPUndoRestoresThePreviousPool(t *testing.T) {
 }
 
 // Two effects on one creature: the one that raised the pool last owns it, so the older ending leaves it be.
-func TestATableSpellOlderEffectEndingLeavesTheNewerPool(t *testing.T) {
-	t.Parallel()
-	a := newArmedWith(t, func(a *armed) {
+func newTwoMarks(t *testing.T, firstTemp, secondTemp int32) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
 		add := func(name string, value int32, concentration bool) string {
 			sp := tableSpell(name, 1, "class:wizard", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF, tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF))
 			sp.Concentration = concentration
@@ -193,7 +193,7 @@ func TestATableSpellOlderEffectEndingLeavesTheNewerPool(t *testing.T) {
 			}
 			return "spell:" + strings.ReplaceAll(strings.ToLower(name), " ", "-") + "@mesa"
 		}
-		first, second := add("Marca de Nanquim", 10, true), add("Marca de Cinza", 6, false)
+		first, second := add("Marca de Nanquim", firstTemp, true), add("Marca de Cinza", secondTemp, false)
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
 		book := []string{first, second}
@@ -202,6 +202,11 @@ func TestATableSpellOlderEffectEndingLeavesTheNewerPool(t *testing.T) {
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, nil)
 	})
+}
+
+func TestATableSpellOlderEffectEndingLeavesTheNewerPool(t *testing.T) {
+	t.Parallel()
+	a := newTwoMarks(t, 10, 6)
 	e := a.castersFight(t, 1)
 	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
 	a.setTemp(t, a.pens, 4) // damage took the 10 down to 4
@@ -506,4 +511,62 @@ func TestATableSpellHiddenResistanceStepIsOutraFonteToThePlayer(t *testing.T) {
 	if !strings.Contains(log, "Outra fonte") || strings.Contains(log, "Marca de Nanquim") || strings.Contains(log, tableMark) {
 		t.Errorf("the player reads the steps %q, want Outra fonte and no spell", log)
 	}
+}
+
+// The undo of the effect that took the pool over gives the older effect its claim back: ending it clears the 5.
+func TestATableSpellUndoOfATakeoverRestoresTheOlderClaim(t *testing.T) {
+	t.Parallel()
+	a := newTwoMarks(t, 5, 10)
+	e := a.castersFight(t, 1)
+	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+	a.passTo(t, e, "Toren")
+	a.passTo(t, e, "Pensantus")
+	a.mustCast(t, a.ana, e, "Pensantus", "spell:marca-de-cinza@mesa", slotOfLevel(1), nil, noCastRoll)
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 10 {
+		t.Fatalf("temporary hit points = %d after the second effect, want 10", temp)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 5 {
+		t.Fatalf("temporary hit points = %d after the undo, want 5", temp)
+	}
+	a.endMarkConcentration(t, e)
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 0 {
+		t.Errorf("temporary hit points = %d after the older effect ended, want 0", temp)
+	}
+}
+
+// A recast of the same spell replaces the effect and keeps its claim: the pool the first cast gave goes when it ends.
+func TestATableSpellRecastKeepsTheClaimOnTheTempHP(t *testing.T) {
+	t.Parallel()
+	t.Run("combat", func(t *testing.T) {
+		t.Parallel()
+		a := newSelfMark(t)
+		e := a.castersFight(t, 1)
+		a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+		a.passTo(t, e, "Toren")
+		a.passTo(t, e, "Pensantus")
+		a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+		if _, temp, _ := a.hp(t, "Pensantus"); temp != 5 {
+			t.Fatalf("temporary hit points = %d after the recast, want 5", temp)
+		}
+		a.endMarkConcentration(t, e)
+		if _, temp, _ := a.hp(t, "Pensantus"); temp != 0 {
+			t.Errorf("temporary hit points = %d after the end, want 0", temp)
+		}
+	})
+	t.Run("outside a combat", func(t *testing.T) {
+		t.Parallel()
+		a := newSelfMark(t)
+		a.mustCastOut(t, a.ana, a.pens, tableMark, slotOfLevel(1), false, nil)
+		a.mustCastOut(t, a.ana, a.pens, tableMark, slotOfLevel(1), false, nil)
+		if v := a.vitals(t, a.pens); v.GetHitPointsTemporary() != 5 {
+			t.Fatalf("temporary hit points = %d after the recast, want 5", v.GetHitPointsTemporary())
+		}
+		a.advanceGameTime(t, 61)
+		if v := a.vitals(t, a.pens); v.GetHitPointsTemporary() != 0 {
+			t.Errorf("temporary hit points = %d after the end, want 0", v.GetHitPointsTemporary())
+		}
+	})
 }
