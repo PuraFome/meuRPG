@@ -310,6 +310,9 @@ type CombatRoster interface {
 	// content key ("spell:shield" is "Escudo Arcano"), or "" for an unknown key. The
 	// content is read once, when it is asked for, not on every name.
 	ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
+	// SourceNames is ContentNames for the feature a roll names (RN-23): "" also for an entry the master retired or
+	// switched off, which is never named to anyone, the roller included.
+	SourceNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
 
 	// The character's creatures (MR-037). The ones that write take the
 	// change's transaction.
@@ -707,6 +710,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
 		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
+		sourceNameInterceptor(s),                       // a roll that names its feature, where it already carries the key
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))

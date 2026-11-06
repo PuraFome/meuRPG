@@ -355,7 +355,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Deixa o jogador rolar de novo um dado que mostrou um valor baixo (até o valor escolhido) numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; a nova rolagem vale, mesmo se for pior. Nos dados de dano o jogador não é perguntado: o app rola de novo, de uma vez, todos os dados da jogada de dano que mostraram o valor escolhido ou menos, e um uso cobre a jogada de dano inteira. Pode gastar usos de um recurso que a entrada define a cada vez (sem recurso, vale sempre).", Fields: []MenuField{
+	{Type: "reroll", NamePT: "Rolar de novo", HintPT: "Rola de novo um dado que caiu baixo. A nova rolagem vale, mesmo se for pior.", Fields: []MenuField{
 		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
 		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
 		{Name: "resource", Kind: "resource_ref"},
@@ -363,7 +363,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "roll_minimum", NamePT: "Valor mínimo no dado", HintPT: "Um dado que mostrar menos que o valor escolhido (de 2 a 20) conta como esse valor, numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; o dado de dano menor que o valor conta como o seu maior valor. O tipo de dano é opcional e só vale quando a jogada é só dano: o mínimo vale então apenas para os dados desse tipo. Vale o maior mínimo entre os efeitos que o personagem tem.", Fields: []MenuField{
+	{Type: "roll_minimum", NamePT: "Valor mínimo no dado", HintPT: "Um dado que mostrar menos que o valor escolhido conta como esse valor. Vale o maior mínimo que o personagem tiver.", Fields: []MenuField{
 		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
 		{Name: "value", Required: true, Kind: "text"},
 		{Name: "damage_type", Kind: "choice", List: ListDamageTypes},
@@ -400,7 +400,7 @@ var (
 		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
-		CriticalRangeTarget: "Margem de acerto crítico (o menor d20 que é crítico)",
+		CriticalRangeTarget: "Crítico a partir do d20",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -552,7 +552,7 @@ func (c *content) menuModifierTargets() []MenuValue {
 	for _, k := range modifierTargets {
 		v := MenuValue{Key: k, NamePT: modifierTargetNames[k]}
 		if k == CriticalRangeTarget {
-			v.HintPT = "O menor resultado natural do d20 que é acerto crítico (de 15 a 20; o normal é 20). Só o modo Definir vale; vale o menor entre os efeitos do personagem."
+			v.HintPT = "De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver."
 			v.OnlyModes, v.Min, v.Max = []string{"set"}, MinCriticalRange, MaxCriticalRange
 		}
 		targets = append(targets, v)

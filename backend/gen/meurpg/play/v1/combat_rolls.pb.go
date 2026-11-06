@@ -1120,7 +1120,10 @@ type Reroll struct {
 	// the content's names, "Sortudo"), "feature:indomitable-1-use" for Indomitable, "feature:stroke-of-luck" for Stroke of
 	// Luck, and the key of the table feature (the reroll rule's source) for a die of damage or a d20 rolled again by a
 	// reroll rule. Empty for Great Weapon Fighting, which only rerolls damage dice.
-	SourceKey     string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	SourceKey string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	// The name of the feature in `source_key`, for the roller's player and the master only. Empty for anyone else, for an
+	// entry the master retired or switched off (RN-23) and for a source with no name in the content.
+	SourceName    string `protobuf:"bytes,5,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1179,6 +1182,13 @@ func (x *Reroll) GetTo() int32 {
 func (x *Reroll) GetSourceKey() string {
 	if x != nil {
 		return x.SourceKey
+	}
+	return ""
+}
+
+func (x *Reroll) GetSourceName() string {
+	if x != nil {
+		return x.SourceName
 	}
 	return ""
 }
@@ -1805,13 +1815,15 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\fslot_options\x18\x10 \x03(\v2\x1a.meurpg.play.v1.SlotOptionR\vslotOptions\x12\x17\n" +
 	"\anote_pt\x18\x11 \x01(\tR\x06notePt\x12\x1a\n" +
 	"\bmaneuver\x18\x12 \x01(\bR\bmaneuver\x12#\n" +
-	"\rresource_left\x18\x13 \x01(\x05R\fresourceLeft\"a\n" +
+	"\rresource_left\x18\x13 \x01(\x05R\fresourceLeft\"\x82\x01\n" +
 	"\x06Reroll\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +
 	"\x02to\x18\x03 \x01(\x05R\x02to\x12\x1d\n" +
 	"\n" +
-	"source_key\x18\x04 \x01(\tR\tsourceKey\"t\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\x12\x1f\n" +
+	"\vsource_name\x18\x05 \x01(\tR\n" +
+	"sourceName\"t\n" +
 	"\n" +
 	"CountedDie\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +

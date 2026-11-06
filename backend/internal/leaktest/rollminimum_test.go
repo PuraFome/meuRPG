@@ -143,11 +143,11 @@ func TestRollMinimumReachesOnlyWhoMayReadIt(t *testing.T) {
 	// 0. Pensantus's initiative d20 shows a 10 and counts as 18: the master's and his player's; Caio reads none of it.
 	for who, p := range map[string]*person{"the master": m, "Ana": ana} {
 		c := rt.combatantOf(p, labelPens)
-		if c.GetInitiativeTreatedAs() != minimumInitiative || c.GetInitiativeTreatedAsSource() != initiativeFeat {
+		if c.GetInitiativeTreatedAs() != minimumInitiative || c.GetInitiativeTreatedAsSource() != initiativeFeat || c.GetInitiativeTreatedAsSourceName() != "Piso da Iniciativa" {
 			t.Errorf("%s reads Pensantus's initiative counted as %d by %q, want %d by the feat (the positive control)", who, c.GetInitiativeTreatedAs(), c.GetInitiativeTreatedAsSource(), minimumInitiative)
 		}
 	}
-	if c := rt.combatantOf(caio, labelPens); c.InitiativeTreatedAs != nil || c.GetInitiativeTreatedAsSource() != "" {
+	if c := rt.combatantOf(caio, labelPens); c.InitiativeTreatedAs != nil || c.GetInitiativeTreatedAsSource() != "" || c.GetInitiativeTreatedAsSourceName() != "" {
 		t.Errorf("Caio reads Pensantus's initiative counted as %d by %q, want nothing of another player's roll", c.GetInitiativeTreatedAs(), c.GetInitiativeTreatedAsSource())
 	}
 

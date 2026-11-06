@@ -301,6 +301,6 @@ func (s *Service) gateRerollAnswer(ctx context.Context, ae answering, h heldRoll
 func (o heldOffer) rerollOffer() *playv1.RerollQuestion {
 	h := o.Hold
 	return &playv1.RerollQuestion{
-		RerollIndex: derefInt32(h.RerollIndex), AtMost: derefInt32(h.RerollAtMost), Resource: h.RerollResource, Cost: h.RerollCost, SourceKey: h.RerollSource,
+		RerollIndex: derefInt32(h.RerollIndex), AtMost: derefInt32(h.RerollAtMost), Resource: h.RerollResource, Cost: h.RerollCost, SourceKey: h.RerollSource, Sides: d20Sides,
 	}
 }

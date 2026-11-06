@@ -563,3 +563,30 @@ func TestEffectMenuNamesArePortuguese(t *testing.T) {
 		t.Errorf("%d menu values with no Portuguese name: %v", len(missing), sortedKeys(missing))
 	}
 }
+
+// TestEffectMenuRerollAndCriticalCopy pins the approved board copy of the reroll, the minimum and the critical range.
+func TestEffectMenuRerollAndCriticalCopy(t *testing.T) {
+	t.Parallel()
+	m := loadForTest(t).EffectMenu()
+	hints := map[string]string{}
+	for _, mt := range m.Types {
+		hints[mt.Type] = mt.HintPT
+	}
+	if got := hints["reroll"]; got != "Rola de novo um dado que caiu baixo. A nova rolagem vale, mesmo se for pior." {
+		t.Errorf("reroll hint = %q", got)
+	}
+	if hints["roll_minimum"] == "" || len(hints["roll_minimum"]) > 140 {
+		t.Errorf("roll_minimum hint = %q, want a short one", hints["roll_minimum"])
+	}
+	for _, v := range menuList(t, m, ListModifierTargets) {
+		if v.Key == CriticalRangeTarget && (v.NamePT != "Crítico a partir do d20" || v.HintPT != "De 15 a 20, um número ou uma fórmula. Com 19, o 19 e o 20 são críticos. Vale a menor margem que o personagem tiver.") {
+			t.Errorf("critical range = %q / %q", v.NamePT, v.HintPT)
+		}
+	}
+	for _, v := range menuList(t, m, ListRollApplies) {
+		want := map[string]string{RollAppliesAttack: "Jogada de ataque (o d20)", RollAppliesCheck: "Teste de habilidade (o d20)", RollAppliesSave: "Teste de resistência (o d20)", RollDamage: "Dado de dano (de arma ou magia)"}[v.Key]
+		if v.NamePT != want {
+			t.Errorf("roll %s = %q, want %q", v.Key, v.NamePT, want)
+		}
+	}
+}

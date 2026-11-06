@@ -637,6 +637,8 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
     No dano com partes (um golpe de arma e os extras dele) a parte lista os dados rolados de novo com a característica que deu o efeito; os outros danos mostram só os dados novos.
     O uso é gasto junto com o dano, e desfazer o dano o devolve.
   - **Dados físicos.** O app rola o novo d20 e os novos dados de dano sozinho, mesmo numa mesa de dados físicos, então esse dado não é digitado pelo jogador (a RN-18 não vale para ele).
+  - **O nome da característica.** Uma jogada que um "Rolar de novo" ou um mínimo mudou diz o nome da entrada em português ao lado da chave, para o jogador que rola e para o mestre.
+    Outro jogador nunca recebe o nome, e uma entrada que o mestre aposentou ou desligou fica sem nome para todos: a jogada então diz "uma característica".
   - **Não coberto.** O editor do mestre lista "Rolar de novo" e "Valor mínimo no dado", mas não consegue salvá-los: escreva-os pela API.
     A margem de crítico se escolhe no editor como um modificador, e o servidor recusa qualquer modo que não seja "Definir".
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
