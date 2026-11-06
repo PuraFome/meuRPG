@@ -58,6 +58,8 @@ type riderEvent struct {
 	D20    int32  `json:"d20,omitempty"`
 	Total  int32  `json:"total,omitempty"`
 	DC     int32  `json:"dc,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it.
+	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).
 	Pushed *forcedMove `json:"pushed,omitempty"`
 	// A creature's rider: the action, the condition it gave (Given says it was given), the escape DC of a
@@ -493,11 +495,12 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	} else if d20, err = s.d20With(rollInput{inApp: true}, save.Bonus, mode); err != nil {
 		return false, err
 	}
-	re.D20, re.Total = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total)
+	d20 = floorD20(d20, save.Bonus, floorFor(sheet.Traits, rules.RollAppliesSave, false))
+	re.D20, re.Total, re.countedRoll = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total), countedOf(d20)
 	saved := combat.SaveSucceeded(d20.Total, int(dc))
 	re.save = &saveRoll{
 		D20: re.D20, Bonus: conv.Int32(save.Bonus), Total: re.Total, DC: dc, Saved: saved,
-		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
+		countedRoll: countedOf(d20), D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(mode),
 	}
 	return s.resistRiderSave(ctx, c, target, re, saved)
 }
@@ -543,12 +546,20 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 		}
 	}
 	if numbers && r.D20 > 0 {
-		out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
-		if showDC { // the DC is the master's, and the target's player's when the table shows it
-			out.Dc = r.DC
-		}
+		riderNumbersProto(out, r, showDC)
 	}
 	return out
+}
+
+// riderNumbersProto sets the roll of the save on the line: the d20, the total, what the die counted as and the DC.
+func riderNumbersProto(out *playv1.CombatLogHitRider, r *riderEvent, showDC bool) {
+	out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
+	if r.CountedAs != 0 {
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), legacySource(r.CountedBy)
+	}
+	if showDC { // the DC is the master's, and the target's player's when the table shows it
+		out.Dc = r.DC
+	}
 }
 
 // creatureRiderForPlayer takes from a creature rider's line what a player may not read: the stat block's key,

@@ -107,6 +107,8 @@ const FIELD_WORDS: Readonly<Record<string, string>> = {
   asi_levels: 'os níveis de incremento de habilidade',
   class_key: 'a classe',
   race_key: 'a raça',
+  races: 'as raças',
+  lacks_feature_key: 'o que o personagem não pode ter',
   level: 'o nível',
   school_key: 'a escola',
   range: 'o alcance',

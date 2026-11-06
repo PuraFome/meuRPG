@@ -91,7 +91,7 @@ The result covers the 12 SRD classes and 9 SRD races from level 1 to 20 (and the
   - A weapon-damage bonus tagged `wielding:one-melee-weapon` (the Dueling fighting style) is applied to every melee weapon that is not two-handed, in the damage rolled in one hand.
     The sheet lists the weapons carried, not the ones in hand, so the attack line says the condition for the table to check (`Attack.damage_note_pt`).
   - Each attack's damage is also given as numbers (`DamageDice`, `VersatileDice`).
-  - `Derived.CriticalRange` is 20, 19 with Improved Critical and 18 with Superior Critical, or the lower value of a table's [`critical_range`](rules-table-content.md#critical-range) modifier (15 at the least); `Derived.TwoWeaponFighting` says the character has the fighting style.
+  - `Derived.CriticalRange` is 20, 19 with Improved Critical and 18 with Superior Critical, or the lower value of a table's [`critical_range`](rules-table-content.md#critical-range) modifier of weapon or both scope (15 at the least); `Derived.SpellCriticalRange` is 20, or the lower value of such a modifier of spell or both scope; `Derived.TwoWeaponFighting` says the character has the fighting style.
 - **Choices counted**: each feature that offers options (fighting styles, metamagic, invocations, pact boon, hunter's prey...) allows a fixed number of picks, shared by the features that offer the same options.
   More picks, or the same option name twice, raise `choice_count`, and the repeated one gives no effect.
 - **Features and traits** up to the character's level, with the SRD text (see [Portuguese texts](#portuguese-texts-of-the-srd)), the `hints` and the `issues`.
@@ -127,6 +127,7 @@ What the engine needs to know is written by hand in `effects/*.json`, in a close
 | `state` | Table content only. A temporary state (a stance, a form) with a name, a duration in rounds, the ways it ends and the cost of turning it on; it becomes `Derived.States` and an action (`state_key`, `state_active`). See [Table content](rules-table-content.md#states). |
 | `weapon_rule`, `pseudo_weapon` | Table content only. A rule that changes the weapon lines (another ability, a bonus, a longer reach) and an attack line of its own, both read where `attacks.go` builds a weapon line. See [Table content](rules-table-content.md#states). |
 | `reroll` | Table content only. Rolls a die again (`rolls`, `at_most`, optional `resource` and `cost`). See [Table content](rules-table-content.md#reroll). |
+| `roll_minimum` | Table content only. A die below `value` counts as `value` (`rolls`, `value`, optional `damage_type`). See [Table content](rules-table-content.md#roll-minimum). |
 | `ambush` | Table content only. Advantage on attack rolls against a creature that has not had its turn yet, or a critical hit on a surprised one (`applies`). See [Table content](rules-table-content.md#ambush). |
 | `superiority_die` | Table content only. A die an option (a maneuver) adds to a roll and that spends a use of a resource. See [Table content](rules-table-content.md#maneuvers). |
 | `ability_increase` | Feats only: `count` different abilities from `from`, `value` 1 or 2 each. |

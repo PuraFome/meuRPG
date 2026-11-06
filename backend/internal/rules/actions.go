@@ -333,7 +333,7 @@ var twoWeaponFightingStyles = []string{
 // Derived.BrutalCriticalDice, Derived.SavageAttacks and Derived.ReliableTalent from the features the
 // character has.
 func (x *deriver) criticalAndStyles() {
-	x.d.CriticalRange = 20
+	x.d.CriticalRange, x.d.SpellCriticalRange = 20, 20
 	for _, a := range x.active {
 		if !x.applies(a) {
 			continue

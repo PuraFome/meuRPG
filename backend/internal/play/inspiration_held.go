@@ -52,10 +52,11 @@ func (s *Service) holdSpellAttack(
 	spec := rollSpec{
 		Kind: heldSpellAttack, Key: key, Request: req, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: caster.CharacterID, UserID: m.UserID},
 		In: in, Modifier: sp.ToHit, Lucky: modes.traits.Lucky, MayAsk: true, // a halfling: a d20 of 1 may be rolled again
+		Floor: floorFor(modes.traits, rules.RollAppliesAttack, false),
 	}
 	// Stroke of Luck (held_stroke.go): the rogue of the 20th level is asked about a spell attack that missed.
 	blind := len(effectDiceFor(modes.in.states, caster.ID, rules.RollAppliesAttack)) > 0
-	spec.Stroke = attackStrokeRule(func() (int, error) { return armor(target) }, 0, blind)
+	spec.Stroke = attackStrokeRule(func() (int, error) { return armor(target) }, modes.traits.SpellCriticalRange, blind)
 	_, forced := heldReplyOf(ctx)
 	before, err := s.spellDieBefore(ctx, env, spec, forced)
 	if err != nil || (!forced && !before.Holds && !spec.Lucky && !s.strokeAvailable(ctx, env, spec) && !s.rerollAvailable(ctx, env, spec)) {

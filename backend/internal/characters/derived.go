@@ -417,6 +417,8 @@ func subraceToProto(s rules.SubraceEntry) *rulesv1.Subrace {
 	return &rulesv1.Subrace{
 		Key: s.Key, Name: s.Name, NamePt: s.NamePT, RaceKey: s.Race, AbilityBonuses: abilityScores(s.AbilityBonuses),
 		Archived: s.Archived, Off: s.Off, SkillKeys: s.SkillProficiencies,
+		ReplacesTraitKeys: s.ReplacesTraitKeys, ReplacesAbilityBonuses: s.ReplacesAbilityBonuses,
+		ReplacedSkillKeys: s.ReplacedSkillProficiencies,
 	}
 }
 

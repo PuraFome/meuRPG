@@ -206,7 +206,7 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 			if !l.playerReads(e) {
 				continue
 			}
-			e = forPlayer(e, l.hidden, l.held)
+			e = forPlayer(e, l.hiddenIn(), l.held)
 		}
 		pe := entryToProto(e, l.uses[e.row.ContentKey])
 		pe.Off = l.content.Off(e.row.ContentKey)
@@ -236,7 +236,45 @@ func (l *tableListing) playerReads(e entryRow) bool {
 		return false // a player never receives a retired or switched off entry, or a draft
 	}
 	// Nor an entry whose class or race is retired or off, unless their sheet uses it.
-	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key)) || l.mine[key]
+	// Nor a feat that asks only for races the player may not read: without them its prerequisite would read as none.
+	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key) && !l.asksOnlyHiddenRaces(e)) || l.mine[key] || l.heldByOwner(key)
+}
+
+// asksOnlyHiddenRaces says the entry is a feat whose prerequisite names races, all hidden and none of them
+// used by a sheet of the player.
+func (l *tableListing) asksOnlyHiddenRaces(e entryRow) bool {
+	feat, ok := e.body.(*rulesv1.TableFeat)
+	if !ok || l.hidden == nil {
+		return false
+	}
+	p := feat.GetPrerequisite()
+	asked := slices.Clone(p.GetRaces())
+	if p.GetRaceKey() != "" {
+		asked = append(asked, p.GetRaceKey())
+	}
+	return len(asked) > 0 && !slices.ContainsFunc(asked, func(k string) bool { return !l.hidden(k) || l.mine[k] })
+}
+
+// heldByOwner says the key is hidden only with an owner (a race, class, ...) that a sheet of the player has:
+// a feature or option of what their sheet keeps is theirs to read.
+func (l *tableListing) heldByOwner(key string) bool {
+	return !l.content.Archived(key) && !l.content.Off(key) && l.ownedByMine(key)
+}
+
+// ownedByMine says an owner of the key is used by a sheet of the player.
+func (l *tableListing) ownedByMine(key string) bool {
+	return slices.ContainsFunc(l.content.Owners(key), func(o string) bool { return l.mine[o] })
+}
+
+// hiddenIn is what is hidden to the player inside an entry: what a sheet of theirs has is not (the race or
+// feat it keeps, the traits, features and options of the entries it keeps).
+func (l *tableListing) hiddenIn() func(string) bool {
+	if l.hidden == nil {
+		return nil
+	}
+	return func(k string) bool {
+		return l.hidden(k) && !l.mine[k] && !l.heldByOwner(k)
+	}
 }
 
 // duplicateName is a violation when another entry of the kind has the name, in

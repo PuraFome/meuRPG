@@ -52,6 +52,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 			total = *p.RollTotal
 		}
 		out.Roll = diceRoll(p.DiceCount+p.ExtraDice, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, total, p.Physical)
+		out.Roll.CountedDice = countedProto(readCountedDice(p.CountedDice))
 	}
 	if p.Status == pendingApplied {
 		out.TargetDefeated = slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID && holdsHP(c) && c.Defeated })

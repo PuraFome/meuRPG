@@ -399,9 +399,9 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The mobile smoke (e2e/tests/mobile-smoke.spec.ts) on WebKit and on an iPhone; Chrome runs it in the shards. The shards
-  # install only Chromium, so the default config has no WebKit project: e2e/playwright.mobile.config.ts has them for this one
-  # spec. WebKit keeps no Secure cookie over http, so the job serves the stack on https://localhost:8443 through
+  # The mobile smoke (e2e/tests/mobile-smoke.spec.ts) on WebKit and on an iPhone, and the stale-tab recovery spec
+  # (e2e/tests/chunk-reload.spec.ts) on WebKit; Chrome runs them in the shards. The shards install only Chromium, so the
+  # default config has no WebKit project: e2e/playwright.mobile.config.ts has them for these specs. WebKit keeps no Secure cookie over http, so the job serves the stack on https://localhost:8443 through
   # e2e/tls-front.mjs, with a certificate made here.
   mobile:
     name: playwright mobile (WebKit and iPhone)
@@ -443,7 +443,7 @@ jobs:
             nohup node tls-front.mjs >"$RUNNER_TEMP/tls-front.log" 2>&1 &
           curl --silent --show-error --fail --insecure --retry 15 --retry-delay 1 --retry-connrefused https://localhost:8443/readyz
 
-      - name: Run the mobile smoke
+      - name: Run the WebKit and iPhone specs
         working-directory: e2e
         env:
           E2E_BASE_URL: https://localhost:8443

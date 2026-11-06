@@ -136,6 +136,9 @@ func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID
 	if l.D20 != 0 && (v.master || (!e.ev.Resisted && slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) }))) {
 		d20, total := l.D20, l.Total
 		le.D20, le.Total = &d20, &total
+		if c := e.ev.CountedAs; c != 0 {
+			le.TreatedAs, le.TreatedAsSource = &c, legacySource(e.ev.CountedBy)
+		}
 		le.Rerolled = e.ev.rerolls() // the d20 Lucky or Indomitable rolled again: "Sortudo: 1 → 14"
 	}
 	if l.DC != 0 && (v.master || (v.showSaveDC && slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) }))) {

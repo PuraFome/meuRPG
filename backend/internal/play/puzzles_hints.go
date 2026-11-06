@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // A hint won by a skill check (MR-038, RN-27, RN-18): a player rolls their character's
@@ -212,6 +213,8 @@ type hintTryPlan struct {
 	option link.SceneOption
 	cm     checkMode
 	bonus  int
+	// floor is the lowest number the try's d20 counts as: the table's minimum of a check, or Reliable Talent.
+	floor rollFloor
 }
 
 // applyHintTry is the try's transaction. The session's row is locked first and then
@@ -312,7 +315,10 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 	if plan.cm, err = h.s.checkModeOf(ctx, h.tx, h.m.CampaignID, h.session.ID, plan.who.ID, key, ability, isCheck); err != nil {
 		return err
 	}
-	plan.bonus, err = h.s.withEffectDice(h.in, h.in.extraFaces, &plan.cm, plan.option.Bonus)
+	if plan.bonus, err = h.s.withEffectDice(h.in, h.in.extraFaces, &plan.cm, plan.option.Bonus); err != nil {
+		return err
+	}
+	plan.floor, err = h.s.floorOfCharacter(ctx, h.tx, h.m.CampaignID, plan.who.ID, rules.RollAppliesCheck, plan.option.ReliableTalent)
 	return err
 }
 
@@ -322,7 +328,7 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 func (h *hintTryTx) roll(ctx context.Context, plan hintTryPlan) (gateResult, error) {
 	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q), rollSpec{
 		Kind: heldHintTry, Key: h.key, Request: h.raw, Roller: heldRoller{CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, UserID: h.m.UserID},
-		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Reliable: plan.option.ReliableTalent, Lucky: plan.option.Lucky, MayAsk: true,
+		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Floor: plan.floor, Lucky: plan.option.Lucky, MayAsk: true,
 	})
 }
 
@@ -389,7 +395,7 @@ func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResul
 		Passed: passed, GrantedCount: granted, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(plan.bonus+dieFace, -1000, 1000),
 		Total: clamp32(d20.Total, -1000, 1000), Physical: d20.Physical, CreatedAt: now,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(plan.cm.Mode),
-		LuckyIndex: luckyAt, BonusSides: bonusSides, BonusFace: bonusFace,
+		LuckyIndex: luckyAt, BonusSides: bonusSides, BonusFace: bonusFace, CountedBy: d20.CountedBy,
 	})
 	if err != nil {
 		return playdb.PuzzleHintTry{}, fmt.Errorf("record the try: %w", err)
@@ -401,14 +407,14 @@ func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResul
 // disadvantage, with the one that counts marked, and the die Lucky rolled again.
 func hintRollProto(t playdb.PuzzleHintTry) *playv1.DiceRoll {
 	if t.D20B == 0 {
-		out := treatedRoll(t.D20, t.Modifier, t.Total, t.Physical)
+		out := treatedRoll(t.D20, t.Modifier, t.Total, t.Physical, t.CountedBy)
 		out.Rerolled = hintLucky(t).proto()
 		return out
 	}
 	out := diceRoll(2, 20, pairOf(t.D20, t.D20B, t.Counted), t.Modifier, t.Total, t.Physical)
 	out.CountedIndex = t.Counted
 	out.Rerolled = hintLucky(t).proto()
-	return markTreated(out, t.Modifier, t.Total)
+	return markTreated(out, t.Modifier, t.Total, t.CountedBy)
 }
 
 // hintFaces are the try's d20 in the order rolled: the pair, or the one.

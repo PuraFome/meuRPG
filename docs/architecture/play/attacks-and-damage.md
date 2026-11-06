@@ -7,7 +7,8 @@ This page covers the two steps, pending damage, roll modes, damage parts, resist
 
 `RollAttack` checks who may: the player on their own character, on their turn, with the action free, the target in sight and in reach; the master on any combatant on turn, with no limit of reach or action (the Captain with several weapons is theirs).
 It rolls the d20 (`crypto/rand` in the app, or the typed face 1 to 20), spends the action and compares with the target's AC (`rules/combat.ResolveAttackFrom`).
-A natural roll in the sheet's critical range or more is a critical hit for a weapon attack, a spell attack needs the 20, and a natural 1 misses.
+A natural roll in the sheet's critical range or more is a critical hit for a weapon attack, a natural roll in the spell critical range or more is one for a spell attack roll (20 unless a table feature lowers it), and a natural 1 misses.
+The natural roll is the d20 as it counts: a table's roll minimum can raise a 1 to a number that hits.
 The response carries the roll in numbers (`1d20 (13) + 6 = 19`) and the result, never the AC for the player; the master's response carries `target_armor_class`, with a Shield's +5 stored in the event so a resend finds the same.
 `TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` searches the AC in the player's JSON and checks the master's has it.
 A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
@@ -94,6 +95,20 @@ The state goes `awaiting_reaction` → `awaiting_roll` → `rolled` (player char
   An event runs the first hook that can be paid.
   The `damage_applied` event (a trap damage's too) keeps `hook` (the feature's key, the hit points healed, the uses spent), which the undo gives back with the hit points; the master and the target's own player read it in the log (`CombatLogDamage.hook`).
 
+### The damage minimum
+
+A table's [`roll_minimum`](../rules-table-content.md#roll-minimum) on `damage` makes a die of damage that shows less than the minimum count as the minimum, and a die smaller than the minimum counts as its own highest face.
+The highest applicable minimum counts; one with a `damage_type` applies only to the dice of that type (`damage_floor.go`).
+The minimum counts the dice of the weapon and spell damage of a player's character that the app rolls (not a heal), and the fire of Hellish Rebuke (damage-type:fire) for the reactor's minimums.
+It counts every die of every part the app rolled, whether the part counts in the total or not: a part that does not count is floored too, so a line tells nothing about the target.
+A reroll runs first, on the face that came up, and the minimum counts the dice that stay.
+`faces` keep what came up; `total` and each part's `sum` use what the dice count as.
+The dice the minimum changed are listed as `counted_dice` (`CountedDie`: `index`, `face`, `counted_as`, `source_key`); a die it did not change is not listed.
+A damage with parts keeps them in each part's `counted_dice`, and a damage with no parts of its own in `pending_damages.counted_dice` ([Combat data](../../data/combat.md#pending_damages)).
+A damage roll of typed physical dice is never floored, because the app did not roll the dice, while a typed d20 is.
+The damage of a zone, of a lasting effect, of a trap, and of a creature or an NPC does not count a minimum.
+Whoever reads the faces of a roll reads `counted_dice`: the roller's player and the master, never another player.
+
 ### Resistance
 
 The damage of each type goes through the target's modifiers (`combat.Adjust`, SRD 5.1 "Damage Resistance and Vulnerability"): resistance halves rounding down, vulnerability doubles, immunity nulls, and the same resistance from two sources counts once.
@@ -131,7 +146,8 @@ A table `reroll` effect that covers `damage` rolls again each die at or below it
 One use of its resource (none for a free rule) covers one damage roll and is spent in the transaction of the damage, and undoing the damage gives it back.
 It skips typed sums, damage held for a reaction window and a die Great Weapon Fighting already rolled again.
 A roll with parts (a weapon hit and its extras) lists the dice in the part's `Rerolled` with the rule's feature as `source_key`; a roll without parts changes only its faces and total.
-The attack's critical range is `Derived.CriticalRange` for a weapon attack and 20 for a spell attack (`criticalFrom`).
+The attack's critical range is `Derived.CriticalRange` for a weapon attack and `Derived.SpellCriticalRange` for a spell attack roll (`criticalFrom`); both are 20 unless a feature lowers them, and a table's `critical_range` modifier lowers the one its scope names ([Critical range](../rules-table-content.md#critical-range)).
+Improved Critical and Superior Critical never lower the spell range.
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
 An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
