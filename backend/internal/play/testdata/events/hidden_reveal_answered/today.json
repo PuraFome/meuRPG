@@ -517,6 +517,10 @@
   "protected_by": [
     "x"
   ],
+  "parried": {
+    "event": "x"
+  },
+  "parry_ask": true,
   "mode": "x",
   "delta": 1,
   "col": 1,
@@ -1046,6 +1050,7 @@
     "resource": "x",
     "stopped": true,
     "bonus": 1,
+    "auto": true,
     "magic": true,
     "save_d20": 1,
     "save_bonus": 1,

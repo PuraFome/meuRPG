@@ -24,6 +24,7 @@ Some events are written just before the change's own event and never close the c
 
 - the creatures a cast made or an ended concentration dismissed (`creature_summoned`, `creature_dismissed`);
 - a concentration that ended at 0 HP, whether a damage or the master's adjustment of an NPC's HP took the combatant there (the event is grouped by the pending damage or by the combatant, and the undo of the change takes it back);
+- the line of a Parry the server used on an attack (`reaction_used` with `reaction.auto`): the undo of the attack gives the creature its reaction back and takes the line along;
 - the opportunity offers a move made (an offer the master makes by hand closes the chain instead);
 - a door a move opened (it stays open after the undo) and a hiding an attack ended;
 - the puzzle events and the clue a solve gave;

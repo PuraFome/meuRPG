@@ -552,6 +552,19 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc SetCombatantHidden(SetCombatantHiddenRequest) returns (SetCombatantHiddenResponse);
 
+  // SetMonsterReactionMode chooses how an NPC's Parry is decided (RN-10, RN-31): `ask` false (the default)
+  // lets the server parry on its own, with no window, when the Parry's bonus turns a melee weapon hit into a
+  // miss; `ask` true makes the master answer for the creature in a reaction window, as for a Shield, for the
+  // rest of the combat. The mode is kept on the combatant and ends with the combat. Only the master may call
+  // it. It answers the combat with `Combatant.parry_ask` set for the master.
+  //
+  // Errors:
+  //   - `not_found`: the combatant is not in this combat.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the combatant is a player's, or a creature whose stat block has no Parry.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetMonsterReactionMode(SetMonsterReactionModeRequest) returns (SetMonsterReactionModeResponse);
+
   // AddCombatants brings reinforcements into the combat: copies of NPCs, as
   // in StartEncounter. Only the master may call it, while the combat is in
   // SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
@@ -2867,6 +2880,12 @@ message Combatant {
   // counted as it came up. Same audience as `initiative_face`.
   optional int32 initiative_treated_as = 109;
   string initiative_treated_as_source = 110;
+
+  // How the creature's Parry is decided (SetMonsterReactionMode): true when the master asked to be asked
+  // (a reaction window opens for each melee hit, as it did before the server decided), false when the server
+  // decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
+  // Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
+  optional bool parry_ask = 111;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -3363,6 +3382,21 @@ message SetCombatantHiddenRequest {
 
 // SetCombatantHiddenResponse returns the combat after the change.
 message SetCombatantHiddenResponse {
+  Encounter encounter = 1;
+}
+
+// SetMonsterReactionModeRequest chooses how an NPC's Parry is decided.
+message SetMonsterReactionModeRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string combatant_id = 3;
+  string idempotency_key = 4;
+  // True asks the master for each Parry (a reaction window); false lets the server decide it.
+  bool ask = 5;
+}
+
+// SetMonsterReactionModeResponse returns the combat after the change.
+message SetMonsterReactionModeResponse {
   Encounter encounter = 1;
 }
 

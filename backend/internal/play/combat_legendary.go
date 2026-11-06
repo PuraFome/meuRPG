@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
@@ -28,6 +29,9 @@ func (s *Service) addStatBlockProfiles(ctx context.Context, campaignID string, n
 	for id, n := range npcs {
 		if p, ok := content.LegendaryProfile(n.monsterKey); ok && p.IsLegendary() {
 			n.legendary = p
+		}
+		if p, ok := content.LegendaryProfile(n.monsterKey); ok {
+			n.parry = slices.ContainsFunc(p.Reactions, func(r rules.MonsterReaction) bool { return r.Kind == rules.ReactionKindParry && r.ACBonus > 0 })
 		}
 		if plan, ok := content.MonsterPlan(n.monsterKey); ok {
 			n.limited = limitedActionsOf(plan)
