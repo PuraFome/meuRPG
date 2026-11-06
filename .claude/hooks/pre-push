@@ -5,9 +5,13 @@
 # When a push carries a `ready:` commit, it runs the linters CI runs, on what the branch changed since
 # origin/main: `make lint`, the complexity limits and the //nolint cap for backend/ and proto/, the web
 # lint, format check and dependency rules (depcruise) for web/, the e2e lint for e2e/. A preflight starts only at `ready:`, so it
-# then never fails on lint or format alone. Every other push (progress commits, work in between)
-# passes untouched, so a session's signs of life never wait on unfinished code; so do pushes to
-# status/* and pr-screenshots, and branch deletions.
+# then never fails on lint or format alone. Before a branch's first `ready:`, every other push
+# (progress commits, work in between) passes untouched, so a session's signs of life never wait on
+# unfinished code; so do pushes to status/* and pr-screenshots, and branch deletions.
+#
+# Once the remote branch carries `ready: <branch>`, it has a preflight PR, and every push to it runs
+# CI and cancels the run in progress. A push to it without a new `ready:` is refused: the work in
+# between stays local, and status commits go to status/<area>.
 #
 # A failed check stops the push and prints the check's last lines. Fix them and push again; never
 # push with --no-verify.
@@ -28,7 +32,15 @@ while read -r _ local_sha remote_ref remote_sha; do
   [ "$base" = "$zero" ] && base=origin/main
   # Read the subjects first: with pipefail, `git log | grep -q` fails at random when grep exits early.
   subjects=$(git log --format=%s "$base..$local_sha" 2>/dev/null)
-  grep -q '^ready:' <<<"$subjects" || continue
+  if ! grep -q '^ready:' <<<"$subjects"; then
+    branch=${remote_ref#refs/heads/}
+    if [ "$remote_sha" != "$zero" ] &&
+      grep -qxF "ready: $branch" <<<"$(git log --format=%s "origin/main..$remote_sha" 2>/dev/null)"; then
+      echo "pre-push: $branch has a preflight (it carries ready: $branch), so every push to it runs CI. Push it again only with a new ready: commit, which runs the linters first. Keep the work in between local, and put status commits on status/<your area>." >&2
+      exit 1
+    fi
+    continue
+  fi
   if [ "$local_sha" != "$head" ]; then
     echo "pre-push: ${remote_ref#refs/heads/} carries ready: but is not the commit checked out here; push it from its own checkout, so the linters read its files." >&2
     exit 1
