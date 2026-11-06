@@ -349,6 +349,8 @@ type TableSpell struct {
 	Zone *TableSpellZone
 	// Summon says the spell brings the table's creatures to the caster, or is nil (see TableSummon).
 	Summon *TableSummon
+	// Effect is what the spell leaves on its targets while it lasts, or nil (see TableSpellEffect).
+	Effect *TableSpellEffect
 }
 
 // The triggers of a table spell's zone: when it catches a creature.
@@ -367,6 +369,18 @@ const (
 type TableSpellZone struct {
 	Trigger       string
 	FollowsCaster bool
+}
+
+// TableSpellEffect is the closed effect a table spell leaves on its targets, in the shapes the SRD's lasting
+// effects have (see EffectDef). It lasts as the spell does. Applies is "all" (the default), "failed_save" (the
+// spell's Save) or "hit" (its Attack); Conditions are SRD condition keys; Visibility is "public" or "owner"
+// (the default); PlayerLabelPT is the short label the other players read.
+type TableSpellEffect struct {
+	Applies       string
+	Conditions    []string
+	Modifiers     []EffectModifier
+	PlayerLabelPT string
+	Visibility    string
 }
 
 // SpellZoneRule is the zone a table spell keeps, as the combat reads it.
@@ -1437,6 +1451,7 @@ func (c *content) cloneForOverlay() *content {
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
 	n.spellZones = map[string]SpellZoneRule{}
+	n.tableSpellEffects = map[string]*EffectDef{}
 	n.summons = maps.Clone(c.summons)
 	if n.summons == nil {
 		n.summons = map[string]*summonDef{}

@@ -505,6 +505,41 @@ var (
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY:   rules.ZoneFirstEntry,
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_BOTH:          rules.ZoneBoth,
 	}
+	effectAppliesOf = map[rulesv1.TableEffectApplies]string{
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_ALL:         "all",
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_FAILED_SAVE: "failed_save",
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_HIT:         "hit",
+	}
+	effectAudienceOf = map[rulesv1.TableEffectAudience]string{
+		rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC: rules.EffectVisibilityPublic,
+		rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER:  rules.EffectVisibilityOwner,
+	}
+	effectRollOf = map[rulesv1.TableEffectRollKind]string{
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK: rules.RollAppliesAttack,
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE:   rules.RollAppliesSave,
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_CHECK:  rules.RollAppliesCheck,
+	}
+	resistanceKindOf = map[rulesv1.TableResistanceKind]string{
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_RESIST:     rules.ResistanceKindResist,
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_IMMUNE:     rules.ResistanceKindImmune,
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_VULNERABLE: rules.ResistanceKindVulnerable,
+	}
+	effectModifierKindOf = map[rulesv1.TableEffectModifierKind]string{
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_DIE:            rules.ModifierRollDie,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_AC_BONUS:            rules.ModifierACBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SPEED_ADD:           rules.ModifierSpeedAdd,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER:    rules.ModifierSpeedMultiplier,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_BONUS:         rules.ModifierCheckBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE:      rules.ModifierSaveAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE:     rules.ModifierCheckAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE: rules.ModifierAttackDisadvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS:          rules.ModifierRollBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_TEMP_HP:             rules.ModifierTempHP,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_RESISTANCE:          rules.ModifierResistance,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE:    rules.ModifierAttackAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE:   rules.ModifierSaveDisadvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE:  rules.ModifierCheckDisadvantage,
+	}
 	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP: rules.SummonTurnOwnerRollGroup,
@@ -566,7 +601,37 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 		s.Heal = &rules.TableSpellHeal{Dice: h.GetDice(), PerSlotLevel: h.GetPerSlotLevel(), AddsModifier: h.GetAddsModifier()}
 	}
 	s.Summon = tableSummonOf(b.GetSummon())
+	s.Effect = tableSpellEffectOf(b.GetEffect())
 	return s
+}
+
+// tableSpellEffectOf is the lasting effect of a table spell's body, nil for none. An unset enum is the rules'
+// default (""), and a number this build does not know is "unknown", which the rules refuse at its field. The
+// modifier's kind has no default: unset reaches the rules as "" and is refused there.
+func tableSpellEffectOf(m *rulesv1.TableSpellEffect) *rules.TableSpellEffect {
+	if m == nil {
+		return nil
+	}
+	e := &rules.TableSpellEffect{
+		Applies: enumOrUnknown(effectAppliesOf, m.GetApplies()), Conditions: m.GetConditions(),
+		PlayerLabelPT: m.GetPlayerLabelPt(), Visibility: enumOrUnknown(effectAudienceOf, m.GetVisibility()),
+	}
+	for _, x := range m.GetModifiers() {
+		mod := rules.EffectModifier{
+			Kind: enumOrUnknown(effectModifierKindOf, x.GetKind()), Die: int(x.GetDie()), Sign: int(x.GetSign()), Value: int(x.GetValue()),
+			Abilities: x.GetAbilities(), Conditions: x.GetConditions(), Skill: x.GetSkill(),
+			ResistanceKind: enumOrUnknown(resistanceKindOf, x.GetResistanceKind()), DamageTypes: x.GetDamageTypes(),
+		}
+		for _, r := range x.GetAppliesTo() {
+			w := enumOrUnknown(effectRollOf, r)
+			if w == "" {
+				w = "unknown" // an unset roll is not "no roll": the rules refuse it at applies_to
+			}
+			mod.AppliesTo = append(mod.AppliesTo, w)
+		}
+		e.Modifiers = append(e.Modifiers, mod)
+	}
+	return e
 }
 
 // tableCastingTimeOf is how long a table spell, or a feature's summon, takes.

@@ -275,6 +275,12 @@
           "hp": 1
         }
       },
+      "claims": [
+        {
+          "id": "x",
+          "mods": {}
+        }
+      ],
       "max_before": 1,
       "death_before": {
         "successes": 1,
@@ -830,7 +836,8 @@
           "DamageTypes": [
             "x"
           ],
-          "Qualifier": "x"
+          "Qualifier": "x",
+          "hidden": true
         }
       ],
       "origin": {

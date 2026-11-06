@@ -171,6 +171,18 @@ const (
 	EffectModifierKind_EFFECT_MODIFIER_KIND_NO_ACTION    EffectModifierKind = 7
 	// The creature can't take reactions (the Open Hand technique).
 	EffectModifierKind_EFFECT_MODIFIER_KIND_NO_REACTION EffectModifierKind = 20
+	// A flat bonus (value) to the rolls in applies_to.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_ROLL_BONUS EffectModifierKind = 21
+	// Temporary hit points (value) when the effect lands.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_TEMP_HP EffectModifierKind = 22
+	// Resistance, immunity or vulnerability (resistance_kind) to damage_types.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_RESISTANCE EffectModifierKind = 23
+	// Advantage on the creature's attack rolls.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE EffectModifierKind = 24
+	// Disadvantage on the saving throws of abilities.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE EffectModifierKind = 25
+	// Disadvantage on the ability checks of abilities.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE EffectModifierKind = 26
 )
 
 // Enum value maps for EffectModifierKind.
@@ -185,17 +197,29 @@ var (
 		6:  "EFFECT_MODIFIER_KIND_NO_MOVE",
 		7:  "EFFECT_MODIFIER_KIND_NO_ACTION",
 		20: "EFFECT_MODIFIER_KIND_NO_REACTION",
+		21: "EFFECT_MODIFIER_KIND_ROLL_BONUS",
+		22: "EFFECT_MODIFIER_KIND_TEMP_HP",
+		23: "EFFECT_MODIFIER_KIND_RESISTANCE",
+		24: "EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE",
+		25: "EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE",
+		26: "EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE",
 	}
 	EffectModifierKind_value = map[string]int32{
-		"EFFECT_MODIFIER_KIND_UNSPECIFIED":      0,
-		"EFFECT_MODIFIER_KIND_ROLL_DIE":         1,
-		"EFFECT_MODIFIER_KIND_AC_BONUS":         2,
-		"EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER": 3,
-		"EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE":   4,
-		"EFFECT_MODIFIER_KIND_EXTRA_ACTION":     5,
-		"EFFECT_MODIFIER_KIND_NO_MOVE":          6,
-		"EFFECT_MODIFIER_KIND_NO_ACTION":        7,
-		"EFFECT_MODIFIER_KIND_NO_REACTION":      20,
+		"EFFECT_MODIFIER_KIND_UNSPECIFIED":        0,
+		"EFFECT_MODIFIER_KIND_ROLL_DIE":           1,
+		"EFFECT_MODIFIER_KIND_AC_BONUS":           2,
+		"EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER":   3,
+		"EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE":     4,
+		"EFFECT_MODIFIER_KIND_EXTRA_ACTION":       5,
+		"EFFECT_MODIFIER_KIND_NO_MOVE":            6,
+		"EFFECT_MODIFIER_KIND_NO_ACTION":          7,
+		"EFFECT_MODIFIER_KIND_NO_REACTION":        20,
+		"EFFECT_MODIFIER_KIND_ROLL_BONUS":         21,
+		"EFFECT_MODIFIER_KIND_TEMP_HP":            22,
+		"EFFECT_MODIFIER_KIND_RESISTANCE":         23,
+		"EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE":   24,
+		"EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE":  25,
+		"EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE": 26,
 	}
 )
 
@@ -226,13 +250,14 @@ func (EffectModifierKind) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{2}
 }
 
-// EffectRollKind is a roll an effect's die touches.
+// EffectRollKind is a roll an effect's die or flat bonus (ROLL_DIE, ROLL_BONUS) touches.
 type EffectRollKind int32
 
 const (
 	EffectRollKind_EFFECT_ROLL_KIND_UNSPECIFIED EffectRollKind = 0
 	EffectRollKind_EFFECT_ROLL_KIND_ATTACK      EffectRollKind = 1
 	EffectRollKind_EFFECT_ROLL_KIND_SAVE        EffectRollKind = 2
+	EffectRollKind_EFFECT_ROLL_KIND_CHECK       EffectRollKind = 3
 )
 
 // Enum value maps for EffectRollKind.
@@ -241,11 +266,13 @@ var (
 		0: "EFFECT_ROLL_KIND_UNSPECIFIED",
 		1: "EFFECT_ROLL_KIND_ATTACK",
 		2: "EFFECT_ROLL_KIND_SAVE",
+		3: "EFFECT_ROLL_KIND_CHECK",
 	}
 	EffectRollKind_value = map[string]int32{
 		"EFFECT_ROLL_KIND_UNSPECIFIED": 0,
 		"EFFECT_ROLL_KIND_ATTACK":      1,
 		"EFFECT_ROLL_KIND_SAVE":        2,
+		"EFFECT_ROLL_KIND_CHECK":       3,
 	}
 )
 
@@ -488,20 +515,25 @@ type EffectModifier struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  EffectModifierKind     `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.play.v1.EffectModifierKind" json:"kind,omitempty"`
 	// ROLL_DIE: the faces of the die (4: a d4), its sign (1 or -1) and the rolls it
-	// touches.
+	// touches. ROLL_BONUS reads applies_to too.
 	Die       int32            `protobuf:"varint,2,opt,name=die,proto3" json:"die,omitempty"`
 	Sign      int32            `protobuf:"varint,3,opt,name=sign,proto3" json:"sign,omitempty"`
 	AppliesTo []EffectRollKind `protobuf:"varint,4,rep,packed,name=applies_to,json=appliesTo,proto3,enum=meurpg.play.v1.EffectRollKind" json:"applies_to,omitempty"`
-	// AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent.
+	// AC_BONUS: the bonus. SPEED_MULTIPLIER: the percent. ROLL_BONUS: the flat bonus, negative for a
+	// penalty. TEMP_HP: the temporary hit points. Clamped to -1000..1000.
 	Value int32 `protobuf:"varint,5,opt,name=value,proto3" json:"value,omitempty"`
-	// SAVE_ADVANTAGE: the abilities ("dex").
+	// SAVE_ADVANTAGE, CHECK_ADVANTAGE, SAVE_DISADVANTAGE and CHECK_DISADVANTAGE: the abilities ("dex").
 	Abilities []string `protobuf:"bytes,6,rep,name=abilities,proto3" json:"abilities,omitempty"`
 	// EXTRA_ACTION: the standard actions it may be ("attack", "dash"...) and how many
 	// weapon attacks it makes.
 	AllowedActions   []string `protobuf:"bytes,7,rep,name=allowed_actions,json=allowedActions,proto3" json:"allowed_actions,omitempty"`
 	MaxWeaponAttacks int32    `protobuf:"varint,8,opt,name=max_weapon_attacks,json=maxWeaponAttacks,proto3" json:"max_weapon_attacks,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// RESISTANCE: "resist", "immune" or "vulnerable", and the damage types it covers
+	// ("damage-type:fire", or "all", or "nonmagical_bps").
+	ResistanceKind string   `protobuf:"bytes,9,opt,name=resistance_kind,json=resistanceKind,proto3" json:"resistance_kind,omitempty"`
+	DamageTypes    []string `protobuf:"bytes,10,rep,name=damage_types,json=damageTypes,proto3" json:"damage_types,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *EffectModifier) Reset() {
@@ -588,6 +620,20 @@ func (x *EffectModifier) GetMaxWeaponAttacks() int32 {
 		return x.MaxWeaponAttacks
 	}
 	return 0
+}
+
+func (x *EffectModifier) GetResistanceKind() string {
+	if x != nil {
+		return x.ResistanceKind
+	}
+	return ""
+}
+
+func (x *EffectModifier) GetDamageTypes() []string {
+	if x != nil {
+		return x.DamageTypes
+	}
+	return nil
 }
 
 // EffectEnd is the moment an effect ends: the turn of a combatant in a round.
@@ -2201,7 +2247,7 @@ var File_meurpg_play_v1_lasting_effects_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\n" +
-	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\x1a!meurpg/play/v1/combat_rolls.proto\"\xb8\x02\n" +
+	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\x1a!meurpg/play/v1/combat_rolls.proto\"\x84\x03\n" +
 	"\x0eEffectModifier\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.play.v1.EffectModifierKindR\x04kind\x12\x10\n" +
 	"\x03die\x18\x02 \x01(\x05R\x03die\x12\x12\n" +
@@ -2211,7 +2257,10 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x05value\x18\x05 \x01(\x05R\x05value\x12\x1c\n" +
 	"\tabilities\x18\x06 \x03(\tR\tabilities\x12'\n" +
 	"\x0fallowed_actions\x18\a \x03(\tR\x0eallowedActions\x12,\n" +
-	"\x12max_weapon_attacks\x18\b \x01(\x05R\x10maxWeaponAttacks\"w\n" +
+	"\x12max_weapon_attacks\x18\b \x01(\x05R\x10maxWeaponAttacks\x12'\n" +
+	"\x0fresistance_kind\x18\t \x01(\tR\x0eresistanceKind\x12!\n" +
+	"\fdamage_types\x18\n" +
+	" \x03(\tR\vdamageTypes\"w\n" +
 	"\tEffectEnd\x12\x14\n" +
 	"\x05round\x18\x01 \x01(\x05R\x05round\x12!\n" +
 	"\fcombatant_id\x18\x02 \x01(\tR\vcombatantId\x121\n" +
@@ -2398,7 +2447,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	")EFFECT_DURATION_KIND_UNTIL_END_OF_TURN_OF\x10\x03\x12&\n" +
 	"\"EFFECT_DURATION_KIND_CONCENTRATION\x10\x04\x12(\n" +
 	"$EFFECT_DURATION_KIND_UNTIL_DISMISSED\x10\x05\x12\"\n" +
-	"\x1eEFFECT_DURATION_KIND_LONG_REST\x10\x06*\xe7\x02\n" +
+	"\x1eEFFECT_DURATION_KIND_LONG_REST\x10\x06*\xd7\x04\n" +
 	"\x12EffectModifierKind\x12$\n" +
 	" EFFECT_MODIFIER_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dEFFECT_MODIFIER_KIND_ROLL_DIE\x10\x01\x12!\n" +
@@ -2408,11 +2457,18 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"!EFFECT_MODIFIER_KIND_EXTRA_ACTION\x10\x05\x12 \n" +
 	"\x1cEFFECT_MODIFIER_KIND_NO_MOVE\x10\x06\x12\"\n" +
 	"\x1eEFFECT_MODIFIER_KIND_NO_ACTION\x10\a\x12$\n" +
-	" EFFECT_MODIFIER_KIND_NO_REACTION\x10\x14*j\n" +
+	" EFFECT_MODIFIER_KIND_NO_REACTION\x10\x14\x12#\n" +
+	"\x1fEFFECT_MODIFIER_KIND_ROLL_BONUS\x10\x15\x12 \n" +
+	"\x1cEFFECT_MODIFIER_KIND_TEMP_HP\x10\x16\x12#\n" +
+	"\x1fEFFECT_MODIFIER_KIND_RESISTANCE\x10\x17\x12)\n" +
+	"%EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE\x10\x18\x12*\n" +
+	"&EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE\x10\x19\x12+\n" +
+	"'EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE\x10\x1a*\x86\x01\n" +
 	"\x0eEffectRollKind\x12 \n" +
 	"\x1cEFFECT_ROLL_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17EFFECT_ROLL_KIND_ATTACK\x10\x01\x12\x19\n" +
-	"\x15EFFECT_ROLL_KIND_SAVE\x10\x02*e\n" +
+	"\x15EFFECT_ROLL_KIND_SAVE\x10\x02\x12\x1a\n" +
+	"\x16EFFECT_ROLL_KIND_CHECK\x10\x03*e\n" +
 	"\x0eEffectAudience\x12\x1f\n" +
 	"\x1bEFFECT_AUDIENCE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13EFFECT_AUDIENCE_ALL\x10\x01\x12\x19\n" +

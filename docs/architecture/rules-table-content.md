@@ -560,6 +560,51 @@ No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 
 `TableSpell.Zone` (`TableSpellZone`: `Trigger` of `ZoneStartOfTurn`, `ZoneFirstEntry` or `ZoneBoth`, and `FollowsCaster`) is checked by `checkSpellZone` and kept in `Content.spellZones` (`Content.SpellZone`). Refused at `.zone.trigger` (not one of the three), `.zone.follows_caster` (needs the range Self if it follows, a distance if it does not) and `.zone` (a cantrip; a target that is not a sphere, a cylinder or a cube; not exactly one damage type; a spell attack or healing; neither a timed duration nor concentration). The combat reads it through `link.Spell.Zone` ([Spell zones](play/spell-zones.md)).
 
+## The lasting effect of a spell
+
+`TableSpell.Effect` (`TableSpellEffect`, `rules/overlay_spell_effect.go`) is what the spell leaves on its targets while it lasts.
+`checkSpellEffect` turns it into the `EffectDef` of the spell's key.
+`With` keeps it in `Content.tableSpellEffects`, so `Content.CombatSpellEffect` answers for a table spell as for an SRD one.
+The whole of [Lasting effects](play/lasting-effects.md) then works unchanged: the clock, the concentration, the saves, the undo and the card.
+An archived or switched-off spell has no effect.
+
+- **Where it takes hold.**
+  `applies` is `all` (the default), `failed_save` or `hit`.
+  `failed_save` takes the targets that fail the spell's save, so the spell needs a `save`.
+  `hit` takes the targets the spell attack hits, so the spell needs an `attack`.
+  A spell whose target is Self applies `all` to its caster.
+- **How long.**
+  The spell's duration and concentration.
+  An instantaneous spell has no effect (`.effect`).
+- **What it is.**
+  `conditions` are SRD condition keys, each once, at most 8.
+  `modifiers` are at most 8.
+  An effect with neither is refused.
+- **The modifiers.**
+  The kinds are those of `combat_effects.json` that fit a table spell, and nothing else.
+  `ac_bonus`, `speed_add` and `speed_multiplier` change the numbers of the creature.
+  `roll_die` adds a die as Bless does, `roll_bonus` a flat bonus on `attack`, `save` or `check`, and `check_bonus` a flat bonus on the checks of one skill.
+  `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage` and `check_disadvantage` give a roll a mode.
+  `resistance` takes a `resistance_kind` (`resist`, `immune` or `vulnerable`) and `damage_types` as the feature effect does.
+  `temp_hp` gives temporary hit points when the effect lands.
+  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are kinds of the shared vocabulary: the SRD file may use them too.
+  The table keeps no list of its own.
+- **Refused, each at its field.**
+  `base_ac`, `extra_action`, `no_move`, `no_action`, `no_reaction`, `condition_immunity`, `turn_temp_hp`, `choose` and `from_caster`, and `once` or `except_source` on `attack_disadvantage`.
+  A number out of its range, at `.value` or `.die` (`checkModifier` has the ranges).
+  An unknown condition, skill or damage type, at its own field.
+  A repeated condition, ability or roll.
+  A `player_label_pt` over 30 characters.
+  A `visibility` that is not `public` or `owner`.
+  An `applies` the spell cannot honor, at `.effect.applies`.
+  The path is `spells[i].effect...`, and `table_spell.effect...` in the API.
+- **Tags.**
+  `EffectTagsPT` writes the short Portuguese tags of the owner's card ("CA +2", "PV temporários: 5").
+  `player_label_pt` is the label the other players read.
+
+A feature's lasting effect is its owner's and needs no field of its own.
+A `state` effect turns on the effects gated by `when active("name")` or `while` for its duration (see [States](#states)).
+
 ## Table spell summons
 
 A `TableSpell` may carry a `summon` (`TableSummon`, `rules/overlay_summon.go`): the creatures it brings to its caster.

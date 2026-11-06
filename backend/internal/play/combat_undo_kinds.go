@@ -920,7 +920,7 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 func (u *undoer) castHitTargetBack(ctx context.Context, h castHit) error {
 	target, ok := u.find(h.Target)
 	switch {
-	case ok && h.Fx != "":
+	case ok && (h.Fx != "" || h.Restore != nil): // an effect's temporary hit points leave no Fx
 		return u.castTargetBack(ctx, target, h)
 	case ok && h.CondSet:
 		return u.setConditionsBack(ctx, target.ID, h.CondBefore)
@@ -953,6 +953,9 @@ func (u *undoer) castTargetBack(ctx context.Context, target playdb.Combatant, h 
 			return err
 		}
 	}
+	if err := u.claimsBack(ctx, h.Claims); err != nil {
+		return err
+	}
 	if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
 		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: conv.OrZero(h.BonusBefore)}); err != nil {
 			return fmt.Errorf("put back the maximum hit points: %w", err)
@@ -963,6 +966,16 @@ func (u *undoer) castTargetBack(ctx context.Context, target playdb.Combatant, h 
 	}
 	if h.CondSet {
 		return u.setConditionsBack(ctx, target.ID, h.CondBefore)
+	}
+	return nil
+}
+
+// claimsBack puts back the temp_hp claims a cast took over from the older effects.
+func (u *undoer) claimsBack(ctx context.Context, claims []claimBack) error {
+	for _, cl := range claims {
+		if err := u.c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: cl.ID, Modifiers: cl.Mods}); err != nil {
+			return fmt.Errorf("put back the claim of an effect: %w", err)
+		}
 	}
 	return nil
 }

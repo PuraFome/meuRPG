@@ -417,6 +417,9 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {
 		if note, ok := checkSourceNotes[src.Kind]; ok {
+			if src.Kind == combat.SourceEffectCheck {
+				note.Adv = src.Effect == combat.ModeAdvantage // a table spell's effect may give the disadvantage
+			}
 			out = append(out, note)
 		}
 	}

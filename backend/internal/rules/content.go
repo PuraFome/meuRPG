@@ -180,6 +180,9 @@ type content struct {
 	spellTargets map[string]SpellTarget
 	// spellZones are the areas the table's spells keep on the map while they last.
 	spellZones map[string]SpellZoneRule
+	// tableSpellEffects are the lasting effects of the table's spells; the SRD's are in combatEffects, which
+	// is shared with the SRD content and never written by a table layer.
+	tableSpellEffects map[string]*EffectDef
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
 	srdTargets map[string]SpellTarget
