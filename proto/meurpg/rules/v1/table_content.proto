@@ -594,6 +594,22 @@ message TableCreature {
   // A name may not repeat a trait or an action of the base, nor another attack.
   // Names are compared as the traits' names are.
   repeated TableCreatureAttack attacks = 12;
+  // Resistances, immunities and vulnerabilities added to the base's, at most 12 entries.
+  // Combat reads them as it reads an SRD stat block's.
+  repeated TableCreatureDamageMod damage_mods = 13;
+}
+
+// TableCreatureDamageMod is one entry of a table creature's resistances, immunities or vulnerabilities.
+message TableCreatureDamageMod {
+  // "resist", "immune" or "vulnerable".
+  string kind = 1;
+  // "damage-type:" keys of the SRD, each once in the entry, at least 1.
+  repeated string damage_types = 2;
+  // "" (all damage of the types), "nonmagical", "nonmagical_unless_silvered" or
+  // "nonmagical_unless_adamantine".
+  // Allowed only for kind "resist" or "immune", and only when every damage type is
+  // bludgeoning, piercing or slashing.
+  string qualifier = 3;
 }
 
 // TableCreatureAttack is an attack action of a table creature.

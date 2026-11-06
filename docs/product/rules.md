@@ -625,6 +625,7 @@ Members read the campaign's content, except creatures (below); only the master w
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**
   A table creature is an SRD creature with other hit points (1 to 9,999), armor class (1 to 40), a damage bonus on each of its attacks (-10 to 30), up to 10 traits that are text only and up to 8 attacks of its own.
+  It can add resistances, immunities and vulnerabilities to its base's, up to 12 entries, with the nonmagical, silvered or adamantine qualifier on resistances and immunities to bludgeoning, piercing and slashing.
   Its numbers can be formulas of its owner: hit points, armor class, the damage bonus, the attack bonus, and the to-hit and damage bonus of each own attack.
   A formula reads the owner's level, class level, proficiency bonus, ability scores and modifiers, armor category, shield and walking speed, and the circle of the spell slot a spell was cast with.
   A creature given to a character was not made by a slot, so that circle is 0 in its formulas.
