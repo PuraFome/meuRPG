@@ -489,7 +489,7 @@ func trapSearchAnswer(ts *trapSearch) *playv1.SearchForTrapsResponse {
 	if ev.RollMode != "" {
 		out.Roll = diceRoll(2, 20, []int32{ev.D20, ev.D20B}, ev.Modifier, ev.Total, ev.Physical)
 		out.Roll.CountedIndex = ev.Counted
-		markTreated(out.Roll, ev.Modifier, ev.Total, ev.FloorBy)
+		markTreated(out.Roll, ev.Modifier, ev.Total, ev.floor().Source)
 	} else if ev.D20B != 0 {
 		out.SecondRoll = checkRoll(ev.D20B, ev.Modifier, ev.Physical, ev.floor())
 	}

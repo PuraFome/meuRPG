@@ -429,12 +429,16 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	if len(options) == 1 && options[0].Known {
 		spec.bonus, spec.known, spec.lucky, reliable = options[0].Bonus, true, options[0].Lucky, options[0].ReliableTalent
 	}
-	if spec.floor, err = s.floorOfCharacter(ctx, tx, campaignID, characterID, rules.RollAppliesCheck, reliable); err != nil {
-		return err
-	}
 	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
 	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
 	ability, isCheck := checkKey(check.SkillKey)
+	kind := rules.RollAppliesSave
+	if isCheck {
+		kind = rules.RollAppliesCheck
+	}
+	if spec.floor, err = s.floorOfCharacter(ctx, tx, campaignID, characterID, kind, reliable); err != nil {
+		return err
+	}
 	spec.mode, err = s.checkModeOf(ctx, tx, campaignID, session.ID, characterID, check.SkillKey, ability, isCheck)
 	if err != nil {
 		return err

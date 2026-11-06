@@ -849,3 +849,32 @@ func TestAStoredReliableTalentKeyStillGivesItsFloor(t *testing.T) {
 		t.Errorf("floor() = %v, want %v", got, want)
 	}
 }
+
+// A group check that is a saving throw picks its floor like a scene save does: a minimum limited to saves floors it and one limited to checks does not, and the other way round for a Stealth check.
+func TestAGroupCheckPicksTheFloorByTheKindOfTheRoll(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		rolls   []string
+		key     string
+		counted bool
+	}{
+		{"a save minimum floors a group save", []string{"save"}, "save:con", true},
+		{"a save minimum does not floor a group check", []string{"save"}, stealthKey, false},
+		{"a check minimum does not floor a group save", []string{"check"}, "save:con", false},
+		{"a check minimum floors a group check", []string{"check"}, stealthKey, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := newArmed(t)
+			feat := a.minimumOf10(t, tc.rolls, a.toren)
+			asked := a.mustRequestGroup(t, func(r *playv1.RequestGroupCheckRequest) { r.SkillKey = tc.key })
+			got := memberOf(a.mustRollGroup(t, a.caio, asked.GetId(), 4), a.toren.GetId()).GetRoll()
+			if tc.counted {
+				wantCheckCounted(t, "Toren's 4", got, 4, 10, feat)
+			} else {
+				wantCheckPlain(t, "Toren's 4", got, 4)
+			}
+		})
+	}
+}

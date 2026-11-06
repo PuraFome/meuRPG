@@ -68,10 +68,21 @@ func checkRoll(face, modifier int32, physical bool, f rollFloor) *playv1.DiceRol
 // The floor changed the d20 exactly when the total differs from face plus modifier, and source is the feature that did it.
 func treatedRoll(face, modifier, total int32, physical bool, source string) *playv1.DiceRoll {
 	out := diceRoll(1, 20, []int32{face}, modifier, total, physical)
-	if counted := total - modifier; counted != face && source != "" {
-		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), source
+	if counted := total - modifier; counted != face {
+		if src := legacySource(source); src != "" {
+			out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), src
+		}
 	}
 	return out
+}
+
+// legacySource is the feature a stored roll names as the one that changed its d20. A roll stored before the table
+// minimum (counted_by empty) whose total differs from face plus modifier could only be Reliable Talent's.
+func legacySource(source string) string {
+	if source == "" {
+		return reliableTalentSource
+	}
+	return source
 }
 
 // rollFloor is the lowest number the d20 of a roll counts as, and the content key of the feature that gives it.
@@ -190,8 +201,8 @@ func markTreated(out *playv1.DiceRoll, modifier, total int32, source string) *pl
 	if i < 0 || i >= len(faces) {
 		return out
 	}
-	if counted := total - modifier; counted != faces[i] && source != "" {
-		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), source
+	if counted := total - modifier; counted != faces[i] {
+		out.TreatedAs, out.TreatedAsSource = new(clamp32(int(counted), 0, 20)), legacySource(source)
 	}
 	return out
 }
