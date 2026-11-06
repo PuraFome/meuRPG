@@ -1102,16 +1102,10 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE = 7;
   // Disadvantage on the creature's attack rolls. It reads no other field.
   TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE = 8;
-  // Immunity to the SRD `conditions`.
-  TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY = 9;
-  // The creature cannot move.
-  TABLE_EFFECT_MODIFIER_KIND_NO_MOVE = 10;
-  // The creature cannot take actions.
-  TABLE_EFFECT_MODIFIER_KIND_NO_ACTION = 11;
-  // The creature cannot take reactions.
-  TABLE_EFFECT_MODIFIER_KIND_NO_REACTION = 12;
-  // `value` temporary hit points at the start of each of the creature's turns, 1 to 1000.
-  TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP = 13;
+  // 9 to 13 were condition immunity, no move, no action, no reaction and temporary hit points each turn.
+  // Conditions go in the effect's `conditions`.
+  reserved 9, 10, 11, 12, 13;
+  reserved "TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY", "TABLE_EFFECT_MODIFIER_KIND_NO_MOVE", "TABLE_EFFECT_MODIFIER_KIND_NO_ACTION", "TABLE_EFFECT_MODIFIER_KIND_NO_REACTION", "TABLE_EFFECT_MODIFIER_KIND_TURN_TEMP_HP";
   // Adds a flat `value` (-20 to 20, not 0) to the rolls of `applies_to`. Needs value and applies_to.
   TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS = 14;
   // `value` temporary hit points when the effect lands, 1 to 1000.

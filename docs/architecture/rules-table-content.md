@@ -523,17 +523,47 @@ No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 ## The lasting effect of a spell
 
 `TableSpell.Effect` (`TableSpellEffect`, `rules/overlay_spell_effect.go`) is what the spell leaves on its targets while it lasts.
-`checkSpellEffect` turns it into the `EffectDef` of the spell's key and `With` keeps it in `Content.tableSpellEffects`, so `Content.CombatSpellEffect` answers for a table spell as for an SRD one and the whole of [Lasting effects](play/lasting-effects.md) works unchanged: the clock, the concentration, the saves, the undo and the card.
+`checkSpellEffect` turns it into the `EffectDef` of the spell's key.
+`With` keeps it in `Content.tableSpellEffects`, so `Content.CombatSpellEffect` answers for a table spell as for an SRD one.
+The whole of [Lasting effects](play/lasting-effects.md) then works unchanged: the clock, the concentration, the saves, the undo and the card.
 An archived or switched-off spell has no effect.
 
-- **Where it takes hold.** `applies` is `all` (the default), `failed_save` (the targets that fail the spell's save; the spell needs a `save`) or `hit` (the targets the spell attack hits; the spell needs an `attack`). A spell whose target is Self applies `all` to its caster.
-- **How long.** The spell's duration and concentration. An instantaneous spell has no effect (`.effect`).
-- **What it is.** Conditions (`conditions`, SRD condition keys, each once, at most 8) and modifiers (at most 8), both optional but not both empty. The modifiers are the kinds of `combat_effects.json` that fit a table spell: `ac_bonus`, `roll_die` (a die, as Bless), `roll_bonus` (a flat bonus on `attack`, `save` or `check`), `check_bonus` (a skill), `speed_add`, `speed_multiplier`, `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage`, `check_disadvantage`, `condition_immunity`, `resistance` (`resistance_kind` `resist`, `immune` or `vulnerable`; `damage_types` as the feature effect), `temp_hp` (given when the effect lands), `turn_temp_hp`, `no_move`, `no_action` and `no_reaction`.
-  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are shared with the SRD file: the SRD may use them too, and nothing is kept in a list of the table's own.
-- **Refused.** `base_ac`, `extra_action`, `choose`, `from_caster`, and `once` or `except_source` on `attack_disadvantage`, at the modifier's field; a number out of its range at `.value` or `.die` (`checkModifier` has the ranges); an unknown condition, skill or damage type at its own field; a repeated condition, ability or roll; a `player_label_pt` over 30 characters; `visibility` other than `public` or `owner`; an `applies` that the spell cannot honor (`.effect.applies`). Every path is `spells[i].effect...`, `table_spell.effect...` in the API.
-- **Tags.** `EffectTagsPT` writes the short Portuguese tags the owner's card shows ("CA +2", "PV temporários: 5"); the master may add `player_label_pt`, the label the other players read.
+- **Where it takes hold.**
+  `applies` is `all` (the default), `failed_save` or `hit`.
+  `failed_save` takes the targets that fail the spell's save, so the spell needs a `save`.
+  `hit` takes the targets the spell attack hits, so the spell needs an `attack`.
+  A spell whose target is Self applies `all` to its caster.
+- **How long.**
+  The spell's duration and concentration.
+  An instantaneous spell has no effect (`.effect`).
+- **What it is.**
+  `conditions` are SRD condition keys, each once, at most 8.
+  `modifiers` are at most 8.
+  An effect with neither is refused.
+- **The modifiers.**
+  The kinds are those of `combat_effects.json` that fit a table spell, and nothing else.
+  `ac_bonus`, `speed_add` and `speed_multiplier` change the numbers of the creature.
+  `roll_die` adds a die as Bless does, `roll_bonus` a flat bonus on `attack`, `save` or `check`, and `check_bonus` a flat bonus on the checks of one skill.
+  `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage` and `check_disadvantage` give a roll a mode.
+  `resistance` takes a `resistance_kind` (`resist`, `immune` or `vulnerable`) and `damage_types` as the feature effect does.
+  `temp_hp` gives temporary hit points when the effect lands.
+  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are kinds of the shared vocabulary: the SRD file may use them too.
+  The table keeps no list of its own.
+- **Refused, each at its field.**
+  `base_ac`, `extra_action`, `no_move`, `no_action`, `no_reaction`, `condition_immunity`, `turn_temp_hp`, `choose` and `from_caster`, and `once` or `except_source` on `attack_disadvantage`.
+  A number out of its range, at `.value` or `.die` (`checkModifier` has the ranges).
+  An unknown condition, skill or damage type, at its own field.
+  A repeated condition, ability or roll.
+  A `player_label_pt` over 30 characters.
+  A `visibility` that is not `public` or `owner`.
+  An `applies` the spell cannot honor, at `.effect.applies`.
+  The path is `spells[i].effect...`, and `table_spell.effect...` in the API.
+- **Tags.**
+  `EffectTagsPT` writes the short Portuguese tags of the owner's card ("CA +2", "PV temporários: 5").
+  `player_label_pt` is the label the other players read.
 
-A feature's lasting effect is its owner's and needs no field of its own: a `state` effect turns the effects gated by `when active("name")` or `while` on for its duration (see [States](#states)).
+A feature's lasting effect is its owner's and needs no field of its own.
+A `state` effect turns on the effects gated by `when active("name")` or `while` for its duration (see [States](#states)).
 
 ## Table spell summons
 

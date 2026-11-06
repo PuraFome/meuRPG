@@ -1729,11 +1729,6 @@ func effectTestEffects() []*rulesv1.TableSpellEffect {
 			},
 		},
 		{Modifiers: []*rulesv1.TableEffectModifier{
-			{Kind: kind("CONDITION_IMMUNITY"), Conditions: []string{"condition:frightened"}},
-			{Kind: kind("NO_MOVE")},
-			{Kind: kind("NO_ACTION")},
-			{Kind: kind("NO_REACTION")},
-			{Kind: kind("TURN_TEMP_HP"), Value: 3},
 			{Kind: kind("ROLL_BONUS"), Value: -2, AppliesTo: roll(attack)},
 			{Kind: kind("TEMP_HP"), Value: 5},
 			{Kind: kind("RESISTANCE"), ResistanceKind: rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_IMMUNE, DamageTypes: []string{"damage-type:fire"}},

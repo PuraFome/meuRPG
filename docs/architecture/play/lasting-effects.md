@@ -70,18 +70,39 @@ Tests: `TestRN10_AnOwnerOnlyConditionIsInNoReadOfAnotherPlayer`, `TestRN10_TheLa
 
 ## Table spells and the kinds a table may write
 
-A table spell's effect ([Table content: rules](../rules-table-content.md#the-lasting-effect-of-a-spell)) is read through `Content.CombatSpellEffect`, so it is applied, ended and shown by the paths above.
-Six modifier kinds are read by the play module for SRD and table effects alike:
+A table spell's effect ([Table content: rules](../rules-table-content.md#the-lasting-effect-of-a-spell)) is read through `Content.CombatSpellEffect`.
+The paths above apply it, end it and show it.
+Six modifier kinds are read by the play module for SRD and table effects alike.
 
-- `roll_bonus`: a flat bonus on an attack roll, a saving throw or an ability check (`lasting_effects_bonus.go`: `rollBonusesOf`, `withRollBonus`, `bonusSources`). It is listed in the roll's sources like the dice. The riders, Turn Undead, Hellish Rebuke and the contests do not add it, as they do not add Bless's die.
-- `attack_advantage`, `save_disadvantage`, `check_disadvantage`: filled into `combat.Creature` by `creatureFacts` (and by `outsideEffectsOf` outside a combat), they join the other sources of `Resolve`, so advantage and disadvantage cancel as usual.
-- `resistance`: `modifiersOf` adds the effect's resistance, immunity and vulnerability to the steps of the damage (`effectResistancesOf`); damage that is not an attack goes through `withEffectResistances`. `nonmagical_bps` covers only the damage of a nonmagical attack.
+- **`roll_bonus`.**
+  A flat bonus on an attack roll, a saving throw or an ability check (`lasting_effects_bonus.go`: `rollBonusesOf`, `withRollBonus`, `bonusSources`).
+  It is listed in the sources of the roll like the dice.
+  The riders, Turn Undead, Hellish Rebuke, the reaction view's save and the contests do not add it, as they do not add Bless's die.
+- **`attack_advantage`, `save_disadvantage`, `check_disadvantage`.**
+  `creatureFacts` (and `outsideEffectsOf` outside a combat) fills them into `combat.Creature`.
+  They join the other sources of `Resolve`, so advantage and disadvantage cancel as usual.
+- **`resistance`.**
+  `modifiersOf` adds the resistance, immunity and vulnerability of the effect to the steps of the damage (`effectResistancesOf`).
+  Damage that is not an attack goes through `withEffectResistances`.
+  `nonmagical_bps` covers only the damage of a nonmagical attack.
   A step of an effect the master hides reads "Outra fonte" to everyone but the master (`Modifier.Hidden`).
-- `temp_hp`: `giveEffectTempHP` gives the temporary hit points when the effect lands, keeping the higher pool, and records the previous pool on the cast so the undo gives it back. The pool is taken back when the effect ends, only while it is no larger than what the effect gave (`afterEffectRowEnded`). Outside a combat a self cast does the same on the vitals (`giveCharacterTempHP`, `afterCharacterEffectsGone`).
+- **`temp_hp`.**
+  `giveEffectTempHP` gives the temporary hit points when the effect lands and keeps the higher pool.
+  The row keeps the pool the effect set as its claim, and none when it raised nothing.
+  The cast records the pool before it and the claims it took from older effects, so the undo gives them back.
+  The end clears the pool only while it is no larger than the claim of the row that ends.
+  Outside a combat the same holds on the vitals of each character the cast reaches (`giveCharacterTempHP`, `afterCharacterEffectsGone`).
 
-A player reads on another creature only the label (the names of the conditions the viewer may read, or `player_label_pt`), never the numbers behind it; the owner and the master read the card with its tags.
-An effect from a caster the viewer does not see names no caster.
-Tests: `lasting_effects_tablespell_test.go`, `lasting_effects_cast_test.go` (with the leak rows that plant 77 temporary hit points and a +13 bonus and read them as every player).
+Who reads what:
+
+- The master and the target's player read the card, with its tags.
+- The other players read the label alone: the names of the conditions they may read, or `player_label_pt`.
+  They read no number behind it, in a combat or out of one.
+- An effect the master hides, or whose audience is `owner`, names itself to no one else in the sources of a roll ("Outra fonte").
+- An effect from a caster the viewer does not see names no caster.
+
+Tests: `lasting_effects_tablespell_test.go` and `lasting_effects_cast_test.go`.
+The leak rows plant 77 temporary hit points and a +13 bonus and read them as every player, with the master and the target's player as positive controls.
 
 ## Exhaustion
 

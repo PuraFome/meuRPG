@@ -311,5 +311,6 @@ Level-up changes none of it (`full.custom_background` is locked).
 Storage is the protojson of the entry, so there is no column and no migration.
 An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
 The violation is `table_spell.effect.modifiers[1].value` and the like.
-The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and has no field for `effect`: the effect is written through the API until the editor has a block for it.
+The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and has no field for `effect`.
+Saving a spell in the editor replaces the body, so it removes an effect written through the API (it does the same to a zone and a summon).
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).

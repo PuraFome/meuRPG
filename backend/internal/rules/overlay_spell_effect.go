@@ -98,12 +98,17 @@ func modifierFieldSuffix(err error) string {
 	return ""
 }
 
+// refusedForTableSpell are the kinds of modifier a table spell's effect does not offer.
+var refusedForTableSpell = []string{ModifierBaseAC, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierConditionImmunity, ModifierTurnTempHP}
+
 // spellModifierRefusal refuses what a modifier may be in the SRD's file but makes no sense for a table
 // spell: the base armor class and the extra action need the engine's own working out, and the rest are
-// worked out when the spell is cast, which a table spell has no way to say.
+// worked out when the spell is cast, which a table spell has no way to say. A table effect's modifiers are a
+// closed set: conditions go in the effect's `conditions`, and what stops a creature from moving or acting is a
+// condition (paralyzed, restrained), not a modifier.
 func spellModifierRefusal(m EffectModifier) error {
 	switch {
-	case m.Kind == ModifierBaseAC || m.Kind == ModifierExtraAction:
+	case slices.Contains(refusedForTableSpell, m.Kind):
 		return modifierField("kind", "%s is not for a table spell", m.Kind)
 	case m.FromCaster:
 		return modifierField("from_caster", "a table spell cannot take its value from the caster")

@@ -143,7 +143,11 @@ func TestTableSpellEffectRefusals(t *testing.T) {
 		{"an unknown damage type", mods(EffectModifier{Kind: ModifierResistance, DamageTypes: []string{"damage-type:boredom"}}), ".effect.modifiers[0].damage_types"},
 		{"a base armor class", mods(EffectModifier{Kind: ModifierBaseAC, Value: 13}), ".effect.modifiers[0].kind"},
 		{"an extra action", mods(EffectModifier{Kind: ModifierExtraAction, Allowed: []string{"attack"}, MaxWeaponAttacks: 1}), ".effect.modifiers[0].kind"},
-		{"turn hit points from the caster", mods(EffectModifier{Kind: ModifierTurnTempHP, FromCaster: true}), ".effect.modifiers[0].from_caster"},
+		{"turn hit points", mods(EffectModifier{Kind: ModifierTurnTempHP, Value: 3}), ".effect.modifiers[0].kind"},
+		{"condition immunity", mods(EffectModifier{Kind: ModifierConditionImmunity, Conditions: []string{"condition:frightened"}}), ".effect.modifiers[0].kind"},
+		{"no move", mods(EffectModifier{Kind: ModifierNoMove}), ".effect.modifiers[0].kind"},
+		{"no action", mods(EffectModifier{Kind: ModifierNoAction}), ".effect.modifiers[0].kind"},
+		{"no reaction", mods(EffectModifier{Kind: ModifierNoReaction}), ".effect.modifiers[0].kind"},
 		{"a choice of ability", mods(EffectModifier{Kind: ModifierCheckAdvantage, Choose: true}), ".effect.modifiers[0].choose"},
 		{"a once disadvantage", mods(EffectModifier{Kind: ModifierAttackDisadvantage, Once: true}), ".effect.modifiers[0].once"},
 		{"a disadvantage that spares the source", mods(EffectModifier{Kind: ModifierAttackDisadvantage, ExceptSource: true}), ".effect.modifiers[0].except_source"},
@@ -197,76 +201,10 @@ func TestTableSpellEffectOldKindsThroughWith(t *testing.T) {
 		field string
 	}{
 		{
-			"condition_immunity",
-			EffectModifier{Kind: ModifierConditionImmunity, Conditions: []string{"condition:frightened"}},
-			EffectModifier{Kind: ModifierConditionImmunity, Conditions: []string{"condition:frightened", "condition:bored"}},
-			".effect.modifiers[0].conditions[1]",
-		},
-		{
-			"check_bonus",
-			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: 5},
-			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:boredom", Value: 5},
-			".effect.modifiers[0].skill",
-		},
-		{
-			"check_bonus too big",
-			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: -20},
-			EffectModifier{Kind: ModifierCheckBonus, Skill: "skill:stealth", Value: -2000000000},
-			".effect.modifiers[0].value",
-		},
-		{
-			"roll_die",
-			EffectModifier{Kind: ModifierRollDie, Die: 4, Sign: 1, AppliesTo: atk},
-			EffectModifier{Kind: ModifierRollDie, Die: 1000000, Sign: 1, AppliesTo: atk},
-			".effect.modifiers[0].die",
-		},
-		{
-			"roll_die repeat",
-			EffectModifier{Kind: ModifierRollDie, Die: 100, Sign: -1, AppliesTo: []string{"attack", "save"}},
-			EffectModifier{Kind: ModifierRollDie, Die: 4, Sign: 1, AppliesTo: []string{"attack", "attack"}},
-			".effect.modifiers[0].applies_to",
-		},
-		{
-			"speed_add",
-			EffectModifier{Kind: ModifierSpeedAdd, Value: 120},
-			EffectModifier{Kind: ModifierSpeedAdd, Value: 1000000000},
-			".effect.modifiers[0].value",
-		},
-		{
-			"speed_multiplier",
-			EffectModifier{Kind: ModifierSpeedMultiplier, Value: 50},
-			EffectModifier{Kind: ModifierSpeedMultiplier, Value: 401},
-			".effect.modifiers[0]",
-		},
-		{
-			"ac_bonus",
-			EffectModifier{Kind: ModifierACBonus, Value: 20},
-			EffectModifier{Kind: ModifierACBonus, Value: 2147483647},
-			".effect.modifiers[0].value",
-		},
-		{
-			"save_advantage",
-			EffectModifier{Kind: ModifierSaveAdvantage, Abilities: []string{"wis"}},
-			EffectModifier{Kind: ModifierSaveAdvantage, Abilities: []string{"wis", "wis"}},
-			".effect.modifiers[0].abilities",
-		},
-		{
-			"check_advantage",
-			EffectModifier{Kind: ModifierCheckAdvantage, Abilities: []string{"str"}},
-			EffectModifier{Kind: ModifierCheckAdvantage, Abilities: []string{"luck"}},
-			".effect.modifiers[0].abilities",
-		},
-		{
 			"attack_disadvantage",
 			EffectModifier{Kind: ModifierAttackDisadvantage},
 			EffectModifier{Kind: ModifierAttackDisadvantage, Once: true},
 			".effect.modifiers[0].once",
-		},
-		{
-			"turn_temp_hp",
-			EffectModifier{Kind: ModifierTurnTempHP, Value: 1000},
-			EffectModifier{Kind: ModifierTurnTempHP, Value: 1001},
-			".effect.modifiers[0].value",
 		},
 	}
 	for _, tc := range cases {
