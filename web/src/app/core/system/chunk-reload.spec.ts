@@ -36,6 +36,11 @@ describe('isChunkLoadError', () => {
     expect(isChunkLoadError(DEFER_ERROR)).toBe(true);
   });
 
+  it('recognises a failed @defer block by its code when a production build keeps no message', () => {
+    expect(isChunkLoadError(Object.assign(new Error('NG0750'), { code: -750 }))).toBe(true);
+    expect(isChunkLoadError(Object.assign(new Error('NG0200'), { code: -200 }))).toBe(false);
+  });
+
   it('rejects other errors and values', () => {
     expect(isChunkLoadError(new Error('boom'))).toBe(false);
     expect(isChunkLoadError(null)).toBe(false);
@@ -69,7 +74,10 @@ describe('chunk reload', () => {
     });
   });
 
-  afterEach(() => history.replaceState(null, ''));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    history.replaceState(null, '');
+  });
 
   it('reloads once for a failed lazy chunk and keeps the router state keys', () => {
     const handler = TestBed.inject(ErrorHandler);
@@ -98,6 +106,43 @@ describe('chunk reload', () => {
   it('reloads for a failed @defer block error', () => {
     TestBed.inject(ErrorHandler).handleError(DEFER_ERROR);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads for a production @defer error that carries only its code', () => {
+    TestBed.inject(ErrorHandler).handleError(Object.assign(new Error('NG0750'), { code: -750 }));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('neither reloads nor logs a chunk error that a navigation cancelled', () => {
+    TestBed.inject(ChunkReload);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.dispatchEvent(new Event('beforeunload'));
+    TestBed.inject(ErrorHandler).handleError(new TypeError(WEBKIT));
+    TestBed.inject(ErrorHandler).handleError(Object.assign(new Error('NG0750'), { code: -750 }));
+    expect(reload).not.toHaveBeenCalled();
+    expect(history.state).toEqual(ROUTER_STATE);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('still logs another error while the page is leaving', () => {
+    TestBed.inject(ChunkReload);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.dispatchEvent(new Event('beforeunload'));
+    TestBed.inject(ErrorHandler).handleError(new Error('boom'));
+    expect(log).toHaveBeenCalled();
+  });
+
+  it('reloads again once the leaving window is over, as when the user stayed on the page', () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.inject(ChunkReload);
+      window.dispatchEvent(new Event('beforeunload'));
+      vi.advanceTimersByTime(2001);
+      TestBed.inject(ErrorHandler).handleError(new TypeError(CHROME));
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('never reloads for a non-chunk error, and logs it', () => {
