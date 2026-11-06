@@ -290,6 +290,10 @@ type TableSubrace struct {
 	Race           string
 	AbilityBonuses map[Ability]int
 	Traits         []TableFeature
+	// ReplacesTraitKeys are trait keys of the parent race this subrace replaces.
+	ReplacesTraitKeys []string
+	// ReplacesAbilityBonuses swaps the parent's ability bonuses whole for AbilityBonuses.
+	ReplacesAbilityBonuses bool
 }
 
 // TableBackground is a background: two skills, tools and languages, and a

@@ -80,6 +80,10 @@ type Subrace struct {
 	Desc           string         `json:"desc"`
 	AbilityBonuses map[string]int `json:"ability_bonuses"`
 	Traits         []string       `json:"traits"`
+	// ReplacesTraitKeys are trait keys of the parent race this subrace replaces.
+	ReplacesTraitKeys []string `json:"replaces_trait_keys,omitempty"`
+	// ReplacesAbilityBonuses swaps the parent's ability bonuses whole for AbilityBonuses.
+	ReplacesAbilityBonuses bool `json:"replaces_ability_bonuses,omitempty"`
 }
 
 // Trait is a racial trait.

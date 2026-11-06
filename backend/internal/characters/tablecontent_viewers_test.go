@@ -553,3 +553,13 @@ func TestCreateTableEntryWithAKeyIsFrozen(t *testing.T) {
 	names[other] = "<other campaign>"
 	tableContentGolden(t, "create_with_key", names, v.steps...)
 }
+
+// TestPlayerViewDropsHiddenReplacedTraitKeys: a subrace's replaced trait key the players do not see is not named to them.
+func TestPlayerViewDropsHiddenReplacedTraitKeys(t *testing.T) {
+	t.Parallel()
+	b := &rulesv1.TableSubrace{ReplacesTraitKeys: []string{"trait:a@mesa", "trait:b@mesa"}, ReplacesAbilityBonuses: true}
+	playerView{hidden: func(k string) bool { return k == "trait:a@mesa" }}.strip(b)
+	if got := b.GetReplacesTraitKeys(); len(got) != 1 || got[0] != "trait:b@mesa" || !b.GetReplacesAbilityBonuses() {
+		t.Errorf("stripped subrace = %v, want only trait:b@mesa and the flag kept", b)
+	}
+}

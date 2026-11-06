@@ -246,6 +246,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableSubrace:
 			o.Subraces = append(o.Subraces, rules.TableSubrace{
 				TableEntry: te, Race: b.GetRaceKey(), AbilityBonuses: tableScoresOf(b.GetAbilityBonuses()), Traits: tableFeaturesOf(b.GetTraits()),
+				ReplacesTraitKeys: b.GetReplacesTraitKeys(), ReplacesAbilityBonuses: b.GetReplacesAbilityBonuses(),
 			})
 			idx["subraces"] = append(idx["subraces"], e)
 		case *rulesv1.TableBackground:
@@ -1105,6 +1106,7 @@ func (v playerView) strip(body tableBody) {
 		v.dropEffects(b.GetTraits())
 	case *rulesv1.TableSubrace:
 		v.dropEffects(b.GetTraits())
+		b.ReplacesTraitKeys = v.visible(b.ReplacesTraitKeys)
 	case *rulesv1.TableBackground:
 		if b.GetFeature() != nil {
 			v.dropEffects([]*rulesv1.TableFeature{b.GetFeature()})
