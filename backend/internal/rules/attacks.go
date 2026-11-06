@@ -133,7 +133,7 @@ func (x *deriver) weaponMarks(key string, f weaponFacts) (magical, silvered, ada
 	magical, silvered, adamantine = x.sheetMarks(key)
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "weapon_rule" || !(e.Magical || e.Silvered || e.Adamantine) || !e.matchesWeapon(f) || !x.applies(a) {
+		if e.Type != "weapon_rule" || (!e.Magical && !e.Silvered && !e.Adamantine) || !e.matchesWeapon(f) || !x.applies(a) {
 			continue
 		}
 		magical, silvered, adamantine = magical || e.Magical, silvered || e.Silvered, adamantine || e.Adamantine

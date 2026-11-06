@@ -19,6 +19,7 @@ const tableResistantHP = 40
 // nothing) with a resistance to piercing from nonmagical weapons that aren't silvered, and a Toren whose
 // rapier has the given mark.
 func tableResistantSetup(t *testing.T, mark *charactersv1.WeaponMark) func(a *armed) {
+	t.Helper()
 	return func(a *armed) {
 		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{

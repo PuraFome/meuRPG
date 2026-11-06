@@ -49,6 +49,7 @@ func hitFor(t *testing.T, setup func(a *armed), monster string) int32 {
 
 // markedToren is the setup of a fight whose Toren carries a rapier with the given mark (nil for none).
 func markedToren(t *testing.T, mark *charactersv1.WeaponMark) func(a *armed) {
+	t.Helper()
 	return func(a *armed) { a.toren = a.caio.markedHero(t, a.campaignID, "Toren", mark) }
 }
 

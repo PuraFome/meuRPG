@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -110,7 +111,7 @@ func TestStepsStoredBeforeTheMaterialQualifiersWorkOutTheSame(t *testing.T) {
 	}}
 	gotJSON, _ := json.Marshal(groups)
 	wantJSON, _ := json.Marshal(want)
-	if string(gotJSON) != string(wantJSON) {
+	if !bytes.Equal(gotJSON, wantJSON) {
 		t.Fatalf("the stored steps read as %s, want %s", gotJSON, wantJSON)
 	}
 	from := originOfGroups(groups)
