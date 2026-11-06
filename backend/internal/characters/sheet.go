@@ -219,6 +219,8 @@ func cleanFullSheet(f *charactersv1.FullSheet) error {
 func dropStaleCarried(f *charactersv1.FullSheet) {
 	f.CarriedKeys = slices.DeleteFunc(f.CarriedKeys, func(k string) bool {
 		switch k {
+		case "":
+			return true
 		case rules.ShieldKey:
 			return !f.GetShield()
 		case f.GetArmorKey():

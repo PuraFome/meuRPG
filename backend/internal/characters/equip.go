@@ -148,6 +148,9 @@ func (s *Service) writeCarried(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if err := rules.ValidateCarried(buildOf(next)); err != nil {
 		return equipped{}, wrap("check the carried keys", err)
 	}
+	if err := s.refreshKnownIssues(ctx, tx, m, full, next); err != nil {
+		return equipped{}, err
+	}
 	doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: next}})
 	if err != nil {
 		return equipped{}, wrap("encode a sheet", err)
@@ -166,4 +169,28 @@ func (s *Service) writeCarried(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return equipped{}, err
 	}
 	return equipped{row: row, carried: next.CarriedKeys, changed: true, afterGear: after, changeInfo: change}, nil
+}
+
+// refreshKnownIssues keeps known_issues true to the gear in use: Derive reads only the
+// equipped armor and weapons, so moving one in or out can add or end an issue (an unknown
+// key). The issues Derive finds are swapped for the ones it finds now; what other flags
+// the sheet holds (a changed table entry, RN-23) stays as it was.
+func (s *Service) refreshKnownIssues(ctx context.Context, tx pgx.Tx, m authz.Membership, was, next *charactersv1.FullSheet) error {
+	content, err := s.contentFor(ctx, tx, m.CampaignID)
+	if err != nil {
+		return wrap("read rules content", err)
+	}
+	before := issueIDs(rules.Derive(buildOf(was), content).Issues)
+	after := issueIDs(rules.Derive(buildOf(next), content).Issues)
+	known := slices.DeleteFunc(slices.Clone(next.KnownIssues), func(id string) bool {
+		return slices.Contains(before, id) && !slices.Contains(after, id)
+	})
+	for _, id := range after {
+		if !slices.Contains(known, id) {
+			known = append(known, id)
+		}
+	}
+	slices.Sort(known)
+	next.KnownIssues = known
+	return nil
 }

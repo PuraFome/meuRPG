@@ -54,7 +54,7 @@ Related pages: [Table content](characters-table-content.md) (live content, switc
 | `SetGallery` | `Gallery` | Which images are in a campaign's gallery (NPC portraits), from `maps`. |
 | `SetLive` | `Live` | The session stream: `PublishXPChanged`, `PublishVitalsChanged`, `PublishContentChanged`, implemented by `play`. |
 | `SetCreatureHost` | `CreatureHost` | The combat that holds a character's creatures, from `play`. |
-| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, and the combat a revived character returns to, from `play`. |
+| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, the combat a revived character returns to, `GearChanged` and `ArmorWorn` (Mage Armor follows the equipped armor and shield), and `EquipInCombat` (play is asked inside the transaction, before the write, when `SetEquipped` equips or stows a piece), from `play`. |
 | `SetLevelUps` | `LevelUps` | Whether a character can level up (RN-12), from `progression`. |
 | `SetCampaignNames` | `CampaignNames` | The campaign's name for an exported content pack (optional). |
 | `Config.Dice` | `DiceRules` | The campaign's dice setting (RN-18), from `campaigns`. |

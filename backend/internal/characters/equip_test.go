@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 const (
@@ -85,7 +86,7 @@ func mustSetEquipped(t *testing.T, u *user, c *charactersv1.Character, key strin
 // withoutCarried is the sheet with carried_keys cleared, to compare what else changed.
 func withoutCarried(c *charactersv1.Character) *charactersv1.CharacterSheet {
 	out := proto.CloneOf(c.GetSheet())
-	out.GetFull().CarriedKeys = nil
+	out.GetFull().CarriedKeys, out.GetFull().KnownIssues = nil, nil // the issues follow the gear in use
 	return out
 }
 
@@ -101,16 +102,16 @@ func TestSetEquippedOwnerAndMaster(t *testing.T) {
 		t.Fatalf("stow on a draft = %v, revision %d; want [%s], %d", res.GetCarriedKeys(), res.GetRevision(), staff, et.pc.GetRevision()+1)
 	}
 	et.h.lockSheets(et.campaign)
-	res = mustSetEquipped(t, et.dona, et.pc, shieldKeyForTest, false)
-	if !slices.Equal(res.GetCarriedKeys(), []string{staff, shieldKeyForTest}) {
+	res = mustSetEquipped(t, et.dona, et.pc, rules.ShieldKey, false)
+	if !slices.Equal(res.GetCarriedKeys(), []string{staff, rules.ShieldKey}) {
 		t.Errorf("stow on a locked sheet by the owner = %v", res.GetCarriedKeys())
 	}
 	res = mustSetEquipped(t, et.master, et.pc, leath, false)
-	if !slices.Equal(res.GetCarriedKeys(), []string{staff, shieldKeyForTest, leath}) {
+	if !slices.Equal(res.GetCarriedKeys(), []string{staff, rules.ShieldKey, leath}) {
 		t.Errorf("stow by the master = %v", res.GetCarriedKeys())
 	}
 	res = mustSetEquipped(t, et.master, et.pc, staff, true)
-	if !slices.Equal(res.GetCarriedKeys(), []string{shieldKeyForTest, leath}) {
+	if !slices.Equal(res.GetCarriedKeys(), []string{rules.ShieldKey, leath}) {
 		t.Errorf("equip by the master = %v", res.GetCarriedKeys())
 	}
 	got := et.dona.get(t, et.campaign, et.pc.GetId())
@@ -125,8 +126,6 @@ func TestSetEquippedOwnerAndMaster(t *testing.T) {
 	}
 }
 
-const shieldKeyForTest = "equipment:shield"
-
 // Stowing the armor changes the derived armor class the owner reads.
 func TestSetEquippedChangesTheDerivedSheet(t *testing.T) {
 	t.Parallel()
@@ -134,7 +133,7 @@ func TestSetEquippedChangesTheDerivedSheet(t *testing.T) {
 	acOf := func() int32 { return et.dona.get(t, et.campaign, et.pc.GetId()).GetDerived().GetArmorClass() }
 	worn := acOf()
 	mustSetEquipped(t, et.dona, et.pc, leath, false)
-	mustSetEquipped(t, et.dona, et.pc, shieldKeyForTest, false)
+	mustSetEquipped(t, et.dona, et.pc, rules.ShieldKey, false)
 	if got := acOf(); got >= worn {
 		t.Errorf("AC with armor and shield stowed = %d, want less than %d", got, worn)
 	}
@@ -149,31 +148,35 @@ func TestSetEquippedRefusals(t *testing.T) {
 	npc := et.master.create(t, et.campaign, editorEnemy, "Bandido", enemySheet())
 	minion := et.master.create(t, et.campaign, editorMinion, "Goblin", basicSheet())
 	noShield := et.master.create(t, et.campaign, editorEnemy, "Sem escudo", editorClone(enemySheet(), func(f *charactersv1.FullSheet) { f.Shield = false }))
+	refusal := func(want string) func(*testing.T, string, error) {
+		return func(t *testing.T, name string, err error) { t.Helper(); wantEditorRefusal(t, name, err, want) }
+	}
+	code := func(want connect.Code) func(*testing.T, string, error) {
+		return func(t *testing.T, name string, err error) {
+			t.Helper()
+			if ce, ok := errors.AsType[*connect.Error](err); !ok || ce.Code() != want {
+				t.Errorf("%s: %v, want %v", name, err, want)
+			}
+		}
+	}
+	invalidKey := `invalid_argument: key is not the armor, the shield or a weapon of the sheet | InvalidField{field="key"}`
 	for _, c := range []struct {
-		name string
-		as   *user
-		on   *charactersv1.Character
-		key  string
-		want string
+		name  string
+		as    *user
+		on    *charactersv1.Character
+		key   string
+		check func(*testing.T, string, error)
 	}{
-		{"another player", et.caio, et.pc, staff, `not_found: character not found`},
-		{"a stranger", et.visitor, et.pc, staff, `not_found: campaign not found`},
-		{"a player on an NPC", et.dona, npc, "equipment:longsword", `not_found: character not found`},
-		{"an unlisted key", et.dona, et.pc, "equipment:longsword", `invalid_argument: key is not the armor, the shield or a weapon of the sheet | InvalidField{field="key"}`},
-		{"an empty key", et.dona, et.pc, "", `invalid_argument: key is required | InvalidField{field="key"}`},
-		{"a basic sheet", et.master, minion, "equipment:dagger", `invalid_argument: character_id is a character with a basic sheet, which has no gear to equip | InvalidField{field="character_id"}`},
+		{"another player", et.caio, et.pc, staff, refusal(`not_found: character not found`)},
+		{"a stranger", et.visitor, et.pc, staff, code(connect.CodeNotFound)},
+		{"a player on an NPC", et.dona, npc, "equipment:longsword", refusal(`not_found: character not found`)},
+		{"an unlisted key", et.dona, et.pc, "equipment:longsword", refusal(invalidKey)},
+		{"the shield of a sheet without one", et.master, noShield, rules.ShieldKey, refusal(invalidKey)},
+		{"an empty key", et.dona, et.pc, "", refusal(`invalid_argument: key is required | InvalidField{field="key"}`)},
+		{"a basic sheet", et.master, minion, "equipment:dagger", refusal(`invalid_argument: character_id is a character with a basic sheet, which has no gear to equip | InvalidField{field="character_id"}`)},
 	} {
 		_, err := setEquipped(c.as, c.on, c.key, false)
-		if c.name == "a stranger" {
-			if ce, ok := errors.AsType[*connect.Error](err); !ok || ce.Code() != connect.CodeNotFound {
-				t.Errorf("%s: %v, want not_found", c.name, err)
-			}
-			continue
-		}
-		wantEditorRefusal(t, c.name, err, c.want)
-	}
-	if _, err := setEquipped(et.master, noShield, shieldKeyForTest, false); err == nil {
-		t.Errorf("the shield key of a sheet without a shield was accepted")
+		c.check(t, c.name, err)
 	}
 	if len(et.spy.changes) != 0 {
 		t.Errorf("play was asked about %v for refused calls", et.spy.changes)
@@ -267,7 +270,7 @@ func TestSetEquippedAsksPlayInsideTheTransaction(t *testing.T) {
 		key   string
 		kind  EquipKind
 		equip bool
-	}{{staff, EquipWeapon, false}, {shieldKeyForTest, EquipShield, false}, {leath, EquipArmor, false}, {leath, EquipArmor, true}} {
+	}{{staff, EquipWeapon, false}, {rules.ShieldKey, EquipShield, false}, {leath, EquipArmor, false}, {leath, EquipArmor, true}} {
 		before := et.dona.get(t, et.campaign, et.pc.GetId()).GetRevision()
 		mustSetEquipped(t, et.dona, et.pc, c.key, c.equip)
 		last := len(et.spy.changes) - 1
@@ -296,7 +299,7 @@ func TestSetEquippedTellsPlayAboutTheGear(t *testing.T) {
 		want  string
 	}{
 		{staff, false, ""},
-		{shieldKeyForTest, false, "GearChanged, after GearChanged"},
+		{rules.ShieldKey, false, "GearChanged, after GearChanged"},
 		{leath, false, "GearChanged, after GearChanged"},
 		{leath, true, "ArmorWorn, after ArmorWorn"},
 		{leath, true, ""}, // no change
@@ -305,6 +308,73 @@ func TestSetEquippedTellsPlayAboutTheGear(t *testing.T) {
 		mustSetEquipped(t, et.dona, et.pc, s.key, s.equip)
 		if got := et.spy.take(); got != s.want {
 			t.Errorf("%s equip=%v: play was told %q, want %q", s.key, s.equip, got, s.want)
+		}
+	}
+}
+
+// known_issues follow the gear in use: Derive reads only what is equipped, so the
+// proficiency issues of a wizard in leather armor and a shield end when they are stowed
+// and come back when they are equipped.
+func TestSetEquippedRefreshesKnownIssues(t *testing.T) {
+	t.Parallel()
+	et := newEquipTable(t)
+	issues := func() []string {
+		return et.dona.get(t, et.campaign, et.pc.GetId()).GetSheet().GetFull().GetKnownIssues()
+	}
+	if len(issues()) != 2 {
+		t.Fatalf("a wizard in leather armor with a shield has issues %v, want two", issues())
+	}
+	mustSetEquipped(t, et.dona, et.pc, leath, false)
+	if len(issues()) != 1 {
+		t.Errorf("after stowing the armor: %v, want the shield's issue only", issues())
+	}
+	mustSetEquipped(t, et.dona, et.pc, rules.ShieldKey, false)
+	if len(issues()) != 0 {
+		t.Errorf("after stowing both: %v, want none", issues())
+	}
+	mustSetEquipped(t, et.dona, et.pc, leath, true)
+	if len(issues()) != 1 {
+		t.Errorf("after equipping the armor: %v, want its issue", issues())
+	}
+}
+
+// The master equips a draft character's gear; the owner's sheet reads it.
+func TestSetEquippedMasterOnADraft(t *testing.T) {
+	t.Parallel()
+	et := newEquipTable(t)
+	if got := et.dona.get(t, et.campaign, et.pc.GetId()).GetState(); got != charactersv1.CharacterState_CHARACTER_STATE_DRAFT {
+		t.Fatalf("state = %v, want a draft", got)
+	}
+	res := mustSetEquipped(t, et.master, et.pc, dagger, false)
+	if !slices.Equal(res.GetCarriedKeys(), []string{dagger}) {
+		t.Errorf("carried after the master's stow = %v", res.GetCarriedKeys())
+	}
+	if got := et.dona.get(t, et.campaign, et.pc.GetId()).GetSheet().GetFull().GetCarriedKeys(); !slices.Equal(got, []string{dagger}) {
+		t.Errorf("the owner reads carried %v", got)
+	}
+}
+
+// dropStaleCarried keeps the pieces the sheet lists (armor, shield, weapons) and drops
+// the rest, the empty key included.
+func TestDropStaleCarried(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name    string
+		f       *charactersv1.FullSheet
+		carried []string
+		want    []string
+	}{
+		{"armor listed", &charactersv1.FullSheet{ArmorKey: leath}, []string{leath}, []string{leath}},
+		{"armor removed", &charactersv1.FullSheet{}, []string{leath}, nil},
+		{"shield listed", &charactersv1.FullSheet{Shield: true}, []string{rules.ShieldKey}, []string{rules.ShieldKey}},
+		{"shield removed", &charactersv1.FullSheet{}, []string{rules.ShieldKey}, nil},
+		{"weapon listed and one removed", &charactersv1.FullSheet{WeaponKeys: []string{staff}}, []string{staff, dagger}, []string{staff}},
+		{"the empty key with no armor", &charactersv1.FullSheet{}, []string{""}, nil},
+	} {
+		tt.f.CarriedKeys = tt.carried
+		dropStaleCarried(tt.f)
+		if !slices.Equal(tt.f.CarriedKeys, tt.want) {
+			t.Errorf("%s: carried = %v, want %v", tt.name, tt.f.CarriedKeys, tt.want)
 		}
 	}
 }
