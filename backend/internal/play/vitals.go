@@ -102,7 +102,8 @@ func (s *Service) AdjustCharacterVitals(
 // checkExpectedRevision refuses a correction written over vitals that changed since the caller read
 // them (a combat, a rest or another correction), and one that does not say which it read: every
 // value of a correction replaces the current one, so a change in between would be lost without a word.
-// It runs under the session's lock, in the transaction of the write.
+// It runs in the transaction of the write; a writer under another lock (combat, a rest) is kept out by
+// the database's serializable isolation, which aborts one of two transactions that read and write the row.
 func (s *Service) checkExpectedRevision(ctx context.Context, tx pgx.Tx, call adjustCall) error {
 	if call.msg.ExpectedRevision == nil {
 		return errStaleVitals()
