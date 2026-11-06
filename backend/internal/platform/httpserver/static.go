@@ -94,7 +94,7 @@ func WithFormActionOrigin(rawURL string) StaticOption {
 // NewStatic returns a handler that serves the Angular production build
 // (index.html plus its hashed assets) from dir, falling back to index.html
 // for any GET that doesn't match a file, so the Angular router can handle
-// client-side routes.
+// client-side routes. A name in the build's shape (see hashedName) with no file is a 404.
 //
 // ok is false when dir is empty or has no index.html: the caller should
 // skip registering the handler and log why instead of failing to start.
@@ -185,9 +185,9 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// A name in the build's shape (name, hash, extension) that has no file is a file of an older build,
-	// which a tab open across a deploy still asks for. It is a 404: answering index.html with a 200 would hand
-	// the browser HTML where it expects a script, and a cache on the way could keep that HTML under the script's name.
+	// A name in the build's shape (name, hash, extension) that has no file is most likely a file of an older build.
+	// A tab open across a deploy still asks for it.
+	// It is a 404: index.html with a 200 would hand the browser HTML where it expects a script.
 	// A client route has no hash in its last segment, so it still gets the app shell below.
 	if hashedName.MatchString(path.Base(cleanPath)) {
 		w.Header().Set("Cache-Control", "no-store")

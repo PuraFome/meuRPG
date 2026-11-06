@@ -82,7 +82,7 @@ func TestStaticHandler_Routing(t *testing.T) {
 		path       string
 		wantStatus int
 		wantBody   string // checked only when non-empty
-		wantCache  string // checked only when wantStatus is set and not a redirect/error
+		wantCache  string // checked only when non-empty
 	}{
 		{name: "root serves index", path: "/", wantStatus: http.StatusOK, wantBody: indexBody, wantCache: "no-cache"},
 		{
