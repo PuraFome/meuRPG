@@ -554,8 +554,8 @@ func TestCreateTableEntryWithAKeyIsFrozen(t *testing.T) {
 	tableContentGolden(t, "create_with_key", names, v.steps...)
 }
 
-// TestPlayerViewDropsHiddenReplacedTraitKeys: a subrace's replaced trait key the players do not see is not named to them.
-func TestPlayerViewDropsHiddenReplacedTraitKeys(t *testing.T) {
+// TestPlayerViewStripFiltersReplacedTraitKeysByTheHiddenPredicate: a subrace's replaced trait key the players do not see is not named to them.
+func TestPlayerViewStripFiltersReplacedTraitKeysByTheHiddenPredicate(t *testing.T) {
 	t.Parallel()
 	b := &rulesv1.TableSubrace{ReplacesTraitKeys: []string{"trait:a@mesa", "trait:b@mesa"}, ReplacesAbilityBonuses: true}
 	playerView{hidden: func(k string) bool { return k == "trait:a@mesa" }}.strip(b)

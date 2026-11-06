@@ -92,8 +92,8 @@ func (b *overlayBuilder) checkFeatureHead(f *TableFeature, prefix, path string) 
 }
 
 // featureOptions registers a feature's option list, when it has one, and returns
-// the feature's effects with its choice of features offering those options (the
-// caller's effects themselves when there is no list).
+// the feature's effects. A class or subclass feature gets its choice of features
+// offering those options; a trait keeps its effects, the options being a choice of one.
 func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path string) ([]Effect, error) {
 	if len(f.Options) == 0 {
 		return f.Effects, nil
@@ -110,17 +110,23 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	}
 	if k.prefix == traitKeyPrefix {
 		// A trait's options are a one-time choice of one: no `choice` effect offers them.
-		return f.Effects, nil
-	}
-	if k.prefix == traitKeyPrefix {
-		// A trait's options are a one-time choice of one: no `choice` effect offers them.
-		return f.Effects, nil
+		return f.Effects, checkTraitChoices(f, path)
 	}
 	effects := slices.Clone(f.Effects)
 	if !offerOptions(effects, keys) {
 		return nil, ovErr(f.Key, "a feature with options needs a choice of features to offer them").at(path+".effects", ReasonEffect)
 	}
 	return effects, nil
+}
+
+// checkTraitChoices refuses a choice of features on a trait with options: the trait's options are a choice of one.
+func checkTraitChoices(f *TableFeature, path string) error {
+	for i := range f.Effects {
+		if isFeatureChoice(&f.Effects[i]) {
+			return ovErr(f.Key, "a trait with options is a choice of one: it has no choice of features").at(fmt.Sprintf("%s.effects[%d].choice", path, i), ReasonValue)
+		}
+	}
+	return nil
 }
 
 // offerOptions makes a choice of features with no `from` offer the feature's own
@@ -230,9 +236,9 @@ func checkOptionShape(o *TableFeature, at string) error {
 	return nil
 }
 
-// addOptions registers the option list of a feature as features of their own,
+// addOptions registers the option list of a feature as features (traits, for a trait) of their own,
 // each with the feature as its parent, and returns their keys. An option is in no
-// level row: the choice that offers it is the only way to have it.
+// level row or trait list: picking it is the only way to have it.
 func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string) ([]string, error) {
 	names := map[string]bool{}
 	keys := make([]string, 0, len(f.Options))

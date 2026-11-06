@@ -2,6 +2,7 @@ package rules
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -67,5 +68,31 @@ func TestATableTraitWithOptionsAsksForOneOfThem(t *testing.T) {
 	p := c.Choices(choiceBuild(raceKey, "", cl, outside)).ChoiceProblems(false)
 	if len(p) != 1 || p[0].Code != ChoiceProblemNotOffered || p[0].OptionKey != outside {
 		t.Errorf("problems = %+v, want %q not offered", p, outside)
+	}
+}
+
+// TestASubraceTraitWithOptionsIsRegisteredWithTheSubraceAsOwner: the options of a subrace trait are traits of the subrace.
+func TestASubraceTraitWithOptionsIsRegisteredWithTheSubraceAsOwner(t *testing.T) {
+	t.Parallel()
+	race, sub, _ := tableMisc()
+	sub.Traits[0].Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A"}}
+	c := withOverlay(t, Overlay{Races: []TableRace{race}, Subraces: []TableSubrace{sub}}).c
+	ot := c.traits["trait:cor-a"+tableSuffix]
+	if ot == nil || ot.Parent != sub.Traits[0].Key || !slices.Equal(ot.Subraces, []string{sub.Key}) || len(ot.Races) != 0 {
+		t.Fatalf("option = %+v, want a trait of %s with parent %s", ot, sub.Key, sub.Traits[0].Key)
+	}
+	if !slices.Equal(c.subraces[sub.Key].Traits, []string{sub.Traits[0].Key}) {
+		t.Errorf("subrace traits = %v, want only the parent trait", c.subraces[sub.Key].Traits)
+	}
+}
+
+// TestReplacedTraitKeysAreCappedAtMaxTraits: more replaced keys than a race can have traits are refused as a limit.
+func TestReplacedTraitKeysAreCappedAtMaxTraits(t *testing.T) {
+	t.Parallel()
+	race, sub, _ := tableMisc()
+	sub.ReplacesTraitKeys = make([]string, MaxTraits+1)
+	_, err := loadForTest(t).With(Overlay{Races: []TableRace{race}, Subraces: []TableSubrace{sub}})
+	if err == nil || !strings.Contains(err.Error(), "61 replaced traits") {
+		t.Errorf("err = %v, want a limit at subraces[0].replaces_trait_keys", violationText(err))
 	}
 }

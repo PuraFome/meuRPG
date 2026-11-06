@@ -370,6 +370,14 @@ func overlayRaceCases() map[string]func(o *Overlay) {
 				{Key: "trait:cor-b" + tableSuffix, NamePT: "Cor B", Effects: []Effect{{Type: "note", TextPT: "B."}}},
 			}
 		},
+		"race trait with options and a choice of features": func(o *Overlay) {
+			t := &o.Races[0].Traits[0]
+			t.Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A"}}
+			t.Effects = []Effect{{Type: "choice", Choice: "feature", Count: 2}}
+		},
+		"ok: subrace trait with options": func(o *Overlay) {
+			o.Subraces[0].Traits[0].Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A"}}
+		},
 		"race trait option with a feature key": func(o *Overlay) {
 			o.Races[0].Traits[0].Options = []TableFeature{{Key: "feature:cor-a" + tableSuffix, NamePT: "Cor A"}}
 		},
