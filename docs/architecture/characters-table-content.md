@@ -101,7 +101,7 @@ The engine side is [Switches and hidden keys](rules-table-content.md#switches-an
 | Piece | What it does |
 | --- | --- |
 | In the source and cache | `TableSource` reads the switched-off keys in the same transaction as the revision and adds them to the content; the cache stays by (campaign, revision). A campaign that only switched options off already has a revision and a content of its own. |
-| What the player never receives | A switched-off option is treated as archived at every point: the catalogue, `ListTableEntries` (which also clears switched-off keys from each body's references), `ListSpells` (`SpellFilter.Hidden`; a hidden `class_key` answers like an unknown one, an empty list, unless a sheet of theirs uses the class), `GetSpellDetails` (`not_found` unless a sheet of theirs uses it), `ListCreatures` (a table creature is left out of the list a player reads unless a character of theirs holds a live creature of that key) and `GetCreature` (`not_found` unless a character of theirs holds one), the level-up options, and the reference lists inside other entries. Everything but the creatures filters with the single predicate `Content.Hidden`; a table creature is the master's whatever its state, so a player reads it only when a character of theirs holds a live creature of its key (`callerHeldCreatures`). |
+| What the player never receives | A switched-off option is treated as archived at every point: the catalogue, `ListTableEntries` (which also clears switched-off keys from each body's references), `ListSpells` (`SpellFilter.Hidden`; a hidden `class_key` answers like an unknown one, an empty list, unless a sheet of theirs uses the class), `GetSpellDetails` (`not_found` unless a sheet of theirs uses it), `ListCreatures` (a table creature is left out of the list a player reads unless a character of theirs holds a live creature of that key) and `GetCreature` (`not_found` unless a character of theirs holds one), the level-up options, the feat-choice cards (`PreviewChoices` and the level-up choices), and the reference lists inside other entries. No text names a hidden race, feat or feature, and a feat that asks only for hidden races is left out of the options, the cards and the player's `ListTableEntries`, unless a sheet of theirs has it. A player whose sheet has a hidden race, class or subclass still reads that entry's traits, features and options. Everything but the creatures filters with the single predicate `Content.Hidden`; a table creature is the master's whatever its state, so a player reads it only when a character of theirs holds a live creature of its key (`callerHeldCreatures`). |
 | `ListOptionSwitches` (master only) | The screen's list by kind and name: every class, subclass, race, subrace, background, spell, feat, table option, table class feature and table creature of the campaign, each with the key, kind, name, `table`, `off`, `archived`, `hidden`, `parent_key` (a subclass's class, a subrace's race), `level` (a spell's) and `characters_using` (how many player sheets use it, once per sheet). Reads the content and the sheets in one transaction. |
 | `SetOptionSwitches` (master only) | Switches up to 1,400 options (`MaxOptionSwitches`: the SRD's 358 and the 1,000 entries of a table, so a whole campaign switches off in one call; about 0.2 s for 1,000 keys) in one transaction: reads the content, checks each key (`invalid_argument` for a key that is not switchable, a repeated one, none or more than 1,400), raises the campaign's revision and stores the set. The response is built without the live source (`SRD.With` of the rows the transaction sees plus the new set), because a write never fills the cache. An archived entry can also be switched. A request that changes nothing rolls the transaction back (the revision does not rise) and notifies nobody. The response carries the revision, how many options changed (`changed`) and those that changed for the players (`options`, the subclasses of a switched-off class included). |
 | The live hint | Every write to table content (create, edit, archive, unarchive, the switches, an import) sends `content_changed` (stream field 23, no fields) to everyone watching the campaign, after the commit. It carries neither the entry nor the key (RN-10): each reader reads again with their own role. `characters` calls `Live.PublishContentChanged`, which `play` implements with the puzzles' time gate (one hint per campaign every 250 ms; the last change is never left without a notice) and the hub's `Coalesce`. With no open session nobody listens, and readers read the current content on opening. |
@@ -159,6 +159,24 @@ flowchart LR
 - **A table spell in combat** goes through the same `CombatSpell` and the campaign's content: attack, save (half or nothing), damage per level or per cantrip tier, healing with the modifier, concentration, slots and the log work as for an SRD spell.
   `link.Spell` carries `TargetCount` and `TargetPerLevel` and `maxTargetsOf` uses them before the spell's type.
   `GetTurnOptions` carries `SpellTargets.targets_per_level`.
+
+## The sheet of a race and a subrace
+
+`Derive` merges a subrace into its race in this order:
+
+1. The race's traits, minus the ones the subrace replaces (`replaces_trait_keys`).
+2. The subrace's own traits.
+3. The choices: the options the character picked, among them the one of a trait with options.
+
+A replaced trait is not owned: its effects, its choice and its options are gone, and a stored pick for them is reported as not offered.
+The skills that only a replaced trait gives are gone too.
+The ability bonuses are the race's and the subrace's added, or the subrace's alone when it has `replaces_ability_bonuses`.
+Then the race's fixed bonuses and the ones the player places are gone together, no pick is asked for them, and the race's share of the points the player places on abilities is none.
+The class's Ability Score Improvement points remain.
+
+The catalog says what a subrace replaces (`replaces_trait_keys`, `replaces_ability_bonuses`, and `replaced_skill_keys` for the race's skills that go with the traits), and the editor's preview follows it.
+A player's copy of a subrace drops the replaced keys that are hidden (an archived or switched-off entry).
+The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonuses` or the options of a trait; they are written through a pack or the API.
 
 ## Table options
 
@@ -230,12 +248,12 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
 The vitals keeper has `GiveSpellSlot`, `SpendSpellSlot` and their undos; a slot made by `GiveSpellSlot` is counted as created, like Flexible Casting's, and goes with the next long rest.
 `UseArcaneRecovery` takes the feature key and reads `vitalsMax.recoveries` (`Derived.TableRecoveries`); with no key it is the wizard's own.
 
-## Rerolls and the critical range
+## Rerolls, minimums and the critical range
 
-`tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
-A `modifier` on `critical_range` uses `target`, `mode` (`set`) and `value`, with no field of its own.
-Both are on the effect menu ([rules](rules-table-content.md#reroll), [critical range](rules-table-content.md#critical-range)).
-`GetEffectMenu` returns the entry of `reroll` with its fields and the list `roll_applies`, and the target `critical_range` among the modifier targets.
+`tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect, and `damage_type` and `value` to a `roll_minimum`; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
+A `modifier` on `critical_range` uses `target`, `mode` (`set`), `value` and `applies` (the scope: `weapon`, `spell` or `both`).
+All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll minimum](rules-table-content.md#roll-minimum), [critical range](rules-table-content.md#critical-range)).
+`GetEffectMenu` returns the entries of `reroll` and `roll_minimum` with their fields and the list `roll_applies`, the field `applies` of `modifier` with the list `critical_scopes`, and the target `critical_range` among the modifier targets.
 `EffectMenuValue` carries `only_modes`, `min` and `max` for a target of a modifier: the modes it takes (empty is every mode) and the bounds of a literal value (both zero is unbounded).
 `menuValues` copies them from `rules.MenuValue` unchanged.
 `rerollRulesOf` copies `Derived.Rerolls` into `link.Traits.RerollRules` for combat.

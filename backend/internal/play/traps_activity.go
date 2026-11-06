@@ -400,7 +400,7 @@ func searchActivity(l *activityLine, v activityViewer, f activityFacts) (*playv1
 	}
 	sr := &playv1.TrapSearchResult{
 		CharacterId: l.character, CharacterName: f.names[l.character], FoundPointIds: l.ev.Found,
-		Roll: checkRoll(l.ev.D20, l.ev.Modifier, l.ev.Physical, l.ev.ReliableTalent),
+		Roll: checkRoll(l.ev.D20, l.ev.Modifier, l.ev.Physical, l.ev.floor()),
 	}
 	switch l.ev.Key {
 	case searchPerception:
@@ -411,7 +411,7 @@ func searchActivity(l *activityLine, v activityViewer, f activityFacts) (*playv1
 		sr.Skill, sr.OtherSkillKey = playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_OTHER, l.ev.Key
 	}
 	if l.ev.D20B != 0 {
-		sr.SecondRoll = checkRoll(l.ev.D20B, l.ev.Modifier, l.ev.Physical, l.ev.ReliableTalent)
+		sr.SecondRoll = checkRoll(l.ev.D20B, l.ev.Modifier, l.ev.Physical, l.ev.floor())
 	}
 	// The d20 the halfling's Lucky rolled again: the first or the second, each told here as a
 	// roll of its own ("Sortudo: 1 → 14").

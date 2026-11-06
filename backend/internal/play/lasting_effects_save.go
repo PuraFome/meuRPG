@@ -444,7 +444,7 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
-	spec := saveSpec(x.call.m, heldEffectSave, x.reactor, x.call.key, x.msg, x.call.in, f.save.Bonus, f.mode, f.sheet.Traits.Lucky)
+	spec := saveSpec(x.call.m, heldEffectSave, x.reactor, x.call.key, x.msg, x.call.in, f.save.Bonus, f.mode, f.sheet.Traits)
 	// Indomitable (held_indomitable.go): the dice an effect adds after the gate move the total, so the roller may not
 	// know the result yet, as when the table hides the DC.
 	extras := len(effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave)) > 0 || x.msg.GetManeuverKey() != ""
@@ -500,6 +500,10 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 		x.le.Change = "saved"
 	}
 	x.ev.D20, x.ev.Modifier, x.ev.Total, x.ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
+	x.ev.countedRoll = countedOf(d20)
+	if x.ev.CountedAs != 0 {
+		result.TreatedAs, result.TreatedAsSource = new(x.ev.CountedAs), legacySource(x.ev.CountedBy)
+	}
 	// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
 	x.ev.Lucky, x.ev.Indomitable, result.Rerolled = step.Lucky, step.Indomitable, rerollsOf(step.Lucky, step.Indomitable)
 	x.ev.D20Reroll = rerollUse(step.Lucky)
@@ -621,6 +625,9 @@ func savedResultOf(res combatResult, made actionEvent, showDC bool) *playv1.Effe
 	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.rerolls(), Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
 	if ev.Res != nil && ev.Res.Kind == resBardicUse {
 		out.InspirationSides, out.InspirationFace = ev.Res.Sides, ev.Res.Face
+	}
+	if ev.CountedAs != 0 {
+		out.TreatedAs, out.TreatedAsSource = new(ev.CountedAs), legacySource(ev.CountedBy)
 	}
 	if showDC && le.DC != 0 {
 		dc := le.DC

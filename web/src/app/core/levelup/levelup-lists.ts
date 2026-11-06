@@ -1,4 +1,5 @@
 import { type Signal, computed } from '@angular/core';
+import type { FeatOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 
 import {
   LevelUpProficiencyKind,
@@ -100,6 +101,7 @@ export class LevelUpLists {
     for (const s of this.catalog.spells) names.set(s.key, s.namePt);
     for (const s of this.catalog.skills) names.set(s.key, s.namePt);
     for (const s of this.options.subclasses) names.set(s.key, s.namePt);
+    for (const f of this.options.feats) nameLackedFeature(names, f);
     for (const f of this.totals().featureChoices) {
       names.set(f.feature?.key ?? '', f.feature?.namePt ?? '');
       for (const o of f.options) names.set(o.key, o.namePt);
@@ -128,4 +130,13 @@ export class LevelUpLists {
     private readonly catalog: LevelUpCatalog,
     private readonly picks: ListPicks,
   ) {}
+}
+
+/** The catalog has no features: the server names the one a feat asks the character not to have. */
+function nameLackedFeature(names: Map<string, string>, f: FeatOption): void {
+  const lacked = f.prerequisite?.lacksFeatureKey ?? '';
+  if (lacked && f.lacksFeatureNamePt) names.set(lacked, f.lacksFeatureNamePt);
+  for (const u of f.unmet) {
+    if (u.key && u.namePt) names.set(u.key, u.namePt);
+  }
 }

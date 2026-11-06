@@ -337,10 +337,14 @@ const (
 	FeatUnmetKind_FEAT_UNMET_KIND_PROFICIENCY FeatUnmetKind = 3
 	// The character cannot cast any spell.
 	FeatUnmetKind_FEAT_UNMET_KIND_SPELLCASTING FeatUnmetKind = 4
-	// The character is not of the race or subrace in `key`.
+	// The character is not of the race or subrace in `key`, or of any in `keys`.
 	FeatUnmetKind_FEAT_UNMET_KIND_RACE FeatUnmetKind = 5
 	// The character level is below `value`.
 	FeatUnmetKind_FEAT_UNMET_KIND_LEVEL FeatUnmetKind = 6
+	// The character's size is not the one in `key`.
+	FeatUnmetKind_FEAT_UNMET_KIND_SIZE FeatUnmetKind = 8
+	// The character has the feature in `key`, which the feat asks them not to have.
+	FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE FeatUnmetKind = 9
 )
 
 // Enum value maps for FeatUnmetKind.
@@ -353,6 +357,8 @@ var (
 		4: "FEAT_UNMET_KIND_SPELLCASTING",
 		5: "FEAT_UNMET_KIND_RACE",
 		6: "FEAT_UNMET_KIND_LEVEL",
+		8: "FEAT_UNMET_KIND_SIZE",
+		9: "FEAT_UNMET_KIND_LACKS_FEATURE",
 	}
 	FeatUnmetKind_value = map[string]int32{
 		"FEAT_UNMET_KIND_UNSPECIFIED":     0,
@@ -362,6 +368,8 @@ var (
 		"FEAT_UNMET_KIND_SPELLCASTING":    4,
 		"FEAT_UNMET_KIND_RACE":            5,
 		"FEAT_UNMET_KIND_LEVEL":           6,
+		"FEAT_UNMET_KIND_SIZE":            8,
+		"FEAT_UNMET_KIND_LACKS_FEATURE":   9,
 	}
 )
 
@@ -3112,9 +3120,20 @@ type FeatPrerequisite struct {
 	// A race or subrace key: the character's race or subrace must be it.
 	RaceKey string `protobuf:"bytes,5,opt,name=race_key,json=raceKey,proto3" json:"race_key,omitempty"`
 	// The least total character level; 0 asks nothing.
-	Level         int32 `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Level int32 `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
+	// Races or subraces of which the character must be one (any of them is enough). A
+	// subrace character also satisfies its parent race's key. Alone it is read like
+	// `race_key`; the table refuses a feat that sets both.
+	Races []string `protobuf:"bytes,7,rep,name=races,proto3" json:"races,omitempty"`
+	// The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
+	// one the player picked. Empty asks nothing.
+	Size string `protobuf:"bytes,8,opt,name=size,proto3" json:"size,omitempty"`
+	// A feature, trait or feat key the character must NOT have. Empty asks nothing.
+	// The guided level-up judges it before the feat's grants. The sheet judges it on what
+	// the character owns.
+	LacksFeatureKey string `protobuf:"bytes,9,opt,name=lacks_feature_key,json=lacksFeatureKey,proto3" json:"lacks_feature_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *FeatPrerequisite) Reset() {
@@ -3187,6 +3206,27 @@ func (x *FeatPrerequisite) GetLevel() int32 {
 		return x.Level
 	}
 	return 0
+}
+
+func (x *FeatPrerequisite) GetRaces() []string {
+	if x != nil {
+		return x.Races
+	}
+	return nil
+}
+
+func (x *FeatPrerequisite) GetSize() string {
+	if x != nil {
+		return x.Size
+	}
+	return ""
+}
+
+func (x *FeatPrerequisite) GetLacksFeatureKey() string {
+	if x != nil {
+		return x.LacksFeatureKey
+	}
+	return ""
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):
@@ -3312,10 +3352,18 @@ type FeatUnmet struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Kind      FeatUnmetKind          `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.FeatUnmetKind" json:"kind,omitempty"`
 	Abilities []*AbilityMinimum      `protobuf:"bytes,2,rep,name=abilities,proto3" json:"abilities,omitempty"`
-	// The proficiency or the race the character lacks.
+	// The proficiency or the race the character lacks; the size the feat asks for; the
+	// feature the character has and must not. Empty for a race kind that lists several races
+	// (see `keys`).
 	Key string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	// The level the character lacks.
-	Value         int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
+	Value int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
+	// The races or subraces of which the character is none, when the feat asks for one of
+	// several (kind RACE); empty when `key` has the single race.
+	Keys []string `protobuf:"bytes,5,rep,name=keys,proto3" json:"keys,omitempty"`
+	// The Portuguese name of `key` for a kind LACKS_FEATURE (the app's catalog has no
+	// features); empty when the players cannot see that feature, and then `key` is empty too.
+	NamePt        string `protobuf:"bytes,6,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3378,6 +3426,20 @@ func (x *FeatUnmet) GetValue() int32 {
 	return 0
 }
 
+func (x *FeatUnmet) GetKeys() []string {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+func (x *FeatUnmet) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
+	}
+	return ""
+}
+
 // FeatOption is a feat a character may take, for the feat picker (the guided
 // level-up now; the creation of a character above level 1 next): the feat, whether
 // this character qualifies, and what it lacks when it does not. The server does
@@ -3415,9 +3477,12 @@ type FeatOption struct {
 	DescPtMissing bool `protobuf:"varint,12,opt,name=desc_pt_missing,json=descPtMissing,proto3" json:"desc_pt_missing,omitempty"`
 	// True when the text exists only in Portuguese (a table feat): `desc` already is the
 	// Portuguese, and there is no English to offer.
-	DescPtOnly    bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DescPtOnly bool `protobuf:"varint,13,opt,name=desc_pt_only,json=descPtOnly,proto3" json:"desc_pt_only,omitempty"`
+	// The Portuguese name of `prerequisite.lacks_feature_key`; empty when it is not set or
+	// the players cannot see that feature.
+	LacksFeatureNamePt string `protobuf:"bytes,14,opt,name=lacks_feature_name_pt,json=lacksFeatureNamePt,proto3" json:"lacks_feature_name_pt,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *FeatOption) Reset() {
@@ -3539,6 +3604,13 @@ func (x *FeatOption) GetDescPtOnly() bool {
 		return x.DescPtOnly
 	}
 	return false
+}
+
+func (x *FeatOption) GetLacksFeatureNamePt() string {
+	if x != nil {
+		return x.LacksFeatureNamePt
+	}
+	return ""
 }
 
 // DerivedSheet is everything the server computes from a character's full
@@ -7130,7 +7202,8 @@ type Subrace struct {
 	NamePt string `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// Content key of the race it belongs to, such as "race:gnome".
 	RaceKey string `protobuf:"bytes,4,opt,name=race_key,json=raceKey,proto3" json:"race_key,omitempty"`
-	// The subrace's ability score increases, added to the race's.
+	// The subrace's ability score increases, added to the race's unless
+	// `replaces_ability_bonuses`.
 	AbilityBonuses *AbilityScores `protobuf:"bytes,5,opt,name=ability_bonuses,json=abilityBonuses,proto3" json:"ability_bonuses,omitempty"`
 	// The table retired it (see Race.archived).
 	Archived bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
@@ -7138,10 +7211,21 @@ type Subrace struct {
 	// off race is hidden from the players too, and keeps this mark false.
 	Off bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	// Content keys of the skills the subrace gives, added to the race's (see
-	// Race.skill_keys).
-	SkillKeys     []string `protobuf:"bytes,8,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Race.skill_keys). The race's skills that come from a trait this subrace replaces
+	// are in `replaced_skill_keys`.
+	SkillKeys []string `protobuf:"bytes,8,rep,name=skill_keys,json=skillKeys,proto3" json:"skill_keys,omitempty"`
+	// Content keys of the parent race's traits this subrace replaces: the character
+	// of this subrace does not have them. Empty for most subraces.
+	ReplacesTraitKeys []string `protobuf:"bytes,9,rep,name=replaces_trait_keys,json=replacesTraitKeys,proto3" json:"replaces_trait_keys,omitempty"`
+	// When true, the race's ability bonuses are gone: the fixed ones and the ones the
+	// player places (Race.choice_bonuses, choice_bonus_sets, the half-elf's picks).
+	// `ability_bonuses` stands alone instead of adding to them.
+	ReplacesAbilityBonuses bool `protobuf:"varint,10,opt,name=replaces_ability_bonuses,json=replacesAbilityBonuses,proto3" json:"replaces_ability_bonuses,omitempty"`
+	// The skills in Race.skill_keys that come from the replaced traits alone: this
+	// subrace's character does not have them.
+	ReplacedSkillKeys []string `protobuf:"bytes,11,rep,name=replaced_skill_keys,json=replacedSkillKeys,proto3" json:"replaced_skill_keys,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Subrace) Reset() {
@@ -7226,6 +7310,27 @@ func (x *Subrace) GetOff() bool {
 func (x *Subrace) GetSkillKeys() []string {
 	if x != nil {
 		return x.SkillKeys
+	}
+	return nil
+}
+
+func (x *Subrace) GetReplacesTraitKeys() []string {
+	if x != nil {
+		return x.ReplacesTraitKeys
+	}
+	return nil
+}
+
+func (x *Subrace) GetReplacesAbilityBonuses() bool {
+	if x != nil {
+		return x.ReplacesAbilityBonuses
+	}
+	return false
+}
+
+func (x *Subrace) GetReplacedSkillKeys() []string {
+	if x != nil {
+		return x.ReplacedSkillKeys
 	}
 	return nil
 }
@@ -12576,26 +12681,31 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fconstitution\x18\x03 \x01(\x05R\fconstitution\x12\"\n" +
 	"\fintelligence\x18\x04 \x01(\x05R\fintelligence\x12\x16\n" +
 	"\x06wisdom\x18\x05 \x01(\x05R\x06wisdom\x12\x1a\n" +
-	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\x83\x02\n" +
+	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xd9\x02\n" +
 	"\x10FeatPrerequisite\x12:\n" +
 	"\bminimums\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\bminimums\x125\n" +
 	"\x06any_of\x18\x02 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x05anyOf\x12'\n" +
 	"\x0fproficiency_key\x18\x03 \x01(\tR\x0eproficiencyKey\x12\"\n" +
 	"\fspellcasting\x18\x04 \x01(\bR\fspellcasting\x12\x19\n" +
 	"\brace_key\x18\x05 \x01(\tR\araceKey\x12\x14\n" +
-	"\x05level\x18\x06 \x01(\x05R\x05level\"h\n" +
+	"\x05level\x18\x06 \x01(\x05R\x05level\x12\x14\n" +
+	"\x05races\x18\a \x03(\tR\x05races\x12\x12\n" +
+	"\x04size\x18\b \x01(\tR\x04size\x12*\n" +
+	"\x11lacks_feature_key\x18\t \x01(\tR\x0flacksFeatureKey\"h\n" +
 	"\fFeatIncrease\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12,\n" +
 	"\x04from\x18\x02 \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x04from\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\x05R\x05value\"^\n" +
 	"\x0eAbilityMinimum\x122\n" +
 	"\aability\x18\x01 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12\x18\n" +
-	"\aminimum\x18\x02 \x01(\x05R\aminimum\"\xa6\x01\n" +
+	"\aminimum\x18\x02 \x01(\x05R\aminimum\"\xd3\x01\n" +
 	"\tFeatUnmet\x122\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x1e.meurpg.rules.v1.FeatUnmetKindR\x04kind\x12=\n" +
 	"\tabilities\x18\x02 \x03(\v2\x1f.meurpg.rules.v1.AbilityMinimumR\tabilities\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\x05R\x05value\"\xef\x03\n" +
+	"\x05value\x18\x04 \x01(\x05R\x05value\x12\x12\n" +
+	"\x04keys\x18\x05 \x03(\tR\x04keys\x12\x17\n" +
+	"\aname_pt\x18\x06 \x01(\tR\x06namePt\"\xa2\x04\n" +
 	"\n" +
 	"FeatOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
@@ -12612,7 +12722,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
 	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
-	"descPtOnly\"\xcd\x13\n" +
+	"descPtOnly\x121\n" +
+	"\x15lacks_feature_name_pt\x18\x0e \x01(\tR\x12lacksFeatureNamePt\"\xcd\x13\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -12936,7 +13047,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11choice_bonus_sets\x18\n" +
 	" \x03(\v2\x19.meurpg.rules.v1.BonusSetR\x0fchoiceBonusSets\x12\x14\n" +
 	"\x05sizes\x18\v \x03(\tR\x05sizes\x12\x12\n" +
-	"\x04size\x18\f \x01(\tR\x04size\"\xf9\x01\n" +
+	"\x04size\x18\f \x01(\tR\x04size\"\x93\x03\n" +
 	"\aSubrace\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -12946,7 +13057,11 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\barchived\x18\x06 \x01(\bR\barchived\x12\x10\n" +
 	"\x03off\x18\a \x01(\bR\x03off\x12\x1d\n" +
 	"\n" +
-	"skill_keys\x18\b \x03(\tR\tskillKeys\"\x85\x03\n" +
+	"skill_keys\x18\b \x03(\tR\tskillKeys\x12.\n" +
+	"\x13replaces_trait_keys\x18\t \x03(\tR\x11replacesTraitKeys\x128\n" +
+	"\x18replaces_ability_bonuses\x18\n" +
+	" \x01(\bR\x16replacesAbilityBonuses\x12.\n" +
+	"\x13replaced_skill_keys\x18\v \x03(\tR\x11replacedSkillKeys\"\x85\x03\n" +
 	"\x0eCharacterClass\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -13430,7 +13545,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14ABILITY_CONSTITUTION\x10\x03\x12\x18\n" +
 	"\x14ABILITY_INTELLIGENCE\x10\x04\x12\x12\n" +
 	"\x0eABILITY_WISDOM\x10\x05\x12\x14\n" +
-	"\x10ABILITY_CHARISMA\x10\x06*\xf7\x01\n" +
+	"\x10ABILITY_CHARISMA\x10\x06*\xb4\x02\n" +
 	"\rFeatUnmetKind\x12\x1f\n" +
 	"\x1bFEAT_UNMET_KIND_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fFEAT_UNMET_KIND_ABILITY_MINIMUM\x10\x01\x12\"\n" +
@@ -13438,7 +13553,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x1bFEAT_UNMET_KIND_PROFICIENCY\x10\x03\x12 \n" +
 	"\x1cFEAT_UNMET_KIND_SPELLCASTING\x10\x04\x12\x18\n" +
 	"\x14FEAT_UNMET_KIND_RACE\x10\x05\x12\x19\n" +
-	"\x15FEAT_UNMET_KIND_LEVEL\x10\x06\"\x04\b\a\x10\a*\xb0\x01\n" +
+	"\x15FEAT_UNMET_KIND_LEVEL\x10\x06\x12\x18\n" +
+	"\x14FEAT_UNMET_KIND_SIZE\x10\b\x12!\n" +
+	"\x1dFEAT_UNMET_KIND_LACKS_FEATURE\x10\t\"\x04\b\a\x10\a*\xb0\x01\n" +
 	"\x10ProficiencyLevel\x12!\n" +
 	"\x1dPROFICIENCY_LEVEL_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PROFICIENCY_LEVEL_NONE\x10\x01\x12\x1a\n" +

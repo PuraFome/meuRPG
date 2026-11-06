@@ -129,6 +129,12 @@ type damageFlow struct {
 	roll   dice.Result
 	// reroll is the use of a reroll rule the roll spent (combat_damage_reroll.go).
 	reroll *damageRerollUse
+	// traits are the attacker's, read once; minimums are its roll_minimum entries and counted the dice of a roll with
+	// no parts that they raised (damage_floor.go).
+	traits     link.Traits
+	traitsRead bool
+	minimums   []link.RollMinimum
+	counted    []countedDie
 	// total is the damage never below 0; faces and rolledTotal are what the pending damages keep.
 	total       int
 	faces       []int32
@@ -147,6 +153,9 @@ func (f *damageFlow) run(ctx context.Context) (any, error) {
 		return nil, err
 	}
 	if err := f.rollDice(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.floorDamage(ctx); err != nil {
 		return nil, err
 	}
 	held, err := f.hold(ctx)
@@ -307,6 +316,7 @@ func (f *damageFlow) rollDice(ctx context.Context) error {
 	}
 	if f.c.replay != nil && f.c.replay.rolled != nil { // the roll made when a reaction window held the damage
 		f.roll = replayedRoll(f.expr, f.c.replay.rolled)
+		f.counted = f.c.replay.rolled.Counted
 	}
 	return nil
 }
@@ -354,7 +364,7 @@ func (f *damageFlow) rollPlainDamage(ctx context.Context) error {
 // hold holds the roll for the reactions that can change the damage (Uncanny Dodge, Deflect Missiles,
 // Cutting Words): it waits for the windows, and lands when they are answered (PM-04). It says whether it did.
 func (f *damageFlow) hold(ctx context.Context) (bool, error) {
-	held, ok, err := f.s.holdDamage(ctx, f.c, f.m, f.req, f.cs, f.p, f.attacker, f.target, f.roll, f.pr)
+	held, ok, err := f.s.holdDamage(ctx, f.c, f.m, f.req, f.cs, f.p, f.attacker, f.target, f.roll, f.counted, f.pr)
 	if err != nil || !ok {
 		return false, err
 	}
@@ -383,7 +393,7 @@ func (f *damageFlow) startEvent() {
 	f.out.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
 		DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: conv.Int32(int(p.DiceBonus) + int(p.CriticalMax)), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: f.faces,
-		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal, DamageReroll: f.reroll,
+		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal, DamageReroll: f.reroll, CountedDice: f.counted,
 	}
 }
 
@@ -526,7 +536,7 @@ func (f *damageFlow) keepRoll(ctx context.Context, g playdb.PendingDamage, tgt p
 	}
 	if _, err := c.q.SetPendingDamageRolled(ctx, playdb.SetPendingDamageRolledParams{
 		ID: g.ID, Status: status, Faces: f.faces, Physical: f.roll.Physical, Amount: &amount, ResolvedAt: resolvedAt(status, c),
-		RollTotal: &f.rolledTotal,
+		RollTotal: &f.rolledTotal, CountedDice: countedColumn(f.counted),
 	}); err != nil {
 		return fmt.Errorf("save the damage roll: %w", err)
 	}

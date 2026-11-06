@@ -51,13 +51,15 @@ type heldRoll struct {
 	ID, CampaignID, CharacterID, CombatantID, EncounterID, UserID string
 	// Key is the key of the request that made the roll wait, without the "#window" a reaction
 	// window's replay adds (Window says it did).
-	Key                       string
-	Kind                      heldKind
-	Window                    bool
-	Physical                  bool
-	Request                   []byte
-	Faces                     []int
-	Counted                   int
+	Key      string
+	Kind     heldKind
+	Window   bool
+	Physical bool
+	Request  []byte
+	Faces    []int
+	Counted  int
+	// CountedBy is the content key of the feature whose floor the total counts, empty when the die counts as it came up.
+	CountedBy                 string
 	Modifier                  int
 	Total                     int
 	Round                     *int32
@@ -199,7 +201,7 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 		ID: row.ID, CampaignID: row.CampaignID, CharacterID: row.CharacterID, UserID: row.UserID,
 		CombatantID: deref(row.CombatantID), EncounterID: deref(row.EncounterID), Window: row.WindowHold,
 		Key: row.IdempotencyKey, Kind: heldKind(row.Kind), Physical: row.Physical, Request: row.Request,
-		Faces: intsOf(row.Faces), Counted: int(row.Counted), Modifier: int(row.Modifier), Total: int(row.Total),
+		Faces: intsOf(row.Faces), Counted: int(row.Counted), CountedBy: row.CountedBy, Modifier: int(row.Modifier), Total: int(row.Total),
 		Round: row.Round, LuckyIndex: row.LuckyIndex, LuckyTo: row.LuckyTo, LuckyAnswerKey: row.LuckyAnswerKey,
 		AnswerKey: row.AnswerKey, CreatedAt: row.CreatedAt,
 		IndomAsk: row.IndomitableAsk, IndomFailed: row.IndomitableFailed, IndomAnswerKey: row.IndomitableAnswerKey,
@@ -286,7 +288,7 @@ func (st inspirationHoldStore) insert(ctx context.Context, env gateEnv, h heldRo
 		CombatantID: nilIfEmpty(h.CombatantID), EncounterID: nilIfEmpty(h.EncounterID), WindowHold: h.Window && h.Kind == heldWeaponAttack,
 		IndomitableAsk: h.IndomAsk, IndomitableFailed: h.IndomFailed, StrokeAsk: h.StrokeAsk, StrokeFailed: h.StrokeFailed,
 		RerollAsk: h.RerollAsk, RerollIndex: h.RerollIndex, RerollAtMost: h.RerollAtMost, RerollResource: h.RerollResource,
-		RerollCost: h.RerollCost, RerollSource: h.RerollSource,
+		RerollCost: h.RerollCost, RerollSource: h.RerollSource, CountedBy: h.CountedBy,
 	})
 	if err != nil {
 		return heldRoll{}, fmt.Errorf("hold the roll: %w", err)
@@ -303,7 +305,7 @@ const heldBonusLimit = 1000
 func (st inspirationHoldStore) answerLucky(ctx context.Context, _, after heldRoll, _ bool) error {
 	_, err := st.q.AnswerInspirationHoldLucky(ctx, playdb.AnswerInspirationHoldLuckyParams{
 		ID: after.ID, Faces: faces32(after.Faces), Counted: clamp32(after.Counted, 0, 1),
-		Total: clamp32(after.Total, -heldBonusLimit, heldBonusLimit), LuckyAnswerKey: after.LuckyAnswerKey, LuckyTo: after.LuckyTo,
+		Total: clamp32(after.Total, -heldBonusLimit, heldBonusLimit), LuckyAnswerKey: after.LuckyAnswerKey, LuckyTo: after.LuckyTo, CountedBy: after.CountedBy,
 	})
 	return err //nolint:wrapcheck // the question wraps it
 }

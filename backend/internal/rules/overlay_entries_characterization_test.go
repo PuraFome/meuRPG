@@ -39,35 +39,35 @@ func overlayFeatureCases() map[string]func(o *Overlay) {
 	}
 	srdChoice := Effect{Type: "choice", Choice: "feature", Count: 1, From: []string{"feature:fighter-fighting-style-defense", "feature:fighter-fighting-style-dueling"}}
 	return map[string]func(o *Overlay){
-		"ok: the posture overlay":                  func(_ *Overlay) {},
-		"trait key of a feature":                   func(o *Overlay) { trait(o).Key = "feature:resistente" + tableSuffix },
-		"background feature key of a trait":        func(o *Overlay) { bgFeature(o).Key = "trait:luz" + tableSuffix },
-		"feature key of a trait":                   func(o *Overlay) { more(o).Key = "trait:mais" + tableSuffix },
-		"feature key reserved":                     func(o *Overlay) { more(o).Key = "feature:mais-ability-score-improvement" + tableSuffix },
-		"trait key taken by another trait":         func(o *Overlay) { subTrait(o).Key = trait(o).Key },
-		"feature key taken by an option":           func(o *Overlay) { more(o).Key = postureHeron },
-		"trait name empty":                         func(o *Overlay) { trait(o).NamePT = "" },
-		"feature name two lines":                   func(o *Overlay) { more(o).NamePT = "Mais\nPosturas" },
-		"feature text too long":                    func(o *Overlay) { more(o).DescPT = []string{"a", strings.Repeat("a", maxTextRunes+1)} },
-		"feature text too many paragraphs":         func(o *Overlay) { more(o).DescPT = make([]string, maxTextParagraphs+1) },
-		"key before name before text":              func(o *Overlay) { f := more(o); f.Key, f.NamePT, f.DescPT = "feature:x", "", make([]string, 99) },
-		"name before text":                         func(o *Overlay) { f := more(o); f.NamePT, f.DescPT = "", make([]string, 99) },
-		"options on a trait":                       func(o *Overlay) { trait(o).Options = options() },
-		"options on a background feature":          func(o *Overlay) { bgFeature(o).Options = options() },
-		"options on a subrace trait":               func(o *Overlay) { subTrait(o).Options = options() },
-		"options without a choice":                 func(o *Overlay) { posturas(o).Effects = posturas(o).Effects[:1] },
-		"options with a choice of skills only":     func(o *Overlay) { posturas(o).Effects[1].Choice = "skill" },
-		"text checked before the options' kind":    func(o *Overlay) { trait(o).Options, trait(o).DescPT = options(), make([]string, 99) },
-		"options with two choices of features":     func(o *Overlay) { posturas(o).Effects = append(posturas(o).Effects, posturas(o).Effects[1]) },
-		"two choices of SRD options":               func(o *Overlay) { more(o).Effects = []Effect{srdChoice, srdChoice} },
-		"ok: a choice of SRD options":              func(o *Overlay) { more(o).Effects = []Effect{srdChoice} },
-		"ok: a choice of SRD options and a note":   func(o *Overlay) { more(o).Effects = []Effect{{Type: "note"}, srdChoice} },
-		"ok: options listed by the choice":         func(o *Overlay) { posturas(o).Effects[1].From = []string{postureHeron, postureBull, postureWolf} },
-		"option key bad":                           func(o *Overlay) { posturas(o).Options[2].Key = "feature:x" },
-		"option name repeated":                     func(o *Overlay) { posturas(o).Options[2].NamePT = posturas(o).Options[0].NamePT },
-		"option errors before the missing choice":  func(o *Overlay) { posturas(o).Effects, posturas(o).Options[1].NamePT = nil, "" },
-		"option effects compiled with the entry's": func(o *Overlay) { posturas(o).Options[1].Effects = []Effect{{Type: "teleport"}} },
-		"ok: a feature with no effects":            func(o *Overlay) { more(o).Effects = nil },
+		"ok: the posture overlay":                      func(_ *Overlay) {},
+		"trait key of a feature":                       func(o *Overlay) { trait(o).Key = "feature:resistente" + tableSuffix },
+		"background feature key of a trait":            func(o *Overlay) { bgFeature(o).Key = "trait:luz" + tableSuffix },
+		"feature key of a trait":                       func(o *Overlay) { more(o).Key = "trait:mais" + tableSuffix },
+		"feature key reserved":                         func(o *Overlay) { more(o).Key = "feature:mais-ability-score-improvement" + tableSuffix },
+		"trait key taken by another trait":             func(o *Overlay) { subTrait(o).Key = trait(o).Key },
+		"feature key taken by an option":               func(o *Overlay) { more(o).Key = postureHeron },
+		"trait name empty":                             func(o *Overlay) { trait(o).NamePT = "" },
+		"feature name two lines":                       func(o *Overlay) { more(o).NamePT = "Mais\nPosturas" },
+		"feature text too long":                        func(o *Overlay) { more(o).DescPT = []string{"a", strings.Repeat("a", maxTextRunes+1)} },
+		"feature text too many paragraphs":             func(o *Overlay) { more(o).DescPT = make([]string, maxTextParagraphs+1) },
+		"key before name before text":                  func(o *Overlay) { f := more(o); f.Key, f.NamePT, f.DescPT = "feature:x", "", make([]string, 99) },
+		"name before text":                             func(o *Overlay) { f := more(o); f.NamePT, f.DescPT = "", make([]string, 99) },
+		"options on a trait with feature keys":         func(o *Overlay) { trait(o).Options = options() },
+		"options on a background feature":              func(o *Overlay) { bgFeature(o).Options = options() },
+		"options on a subrace trait with feature keys": func(o *Overlay) { subTrait(o).Options = options() },
+		"options without a choice":                     func(o *Overlay) { posturas(o).Effects = posturas(o).Effects[:1] },
+		"options with a choice of skills only":         func(o *Overlay) { posturas(o).Effects[1].Choice = "skill" },
+		"text checked before the options' kind":        func(o *Overlay) { trait(o).Options, trait(o).DescPT = options(), make([]string, 99) },
+		"options with two choices of features":         func(o *Overlay) { posturas(o).Effects = append(posturas(o).Effects, posturas(o).Effects[1]) },
+		"two choices of SRD options":                   func(o *Overlay) { more(o).Effects = []Effect{srdChoice, srdChoice} },
+		"ok: a choice of SRD options":                  func(o *Overlay) { more(o).Effects = []Effect{srdChoice} },
+		"ok: a choice of SRD options and a note":       func(o *Overlay) { more(o).Effects = []Effect{{Type: "note"}, srdChoice} },
+		"ok: options listed by the choice":             func(o *Overlay) { posturas(o).Effects[1].From = []string{postureHeron, postureBull, postureWolf} },
+		"option key bad":                               func(o *Overlay) { posturas(o).Options[2].Key = "feature:x" },
+		"option name repeated":                         func(o *Overlay) { posturas(o).Options[2].NamePT = posturas(o).Options[0].NamePT },
+		"option errors before the missing choice":      func(o *Overlay) { posturas(o).Effects, posturas(o).Options[1].NamePT = nil, "" },
+		"option effects compiled with the entry's":     func(o *Overlay) { posturas(o).Options[1].Effects = []Effect{{Type: "teleport"}} },
+		"ok: a feature with no effects":                func(o *Overlay) { more(o).Effects = nil },
 		"ok: a trait with a resource": func(o *Overlay) {
 			trait(o).Effects = []Effect{{Type: "resource", Resource: "folego", Max: "1", Recharge: "long_rest"}}
 		},
@@ -350,6 +350,40 @@ func overlayRaceCases() map[string]func(o *Overlay) {
 
 		// Subrace.
 		"subrace bonus 5": func(o *Overlay) { o.Subraces[0].AbilityBonuses = map[Ability]int{WIS: 5} },
+		"ok: subrace replaces a trait and the bonuses": func(o *Overlay) {
+			o.Subraces[0].ReplacesTraitKeys, o.Subraces[0].ReplacesAbilityBonuses = []string{o.Races[0].Traits[0].Key}, true
+		},
+		"subrace replaces a missing trait": func(o *Overlay) {
+			o.Subraces[0].ReplacesTraitKeys = []string{o.Races[0].Traits[0].Key, "trait:nao-existe" + tableSuffix}
+		},
+		"subrace replaces its own trait": func(o *Overlay) { o.Subraces[0].ReplacesTraitKeys = []string{o.Subraces[0].Traits[0].Key} },
+		"subrace replaces a trait twice": func(o *Overlay) {
+			k := o.Races[0].Traits[0].Key
+			o.Subraces[0].ReplacesTraitKeys = []string{k, k}
+		},
+		"ok: subrace of an SRD race replaces its trait": func(o *Overlay) {
+			o.Subraces[0].Race, o.Subraces[0].ReplacesTraitKeys = "race:dwarf", []string{"trait:dwarven-resilience"}
+		},
+		"ok: race trait with options": func(o *Overlay) {
+			o.Races[0].Traits[0].Options = []TableFeature{
+				{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A", DescPT: []string{"A."}},
+				{Key: "trait:cor-b" + tableSuffix, NamePT: "Cor B", Effects: []Effect{{Type: "note", TextPT: "B."}}},
+			}
+		},
+		"race trait with options and a choice of features": func(o *Overlay) {
+			t := &o.Races[0].Traits[0]
+			t.Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A"}}
+			t.Effects = []Effect{{Type: "choice", Choice: "feature", Count: 2}}
+		},
+		"ok: subrace trait with options": func(o *Overlay) {
+			o.Subraces[0].Traits[0].Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A"}}
+		},
+		"race trait option with a feature key": func(o *Overlay) {
+			o.Races[0].Traits[0].Options = []TableFeature{{Key: "feature:cor-a" + tableSuffix, NamePT: "Cor A"}}
+		},
+		"race trait option with options of its own": func(o *Overlay) {
+			o.Races[0].Traits[0].Options = []TableFeature{{Key: "trait:cor-a" + tableSuffix, NamePT: "Cor A", Options: []TableFeature{{Key: "trait:x"}}}}
+		},
 
 		// Background.
 		"background one skill":         func(o *Overlay) { bg(o).Skills = bg(o).Skills[:1] },

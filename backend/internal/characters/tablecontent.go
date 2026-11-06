@@ -232,6 +232,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableSubrace:
 			o.Subraces = append(o.Subraces, rules.TableSubrace{
 				TableEntry: te, Race: b.GetRaceKey(), AbilityBonuses: tableScoresOf(b.GetAbilityBonuses()), Traits: tableFeaturesOf(b.GetTraits()),
+				ReplacesTraitKeys: b.GetReplacesTraitKeys(), ReplacesAbilityBonuses: b.GetReplacesAbilityBonuses(),
 			})
 			idx["subraces"] = append(idx["subraces"], e)
 		case *rulesv1.TableBackground:
@@ -448,6 +449,7 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 		Prerequisite: rules.FeatPrerequisite{
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
+			Races: p.GetRaces(), Size: p.GetSize(), LacksFeature: p.GetLacksFeatureKey(),
 		},
 	}
 }
@@ -1095,6 +1097,7 @@ func (v playerView) strip(body tableBody) {
 		v.dropEffects(b.GetTraits())
 	case *rulesv1.TableSubrace:
 		v.dropEffects(b.GetTraits())
+		b.ReplacesTraitKeys = v.visible(b.ReplacesTraitKeys)
 	case *rulesv1.TableBackground:
 		if b.GetFeature() != nil {
 			v.dropEffects([]*rulesv1.TableFeature{b.GetFeature()})
@@ -1184,8 +1187,14 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
-	if p := b.GetPrerequisite(); v.hidden(p.GetRaceKey()) {
-		p.RaceKey = "" // a race or subrace the players do not see is not named to them
+	if p := b.GetPrerequisite(); p != nil {
+		if v.hidden(p.GetRaceKey()) {
+			p.RaceKey = "" // a race or subrace the players do not see is not named to them
+		}
+		p.Races = v.visible(p.Races)
+		if v.hidden(p.GetLacksFeatureKey()) {
+			p.LacksFeatureKey = "" // nor a feature the players do not see
+		}
 	}
 }
 

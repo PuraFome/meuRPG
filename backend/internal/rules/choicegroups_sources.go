@@ -24,11 +24,13 @@ func (cb *choiceBuilder) race() {
 	if x.race == nil {
 		return
 	}
-	cb.raceSource(x.race.Key, x.race.Traits)
+	cb.raceSource(x.race.Key, x.raceTraitKeys())
 	if x.subrace != nil {
 		cb.raceSource(x.subrace.Key, x.subrace.Traits)
 	}
-	cb.abilityChoice(x.race)
+	if !x.replacesRaceBonuses() {
+		cb.abilityChoice(x.race)
+	}
 }
 
 // raceSource adds the choices of the race or the subrace key: a feat it grants,

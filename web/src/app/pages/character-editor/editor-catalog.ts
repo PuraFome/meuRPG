@@ -253,7 +253,9 @@ export class EditorCatalog {
     return s.status === 'ready' ? ['/campaigns', s.campaignId, 'spells'] : [];
   });
   /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
-  readonly choiceBonusesHint = computed(() => choiceBonusesHintOf(this.selectedRace()));
+  readonly choiceBonusesHint = computed(() =>
+    choiceBonusesHintOf(this.selectedRace(), this.selectedSubrace()),
+  );
   /** The sizes the race lets the player pick from: empty unless there is a real choice. */
   readonly sizeChoices = computed(() => sizeChoicesOf(this.selectedRace()));
   /** A table background's equipment, as the master wrote it. */

@@ -220,6 +220,8 @@ type Combatant struct {
 	CreatureSpent           []byte
 	ReactionKind            *string
 	ReactionRound           *int32
+	InitiativeCountedAs     *int32
+	InitiativeCountedBy     string
 }
 
 type CombatantState struct {
@@ -383,6 +385,7 @@ type InspirationHold struct {
 	RerollAnswerKey      *string
 	RerollFrom           *int32
 	RerollTo             *int32
+	CountedBy            string
 }
 
 type OpportunityOffer struct {
@@ -436,6 +439,7 @@ type PendingDamage struct {
 	AfterSteps       *int32
 	EffectSourceKey  *string
 	SavageDice       int32
+	CountedDice      []byte
 }
 
 type Puzzle struct {
@@ -483,6 +487,7 @@ type PuzzleHintTry struct {
 	LuckyIndex     *int32
 	BonusSides     *int32
 	BonusFace      *int32
+	CountedBy      string
 }
 
 type PuzzleMove struct {

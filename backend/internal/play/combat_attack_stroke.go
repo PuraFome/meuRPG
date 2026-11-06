@@ -44,8 +44,8 @@ func (f *attackFlow) armorClass(ctx context.Context) (int, error) {
 
 // criticalFrom is the natural roll from which the attack always hits and is a critical hit (0: the SRD's 20).
 func (f *attackFlow) criticalFrom() int {
-	if f.attack.Spell { // Improved Critical and Superior Critical are for weapon attacks only
-		return 0
+	if f.attack.Spell { // Improved Critical and Superior Critical are for weapon attacks only; the table's spell scope reaches spells
+		return f.sheet.Traits.SpellCriticalRange
 	}
 	return f.sheet.CriticalRange
 }

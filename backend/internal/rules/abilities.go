@@ -40,7 +40,7 @@ func (x *deriver) abilities() {
 		raceBonus[a]++
 	}
 	// The abilities the player picked for a table race's bonuses.
-	if x.race != nil {
+	if x.race != nil && !x.replacesRaceBonuses() {
 		for a, v := range x.c.racePicksOf(x.race.Key, scopedOf(x.b.FeatureChoices)).bonuses() {
 			raceBonus[a] += v
 		}
@@ -54,7 +54,14 @@ func (x *deriver) abilities() {
 	x.abilityChoiceHint(len(picked))
 }
 
-// raceBonuses are the fixed ability bonuses of the race and the subrace.
+// replacesRaceBonuses says the subrace swaps the race's ability bonuses whole: the fixed ones and the
+// ones the player places (a table race's sets, the half-elf's picks) are gone, the subrace's stand alone.
+func (x *deriver) replacesRaceBonuses() bool {
+	return x.subrace != nil && x.subrace.ReplacesAbilityBonuses
+}
+
+// raceBonuses are the fixed ability bonuses of the race and the subrace. A subrace that
+// replaces them has its own only.
 func (x *deriver) raceBonuses() map[Ability]int {
 	raceBonus := map[Ability]int{}
 	add := func(bonuses map[string]int) {
@@ -64,7 +71,7 @@ func (x *deriver) raceBonuses() map[Ability]int {
 			}
 		}
 	}
-	if x.race != nil {
+	if x.race != nil && !x.replacesRaceBonuses() {
 		add(x.race.AbilityBonuses)
 	}
 	if x.subrace != nil {
@@ -99,7 +106,7 @@ func (x *deriver) abilityScore(a Ability, raceBonus int) {
 // while fewer than the race's count were picked and no manual bonus is
 // positive.
 func (x *deriver) abilityChoiceHint(picked int) {
-	if x.race == nil || x.race.AbilityBonusChoices == nil {
+	if x.race == nil || x.race.AbilityBonusChoices == nil || x.replacesRaceBonuses() {
 		return
 	}
 	for _, v := range x.b.ExtraAbilityBonuses {
@@ -485,7 +492,7 @@ func foldPT(s string) string {
 // the manual bonuses, where a sheet placed them before they were picks, cover none. A level's Ability Score Improvement
 // only adds to the manual bonuses, so it never takes the check back.
 func (x *deriver) checkRaceBonus() {
-	if x.race == nil {
+	if x.race == nil || x.replacesRaceBonuses() {
 		return
 	}
 	sets := x.c.raceBonusSets(x.race.Key)
@@ -529,4 +536,17 @@ func (c *content) raceBonusSets(raceKey string) [][]int {
 		return [][]int{one}
 	}
 	return nil
+}
+
+// racePlacedPoints is the most points the player can place on abilities for a table race's sets, 0 when the
+// subrace swaps the race's bonuses whole.
+func (c *content) racePlacedPoints(raceKey, subraceKey string) int {
+	if s := c.subraces[subraceKey]; s != nil && s.Race == raceKey && s.ReplacesAbilityBonuses {
+		return 0
+	}
+	n := 0
+	for _, set := range c.raceBonusSets(raceKey) {
+		n = max(n, sumOf(set)) // the player picks one set: the largest is the most it can place
+	}
+	return n
 }

@@ -70,6 +70,8 @@ type rolledDamage struct {
 	Faces    []int32 `json:"faces,omitempty"`
 	Total    int32   `json:"total"`
 	Physical bool    `json:"physical,omitempty"`
+	// Counted are the dice a table minimum raised (damage_floor.go); the faces stay as they came up.
+	Counted []countedDie `json:"counted_dice,omitempty"`
 }
 
 // holdData is what a hold keeps besides the request.
