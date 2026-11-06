@@ -220,6 +220,7 @@ type Combatant struct {
 	CreatureSpent           []byte
 	ReactionKind            *string
 	ReactionRound           *int32
+	ObjectInteractionUsed   bool
 }
 
 type CombatantState struct {

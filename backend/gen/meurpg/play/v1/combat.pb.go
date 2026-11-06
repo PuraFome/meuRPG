@@ -981,6 +981,10 @@ const (
 	// CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
 	// Nothing is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED EncounterBlockedReason = 125
+	// CharacterService.SetEquipped, by a player in a running combat: the body armor
+	// cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
+	// master may change it. Nothing is changed.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT EncounterBlockedReason = 126
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1092,6 +1096,7 @@ var (
 		123: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING",
 		124: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT",
 		125: "ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED",
+		126: "ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1200,6 +1205,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING":       123,
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT":     124,
 		"ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED":          125,
+		"ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT":                  126,
 	}
 )
 
@@ -28207,7 +28213,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xc0(\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xee(\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -28315,7 +28321,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"9ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE\x10z\x127\n" +
 	"3ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING\x10{\x129\n" +
 	"5ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT\x10|\x124\n" +
-	"0ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED\x10}*\x91\x03\n" +
+	"0ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED\x10}\x12,\n" +
+	"(ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT\x10~*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

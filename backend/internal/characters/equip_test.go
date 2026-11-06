@@ -32,15 +32,15 @@ type equipHostSpy struct {
 	fail      error
 }
 
-func (e *equipHostSpy) EquipInCombat(ctx context.Context, tx pgx.Tx, _, characterID, actor string, change EquipChange) error {
+func (e *equipHostSpy) EquipInCombat(ctx context.Context, tx pgx.Tx, _, characterID, actor string, change EquipChange) (func(context.Context), error) {
 	var revision int32
 	if err := tx.QueryRow(ctx, `SELECT revision FROM characters WHERE id = $1`, characterID).Scan(&revision); err != nil {
-		return err
+		return nil, err
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.changes, e.revisions, e.actors = append(e.changes, change), append(e.revisions, revision), append(e.actors, actor)
-	return e.fail
+	return nil, e.fail
 }
 
 // gearSheet is Pensantus with leather armor, a shield and two weapons.

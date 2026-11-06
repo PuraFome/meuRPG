@@ -1992,6 +1992,10 @@ enum EncounterBlockedReason {
   // CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
   // Nothing is spent.
   ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED = 125;
+  // CharacterService.SetEquipped, by a player in a running combat: the body armor
+  // cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
+  // master may change it. Nothing is changed.
+  ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT = 126;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

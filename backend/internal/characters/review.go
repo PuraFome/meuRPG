@@ -385,8 +385,9 @@ type ReviewHost interface {
 	// EquipInCombat tells play that the character equips or stows a piece of gear, inside
 	// the transaction that writes the sheet and before it writes, only when the state really
 	// changes. Play may refuse (a coded error, which aborts the write) or spend the turn's
-	// economy for the change in the combat that holds the character.
-	EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, change EquipChange) error
+	// economy for the change in the combat that holds the character. It returns what to call
+	// after the commit (the combat's streams are told), or nil.
+	EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, change EquipChange) (afterCommit func(ctx context.Context), err error)
 	// PublishEncounterChanged tells every stream that the combat changed. Call it after the
 	// commit.
 	PublishEncounterChanged(ctx context.Context, campaignID, encounterID string)

@@ -33,11 +33,12 @@ type equipRequest struct {
 // equipped is what SetEquipped's transaction leaves: the row as it stands, whether the
 // call changed the sheet, and what play asks to run after the commit.
 type equipped struct {
-	row        charactersdb.Character
-	carried    []string
-	changed    bool
-	afterGear  func(ctx context.Context)
-	changeInfo EquipChange
+	row         charactersdb.Character
+	carried     []string
+	changed     bool
+	afterGear   func(ctx context.Context)
+	afterCombat func(ctx context.Context)
+	changeInfo  EquipChange
 }
 
 // SetEquipped implements charactersv1connect.CharacterServiceHandler.
@@ -64,8 +65,10 @@ func (s *Service) SetEquipped(
 	}
 	if done.changed {
 		logging.Event(ctx, s.logger, "character.equipped", slog.String("character_id", in.id), slog.String("kind", string(done.changeInfo.Kind)), slog.Bool("equip", in.equip))
-		if done.afterGear != nil {
-			done.afterGear(ctx)
+		for _, after := range []func(context.Context){done.afterCombat, done.afterGear} {
+			if after != nil {
+				after(ctx)
+			}
 		}
 	}
 	return connect.NewResponse(&charactersv1.SetEquippedResponse{CarriedKeys: done.carried, Revision: done.row.Revision}), nil
@@ -111,12 +114,15 @@ func (s *Service) equipIn(ctx context.Context, tx pgx.Tx, m authz.Membership, in
 	if slices.Contains(full.GetCarriedKeys(), in.key) == !in.equip {
 		return equipped{row: current, carried: full.GetCarriedKeys()}, nil // already as asked: nothing changes
 	}
+	var afterCombat func(context.Context)
 	if s.reviewHost != nil {
-		if err := s.reviewHost.EquipInCombat(ctx, tx, m.CampaignID, current.ID, m.UserID, change); err != nil {
+		if afterCombat, err = s.reviewHost.EquipInCombat(ctx, tx, m.CampaignID, current.ID, m.UserID, change); err != nil {
 			return equipped{}, err
 		}
 	}
-	return s.writeCarried(ctx, tx, m, current, full, change)
+	done, err := s.writeCarried(ctx, tx, m, current, full, change)
+	done.afterCombat = afterCombat
+	return done, err
 }
 
 // equipChangeOf names the piece of gear the request moves, or refuses a key the sheet

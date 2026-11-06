@@ -353,8 +353,8 @@ func (g *gearHostSpy) GearChanged(context.Context, pgx.Tx, string, string) (func
 	return func(context.Context) { g.record("after GearChanged") }, nil
 }
 
-func (*gearHostSpy) EquipInCombat(context.Context, pgx.Tx, string, string, string, EquipChange) error {
-	return nil
+func (*gearHostSpy) EquipInCombat(context.Context, pgx.Tx, string, string, string, EquipChange) (func(context.Context), error) {
+	return nil, nil
 }
 
 func (*gearHostSpy) PublishEncounterChanged(context.Context, string, string) {}
