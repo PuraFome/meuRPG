@@ -10,7 +10,8 @@ import "slices"
 // same type count as one; immunity takes the damage to 0. A resistance or immunity
 // can be limited to attacks that are not magical (the stat blocks' "from nonmagical
 // attacks"): it covers a damage only when the damage comes from an attack and the
-// attack is not magical.
+// attack is not magical. The stat blocks' "from nonmagical weapons that aren't silvered"
+// (or adamantine) is the same, and the attack's weapon must not be of that material either.
 
 // The kinds of a Step.
 const (
@@ -22,6 +23,14 @@ const (
 // QualifierNonmagical limits a Modifier to the damage of attacks that are not magical.
 const QualifierNonmagical = "nonmagical"
 
+// QualifierNonmagicalUnlessSilvered limits a Modifier to the damage of nonmagical attacks
+// that are not made with a silvered weapon.
+const QualifierNonmagicalUnlessSilvered = "nonmagical-unless-silvered"
+
+// QualifierNonmagicalUnlessAdamantine limits a Modifier to the damage of nonmagical attacks
+// that are not made with an adamantine weapon.
+const QualifierNonmagicalUnlessAdamantine = "nonmagical-unless-adamantine"
+
 // Modifier is a resistance, vulnerability or immunity to some damage types, from
 // one source (a race, a feature, a state, a stat block).
 type Modifier struct {
@@ -32,7 +41,8 @@ type Modifier struct {
 	// DamageTypes are the damage type keys it covers.
 	DamageTypes []string
 	// Qualifier limits it: "" covers every damage of its types, QualifierNonmagical only
-	// the damage of a nonmagical attack.
+	// the damage of a nonmagical attack, and the two unless-qualifiers only that of a
+	// nonmagical attack whose weapon is not silvered (or adamantine).
 	Qualifier string `json:",omitempty"`
 }
 
@@ -46,6 +56,9 @@ type Origin struct {
 	// Magical says the attack is magical: a spell, a magic weapon, a creature's attack
 	// with the trait "Magic Weapons", an attack the sheet marks.
 	Magical bool `json:"magical,omitempty"`
+	// Silvered and Adamantine say the attack's weapon is of that material.
+	Silvered   bool `json:"silvered,omitempty"`
+	Adamantine bool `json:"adamantine,omitempty"`
 }
 
 // Covers says the modifier applies to a damage of this type from this origin.
@@ -58,6 +71,10 @@ func (m Modifier) Covers(damageType string, from Origin) bool {
 		return true
 	case QualifierNonmagical:
 		return from.Attack && !from.Magical
+	case QualifierNonmagicalUnlessSilvered:
+		return from.Attack && !from.Magical && !from.Silvered
+	case QualifierNonmagicalUnlessAdamantine:
+		return from.Attack && !from.Magical && !from.Adamantine
 	}
 	return false
 }

@@ -392,6 +392,10 @@ type Attack struct {
 	// with the trait "Magic Weapons"; any attack the sheet marks, such as an unarmed
 	// strike): the resistances and immunities to nonmagical attacks do not cover it.
 	Magical bool
+	// Silvered and Adamantine say the attack's weapon is of that material: the resistances
+	// to nonmagical weapons that aren't silvered (or adamantine) do not cover it.
+	Silvered   bool `json:",omitempty"`
+	Adamantine bool `json:",omitempty"`
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

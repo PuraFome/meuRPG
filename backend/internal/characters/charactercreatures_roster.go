@@ -624,7 +624,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, crea
 			Key: a.Key, Name: name, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee, ReachFt: a.ReachFt,
-			Ability: string(a.Ability), Weapon: a.Kind == "weapon", Magical: a.Magical,
+			Ability: string(a.Ability), Weapon: a.Kind == "weapon", Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine,
 		})
 	}
 	for _, a := range d.StandardActions {
@@ -753,13 +753,15 @@ func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, ch
 }
 
 // typeModifiersOf reads the damage lists of a stat block: the plain entries, and the
-// resistances and immunities the SRD limits to nonmagical attacks, kept apart. An
-// entry with any other condition (a material such as silver or adamantine, "damage
-// from spells") is left to the master.
+// resistances and immunities the SRD limits to nonmagical attacks (and those that also
+// exempt a silvered or an adamantine weapon), kept apart. An entry with any other
+// condition ("damage from spells") is left to the master.
 func typeModifiersOf(c rules.Creature, monsterKey string) combat.TypeModifiers {
 	return combat.TypeModifiers{
 		Vulnerable: damageTypesOf(c.Vulnerabilities, ""), Resistant: damageTypesOf(c.Resistances, ""), Immune: damageTypesOf(c.Immunities, ""),
 		ResistantNonmagical: damageTypesOf(c.Resistances, rules.QualifierNonmagical), ImmuneNonmagical: damageTypesOf(c.Immunities, rules.QualifierNonmagical),
+		ResistantUnlessSilvered: damageTypesOf(c.Resistances, rules.QualifierNonmagicalUnlessSilvered), ImmuneUnlessSilvered: damageTypesOf(c.Immunities, rules.QualifierNonmagicalUnlessSilvered),
+		ResistantUnlessAdamantine: damageTypesOf(c.Resistances, rules.QualifierNonmagicalUnlessAdamantine), ImmuneUnlessAdamantine: damageTypesOf(c.Immunities, rules.QualifierNonmagicalUnlessAdamantine),
 		Source: monsterKey,
 	}
 }

@@ -475,7 +475,7 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 }
 
 // originOf says where a pending damage comes from, for the resistances that hold for
-// nonmagical attacks only: the damage of a spell is that of a magical attack; an attack
+// nonmagical attacks only (and not for a silvered or adamantine weapon, when they say so): the damage of a spell is that of a magical attack; an attack
 // of the sheet or the stat block is magical when the sheet says so (a cantrip, a creature
 // with the trait "Magic Weapons"); a damage with no attack of the attacker behind it (a
 // trap, a hazard, an ongoing effect) is no attack, and those resistances do not cover it.
@@ -497,7 +497,8 @@ func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (comb
 	if i < 0 {
 		return combat.Origin{}, nil
 	}
-	return combat.Origin{Attack: true, Magical: sheet.Attacks[i].Magical}, nil
+	a := sheet.Attacks[i]
+	return combat.Origin{Attack: true, Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine}, nil
 }
 
 // landHit puts the damage or the heal on the target and notes the vitals it touched.

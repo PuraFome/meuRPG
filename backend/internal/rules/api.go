@@ -987,6 +987,10 @@ type Attack struct {
 	// weapon attack when its stat block has the trait "Magic Weapons". A weapon
 	// of a character is not, nor is the unarmed strike.
 	Magical bool `json:",omitempty"`
+	// Silvered and Adamantine say the attack's weapon is of that material, for the
+	// resistances and immunities to nonmagical attacks that exempt it.
+	Silvered   bool `json:",omitempty"`
+	Adamantine bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

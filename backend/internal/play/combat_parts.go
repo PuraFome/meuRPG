@@ -566,8 +566,13 @@ func stepLabel(st combat.Step, names func(string) string, damageTypePT func(stri
 		sources = append(sources, sourceNamePT(s, names))
 	}
 	out := head + damageTypePT(st.DamageType)
-	if st.Qualifier == combat.QualifierNonmagical {
+	switch st.Qualifier {
+	case combat.QualifierNonmagical:
 		out += " de ataque não mágico"
+	case combat.QualifierNonmagicalUnlessSilvered:
+		out += " de ataque não mágico nem prateado"
+	case combat.QualifierNonmagicalUnlessAdamantine:
+		out += " de ataque não mágico nem adamantino"
 	}
 	if len(sources) > 0 {
 		out += " (" + joinPT(sources) + ")"
@@ -1160,6 +1165,10 @@ func (s *Service) statBlockModifiers(ctx context.Context, c *combatTx, campaignI
 		{combat.StepVulnerability, mods.Vulnerable, ""},
 		{combat.StepImmunity, mods.ImmuneNonmagical, combat.QualifierNonmagical},
 		{combat.StepResistance, mods.ResistantNonmagical, combat.QualifierNonmagical},
+		{combat.StepImmunity, mods.ImmuneUnlessSilvered, combat.QualifierNonmagicalUnlessSilvered},
+		{combat.StepResistance, mods.ResistantUnlessSilvered, combat.QualifierNonmagicalUnlessSilvered},
+		{combat.StepImmunity, mods.ImmuneUnlessAdamantine, combat.QualifierNonmagicalUnlessAdamantine},
+		{combat.StepResistance, mods.ResistantUnlessAdamantine, combat.QualifierNonmagicalUnlessAdamantine},
 	} {
 		if len(g.types) > 0 {
 			out = append(out, combat.Modifier{Kind: g.kind, Source: source, DamageTypes: g.types, Qualifier: g.qualifier})
