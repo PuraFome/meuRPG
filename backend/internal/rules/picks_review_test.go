@@ -156,3 +156,33 @@ func TestResistancesReadFeatPicks(t *testing.T) {
 		t.Errorf("a Derived with no picks lists %+v", rs)
 	}
 }
+
+// A feat granted by a choice of feats asks its own picks, and its effects apply only after them.
+func TestAPickOfAFeatTakenThroughAChoiceOfFeats(t *testing.T) {
+	t.Parallel()
+	const giver, granted = "feat:doador" + tableSuffix, "feat:dado" + tableSuffix
+	o := featWith(giver, Effect{Type: "choice", Choice: "feat", Count: 1, From: []string{granted}})
+	o.Feats = append(o.Feats, featWith(granted,
+		Effect{Type: "choice", Choice: "ability", Name: "habilidade", Count: 1, From: []string{"str", "dex"}},
+		Effect{Type: "proficiency", Proficiency: "save.@habilidade"},
+	).Feats[0])
+	o.Strict = nil
+	c := withOverlay(t, o)
+	b := pensantus()
+	b.Feats, b.FeatureChoices = []string{giver}, []string{ScopedChoice(FeatChoiceKey(giver), granted)}
+	key := PickChoiceKey(granted, "habilidade")
+	problems := c.Choices(b).ChoiceProblems(true)
+	if !slices.ContainsFunc(problems, func(p ChoiceProblem) bool { return p.Code == ChoiceProblemMissing && p.ChoiceKey == key }) {
+		t.Fatalf("problems = %+v, want the granted feat's pick asked", problems)
+	}
+	if d := Derive(b, c); saveOf(d, DEX).Proficient {
+		t.Error("the effect applied before the pick")
+	}
+	b.FeatureChoices = append(b.FeatureChoices, ScopedChoice(key, "ability:dex"))
+	if problems := c.Choices(b).ChoiceProblems(true); len(problems) != 0 {
+		t.Errorf("problems = %+v", problems)
+	}
+	if d := Derive(b, c); !saveOf(d, DEX).Proficient {
+		t.Error("the effect did not apply after the pick")
+	}
+}

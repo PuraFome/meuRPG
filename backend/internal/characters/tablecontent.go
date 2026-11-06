@@ -808,6 +808,15 @@ func slugOfStoredKey(key string) string {
 // path, when the entry is compiled.
 func checkFeatureCount(kind rulesv1.TableContentKind, body tableBody) []*rulesv1.TableContentViolation {
 	limit, what := rules.MaxTableFeatures, "features"
+	if feat, ok := body.(*rulesv1.TableFeat); ok {
+		if n := len(feat.GetOptions()); n > rules.MaxFeatureOptions {
+			return []*rulesv1.TableContentViolation{{
+				Field: bodyField(kind) + ".options", Reason: rules.ReasonLimit,
+				Message: fmt.Sprintf("%d options; the limit is %d", n, rules.MaxFeatureOptions),
+			}}
+		}
+		return nil
+	}
 	switch body.(type) {
 	case *rulesv1.TableRace, *rulesv1.TableSubrace:
 		limit, what = rules.MaxTraits, "traits"

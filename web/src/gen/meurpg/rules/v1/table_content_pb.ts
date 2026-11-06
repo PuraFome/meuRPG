@@ -222,7 +222,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
    * modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
    * "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
    * "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
-   * "save.<ability>"), how ("add", "max" or "set") and the formula.
+   * "save.<ability>", "score.<ability>"), how ("add", "max" or "set") and the formula.
    *
    * @generated from field: string target = 2;
    */
@@ -318,7 +318,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
 
   /**
    * choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-   * "language", "tool", "feature" or "feat"), how many, and from which keys (for
+   * "language", "tool", "feature", "feat", and, in a feat only, "ability" or "damage_type" with a
+   * `name` and a count of 1), how many, and from which keys (for
    * "feat": feat keys of the SRD or the table; empty is any feat). For
    * extra_attack, `count` is how many attacks the Attack action makes. For
    * ability_increase, `count` is how many different abilities the player picks,
@@ -854,7 +855,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
 
   /**
    * choice of a feat, kind "feature": the editor option set the choice offers instead of a
-   * `from` list (one of the "option_set_names" of GetEffectMenu, but "table_feature").
+   * `from` list (one of the "feat_option_sets" of GetEffectMenu).
    * The `count` cannot be more than the options of the set.
    *
    * @generated from field: string set = 80;

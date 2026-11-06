@@ -405,8 +405,9 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 	return ""
 }
 
-// featPickChoices adds the choices a feat of the table asks apart from a feat: its options, as a
-// class feature's (a choice of features, or an option set), and the named picks of an ability or a damage type.
+// featPickChoices adds the choices a feat of the table asks besides the feats it grants:
+// its options, as a class feature's has them (a choice of features, or an option set),
+// and the named picks of an ability or a damage type.
 func (cb *choiceBuilder) featPickChoices(g *groupBuild, owner string) {
 	c := cb.c
 	f := c.feats[owner]

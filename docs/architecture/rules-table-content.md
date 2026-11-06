@@ -106,11 +106,13 @@ A choice of kind `ability` or `damage_type` is a pick, and only a feat has one.
 It needs a `name` (1 to 40 of `a-z`, `0-9` and `_`, the first a letter, and not `mesa`), picks one (`count` 1), and lists `from` keys of its kind once each (empty is all six abilities or all damage types).
 Only these two kinds have a name, and a feat's names are unique.
 A later effect of the same feat writes `@name` for the local part of the pick (`ability:dex` is `dex`, `damage-type:fire` is `fire`), in `proficiency` (`save.@name`), `target`, `targets`, `ability`, `attack_ability`, `damage_ability`, `damage_type`, `damage_types` and `except` (`damage-type:@name`), and in the formulas of the fields `pickFields` lists as `mod("@name")` and `score("@name")`.
-A token for a name the feat has not declared before it, of the wrong kind, or a `@name` anywhere else is refused at the field (`bad_value`).
-The compiler accepts the literal only for checking; `Derive` writes the pick into a copy of the effect and compiles its formulas again (the programs are kept per content), and `Resistances` does the same.
+A token for a name the feat has not declared before the effect is refused at the field (`bad_reference`).
+A token of the wrong kind, in an option of a feat or in an entry that is not a feat is refused at the field (`bad_value`).
+A formula that writes `@name` anywhere but in `mod` or `score` does not compile (`bad_formula`).
+A formula that reads a pick is checked when the content is imported and uses the pick the player made when the sheet is worked out.
 An effect whose pick is missing or not offered does not apply.
-The pick is a choice of the choice engine with the key `<feat>#<name>`, stored as `<feat>#<name>=ability:dex`, and `Derived.FeatPicks` holds the valid ones.
-A caller of `Content.Resistances` passes the `Derived` that `Derive` made for the same sheet, since the picks come from it.
+The pick is a choice of the choice engine with the key `<feat>#<name>`, stored as `<feat>#<name>=ability:dex`, and `Derived.FeatPicks` holds the valid picks of the feats that read one.
+`Content.Resistances` must be given the `Derived` of the same sheet, since the picks come from it.
 A feat's options and picks are hidden with the feat; a hidden option stays named for a sheet that holds it.
 
 ### Maneuvers

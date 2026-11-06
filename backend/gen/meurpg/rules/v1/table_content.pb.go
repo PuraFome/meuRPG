@@ -985,7 +985,7 @@ type TableEffect struct {
 	// modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
 	// "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
 	// "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
-	// "save.<ability>"), how ("add", "max" or "set") and the formula.
+	// "save.<ability>", "score.<ability>"), how ("add", "max" or "set") and the formula.
 	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
 	Mode   string `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
 	Value  string `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
@@ -1018,7 +1018,8 @@ type TableEffect struct {
 	Max      string `protobuf:"bytes,14,opt,name=max,proto3" json:"max,omitempty"`
 	Recharge string `protobuf:"bytes,15,opt,name=recharge,proto3" json:"recharge,omitempty"`
 	// choice: what the player chooses ("skill", "expertise", "cantrip", "spell",
-	// "language", "tool", "feature" or "feat"), how many, and from which keys (for
+	// "language", "tool", "feature", "feat", and, in a feat only, "ability" or "damage_type" with a
+	// `name` and a count of 1), how many, and from which keys (for
 	// "feat": feat keys of the SRD or the table; empty is any feat). For
 	// extra_attack, `count` is how many attacks the Attack action makes. For
 	// ability_increase, `count` is how many different abilities the player picks,
@@ -1266,7 +1267,7 @@ type TableEffect struct {
 	// ("save.@name"), a damage_type ("damage-type:@name") or a formula (mod("@name")).
 	Name string `protobuf:"bytes,79,opt,name=name,proto3" json:"name,omitempty"`
 	// choice of a feat, kind "feature": the editor option set the choice offers instead of a
-	// `from` list (one of the "option_set_names" of GetEffectMenu, but "table_feature").
+	// `from` list (one of the "feat_option_sets" of GetEffectMenu).
 	// The `count` cannot be more than the options of the set.
 	Set string `protobuf:"bytes,80,opt,name=set,proto3" json:"set,omitempty"`
 	// modifier on a score ("score.str"...): the highest value the effect lifts the score to, from 20
