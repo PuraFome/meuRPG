@@ -14538,8 +14538,8 @@ export enum EncounterBlockedReason {
 
   /**
    * UndoLastAction: a combatant's hit points, temporary hit points or Wild Shape form are not the
-   * ones the action left, because something else changed them after it (a rest, a correction, a
-   * trap of another fight). The undo would write the "before" over that change and lose it, so
+   * ones the action left, because something else changed them after it (a rest or a level
+   * change, which leave no event). The undo would write the "before" over that change and lose it, so
    * nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED = 126;
