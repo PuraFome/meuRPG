@@ -605,22 +605,30 @@ func (c *Content) ForPlayer() *Content {
 }
 
 // SheetHas says the build has the key: its race, subrace, background, class or subclass, a feat, a
-// pick, or a trait, feature or option of one of those entries. A hidden key the sheet has is not
+// pick, or a trait, feature or option of one of those entries (unless the key is retired or switched off itself). A hidden key the sheet has is not
 // hidden from it (ADR-0018, section 7).
 func (c *Content) SheetHas(b Build, key string) bool { return c.c.sheetHas(b, key) }
 
 func (c *content) sheetHas(b Build, key string) bool {
+	if c.sheetHolds(b, key) {
+		return true
+	}
+	// A key retired or switched off itself is the sheet's only where the sheet holds that very key; the
+	// owner exemption is for a key hidden through its owner.
+	if c.archived[key] || c.off[key] {
+		return false
+	}
+	return slices.ContainsFunc(c.entryOwners(key, 0), func(o string) bool { return c.sheetHolds(b, o) })
+}
+
+// sheetHolds says the build holds the key itself: as its race, subrace, background, class or subclass, a feat or a pick.
+func (c *content) sheetHolds(b Build, key string) bool {
 	if key == "" {
 		return false
 	}
-	if key == b.Race || key == b.Subrace || key == b.Background || slices.Contains(b.Feats, key) || slices.Contains(b.FeatureChoices, key) ||
-		slices.ContainsFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == key || cl.Subclass == key }) {
-		return true
-	}
-	if slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key }) {
-		return true
-	}
-	return slices.ContainsFunc(c.entryOwners(key, 0), func(o string) bool { return c.sheetHas(b, o) })
+	return key == b.Race || key == b.Subrace || key == b.Background || slices.Contains(b.Feats, key) || slices.Contains(b.FeatureChoices, key) ||
+		slices.ContainsFunc(b.Classes, func(cl ClassLevel) bool { return cl.Class == key || cl.Subclass == key }) ||
+		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
 }
 
 // Owners are the entries (races, subraces, classes, subclasses and backgrounds) a

@@ -187,3 +187,29 @@ func TestAnOptionOfAHiddenOwnerIsKeptWhereTheSheetHasTheOwner(t *testing.T) {
 		t.Errorf("hidden for the fighter = %v, for the wizard = %v; want false and true", kept(feature), other(feature))
 	}
 }
+
+// An option the master switched off is named, in no payload, to a fighter who never picked it; the master reads it (the sheet that picked it is the rules test's control).
+func TestASwitchedOffOptionIsNotNamedToAFighterWhoNeverPickedIt(t *testing.T) {
+	t.Parallel()
+	tb := newLevelUpTable(t, 2700)
+	m := tb.master
+	setRules(t, m, tb.campaign, func(r *campaignsv1.TableRules) { r.FeatsAllowed = true })
+	const name, stem = "Guarda Dupla de Teste", "guarda-dupla-de-teste"
+	option := m.addEntry(t, tb.campaign, &rulesv1.TableOption{NamePt: name, Set: "fighting_style"}).GetKey()
+	feat := m.addEntry(t, tb.campaign, &rulesv1.TableFeat{NamePt: "Sem guarda", DescPt: []string{"Texto."}, Prerequisite: &rulesv1.FeatPrerequisite{LacksFeatureKey: option}}).GetKey()
+	m.setOff(t, tb.campaign, true, option)
+	fighter := tb.other.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", levelUpFighterSheet(3, 2700, "subclass:champion"))
+	player, err := tb.options(tb.other, fighter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	master, err := tb.options(m, fighter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNames(t, "the master's options", master, true, name, stem)
+	wantNames(t, "the fighter's options", player, false, name, stem)
+	if optionOf(player, feat) == nil {
+		t.Error("the fighter is not offered the feat that asks to lack the option")
+	}
+}

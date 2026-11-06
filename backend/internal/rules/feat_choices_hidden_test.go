@@ -191,3 +191,43 @@ func TestFeatCardsNameAHiddenFeatOrTraitTheSheetHas(t *testing.T) {
 		t.Errorf("the clause for a trait the sheet does not have = %q", got)
 	}
 }
+
+// An option switched off itself stays unnamed to a fighter who never picked it; one the sheet picked is named.
+func TestFeatCardsNameASwitchedOffOptionOnlyToWhoPickedIt(t *testing.T) {
+	t.Parallel()
+	const option, name = "option:fighting_style:guarda-dupla" + tableSuffix, "Guarda Dupla"
+	visible, _, _ := tableMisc()
+	visible.ChoiceBonuses = nil
+	visible.Key, visible.NamePT = cardVisibleRace, "Gnomo do Vale"
+	visible.Traits = []TableFeature{{
+		Key: cardFeatGrantKey, NamePT: "Talento do vale", DescPT: []string{"Um talento à escolha."},
+		Effects: []Effect{{Type: "choice", Choice: "feat", Count: 1}},
+	}}
+	c := withOverlay(t, Overlay{
+		Revision: 1, Off: []string{option}, Races: []TableRace{visible},
+		Options: []TableOption{{TableEntry: TableEntry{Key: option, NamePT: name}, Set: "fighting_style"}},
+		Feats:   []TableFeat{{TableEntry: TableEntry{Key: cardOpenFeat, NamePT: "Sem guarda"}, DescPT: []string{"Texto."}, Prerequisite: FeatPrerequisite{LacksFeature: option}}},
+	})
+	if !c.Hidden(option) {
+		t.Fatalf("Hidden(%s) = false when switched off", option)
+	}
+	fighter := cardsBuild(nil)
+	if c.SheetHas(fighter, option) {
+		t.Errorf("a fighter who never picked the option has it")
+	}
+	text, _ := cardText(t, c.ForPlayer().Choices(fighter))
+	if strings.Contains(text, name) || !strings.Contains(text, "Pede: "+hiddenAskPT+".") {
+		t.Errorf("the fighter's card:\n%s", text)
+	}
+	if master, _ := cardText(t, c.Choices(fighter)); !strings.Contains(master, "Pede: não ter "+name+".") {
+		t.Errorf("the master's card does not name the option:\n%s", master)
+	}
+	picked := cardsBuild(nil)
+	picked.FeatureChoices = append(picked.FeatureChoices, option)
+	if !c.SheetHas(picked, option) {
+		t.Fatal("the sheet that picked the option does not have it")
+	}
+	if text, _ := cardText(t, c.ForPlayer().Choices(picked)); !strings.Contains(text, "Pede: não ter "+name+".") {
+		t.Errorf("the card of the sheet that picked the option:\n%s", text)
+	}
+}
