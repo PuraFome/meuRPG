@@ -947,8 +947,8 @@ message TableSpell {
   // What the spell leaves on its targets while it lasts, in the shapes of the SRD's lasting effects;
   // unset: the spell leaves nothing. It lasts as the spell does, so the duration cannot be instantaneous.
   // It needs at least one condition or modifier. A spell whose target is only the caster (SELF) has
-  // no save and no attack, so its effect applies to ALL. Every refusal is at a field of the effect
-  // ("spells[0].effect.modifiers[1].value"; see TableSpellEffect).
+  // no save and no attack, so its effect applies to ALL. Every refusal is at the effect or at a field
+  // inside it ("table_spell.effect.modifiers[1].value"; see TableSpellEffect).
   TableSpellEffect effect = 20;
 }
 
@@ -1083,7 +1083,7 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE = 6;
   // Advantage on the ability checks of `abilities`.
   TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE = 7;
-  // Disadvantage on the creature's attack rolls. It takes no other field.
+  // Disadvantage on the creature's attack rolls. It reads no other field.
   TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE = 8;
   // Immunity to the SRD `conditions`.
   TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY = 9;
@@ -1101,7 +1101,7 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_TEMP_HP = 15;
   // Resistance, immunity or vulnerability (`resistance_kind`) to the `damage_types`.
   TABLE_EFFECT_MODIFIER_KIND_RESISTANCE = 16;
-  // Advantage on the creature's attack rolls. It takes no other field.
+  // Advantage on the creature's attack rolls. It reads no other field.
   TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE = 17;
   // Disadvantage on the saving throws of `abilities`.
   TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE = 18;
@@ -1126,7 +1126,7 @@ enum TableResistanceKind {
   TABLE_RESISTANCE_KIND_VULNERABLE = 3;
 }
 
-// TableEffectModifier is one thing a table spell's effect does. Only the fields its `kind` reads are set; a
+// TableEffectModifier is one thing a table spell's effect does. Set the fields its `kind` reads; the others are ignored. A
 // refusal is at the field that is wrong, or at the modifier when it is the kind or the value as a whole.
 message TableEffectModifier {
   // Required.
@@ -1149,7 +1149,7 @@ message TableEffectModifier {
   string skill = 8 [(meurpg.options.v1.max_len) = 64];
   // RESISTANCE only. Unset is RESIST.
   TableResistanceKind resistance_kind = 9;
-  // RESISTANCE only: SRD damage type keys, or "all", or "nonmagical_bps" alone. At least one.
+  // RESISTANCE only: SRD damage type keys, each once, or "all" or "nonmagical_bps" alone. At least one.
   repeated string damage_types = 10 [(meurpg.options.v1.max_len) = 64];
 }
 

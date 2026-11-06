@@ -2357,8 +2357,8 @@ export type TableSpell = Message<"meurpg.rules.v1.TableSpell"> & {
    * What the spell leaves on its targets while it lasts, in the shapes of the SRD's lasting effects;
    * unset: the spell leaves nothing. It lasts as the spell does, so the duration cannot be instantaneous.
    * It needs at least one condition or modifier. A spell whose target is only the caster (SELF) has
-   * no save and no attack, so its effect applies to ALL. Every refusal is at a field of the effect
-   * ("spells[0].effect.modifiers[1].value"; see TableSpellEffect).
+   * no save and no attack, so its effect applies to ALL. Every refusal is at the effect or at a field
+   * inside it ("table_spell.effect.modifiers[1].value"; see TableSpellEffect).
    *
    * @generated from field: meurpg.rules.v1.TableSpellEffect effect = 20;
    */
@@ -2550,7 +2550,7 @@ export const TableSpellEffectSchema: GenMessage<TableSpellEffect> = /*@__PURE__*
   messageDesc(file_meurpg_rules_v1_table_content, 30);
 
 /**
- * TableEffectModifier is one thing a table spell's effect does. Only the fields its `kind` reads are set; a
+ * TableEffectModifier is one thing a table spell's effect does. Set the fields its `kind` reads; the others are ignored. A
  * refusal is at the field that is wrong, or at the modifier when it is the kind or the value as a whole.
  *
  * @generated from message meurpg.rules.v1.TableEffectModifier
@@ -2622,7 +2622,7 @@ export type TableEffectModifier = Message<"meurpg.rules.v1.TableEffectModifier">
   resistanceKind: TableResistanceKind;
 
   /**
-   * RESISTANCE only: SRD damage type keys, or "all", or "nonmagical_bps" alone. At least one.
+   * RESISTANCE only: SRD damage type keys, each once, or "all" or "nonmagical_bps" alone. At least one.
    *
    * @generated from field: repeated string damage_types = 10;
    */
@@ -4659,7 +4659,7 @@ export enum TableEffectModifierKind {
   CHECK_ADVANTAGE = 7,
 
   /**
-   * Disadvantage on the creature's attack rolls. It takes no other field.
+   * Disadvantage on the creature's attack rolls. It reads no other field.
    *
    * @generated from enum value: TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE = 8;
    */
@@ -4722,7 +4722,7 @@ export enum TableEffectModifierKind {
   RESISTANCE = 16,
 
   /**
-   * Advantage on the creature's attack rolls. It takes no other field.
+   * Advantage on the creature's attack rolls. It reads no other field.
    *
    * @generated from enum value: TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE = 17;
    */

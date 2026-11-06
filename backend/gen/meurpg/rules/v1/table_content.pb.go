@@ -559,7 +559,7 @@ const (
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE TableEffectModifierKind = 6
 	// Advantage on the ability checks of `abilities`.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE TableEffectModifierKind = 7
-	// Disadvantage on the creature's attack rolls. It takes no other field.
+	// Disadvantage on the creature's attack rolls. It reads no other field.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE TableEffectModifierKind = 8
 	// Immunity to the SRD `conditions`.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CONDITION_IMMUNITY TableEffectModifierKind = 9
@@ -577,7 +577,7 @@ const (
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_TEMP_HP TableEffectModifierKind = 15
 	// Resistance, immunity or vulnerability (`resistance_kind`) to the `damage_types`.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_RESISTANCE TableEffectModifierKind = 16
-	// Advantage on the creature's attack rolls. It takes no other field.
+	// Advantage on the creature's attack rolls. It reads no other field.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE TableEffectModifierKind = 17
 	// Disadvantage on the saving throws of `abilities`.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE TableEffectModifierKind = 18
@@ -4491,8 +4491,8 @@ type TableSpell struct {
 	// What the spell leaves on its targets while it lasts, in the shapes of the SRD's lasting effects;
 	// unset: the spell leaves nothing. It lasts as the spell does, so the duration cannot be instantaneous.
 	// It needs at least one condition or modifier. A spell whose target is only the caster (SELF) has
-	// no save and no attack, so its effect applies to ALL. Every refusal is at a field of the effect
-	// ("spells[0].effect.modifiers[1].value"; see TableSpellEffect).
+	// no save and no attack, so its effect applies to ALL. Every refusal is at the effect or at a field
+	// inside it ("table_spell.effect.modifiers[1].value"; see TableSpellEffect).
 	Effect        *TableSpellEffect `protobuf:"bytes,20,opt,name=effect,proto3" json:"effect,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4959,7 +4959,7 @@ func (x *TableSpellEffect) GetVisibility() TableEffectAudience {
 	return TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED
 }
 
-// TableEffectModifier is one thing a table spell's effect does. Only the fields its `kind` reads are set; a
+// TableEffectModifier is one thing a table spell's effect does. Set the fields its `kind` reads; the others are ignored. A
 // refusal is at the field that is wrong, or at the modifier when it is the kind or the value as a whole.
 type TableEffectModifier struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -4983,7 +4983,7 @@ type TableEffectModifier struct {
 	Skill string `protobuf:"bytes,8,opt,name=skill,proto3" json:"skill,omitempty"`
 	// RESISTANCE only. Unset is RESIST.
 	ResistanceKind TableResistanceKind `protobuf:"varint,9,opt,name=resistance_kind,json=resistanceKind,proto3,enum=meurpg.rules.v1.TableResistanceKind" json:"resistance_kind,omitempty"`
-	// RESISTANCE only: SRD damage type keys, or "all", or "nonmagical_bps" alone. At least one.
+	// RESISTANCE only: SRD damage type keys, each once, or "all" or "nonmagical_bps" alone. At least one.
 	DamageTypes   []string `protobuf:"bytes,10,rep,name=damage_types,json=damageTypes,proto3" json:"damage_types,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

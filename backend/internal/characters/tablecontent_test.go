@@ -1858,6 +1858,30 @@ func TestTableContentSpellEffectRefusals(t *testing.T) {
 		{"resistance without damage types", func(s *rulesv1.TableSpell) {
 			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("RESISTANCE")}}}
 		}, "table_spell.effect.modifiers[0].damage_types"},
+		{"unknown visibility", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Visibility: 99, Conditions: []string{"condition:poisoned"}}
+		}, "table_spell.effect.visibility"},
+		{"unknown resistance kind", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("RESISTANCE"), ResistanceKind: 99, DamageTypes: []string{"damage-type:fire"}}}}
+		}, "table_spell.effect.modifiers[0].resistance_kind"},
+		{"unknown modifier kind", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: 99}}}
+		}, "table_spell.effect.modifiers[0].kind"},
+		{"unset roll", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("ROLL_BONUS"), Value: 1, AppliesTo: []rulesv1.TableEffectRollKind{0}}}}
+		}, "table_spell.effect.modifiers[0].applies_to"},
+		{"unknown roll", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("ROLL_BONUS"), Value: 1, AppliesTo: []rulesv1.TableEffectRollKind{99}}}}
+		}, "table_spell.effect.modifiers[0].applies_to"},
+		{"unknown ability", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("SAVE_DISADVANTAGE"), Abilities: []string{"luck"}}}}
+		}, "table_spell.effect.modifiers[0].abilities"},
+		{"unknown skill", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("CHECK_BONUS"), Skill: "skill:flying", Value: 2}}}
+		}, "table_spell.effect.modifiers[0].skill"},
+		{"label over 30 characters", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Conditions: []string{"condition:poisoned"}, PlayerLabelPt: strings.Repeat("é", 31)}
+		}, "table_spell.effect.player_label_pt"},
 		{"instantaneous", func(s *rulesv1.TableSpell) {
 			s.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_INSTANTANEOUS}
 		}, "table_spell.effect"},
