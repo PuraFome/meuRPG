@@ -308,7 +308,7 @@ describe('what a player reads of a feat (MR-025)', () => {
     });
     const read = readEntry(e, nameOf);
     expect(read.rows.map((r) => `${r.label}: ${flat(r.value)}`)).toEqual([
-      'Pré-requisito: Força 13, proficiência em Armadura média',
+      'Pré-requisito: Força 13 e proficiência em Armadura média',
       'Aumento de habilidade: +1 em uma habilidade à escolha: Força, Destreza',
     ]);
     expect(read.text).toEqual(['Você prende quem quiser.']);

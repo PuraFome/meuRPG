@@ -28,6 +28,15 @@ import {
   unreadableFeatPaths,
 } from '../../../core/content/feat-draft';
 import {
+  LACK_GROUPS,
+  askedRaces,
+  lackChips,
+  lackOptions,
+  pickableLacks,
+  pickableRaces,
+  raceChips,
+} from '../../../core/content/feat-lookup';
+import {
   ABILITY_FIELDS,
   type AbilityField,
   type FeatureDraft,
@@ -35,6 +44,7 @@ import {
 import { previewRead } from '../../../core/content/preview';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
+import { SearchPick } from '../../../shared/form-fields/search-pick';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
@@ -42,9 +52,18 @@ import { EntryRead } from '../entry-read/entry-read';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
+/** The sizes a feat may ask for, as the server writes them. */
+const SIZE_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Qualquer' },
+  { value: 'Tiny', label: 'Miúdo' },
+  { value: 'Small', label: 'Pequeno' },
+  { value: 'Medium', label: 'Médio' },
+  { value: 'Large', label: 'Grande' },
+];
+
 /**
- * The feat editor (MR-025): a name, a text, what the feat asks of a character (ability scores, a proficiency, spellcasting, a
- * race, a level) and its effects, from the server's menu (the types only a feat has included, such as "Aumento de
+ * The feat editor (MR-025): a name, a text, what the feat asks of a character (ability scores, a proficiency, spellcasting, races, a size, a
+ * feature to lack, a level) and its effects, from the server's menu (the types only a feat has included, such as "Aumento de
  * habilidade"). "Salvar talento" sends the whole entry; whether a character meets the prerequisite is the server's to say.
  */
 @Component({
@@ -58,6 +77,7 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
     FeatureEditor,
     MatIconModule,
     PlayersSwitch,
+    SearchPick,
     SelectField,
     TextField,
   ],
@@ -96,15 +116,44 @@ export class FeatEditor {
     { value: '', label: 'Nenhuma' },
     ...this.catalog().proficiencies,
   ]);
-  protected readonly raceOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'Qualquer' },
-    ...this.catalog().raceChoices,
+  protected readonly sizeOptions: SelectOption[] = SIZE_OPTIONS;
+  protected readonly lackGroups = LACK_GROUPS;
+  private readonly lackAll = computed(() =>
+    lackOptions(this.menu().list('lackable_features'), this.entries(), this.catalog().nameOf),
+  );
+  /** The name of any key the preview or a chip writes: the SRD's features are in the menu, not in the catalog. */
+  private readonly nameOf = computed(() => {
+    const srd = new Map(this.lackAll().map((o) => [o.value, o.label]));
+    const catalog = this.catalog();
+    return (key: string) => srd.get(key) ?? catalog.nameOf(key);
+  });
+  /** The races asked: the single race of an older feat stands in the list as one more chip. */
+  private readonly asked = computed(() => askedRaces(this.draft().raceKey, this.draft().races));
+  protected readonly raceChips = computed(() =>
+    raceChips(this.asked(), this.entries(), this.nameOf()),
+  );
+  protected readonly raceSearch = computed(() =>
+    pickableRaces(this.catalog().raceChoices, this.asked()),
+  );
+  /** The input answers to the field the master's feat uses: its list, or the single race an older feat has. */
+  protected readonly racePath = computed(() =>
+    this.draft().raceKey ? 'table_feat.prerequisite.race_key' : 'table_feat.prerequisite.races',
+  );
+  protected readonly raceIssues = computed(() => [
+    ...this.saver.issues('table_feat.prerequisite.race_key'),
+    ...this.saver.issues('table_feat.prerequisite.races'),
   ]);
+  protected readonly lackSearch = computed(() =>
+    pickableLacks(this.lackAll(), this.entry()?.key ?? '', this.draft().lacksFeatureKey),
+  );
+  protected readonly lackChips = computed(() =>
+    lackChips(this.draft().lacksFeatureKey, this.lackAll(), this.nameOf()),
+  );
   /** What a player reads, written by the same function as the player's page. */
   protected readonly preview = computed(() =>
     previewRead(
       { case: 'tableFeat', value: draftToFeat(this.draft(), this.menu()) },
-      this.catalog().nameOf,
+      this.nameOf(),
     ),
   );
 
@@ -131,6 +180,17 @@ export class FeatEditor {
 
   protected setFeature(feature: FeatureDraft): void {
     this.patch({ feature });
+  }
+
+  /** A race is added to the list; a single race an older feat has moves into it, so the server never gets both. */
+  protected addRace(key: string): void {
+    const d = this.draft();
+    this.patch({ raceKey: '', races: [...askedRaces(d.raceKey, d.races), key] });
+  }
+
+  protected removeRace(key: string): void {
+    const d = this.draft();
+    this.patch(d.raceKey === key ? { raceKey: '' } : { races: d.races.filter((r) => r !== key) });
   }
 
   protected setScore(which: 'minimums' | 'anyOf', field: AbilityField, text: string): void {

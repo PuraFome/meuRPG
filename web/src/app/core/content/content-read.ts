@@ -23,7 +23,7 @@ import {
 import { bonusText } from './feature-draft';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
-import { prerequisiteParts } from './feat-text';
+import { prerequisiteSupport } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { optionPrerequisiteParts, optionSetName } from './option-text';
 
@@ -88,10 +88,8 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
 }
 
 function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
-  const asks = prerequisiteParts(f.prerequisite, nameOf);
-  const rows: ReadRow[] = [
-    { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
-  ];
+  const asks = prerequisiteSupport(f.prerequisite, nameOf);
+  const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));

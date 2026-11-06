@@ -204,6 +204,14 @@ export function menuResponse(): GetEffectMenuResponse {
           { key: 'about:', namePt: 'Sobre…' },
         ],
       },
+      {
+        name: 'lackable_features',
+        values: [
+          { key: 'feat:grappler', namePt: 'Agarrador', hintPt: 'talento do SRD' },
+          { key: 'feature:monk-grip', namePt: 'Agarrar com firmeza', hintPt: 'Monge, nível 6' },
+          { key: 'trait:darkvision', namePt: 'Visão no Escuro', hintPt: 'traço do SRD' },
+        ],
+      },
     ],
     helpers: [
       { call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' },

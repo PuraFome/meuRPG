@@ -49,12 +49,11 @@ export interface FeatDraft {
   proficiencyKey: string;
   spellcasting: boolean;
   raceKey: string;
-  /**
-   * The conditions the editor has no input for yet (any of several races, a size, a feature to lack): kept as the
-   * feat has them, so saving the feat does not drop them.
-   */
+  /** Any of several races or sub-races; empty when the single `raceKey` is set (the server refuses both). */
   races: string[];
+  /** "Tiny", "Small", "Medium" or "Large", as the server writes it; empty is any size. */
   size: string;
+  /** The one feature, trait or feat the character must not have; empty asks nothing. */
   lacksFeatureKey: string;
   /** As typed; empty asks nothing. */
   level: string;
@@ -84,7 +83,7 @@ function scoresOf(s: AbilityScores | undefined): Scores {
   return out;
 }
 
-/** The conditions the form has no input for, as the feat has them. */
+/** The race list, the size and the feature to lack, as the feat has them. */
 function passedThrough(
   p: TableFeat['prerequisite'],
 ): Pick<FeatDraft, 'races' | 'size' | 'lacksFeatureKey'> {
@@ -160,6 +159,9 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
     `${p}.prerequisite.any_of`,
     `${p}.prerequisite.proficiency_key`,
     `${p}.prerequisite.race_key`,
+    `${p}.prerequisite.races`,
+    `${p}.prerequisite.size`,
+    `${p}.prerequisite.lacks_feature_key`,
     `${p}.prerequisite.level`,
     `${p}.prerequisite.spellcasting`,
     `${p}.effects`,
