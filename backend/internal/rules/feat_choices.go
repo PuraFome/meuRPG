@@ -298,10 +298,11 @@ func (c *content) racesPT(keys []string) string {
 	for i, k := range keys {
 		names[i] = c.namePT(k)
 	}
-	if len(names) < 2 {
+	last := len(names) - 1
+	if last <= 0 {
 		return strings.Join(names, "")
 	}
-	return strings.Join(names[:len(names)-1], ", ") + " ou " + names[len(names)-1]
+	return strings.Join(names[:last], ", ") + " ou " + names[last]
 }
 
 // featUnmetPT says in a sentence what a character lacks for one condition of a feat.

@@ -69,7 +69,7 @@ func scoreBonus(d Derived, a Ability) int {
 }
 
 // TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn: the parent's traits minus the replaced one, plus the
-// subrace's own, then the picked options; the replaced trait offers no choice, its option is not honoured,
+// subrace's own, then the picked options; the replaced trait offers no choice, its option is not honored,
 // and the subrace's bonuses stand alone.
 func TestASubraceReplacesTraitsAndBonusesAndKeepsItsOwn(t *testing.T) {
 	t.Parallel()
