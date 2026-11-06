@@ -1,11 +1,14 @@
 package play
 
 import (
+	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
@@ -122,16 +125,160 @@ func TestATableSpellOnSelfOutsideACombat(t *testing.T) {
 	}
 }
 
-// The temporary hit points do not stack: the caster keeps the higher.
-func TestATableSpellTempHPKeepsTheHigherPool(t *testing.T) {
+func (a *armed) setTemp(t *testing.T, c *charactersv1.Character, n int32) {
+	t.Helper()
+	a.correct(t, c, func(r *playv1.AdjustCharacterVitalsRequest) { r.HitPointsTemporary = &n })
+}
+
+func (a *armed) endMarkConcentration(t *testing.T, e *playv1.Encounter) {
+	t.Helper()
+	if _, err := a.ana.combat.EndConcentration(t.Context(), connect.NewRequest(&playv1.EndConcentrationRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Pensantus"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("EndConcentration() error = %v", err)
+	}
+}
+
+// The temporary hit points do not stack: a pool larger than the effect's (or equal to it) is kept, and it stays
+// when the effect ends, because the effect put nothing there.
+func TestATableSpellTempHPKeepsAPoolThatIsNotItsOwn(t *testing.T) {
+	t.Parallel()
+	for _, pool := range []int32{8, 5} {
+		a := newSelfMark(t)
+		e := a.castersFight(t, 1)
+		a.setTemp(t, a.pens, pool)
+		a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+		if _, temp, _ := a.hp(t, "Pensantus"); temp != pool {
+			t.Errorf("pool %d: temporary hit points = %d after the cast, want it kept", pool, temp)
+		}
+		a.endMarkConcentration(t, e)
+		if cardOf(t, byLabel(t, a.get(t, a.master), "Pensantus"), tableMark) != nil {
+			t.Errorf("pool %d: the effect is still on the caster", pool)
+		}
+		if _, temp, _ := a.hp(t, "Pensantus"); temp != pool {
+			t.Errorf("pool %d: temporary hit points = %d after the effect ended, want it kept", pool, temp)
+		}
+	}
+}
+
+// A pool of 3 that the effect raises to 5 goes back to 3 with the undo of the cast.
+func TestATableSpellTempHPUndoRestoresThePreviousPool(t *testing.T) {
 	t.Parallel()
 	a := newSelfMark(t)
 	e := a.castersFight(t, 1)
-	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) { v := int32(8); r.HitPointsTemporary = &v })
+	a.setTemp(t, a.pens, 3)
 	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
-	if _, temp, _ := a.hp(t, "Pensantus"); temp != 8 {
-		t.Errorf("temporary hit points = %d, want 8 (the 5 of the spell do not add)", temp)
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 5 {
+		t.Fatalf("temporary hit points = %d after the cast, want 5", temp)
 	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 3 {
+		t.Errorf("temporary hit points = %d after the undo, want 3", temp)
+	}
+}
+
+// Two effects on one creature: the one that raised the pool last owns it, so the older ending leaves it be.
+func TestATableSpellOlderEffectEndingLeavesTheNewerPool(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		add := func(name string, value int32, concentration bool) string {
+			sp := tableSpell(name, 1, "class:wizard", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF, tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF))
+			sp.Concentration = concentration
+			sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE, UpTo: concentration}
+			sp.Effect = &rulesv1.TableSpellEffect{Modifiers: []*tableMod{{Kind: modTemp, Value: value}}, Visibility: rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC}
+			if _, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: sp}})); err != nil {
+				t.Fatalf("CreateTableEntry(%s) error = %v", name, err)
+			}
+			return "spell:" + strings.ReplaceAll(strings.ToLower(name), " ", "-") + "@mesa"
+		}
+		first, second := add("Marca de Nanquim", 10, true), add("Marca de Cinza", 6, false)
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		book := []string{first, second}
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 5,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, nil, []string{fireBolt}, book, book)
+		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
+			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, nil)
+	})
+	e := a.castersFight(t, 1)
+	a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), nil, noCastRoll)
+	a.setTemp(t, a.pens, 4) // damage took the 10 down to 4
+	a.passTo(t, e, "Toren")
+	a.passTo(t, e, "Pensantus")
+	a.mustCast(t, a.ana, e, "Pensantus", "spell:marca-de-cinza@mesa", slotOfLevel(1), nil, noCastRoll)
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 6 {
+		t.Fatalf("temporary hit points = %d after the second effect, want 6", temp)
+	}
+	a.endMarkConcentration(t, e)
+	if _, temp, _ := a.hp(t, "Pensantus"); temp != 6 {
+		t.Errorf("temporary hit points = %d after the older effect ended, want the newer effect's 6", temp)
+	}
+}
+
+// A creature of the combat (an NPC holds its own hit points): the damage of the cast and the temporary hit points
+// both land, the effect's end takes the pool back, and the undo puts the hit points as they were.
+func TestATableSpellTempHPOnACreature(t *testing.T) {
+	t.Parallel()
+	newA := func() *armed {
+		return newMarkCastersWith(t, func(s *rulesv1.TableSpell) {
+			s.Save = &rulesv1.SpellSave{Ability: rulesv1.Ability_ABILITY_WISDOM, OnSuccess: rulesv1.SpellSaveSuccess_SPELL_SAVE_SUCCESS_NONE}
+			s.Damage = []*rulesv1.TableSpellDamage{{DamageTypeKey: "damage-type:necrotic", Dice: "1d4"}}
+		}, &tableMod{Kind: modTemp, Value: 5})
+	}
+	cast := func(a *armed) (*playv1.Encounter, string) {
+		e := a.castersFight(t, 1)
+		a.h.roller.queue(1) // the goblin fails the save
+		res := a.mustCast(t, a.ana, e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
+		return e, res.GetCast().GetPendingDamages()[0].GetId()
+	}
+	t.Run("grant and end", func(t *testing.T) {
+		t.Parallel()
+		a := newA()
+		e, pending := cast(a)
+		if hp, temp, _ := a.hp(t, "Goblin"); hp != 7 || temp != 5 {
+			t.Fatalf("goblin = %d hit points, %d temporary after the cast; want 7 and 5", hp, temp)
+		}
+		// The damage of the cast comes after the pool and the pool takes it first: 3 of the 5.
+		a.mustDamage(t, a.master, e, pending, typedDamage(3))
+		if hp, temp, _ := a.hp(t, "Goblin"); hp != 7 || temp != 2 {
+			t.Fatalf("goblin = %d hit points, %d temporary after the damage; want 7 and 2", hp, temp)
+		}
+		a.endMarkConcentration(t, e)
+		if hp, temp, _ := a.hp(t, "Goblin"); hp != 7 || temp != 0 {
+			t.Errorf("goblin = %d hit points, %d temporary after the end; want 7 and 0", hp, temp)
+		}
+	})
+	t.Run("undo", func(t *testing.T) {
+		t.Parallel()
+		a := newA()
+		e, _ := cast(a)
+		if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+			t.Fatalf("UndoLastAction() error = %v", err)
+		}
+		if hp, temp, _ := a.hp(t, "Goblin"); hp != 7 || temp != 0 {
+			t.Errorf("goblin = %d hit points, %d temporary after the undo; want 7 and 0", hp, temp)
+		}
+	})
+}
+
+// A stored payload of the damage steps from before the Hidden flag still reads, as not hidden.
+func TestStepGroupsWithoutHiddenStillDecode(t *testing.T) {
+	t.Parallel()
+	groups := readStepGroupsForTest(t, `[{"damage_type":"damage-type:fire","before":6,"mods":[{"Kind":"resistance","Source":"race:tiefling","DamageTypes":["damage-type:fire"]}]}]`)
+	if len(groups) != 1 || len(groups[0].Mods) != 1 || groups[0].Mods[0].Hidden || groups[0].Mods[0].Source != "race:tiefling" {
+		t.Errorf("groups = %+v, want one modifier that is not hidden", groups)
+	}
+}
+
+func readStepGroupsForTest(t *testing.T, raw string) []stepGroup {
+	t.Helper()
+	var out []stepGroup
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	return out
 }
 
 // failed_save reaches only the targets that fail the save; hit only the target the attack hits.
@@ -221,7 +368,24 @@ func TestATableSpellEffectDoesNotLeakItsNumbers(t *testing.T) {
 			t.Errorf("another player reads %v", card)
 		}
 	}
+	// The other player's log and view carry the canaries nowhere.
+	seen := initiativeRe.ReplaceAllString(a.log(t, a.bia, e).String()+combatantsText(a.get(t, a.bia)), "")
+	for _, canary := range []string{"77", "13"} {
+		if m := regexp.MustCompile(`.{0,60}(^|[^0-9A-Za-z-])` + canary + `([^0-9A-Za-z-]|$).{0,20}`).FindString(seen); m != "" {
+			t.Errorf("the other player's log or view carries %s: %q", canary, m)
+		}
+	}
 }
+
+func combatantsText(e *playv1.Encounter) string {
+	var b strings.Builder
+	for _, c := range e.GetCombatants() {
+		b.WriteString(c.String())
+	}
+	return b.String()
+}
+
+var initiativeRe = regexp.MustCompile(`initiative[a-z_]*:-?[0-9]+`)
 
 func hideEffect(t *testing.T, a *armed, e *playv1.Encounter, label string) {
 	t.Helper()

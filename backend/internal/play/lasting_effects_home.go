@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -62,10 +63,11 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 			continue
 		}
 		clock := castClock{seconds: seconds, kind: kind}
-		if err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock); err != nil {
+		row, err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock)
+		if err != nil {
 			return err
 		}
-		if err := s.giveCharacterTempHP(ctx, c, t.ID, mods); err != nil {
+		if err := s.giveCharacterTempHP(ctx, c, row, mods); err != nil {
 			return err
 		}
 		touched = append(touched, t.ID)
@@ -92,14 +94,14 @@ func castClockOf(plan castPlan, def *rules.EffectDef) (*int32, string) {
 }
 
 // putCharacterEffect writes the effect of a spell on a character, replacing the same spell on it.
-func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID, caster string, mods []rules.EffectModifier, clock castClock) error {
+func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID, caster string, mods []rules.EffectModifier, clock castClock) (playdb.CharacterEffect, error) {
 	body, err := json.Marshal(mods)
 	if err != nil {
-		return fmt.Errorf("encode the modifiers: %w", err)
+		return playdb.CharacterEffect{}, fmt.Errorf("encode the modifiers: %w", err)
 	}
 	// The same spell on the same target does not stack (SRD 5.1, Combining Magical Effects).
 	if _, err := c.q.DeleteCharacterEffectsOfSpell(ctx, playdb.DeleteCharacterEffectsOfSpellParams{CharacterID: characterID, SourceKey: plan.spell, GroupID: plan.row.ID}); err != nil {
-		return fmt.Errorf("replace the same spell: %w", err)
+		return playdb.CharacterEffect{}, fmt.Errorf("replace the same spell: %w", err)
 	}
 	p := playdb.InsertCharacterEffectParams{
 		CampaignID: c.session.CampaignID, CharacterID: characterID, SourceCharacterID: &caster, GroupID: plan.row.ID, SourceKey: plan.spell,
@@ -109,10 +111,11 @@ func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan cast
 	if def.Visibility == rules.EffectVisibilityOwner {
 		p.Audience = audienceOwner
 	}
-	if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
-		return fmt.Errorf("put the effect on the character: %w", err)
+	row, err := c.q.InsertCharacterEffect(ctx, p)
+	if err != nil {
+		return playdb.CharacterEffect{}, fmt.Errorf("put the effect on the character: %w", err)
 	}
-	return nil
+	return row, nil
 }
 
 // endCharacterEffectsOfCast takes away the effects a cast left on characters out of a combat
@@ -389,23 +392,49 @@ func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.C
 
 // giveCharacterTempHP gives a character the temporary hit points of a temp_hp modifier of a spell cast outside a
 // combat. They do not stack: it keeps the larger of what it had and what the effect gives (SRD 5.1,
-// "Temporary Hit Points"). They go when the effect does (afterCharacterEffectsGone).
-func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, characterID string, mods []rules.EffectModifier) error {
+// "Temporary Hit Points"). As in a combat (giveEffectTempHP), the row keeps the pool it set, or no temp_hp
+// when it raised nothing, and takes the claim off the character's other effects; they go when the row does
+// (afterCharacterEffectsGone).
+func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, mods []rules.EffectModifier) error {
 	amount := combat.TempHP(mods)
 	if amount <= 0 {
 		return nil
 	}
-	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID)
-	if err != nil || int(v.GetHitPointsTemporary()) >= amount {
-		return nil //nolint:nilerr // a character with no vitals has no hit points to give
+	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, row.CharacterID)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil // no vitals: no hit points to give
 	}
+	if err != nil {
+		return err
+	}
+	if int(v.GetHitPointsTemporary()) >= amount {
+		amount = 0
+	} else if err := s.raiseCharacterTempHP(ctx, c, row, amount); err != nil {
+		return err
+	}
+	return c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: row.ID, Modifiers: claimedTempHP(mods, amount)})
+}
+
+func (s *Service) raiseCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, amount int) error {
 	temp := clamp32(amount, 0, maxTempHitPoints)
-	_, got, err := s.vitalsOf(ctx, c, characterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+	_, got, err := s.vitalsOf(ctx, c, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
 	if err != nil {
 		return err
 	}
 	if got != nil {
 		c.told = append(c.told, got)
+	}
+	others, err := c.q.ListCharacterEffects(ctx, []string{row.CharacterID})
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	for _, o := range others {
+		if o.ID == row.ID || combat.TempHP(modifiersOf(o.Modifiers)) == 0 {
+			continue
+		}
+		if err := c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: o.ID, Modifiers: claimedTempHP(modifiersOf(o.Modifiers), 0)}); err != nil {
+			return fmt.Errorf("drop the claim of an older effect: %w", err)
+		}
 	}
 	return nil
 }

@@ -617,10 +617,11 @@ func (s *Service) afterEffectRowEnded(ctx context.Context, c *combatTx, cs []pla
 		}
 	}
 	// The temporary hit points the spell gave go with it (SRD 5.1, Heroism). Those of temp_hp go only if the
-	// target has no more than the effect gave: more came from somewhere else.
+	// target has no more than the row says it set (giveEffectTempHP): more came from somewhere else.
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID }); i >= 0 {
-		limit := combat.TempHP(def.Modifiers)
-		turn := slices.ContainsFunc(def.Modifiers, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
+		mods := effectModifiers(st)
+		limit := combat.TempHP(mods)
+		turn := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
 		if turn {
 			limit = 0
 		}

@@ -2,7 +2,9 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -93,11 +95,15 @@ func (s *Service) applyLastingSpell(
 }
 
 // giveEffectTempHP gives the temporary hit points a temp_hp modifier of the effect gives each target it
-// took hold of. They do not stack: a target keeps the larger of what it had and what the effect gives (SRD 5.1,
-// "Temporary Hit Points"). The hit keeps the hit points before, for the cast's undo.
+// took hold of. The pool is not added to: the target keeps the larger (SRD 5.1, "Temporary Hit Points").
+// The row then keeps, as its temp_hp, the pool it set, or no temp_hp when it raised nothing, so the end
+// of the effect clears only what this effect put there (never a pool from False Life or another effect),
+// and it reads it from its own row, not from the catalogue. The effect that raised the pool last owns it:
+// the temp_hp claim of the other effects on the target is dropped.
 func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb.Combatant, rows []playdb.CombatantState, targs []playdb.Combatant, made *actionEvent) error {
 	for _, r := range rows {
-		amount := combat.TempHP(effectModifiers(r))
+		mods := effectModifiers(r)
+		amount := combat.TempHP(mods)
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
 		j := slices.IndexFunc(targs, func(o playdb.Combatant) bool { return o.ID == r.CombatantID })
 		if amount <= 0 || i < 0 || j < 0 {
@@ -107,19 +113,54 @@ func (s *Service) giveEffectTempHP(ctx context.Context, c *combatTx, cs []playdb
 		if err != nil {
 			return err
 		}
-		var given castHit
-		v, err := s.giveTempHP(ctx, c, t, amount, &given)
-		if err != nil {
+		if amount <= t.temp {
+			amount = 0 // nothing raised: nothing to take back
+		} else if err := s.takeOverTempHP(ctx, c, t, r, amount, made, j); err != nil {
 			return err
 		}
-		if v != nil {
-			c.told = append(c.told, v)
-		}
-		if made.Hits[j].Restore == nil {
-			made.Hits[j].Restore, made.Hits[j].DeathBefore = given.Restore, given.DeathBefore
+		if err := c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: r.ID, Modifiers: claimedTempHP(mods, amount)}); err != nil {
+			return fmt.Errorf("keep the temporary hit points the effect gave: %w", err)
 		}
 	}
 	return nil
+}
+
+// takeOverTempHP raises the pool of the target to amount and takes the temp_hp claim off its other effects.
+func (s *Service) takeOverTempHP(ctx context.Context, c *combatTx, t fxTarget, r playdb.CombatantState, amount int, made *actionEvent, hit int) error {
+	var given castHit
+	v, err := s.giveTempHP(ctx, c, t, amount, &given)
+	if err != nil {
+		return err
+	}
+	if v != nil {
+		c.told = append(c.told, v)
+	}
+	if made.Hits[hit].Restore == nil {
+		made.Hits[hit].Restore, made.Hits[hit].DeathBefore = given.Restore, given.DeathBefore
+	}
+	all, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	for _, o := range all {
+		if o.CombatantID != r.CombatantID || o.ID == r.ID || combat.TempHP(effectModifiers(o)) == 0 {
+			continue
+		}
+		if err := c.q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: o.ID, Modifiers: claimedTempHP(effectModifiers(o), 0)}); err != nil {
+			return fmt.Errorf("drop the claim of an older effect: %w", err)
+		}
+	}
+	return nil
+}
+
+// claimedTempHP is the modifiers with the temp_hp that is the pool the effect set: none when pool is 0.
+func claimedTempHP(mods []rules.EffectModifier, pool int) []byte {
+	out := slices.DeleteFunc(slices.Clone(mods), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTempHP })
+	if pool > 0 {
+		out = append(out, rules.EffectModifier{Kind: rules.ModifierTempHP, Value: pool})
+	}
+	body, _ := json.Marshal(out) //nolint:errcheck // plain structs
+	return body
 }
 
 // defAtSlot is the effect as a cast levelsAbove slot levels above the spell's own makes it: the
