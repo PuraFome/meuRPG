@@ -44,8 +44,6 @@ const (
 	MaxSlugLength = 60
 	// MaxFeatureOptions is the most options one feature's list has.
 	MaxFeatureOptions = 60
-	// MaxFeatOptions is the most options one feat's list has: the same as a feature's.
-	MaxFeatOptions = MaxFeatureOptions
 
 	maxNameRunes      = 80
 	maxTextParagraphs = 50
@@ -689,6 +687,9 @@ func (c *content) entryOwners(key string, depth int) []string {
 		}
 	case strings.HasPrefix(key, "background-feature:"):
 		return c.backgroundsOf(key)
+	case depth > 0 && c.feats[key] != nil:
+		// The feat that offers an option is its owner: the option is hidden with the feat.
+		return []string{key}
 	}
 	if p := c.optionParents[key]; p != "" {
 		parents = append(parents, p)
@@ -1130,6 +1131,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 	if err := b.checkFeatLacks(); err != nil {
 		return err
 	}
+	b.offerFeatSets()
 	if err := b.compileEffects(); err != nil {
 		return err
 	}

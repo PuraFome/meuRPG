@@ -457,9 +457,34 @@ func (col *collector) add(key string) {
 		return
 	}
 	col.owned[key] = true
+	var picks map[string]string
 	for _, e := range col.x.c.effects[key] {
+		if len(e.picks) > 0 {
+			// An effect of a feat that reads a pick applies with the pick written out, or not at all.
+			if picks == nil {
+				picks = col.x.featPicks(key)
+			}
+			r, ok := col.x.c.resolvePicks(e, picks)
+			if !ok {
+				continue
+			}
+			e = r
+		}
 		col.x.active = append(col.x.active, activeEffect{owner: key, effect: e})
 	}
+}
+
+// featPicks are the picks of the named choices of a feat the sheet applies, by name.
+// The valid ones are also kept in Derived.FeatPicks.
+func (x *deriver) featPicks(owner string) map[string]string {
+	picks := x.c.pickValues(x.b.FeatureChoices, owner)
+	for name, v := range picks {
+		if x.d.FeatPicks == nil {
+			x.d.FeatPicks = map[string]string{}
+		}
+		x.d.FeatPicks[PickChoiceKey(owner, name)] = v
+	}
+	return picks
 }
 
 // feature lists a feature on the sheet.

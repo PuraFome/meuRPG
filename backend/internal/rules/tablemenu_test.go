@@ -148,6 +148,15 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		}
 	}
 
+	// The picks of abilities and damage types are a feat's, as the choice kinds list says.
+	for _, kind := range []string{pickAbility, pickDamageType} {
+		key := "feat:pick-" + strings.ReplaceAll(kind, "_", "-") + tableSuffix
+		o := Overlay{Revision: 1, Feats: []TableFeat{{TableEntry: TableEntry{Key: key, NamePT: "Pick"}, Effects: []Effect{{Type: "choice", Choice: kind, Name: "escolha", Count: 1}}}}}
+		if _, err := srd.With(o); err != nil {
+			t.Errorf("the menu offers the choice %s, which a feat is refused: %v", kind, err)
+		}
+	}
+
 	// Every value of every list is accepted, in the field it goes in.
 	var effects []Effect
 	for _, v := range menuList(t, m, ListModifierTargets) {
@@ -217,10 +226,10 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		effects = append(effects, Effect{Type: "choice", Choice: "tool", Count: 1, From: []string{v.Key}})
 	}
 	for _, kind := range menuList(t, m, ListChoiceKinds) {
-		effects = append(effects, Effect{Type: "choice", Choice: kind.Key, Count: 1, From: nil})
-		if kind.Key == "feature" {
-			effects = effects[:len(effects)-1] // a feature choice needs its options (below)
+		if kind.Key == "feature" || kind.Key == pickAbility || kind.Key == pickDamageType {
+			continue // a feature choice needs its options (below); the picks are a feat's (below)
 		}
+		effects = append(effects, Effect{Type: "choice", Choice: kind.Key, Count: 1, From: nil})
 	}
 	for n := m.ExtraAttackMin; n <= m.ExtraAttackMax; n++ {
 		effects = append(effects, Effect{Type: "extra_attack", Count: n})

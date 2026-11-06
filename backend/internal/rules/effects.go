@@ -93,12 +93,13 @@ type Effect struct {
 	Count  int      `json:"count,omitempty"`
 	From   []string `json:"from,omitempty"`
 
-	// choice, picks of a feat (picks.go). Name names the choice within its entry (a-z,
-	// 0-9 and _), so a later effect of the same entry can write "@name" for what was
-	// picked. Set, on a choice of kind "feature", is an option set (optionSetDefs) whose
-	// every option the choice offers, instead of the From list. The kinds "ability" (From
-	// are ability keys, empty is all six) and "damage_type" (From are "damage-type:" keys,
-	// empty is all of the content) exist for these picks.
+	// choice, picks of a feat (picks.go).
+	// Name names the choice within its entry (a-z, 0-9 and _).
+	// A later effect of the same feat writes "@name" for what was picked.
+	// Set, on a choice of kind "feature", is an option set (optionSetDefs).
+	// The choice then offers every option of the set instead of the From list.
+	// The kinds "ability" and "damage_type" are a feat's alone and need a Name.
+	// Their From lists ability keys or "damage-type:" keys; empty is all of them.
 	Name string `json:"name,omitempty"`
 	Set  string `json:"set,omitempty"`
 
@@ -311,9 +312,9 @@ type Effect struct {
 	entry, stateKey, gateKey string
 	whenStates               map[string]string
 
-	// picks are the names a feat's earlier choices gave, with the kind of each ("ability",
-	// "damage_type"...): the "@name" tokens of this effect (picks.go) refer to them. Set on
-	// the compiled copy, and kept on it for the engine that resolves the tokens.
+	// picks are the names of the feat's earlier choices, with the kind of each.
+	// The "@name" tokens of this effect refer to them (picks.go).
+	// Set on an effect that reads a token, and kept for Derive, which resolves the tokens.
 	picks map[string]string
 }
 
@@ -389,9 +390,9 @@ func (x effectCompiler) compile(src string, kind formula.Kind) (*formula.Program
 	return p, nil
 }
 
-// compileFormula is the content's compileFormula, except that the effect of a feat that
-// has named picks also accepts mod("@name") and score("@name") for them (not memoized:
-// the program depends on the names).
+// compileFormula is the content's compileFormula for an effect that reads picks.
+// Such an effect also accepts mod("@name") and score("@name") for them.
+// It is not memoized: the program depends on the names.
 func (x effectCompiler) compileFormula(src string, kind formula.Kind) (*formula.Program, error) {
 	if len(x.e.picks) == 0 {
 		return x.c.compileFormula(src, kind)
@@ -487,11 +488,20 @@ func (x effectCompiler) compileWhen(src string) (*formula.Program, error) {
 	if src == "" {
 		return nil, nil
 	}
-	p, err := x.c.compileGated(src)
+	p, err := x.compileGated(src)
 	if err != nil {
 		return nil, x.fail("formula %q: %v", src, err)
 	}
 	return p, nil
+}
+
+// compileGated is the content's compileGated for an effect that reads picks.
+// Its condition also accepts mod("@name") and score("@name").
+func (x effectCompiler) compileGated(src string) (*formula.Program, error) {
+	if len(x.e.picks) == 0 {
+		return x.c.compileGated(src)
+	}
+	return x.c.compiler.WithStates().WithPicks(sortedKeys(x.e.picks)).Compile(src, formula.Bool)
 }
 
 // strayFields refuses the fields of one type on an effect of another.
@@ -683,7 +693,7 @@ func (x effectCompiler) modifier() error {
 		return x.fail("value is required")
 	}
 	if !scoreCapFits(e) {
-		return x.fail("a score modifier is an add with a cap above %d, and nothing else has a cap", MaxNormalScore)
+		return x.fail("a score modifier is an add with a cap from %d to %d, and nothing else has a cap", MaxNormalScore, MaxScore)
 	}
 	var err error
 	e.value, err = x.compile(e.Value, formula.Int)
@@ -697,7 +707,7 @@ func scoreCapFits(e *Effect) bool {
 	if isScore != (e.Cap != 0) {
 		return false
 	}
-	return !isScore || (e.Mode == "add" && e.Cap > MaxNormalScore && e.Cap <= MaxScore)
+	return !isScore || (e.Mode == "add" && e.Cap >= MaxNormalScore && e.Cap <= MaxScore)
 }
 
 func (x effectCompiler) proficiency() error {
