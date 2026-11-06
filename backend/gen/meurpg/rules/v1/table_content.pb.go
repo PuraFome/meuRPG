@@ -2461,8 +2461,12 @@ type TableCreature struct {
 	// A name may not repeat a trait or an action of the base, nor another attack.
 	// Names are compared as the traits' names are.
 	Attacks []*TableCreatureAttack `protobuf:"bytes,12,rep,name=attacks,proto3" json:"attacks,omitempty"`
-	// Resistances, immunities and vulnerabilities added to the base's, at most 12 entries.
-	// Combat reads them as it reads an SRD stat block's.
+	// Resistances, immunities and vulnerabilities, at most 12 entries.
+	// Each entry is added to the base's lists.
+	// It never replaces or narrows them.
+	// If the base already resists a type, a qualified entry for that type does not remove the base's resistance.
+	// An entry that breaks a rule below is refused.
+	// Editing the entries changes the creatures already given, which read them from the entry.
 	DamageMods    []*TableCreatureDamageMod `protobuf:"bytes,13,rep,name=damage_mods,json=damageMods,proto3" json:"damage_mods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2585,14 +2589,16 @@ func (x *TableCreature) GetDamageMods() []*TableCreatureDamageMod {
 // TableCreatureDamageMod is one entry of a table creature's resistances, immunities or vulnerabilities.
 type TableCreatureDamageMod struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "resist", "immune" or "vulnerable".
+	// Must be "resist", "immune" or "vulnerable".
+	// Any other value is refused.
 	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	// "damage-type:" keys of the SRD, each once in the entry, at least 1.
 	DamageTypes []string `protobuf:"bytes,2,rep,name=damage_types,json=damageTypes,proto3" json:"damage_types,omitempty"`
-	// "" (all damage of the types), "nonmagical", "nonmagical_unless_silvered" or
-	// "nonmagical_unless_adamantine".
-	// Allowed only for kind "resist" or "immune", and only when every damage type is
-	// bludgeoning, piercing or slashing.
+	// Must be "", "nonmagical", "nonmagical_unless_silvered" or "nonmagical_unless_adamantine".
+	// Empty means none.
+	// Any other value is refused.
+	// A qualifier is allowed only for kind "resist" or "immune".
+	// It is allowed only when every damage type is bludgeoning, piercing or slashing.
 	Qualifier     string `protobuf:"bytes,3,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

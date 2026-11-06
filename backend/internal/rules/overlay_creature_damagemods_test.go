@@ -38,6 +38,8 @@ func TestACreatureDamageModRefusalsNameTheirField(t *testing.T) {
 		mods          []TableCreatureDamageMod
 		field, reason string
 	}{
+		{"a qualifier on a non-SRD type", []TableCreatureDamageMod{dmod("resist", "nonmagical", "spell:light")}, ".damage_mods[0].damage_types[0]", ReasonReference},
+		{"a qualifier on an invalid kind", []TableCreatureDamageMod{dmod("heal", "nonmagical", dmPierce)}, ".damage_mods[0].kind", ReasonValue},
 		{"13 entries", many, ".damage_mods", ReasonLimit},
 		{"an empty kind", []TableCreatureDamageMod{good, dmod("", "", dmFire)}, ".damage_mods[1].kind", ReasonValue},
 		{"an unknown kind", []TableCreatureDamageMod{dmod("heal", "", dmFire)}, ".damage_mods[0].kind", ReasonValue},
@@ -58,6 +60,12 @@ func TestACreatureDamageModRefusalsNameTheirField(t *testing.T) {
 		}
 		if !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool { return strings.HasSuffix(v.Field, tc.field) && v.Reason == tc.reason }) {
 			t.Errorf("%s: refused at %+v, want %s (%s)", tc.name, oe.Violations(), tc.field, tc.reason)
+		}
+		// One bad entry is one violation: a bad kind or bad types do not add a second one on the qualifier.
+		if strings.Contains(tc.name, "qualifier on a non-SRD") || strings.Contains(tc.name, "qualifier on an invalid kind") {
+			if n := len(oe.Violations()); n != 1 {
+				t.Errorf("%s: %d violations %+v, want exactly 1", tc.name, n, oe.Violations())
+			}
 		}
 	}
 	accepted := modCreature(

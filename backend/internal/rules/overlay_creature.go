@@ -195,26 +195,28 @@ func (b *overlayBuilder) checkCreatureDamageMods(c *entryErrors, o *TableCreatur
 	}
 	for i, m := range o.DamageMods {
 		at := fmt.Sprintf(".damage_mods[%d]", i)
-		if !slices.Contains([]string{DamageModResist, DamageModImmune, DamageModVulnerable}, m.Kind) {
+		kindOK := slices.Contains([]string{DamageModResist, DamageModImmune, DamageModVulnerable}, m.Kind)
+		if !kindOK {
 			c.at(o.Key, path, at+".kind", ReasonValue, "the kind is %q, %q or %q", DamageModResist, DamageModImmune, DamageModVulnerable)
 		}
 		if len(m.DamageTypes) == 0 {
 			c.at(o.Key, path, at+".damage_types", ReasonValue, "name at least 1 damage type")
 		}
 		seen := map[string]bool{}
-		physical := true
+		physical, typesOK := true, true
 		for j, t := range m.DamageTypes {
 			ta := fmt.Sprintf("%s.damage_types[%d]", at, j)
 			if dt, found := b.base.named[t]; !found || dt == nil || !strings.HasPrefix(t, "damage-type:") {
 				c.at(o.Key, path, ta, ReasonReference, "damage type %q is not in the SRD", truncateRunes(t, 40))
-				physical = false
+				typesOK = false
 			} else if seen[t] {
 				c.at(o.Key, path, ta, ReasonValue, "the damage type %q is already in this entry", truncateRunes(t, 40))
 			}
 			seen[t] = true
 			physical = physical && slices.Contains(physicalDamageTypes, t)
 		}
-		if m.Qualifier == "" {
+		// The qualifier is judged only against a valid kind and valid damage types, so one bad entry is one violation.
+		if m.Qualifier == "" || !kindOK || !typesOK {
 			continue
 		}
 		switch _, known := damageModQualifiers[m.Qualifier]; {

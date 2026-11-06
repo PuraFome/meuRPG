@@ -87,6 +87,16 @@ type ResolvedCreature struct {
 	Failed               []string
 }
 
+// cloneDamageMods copies the entries and their damage types, as the traits are copied: no resolved value shares
+// a slice with the content.
+func cloneDamageMods(mods []TableCreatureDamageMod) []TableCreatureDamageMod {
+	out := slices.Clone(mods)
+	for i := range out {
+		out[i].DamageTypes = slices.Clone(out[i].DamageTypes)
+	}
+	return out
+}
+
 // ResolvedAttack is a TableCreatureAttack with its to-hit and damage bonus worked out.
 // Key is the key of the attack's action, "<creature key>#<slug of the name>": what a snapshot is matched by.
 type ResolvedAttack struct {
@@ -185,7 +195,7 @@ func (c *Content) ResolvedDerived(r ResolvedCreature) (Derived, *MonsterPlan, bo
 // trusted is r with the identity and the attack shapes of the entry and the numbers of r, clamped.
 func (s *creatureSpec) trusted(r ResolvedCreature) ResolvedCreature {
 	t := ResolvedCreature{
-		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits), DamageMods: s.damageMods,
+		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits), DamageMods: cloneDamageMods(s.damageMods),
 		HitPoints: clampOrZero(r.HitPoints, 1, MaxCreatureHitPoints), ArmorClass: clampOrZero(r.ArmorClass, 1, MaxCreatureArmorClass),
 		DamageBonus:    clamp(r.DamageBonus, MinCreatureDamageBonus, MaxCreatureDamageBonus),
 		HasAttackBonus: r.HasAttackBonus,
@@ -248,7 +258,7 @@ func (f *formulaRun) int(p *formula.Program, field string, lo, hi int) (int, boo
 // attacks have +0 to hit and the static damage bonus.
 func (s *creatureSpec) resolve(env *formula.Env, slot int, ownerless bool) ResolvedCreature {
 	r := ResolvedCreature{
-		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits), DamageMods: s.damageMods,
+		Key: s.key, NamePT: s.namePT, BaseKey: s.baseKey, Traits: slices.Clone(s.traits), DamageMods: cloneDamageMods(s.damageMods),
 		HitPoints: s.hp, ArmorClass: s.ac, DamageBonus: s.damageBonus,
 	}
 	if ownerless {
@@ -394,7 +404,7 @@ func attackAction(a ResolvedAttack) (srd51.MonsterAction, bool) {
 func (b *overlayBuilder) checkCreatureFormulas(c *entryErrors, o *TableCreature, used map[string]bool, path string) *creatureSpec {
 	s := &creatureSpec{
 		key: o.Key, namePT: o.NamePT, baseKey: o.BaseKey,
-		hp: o.HitPoints, ac: o.ArmorClass, damageBonus: o.DamageBonus, traits: slices.Clone(o.Traits), damageMods: slices.Clone(o.DamageMods),
+		hp: o.HitPoints, ac: o.ArmorClass, damageBonus: o.DamageBonus, traits: slices.Clone(o.Traits), damageMods: cloneDamageMods(o.DamageMods),
 	}
 	compile := func(src, attr string) *formula.Program {
 		if src == "" {

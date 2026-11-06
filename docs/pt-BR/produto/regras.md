@@ -643,6 +643,12 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
   Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30), até 10 traços só de texto e até 8 ataques próprios.
+  Ela pode somar resistências, imunidades e vulnerabilidades às da sua base, até 12 entradas.
+  Só uma resistência ou uma imunidade a dano contundente, perfurante ou cortante pode ter qualificador.
+  O qualificador é não mágico, ou não mágico exceto prateado, ou não mágico exceto adamantino.
+  Uma entrada é somada às da base e nunca as substitui nem as reduz.
+  Se a base já resiste a um tipo, uma entrada com qualificador para esse tipo não tira a resistência da base.
+  Editar essas entradas vale para as criaturas já dadas: a entrada as guarda, e a criatura as lê dela.
   Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, e o acerto e o bônus de dano de cada ataque próprio.
   Uma fórmula lê o nível, o nível de classe, o bônus de proficiência, os valores e modificadores de habilidade, a categoria de armadura, o escudo e o deslocamento de caminhada do dono, e o círculo do espaço de magia com que uma magia foi conjurada.
   Uma criatura dada a um personagem não foi feita por um espaço, então esse círculo é 0 nas fórmulas dela.

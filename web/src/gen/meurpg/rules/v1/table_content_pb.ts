@@ -1323,8 +1323,12 @@ export type TableCreature = Message<"meurpg.rules.v1.TableCreature"> & {
   attacks: TableCreatureAttack[];
 
   /**
-   * Resistances, immunities and vulnerabilities added to the base's, at most 12 entries.
-   * Combat reads them as it reads an SRD stat block's.
+   * Resistances, immunities and vulnerabilities, at most 12 entries.
+   * Each entry is added to the base's lists.
+   * It never replaces or narrows them.
+   * If the base already resists a type, a qualified entry for that type does not remove the base's resistance.
+   * An entry that breaks a rule below is refused.
+   * Editing the entries changes the creatures already given, which read them from the entry.
    *
    * @generated from field: repeated meurpg.rules.v1.TableCreatureDamageMod damage_mods = 13;
    */
@@ -1345,7 +1349,8 @@ export const TableCreatureSchema: GenMessage<TableCreature> = /*@__PURE__*/
  */
 export type TableCreatureDamageMod = Message<"meurpg.rules.v1.TableCreatureDamageMod"> & {
   /**
-   * "resist", "immune" or "vulnerable".
+   * Must be "resist", "immune" or "vulnerable".
+   * Any other value is refused.
    *
    * @generated from field: string kind = 1;
    */
@@ -1359,10 +1364,11 @@ export type TableCreatureDamageMod = Message<"meurpg.rules.v1.TableCreatureDamag
   damageTypes: string[];
 
   /**
-   * "" (all damage of the types), "nonmagical", "nonmagical_unless_silvered" or
-   * "nonmagical_unless_adamantine".
-   * Allowed only for kind "resist" or "immune", and only when every damage type is
-   * bludgeoning, piercing or slashing.
+   * Must be "", "nonmagical", "nonmagical_unless_silvered" or "nonmagical_unless_adamantine".
+   * Empty means none.
+   * Any other value is refused.
+   * A qualifier is allowed only for kind "resist" or "immune".
+   * It is allowed only when every damage type is bludgeoning, piercing or slashing.
    *
    * @generated from field: string qualifier = 3;
    */
