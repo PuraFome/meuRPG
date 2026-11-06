@@ -55,28 +55,33 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		if !t.Player {
 			continue // an NPC has no vitals and no combat outside a fight: the master narrates
 		}
-		mods, ok, err := s.modifiersFor(ctx, c, def, t.ID, opts)
+		ok, err := s.castOnCharacter(ctx, c, plan, def, t.ID, castClock{seconds: seconds, kind: kind}, opts)
 		if err != nil {
 			return err
 		}
-		if !ok {
-			continue
+		if ok {
+			touched = append(touched, t.ID)
 		}
-		clock := castClock{seconds: seconds, kind: kind}
-		prior, err := s.priorCharacterClaim(ctx, c, t.ID, plan)
-		if err != nil {
-			return err
-		}
-		row, err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock)
-		if err != nil {
-			return err
-		}
-		if err := s.giveCharacterTempHP(ctx, c, row, mods, prior); err != nil {
-			return err
-		}
-		touched = append(touched, t.ID)
 	}
 	return s.syncArmorBase(ctx, c, touched...)
+}
+
+// castOnCharacter puts the effect of a cast on one character and gives its temporary hit points.
+// It says whether the effect took hold (a base armor class takes none on a creature that wears armor).
+func (s *Service) castOnCharacter(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID string, clock castClock, opts castOpts) (bool, error) {
+	mods, ok, err := s.modifiersFor(ctx, c, def, characterID, opts)
+	if err != nil || !ok {
+		return false, err
+	}
+	prior, err := s.priorCharacterClaim(ctx, c, characterID, plan)
+	if err != nil {
+		return false, err
+	}
+	row, err := s.putCharacterEffect(ctx, c, plan, def, characterID, plan.g.caster.ID, mods, clock)
+	if err != nil {
+		return false, err
+	}
+	return true, s.giveCharacterTempHP(ctx, c, row, mods, prior)
 }
 
 // castClock is the clock a spell cast outside a combat gives its effect: game time, or none.
