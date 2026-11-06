@@ -40,6 +40,8 @@
     "cost": 1
   },
   "target_ac": 1,
+  "floor": 1,
+  "floor_by": "x",
   "reliable_talent": true,
   "dice_count": 1,
   "extra_dice": 1,

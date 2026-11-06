@@ -643,6 +643,7 @@ func (f *attackFlow) rollExtraDice(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	f.extra = extra
 	f.maneuverSpent, err = f.s.spendManeuverDice(ctx, f.c, f.attacker.CharacterID, extra)
 	return total, err
 }

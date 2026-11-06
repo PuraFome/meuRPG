@@ -492,9 +492,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 	if detail {
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
-		if c.InitiativeCountedAs != nil {
-			out.InitiativeTreatedAs, out.InitiativeTreatedAsSource = c.InitiativeCountedAs, c.InitiativeCountedBy
-		}
+		shareInitiativeMinimum(out, c)
 		shareEconomy(out, c)
 		if c.ReactionUsed { // which reaction and when: the owner's and the master's; a joint-turn partner reads reaction_used
 			out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)
@@ -919,5 +917,13 @@ func (s *Service) publishCombatantMoved(ctx context.Context, campaignID string, 
 	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatantMovedMessage(e, c)})
 	if !c.Hidden {
 		s.publishMovedToPlayers(ctx, campaignID, e, c, from)
+	}
+}
+
+// shareInitiativeMinimum puts on the combatant what a minimum made the initiative d20 count as; it goes where the
+// face goes.
+func shareInitiativeMinimum(out *playv1.Combatant, c playdb.Combatant) {
+	if c.InitiativeCountedAs != nil {
+		out.InitiativeTreatedAs, out.InitiativeTreatedAsSource = c.InitiativeCountedAs, c.InitiativeCountedBy
 	}
 }

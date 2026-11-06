@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The payload of the events the actions of a turn write (docs/data/README.md,
@@ -329,6 +330,9 @@ type actionEvent struct {
 	// Both are empty for a check with no floor.
 	Floor   int32  `json:"floor,omitempty"`
 	FloorBy string `json:"floor_by,omitempty"`
+	// ReliableTalent is what an event stored before Floor said of a check made with Reliable Talent: each d20 of 9 or
+	// lower counted as 10. It is read, never written.
+	ReliableTalent bool `json:"reliable_talent,omitempty"`
 
 	// The damage roll: the dice, their faces, the total and the type. Applied
 	// says an NPC took it at once.
@@ -942,4 +946,9 @@ type creatureActionEvent struct {
 }
 
 // floor is the floor the check was rolled with.
-func (e actionEvent) floor() rollFloor { return rollFloor{Value: int(e.Floor), Source: e.FloorBy} }
+func (ev actionEvent) floor() rollFloor {
+	if ev.Floor == 0 && ev.ReliableTalent {
+		return rollFloor{Value: rules.ReliableTalentFloor, Source: reliableTalentSource}
+	}
+	return rollFloor{Value: int(ev.Floor), Source: ev.FloorBy}
+}

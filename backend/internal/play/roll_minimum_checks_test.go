@@ -54,14 +54,6 @@ func wantCheckPlain(t *testing.T, what string, r *playv1.CheckRoll, face int32) 
 	}
 }
 
-// wantDicePlain checks a roll counts the face as it came up and says nothing of a minimum.
-func wantDicePlain(t *testing.T, what string, d *playv1.DiceRoll) {
-	t.Helper()
-	if d.TreatedAs != nil || d.GetTreatedAsSource() != "" {
-		t.Errorf("%s = %v; want no mention of a minimum", what, d)
-	}
-}
-
 // A scene check counts the minimum: Pensantus (Investigation +4) rolls a 3 and the feat counts it 10, 14 against DC 12.
 // The master and the roller read the 3 counted as 10, the other players read no roll, and a retry gives the stored roll.
 func TestASceneCheckCountsTheMinimum(t *testing.T) {
@@ -770,8 +762,14 @@ func TestAOneWithAMinimumOf10OnACheckAsksLuckyAboutTheOneAndCountsTheTen(t *test
 	if err != nil {
 		t.Fatalf("RollSceneCheck() error = %v", err)
 	}
-	wantLuckyOffer(t, "the 1 with a minimum", held.GetLuckyOffer(), []int32{1}, 0)
-	kept, err := answerOutsideLucky(t, dalila, a.campaignID, held.GetLuckyOffer().GetHoldId(), outsideKeepTheOne)
+	if held.GetRoll() != nil {
+		t.Fatalf("the held roll = %v, want the Lucky question alone", held)
+	}
+	offer := a.heldLuckyOffer(t, dalila)
+	if f := offer.GetD20().GetFaces(); len(f) != 1 || f[0] != 1 {
+		t.Fatalf("the Lucky question shows %v, want the 1 as it came up", f)
+	}
+	kept, err := answerOutsideLucky(t, dalila, a.campaignID, offer.GetHoldId(), outsideKeepTheOne)
 	if err != nil {
 		t.Fatalf("AnswerOutsideLucky(keep) error = %v", err)
 	}
@@ -781,12 +779,12 @@ func TestAOneWithAMinimumOf10OnACheckAsksLuckyAboutTheOneAndCountsTheTen(t *test
 		t.Errorf("the kept roll = %v, want nothing rolled again", r)
 	}
 
-	again, err := a.rollSceneTyped(t, dalila, actions[0], newKey(), 1)
+	_, err = a.rollSceneTyped(t, dalila, actions[0], newKey(), 1)
 	if err != nil {
 		t.Fatalf("RollSceneCheck() error = %v", err)
 	}
 	a.h.roller.queue(4)
-	done, err := answerOutsideLucky(t, dalila, a.campaignID, again.GetLuckyOffer().GetHoldId(), outsideRerollInApp)
+	done, err := answerOutsideLucky(t, dalila, a.campaignID, a.heldLuckyOffer(t, dalila).GetHoldId(), outsideRerollInApp)
 	if err != nil {
 		t.Fatalf("AnswerOutsideLucky(reroll) error = %v", err)
 	}
@@ -821,5 +819,33 @@ func TestTheSaveOfATurnedUndeadKeepsWhatTheMinimumDidInTheStoredEvent(t *testing
 	}
 	if got[1].GetD20() != 15 || got[1].TreatedAs != nil || got[1].GetTreatedAsSource() != "" {
 		t.Errorf("the plain turn = %v, want the 15 alone", got[1])
+	}
+}
+
+// heldLuckyOffer is the one Lucky question u has open.
+func (a *armed) heldLuckyOffer(t *testing.T, u *user) *playv1.HeldRollOffer {
+	t.Helper()
+	offers := a.listHeldRolls(t, u)
+	if len(offers) != 1 || offers[0].GetLucky() == nil {
+		t.Fatalf("held rolls = %v, want one Lucky question", offers)
+	}
+	return offers[0]
+}
+
+// An event stored with `reliable_talent` before the floor existed replays the 10 it counted.
+func TestAStoredReliableTalentKeyStillGivesItsFloor(t *testing.T) {
+	t.Parallel()
+	var ev actionEvent
+	if err := json.Unmarshal([]byte(`{"reliable_talent":true}`), &ev); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if got, want := ev.floor(), (rollFloor{Value: 10, Source: "feature:reliable-talent"}); got != want {
+		t.Errorf("floor() = %v, want %v", got, want)
+	}
+	if err := json.Unmarshal([]byte(`{"floor":12,"floor_by":"effect:x"}`), &ev); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if got, want := ev.floor(), (rollFloor{Value: 12, Source: "effect:x"}); got != want {
+		t.Errorf("floor() = %v, want %v", got, want)
 	}
 }

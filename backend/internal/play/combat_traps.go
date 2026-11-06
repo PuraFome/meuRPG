@@ -815,7 +815,7 @@ func (v trapView) saveProto(sv saveRoll, sources []sourceRec, mine bool) *playv1
 		if !sv.Auto {
 			r.Roll = trapD20Roll(sv.D20, sv.D20B, sv.Counted, sv.Bonus, sv.Total)
 			r.Roll.Rerolled = sv.Lucky.proto() // "Sortudo: 1 → 14": the d20 the app rolled again, with the dice
-			sv.countedRoll.mark(r.Roll)
+			sv.mark(r.Roll)
 		}
 		r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names)
 		r.Sources = append(r.Sources, effectDieSources(sv.Extra, v.names, v.master)...)
