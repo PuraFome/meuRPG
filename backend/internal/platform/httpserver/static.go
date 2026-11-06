@@ -185,6 +185,16 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A name in the build's shape (name, hash, extension) that has no file is a file of an older build,
+	// which a tab open across a deploy still asks for. It is a 404: answering index.html with a 200 would hand
+	// the browser HTML where it expects a script, and a cache on the way could keep that HTML under the script's name.
+	// A client route has no hash in its last segment, so it still gets the app shell below.
+	if hashedName.MatchString(path.Base(cleanPath)) {
+		w.Header().Set("Cache-Control", "no-store")
+		http.NotFound(w, r)
+		return
+	}
+
 	// Either "/" itself, or a client-side route with no matching file
 	// (e.g. a future "/campaigns/42"): serve the app shell and let the
 	// Angular router take over.
