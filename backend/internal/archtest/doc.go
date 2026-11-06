@@ -8,6 +8,6 @@
 // pg_errors_test.go allows no database-error code read by hand in identity and authz.
 // query_order_test.go allows no :many query without an ORDER BY in its outermost statement.
 // The SQL tests read the query files that backend/sqlc.yaml lists.
-// The tests read the source with go/parser, so they need no database and no build of the other packages.
+// The tests read the Go source with go/parser and the SQL files as text, so they need no database and no build of the other packages.
 // The package has no production code.
 package archtest

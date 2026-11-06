@@ -79,7 +79,7 @@ A module handles its own special cases first (the row that vanished between the 
 `net/http` recovers only from a panic in the handler's own goroutine; a goroutine the server starts that panics takes down the process and every live session with it.
 
 - **Connect handlers** have `connect.WithRecover` right after `rpclog`: the panic becomes `internal` with a fixed sentence, the stack goes to the log (`rpc handler panicked`, with the request id, user and campaign), and `rpclog` still writes the `rpc` line with `code=internal`.
-- **Background goroutines** (the image generation request, the live-hint timers) start with `safego.Go(logger, "...", fn)` (`platform/safego`).
+- **Background goroutines** (the task runner, the HTTP server, the export zip writer) start with `safego.Go(logger, "...", fn)` (`platform/safego`).
   Timer callbacks (`time.AfterFunc`) and tasks that clean up after a panic defer `safego.Recover` themselves.
   The work that broke is lost, the stack goes to the log and the server keeps going.
 

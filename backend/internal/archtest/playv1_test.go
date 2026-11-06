@@ -19,7 +19,7 @@ import (
 var playv1Exceptions string
 
 // playv1Paths are the import paths of the generated play API, under the module path.
-// The Connect package is checked too, and no file outside the allowed places imports it today.
+// The Connect package is checked too, and only the allowed places import it.
 var playv1Paths = []string{"gen/meurpg/play/v1", "gen/meurpg/play/v1/playv1connect"}
 
 // playv1Allowed are the places a non-test file may import playv1.

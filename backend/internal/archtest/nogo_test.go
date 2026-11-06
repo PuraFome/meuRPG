@@ -13,6 +13,7 @@ import (
 )
 
 // goStatementExceptions lists the functions that may still start a bare goroutine.
+// An entry names the function, not each go statement in it, so a second one in a listed function is not seen.
 // It can only shrink.
 //
 //go:embed go_statement_exceptions.txt
@@ -46,7 +47,7 @@ func TestNoBareGoStatements(t *testing.T) {
 			for _, k := range keys {
 				found[k] = fmt.Sprintf("%s starts a bare goroutine: use safego.Go(logger, \"what\", fn, onPanic...) "+
 					"(internal/platform/safego), because a panic in a bare goroutine ends the process "+
-					"(or, for test support that cannot import it, list the function in go_statement_exceptions.txt)", k)
+					"(or, when the goroutine recovers inline, list the function in go_statement_exceptions.txt)", k)
 			}
 			return nil
 		})

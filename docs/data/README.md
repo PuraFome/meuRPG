@@ -11,7 +11,7 @@ See also [Privacy](../privacy.md#the-legacy-app-database).
 
 Each table belongs to one module, which is the only code that writes it.
 A module reads another module's data through that module's interface, never by joining its tables (see [Architecture](../architecture/README.md)).
-The `play` module's tables are split over three pages because there are 35 of them.
+The `play` module's tables are split over three pages because there are many of them.
 `TestQueriesTouchOnlyOwnTables` reads the table map of this section, so a new table must be added to its module's row.
 
 | Module | Page | Tables |

@@ -81,7 +81,7 @@ func hasOuterOrderBy(sql string) bool {
 }
 
 // stripCommentsAndStrings blanks "-- line" comments, "/* block */" comments
-// and 'string literals' (” is an escaped quote) in one pass, so an apostrophe
+// and 'string literals' (two quotes in a row are an escaped quote) in one pass, so an apostrophe
 // in a comment or "--" in a string cannot confuse the other.
 func stripCommentsAndStrings(sql string) string {
 	var b strings.Builder
