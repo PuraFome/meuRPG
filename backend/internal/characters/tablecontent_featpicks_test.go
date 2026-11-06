@@ -1,10 +1,11 @@
 package characters
 
 import (
-	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 	"slices"
 	"testing"
+
+	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"

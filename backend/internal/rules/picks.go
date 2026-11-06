@@ -377,8 +377,10 @@ func (c *content) recompilePick(e *Effect, f pickField) bool {
 	key := programKey{src, (*prog).Kind(), gated, false}
 	if c.pickPrograms != nil {
 		if p, ok := c.pickPrograms.Load(key); ok {
-			*prog = p.(*formula.Program)
-			return true
+			if cached, isProgram := p.(*formula.Program); isProgram {
+				*prog = cached
+				return true
+			}
 		}
 	}
 	compiler := c.compiler

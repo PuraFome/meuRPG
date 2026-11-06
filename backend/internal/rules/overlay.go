@@ -695,9 +695,14 @@ func (c *content) entryOwners(key string, depth int) []string {
 	if p := c.optionParents[key]; p != "" {
 		parents = append(parents, p)
 	}
+	return c.ownersOfAll(parents, depth+1)
+}
+
+// ownersOfAll are the owners of every key in parents, each once.
+func (c *content) ownersOfAll(parents []string, depth int) []string {
 	var out []string
 	for _, p := range parents {
-		for _, o := range c.entryOwners(p, depth+1) {
+		for _, o := range c.entryOwners(p, depth) {
 			if !slices.Contains(out, o) {
 				out = append(out, o)
 			}

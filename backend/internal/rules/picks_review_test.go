@@ -59,9 +59,11 @@ func TestASetChoiceCannotAskForMoreThanTheSet(t *testing.T) {
 func TestAFeatureWithOptionsAndASetChoice(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
-	f := TableFeat{TableEntry: TableEntry{Key: "feat:misto" + tableSuffix, NamePT: "Misto"}, DescPT: []string{"Texto."},
+	f := TableFeat{
+		TableEntry: TableEntry{Key: "feat:misto" + tableSuffix, NamePT: "Misto"}, DescPT: []string{"Texto."},
 		Options: []TableFeature{{Key: "feature:o" + tableSuffix, NamePT: "O", DescPT: []string{"x"}}},
-		Effects: []Effect{{Type: "choice", Choice: "feature", Count: 1, Set: "fighting_style"}}}
+		Effects: []Effect{{Type: "choice", Choice: "feature", Count: 1, Set: "fighting_style"}},
+	}
 	_, err := srd.With(Overlay{Revision: 1, Feats: []TableFeat{f}})
 	if err == nil {
 		t.Fatal("a feat with options and only a set choice was accepted")
