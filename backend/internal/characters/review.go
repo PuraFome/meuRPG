@@ -393,11 +393,11 @@ type ReviewHost interface {
 	PublishEncounterChanged(ctx context.Context, campaignID, encounterID string)
 }
 
-// EquipKind, EquipChange and the kinds are package link's, which play shares.
-type (
-	EquipKind   = link.EquipKind
-	EquipChange = link.EquipChange
-)
+// EquipKind is the kind of gear a change moves; it is package link's type, which play shares.
+type EquipKind = link.EquipKind
+
+// EquipChange is one change of gear; it is package link's type, which play shares.
+type EquipChange = link.EquipChange
 
 // The kinds of gear SetEquipped moves.
 const (

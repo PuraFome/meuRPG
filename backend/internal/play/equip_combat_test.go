@@ -243,7 +243,7 @@ func TestEquipMageArmorWithStowedArmorInACombat(t *testing.T) {
 func TestEquipBumpsTheEncounterRevisionAndTellsTheStream(t *testing.T) {
 	t.Parallel()
 	a, e := equipFight(t)
-	e = a.passTo(t, e, "Reator")
+	a.passTo(t, e, "Reator")
 	master, err := a.h.svc.hub.Subscribe(a.campaignID, live.Subscriber{UserID: a.master.id, Master: true})
 	if err != nil {
 		t.Fatal(err)
