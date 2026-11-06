@@ -153,6 +153,9 @@ type Build struct {
 	// attack or property. Empty means all are equipped; the field is left out
 	// of a Build's JSON when empty.
 	Carried []string `json:",omitempty"`
+	// WeaponMarks say which of the Weapons is silvered, adamantine or magical (at most
+	// MaxWeapons, one per weapon, each setting something).
+	WeaponMarks []WeaponMark
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
 	// character knows (the wizard's spellbook, the sorcerer's known
 	// spells). SpellsPrepared are the prepared ones, for classes that
@@ -940,6 +943,14 @@ type PactMagic struct {
 	Slots     int
 }
 
+// WeaponMark says a carried weapon is silvered, adamantine or magical (the sheet's
+// full.weapon_marks). A valid mark names a weapon of Build.Weapons and sets at least
+// one of the three.
+type WeaponMark struct {
+	Weapon                        string
+	Silvered, Adamantine, Magical bool
+}
+
 // Attack is one line of the sheet's attacks: a weapon or an attack cantrip.
 type Attack struct {
 	// Key is the weapon or spell key; Name is the SRD's English name and
@@ -1005,9 +1016,16 @@ type Attack struct {
 	AbilityMod int
 	// Magical says the attack's damage is magical, for the resistances and
 	// immunities to nonmagical attacks: true for a spell, and for a creature's
-	// weapon attack when its stat block has the trait "Magic Weapons". A weapon
-	// of a character is not, nor is the unarmed strike.
+	// weapon attack when its stat block has the trait "Magic Weapons"; for a weapon of
+	// a character, when the sheet's mark or a weapon_rule says so (weaponMarks), and for
+	// the unarmed strike, when a weapon_rule says so or it has Ki-Empowered Strikes.
 	Magical bool `json:",omitempty"`
+	// Silvered and Adamantine say the attack's weapon is of that material, for the
+	// resistances and immunities to nonmagical attacks that exempt it. A character's
+	// weapon has them from the sheet's mark or a weapon_rule (weaponMarks), and the unarmed
+	// strike from a weapon_rule; a creature's attack has neither.
+	Silvered   bool `json:",omitempty"`
+	Adamantine bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

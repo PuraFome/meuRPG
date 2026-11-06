@@ -291,7 +291,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo. Vale também para as armas da característica.", Fields: []MenuField{
+	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo, ou a marca de mágica, de prata ou de adamantina nas armas que o filtro escolhe, o golpe desarmado incluído (vale contra as resistências a ataques não mágicos). Vale também para as armas da característica, menos as marcas.", Fields: []MenuField{
 		{Name: "weapon", Required: true, Kind: "choice", List: ListWeaponFilters},
 		{Name: "weapon_name", Kind: "text"},
 		{Name: "attack_ability", Kind: "choice", List: ListAbilities, AlwaysShown: true},
@@ -299,6 +299,9 @@ var menuTypes = []MenuType{
 		{Name: "attack_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
 		{Name: "damage_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
 		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
+		{Name: "magical", Kind: "yes_no", AlwaysShown: true},
+		{Name: "silvered", Kind: "yes_no", AlwaysShown: true},
+		{Name: "adamantine", Kind: "yes_no", AlwaysShown: true},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
@@ -480,7 +483,7 @@ var (
 		WeaponMelee:   {"Corpo a corpo", "As armas de corpo a corpo, arremessadas ou não."},
 		WeaponRanged:  {"À distância", "As armas de disparo e de arremesso à distância."},
 		WeaponFinesse: {"Com acuidade", "As armas com a propriedade acuidade."},
-		WeaponMagic:   {"Mágica", "As armas que a ficha marca como mágicas, como o golpe desarmado de quem tem Golpes Fortalecidos por Ki."},
+		WeaponMagic:   {"Mágica", "As armas que a própria ficha marca como mágicas (a marca da arma na ficha, ou o golpe desarmado de quem tem Golpes Fortalecidos por Ki). Não lê as marcas de outras regras de arma nem o equipamento."},
 		WeaponNamed:   {"Uma arma pelo nome", "A arma cujo nome em português é o escrito no campo ao lado, sem diferença de maiúsculas ou acentos."},
 	}
 )

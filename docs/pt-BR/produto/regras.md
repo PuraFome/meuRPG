@@ -58,6 +58,7 @@ O jogador edita a própria ficha até o início da primeira sessão da campanha.
 Depois disso, só o mestre e o sistema a alteram.
 Um personagem criado depois (o substituto de um morto, ou o de quem entrou tarde) continua editável até o início da próxima sessão.
 Os números que o sistema calcula nunca são editáveis.
+As marcas de uma arma (mágica, prateada, adamantina) seguem a mesma regra das armas que a ficha leva: o dono as define enquanto a ficha é editável, o mestre sempre, e o dono não pode depois da trava.
 
 - **A história.** A história do personagem (personalidade, aparência, passado, aliados) tem a própria trava: depois que a ficha trava, o jogador só a edita quando o mestre a libera, personagem por personagem, até o início da próxima sessão ou até o mestre travá-la de novo.
 - **O que o mestre vê primeiro.** Antes de iniciar uma sessão, o mestre é avisado de quais fichas ainda têm perícias ou magias a escolher, e confirma. A trava não espera por elas.
@@ -98,7 +99,16 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
 - **Quem lê o quê.** O jogador lê só os números do próprio personagem. O mestre lê os de todos.
 - **Os valores duram** de uma sessão para a outra. Os máximos vêm da ficha, e um personagem cujos PV nunca foram definidos está com PV cheios, qualquer que passe a ser o máximo.
 - **Dano.** Os PV temporários vão primeiro, e os PV param em 0 (RN-03).
-  - Num NPC, num monstro ou numa criatura de um personagem, o dano vale na hora, depois das resistências, vulnerabilidades e imunidades da criatura do SRD dele (imunidade zera, resistência divide por dois arredondando para baixo, vulnerabilidade dobra). Uma resistência ou imunidade "a ataques não mágicos" vale para um ataque que não é mágico, e não para uma magia, para o ataque de uma criatura cujas armas são mágicas, nem para dano que não é ataque (uma armadilha, uma zona, um efeito de queimadura). Uma arma de personagem não é mágica, nem um golpe desarmado, exceto o do monge a partir do nível 6 (Golpes de Chi, também como monge multiclasse): ele conta como mágico para essas resistências e imunidades e para mais nada, sem bônus de acerto ou de dano, e não vale para uma arma de monge. Uma entrada que cita também um material (prata, adamantina) não é aplicada, porque um ataque não carrega material: o mestre corrige os PV à mão.
+  - Num NPC, num monstro ou numa criatura de um personagem, o dano vale na hora, depois das resistências, vulnerabilidades e imunidades da criatura do SRD dele (imunidade zera, resistência divide por dois arredondando para baixo, vulnerabilidade dobra).
+    Uma resistência ou imunidade "a ataques não mágicos" vale para um ataque que não é mágico.
+    Ela não vale para uma magia, para o ataque de uma criatura cujas armas são mágicas, nem para dano que não é ataque (uma armadilha, uma zona, um efeito de queimadura).
+    A arma de um personagem não é mágica, a menos que a ficha ou uma regra de arma a marque como mágica, prateada ou adamantina.
+    Os três qualificadores de um bloco de estatísticas (não mágico, exceto prateado, exceto adamantino) são aplicados pelo material da arma.
+    Só o golpe desarmado dos Golpes de Chi (monge a partir do nível 6, também como monge multiclasse) é mágico sem marca.
+    Essa magia vale para essas resistências e imunidades e para mais nada: sem bônus de acerto ou de dano, e não vale para uma arma de monge.
+    As marcas são escritas pela API da ficha e pelo efeito de regra de arma de uma característica da mesa, que marca as armas que o filtro escolhe e o golpe desarmado.
+    As marcas são definidas pela API da ficha e pelas regras de arma; o formulário da ficha não as edita.
+    O registro do mestre diz o motivo ("Resistência a perfurante de ataque não mágico nem prateado"). O jogador vê só o dano.
   - Num personagem de jogador, o dano rolado **espera o mestre**, que o aplica ("Aplicar 5 de dano") ou o descarta ("Não aplicar"). O mestre pode aplicar um valor diferente (uma resistência que o app não aplica). O registro guarda os dois números para o mestre, e o jogador vê só o que sofreu.
   - O que a própria ficha do personagem protege é aplicado ao dano rolado como passos que o mestre lê, antes de o mestre aplicá-lo: uma raça, um talento ou uma característica da mesa com resistência, imunidade ou vulnerabilidade a tipos de dano (ou, "de ataques não mágicos", a contundente, perfurante e cortante), e a fúria do bárbaro. A imunidade leva a 0, depois a resistência divide por dois (arredondando para baixo), depois a vulnerabilidade dobra; a mesma proteção de duas fontes conta uma vez só. Um ataque de uma ficha ou de um bloco de estatísticas que não é marcado como mágico conta como não mágico.
   - Uma ficha imune a uma condição não recebe nenhum dos efeitos que a dão (de uma magia, de um adicional, de uma armadilha, uma agarrada ou um empurrão que derruba); a mudança das condições feita pelo próprio mestre não é bloqueada.
@@ -423,7 +433,7 @@ O mestre vê tudo.
 
 - Um NPC escondido não vem de jeito nenhum: nem na ordem, nem no mapa, e o turno dele aparece como "Vez do mestre".
 - O registro do combate omite toda linha que envolva um combatente escondido, os dados de um NPC e os PV dele.
-- As resistências, vulnerabilidades e imunidades de uma criatura (inclusive as a ataques não mágicos, listadas como "Resistência a perfurante de ataque não mágico") são do mestre. O dano que um jogador lê num NPC é o dano como rolado, então nem um total reduzido à metade nem uma linha faltando diz a que o alvo resiste.
+- As resistências, vulnerabilidades e imunidades de uma criatura (inclusive as a ataques não mágicos, listadas como "Resistência a perfurante de ataque não mágico" ou "... de ataque não mágico nem prateado") são do mestre. O dano que um jogador lê num NPC é o dano como rolado, então nem um total reduzido à metade nem uma linha faltando diz a que o alvo resiste.
 - O mesmo vale para o dano num personagem depois que o mestre o aplica (de magia, de ação de criatura ou de efeito): o dono do alvo e o mestre leem o valor sofrido, os demais jogadores leem o valor como rolado, então a linha nunca diz a que o alvo resiste.
 - A tela do jogador lista só os motivos de vantagem ou desvantagem que ele pode ver. O dado extra da Destruição Divina contra um morto-vivo ou ínfero aparece como "+1d8" sem motivo.
 - A cobertura chega ao jogador só como um grau e uma origem ("Meia cobertura, do mapa"), nunca como uma classe de armadura ou "+2 sobre 14". Um alvo que o jogador não vê não está na lista.
@@ -651,6 +661,12 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**
   Uma criatura da mesa é uma criatura do SRD com outros pontos de vida (1 a 9.999), classe de armadura (1 a 40), um bônus de dano em cada um dos seus ataques (-10 a 30), até 10 traços só de texto e até 8 ataques próprios.
+  Ela pode somar resistências, imunidades e vulnerabilidades às da sua base, até 12 entradas.
+  Só uma resistência ou uma imunidade a dano contundente, perfurante ou cortante pode ter qualificador.
+  O qualificador é não mágico, ou não mágico exceto prateado, ou não mágico exceto adamantino.
+  Uma entrada é somada às da base e nunca as substitui nem as reduz.
+  Se a base já resiste a um tipo, uma entrada com qualificador para esse tipo não tira a resistência da base.
+  Editar essas entradas vale para as criaturas já dadas: a entrada as guarda, e a criatura as lê dela.
   Os números dela podem ser fórmulas do dono: pontos de vida, classe de armadura, o bônus de dano, o bônus de ataque, e o acerto e o bônus de dano de cada ataque próprio.
   Uma fórmula lê o nível, o nível de classe, o bônus de proficiência, os valores e modificadores de habilidade, a categoria de armadura, o escudo e o deslocamento de caminhada do dono, e o círculo do espaço de magia com que uma magia foi conjurada.
   Uma criatura dada a um personagem não foi feita por um espaço, então esse círculo é 0 nas fórmulas dela.

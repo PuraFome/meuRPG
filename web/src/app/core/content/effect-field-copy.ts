@@ -37,6 +37,9 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   attack_bonus: 'Bônus no ataque',
   damage_bonus: 'Bônus no dano',
   reach_ft: 'Alcance corpo a corpo',
+  magical: 'Arma mágica',
+  silvered: 'Arma de prata',
+  adamantine: 'Arma de adamantina',
   attack_name: 'Nome do ataque',
   damage_dice: 'Dados de dano',
   cost: 'Custo (usos)',
@@ -79,6 +82,12 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   attack_bonus: 'De -5 a 10, somado à jogada de ataque.',
   damage_bonus: 'De -5 a 10, somado ao dano.',
   reach_ft: 'Em metros, de 1,5 em 1,5; só para armas de corpo a corpo.',
+  magical:
+    'Os ataques das armas que o filtro escolhe contam como mágicos contra as resistências a ataques não mágicos.',
+  silvered:
+    'Os ataques das armas que o filtro escolhe contam como de prata contra as resistências a ataques não mágicos.',
+  adamantine:
+    'Os ataques das armas que o filtro escolhe contam como de adamantina contra as resistências a ataques não mágicos.',
   attack_name: 'O nome do ataque na lista de ataques da ficha.',
   damage_dice: 'Dados simples, como 1d6 ou 2d8 (d4, d6, d8, d10 ou d12; até 10 dados).',
   cost: 'Quantos usos cada vez gasta; vazio é 1. Não passa do máximo do recurso.',

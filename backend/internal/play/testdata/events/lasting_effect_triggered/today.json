@@ -835,7 +835,9 @@
       ],
       "origin": {
         "attack": true,
-        "magical": true
+        "magical": true,
+        "silvered": true,
+        "adamantine": true
       }
     }
   ],

@@ -232,6 +232,7 @@ func (x effectCompiler) strayStateAndWeapon() error {
 			e.WeaponName != "" || e.AttackAbility != "" || e.DamageAbility != "" || e.AttackBonus != 0 || e.DamageBonus != 0,
 			"weapon_name, attack_ability, damage_ability, attack_bonus and damage_bonus belong to weapon_rule",
 		},
+		{[]string{"weapon_rule"}, e.Magical || e.Silvered || e.Adamantine, "magical, silvered and adamantine belong to weapon_rule"},
 		{[]string{"pseudo_weapon"}, e.AttackName != "" || e.DamageDice != "", "attack_name and damage_dice belong to pseudo_weapon"},
 		{[]string{"weapon_rule", "pseudo_weapon"}, e.ReachFt != 0, "reach_ft belongs to weapon_rule and pseudo_weapon"},
 	}
