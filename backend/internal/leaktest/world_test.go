@@ -721,6 +721,15 @@ func (w *world) buildTableContent() {
 	w.secrets.number("off-creature-ac", offCreatureAC, "armor_class")
 	w.secrets.allowNeedle(strconv.Itoa(offCreatureHP), w.caio)
 	w.secrets.allowNeedle(strconv.Itoa(offCreatureAC), w.caio)
+	// A spell the rules refuse after it was stored (a level above 9): it is left out of the content,
+	// and only the master reads that in left_out. The players still list the stored entry, as the table's.
+	leftOut := create("spell-left-out", spell(w.ana, w.caio), w.ana, w.caio)
+	if _, err := w.pool.Exec(ctx, `UPDATE campaign_content SET data = jsonb_set(data, '{level}', '12') WHERE campaign_id = $1 AND content_key = $2`, w.campaign, leftOut.GetKey()); err != nil {
+		w.t.Fatalf("refuse the stored spell: %v", err)
+	}
+	if _, err := w.pool.Exec(ctx, `UPDATE campaign_content_state SET revision = revision + 1 WHERE campaign_id = $1`, w.campaign); err != nil {
+		w.t.Fatalf("bump the content revision: %v", err)
+	}
 	// and an option of the SRD, switched off in "Opções para os jogadores"
 	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{
 		{Key: offRace.GetKey(), Off: true}, {Key: offFeat.GetKey(), Off: true}, {Key: offCreature.GetKey(), Off: true}, {Key: "race:tiefling", Off: true},

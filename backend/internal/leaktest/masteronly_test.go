@@ -93,6 +93,9 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.characters.v1.CharacterSummary", "claim_expires_at", "when a claim link ends is the master's", nil},
 	{"meurpg.characters.v1.CharacterSummary", "claimed_by_display_name", "who took a character through a link is the master's", nil},
 
+	// --- rules: the table's content
+	{"meurpg.rules.v1.ListTableEntriesResponse", "left_out", "the entries the rules refuse are left out of the content, and only the master reads which", nil},
+
 	// --- play: the open scene and the stage
 	{"meurpg.play.v1.OpenSceneInfo", "hooks", "the master's private text (RN-20)", nil},
 	{"meurpg.play.v1.OpenSceneInfo", "clues", "the clues are in the player's notes, not on the scene", nil},

@@ -252,7 +252,7 @@ func (s *Service) closeTurnPart(ctx context.Context, c *combatTx, current playdb
 	if err := s.afterTurnPart(ctx, c, current); err != nil {
 		return err
 	}
-	// A zone that catches who ends its turn inside (Grease) opens its saving throw here; the effects' own open right after, so both questions are open together.
+	// A zone that catches who ends its turn inside (Grease, Wall of Fire) opens its saving throw or its damage here; the effects' own open right after, so both questions are open together.
 	if err := s.zonesAtTurnEnd(ctx, c, current); err != nil {
 		return err
 	}

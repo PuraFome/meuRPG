@@ -1648,6 +1648,9 @@ const (
 	// A spell, or a cantrip that makes an attack roll: the character wears armor or a shield
 	// it is not proficient with, and cannot cast spells (SRD 5.1, "Armor").
 	DisabledReasonCode_DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT DisabledReasonCode = 112
+	// A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
+	// size and damaging side (CastSpellRequest.wall), which the screen does not send.
+	DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED DisabledReasonCode = 113
 )
 
 // Enum value maps for DisabledReasonCode.
@@ -1676,6 +1679,7 @@ var (
 		101: "DISABLED_REASON_CODE_EFFECT_LETHARGY",
 		102: "DISABLED_REASON_CODE_SPEED_ZERO",
 		112: "DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT",
+		113: "DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED",
 	}
 	DisabledReasonCode_value = map[string]int32{
 		"DISABLED_REASON_CODE_UNSPECIFIED":              0,
@@ -1701,6 +1705,7 @@ var (
 		"DISABLED_REASON_CODE_EFFECT_LETHARGY":          101,
 		"DISABLED_REASON_CODE_SPEED_ZERO":               102,
 		"DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT":     112,
+		"DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED":  113,
 	}
 )
 
@@ -13558,7 +13563,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14CREATURE_SIZE_MEDIUM\x10\x03\x12\x17\n" +
 	"\x13CREATURE_SIZE_LARGE\x10\x04\x12\x16\n" +
 	"\x12CREATURE_SIZE_HUGE\x10\x05\x12\x1c\n" +
-	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xd1\a\n" +
+	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\x83\b\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -13583,7 +13588,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +
 	"$DISABLED_REASON_CODE_EFFECT_LETHARGY\x10e\x12#\n" +
 	"\x1fDISABLED_REASON_CODE_SPEED_ZERO\x10f\x12-\n" +
-	")DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT\x10p*\xbd\x01\n" +
+	")DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT\x10p\x120\n" +
+	",DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED\x10q*\xbd\x01\n" +
 	"\x0fBonusAttackRule\x12!\n" +
 	"\x1dBONUS_ATTACK_RULE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aBONUS_ATTACK_RULE_OFF_HAND\x10\x01\x12\"\n" +
