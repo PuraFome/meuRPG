@@ -66,7 +66,7 @@ Only the service account `meurpg-api` reads them (`roles/secretmanager.secretAcc
 With `max-instances=1`, 10 is the whole load on the cluster; if the instances grow, instances times `pool_max_conns` is what counts.
 A request waits for a free connection, and the wait ends when a holder lets go (no holder keeps one longer than 30 s).
 A request that asks for a second connection while its transaction holds the first stalls the pool; the symptom is `context canceled` or `context deadline exceeded` in simple reads together with a slow request ([architecture](../architecture/transactions.md#transactions-and-the-connection-pool)).
-`migrate` has its own connection and no `statement_timeout`; two `migrate up` runs wait for each other on a lease lock ([data](../data/README.md#migration-lock)).
+`migrate` has its own connection and no `statement_timeout`, except for the table content audit, which uses the API's pool settings. Two `migrate up` runs wait for each other on a lease lock ([data](../data/README.md#migration-lock)).
 
 ## The client IP
 

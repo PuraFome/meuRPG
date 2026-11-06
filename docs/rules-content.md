@@ -44,6 +44,11 @@ After you edit any file in `effects/`, `TestSnapshot` fails and prints the new `
 A change to `data/` follows the same rule, but `TestSnapshot` only hashes `effects/`, so raise the revision by hand with the same `sha256`.
 The history of what each revision changed is `git log` on `effects/revision.json`.
 
+**A revision can make a stored table entry invalid.**
+The campaign still reads: the entries the engine refuses are left out, with whatever depends on them, and the master sees which and why (`left_out` of `ListTableEntries`).
+Before a revision gets traffic, `migrate up` runs every campaign's entries through the new engine and logs what it would leave out ([operations](operations/runbook.md#entries-a-new-revision-would-leave-out)).
+Read that log after a change to `effects/`, and fix or archive the entries it names.
+
 - **Effect types are closed**, and loading refuses everything else. The effect types, modifier targets, modes, senses and handlers are the `effectTypes` and neighbouring lists in `backend/internal/rules/effects.go`; the limits are the constants below them. Content can only name a handler; it never brings code.
 - **Formulas** use only `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` and `max`, and, in a condition of table content, `active("name")` (`backend/internal/rules/formula`). `FuzzCompileFormula` guards the compiler.
 - **Resources** recharge as `short_rest`, `long_rest`, `dawn`, `none`, `initiative`, `restore_one_on_short_rest` or `restore_one_on_long_rest`, and may carry `recharge_if` (a Bool formula) and `recharge_then` together, to recharge differently from a level on. A `modifier` on a score (`score.str`...) is an `add` with a `cap` above 20. `save.all` is a modifier target.
