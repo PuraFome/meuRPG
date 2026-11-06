@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // markedHero creates a fighter that carries a rapier with the given mark (full.weapon_marks).
@@ -74,5 +75,42 @@ func TestWeaponMarkOfTheSheetDecidesTheNonmagicalResistance(t *testing.T) {
 				t.Errorf("hit points after the blow = %d (from %d), want %d", got, start, tt.want)
 			}
 		})
+	}
+}
+
+// A weapon_rule of an active table feature that marks the weapons silvered reaches the damage like the
+// sheet's own mark does: the rapier is not halved by a wight (it loses the whole 9, not 4).
+func TestWeaponRuleMarkMakesTheRapierSilveredAgainstAWight(t *testing.T) {
+	t.Parallel()
+	const wightHP = 45
+	hitWith := func(t *testing.T, rule *rulesv1.TableEffect) int32 {
+		t.Helper()
+		a, e, target := partsFight(t, func(a *armed) {
+			effects := []*rulesv1.TableEffect{}
+			if rule != nil {
+				effects = append(effects, rule)
+			}
+			res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+				CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
+					NamePt: "Lâmina de Prata de Teste", ClassKey: "class:fighter", DescPt: []string{"Armas prateadas."},
+					Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{{NamePt: "Prata Viva", DescPt: []string{"Prata."}, Effects: effects}}}},
+				}},
+			}))
+			if err != nil {
+				t.Fatalf("CreateTableEntry() error = %v", err)
+			}
+			a.toren = a.caio.heroWith(t, a.campaignID, "Toren", classLevel("class:fighter", 5, res.Msg.GetEntry().GetKey()),
+				abilities(16, 12, 14, 10, 8), []string{rapier}, nil, nil)
+		}, "monster:wight")
+		hit := a.mustAttack(t, a.caio, e, "Toren", rapier, target, d20(15))
+		a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), typedDamage(6))
+		hp, _, _ := a.hp(t, target)
+		return hp
+	}
+	if got := hitWith(t, &rulesv1.TableEffect{Type: "weapon_rule", Weapon: "any", AttackBonus: 1}); got != wightHP-4 {
+		t.Errorf("a rule that marks nothing: hit points = %d, want %d (halved)", got, wightHP-4)
+	}
+	if got := hitWith(t, &rulesv1.TableEffect{Type: "weapon_rule", Weapon: "any", Silvered: true}); got != wightHP-9 {
+		t.Errorf("a silvering rule: hit points = %d, want %d (not halved)", got, wightHP-9)
 	}
 }

@@ -165,6 +165,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     armorKey: '',
     shield: false,
     weaponKeys: [],
+    weaponMarks: [],
     cantripKeys: [],
     knownSpellKeys: [],
     preparedSpellKeys: [],

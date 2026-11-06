@@ -477,7 +477,7 @@ var (
 		WeaponMelee:   {"Corpo a corpo", "As armas de corpo a corpo, arremessadas ou não."},
 		WeaponRanged:  {"À distância", "As armas de disparo e de arremesso à distância."},
 		WeaponFinesse: {"Com acuidade", "As armas com a propriedade acuidade."},
-		WeaponMagic:   {"Mágica", "As armas que a ficha marca como mágicas, como o golpe desarmado de quem tem Golpes Fortalecidos por Ki."},
+		WeaponMagic:   {"Mágica", "As armas que a própria ficha marca como mágicas (a marca da arma na ficha, ou o golpe desarmado de quem tem Golpes Fortalecidos por Ki). Não lê as marcas de outras regras de arma nem o equipamento."},
 		WeaponNamed:   {"Uma arma pelo nome", "A arma cujo nome em português é o escrito no campo ao lado, sem diferença de maiúsculas ou acentos."},
 	}
 )

@@ -3078,7 +3078,9 @@ type FullSheet struct {
 	// At most 20, each `weapon_key` one of weapon_keys, no key twice, and a mark must
 	// set at least one of the three (an empty mark is refused). A marked weapon's
 	// attack counts as silvered, adamantine or magical for the resistances and
-	// immunities to nonmagical attacks. Unmarked weapons are plain steel.
+	// immunities to nonmagical attacks. Unmarked weapons are plain steel. A client that
+	// removes a weapon from weapon_keys must remove its mark in the same request, or the
+	// save is refused.
 	WeaponMarks   []*WeaponMark `protobuf:"bytes,42,rep,name=weapon_marks,json=weaponMarks,proto3" json:"weapon_marks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -712,8 +712,10 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
    * proficient with, is never an item, and the weapon rules change it like any weapon.
    * weapon_rule only: `magical`, `silvered` and `adamantine` mark the lines the filter
    * chooses as such for the resistances and immunities to nonmagical attacks; a rule that
-   * sets only marks counts as changing something. The "magic" filter reads the marks of
-   * the sheet itself, never those of a rule. Refused on any other effect.
+   * sets only marks counts as changing something. The "magic" filter reads only the marks
+   * of the sheet itself (FullSheet.weapon_marks): never those of a rule, and not the
+   * equipment. A pseudo_weapon line is never marked by a weapon_rule. Refused on any
+   * other effect.
    *
    * @generated from field: string weapon_name = 59;
    */
@@ -847,16 +849,22 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   atMost: number;
 
   /**
+   * weapon_rule only: the weapon lines the filter chooses count as magical.
+   *
    * @generated from field: bool magical = 79;
    */
   magical: boolean;
 
   /**
+   * weapon_rule only: the weapon lines the filter chooses count as silvered.
+   *
    * @generated from field: bool silvered = 80;
    */
   silvered: boolean;
 
   /**
+   * weapon_rule only: the weapon lines the filter chooses count as adamantine.
+   *
    * @generated from field: bool adamantine = 81;
    */
   adamantine: boolean;
