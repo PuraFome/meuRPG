@@ -316,6 +316,36 @@ service CharacterService {
   //   - `permission_denied`: the caller is a player.
   rpc SetStoryEditing(SetStoryEditingRequest) returns (SetStoryEditingResponse);
 
+  // SetEquipped equips or stows one piece of the sheet's gear: the body armor
+  // (armor_key), a weapon (weapon_keys) or the shield ("equipment:shield"),
+  // by adding the key to the sheet's carried_keys (stowed) or taking it out
+  // (equipped). Only equipped pieces count for armor class, attacks and
+  // properties. It changes nothing else on the sheet, so it is no way
+  // around the sheet's lock.
+  //
+  // The character's owner and the campaign's master may call it, on a draft,
+  // a pending sheet and a locked one alike: the lock (RN-01) is on the
+  // editor, not on what a character wields. A dead character cannot, and a
+  // player never reaches an NPC or another player's character.
+  //
+  // Asking for the state the piece already has changes nothing: the
+  // revision stays, play is not told and no combat action is spent. A change
+  // adds one to the revision like any sheet change. In a running combat the
+  // turn's economy applies to the owner: it must be their turn, body armor is
+  // refused, the first weapon drawn or stowed in the turn is free, and a second
+  // weapon or the shield costs the action. The master is unrestricted.
+  //
+  // Errors:
+  //   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or
+  //     the shield when it has one (InvalidField, field "key"), or the sheet
+  //     is a basic one.
+  //   - `not_found`: the character is not in this campaign, the caller may
+  //     not see it, the campaign does not exist, or the caller is not a
+  //     member of it.
+  //   - `failed_precondition`: the character is dead (CharacterBlocked with
+  //     reason CHARACTER_DEAD), or play refused the change in the combat.
+  rpc SetEquipped(SetEquippedRequest) returns (SetEquippedResponse);
+
   // MarkCharacterDead records that a player character died (RN-03). Only
   // the campaign's master may call it.
   //
@@ -1519,6 +1549,12 @@ message FullSheet {
   // "<choice key>#<n>" ("feature:favored-enemy-1-type#1"). At most 12 entries, each 1
   // to 40 characters, one line. The rules never read the text.
   map<string, string> feature_choice_text = 34;
+  // Keys among armor_key, weapon_keys and "equipment:shield" (when shield is
+  // true) that are carried, not equipped: a carried piece is listed on the
+  // sheet but counts for no armor class, attack or property. At most 22, no
+  // repeats. Empty means everything listed is equipped, which is what every
+  // sheet stored before the field means.
+  repeated string carried_keys = 35;
   // A College of Lore bard's "Perguntar" setting for Cutting Words: on which rolls
   // of an enemy the combat asks whether to use it. Unspecified is ONLY_ATTACKS.
   CuttingWordsAsk cutting_words_ask = 40;
@@ -2072,6 +2108,25 @@ message SetStoryEditingRequest {
 message SetStoryEditingResponse {
   // The character, with story_editing_allowed as set.
   Character character = 1;
+}
+
+// SetEquippedRequest says which piece of gear the character wields now.
+message SetEquippedRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The piece: the sheet's armor_key, one of its weapon_keys, or
+  // "equipment:shield" when it has a shield.
+  string key = 3;
+  // true equips the piece, false stows it (it is carried, not wielded).
+  bool equipped = 4;
+}
+
+// SetEquippedResponse returns the gear as it stands.
+message SetEquippedResponse {
+  // The sheet's carried_keys after the call.
+  repeated string carried_keys = 1;
+  // The character's revision after the call.
+  int32 revision = 2;
 }
 
 // MarkCharacterDeadRequest names the character that died.

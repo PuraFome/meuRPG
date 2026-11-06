@@ -77,6 +77,8 @@ function fullyPopulatedFullSheet(): FullSheet {
     armorKey: '',
     shield: false,
     weaponKeys: ['equipment:quarterstaff', 'equipment:dagger'],
+    // The editor has no control for it: a save sends it back as read (SetEquipped writes it).
+    carriedKeys: ['equipment:dagger'],
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [
       'spell:magic-missile',
@@ -163,6 +165,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       armorKey: loaded.armorKey,
       shield: loaded.shield,
       weaponKeys: loaded.weaponKeys,
+      carriedKeys: loaded.carriedKeys,
       cantripKeys: loaded.cantripKeys,
       knownSpellKeys: loaded.knownSpellKeys,
       preparedSpellKeys: loaded.preparedSpellKeys,

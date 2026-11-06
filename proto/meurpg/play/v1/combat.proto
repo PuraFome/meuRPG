@@ -2003,6 +2003,10 @@ enum EncounterBlockedReason {
   // change, which leave no event). The undo would write the "before" over that change and lose it, so
   // nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.
   ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED = 126;
+  // CharacterService.SetEquipped, by a player in a running combat: the body armor
+  // cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
+  // master may change it. Nothing is changed.
+  ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT = 127;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

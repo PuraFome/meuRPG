@@ -13,6 +13,8 @@ import (
 // away; nothing in it outlives the call, and nothing is shared between
 // calls except the read-only content.
 type deriver struct {
+	// b is the Build derived; equip() blanks its Armor and Shield when they are carried,
+	// so they are the equipped ones.
 	b Build
 	c *content
 	d *Derived
@@ -103,6 +105,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	d := &Derived{ContentVersion: c.version}
 	x := &deriver{b: b, c: c, d: d, proficient: map[string]bool{}, conditions: map[*Effect]bool{}, appliedTagged: map[*Effect]bool{}, inactiveFeats: inactive}
 
+	x.equip()
 	x.resolve()
 	x.resolveArmor()
 	x.names()

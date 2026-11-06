@@ -102,6 +102,16 @@ The result covers the 12 SRD classes and 9 SRD races from level 1 to 20 (and the
 Active spells such as Mage Armor and Shield, current hit points, spent slots and resources in use belong to the game session (the [play module](play/README.md) stores them; `rules/combat` only does arithmetic on what the session stores).
 A feature with no effect appears only as text and the master resolves it (for instance Diamond Soul, Slippery Mind, Remarkable Athlete, Mystic Arcanum, Signature Spell, and the Aura of Protection's bonus for allies within 10 ft).
 
+## Carried and equipped gear
+
+A piece of gear the sheet lists is equipped unless `Build.Carried` holds its key.
+The keys are `armor_key`, a `weapon_keys` entry and `rules.ShieldKey` (`equipment:shield`); `ValidateCarried` refuses any other key, a repeat and more than `MaxCarried`.
+The empty list means everything is equipped, so a sheet without it derives as before.
+The deriver drops a carried armor and a carried shield before it derives (`equip`), so armor class, hints, proficiency issues and the shield's bonus read only what is worn; callers outside `rules` read `ArmorOn` and `ShieldOn`.
+A carried weapon stays listed and makes no attack and does not count as two-handed.
+`Build.IsCarried`, `ArmorOn`, `ShieldOn` and `ShieldCounts` are the readers.
+Who may change the list and what a running combat charges is in [Characters](characters.md#equipping-gear) and [Combat](play/combat.md#equipping-and-stowing-gear).
+
 ## Effects
 
 The SRD describes features in prose.

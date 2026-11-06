@@ -54,7 +54,7 @@ Related pages: [Table content](characters-table-content.md) (live content, switc
 | `SetGallery` | `Gallery` | Which images are in a campaign's gallery (NPC portraits), from `maps`. |
 | `SetLive` | `Live` | The session stream: `PublishXPChanged`, `PublishVitalsChanged`, `PublishContentChanged`, implemented by `play`. |
 | `SetCreatureHost` | `CreatureHost` | The combat that holds a character's creatures, from `play`. |
-| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, and the combat a revived character returns to, from `play`. |
+| `SetReviewHost` | `ReviewHost` | The streams a review or revival is told on, the combat a revived character returns to, `GearChanged` and `ArmorWorn` (Mage Armor follows the equipped armor and shield), and `EquipInCombat` (the combat's cost for a gear change), from `play`. |
 | `SetLevelUps` | `LevelUps` | Whether a character can level up (RN-12), from `progression`. |
 | `SetCampaignNames` | `CampaignNames` | The campaign's name for an exported content pack (optional). |
 | `Config.Dice` | `DiceRules` | The campaign's dice setting (RN-18), from `campaigns`. |
@@ -82,6 +82,7 @@ What a player may see and change is then decided from the character's row (`canS
 | `PreviewCharacter` | A new NPC sheet and a character it sees and may edit; `permission_denied` for a new player sheet | A new player sheet and their own character while the sheet is not locked | A new player sheet; another player's is `not_found` | `not_found` | `unauthenticated` | A new player sheet and their own pending character |
 | `PreviewChoices` | Yes | A new sheet and their own character | `not_found` | `not_found` | `unauthenticated` | A new player sheet and their own pending character |
 | `CompleteCharacterChoices` | Yes | Yes, their own | `not_found` | `not_found` | `unauthenticated` | `not_found` |
+| `SetEquipped` | Yes | Yes, their own, locked sheet included | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GetCampaignOpenChoices` | Yes | `not_found` | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GetAbilityRolls`, `RollAbilityScores` | `permission_denied` | Yes | Yes | `not_found` | `unauthenticated` | Yes |
 | `GetLevelUpOptions`, `PreviewLevelUp` (while `can_level_up`) | Yes | Yes | `not_found` | `not_found` | `unauthenticated` | `not_found` |
@@ -179,6 +180,14 @@ Who rolls is the player or the pending member; the master gets `permission_denie
 It accepts exactly the callers and sheets the save it previews accepts, through the same helpers (`checkCreatorKind`, `checkNewSheet`, `refuseNewChoices`): without a `character_id` it checks what `CreateCharacter` checks, with one what `UpdateCharacter` checks.
 The ability method and the portrait are not checked (the save does them; neither changes the numbers).
 The editor reads from the answer `hit_points_from_effects` (what `hp.max` effects add, such as Dwarven Toughness) and `spellcasting` (`cantrips_known`, `spells_known`, `prepared_max` of each casting class), so the browser copies no rule arithmetic.
+
+## Equipping gear
+
+`SetEquipped` moves one piece of the sheet's gear (`armor_key`, a `weapon_keys` entry or `equipment:shield`) in or out of `carried_keys`, the pieces carried but not equipped.
+Only equipped pieces count for armor class, attacks and properties ([Rules](rules.md#carried-and-equipped-gear)).
+It changes nothing else, so the RN-01 lock does not apply; a dead character is refused.
+It is idempotent by state: asking for the state the piece has changes nothing.
+Inside the transaction and before the write it asks play (`ReviewHost.EquipInCombat`) what a running combat charges ([Combat](play/combat.md#equipping-and-stowing-gear)).
 
 ## Class and race choices
 
