@@ -113,9 +113,8 @@ func (h heldRoll) afterLucky(a heldReply, spec rollSpec) heldRoll {
 		to = new(r.To)
 	}
 	roll := d20Roll{Faces: faces, Index: countedAfter(h.Faces, h.Counted, faces, spec.Mode), Physical: h.Physical}
-	roll.Total = roll.Face() + spec.Modifier
-	roll = reliableD20(roll, spec.Modifier, spec.Reliable)
-	h.Faces, h.Counted, h.Total, h.LuckyTo, h.LuckyAnswerKey = faces, roll.Index, roll.Total, to, &a.key
+	roll = floorD20(roll, spec.Modifier, spec.Floor)
+	h.Faces, h.Counted, h.Total, h.CountedBy, h.LuckyTo, h.LuckyAnswerKey = faces, roll.Index, roll.Total, roll.CountedBy, to, &a.key
 	return h
 }
 
@@ -244,17 +243,18 @@ func attackOfHold(h heldRoll) (attackKey, targetID string) {
 	return "", ""
 }
 
-// heldD20Of is the d20 of a held roll with the roll's bonus as the modifier: both dice of a roll with
-// advantage or disadvantage, the one that counts marked, and the die Lucky rolled again once the player did
-// (the roll's faces are already the new ones then).
+// heldD20Of is the d20 of a held roll, with the roll's bonus as the modifier.
+// A roll with advantage or disadvantage shows both dice, the one that counts marked.
+// Once the player used Lucky, the faces are the new ones.
+// A floor that raised the d20 is shown as the number it counted as, with the feature that did it.
 func heldD20Of(h heldRoll) *playv1.DiceRoll {
 	modifier, total := clamp32(h.Modifier, math.MinInt32, math.MaxInt32), clamp32(h.Total, math.MinInt32, math.MaxInt32)
 	roll := diceRoll(1, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
 	if len(h.Faces) == pairDice {
 		roll = diceRoll(pairDice, d20Sides, faces32(h.Faces), modifier, total, h.Physical)
 		roll.CountedIndex = clamp32(h.Counted, 0, 1)
-		markTreated(roll, modifier, total)
 	}
+	markTreated(roll, modifier, total, h.CountedBy)
 	roll.Rerolled = rerolledOf(h).proto()
 	return roll
 }

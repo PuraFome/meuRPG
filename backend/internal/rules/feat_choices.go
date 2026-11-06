@@ -208,21 +208,25 @@ func (cb *choiceBuilder) offersFeat(e FeatEntry, from, pickedNow []string) bool 
 	if slices.Contains(cb.b.Feats, e.Key) {
 		return false
 	}
-	return (!e.Archived && !e.Off) || slices.Contains(pickedNow, e.Key)
+	if slices.Contains(pickedNow, e.Key) {
+		return true
+	}
+	// A player is not offered a feat asking only for races they cannot read: they cannot meet it.
+	return !e.Archived && !e.Off && !cb.c.asksOnlyHiddenRaces(e.Prerequisite, cb.b)
 }
 
 // featOption is a feat as an option of the choice key, blocked with its reason
 // when the sheet d does not meet its prerequisite.
 func (cb *choiceBuilder) featOption(e FeatEntry, key string, d Derived) ChoiceOption {
 	c := cb.c
-	o := ChoiceOption{Key: e.Key, Stored: ScopedChoice(key, e.Key), NamePT: e.NamePT, SummaryPT: featSummaryPT(c, e)}
+	o := ChoiceOption{Key: e.Key, Stored: ScopedChoice(key, e.Key), NamePT: e.NamePT, SummaryPT: featSummaryPT(c, e, cb.b)}
 	unmet := c.unmetPrerequisite(e, cb.b, d)
 	if len(unmet) == 0 {
 		return o
 	}
 	var reasons []string
 	for _, u := range unmet {
-		reasons = append(reasons, c.featUnmetPT(u))
+		reasons = append(reasons, c.featUnmetPT(u, cb.b))
 	}
 	o.ReasonPT = "Você ainda não cumpre o pré-requisito: " + strings.Join(reasons, " ")
 	o.Prerequisites = append(o.Prerequisites, OptionPrerequisite{Kind: PrerequisiteFeature, Met: false, ReasonPT: o.ReasonPT})
@@ -241,13 +245,13 @@ func unmeetBlockedPicks(ch *Choice) {
 }
 
 // featSummaryPT is the feat's text as a choice card shows it, with what it asks first.
-func featSummaryPT(c *content, e FeatEntry) string {
+func featSummaryPT(c *content, e FeatEntry, b Build) string {
 	text := e.DescPT
 	if len(text) == 0 {
 		text = e.Desc
 	}
 	var parts []string
-	if asks := c.featAsksPT(e.Prerequisite); asks != "" {
+	if asks := c.featAsksPT(e.Prerequisite, b); asks != "" {
 		parts = append(parts, "Pede: "+asks+".")
 	}
 	parts = append(parts, text...)
@@ -255,14 +259,42 @@ func featSummaryPT(c *content, e FeatEntry) string {
 }
 
 // featAsksPT is what a feat asks of a character, in a phrase ("Força 13 e nível 4 ou mais").
-func (c *content) featAsksPT(p FeatPrerequisite) string {
-	var out []string
+// In a player's view it names no hidden race or feature.
+func (c *content) featAsksPT(p FeatPrerequisite, b Build) string {
+	out := c.abilityAsksPT(p)
+	if p.Proficiency != "" {
+		out = append(out, "proficiência em "+c.namePT(p.Proficiency))
+	}
+	if p.Spellcasting {
+		out = append(out, "conseguir conjurar magias")
+	}
+	if ask := c.raceAskPT(p, b); ask != "" {
+		out = append(out, ask)
+	}
+	if p.Size != "" {
+		out = append(out, "ter tamanho "+strings.ToLower(sizeNamePT[p.Size]))
+	}
+	if p.LacksFeature != "" {
+		if c.hiddenTo(b, p.LacksFeature) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, "não ter "+c.namePT(p.LacksFeature))
+		}
+	}
+	if p.Level > 0 {
+		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
+	}
+	return strings.Join(out, " e ")
+}
+
+// abilityAsksPT are the ability scores a prerequisite asks: all the minimums, then one of the any-of scores.
+func (c *content) abilityAsksPT(p FeatPrerequisite) []string {
+	var out, anyOf []string
 	for _, a := range AllAbilities() {
 		if least := p.Minimums[a]; least > 0 {
 			out = append(out, fmt.Sprintf("%s %d", c.namePT(string(a)), least))
 		}
 	}
-	var anyOf []string
 	for _, a := range AllAbilities() {
 		if least := p.AnyOf[a]; least > 0 {
 			anyOf = append(anyOf, fmt.Sprintf("%s %d", c.namePT(string(a)), least))
@@ -271,23 +303,64 @@ func (c *content) featAsksPT(p FeatPrerequisite) string {
 	if len(anyOf) > 0 {
 		out = append(out, strings.Join(anyOf, " ou "))
 	}
-	if p.Proficiency != "" {
-		out = append(out, "proficiência em "+c.namePT(p.Proficiency))
+	return out
+}
+
+// raceAskPT is the race part of a prerequisite ("ser Elfo ou Anão"), empty when it asks for none; the races
+// the view may not name are left out, and a text that names nothing stands for them when none is left.
+func (c *content) raceAskPT(p FeatPrerequisite, b Build) string {
+	asked := prerequisiteRaces(p)
+	if len(asked) == 0 {
+		return ""
 	}
-	if p.Spellcasting {
-		out = append(out, "conseguir conjurar magias")
+	if races := c.shownRaces(b, asked); len(races) > 0 {
+		return "ser " + c.racesPT(races)
 	}
-	if p.Race != "" {
-		out = append(out, "ser "+c.namePT(p.Race))
+	return hiddenAskPT
+}
+
+// racesPT are the races or subraces in Portuguese: "A", "A ou B", "A, B ou C".
+func (c *content) racesPT(keys []string) string {
+	names := make([]string, len(keys))
+	for i, k := range keys {
+		names[i] = c.namePT(k)
 	}
-	if p.Level > 0 {
-		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
+	last := len(names) - 1
+	if last <= 0 {
+		return strings.Join(names, "")
 	}
-	return strings.Join(out, " e ")
+	return strings.Join(names[:last], ", ") + " ou " + names[last]
+}
+
+// hiddenAskPT and hiddenUnmetPT stand for a condition of a feat that a player may not read; they name nothing.
+const (
+	hiddenAskPT   = "uma condição que a mesa não mostra"
+	hiddenUnmetPT = "Pede uma condição que a mesa não mostra."
+)
+
+// hiddenTo says the view is a player's and the key is one they never receive, which the sheet b does not have.
+func (c *content) hiddenTo(b Build, key string) bool {
+	return c.player && c.hidden(key) && !c.sheetHas(b, key)
+}
+
+// shownRaces are the races or subraces of keys that the view may name: all of them, except in a
+// player's view the hidden ones that are not the race or subrace of the sheet b.
+func (c *content) shownRaces(b Build, keys []string) []string {
+	if !c.player {
+		return keys
+	}
+	return slices.DeleteFunc(slices.Clone(keys), func(k string) bool { return c.hiddenTo(b, k) })
+}
+
+// asksOnlyHiddenRaces says the view is a player's and the prerequisite asks for races, none of which
+// the player may read: the player's sheet cannot meet it, and the text must not read as no requirement.
+func (c *content) asksOnlyHiddenRaces(p FeatPrerequisite, b Build) bool {
+	asked := prerequisiteRaces(p)
+	return c.player && len(asked) > 0 && len(c.shownRaces(b, asked)) == 0
 }
 
 // featUnmetPT says in a sentence what a character lacks for one condition of a feat.
-func (c *content) featUnmetPT(u FeatUnmet) string {
+func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 	switch u.Kind {
 	case FeatUnmetAbilityMinimum, FeatUnmetAbilityAnyOf:
 		var parts []string
@@ -303,7 +376,21 @@ func (c *content) featUnmetPT(u FeatUnmet) string {
 	case FeatUnmetSpellcasting:
 		return "Precisa conseguir conjurar magias."
 	case FeatUnmetRace:
-		return "Só para " + c.namePT(u.Key) + "."
+		asked := u.Keys
+		if u.Key != "" {
+			asked = []string{u.Key}
+		}
+		if shown := c.shownRaces(b, asked); len(shown) > 0 {
+			return "Só para " + c.racesPT(shown) + "."
+		}
+		return hiddenUnmetPT
+	case FeatUnmetSize:
+		return "Só para tamanho " + strings.ToLower(sizeNamePT[u.Key]) + "."
+	case FeatUnmetLacksFeature:
+		if c.hiddenTo(b, u.Key) {
+			return hiddenUnmetPT
+		}
+		return "Não pode ter " + c.namePT(u.Key) + "."
 	case FeatUnmetLevel:
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
 	}

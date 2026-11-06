@@ -52,6 +52,7 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 				out.Roll = diceRoll(2, 20, pairOf(sr.D20, sr.D20B, sr.Counted), sr.Bonus, sr.Total, false)
 				out.Roll.CountedIndex = sr.Counted
 			}
+			sr.mark(out.Roll)
 		}
 		out.Mode, out.AutoFailed = modeToProto[modeOfKey(sr.RollMode)], sr.Auto
 		if out.Roll != nil {
@@ -89,13 +90,13 @@ func attackRollView(h castHit, v combatViewer, caster playdb.Combatant) *playv1.
 		roll := diceRoll(1, 20, []int32{h.D20}, h.Modifier, h.Total, h.Physical)
 		roll.ExtraDice = extraDiceProto(h.Extra, v.master, nil)
 		roll.Rerolled = strokeRerolls(h.Lucky, h.Stroke)
-		return roll
+		return h.mark(roll)
 	}
 	roll := diceRoll(2, 20, pairOf(h.D20, h.D20B, h.Counted), h.Modifier, h.Total, h.Physical)
 	roll.CountedIndex = h.Counted
 	roll.ExtraDice = extraDiceProto(h.Extra, v.master, nil)
 	roll.Rerolled = strokeRerolls(h.Lucky, h.Stroke) // "Sortudo: 1 → 14", with the d20 it changed
-	return roll
+	return h.mark(roll)
 }
 
 // pairOf puts the two d20 of a roll in the order they were rolled: counted is the

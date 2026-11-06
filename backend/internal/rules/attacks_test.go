@@ -502,13 +502,3 @@ func TestReliableTalentCountsOnlyForChecksThatAddProficiency(t *testing.T) {
 		t.Error("a fighter has Reliable Talent")
 	}
 }
-
-func TestReliableTalentFace(t *testing.T) {
-	t.Parallel()
-	for face, want := range map[int]int{1: 10, 6: 10, 9: 10, 10: 10, 14: 14, 20: 20} {
-		got, treated := ReliableTalentFace(face)
-		if got != want || treated != (face < 10) {
-			t.Errorf("ReliableTalentFace(%d) = %d, %v; want %d, %v", face, got, treated, want, face < 10)
-		}
-	}
-}

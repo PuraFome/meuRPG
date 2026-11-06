@@ -433,6 +433,8 @@ func (x *deriver) levelAndProficiency() {
 // traits, background, class and subclass features up to each class level,
 // and the chosen options), in a stable order. It fills Derived.Features
 // on the way.
+// The race's traits come first, minus those the subrace replaces, then the subrace's
+// own traits, and last the picked options (col.options).
 func (x *deriver) collectEffects() {
 	col := &collector{x: x, owned: map[string]bool{}}
 	col.raceTraits(x.race)
@@ -472,9 +474,10 @@ func (col *collector) feature(key, name, source string, level int, desc []string
 	}.withTextPT(x.c))
 }
 
+// raceTraits adds the race and the traits of it the subrace does not replace.
 func (col *collector) raceTraits(r *srd51.Race) {
 	if r != nil {
-		col.traitsOf(r.Key, r.Traits)
+		col.traitsOf(r.Key, col.x.raceTraitKeys())
 	}
 }
 
@@ -482,6 +485,20 @@ func (col *collector) subraceTraits(r *srd51.Subrace) {
 	if r != nil {
 		col.traitsOf(r.Key, r.Traits)
 	}
+}
+
+// raceTraitKeys are the traits the character has from the race: all of them, but those
+// the subrace replaces.
+func (x *deriver) raceTraitKeys() []string {
+	if x.race == nil {
+		return nil
+	}
+	if x.subrace == nil || len(x.subrace.ReplacesTraitKeys) == 0 {
+		return x.race.Traits
+	}
+	return slices.DeleteFunc(slices.Clone(x.race.Traits), func(k string) bool {
+		return slices.Contains(x.subrace.ReplacesTraitKeys, k)
+	})
 }
 
 // traitsOf adds a race or a subrace and the traits of it the content has.

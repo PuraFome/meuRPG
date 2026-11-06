@@ -82,7 +82,7 @@ func TestStaticHandler_Routing(t *testing.T) {
 		path       string
 		wantStatus int
 		wantBody   string // checked only when non-empty
-		wantCache  string // checked only when wantStatus is set and not a redirect/error
+		wantCache  string // checked only when non-empty
 	}{
 		{name: "root serves index", path: "/", wantStatus: http.StatusOK, wantBody: indexBody, wantCache: "no-cache"},
 		{
@@ -116,6 +116,27 @@ func TestStaticHandler_Routing(t *testing.T) {
 		},
 		{
 			name: "unknown client route falls back to index (SPA)", path: "/campaigns/42",
+			wantStatus: http.StatusOK, wantBody: indexBody, wantCache: "no-cache",
+		},
+		{
+			name: "a missing hashed file is a 404 that is never cached", path: "/chunk-QWER1234.js",
+			wantStatus: http.StatusNotFound, wantBody: "404 page not found\n", wantCache: "no-store",
+		},
+		{
+			name: "a missing pre-compressed copy is a 404 too", path: "/chunk-QWER1234.js.br",
+			wantStatus: http.StatusNotFound, wantBody: "404 page not found\n", wantCache: "no-store",
+		},
+		{
+			name: "a missing hashed file in a folder is a 404", path: "/media/font-QWER1234.woff2",
+			wantStatus: http.StatusNotFound, wantBody: "404 page not found\n", wantCache: "no-store",
+		},
+		{
+			name: "a client route with a dot in its last segment still gets the app shell", path: "/campaigns/v1.2",
+			wantStatus: http.StatusOK, wantBody: indexBody, wantCache: "no-cache",
+		},
+		{
+			// "-lowercase." is not a hash: only the build's upper-case 8-character hash makes a name a build file.
+			name: "a client route that only looks like a file gets the app shell", path: "/share/notes-abcd1234.pdf",
 			wantStatus: http.StatusOK, wantBody: indexBody, wantCache: "no-cache",
 		},
 		{

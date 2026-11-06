@@ -2482,6 +2482,10 @@ message CombatLogHitRider {
   bool resisted = 19;
   // The uses of the trait the creature has left. Only the master.
   int32 resisted_left = 20;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `save_total` uses this
+  // one), and the feature that did it as a content key. Set where the d20 is.
+  optional int32 treated_as = 21;
+  string treated_as_source = 22;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2861,6 +2865,12 @@ message Combatant {
   // the round alone says when.
   ReactionKind reaction_kind = 107;
   int32 reaction_round = 108;
+
+  // The number the initiative d20 counted as when a table's roll_minimum raised it (`initiative_face` is what came
+  // up, `initiative` uses this one), and the feature that did it as a content key. Unset, and empty, when the d20
+  // counted as it came up. Same audience as `initiative_face`.
+  optional int32 initiative_treated_as = 109;
+  string initiative_treated_as_source = 110;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -3467,6 +3477,10 @@ message DiceRoll {
   // "trait:lucky", from 1 to the new face): an attack roll, an ability check or a saving
   // throw. `faces` holds the faces that count.
   repeated Reroll rerolled = 10;
+  // The dice of a damage roll that counted as another number than they showed (a table roll_minimum):
+  // `faces` keeps what came up, `total` uses what counted. Only a damage with no parts of its own sets it (the dice of a
+  // hit with parts are in each part's `counted_dice`).
+  repeated CountedDie counted_dice = 11;
   // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
   // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
   // player, on an effect the master hides, `source_name_pt` is "Outra fonte" and the
@@ -4372,6 +4386,10 @@ message ChannelDivinityTurn {
   int32 total = 5;
   // True: it failed and is turned for one minute (a lasting effect on it).
   bool turned = 6;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
+  optional int32 treated_as = 7;
+  string treated_as_source = 8;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -5647,6 +5665,10 @@ message CombatLogEffect {
   // `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
   bool resisted = 16;
   int32 resisted_left = 17;
+  // SAVED and SAVE_FAILED, with the roll: the number the d20 counted as when a table's roll_minimum raised it
+  // (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
+  optional int32 treated_as = 18;
+  string treated_as_source = 19;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -6381,6 +6403,10 @@ message LegendaryResistanceOffer {
   // The uses of the trait the creature has left, and its uses a day.
   int32 uses_left = 6;
   int32 uses_per_day = 7;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key.
+  optional int32 treated_as = 8;
+  string treated_as_source = 9;
 }
 
 message ManeuverReduceOption {

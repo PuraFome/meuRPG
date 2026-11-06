@@ -3,6 +3,7 @@ import { test } from './diagnostics';
 
 // A tab left open across a deploy cannot load the old hashed chunks: the server answers 404 or index.html.
 // The app reloads the page once for it, and a second failure on the same entry does not reload again.
+// WebKit runs this spec too (e2e/playwright.mobile.config.ts): it words each of these failures differently from Chrome.
 
 // What the server answers for a chunk of a past build: a 404, or index.html (the app shell) with a 200.
 const goneAnswers = {

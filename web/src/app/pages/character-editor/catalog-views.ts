@@ -50,8 +50,14 @@ export function skillNoteOf(c: ClassOptionVm | undefined): string {
 }
 
 /** The race's "+2 e +1 à sua escolha" (or one of several sets of them): where the player puts them (the server's numbers,
- * from the catalog). */
-export function choiceBonusesHintOf(race: RaceOptionVm | undefined): string {
+ * from the catalog). A subrace that swaps the race's bonuses takes them away. */
+export function choiceBonusesHintOf(
+  race: RaceOptionVm | undefined,
+  subrace?: SubraceOptionVm,
+): string {
+  if (subrace?.replacesAbilityBonuses) {
+    return '';
+  }
   const sets = race?.choiceBonusSets ?? [];
   if (sets.length > 0) {
     return `Dá um destes grupos, nas habilidades que você escolher (uma por valor): ${sets.map((s) => bonusWords(s)).join(' ou ')}. Escolha no passo Escolhas.`;
@@ -107,7 +113,8 @@ export function choicesSubtitleOf(
 }
 
 /** The Constitution the rolled hit points use: the typed score plus what the race and subrace give plus the manual
- * bonus (the same sum the server makes; this one only feeds the preview). */
+ * bonus (the same sum the server makes; this one only feeds the preview). A subrace that swaps the race's bonuses
+ * leaves out the race's. */
 export function finalConstitutionOf(
   typed: number | undefined,
   race: RaceOptionVm | undefined,
@@ -116,7 +123,7 @@ export function finalConstitutionOf(
 ): number {
   return (
     (typed ?? 0) +
-    (race?.constitutionBonus ?? 0) +
+    (subrace?.replacesAbilityBonuses ? 0 : (race?.constitutionBonus ?? 0)) +
     (subrace?.constitutionBonus ?? 0) +
     (manual ?? 0)
   );
@@ -125,7 +132,7 @@ export function finalConstitutionOf(
 /** The skills the race, the subrace and the background give, with where each comes from ("da raça", "do
  * antecedente"). The server counts them as given, never as a pick: the step shows them taken and locked, and a
  * pick on one of them is dropped, as the rules say a repeated proficiency is traded for another of the same
- * kind. */
+ * kind. The race's skills a subrace replaces are not given. */
 export function grantedSkillsOf(
   race: RaceOptionVm | undefined,
   subrace: SubraceOptionVm | undefined,
@@ -141,7 +148,11 @@ export function grantedSkillsOf(
       }
     }
   };
-  give(race?.skillKeys, 'da raça');
+  const replaced = new Set(subrace?.replacedSkillKeys ?? []);
+  give(
+    (race?.skillKeys ?? []).filter((k) => !replaced.has(k)),
+    'da raça',
+  );
   give(subrace?.skillKeys, 'da raça');
   if (customBackground) {
     give(customSkills, 'do antecedente');

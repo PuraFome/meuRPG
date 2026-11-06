@@ -654,10 +654,16 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The server refuses an unknown event, a trigger with no result, and a resource the entry does not define.
 - **Given** a table class with a spellcasting subclass (a third-caster), **when** I register the subclass with "Esta subclasse conjura", **then** the third-caster table starts at the level it begins, and the subclass's spells come from the class list it casts from.
 
-**Critical range and rerolls.**
+**Critical range, minimums and rerolls.**
 
 - **Given** a feature of the table with a modifier "Margem de acerto crítico" set to 19 (RN-23), **when** its owner attacks with a weapon and the d20 shows 19, **then** the attack hits and is a critical hit, **and** a spell attack with a 19 is not.
   With a class that already has Improved Critical, the lower of the two counts; a value outside 15 to 20 is refused at its field.
+- **Given** a feature of the table with a modifier "Margem de acerto crítico" set to 19 and "Vale para" set to "Ataques com magia", **when** its owner makes a spell attack roll and the d20 shows 19, **then** the attack hits and is a critical hit, **and** a weapon attack with a 19 is not; with "Armas e magias" both are.
+- **Given** a feature with the effect "Valor mínimo no dado" on attack rolls with the value 12, **when** its owner's d20 shows 2, **then** the roll keeps the face 2, says it counts as 12 and names the feature, and the total uses 12.
+  A value outside 2 to 20 is refused at its field, and a damage type on a minimum that covers more than damage is refused at its field.
+  Of two minimums the higher counts, and a tie with Reliable Talent keeps Reliable Talent.
+- **Given** a feature with the effect "Valor mínimo no dado" on damage with the value 6, **when** its owner rolls a weapon's damage and a d4 shows 1, **then** the die counts as 4 (its highest face) and the damage line shows the 1 and what it counts as; **and** a d8 that shows 3 counts as 6 under the same minimum.
+  Another player reads neither the face nor the number.
 - **Given** a feature with the effect "Rolar de novo" on attack rolls, at most 2, spending 1 use of a resource of the feature, **when** its owner's d20 shows 2 or lower and a use is left, **then** the player is asked "rolar de novo?" before the roll is said to succeed or fail; "sim" spends the use and the new d20 stands, "não" spends nothing.
   The app has no screen for the question, so the server does not hold the roll; the API test covers the criterion.
   The effect is written through the API: the editor lists it but cannot save it.

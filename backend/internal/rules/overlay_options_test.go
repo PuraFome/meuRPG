@@ -198,11 +198,11 @@ func TestOptionListRefusalsNameTheirField(t *testing.T) {
 		{"an action that spends a resource nobody defines", func(o *Overlay) {
 			o.Subclasses[0].Levels[0].Features[0].Options[0].Effects[0].Resource = "dados_fantasma"
 		}, "subclasses[0].levels[0].features[0].options[0].effects[0].resource"},
-		{"options on a trait", func(o *Overlay) {
-			race, _, _ := tableMisc()
-			race.Traits[0].Options = []TableFeature{postureOption(postureCrow, "Postura do Corvo")}
-			o.Races = []TableRace{race}
-		}, "races[0].traits[0].options"},
+		{"options on a background feature", func(o *Overlay) {
+			_, _, bg := tableMisc()
+			bg.Feature.Options = []TableFeature{postureOption(postureCrow, "Postura do Corvo")}
+			o.Backgrounds = []TableBackground{bg}
+		}, "backgrounds[0].feature.options"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

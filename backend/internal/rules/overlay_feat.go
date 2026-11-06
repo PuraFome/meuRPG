@@ -32,6 +32,7 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 		Key: key, Name: tf.NamePT, Desc: slices.Clone(tf.DescPT),
 		Minimums: abilityStrings(tf.Prerequisite.Minimums), AnyOf: abilityStrings(tf.Prerequisite.AnyOf),
 		Proficiency: tf.Prerequisite.Proficiency, Spellcasting: tf.Prerequisite.Spellcasting, Race: tf.Prerequisite.Race, Level: tf.Prerequisite.Level,
+		Races: slices.Clone(tf.Prerequisite.Races), Size: tf.Prerequisite.Size, LacksFeature: tf.Prerequisite.LacksFeature,
 	}
 	b.checkFeatPrerequisite(&c, feat, key, path)
 	increases := 0
@@ -63,7 +64,7 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 }
 
 // checkFeatPrerequisite reports what is wrong with a feat's prerequisite, each
-// problem at its own field. The keys it names (a proficiency, a race or subrace)
+// problem at its own field. The proficiency, the races and the lacked feature it names
 // may be the SRD's or the table's.
 func (b *overlayBuilder) checkFeatPrerequisite(c *entryErrors, f *srd51.Feat, key, path string) {
 	checkFeatScores(c, key, path, ".prerequisite.minimums", f.Minimums)
@@ -76,9 +77,80 @@ func (b *overlayBuilder) checkFeatPrerequisite(c *entryErrors, f *srd51.Feat, ke
 	if r := f.Race; r != "" && !b.isRace(r) && !b.isSubrace(r) {
 		c.at(key, path, ".prerequisite.race_key", ReasonReference, "the race or subrace %q does not exist", r)
 	}
+	b.checkFeatRaces(c, f, key, path)
+	if f.Size != "" && !slices.Contains(raceSizes, f.Size) {
+		c.at(key, path, ".prerequisite.size", ReasonValue, "the size is one of %s", strings.Join(raceSizes, ", "))
+	}
+	if k := f.LacksFeature; k == key {
+		c.at(key, path, ".prerequisite.lacks_feature_key", ReasonValue, "a feat cannot ask not to have itself")
+	} else if k != "" {
+		b.checkLackedFeature(c, key, path, k)
+	}
 	if f.Level < 0 || f.Level > MaxLevel {
 		c.at(key, path, ".prerequisite.level", ReasonValue, "the level is 0 to %d", MaxLevel)
 	}
+}
+
+// checkFeatRaces checks the list of races a prerequisite asks for: it is not set with the
+// single race_key, it is short, each race or subrace exists and none repeats.
+func (b *overlayBuilder) checkFeatRaces(c *entryErrors, f *srd51.Feat, key, path string) {
+	if len(f.Races) == 0 {
+		return
+	}
+	if f.Race != "" {
+		c.at(key, path, ".prerequisite.races", ReasonValue, "set races or race_key, not both")
+	}
+	if len(f.Races) > maxEffectList {
+		c.at(key, path, ".prerequisite.races", ReasonLimit, "%d races; the limit is %d", len(f.Races), maxEffectList)
+		return
+	}
+	for i, r := range f.Races {
+		at := fmt.Sprintf(".prerequisite.races[%d]", i)
+		switch {
+		case !b.isRace(r) && !b.isSubrace(r):
+			c.at(key, path, at, ReasonReference, "the race or subrace %q does not exist", r)
+		case slices.Contains(f.Races[:i], r):
+			c.at(key, path, at, ReasonValue, "the race or subrace %q is listed twice", r)
+		}
+	}
+}
+
+// featLack is the feature a feat asks the character not to have, checked once every entry
+// of the overlay exists.
+type featLack struct{ owner, path, feature string }
+
+// checkLackedFeature checks the feature a feat asks the character not to have: an SRD key is
+// judged now, a table key (its entry may come later in the overlay) once all the entries exist.
+func (b *overlayBuilder) checkLackedFeature(c *entryErrors, key, path, feature string) {
+	switch {
+	case isTableKey(feature):
+		b.featLacks = append(b.featLacks, featLack{owner: key, path: path, feature: feature})
+	case !b.base.isFeatureKey(feature):
+		c.at(key, path, ".prerequisite.lacks_feature_key", ReasonReference, "the feature %q does not exist", feature)
+	}
+}
+
+// checkFeatLacks reports each lacks_feature_key that names no feature, trait or feat of the
+// SRD or of the table.
+func (b *overlayBuilder) checkFeatLacks() error {
+	var c entryErrors
+	for _, l := range b.featLacks {
+		if !b.n.isFeatureKey(l.feature) {
+			c.at(l.owner, l.path, ".prerequisite.lacks_feature_key", ReasonReference, "the feature %q does not exist", l.feature)
+		}
+	}
+	return c.err()
+}
+
+// isFeatureKey says the key is a class or subclass feature, a trait, a background feature, a
+// feat or an option the content has: what a sheet can list among its features.
+func (c *content) isFeatureKey(key string) bool {
+	for _, prefix := range []string{featureKeyPrefix, "trait:", "background-feature:", "feat:", OptionKeyPrefix, ClassFeatureKeyPrefix} {
+		if strings.HasPrefix(key, prefix) {
+			return c.effectOwnerExists(key)
+		}
+	}
+	return false
 }
 
 // checkFeatScores checks the ability scores a feat asks for, in the order of

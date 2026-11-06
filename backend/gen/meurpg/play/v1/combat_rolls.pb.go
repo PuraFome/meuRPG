@@ -1183,6 +1183,82 @@ func (x *Reroll) GetSourceKey() string {
 	return ""
 }
 
+// CountedDie is a die of damage that counted as another number than it showed, because a table feature's roll_minimum
+// raised it (a die that shows less than the minimum counts as the minimum; a die smaller than the minimum counts as
+// its own highest face). Only a die the floor changed is listed: a 5 is never marked. Whoever reads the faces of the
+// roll reads this, and nobody else does.
+type CountedDie struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The die, as an index into the roll's `faces` (in the order rolled, after any reroll).
+	Index int32 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	// What the die showed. `faces` keeps it.
+	Face int32 `protobuf:"varint,2,opt,name=face,proto3" json:"face,omitempty"`
+	// The number the die counted as; the roll's sum and total use this one.
+	CountedAs int32 `protobuf:"varint,3,opt,name=counted_as,json=countedAs,proto3" json:"counted_as,omitempty"`
+	// The table feature that did it, as a content key.
+	SourceKey     string `protobuf:"bytes,4,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountedDie) Reset() {
+	*x = CountedDie{}
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountedDie) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountedDie) ProtoMessage() {}
+
+func (x *CountedDie) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountedDie.ProtoReflect.Descriptor instead.
+func (*CountedDie) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CountedDie) GetIndex() int32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *CountedDie) GetFace() int32 {
+	if x != nil {
+		return x.Face
+	}
+	return 0
+}
+
+func (x *CountedDie) GetCountedAs() int32 {
+	if x != nil {
+		return x.CountedAs
+	}
+	return 0
+}
+
+func (x *CountedDie) GetSourceKey() string {
+	if x != nil {
+		return x.SourceKey
+	}
+	return ""
+}
+
 // DamagePartRoll is what one part of a damage rolled.
 type DamagePartRoll struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -1203,14 +1279,18 @@ type DamagePartRoll struct {
 	Rerolled      []*Reroll `protobuf:"bytes,11,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
 	// A table maneuver's rider (what the target must do, in the table's words). Only the
 	// master gets it; empty for everyone else and for every other part.
-	RiderPt       string `protobuf:"bytes,12,opt,name=rider_pt,json=riderPt,proto3" json:"rider_pt,omitempty"`
+	RiderPt string `protobuf:"bytes,12,opt,name=rider_pt,json=riderPt,proto3" json:"rider_pt,omitempty"`
+	// The dice of the part that counted as another number than they showed (a table roll_minimum). `faces` keeps what came
+	// up, `sum` adds what counted. A part that does not count in the total is floored too, so the line of a part tells
+	// nothing about the target.
+	CountedDice   []*CountedDie `protobuf:"bytes,13,rep,name=counted_dice,json=countedDice,proto3" json:"counted_dice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DamagePartRoll) Reset() {
 	*x = DamagePartRoll{}
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1222,7 +1302,7 @@ func (x *DamagePartRoll) String() string {
 func (*DamagePartRoll) ProtoMessage() {}
 
 func (x *DamagePartRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1235,7 +1315,7 @@ func (x *DamagePartRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DamagePartRoll.ProtoReflect.Descriptor instead.
 func (*DamagePartRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DamagePartRoll) GetPartKey() string {
@@ -1322,6 +1402,13 @@ func (x *DamagePartRoll) GetRiderPt() string {
 	return ""
 }
 
+func (x *DamagePartRoll) GetCountedDice() []*CountedDie {
+	if x != nil {
+		return x.CountedDice
+	}
+	return nil
+}
+
 // SelectedExtra is an extra the player marks when they roll the damage.
 type SelectedExtra struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1335,7 +1422,7 @@ type SelectedExtra struct {
 
 func (x *SelectedExtra) Reset() {
 	*x = SelectedExtra{}
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1347,7 +1434,7 @@ func (x *SelectedExtra) String() string {
 func (*SelectedExtra) ProtoMessage() {}
 
 func (x *SelectedExtra) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1360,7 +1447,7 @@ func (x *SelectedExtra) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectedExtra.ProtoReflect.Descriptor instead.
 func (*SelectedExtra) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SelectedExtra) GetKey() string {
@@ -1396,7 +1483,7 @@ type TypedPart struct {
 
 func (x *TypedPart) Reset() {
 	*x = TypedPart{}
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1408,7 +1495,7 @@ func (x *TypedPart) String() string {
 func (*TypedPart) ProtoMessage() {}
 
 func (x *TypedPart) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1421,7 +1508,7 @@ func (x *TypedPart) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TypedPart.ProtoReflect.Descriptor instead.
 func (*TypedPart) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TypedPart) GetPartKey() string {
@@ -1465,7 +1552,7 @@ type CombatantEffect struct {
 
 func (x *CombatantEffect) Reset() {
 	*x = CombatantEffect{}
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1477,7 +1564,7 @@ func (x *CombatantEffect) String() string {
 func (*CombatantEffect) ProtoMessage() {}
 
 func (x *CombatantEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1490,7 +1577,7 @@ func (x *CombatantEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatantEffect.ProtoReflect.Descriptor instead.
 func (*CombatantEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CombatantEffect) GetId() string {
@@ -1581,7 +1668,7 @@ type ConditionSource struct {
 
 func (x *ConditionSource) Reset() {
 	*x = ConditionSource{}
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1593,7 +1680,7 @@ func (x *ConditionSource) String() string {
 func (*ConditionSource) ProtoMessage() {}
 
 func (x *ConditionSource) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_combat_rolls_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1606,7 +1693,7 @@ func (x *ConditionSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConditionSource.ProtoReflect.Descriptor instead.
 func (*ConditionSource) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ConditionSource) GetConditionKey() string {
@@ -1724,7 +1811,15 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x04from\x18\x02 \x01(\x05R\x04from\x12\x0e\n" +
 	"\x02to\x18\x03 \x01(\x05R\x02to\x12\x1d\n" +
 	"\n" +
-	"source_key\x18\x04 \x01(\tR\tsourceKey\"\xed\x02\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\"t\n" +
+	"\n" +
+	"CountedDie\x12\x14\n" +
+	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
+	"\x04face\x18\x02 \x01(\x05R\x04face\x12\x1d\n" +
+	"\n" +
+	"counted_as\x18\x03 \x01(\x05R\tcountedAs\x12\x1d\n" +
+	"\n" +
+	"source_key\x18\x04 \x01(\tR\tsourceKey\"\xac\x03\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +
@@ -1740,7 +1835,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x0fdamage_type_key\x18\n" +
 	" \x01(\tR\rdamageTypeKey\x122\n" +
 	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\x19\n" +
-	"\brider_pt\x18\f \x01(\tR\ariderPt\"T\n" +
+	"\brider_pt\x18\f \x01(\tR\ariderPt\x12=\n" +
+	"\fcounted_dice\x18\r \x03(\v2\x1a.meurpg.play.v1.CountedDieR\vcountedDice\"T\n" +
 	"\rSelectedExtra\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
@@ -1859,7 +1955,7 @@ func file_meurpg_play_v1_combat_rolls_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_combat_rolls_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_meurpg_play_v1_combat_rolls_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_meurpg_play_v1_combat_rolls_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_meurpg_play_v1_combat_rolls_proto_goTypes = []any{
 	(RollMode)(0),                 // 0: meurpg.play.v1.RollMode
 	(AdvantageSourceKind)(0),      // 1: meurpg.play.v1.AdvantageSourceKind
@@ -1873,12 +1969,13 @@ var file_meurpg_play_v1_combat_rolls_proto_goTypes = []any{
 	(*SlotOption)(nil),            // 9: meurpg.play.v1.SlotOption
 	(*DamagePart)(nil),            // 10: meurpg.play.v1.DamagePart
 	(*Reroll)(nil),                // 11: meurpg.play.v1.Reroll
-	(*DamagePartRoll)(nil),        // 12: meurpg.play.v1.DamagePartRoll
-	(*SelectedExtra)(nil),         // 13: meurpg.play.v1.SelectedExtra
-	(*TypedPart)(nil),             // 14: meurpg.play.v1.TypedPart
-	(*CombatantEffect)(nil),       // 15: meurpg.play.v1.CombatantEffect
-	(*ConditionSource)(nil),       // 16: meurpg.play.v1.ConditionSource
-	(*timestamppb.Timestamp)(nil), // 17: google.protobuf.Timestamp
+	(*CountedDie)(nil),            // 12: meurpg.play.v1.CountedDie
+	(*DamagePartRoll)(nil),        // 13: meurpg.play.v1.DamagePartRoll
+	(*SelectedExtra)(nil),         // 14: meurpg.play.v1.SelectedExtra
+	(*TypedPart)(nil),             // 15: meurpg.play.v1.TypedPart
+	(*CombatantEffect)(nil),       // 16: meurpg.play.v1.CombatantEffect
+	(*ConditionSource)(nil),       // 17: meurpg.play.v1.ConditionSource
+	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
 }
 var file_meurpg_play_v1_combat_rolls_proto_depIdxs = []int32{
 	1,  // 0: meurpg.play.v1.AdvantageSource.kind:type_name -> meurpg.play.v1.AdvantageSourceKind
@@ -1887,18 +1984,19 @@ var file_meurpg_play_v1_combat_rolls_proto_depIdxs = []int32{
 	0,  // 3: meurpg.play.v1.RollModeRequest.requested_mode:type_name -> meurpg.play.v1.RollMode
 	0,  // 4: meurpg.play.v1.RollModeRequest.decided_mode:type_name -> meurpg.play.v1.RollMode
 	2,  // 5: meurpg.play.v1.RollModeRequest.status:type_name -> meurpg.play.v1.RollModeRequestStatus
-	17, // 6: meurpg.play.v1.RollModeRequest.created_at:type_name -> google.protobuf.Timestamp
+	18, // 6: meurpg.play.v1.RollModeRequest.created_at:type_name -> google.protobuf.Timestamp
 	3,  // 7: meurpg.play.v1.DamageStep.kind:type_name -> meurpg.play.v1.DamageStepKind
 	9,  // 8: meurpg.play.v1.DamagePart.slot_options:type_name -> meurpg.play.v1.SlotOption
 	11, // 9: meurpg.play.v1.DamagePartRoll.rerolled:type_name -> meurpg.play.v1.Reroll
-	4,  // 10: meurpg.play.v1.CombatantEffect.kind:type_name -> meurpg.play.v1.CombatantStateKind
-	5,  // 11: meurpg.play.v1.CombatantEffect.ends_phase:type_name -> meurpg.play.v1.StatePhase
-	5,  // 12: meurpg.play.v1.ConditionSource.ends_phase:type_name -> meurpg.play.v1.StatePhase
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	12, // 10: meurpg.play.v1.DamagePartRoll.counted_dice:type_name -> meurpg.play.v1.CountedDie
+	4,  // 11: meurpg.play.v1.CombatantEffect.kind:type_name -> meurpg.play.v1.CombatantStateKind
+	5,  // 12: meurpg.play.v1.CombatantEffect.ends_phase:type_name -> meurpg.play.v1.StatePhase
+	5,  // 13: meurpg.play.v1.ConditionSource.ends_phase:type_name -> meurpg.play.v1.StatePhase
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_combat_rolls_proto_init() }
@@ -1912,7 +2010,7 @@ func file_meurpg_play_v1_combat_rolls_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_combat_rolls_proto_rawDesc), len(file_meurpg_play_v1_combat_rolls_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
