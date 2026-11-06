@@ -24,6 +24,34 @@ type zoneStep struct {
 	who  string
 	from *grid.Square
 	path []grid.Square
+	// travels says the creature crossed the squares to get there: a walk or a push.
+	// A jump, a teleport and a placement do not cross them.
+	travels bool
+}
+
+// traveled are the squares the creature crossed, the last being where it stands now.
+// It crossed none when the step did not travel.
+func (st zoneStep) traveled() []grid.Square {
+	if !st.travels || st.from == nil || len(st.path) == 0 {
+		return nil
+	}
+	steps := grid.Line(*st.from, st.path[len(st.path)-1])
+	out := make([]grid.Square, len(steps))
+	for i, step := range steps {
+		out[i] = step.Square
+	}
+	return out
+}
+
+// spikesIn is the number of squares of the step inside the zone.
+func (z *zone) spikesIn(st zoneStep) int {
+	n := 0
+	for _, sq := range st.traveled() {
+		if z.has(sq) {
+			n++
+		}
+	}
+	return n
 }
 
 // pathOf are the squares a creature goes through: the straight line for a walk, only the end for
@@ -74,15 +102,24 @@ func (s *Service) zonesAfterSteps(ctx context.Context, c *combatTx, steps ...zon
 			return err
 		}
 		for _, z := range zs {
-			if !z.enteredBy(st) {
-				continue
-			}
-			if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnter, mark: mark, round: c.enc.Round}, st.who); err != nil {
+			if err := s.zoneAfterStep(ctx, c, z, st, mark); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// zoneAfterStep catches the creature that stepped when the step brought it into the zone.
+// Spike Growth hurts it for the squares it crossed instead.
+func (s *Service) zoneAfterStep(ctx context.Context, c *combatTx, z *zone, st zoneStep, mark string) error {
+	if z.def.kind == zoneSpikes {
+		return s.spikeCatch(ctx, c, z, st)
+	}
+	if !z.enteredBy(st) {
+		return nil
+	}
+	return s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnter, mark: mark, round: c.enc.Round}, st.who)
 }
 
 // catchByID catches the creature with the id, as it stands now.
@@ -181,8 +218,17 @@ func (s *Service) zonesAtTurnStart(ctx context.Context, c *combatTx, ids []strin
 	return s.catchWhoStarts(ctx, c, zs, ids, mark, round)
 }
 
-// zonesAtTurnEnd is what the end of a creature's part of the turn does to the zones: it is caught by each
-// zone that asks for the creatures that end their turn inside (Grease).
+// endsOn says whether a creature that ends its turn on the square is caught by the zone.
+// It is inside the zone, or for a wall also within 10 feet of its damaging side.
+func (z *zone) endsOn(sq grid.Square) bool {
+	if z.def.kind == zoneWall {
+		return z.hurtsAtEnd(sq)
+	}
+	return z.has(sq)
+}
+
+// zonesAtTurnEnd is what the end of a creature's part of the turn does to the zones.
+// Each zone that asks for the creatures that end their turn inside (Grease, Wall of Fire) opens its saving throw or its damage.
 func (s *Service) zonesAtTurnEnd(ctx context.Context, c *combatTx, who playdb.Combatant) error {
 	if isTheatre(c.enc) || c.enc.Status != statusActive || !placed(who) {
 		return nil
@@ -193,7 +239,7 @@ func (s *Service) zonesAtTurnEnd(ctx context.Context, c *combatTx, who playdb.Co
 	}
 	mark := currentMark(c) + ":end"
 	for _, z := range zs {
-		if !z.def.onTurnEnd || !z.has(squareOfCombatant(who)) {
+		if !z.def.onTurnEnd || !z.endsOn(squareOfCombatant(who)) {
 			continue
 		}
 		if err := s.catchByID(ctx, c, zoneCatch{z: z, why: zoneWhyEnd, mark: mark, round: c.enc.Round}, who.ID); err != nil {
@@ -317,9 +363,9 @@ func (s *Service) zonesAfterMove(ctx context.Context, a *moveAttempt) error {
 		return nil
 	}
 	from := squareOfState(a.made.From)
-	steps := []zoneStep{{who: a.target.ID, from: from, path: pathOf(from, a.to, a.req.walking())}}
+	steps := []zoneStep{{who: a.target.ID, from: from, path: pathOf(from, a.to, a.req.walking()), travels: a.req.walking()}}
 	if a.draggedMoved != nil {
-		steps = append(steps, zoneStep{who: a.draggedMoved.ID, from: a.draggedFrom, path: []grid.Square{squareOfCombatant(*a.draggedMoved)}})
+		steps = append(steps, zoneStep{who: a.draggedMoved.ID, from: a.draggedFrom, path: []grid.Square{squareOfCombatant(*a.draggedMoved)}, travels: a.req.walking()})
 	}
 	return s.zonesAfterSteps(ctx, a.c, steps...)
 }

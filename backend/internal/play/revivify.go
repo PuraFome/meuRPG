@@ -350,6 +350,10 @@ func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return nil, err
 	}
+	// Revivify has a verbal component, so a caster inside a Silence cannot cast it.
+	if err := refuseMuted(ctx, c, caster); err != nil {
+		return nil, err
+	}
 	target, err := s.revivifyTarget(ctx, c, m, out.v, cs, caster, in.targetID)
 	if err != nil {
 		return nil, err

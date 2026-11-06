@@ -165,3 +165,13 @@ func TestLiveContentMemoryAtMaximumText(t *testing.T) {
 	t.Logf("300 entries of maximum text: %d KB of stored data; a miss takes %v; a content keeps %.2f MB (the live source's budget is %d MB)", data/1024, missTime, float64(kept)/n/1e6, maxLiveBytes>>20)
 	runtime.KeepAlive(contents)
 }
+
+// overlayOf is the rules.Overlay of stored rows at a revision.
+func overlayOf(rows []charactersdb.CampaignContent, revision int) (rules.Overlay, error) {
+	entries, err := readEntries(rows)
+	if err != nil {
+		return rules.Overlay{}, err
+	}
+	o, _ := overlayFromEntries(entries, revision)
+	return o, nil
+}
