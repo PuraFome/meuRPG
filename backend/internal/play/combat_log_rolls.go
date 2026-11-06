@@ -87,7 +87,7 @@ func (e *logEntry) dressDamage(d *playv1.CombatLogDamage, v combatViewer, dice, 
 		e.dressShownAmount(d)
 	}
 	if v.master || targetsOwn {
-		e.dressSteps(d)
+		e.dressSteps(d, v.master)
 	}
 	if e.removed != nil && e.applied == nil && (v.master || targetsOwn) {
 		d.Amount = e.removed.Amount
@@ -131,7 +131,7 @@ func (e *logEntry) dressShownAmount(d *playv1.CombatLogDamage) {
 
 // dressSteps adds the steps resistance took the damage through, minus the sources the
 // master told the app to ignore.
-func (e *logEntry) dressSteps(d *playv1.CombatLogDamage) {
+func (e *logEntry) dressSteps(d *playv1.CombatLogDamage, master bool) {
 	names := func(string) string { return "" }
 	if e.rolls != nil && e.rolls.names != nil {
 		names = e.rolls.names
@@ -140,7 +140,7 @@ func (e *logEntry) dressSteps(d *playv1.CombatLogDamage) {
 	if e.applied != nil {
 		ignored = e.applied.Ignored
 	}
-	d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT)
+	d.Steps = stepsProto(e.dmg.Steps, ignored, names, dtPT, master)
 }
 
 // removalView is the master's removal of an extra, as a line for him and the attacker's player.

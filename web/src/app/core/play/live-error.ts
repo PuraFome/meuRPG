@@ -7,6 +7,11 @@ import {
 import { requestRefusedText } from '../connect/connect-errors';
 import type { LiveErrorKind } from './live-session.types';
 
+/** Whether `AdjustCharacterVitals` refused the correction because the vitals are not the ones the master read (`aborted`). */
+export function isStaleVitals(err: unknown): boolean {
+  return ConnectError.from(err, Code.Unavailable).code === Code.Aborted;
+}
+
 /**
  * Maps a Connect error to what it means for the page, by code and by the
  * `GameSessionBlocked` detail, never by the message (play.proto lists which

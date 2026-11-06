@@ -34,7 +34,7 @@ func (w *world) greaseFight() (pens, dragon *playv1.Combatant) {
 	})))
 	// The world's setup leaves Pensantus at 0 hit points: she stands up to cast.
 	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: w.campaign, CharacterId: w.pens.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(7),
+		CampaignId: w.campaign, CharacterId: w.pens.GetId(), IdempotencyKey: newKey(), ExpectedRevision: m.revisionOf(w, w.pens.GetId()), HitPointsCurrent: proto.Int32(7),
 	})))
 	for _, c := range m.currentEncounter(w).GetCombatants() {
 		if c.GetBestiaryCreatureKey() == dragonKey {

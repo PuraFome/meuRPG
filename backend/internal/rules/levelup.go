@@ -334,6 +334,8 @@ func (b Build) clone() Build {
 	b.SkillProficiencies = slices.Clone(b.SkillProficiencies)
 	b.Expertise = slices.Clone(b.Expertise)
 	b.Weapons = slices.Clone(b.Weapons)
+	b.Carried = slices.Clone(b.Carried)
+	b.WeaponMarks = slices.Clone(b.WeaponMarks)
 	b.Cantrips = slices.Clone(b.Cantrips)
 	b.SpellsKnown = slices.Clone(b.SpellsKnown)
 	b.SpellsPrepared = slices.Clone(b.SpellsPrepared)
@@ -1359,11 +1361,15 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet) *LevelUpError {
 // or nil for one the sheet already had. late says the choice was left open by an
 // earlier level.
 func choiceProblemRefusal(p ChoiceProblem, late, had bool) *LevelUpError {
+	name := p.LabelPT // a feat's pick has no key a reader knows
+	if name == "" {
+		name = p.ChoiceKey
+	}
 	switch {
 	case p.Code == ChoiceProblemMissing && late:
-		return refuse(levelUpChoicesField, LevelUpReasonLateChoice, "%s was left open by an earlier level and is still open", p.ChoiceKey)
+		return refuse(levelUpChoicesField, LevelUpReasonLateChoice, "%s was left open by an earlier level and is still open", name)
 	case p.Code == ChoiceProblemMissing:
-		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "%s needs %d options, got %d", p.ChoiceKey, p.Required, p.Picked)
+		return refuse(levelUpChoicesField, LevelUpReasonFeatureChoice, "%s needs %d options, got %d", name, p.Required, p.Picked)
 	case had:
 		// A problem the sheet already had is not the level's.
 		return nil
@@ -1433,6 +1439,10 @@ func checkLocked(before, after Build) *LevelUpError {
 		return locked("full.shield")
 	case !slices.Equal(before.Weapons, after.Weapons):
 		return locked("full.weapon_keys")
+	case !slices.Equal(before.Carried, after.Carried):
+		return locked("full.carried_keys")
+	case !slices.Equal(before.WeaponMarks, after.WeaponMarks):
+		return locked("full.weapon_marks")
 	case !slices.Equal(before.ToolProficiencies, after.ToolProficiencies):
 		return locked("full.tool_proficiencies")
 	}

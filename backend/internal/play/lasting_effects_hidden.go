@@ -35,6 +35,14 @@ func hasHiddenEffect(states map[string][]playdb.CombatantState, id string) bool 
 	return slices.ContainsFunc(effectsOn(states, id), func(st playdb.CombatantState) bool { return !st.PlayerVisible })
 }
 
+// hasUnreadEffect says a combatant carries an effect the viewer may not read: one the master hides, or one only
+// the creature's player reads when the viewer is not that player.
+func hasUnreadEffect(states map[string][]playdb.CombatantState, c playdb.Combatant, v combatViewer) bool {
+	return slices.ContainsFunc(effectsOn(states, c.ID), func(st playdb.CombatantState) bool {
+		return !st.PlayerVisible || (st.Audience == audienceOwner && !v.owns(c))
+	})
+}
+
 // hiddenFrom says which sources of a roll between two combatants a viewer may not read the
 // origin of. The master reads everything.
 func (f modeFacts) hiddenFrom(v combatViewer, a, b playdb.Combatant) func(combat.Source) bool {
@@ -47,7 +55,7 @@ func (f modeFacts) hiddenFrom(v combatViewer, a, b playdb.Combatant) func(combat
 	anyHidden := false
 	for _, c := range []playdb.Combatant{a, b} {
 		conds = append(conds, hiddenConditionsOf(f.states, c)...)
-		anyHidden = anyHidden || hasHiddenEffect(f.states, c.ID)
+		anyHidden = anyHidden || hasUnreadEffect(f.states, c, v)
 	}
 	return func(src combat.Source) bool {
 		switch src.Kind {

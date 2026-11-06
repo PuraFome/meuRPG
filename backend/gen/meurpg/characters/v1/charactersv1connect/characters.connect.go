@@ -77,6 +77,9 @@ const (
 	// CharacterServiceSetStoryEditingProcedure is the fully-qualified name of the CharacterService's
 	// SetStoryEditing RPC.
 	CharacterServiceSetStoryEditingProcedure = "/meurpg.characters.v1.CharacterService/SetStoryEditing"
+	// CharacterServiceSetEquippedProcedure is the fully-qualified name of the CharacterService's
+	// SetEquipped RPC.
+	CharacterServiceSetEquippedProcedure = "/meurpg.characters.v1.CharacterService/SetEquipped"
 	// CharacterServiceMarkCharacterDeadProcedure is the fully-qualified name of the CharacterService's
 	// MarkCharacterDead RPC.
 	CharacterServiceMarkCharacterDeadProcedure = "/meurpg.characters.v1.CharacterService/MarkCharacterDead"
@@ -401,6 +404,35 @@ type CharacterServiceClient interface {
 	//     does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetStoryEditing(context.Context, *connect.Request[v1.SetStoryEditingRequest]) (*connect.Response[v1.SetStoryEditingResponse], error)
+	// SetEquipped equips or stows one piece of the sheet's gear: the body armor
+	// (armor_key), a weapon (weapon_keys) or the shield ("equipment:shield"),
+	// by adding the key to the sheet's carried_keys (stowed) or taking it out
+	// (equipped). Only equipped pieces count for armor class, attacks and
+	// properties. It changes nothing else on the sheet, so it is no way
+	// around the sheet's lock.
+	//
+	// The character's owner and the campaign's master may call it, on a draft,
+	// a pending sheet and a locked one alike: the lock (RN-01) is on the
+	// editor, not on what a character wields. A dead character cannot, and a
+	// player never reaches an NPC or another player's character.
+	//
+	// Asking for the state the piece already has changes nothing: the
+	// revision stays, play is not told and no combat action is spent. A change
+	// adds one to the revision like any sheet change. In a running combat the
+	// turn's economy applies to the owner: it must be their turn, body armor is
+	// refused, the first weapon drawn or stowed in the turn is free, and a second
+	// weapon or the shield costs the action. The master is unrestricted.
+	//
+	// Errors:
+	//   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or
+	//     the shield when it has one (InvalidField, field "key"), or the sheet
+	//     is a basic one.
+	//   - `not_found`: the character is not in this campaign, the caller may
+	//     not see it, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `failed_precondition`: the character is dead (CharacterBlocked with
+	//     reason CHARACTER_DEAD), or play refused the change in the combat.
+	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
 	//
@@ -1030,6 +1062,12 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("SetStoryEditing")),
 			connect.WithClientOptions(opts...),
 		),
+		setEquipped: connect.NewClient[v1.SetEquippedRequest, v1.SetEquippedResponse](
+			httpClient,
+			baseURL+CharacterServiceSetEquippedProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("SetEquipped")),
+			connect.WithClientOptions(opts...),
+		),
 		markCharacterDead: connect.NewClient[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse](
 			httpClient,
 			baseURL+CharacterServiceMarkCharacterDeadProcedure,
@@ -1235,6 +1273,7 @@ type characterServiceClient struct {
 	updateCharacter          *connect.Client[v1.UpdateCharacterRequest, v1.UpdateCharacterResponse]
 	updateCharacterStory     *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
 	setStoryEditing          *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
+	setEquipped              *connect.Client[v1.SetEquippedRequest, v1.SetEquippedResponse]
 	markCharacterDead        *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
 	getMasterNotes           *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
 	updateMasterNotes        *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
@@ -1310,6 +1349,11 @@ func (c *characterServiceClient) UpdateCharacterStory(ctx context.Context, req *
 // SetStoryEditing calls meurpg.characters.v1.CharacterService.SetStoryEditing.
 func (c *characterServiceClient) SetStoryEditing(ctx context.Context, req *connect.Request[v1.SetStoryEditingRequest]) (*connect.Response[v1.SetStoryEditingResponse], error) {
 	return c.setStoryEditing.CallUnary(ctx, req)
+}
+
+// SetEquipped calls meurpg.characters.v1.CharacterService.SetEquipped.
+func (c *characterServiceClient) SetEquipped(ctx context.Context, req *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error) {
+	return c.setEquipped.CallUnary(ctx, req)
 }
 
 // MarkCharacterDead calls meurpg.characters.v1.CharacterService.MarkCharacterDead.
@@ -1695,6 +1739,35 @@ type CharacterServiceHandler interface {
 	//     does not exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	SetStoryEditing(context.Context, *connect.Request[v1.SetStoryEditingRequest]) (*connect.Response[v1.SetStoryEditingResponse], error)
+	// SetEquipped equips or stows one piece of the sheet's gear: the body armor
+	// (armor_key), a weapon (weapon_keys) or the shield ("equipment:shield"),
+	// by adding the key to the sheet's carried_keys (stowed) or taking it out
+	// (equipped). Only equipped pieces count for armor class, attacks and
+	// properties. It changes nothing else on the sheet, so it is no way
+	// around the sheet's lock.
+	//
+	// The character's owner and the campaign's master may call it, on a draft,
+	// a pending sheet and a locked one alike: the lock (RN-01) is on the
+	// editor, not on what a character wields. A dead character cannot, and a
+	// player never reaches an NPC or another player's character.
+	//
+	// Asking for the state the piece already has changes nothing: the
+	// revision stays, play is not told and no combat action is spent. A change
+	// adds one to the revision like any sheet change. In a running combat the
+	// turn's economy applies to the owner: it must be their turn, body armor is
+	// refused, the first weapon drawn or stowed in the turn is free, and a second
+	// weapon or the shield costs the action. The master is unrestricted.
+	//
+	// Errors:
+	//   - `invalid_argument`: key is not the sheet's armor, a weapon it lists, or
+	//     the shield when it has one (InvalidField, field "key"), or the sheet
+	//     is a basic one.
+	//   - `not_found`: the character is not in this campaign, the caller may
+	//     not see it, the campaign does not exist, or the caller is not a
+	//     member of it.
+	//   - `failed_precondition`: the character is dead (CharacterBlocked with
+	//     reason CHARACTER_DEAD), or play refused the change in the combat.
+	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
 	//
@@ -2320,6 +2393,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("SetStoryEditing")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceSetEquippedHandler := connect.NewUnaryHandler(
+		CharacterServiceSetEquippedProcedure,
+		svc.SetEquipped,
+		connect.WithSchema(characterServiceMethods.ByName("SetEquipped")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceMarkCharacterDeadHandler := connect.NewUnaryHandler(
 		CharacterServiceMarkCharacterDeadProcedure,
 		svc.MarkCharacterDead,
@@ -2531,6 +2610,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceUpdateCharacterStoryHandler.ServeHTTP(w, r)
 		case CharacterServiceSetStoryEditingProcedure:
 			characterServiceSetStoryEditingHandler.ServeHTTP(w, r)
+		case CharacterServiceSetEquippedProcedure:
+			characterServiceSetEquippedHandler.ServeHTTP(w, r)
 		case CharacterServiceMarkCharacterDeadProcedure:
 			characterServiceMarkCharacterDeadHandler.ServeHTTP(w, r)
 		case CharacterServiceGetMasterNotesProcedure:
@@ -2634,6 +2715,10 @@ func (UnimplementedCharacterServiceHandler) UpdateCharacterStory(context.Context
 
 func (UnimplementedCharacterServiceHandler) SetStoryEditing(context.Context, *connect.Request[v1.SetStoryEditingRequest]) (*connect.Response[v1.SetStoryEditingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.SetStoryEditing is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.SetEquipped is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) MarkCharacterDead(context.Context, *connect.Request[v1.MarkCharacterDeadRequest]) (*connect.Response[v1.MarkCharacterDeadResponse], error) {

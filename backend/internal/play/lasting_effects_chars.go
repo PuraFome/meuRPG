@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
@@ -55,7 +56,10 @@ func (s *Service) ListCharacterEffects(
 		if !master && !playerReadsCharacterEffect(r, owned[r.CharacterID]) {
 			continue
 		}
-		out.Effects = append(out.Effects, characterEffectProto(r, name, names, content, master))
+		if !master && !owned[r.CharacterID] && slices.Contains(ownerOnlyConditions, r.SourceKey) {
+			continue // the condition itself is the source: its name is the leak
+		}
+		out.Effects = append(out.Effects, characterEffectProto(r, name, names, content, master, owned[r.CharacterID]))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -92,7 +96,7 @@ func playerReadsCharacterEffect(r playdb.CharacterEffect, own bool) bool {
 }
 
 // characterEffectProto is the effect on a character as the caller reads it.
-func characterEffectProto(r playdb.CharacterEffect, name string, names func(string) string, content *rules.Content, master bool) *playv1.CharacterEffect {
+func characterEffectProto(r playdb.CharacterEffect, name string, names func(string) string, content *rules.Content, master, own bool) *playv1.CharacterEffect {
 	e := &playv1.CharacterEffect{
 		Id: r.ID, CharacterId: r.CharacterID, CharacterName: name, SourceKey: r.SourceKey, SourceNamePt: names(r.SourceKey),
 		Concentration: r.Concentration, DurationTextPt: gameTimeText(r.SecondsLeft, r.Concentration),
@@ -101,7 +105,21 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		e.SecondsLeft = r.SecondsLeft
 	}
 	for _, k := range r.ConditionKeys {
+		if !master && !own && slices.Contains(ownerOnlyConditions, k) {
+			continue // no sign on the outside: the owner's and the master's (RN-10)
+		}
 		e.ConditionNamesPt = append(e.ConditionNamesPt, names(k))
+	}
+	if !master && !own {
+		// Another player's character: the label the master wrote and the conditions, never the numbers (RN-10).
+		label := conv.OrZero(r.PlayerLabel)
+		if d, ok := content.CombatSpellEffect(r.SourceKey); label == "" && ok {
+			label = d.PlayerLabelPT
+		}
+		if label != "" {
+			e.TagsPt = []string{label}
+		}
+		return e
 	}
 	mods := modifiersOf(r.Modifiers)
 	if d, ok := content.CombatEffect(r.SourceKey); ok {
@@ -109,8 +127,8 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 	} else if d, ok := content.CombatSpellEffect(r.SourceKey); ok {
 		e.TagsPt = d.TagsPT
 	}
-	e.TagsPt = append(append([]string{}, e.TagsPt...), modifierTagsPT(mods)...)
-	e.TagsPt = append(e.TagsPt, narratedNotesPT(mods)...)
+	e.TagsPt = append(append([]string{}, e.TagsPt...), modifierTagsPT(r.SourceKey, mods)...)
+	e.TagsPt = append(e.TagsPt, narratedNotesPT(r.SourceKey, mods)...)
 	if master {
 		e.PlayerVisible, e.Audience = r.PlayerVisible, audienceProto(r.Audience)
 	}

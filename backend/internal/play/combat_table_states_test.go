@@ -187,6 +187,7 @@ func TestAStateEndedByTheVitalsGivesBackWhatItGaveAndWritesItsLine(t *testing.T)
 	correct := func(r *stanceRig, req *playv1.AdjustCharacterVitalsRequest) {
 		t.Helper()
 		req.CampaignId, req.CharacterId, req.IdempotencyKey = r.a.campaignID, r.a.toren.GetId(), newKey()
+		req.ExpectedRevision = r.a.master.revisionOf(t, r.a.campaignID, r.a.toren.GetId())
 		if _, err := r.a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req)); err != nil {
 			t.Fatalf("AdjustCharacterVitals() error = %v", err)
 		}
@@ -497,6 +498,7 @@ func TestTheMastersCorrectionEndsAStateByHand(t *testing.T) {
 	adjust := func(keys ...string) error {
 		_, err := r.a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 			CampaignId: r.a.campaignID, CharacterId: r.a.toren.GetId(), IdempotencyKey: newKey(), EndStates: keys,
+			ExpectedRevision: r.a.master.revisionOf(t, r.a.campaignID, r.a.toren.GetId()),
 		}))
 		return err
 	}
@@ -515,6 +517,7 @@ func TestTheMastersCorrectionEndsAStateByHand(t *testing.T) {
 	// A player cannot: the correction is the master's.
 	if _, err := r.a.caio.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 		CampaignId: r.a.campaignID, CharacterId: r.a.toren.GetId(), IdempotencyKey: newKey(), EndStates: []string{key},
+		ExpectedRevision: r.a.master.revisionOf(t, r.a.campaignID, r.a.toren.GetId()),
 	})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Errorf("a player's end_states = %v, want permission_denied", err)
 	}
