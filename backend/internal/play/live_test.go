@@ -39,7 +39,7 @@ func newKey() string { return uuid.New().String() }
 // adjust calls AdjustCharacterVitals as u, with a new idempotency key.
 func (u *user) adjust(t *testing.T, campaignID, characterID string, edit func(*playv1.AdjustCharacterVitalsRequest)) (*playv1.CharacterVitals, error) {
 	t.Helper()
-	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey(), ExpectedRevision: u.revisionOf(t, campaignID, characterID)}
+	req := &playv1.AdjustCharacterVitalsRequest{CampaignId: campaignID, CharacterId: characterID, IdempotencyKey: newKey(), ExpectedRevision: u.revisionIfOpen(campaignID, characterID)}
 	edit(req)
 	res, err := u.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(req))
 	if err != nil {
@@ -416,10 +416,11 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	stream := player.watch(t, campaign)
 	stream.ready(t)
 
-	call := func(key, characterID string, hp int32) (*playv1.CharacterVitals, error) {
+	// A retry carries the revision the first call did, whatever came after.
+	call := func(key, characterID string, hp int32, revision *int32) (*playv1.CharacterVitals, error) {
 		res, err := master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 			CampaignId: campaign, CharacterId: characterID, IdempotencyKey: key, HitPointsCurrent: new(hp),
-			ExpectedRevision: master.revisionOf(t, campaign, characterID),
+			ExpectedRevision: revision,
 		}))
 		if err != nil {
 			return nil, err
@@ -427,11 +428,12 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 		return res.Msg.GetVitals(), nil
 	}
 	keyA, keyB := newKey(), newKey()
-	first, err := call(keyA, pc.GetId(), 3)
+	readPC := master.revisionOf(t, campaign, pc.GetId())
+	first, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}
-	again, err := call(keyA, pc.GetId(), 3)
+	again, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil || !proto.Equal(first, again) {
 		t.Errorf("the same call again = %v, %v; want the same answer %v", again, err, first)
 	}
@@ -440,10 +442,10 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	}
 	// Later changes win: a late retry answers with the vitals as they are
 	// now, and does not undo them.
-	if _, err := call(keyB, pc.GetId(), 5); err != nil {
+	if _, err := call(keyB, pc.GetId(), 5, master.revisionOf(t, campaign, pc.GetId())); err != nil {
 		t.Fatalf("AdjustCharacterVitals(another key) error = %v", err)
 	}
-	late, err := call(keyA, pc.GetId(), 3)
+	late, err := call(keyA, pc.GetId(), 3, readPC)
 	if err != nil || late.GetHitPointsCurrent() != 5 || late.GetRevision() != 2 {
 		t.Errorf("a late retry = %v, %v; want the current vitals (5 hit points, revision 2)", late, err)
 	}
@@ -452,10 +454,10 @@ func TestAdjustCharacterVitalsIsIdempotent(t *testing.T) {
 	}
 	// The key belongs to that change: using it for another character is a
 	// mistake, not a retry.
-	_, err = call(keyA, otherPC.GetId(), 3)
+	_, err = call(keyA, otherPC.GetId(), 3, master.revisionOf(t, campaign, otherPC.GetId()))
 	wantCode(t, "AdjustCharacterVitals(the key of another change)", err, connect.CodeInvalidArgument)
 	// Nor is it a retry when it comes with other numbers for the same character.
-	_, err = call(keyA, pc.GetId(), 4)
+	_, err = call(keyA, pc.GetId(), 4, readPC)
 	wantCode(t, "AdjustCharacterVitals(the key with other hit points)", err, connect.CodeInvalidArgument)
 	if v := master.liveSession(t, campaign).GetVitals(); len(v) == 0 || v[0].GetHitPointsCurrent() != 5 {
 		t.Errorf("vitals after the refused call = %v, want them as they were", v)
@@ -1082,5 +1084,20 @@ func (u *user) revisionOf(t *testing.T, campaignID, characterID string) *int32 {
 		}
 	}
 	t.Fatalf("no vitals for character %s", characterID)
+	return nil
+}
+
+// revisionIfOpen is revisionOf, or nil when there is no open session to read it from (the correction
+// is refused for that before its revision is looked at).
+func (u *user) revisionIfOpen(campaignID, characterID string) *int32 {
+	res, err := u.play.GetLiveSession(context.Background(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaignID}))
+	if err != nil {
+		return nil
+	}
+	for _, v := range res.Msg.GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
 	return nil
 }

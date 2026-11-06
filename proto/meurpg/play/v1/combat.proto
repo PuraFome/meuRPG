@@ -1998,7 +1998,7 @@ enum EncounterBlockedReason {
   // ones the action left, because something else changed them after it (a rest, a correction, a
   // trap of another fight). The undo would write the "before" over that change and lose it, so
   // nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.
-  ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED = 125;
+  ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED = 126;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
