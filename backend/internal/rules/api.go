@@ -228,8 +228,28 @@ type HitPoints struct {
 // hand-written effects, with every formula already compiled. It is
 // immutable after LoadSRD and safe for concurrent use.
 type Content struct {
-	c *content
+	c       *content
+	refused []Refused
 }
+
+// Refused is a stored entry that the content was built without, and the first
+// thing the engine found wrong with it.
+type Refused struct {
+	Key     string
+	Field   string
+	Reason  string
+	Message string
+}
+
+// WithRefused returns a content that shares c's data and reports refused as the
+// entries it was built without.
+func (c *Content) WithRefused(refused []Refused) *Content {
+	return &Content{c: c.c, refused: refused}
+}
+
+// Refused lists the stored entries the content was built without, in key order.
+// It is empty for a content built from every entry.
+func (c *Content) Refused() []Refused { return slices.Clone(c.refused) }
 
 // LoadSRD loads the embedded SRD 5.1 snapshot and effects, checks them and
 // compiles every formula. Call it once at startup and fail fast on error:
@@ -432,8 +452,14 @@ type SubraceEntry struct {
 	AbilityBonuses map[Ability]int
 	// SkillProficiencies are the skills its traits give, besides the race's.
 	SkillProficiencies []string
-	Archived           bool
-	Off                bool
+	// ReplacesTraitKeys are the traits of the parent race the subrace replaces, and
+	// ReplacedSkillProficiencies the skills of the race's catalog entry that go with them.
+	ReplacesTraitKeys          []string `json:",omitempty"`
+	ReplacedSkillProficiencies []string `json:",omitempty"`
+	// ReplacesAbilityBonuses says the race's ability bonuses, fixed and placed, are gone.
+	ReplacesAbilityBonuses bool `json:",omitempty"`
+	Archived               bool
+	Off                    bool
 }
 
 // ClassEntry is a class in the Catalog.
@@ -716,6 +742,8 @@ type Derived struct {
 	UnactedAdvantage, SurprisedCritical string `json:",omitempty"`
 	// Rerolls are the reroll effects of the character, in the order of the effects (rolleffects.go).
 	Rerolls []RerollRule `json:",omitempty"`
+	// RollMinimums are the roll_minimum effects of the character, in the order of the effects (rolleffects.go).
+	RollMinimums []RollMinimum `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
@@ -725,6 +753,9 @@ type Derived struct {
 	// Critical; the lowest of those and of the critical_range modifiers (15 at
 	// the least).
 	CriticalRange int
+	// SpellCriticalRange is the same for a spell attack roll: 20, or the lowest of the critical_range
+	// modifiers whose scope is spell or both (15 at the least). The SRD features never lower it.
+	SpellCriticalRange int
 	// BrutalCriticalDice is how many extra weapon damage dice a melee critical
 	// hit rolls (the barbarian's Brutal Critical: 1, 2 or 3), 0 without it.
 	BrutalCriticalDice int

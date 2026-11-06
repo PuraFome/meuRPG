@@ -247,6 +247,21 @@ message Reroll {
   string source_key = 4;
 }
 
+// CountedDie is a die of damage that counted as another number than it showed, because a table feature's roll_minimum
+// raised it (a die that shows less than the minimum counts as the minimum; a die smaller than the minimum counts as
+// its own highest face). Only a die the floor changed is listed: a 5 is never marked. Whoever reads the faces of the
+// roll reads this, and nobody else does.
+message CountedDie {
+  // The die, as an index into the roll's `faces` (in the order rolled, after any reroll).
+  int32 index = 1;
+  // What the die showed. `faces` keeps it.
+  int32 face = 2;
+  // The number the die counted as; the roll's sum and total use this one.
+  int32 counted_as = 3;
+  // The table feature that did it, as a content key.
+  string source_key = 4;
+}
+
 // DamagePartRoll is what one part of a damage rolled.
 message DamagePartRoll {
   string part_key = 1;
@@ -267,6 +282,10 @@ message DamagePartRoll {
   // A table maneuver's rider (what the target must do, in the table's words). Only the
   // master gets it; empty for everyone else and for every other part.
   string rider_pt = 12;
+  // The dice of the part that counted as another number than they showed (a table roll_minimum). `faces` keeps what came
+  // up, `sum` adds what counted. A part that does not count in the total is floored too, so the line of a part tells
+  // nothing about the target.
+  repeated CountedDie counted_dice = 13;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.

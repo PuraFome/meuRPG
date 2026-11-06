@@ -729,3 +729,48 @@ func TestMR025_APackWithOptionsPreviewsAndImports(t *testing.T) {
 		}
 	}
 }
+
+// TestMR025_APackKeepsASubraceReplacementsAndATraitsOptions: a race whose trait has a one-time
+// "one of" list of options, and a subrace that replaces that trait and the race's ability bonuses,
+// go through export and import with the same bodies, the replaced key and the flag included.
+func TestMR025_APackKeepsASubraceReplacementsAndATraitsOptions(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	race := testRace("Anão das Brumas")
+	race.Traits[0].Options = []*rulesv1.TableFeature{{NamePt: "Cor A", DescPt: []string{"A."}}, {NamePt: "Cor B", DescPt: []string{"B."}}}
+	raceEntry := pt.master.addEntry(t, pt.from, race)
+	traitKey := raceEntry.GetTableRace().GetTraits()[0].GetKey()
+	options := raceEntry.GetTableRace().GetTraits()[0].GetOptions()
+	if len(options) != 2 || !strings.HasPrefix(options[0].GetKey(), "trait:") || !strings.HasSuffix(options[0].GetKey(), "@mesa") {
+		t.Fatalf("the trait's options = %v, want two trait keys made by the server", options)
+	}
+	sub := testSubrace("Da Colina", raceEntry.GetKey())
+	sub.ReplacesTraitKeys, sub.ReplacesAbilityBonuses = []string{traitKey}, true
+	subEntry := pt.master.addEntry(t, pt.from, sub)
+	if got := subEntry.GetTableSubrace(); !slices.Equal(got.GetReplacesTraitKeys(), []string{traitKey}) || !got.GetReplacesAbilityBonuses() {
+		t.Fatalf("the stored subrace = %v, want the replacements kept", got)
+	}
+
+	pack := pt.export(t, pt.from)
+	file, err := storeJSON.Marshal(pack)
+	if err != nil || !strings.Contains(string(file), `"replaces_trait_keys"`) || !strings.Contains(string(file), `"replaces_ability_bonuses"`) {
+		t.Fatalf("the pack file = %s, %v; want the replacements in it", file, err)
+	}
+	loaded := &rulesv1.TableContentPack{}
+	if err := loadJSON.Unmarshal(file, loaded); err != nil {
+		t.Fatal(err)
+	}
+	if res := pt.apply(t, pt.to, loaded, "replaces-1"); res.GetTotals().GetNew() != 2 || res.GetTotals().GetRefused() != 0 {
+		t.Fatalf("import totals = %v, want two new entries", res.GetTotals())
+	}
+	got := pt.entries(t, pt.to)
+	for _, e := range []*rulesv1.TableEntry{raceEntry, subEntry} {
+		in := got[e.GetKey()]
+		if in == nil || !proto.Equal(bodyMessage(in), bodyMessage(e)) {
+			t.Errorf("%s differs after the round trip: %v", e.GetKey(), in)
+		}
+	}
+	if again := pt.apply(t, pt.to, loaded, "replaces-2"); again.GetTotals().GetUnchanged() != 2 {
+		t.Errorf("importing the same pack again: totals %v, want two unchanged", again.GetTotals())
+	}
+}

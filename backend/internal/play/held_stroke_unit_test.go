@@ -88,3 +88,31 @@ func TestAnAttackRuleMissesAgainstTheArmorClass(t *testing.T) {
 		t.Error("no use reads as one")
 	}
 }
+
+// A spell attack with SpellCriticalRange 19 (the range holdSpellAttack passes) is a hit on a natural 19 whatever the armor
+// class, so Stroke of Luck is not offered; an 18 that misses is. With the SRD's 20 the 19 misses and is offered.
+func TestSpellAttackStrokeRuleFollowsTheSpellCriticalRange(t *testing.T) {
+	t.Parallel()
+	const armor, bonus = 30, 5
+	rule := func(criticalFrom int) *strokeRule {
+		r := attackStrokeRule(func() (int, error) { return armor, nil }, criticalFrom, false)
+		if err := r.Prepare(); err != nil {
+			t.Fatalf("Prepare() error = %v", err)
+		}
+		return r
+	}
+	for _, c := range []struct {
+		name         string
+		criticalFrom int
+		face         int
+		wantAsk      bool
+	}{
+		{"a 19 in a range of 19", 19, 19, false},
+		{"an 18 in a range of 19", 19, 18, true},
+		{"a 19 in the SRD's range", 20, 19, true},
+	} {
+		if ask, _ := rule(c.criticalFrom).decide(c.face, c.face+bonus); ask != c.wantAsk {
+			t.Errorf("%s: asks = %v, want %v", c.name, ask, c.wantAsk)
+		}
+	}
+}

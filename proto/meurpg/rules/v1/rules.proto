@@ -454,6 +454,17 @@ message FeatPrerequisite {
   string race_key = 5;
   // The least total character level; 0 asks nothing.
   int32 level = 6;
+  // Races or subraces of which the character must be one (any of them is enough). A
+  // subrace character also satisfies its parent race's key. Alone it is read like
+  // `race_key`; the table refuses a feat that sets both.
+  repeated string races = 7;
+  // The character's size ("Tiny", "Small", "Medium" or "Large"): the race's own, or the
+  // one the player picked. Empty asks nothing.
+  string size = 8;
+  // A feature, trait or feat key the character must NOT have. Empty asks nothing.
+  // The guided level-up judges it before the feat's grants. The sheet judges it on what
+  // the character owns.
+  string lacks_feature_key = 9;
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):
@@ -478,11 +489,15 @@ enum FeatUnmetKind {
   FEAT_UNMET_KIND_PROFICIENCY = 3;
   // The character cannot cast any spell.
   FEAT_UNMET_KIND_SPELLCASTING = 4;
-  // The character is not of the race or subrace in `key`.
+  // The character is not of the race or subrace in `key`, or of any in `keys`.
   FEAT_UNMET_KIND_RACE = 5;
   // The character level is below `value`.
   FEAT_UNMET_KIND_LEVEL = 6;
   reserved 7;
+  // The character's size is not the one in `key`.
+  FEAT_UNMET_KIND_SIZE = 8;
+  // The character has the feature in `key`, which the feat asks them not to have.
+  FEAT_UNMET_KIND_LACKS_FEATURE = 9;
 }
 
 // AbilityMinimum is an ability and the score asked of it.
@@ -496,10 +511,18 @@ message AbilityMinimum {
 message FeatUnmet {
   FeatUnmetKind kind = 1;
   repeated AbilityMinimum abilities = 2;
-  // The proficiency or the race the character lacks.
+  // The proficiency or the race the character lacks; the size the feat asks for; the
+  // feature the character has and must not. Empty for a race kind that lists several races
+  // (see `keys`).
   string key = 3;
   // The level the character lacks.
   int32 value = 4;
+  // The races or subraces of which the character is none, when the feat asks for one of
+  // several (kind RACE); empty when `key` has the single race.
+  repeated string keys = 5;
+  // The Portuguese name of `key` for a kind LACKS_FEATURE (the app's catalog has no
+  // features); empty when the players cannot see that feature, and then `key` is empty too.
+  string name_pt = 6;
 }
 
 // FeatOption is a feat a character may take, for the feat picker (the guided
@@ -539,6 +562,9 @@ message FeatOption {
   // True when the text exists only in Portuguese (a table feat): `desc` already is the
   // Portuguese, and there is no English to offer.
   bool desc_pt_only = 13;
+  // The Portuguese name of `prerequisite.lacks_feature_key`; empty when it is not set or
+  // the players cannot see that feature.
+  string lacks_feature_name_pt = 14;
 }
 
 // ProficiencyLevel is how much of the proficiency bonus a check adds.
@@ -1408,7 +1434,8 @@ message Subrace {
   string name_pt = 3;
   // Content key of the race it belongs to, such as "race:gnome".
   string race_key = 4;
-  // The subrace's ability score increases, added to the race's.
+  // The subrace's ability score increases, added to the race's unless
+  // `replaces_ability_bonuses`.
   AbilityScores ability_bonuses = 5;
   // The table retired it (see Race.archived).
   bool archived = 6;
@@ -1416,8 +1443,19 @@ message Subrace {
   // off race is hidden from the players too, and keeps this mark false.
   bool off = 7;
   // Content keys of the skills the subrace gives, added to the race's (see
-  // Race.skill_keys).
+  // Race.skill_keys). The race's skills that come from a trait this subrace replaces
+  // are in `replaced_skill_keys`.
   repeated string skill_keys = 8;
+  // Content keys of the parent race's traits this subrace replaces: the character
+  // of this subrace does not have them. Empty for most subraces.
+  repeated string replaces_trait_keys = 9;
+  // When true, the race's ability bonuses are gone: the fixed ones and the ones the
+  // player places (Race.choice_bonuses, choice_bonus_sets, the half-elf's picks).
+  // `ability_bonuses` stands alone instead of adding to them.
+  bool replaces_ability_bonuses = 10;
+  // The skills in Race.skill_keys that come from the replaced traits alone: this
+  // subrace's character does not have them.
+  repeated string replaced_skill_keys = 11;
 }
 
 // CharacterClass is a class from the rules content.
@@ -2150,6 +2188,9 @@ enum DisabledReasonCode {
   // A spell, or a cantrip that makes an attack roll: the character wears armor or a shield
   // it is not proficient with, and cannot cast spells (SRD 5.1, "Armor").
   DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT = 112;
+  // A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
+  // size and damaging side (CastSpellRequest.wall), which the screen does not send.
+  DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED = 113;
 }
 
 // BonusAttackRule is the rule that makes an attack a bonus action attack right

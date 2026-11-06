@@ -30,6 +30,7 @@ const (
 	zoneWhyStart = "zone_start"
 	zoneWhyCast  = "zone_cast" // standing in the area when the spell was cast
 	zoneWhyEnd   = "zone_end"  // ended its turn inside
+	zoneWhyMove  = "zone_move" // traveled through the area (Spike Growth)
 )
 
 // eventZoneTriggered is a creature caught by the area a spell keeps on the map, and eventZoneMoved
@@ -49,6 +50,8 @@ type zoneCatch struct {
 	// made is the event of the cast the catch belongs to (a catch at the cast): what the catch changes is
 	// written into it, so that the undo of the cast puts it back. nil for a catch outside a cast.
 	made *actionEvent
+	// times is how many times the damage dice count; 0 counts them once.
+	times int
 }
 
 // spares says the zone leaves the creature alone: the caster and the caster's allies for the zones
@@ -77,6 +80,12 @@ func (z *zone) catches(owner, who playdb.Combatant, mark string) bool {
 	return placed(who) && !who.Defeated && !z.spares(owner, who) && !z.hitOn(who.ID, mark)
 }
 
+// asksNoSave says the catch asks no saving throw.
+// A wall asks its saving throw only of who stands in it at the cast.
+func (z *zone) asksNoSave(why string) bool {
+	return z.row.SaveAbility == "" || (z.def.kind == zoneWall && why != zoneWhyCast)
+}
+
 // catchZone catches a creature in a zone: it writes that the zone hit it on this turn, makes its saving
 // throw and deals what the spell says.
 func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch) error {
@@ -87,7 +96,7 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	if proceed, err := s.markCaught(ctx, c, cs, k, owner); err != nil || !proceed {
 		return err
 	}
-	if k.z.row.SaveAbility == "" {
+	if k.z.asksNoSave(k.why) {
 		return s.catchWithoutSave(ctx, c, k, owner)
 	}
 	asked, err := s.asksTheSave(ctx, c, k.who)
@@ -160,7 +169,7 @@ func (s *Service) resolveCatch(ctx context.Context, c *combatTx, cs []playdb.Com
 // spells that burn, the restraint of the web.
 func (s *Service) applyZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch, owner playdb.Combatant, saved bool, h *castHit) (zoneDamageDealt, error) {
 	switch {
-	case k.z.def.kind == zoneDamage:
+	case k.z.def.burns():
 		return s.dealZoneDamage(ctx, c, k, saved)
 	case saved:
 	case k.z.def.kind == zoneRetch:
@@ -247,6 +256,9 @@ func writeZoneCaught(c *combatTx, k zoneCatch, owner playdb.Combatant, hit castH
 	ev := actionEvent{
 		Round: k.round, Secret: owner.Hidden || k.who.Hidden, Actor: owner.ID, Target: k.who.ID, Key: k.z.row.SpellKey,
 		Pending: dealt.pending.ID, Lasting: l,
+	}
+	if hit.Save != nil {
+		ev.countedRoll = hit.Save.countedRoll
 	}
 	if dealt.landed {
 		ev.Applied, ev.Before, ev.After = dealt.hit.Applied, dealt.hit.Before, dealt.hit.After
@@ -405,4 +417,24 @@ func keepCastEffects(made *actionEvent, key string, rows []playdb.CombatantState
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
+}
+
+// spikeCatch hurts a creature for each square it crossed in a Spike Growth.
+// Nobody is spared, and the same creature is hurt again on every move.
+// A flier is not: it moves over the ground, as difficult terrain costs it nothing.
+func (s *Service) spikeCatch(ctx context.Context, c *combatTx, z *zone, st zoneStep) error {
+	n := z.spikesIn(st)
+	if n == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	who, ok := combatantByID(cs, st.who)
+	owner, okOwner := combatantByID(cs, z.row.OwnerID)
+	if !ok || !okOwner || !placed(who) || who.Defeated || moverOf(who).Flier {
+		return nil
+	}
+	return s.catchWithoutSave(ctx, c, zoneCatch{z: z, who: who, why: zoneWhyMove, round: c.enc.Round, times: n}, owner)
 }

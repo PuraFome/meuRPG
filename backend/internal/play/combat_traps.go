@@ -385,7 +385,7 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	for _, r := range rs {
 		out = append(out, saveRoll{
 			D20: conv.Int32(r.d20), Bonus: conv.Int32(r.bonus), Total: conv.Int32(r.total), DC: conv.Int32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
-			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky,
+			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky, countedRoll: r.countedRoll,
 		})
 	}
 	return out
@@ -815,6 +815,7 @@ func (v trapView) saveProto(sv saveRoll, sources []sourceRec, mine bool) *playv1
 		if !sv.Auto {
 			r.Roll = trapD20Roll(sv.D20, sv.D20B, sv.Counted, sv.Bonus, sv.Total)
 			r.Roll.Rerolled = sv.Lucky.proto() // "Sortudo: 1 → 14": the d20 the app rolled again, with the dice
+			sv.mark(r.Roll)
 		}
 		r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names)
 		r.Sources = append(r.Sources, effectDieSources(sv.Extra, v.names, v.master)...)
@@ -879,6 +880,7 @@ func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string,
 		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
 		out.saveAuto = combat.AutoFailsSave(creature, ability)
 		out.lucky = luckySaver(c, sheet.Traits) // a halfling player's 1 is rolled again by the app (combat_lucky.go)
+		out.saveFloor = floorFor(sheet.Traits, rules.RollAppliesSave, false)
 		out.saveDice = effectDiceFor(states, c.ID, rules.RollAppliesSave)
 		for i := range out.saveDice {
 			out.saveDice[i].CharacterID = c.CharacterID

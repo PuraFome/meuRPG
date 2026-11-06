@@ -40,6 +40,8 @@
     "cost": 1
   },
   "target_ac": 1,
+  "floor": 1,
+  "floor_by": "x",
   "reliable_talent": true,
   "dice_count": 1,
   "extra_dice": 1,
@@ -320,6 +322,15 @@
   "area_row": 1,
   "dx": 1,
   "dy": 1,
+  "wall": {
+    "ring": true,
+    "dir": {
+      "Dx": 1,
+      "Dy": 1
+    },
+    "length_ft": 1,
+    "side": 1
+  },
   "revealed_hits": true,
   "revealed": [
     "x"
@@ -760,6 +771,14 @@
           "source_key": "x"
         }
       ],
+      "counted_dice": [
+        {
+          "i": 1,
+          "face": 1,
+          "to": 1,
+          "source_key": "x"
+        }
+      ],
       "resource": "x",
       "rider": "x"
     }
@@ -772,6 +791,14 @@
     "resource": "x",
     "cost": 1
   },
+  "counted_dice": [
+    {
+      "i": 1,
+      "face": 1,
+      "to": 1,
+      "source_key": "x"
+    }
+  ],
   "once_before": {
     "sneak": "x",
     "colossus": "x",

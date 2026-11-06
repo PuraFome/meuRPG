@@ -119,6 +119,9 @@ func (s *Service) zoneToMove(ctx context.Context, c *combatTx, m authz.Membershi
 	if err := c.viewer(m, cs).mayAct(owner); err != nil {
 		return nil, playdb.Combatant{}, err
 	}
+	if z.def.kind == zoneWall {
+		return nil, playdb.Combatant{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("a wall is not moved: end it and cast the spell again"))
+	}
 	if z.def.movement != playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_ACTION && !c.master {
 		return nil, playdb.Combatant{}, connect.NewError(connect.CodeInvalidArgument, errors.New("this zone is not moved by an action"))
 	}

@@ -213,7 +213,7 @@ For a `creature`, `character_id` and `user_id` are the **owner's**, and `creatur
 | Group | Columns |
 | --- | --- |
 | Secrecy | `hidden` is the master's switch: the server never sends a hidden combatant to a player (RN-10, RN-20); every new NPC is born hidden. |
-| Initiative | `initiative` (total) and `initiative_face` (the d20), both `NULL` until rolled; `initiative_bonus`, copied from the sheet; `order_index`, the place in turn order; `tie_ordered`, the master settled a tie (RN-19). |
+| Initiative | `initiative` (total) and `initiative_face` (the d20), both `NULL` until rolled; `initiative_counted_as` (`INT4`, `NULL` when the d20 counted as it came up) is the number a table's `roll_minimum` made the d20 count as, and `initiative_counted_by` (`TEXT NOT NULL DEFAULT ''`) the content key of the feature that did it; `initiative_bonus`, copied from the sheet; `order_index`, the place in turn order; `tie_ordered`, the master settled a tie (RN-19). |
 | Position | `grid_col`, `grid_row` (both or neither); `speed_ft`, copied on entry; `movement_used_ft` (feet, rounded down) and `movement_used_dft` (tenths of a foot: the real value, RN-21); `last_move_dft` (the turn's last on-foot move, the run-up of a jump). |
 | Copied from the sheet on entry (MR-034) | `size`, `speed_fly_ft`, the jump limits `jump_long_dft` and `jump_high_dft` (from `rules/combat.JumpLimits`; `jump_long_bonus_dft` is the Thief's extra running long jump; `jump_doubled` holds from Step of the Wind to the next turn), `xp_value` (the XP an NPC gives; only the master receives it, RN-20), `mage_armor_ac`, `hp_max_bonus`. |
 | Belongs to the master and the combat | `side` (`party` or `enemy`; a player character enters `party`, an NPC `enemy`), `cover_mark` (`none`, `half`, `three_quarters`, `total`, cleared when the combatant moves). |
@@ -248,7 +248,10 @@ The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
 - Dice: `dice_count` (already doubled on a critical, or the usual dice under "max plus roll"), `dice_sides`, `dice_bonus`; `critical_max` is what a critical adds without rolling (the maximum of the dice, only under that rule), `critical_max_rule` records the rule at the hit; `extra_dice` and `savage_dice` are the weapon dice a feature adds to a melee critical (Brutal Critical, Savage Attacks), always rolled.
   All are **copied from the sheet** when the strike hits, so changing the sheet later does not touch an open roll.
   Zero dice is a fixed number.
-- Result: `faces`, `physical` and `amount` are what was rolled (or the typed sum), `NULL` until rolled; `damage_type` is the content key (`damage-type:fire`); `parts`, `part_rolls`, `steps` (the resistance, vulnerability and immunity steps per damage type) and `after_steps` hold the breakdown; `landed_before` is an NPC's HP before the damage, to give back what a removed extra took; `taken` is what landed after temporary HP absorbed its share (a cast's rows for one target add up to the concentration save's damage, RN-22; an undo clears it); `applied_amount` is what the master applied when it was not `amount`.
+- Result: `faces`, `physical` and `amount` are what was rolled (or the typed sum), `NULL` until rolled; `amount` counts a table's roll minimum on the dice, and `faces` keep what came up; `damage_type` is the content key (`damage-type:fire`); `parts`, `part_rolls`, `steps` (the resistance, vulnerability and immunity steps per damage type) and `after_steps` hold the breakdown; `landed_before` is an NPC's HP before the damage, to give back what a removed extra took; `taken` is what landed after temporary HP absorbed its share (a cast's rows for one target add up to the concentration save's damage, RN-22; an undo clears it); `applied_amount` is what the master applied when it was not `amount`.
+- Counted dice: `counted_dice` (`JSONB NOT NULL DEFAULT '[]'`) lists the dice of a damage with no parts of its own that a table's `roll_minimum` raised, as `{i, face, to, source_key}`: the index in `faces`, what the die showed, what it counts as and the content key of the feature.
+  It is `[]` when no die was raised.
+  The damage of a hit with parts keeps the same in each part of `part_rolls`.
 - Spells: rows of one cast share `cast_id` (a label, no foreign key; an area rolls the damage once for all); `healing` marks a heal, `half` a target that passed the save (`amount` is half, rounded down, `roll_total` the whole roll); `attack_total` is the strike total while waiting for Shield; `attack_armor_class` is the AC the strike was compared with (sheet, `ac_bonus` and cover, MR-034), `NULL` on damage opened before the column existed; `effect_source_key` is the key of the lasting effect that dealt the damage when a turn starts under it (the web that burns).
 - **Trap damage in a combat:** `attacker_id` is `NULL`, `trap_point_id` names the trap, `attack_key` is `trap`, and the row is born already rolled: `rolled` for a player character and `applied` for an NPC or creature.
   A `CHECK` requires an attacker, a trap or an effect source (`effect_source_key`).
@@ -315,15 +318,16 @@ The master alone reads what the row holds, as it reads the combatant's (RN-20, R
 
 ## `spell_zones`
 
-`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness and Stinking Cloud.
+`spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth and Wall of Fire.
 A row belongs to the combat (`encounter_id`) and to its caster (`owner_id`), and goes away with either.
 `spell_key` and `cast_id` (the id of the cast that made it, which the undo of the cast finds it by); `slot_level`; `origin_col`, `origin_row` and `squares` (JSON, `[[col,row],...]`, at most 4,096: where it stands now, after the walls cut it).
 The limit is 4,096 because Fog Cloud cast with a 9th-level slot is a sphere of 180 feet of radius, 4,053 squares (migration 00296).
 The cast keeps what a trigger needs, so none reads the caster's sheet: `save_ability`, `save_dc`, `damage_dice` (at the slot level, such as `3d8`) and `damage_type` (the one the caster picked).
+A wall (Wall of Fire) keeps how it was laid: `wall_side` (`left`, `right`, `inner`, `outer`, or empty for a zone that is no wall), `wall_dx` and `wall_dy` (the way a straight wall runs, each -1, 0 or 1; 0 for a ring) and `wall_length_ft` (the length or the ring's diameter, a multiple of 5 up to 60; 0 for a zone that is no wall), so the squares the damage reaches are worked out again from them (migration 00311).
 `concentration` says the owner's concentration holds the zone; `started_round` and `ends_round` (the round whose start of the owner's turn ends it; `NULL` for one with no time).
 `hit_marks` is JSON, `{combatant id: "<round>:<first combatant of the turn>"}`: the turn each creature was last caught on, so that a zone catches a creature once on a turn.
 A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `:end`, so each kind of catch asks once.
-`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's nine, whose definition is the code's.
+`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's twelve, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
 
 ## Contest, hold, hide, help, surprise (RN-34)

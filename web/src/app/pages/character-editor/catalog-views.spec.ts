@@ -122,6 +122,16 @@ describe('choiceBonusesHintOf', () => {
     );
   });
 
+  it('says nothing under a subrace that swaps the race bonuses whole', () => {
+    expect(
+      choiceBonusesHintOf(
+        race({ choiceBonuses: [2, 1] }),
+        subrace({ replacesAbilityBonuses: true }),
+      ),
+    ).toBe('');
+    expect(choiceBonusesHintOf(race({ choiceBonuses: [2, 1] }), subrace())).not.toBe('');
+  });
+
   it('says nothing for a race with none, or no race', () => {
     expect(choiceBonusesHintOf(race())).toBe('');
     expect(choiceBonusesHintOf(undefined)).toBe('');
@@ -202,6 +212,10 @@ describe('finalConstitutionOf', () => {
     expect(finalConstitutionOf(14, race(), subrace(), 2)).toBe(19);
   });
 
+  it("leaves out the race's Constitution when the subrace swaps the bonuses whole", () => {
+    expect(finalConstitutionOf(14, race(), subrace({ replacesAbilityBonuses: true }), 2)).toBe(17);
+  });
+
   it('counts what is missing as 0', () => {
     expect(finalConstitutionOf(undefined, undefined, undefined, undefined)).toBe(0);
     expect(finalConstitutionOf(10, undefined, undefined, undefined)).toBe(10);
@@ -222,6 +236,17 @@ describe('the skills the lists give', () => {
       ['skill:history', 'da raça'],
       ['skill:religion', 'do antecedente'],
     ]);
+  });
+
+  it("leaves out the race's skills that the subrace replaces", () => {
+    const granted = grantedSkillsOf(
+      race({ skillKeys: ['skill:arcana', 'skill:perception'] }),
+      subrace({ skillKeys: ['skill:history'], replacedSkillKeys: ['skill:perception'] }),
+      undefined,
+      false,
+      [],
+    );
+    expect([...granted.keys()]).toEqual(['skill:arcana', 'skill:history']);
   });
 
   it("takes a custom background's skills from the two the person picked, not from the catalog", () => {

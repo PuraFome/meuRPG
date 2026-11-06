@@ -272,7 +272,6 @@ func TestTableEntriesOfEveryViewer(t *testing.T) {
 		`background:guarda-de-farol@mesa: -charactersUsing -tableBackground.feature.effects[0].spells[1] tableBackground.feature.effects[0].spells[0]="spell:fire-bolt"`,
 		`spell:raio-arquivado@mesa: absent`,
 		`spell:raio-de-teste@mesa: -charactersUsing -tableSpell.classKeys[2] tableSpell.classKeys[1]="class:guardiao-do-vale@mesa"`,
-		`feat:punho-de-ferro@mesa: -tableFeat.prerequisite.raceKey`,
 		`feat:talento-desligado@mesa: absent`,
 	})
 	wantDiffs(t, "davi, without a sheet", viewerDiffs(t, master.GetEntries(), davi.GetEntries()), []string{
@@ -286,7 +285,7 @@ func TestTableEntriesOfEveryViewer(t *testing.T) {
 		`background:guarda-de-farol@mesa: -charactersUsing -tableBackground.feature.effects[0].spells[1] tableBackground.feature.effects[0].spells[0]="spell:fire-bolt"`,
 		`spell:raio-arquivado@mesa: absent`,
 		`spell:raio-de-teste@mesa: -charactersUsing -tableSpell.classKeys[2] tableSpell.classKeys[1]="class:guardiao-do-vale@mesa"`,
-		`feat:punho-de-ferro@mesa: -tableFeat.prerequisite.raceKey`,
+		`feat:punho-de-ferro@mesa: absent`,
 		`feat:talento-desligado@mesa: absent`,
 	})
 	for _, res := range []*rulesv1.ListTableEntriesResponse{master, dona, davi} {
@@ -552,4 +551,14 @@ func TestCreateTableEntryWithAKeyIsFrozen(t *testing.T) {
 	names := v.names()
 	names[other] = "<other campaign>"
 	tableContentGolden(t, "create_with_key", names, v.steps...)
+}
+
+// TestPlayerViewStripFiltersReplacedTraitKeysByTheHiddenPredicate: a subrace's replaced trait key the players do not see is not named to them.
+func TestPlayerViewStripFiltersReplacedTraitKeysByTheHiddenPredicate(t *testing.T) {
+	t.Parallel()
+	b := &rulesv1.TableSubrace{ReplacesTraitKeys: []string{"trait:a@mesa", "trait:b@mesa"}, ReplacesAbilityBonuses: true}
+	playerView{hidden: func(k string) bool { return k == "trait:a@mesa" }}.strip(b)
+	if got := b.GetReplacesTraitKeys(); len(got) != 1 || got[0] != "trait:b@mesa" || !b.GetReplacesAbilityBonuses() {
+		t.Errorf("stripped subrace = %v, want only trait:b@mesa and the flag kept", b)
+	}
 }

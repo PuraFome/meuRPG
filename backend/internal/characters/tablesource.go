@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -50,6 +51,7 @@ type TableSource struct {
 	queries *charactersdb.Queries
 	srd     *rules.Content
 	tables  TableRulesReader
+	logger  *slog.Logger
 
 	mu    sync.Mutex
 	cache map[liveKey]liveEntry
@@ -72,7 +74,7 @@ type liveKey struct {
 // and the reader of the saved table rules (campaigns.Service; nil for the SRD
 // defaults).
 func NewTableSource(pool *pgxpool.Pool, srd *rules.Content, tables TableRulesReader) *TableSource {
-	return &TableSource{pool: pool, queries: charactersdb.New(pool), srd: srd, tables: tables, cache: map[liveKey]liveEntry{}}
+	return &TableSource{pool: pool, queries: charactersdb.New(pool), srd: srd, tables: tables, logger: slog.Default(), cache: map[liveKey]liveEntry{}}
 }
 
 // For implements ContentSource.
@@ -142,20 +144,17 @@ func (s *TableSource) contentIn(ctx context.Context, q *charactersdb.Queries, id
 	if err != nil {
 		return nil, wrap("read the table's content", err)
 	}
-	overlay, err := overlayOf(rows, int(revision))
-	if err != nil {
-		return nil, wrap("read the table's content", err)
-	}
 	// The options the master switched off, read in the same transaction as the
 	// revision: every write of one starts by bumping it.
-	if overlay.Off, err = q.ListContentOff(ctx, id); err != nil {
+	off, err := q.ListContentOff(ctx, id)
+	if err != nil {
 		return nil, wrap("read the options switched off", err)
 	}
-	c, err := s.srd.With(overlay)
+	// An entry the rules refuse is left out with what depends on it.
+	// The content reports what was left out (Content.Refused).
+	// An error that names no entry fails the read.
+	c, err := buildFromRows(s.srd, rows, int(revision), off)
 	if err != nil {
-		// Every write checks the whole overlay before it commits, so a stored one
-		// that fails is a bug (or an engine change that an entry no longer
-		// passes): the campaign cannot be read, which is better than a silent SRD.
 		return nil, wrap("add the table's content to the rules", err)
 	}
 	size := 0

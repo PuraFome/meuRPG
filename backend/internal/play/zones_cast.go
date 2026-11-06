@@ -69,11 +69,12 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 	}
 	dice, dtype := zoneDamageOf(sp)
 	switch {
-	case def.kind != zoneDamage: // no damage: the web's fire is the master's to light
+	case !def.burns() && def.kind != zoneSpikes: // no damage: the web's fire is the master's to light
 		dice, dtype = "", ""
 	case dice == "":
 		dice, dtype = def.dice, def.dtype
 	}
+	wall := storedWall(plan.wall)
 	dc := sp.CasterDC
 	if dc == 0 {
 		dc = sp.SaveDC
@@ -83,6 +84,7 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 		OriginCol: clamp32(plan.origin.Col, 0, 1<<30), OriginRow: clamp32(plan.origin.Row, 0, 1<<30), Squares: squaresToJSON(plan.squares),
 		SaveAbility: def.save, SaveDc: clamp32(dc, 0, 40), DamageDice: dice, DamageType: dtype,
 		Concentration: sp.Concentration, StartedRound: c.enc.Round, EndsRound: ends, CreatedAt: c.now, Def: storedDef(sp.Key, def),
+		WallSide: wall.side, WallDx: wall.dx, WallDy: wall.dy, WallLengthFt: wall.lengthFt,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("put the spell zone on the map: %w", err)

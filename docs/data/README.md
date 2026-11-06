@@ -4,7 +4,7 @@ The database is CockroachDB, and the schema is whatever the goose migrations in 
 This page holds the conventions every table follows and the map from module to tables.
 One page per module (linked below) holds the tables, the non-obvious columns, the relations and who may read what.
 
-The old app's database is not migrated; the one exception is a one-off, hand-reviewed import of characters, tracked in the [roadmap](../roadmap.md).
+Nothing from the old app's database is migrated except its characters, imported once and reviewed by hand; that database is deleted.
 See also [Privacy](../privacy.md#the-legacy-app-database).
 
 ## Modules and tables

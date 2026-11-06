@@ -1989,6 +1989,9 @@ enum EncounterBlockedReason {
   // The same, for an action with uses a day or one that recharges after a rest: every use is
   // spent. Nothing is spent. The same reading rule.
   ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT = 124;
+  // CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
+  // Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED = 125;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2475,6 +2478,10 @@ message CombatLogHitRider {
   bool resisted = 19;
   // The uses of the trait the creature has left. Only the master.
   int32 resisted_left = 20;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `save_total` uses this
+  // one), and the feature that did it as a content key. Set where the d20 is.
+  optional int32 treated_as = 21;
+  string treated_as_source = 22;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2854,6 +2861,12 @@ message Combatant {
   // the round alone says when.
   ReactionKind reaction_kind = 107;
   int32 reaction_round = 108;
+
+  // The number the initiative d20 counted as when a table's roll_minimum raised it (`initiative_face` is what came
+  // up, `initiative` uses this one), and the feature that did it as a content key. Unset, and empty, when the d20
+  // counted as it came up. Same audience as `initiative_face`.
+  optional int32 initiative_treated_as = 109;
+  string initiative_treated_as_source = 110;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -3460,6 +3473,10 @@ message DiceRoll {
   // "trait:lucky", from 1 to the new face): an attack roll, an ability check or a saving
   // throw. `faces` holds the faces that count.
   repeated Reroll rerolled = 10;
+  // The dice of a damage roll that counted as another number than they showed (a table roll_minimum):
+  // `faces` keeps what came up, `total` uses what counted. Only a damage with no parts of its own sets it (the dice of a
+  // hit with parts are in each part's `counted_dice`).
+  repeated CountedDie counted_dice = 11;
   // The dice an effect added to (sign 1) or took from (sign -1) the roll: Bênção and
   // Perdição's d4 on attack rolls and saving throws. `total` already has them. For a
   // player, on an effect the master hides, `source_name_pt` is "Outra fonte" and the
@@ -4365,6 +4382,10 @@ message ChannelDivinityTurn {
   int32 total = 5;
   // True: it failed and is turned for one minute (a lasting effect on it).
   bool turned = 6;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
+  optional int32 treated_as = 7;
+  string treated_as_source = 8;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -4551,6 +4572,11 @@ message CastSpellRequest {
   // `invalid_argument` or, with no use left, `failed_precondition` with NO_USES. The
   // always-on ones apply without being named. The uses are spent with the slot.
   repeated SpellOptionChoice spell_options = 34;
+  // Wall of Fire on a map with a grid: the wall's shape, size and damaging side. The point of origin
+  // (`origin`) is the line's first square or the ring's center. Required for a spell that lays a wall
+  // (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
+  // (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
+  SpellWall wall = 35;
 }
 
 // SpellOptionChoice is a table cast option ticked on a casting.
@@ -4588,6 +4614,33 @@ message SpellOrigin {
 message SpellDirection {
   int32 dx = 1;
   int32 dy = 2;
+}
+
+// SpellWall places a wall (a line or a ring) that a point alone cannot. Wall of Fire reads it.
+// The spell's point of origin is the line's first square, or the ring's center.
+message SpellWall {
+  // True for a ringed wall; false for a straight one.
+  bool ring = 1;
+  // The way a straight wall runs from the point of origin. Unset for a ring.
+  SpellDirection direction = 2;
+  // The straight wall's length or the ring's diameter in feet. 0 means the spell's full size (60 for the
+  // line, 20 for the ring); any other value is a multiple of 5 up to that size.
+  int32 length_ft = 3;
+  // The side that deals the damage: LEFT or RIGHT for a straight wall, INNER or OUTER for a ring.
+  WallSide side = 4;
+}
+
+// WallSide is the side of a wall that deals damage.
+enum WallSide {
+  WALL_SIDE_UNSPECIFIED = 0;
+  // Of a straight wall: the left of the way it runs from the point of origin (north for a wall that runs east).
+  WALL_SIDE_LEFT = 1;
+  // Of a straight wall: the right of the way it runs from the point of origin (south for a wall that runs east).
+  WALL_SIDE_RIGHT = 2;
+  // Of a ring: inside it.
+  WALL_SIDE_INNER = 3;
+  // Of a ring: outside it.
+  WALL_SIDE_OUTER = 4;
 }
 
 // SpellArea is where an area spell landed: the point of origin it really had (the
@@ -4647,6 +4700,8 @@ message PreviewSpellAreaRequest {
   }
   // As CastSpellRequest.granted_by: the grant the spell would be cast through ("" for a spell of the classes).
   string granted_by = 8;
+  // As CastSpellRequest.wall: the wall of a spell that lays one.
+  SpellWall wall = 9;
 }
 
 // PreviewSpellAreaResponse is who an area reaches.
@@ -5606,6 +5661,10 @@ message CombatLogEffect {
   // `total` and `dc` are the failed roll), and the uses left after it. False and 0 for everyone else.
   bool resisted = 16;
   int32 resisted_left = 17;
+  // SAVED and SAVE_FAILED, with the roll: the number the d20 counted as when a table's roll_minimum raised it
+  // (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
+  optional int32 treated_as = 18;
+  string treated_as_source = 19;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -5622,7 +5681,7 @@ enum CombatLogEffectChange {
   COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
   // A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
   // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
-  // `reason` zone_enter, zone_start, zone_cast or zone_end, the roll, and the damage in `amount`.
+  // `reason` zone_enter, zone_start, zone_cast, zone_end or zone_move, the roll, and the damage in `amount`.
   COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
 }
 
@@ -6340,6 +6399,10 @@ message LegendaryResistanceOffer {
   // The uses of the trait the creature has left, and its uses a day.
   int32 uses_left = 6;
   int32 uses_per_day = 7;
+  // The number the d20 counted as when a table's roll_minimum raised it (`d20` is what came up, `total` uses this
+  // one), and the feature that did it as a content key.
+  optional int32 treated_as = 8;
+  string treated_as_source = 9;
 }
 
 message ManeuverReduceOption {

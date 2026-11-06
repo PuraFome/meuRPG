@@ -206,11 +206,16 @@ func (l *tableListing) response() *rulesv1.ListTableEntriesResponse {
 			if !l.playerReads(e) {
 				continue
 			}
-			e = forPlayer(e, l.hidden, l.held)
+			e = forPlayer(e, l.hiddenIn(), l.held)
 		}
 		pe := entryToProto(e, l.uses[e.row.ContentKey])
 		pe.Off = l.content.Off(e.row.ContentKey)
 		res.Entries = append(res.Entries, pe)
+	}
+	if l.master {
+		for _, r := range l.content.Refused() {
+			res.LeftOut = append(res.LeftOut, &rulesv1.TableContentViolation{Key: r.Key, Field: r.Field, Reason: r.Reason, Message: r.Message})
+		}
 	}
 	slices.SortStableFunc(res.Entries, func(a, b *rulesv1.TableEntry) int {
 		if d := tableKindOrder(a.GetKind()) - tableKindOrder(b.GetKind()); d != 0 {
@@ -231,7 +236,45 @@ func (l *tableListing) playerReads(e entryRow) bool {
 		return false // a player never receives a retired or switched off entry, or a draft
 	}
 	// Nor an entry whose class or race is retired or off, unless their sheet uses it.
-	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key)) || l.mine[key]
+	// Nor a feat that asks only for races the player may not read: without them its prerequisite would read as none.
+	return l.hidden == nil || (!parentHidden(e, l.hidden) && !l.hidden(key) && !l.asksOnlyHiddenRaces(e)) || l.mine[key] || l.heldByOwner(key)
+}
+
+// asksOnlyHiddenRaces says the entry is a feat whose prerequisite names races, all hidden and none of them
+// used by a sheet of the player.
+func (l *tableListing) asksOnlyHiddenRaces(e entryRow) bool {
+	feat, ok := e.body.(*rulesv1.TableFeat)
+	if !ok || l.hidden == nil {
+		return false
+	}
+	p := feat.GetPrerequisite()
+	asked := slices.Clone(p.GetRaces())
+	if p.GetRaceKey() != "" {
+		asked = append(asked, p.GetRaceKey())
+	}
+	return len(asked) > 0 && !slices.ContainsFunc(asked, func(k string) bool { return !l.hidden(k) || l.mine[k] })
+}
+
+// heldByOwner says the key is hidden only with an owner (a race, class, ...) that a sheet of the player has:
+// a feature or option of what their sheet keeps is theirs to read.
+func (l *tableListing) heldByOwner(key string) bool {
+	return !l.content.Archived(key) && !l.content.Off(key) && l.ownedByMine(key)
+}
+
+// ownedByMine says an owner of the key is used by a sheet of the player.
+func (l *tableListing) ownedByMine(key string) bool {
+	return slices.ContainsFunc(l.content.Owners(key), func(o string) bool { return l.mine[o] })
+}
+
+// hiddenIn is what is hidden to the player inside an entry: what a sheet of theirs has is not (the race or
+// feat it keeps, the traits, features and options of the entries it keeps).
+func (l *tableListing) hiddenIn() func(string) bool {
+	if l.hidden == nil {
+		return nil
+	}
+	return func(k string) bool {
+		return l.hidden(k) && !l.mine[k] && !l.heldByOwner(k)
+	}
 }
 
 // duplicateName is a violation when another entry of the kind has the name, in
@@ -258,10 +301,19 @@ type stored struct {
 // checkOverlay builds the campaign's whole overlay with the entries (the write's
 // already put in) and runs it through the engine at revision. It returns the
 // content, or the refusal.
-func (s *Service) checkOverlay(entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
+// stored are the entries before the write.
+// Entries of stored that the rules already refuse are left out of the check.
+func (s *Service) checkOverlay(stored, entries []entryRow, revision int, key string, lead ...*rulesv1.TableContentViolation) (*rules.Content, error) {
 	overlay, idx := overlayFromEntries(entries, revision)
 	overlay.Strict = []string{key} // a write: a field the effect's type does not read is refused
 	content, err := s.srd.With(overlay)
+	if err != nil && !onlyThisEntry(violationsOf(err, idx, key)) {
+		if rest, ok := withoutStoredLeftOut(s.srd, stored, entries, revision, key); ok {
+			overlay, idx = overlayFromEntries(rest, revision)
+			overlay.Strict = []string{key}
+			content, err = s.srd.With(overlay)
+		}
+	}
 	if err != nil {
 		return nil, errRefusedContent(append(slices.Clone(lead), violationsOf(err, idx, key)...))
 	}
@@ -419,7 +471,7 @@ func (c *createCall) run(ctx context.Context, tx pgx.Tx) error {
 		CampaignID: c.campaignID, ContentKey: key, Kind: kindPrefix(c.kind), NamePt: c.body.GetNamePt(), Data: st.data,
 		Revision: rev, CreatedAt: now, UpdatedAt: now,
 	}
-	if _, err := c.s.checkOverlay(withRow(entries, st, row), int(rev), key, lead...); err != nil {
+	if _, err := c.s.checkOverlay(entries, withRow(entries, st, row), int(rev), key, lead...); err != nil {
 		return err
 	}
 	if row, err = c.insert(ctx, q, st, rev, now); err != nil {
@@ -640,7 +692,7 @@ func (c *updateCall) check(ctx context.Context, q *charactersdb.Queries, cur cha
 	now := c.s.now()
 	next := cur
 	next.NamePt, next.Data, next.Revision, next.UpdatedAt = c.body.GetNamePt(), st.data, rev, now
-	content, err := c.s.checkOverlay(withRow(entries, st, next), int(rev), c.key, lead...)
+	content, err := c.s.checkOverlay(entries, withRow(entries, st, next), int(rev), c.key, lead...)
 	if err != nil {
 		return updatePlan{}, err
 	}
@@ -888,6 +940,6 @@ func (s *Service) recheckOverlay(ctx context.Context, q *charactersdb.Queries, c
 	if err != nil {
 		return err
 	}
-	_, err = s.checkOverlay(entries, int(rev), key)
+	_, err = s.checkOverlay(entries, entries, int(rev), key)
 	return err
 }

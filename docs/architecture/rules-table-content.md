@@ -71,6 +71,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
+| `roll_minimum` | See [Roll minimum](#roll-minimum). |
 | `modifier` with target `critical_range` | See [Critical range](#critical-range). |
 | `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
@@ -85,7 +86,12 @@ Each option is a feature of its own (name, text, effects) with a server-made key
 An option is in no level row: it is gained only when picked, and applies (its effects, its action under the parent) only while the character has the parent.
 A `feature` choice with an empty `from` offers all the feature's options; on another feature of the same entry, `from` may list option keys (a later level's "two more").
 The choice engine deals one pool of picks to choices that share options, in level order, so options an earlier choice took are blocked in the later one, and a pick whose parent is gone is reported as no longer valid.
-Refused, each at its field: options on a trait or a background feature, nested options, options with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
+A race or subrace trait may carry options too, but there they are a one-time choice of one, not a choice of features.
+Each option is a trait with a server-made key (`trait:<stem>--<option name>@mesa`) that no race lists: it is gained only when picked.
+The pick is stored with the sheet's choices and checked against the options; one outside them is reported as not offered.
+A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
+The character picks one option, never more.
+Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
 
 ### Maneuvers
 
@@ -227,14 +233,38 @@ A rule with no resource is free and has cost 1 in `Derived.Rerolls`.
 The combat link carries them as `Traits.RerollRules` (`Applies`, `AtMost`, `Resource`, `Cost`, `Source`: the key of the feature that gives it).
 How the d20 is asked is in [Held rolls](play/held-rolls.md#the-d20-rolled-again-by-a-reroll-rule); how the damage dice are rolled again is in [Attacks and damage](play/attacks-and-damage.md).
 
+### Roll minimum
+
+`roll_minimum` (menu name "Valor mínimo no dado"; fields `rolls`, `value`, `damage_type`, `when`, `text_pt`; `rules/rolleffects.go`) makes a die that shows less than `value` count as `value`.
+`rolls` is the list of [Reroll](#reroll): `attack`, `check`, `save` (the d20) and `damage` (a die of weapon or spell damage).
+Checked at its fields (`bad_value` unless said):
+
+- `.rolls` is required, holds only those four words and names none twice;
+- `.value` is a literal from 2 to 20 (`MinRollMinimum`, `MaxRollMinimum`), never a formula;
+- `.damage_type` is a damage type of the content (`bad_reference`) and is accepted only when `rolls` is exactly `["damage"]`;
+- `.at_most`, `.resource`, `.cost` and `.tags` are refused (a tagged effect is never applied, and a minimum has no hint to show).
+
+`Derive` fills `Derived.RollMinimums` in the order of the effects, from the ones whose `when` holds.
+The combat link carries them as `Traits.RollMinimums` (`Applies`, `Value`, `DamageType`, `Source`: the key of the feature that gives it).
+The highest applicable minimum wins.
+For a d20, Reliable Talent's 10 competes with the table's minimums, and a tie keeps Reliable Talent.
+For a die of damage, a minimum with a `damage_type` counts only on the dice of that type, and one without counts on all of them.
+A die of damage smaller than `value` counts as its own highest face.
+A reroll comes first and the minimum counts the die that stays.
+The minimum counts the die for every rule that reads it: the total, a critical hit or a miss on a natural 20 or 1, and the 1 or 20 of a death save.
+Where each roll counts it is in [Held rolls](play/held-rolls.md#a-d20-that-counts-as-another-number) and [Attacks and damage](play/attacks-and-damage.md#the-damage-minimum).
+
 ### Critical range
 
 `modifier` with the target `critical_range` (menu name "Margem de acerto crítico (o menor d20 que é crítico)") sets the lowest natural d20 that is a critical hit.
 The mode is `set` (an empty mode is read as `set`; any other is refused at `.mode`), and a literal `value` is 15 to 20 (`.value`); a formula is clamped to 15..20 when it is worked out.
 The menu entry carries `only_modes`, `min` and `max`; the editor does not read them, and the server refuses a mode or a value outside them.
-`Derive` lowers `Derived.CriticalRange` to the lowest of the range the SRD features give and the value of each such modifier whose `when` holds.
+`applies` is the scope: `weapon` (the default, as the SRD's Improved Critical), `spell` or `both`.
+The list `critical_scopes` carries the three words; any other word is refused at `.applies`, and `applies` on any other target is refused at `.applies`.
+`Derive` lowers `Derived.CriticalRange` (the weapon attacks) to the lowest of the range the SRD features give and the value of each `weapon` or `both` modifier whose `when` holds.
+It lowers `Derived.SpellCriticalRange` (the spell attack rolls), which starts at 20, to the lowest value of each `spell` or `both` modifier whose `when` holds; Improved Critical and Superior Critical never lower it.
 A tagged modifier is a hint only.
-Combat reads `Derived.CriticalRange` for weapon attacks only; a spell attack is a critical hit on a 20.
+Combat reads `Derived.CriticalRange` for a weapon attack and `Traits.SpellCriticalRange` (0 is 20) for a spell attack roll.
 
 ## Table options
 
@@ -372,15 +402,38 @@ The catalog lists no always-prepared spell for an expanded subclass.
 
 - **Race and subrace** (2014 format): ability bonuses, size, speed, darkvision (a sense of the race itself), languages and how many to choose, and the traits as features with effects from the menu. The bonuses the player places come as `choice_bonuses` (one set, each bonus 1 to 4, at most six) or as `choice_bonus_sets` (up to four sets of 1 to 6 bonuses of +1 or +2, no two the same; a race has one or the other, refused at `.choice_bonus_sets`): the player picks them in "Escolhas", as the half-elf's +1s: a choice of the set when the race has several (`race:x#bonus-set=bonus-set:1`) and, for each distinct bonus of the set, a choice of as many abilities as the set has of it (`race:x#bonus-2=ability:str`). Each ability takes one bonus (a repeated pick is refused as unmet and gives nothing, and the other choices do not offer the ability), `Derive` adds the picks to the race's own bonuses, and the issue `race_bonus` says so until the picks fill the set. A sheet that placed the bonuses in the manual ones before they were picks, covering a set, stands for the picks. `sizes` (`Small`, `Medium`, once each, with the race's own `size` among them) are the sizes the player picks one from, kept in `FullSheet.size`; empty is the race's own size, a size the race does not offer is the issue `race_size`, and `Derived.Size` is the size that counts (the Small heavy-weapon reminder and the combatant's size read it).
   "+2 and +1 of your choice" is the master's option (`ChoiceBonuses`, a single set): the player picks the abilities in "Escolhas" and `Derive` warns (`race_bonus`) until they are picked.
-  A subrace adds bonuses and traits.
+  A subrace adds its bonuses and traits to the race's, unless it replaces some:
+  - `replaces_trait_keys` lists traits of the parent race (SRD or table) that the subrace takes the place of.
+    Each key must be a trait of the parent race and appear once.
+    A wrong key refuses the entry at `table_subrace.replaces_trait_keys[i]`, naming the key.
+    The list has at most 60 keys (`MaxTraits`).
+    A replaced trait is not owned by the character; see [Characters: table content](characters-table-content.md#the-sheet-of-a-race-and-a-subrace).
+  - `replaces_ability_bonuses` swaps the race's ability bonuses whole for the subrace's.
+    The fixed ones and the ones the player places (`choice_bonuses`, `choice_bonus_sets`, the half-elf's picks) are never added under the subrace's.
+    The sheet asks no pick for them.
+
+  How the sheet merges the two is in [Characters: table content](characters-table-content.md#the-sheet-of-a-race-and-a-subrace).
 - **Background:** two skills, tools, languages to choose, the equipment as text and the feature, usually a note.
   A table background's equipment reaches `Derive` (`background_equipment_pt`).
 
 ## Feat
 
 `TableFeat` (`feat:<name>@mesa`) has a name, text, a `FeatPrerequisite` and effects (the feat owns them; it has no features).
-The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key, a total level.
-`Content.Feats`, `FeatOptions(build)` and `CheckFeat` answer who qualifies and what they lack (`FeatUnmet`).
+The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key or a list of them of which one is enough (a subrace satisfies its parent race's key; a feat sets the key or the list, never both, and the list repeats no key), a size (`Tiny`, `Small`, `Medium` or `Large`, the one the sheet counts), a feature, trait or feat key the character must not have (never the feat itself), a total level.
+Each key must exist, SRD or table; the table refuses a wrong one at its own field of `prerequisite`, when the master writes the feat and when a pack brings it.
+`Content.Feats`, `FeatOptions(build)` and `CheckFeat` answer who qualifies and what they lack (`FeatUnmet`; the kinds `race`, `size` and `lacks_feature` are among them).
+The guided level-up judges a lacked feature before the feat's own grants.
+The sheet judges it on what the character owns (`lostFeats`).
+The guided level-up refuses an unmet feat with `LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE`.
+A feat chosen inside a level-up is refused with `LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE`.
+The choice paths, feat choices at creation included, refuse it with `CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET`.
+A player never reads the name of a hidden race, feat or feature, in a key or in a text.
+That holds for the player's copy of a feat, the level-up options and the texts of the feat-choice cards.
+A feat that asks only for hidden races is not offered to a player and is not in their copy, because without the races its prerequisite would read as none.
+A feat that asks for some visible races and some hidden ones names the visible ones only.
+What a sheet has is named to it: the race, subrace, feat or feature it holds, and the traits, features and options of the entries it keeps.
+That holds in the level-up options, the cards and the player's copies of the entries.
+A condition on a hidden feature the sheet does not have reads as a text that names nothing, never as no condition.
 The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.json`) is in the same `feats` map.
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.
@@ -407,10 +460,12 @@ The options screen has no creature group, so creatures are switched through the 
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.
-- `Content.Hidden(key)` is what the player does not receive: archived, switched off, or the subclass or subrace of a class or race that is switched off or archived.
+- `Content.Hidden(key)` is what the player does not receive: archived, switched off, the subclass or subrace of a class or race that is switched off or archived, or a trait, feature, background feature or option of a hidden race, subrace, class, subclass or background (`Content.Owners` names those).
+  A trait that several races share, and an option that several classes offer, is hidden once all its owners are.
   The children keep their own switch, so turning the class back on returns each subclass as it was.
 - A parent only hides the children of whoever does not have it: `Content.OffKeys(build)` lists the switched-off keys a sheet uses, and a subclass (or subrace) under a switched-off class (or race) counts only when the sheet does not have that class (or race).
   A sheet that already has the switched-off class keeps reaching its subclass level; a new sheet cannot take the class, so not the subclass either.
+- `Content.ForPlayer()` is the content as a player reads it: the feat-choice cards and the feats of the level-up options built from it name no hidden entry.
 - `Content.AnyHidden()` lets a caller that only filters skip the work when nothing is hidden.
 
 ## "A classe mudou"
@@ -518,3 +573,24 @@ If another entry already has that key, the feature is refused at `.key`, and the
 How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
 A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
 Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.
+
+## Entries the rules refuse on reading
+
+A write is checked, so a stored entry is valid when it is saved.
+A later revision of the effects, or a package, can make it invalid.
+`TableSource` then builds the content again without the entries the rules refuse (`buildTolerant`).
+It blames each violation that names an entry by its key, leaves that entry out and builds again.
+Each build leaves out at least one live entry or ends the read, so a campaign takes at most one build more than it has entries.
+The engine stops at the first entry it refuses, so 20 refused entries take 21 builds.
+A subclass of a class left out fails the next pass with `dangling_reference` and is left out too.
+A violation with no entry key, or one that names an entry that is not live, fails the read.
+The read never returns a part.
+A campaign with no refused entry costs one build.
+`Content.Refused()` lists what was left out, and is cached with the content for its revision.
+`ListTableEntriesResponse.left_out` gives it to the master of the campaign and to nobody else.
+A sheet that uses a left-out entry gets `unknown_key`, as for an entry that does not exist.
+A write of the master that repairs a left-out entry is accepted, as are archiving, unarchiving and the option switches; a write is refused for its own violations and for the healthy entries it breaks.
+An import is checked over the stored entries as they are stored, so a pack that breaks one is refused.
+Rows that cannot be decoded fail the listing, the export, the import and every write.
+The deploy audit of the same rules is in the [runbook](../operations/runbook.md#entries-a-new-revision-would-leave-out).
+Tests: `TestBuildTolerantLeavesOutManyRefusedEntries`, `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.

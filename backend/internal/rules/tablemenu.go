@@ -135,7 +135,9 @@ const (
 	ListAmbushApplies  = "ambush_applies"
 	// ListRollApplies are the rolls a reroll covers.
 	ListRollApplies = "roll_applies"
-	ListDamageTypes = "damage_types"
+	// ListCriticalScopes are the attacks a critical_range modifier widens the range of.
+	ListCriticalScopes = "critical_scopes"
+	ListDamageTypes    = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
 	ListResistanceConditions = "resistance_conditions"
 	// ListResistanceTypes are the damage types of a resistance effect plus the closed words
@@ -159,10 +161,11 @@ const (
 // menuTypes is the menu's types, in the picker's order, with the copy in
 // Portuguese, in our own words. Only the types of overlayEffectTypes appear.
 var menuTypes = []MenuType{
-	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir.", Fields: []MenuField{
+	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir e pode valer para armas, magias ou os dois.", Fields: []MenuField{
 		{Name: "target", Required: true, Kind: "choice", List: ListModifierTargets},
 		{Name: "mode", Required: true, Kind: "choice", List: ListModifierModes},
 		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "applies", Kind: "choice", List: ListCriticalScopes},
 		{Name: "when", Kind: "condition"},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
@@ -357,6 +360,13 @@ var menuTypes = []MenuType{
 		{Name: "at_most", Required: true, Kind: "number", Min: MinRerollAtMost, Max: MaxRerollAtMost},
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "cost", Kind: "formula"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "roll_minimum", NamePT: "Valor mínimo no dado", HintPT: "Um dado que mostrar menos que o valor escolhido (de 2 a 20) conta como esse valor, numa jogada de ataque, num teste de habilidade, num teste de resistência ou num dado de dano; o dado de dano menor que o valor conta como o seu maior valor. O tipo de dano é opcional e só vale quando a jogada é só dano: o mínimo vale então apenas para os dados desse tipo. Vale o maior mínimo entre os efeitos que o personagem tem.", Fields: []MenuField{
+		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
+		{Name: "value", Required: true, Kind: "text"},
+		{Name: "damage_type", Kind: "choice", List: ListDamageTypes},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -657,6 +667,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListRollApplies, Values: rollAppliesValues()},
+		{Name: ListCriticalScopes, Values: criticalScopeValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceTypes, Values: c.menuResistanceTypes()},
 		{Name: ListResistanceKinds, Values: resistanceKindValues()},

@@ -40,9 +40,10 @@ The scene (grid, walls, base light, painted light, light points, carried lights,
 
 ## Zones that block sight
 
-Fog Cloud, Stinking Cloud and Darkness are zones of `play` (RN-37).
+Fog Cloud, Stinking Cloud, Wall of Fire and Darkness are zones of `play` (RN-37).
 `CombatPositions` carries their squares in `Clouds` and `MagicDark` (`maps/link`), and `obscuredLayer` turns each list of `obscured` into a layer of the map's grid for `vision.Scene.Clouds` and `MagicDark`.
 `play` tells `maps` that a zone changed through `VisionChanged`, as Wild Shape and a familiar's sight do, so the revision of what the players see moves and the usual `vision_changed` goes out, also to the master; no RPC or event of its own carries it.
+The squares of Wall of Fire are cloud squares, as Fog Cloud's are; the wall blocks sight and no movement.
 In `rules/vision`:
 
 - A line that crosses a cloud square is blocked, as a wall blocks it, but the cloud square itself is not a wall.
@@ -56,7 +57,7 @@ In `rules/vision`:
 - Devil's Sight sees through no cloud.
 - A viewer in magical darkness with only darkvision is in the dark; with Devil's Sight it is not (`InTheDark`), which is what the master's light warning reads.
 
-A hidden caster's cloud or Darkness still turns its squares unseen for the players.
+A hidden caster's cloud, wall or Darkness still turns its squares unseen for the players.
 That effect never reveals the caster.
 The players get its footprint as the squares they cannot see now, with no zone and no caster.
 

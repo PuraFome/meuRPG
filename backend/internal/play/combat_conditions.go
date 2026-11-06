@@ -134,6 +134,10 @@ func (s *Service) conditionsWrite(ctx context.Context, c *combatTx, call conditi
 // combatant carries, and tells ev what they were. It says whether it changed anything.
 func (s *Service) markConditions(ctx context.Context, c *combatTx, target *playdb.Combatant, conditions []string, ev *actionEvent) (bool, error) {
 	condBefore := target.Conditions
+	conditions, err := s.withoutDerivedDeaf(ctx, c, *target, conditions)
+	if err != nil {
+		return false, err
+	}
 	// A condition an effect leaves goes when the master takes it off: the effect
 	// ends. Exhaustion has its own levels (RN-22).
 	conditions, reconciled, err := s.reconcileConditions(ctx, c, *target, conditions)
@@ -158,6 +162,25 @@ func (s *Service) markConditions(ctx context.Context, c *combatTx, target *playd
 		return false, err
 	}
 	return true, nil
+}
+
+// withoutDerivedDeaf drops the deafened condition the master's list carries when only a Silence gives it:
+// the stored list does not have it and the creature is entirely inside a Silence.
+// The condition a Silence gives is read from the zone and never stored, so it ends with the zone or the step out.
+// A real deafened the master adds inside a Silence is dropped without a word, and is lost once the creature leaves:
+// the derived condition and the stored one cannot be told apart, and the master may add it again outside.
+func (s *Service) withoutDerivedDeaf(ctx context.Context, c *combatTx, target playdb.Combatant, conditions []string) ([]string, error) {
+	if !slices.Contains(conditions, conditionDeafened) || slices.Contains(target.Conditions, conditionDeafened) {
+		return conditions, nil
+	}
+	zs, err := listZones(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	if !silencedBy(zs, target) {
+		return conditions, nil
+	}
+	return slices.DeleteFunc(slices.Clone(conditions), func(k string) bool { return k == conditionDeafened }), nil
 }
 
 // publishConditionsSet tells the streams the conditions or the concentration of a combatant

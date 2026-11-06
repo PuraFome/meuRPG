@@ -244,6 +244,11 @@ export interface SubraceOptionVm extends TableMark {
   readonly constitutionBonus: number;
   /** The skills its traits give (`Subrace.skill_keys`), which the player does not choose; absent means none. */
   readonly skillKeys?: readonly string[];
+  /** The subrace swaps the race's ability bonuses whole (`Subrace.replaces_ability_bonuses`): the race's Constitution and
+   * placed bonuses are gone. */
+  readonly replacesAbilityBonuses?: boolean;
+  /** The race's skills that go with the traits it replaces (`Subrace.replaced_skill_keys`). */
+  readonly replacedSkillKeys?: readonly string[];
 }
 
 export interface RaceOptionVm extends TableMark {

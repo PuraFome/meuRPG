@@ -44,6 +44,11 @@ After you edit any file in `effects/`, `TestSnapshot` fails and prints the new `
 A change to `data/` follows the same rule, but `TestSnapshot` only hashes `effects/`, so raise the revision by hand with the same `sha256`.
 The history of what each revision changed is `git log` on `effects/revision.json`.
 
+**A revision can make a stored table entry invalid.**
+The campaign still reads: the entries the engine refuses are left out, with whatever depends on them, and the master sees which and why (`left_out` of `ListTableEntries`).
+Before a revision gets traffic, `migrate up` runs every campaign's entries through the new engine and logs what it would leave out ([operations](operations/runbook.md#entries-a-new-revision-would-leave-out)).
+Read that log after a change to `effects/`, and fix or archive the entries it names.
+
 - **Effect types are closed**, and loading refuses everything else. The effect types, modifier targets, modes, senses and handlers are the `effectTypes` and neighbouring lists in `backend/internal/rules/effects.go`; the limits are the constants below them. Content can only name a handler; it never brings code.
 - **Formulas** use only `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` and `max`, and, in a condition of table content, `active("name")` (`backend/internal/rules/formula`). `FuzzCompileFormula` guards the compiler.
 - **Resources** recharge as `short_rest`, `long_rest`, `dawn`, `none`, `initiative`, `restore_one_on_short_rest` or `restore_one_on_long_rest`, and may carry `recharge_if` (a Bool formula) and `recharge_then` together, to recharge differently from a level on. A `modifier` on a score (`score.str`...) is an `add` with a `cap` above 20. `save.all` is a modifier target.
@@ -60,7 +65,7 @@ The history of what each revision changed is `git log` on `effects/revision.json
 
 | File | Holds | Loading refuses |
 | --- | --- | --- |
-| `<class>.json`, `races.json`, `backgrounds.json`, `feats.json` | The effects of each feature, trait, background and feat (`feat:grappler`...) | An unknown type or field; an entry that is not in `data/`; a prerequisite with an unknown ability, proficiency or race; an `ability_increase` that is not a whole 1 or 2 on distinct abilities |
+| `<class>.json`, `races.json`, `backgrounds.json`, `feats.json` | The effects of each feature, trait, background and feat (`feat:grappler`...) | An unknown type or field; an entry that is not in `data/`; a prerequisite with an unknown ability, proficiency, race, size or feature; an `ability_increase` that is not a whole 1 or 2 on distinct abilities |
 | `names_pt.json` | The Portuguese names, by key (`item:<index>`, `monster:<index>`, `resource:<name>`, `trap:<key>`, `light:<key>`, `attunement:<restriction>`, `attack:<SRD name>`...) | A missing name where a test asks for one (`TestNamesPT`, `TestMagicItemNamesPT`, `TestAttackNamesPT`, `TestActionNamesPT`); an `attack:` key that no creature's action uses; duplicates among spells, creatures, items, races, classes, subclasses or backgrounds (`TestNamesPTAreUnique`) |
 | `advancement.json` | The XP of each level (1 to 20) and of each challenge rating (0 to 30) | A table out of format |
 | `encounter_budget.json` | The SRD 5.2.1 "XP Budget per Character" table: per level, the low, moderate and high bands | A missing or out-of-order level, a row that does not grow, an unknown field |
@@ -95,6 +100,14 @@ A spell or trap outside the SRD never enters.
 
 Loading refuses a spell that is not from the SRD, an unknown kind, a field the kind does not use, a condition that does not exist, a creature that does not exist, a CR that is not from the SRD and a creature type that is not one.
 The casting time, ritual and concentration come from the spell, not from this file.
+
+### Spells that keep an area on the map
+
+The spells that keep a zone on the map are rows of code, not of `effects/spells.json` ([Spell zones](architecture/play/spell-zones.md)); their table rulings are in [RN-37](product/rules.md#rn-37-areas-that-spells-keep-on-the-map).
+Wall of Fire is placed as a straight line or a ring.
+The SRD does not require the 60-foot wall to be straight, and a bent wall is the master's hand.
+Spike Growth's zone shows to every player.
+The Perception check that lets a creature see the camouflaged ground is not ruled: the master rules who noticed it.
 
 ### Corrections
 

@@ -10,6 +10,8 @@ How a screen is designed and reviewed is in [Design](../design/README.md).
 `platform/httpserver.NewStatic` serves `index.html` and the build's files from `WEB_DIR` (`/app/web` in the image).
 Without a valid `WEB_DIR` the server starts API-only and logs a line; that is the normal case outside the Docker image (`make run`, for example).
 A path that is not an API path falls back to `index.html`, so the Angular router takes over.
+A path whose last segment has the build's file shape (`name-<8 upper-case letters or digits>.ext`) never falls back: when the file does not exist, it gets a 404 with `Cache-Control: no-store`.
+A client route must not end in that shape.
 The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*`, `/downloads/*`, `/healthz` and `/readyz`: an unknown path under them is a plain 404, never the page.
 
 | Aspect | Behaviour |
@@ -17,7 +19,7 @@ The API paths (`isAPIPath`) are `/meurpg.*`, `/auth/*`, `/images/*`, `/uploads/*
 | Cache | A hashed asset (`name-<8 characters>.ext`, from `outputHashing: "all"`) gets `Cache-Control: public, max-age=31536000, immutable`. `index.html` and files copied as they are (`favicon.ico`, `material-symbols/*`) get `no-cache`. |
 | MIME types | The server teaches Go's `mime` package `.webmanifest` (`application/manifest+json`) and `.ico` (`image/x-icon`); the production image has no `mime.types`. |
 | Compression | `.js` and `.css` files have `.br` and `.gz` copies from the build; the server sends the best one the request accepts, with `Vary: Accept-Encoding` ([Performance](../performance.md#served-compressed)). `index.html` is never encoded. |
-| A stale tab | A tab open across a deploy asks for lazy files that no longer exist. The first such failure reloads the page once (`core/system/chunk-reload.ts`); a second failure on the same page shows the error and does not reload. |
+| A stale tab | A tab open across a deploy asks for lazy files that no longer exist. The first such failure reloads the page once (`core/system/chunk-reload.ts`), for a lazy route and for a `@defer` block; a second failure on the same page shows the error and does not reload. A load that a navigation cancels (`beforeunload` fired) does not reload the page. The recovery matches a fixed phrase of each engine's message for a lazy file that cannot load. WebKit's phrase for a lazy file answered with a page instead of a script is `is not a valid JavaScript MIME type for module script`. Any other module error does not match and reaches the error handler. |
 | Legal pages | `/terms`, `/privacy` and `/credits` are lazy routes of the app, public ([Design](../design/README.md#logo-icons-and-footer)). |
 | Dev | `cd web && npm start` runs Angular with `proxy.conf.json`, forwarding the API paths to `localhost:8080`. |
 | Codegen | `make proto` runs `buf generate`; `protoc-gen-es` (Connect-ES v2: one plugin makes messages and services) writes `web/src/gen/`, committed like the Go side. |
