@@ -267,9 +267,9 @@ A vendor outside Brazil that can reach it still makes an international transfer,
 
 ### The legacy app database
 
-The previous app's hosting (Render for the server, GitHub Pages for the pages) and its separate CockroachDB cluster are not part of this system.
-They hold no data of the current app.
-Turning them off, and deleting that cluster after the one-off character import ([Data model](data/README.md)), is the project owner's task; the providers' backups disappear within 30 days.
+The previous app's hosting (Render for the server, GitHub Pages for the pages) and its separate CockroachDB cluster are turned off and deleted.
+They are not part of this system and hold no data of it.
+The provider's backups of that cluster expire within 30 days of its deletion ([Data model](data/README.md)).
 
 ### What generated images send to Google (MR-039, RN-28)
 
@@ -354,7 +354,6 @@ Two "yes" answers need a data protection impact report (RIPD) before the merge.
 
 - ImprovMX: the contract and the transfer mechanism, or its replacement by e-mail on the organization's Google account.
 - The LGPD contract with Cockroach Labs.
-- Whether the CockroachDB Cloud backups stay in São Paulo and are kept for at most 30 days (check in the console); the plan is under evaluation ([Operations](operations/reference.md)).
 - The transfer mechanism for Google's Gemini API (Resolution CD/ANPD no. 19/2024).
 - Lawyer review of the privacy notice, the terms and the treatment of free text left with the master, before the app opens to other tables.
 - Self-service export and account deletion, and deleting a campaign's image files when it is erased (the `campaigns/<id>/` prefix). Until they exist, the operator does it on request.
