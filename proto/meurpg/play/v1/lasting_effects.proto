@@ -339,6 +339,11 @@ message EffectSaveResult {
   // (`saved` is true; `d20`, `total` and `dc` are the roll that failed), and the uses left after it.
   bool resisted = 16;
   int32 resisted_left = 17;
+  // The number the d20 counted as when a table's roll_minimum raised it: `d20` and `d20_faces` keep what
+  // came up, `total` uses this one. Unset when the d20 counted as it came up. `treated_as_source` is
+  // the feature, as a content key; empty when `treated_as` is unset.
+  optional int32 treated_as = 18;
+  string treated_as_source = 19;
 }
 
 // What a lasting effect did to a target of a spell (CastSpell).

@@ -125,6 +125,18 @@ export async function afterRender(page: Page): Promise<void> {
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 }
 
+/**
+ * Waits until the first answer of the open-sessions poll has been applied to a signed-in page. It shows the live notice
+ * above the page when a session is open, and the notice pushes the page down: a click right after `goto` lands where
+ * the target was, not where it ends up. The poll runs for a signed-in person only: do not call it on a signed-out page.
+ */
+export async function shellSettled(page: Page): Promise<void> {
+  await expect
+    .poll(() => page.evaluate(() => (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).some((entry) => entry.name.includes('ListOpenGameSessions') && entry.responseEnd > 0)))
+    .toBe(true);
+  await afterRender(page);
+}
+
 export const day = 24 * 60 * 60 * 1000;
 
 /**

@@ -654,10 +654,16 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O servidor recusa um evento desconhecido, um gatilho sem resultado e um recurso que a entrada não define.
 - **Dado** uma classe da mesa com uma subclasse que conjura (um conjurador de um terço), **quando** cadastro a subclasse com "Esta subclasse conjura", **então** a tabela do conjurador de um terço começa no nível em que ela começa, e as magias da subclasse vêm da lista de classe da qual ela conjura.
 
-**Margem de crítico e rolar de novo.**
+**Margem de crítico, mínimos e rolar de novo.**
 
 - **Dado** uma característica da mesa com um modificador "Margem de acerto crítico" definido em 19 (RN-23), **quando** o dono ataca com uma arma e o d20 mostra 19, **então** o ataque acerta e é um acerto crítico, **e** um ataque de magia com 19 não é.
   Com uma classe que já tem Crítico Aprimorado, vale o menor dos dois; um valor fora de 15 a 20 é recusado no próprio campo.
+- **Dado** uma característica da mesa com um modificador "Margem de acerto crítico" definido em 19 e "Vale para" definido em "Ataques com magia", **quando** o dono faz uma jogada de ataque de magia e o d20 mostra 19, **então** o ataque acerta e é um acerto crítico, **e** um ataque com arma com 19 não é; com "Armas e magias" os dois são.
+- **Dado** uma característica com o efeito "Valor mínimo no dado" em jogadas de ataque com o valor 12, **quando** o d20 do dono mostra 2, **então** a jogada guarda a face 2, diz que ela conta como 12 e nomeia a característica, e o total usa 12.
+  Um valor fora de 2 a 20 é recusado no próprio campo, e um tipo de dano num mínimo que cobre mais que dano é recusado no próprio campo.
+  De dois mínimos vale o maior, e um empate com o Talento Confiável fica com o Talento Confiável.
+- **Dado** uma característica com o efeito "Valor mínimo no dado" em dano com o valor 6, **quando** o dono rola o dano de uma arma e um d4 mostra 1, **então** o dado conta como 4 (o seu maior valor) e a linha de dano mostra o 1 e como ele conta; **e** um d8 que mostra 3 conta como 6 sob o mesmo mínimo.
+  Outro jogador não lê nem a face nem o número.
 - **Dado** uma característica com o efeito "Rolar de novo" em jogadas de ataque, no máximo 2, gastando 1 uso de um recurso da característica, **quando** o d20 do dono mostra 2 ou menos e sobra um uso, **então** o jogador recebe "rolar de novo?" antes de a jogada ser dita bem-sucedida ou falha; "sim" gasta o uso e o novo d20 vale, "não" não gasta nada.
   O app não tem tela para a pergunta, então o servidor não retém a jogada; o teste da API cobre o critério.
   O efeito se escreve pela API: o editor o lista, mas não consegue salvá-lo.

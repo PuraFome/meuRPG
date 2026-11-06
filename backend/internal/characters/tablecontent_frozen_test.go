@@ -20,7 +20,7 @@ import (
 
 // frozenHidden is what the master hid in these tests: a class, a spell and a table race.
 func frozenHidden(k string) bool {
-	return k == "class:druid" || k == "spell:cure-wounds" || k == "race:oculta@mesa"
+	return k == "class:druid" || k == "spell:cure-wounds" || k == "race:oculta@mesa" || k == "feat:oculto@mesa"
 }
 
 // frozenEffects are effects that grant a hidden and a visible spell, and choose from both.
@@ -70,6 +70,14 @@ func TestForPlayerOfEveryKindIsFrozen(t *testing.T) {
 		{"spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL, &rulesv1.TableSpell{NamePt: "Magia", ClassKeys: []string{"class:druid", "class:wizard"}}},
 		{"feat of a hidden race", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
 			NamePt: "Talento", Effects: frozenEffects(), Prerequisite: &rulesv1.FeatPrerequisite{RaceKey: "race:oculta@mesa", Level: 4},
+		}},
+		{"feat of hidden and visible races and a hidden lacked feature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
+			NamePt: "Talento 5", Prerequisite: &rulesv1.FeatPrerequisite{
+				Races: []string{"race:oculta@mesa", "race:elf", "race:dwarf"}, Size: "Small", LacksFeatureKey: "feat:oculto@mesa",
+			},
+		}},
+		{"feat of races that are all hidden", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
+			NamePt: "Talento 6", Prerequisite: &rulesv1.FeatPrerequisite{Races: []string{"race:oculta@mesa"}, LacksFeatureKey: "feat:grappler"},
 		}},
 		{"feat of a visible race", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
 			NamePt: "Talento 2", Prerequisite: &rulesv1.FeatPrerequisite{RaceKey: "race:elf"},

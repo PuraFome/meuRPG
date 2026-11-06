@@ -329,6 +329,28 @@
     }
   },
   {
+    "step": "feat of hidden and visible races and a hidden lacked feature",
+    "value": {
+      "namePt": "Talento 5",
+      "prerequisite": {
+        "races": [
+          "race:elf",
+          "race:dwarf"
+        ],
+        "size": "Small"
+      }
+    }
+  },
+  {
+    "step": "feat of races that are all hidden",
+    "value": {
+      "namePt": "Talento 6",
+      "prerequisite": {
+        "lacksFeatureKey": "feat:grappler"
+      }
+    }
+  },
+  {
     "step": "feat of a visible race",
     "value": {
       "namePt": "Talento 2",

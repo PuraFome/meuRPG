@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -745,7 +746,7 @@ func (s *Service) outsideCharacterTarget(ctx context.Context, c *combatTx, effec
 	if err != nil {
 		return trapTarget{}, err
 	}
-	t.lucky, t.facts = traits.Lucky, combat.Creature{Evasion: traits.Evasion}
+	t.lucky, t.facts, t.saveFloor = traits.Lucky, combat.Creature{Evasion: traits.Evasion}, floorFor(traits, rules.RollAppliesSave, false)
 	return t, nil
 }
 

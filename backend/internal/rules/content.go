@@ -24,6 +24,10 @@ type content struct {
 	version  string
 	manifest srd51.Manifest
 
+	// player says the content is the player's view (Content.ForPlayer): the texts it
+	// builds for a card name no hidden race, feat or feature (RN-23).
+	player bool
+
 	abilities     map[Ability]srd51.AbilityScore
 	skills        map[string]*srd51.Skill
 	skillOrder    []string
@@ -828,6 +832,25 @@ func (c *content) raceEntries() []RaceEntry {
 	return out
 }
 
+// replacedSkills are the skills of the parent race's traits that the subrace replaces and no kept trait gives,
+// each once.
+func (c *content) replacedSkills(s *srd51.Subrace) []string {
+	r := c.races[s.Race]
+	if r == nil || len(s.ReplacesTraitKeys) == 0 {
+		return nil
+	}
+	kept := c.traitSkills(slices.DeleteFunc(slices.Clone(r.Traits), func(k string) bool { return slices.Contains(s.ReplacesTraitKeys, k) }))
+	// Two replaced traits may give the same skill: it is listed once.
+	var seen []string
+	return slices.DeleteFunc(c.traitSkills(s.ReplacesTraitKeys), func(k string) bool {
+		if slices.Contains(kept, k) || slices.Contains(seen, k) {
+			return true
+		}
+		seen = append(seen, k)
+		return false
+	})
+}
+
 func (c *content) subraceEntries() []SubraceEntry {
 	var out []SubraceEntry
 	for _, k := range sortedKeys(c.subraces) {
@@ -835,6 +858,8 @@ func (c *content) subraceEntries() []SubraceEntry {
 		out = append(out, SubraceEntry{
 			Key: k, Name: s.Name, NamePT: c.namePT(k), Race: s.Race, AbilityBonuses: abilityMap(s.AbilityBonuses),
 			SkillProficiencies: c.traitSkills(s.Traits), Archived: c.archived[k], Off: c.off[k],
+			ReplacesTraitKeys: slices.Clone(s.ReplacesTraitKeys), ReplacesAbilityBonuses: s.ReplacesAbilityBonuses,
+			ReplacedSkillProficiencies: c.replacedSkills(s),
 		})
 	}
 	sortPT(out, func(e SubraceEntry) string { return e.NamePT })

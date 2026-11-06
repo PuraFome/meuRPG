@@ -21,7 +21,7 @@ func TestMarkTreatedMarksTheDieThatCounted(t *testing.T) {
 			t.Parallel()
 			roll := diceRoll(2, 20, tc.faces, 9, tc.total, false)
 			roll.CountedIndex = tc.counted
-			markTreated(roll, 9, tc.total)
+			markTreated(roll, 9, tc.total, reliableTalentSource)
 			if got := roll.GetTreatedAs(); got != tc.want {
 				t.Errorf("treated_as = %d, want %d", got, tc.want)
 			}

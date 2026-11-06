@@ -34,12 +34,44 @@ describe('the feat form (MR-025)', () => {
         proficiencyKey: 'proficiency:medium-armor',
         spellcasting: false,
         raceKey: 'race:human',
+        races: [],
+        size: '',
+        lacksFeatureKey: '',
         level: 4,
       },
       effects: [
         { type: 'ability_increase', count: 1, from: ['strength', 'dexterity'], value: '1' },
       ],
     });
+  });
+
+  it('keeps the races, the size and the feature to lack that the form has no input for', () => {
+    const body = create(TableFeatSchema, {
+      namePt: 'Sangue antigo',
+      prerequisite: {
+        races: ['race:elf', 'subrace:high-elf'],
+        size: 'Medium',
+        lacksFeatureKey: 'feat:grappler',
+      },
+    });
+    expect(draftToFeat(featToDraft(body), menu()).prerequisite).toEqual({
+      proficiencyKey: '',
+      spellcasting: false,
+      raceKey: '',
+      races: ['race:elf', 'subrace:high-elf'],
+      size: 'Medium',
+      lacksFeatureKey: 'feat:grappler',
+      level: 0,
+    });
+  });
+
+  it('drops the kept races when the master types the single race', () => {
+    const draft = featToDraft(
+      create(TableFeatSchema, { prerequisite: { races: ['race:elf', 'race:dwarf'] } }),
+    );
+    expect(draftToFeat({ ...draft, raceKey: 'race:human' }, menu()).prerequisite?.races).toEqual(
+      [],
+    );
   });
 
   it('sends a prerequisite that asks nothing as empty, and keeps no key on the feat', () => {
@@ -52,6 +84,9 @@ describe('the feat form (MR-025)', () => {
       proficiencyKey: '',
       spellcasting: false,
       raceKey: '',
+      races: [],
+      size: '',
+      lacksFeatureKey: '',
       level: 0,
     });
     expect(init.effects).toEqual([]);

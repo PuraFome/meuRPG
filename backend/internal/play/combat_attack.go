@@ -548,6 +548,7 @@ func (f *attackFlow) holdForWindow(ctx context.Context) (bool, error) {
 	f.spec = rollSpec{
 		Kind: heldWeaponAttack, Key: f.call.key, Window: f.c.replay != nil, Roller: attackRoller(f.m, f.attacker, f.c.enc.Round),
 		Lucky:  f.sheet.Traits.Lucky, // a halfling: a d20 of 1 may be rolled again (combat_lucky.go)
+		Floor:  floorFor(f.sheet.Traits, rules.RollAppliesAttack, false),
 		MayAsk: true,
 	}
 	if err := f.s.heldBlocked(ctx, combatGate(f.c), f.spec); err != nil {
@@ -619,7 +620,7 @@ func (f *attackFlow) resolve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	f.result = combat.ResolveAttackFrom(f.attack.ToHit+f.bonusFace+extraTotal, f.targetAC, f.rolled.D20.Face(), criticalFrom)
+	f.result = combat.ResolveAttackFrom(f.attack.ToHit+f.bonusFace+extraTotal, f.targetAC, f.rolled.D20.Value(), criticalFrom)
 	f.strokeHit() // Stroke of Luck: the miss the player turned into a hit
 	// A hit on a paralyzed or unconscious creature within 5 ft is a critical hit whatever the die says (SRD 5.1,
 	// Conditions).
@@ -713,6 +714,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	if b := f.rolled.Bonus; b != nil {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}
 	}
+	made.countedRoll = countedOf(d20) // the minimum that made the die count as another number: the d20 above is as it came up
 	made.D20Reroll = rerollUse(f.rolled.Lucky)
 	made.Lucky = f.rolled.Lucky   // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 	made.Stroke = f.rolled.Stroke // the use of Stroke of Luck: the log says the miss became a hit, the undo gives it back

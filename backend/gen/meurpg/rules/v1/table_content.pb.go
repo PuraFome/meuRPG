@@ -1387,6 +1387,8 @@ type TableEffect struct {
 	// ranged_attack also uses `applies`, for which attacks it changes: "spell" (the
 	// attack roll of a spell that needs one) or "weapon" (a ranged weapon attack, and a
 	// thrown weapon used at range).
+	// A modifier on "critical_range" uses `applies` for its scope: "weapon" (the default),
+	// "spell" (the attack roll of a spell) or "both".
 	Applies string `protobuf:"bytes,22,opt,name=applies,proto3" json:"applies,omitempty"`
 	Ability string `protobuf:"bytes,23,opt,name=ability,proto3" json:"ability,omitempty"`
 	// ranged_attack (a table feat that makes its owner a sharper shot; the SRD has none):
@@ -1428,6 +1430,8 @@ type TableEffect struct {
 	// `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
 	// "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
 	// unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+	// roll_minimum: `value` is the lowest the die counts as (a literal, 2 to 20), and `damage_type`
+	// limits it to the dice of that type, only when `rolls` is exactly "damage".
 	Dice           string `protobuf:"bytes,44,opt,name=dice,proto3" json:"dice,omitempty"`
 	DiceSides      int32  `protobuf:"varint,45,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
 	DamageType     string `protobuf:"bytes,46,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
@@ -1587,7 +1591,7 @@ type TableEffect struct {
 	// (a level 2 slot counts 2). Both are required.
 	RecoverMaxLevel string `protobuf:"bytes,75,opt,name=recover_max_level,json=recoverMaxLevel,proto3" json:"recover_max_level,omitempty"`
 	RecoverLevels   string `protobuf:"bytes,76,opt,name=recover_levels,json=recoverLevels,proto3" json:"recover_levels,omitempty"`
-	// reroll: the rolls it covers, one or more of "attack", "check", "save"
+	// reroll and roll_minimum: the rolls it covers, one or more of "attack", "check", "save"
 	// (the d20) and "damage" (a die of weapon or spell damage). Required, no word twice.
 	Rolls []string `protobuf:"bytes,77,rep,name=rolls,proto3" json:"rolls,omitempty"`
 	// reroll: the highest face that may be rolled again (1 to 20); the new roll must be used.
@@ -2198,7 +2202,11 @@ type TableFeature struct {
 	// them back on every update). A `choice` effect of kind "feature" on this feature
 	// with an empty `from` offers all of these options; on another feature of the same
 	// entry, `from` may list the keys of these options (a later level's "2 more").
-	// Options do not nest, and only a class or subclass feature has them. At most 60.
+	// Options do not nest. A class or subclass feature has them, and so does a race or
+	// subrace trait: there they are a one-time "one of" choice (the option traits are
+	// "trait:<stem>--<option name>@mesa", inactive until picked), stored with the
+	// sheet's choices and validated against the options. A `choice` effect of kind
+	// "feature" on such a trait is refused (bad_value): the character picks one. At most 60.
 	Options []*TableFeature `protobuf:"bytes,5,rep,name=options,proto3" json:"options,omitempty"`
 	// The creatures the feature brings to its holder, or unset. The holder casts it like a summoning spell, with
 	// a use of a resource of the feature (`summon.resource_key`) instead of a slot: the same options, checks,
@@ -3813,8 +3821,17 @@ type TableSubrace struct {
 	RaceKey        string          `protobuf:"bytes,2,opt,name=race_key,json=raceKey,proto3" json:"race_key,omitempty"`
 	AbilityBonuses *AbilityScores  `protobuf:"bytes,3,opt,name=ability_bonuses,json=abilityBonuses,proto3" json:"ability_bonuses,omitempty"`
 	Traits         []*TableFeature `protobuf:"bytes,4,rep,name=traits,proto3" json:"traits,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Keys of the parent race's traits this subrace replaces: the character of this
+	// subrace does not have them. Each key must be a trait key of the parent race
+	// (SRD or table) and appear once. At most 60 (the limit of traits).
+	ReplacesTraitKeys []string `protobuf:"bytes,5,rep,name=replaces_trait_keys,json=replacesTraitKeys,proto3" json:"replaces_trait_keys,omitempty"`
+	// When true, the parent race's ability bonuses are swapped whole for this
+	// subrace's `ability_bonuses`: they are never added on top of the race's. The
+	// bonuses the player places (the race's choice_bonuses and choice_bonus_sets, and the
+	// Half-Elf's style picks) go with them.
+	ReplacesAbilityBonuses bool `protobuf:"varint,6,opt,name=replaces_ability_bonuses,json=replacesAbilityBonuses,proto3" json:"replaces_ability_bonuses,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *TableSubrace) Reset() {
@@ -3873,6 +3890,20 @@ func (x *TableSubrace) GetTraits() []*TableFeature {
 		return x.Traits
 	}
 	return nil
+}
+
+func (x *TableSubrace) GetReplacesTraitKeys() []string {
+	if x != nil {
+		return x.ReplacesTraitKeys
+	}
+	return nil
+}
+
+func (x *TableSubrace) GetReplacesAbilityBonuses() bool {
+	if x != nil {
+		return x.ReplacesAbilityBonuses
+	}
+	return false
 }
 
 // TableBackground is a background: two skills, tools and languages, and a feature
@@ -8332,12 +8363,14 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x06traits\x18\t \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\x06traits\x12E\n" +
 	"\x11choice_bonus_sets\x18\n" +
 	" \x03(\v2\x19.meurpg.rules.v1.BonusSetR\x0fchoiceBonusSets\x12\x14\n" +
-	"\x05sizes\x18\v \x03(\tR\x05sizes\"\xc2\x01\n" +
+	"\x05sizes\x18\v \x03(\tR\x05sizes\"\xac\x02\n" +
 	"\fTableSubrace\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x19\n" +
 	"\brace_key\x18\x02 \x01(\tR\araceKey\x12G\n" +
 	"\x0fability_bonuses\x18\x03 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x0eabilityBonuses\x125\n" +
-	"\x06traits\x18\x04 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\x06traits\"\xe7\x01\n" +
+	"\x06traits\x18\x04 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\x06traits\x12.\n" +
+	"\x13replaces_trait_keys\x18\x05 \x03(\tR\x11replacesTraitKeys\x128\n" +
+	"\x18replaces_ability_bonuses\x18\x06 \x01(\bR\x16replacesAbilityBonuses\"\xe7\x01\n" +
 	"\x0fTableBackground\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x16\n" +
 	"\x06skills\x18\x02 \x03(\tR\x06skills\x12\x14\n" +

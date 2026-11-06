@@ -616,13 +616,28 @@ type d20Roll struct {
 	Faces []int
 	// Index is the die that counts.
 	Index int
-	// Total is that die plus the modifier.
+	// Total is the number the die counts as plus the modifier.
 	Total    int
 	Physical bool
+	// CountedValue is the number a floor made the die that counts count as.
+	// It is 0 when the die counts as it came up.
+	// It is a number, unlike the Index of a pair.
+	CountedValue int
+	// CountedBy is the content key of the feature that gave the floor.
+	CountedBy string
 }
 
-// Face is the die that counts.
+// Face is the die that counts as it came up: what the roll shows.
 func (r d20Roll) Face() int { return r.Faces[r.Index] }
+
+// Value is the number the die that counts counts as: the face, or the floor that raised it.
+// Every rule that reads the die reads this one.
+func (r d20Roll) Value() int {
+	if r.CountedValue > 0 {
+		return r.CountedValue
+	}
+	return r.Face()
+}
 
 // otherFace is the die that does not count, 0 when there was only one.
 func (r d20Roll) otherFace() int {
@@ -694,7 +709,7 @@ func d20Proto(ev actionEvent) *playv1.DiceRoll {
 	roll := diceRoll(clamp32(len(ev.d20Faces()), 1, 2), 20, ev.d20Faces(), ev.Modifier, ev.Total, ev.Physical)
 	roll.CountedIndex = ev.Counted
 	roll.Rerolled = strokeRerolls(ev.Lucky, ev.Stroke)
-	return roll
+	return ev.mark(roll)
 }
 
 // turnModes is what GetTurnOptions needs to write the mode of each attack against

@@ -174,7 +174,7 @@ func TestListTrapActivity_WhatEachViewerReads(t *testing.T) {
 		Key: searchInvestigation, D20: 17, D20B: 4, Modifier: 2, Lucky: &luckyReroll{Index: 0, From: 1, To: 4},
 	})
 	a.add(t, eventTrapSearched, bri, "search-bri-other", actionEvent{
-		Key: "skill:stealth", D20: 9, D20B: 12, Modifier: 1, Physical: true, ReliableTalent: true,
+		Key: "skill:stealth", D20: 9, D20B: 12, Modifier: 1, Physical: true, Floor: 10, FloorBy: reliableTalentSource,
 		Lucky: &luckyReroll{Index: 1, From: 1, To: 12}, Found: []string{pitB, lost},
 	})
 	a.add(t, eventTrapSearched, toren, "search-toren-lucky-second-missing", actionEvent{

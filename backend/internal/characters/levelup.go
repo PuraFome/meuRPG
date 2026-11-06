@@ -384,7 +384,7 @@ func (s *Service) readLevelUpOptions(ctx context.Context, tx pgx.Tx, m authz.Mem
 	if r.t, err = s.readLevelUpTarget(ctx, tx, m, req.GetCharacterId(), req.GetClassKey()); err != nil {
 		return r, err
 	}
-	if r.offer, err = rules.LevelUpOptions(r.t.build, r.t.classKey, r.t.content); err != nil {
+	if r.offer, err = rules.LevelUpOptions(r.t.build, r.t.classKey, viewContent(r.t.content, m)); err != nil {
 		return r, levelUpRulesError(err)
 	}
 	if r.diceRule, err = s.diceRule(ctx, tx, m); err != nil {
@@ -396,6 +396,14 @@ func (s *Service) readLevelUpOptions(ctx context.Context, tx pgx.Tx, m authz.Mem
 		return r, wrap("read the kept roll", err)
 	}
 	return r, nil
+}
+
+// viewContent is the content as the caller reads its texts: a player's names no hidden entry (RN-23).
+func viewContent(c *rules.Content, m authz.Membership) *rules.Content {
+	if isMaster(m) {
+		return c
+	}
+	return c.ForPlayer()
 }
 
 // levelUpOptionsFor is the options message the caller reads.
@@ -427,7 +435,7 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 	})
 	// Nor an option to swap to that the master retired or switched off.
 	for _, g := range out.SwapGroups {
-		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return t.content.Hidden(k.GetKey()) })
+		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return hiddenOption(t, k.GetKey()) })
 	}
 	// Nor a reference to a hidden class the sheet does not use (a list a table
 	// class or subclass reuses).
@@ -445,6 +453,20 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 	}
 }
 
+// hiddenOption says k is an option the player never receives: retired or switched off itself, or
+// hidden only with an owner that the character's own sheet does not have.
+func hiddenOption(t levelUpTarget, k string) bool {
+	if !t.content.Hidden(k) {
+		return false
+	}
+	return t.content.Archived(k) || t.content.Off(k) || !t.content.SheetHas(t.build, k)
+}
+
+// hiddenToSheet says k is hidden from the player and the character's own sheet does not have it.
+func hiddenToSheet(t levelUpTarget, k string) bool {
+	return k != "" && t.content.Hidden(k) && !t.content.SheetHas(t.build, k)
+}
+
 // hiddenListOf says k is a hidden class the character's sheet does not have.
 func hiddenListOf(t levelUpTarget, k string) bool {
 	return k != "" && t.content.Hidden(k) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Class == k })
@@ -452,18 +474,32 @@ func hiddenListOf(t levelUpTarget, k string) bool {
 
 // hiddenRaceOf says k is a hidden race or subrace that is not the character's.
 func hiddenRaceOf(t levelUpTarget, k string) bool {
-	return k != "" && t.content.Hidden(k) && t.build.Race != k && t.build.Subrace != k
+	return hiddenToSheet(t, k)
 }
 
-// hideFeatRace blanks the hidden race a feat asks for, in its prerequisite and
+// hideFeatRace blanks the hidden races and the hidden feature a feat names, in its prerequisite and
 // in what the character does not meet.
 func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 	if hiddenRaceOf(t, f.GetPrerequisite().GetRaceKey()) {
 		f.Prerequisite.RaceKey = ""
 	}
+	if p := f.GetPrerequisite(); p != nil {
+		p.Races = slices.DeleteFunc(p.Races, func(k string) bool { return hiddenRaceOf(t, k) })
+		if hiddenToSheet(t, p.GetLacksFeatureKey()) {
+			p.LacksFeatureKey, f.LacksFeatureNamePt = "", ""
+		}
+	}
 	for _, u := range f.GetUnmet() {
-		if hiddenRaceOf(t, u.GetKey()) && u.GetKind() == rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE {
-			u.Key = ""
+		switch u.GetKind() {
+		case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_RACE:
+			if hiddenRaceOf(t, u.GetKey()) {
+				u.Key = ""
+			}
+			u.Keys = slices.DeleteFunc(u.Keys, func(k string) bool { return hiddenRaceOf(t, k) })
+		case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE:
+			if hiddenToSheet(t, u.GetKey()) {
+				u.Key, u.NamePt = "", ""
+			}
 		}
 	}
 }

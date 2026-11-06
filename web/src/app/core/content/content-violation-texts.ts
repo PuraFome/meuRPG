@@ -169,6 +169,37 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta raça ou sub-raça não existe mais. Escolha outra.',
   },
   {
+    shape: /^table_feat\.prerequisite\.races$/,
+    reason: 'limit',
+    text: 'Uma lista de raças vai até 20.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.races$/,
+    text: 'Use a lista de raças ou a raça única, não as duas.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.races\[\]$/,
+    reason: 'dangling_reference',
+    text: 'Esta raça ou sub-raça não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.races\[\]$/,
+    text: 'Cada raça ou sub-raça entra uma vez só.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.size$/,
+    text: 'Escolha um tamanho: Miúdo, Pequeno, Médio ou Grande.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.lacks_feature_key$/,
+    reason: 'dangling_reference',
+    text: 'Este traço, característica ou talento não existe. Escolha outro.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.lacks_feature_key$/,
+    text: 'Um talento não pode pedir que ele mesmo não esteja na ficha.',
+  },
+  {
     shape: /^table_feat\.prerequisite\.level$/,
     text: 'O nível vai de 1 a 20 (vazio não pede nada).',
   },

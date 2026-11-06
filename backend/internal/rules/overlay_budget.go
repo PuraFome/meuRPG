@@ -212,6 +212,9 @@ func (bg *budget) races(o *Overlay) error {
 // subraces counts each subrace's traits.
 func (bg *budget) subraces(o *Overlay) error {
 	for si := range o.Subraces {
+		if n := len(o.Subraces[si].ReplacesTraitKeys); n > MaxTraits {
+			return ovErr(o.Subraces[si].Key, "%d replaced traits; the limit is %d", n, MaxTraits).at(fmt.Sprintf("subraces[%d].replaces_trait_keys", si), ReasonLimit)
+		}
 		if err := bg.traits(fmt.Sprintf("subraces[%d]", si), o.Subraces[si].Key, o.Subraces[si].Traits); err != nil {
 			return err
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -336,7 +337,7 @@ func (s *Service) counterspellCheck(ctx context.Context, c *combatTx, req *playv
 	out.countered = total >= dc
 	re.Check, re.CheckDC = conv.Int32(total), clamp32(dc, 0, math.MaxInt32)
 	// The Bardic Inspiration die the player added is in the total: the line shows it as part of the modifier.
-	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, conv.Int32(total-face), re.Check, step.Roll.Physical)
+	out.roll = countedOf(step.Roll).mark(diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, conv.Int32(total-step.Roll.Value()), re.Check, step.Roll.Physical))
 	out.roll.Rerolled = strokeRerolls(step.Lucky, step.Stroke)
 	re.Stroke = step.Stroke // the use of Stroke of Luck: the master's line says it and the undo gives it back
 	return out, nil
@@ -350,14 +351,15 @@ func (s *Service) counterspellD20(ctx context.Context, c *combatTx, req *playv1.
 	if c.master {
 		m.Role = authz.RoleMaster
 	}
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil {
+		return gateResult{}, err
+	}
+	floor := floorFor(sheet.Traits, rules.RollAppliesCheck, false)
 	if mayAsk := reactor.Kind == kindPlayer && backedByCharacter(reactor) && playedBy(reactor, m); mayAsk {
-		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
-		if err != nil {
-			return gateResult{}, err
-		}
 		return s.heldGate(ctx, s.inspirationGate(c), rollSpec{
 			Kind: heldCounterspell, Key: req.GetIdempotencyKey(), Request: req, Roller: attackRoller(m, reactor, c.enc.Round),
-			In: in, Modifier: k.st.CastingMod, Mode: combat.ModeNormal, Lucky: sheet.Traits.Lucky, MayAsk: true,
+			In: in, Modifier: k.st.CastingMod, Mode: combat.ModeNormal, Floor: floor, Lucky: sheet.Traits.Lucky, MayAsk: true,
 			Stroke: checkStrokeRule(dc, false), // the DC of the check is the log's: the reactor learns whether the spell was countered
 		})
 	}
@@ -365,7 +367,7 @@ func (s *Service) counterspellD20(ctx context.Context, c *combatTx, req *playv1.
 	if err != nil {
 		return gateResult{}, err
 	}
-	return gateResult{Settled: true, Roll: d20Roll{Faces: []int{face}, Total: roll.Total, Physical: roll.Physical}}, nil
+	return gateResult{Settled: true, Roll: floorD20(d20Roll{Faces: []int{face}, Total: roll.Total, Physical: roll.Physical}, k.st.CastingMod, floor)}, nil
 }
 
 // closeGroup closes the other open windows of a window's group by themselves.

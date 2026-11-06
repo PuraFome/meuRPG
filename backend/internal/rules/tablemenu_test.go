@@ -174,6 +174,12 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	for _, v := range menuList(t, m, ListRollApplies) {
 		effects = append(effects, Effect{Type: "reroll", Rolls: []string{v.Key}, AtMost: 2})
 	}
+	for _, v := range menuList(t, m, ListRollApplies) {
+		effects = append(effects, Effect{Type: "roll_minimum", Rolls: []string{v.Key}, Value: "2"})
+	}
+	for _, v := range menuList(t, m, ListCriticalScopes) {
+		effects = append(effects, Effect{Type: "modifier", Target: CriticalRangeTarget, Mode: "set", Value: "19", Applies: v.Key})
+	}
 	for _, v := range menuList(t, m, ListModifierModes) {
 		effects = append(effects, Effect{Type: "modifier", Target: "ac", Mode: v.Key, Value: "1"})
 	}
@@ -303,6 +309,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
 		"reroll":             {Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2},
+		"roll_minimum":       {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "2"},
 		"wild_shape":         {Type: "wild_shape", MaxCR: "1"},
 		"slot_recovery":      {Type: "slot_recovery", Resource: "dados_de_teste", RecoverMaxLevel: "3", RecoverLevels: "2"},
 		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},

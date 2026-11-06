@@ -3,6 +3,7 @@ import { test } from './diagnostics';
 
 // A tab left open across a deploy cannot load the old hashed chunks: the server answers 404 or index.html.
 // The app reloads the page once for it, and a second failure on the same entry does not reload again.
+// WebKit runs this spec too (e2e/playwright.mobile.config.ts): it words each of these failures differently from Chrome.
 
 // What the server answers for a chunk of a past build: a 404, or index.html (the app shell) with a 200.
 const goneAnswers = {
@@ -38,9 +39,13 @@ for (const [answer, gone] of Object.entries(goneAnswers)) {
     await expect(page.getByText('Servidor conectado')).toBeVisible();
     expect(documentLoads).toBe(1);
 
+    // The footer is an `@defer (on idle)` block: it shows once the idle chunks have loaded. Breaking the scripts before
+    // that would make the footer's own chunks fail, and the link this test clicks would never appear.
+    const footer = page.getByRole('navigation', { name: 'Rodapé' });
+    await expect(footer).toBeVisible();
+
     // From here on, every script the page did not load yet is "gone", as after a deploy.
     breakNewScripts = true;
-    const footer = page.getByRole('navigation', { name: 'Rodapé' });
     await footer.getByRole('link', { name: 'Termos de uso' }).click();
 
     // The reload is the deterministic event: the document request count reaches 2.
@@ -57,3 +62,46 @@ for (const [answer, gone] of Object.entries(goneAnswers)) {
     expect(documentLoads).toBe(2);
   });
 }
+
+// A lazy part that a navigation cancels is not a stale deploy: the browser rejects the pending `import()` right after
+// `beforeunload`, and the page must not reload itself over the navigation that caused it.
+test('uma parte preguiçosa cancelada por outra navegação não recarrega a página', async ({ page }) => {
+  let holdNewScripts = false;
+  const loadedScripts = new Set<string>();
+  let held = 0;
+  await page.route('**/*.js', (route) => {
+    const url = route.request().url();
+    if (!holdNewScripts || loadedScripts.has(url)) {
+      loadedScripts.add(url);
+      return route.continue();
+    }
+    // Answered by the test, never by the server: the import stays pending until the navigation cancels it.
+    held++;
+    return undefined;
+  });
+
+  const logged: string[] = [];
+  page.on('console', (message) => logged.push(message.text()));
+  const documents: string[] = [];
+  page.on('request', (request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+      documents.push(new URL(request.url()).pathname);
+    }
+  });
+
+  await page.goto('/');
+  const footer = page.getByRole('navigation', { name: 'Rodapé' });
+  await expect(footer).toBeVisible();
+
+  holdNewScripts = true;
+  await footer.getByRole('link', { name: 'Termos de uso' }).click();
+  await expect.poll(() => held).toBeGreaterThan(0);
+
+  // The new page loads its own scripts as usual; the held ones stay pending until the navigation cancels them.
+  holdNewScripts = false;
+  await page.goto('/privacy');
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacidade' })).toBeVisible();
+  expect(documents).toEqual(['/', '/privacy']);
+  // The cancelled import is not an error the page reports.
+  expect(logged.filter((text) => /^ERROR .*(dynamically imported module|module script|NG0750)/i.test(text))).toEqual([]);
+});

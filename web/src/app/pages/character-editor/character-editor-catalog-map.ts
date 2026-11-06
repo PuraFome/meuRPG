@@ -117,6 +117,8 @@ function subracesOf(content: GenContent): Map<string, SubraceOptionVm[]> {
       namePt: sr.namePt,
       constitutionBonus: sr.abilityBonuses?.constitution ?? 0,
       skillKeys: sr.skillKeys,
+      replacesAbilityBonuses: sr.replacesAbilityBonuses,
+      replacedSkillKeys: sr.replacedSkillKeys,
       fromTable: isTableKey(sr.key),
       archived: sr.archived,
       off: sr.off,

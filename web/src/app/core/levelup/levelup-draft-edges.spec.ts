@@ -11,7 +11,7 @@ import {
   LevelUpProficiencyKind,
   LevelUpSubclassSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { Ability, FeatOptionSchema, FeatUnmetKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { LevelUpDraft } from './levelup-draft';
 import {
   SKILLS,
@@ -143,6 +143,28 @@ describe('LevelUpDraft: what the screen reads', () => {
     expect(names.get('sub:lore')).toBe('Colégio do Conhecimento');
     expect(names.get('feature:x')).toBe('Estilo');
     expect(names.get('o:a')).toBe('A');
+  });
+
+  it("names the feature a feat asks the character not to have, with the server's name", () => {
+    const lacking = create(FeatOptionSchema, {
+      key: 'feat:sem-dom@mesa',
+      namePt: 'Sem dom',
+      table: true,
+      prerequisite: { lacksFeatureKey: 'feat:dom-do-mar@mesa' },
+      lacksFeatureNamePt: 'Dom do Mar',
+      unmet: [
+        { kind: FeatUnmetKind.LACKS_FEATURE, key: 'feat:dom-do-mar@mesa', namePt: 'Dom do Mar' },
+      ],
+    });
+    const d = new LevelUpDraft(wizardOptions({ feats: [lacking] }), WIZARD_KEYS, catalog);
+    expect(d.names().get('feat:dom-do-mar@mesa')).toBe('Dom do Mar');
+    // A feature the server blanked (the players cannot see it) adds no name.
+    const hidden = create(FeatOptionSchema, {
+      key: 'feat:oculto@mesa',
+      unmet: [{ kind: FeatUnmetKind.LACKS_FEATURE }],
+    });
+    const h = new LevelUpDraft(wizardOptions({ feats: [hidden] }), WIZARD_KEYS, catalog);
+    expect(h.names().get('')).toBeUndefined();
   });
 
   it('names a feature choice without a feature as an empty key', () => {

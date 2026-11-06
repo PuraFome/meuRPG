@@ -55,6 +55,8 @@ type trapTarget struct {
 	// lucky says the target is a halfling player's character: the app rolls a 1 on its saving
 	// throw again by itself (autoLucky, combat_lucky.go). The trap's attack roll is the trap's.
 	lucky bool
+	// saveFloor is the lowest number the d20 of its saving throw counts as: the table's minimum of the target's sheet.
+	saveFloor rollFloor
 	// facts are the creature's conditions and Evasion, which decide the share of the damage a
 	// saving throw that halves it leaves (combat.HalfSaveShare).
 	facts combat.Creature
@@ -101,6 +103,8 @@ type trapSaveRoll struct {
 	// lucky is the d20 the app rolled again for a lucky target after it showed a 1 (d20, other
 	// and counted are the dice after it), nil when none was.
 	lucky *luckyReroll
+	// countedRoll is the number the d20 counted as when a minimum raised it; total already uses it.
+	countedRoll
 }
 
 // trapOutcome is what the trap did to one creature.
@@ -275,7 +279,11 @@ func (r trapRolls) save(sv *rulesv1.TrapSaveEffect, t trapTarget) (trapSaveRoll,
 	if err != nil {
 		return trapSaveRoll{}, err
 	}
-	roll := trapSaveRoll{d20: face, bonus: t.save + delta, total: face + t.save + delta, dc: dc, known: t.saveKnown, other: other, counted: counted, mode: t.saveMode, extra: extra, lucky: lucky}
+	value := countedFace(face, t.saveFloor)
+	roll := trapSaveRoll{d20: face, bonus: t.save + delta, total: value + t.save + delta, dc: dc, known: t.saveKnown, other: other, counted: counted, mode: t.saveMode, extra: extra, lucky: lucky}
+	if value != face {
+		roll.countedRoll = countedRoll{CountedAs: countedAs(face, value), CountedBy: t.saveFloor.Source}
+	}
 	roll.saved = combat.SaveSucceeded(roll.total, roll.dc)
 	return roll, nil
 }
