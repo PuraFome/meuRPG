@@ -1,16 +1,25 @@
 import { DOCUMENT } from '@angular/common';
-import { ErrorHandler, Injectable, InjectionToken, inject } from '@angular/core';
+import { DestroyRef, ErrorHandler, Injectable, InjectionToken, inject } from '@angular/core';
 
 /** The `history.state` key that marks an entry whose page was already reloaded for a chunk load error. */
 export const CHUNK_RELOAD_MARKER = 'chunkReloaded';
 
 const CHUNK_ERROR_NAME = 'ChunkLoadError';
+// Angular's `RuntimeError` code for a `@defer` block whose dependencies failed to load. A production build keeps only
+// the code in the text ("NG0750"): the failed import is not in it, so the code is the only sign.
+const DEFER_LOADING_FAILED_CODE = -750;
+// WebKit rejects a pending `import()` right after `beforeunload` when a navigation cancels it. That rejection is not a
+// stale deploy, so the page neither reloads nor logs it. The flag lasts this long, in case the page stays.
+const LEAVING_MS = 2000;
 const MAX_CAUSE_DEPTH = 8;
 
 // Chrome and Edge, Safari and WebKit, Firefox: what each engine says when `import()` cannot load a module.
+// WebKit says "Importing a module script failed" for a missing file, and a MIME type error for a file answered with index.html.
+// Only these phrases count. Other module errors do not match and reach the default handler.
 const CHUNK_ERROR_MESSAGES = [
   'failed to fetch dynamically imported module',
   'importing a module script failed',
+  'is not a valid javascript mime type for module script',
   'error loading dynamically imported module',
 ];
 
@@ -33,8 +42,12 @@ function matchesChunkError(err: unknown): boolean {
   if (typeof err !== 'object') {
     return false;
   }
-  const { name, message } = err as { name?: unknown; message?: unknown };
-  return name === CHUNK_ERROR_NAME || (typeof message === 'string' && hasChunkMessage(message));
+  const { name, message, code } = err as { name?: unknown; message?: unknown; code?: unknown };
+  return (
+    name === CHUNK_ERROR_NAME ||
+    code === DEFER_LOADING_FAILED_CODE ||
+    (typeof message === 'string' && hasChunkMessage(message))
+  );
 }
 
 function hasChunkMessage(text: string): boolean {
@@ -55,17 +68,44 @@ export const PAGE_RELOAD = new InjectionToken<() => void>('PAGE_RELOAD', {
  * The router rewrites `history.state` after every navigation, failed ones included, and drops the marker.
  * So the service reads the marker when the app starts, before the first navigation, and keeps it in memory.
  * A page that started on a marked entry never reloads again.
+ * A load that fails because the page is already leaving (`beforeunload` fired) is no deploy: it neither reloads
+ * (a reload would replace the navigation the page is making) nor reaches the default handler.
  */
 @Injectable({ providedIn: 'root' })
 export class ChunkReload {
   private readonly history = inject(DOCUMENT).defaultView?.history;
   private readonly reload = inject(PAGE_RELOAD);
   private readonly markedAtStart = isMarked(this.history?.state);
+  private leaving = false;
 
-  /** Reloads and returns true for a chunk load error on a page that has not reloaded for it; returns false otherwise. */
+  constructor() {
+    const view = inject(DOCUMENT).defaultView;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onLeaving = () => {
+      this.leaving = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => (this.leaving = false), LEAVING_MS);
+    };
+    view?.addEventListener('beforeunload', onLeaving);
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(timer);
+      view?.removeEventListener('beforeunload', onLeaving);
+    });
+  }
+
+  /**
+   * Returns true when `err` is a chunk load error that was handled: the page reloaded for it, or is leaving.
+   * Returns false for every other error, and for a chunk load error on a page that already reloaded for it.
+   */
   reloadOnce(err: unknown): boolean {
     const history = this.history;
-    if (!history || !isChunkLoadError(err) || this.markedAtStart || isMarked(history.state)) {
+    if (!history || !isChunkLoadError(err)) {
+      return false;
+    }
+    if (this.leaving) {
+      return true;
+    }
+    if (this.markedAtStart || isMarked(history.state)) {
       return false;
     }
     history.replaceState({ ...(history.state as object | null), [CHUNK_RELOAD_MARKER]: true }, '');
@@ -82,7 +122,7 @@ function isMarked(state: unknown): boolean {
   );
 }
 
-/** Reloads on a chunk load error and sends every other error, and a repeated one, to the default handler. */
+/** Reloads on a chunk load error, drops one the page is leaving over, and sends every other error, and a repeated one, to the default handler. */
 @Injectable()
 export class ChunkReloadErrorHandler extends ErrorHandler {
   private readonly chunkReload = inject(ChunkReload);

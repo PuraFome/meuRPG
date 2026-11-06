@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -131,7 +132,7 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	total, f := conv.Int32(gate.Roll.Total)+extra.face, clamp32(gate.Roll.Face(), 1, 20)
-	if err := saveInitiative(ctx, c, cs, target, total, f); err != nil {
+	if err := saveInitiative(ctx, c, cs, target, total, f, countedOf(gate.Roll)); err != nil {
 		return nil, err
 	}
 	if _, err := saveOrder(ctx, c.q, cs, orderCombatants(cs)); err != nil {
@@ -192,22 +193,27 @@ func (s *Service) initiativeGate(ctx context.Context, c *combatTx, call initiati
 			return gateResult{}, err
 		}
 		spec.Lucky, spec.MayAsk = sheet.Traits.Lucky, playedBy(target, call.m)
+		spec.Floor = floorFor(sheet.Traits, rules.RollAppliesCheck, false) // Reliable Talent never reaches an initiative
 	}
 	return s.heldGate(ctx, s.inspirationGate(c), spec)
 }
 
 // saveInitiative stores the roll on the combatant, or on the group of creatures it rolled
 // for, and in cs.
-func saveInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, target playdb.Combatant, total, f int32) error {
+func saveInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, target playdb.Combatant, total, f int32, counted countedRoll) error {
 	if isCreature(target) {
 		return saveGroupInitiative(ctx, c, cs, target, total, f)
 	}
-	if err := c.q.SetCombatantInitiative(ctx, playdb.SetCombatantInitiativeParams{ID: target.ID, Initiative: &total, InitiativeFace: &f}); err != nil {
+	countedAs := counted.countedAsPtr()
+	if err := c.q.SetCombatantInitiative(ctx, playdb.SetCombatantInitiativeParams{
+		ID: target.ID, Initiative: &total, InitiativeFace: &f, InitiativeCountedAs: countedAs, InitiativeCountedBy: counted.CountedBy,
+	}); err != nil {
 		return fmt.Errorf("save the initiative: %w", err)
 	}
 	for i := range cs {
 		if cs[i].ID == target.ID {
 			cs[i].Initiative, cs[i].InitiativeFace, cs[i].TieOrdered = &total, &f, false
+			cs[i].InitiativeCountedAs, cs[i].InitiativeCountedBy = countedAs, counted.CountedBy
 		}
 	}
 	return nil
@@ -217,13 +223,14 @@ func saveInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, tar
 // the group takes the roll, with the bonus of the one that rolled, so they take a joint turn.
 func saveGroupInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, target playdb.Combatant, total, f int32) error {
 	if err := c.q.SetGroupInitiative(ctx, playdb.SetGroupInitiativeParams{
-		EncounterID: c.enc.ID, SummonGroupID: conv.OrZero(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
+		EncounterID: c.enc.ID, SummonGroupID: conv.OrZero(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus, InitiativeCountedBy: "",
 	}); err != nil {
 		return fmt.Errorf("save the group's initiative: %w", err)
 	}
 	for i := range cs {
 		if isCreature(cs[i]) && conv.OrZero(cs[i].SummonGroupID) == conv.OrZero(target.SummonGroupID) {
 			cs[i].Initiative, cs[i].InitiativeFace, cs[i].InitiativeBonus, cs[i].TieOrdered = &total, &f, target.InitiativeBonus, false
+			cs[i].InitiativeCountedAs, cs[i].InitiativeCountedBy = nil, ""
 		}
 	}
 	return nil

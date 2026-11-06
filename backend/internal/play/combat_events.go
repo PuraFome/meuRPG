@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The payload of the events the actions of a turn write (docs/data/README.md,
@@ -93,6 +94,9 @@ type saveRoll struct {
 	Total int32 `json:"total"`
 	DC    int32 `json:"dc"`
 	Saved bool  `json:"saved,omitempty"`
+	// countedRoll is the number the d20 counted as when a minimum raised it.
+	// D20 is the face as it came up.
+	countedRoll
 	// The save rolled with advantage or disadvantage: the other d20, which die counts
 	// (D20 is the one that does) and the mode; Auto says a stunned, paralyzed,
 	// unconscious or petrified target failed a Strength or Dexterity save without rolling.
@@ -129,6 +133,9 @@ type castHit struct {
 	Extra    []effectDie `json:"extra,omitempty"`
 	Physical bool        `json:"physical,omitempty"`
 	Save     *saveRoll   `json:"save,omitempty"`
+	// countedRoll is the number the spell attack's d20 counted as when a minimum raised it.
+	// D20 is the face as it came up.
+	countedRoll
 	// Pushed is the forced move a failed save made (combat_forced.go): nil when the target
 	// stayed where it was.
 	Pushed *forcedMove `json:"pushed,omitempty"`
@@ -313,9 +320,18 @@ type actionEvent struct {
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`
 
-	// ReliableTalent says the roll of an ability check was made by a character with
-	// Reliable Talent that applied to the check (a skill it is proficient in): each d20
-	// of 9 or lower counted as 10.
+	// countedRoll says the d20 of an attack or a save counted as another number than it came up (a table's roll_minimum).
+	// D20 and the faces stay as they came up.
+	// Total uses the number it counted as.
+	countedRoll
+
+	// Floor and FloorBy are the lowest number each d20 of an ability check counted as, and the content key of the feature
+	// that gave it (a table's roll_minimum, Reliable Talent on a skill the character is proficient in).
+	// Both are empty for a check with no floor.
+	Floor   int32  `json:"floor,omitempty"`
+	FloorBy string `json:"floor_by,omitempty"`
+	// ReliableTalent is what an event stored before Floor said of a check made with Reliable Talent: each d20 of 9 or
+	// lower counted as 10. It is read, never written.
 	ReliableTalent bool `json:"reliable_talent,omitempty"`
 
 	// The damage roll: the dice, their faces, the total and the type. Applied
@@ -709,8 +725,11 @@ type actionEvent struct {
 	ManeuverSpent []string `json:"maneuver_spent,omitempty"`
 	// DamageReroll is the use of a reroll rule the damage roll spent (combat_damage_reroll.go); an undo gives it back.
 	DamageReroll *damageRerollUse `json:"damage_reroll,omitempty"`
-	OnceBefore   *onceMarks       `json:"once_before,omitempty"`
-	Steps        []stepGroup      `json:"steps,omitempty"`
+	// CountedDice are the dice of a damage roll with no parts that a table minimum raised, next to Faces as they came up.
+	// A roll with parts keeps them in each part (damage_floor.go).
+	CountedDice []countedDie `json:"counted_dice,omitempty"`
+	OnceBefore  *onceMarks   `json:"once_before,omitempty"`
+	Steps       []stepGroup  `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`
@@ -933,4 +952,12 @@ type creatureActionEvent struct {
 	Duration      string `json:"duration,omitempty"`
 	RepeatSave    bool   `json:"repeat_save,omitempty"`
 	Text          string `json:"text,omitempty"`
+}
+
+// floor is the floor the check was rolled with.
+func (ev actionEvent) floor() rollFloor {
+	if ev.Floor == 0 && ev.ReliableTalent {
+		return rollFloor{Value: rules.ReliableTalentFloor, Source: reliableTalentSource}
+	}
+	return rollFloor{Value: int(ev.Floor), Source: ev.FloorBy}
 }

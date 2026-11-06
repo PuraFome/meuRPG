@@ -65,7 +65,7 @@ Read that log after a change to `effects/`, and fix or archive the entries it na
 
 | File | Holds | Loading refuses |
 | --- | --- | --- |
-| `<class>.json`, `races.json`, `backgrounds.json`, `feats.json` | The effects of each feature, trait, background and feat (`feat:grappler`...) | An unknown type or field; an entry that is not in `data/`; a prerequisite with an unknown ability, proficiency or race; an `ability_increase` that is not a whole 1 or 2 on distinct abilities |
+| `<class>.json`, `races.json`, `backgrounds.json`, `feats.json` | The effects of each feature, trait, background and feat (`feat:grappler`...) | An unknown type or field; an entry that is not in `data/`; a prerequisite with an unknown ability, proficiency, race, size or feature; an `ability_increase` that is not a whole 1 or 2 on distinct abilities |
 | `names_pt.json` | The Portuguese names, by key (`item:<index>`, `monster:<index>`, `resource:<name>`, `trap:<key>`, `light:<key>`, `attunement:<restriction>`, `attack:<SRD name>`...) | A missing name where a test asks for one (`TestNamesPT`, `TestMagicItemNamesPT`, `TestAttackNamesPT`, `TestActionNamesPT`); an `attack:` key that no creature's action uses; duplicates among spells, creatures, items, races, classes, subclasses or backgrounds (`TestNamesPTAreUnique`) |
 | `advancement.json` | The XP of each level (1 to 20) and of each challenge rating (0 to 30) | A table out of format |
 | `encounter_budget.json` | The SRD 5.2.1 "XP Budget per Character" table: per level, the low, moderate and high bands | A missing or out-of-order level, a row that does not grow, an unknown field |

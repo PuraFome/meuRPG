@@ -127,7 +127,7 @@ func (st inspirationHoldStore) askIndomitable(ctx context.Context, h heldRoll) e
 func (st inspirationHoldStore) answerIndomitable(ctx context.Context, h heldRoll) error {
 	if err := st.q.AnswerInspirationHoldIndomitable(ctx, playdb.AnswerInspirationHoldIndomitableParams{
 		ID: h.ID, Faces: faces32(h.Faces), Counted: clamp32(h.Counted, 0, 1), Total: clamp32(h.Total, -heldBonusLimit, heldBonusLimit),
-		IndomitableAnswerKey: h.IndomAnswerKey, IndomitableFrom: h.IndomFrom, IndomitableTo: h.IndomTo,
+		IndomitableAnswerKey: h.IndomAnswerKey, IndomitableFrom: h.IndomFrom, IndomitableTo: h.IndomTo, CountedBy: h.CountedBy,
 	}); err != nil {
 		return fmt.Errorf("answer Indomitable: %w", err)
 	}
@@ -169,7 +169,7 @@ func (q indomitableQuestion) apply(ctx context.Context, ae answering, h heldRoll
 		if err != nil {
 			return h, err
 		}
-		roll = reliableD20(roll, ae.spec.Modifier, ae.spec.Reliable)
+		roll = floorD20(roll, ae.spec.Modifier, ae.spec.Floor)
 		if ae.c == nil {
 			return h, connect.NewError(connect.CodeInternal, errors.New("the Indomitable question outside a combat"))
 		}
@@ -177,7 +177,7 @@ func (q indomitableQuestion) apply(ctx context.Context, ae answering, h heldRoll
 			return h, err
 		}
 		from := clamp32(h.Faces[min(h.Counted, len(h.Faces)-1)], 1, d20Sides)
-		after.Faces, after.Counted, after.Total, after.Physical = roll.Faces, roll.Index, roll.Total, roll.Physical
+		after.Faces, after.Counted, after.Total, after.CountedBy, after.Physical = roll.Faces, roll.Index, roll.Total, roll.CountedBy, roll.Physical
 		after.IndomFrom, after.IndomTo = new(from), new(clamp32(roll.Face(), 1, d20Sides))
 	}
 	if err := newHeldStores(ae.q).answerIndomitable(ctx, after); err != nil {
@@ -210,7 +210,7 @@ func (ae answering) asksAtOnce(roll d20Roll, luckyAt *int32) (ask, told bool) {
 	if luckyAt != nil || ae.st.Holds || !ae.st.Indom || ae.rerollAt(roll, luckyAt) != nil {
 		return false, false
 	}
-	return ae.spec.Save.decide(roll.Face(), roll.Total)
+	return ae.spec.Save.decide(roll.Value(), roll.Total)
 }
 
 // gateIndomitableNext is what the gate does when the Lucky and die questions are answered and the roll would settle:
@@ -231,7 +231,7 @@ func (s *Service) gateIndomitableNext(ctx context.Context, ae answering, h heldR
 	if die != nil {
 		total += int(die.Face)
 	}
-	ask, told := ae.spec.Save.decide(roll.Face(), total)
+	ask, told := ae.spec.Save.decide(roll.Value(), total)
 	if !ask {
 		return gateResult{}, false, nil
 	}

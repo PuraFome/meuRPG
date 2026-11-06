@@ -165,7 +165,8 @@ ESLint's bulk suppressions list the old violations as a count per file and rule 
 
 `web/angular.json` fails the production build when the initial chunks pass 500 kB (the "Initial total" line, raw size) and warns from 490 kB; a component's styles warn from 4 kB and fail from 8 kB.
 What a first screen needs stays in the initial chunks (Angular, the router, protobuf-es and Connect, the shell); everything else is a lazy route, a `@defer` or a dynamic `import()`.
-In the shell, the dice overlay, the footer and the session notice are `@defer (on idle)`: a new part of the shell that the first screen does not need goes the same way.
+In the shell, the dice overlay and the footer are `@defer (on idle)`: a new part of the shell that the first screen does not need goes the same way.
+A part that moves the page when it shows, like the session notice above it, is not deferred.
 To see what grew, `cd web && npx ng build --stats-json` writes `dist/web/stats.json` (esbuild's metafile): follow the `imports` of `src/main.ts` to the module.
 A new import in `app.ts`, `app.config.ts`, `app.routes.ts` or `shell/` is the usual cause, in particular a generated `*_pb` file or `@angular/cdk/overlay`.
 
@@ -229,6 +230,8 @@ The `e2e` workflow runs the Playwright suite against the local stack.
 
 `playwright mobile (WebKit and iPhone)` runs `e2e/tests/mobile-smoke.spec.ts` on WebKit (Desktop Safari) and on an iPhone 14 (`e2e/playwright.mobile.config.ts`), beside the shards.
 The shards run the same spec on Chromium, so the three browsers are covered.
+The WebKit project also runs `e2e/tests/chunk-reload.spec.ts`.
+The stale-tab recovery depends on the engine's own error message, so the shards cover only Chromium's.
 The job starts its own stack (restoring the backup of the `database` job), installs WebKit for the Playwright version `e2e/package-lock.json` pins, makes a certificate with `openssl`, starts `e2e/tls-front.mjs` and runs the config over `https://localhost:8443`, with `E2E_TLS_CA` set to that certificate for the readiness probe.
 It is https because Playwright's WebKit on Linux drops every `Secure` cookie over http, and the app's cookies are all `Secure` (see [Testing](testing.md#end-to-end-tests-playwright)).
 The stack takes its public origin from `E2E_PUBLIC_ORIGIN` (the OIDC redirect address of the API and devidp), `http://localhost:8080` when unset.

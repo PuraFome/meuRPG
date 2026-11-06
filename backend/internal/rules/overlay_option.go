@@ -52,7 +52,10 @@ func optionSetOf(name string) (optionSetDef, bool) {
 const OptionKeyPrefix = "option:"
 
 // featureKeyPrefix starts the key of a class, subclass or racial feature.
-const featureKeyPrefix = "feature:"
+const (
+	featureKeyPrefix = "feature:"
+	traitKeyPrefix   = "trait:"
+)
 
 // pactBoonKey is the warlock's Pact Boon, the parent of its options.
 const pactBoonKey = "feature:pact-boon"

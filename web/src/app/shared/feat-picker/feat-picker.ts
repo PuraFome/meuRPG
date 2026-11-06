@@ -131,7 +131,7 @@ export class FeatPicker {
   readonly selected = input('');
   /** The abilities ticked for the picked feat. */
   readonly abilities = input<readonly Ability[]>([]);
-  /** Names a proficiency or a race key of a prerequisite. */
+  /** Names the proficiency, race, size or feature key of a prerequisite or of what is unmet. */
   readonly nameOf = input<KeyName>((key) => key.replace(/^[a-z-]+:/, ''));
   readonly label = input('Talento');
   /** The radio group's name: one per page. */

@@ -12,6 +12,9 @@ import {
 
 const CHROME = 'Failed to fetch dynamically imported module: https://x.test/chunk-ABC.js';
 const WEBKIT = 'Importing a module script failed.';
+/** What WebKit throws when the server answers a lazy file with index.html: a TypeError with no code and no cause. */
+const WEBKIT_HTML =
+  "'text/html' is not a valid JavaScript MIME type for module script 'https://x.test/chunk-ABC.js'.";
 const FIREFOX = 'error loading dynamically imported module: https://x.test/chunk-ABC.js';
 const ROUTER_STATE = { navigationId: 3 };
 
@@ -19,6 +22,9 @@ const ROUTER_STATE = { navigationId: 3 };
 const DEFER_ERROR = new Error(
   `NG0750: Loading dependencies for \`@defer\` block failed.\n\nThe loading resulted in the following error:\n\n${CHROME}`,
 );
+
+/** What a production build reports for a failed `@defer`: only the code. */
+const DEFER_PROD_ERROR = Object.assign(new Error('NG0750'), { code: -750 });
 
 describe('isChunkLoadError', () => {
   it.each([CHROME, WEBKIT, FIREFOX])('recognises %s', (message) => {
@@ -34,6 +40,24 @@ describe('isChunkLoadError', () => {
       isChunkLoadError(new Error('wrapper', { cause: new Error('mid', { cause: named }) })),
     ).toBe(true);
     expect(isChunkLoadError(DEFER_ERROR)).toBe(true);
+  });
+
+  it('recognises a failed @defer block by its code when a production build keeps no message', () => {
+    expect(isChunkLoadError(DEFER_PROD_ERROR)).toBe(true);
+    expect(isChunkLoadError(Object.assign(new Error('NG0200'), { code: -200 }))).toBe(false);
+  });
+
+  it('recognises the WebKit error for a lazy file that the server answered with HTML', () => {
+    expect(isChunkLoadError(new TypeError(WEBKIT_HTML))).toBe(true);
+    expect(isChunkLoadError(new TypeError(WEBKIT_HTML.replace('text/html', 'text/plain')))).toBe(
+      true,
+    );
+  });
+
+  it('rejects the MIME and module errors of a real bug in a module', () => {
+    expect(isChunkLoadError(new SyntaxError("Unexpected token '<'"))).toBe(false);
+    expect(isChunkLoadError(new TypeError('Cannot read properties of undefined'))).toBe(false);
+    expect(isChunkLoadError(new TypeError("'text/html' is not a valid value"))).toBe(false);
   });
 
   it('rejects other errors and values', () => {
@@ -69,7 +93,10 @@ describe('chunk reload', () => {
     });
   });
 
-  afterEach(() => history.replaceState(null, ''));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    history.replaceState(null, '');
+  });
 
   it('reloads once for a failed lazy chunk and keeps the router state keys', () => {
     const handler = TestBed.inject(ErrorHandler);
@@ -95,9 +122,54 @@ describe('chunk reload', () => {
     expect(reload).toHaveBeenCalledTimes(2);
   });
 
+  it('reloads once for the WebKit error of a lazy file answered with HTML', () => {
+    const handler = TestBed.inject(ErrorHandler);
+    handler.handleError(new TypeError(WEBKIT_HTML));
+    expect(reload).toHaveBeenCalledTimes(1);
+    handler.handleError(new TypeError(WEBKIT_HTML));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
   it('reloads for a failed @defer block error', () => {
     TestBed.inject(ErrorHandler).handleError(DEFER_ERROR);
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads for a production @defer error that carries only its code', () => {
+    TestBed.inject(ErrorHandler).handleError(DEFER_PROD_ERROR);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('neither reloads nor logs a chunk error that a navigation cancelled', () => {
+    TestBed.inject(ChunkReload);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.dispatchEvent(new Event('beforeunload'));
+    TestBed.inject(ErrorHandler).handleError(new TypeError(WEBKIT));
+    TestBed.inject(ErrorHandler).handleError(DEFER_PROD_ERROR);
+    expect(reload).not.toHaveBeenCalled();
+    expect(history.state).toEqual(ROUTER_STATE);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('still logs another error while the page is leaving', () => {
+    TestBed.inject(ChunkReload);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    window.dispatchEvent(new Event('beforeunload'));
+    TestBed.inject(ErrorHandler).handleError(new Error('boom'));
+    expect(log).toHaveBeenCalled();
+  });
+
+  it('reloads again once the leaving window is over, as when the user stayed on the page', () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.inject(ChunkReload);
+      window.dispatchEvent(new Event('beforeunload'));
+      vi.advanceTimersByTime(2001);
+      TestBed.inject(ErrorHandler).handleError(new TypeError(CHROME));
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('never reloads for a non-chunk error, and logs it', () => {

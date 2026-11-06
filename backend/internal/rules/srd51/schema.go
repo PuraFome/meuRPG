@@ -80,6 +80,11 @@ type Subrace struct {
 	Desc           string         `json:"desc"`
 	AbilityBonuses map[string]int `json:"ability_bonuses"`
 	Traits         []string       `json:"traits"`
+	// ReplacesTraitKeys are trait keys of the parent race this subrace replaces.
+	ReplacesTraitKeys []string `json:"replaces_trait_keys,omitempty"`
+	// ReplacesAbilityBonuses swaps the parent's ability bonuses whole for AbilityBonuses.
+	// The ones the player places on abilities (the half-elf's picks) go with them.
+	ReplacesAbilityBonuses bool `json:"replaces_ability_bonuses,omitempty"`
 }
 
 // Trait is a racial trait.
@@ -248,6 +253,11 @@ type Feat struct {
 	Spellcasting bool           `json:"spellcasting,omitempty"`
 	Race         string         `json:"race,omitempty"`
 	Level        int            `json:"level,omitempty"`
+	// Races are race or subrace keys of which the character must be one; Size is the
+	// size the character must have and LacksFeature a feature key it must not have.
+	Races        []string `json:"races,omitempty"`
+	Size         string   `json:"size,omitempty"`
+	LacksFeature string   `json:"lacks_feature,omitempty"`
 }
 
 // Proficiency is something a character can be proficient in.
