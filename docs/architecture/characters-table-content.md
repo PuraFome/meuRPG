@@ -160,6 +160,23 @@ flowchart LR
   `link.Spell` carries `TargetCount` and `TargetPerLevel` and `maxTargetsOf` uses them before the spell's type.
   `GetTurnOptions` carries `SpellTargets.targets_per_level`.
 
+## The sheet of a race and a subrace
+
+`Derive` merges a subrace into its race in this order:
+
+1. The race's traits, minus the ones the subrace replaces (`replaces_trait_keys`).
+2. The subrace's own traits.
+3. The choices: the options the character picked, among them the one of a trait with options.
+
+A replaced trait is not owned: its effects, its choice and its options are gone, and a stored pick for them is reported as not offered.
+The skills that only a replaced trait gives are gone too.
+The ability bonuses are the race's and the subrace's added, or the subrace's alone when it has `replaces_ability_bonuses`.
+Then the race's fixed bonuses and the ones the player places are gone together, no pick is asked for them, and the points the player may place on abilities are none.
+
+The catalog says what a subrace replaces (`replaces_trait_keys`, `replaces_ability_bonuses`, and `replaced_skill_keys` for the race's skills that go with the traits), and the editor's preview follows it.
+A player's copy of a subrace names only the replaced traits the player may see.
+The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonuses` or the options of a trait; they are written through a pack or the API.
+
 ## Table options
 
 `TABLE_CONTENT_KIND_OPTION` (`option` rows of `campaign_content`, key `option:<set>:<slug>@mesa`) is an option the master adds to one of the SRD's option sets: an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense, or, in the set `table_feature`, an option of a table feature's option list (`table_option.offered_by` is that feature's key).
