@@ -1,6 +1,6 @@
 {
   "round": 1,
-  "actor": "x",
+  "combatant_id": "x",
   "secret": true,
   "key": "x",
   "kind": "x",

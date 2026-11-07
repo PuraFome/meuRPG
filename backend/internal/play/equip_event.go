@@ -21,11 +21,11 @@ const (
 	gearCostExtra  = "extra_action" // the extra action an effect lends for using an object (Haste)
 )
 
-// gearSwapEvent is the payload of a gear_swapped event, its own writer type: the keys round, actor and secret are the
+// gearSwapEvent is the payload of a gear_swapped event, its own writer type: the keys round, combatant_id (the actor) and secret are the
 // ones every combat event has (readEvent reads them from it); the others only the undo and the log read, with readGearSwap.
 type gearSwapEvent struct {
 	Round int32  `json:"round"`
-	Actor string `json:"actor"`
+	Actor string `json:"combatant_id"`
 	// Secret: the line is the master's and the owner's, never another player's.
 	Secret bool `json:"secret"`
 	// Key and Kind are the piece ("weapon" or "shield"), Name its Portuguese name when the swap was made.

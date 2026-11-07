@@ -106,10 +106,20 @@ func TestUndoTheShieldGivesTheActionAndTheShieldBack(t *testing.T) {
 	t.Parallel()
 	a, e := equipFight(t)
 	e = a.passTo(t, e, "Reator")
+	ac := func() int32 { return byLabel(t, a.get(t, a.master), "Reator").GetArmorClass() }
+	if got := ac(); got != 18 {
+		t.Fatalf("armor class with the shield = %d, want 18", got)
+	}
 	a.mustSwap(t, a.ana, a.pens, shieldItem, false)
 	a.wantTurn(t, "after doffing", false, true)
+	if got := ac(); got != 16 {
+		t.Fatalf("armor class without the shield = %d, want 16", got)
+	}
 	a.mustUndo(t, e)
 	a.wantTurn(t, "after the undo", false, false)
+	if got := ac(); got != 18 {
+		t.Errorf("armor class after the undo = %d, want 18: the derived gear is read again", got)
+	}
 	if a.hasCarried(t, shieldItem) {
 		t.Error("the shield is still stowed")
 	}
