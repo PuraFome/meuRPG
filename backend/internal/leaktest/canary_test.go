@@ -102,12 +102,7 @@ func names(ps []*person) map[string]bool {
 }
 
 // mayRead says whether p may read the canary.
-func (c *canary) mayRead(p *person) bool {
-	if p.reads != nil {
-		return p.reads(c)
-	}
-	return c.public || c.readers[p.name]
-}
+func (c *canary) mayRead(p *person) bool { return c.public || c.readers[p.name] }
 
 func (c *canary) String() string {
 	if c.numeric {

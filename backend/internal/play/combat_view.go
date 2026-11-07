@@ -44,9 +44,6 @@ import (
 type combatViewer struct {
 	master bool
 	userID string
-	// wholeKeys keeps the key of a stat block action in the log entries (shownKey blanks it for a player). Only the
-	// table screen sets it, to decide on the key before it is shown: the entries never reach the TV.
-	wholeKeys bool
 	// unseen are the NPC combatants the viewer does not see on a map with the fog of
 	// war on (combat_fog.go): for them they are like hidden combatants. Nil on a map
 	// without the fog, and for the master.

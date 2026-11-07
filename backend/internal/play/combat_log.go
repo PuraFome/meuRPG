@@ -164,6 +164,7 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the combat log", err)
 	}
+	slices.Reverse(snap.events) // oldest first, as buildLog reads them
 	// The log's lines are filtered by who could see them when they happened
 	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
 	// rules about hidden combatants are worked out from the combatants as they are.
@@ -171,6 +172,12 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, err
 	}
+	entries := buildLog(snap.events)
+	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
+	for _, e := range entries {
+		e.rolls = rolls
+	}
+
 	res := &playv1.ListCombatLogResponse{}
 	var lastID string
 	if v.master {
@@ -179,34 +186,21 @@ func (s *Service) ListCombatLog(
 			res.UndoableEventId = last.ID
 		}
 	}
-	// Latest first, in groups by round.
-	for _, out := range s.logViews(ctx, m, &snap, v, lastID) {
-		res.Rounds = appendToRound(res.Rounds, out)
-	}
-	return connect.NewResponse(res), nil
-}
 
-// logViews are the lines of the snapshot's combat that the viewer reads, latest first. The snapshot's events
-// are turned around in place.
-func (s *Service) logViews(ctx context.Context, m authz.Membership, snap *logSnapshot, v combatViewer, lastID string) []*playv1.CombatLogEntry {
-	slices.Reverse(snap.events) // oldest first, as buildLog reads them
-	entries := buildLog(snap.events)
-	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
-	for _, e := range entries {
-		e.rolls = rolls
-	}
 	names := &keyNames{s: s, campaignID: m.CampaignID, byCharacter: map[string]link.Sheet{}}
 	byID := make(map[string]playdb.Combatant, len(snap.cs))
 	for _, c := range snap.cs {
 		byID[c.ID] = c
 	}
-	var out []*playv1.CombatLogEntry
+	// Latest first, in groups by round.
 	for _, e := range slices.Backward(entries) {
-		if view, ok := e.view(ctx, v, byID, names, lastID); ok {
-			out = append(out, view)
+		out, ok := e.view(ctx, v, byID, names, lastID)
+		if !ok {
+			continue
 		}
+		res.Rounds = appendToRound(res.Rounds, out)
 	}
-	return out
+	return connect.NewResponse(res), nil
 }
 
 // logViewer is who reads the log: the member, and for a player the table's rule on the

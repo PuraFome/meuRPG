@@ -96,8 +96,6 @@ const TRANSLATORS: Translators = {
     amount: v.amount,
     damageTypePt: v.damageTypePt,
   }),
-  // The master's table-screen control reads this; the session page has nothing to show for it.
-  tableScreenChanged: () => null,
   masterTyping: (v) => ({ kind: 'masterTyping', expiresInSeconds: v.expiresInSeconds }),
 };
 

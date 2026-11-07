@@ -292,9 +292,6 @@ type GameSession struct {
 	OpenSceneEveryone   bool
 	ShownImageAudience  string
 	ScenePlayersMayJoin bool
-	TvMirror            bool
-	TvPin               int16
-	TvChoiceRevision    int32
 }
 
 type GroupCheck struct {
