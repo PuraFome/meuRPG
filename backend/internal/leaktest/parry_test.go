@@ -351,9 +351,9 @@ func TestSetMonsterReactionModeIsTheMastersAlone(t *testing.T) {
 			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: id, IdempotencyKey: newKey(), Ask: true,
 		})
 	}
-	real, fake := asked(w.caio, knight.GetId()), asked(w.caio, newKey())
-	if real.ok() || fake.ok() || real.status != fake.status || !bytes.Equal(real.body, fake.body) {
-		t.Errorf("a player asking for the Knight is refused with %d %s, for a stranger with %d %s: they must read the same", real.status, real.body, fake.status, fake.body)
+	known, fake := asked(w.caio, knight.GetId()), asked(w.caio, newKey())
+	if known.ok() || fake.ok() || known.status != fake.status || !bytes.Equal(known.body, fake.body) {
+		t.Errorf("a player asking for the Knight is refused with %d %s, for a stranger with %d %s: they must read the same", known.status, known.body, fake.status, fake.body)
 	}
 	if got := asked(w.master, knight.GetId()); !got.ok() {
 		t.Fatalf("the master's SetMonsterReactionMode: status %d %s", got.status, got.body)

@@ -124,11 +124,11 @@ func damageDiceText(d rules.DiceFormula) string {
 // attackReachPT is a melee attack's reach in meters, or a ranged attack's range ("18 m / 72 m").
 func attackReachPT(a *rules.ActionAttack) string {
 	if a.Melee {
-		return metersPT(int32(a.ReachFt))
+		return metersPT(conv.Int32(a.ReachFt))
 	}
-	text := metersPT(int32(a.RangeFt))
+	text := metersPT(conv.Int32(a.RangeFt))
 	if a.LongRangeFt > 0 {
-		text += " / " + metersPT(int32(a.LongRangeFt))
+		text += " / " + metersPT(conv.Int32(a.LongRangeFt))
 	}
 	return text
 }
