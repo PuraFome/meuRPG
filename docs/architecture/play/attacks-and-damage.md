@@ -134,7 +134,7 @@ The silvered qualifier also needs `Origin.Silvered` to be false, and the adamant
 An attack of the attacker's sheet or stat block is magical when `link.Attack.Magical` is, and it carries `link.Attack.Silvered` and `link.Attack.Adamantine` (from `rules.Attack`) into the origin as the weapon's material.
 A spell or cantrip attack is magical.
 A creature's attack is magical when its stat block has the trait "Magic Weapons", and it is never silvered or adamantine.
-A weapon of a character is marked by the sheet (`full.weapon_marks`) or by a `weapon_rule`; `rules.deriver.weaponMarks` is the one place that merges them.
+A weapon of a character is marked by the sheet (`full.weapon_marks`), by a `weapon_rule` or by a magic bonus that counts (`full.item_bonuses`, which makes it magical only); `rules.deriver.weaponMarks` is the one place that merges them.
 The unarmed strike has no sheet mark: `rules.unarmedStrike` calls `weaponMarks` too, so a `weapon_rule` marks it.
 Ki-Empowered Strikes (`feature:ki-empowered-strikes` in `Derived.Features`, monk 6, multiclass included, not an effect) makes it magical on its own, and the `magic` filter reads that.
 A `pseudo_weapon` line is never marked by a `weapon_rule`.

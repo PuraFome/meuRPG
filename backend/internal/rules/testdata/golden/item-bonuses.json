@@ -1,0 +1,207 @@
+{
+  "all carried": {
+    "ArmorClass": 12,
+    "Description": "Sem armadura",
+    "Attacks": [
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": [
+      {
+        "Target": "ac",
+        "Value": 1,
+        "SourceKey": "equipment:chain-mail",
+        "SourceNamePT": "Cota de malha",
+        "Counts": false,
+        "ReasonPT": "Guardado na mochila, não equipado."
+      },
+      {
+        "Target": "ac",
+        "Value": 2,
+        "SourceKey": "equipment:shield",
+        "SourceNamePT": "Escudo",
+        "Counts": false,
+        "ReasonPT": "Guardado na mochila, não equipado."
+      },
+      {
+        "Target": "attack:equipment:rapier",
+        "Value": 3,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": false,
+        "ReasonPT": "Guardado na mochila, não equipado."
+      },
+      {
+        "Target": "damage:equipment:rapier",
+        "Value": 3,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": false,
+        "ReasonPT": "Guardado na mochila, não equipado."
+      }
+    ]
+  },
+  "all equipped": {
+    "ArmorClass": 21,
+    "Description": "Cota de malha + escudo",
+    "Attacks": [
+      {
+        "Key": "equipment:rapier",
+        "Attack": 8,
+        "Damage": "1d8+6",
+        "Magical": true
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": [
+      {
+        "Target": "ac",
+        "Value": 1,
+        "SourceKey": "equipment:chain-mail",
+        "SourceNamePT": "Cota de malha",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "ac",
+        "Value": 2,
+        "SourceKey": "equipment:shield",
+        "SourceNamePT": "Escudo",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "attack:equipment:rapier",
+        "Value": 3,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "damage:equipment:rapier",
+        "Value": 3,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": true,
+        "ReasonPT": ""
+      }
+    ]
+  },
+  "awaiting attunement": {
+    "ArmorClass": 16,
+    "Description": "Cota de malha",
+    "Attacks": [
+      {
+        "Key": "equipment:rapier",
+        "Attack": 6,
+        "Damage": "1d8+4",
+        "Magical": true
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": [
+      {
+        "Target": "ac",
+        "Value": 2,
+        "SourceKey": "equipment:chain-mail",
+        "SourceNamePT": "Cota de malha",
+        "Counts": false,
+        "ReasonPT": "Pede sintonização."
+      },
+      {
+        "Target": "attack:equipment:rapier",
+        "Value": 1,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "damage:equipment:rapier",
+        "Value": 1,
+        "SourceKey": "equipment:rapier",
+        "SourceNamePT": "Rapieira",
+        "Counts": true,
+        "ReasonPT": ""
+      }
+    ]
+  },
+  "plain": {
+    "ArmorClass": 18,
+    "Description": "Cota de malha + escudo",
+    "Attacks": [
+      {
+        "Key": "equipment:rapier",
+        "Attack": 5,
+        "Damage": "1d8+3",
+        "Magical": false
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": null
+  },
+  "shield behind a greatsword": {
+    "ArmorClass": 12,
+    "Description": "Sem armadura",
+    "Attacks": [
+      {
+        "Key": "equipment:greatsword",
+        "Attack": 6,
+        "Damage": "2d6+4",
+        "Magical": true
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": [
+      {
+        "Target": "ac",
+        "Value": 2,
+        "SourceKey": "equipment:shield",
+        "SourceNamePT": "Escudo",
+        "Counts": false,
+        "ReasonPT": "O escudo não conta com uma arma de duas mãos na ficha."
+      },
+      {
+        "Target": "attack:equipment:greatsword",
+        "Value": 1,
+        "SourceKey": "equipment:greatsword",
+        "SourceNamePT": "Espada grande",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "damage:equipment:greatsword",
+        "Value": 1,
+        "SourceKey": "equipment:greatsword",
+        "SourceNamePT": "Espada grande",
+        "Counts": true,
+        "ReasonPT": ""
+      }
+    ]
+  }
+}

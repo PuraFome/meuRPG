@@ -778,6 +778,26 @@ message DerivedSheet {
   // sheet's gear list reads them (the derived attacks skip a carried weapon, and the armor class description ignores a
   // carried armor).
   repeated GearEntry gear = 52;
+  // The magic bonuses of the gear (FullSheet.item_bonuses) and where each comes from, in the order of the bonuses.
+  // It lists the ones that count and the ones that add nothing now.
+  // armor_class and the attacks already include the counting ones.
+  repeated ItemModifier item_modifiers = 55;
+}
+
+// ItemModifier is one magic bonus of the gear on one number of the sheet.
+message ItemModifier {
+  // "ac", "attack:<weapon key>" or "damage:<weapon key>".
+  string target = 1;
+  // The bonus, 1 to 3.
+  int32 value = 2;
+  // Content key of the piece it comes from.
+  string source_key = 3;
+  // The piece's name in Portuguese.
+  string source_name_pt = 4;
+  // The bonus is in the numbers of the sheet.
+  bool counts = 5;
+  // Why it adds nothing now, in Portuguese; empty when it counts.
+  string reason_pt = 6;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.

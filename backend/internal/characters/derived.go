@@ -97,6 +97,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
 		ShieldIdle:            d.ShieldIdle,
+		ItemModifiers:         itemModifiersOf(d.ItemModifiers),
 		Size:                  d.Size,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
@@ -549,4 +550,15 @@ func grantedSpellToProto(g rules.GrantedSpell) *rulesv1.GrantedSpell {
 		AtWill: g.AtWill, Resource: g.Resource, AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, CountsAsKnown: g.CountsAsKnown,
 		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel),
 	}
+}
+
+// itemModifiersOf is the wire form of Derived.ItemModifiers.
+func itemModifiersOf(in []rules.ItemModifier) []*rulesv1.ItemModifier {
+	out := make([]*rulesv1.ItemModifier, 0, len(in))
+	for _, m := range in {
+		out = append(out, &rulesv1.ItemModifier{
+			Target: m.Target, Value: i32(m.Value), SourceKey: m.SourceKey, SourceNamePt: m.SourceNamePT, Counts: m.Counts, ReasonPt: m.ReasonPT,
+		})
+	}
+	return out
 }

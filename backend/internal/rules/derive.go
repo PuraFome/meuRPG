@@ -18,6 +18,8 @@ type deriver struct {
 	b Build
 	c *content
 	d *Derived
+	// sheetArmor is the armor key of the sheet, equipped or carried (equip() blanks it in b when carried).
+	sheetArmor string
 
 	// classes are the Build's classes that exist in the content, in Build
 	// order; the first is the starting class.
@@ -126,6 +128,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.spellcasting()
 	x.rangedAttacks()
 	x.attacks()
+	x.itemModifiers()
 	x.resourcesAndActions()
 	x.effectHints()
 	x.choiceEffects()

@@ -193,6 +193,16 @@ A feat's own options hide only with the feat; only the options of an option set 
 The picks of a feat are stored in `feature_choice_keys` and judged with the other choices: a player's save with a pick or an option the feat does not offer is `CHOICE_NOT_OFFERED`.
 The editor menu offers the `score.<ability>` targets (mode `add`, with `cap`), the kinds `ability` and `damage_type`, `name`, and `set` as a closed list that leaves out `table_feature`.
 
+## Magic bonuses of the gear
+
+`full.item_bonuses` gives the armor, the shield or a weapon of the sheet a bonus from +1 to +3 (`rules.ItemBonus`).
+It is saved with the rest of the full sheet, so it follows the same lock: the owner while the sheet is editable, the master always.
+A bonus on armor or on a shield adds to the armor class; on a weapon it adds to the attack and damage of its line and makes the line magical, never a match for the `magic` weapon filter.
+A piece that is carried adds nothing, a shield behind a two-handed weapon adds nothing, and a piece that asks for attunement adds nothing until `attuned` is set.
+`Derived.ItemModifiers` lists every bonus with its source and says, for the ones that add nothing, why.
+The combat reads the attack lines and the armor class of the same derivation.
+The bonus belongs to the key: two weapons with one key are one row and share it, so a plain and a +1 copy of one weapon cannot be told apart.
+
 ## Table options
 
 `TABLE_CONTENT_KIND_OPTION` (`option` rows of `campaign_content`, key `option:<set>:<slug>@mesa`) is an option the master adds to one of the SRD's option sets: an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense, or, in the set `table_feature`, an option of a table feature's option list (`table_option.offered_by` is that feature's key).
