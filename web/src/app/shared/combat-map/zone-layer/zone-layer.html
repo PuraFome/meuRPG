@@ -8,6 +8,7 @@
       }
       @for (z of drawn(); track z.id) {
         @if (z.burning; as b) {
+          @if (b.turn !== null) {
           <pattern
             [attr.id]="uid + '-b-' + z.id"
             patternUnits="userSpaceOnUse"
@@ -17,6 +18,7 @@
           >
             <path [attr.d]="burningLook.d" [attr.stroke-width]="burningLook.stroke" [class]="'zl__' + burningLook.tint + ' zl__d--' + burningLook.cls" />
           </pattern>
+          }
         }
       }
     </defs>
@@ -26,7 +28,9 @@
         @if (z.burning; as b) {
           <g class="zl__burn">
             <path [class]="'zl__veil zl__veil--' + burningLook.veil.tone" [attr.fill-opacity]="burningLook.veil.pct / 100" [attr.d]="b.fill" />
-            <path class="zl__pat" [attr.d]="b.fill" [attr.fill]="'url(#' + uid + '-b-' + z.id + ')'" />
+            @if (b.turn !== null) {
+              <path class="zl__pat" [attr.d]="b.fill" [attr.fill]="'url(#' + uid + '-b-' + z.id + ')'" />
+            }
             <path class="zl__halo" [attr.d]="b.edge" />
             <path [class]="'zl__edge zl__edge--dashed zl__' + burningLook.edge" [attr.d]="b.edge" />
           </g>

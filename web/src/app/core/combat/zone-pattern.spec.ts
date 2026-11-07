@@ -120,16 +120,19 @@ describe('the pattern of a zone', () => {
     });
 
     it('does not guess for a wall of one square, or without an origin', () => {
-      expect(arrowTurn(WallSide.LEFT, [{ col: 2, row: 3 }], { col: 2, row: 3 })).toBe(0);
-      expect(arrowTurn(WallSide.LEFT, east, null)).toBe(0);
-      expect(arrowTurn(WallSide.UNSPECIFIED, east, { col: 2, row: 3 })).toBe(0);
+      expect(arrowTurn(WallSide.LEFT, [{ col: 2, row: 3 }], { col: 2, row: 3 })).toBeNull();
+      expect(arrowTurn(WallSide.LEFT, east, null)).toBeNull();
+      expect(arrowTurn(WallSide.UNSPECIFIED, east, { col: 2, row: 3 })).toBeNull();
     });
 
-    it("points a ring's arrows to its center (inner) or away from it (outer)", () => {
-      const ring = run([8, 8, 8], [4, 5, 6]);
+    it('turns a ring on one fixed axis, right for outer and left for inner, whatever the squares', () => {
       const center = { col: 5, row: 5 };
-      expect(arrowTurn(WallSide.OUTER, ring, center)).toBe(0);
-      expect(arrowTurn(WallSide.INNER, ring, center)).toBe(180);
+      const full = run([5, 6, 7, 7, 7, 6, 5, 4, 3, 3, 3, 4], [3, 3, 3, 4, 5, 7, 7, 7, 7, 6, 5, 3]);
+      expect(arrowTurn(WallSide.OUTER, full, center)).toBe(0);
+      expect(arrowTurn(WallSide.INNER, full, center)).toBe(180);
+      // a ring whose center is not seen: the origin is one of its squares, the axis stays
+      expect(arrowTurn(WallSide.OUTER, full, full[0])).toBe(0);
+      expect(arrowTurn(WallSide.INNER, full, full[0])).toBe(180);
     });
   });
 

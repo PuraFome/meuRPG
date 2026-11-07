@@ -164,27 +164,30 @@ function snap(deg: number): number {
 }
 
 /**
- * How far the arrows of a wall's burning side turn (degrees clockwise on the map, 0 points right), from the side the server sent.
- * A straight wall runs from its origin (its first square) toward its farthest square: LEFT of that way is the arrows' way minus a
- * quarter turn, RIGHT a quarter turn more. A ring's arrows point to its center (INNER) or away from it (OUTER), taken from the
- * middle of the squares it has; a pattern turns as a whole, so a ring shows one way. With no way to read, the arrows point right.
+ * How far the arrows of a wall's burning side turn (degrees clockwise on the map, 0 points right), from the side the server sent,
+ * or `null` when the way is unknown (no origin, one visible square, no side): the layer then draws the dashed edge and no arrows.
+ * A straight wall runs from its origin (its first square) toward its farthest square: LEFT of that way is the way minus a quarter
+ * turn, RIGHT a quarter turn more, snapped to eight directions. A ring has one fixed axis for the whole pattern, right for OUTER
+ * and left for INNER: the arrows are not radial, the dashed edge marks the side and the legend names it.
  */
-export function arrowTurn(side: WallSide, wall: readonly Square[], origin: Square | null): number {
+export function arrowTurn(
+  side: WallSide,
+  wall: readonly Square[],
+  origin: Square | null,
+): number | null {
   if (origin === null || wall.length === 0) {
-    return 0;
+    return null;
   }
   if (side === WallSide.INNER || side === WallSide.OUTER) {
-    const mid = (f: (s: Square) => number) => wall.reduce((a, s) => a + f(s), 0) / wall.length;
-    const out = degrees(mid((s) => s.col) - origin.col, mid((s) => s.row) - origin.row);
-    return snap(side === WallSide.OUTER ? out : out + HALF_TURN);
+    return side === WallSide.OUTER ? 0 : HALF_TURN;
   }
   if (side !== WallSide.LEFT && side !== WallSide.RIGHT) {
-    return 0;
+    return null;
   }
   const dist = (s: Square) => Math.max(Math.abs(s.col - origin.col), Math.abs(s.row - origin.row));
   const far = wall.reduce((a, s) => (dist(s) > dist(a) ? s : a));
   if (dist(far) === 0) {
-    return 0;
+    return null;
   }
   const run = snap(degrees(far.col - origin.col, far.row - origin.row));
   return snap(side === WallSide.LEFT ? run - QUARTER_TURN : run + QUARTER_TURN);

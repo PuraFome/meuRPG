@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-import { ZONE_BADGE_INSET_PX, ZONE_BADGE_PX } from '../../../core/combat/zone-badge';
+import {
+  ZONE_BADGE_BORDER_PX,
+  ZONE_BADGE_INSET_PX,
+  ZONE_BADGE_PX,
+} from '../../../core/combat/zone-badge';
 
 /**
  * A zone's letter in a white diamond, for the legend and the zones list: the same mark as the map's corner badge, so a letter
@@ -13,6 +17,7 @@ import { ZONE_BADGE_INSET_PX, ZONE_BADGE_PX } from '../../../core/combat/zone-ba
   host: {
     '[style.--zl-badge]': "badgePx + 'px'",
     '[style.--zl-badge-inset]': "badgeInsetPx + 'px'",
+    '[style.--zl-badge-border]': "badgeBorderPx + 'px'",
   },
   template: `<span class="zlt" role="img" [attr.aria-label]="'Zona ' + letter()"><span class="zlt__l" aria-hidden="true">{{ letter() }}</span></span>`,
   styles: `
@@ -32,7 +37,7 @@ import { ZONE_BADGE_INSET_PX, ZONE_BADGE_PX } from '../../../core/combat/zone-ba
       content: '';
       position: absolute;
       inset: var(--zl-badge-inset);
-      border: 1.5px solid var(--mr-map-token-ink);
+      border: var(--zl-badge-border) solid var(--mr-map-token-ink);
       background: var(--mr-map-token-surface);
       transform: rotate(45deg);
     }
@@ -49,4 +54,5 @@ export class ZoneLetter {
   readonly letter = input.required<string>();
   protected readonly badgePx = ZONE_BADGE_PX;
   protected readonly badgeInsetPx = ZONE_BADGE_INSET_PX;
+  protected readonly badgeBorderPx = ZONE_BADGE_BORDER_PX;
 }

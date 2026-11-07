@@ -3,6 +3,7 @@ import type { Square } from './combat-grid';
 /** The badge's drawn size and the inset of its diamond inside that box, in px: the one place the layer's and the legend's CSS read them from. */
 export const ZONE_BADGE_PX = 24;
 export const ZONE_BADGE_INSET_PX = 4;
+export const ZONE_BADGE_BORDER_PX = 1.5;
 /** The size of a square, in px, assumed until the map has been measured (the smallest the map draws). */
 export const FALLBACK_CELL_PX = 16;
 
@@ -33,9 +34,11 @@ function along(from: number, to: number, size: number): number[] {
 }
 
 /**
- * The centre of each zone's letter badge, in squares. A badge `size` squares wide sits inside a corner of its footprint's box:
+ * The centre of each zone's letter badge, in squares. A badge `size` squares wide sits in a corner of its footprint's box (inside
+ * the corner square only when a square is at least as wide as the badge; a smaller square leaves the badge over its neighbours):
  * the top left first, then the bottom right, top right and bottom left, then along the edges, the first place no other badge is
- * within `size` of. Every centre keeps the whole badge inside the map. With no free place the top left corner is kept.
+ * within `size` of. Every centre keeps the whole badge inside the map. With no such place (zones too small and too close) the
+ * place farthest from the badges already laid is taken, so badges are apart where there is room.
  */
 export function badgeSpots(
   footprints: readonly (readonly Square[])[],
@@ -66,7 +69,10 @@ export function badgeSpots(
     ].map((p) => clampSpot(p, size, columns, rows));
     const apart = (p: BadgeSpot) =>
       taken.every((t) => Math.max(Math.abs(t.col - p.col), Math.abs(t.row - p.row)) >= size - EPS);
-    const spot = candidates.find(apart) ?? candidates[0];
+    const gap = (p: BadgeSpot) =>
+      Math.min(...taken.map((t) => Math.max(Math.abs(t.col - p.col), Math.abs(t.row - p.row))));
+    const farthest = candidates.reduce((a, p) => (gap(p) > gap(a) ? p : a));
+    const spot = candidates.find(apart) ?? farthest;
     taken.push(spot);
     return spot;
   });

@@ -36,7 +36,7 @@ describe('ZoneLayer', () => {
   it('draws the footprint of each zone from its squares, with a pattern and an outline', () => {
     const el = mount([
       view({ id: 'a' }),
-      view({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' }),
+      view({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia', squares: [square(9, 9)] }),
     ]);
     const zones = el.querySelectorAll('g.zl__zone');
     expect(zones.length).toBe(2);
@@ -128,6 +128,8 @@ describe('ZoneLayer', () => {
         id: 'w',
         spellKey: 'spell:wall-of-fire',
         squares: [square(4, 3), square(5, 3)],
+        origin: square(4, 3),
+        wallSide: WallSide.LEFT,
         burningSquares: [square(4, 2), square(5, 2)],
       }),
     ]);
@@ -166,6 +168,37 @@ describe('ZoneLayer', () => {
     expect(new Set(fills).size).toBe(2);
     expect(overlap.querySelector('.zl__pat')?.getAttribute('d')).toBe('M2 1H3L2 2Z');
     expect(el.querySelectorAll('g.zl__outline .zl__edge').length).toBe(2);
+  });
+
+  it("leaves the shared squares out of each zone's base fill, so only the triangles paint them", () => {
+    const el = mount([
+      view({ id: 'a', squares: [square(1, 1), square(2, 1)] }),
+      view({ id: 'b', spellKey: 'spell:web', squares: [square(2, 1), square(3, 1)] }),
+    ]);
+    const [a, b] = [...el.querySelectorAll('g.zl__zone')].map((g) =>
+      g.querySelector('.zl__veil')!.getAttribute('d'),
+    );
+    expect(a).toBe('M1 1h1v1h-1z');
+    expect(b).toBe('M3 1h1v1h-1z');
+    // the outline stays whole
+    expect(el.querySelectorAll('g.zl__outline .zl__edge').length).toBe(2);
+  });
+
+  it("draws the burning side with the dashed edge and no arrows when the wall's way is unknown", () => {
+    const el = mount([
+      view({
+        id: 'w',
+        spellKey: 'spell:wall-of-fire',
+        squares: [square(2, 3)],
+        origin: square(2, 3),
+        wallSide: WallSide.LEFT,
+        burningSquares: [square(2, 2)],
+      }),
+    ]);
+    const burn = el.querySelector('g.zl__burn')!;
+    expect(burn.querySelector('.zl__edge--dashed')).not.toBeNull();
+    expect(burn.querySelector('.zl__pat')).toBeNull();
+    expect(el.querySelector('pattern[id$="-b-w"]')).toBeNull();
   });
 
   it('draws no overlap layer for zones that do not touch', () => {

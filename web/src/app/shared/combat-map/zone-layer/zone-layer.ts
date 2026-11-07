@@ -14,10 +14,11 @@ import { cellsPath, outlinePath } from '../../../core/combat/spell-area';
 import {
   badgeSpots,
   FALLBACK_CELL_PX,
+  ZONE_BADGE_BORDER_PX,
   ZONE_BADGE_INSET_PX,
   ZONE_BADGE_PX,
 } from '../../../core/combat/zone-badge';
-import { overlapPaths } from '../../../core/combat/zone-overlap';
+import { overlapPaths, withoutShared } from '../../../core/combat/zone-overlap';
 import {
   arrowTurn,
   BURNING_PATTERN,
@@ -32,8 +33,8 @@ let nextId = 0;
 interface Burning {
   readonly fill: string;
   readonly edge: string;
-  /** Degrees the arrows turn so they point from the wall to this side. */
-  readonly turn: number;
+  /** Degrees the arrows turn so they point from the wall to this side; null when the wall's way is unknown: no arrows then. */
+  readonly turn: number | null;
 }
 
 interface Drawn {
@@ -65,6 +66,7 @@ interface Drawn {
     'aria-hidden': 'true',
     '[style.--zl-badge]': "badgePx + 'px'",
     '[style.--zl-badge-inset]': "badgeInsetPx + 'px'",
+    '[style.--zl-badge-border]': "badgeBorderPx + 'px'",
   },
   templateUrl: './zone-layer.html',
   styleUrl: './zone-layer.scss',
@@ -80,6 +82,7 @@ export class ZoneLayer {
   protected readonly burningLook = ZONE_PATTERNS[BURNING_PATTERN];
   protected readonly badgePx = ZONE_BADGE_PX;
   protected readonly badgeInsetPx = ZONE_BADGE_INSET_PX;
+  protected readonly badgeBorderPx = ZONE_BADGE_BORDER_PX;
   private readonly width = signal(0);
 
   constructor() {
@@ -116,11 +119,12 @@ export class ZoneLayer {
       this.rows(),
       this.badgeSquares(),
     );
+    const own = withoutShared(shown.map((z) => z.squares));
     return shown.map((z, i) => {
       const pattern = zonePattern(z.spellKey);
       return {
         id: z.id,
-        fill: cellsPath(z.squares),
+        fill: cellsPath(own[i]),
         edge: outlinePath(z.squares),
         pattern,
         dashed: z.dashed,

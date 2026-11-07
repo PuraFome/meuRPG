@@ -1,4 +1,4 @@
-import { overlapPaths } from './zone-overlap';
+import { overlapPaths, withoutShared } from './zone-overlap';
 
 const sq = (col: number, row: number) => ({ col, row });
 
@@ -30,5 +30,12 @@ describe('where two zones lie over each other', () => {
   it('takes the two newest zones of a square that three cover', () => {
     const list = overlapPaths([[sq(0, 0)], [sq(0, 0)], [sq(0, 0)]]);
     expect(list.map((o) => [o.older, o.newer])).toEqual([[1, 2]]);
+  });
+});
+
+describe('the squares a zone keeps for itself', () => {
+  it('leaves out every square another zone covers too', () => {
+    const left = withoutShared([[sq(0, 0), sq(1, 0)], [sq(1, 0), sq(2, 0)], [sq(5, 5)]]);
+    expect(left).toEqual([[sq(0, 0)], [sq(2, 0)], [sq(5, 5)]]);
   });
 });

@@ -4,9 +4,8 @@
 $edge-width: 2.5;
 $halo-width: 5;
 $dash: 6 4;
-$badge-border: 1.5px;
 
-// The badge's size and the inset of its diamond are set on the host from the TS constants (`--zl-badge`, `--zl-badge-inset`).
+// The badge's size and the inset of its diamond are set on the host from the TS constants (`--zl-badge`, `--zl-badge-inset`, `--zl-badge-border`).
 :host {
   position: absolute;
   inset: 0;
@@ -97,7 +96,7 @@ $badge-border: 1.5px;
   position: absolute;
   inset: var(--zl-badge-inset);
   box-sizing: border-box;
-  border: $badge-border solid var(--mr-map-token-ink);
+  border: var(--zl-badge-border) solid var(--mr-map-token-ink);
   background: var(--mr-map-token-surface);
   transform: rotate(45deg);
 }

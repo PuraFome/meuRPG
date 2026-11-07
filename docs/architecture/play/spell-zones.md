@@ -230,20 +230,23 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zo
   The burning side is its own layer: garnet arrows, dashed outline.
   `arrowTurn` turns the arrows from the server's `wall_side`.
   A straight wall runs from its origin to its farthest square, and the arrows point to its left or right, snapped to eight directions.
-  A ring's arrows point to the center (inner) or away from it (outer), one way for the whole ring.
+  A ring has one fixed axis for the whole pattern: its arrows point right for the outer side and left for the inner side, so they are not radial.
+  On a ring the dashed edge and the legend's "Lado que queima" carry the side.
+  A wall whose way is unknown (one visible square, or only the origin) gets the dashed edge and no arrows.
   Only a spell the table defined, or one the app does not know, takes a hash of its key.
   The hash lands only on the looks flagged `hashable`, the first six, so it never gives a spell a veil that hides sight.
   The map's tokens do not follow the theme, so a look reads the same in both.
   Where zones lie over each other, each shared square is cut on its diagonal (`zone-overlap.ts`).
   The older zone's pattern fills the upper left triangle, the newer one's the lower right, and both outlines stay.
+  A zone's own fill leaves those shared squares out, so only the triangles paint them.
   A square that three zones cover shows its two newest.
   No name floats on the map: each zone carries its letter in a white corner diamond (`ZoneView.letter`).
   The letters follow the viewer's list in the server's order, oldest first, so when a zone ends the later ones move up.
   The master's list also holds the zones of hidden casters, so a zone's letter can differ between the master and a player.
   The live region says which zones took a new letter.
   The burning side takes the wall's letter and has no badge of its own.
-  `zone-badge.ts` places each badge inside a corner of its zone's box, then along the edges when the corners are taken, and keeps every badge a badge's width apart and inside the map.
-  The badge's size comes from one constant (`ZONE_BADGE_PX`) that the layer and the legend's diamond both read as a CSS variable.
+  `zone-badge.ts` places each badge in a corner of its zone's box (inside the corner square only when a square is at least as wide as the badge), then along the edges when the corners are taken, and keeps every badge inside the map, and apart where there is room.
+  The badge's size, inset and border come from constants in `zone-badge.ts` that the layer and the legend's diamond both read as CSS variables.
   The legend (`zoneLegend`) and the list show the same letter in a diamond (`app-zone-letter`, read as "Zona A") beside the name, the caster and the concentration.
   A burning side that is a master-only wall's is master-only in the legend too.
   The master's calls (Darkness against a light spell, Fog Cloud's wind, Stinking Cloud's breathing) are a `call` key on the zone def, sent as a note (`master_light`, `master_wind`, `master_breath`); `addDetails` sends the key to the master alone (the caster's player gets the other notes and no call; a leak row in `internal/leaktest` reads the raw body), `zoneView` turns it into the one-line `reminder`, and the app rules none of them.

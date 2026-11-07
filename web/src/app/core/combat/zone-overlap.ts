@@ -42,3 +42,15 @@ export function overlapPaths(footprints: readonly (readonly Square[])[]): Overla
   }
   return [...pairs.values()];
 }
+
+/** Each footprint without the squares another zone covers too: those squares are painted by the overlap triangles alone. */
+export function withoutShared(footprints: readonly (readonly Square[])[]): Square[][] {
+  const count = new Map<string, number>();
+  const key = (s: Square) => `${s.col},${s.row}`;
+  for (const f of footprints) {
+    for (const s of f) {
+      count.set(key(s), (count.get(key(s)) ?? 0) + 1);
+    }
+  }
+  return footprints.map((f) => f.filter((s) => count.get(key(s)) === 1));
+}

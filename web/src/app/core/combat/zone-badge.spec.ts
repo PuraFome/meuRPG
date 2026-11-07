@@ -80,3 +80,13 @@ describe('the corner badge of a zone', () => {
     },
   );
 });
+
+describe('badges of zones that touch', () => {
+  it('keeps the badges of two adjacent one-square zones apart as far as the room allows, inside the map', () => {
+    const [a, b] = badgeSpots([[sq(0, 0)], [sq(1, 0)]], 24, 16, 1.5);
+    inside(a, 1.5, 24, 16);
+    inside(b, 1.5, 24, 16);
+    const d = Math.max(Math.abs(a.col - b.col), Math.abs(a.row - b.row));
+    expect(d).toBeGreaterThanOrEqual(1);
+  });
+});
