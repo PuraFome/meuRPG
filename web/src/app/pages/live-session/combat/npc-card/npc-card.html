@@ -203,7 +203,7 @@
         [pendings]="pendings()"
         [rechargeRolls]="rechargeRolls()"
         [blockState]="blockState()"
-        (retry)="retryBlock()"
+        (retry)="statBlock.retry()"
         [theatre]="theatre()"
         [turnBusy]="turnBusy()"
         (damageOpened)="creatureDamageIds.set($event)"

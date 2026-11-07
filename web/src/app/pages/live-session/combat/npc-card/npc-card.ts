@@ -23,7 +23,8 @@ import {
   type GetTurnOptionsResponse,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { type Attack, type Creature } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { StatBlockLoad } from './stat-block-load';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -159,9 +160,9 @@ export class NpcCard {
   protected readonly last = signal<LastRoll | null>(null);
   private key = newKey();
   /** The creature's stat block, read once per kind (the client keeps it): its Multiattack routines. `null` until read, and when it cannot be. */
-  protected readonly block = signal<Creature | null>(null);
-  /** Reading the stat block: its "Outras ações" show a skeleton while it loads and "Tentar de novo" when it could not be read. */
-  protected readonly blockState = signal<'idle' | 'loading' | 'failed' | 'ready'>('idle');
+  protected readonly statBlock = new StatBlockLoad();
+  protected readonly blockState = this.statBlock.state;
+  protected readonly block = this.statBlock.block;
   protected readonly creatureDamageIds = signal<readonly string[]>([]);
   /** The routine the master picked, when the creature has a choice between several. */
   protected readonly routineIdx = signal(0);
@@ -285,31 +286,6 @@ export class NpcCard {
   protected readonly pairHint = computed(() => pairHintOf(this.combine()));
   protected readonly rollLabel = computed(() => rollLabelOf(this.attack()));
 
-  /** Reads the creature's stat block; the card works as it was while it loads or when it cannot be read. */
-  protected loadBlock(campaignId: string, key: string): void {
-    this.blockState.set('loading');
-    this.creatures.statBlock(campaignId, key).then(
-      (block) => {
-        if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
-          this.block.set(block);
-          this.blockState.set('ready');
-        }
-      },
-      () => {
-        if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
-          this.blockState.set('failed');
-        }
-      },
-    );
-  }
-
-  protected retryBlock(): void {
-    const key = this.subject().bestiaryCreatureKey ?? '';
-    if (key) {
-      this.loadBlock(this.campaignId(), key);
-    }
-  }
-
   constructor() {
     // Each new turn starts clean, with the first attack and the first target.
     let turnOf = '';
@@ -341,11 +317,12 @@ export class NpcCard {
       const key = this.subject().bestiaryCreatureKey ?? '';
       const campaignId = this.campaignId();
       untracked(() => {
-        this.block.set(null);
+        this.statBlock.reset(!!key);
         this.routineIdx.set(0);
-        this.blockState.set(key ? 'loading' : 'idle');
         if (key) {
-          this.loadBlock(campaignId, key);
+          this.statBlock.read(this.creatures, campaignId, key, () =>
+            untracked(() => this.subject().bestiaryCreatureKey ?? ''),
+          );
         }
       });
     });
