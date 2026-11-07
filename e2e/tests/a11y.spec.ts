@@ -6050,7 +6050,7 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
     });
     const picking = async () => {
       await open(m, `/campaigns/${campaignId}/content/new/option`);
-      await m.getByLabel('Conjunto').selectOption({ label: 'Opção de característica da mesa' });
+      await m.getByLabel('Conjunto', { exact: true }).selectOption({ label: 'Opção de característica da mesa' });
       return m.getByLabel('Característica que oferece');
     };
 
@@ -6064,7 +6064,7 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
       await expect(m.getByText('Escolha a característica que oferece a opção.')).toBeVisible();
       await expect(m.getByRole('link', { name: 'Ver as subclasses da mesa' })).toBeFocused();
       // Another set has no such field.
-      await m.getByLabel('Conjunto').selectOption({ label: 'Invocação mística' });
+      await m.getByLabel('Conjunto', { exact: true }).selectOption({ label: 'Invocação mística' });
       await expect(m.getByLabel('Característica que oferece')).toHaveCount(0);
     }
 
