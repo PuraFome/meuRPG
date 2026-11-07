@@ -13,3 +13,11 @@ func IsUniqueViolation(err error, name string) bool {
 	pgErr, ok := errors.AsType[*pgconn.PgError](err)
 	return ok && pgErr.Code == "23505" && pgErr.ConstraintName == name
 }
+
+// IsSerializationFailure reports whether err is a serialization failure
+// (40001): the database aborted the statement because it raced another one.
+// A statement outside a transaction that meets it may be sent again.
+func IsSerializationFailure(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	return ok && pgErr.Code == sqlstateSerialization
+}

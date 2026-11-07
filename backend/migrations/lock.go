@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	platformdb "github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
 // A lease lock for `migrate up` and `migrate down` (audit D-08).
@@ -184,6 +186,12 @@ func tryAcquire(ctx context.Context, db *sql.DB, holder string, ttl time.Duratio
 		RETURNING holder`, holder, intervalOf(ttl)).Scan(&won)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil // someone else holds a live lease
+	}
+	if platformdb.IsSerializationFailure(err) {
+		// Another run sent the same statement at the same moment and the
+		// database aborted this one (40001): that run won, as if the row
+		// were held. The loop waits and asks again.
+		return false, nil
 	}
 	if err != nil {
 		return false, fmt.Errorf("take the migration lock: %w", err)
