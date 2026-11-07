@@ -465,6 +465,24 @@ describe('ReactionQueue, the answers and what each card says', () => {
       expect(animator.play).not.toHaveBeenCalled();
     });
 
+    it('drops the note when the roller answered and the window is no longer open', async () => {
+      const { fixture, el } = setup([effectSaveWindow({ mode: 'advantage' })]);
+      effectsApi.rollEffectSave.mockResolvedValue({
+        encounter: encounter({ revision: 9 } as never),
+        result: undefined,
+        held: asked(),
+      });
+      button(el, 'Rolar no app').click();
+      await settle(fixture);
+      expect(note(el)).toContain('espera a resposta');
+      fixture.componentRef.setInput(
+        'encounter',
+        encounter({ combatants, reactionWindows: [] } as never),
+      );
+      await settle(fixture);
+      expect(note(el)).toBe('');
+    });
+
     it('says the same for a concentration save', async () => {
       const { fixture, el } = setup([concentrationWindow('c', {}, {})]);
       api.resolveConcentrationSave.mockResolvedValueOnce({

@@ -6084,7 +6084,7 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
       await expect(m.getByLabel('Valor mínimo', { exact: true })).toHaveValue('2');
       await expect(m.getByLabel('Tipo de dano', { exact: true })).toBeVisible();
       await expectScreenPasses(m, `Editor de talento, "Valor mínimo no dado" com o tipo de dano ${where}`);
-      await m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' }).check();
+      await m.locator('app-check-row', { hasText: 'Jogada de ataque (o d20)' }).click();
       await expect(m.getByLabel('Tipo de dano', { exact: true })).toHaveCount(0);
       await expectScreenPasses(m, `Editor de talento, o tipo de dano some com outra jogada marcada ${where}`);
       // The critical range: "Como muda" locked on Definir, the value and the three scope cards.
@@ -6127,10 +6127,6 @@ test('as rolagens no editor de efeitos passam no axe e nas conferências de layo
 test('as rolagens lidas pelo mestre e pelo jogador passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanRollEffects(browser, 'light', 390);
 });
-
-// Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
-// textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
-// (with the chain of an adjustment), and on a phone the same as a sheet with a fixed footer. The fake generator makes the pictures.
 
 // Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
 // textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
@@ -7643,6 +7639,10 @@ async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' 
     await expectScreenPasses(m, `Pergunta de rolar de novo, a pergunta saiu da fila ${where}`);
     // The log tells the new d20 with the feature's name, to the roller and to the master.
     const rerolled = /Sorte Teimosa: 2 → \d+ · 1d20 \(\d+\) \+ \d+ = \d+/;
+    // The attack sheet is a modal and hides the log behind it, at a hit (damage still to roll) and at a miss alike.
+    const attackSheet = p.getByRole('dialog', { name: /^Atacar com/ });
+    await attackSheet.getByRole('button', { name: 'Fechar' }).click();
+    await expect(attackSheet).toBeHidden();
     await openCombatLog(p);
     await expect(p.getByText(rerolled).first()).toBeVisible();
     await expectScreenPasses(p, `Registro do combate, o d20 rolado de novo, visto por quem rolou ${where}`);
@@ -7731,7 +7731,19 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await p.getByRole('button', { name: /^Encerrar/ }).last().click();
     const question = p.getByRole('alertdialog', { name: /A sua fúria vai acabar/ });
     await expect(question).toBeVisible();
-    await expect(question.getByRole('button', { name: 'Voltar e atacar' })).toBeFocused();
+    // The state is named in the message because a failure inside a full shard did not reproduce in isolation.
+    const back = question.getByRole('button', { name: 'Voltar e atacar' });
+    try {
+      await expect(back).toBeFocused();
+    } catch (error) {
+      const active = await p.evaluate(() => {
+        const el = document.activeElement;
+        return el
+          ? `${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim() ?? ''}" ${el.outerHTML.slice(0, 120)}`
+          : 'nothing';
+      });
+      throw new Error(`"Voltar e atacar" was not focused (disabled: ${await back.isDisabled()}); the focus was on ${active}`, { cause: error });
+    }
     await expectScreenPasses(p, `A fúria vai acabar? ${where}`);
     await question.getByRole('button', { name: 'Voltar e atacar' }).click();
 

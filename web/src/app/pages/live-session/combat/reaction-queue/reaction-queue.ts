@@ -119,7 +119,16 @@ export class ReactionQueue {
   /** What the last answer did, for the live region. */
   protected readonly said = signal('');
   /** The roll the master made for a player waits for the roller's question (a reroll rule): where it is and when he may answer. */
-  protected readonly heldNote = signal('');
+  private readonly heldAsked = signal<{ readonly window: string; readonly text: string } | null>(
+    null,
+  );
+  /** The note stays while the window the roll was made for is still open: the roller's answer resolves it and the note goes. */
+  protected readonly heldNote = computed(() => {
+    const asked = this.heldAsked();
+    return asked !== null && this.encounter().reactionWindows.some((w) => w.id === asked.window)
+      ? asked.text
+      : '';
+  });
   protected readonly ofTheLabel = (label: string): string => ofThe([label]);
   /** The slot the master picked for an NPC's Counterspell, by window. */
   private readonly picks = signal<Readonly<Record<string, SlotOption>>>({});
@@ -247,7 +256,7 @@ export class ReactionQueue {
       how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
-    this.heldNote.set('');
+    this.heldAsked.set(null);
     try {
       const res = await this.api.attacks.resolveConcentrationSave(
         this.campaignId(),
@@ -259,7 +268,7 @@ export class ReactionQueue {
       this.state().apply(res.encounter);
       if (res.held) {
         // The roller's reroll question waits: nothing was written, and the question is in the roller's row.
-        this.heldNote.set(heldWaitText(res.held));
+        this.heldAsked.set({ window: w.id, text: heldWaitText(res.held) });
         return;
       }
       const r = res.result;
@@ -289,7 +298,7 @@ export class ReactionQueue {
     const sent: EffectSaveAnswer = how.kind === 'typed' ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
-    this.heldNote.set('');
+    this.heldAsked.set(null);
     try {
       const res = await this.effects.rollEffectSave(
         this.campaignId(),
@@ -300,7 +309,7 @@ export class ReactionQueue {
       );
       this.state().apply(res.encounter);
       if (res.held) {
-        this.heldNote.set(heldWaitText(res.held));
+        this.heldAsked.set({ window: w.id, text: heldWaitText(res.held) });
         return;
       }
       this.play(() =>
