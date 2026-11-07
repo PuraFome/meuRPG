@@ -174,6 +174,8 @@ The master answers for a roller who has not (RN-35 asks the roller first). `Held
   In a combat that is the roller's combatant, matched by hold; out of one it is `ListHeldRolls`, read again when `heldTick` moves (the `held_rolls_changed` hint).
   A read that is overtaken is ignored.
   The note replaces the question and its answers.
+  `HeldFollow` asks a question again only when it changed (hold and kind), never the same one read again, or the sheet would read without end; a next question that comes on screen takes the note away, and a question the player answered here never leaves one.
+  A click the server refuses because the master was first also makes the sheet read again (the sheet's effect follows `refusal`), as nothing else would tell it.
   A group check that is already written shows it on its result; an effect save whose window is settled shows it in the line that says the test no longer waits.
 
 A group check that holds only a Bardic die, with no 1, closes its sheet and leaves the question to the session panel.

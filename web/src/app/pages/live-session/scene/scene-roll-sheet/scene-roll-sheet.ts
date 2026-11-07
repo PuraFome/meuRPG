@@ -230,6 +230,7 @@ export class SceneRollSheet {
     effect(() => {
       this.data.heldTick?.();
       this.held.offer();
+      this.held.refusal(); // a click the server refused as too late: the question may be gone already
       untracked(
         () => void this.follow.seeList(() => this.resources.listHeldRolls(this.data.campaignId)),
       );

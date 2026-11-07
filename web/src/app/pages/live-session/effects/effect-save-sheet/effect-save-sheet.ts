@@ -214,6 +214,7 @@ export class EffectSaveSheet {
         .encounter()
         ?.combatants.find((c) => c.id === this.data.window.reactorId);
       this.held.offer();
+      this.held.refusal(); // a click the server refused as too late: the question may be gone already
       if (me) {
         untracked(() => this.follow.see(heldOfferOf(me)));
       }

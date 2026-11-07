@@ -1,7 +1,11 @@
 import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { ListHeldRollsResponse } from '../../../gen/meurpg/play/v1/resources_pb';
 import type { HeldRollController } from './held-roll-controller';
+import { wasAnsweredHere } from './held-roll-controller';
 import { HeldVanishWatch } from './held-vanish';
+
+const keyOf = (offer: HeldRollOffer | null | undefined) =>
+  offer ? `${offer.holdId}:${offer.question.case}` : '';
 
 /**
  * Keeps the question a sheet asks true to the server: the sheet asked it itself (`held.ask`) when its roll was held, and
@@ -21,12 +25,21 @@ export class HeldFollow {
     if (!shown) {
       return;
     }
+    // The player's own answer never leaves the note.
+    if (wasAnsweredHere(shown)) {
+      this.vanish.dismiss();
+    }
     // Another hold on the roller is not this question: the one the sheet shows is gone.
     const mine = open?.holdId === shown.holdId ? open : null;
     this.vanish.observe(shown);
     this.vanish.observe(mine);
-    if (this.vanish.notice()) {
+    // Only a question that changed goes on screen: the same one read again must not be asked again (the sheet reads
+    // when its question changes, so that would read without end), and a question that comes next is not the note's.
+    if (this.vanish.notice() && keyOf(mine) !== keyOf(shown)) {
       this.held.ask(mine);
+      if (mine) {
+        this.vanish.dismiss();
+      }
     }
   }
 

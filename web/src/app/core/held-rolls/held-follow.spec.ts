@@ -2,9 +2,9 @@ import { signal } from '@angular/core';
 
 import type { HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import { HeldFollow } from './held-follow';
-import { markAnsweredHere } from './held-roll-controller';
+import { forgetAnsweredHere, markAnsweredHere } from './held-roll-controller';
 import { MASTER_ANSWERED_TEXT } from './held-vanish';
-import { heldLucky } from './held-roll-testing';
+import { heldDie, heldLucky } from './held-roll-testing';
 
 function setup(shown: HeldRollOffer | null) {
   const offer = signal<HeldRollOffer | null>(shown);
@@ -47,5 +47,53 @@ describe('HeldFollow', () => {
     const { follow } = setup(null);
     follow.see(heldLucky([1], 5, { holdId: 'follow-4' }));
     expect(follow.vanish.notice()).toBe('');
+  });
+
+  it('asks the next question once, however many times the place reads it again', () => {
+    const lucky = heldLucky([1], 5, { holdId: 'follow-5' });
+    const { offer, follow } = setup(lucky);
+    const asked: (HeldRollOffer | null | undefined)[] = [];
+    const held = {
+      offer,
+      ask: (o: HeldRollOffer | null | undefined) => {
+        asked.push(o);
+        offer.set(o ?? null);
+      },
+    };
+    const f = new HeldFollow(held);
+    f.see(lucky);
+    // The master answered Lucky's question: the die's comes next, and every read gives a new object with the same key.
+    for (let i = 0; i < 4; i++) {
+      f.see(heldDie(5, 5, 8, { holdId: 'follow-5' }));
+    }
+    expect(asked).toHaveLength(1);
+    expect(follow).toBeDefined();
+  });
+
+  it('drops the note when the next question goes on screen, and does not bring it back after the player answers it', () => {
+    const lucky = heldLucky([1], 5, { holdId: 'follow-6' });
+    const die = heldDie(5, 5, 8, { holdId: 'follow-6' });
+    const { offer, follow } = setup(lucky);
+    follow.see(lucky);
+    follow.see(die);
+    expect(offer()?.question.case).toBe(die.question.case);
+    expect(follow.vanish.notice()).toBe('');
+    markAnsweredHere(die);
+    offer.set(null);
+    follow.see(null);
+    expect(follow.vanish.notice()).toBe('');
+  });
+
+  it('says the master answered once a refused click no longer hides it', () => {
+    const lucky = heldLucky([1], 5, { holdId: 'follow-7' });
+    const { offer, follow } = setup(lucky);
+    follow.see(lucky);
+    markAnsweredHere(lucky); // the click was on its way when the master's answer came
+    follow.see(null);
+    expect(follow.vanish.notice()).toBe('');
+    forgetAnsweredHere(lucky); // the server refused the click: the master answered first
+    offer.set(lucky);
+    follow.see(null);
+    expect(follow.vanish.notice()).toBe(MASTER_ANSWERED_TEXT);
   });
 });

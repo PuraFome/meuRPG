@@ -212,6 +212,7 @@ export class CastSheet {
     effect(() => {
       const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.casterId);
       this.questions.held.offer();
+      this.questions.held.refusal(); // a click the server refused as too late: the question may be gone already
       if (me) {
         untracked(() => this.follow.see(heldOfferOf(me)));
       }

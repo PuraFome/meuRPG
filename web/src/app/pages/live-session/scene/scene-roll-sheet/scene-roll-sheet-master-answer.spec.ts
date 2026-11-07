@@ -4,7 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { heldLucky } from '../../../../core/held-rolls/held-roll-testing';
+import { Code, ConnectError } from '@connectrpc/connect';
+import { heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, playerScene } from '../../../../core/play/scene-testing';
@@ -86,5 +87,37 @@ describe('SceneRollSheet: the master answers the question for the roller', () =>
     await settle();
     expect(el.querySelector('[data-testid="sheet-held-vanished"]')).toBeNull();
     expect(buttons()).toContain('Ficar com o 1');
+  });
+
+  it('reads the list a bounded number of times when the master answered the first question and the next is open', async () => {
+    const { buttons, settle, roll, heldTick, resources } = setup();
+    await roll();
+    const next = () => heldDie(6, 5, 8, { holdId: 'hold-scene-master' });
+    resources.listHeldRolls.mockImplementation(() => Promise.resolve({ offers: [next()] }));
+    resources.listHeldRolls.mockClear();
+    heldTick.set(1);
+    await settle();
+    await settle();
+    expect(resources.listHeldRolls.mock.calls.length).toBeLessThanOrEqual(3);
+    expect(buttons().some((b) => /d8|Não usar/.test(b))).toBe(true);
+  });
+
+  it('says the master answered when the player’s click was refused because the master was first', async () => {
+    const { el, buttons, settle, roll, resources } = setup();
+    await roll();
+    // The master answered before the click, and the list already says so; the refused click must not hide it.
+    resources.listHeldRolls.mockResolvedValue({ offers: [] });
+    resources.answerHeldRoll.mockRejectedValue(
+      new ConnectError('answered', Code.FailedPrecondition),
+    );
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => flat(b) === 'Ficar com o 1')!
+      .click();
+    await settle();
+    await settle();
+    expect(flat(el.querySelector('[data-testid="sheet-held-vanished"]'))).toContain(
+      'O mestre respondeu por você.',
+    );
+    expect(buttons()).not.toContain('Ficar com o 1');
   });
 });
