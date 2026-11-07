@@ -1233,7 +1233,12 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(m, `Mais do combate, Efeitos aberto ${where}`);
     await openCombatPanel(m, 'Registro');
     await expectScreenPasses(m, `Mais do combate, Registro aberto ${where}`);
-    await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
+    // One "Desfazer última ação" in the open log, and its title on one line.
+    await expect(m.getByRole('button', { name: 'Desfazer última ação' })).toHaveCount(1);
+    const logTitle = m.getByRole('heading', { name: 'Registro do combate' });
+    const lineHeight = await logTitle.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect((await logTitle.boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(lineHeight + 1);
+    await m.getByRole('button', { name: 'Desfazer última ação' }).click();
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin/)).toBeVisible();
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
