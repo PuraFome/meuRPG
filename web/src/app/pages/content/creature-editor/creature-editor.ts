@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -36,7 +37,7 @@ import {
   emptyTrait,
   unreadableCreaturePaths,
 } from '../../../core/content/creature-draft';
-import { carriersOf } from '../../../core/content/creature-carriers';
+import { carrierIcon, carriersOf, type Carrier } from '../../../core/content/creature-carriers';
 import { creaturePreview } from '../../../core/content/creature-preview';
 import { RANGES, attackSummary, formulaEcho, traitLine } from '../../../core/content/creature-text';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
@@ -330,6 +331,7 @@ export class CreatureEditor {
     // The refusals name rows by their place: after a row goes, they would sit on the wrong one.
     this.saver.clear();
     this.status.set('Traço removido.');
+    this.focusAdd('traits');
   }
 
   protected addAttack(): void {
@@ -352,6 +354,21 @@ export class CreatureEditor {
     this.patch({ attacks: this.draft().attacks.filter((a) => a.id !== id) });
     this.saver.clear();
     this.status.set('Ataque removido.');
+    this.focusAdd('attacks');
+  }
+
+  /** After a row goes, its menu is gone with it: the focus moves to the button that adds the next one. */
+  private focusAdd(list: 'traits' | 'attacks'): void {
+    afterNextRender(
+      () => {
+        this.host.nativeElement.querySelector<HTMLElement>(`[data-add="${list}"] button`)?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  protected iconOf(c: Carrier): string {
+    return carrierIcon(c);
   }
 
   protected shapeOf(a: CreatureAttackDraft): string {

@@ -14,7 +14,7 @@
         </div>
         <p class="hint">Só criaturas do SRD: uma criatura da mesa não é base de outra. A base não muda depois de salvar.</p>
       } @else {
-        <p class="hint" data-field="table_creature.base_key"><strong>Base:</strong> {{ baseLine() }}. A base dá o que você não muda aqui: tamanho, deslocamento, habilidades, sentidos e ações. Não muda depois de salvar.</p>
+        <p class="hint" data-field="table_creature.base_key" tabindex="-1"><strong>Base:</strong> {{ baseLine() }}. A base dá o que você não muda aqui: tamanho, deslocamento, habilidades, sentidos e ações. Não muda depois de salvar.</p>
         @for (m of messages('table_creature.base_key'); track m) {
           <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
         }
@@ -110,7 +110,7 @@
             }
           </ul>
         }
-        <div class="add">
+        <div class="add" data-add="traits">
           @if (traitsFull()) {
             <button matButton="outlined" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="cr-traits-full"><mat-icon aria-hidden="true">add</mat-icon>Adicionar traço</button>
             <p class="add__why" id="cr-traits-full"><mat-icon aria-hidden="true">lock</mat-icon>No máximo {{ maxTraits }} traços. Remova um para pôr outro.</p>
@@ -176,7 +176,7 @@
             }
           </ul>
         }
-        <div class="add">
+        <div class="add" data-add="attacks">
           @if (attacksFull()) {
             <button matButton="outlined" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="cr-attacks-full"><mat-icon aria-hidden="true">add</mat-icon>Adicionar ataque</button>
             <p class="add__why" id="cr-attacks-full"><mat-icon aria-hidden="true">lock</mat-icon>No máximo {{ maxAttacks }} ataques. Remova um para pôr outro.</p>
@@ -223,7 +223,7 @@
           <ul class="carriers">
             @for (c of carriers(); track $index) {
               <li>
-                <a [routerLink]="['/campaigns', campaignId(), 'content', 'entries', c.key]"><mat-icon aria-hidden="true">{{ c.detail.startsWith('magia') ? 'auto_fix_high' : 'menu_book' }}</mat-icon>{{ c.name }}</a>
+                <a [routerLink]="['/campaigns', campaignId(), 'content', 'entries', c.key]"><mat-icon aria-hidden="true">{{ iconOf(c) }}</mat-icon>{{ c.name }}</a>
                 <span class="carriers__why">{{ c.detail }}</span>
               </li>
             }

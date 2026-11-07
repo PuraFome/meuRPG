@@ -169,6 +169,8 @@ describe('CreatureEditor (#578)', () => {
     await settle(fixture, 3);
     expect(el.querySelector('app-creature-pick')).toBeNull();
     expect(text(el)).toContain('Não muda depois de salvar.');
+    // The line of the base is where a refusal of the base lands: it can take the focus.
+    expect(field(el, 'table_creature.base_key').getAttribute('tabindex')).toBe('-1');
     const link = Array.from(el.querySelectorAll('a')).find((a) =>
       text(a).includes('Ver Lobo no bestiário'),
     )!;
@@ -403,6 +405,8 @@ describe('CreatureEditor (#578)', () => {
     expect(el.querySelectorAll('li.row')).toHaveLength(8);
     expect(button(el, 'Adicionar ataque').getAttribute('aria-disabled')).toBeNull();
     expect(text(el)).not.toContain('No máximo 8 ataques');
+    // The menu that had the focus is gone: it goes to the button that adds the next row.
+    expect(document.activeElement).toBe(button(el, 'Adicionar ataque'));
   });
 
   it('a row opens when it is added, with the focus on its name', async () => {

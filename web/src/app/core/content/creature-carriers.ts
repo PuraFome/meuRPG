@@ -1,7 +1,7 @@
-import type {
+import {
   TableContentKind,
-  TableEntry,
-  TableFeature,
+  type TableEntry,
+  type TableFeature,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 
 /** One entry of the table that brings the creature to a character (#578, "Quem traz esta criatura"). */
@@ -74,4 +74,9 @@ export function carriersOf(
   return entries.flatMap((e) =>
     foundIn(e, has).map((f) => ({ key: e.key, kind: e.kind, name: f.name, detail: f.detail })),
   );
+}
+
+/** The icon of a carrier: a wand for a spell, a book for everything else. */
+export function carrierIcon(c: Carrier): string {
+  return c.kind === TableContentKind.SPELL ? 'auto_fix_high' : 'menu_book';
 }

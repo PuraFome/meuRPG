@@ -54,6 +54,7 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'creature base changed': ['table_creature.base_key', 'immutable'],
   'creature base other': ['table_creature.base_key', 'bad_value'],
   'creature name duplicate': ['table_creature.name_pt', 'duplicate_name'],
+  'creature name bad': ['table_creature.name_pt', 'bad_name'],
   'creature hit points': ['table_creature.hit_points', 'bad_value'],
   'creature armor class': ['table_creature.armor_class', 'bad_value'],
   'creature damage bonus': ['table_creature.damage_bonus', 'bad_value'],
@@ -125,6 +126,7 @@ const EXPECTED: Record<string, string> = {
   'creature base missing': 'Esta criatura não está no SRD. Escolha outra como base.',
   'creature base changed': 'Isto não muda depois de criado.',
   'creature base other': 'Escolha uma criatura do SRD como base.',
+  'creature name bad': 'O nome tem de 1 a 80 letras.',
   'creature name duplicate': 'Já existe uma criatura da mesa com este nome. Escolha outro.',
   'creature hit points': 'Os pontos de vida vão de 1 a 9.999 (vazio é o da base).',
   'creature armor class': 'A classe de armadura vai de 1 a 40 (vazio é a da base).',
@@ -144,11 +146,12 @@ const EXPECTED: Record<string, string> = {
   'creature attacks limit': 'No máximo 8 ataques. Remova um para pôr outro.',
   'creature attack name':
     'Use de 1 a 80 letras numa linha, e um nome que a base e os outros traços e ataques ainda não usem. Escolha outro.',
-  'creature attack reach': 'O alcance de um ataque corpo a corpo vai de 1,5 m a 9 m.',
+  'creature attack reach':
+    'O alcance de um ataque corpo a corpo vai de 0 a 9 m; vazio ou 0 é 1,5 m.',
   'creature attack range': 'O alcance de um ataque à distância vai de 0,3 m a 180 m.',
   'creature attack long range': 'O alcance longo fica vazio ou passa do alcance normal, até 360 m.',
   'creature attack dice': 'O ataque tem de 1 a 20 dados.',
-  'creature attack sides': 'Escolha o dado: d4, d6, d8, d10, d12 ou d20.',
+  'creature attack sides': 'Escolha o dado: d4, d6, d8, d10, d12, d20 ou d100.',
   'creature attack damage type': 'Escolha um tipo de dano da lista.',
   'creature attack to hit':
     'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',

@@ -5,6 +5,7 @@ import {
   TableCreatureSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import {
+  DICE_SIDES,
   MAX_ATTACKS,
   MAX_TRAITS,
   creaturePaths,
@@ -204,10 +205,15 @@ describe('the creature form (#578)', () => {
       ]),
     );
     expect(paths).not.toContain('table_creature.attacks[2].name_pt');
+    // no element carries a whole row: a refusal of one climbs to its list
+    expect(paths).not.toContain('table_creature.traits[0]');
+    expect(paths).not.toContain('table_creature.attacks[0]');
   });
 
   it('has the limits of the server', () => {
     expect(MAX_ATTACKS).toBe(8);
     expect(MAX_TRAITS).toBe(10);
+    // the dice that exist at a table, the d100 among them
+    expect(DICE_SIDES).toEqual(['4', '6', '8', '10', '12', '20', '100']);
   });
 });

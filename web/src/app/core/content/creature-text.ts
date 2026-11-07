@@ -1,5 +1,6 @@
 import { joinDots } from '../format/text';
-import { SQUARE_FT, formatMeters, feetToMeters } from '../units';
+import { signed } from '../creatures/creature-format';
+import { SQUARE_FT, metersText } from '../units';
 import { type CreatureAttackDraft } from './creature-draft';
 import { rangeFeet } from './effect-draft';
 
@@ -59,6 +60,26 @@ export function formulaWords(formula: string): string {
     .trim();
 }
 
+/** "com dono, 4 + 4 × nível do dono", or nothing for an empty formula. */
+export function withOwner(formula: string): string {
+  return formula.trim() === '' ? '' : `com dono, ${formulaWords(formula)}`;
+}
+
+/** One number as the table says it: the fixed value (or what stands for none), then its formula "com dono, ...". */
+export function numberValue(fixed: string, formula: string): string {
+  return joinDots([fixed, withOwner(formula)].filter((x) => x));
+}
+
+/** A fixed damage bonus with the true minus sign: "+2", "−1", and nothing for 0. */
+export function signedBonus(n: number): string {
+  return n === 0 ? '' : signed(n);
+}
+
+/** True when any of the formulas is filled: the creature then reads the sheet of its owner. */
+export function hasFormula(formulas: readonly string[]): boolean {
+  return formulas.some((f) => f.trim() !== '');
+}
+
 /** "= 4 + 4 × nível do dono · de 1 a 9.999", or nothing for an empty formula. */
 export function formulaEcho(formula: string, range: string): string {
   const words = formulaWords(formula);
@@ -73,21 +94,16 @@ export const RANGES = {
   attackBonus: 'de −10 a 30',
 } as const;
 
-/** A distance in metres for a collapsed row: "1,5 m". */
-function metres(ft: number): string {
-  return formatMeters(feetToMeters(ft));
-}
-
 /** "Corpo a corpo, 1,5 m" or "À distância, 9 m e 18 m". */
 export function attackShape(a: CreatureAttackDraft): string {
   if (a.melee) {
     const ft = rangeFeet(a.reachM);
-    return `Corpo a corpo, ${metres(ft > 0 ? ft : SQUARE_FT)}`;
+    return `Corpo a corpo, ${metersText(ft > 0 ? ft : SQUARE_FT)}`;
   }
   const range = rangeFeet(a.rangeM);
   const long = rangeFeet(a.longRangeM);
-  const far = range > 0 ? metres(range) : '';
-  return `À distância${far ? `, ${far}` : ''}${long > 0 ? ` e ${metres(long)}` : ''}`;
+  const far = range > 0 ? metersText(range) : '';
+  return `À distância${far ? `, ${far}` : ''}${long > 0 ? ` e ${metersText(long)}` : ''}`;
 }
 
 /** The line of a collapsed attack: "Corpo a corpo, 1,5 m · 2d6 contundente · acerto e dano da criatura". */
@@ -122,12 +138,12 @@ export function creatureSupport(
   },
   nameOf: NameOf,
 ): string {
-  const owner = [
+  const owner = hasFormula([
     c.hitPointsFormula,
     c.armorClassFormula,
     c.damageBonusFormula,
     c.attackBonusFormula,
-  ].some((f) => f !== '');
+  ]);
   const fixed = [
     c.hitPoints > 0 ? `PV ${c.hitPoints}` : '',
     c.armorClass > 0 ? `CA ${c.armorClass}` : '',

@@ -671,7 +671,7 @@ message TableCreatureAttack {
   int32 long_range_ft = 5;
   // How many dice of damage, 1 to 20.
   int32 dice_count = 6;
-  // The sides of each die: 4, 6, 8, 10, 12 or 20.
+  // The sides of each die: 4, 6, 8, 10, 12, 20 or 100.
   int32 dice_sides = 7;
   // A formula for the bonus added to this attack's damage, clamped to -10..30.
   // It wins over the creature's damage bonus.

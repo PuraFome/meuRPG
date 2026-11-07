@@ -98,12 +98,15 @@ function entryText(r: string): string {
 }
 
 /** The reasons about a name, or `undefined` when the reason says nothing special about one. */
-function nameText(r: string, ctx: ViolationContext): string | undefined {
+function nameText(r: string, ctx: ViolationContext, shape: string): string | undefined {
   if (r === 'duplicate_name') {
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
-    return 'O nome tem de 1 a 60 letras.';
+    // a table creature's name allows 80 letters, like its traits and attacks
+    return shape.startsWith('table_creature.')
+      ? 'O nome tem de 1 a 80 letras.'
+      : 'O nome tem de 1 a 60 letras.';
   }
   if (r === 'bad_key' || r === 'reserved_key' || r === 'duplicate_key') {
     return 'Este nome não pode ser usado. Escolha outro.';
@@ -192,7 +195,7 @@ export function violationText(
   // A trait's or an attack's name has one reason for every way it is wrong: its own row says them all.
   const named =
     leaf === 'name_pt' && !/^table_creature\.(traits|attacks)\[\]\./.test(shape)
-      ? nameText(v.reason, ctx)
+      ? nameText(v.reason, ctx, shape)
       : undefined;
   return (
     named ??

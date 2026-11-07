@@ -27,7 +27,7 @@
 }
 
 code {
-  font-family: var(--mr-font-mono, monospace);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: var(--mr-font-14);
   color: var(--mr-ink);
 }
@@ -293,7 +293,7 @@ code {
     display: inline-flex;
     align-items: center;
     gap: var(--mr-space-2);
-    min-height: 32px;
+    min-height: 44px;
     color: var(--mr-ink);
     text-decoration: none;
 

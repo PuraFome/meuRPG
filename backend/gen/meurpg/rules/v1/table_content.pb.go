@@ -3049,7 +3049,7 @@ type TableCreatureAttack struct {
 	LongRangeFt int32 `protobuf:"varint,5,opt,name=long_range_ft,json=longRangeFt,proto3" json:"long_range_ft,omitempty"`
 	// How many dice of damage, 1 to 20.
 	DiceCount int32 `protobuf:"varint,6,opt,name=dice_count,json=diceCount,proto3" json:"dice_count,omitempty"`
-	// The sides of each die: 4, 6, 8, 10, 12 or 20.
+	// The sides of each die: 4, 6, 8, 10, 12, 20 or 100.
 	DiceSides int32 `protobuf:"varint,7,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
 	// A formula for the bonus added to this attack's damage, clamped to -10..30.
 	// It wins over the creature's damage bonus.

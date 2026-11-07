@@ -8,7 +8,7 @@ import {
   type TableCreatureSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { newRowId, rangeFeet, rangeMeters, unreadableRange } from './effect-draft';
-import { readWhole } from './whole-number';
+import { readWhole, wholeText } from './whole-number';
 
 /**
  * The table creature form (MR-025, #578): an SRD creature chosen once as the base (`baseKey`), a name, four numbers each with a
@@ -26,7 +26,7 @@ export const MAX_ATTACKS = 8;
 export const MAX_TRAITS = 10;
 
 /** The sides of the dice of an attack. */
-export const DICE_SIDES: readonly string[] = ['4', '6', '8', '10', '12', '20'];
+export const DICE_SIDES: readonly string[] = ['4', '6', '8', '10', '12', '20', '100'];
 
 export interface CreatureTraitDraft {
   /** A stable id the editor tracks the row by (never sent). */
@@ -109,8 +109,6 @@ export function emptyAttack(): CreatureAttackDraft {
   };
 }
 
-const text = (n: number): string => (n !== 0 ? String(n) : '');
-
 function attackToDraft(a: TableCreatureAttack): CreatureAttackDraft {
   return {
     id: newRowId(),
@@ -119,8 +117,8 @@ function attackToDraft(a: TableCreatureAttack): CreatureAttackDraft {
     reachM: rangeMeters(a.reachFt),
     rangeM: rangeMeters(a.rangeFt),
     longRangeM: rangeMeters(a.longRangeFt),
-    diceCount: text(a.diceCount),
-    diceSides: text(a.diceSides),
+    diceCount: wholeText(a.diceCount),
+    diceSides: wholeText(a.diceSides),
     damageType: a.damageType,
     damageBonus: a.damageBonus,
     toHit: a.toHit,
@@ -131,9 +129,9 @@ export function creatureToDraft(c: TableCreature): CreatureDraft {
   return {
     name: c.namePt,
     baseKey: c.baseKey,
-    hitPoints: text(c.hitPoints),
-    armorClass: text(c.armorClass),
-    damageBonus: text(c.damageBonus),
+    hitPoints: wholeText(c.hitPoints),
+    armorClass: wholeText(c.armorClass),
+    damageBonus: wholeText(c.damageBonus),
     hitPointsFormula: c.hitPointsFormula,
     armorClassFormula: c.armorClassFormula,
     damageBonusFormula: c.damageBonusFormula,
@@ -179,7 +177,7 @@ export function draftToCreature(d: CreatureDraft): CreatureInit {
 
 const P = 'table_creature';
 
-/** The paths of the inputs the creature editor draws (a violation at another path lands on the nearest one above). */
+/** The paths of the inputs the creature editor draws (a violation at another path, such as a whole row, lands on the nearest one above: the list). */
 export function creaturePaths(d: CreatureDraft): string[] {
   const out = [
     `${P}.name_pt`,
@@ -195,12 +193,11 @@ export function creaturePaths(d: CreatureDraft): string[] {
     `${P}.attacks`,
   ];
   d.traits.forEach((_, k) => {
-    out.push(`${P}.traits[${k}]`, `${P}.traits[${k}].name_pt`, `${P}.traits[${k}].text_pt`);
+    out.push(`${P}.traits[${k}].name_pt`, `${P}.traits[${k}].text_pt`);
   });
   d.attacks.forEach((_, k) => {
     const at = `${P}.attacks[${k}]`;
     out.push(
-      at,
       `${at}.name_pt`,
       `${at}.melee`,
       `${at}.reach_ft`,

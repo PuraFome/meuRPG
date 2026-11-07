@@ -11,14 +11,17 @@ describe('CreaturePick, as the base of a table creature', () => {
     create(CreatureSummarySchema, { key: 'creature:lobo-do-vale@mesa', namePt: 'Lobo do Vale' }),
   ];
 
-  async function setup(srdOnly: boolean) {
+  const search = vi.fn();
+
+  async function setup(srdOnly: boolean, results: typeof found = found) {
     vi.useFakeTimers();
+    search.mockReset().mockResolvedValue({ creatures: results, total: results.length });
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         {
           provide: CreaturesClient,
-          useValue: { search: vi.fn().mockResolvedValue({ creatures: found, total: 2 }) },
+          useValue: { search },
         },
       ],
     });
@@ -52,5 +55,16 @@ describe('CreaturePick, as the base of a table creature', () => {
     expect(options).toHaveLength(1);
     expect(options[0].textContent).toContain('Lobo');
     expect(options[0].textContent).not.toContain('Lobo do Vale');
+  });
+
+  it('asks for a whole page when only the SRD shows, so table creatures cannot crowd it out, and shows 8 at most', async () => {
+    await setup(false);
+    expect(search).toHaveBeenLastCalledWith('camp-1', { query: 'lob', pageSize: 8 });
+    const many = Array.from({ length: 12 }, (_, i) =>
+      create(CreatureSummarySchema, { key: `monster:m${i}`, namePt: `M${i}` }),
+    );
+    const el = await setup(true, many);
+    expect(search).toHaveBeenLastCalledWith('camp-1', { query: 'lob', pageSize: 400 });
+    expect(el.querySelectorAll('[role="option"]')).toHaveLength(8);
   });
 });

@@ -1,20 +1,17 @@
 import type { TableCreature } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { joinDots } from '../format/text';
 import { type EntryRead, type NameOf, type ReadRow } from './content-read-parts';
-import { formulaWords } from './creature-text';
+import { numberValue, signedBonus } from './creature-text';
 
 /** One number of a creature as the table reads it: the fixed value (or the base's), then "com dono, <formula>". */
 function numberRow(label: string, fixed: number, formula: string, ifNone: string): ReadRow | null {
-  const own = formula === '' ? '' : `com dono, ${formulaWords(formula)}`;
-  const value = joinDots([fixed > 0 ? String(fixed) : ifNone, own].filter((x) => x));
+  const value = numberValue(fixed > 0 ? String(fixed) : ifNone, formula);
   return value === '' ? null : { label, value };
 }
 
 /** A table creature as the table reads it: the base and the numbers it changes, then the traits and the attacks it adds. The full
  * stat block read (what the base gives) is the bestiary's. */
 export function readCreature(c: TableCreature, nameOf: NameOf): EntryRead {
-  const bonus =
-    c.damageBonus === 0 ? '' : c.damageBonus > 0 ? `+${c.damageBonus}` : `−${-c.damageBonus}`;
+  const bonus = signedBonus(c.damageBonus);
   const rows = [
     { label: 'Base', value: nameOf(c.baseKey) },
     numberRow('Pontos de vida', c.hitPoints, c.hitPointsFormula, 'os da base'),

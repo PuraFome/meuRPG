@@ -10,6 +10,11 @@ import { CreatureArt } from '../creatures/creature-art';
 
 let nextId = 0;
 
+/** How many matches show, and how many the server is asked for when only the SRD's show (the server has no such filter: table creatures
+ * come in the same page and would crowd the SRD ones out of the first 8). */
+const PAGE = 8;
+const SRD_PAGE = 400;
+
 /**
  * "Adicionar criatura" (E10-09 state 1): a search field in the bestiary's words. Typing asks the server (the Portuguese or the
  * SRD's English name, after a short pause; an answer that is no longer for the text on screen is dropped) and the best
@@ -130,10 +135,13 @@ export class CreaturePick {
     const mine = ++this.seq;
     const query = this.text().trim();
     try {
-      const res = await this.client.search(this.campaignId(), { query, pageSize: 8 });
+      const res = await this.client.search(this.campaignId(), {
+        query,
+        pageSize: this.srdOnly() ? SRD_PAGE : PAGE,
+      });
       if (mine === this.seq) {
         const shown = this.srdOnly()
-          ? res.creatures.filter((c) => c.key.startsWith('monster:'))
+          ? res.creatures.filter((c) => c.key.startsWith('monster:')).slice(0, PAGE)
           : res.creatures;
         this.found.set(shown);
         this.active.set(shown.length > 0 ? 0 : -1);

@@ -3,7 +3,7 @@ import { signed, speedsText } from '../creatures/creature-format';
 import { typeAndSize } from '../creatures/bestiary-format';
 import { joinDots, tieNumbers } from '../format/text';
 import { type CreatureDraft } from './creature-draft';
-import { formulaWords } from './creature-text';
+import { hasFormula, numberValue, signedBonus, withOwner } from './creature-text';
 import { readWhole } from './whole-number';
 
 type NameOf = (key: string) => string;
@@ -58,8 +58,6 @@ export interface CreaturePreview {
 }
 
 const present = (parts: readonly string[]): string => joinDots(parts.filter((x) => x));
-const withOwner = (formula: string): string =>
-  formula.trim() === '' ? '' : `com dono, ${formulaWords(formula)}`;
 
 function numberRow(
   label: string,
@@ -69,15 +67,8 @@ function numberRow(
 ): PreviewRow | null {
   const n = readWhole(fixed, false);
   const base = baseValue === null ? '' : String(baseValue);
-  const value = present([!Number.isNaN(n) && n > 0 ? String(n) : base, withOwner(formula)]);
+  const value = numberValue(!Number.isNaN(n) && n > 0 ? String(n) : base, formula);
   return value === '' ? null : { label, value: tieNumbers(value) };
-}
-
-function signedBonus(n: number): string {
-  if (n === 0) {
-    return '';
-  }
-  return n > 0 ? `+${n}` : `−${-n}`;
 }
 
 function previewRows(d: CreatureDraft, base: Creature | null, fixedBonus: number): PreviewRow[] {
@@ -129,13 +120,13 @@ function tableActions(d: CreatureDraft, fixedBonus: number, nameOf: NameOf): Pre
 }
 
 function hasOwnerFormula(d: CreatureDraft): boolean {
-  return [
+  return hasFormula([
     d.hitPointsFormula,
     d.armorClassFormula,
     d.damageBonusFormula,
     d.attackBonusFormula,
     ...d.attacks.flatMap((a) => [a.toHit, a.damageBonus]),
-  ].some((f) => f.trim() !== '');
+  ]);
 }
 
 /** "Como fica na mesa": the creature as the table reads it, from the draft and the base's stat block (`null` until it is read). */

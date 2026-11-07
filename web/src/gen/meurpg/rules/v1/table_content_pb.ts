@@ -1482,7 +1482,7 @@ export type TableCreatureAttack = Message<"meurpg.rules.v1.TableCreatureAttack">
   diceCount: number;
 
   /**
-   * The sides of each die: 4, 6, 8, 10, 12 or 20.
+   * The sides of each die: 4, 6, 8, 10, 12, 20 or 100.
    *
    * @generated from field: int32 dice_sides = 7;
    */

@@ -37,7 +37,7 @@ export const CREATURE_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; te
   },
   {
     shape: /^table_creature\.attacks\[\]\.reach_ft$/,
-    text: 'O alcance de um ataque corpo a corpo vai de 1,5 m a 9 m.',
+    text: 'O alcance de um ataque corpo a corpo vai de 0 a 9 m; vazio ou 0 é 1,5 m.',
   },
   {
     shape: /^table_creature\.attacks\[\]\.range_ft$/,
@@ -53,7 +53,7 @@ export const CREATURE_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; te
   },
   {
     shape: /^table_creature\.attacks\[\]\.dice_sides$/,
-    text: 'Escolha o dado: d4, d6, d8, d10, d12 ou d20.',
+    text: 'Escolha o dado: d4, d6, d8, d10, d12, d20 ou d100.',
   },
   {
     shape: /^table_creature\.attacks\[\]\.damage_type$/,
