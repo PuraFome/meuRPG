@@ -53,6 +53,47 @@ Initiative, turn order and reinforcements are not log lines.
 
 On a fogged map, each event is also stamped with the users who saw its NPCs (see [Combat under fog](fog.md)).
 
+## Reading the log again
+
+`ListCombatLog` answers with the whole log or with what changed after the number the app holds.
+The app sends `since_seq`, the `last_seq` of its last answer; 0 asks for the whole log.
+The answer carries `last_seq` (the number to send next time) and `full` (the rounds replace everything the app holds).
+A delta holds the entries whose `CombatLogEntry.seq` is above `since_seq`, and the app puts each in place by id, in the round and the place it already has.
+An entry that a later event joins (the damage of an attack) takes that event's number, so it comes again and replaces its old copy.
+
+`CombatLogEntry.seq` and `last_seq` are numbers of `session_events.seq`.
+They are unrelated to the live stream's `session_seq`, the hint number ([Live session](live-session.md#the-hint-number)): two counters, never compared.
+
+### When the answer is the whole log
+
+An event after `since_seq` that may change how an entry the app holds is seen, without a new event on that entry, makes the answer `full`.
+Only the kinds in `deltaSafeKinds` are safe: they add a line or join the entry they name (attacks and damage, actions, saves, spells, reactions, conditions, movement, turns, the start and end of the combat, the legendary spend and the Recharge roll).
+Every other kind counts: a combatant shown or hidden, summoned, dismissed or removed, an answer to a roll request, an undo, and a kind the list does not know.
+When in doubt a kind stays off the list.
+
+| Reader | What counts as a change to the whole log |
+| --- | --- |
+| The master | Every event off `deltaSafeKinds`, and any event the server cannot read |
+| A player | Only what the player may see: an event that is secret or out of their sight is ignored; an undo counts only when the action it took back was one they could see; a toggle counts only when the combatant is in a line the player holds (one at or below `since_seq`, not secret, not the master's alone, seen); an add whose combatants all came in hidden is ignored |
+
+Because a player's answer ignores what they cannot see, it tells them nothing a hidden write did.
+A player's `last_seq` is the highest entry number among the entries they read, raised to the highest event that would have asked for the whole log, so the next read does not meet the same event again and ask for everything once more.
+It does not move on a write they may not see.
+The master's `last_seq` is the highest event number of the combat.
+In a delta, the master's `undoable_event_id` entry is always sent, so the app can derive the `undoable` flag: it is right only on the entry of that id.
+
+`TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee` (`backend/internal/leaktest/seq_test.go`) checks the player's answer against the worlds where the hidden write was not made.
+
+### In the app
+
+`CombatLogState` (`web/src/app/core/combat/combat-log-state.ts`) keeps the `last_seq` it holds and the combat it belongs to.
+It asks with `since_seq = last_seq` on every `combat_log_changed` and every reconnection, and with 0 for a combat it does not hold, a first read, or a read that asked for the whole log.
+A `full` answer, or a read that asked for the whole log, replaces the rounds; any other answer is merged by id.
+The master's `combat_log_changed` carries `full` when the log was rewritten (an undo), so the app drops what it holds and asks with 0.
+That is an optimisation only: the answer is `full` whenever the log was rewritten for that reader.
+A player's `combat_log_changed` never carries `full`: an undo they cannot see must not tell them anything an ordinary change does not.
+An `encounter_changed` hint with no revision may mean a combatant was shown or hidden, so the app reads the whole log then.
+
 ## Events
 
 Each change is written in the same transaction as the change, with ids and numbers only; the event carries the `encounter_id`, the round and whether a hidden combatant was in it.
@@ -74,8 +115,8 @@ After `COMMIT`, `play` publishes to each audience what it may see (the hub has a
 | `encounter_changed{encounter_id, revision, mode}` | Any change in the combat | Everyone. A contentless notice: the app reads `GetEncounter` again, already filtered |
 | `turn_changed{round, current_combatant_id, master_turn}` | The combat begins, the turn passes, whoever is on turn disappears or changes state | Each their own copy: the master sees who it is; the player "Vez do mestre" if it is a hidden one |
 | `combatant_moved{combatant_id, col, row}` | A combatant moves | The master always; the player only if they see the combatant |
-| `combat_log_changed{encounter_id}` | A log line appeared, changed or vanished | The master always; the player only if the line has no hidden one (the end of a hidden combatant's rage, `EndRage` and `AnswerRageEnd`, included). A contentless notice: the app reads `ListCombatLog` again |
+| `combat_log_changed{encounter_id, full}` | A log line appeared, changed or vanished | The master always, with `full` set when the log was rewritten (an undo); the player only if the line has no hidden one (the end of a hidden combatant's rage, `EndRage` and `AnswerRageEnd`, included), and never with `full`. A notice with no log content: the app reads `ListCombatLog` again ([Reading the log again](#reading-the-log-again)) |
 | `reaction_window_opened`, `reaction_window_closed` | A reaction window opens or closes | The reactor and the master |
 
 `finish` publishes after the commit on a context that outlives the call, with a timeout.
-A repeat of an idempotent call publishes only the generic hints, because the first call may have died before telling.
+A repeat of an idempotent call tells the hints again, with the session's hint number as it stands, because the first call may have died before telling ([the replay rule](live-session.md#the-replay-rule)).
