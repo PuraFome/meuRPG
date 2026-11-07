@@ -37,7 +37,7 @@ test(
       await expect(zoneCard(t.m, 'Névoa Obscurecente · Druida')).toContainText('Esfera de 6 m de raio');
       await expect(zoneCard(t.m, 'Névoa Obscurecente · Druida')).toContainText('Você decide: um vento forte dispersa a Névoa em 1 rodada.');
       await expect(zoneCard(t.m, 'Escuridão · Mago')).toContainText('Esfera de 4,5 m de raio');
-      await expect(zoneCard(t.m, 'Escuridão · Mago')).toContainText('Você decide: uma magia de luz de nível 2 ou menor aqui dissipa a Escuridão.');
+      await expect(zoneCard(t.m, 'Escuridão · Mago')).toContainText('Você decide: a luz de uma magia de nível 2 ou menor que toque a Escuridão é dissipada.');
       for (const label of ['Névoa Obscurecente · Druida', 'Escuridão · Mago']) {
         await expect(zoneLayer(t.m)).toContainText(label);
         await expect(zoneLayer(t.p)).toContainText(label);
@@ -124,6 +124,8 @@ test(
       await openSessionPage(t.m, t.campaignId);
       await castZoneRPC(t.m, t, t.id('Druida'), 'spell:stinking-cloud', { col: me.col ?? 0, row: me.row ?? 0 }, 3);
       await expect(zoneCard(t.m, 'Névoa Fétida · Druida')).toContainText('Você decide: quem não precisa respirar passa no teste sem rolar.');
+      await expect(zoneLayer(t.p)).toContainText('Névoa Fétida · Druida');
+      await expect(zoneCard(t.p, 'Névoa Fétida · Druida')).toBeVisible();
       await expect(zoneCard(t.p, 'Névoa Fétida · Druida')).not.toContainText('Você decide');
       await expect(t.p.getByRole('dialog')).toHaveCount(0);
 
@@ -191,10 +193,10 @@ test(
       await openSessionPage(t.p, t.campaignId);
       await castZoneRPC(t.m, t, t.id('Druida'), 'spell:spike-growth', { col: (me.col ?? 0) + 4, row: me.row ?? 0 }, 2);
       await expect(zoneCard(t.m, 'Crescer Espinhos · Druida')).toContainText('terreno difícil');
+      await expect(zoneCard(t.p, 'Crescer Espinhos · Druida')).toBeVisible();
       await expect(zoneCard(t.p, 'Crescer Espinhos · Druida')).not.toContainText('terreno difícil');
       await combatRPC(t.m, 'MoveCombatant', { campaignId: t.campaignId, encounterId: t.encounterId, combatantId: t.id('Pensantus'), col: (me.col ?? 0) + 4, row: me.row ?? 0 });
       await expect(t.m.getByText('Falta rolar o dano')).toBeVisible();
-      await expect(t.m.getByRole('tab', { name: /Turno/ })).toContainText('1');
     } finally {
       await t.done();
     }

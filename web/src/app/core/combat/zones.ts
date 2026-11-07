@@ -55,7 +55,8 @@ export interface ZoneView {
 
 /** The master's calls the spells leave to the table: one line each, for the master's card only. */
 const CALL_WORDS: Readonly<Record<string, string>> = {
-  master_light: 'Você decide: uma magia de luz de nível 2 ou menor aqui dissipa a Escuridão.',
+  master_light:
+    'Você decide: a luz de uma magia de nível 2 ou menor que toque a Escuridão é dissipada.',
   master_wind: 'Você decide: um vento forte dispersa a Névoa em 1 rodada.',
   master_breath: 'Você decide: quem não precisa respirar passa no teste sem rolar.',
 };

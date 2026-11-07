@@ -99,7 +99,7 @@ describe("the master's calls", () => {
     zoneView(spellZone({ id: 'z', notes: [key] }), viewer).reminder;
 
   it('gives the master one line for Darkness, Fog Cloud and Stinking Cloud', () => {
-    expect(call('master_light', master)).toContain('magia de luz de nível 2 ou menor');
+    expect(call('master_light', master)).toContain('a luz de uma magia de nível 2 ou menor');
     expect(call('master_wind', master)).toContain('vento forte');
     expect(call('master_breath', master)).toContain('não precisa respirar');
   });
