@@ -98,7 +98,7 @@ export function metersWithFeet(feet: number): string {
 /** Kilograms for a weight in pounds, at the Portuguese books' rate (1 lb = 0,5 kg), with a decimal comma and no
  * useless zero: 180 lb is "90 kg", 195 lb is "97,5 kg". */
 export function poundsToKg(pounds: number): string {
-  const kg = Math.round(pounds * 5) / 10;
+  const kg = Math.round((pounds / 2) * 10) / 10;
   return `${String(kg).replace('.', ',')} kg`;
 }
 
