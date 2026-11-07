@@ -1,7 +1,8 @@
 package play
 
 import (
-	"strings"
+	"regexp"
+	"strconv"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -172,6 +173,32 @@ func TestUndoOfAnEventWithoutHoldsIsNotChecked(t *testing.T) {
 	}
 }
 
+// hasNumber says the text holds n as a number: not inside a word, an id (a UUID's groups sit between hyphens) or a timestamp
+// (a fraction of a second follows a dot). A canary of digits alone searched with strings.Contains matched "4217" inside a random
+// combatant id (run 42337730750, job "go-db play-1"); this searches the number as a number.
+func hasNumber(text string, n int) bool {
+	return regexp.MustCompile(`(^|[^0-9A-Za-z.-])` + strconv.Itoa(n) + `($|[^0-9A-Za-z.-])`).MatchString(text)
+}
+
+// TestHasNumberFindsTheNumberAndNotAnIDHoldingIt: an id or a timestamp holding the digits is no leak, the number itself is.
+func TestHasNumberFindsTheNumberAndNotAnIDHoldingIt(t *testing.T) {
+	t.Parallel()
+	for text, want := range map[string]bool{
+		"combatant 0b1c2d3e-4217-4a5b-8c9d-1e2f3a4b5c6d changed": false,
+		"combatant 0b1c2d3e-aaaa-4a5b-8c9d-1e2f3a4b5c6d-4217":    false,
+		"at 2026-11-07T05:25:26.4217Z":                           false,
+		"abc4217def":                                             false,
+		`{"hp_temp":4217}`:                                       true,
+		"the goblin has 4217 hit points":                         true,
+		"4217":                                                   true,
+		"the goblin has 42170 hit points":                        false,
+	} {
+		if got := hasNumber(text, 4217); got != want {
+			t.Errorf("hasNumber(%q, 4217) = %v, want %v", text, got, want)
+		}
+	}
+}
+
 // TestUndoRefusalNamesWhoChangedAndNoNumbers: the refusal carries the combatant, never a hit point number, and a
 // player cannot ask for the undo at all (RN-10, RN-20): the master is the positive control.
 func TestUndoRefusalNamesWhoChangedAndNoNumbers(t *testing.T) {
@@ -189,7 +216,7 @@ func TestUndoRefusalNamesWhoChangedAndNoNumbers(t *testing.T) {
 	// A player is refused before anything is read.
 	err := a.undo(t, a.caio, e, last)
 	wantCode(t, "UndoLastAction by a player", err, connect.CodePermissionDenied)
-	if strings.Contains(err.Error(), "4217") {
+	if hasNumber(err.Error(), secretHP) {
 		t.Errorf("the player's refusal leaks the hit points: %v", err)
 	}
 	// The master's refusal names who and says no number.
@@ -199,7 +226,7 @@ func TestUndoRefusalNamesWhoChangedAndNoNumbers(t *testing.T) {
 	if len(b.GetCombatantIds()) != 1 {
 		t.Errorf("combatant_ids = %v, want the goblin", b.GetCombatantIds())
 	}
-	if raw := b.String() + err.Error(); strings.Contains(raw, "4217") {
+	if raw := b.String() + err.Error(); hasNumber(raw, secretHP) {
 		t.Errorf("the master's refusal carries the hit points: %s", raw)
 	}
 }
