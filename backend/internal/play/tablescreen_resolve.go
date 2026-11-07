@@ -156,6 +156,24 @@ func pinnedStage(pin playv1.TableScreenKind, f tvFacts) tvPick {
 	return idle
 }
 
+// The values of game_sessions.tv_pin: the enum's own numbers, which the column check allows (1 to 5).
+const (
+	tvPinIdle int16 = iota + 1
+	tvPinMap
+	tvPinImage
+	tvPinScene
+	tvPinCombat
+)
+
+// tvPinColumn is the column value of each item the master can pin.
+var tvPinColumn = map[playv1.TableScreenKind]int16{
+	playv1.TableScreenKind_TABLE_SCREEN_KIND_IDLE:   tvPinIdle,
+	playv1.TableScreenKind_TABLE_SCREEN_KIND_MAP:    tvPinMap,
+	playv1.TableScreenKind_TABLE_SCREEN_KIND_IMAGE:  tvPinImage,
+	playv1.TableScreenKind_TABLE_SCREEN_KIND_SCENE:  tvPinScene,
+	playv1.TableScreenKind_TABLE_SCREEN_KIND_COMBAT: tvPinCombat,
+}
+
 // validTvPin says whether kind is one the master can pin.
 func validTvPin(kind playv1.TableScreenKind) bool {
 	for _, k := range tvPinnable {

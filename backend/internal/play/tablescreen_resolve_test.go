@@ -165,3 +165,16 @@ func TestTVOptionsSayWhyAnItemCannotBePicked(t *testing.T) {
 		}
 	}
 }
+
+func TestTvPinColumnIsTheEnumNumber(t *testing.T) {
+	t.Parallel()
+	if len(tvPinColumn) != len(tvPinnable) {
+		t.Fatalf("tvPinColumn has %d items, tvPinnable %d", len(tvPinColumn), len(tvPinnable))
+	}
+	for _, kind := range tvPinnable {
+		column, ok := tvPinColumn[kind]
+		if !ok || int32(column) != int32(kind) {
+			t.Errorf("tvPinColumn[%v] = %d, want %d", kind, column, int32(kind))
+		}
+	}
+}

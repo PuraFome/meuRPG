@@ -171,8 +171,8 @@ func (s *Service) SetTableScreen(
 			return errStaleTableScreen()
 		}
 		keep := session.TvPin // a mirror choice with no pin keeps the pin it had
-		if validTvPin(pin) {
-			keep = int16(pin) //nolint:gosec // G115: a known kind, 1 to 5
+		if column, ok := tvPinColumn[pin]; ok {
+			keep = column
 		}
 		updated, err = q.SetTableScreenChoice(ctx, playdb.SetTableScreenChoiceParams{ID: session.ID, TvMirror: want.GetMirror(), TvPin: keep})
 		return err
