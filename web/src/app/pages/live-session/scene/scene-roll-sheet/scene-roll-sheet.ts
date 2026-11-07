@@ -206,9 +206,10 @@ export class SceneRollSheet {
     const passed = this.roll()?.passed;
     return passed === undefined ? null : { ok: passed, text: passText(passed, this.action.dc) };
   });
-  /** The typed d20's live total, with Talento Confiável's account where the character's feature raises this check and the number is below 10. */
+  /** The typed d20's live total, with the account of the floor (Talento Confiável or a table minimum) that raises this check when the number is below it. A saving throw ("save:wis") is not a check: the table's check minimum does not reach it. */
   protected readonly typedFormula = (() => {
-    const floor = checkFloorOf(this.action.key, this.data.reliableTalent, this.data.checkFloor);
+    const table = this.action.key.startsWith('save:') ? null : this.data.checkFloor;
+    const floor = checkFloorOf(this.action.key, this.data.reliableTalent, table);
     return floor ? (face: number) => treatedPreview(face, this.bonus, floor) : null;
   })();
   protected readonly rollLabel = `Role 1d20 para ${this.action.checkName} (${this.bonusText})`;

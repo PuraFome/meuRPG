@@ -49,10 +49,10 @@ export function rollFormula(roll: DiceRoll): string {
 /** A d20 of 9 or lower counts as 10 (Talento Confiável, SRD 5.1). */
 export const TREATED_FLOOR = 10;
 
-/** The Portuguese name of the feature that changed a d20 (`DiceRoll.treated_as_source`, a content key). */
 /** The content key of Talento Confiável, the one floor with a rule of its own (a skill the character is proficient in). */
 const RELIABLE_TALENT = 'feature:reliable-talent';
 
+/** The Portuguese name of the feature that changed a d20 (`DiceRoll.treated_as_source`, a content key). */
 const TREATED_SOURCE_NAMES: Readonly<Record<string, string>> = {
   [RELIABLE_TALENT]: 'Talento Confiável',
 };
