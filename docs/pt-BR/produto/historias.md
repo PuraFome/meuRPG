@@ -69,6 +69,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela) | Combate | MVP |
 | [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
 | [MR-056](#mr-056-mostrar-a-mesa-em-uma-tela) | Sessão | MVP |
+| [MR-057](#mr-057-ligar-o-sol-num-combate) | Combate | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1738,6 +1739,29 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-012](#mr-012-acompanhar-a-sessão), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-036](#mr-036-névoa-de-guerra-pela-visão), [RN-10](regras.md#rn-10-mapa-sem-spoiler).
+
+### MR-057: Ligar o sol num combate
+
+**Como** mestre, **quero** ligar a luz do sol num combate, no mapa todo ou nos quadrados que eu pintar, **para que** as criaturas que temem o sol (um drow, um espectro, uma sombra) rolem como as regras mandam sem eu me lembrar disso.
+
+- Prioridade: MVP
+- Regras: RN-20, RN-29
+- Módulos: play, rules
+
+#### Critérios de aceitação
+- **Dado** que sou o mestre de um combate, **quando** aperto o botão do sol na barra do combate ("Luz do sol"), **então** o sol fica ligado no mapa todo; **dado** que escolho "Onde eu pintar" e pinto quadrados, **então** só esses quadrados ficam no sol, e "Pronto" encerra a pintura.
+- **Dado** que o sol está ligado e um drow está nele, **quando** rolo o ataque, **então** o modo da rolagem sugere "Desvantagem. Luz do sol (Sensibilidade à Luz do Sol)"; uma criatura sem esse traço rola como antes.
+- **Dado** um espectro no sol, **quando** faz um teste de Percepção, **então** o teste tem desvantagem "nos testes que dependem da visão"; **dado** uma sombra (Fraqueza à Luz do Sol) no sol, **então** os ataques, os testes e as salvaguardas dela a têm.
+- **Dado** que uma criatura está numa zona de Escuridão, **então** ela não está no sol.
+- **Dado** que desligo o sol, **então** o alcance e os quadrados pintados ficam para a próxima vez; **dado** que desfaço, **então** a mudança do sol não fecha o desfazer.
+- **Dado** que sou jogador, **então** nunca leio que o sol está ligado, onde ele alcança, quem está nele nem qual traço uma criatura tem, num mapa que vejo em parte ou não vejo; uma rolagem que o sol mudou nomeia a fonte como "Outra fonte" (RN-20).
+
+#### No app
+- O botão do sol fica na barra do combate (só o mestre); o alcance e "Pintar" ficam no cartão do mapa, só com o sol ligado. Ver [Design](../../design/combat.md).
+
+#### Relacionadas
+- [MR-042](#mr-042-bestiário), [RN-29](regras.md#rn-29-monstros-no-combate).
+
 
 ## Prioridade: MVP (pré-requisito)
 

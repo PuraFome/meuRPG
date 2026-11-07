@@ -152,7 +152,11 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
 - **Traits that change rolls.** Pack Tactics and Magic Resistance are read from the stat block's traits and become advantage sources (`combat.SourcePackTactics`, `combat.SourceMagicResistance`).
   Magic Resistance gives advantage on a saving throw against a spell or another magical effect; a creature's own non-spell action is not magic.
   Only the master and the owner of the creature read the mode of its save; any other player reads the outcome.
-  Sunlight Sensitivity and Sunlight Weakness are not read: the engine has no sunlight, so they stay a trait the master reads on the creature's sheet.
+  Sunlight Sensitivity and Sunlight Weakness are read too (#704): the master turns the sun on for the combat (`SetSunlight`: the whole map, or the squares he paints), and a creature in it rolls with disadvantage (`combat.SourceSunlightAttack`, `SourceSunlightSave`, `SourceSunlightPerception`).
+  Sensitivity gives it on attack rolls and on Perception checks that rely on sight; Weakness gives it on attack rolls, ability checks and saving throws.
+  `sunlightFrom` decides whether a combatant stands in the sun, and Darkness beats it: a creature in a Darkness zone is not in the sun.
+  The sun, its scope and its squares are the master's (`Encounter.sunlight_*`, `Combatant.in_sunlight` and `sunlight_trait`); a player reads a roll's sunlight source as "Outra fonte", and nothing else of it (RN-20, RN-29).
+  The change is a `sunlight_set` event: it is not a closing event, so undo steps over it.
 - **Spells of a stat block** (an NPC, not a summoned creature: a creature has no "Cast a spell", see the next bullet). An NPC made from a creature with a Spellcasting or Innate Spellcasting trait casts through `CastSpell`, like an NPC with a full sheet.
   A creature whose Innate Spellcasting text lists no spells by frequency stays a reminder: the four mephits ("The mephit can innately cast sleep"), which lists no frequency in the data.
   They keep only the description note, and the master casts for them.
