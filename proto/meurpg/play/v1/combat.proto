@@ -5456,6 +5456,10 @@ enum CombatLogKind {
   // and the player who controls the creature get the line; no other player's log shows it or
   // counts it (RN-20, RN-29).
   COMBAT_LOG_KIND_RECHARGE_ROLLED = 28;
+  // A character drew or stowed a piece of gear in a running combat ("Bartolo equipou Espada longa (grátis)"): the
+  // actor and `gear_swapped`. Only the master and the character's owner get the line; no other player's log shows it or
+  // counts it (RN-10).
+  COMBAT_LOG_KIND_GEAR_SWAPPED = 102;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5683,6 +5687,8 @@ message CombatLogEntry {
   CombatLogLegendarySpent legendary_spent = 114;
   // RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
   CombatLogRecharge recharge = 115;
+  // GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
+  CombatLogGearSwapped gear_swapped = 117;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5811,6 +5817,19 @@ message CombatLogRecharge {
   int32 face = 2;
   // Whether the face made the action available again.
   bool recharged = 3;
+}
+
+// CombatLogGearSwapped is the line of a piece of gear drawn or stowed in a combat, for the master and the owner.
+message CombatLogGearSwapped {
+  // The piece's name, in Portuguese when the content has it, else the SRD's in English.
+  string name_pt = 1;
+  // "weapon", "shield" or "armor" (armor only when the master made the swap).
+  string kind = 2;
+  // Whether the piece is equipped after the change (drawn) or carried (stowed).
+  bool equipped = 3;
+  // What the change spent: "free" (the turn's object interaction), "action", "extra_action", or empty when the master
+  // made it (nothing is spent).
+  string cost = 4;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
