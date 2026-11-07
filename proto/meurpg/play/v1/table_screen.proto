@@ -11,6 +11,7 @@ syntax = "proto3";
 // clues, notes, the master's DCs, the fog's hidden cells.
 package meurpg.play.v1;
 
+import "google/protobuf/timestamp.proto";
 import "meurpg/maps/v1/maps.proto";
 
 // TableScreenService is the master's panel and the TV's one source.
@@ -145,6 +146,19 @@ message GetTableScreenResponse {
   repeated string party = 7;
   // Every item the master can pick, with whether it can be picked now.
   repeated TableScreenOption options = 8;
+  // Whether a TV tab is connected, for the master's panel. Counted in memory by this server instance, like
+  // the live streams: with more than one instance it is the share this instance holds. Only the master
+  // reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
+  TableScreenPresence presence = 9;
+}
+
+// TableScreenPresence is whether the TV at the table is connected. It names nothing of the stage.
+message TableScreenPresence {
+  // True while at least one TV tab holds a stream ("Aberta").
+  bool open = 1;
+  // When the last TV tab lost its stream ("Sem conexão desde 21:14"). Set only when a TV tab was
+  // connected since this instance started and none is now; unset otherwise.
+  google.protobuf.Timestamp lost_at = 2;
 }
 
 // TableScreenChoice is what the master chose. Stored with the open session.

@@ -20,6 +20,7 @@ import (
 	v1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -361,7 +362,11 @@ type GetTableScreenResponse struct {
 	// never a dead character, an NPC or a character waiting for the master's approval.
 	Party []string `protobuf:"bytes,7,rep,name=party,proto3" json:"party,omitempty"`
 	// Every item the master can pick, with whether it can be picked now.
-	Options       []*TableScreenOption `protobuf:"bytes,8,rep,name=options,proto3" json:"options,omitempty"`
+	Options []*TableScreenOption `protobuf:"bytes,8,rep,name=options,proto3" json:"options,omitempty"`
+	// Whether a TV tab is connected, for the master's panel. Counted in memory by this server instance, like
+	// the live streams: with more than one instance it is the share this instance holds. Only the master
+	// reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
+	Presence      *TableScreenPresence `protobuf:"bytes,9,opt,name=presence,proto3" json:"presence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -452,6 +457,69 @@ func (x *GetTableScreenResponse) GetOptions() []*TableScreenOption {
 	return nil
 }
 
+func (x *GetTableScreenResponse) GetPresence() *TableScreenPresence {
+	if x != nil {
+		return x.Presence
+	}
+	return nil
+}
+
+// TableScreenPresence is whether the TV at the table is connected. It names nothing of the stage.
+type TableScreenPresence struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True while at least one TV tab holds a stream ("Aberta").
+	Open bool `protobuf:"varint,1,opt,name=open,proto3" json:"open,omitempty"`
+	// When the last TV tab lost its stream ("Sem conexão desde 21:14"). Set only when a TV tab was
+	// connected since this instance started and none is now; unset otherwise.
+	LostAt        *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=lost_at,json=lostAt,proto3" json:"lost_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TableScreenPresence) Reset() {
+	*x = TableScreenPresence{}
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TableScreenPresence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TableScreenPresence) ProtoMessage() {}
+
+func (x *TableScreenPresence) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TableScreenPresence.ProtoReflect.Descriptor instead.
+func (*TableScreenPresence) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *TableScreenPresence) GetOpen() bool {
+	if x != nil {
+		return x.Open
+	}
+	return false
+}
+
+func (x *TableScreenPresence) GetLostAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LostAt
+	}
+	return nil
+}
+
 // TableScreenChoice is what the master chose. Stored with the open session.
 type TableScreenChoice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -465,7 +533,7 @@ type TableScreenChoice struct {
 
 func (x *TableScreenChoice) Reset() {
 	*x = TableScreenChoice{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +545,7 @@ func (x *TableScreenChoice) String() string {
 func (*TableScreenChoice) ProtoMessage() {}
 
 func (x *TableScreenChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +558,7 @@ func (x *TableScreenChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableScreenChoice.ProtoReflect.Descriptor instead.
 func (*TableScreenChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TableScreenChoice) GetMirror() bool {
@@ -522,7 +590,7 @@ type TableScreenOption struct {
 
 func (x *TableScreenOption) Reset() {
 	*x = TableScreenOption{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +602,7 @@ func (x *TableScreenOption) String() string {
 func (*TableScreenOption) ProtoMessage() {}
 
 func (x *TableScreenOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +615,7 @@ func (x *TableScreenOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableScreenOption.ProtoReflect.Descriptor instead.
 func (*TableScreenOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TableScreenOption) GetKind() TableScreenKind {
@@ -595,7 +663,7 @@ type TableScreenStage struct {
 
 func (x *TableScreenStage) Reset() {
 	*x = TableScreenStage{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -607,7 +675,7 @@ func (x *TableScreenStage) String() string {
 func (*TableScreenStage) ProtoMessage() {}
 
 func (x *TableScreenStage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -620,7 +688,7 @@ func (x *TableScreenStage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableScreenStage.ProtoReflect.Descriptor instead.
 func (*TableScreenStage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TableScreenStage) GetKind() TableScreenKind {
@@ -737,7 +805,7 @@ type TvIdle struct {
 
 func (x *TvIdle) Reset() {
 	*x = TvIdle{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +817,7 @@ func (x *TvIdle) String() string {
 func (*TvIdle) ProtoMessage() {}
 
 func (x *TvIdle) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +830,7 @@ func (x *TvIdle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvIdle.ProtoReflect.Descriptor instead.
 func (*TvIdle) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{6}
 }
 
 // TvImage is the image the master shows to the whole table (MR-028).
@@ -782,7 +850,7 @@ type TvImage struct {
 
 func (x *TvImage) Reset() {
 	*x = TvImage{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -794,7 +862,7 @@ func (x *TvImage) String() string {
 func (*TvImage) ProtoMessage() {}
 
 func (x *TvImage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -807,7 +875,7 @@ func (x *TvImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvImage.ProtoReflect.Descriptor instead.
 func (*TvImage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TvImage) GetName() string {
@@ -853,7 +921,7 @@ type TvScene struct {
 
 func (x *TvScene) Reset() {
 	*x = TvScene{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -865,7 +933,7 @@ func (x *TvScene) String() string {
 func (*TvScene) ProtoMessage() {}
 
 func (x *TvScene) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -878,7 +946,7 @@ func (x *TvScene) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvScene.ProtoReflect.Descriptor instead.
 func (*TvScene) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TvScene) GetName() string {
@@ -915,7 +983,7 @@ type TvStageNpc struct {
 
 func (x *TvStageNpc) Reset() {
 	*x = TvStageNpc{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +995,7 @@ func (x *TvStageNpc) String() string {
 func (*TvStageNpc) ProtoMessage() {}
 
 func (x *TvStageNpc) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1008,7 @@ func (x *TvStageNpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvStageNpc.ProtoReflect.Descriptor instead.
 func (*TvStageNpc) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *TvStageNpc) GetName() string {
@@ -984,7 +1052,7 @@ type TvMap struct {
 
 func (x *TvMap) Reset() {
 	*x = TvMap{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -996,7 +1064,7 @@ func (x *TvMap) String() string {
 func (*TvMap) ProtoMessage() {}
 
 func (x *TvMap) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1009,7 +1077,7 @@ func (x *TvMap) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvMap.ProtoReflect.Descriptor instead.
 func (*TvMap) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TvMap) GetName() string {
@@ -1069,7 +1137,7 @@ type TvCombat struct {
 
 func (x *TvCombat) Reset() {
 	*x = TvCombat{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1081,7 +1149,7 @@ func (x *TvCombat) String() string {
 func (*TvCombat) ProtoMessage() {}
 
 func (x *TvCombat) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1094,7 +1162,7 @@ func (x *TvCombat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvCombat.ProtoReflect.Descriptor instead.
 func (*TvCombat) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TvCombat) GetRound() int32 {
@@ -1151,7 +1219,7 @@ type TvCombatant struct {
 
 func (x *TvCombatant) Reset() {
 	*x = TvCombatant{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1163,7 +1231,7 @@ func (x *TvCombatant) String() string {
 func (*TvCombatant) ProtoMessage() {}
 
 func (x *TvCombatant) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1176,7 +1244,7 @@ func (x *TvCombatant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvCombatant.ProtoReflect.Descriptor instead.
 func (*TvCombatant) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TvCombatant) GetName() string {
@@ -1231,7 +1299,7 @@ type TvRoll struct {
 
 func (x *TvRoll) Reset() {
 	*x = TvRoll{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1243,7 +1311,7 @@ func (x *TvRoll) String() string {
 func (*TvRoll) ProtoMessage() {}
 
 func (x *TvRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1256,7 +1324,7 @@ func (x *TvRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TvRoll.ProtoReflect.Descriptor instead.
 func (*TvRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TvRoll) GetWho() string {
@@ -1302,7 +1370,7 @@ type SetTableScreenRequest struct {
 
 func (x *SetTableScreenRequest) Reset() {
 	*x = SetTableScreenRequest{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +1382,7 @@ func (x *SetTableScreenRequest) String() string {
 func (*SetTableScreenRequest) ProtoMessage() {}
 
 func (x *SetTableScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +1395,7 @@ func (x *SetTableScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTableScreenRequest.ProtoReflect.Descriptor instead.
 func (*SetTableScreenRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SetTableScreenRequest) GetCampaignId() string {
@@ -1364,7 +1432,7 @@ type SetTableScreenResponse struct {
 
 func (x *SetTableScreenResponse) Reset() {
 	*x = SetTableScreenResponse{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1444,7 @@ func (x *SetTableScreenResponse) String() string {
 func (*SetTableScreenResponse) ProtoMessage() {}
 
 func (x *SetTableScreenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1457,7 @@ func (x *SetTableScreenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetTableScreenResponse.ProtoReflect.Descriptor instead.
 func (*SetTableScreenResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SetTableScreenResponse) GetChoiceRevision() int32 {
@@ -1417,7 +1485,7 @@ type WatchTableScreenRequest struct {
 
 func (x *WatchTableScreenRequest) Reset() {
 	*x = WatchTableScreenRequest{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1429,7 +1497,7 @@ func (x *WatchTableScreenRequest) String() string {
 func (*WatchTableScreenRequest) ProtoMessage() {}
 
 func (x *WatchTableScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1442,7 +1510,7 @@ func (x *WatchTableScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchTableScreenRequest.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *WatchTableScreenRequest) GetCampaignId() string {
@@ -1469,7 +1537,7 @@ type WatchTableScreenResponse struct {
 
 func (x *WatchTableScreenResponse) Reset() {
 	*x = WatchTableScreenResponse{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1481,7 +1549,7 @@ func (x *WatchTableScreenResponse) String() string {
 func (*WatchTableScreenResponse) ProtoMessage() {}
 
 func (x *WatchTableScreenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1494,7 +1562,7 @@ func (x *WatchTableScreenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchTableScreenResponse.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *WatchTableScreenResponse) GetEvent() isWatchTableScreenResponse_Event {
@@ -1582,7 +1650,7 @@ type WatchTableScreenResponse_Ready struct {
 
 func (x *WatchTableScreenResponse_Ready) Reset() {
 	*x = WatchTableScreenResponse_Ready{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1594,7 +1662,7 @@ func (x *WatchTableScreenResponse_Ready) String() string {
 func (*WatchTableScreenResponse_Ready) ProtoMessage() {}
 
 func (x *WatchTableScreenResponse_Ready) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1607,7 +1675,7 @@ func (x *WatchTableScreenResponse_Ready) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchTableScreenResponse_Ready.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenResponse_Ready) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16, 0}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{17, 0}
 }
 
 // Heartbeat carries nothing.
@@ -1619,7 +1687,7 @@ type WatchTableScreenResponse_Heartbeat struct {
 
 func (x *WatchTableScreenResponse_Heartbeat) Reset() {
 	*x = WatchTableScreenResponse_Heartbeat{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1631,7 +1699,7 @@ func (x *WatchTableScreenResponse_Heartbeat) String() string {
 func (*WatchTableScreenResponse_Heartbeat) ProtoMessage() {}
 
 func (x *WatchTableScreenResponse_Heartbeat) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[18]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1644,7 +1712,7 @@ func (x *WatchTableScreenResponse_Heartbeat) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use WatchTableScreenResponse_Heartbeat.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenResponse_Heartbeat) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16, 1}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{17, 1}
 }
 
 // Changed carries nothing.
@@ -1656,7 +1724,7 @@ type WatchTableScreenResponse_Changed struct {
 
 func (x *WatchTableScreenResponse_Changed) Reset() {
 	*x = WatchTableScreenResponse_Changed{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1668,7 +1736,7 @@ func (x *WatchTableScreenResponse_Changed) String() string {
 func (*WatchTableScreenResponse_Changed) ProtoMessage() {}
 
 func (x *WatchTableScreenResponse_Changed) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[19]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1681,7 +1749,7 @@ func (x *WatchTableScreenResponse_Changed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WatchTableScreenResponse_Changed.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenResponse_Changed) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16, 2}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{17, 2}
 }
 
 // SessionEnded carries nothing; the tab shows the idle screen.
@@ -1693,7 +1761,7 @@ type WatchTableScreenResponse_SessionEnded struct {
 
 func (x *WatchTableScreenResponse_SessionEnded) Reset() {
 	*x = WatchTableScreenResponse_SessionEnded{}
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1705,7 +1773,7 @@ func (x *WatchTableScreenResponse_SessionEnded) String() string {
 func (*WatchTableScreenResponse_SessionEnded) ProtoMessage() {}
 
 func (x *WatchTableScreenResponse_SessionEnded) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[20]
+	mi := &file_meurpg_play_v1_table_screen_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1718,17 +1786,17 @@ func (x *WatchTableScreenResponse_SessionEnded) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use WatchTableScreenResponse_SessionEnded.ProtoReflect.Descriptor instead.
 func (*WatchTableScreenResponse_SessionEnded) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{16, 3}
+	return file_meurpg_play_v1_table_screen_proto_rawDescGZIP(), []int{17, 3}
 }
 
 var File_meurpg_play_v1_table_screen_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_table_screen_proto_rawDesc = "" +
 	"\n" +
-	"!meurpg/play/v1/table_screen.proto\x12\x0emeurpg.play.v1\x1a\x19meurpg/maps/v1/maps.proto\"8\n" +
+	"!meurpg/play/v1/table_screen.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x19meurpg/maps/v1/maps.proto\"8\n" +
 	"\x15GetTableScreenRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\x8e\x03\n" +
+	"campaignId\"\xcf\x03\n" +
 	"\x16GetTableScreenResponse\x12'\n" +
 	"\x0fchoice_revision\x18\x01 \x01(\x05R\x0echoiceRevision\x129\n" +
 	"\x06choice\x18\x02 \x01(\v2!.meurpg.play.v1.TableScreenChoiceR\x06choice\x126\n" +
@@ -1737,7 +1805,11 @@ const file_meurpg_play_v1_table_screen_proto_rawDesc = "" +
 	"\rcampaign_name\x18\x05 \x01(\tR\fcampaignName\x12%\n" +
 	"\x0esession_number\x18\x06 \x01(\x05R\rsessionNumber\x12\x14\n" +
 	"\x05party\x18\a \x03(\tR\x05party\x12;\n" +
-	"\aoptions\x18\b \x03(\v2!.meurpg.play.v1.TableScreenOptionR\aoptions\"^\n" +
+	"\aoptions\x18\b \x03(\v2!.meurpg.play.v1.TableScreenOptionR\aoptions\x12?\n" +
+	"\bpresence\x18\t \x01(\v2#.meurpg.play.v1.TableScreenPresenceR\bpresence\"^\n" +
+	"\x13TableScreenPresence\x12\x12\n" +
+	"\x04open\x18\x01 \x01(\bR\x04open\x123\n" +
+	"\alost_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x06lostAt\"^\n" +
 	"\x11TableScreenChoice\x12\x16\n" +
 	"\x06mirror\x18\x01 \x01(\bR\x06mirror\x121\n" +
 	"\x03pin\x18\x02 \x01(\x0e2\x1f.meurpg.play.v1.TableScreenKindR\x03pin\"\xb0\x01\n" +
@@ -1860,7 +1932,7 @@ func file_meurpg_play_v1_table_screen_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_table_screen_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_meurpg_play_v1_table_screen_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_meurpg_play_v1_table_screen_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_meurpg_play_v1_table_screen_proto_goTypes = []any{
 	(TableScreenKind)(0),                          // 0: meurpg.play.v1.TableScreenKind
 	(TableScreenNotice)(0),                        // 1: meurpg.play.v1.TableScreenNotice
@@ -1868,66 +1940,70 @@ var file_meurpg_play_v1_table_screen_proto_goTypes = []any{
 	(TvState)(0),                                  // 3: meurpg.play.v1.TvState
 	(*GetTableScreenRequest)(nil),                 // 4: meurpg.play.v1.GetTableScreenRequest
 	(*GetTableScreenResponse)(nil),                // 5: meurpg.play.v1.GetTableScreenResponse
-	(*TableScreenChoice)(nil),                     // 6: meurpg.play.v1.TableScreenChoice
-	(*TableScreenOption)(nil),                     // 7: meurpg.play.v1.TableScreenOption
-	(*TableScreenStage)(nil),                      // 8: meurpg.play.v1.TableScreenStage
-	(*TvIdle)(nil),                                // 9: meurpg.play.v1.TvIdle
-	(*TvImage)(nil),                               // 10: meurpg.play.v1.TvImage
-	(*TvScene)(nil),                               // 11: meurpg.play.v1.TvScene
-	(*TvStageNpc)(nil),                            // 12: meurpg.play.v1.TvStageNpc
-	(*TvMap)(nil),                                 // 13: meurpg.play.v1.TvMap
-	(*TvCombat)(nil),                              // 14: meurpg.play.v1.TvCombat
-	(*TvCombatant)(nil),                           // 15: meurpg.play.v1.TvCombatant
-	(*TvRoll)(nil),                                // 16: meurpg.play.v1.TvRoll
-	(*SetTableScreenRequest)(nil),                 // 17: meurpg.play.v1.SetTableScreenRequest
-	(*SetTableScreenResponse)(nil),                // 18: meurpg.play.v1.SetTableScreenResponse
-	(*WatchTableScreenRequest)(nil),               // 19: meurpg.play.v1.WatchTableScreenRequest
-	(*WatchTableScreenResponse)(nil),              // 20: meurpg.play.v1.WatchTableScreenResponse
-	(*WatchTableScreenResponse_Ready)(nil),        // 21: meurpg.play.v1.WatchTableScreenResponse.Ready
-	(*WatchTableScreenResponse_Heartbeat)(nil),    // 22: meurpg.play.v1.WatchTableScreenResponse.Heartbeat
-	(*WatchTableScreenResponse_Changed)(nil),      // 23: meurpg.play.v1.WatchTableScreenResponse.Changed
-	(*WatchTableScreenResponse_SessionEnded)(nil), // 24: meurpg.play.v1.WatchTableScreenResponse.SessionEnded
-	(*v1.GetMapResponse)(nil),                     // 25: meurpg.maps.v1.GetMapResponse
-	(*v1.GetMapVisionResponse)(nil),               // 26: meurpg.maps.v1.GetMapVisionResponse
+	(*TableScreenPresence)(nil),                   // 6: meurpg.play.v1.TableScreenPresence
+	(*TableScreenChoice)(nil),                     // 7: meurpg.play.v1.TableScreenChoice
+	(*TableScreenOption)(nil),                     // 8: meurpg.play.v1.TableScreenOption
+	(*TableScreenStage)(nil),                      // 9: meurpg.play.v1.TableScreenStage
+	(*TvIdle)(nil),                                // 10: meurpg.play.v1.TvIdle
+	(*TvImage)(nil),                               // 11: meurpg.play.v1.TvImage
+	(*TvScene)(nil),                               // 12: meurpg.play.v1.TvScene
+	(*TvStageNpc)(nil),                            // 13: meurpg.play.v1.TvStageNpc
+	(*TvMap)(nil),                                 // 14: meurpg.play.v1.TvMap
+	(*TvCombat)(nil),                              // 15: meurpg.play.v1.TvCombat
+	(*TvCombatant)(nil),                           // 16: meurpg.play.v1.TvCombatant
+	(*TvRoll)(nil),                                // 17: meurpg.play.v1.TvRoll
+	(*SetTableScreenRequest)(nil),                 // 18: meurpg.play.v1.SetTableScreenRequest
+	(*SetTableScreenResponse)(nil),                // 19: meurpg.play.v1.SetTableScreenResponse
+	(*WatchTableScreenRequest)(nil),               // 20: meurpg.play.v1.WatchTableScreenRequest
+	(*WatchTableScreenResponse)(nil),              // 21: meurpg.play.v1.WatchTableScreenResponse
+	(*WatchTableScreenResponse_Ready)(nil),        // 22: meurpg.play.v1.WatchTableScreenResponse.Ready
+	(*WatchTableScreenResponse_Heartbeat)(nil),    // 23: meurpg.play.v1.WatchTableScreenResponse.Heartbeat
+	(*WatchTableScreenResponse_Changed)(nil),      // 24: meurpg.play.v1.WatchTableScreenResponse.Changed
+	(*WatchTableScreenResponse_SessionEnded)(nil), // 25: meurpg.play.v1.WatchTableScreenResponse.SessionEnded
+	(*timestamppb.Timestamp)(nil),                 // 26: google.protobuf.Timestamp
+	(*v1.GetMapResponse)(nil),                     // 27: meurpg.maps.v1.GetMapResponse
+	(*v1.GetMapVisionResponse)(nil),               // 28: meurpg.maps.v1.GetMapVisionResponse
 }
 var file_meurpg_play_v1_table_screen_proto_depIdxs = []int32{
-	6,  // 0: meurpg.play.v1.GetTableScreenResponse.choice:type_name -> meurpg.play.v1.TableScreenChoice
-	8,  // 1: meurpg.play.v1.GetTableScreenResponse.stage:type_name -> meurpg.play.v1.TableScreenStage
+	7,  // 0: meurpg.play.v1.GetTableScreenResponse.choice:type_name -> meurpg.play.v1.TableScreenChoice
+	9,  // 1: meurpg.play.v1.GetTableScreenResponse.stage:type_name -> meurpg.play.v1.TableScreenStage
 	1,  // 2: meurpg.play.v1.GetTableScreenResponse.notice:type_name -> meurpg.play.v1.TableScreenNotice
-	7,  // 3: meurpg.play.v1.GetTableScreenResponse.options:type_name -> meurpg.play.v1.TableScreenOption
-	0,  // 4: meurpg.play.v1.TableScreenChoice.pin:type_name -> meurpg.play.v1.TableScreenKind
-	0,  // 5: meurpg.play.v1.TableScreenOption.kind:type_name -> meurpg.play.v1.TableScreenKind
-	2,  // 6: meurpg.play.v1.TableScreenOption.unavailable:type_name -> meurpg.play.v1.TableScreenUnavailable
-	0,  // 7: meurpg.play.v1.TableScreenStage.kind:type_name -> meurpg.play.v1.TableScreenKind
-	9,  // 8: meurpg.play.v1.TableScreenStage.idle:type_name -> meurpg.play.v1.TvIdle
-	13, // 9: meurpg.play.v1.TableScreenStage.map:type_name -> meurpg.play.v1.TvMap
-	10, // 10: meurpg.play.v1.TableScreenStage.image:type_name -> meurpg.play.v1.TvImage
-	11, // 11: meurpg.play.v1.TableScreenStage.scene:type_name -> meurpg.play.v1.TvScene
-	14, // 12: meurpg.play.v1.TableScreenStage.combat:type_name -> meurpg.play.v1.TvCombat
-	16, // 13: meurpg.play.v1.TableScreenStage.rolls:type_name -> meurpg.play.v1.TvRoll
-	12, // 14: meurpg.play.v1.TvScene.stage:type_name -> meurpg.play.v1.TvStageNpc
-	25, // 15: meurpg.play.v1.TvMap.map:type_name -> meurpg.maps.v1.GetMapResponse
-	26, // 16: meurpg.play.v1.TvMap.vision:type_name -> meurpg.maps.v1.GetMapVisionResponse
-	15, // 17: meurpg.play.v1.TvCombat.order:type_name -> meurpg.play.v1.TvCombatant
-	13, // 18: meurpg.play.v1.TvCombat.map:type_name -> meurpg.play.v1.TvMap
-	3,  // 19: meurpg.play.v1.TvCombatant.state:type_name -> meurpg.play.v1.TvState
-	6,  // 20: meurpg.play.v1.SetTableScreenRequest.choice:type_name -> meurpg.play.v1.TableScreenChoice
-	6,  // 21: meurpg.play.v1.SetTableScreenResponse.choice:type_name -> meurpg.play.v1.TableScreenChoice
-	21, // 22: meurpg.play.v1.WatchTableScreenResponse.ready:type_name -> meurpg.play.v1.WatchTableScreenResponse.Ready
-	22, // 23: meurpg.play.v1.WatchTableScreenResponse.heartbeat:type_name -> meurpg.play.v1.WatchTableScreenResponse.Heartbeat
-	23, // 24: meurpg.play.v1.WatchTableScreenResponse.changed:type_name -> meurpg.play.v1.WatchTableScreenResponse.Changed
-	24, // 25: meurpg.play.v1.WatchTableScreenResponse.session_ended:type_name -> meurpg.play.v1.WatchTableScreenResponse.SessionEnded
-	4,  // 26: meurpg.play.v1.TableScreenService.GetTableScreen:input_type -> meurpg.play.v1.GetTableScreenRequest
-	19, // 27: meurpg.play.v1.TableScreenService.WatchTableScreen:input_type -> meurpg.play.v1.WatchTableScreenRequest
-	17, // 28: meurpg.play.v1.TableScreenService.SetTableScreen:input_type -> meurpg.play.v1.SetTableScreenRequest
-	5,  // 29: meurpg.play.v1.TableScreenService.GetTableScreen:output_type -> meurpg.play.v1.GetTableScreenResponse
-	20, // 30: meurpg.play.v1.TableScreenService.WatchTableScreen:output_type -> meurpg.play.v1.WatchTableScreenResponse
-	18, // 31: meurpg.play.v1.TableScreenService.SetTableScreen:output_type -> meurpg.play.v1.SetTableScreenResponse
-	29, // [29:32] is the sub-list for method output_type
-	26, // [26:29] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	8,  // 3: meurpg.play.v1.GetTableScreenResponse.options:type_name -> meurpg.play.v1.TableScreenOption
+	6,  // 4: meurpg.play.v1.GetTableScreenResponse.presence:type_name -> meurpg.play.v1.TableScreenPresence
+	26, // 5: meurpg.play.v1.TableScreenPresence.lost_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: meurpg.play.v1.TableScreenChoice.pin:type_name -> meurpg.play.v1.TableScreenKind
+	0,  // 7: meurpg.play.v1.TableScreenOption.kind:type_name -> meurpg.play.v1.TableScreenKind
+	2,  // 8: meurpg.play.v1.TableScreenOption.unavailable:type_name -> meurpg.play.v1.TableScreenUnavailable
+	0,  // 9: meurpg.play.v1.TableScreenStage.kind:type_name -> meurpg.play.v1.TableScreenKind
+	10, // 10: meurpg.play.v1.TableScreenStage.idle:type_name -> meurpg.play.v1.TvIdle
+	14, // 11: meurpg.play.v1.TableScreenStage.map:type_name -> meurpg.play.v1.TvMap
+	11, // 12: meurpg.play.v1.TableScreenStage.image:type_name -> meurpg.play.v1.TvImage
+	12, // 13: meurpg.play.v1.TableScreenStage.scene:type_name -> meurpg.play.v1.TvScene
+	15, // 14: meurpg.play.v1.TableScreenStage.combat:type_name -> meurpg.play.v1.TvCombat
+	17, // 15: meurpg.play.v1.TableScreenStage.rolls:type_name -> meurpg.play.v1.TvRoll
+	13, // 16: meurpg.play.v1.TvScene.stage:type_name -> meurpg.play.v1.TvStageNpc
+	27, // 17: meurpg.play.v1.TvMap.map:type_name -> meurpg.maps.v1.GetMapResponse
+	28, // 18: meurpg.play.v1.TvMap.vision:type_name -> meurpg.maps.v1.GetMapVisionResponse
+	16, // 19: meurpg.play.v1.TvCombat.order:type_name -> meurpg.play.v1.TvCombatant
+	14, // 20: meurpg.play.v1.TvCombat.map:type_name -> meurpg.play.v1.TvMap
+	3,  // 21: meurpg.play.v1.TvCombatant.state:type_name -> meurpg.play.v1.TvState
+	7,  // 22: meurpg.play.v1.SetTableScreenRequest.choice:type_name -> meurpg.play.v1.TableScreenChoice
+	7,  // 23: meurpg.play.v1.SetTableScreenResponse.choice:type_name -> meurpg.play.v1.TableScreenChoice
+	22, // 24: meurpg.play.v1.WatchTableScreenResponse.ready:type_name -> meurpg.play.v1.WatchTableScreenResponse.Ready
+	23, // 25: meurpg.play.v1.WatchTableScreenResponse.heartbeat:type_name -> meurpg.play.v1.WatchTableScreenResponse.Heartbeat
+	24, // 26: meurpg.play.v1.WatchTableScreenResponse.changed:type_name -> meurpg.play.v1.WatchTableScreenResponse.Changed
+	25, // 27: meurpg.play.v1.WatchTableScreenResponse.session_ended:type_name -> meurpg.play.v1.WatchTableScreenResponse.SessionEnded
+	4,  // 28: meurpg.play.v1.TableScreenService.GetTableScreen:input_type -> meurpg.play.v1.GetTableScreenRequest
+	20, // 29: meurpg.play.v1.TableScreenService.WatchTableScreen:input_type -> meurpg.play.v1.WatchTableScreenRequest
+	18, // 30: meurpg.play.v1.TableScreenService.SetTableScreen:input_type -> meurpg.play.v1.SetTableScreenRequest
+	5,  // 31: meurpg.play.v1.TableScreenService.GetTableScreen:output_type -> meurpg.play.v1.GetTableScreenResponse
+	21, // 32: meurpg.play.v1.TableScreenService.WatchTableScreen:output_type -> meurpg.play.v1.WatchTableScreenResponse
+	19, // 33: meurpg.play.v1.TableScreenService.SetTableScreen:output_type -> meurpg.play.v1.SetTableScreenResponse
+	31, // [31:34] is the sub-list for method output_type
+	28, // [28:31] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_table_screen_proto_init() }
@@ -1935,14 +2011,14 @@ func file_meurpg_play_v1_table_screen_proto_init() {
 	if File_meurpg_play_v1_table_screen_proto != nil {
 		return
 	}
-	file_meurpg_play_v1_table_screen_proto_msgTypes[4].OneofWrappers = []any{
+	file_meurpg_play_v1_table_screen_proto_msgTypes[5].OneofWrappers = []any{
 		(*TableScreenStage_Idle)(nil),
 		(*TableScreenStage_Map)(nil),
 		(*TableScreenStage_Image)(nil),
 		(*TableScreenStage_Scene)(nil),
 		(*TableScreenStage_Combat)(nil),
 	}
-	file_meurpg_play_v1_table_screen_proto_msgTypes[16].OneofWrappers = []any{
+	file_meurpg_play_v1_table_screen_proto_msgTypes[17].OneofWrappers = []any{
 		(*WatchTableScreenResponse_Ready_)(nil),
 		(*WatchTableScreenResponse_Heartbeat_)(nil),
 		(*WatchTableScreenResponse_Changed_)(nil),
@@ -1954,7 +2030,7 @@ func file_meurpg_play_v1_table_screen_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_table_screen_proto_rawDesc), len(file_meurpg_play_v1_table_screen_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

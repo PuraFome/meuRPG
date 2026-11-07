@@ -14,6 +14,8 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { GetMapResponse, GetMapVisionResponse } from "../../maps/v1/maps_pb";
 import { file_meurpg_maps_v1_maps } from "../../maps/v1/maps_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -22,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/table_screen.proto.
  */
 export const file_meurpg_play_v1_table_screen: GenFile = /*@__PURE__*/
-  fileDesc("CiFtZXVycGcvcGxheS92MS90YWJsZV9zY3JlZW4ucHJvdG8SDm1ldXJwZy5wbGF5LnYxIiwKFUdldFRhYmxlU2NyZWVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSK6AgoWR2V0VGFibGVTY3JlZW5SZXNwb25zZRIXCg9jaG9pY2VfcmV2aXNpb24YASABKAUSMQoGY2hvaWNlGAIgASgLMiEubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5DaG9pY2USLwoFc3RhZ2UYAyABKAsyIC5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlblN0YWdlEjEKBm5vdGljZRgEIAEoDjIhLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuTm90aWNlEhUKDWNhbXBhaWduX25hbWUYBSABKAkSFgoOc2Vzc2lvbl9udW1iZXIYBiABKAUSDQoFcGFydHkYByADKAkSMgoHb3B0aW9ucxgIIAMoCzIhLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuT3B0aW9uIlEKEVRhYmxlU2NyZWVuQ2hvaWNlEg4KBm1pcnJvchgBIAEoCBIsCgNwaW4YAiABKA4yHy5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlbktpbmQikgEKEVRhYmxlU2NyZWVuT3B0aW9uEi0KBGtpbmQYASABKA4yHy5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlbktpbmQSEQoJYXZhaWxhYmxlGAIgASgIEjsKC3VuYXZhaWxhYmxlGAMgASgOMiYubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5VbmF2YWlsYWJsZSK+AgoQVGFibGVTY3JlZW5TdGFnZRItCgRraW5kGAEgASgOMh8ubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5LaW5kEiYKBGlkbGUYAiABKAsyFi5tZXVycGcucGxheS52MS5UdklkbGVIABIkCgNtYXAYAyABKAsyFS5tZXVycGcucGxheS52MS5Udk1hcEgAEigKBWltYWdlGAQgASgLMhcubWV1cnBnLnBsYXkudjEuVHZJbWFnZUgAEigKBXNjZW5lGAUgASgLMhcubWV1cnBnLnBsYXkudjEuVHZTY2VuZUgAEioKBmNvbWJhdBgGIAEoCzIYLm1ldXJwZy5wbGF5LnYxLlR2Q29tYmF0SAASJQoFcm9sbHMYByADKAsyFi5tZXVycGcucGxheS52MS5UdlJvbGxCBgoEYm9keSIICgZUdklkbGUiQwoHVHZJbWFnZRIMCgRuYW1lGAEgASgJEgsKA3VybBgCIAEoCRINCgV3aWR0aBgDIAEoBRIOCgZoZWlnaHQYBCABKAUiXQoHVHZTY2VuZRIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEikKBXN0YWdlGAQgAygLMhoubWV1cnBnLnBsYXkudjEuVHZTdGFnZU5wY0oECAMQBCIsCgpUdlN0YWdlTnBjEgwKBG5hbWUYASABKAkSEAoIc3BlYWtpbmcYAiABKAgioQEKBVR2TWFwEgwKBG5hbWUYASABKAkSFQoNaGlkZGVuX2J5X2ZvZxgCIAEoCBIrCgNtYXAYAyABKAsyHi5tZXVycGcubWFwcy52MS5HZXRNYXBSZXNwb25zZRI0CgZ2aXNpb24YBCABKAsyJC5tZXVycGcubWFwcy52MS5HZXRNYXBWaXNpb25SZXNwb25zZRIQCghyZXZpc2lvbhgFIAEoBSKMAQoIVHZDb21iYXQSDQoFcm91bmQYASABKAUSKgoFb3JkZXIYAiADKAsyGy5tZXVycGcucGxheS52MS5UdkNvbWJhdGFudBIUCgxtYXN0ZXJzX3R1cm4YAyABKAgSCwoDbG9nGAQgAygJEiIKA21hcBgFIAEoCzIVLm1ldXJwZy5wbGF5LnYxLlR2TWFwIngKC1R2Q29tYmF0YW50EgwKBG5hbWUYASABKAkSDwoHaW5pdGlhbBgCIAEoCRImCgVzdGF0ZRgDIAEoDjIXLm1ldXJwZy5wbGF5LnYxLlR2U3RhdGUSDwoHb25fdHVybhgEIAEoCBIRCglpc19wbGF5ZXIYBSABKAgiRwoGVHZSb2xsEgsKA3dobxgBIAEoCRISCgpleHByZXNzaW9uGAIgASgJEg0KBXRvdGFsGAMgASgFEg0KBWZhY2VzGAQgAygFIngKFVNldFRhYmxlU2NyZWVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIXCg9jaG9pY2VfcmV2aXNpb24YAiABKAUSMQoGY2hvaWNlGAMgASgLMiEubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5DaG9pY2UiZAoWU2V0VGFibGVTY3JlZW5SZXNwb25zZRIXCg9jaG9pY2VfcmV2aXNpb24YASABKAUSMQoGY2hvaWNlGAIgASgLMiEubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5DaG9pY2UiLgoXV2F0Y2hUYWJsZVNjcmVlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAki8wIKGFdhdGNoVGFibGVTY3JlZW5SZXNwb25zZRI/CgVyZWFkeRgBIAEoCzIuLm1ldXJwZy5wbGF5LnYxLldhdGNoVGFibGVTY3JlZW5SZXNwb25zZS5SZWFkeUgAEkcKCWhlYXJ0YmVhdBgCIAEoCzIyLm1ldXJwZy5wbGF5LnYxLldhdGNoVGFibGVTY3JlZW5SZXNwb25zZS5IZWFydGJlYXRIABJDCgdjaGFuZ2VkGAMgASgLMjAubWV1cnBnLnBsYXkudjEuV2F0Y2hUYWJsZVNjcmVlblJlc3BvbnNlLkNoYW5nZWRIABJOCg1zZXNzaW9uX2VuZGVkGAQgASgLMjUubWV1cnBnLnBsYXkudjEuV2F0Y2hUYWJsZVNjcmVlblJlc3BvbnNlLlNlc3Npb25FbmRlZEgAGgcKBVJlYWR5GgsKCUhlYXJ0YmVhdBoJCgdDaGFuZ2VkGg4KDFNlc3Npb25FbmRlZEIHCgVldmVudCrDAQoPVGFibGVTY3JlZW5LaW5kEiEKHVRBQkxFX1NDUkVFTl9LSU5EX1VOU1BFQ0lGSUVEEAASGgoWVEFCTEVfU0NSRUVOX0tJTkRfSURMRRABEhkKFVRBQkxFX1NDUkVFTl9LSU5EX01BUBACEhsKF1RBQkxFX1NDUkVFTl9LSU5EX0lNQUdFEAMSGwoXVEFCTEVfU0NSRUVOX0tJTkRfU0NFTkUQBBIcChhUQUJMRV9TQ1JFRU5fS0lORF9DT01CQVQQBSq2AQoRVGFibGVTY3JlZW5Ob3RpY2USIwofVEFCTEVfU0NSRUVOX05PVElDRV9VTlNQRUNJRklFRBAAEiEKHVRBQkxFX1NDUkVFTl9OT1RJQ0VfUElOX0VOREVEEAESKQolVEFCTEVfU0NSRUVOX05PVElDRV9TQ0VORV9OT1RfRk9SX0FMTBACEi4KKlRBQkxFX1NDUkVFTl9OT1RJQ0VfTUFQX05FRURTX0dST1VQX1ZJU0lPThADKr4CChZUYWJsZVNjcmVlblVuYXZhaWxhYmxlEigKJFRBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9VTlNQRUNJRklFRBAAEiYKIlRBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9OT19DT01CQVQQARIlCiFUQUJMRV9TQ1JFRU5fVU5BVkFJTEFCTEVfTk9fSU1BR0UQAhIlCiFUQUJMRV9TQ1JFRU5fVU5BVkFJTEFCTEVfTk9fU0NFTkUQAxIuCipUQUJMRV9TQ1JFRU5fVU5BVkFJTEFCTEVfU0NFTkVfTk9UX0ZPUl9BTEwQBBIjCh9UQUJMRV9TQ1JFRU5fVU5BVkFJTEFCTEVfTk9fTUFQEAUSLworVEFCTEVfU0NSRUVOX1VOQVZBSUxBQkxFX05FRURTX0dST1VQX1ZJU0lPThAGKo8BCgdUdlN0YXRlEhgKFFRWX1NUQVRFX1VOU1BFQ0lGSUVEEAASEwoPVFZfU1RBVEVfVU5IVVJUEAESEQoNVFZfU1RBVEVfSFVSVBACEhYKElRWX1NUQVRFX1ZFUllfSFVSVBADEhUKEVRWX1NUQVRFX0RFRkVBVEVEEAQSEwoPVFZfU1RBVEVfRkFMTEVOEAUyxAIKElRhYmxlU2NyZWVuU2VydmljZRJkCg5HZXRUYWJsZVNjcmVlbhIlLm1ldXJwZy5wbGF5LnYxLkdldFRhYmxlU2NyZWVuUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldFRhYmxlU2NyZWVuUmVzcG9uc2UiA5ACAhJnChBXYXRjaFRhYmxlU2NyZWVuEicubWV1cnBnLnBsYXkudjEuV2F0Y2hUYWJsZVNjcmVlblJlcXVlc3QaKC5tZXVycGcucGxheS52MS5XYXRjaFRhYmxlU2NyZWVuUmVzcG9uc2UwARJfCg5TZXRUYWJsZVNjcmVlbhIlLm1ldXJwZy5wbGF5LnYxLlNldFRhYmxlU2NyZWVuUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLlNldFRhYmxlU2NyZWVuUmVzcG9uc2VCvgEKEmNvbS5tZXVycGcucGxheS52MUIQVGFibGVTY3JlZW5Qcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_maps_v1_maps]);
+  fileDesc("CiFtZXVycGcvcGxheS92MS90YWJsZV9zY3JlZW4ucHJvdG8SDm1ldXJwZy5wbGF5LnYxIiwKFUdldFRhYmxlU2NyZWVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSLxAgoWR2V0VGFibGVTY3JlZW5SZXNwb25zZRIXCg9jaG9pY2VfcmV2aXNpb24YASABKAUSMQoGY2hvaWNlGAIgASgLMiEubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5DaG9pY2USLwoFc3RhZ2UYAyABKAsyIC5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlblN0YWdlEjEKBm5vdGljZRgEIAEoDjIhLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuTm90aWNlEhUKDWNhbXBhaWduX25hbWUYBSABKAkSFgoOc2Vzc2lvbl9udW1iZXIYBiABKAUSDQoFcGFydHkYByADKAkSMgoHb3B0aW9ucxgIIAMoCzIhLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuT3B0aW9uEjUKCHByZXNlbmNlGAkgASgLMiMubWV1cnBnLnBsYXkudjEuVGFibGVTY3JlZW5QcmVzZW5jZSJQChNUYWJsZVNjcmVlblByZXNlbmNlEgwKBG9wZW4YASABKAgSKwoHbG9zdF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiUQoRVGFibGVTY3JlZW5DaG9pY2USDgoGbWlycm9yGAEgASgIEiwKA3BpbhgCIAEoDjIfLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuS2luZCKSAQoRVGFibGVTY3JlZW5PcHRpb24SLQoEa2luZBgBIAEoDjIfLm1ldXJwZy5wbGF5LnYxLlRhYmxlU2NyZWVuS2luZBIRCglhdmFpbGFibGUYAiABKAgSOwoLdW5hdmFpbGFibGUYAyABKA4yJi5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlblVuYXZhaWxhYmxlIr4CChBUYWJsZVNjcmVlblN0YWdlEi0KBGtpbmQYASABKA4yHy5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlbktpbmQSJgoEaWRsZRgCIAEoCzIWLm1ldXJwZy5wbGF5LnYxLlR2SWRsZUgAEiQKA21hcBgDIAEoCzIVLm1ldXJwZy5wbGF5LnYxLlR2TWFwSAASKAoFaW1hZ2UYBCABKAsyFy5tZXVycGcucGxheS52MS5UdkltYWdlSAASKAoFc2NlbmUYBSABKAsyFy5tZXVycGcucGxheS52MS5UdlNjZW5lSAASKgoGY29tYmF0GAYgASgLMhgubWV1cnBnLnBsYXkudjEuVHZDb21iYXRIABIlCgVyb2xscxgHIAMoCzIWLm1ldXJwZy5wbGF5LnYxLlR2Um9sbEIGCgRib2R5IggKBlR2SWRsZSJDCgdUdkltYWdlEgwKBG5hbWUYASABKAkSCwoDdXJsGAIgASgJEg0KBXdpZHRoGAMgASgFEg4KBmhlaWdodBgEIAEoBSJdCgdUdlNjZW5lEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSKQoFc3RhZ2UYBCADKAsyGi5tZXVycGcucGxheS52MS5UdlN0YWdlTnBjSgQIAxAEIiwKClR2U3RhZ2VOcGMSDAoEbmFtZRgBIAEoCRIQCghzcGVha2luZxgCIAEoCCKhAQoFVHZNYXASDAoEbmFtZRgBIAEoCRIVCg1oaWRkZW5fYnlfZm9nGAIgASgIEisKA21hcBgDIAEoCzIeLm1ldXJwZy5tYXBzLnYxLkdldE1hcFJlc3BvbnNlEjQKBnZpc2lvbhgEIAEoCzIkLm1ldXJwZy5tYXBzLnYxLkdldE1hcFZpc2lvblJlc3BvbnNlEhAKCHJldmlzaW9uGAUgASgFIowBCghUdkNvbWJhdBINCgVyb3VuZBgBIAEoBRIqCgVvcmRlchgCIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlR2Q29tYmF0YW50EhQKDG1hc3RlcnNfdHVybhgDIAEoCBILCgNsb2cYBCADKAkSIgoDbWFwGAUgASgLMhUubWV1cnBnLnBsYXkudjEuVHZNYXAieAoLVHZDb21iYXRhbnQSDAoEbmFtZRgBIAEoCRIPCgdpbml0aWFsGAIgASgJEiYKBXN0YXRlGAMgASgOMhcubWV1cnBnLnBsYXkudjEuVHZTdGF0ZRIPCgdvbl90dXJuGAQgASgIEhEKCWlzX3BsYXllchgFIAEoCCJHCgZUdlJvbGwSCwoDd2hvGAEgASgJEhIKCmV4cHJlc3Npb24YAiABKAkSDQoFdG90YWwYAyABKAUSDQoFZmFjZXMYBCADKAUieAoVU2V0VGFibGVTY3JlZW5SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2Nob2ljZV9yZXZpc2lvbhgCIAEoBRIxCgZjaG9pY2UYAyABKAsyIS5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlbkNob2ljZSJkChZTZXRUYWJsZVNjcmVlblJlc3BvbnNlEhcKD2Nob2ljZV9yZXZpc2lvbhgBIAEoBRIxCgZjaG9pY2UYAiABKAsyIS5tZXVycGcucGxheS52MS5UYWJsZVNjcmVlbkNob2ljZSIuChdXYXRjaFRhYmxlU2NyZWVuUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSLzAgoYV2F0Y2hUYWJsZVNjcmVlblJlc3BvbnNlEj8KBXJlYWR5GAEgASgLMi4ubWV1cnBnLnBsYXkudjEuV2F0Y2hUYWJsZVNjcmVlblJlc3BvbnNlLlJlYWR5SAASRwoJaGVhcnRiZWF0GAIgASgLMjIubWV1cnBnLnBsYXkudjEuV2F0Y2hUYWJsZVNjcmVlblJlc3BvbnNlLkhlYXJ0YmVhdEgAEkMKB2NoYW5nZWQYAyABKAsyMC5tZXVycGcucGxheS52MS5XYXRjaFRhYmxlU2NyZWVuUmVzcG9uc2UuQ2hhbmdlZEgAEk4KDXNlc3Npb25fZW5kZWQYBCABKAsyNS5tZXVycGcucGxheS52MS5XYXRjaFRhYmxlU2NyZWVuUmVzcG9uc2UuU2Vzc2lvbkVuZGVkSAAaBwoFUmVhZHkaCwoJSGVhcnRiZWF0GgkKB0NoYW5nZWQaDgoMU2Vzc2lvbkVuZGVkQgcKBWV2ZW50KsMBCg9UYWJsZVNjcmVlbktpbmQSIQodVEFCTEVfU0NSRUVOX0tJTkRfVU5TUEVDSUZJRUQQABIaChZUQUJMRV9TQ1JFRU5fS0lORF9JRExFEAESGQoVVEFCTEVfU0NSRUVOX0tJTkRfTUFQEAISGwoXVEFCTEVfU0NSRUVOX0tJTkRfSU1BR0UQAxIbChdUQUJMRV9TQ1JFRU5fS0lORF9TQ0VORRAEEhwKGFRBQkxFX1NDUkVFTl9LSU5EX0NPTUJBVBAFKrYBChFUYWJsZVNjcmVlbk5vdGljZRIjCh9UQUJMRV9TQ1JFRU5fTk9USUNFX1VOU1BFQ0lGSUVEEAASIQodVEFCTEVfU0NSRUVOX05PVElDRV9QSU5fRU5ERUQQARIpCiVUQUJMRV9TQ1JFRU5fTk9USUNFX1NDRU5FX05PVF9GT1JfQUxMEAISLgoqVEFCTEVfU0NSRUVOX05PVElDRV9NQVBfTkVFRFNfR1JPVVBfVklTSU9OEAMqvgIKFlRhYmxlU2NyZWVuVW5hdmFpbGFibGUSKAokVEFCTEVfU0NSRUVOX1VOQVZBSUxBQkxFX1VOU1BFQ0lGSUVEEAASJgoiVEFCTEVfU0NSRUVOX1VOQVZBSUxBQkxFX05PX0NPTUJBVBABEiUKIVRBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9OT19JTUFHRRACEiUKIVRBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9OT19TQ0VORRADEi4KKlRBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9TQ0VORV9OT1RfRk9SX0FMTBAEEiMKH1RBQkxFX1NDUkVFTl9VTkFWQUlMQUJMRV9OT19NQVAQBRIvCitUQUJMRV9TQ1JFRU5fVU5BVkFJTEFCTEVfTkVFRFNfR1JPVVBfVklTSU9OEAYqjwEKB1R2U3RhdGUSGAoUVFZfU1RBVEVfVU5TUEVDSUZJRUQQABITCg9UVl9TVEFURV9VTkhVUlQQARIRCg1UVl9TVEFURV9IVVJUEAISFgoSVFZfU1RBVEVfVkVSWV9IVVJUEAMSFQoRVFZfU1RBVEVfREVGRUFURUQQBBITCg9UVl9TVEFURV9GQUxMRU4QBTLEAgoSVGFibGVTY3JlZW5TZXJ2aWNlEmQKDkdldFRhYmxlU2NyZWVuEiUubWV1cnBnLnBsYXkudjEuR2V0VGFibGVTY3JlZW5SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuR2V0VGFibGVTY3JlZW5SZXNwb25zZSIDkAICEmcKEFdhdGNoVGFibGVTY3JlZW4SJy5tZXVycGcucGxheS52MS5XYXRjaFRhYmxlU2NyZWVuUmVxdWVzdBooLm1ldXJwZy5wbGF5LnYxLldhdGNoVGFibGVTY3JlZW5SZXNwb25zZTABEl8KDlNldFRhYmxlU2NyZWVuEiUubWV1cnBnLnBsYXkudjEuU2V0VGFibGVTY3JlZW5SZXF1ZXN0GiYubWV1cnBnLnBsYXkudjEuU2V0VGFibGVTY3JlZW5SZXNwb25zZUK+AQoSY29tLm1ldXJwZy5wbGF5LnYxQhBUYWJsZVNjcmVlblByb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps]);
 
 /**
  * GetTableScreenRequest names the campaign.
@@ -109,6 +111,15 @@ export type GetTableScreenResponse = Message<"meurpg.play.v1.GetTableScreenRespo
    * @generated from field: repeated meurpg.play.v1.TableScreenOption options = 8;
    */
   options: TableScreenOption[];
+
+  /**
+   * Whether a TV tab is connected, for the master's panel. Counted in memory by this server instance, like
+   * the live streams: with more than one instance it is the share this instance holds. Only the master
+   * reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
+   *
+   * @generated from field: meurpg.play.v1.TableScreenPresence presence = 9;
+   */
+  presence?: TableScreenPresence | undefined;
 };
 
 /**
@@ -117,6 +128,35 @@ export type GetTableScreenResponse = Message<"meurpg.play.v1.GetTableScreenRespo
  */
 export const GetTableScreenResponseSchema: GenMessage<GetTableScreenResponse> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_table_screen, 1);
+
+/**
+ * TableScreenPresence is whether the TV at the table is connected. It names nothing of the stage.
+ *
+ * @generated from message meurpg.play.v1.TableScreenPresence
+ */
+export type TableScreenPresence = Message<"meurpg.play.v1.TableScreenPresence"> & {
+  /**
+   * True while at least one TV tab holds a stream ("Aberta").
+   *
+   * @generated from field: bool open = 1;
+   */
+  open: boolean;
+
+  /**
+   * When the last TV tab lost its stream ("Sem conexão desde 21:14"). Set only when a TV tab was
+   * connected since this instance started and none is now; unset otherwise.
+   *
+   * @generated from field: google.protobuf.Timestamp lost_at = 2;
+   */
+  lostAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.TableScreenPresence.
+ * Use `create(TableScreenPresenceSchema)` to create a new message.
+ */
+export const TableScreenPresenceSchema: GenMessage<TableScreenPresence> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_table_screen, 2);
 
 /**
  * TableScreenChoice is what the master chose. Stored with the open session.
@@ -144,7 +184,7 @@ export type TableScreenChoice = Message<"meurpg.play.v1.TableScreenChoice"> & {
  * Use `create(TableScreenChoiceSchema)` to create a new message.
  */
 export const TableScreenChoiceSchema: GenMessage<TableScreenChoice> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 2);
+  messageDesc(file_meurpg_play_v1_table_screen, 3);
 
 /**
  * TableScreenOption is one item of the master's panel.
@@ -179,7 +219,7 @@ export type TableScreenOption = Message<"meurpg.play.v1.TableScreenOption"> & {
  * Use `create(TableScreenOptionSchema)` to create a new message.
  */
 export const TableScreenOptionSchema: GenMessage<TableScreenOption> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 3);
+  messageDesc(file_meurpg_play_v1_table_screen, 4);
 
 /**
  * TableScreenStage is what the TV shows.
@@ -255,7 +295,7 @@ export type TableScreenStage = Message<"meurpg.play.v1.TableScreenStage"> & {
  * Use `create(TableScreenStageSchema)` to create a new message.
  */
 export const TableScreenStageSchema: GenMessage<TableScreenStage> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 4);
+  messageDesc(file_meurpg_play_v1_table_screen, 5);
 
 /**
  * TvIdle is the idle screen. It carries nothing.
@@ -270,7 +310,7 @@ export type TvIdle = Message<"meurpg.play.v1.TvIdle"> & {
  * Use `create(TvIdleSchema)` to create a new message.
  */
 export const TvIdleSchema: GenMessage<TvIdle> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 5);
+  messageDesc(file_meurpg_play_v1_table_screen, 6);
 
 /**
  * TvImage is the image the master shows to the whole table (MR-028).
@@ -312,7 +352,7 @@ export type TvImage = Message<"meurpg.play.v1.TvImage"> & {
  * Use `create(TvImageSchema)` to create a new message.
  */
 export const TvImageSchema: GenMessage<TvImage> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 6);
+  messageDesc(file_meurpg_play_v1_table_screen, 7);
 
 /**
  * TvScene is the scene open to the whole table. It has no hooks, clues, actions or DCs.
@@ -347,7 +387,7 @@ export type TvScene = Message<"meurpg.play.v1.TvScene"> & {
  * Use `create(TvSceneSchema)` to create a new message.
  */
 export const TvSceneSchema: GenMessage<TvScene> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 7);
+  messageDesc(file_meurpg_play_v1_table_screen, 8);
 
 /**
  * TvStageNpc is an NPC the table sees on the stage.
@@ -375,7 +415,7 @@ export type TvStageNpc = Message<"meurpg.play.v1.TvStageNpc"> & {
  * Use `create(TvStageNpcSchema)` to create a new message.
  */
 export const TvStageNpcSchema: GenMessage<TvStageNpc> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 8);
+  messageDesc(file_meurpg_play_v1_table_screen, 9);
 
 /**
  * TvMap is the map as a player with no character reads it.
@@ -432,7 +472,7 @@ export type TvMap = Message<"meurpg.play.v1.TvMap"> & {
  * Use `create(TvMapSchema)` to create a new message.
  */
 export const TvMapSchema: GenMessage<TvMap> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 9);
+  messageDesc(file_meurpg_play_v1_table_screen, 10);
 
 /**
  * TvCombat is the combat as the table sees it.
@@ -484,7 +524,7 @@ export type TvCombat = Message<"meurpg.play.v1.TvCombat"> & {
  * Use `create(TvCombatSchema)` to create a new message.
  */
 export const TvCombatSchema: GenMessage<TvCombat> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 10);
+  messageDesc(file_meurpg_play_v1_table_screen, 11);
 
 /**
  * TvCombatant is one combatant the table sees.
@@ -533,7 +573,7 @@ export type TvCombatant = Message<"meurpg.play.v1.TvCombatant"> & {
  * Use `create(TvCombatantSchema)` to create a new message.
  */
 export const TvCombatantSchema: GenMessage<TvCombatant> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 11);
+  messageDesc(file_meurpg_play_v1_table_screen, 12);
 
 /**
  * TvRoll is a free roll made for the whole table (MR-052).
@@ -575,7 +615,7 @@ export type TvRoll = Message<"meurpg.play.v1.TvRoll"> & {
  * Use `create(TvRollSchema)` to create a new message.
  */
 export const TvRollSchema: GenMessage<TvRoll> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 12);
+  messageDesc(file_meurpg_play_v1_table_screen, 13);
 
 /**
  * SetTableScreenRequest is the master's choice.
@@ -610,7 +650,7 @@ export type SetTableScreenRequest = Message<"meurpg.play.v1.SetTableScreenReques
  * Use `create(SetTableScreenRequestSchema)` to create a new message.
  */
 export const SetTableScreenRequestSchema: GenMessage<SetTableScreenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 13);
+  messageDesc(file_meurpg_play_v1_table_screen, 14);
 
 /**
  * SetTableScreenResponse returns the choice as stored.
@@ -638,7 +678,7 @@ export type SetTableScreenResponse = Message<"meurpg.play.v1.SetTableScreenRespo
  * Use `create(SetTableScreenResponseSchema)` to create a new message.
  */
 export const SetTableScreenResponseSchema: GenMessage<SetTableScreenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 14);
+  messageDesc(file_meurpg_play_v1_table_screen, 15);
 
 /**
  * WatchTableScreenRequest names the campaign.
@@ -659,7 +699,7 @@ export type WatchTableScreenRequest = Message<"meurpg.play.v1.WatchTableScreenRe
  * Use `create(WatchTableScreenRequestSchema)` to create a new message.
  */
 export const WatchTableScreenRequestSchema: GenMessage<WatchTableScreenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 15);
+  messageDesc(file_meurpg_play_v1_table_screen, 16);
 
 /**
  * WatchTableScreenResponse is one event of the TV tab's stream. No event carries content: nothing of
@@ -712,7 +752,7 @@ export type WatchTableScreenResponse = Message<"meurpg.play.v1.WatchTableScreenR
  * Use `create(WatchTableScreenResponseSchema)` to create a new message.
  */
 export const WatchTableScreenResponseSchema: GenMessage<WatchTableScreenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 16);
+  messageDesc(file_meurpg_play_v1_table_screen, 17);
 
 /**
  * Ready is the stream's first event.
@@ -727,7 +767,7 @@ export type WatchTableScreenResponse_Ready = Message<"meurpg.play.v1.WatchTableS
  * Use `create(WatchTableScreenResponse_ReadySchema)` to create a new message.
  */
 export const WatchTableScreenResponse_ReadySchema: GenMessage<WatchTableScreenResponse_Ready> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 16, 0);
+  messageDesc(file_meurpg_play_v1_table_screen, 17, 0);
 
 /**
  * Heartbeat carries nothing.
@@ -742,7 +782,7 @@ export type WatchTableScreenResponse_Heartbeat = Message<"meurpg.play.v1.WatchTa
  * Use `create(WatchTableScreenResponse_HeartbeatSchema)` to create a new message.
  */
 export const WatchTableScreenResponse_HeartbeatSchema: GenMessage<WatchTableScreenResponse_Heartbeat> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 16, 1);
+  messageDesc(file_meurpg_play_v1_table_screen, 17, 1);
 
 /**
  * Changed carries nothing.
@@ -757,7 +797,7 @@ export type WatchTableScreenResponse_Changed = Message<"meurpg.play.v1.WatchTabl
  * Use `create(WatchTableScreenResponse_ChangedSchema)` to create a new message.
  */
 export const WatchTableScreenResponse_ChangedSchema: GenMessage<WatchTableScreenResponse_Changed> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 16, 2);
+  messageDesc(file_meurpg_play_v1_table_screen, 17, 2);
 
 /**
  * SessionEnded carries nothing; the tab shows the idle screen.
@@ -772,7 +812,7 @@ export type WatchTableScreenResponse_SessionEnded = Message<"meurpg.play.v1.Watc
  * Use `create(WatchTableScreenResponse_SessionEndedSchema)` to create a new message.
  */
 export const WatchTableScreenResponse_SessionEndedSchema: GenMessage<WatchTableScreenResponse_SessionEnded> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_table_screen, 16, 3);
+  messageDesc(file_meurpg_play_v1_table_screen, 17, 3);
 
 /**
  * TableScreenKind is one thing the TV can show.

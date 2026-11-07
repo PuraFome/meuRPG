@@ -79,6 +79,7 @@ func (s *Service) GetTableScreen(
 		SessionNumber:  session.SessionNumber,
 		Party:          party,
 		Options:        tvOptions(facts),
+		Presence:       s.screens.snapshot(m.CampaignID),
 	}), nil
 }
 
@@ -190,17 +191,4 @@ func (s *Service) SetTableScreen(
 		ChoiceRevision: updated.TvChoiceRevision,
 		Choice:         &playv1.TableScreenChoice{Mirror: choice.Mirror, Pin: choice.Pin},
 	}), nil
-}
-
-// WatchTableScreen implements playv1connect.TableScreenServiceHandler. The TV tab's stream is not
-// served yet: the master is checked and the call answers `unimplemented`.
-func (s *Service) WatchTableScreen(
-	ctx context.Context,
-	req *connect.Request[playv1.WatchTableScreenRequest],
-	_ *connect.ServerStream[playv1.WatchTableScreenResponse],
-) error {
-	if _, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster); err != nil {
-		return err
-	}
-	return connect.NewError(connect.CodeUnimplemented, errors.New("the table screen's stream is not served yet"))
 }

@@ -176,20 +176,21 @@ func (c *fakeClock) advance(d time.Duration) {
 }
 
 type harness struct {
-	hints  hinttest.Tracker // the sends of the maps service's hint gate that are still pending
-	t      *testing.T
-	pool   *pgxpool.Pool
-	users  *identity.PostgresStore
-	svc    *Service
-	roller *scriptedRoller    // the dice the service rolls
-	http   *httpserver.Server // the API's server, for tests that Serve it
-	server *httptest.Server   // serves http's handler over HTTP/1.1
-	chars  *characters.Service
-	camps  *campaigns.Service
-	vision *visionCounter // how many times the fog was told that what the players see changed
-	clock  *fakeClock     // the service's clock, which a test moves on instead of waiting
-	voice  *voice.Fake    // makes the lines' audio; counts the voices it made
-	vitals *vitalsReads   // the vitals keeper the service uses: the characters' service, counting the vitals it derived
+	screenLeft chan struct{}    // tells that a TV stream was uncounted (armedWithClock)
+	hints      hinttest.Tracker // the sends of the maps service's hint gate that are still pending
+	t          *testing.T
+	pool       *pgxpool.Pool
+	users      *identity.PostgresStore
+	svc        *Service
+	roller     *scriptedRoller    // the dice the service rolls
+	http       *httpserver.Server // the API's server, for tests that Serve it
+	server     *httptest.Server   // serves http's handler over HTTP/1.1
+	chars      *characters.Service
+	camps      *campaigns.Service
+	vision     *visionCounter // how many times the fog was told that what the players see changed
+	clock      *fakeClock     // the service's clock, which a test moves on instead of waiting
+	voice      *voice.Fake    // makes the lines' audio; counts the voices it made
+	vitals     *vitalsReads   // the vitals keeper the service uses: the characters' service, counting the vitals it derived
 }
 
 // newHarness serves the play, campaigns and characters services through

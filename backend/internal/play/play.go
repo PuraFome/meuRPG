@@ -464,6 +464,8 @@ const (
 	// often, so the app can tell a dead stream, and proxies and Cloud Run
 	// don't take it for an idle one.
 	DefaultHeartbeat = 25 * time.Second
+	// DefaultScreenInterval: a TV stream sends at most one `changed` in this time.
+	DefaultScreenInterval = 250 * time.Millisecond
 	// DefaultRecheck: how often a stream reads the login session and the
 	// membership again (ADR-0005).
 	DefaultRecheck = 60 * time.Second
@@ -494,6 +496,32 @@ type LiveConfig struct {
 	// tests, which use it to know when no trailing hint is still waiting; the
 	// server never sets it.
 	HintAfter func(d time.Duration, f func())
+	// ScreenInterval is the least time between two `changed` events of a TV stream
+	// (DefaultScreenInterval).
+	ScreenInterval time.Duration
+	// ScreenAfter returns a channel that delivers after d, for the TV stream's pause between two
+	// `changed` events. Nil is time.After. It exists for tests, which fire it by hand; the server never
+	// sets it.
+	ScreenAfter func(d time.Duration) <-chan time.Time
+}
+
+// setDefaults fills the timing that was left zero.
+func (c *LiveConfig) setDefaults() {
+	if c.Heartbeat <= 0 {
+		c.Heartbeat = DefaultHeartbeat
+	}
+	if c.ScreenInterval <= 0 {
+		c.ScreenInterval = DefaultScreenInterval
+	}
+	if c.ScreenAfter == nil {
+		c.ScreenAfter = time.After
+	}
+	if c.Recheck <= 0 {
+		c.Recheck = DefaultRecheck
+	}
+	if c.MaxLifetime <= 0 {
+		c.MaxLifetime = DefaultMaxLifetime
+	}
 }
 
 // Config holds what the play service needs.
@@ -577,6 +605,8 @@ type Service struct {
 	// server instance only (docs/operations/README.md).
 	hub  *live.Hub
 	live LiveConfig
+	// screens counts the TV streams of each campaign on this instance (tablescreen_watch.go).
+	screens tvPresence
 	// free is the free dice roller's rate limit (free_roll_rpc.go).
 	free freeRollDeps
 	// nudges remembers when each character was last nudged (nudge.go), in memory.
@@ -675,15 +705,7 @@ func New(cfg Config) (*Service, error) {
 	s.free = freeRollDeps{limit: cfg.FreeRolls, hit: ratelimit.NewNotifier(s.logger, "free dice rolls by user")}
 	s.puzzles.hints.logger = s.logger
 	s.puzzles.hints.after = cfg.Live.HintAfter
-	if s.live.Heartbeat <= 0 {
-		s.live.Heartbeat = DefaultHeartbeat
-	}
-	if s.live.Recheck <= 0 {
-		s.live.Recheck = DefaultRecheck
-	}
-	if s.live.MaxLifetime <= 0 {
-		s.live.MaxLifetime = DefaultMaxLifetime
-	}
+	s.live.setDefaults()
 	return s, nil
 }
 
