@@ -274,7 +274,7 @@ func (s *Service) finishStart(ctx context.Context, m authz.Membership, res comba
 	}
 	return s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		if out.newMap != "" {
-			s.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
+			s.tellMembers(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
 				CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: out.newMap},
 			}})
 		}

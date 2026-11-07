@@ -395,7 +395,7 @@ func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *tra
 		s.publishEncounterChanged(ctx, campaignID, enc)
 		s.publishLogChanged(ctx, campaignID, enc.ID, true)
 	}
-	s.Publish(campaignID, false, mapChangedHint(fired.MapID)) // the master's trap card: damage waits there
+	s.tellMembers(campaignID, false, mapChangedHint(fired.MapID)) // the master's trap card: damage waits there
 }
 
 // characterLabels returns the names of the characters a firing caught.

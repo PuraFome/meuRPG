@@ -192,7 +192,7 @@ func (s *Service) publishCastsChanged(campaignID string, secret bool) {
 	if secret {
 		aud = live.Audience{Master: true}
 	}
-	s.hub.Publish(campaignID, live.Event{
+	s.send(campaignID, live.Event{
 		Audience: aud,
 		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SpellCastsChanged_{
 			SpellCastsChanged: &playv1.WatchGameSessionResponse_SpellCastsChanged{},

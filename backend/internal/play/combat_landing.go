@@ -205,7 +205,7 @@ func (s *Service) publishVitals(campaignID string, v *playv1.CharacterVitals) {
 	if v == nil {
 		return
 	}
-	s.hub.Publish(campaignID, live.Event{
+	s.send(campaignID, live.Event{
 		Audience: vitalsAudience(v),
 		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_VitalsChanged_{
 			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: v},

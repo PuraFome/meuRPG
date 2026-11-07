@@ -930,19 +930,19 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
 		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
 	}}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
 	if !players {
 		return
 	}
 	if memo := fogMemoOf(ctx); memo != nil {
 		if seers, scoped := linesSeenBy(memo.lines); scoped {
 			for _, u := range seers {
-				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+				s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
 			}
 			return
 		}
 	}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
+	s.send(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
 }
 
 // stoppedHit is a pending damage that a later Escudo stopped: its id and the

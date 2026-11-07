@@ -164,14 +164,14 @@ func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, by
 	}
 	for i, a := range audience {
 		if n.opened {
-			s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowOpenedMessage(encounterID, w.ID)})
+			s.send(campaignID, live.Event{Audience: a, Message: windowOpenedMessage(encounterID, w.ID)})
 			continue
 		}
 		text := ""
 		if n.byItself {
 			text = closedText(n, reactor, hasReactor, i == 0)
 		}
-		s.hub.Publish(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text)})
+		s.send(campaignID, live.Event{Audience: a, Message: windowClosedMessage(encounterID, w.ID, n.byItself, text)})
 	}
 }
 
