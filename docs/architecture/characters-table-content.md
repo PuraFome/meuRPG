@@ -290,7 +290,7 @@ All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll
 
 `tableEffectsOf` copies `TableEffect.flag` to `Effect.Flag`; the other fields of `natural_attack` (`attack_name`, `damage_dice`, `damage_type`, `ability`, `reach_ft`) are the ones `pseudo_weapon` already uses.
 `traitsOf` (`combattraits.go`) copies `Derived.Flags` into `link.Traits.Flags` and `Derived.DamageReductions` into `link.Traits.DamageReductions` (source, amount, nonmagical), which combat reads through `Traits.HasFlag` and the reduction step.
-`derivedToProto` puts `Derived.CarryCapacityLb` in `DerivedSheet.carry_capacity_lb`.
+`derivedToProto` puts `Derived.CarryCapacityLb` in `DerivedSheet.carry_capacity_lb`. The sheet writes it in the app's two units, metric first (`weightWithPounds`, 1 lb = 0,5 kg): "90 kg (180 lb)".
 The natural attack lines are in `Derived.Attacks` like any other, so they reach the sheet and the combat with no copy of their own.
 
 ## Spell targets and the "Magias" page

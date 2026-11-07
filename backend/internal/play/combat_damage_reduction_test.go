@@ -10,6 +10,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -254,5 +255,66 @@ func TestAReductionLargerThanTheBiggestTypeSpillsAndThenResistanceApplies(t *tes
 	spill := settleSteps(map[string]int{cut: 3, fire: 1}, mods[:1], nil, combat.Origin{Attack: true, Weapon: true})
 	if spill.amount != 0 {
 		t.Errorf("the landing is %d, want 0: 4 minus 5 stops at 0", spill.amount)
+	}
+}
+
+// A creature's save action (a breath, a tail swipe) is no weapon attack: the weapon reduction of the target takes
+// nothing off its damage, and the origin it stores keeps Weapon false for a later edit of the parts (#572).
+func TestAWeaponReductionDoesNotTouchACreaturesSaveAction(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	f := &frostTable{armed: a}
+	f.ragnaWith(t, f.reductionFeat(t, "Couro grosso", "damage.reduction.weapon", "3"), f.reductionFeat(t, "Pele curtida", "damage.reduction.nonmagical_weapon", "2"))
+	a.h.roller.queue(1) // Toren fails the save
+	res := a.mustUseAction(t, a.master, e, hound, fireBreath, []string{"Toren"})
+	pend := res.GetResult().GetPendingDamages()
+	if len(pend) != 1 {
+		t.Fatalf("the breath opened %d pending damages, want 1", len(pend))
+	}
+	dmg := a.mustDamage(t, a.master, e, pend[0].GetId(), typedDamage(12)).GetPendingDamage()
+	for _, s := range dmg.GetSteps() {
+		if s.GetKind() == playv1.DamageStepKind_DAMAGE_STEP_KIND_REDUCTION {
+			t.Errorf("steps = %v, want no weapon reduction on a save action", dmg.GetSteps())
+		}
+	}
+	if len(dmg.GetSteps()) != 0 || dmg.GetAmount() != 12 {
+		t.Errorf("the damage = %d with steps %v, want 12 and no step", dmg.GetAmount(), dmg.GetSteps())
+	}
+}
+
+// originOf of a pending damage of a creature's action: Weapon only for an attack that is no spell; Attack stays true
+// for all of them (the resistances to nonmagical attacks are unchanged), and Magical is the spell attack.
+func TestOriginOfACreaturesActionIsAWeaponOnlyForAWeaponAttack(t *testing.T) {
+	t.Parallel()
+	a, e, hound := houndFight(t, true)
+	cs, err := a.h.svc.queries.ListCombatants(t.Context(), e.GetId())
+	if err != nil {
+		t.Fatalf("ListCombatants() error = %v", err)
+	}
+	attacker := cs[slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Label == hound })]
+	tx, err := a.h.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	defer func() { _ = tx.Rollback(t.Context()) }()
+	q := a.h.svc.queries.WithTx(tx)
+	session, err := q.GetOpenGameSession(t.Context(), a.campaignID)
+	if err != nil {
+		t.Fatalf("GetOpenGameSession() error = %v", err)
+	}
+	flow := &damageFlow{s: a.h.svc, c: &combatTx{tx: tx, q: q, session: session}, attacker: attacker}
+	cast := "cast-id"
+	for _, c := range []struct {
+		name, key string
+		want      combat.Origin
+	}{
+		{"a save action", fireBreath, combat.Origin{Attack: true}},
+		{"an action that is not in the stat block", "monster:hell-hound#nothing", combat.Origin{Attack: true}},
+		{"a weapon attack", "monster:hell-hound#bite", combat.Origin{Attack: true, Weapon: true}},
+	} {
+		got, err := flow.originOf(t.Context(), playdb.PendingDamage{CastID: &cast, AttackKey: c.key})
+		if err != nil || got != c.want {
+			t.Errorf("%s: originOf() = %+v, %v; want %+v", c.name, got, err, c.want)
+		}
 	}
 }

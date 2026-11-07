@@ -396,7 +396,7 @@ describe('CharacterSheetPage', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows the carrying capacity the server sent in pounds, on one line next to the senses', async () => {
+  it('shows the carrying capacity the server sent in kilograms and pounds, on one line next to the senses', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(vm({ sheet: fullSheet({ carryCapacityLb: 225 }) }));
@@ -406,7 +406,9 @@ describe('CharacterSheetPage', () => {
       p.textContent?.includes('Capacidade de carga'),
     );
     expect(lines.length).toBe(1);
-    expect(lines[0].textContent?.replace(/\s+/g, ' ').trim()).toBe('Capacidade de carga 225 lb');
+    expect(lines[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Capacidade de carga 112,5 kg (225 lb)',
+    );
   });
 
   it('shows exactly the server-sent numbers, even an inconsistent modifier', async () => {

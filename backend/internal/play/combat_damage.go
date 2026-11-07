@@ -486,17 +486,20 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 
 // originOf says where a pending damage comes from, for the resistances that hold for
 // nonmagical attacks only (and, when they say so, not for a silvered or adamantine
-// weapon). The damage of a spell is that of a magical attack. An attack of the sheet or
-// the stat block is magical when the sheet says so (a cantrip, a weapon the sheet or a
+// weapon) and for the weapon damage reduction (Weapon). The damage of a spell is that of a
+// magical attack. An attack of the sheet or the stat block is magical when the sheet says so (a cantrip, a weapon the sheet or a
 // weapon_rule marks, a creature with the trait "Magic Weapons") and silvered or
 // adamantine by the same marks. A damage with no attack of the attacker behind it (a
 // trap, a hazard, an ongoing effect) is no attack, and those resistances do not cover it.
+// The action of a stat block is a weapon only when the plan has an attack that is no spell: a save action (a
+// breath, a tail swipe) or one the plan does not know stays an attack for the resistances but takes no reduction.
 func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (combat.Origin, error) {
 	switch {
 	case g.CastID != nil && strings.Contains(g.AttackKey, "#"): // a creature's action: magical only when the stat block says a spell attack
 		plan, ok, err := f.s.planOfAction(ctx, f.c, f.attacker, g.AttackKey)
-		spell := err == nil && ok && plan.Attack != nil && plan.Attack.Spell
-		return combat.Origin{Attack: true, Weapon: !spell, Magical: spell}, err
+		attack := err == nil && ok && plan.Attack != nil
+		spell := attack && plan.Attack.Spell
+		return combat.Origin{Attack: true, Weapon: attack && !spell, Magical: spell}, err
 	case g.CastID != nil:
 		return combat.Origin{Attack: true, Magical: true}, nil
 	case g.AttackerID == nil || g.AttackKey == "":
