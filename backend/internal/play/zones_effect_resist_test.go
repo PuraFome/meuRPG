@@ -59,8 +59,23 @@ func TestAnEffectsImmunityStopsAPoisonZone(t *testing.T) {
 	c.wardOgre(t)
 	c.h.roller.queue(5, 4, 4, 4, 4, 4) // the ogre's Constitution save fails, then 5d8 = 20
 	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(7, 7), nil)
+	c.passTo(t, c.get(t, c.master), "Ogro")
 	if cur, _, _ := c.hp(t, "Ogro"); cur != 59 {
 		t.Errorf("the ogre has %d hit points, want 59: the effect makes it immune to poison", cur)
+	}
+}
+
+// The control of the test above: with the same ward and no immunity the same cloud and dice hurt the ogre, so the 59 is the
+// immunity and not a cloud that never caught it.
+func TestAZoneHurtsAWardedOgreWithoutTheImmunity(t *testing.T) {
+	t.Parallel()
+	c := wardCave(t, damageMod(rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_RESIST, "damage-type:cold"))
+	c.wardOgre(t)
+	c.h.roller.queue(5, 4, 4, 4, 4, 4)
+	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(7, 7), nil)
+	c.passTo(t, c.get(t, c.master), "Ogro")
+	if cur, _, _ := c.hp(t, "Ogro"); cur != 59-20 {
+		t.Errorf("the ogre has %d hit points, want 39: a cold ward does not touch poison", cur)
 	}
 }
 

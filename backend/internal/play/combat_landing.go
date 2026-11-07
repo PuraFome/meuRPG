@@ -18,6 +18,9 @@ import (
 // afterResistance is the damage that lands on the target once its resistances, vulnerabilities and immunities to the
 // damage type are applied, after the bonuses and the half of a saving throw (SRD 5.1): settleDamage's amount.
 func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playdb.Combatant, damageType string, amount int32) (int32, error) {
+	if !holdsHP(target) {
+		return amount, nil // a character's damage waits for the master: nothing here changes what lands
+	}
 	_, after, err := s.settleDamage(ctx, c, target, damageType, amount)
 	return after, err
 }
