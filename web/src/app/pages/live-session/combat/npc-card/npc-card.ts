@@ -124,7 +124,7 @@ export class NpcCard {
   readonly reactionStopped = input(false);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
-  /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
+  /** The combat is played without a map (RN-25): movement is a number. The opportunity offer is in "Mais ações" with a map too. */
   readonly theatre = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');

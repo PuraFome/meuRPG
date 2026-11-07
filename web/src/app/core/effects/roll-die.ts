@@ -96,7 +96,7 @@ export interface DieUses {
 
 /** "d8 somado ao ataque · gasta 1 de Reserva de Golpes · restam 2": what the tick on a weapon attack says it costs. */
 export function attackDieCost(die: RollDie, uses: DieUses): string {
-  return `d${die.sides} somado ao ataque · gasta 1 de ${uses.resourceNamePt} · restam ${uses.left}`;
+  return `d${die.sides} somado ao ataque · gasta 1 de ${uses.resourceNamePt} · ${usesWord(uses.left)}`;
 }
 
 /** What a weapon-attack die listing needs: the die and its pool. */

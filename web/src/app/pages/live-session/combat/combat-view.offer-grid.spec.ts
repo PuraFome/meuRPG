@@ -17,6 +17,7 @@ import { anyCallCombatClient } from '../../../core/combat/combat-client-testing'
 import { CombatState } from '../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../core/combat/combat-testing';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { mapMessage, mapResponse } from '../../../core/maps/map-builders-testing';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import { RosterClient } from '../../../core/maps/roster-client';
@@ -59,10 +60,15 @@ const spent = combatant({
 });
 const goblin = combatant({ id: 'g', label: 'Goblin', placed: true, col: 3, row: 3 });
 
-function setup(offer?: (args: unknown[]) => unknown, phone = false) {
+function setup(
+  offer?: (args: unknown[]) => unknown,
+  screen: 'laptop' | 'tablet' | 'phone' = 'laptop',
+) {
   TestBed.resetTestingModule();
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: phone ? /max-width: 767/.test(query) : /min-width: 1024px/.test(query),
+    matches:
+      (screen === 'phone' && /max-width: 767/.test(query)) ||
+      (screen === 'laptop' && /min-width: 1024px/.test(query)),
     media: query,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
@@ -137,12 +143,9 @@ function setup(offer?: (args: unknown[]) => unknown, phone = false) {
       },
     ],
   });
-  const maps = new MapState(async () => ({}) as never);
-  maps.map.set({
-    id: 'm1',
-    name: 'Covil',
-    image: { url: 'x.png', width: 1200, height: 1200 },
-  } as never);
+  const covil = mapMessage('m1', 'Covil');
+  const maps = new MapState(async () => mapResponse(covil));
+  maps.map.set(covil);
   const fixture = TestBed.createComponent(CombatView);
   fixture.componentRef.setInput('campaignId', 'c');
   fixture.componentRef.setInput('isMaster', true);
@@ -203,8 +206,16 @@ describe('CombatView on a map: "Oferecer ataque de oportunidade"', () => {
     expect(document.activeElement).toBe(panel.querySelector('input:checked'));
   });
 
+  it('on a tablet (768 to 1023 px) the map is another tab too: no ring talk', async () => {
+    const { fixture, el } = setup(undefined, 'tablet');
+    await openPanel(fixture, el);
+    const text = plain(el.querySelector('app-offer-panel')?.textContent);
+    expect(text).toContain('Escolha quem saiu do alcance.');
+    expect(text).not.toContain('anel');
+  });
+
   it('on a phone the panel talks of no rings (the map is the Mapa tab)', async () => {
-    const { fixture, el } = setup(undefined, true);
+    const { fixture, el } = setup(undefined, 'phone');
     await openPanel(fixture, el);
     const text = plain(el.querySelector('app-offer-panel')?.textContent);
     expect(text).toContain('Escolha quem saiu do alcance.');

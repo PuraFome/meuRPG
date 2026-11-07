@@ -68,6 +68,11 @@ const certeiro = option('golpe', 'Golpe Certeiro', 2);
 
 describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () => {
   const api = { rollAttack: vi.fn(), turnOptions: vi.fn() };
+  /** What the last `rollAttack` was sent: the reaction flag, the offer it answers and the extras (the die). */
+  const lastArgs = () => {
+    const call = api.rollAttack.mock.calls.at(-1) ?? [];
+    return { reaction: call[7], offer: call[8], extras: call[11] };
+  };
 
   function setup(
     opts: {
@@ -191,9 +196,9 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     ticked.button('Rolar no app').click();
     await ticked.settle();
     // An opportunity attack: it spends the reaction, names the offer, and carries the die all the same.
-    expect(api.rollAttack.mock.calls[0][7]).toBe(true);
-    expect(api.rollAttack.mock.calls[0][8]).toBe('o1');
-    expect(api.rollAttack.mock.calls[0][11]).toEqual({
+    expect(lastArgs().reaction).toBe(true);
+    expect(lastArgs().offer).toBe('o1');
+    expect(lastArgs().extras).toEqual({
       extraDieFaces: [],
       useExtraAction: false,
       maneuverKey: 'golpe',
@@ -203,7 +208,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     const plainRoll = setup({ dice: [certeiro] });
     plainRoll.button('Rolar no app').click();
     await plainRoll.settle();
-    expect(api.rollAttack.mock.calls[0][11]).toEqual({
+    expect(lastArgs().extras).toEqual({
       extraDieFaces: [],
       useExtraAction: false,
     });
@@ -268,7 +273,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
       'Golpe Certeiro: não há usos de Reserva de Golpes. Nada foi gasto.',
     );
     expect(api.turnOptions).toHaveBeenCalledWith('c', 'enc', 't');
-    expect(plain(el.textContent)).toContain('restam 0');
+    expect(plain(el.textContent)).toContain('sem usos');
     expect(plain(el.textContent)).toContain('Sem usos de Reserva de Golpes.');
     expect(box().disabled).toBe(true);
     expect(box().checked).toBe(false);

@@ -9,7 +9,7 @@ let nextId = 0;
 
 /**
  * "Usar <nome>" on a roll sheet (MR-025): a die the character's table features add to this roll (a maneuver on a check, a
- * save or the initiative). Only the dice that fit the roll are given, so nothing shows when none does. One checkbox for each;
+ * save, the initiative or a weapon attack). Only the dice that fit the roll are given, so nothing shows when none does. One checkbox for each;
  * a roll takes one die, so ticking one unticks the other. The cost is written under the name. Space ticks.
  *
  * The weapon attack also gives `uses` (the pool each die spends from and what is left): the line then says the uses left, a

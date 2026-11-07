@@ -51,7 +51,7 @@ export class RollPicker {
   readonly modifier = input(0);
   /** The button reads the total ("Confirmar 25", with the bonus added) in place of the typed number: damage, where the sum of the dice is only a part. */
   readonly confirmTotal = input(false);
-  /** Something typed beside this number is still missing (an extra die's face): no total and no number on the button until it is there (the button still answers: the sheet says what is missing). */
+  /** Something typed beside this number is still missing (an extra die's face): no total and no number on the button until it is there. */
   readonly waiting = input(false);
   /** The field's label ("Role 1d20 para o Machado de batalha (+5)"). */
   readonly label = input.required<string>();

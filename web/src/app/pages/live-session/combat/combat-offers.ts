@@ -37,7 +37,7 @@ export interface CombatOffersContext {
 }
 
 /**
- * The master's side of the opportunity attacks (E9-13): the form that offers one in a combat without a map, his answers for
+ * The master's side of the opportunity attacks (E9-13): the form that offers one, on a map or off it, his answers for
  * an NPC reactor, the reactor's own attacks with their numbers, and the offers that were already opened for the player.
  */
 export class CombatOffers {
@@ -175,7 +175,7 @@ export class CombatOffers {
     );
   }
 
-  /** "Oferecer a Toren": the master says the one on turn left that combatant's reach (a combat without a map). */
+  /** "Oferecer a Toren": the master says the one on turn left that combatant's reach (on a map or off it). */
   async make(reactorId: string): Promise<void> {
     const e = this.ctx.encounter();
     const mover = e ? currentCombatant(e) : null;

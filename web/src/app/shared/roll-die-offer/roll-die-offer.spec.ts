@@ -90,7 +90,7 @@ describe('RollDieOffer', () => {
     f.detectChanges();
     expect(inputs()[0].disabled).toBe(true);
     expect(el.querySelector('.opt--off')).not.toBeNull();
-    expect(plain(el.textContent)).toContain('restam 0');
+    expect(plain(el.textContent)).toContain('sem usos');
     expect(plain(el.querySelector('.offer__none')?.textContent)).toContain(
       'blockSem usos de Reserva de Golpes.',
     );

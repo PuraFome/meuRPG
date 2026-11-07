@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   Injector,
   afterNextRender,
@@ -125,11 +126,14 @@ export class OfferPanel {
     });
     // The offer was chosen again while the panel is open: the focus lands on the checked radio, after the menu has given it back.
     let asked = this.focusAsk();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    inject(DestroyRef).onDestroy(() => clearTimeout(timer));
     effect(() => {
       const n = this.focusAsk();
       if (n !== asked) {
         asked = n;
-        setTimeout(() => this.focusChecked());
+        clearTimeout(timer);
+        timer = setTimeout(() => this.focusChecked());
       }
     });
     // Opens on the first one that can react, so the keyboard lands on the list.

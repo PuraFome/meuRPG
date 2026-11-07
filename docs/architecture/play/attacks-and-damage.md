@@ -20,6 +20,8 @@ The die is described in [Rests and resources](rests-and-resources.md#table-dice-
 It joins the dice an effect adds (Bless), after them.
 It is rolled with the attack, or typed as the last of `extra_die_faces`.
 It is added to the total and listed in the roll's `extra_dice` and in the attacker's log line.
+The log line names each extra die by its `source_name_pt`.
+A source the master hides reads "Outra fonte".
 The roll is refused for an NPC attacker, a spell attack and a die of another `applies` (`invalid_argument`).
 It is refused when the pool has no use left (`NO_USES_LEFT`).
 The checks run before the roll and again on the replay of a held roll.

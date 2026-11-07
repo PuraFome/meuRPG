@@ -524,7 +524,12 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 - Quem controla o reator (o jogador, ou o mestre por um NPC) ataca, recusa ("Não atacar") ou, para um jogador ausente, o mestre segue sem esperar ("Seguir sem esperar"). O ataque é lido a partir do quadrado que quem se move deixou, e a cobertura conta dali.
 - **O turno de quem se move espera** ("Esperando a reação do mestre") até a oferta e o dano do ataque dele estarem resolvidos: o jogador não pode encerrar o turno, agir, atacar, conjurar nem se mover. O mestre nunca fica preso. Uma oferta que ninguém pode mais responder é pulada sozinha.
 - Se o ataque leva quem se move a 0 PV, ele volta ao quadrado onde saiu do alcance.
-- O mestre também pode oferecer um por conta própria ("Oferecer ataque de oportunidade"), para um alcance que o app não viu, com mapa ou sem; valem as mesmas regras, menos os lugares: alcance e quadrado são a palavra do mestre. Num mapa, a oferta é uma linha do menu "Mais ações" do cartão do NPC e abre no próprio lugar; os candidatos têm um anel no mapa e a distância mostrada é só uma dica, então quem decide é sempre o mestre. Na névoa, o jogador do reator ainda precisa ver quem se move para ser perguntado; senão o mestre retira a oferta ou segue sem esperar.
+- O mestre também pode oferecer um por conta própria ("Oferecer ataque de oportunidade"), para um alcance que o app não viu, com mapa ou sem; valem as mesmas regras, menos os lugares: alcance e quadrado são a palavra do mestre. Na névoa, o jogador do reator ainda precisa ver quem se move para ser perguntado; senão o mestre retira a oferta ou segue sem esperar.
+  A oferta é uma linha do menu "Mais ações" do cartão do NPC, com mapa ou sem.
+  O painel abre no próprio lugar.
+  Num mapa, os candidatos têm um anel.
+  A distância é só uma dica.
+  Quem decide é sempre o mestre.
 - Um jogador lê um aviso antes de um movimento que pode provocar ("Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade"), montado só com o que ele vê, então pode errar para o lado do excesso. Um reator escondido provoca do mesmo jeito, e quem se move lê só "Esperando o mestre". Os outros jogadores não veem nada.
 - Um movimento que entra numa armadilha que o personagem conhece pergunta "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" desfaz movimentos, saltos e a marca de Desengajar. Um movimento cuja oferta foi respondida só pode ser desfeito depois de desfazer a resposta.
@@ -620,7 +625,9 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Só as opções de um conjunto de opções se escondem uma a uma.
   O jogador continua vendo as opções que a ficha dele já tem.
 - **Manobras.** Uma manobra é um dado de um recurso. Depois de um golpe de arma, a etapa de dano oferece cada manobra de dano que o personagem conhece, uma por ataque; ela soma o dado ao dano (dobrado num acerto crítico), gasta um uso, e o mestre lê o efeito adicional dela na jogada. O dado também pode iniciar uma agarrada ou reduzir o dano de um golpe corpo a corpo como reação. O jogador soma o dado de uma manobra de jogada de ataque a um ataque de arma do próprio personagem, inclusive o de oportunidade.
-  A lista de armas e a pergunta do ataque de oportunidade dizem uma vez que o dado pode entrar e quantos usos restam; a ficha de ataque o oferece na rolagem e, com dados físicos, a face dele é digitada ao lado do d20.
+  A lista de armas e a pergunta do ataque de oportunidade dizem que o dado pode entrar.
+  Elas dizem quantos usos restam.
+  Com dados físicos, o jogador digita a face dele ao lado do d20.
   Uma manobra sem dado é uma ação em "Habilidades" que gasta um uso dos mesmos dados e a ação que ela declara.
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
 - **A margem de acerto crítico.**
