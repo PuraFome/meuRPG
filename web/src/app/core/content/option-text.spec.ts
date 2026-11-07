@@ -74,7 +74,7 @@ describe('the feature that offers a table option (MR-025)', () => {
   it('reads "Oferecida por" on the page only when the feature is named', () => {
     const read = (key: string) => {
       const e = option(key);
-      return readEntry(e, nameOf, () => 0, cat.offeredByName).rows;
+      return readEntry(e, nameOf, () => 0, undefined, cat.offeredByName).rows;
     };
     expect(read(crow)).toContainEqual({
       label: 'Oferecida por',
