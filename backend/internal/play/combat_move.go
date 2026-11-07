@@ -904,7 +904,7 @@ func (s *Service) publishMove(ctx context.Context, campaignID string, d *encount
 // publishCoverCleared tells who saw the combatant that its cover mark is gone.
 func (s *Service) publishCoverCleared(ctx context.Context, campaignID string, enc playdb.Encounter, moved playdb.Combatant) {
 	if moved.Hidden {
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(enc)})
+		s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(enc)})
 		return
 	}
 	s.publishEncounterChanged(ctx, campaignID, enc)

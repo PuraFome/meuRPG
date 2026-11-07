@@ -927,22 +927,33 @@ func linesSeenBy(lines []actionEvent) (seers []string, scoped bool) {
 // only to those players (actionEvent.SeenBy), so a player does not even hear that
 // something happened out of their sight.
 func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID string, players bool) {
-	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
-	}}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	s.publishLogChange(ctx, campaignID, encounterID, players, false)
+}
+
+// publishLogChange is publishLogChanged with full: the write rewrote the log (an undo), so the master's app reads all of it again.
+// The players' copy never carries full: the master's undo of an action a player could not see (secret, or out of their sight) must
+// not tell that player anything that an ordinary change does not. A player's own read (ListCombatLog with since_seq) answers with the
+// whole log when an undo they may see happened.
+func (s *Service) publishLogChange(ctx context.Context, campaignID, encounterID string, players, full bool) {
+	logChangedMessage := func(full bool) *playv1.WatchGameSessionResponse {
+		return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+			CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
+		}}
+	}
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: logChangedMessage(full)})
+	msg := logChangedMessage(false)
 	if !players {
 		return
 	}
 	if memo := fogMemoOf(ctx); memo != nil {
 		if seers, scoped := linesSeenBy(memo.lines); scoped {
 			for _, u := range seers {
-				s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+				s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
 			}
 			return
 		}
 	}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
+	s.send(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
 }
 
 // stoppedHit is a pending damage that a later Escudo stopped: its id and the

@@ -585,7 +585,8 @@ func (s *Service) takeBackOlder(ctx context.Context, c *combatTx, run *undoRun, 
 // fog around the combatants that went back, the vitals put back and the trap armed again.
 func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *encounterData, ev actionEvent, run *undoRun) {
 	s.publishUndone(ctx, campaignID, d, ev)
-	s.publishLogChanged(ctx, campaignID, d.enc.ID, !ev.Secret)
+	// The undo rewrote the log: full.
+	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true)
 	if run.afterGear != nil {
 		run.afterGear(ctx)
 	}
@@ -634,7 +635,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
 		return
 	}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(d.enc)})
 	told := slices.Clone(ev.SeenBy)
 	if !ev.Secret {
 		for _, id := range ev.combatantIDs() {
@@ -646,7 +647,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 	slices.Sort(told)
 	blind := encounterChangedMessage(playdb.Encounter{ID: d.enc.ID, Mode: d.enc.Mode})
 	for _, u := range slices.Compact(told) {
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
+		s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: blind})
 	}
 }
 

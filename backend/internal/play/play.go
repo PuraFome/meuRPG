@@ -598,9 +598,11 @@ type Service struct {
 	// afterTrapRead is a test hook: it runs between the moment a firing outside a combat
 	// reads where the tokens stand and the moment it opens its transaction.
 	afterTrapRead func()
-	roller        dice.Roller
-	logger        *slog.Logger
-	now           func() time.Time
+	// dropSend is a test hook: send drops an event for which it returns true, as a send lost after the commit would be.
+	dropSend func(campaignID string, ev live.Event) bool
+	roller   dice.Roller
+	logger   *slog.Logger
+	now      func() time.Time
 	// conditionNames are the SRD conditions' Portuguese names, by key, for the
 	// labels the master marks (RN-22).
 	conditionNames map[string]string
