@@ -25,6 +25,7 @@ import {
   readWhole,
   wholeText,
 } from '../../core/content/whole-number';
+import { capitalized } from '../../core/creatures/bestiary-format';
 import { neverFolded, visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckGroup, type CheckOption } from '../form-fields/check-group';
@@ -302,7 +303,15 @@ export class EffectPicker {
         : f.name === 'spells'
           ? []
           : menu.list(f.list);
-    return list.map((o) => ({ value: o.key, label: o.namePt, hint: o.hintPt }));
+    // The server writes a damage type in lower case ("fogo"); a list of them reads in sentence case, as every label does.
+    const damage =
+      f.list === 'damage_types' ||
+      (f.name === 'from' && f.list === '' && this.effect().type === 'spell_modifier');
+    return list.map((o) => ({
+      value: o.key,
+      label: damage ? capitalized(o.namePt) : o.namePt,
+      hint: o.hintPt,
+    }));
   }
 
   /** A choice with a placeholder when it is required, and a real "Padrão" (the field left empty) when it is not. */

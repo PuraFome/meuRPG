@@ -278,6 +278,13 @@ describe('HeldQuestion', () => {
       expect(el.textContent).toContain('O app rola o novo d20; não há resultado para digitar.');
     });
 
+    it('draws the clock, not the warning, while it waits and once the master may answer', () => {
+      const waiting = mount(reroll(3));
+      expect(waiting.el.querySelector('.q__icon')?.textContent?.trim()).toBe('schedule');
+      const ready = mount(reroll(11));
+      expect(ready.el.querySelector('.q__icon')?.textContent?.trim()).toBe('schedule');
+    });
+
     it('answers for the roller with the server rolling', async () => {
       const { button, flush } = mount(reroll(11));
       button('Rolar de novo')!.click();

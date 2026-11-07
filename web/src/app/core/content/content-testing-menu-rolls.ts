@@ -96,8 +96,8 @@ export function rollsMenu(): EffectMenuVm {
     create(EffectMenuListSchema, {
       name: 'damage_types',
       values: [
-        { key: 'damage-type:cold', namePt: 'Frio' },
-        { key: 'damage-type:fire', namePt: 'Fogo' },
+        { key: 'damage-type:cold', namePt: 'frio' },
+        { key: 'damage-type:fire', namePt: 'fogo' },
       ],
     }),
     create(EffectMenuListSchema, {

@@ -7673,7 +7673,12 @@ async function scanRerollMasterAnswers(browser: Browser, colorScheme: 'light' | 
     await keep.click();
     await expect(m.getByText('Você respondeu por Vex: ficou com o 2.')).toBeVisible();
     await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre respondeu ${where}`);
-    await expect(p.getByText('O mestre respondeu por você.')).toBeVisible();
+    await expect(p.getByTestId('held-vanished')).toContainText('O mestre respondeu por você.');
+    // The attack sheet says it too, and offers no answer: the question is no longer open.
+    const attackSheet = p.getByRole('dialog', { name: /^Atacar com/ });
+    await expect(attackSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(attackSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(attackSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
     await expectScreenPasses(p, `Pergunta de rolar de novo, o mestre respondeu pelo jogador ${where}`);
   } finally {
     await done();

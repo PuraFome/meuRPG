@@ -14,6 +14,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -96,6 +97,7 @@ type PageState =
     ClassFeatureEditor,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     MatProgressSpinnerModule,
     RaceEditor,
     RouterLink,

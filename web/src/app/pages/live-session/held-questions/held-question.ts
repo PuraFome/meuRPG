@@ -133,8 +133,11 @@ export class HeldQuestion {
       : `${q.lead()}.`;
   });
   protected readonly waiting = computed(() => this.phase() !== 'ready');
+  /** The clock while the roller may still answer, and for a reroll rule's question at any time (it waits, it does not warn). */
   protected readonly icon = computed(() =>
-    this.phase() === 'waiting' || this.phase() === 'too-early' ? 'schedule' : 'warning',
+    this.phase() === 'waiting' || this.phase() === 'too-early' || this.ruleReroll()
+      ? 'schedule'
+      : 'warning',
   );
   protected readonly noteIcon = computed(() => (this.phase() === 'done' ? 'check' : 'info'));
   protected readonly failure = computed(() => {
