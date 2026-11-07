@@ -74,11 +74,11 @@
             @if (entry()!.archived) {
               <button mat-menu-item type="button" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
             } @else {
-              <button mat-menu-item type="button" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+              <button mat-menu-item type="button" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>{{ verb() }}</button>
             }
           </mat-menu>
         } @else if (isMaster() && entry() && !entry()!.archived && !asking()) {
-          <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+          <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>{{ verb() }}</button>
         }
       </header>
 
@@ -169,7 +169,7 @@
       }
 
       @if (asking() && entry()) {
-        <app-archive-question [name]="entry()!.namePt" [using]="using()" [busy]="archiving()" (cancel)="cancelAsk()" (confirm)="archive()" />
+        <app-archive-question [verb]="verb()" [name]="entry()!.namePt" [using]="using()" [busy]="archiving()" (cancel)="cancelAsk()" (confirm)="archive()" />
       }
 
       @if (noEditorYet()) {

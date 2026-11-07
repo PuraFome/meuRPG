@@ -688,6 +688,7 @@ The read never returns a part.
 A campaign with no refused entry costs one build.
 `Content.Refused()` lists what was left out that the master still has to fix, and is cached with the content for its revision.
 An archived entry is still left out of the content, but it is not listed, nor is what is out only because its class or race is archived.
+A live child leaves with its archived parent only when every violation it has is the dangling reference to it; a violation of its own keeps it listed.
 Archiving ("Remover" in the app) clears an entry from the list; fixing it in place does too.
 `ListTableEntriesResponse.left_out` gives it to the master of the campaign and to nobody else.
 A sheet that uses a left-out entry gets `unknown_key`, as for an entry that does not exist.

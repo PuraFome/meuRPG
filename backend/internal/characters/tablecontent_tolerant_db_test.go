@@ -430,3 +430,48 @@ func TestListTableEntriesLeftOutClearsWhenTheMasterRetiresTheEntry(t *testing.T)
 		t.Errorf("the subclass did not come back with its fixed class: %v", err)
 	}
 }
+
+// TestSavingARefusedEntryGoesThroughTheRealCheck: the master saves a live entry the rules refuse. Saved with the
+// fix it leaves left_out (and the sheet-bearing dependent comes back with it); saved as it was it is refused,
+// and it stays in left_out. checkOverlay and withoutStoredLeftOut decide this, not the list's own bookkeeping.
+func TestSavingARefusedEntryGoesThroughTheRealCheck(t *testing.T) {
+	t.Parallel()
+	f := newTolerantTable(t)
+	f.h.refuseStored(f.campaign, f.class.GetKey(), f.sp.GetKey())
+	leftOut := func() []string {
+		res, err := listTable(t, f.master, f.campaign)
+		if err != nil {
+			t.Fatalf("ListTableEntries() error = %v", err)
+		}
+		var out []string
+		for _, v := range res.GetLeftOut() {
+			out = append(out, v.GetKey())
+		}
+		slices.Sort(out)
+		return out
+	}
+	both := slices.Sorted(slices.Values([]string{f.class.GetKey(), f.sub.GetKey(), f.sp.GetKey()}))
+	if got := leftOut(); !slices.Equal(got, both) {
+		t.Fatalf("left_out = %v, want %v", got, both)
+	}
+	// Without the fix: the same body is refused on its own field, and nothing moves.
+	err := f.update(f.class.GetKey(), bodyMessage(f.master.entries(t, f.campaign)[f.class.GetKey()]))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("saving the refused class as it was: %v, want invalid_argument", err)
+	}
+	if v := violationsOfErr(t, err); len(v) == 0 || v[0].GetField() != "table_class.hit_die" {
+		t.Errorf("violations = %v, want table_class.hit_die first", v)
+	}
+	if got := leftOut(); !slices.Equal(got, both) {
+		t.Errorf("left_out after the refused save = %v, want %v", got, both)
+	}
+	// With the fix: the class is accepted and leaves, its subclass with it.
+	class := proto.Clone(bodyMessage(f.master.entries(t, f.campaign)[f.class.GetKey()])).(*rulesv1.TableClass)
+	class.HitDie = 8
+	if err := f.update(f.class.GetKey(), class); err != nil {
+		t.Fatalf("saving the fixed class: %v", err)
+	}
+	if got := leftOut(); !slices.Equal(got, []string{f.sp.GetKey()}) {
+		t.Errorf("left_out after the fix = %v, want only the spell, which is still refused and not this write's to fix", got)
+	}
+}

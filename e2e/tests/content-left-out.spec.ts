@@ -106,10 +106,10 @@ test(
 );
 
 test(
-  'a campanha mostra o aviso ao mestre e a página do jogador não tem o painel nem o aviso @MR-025',
+  'a campanha mostra o aviso ao mestre e leva à lista das entradas fora @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, p, campaignId, done } = await table(browser);
+    const { master, player, m, campaignId, done } = await table(browser);
     try {
       await gotoCampaignTab(m, campaignId, 'Regras');
       const content = m.getByRole('region', { name: 'Conteúdo da mesa' });
@@ -117,12 +117,9 @@ test(
       await content.getByRole('link', { name: 'Ver o conteúdo da mesa' }).click();
       await expect(m.getByRole('region', { name: '2 entradas fora da campanha' })).toBeVisible();
 
-      // What a player's page shows. That the server never sends a player `left_out`, its count, a path or the name of a retired
-      // entry is proved by the leak test (backend/internal/leaktest, TestLeftOutIsTheMastersAlone), where the table really has
-      // refused entries; here the refusal is seeded in the master's page only, so this checks the player's screens alone.
-      await p.goto(`/campaigns/${campaignId}/content`);
-      await expect(p.getByRole('heading', { level: 1, name: 'Conteúdo da mesa' })).toBeVisible();
-      await expect(p.getByText('fora da campanha')).toHaveCount(0);
+      // That a player never gets `left_out`, its count, a path or the name of a retired entry is not checked here: the refusal is
+      // seeded in the master's page only, so a player's screen would be empty for a reason that proves nothing. The leak test does it
+      // with a table that really has refused entries: backend/internal/leaktest, TestLeftOutIsTheMastersAlone.
     } finally {
       await done(); // a read the page started is answered before the page closes
       await master.close();

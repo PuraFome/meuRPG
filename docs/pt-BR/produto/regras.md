@@ -604,6 +604,8 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   A lista do mestre abre com "entradas fora da campanha", cada uma com o lugar e o motivo em palavras simples, e a página da campanha diz quantas são.
   "Corrigir" abre a entrada com o campo marcado, e um alvo que saiu do menu de efeitos aparece como "Um alvo que saiu do menu".
   "Remover" arquiva a entrada, e ela sai da lista.
+  A página da entrada também diz "Remover", no lugar de "Arquivar", para uma entrada que está fora.
+  Uma entrada viva que depende de um pai arquivado sai junto com ele, porque o mestre não vê nada para ela.
   No celular o mestre lê e remove, e a correção fica no notebook.
   O jogador nunca recebe quais entradas estão fora, quantas são nem por quê.
 - **Uma ficha que usa conteúdo da mesa não passa para outra campanha.** Essa verificação espera por copiar personagem e reutilizar NPCs ([MR-021](historias.md#mr-021-copiar-personagem), [MR-022](historias.md#mr-022-reutilizar-npcs)). Copiar conteúdo para outra campanha é [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova), depois do MVP.

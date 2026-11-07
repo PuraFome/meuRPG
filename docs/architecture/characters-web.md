@@ -163,7 +163,7 @@ flowchart LR
   The effect menu is only read by the master, so the player sees the feature's text and, of the effects, only what a sentence says without the menu.
 - **Left-out entries** (`core/content/left-out.ts`, `buildLeftOut`): `TableContentClient.list` keeps `leftOut` and `contentVersion`, and the master's list draws the panel "entradas fora da campanha" from them (one row per entry, the dependents under it, `Corrigir` and a "⋮" menu with `Remover`, which archives).
   `placeOfPath` maps each violation path to a readable place (level, feature, effect) and the editor field, with the sentence of `content-violation-texts.ts`.
-  The entry page shows the note and the tag "Fora da campanha", and each editor takes the violation as `leftOut` and marks its field (`EntrySaver.seedLeftOut`).
+  The entry page shows the note and the tag "Fora da campanha", and its archive button, menu item and question say `Remover` (`verb` of `ArchiveQuestion` and `ArchiveSheet`), and each editor takes the violation as `leftOut` and marks its field (`EntrySaver.seedLeftOut`).
   A modifier target that left the menu has no client name, so the select says "Um alvo que saiu do menu".
   The campaign page's content summary counts `leftOut` for the master; a player's list never has any.
   The phone reads and removes, and the fix is on the notebook.

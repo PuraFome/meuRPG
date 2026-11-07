@@ -192,12 +192,14 @@ func TestUnfinishedKeepsALiveChildWithAViolationOfItsOwn(t *testing.T) {
 		{Key: "subclass:only@mesa", Parent: "class:a@mesa", Violations: v("dangling_reference")},
 		{Key: "classfeature:deep@mesa", Parent: "subclass:only@mesa", Violations: v("dangling_reference")},
 		{Key: "subclass:own@mesa", Parent: "class:a@mesa", Violations: v("bad_formula")},
+		// The first violation is the missing parent, and a later pass found one of its own: the master still has to fix it.
+		{Key: "subclass:mixed@mesa", Parent: "class:a@mesa", Violations: append(v("dangling_reference"), v("bad_formula")...)},
 	}
 	var got []string
 	for _, l := range unfinished(out) {
 		got = append(got, l.Key)
 	}
-	if want := []string{"subclass:own@mesa"}; !slices.Equal(got, want) {
+	if want := []string{"subclass:own@mesa", "subclass:mixed@mesa"}; !slices.Equal(got, want) {
 		t.Errorf("unfinished() = %v, want %v", got, want)
 	}
 }

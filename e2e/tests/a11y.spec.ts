@@ -6099,6 +6099,15 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
       await expect(panel).toBeVisible();
       await expectScreenPasses(m, `Conteúdo da mesa, fora da campanha ${where}`);
       await shootLeftOut(m, 'lista', width, colorScheme);
+      if (width !== 768) {
+        // K1's row of the entry itself, with its tag, in the list of its kind.
+        await open(m, `/campaigns/${campaignId}/content/spells`);
+        const tag = m.locator('.mr-tag--danger', { hasText: 'Fora da campanha' }).first();
+        await expect(tag).toBeVisible();
+        await shootLeftOut(m, 'linha', width, colorScheme, tag);
+        await open(m, `/campaigns/${campaignId}/content`);
+        await expect(panel).toBeVisible();
+      }
 
       await m.getByRole('button', { name: 'Mais ações de Lâmina de Nanquim' }).click();
       await expect(m.getByRole('menuitem', { name: 'Remover' })).toBeVisible();
@@ -6119,7 +6128,7 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
         const target = m.getByLabel('O que muda');
         await expect(target).toHaveValue('alvo_antigo');
         await expectScreenPasses(m, `Conteúdo da mesa, a raça fora da campanha ${where}`);
-        await shootLeftOut(m, 'editor', width, colorScheme, target);
+        await shootLeftOut(m, 'editor', width, colorScheme, m.getByRole('heading', { level: 1 }));
       } else {
         await expectScreenPasses(m, `Conteúdo da mesa, a raça fora da campanha ${where}`);
         await shootLeftOut(m, 'editor', width, colorScheme);

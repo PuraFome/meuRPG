@@ -604,6 +604,8 @@ Members read the campaign's content, except creatures (below); only the master w
   The master's list opens with "entradas fora da campanha", each with its place and the reason in plain words, and the campaign page says how many.
   "Corrigir" opens the entry with the field marked, and a target that left the effect menu reads "Um alvo que saiu do menu".
   "Remover" archives the entry, and it leaves the list.
+  The entry page says "Remover" too, in place of "Arquivar", for an entry that is out.
+  A live entry that depends on an archived parent leaves with it, because the master sees nothing for it.
   On a phone the master reads and removes, and the fix is on the notebook.
   A player never receives which entries are out, how many or why.
 - **A sheet that uses table content does not move to another campaign.** That check waits for copy character and reuse NPCs ([MR-021](stories.md#mr-021-copy-a-character), [MR-022](stories.md#mr-022-reuse-npcs)). Copying content to another campaign is [MR-026](stories.md#mr-026-propose-a-new-race-or-class), after the MVP.

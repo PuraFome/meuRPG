@@ -797,6 +797,21 @@ describe('ContentEntry', () => {
       };
     };
 
+    it('calls the archive of an entry that is out "Remover", in place, and archives it', async () => {
+      const { c, entries, leftOut } = out();
+      const { fixture, el } = await setup(Role.MASTER, c.key, entries, { leftOut });
+      const buttons = () => Array.from(el.querySelectorAll('button')).map((b) => text(b));
+      expect(buttons().some((b) => b.includes('Arquivar'))).toBe(false);
+      click(el, 'Remover');
+      await settle(fixture, 4);
+      const ask = el.querySelector('app-archive-question')!;
+      expect(text(ask)).toContain(`Remover ${c.namePt}?`);
+      expect(text(ask)).toContain('A entrada é arquivada, não apagada.');
+      click(ask as HTMLElement, `Remover ${c.namePt}`);
+      await settle(fixture, 4);
+      expect(archive).toHaveBeenCalledWith('camp-1', c.key);
+    });
+
     it('says the entry is out, the field that is wrong in its editor with its words, and what comes back with it', async () => {
       const { c, entries, leftOut } = out();
       const { el } = await setup(Role.MASTER, c.key, entries, { leftOut });

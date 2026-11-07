@@ -212,6 +212,8 @@ export class ContentEntry {
   protected readonly updated = computed(() => updatedLine(this.entry()));
   protected readonly archivedOn = computed(() => archivedDay(this.entry()));
   protected readonly using = computed(() => usageOf(this.entry()));
+  /** "Remover" on an entry the rules left out, "Arquivar" otherwise: the same archive, the master's word for it. */
+  protected readonly verb = computed(() => (this.leftOut().violation ? 'Remover' : 'Arquivar'));
   protected readonly backLabel = computed(() => backLabelOf(this.isMaster(), this.nav()));
   protected readonly backQuery = computed(() =>
     this.isMaster() && this.nav() ? { kind: this.nav()!.slug } : {},
@@ -389,7 +391,7 @@ export class ContentEntry {
       this.asking.set(true);
       return;
     }
-    const confirmed = await confirmArchiveInSheet(this.dialog, this.bottomSheet, e);
+    const confirmed = await confirmArchiveInSheet(this.dialog, this.bottomSheet, e, this.verb());
     if (confirmed) {
       await this.archive();
     }

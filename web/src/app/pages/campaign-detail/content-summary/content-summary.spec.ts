@@ -93,7 +93,9 @@ describe('"Conteúdo da mesa" on the "Regras" tab', () => {
   it('warns the master with a way to the content when the rules left entries out', async () => {
     const el = await open(3);
     const notice = el.querySelector('.mr-notice--danger')!;
-    expect(notice.textContent).toContain('3 entradas do conteúdo da mesa estão fora da campanha.');
+    expect(notice.querySelector('p')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      '3 entradas do conteúdo da mesa estão fora da campanha. Ver o conteúdo da mesa',
+    );
     const link = notice.querySelector('a')!;
     expect(link.textContent?.trim()).toBe('Ver o conteúdo da mesa');
     expect(link.getAttribute('href')).toBe('/campaigns/camp-1/content');

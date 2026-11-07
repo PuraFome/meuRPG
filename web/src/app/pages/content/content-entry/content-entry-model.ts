@@ -30,7 +30,7 @@ import type { EntryRead, NameOf } from '../../../core/content/content-read-parts
 import { parentViewOf } from '../../../core/content/subrace-traits';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { openSheet } from '../../../shared/sheet/sheet-host';
-import { ArchiveSheet } from '../archive/archive-sheet';
+import { ArchiveSheet, type ArchiveSheetData } from '../archive/archive-sheet';
 
 /** The URL's word for the kind of a new entry ("new/spell"). */
 export const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
@@ -194,18 +194,14 @@ export function confirmArchiveInSheet(
   dialog: MatDialog,
   bottomSheet: MatBottomSheet,
   entry: TableEntry,
+  verb: 'Arquivar' | 'Remover' = 'Arquivar',
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) =>
-    openSheet<ArchiveSheet, { name: string; using: number }, boolean>(
-      dialog,
-      bottomSheet,
-      ArchiveSheet,
-      {
-        data: { name: entry.namePt, using: entry.charactersUsing },
-        ariaLabel: `Arquivar ${entry.namePt}?`,
-        labelledBy: 'archive-t',
-      },
-    ).subscribe((r) => resolve(r === true)),
+    openSheet<ArchiveSheet, ArchiveSheetData, boolean>(dialog, bottomSheet, ArchiveSheet, {
+      data: { name: entry.namePt, using: entry.charactersUsing, verb },
+      ariaLabel: `${verb} ${entry.namePt}?`,
+      labelledBy: 'archive-t',
+    }).subscribe((r) => resolve(r === true)),
   );
 }
 
