@@ -392,6 +392,14 @@ describe('ContentList', () => {
     expect(actions).toContain('Importar pacote');
     expect(actions).toContain('Exportar');
     expect(el.querySelector('a[href$="/content/import"]')).not.toBeNull();
+    // Four actions, each with its icon, as the board's grid (K1): "Regras da mesa" is no plain link.
+    const buttons = Array.from(el.querySelectorAll('.head__actions > .head__action'));
+    expect(buttons.map((b) => b.querySelector('mat-icon')?.textContent?.trim())).toEqual([
+      'visibility',
+      'upload_file',
+      'download',
+      'list',
+    ]);
     const player = (await setup(Role.PLAYER)).el;
     expect(text(player)).not.toContain('Importar pacote');
     expect(text(player)).not.toContain('Exportar');

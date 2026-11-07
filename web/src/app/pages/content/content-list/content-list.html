@@ -52,7 +52,7 @@
           @if (!phone()) {
             <a matButton="outlined" class="head__action" [routerLink]="['/campaigns', campaignId(), 'content', 'import']"><mat-icon aria-hidden="true">upload_file</mat-icon>Importar pacote</a>
             <button matButton="outlined" type="button" class="head__action" [disabled]="exporting()" (click)="exportPack()"><mat-icon aria-hidden="true">download</mat-icon>Exportar</button>
-            <a matButton="outlined" class="head__action" [routerLink]="['/campaigns', campaignId(), 'rules']">Regras da mesa</a>
+            <a matButton="outlined" class="head__action" [routerLink]="['/campaigns', campaignId(), 'rules']"><mat-icon aria-hidden="true">list</mat-icon>Regras da mesa</a>
           }
         </span>
       }

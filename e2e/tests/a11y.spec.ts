@@ -6101,9 +6101,10 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
       await shootLeftOut(m, 'lista', width, colorScheme);
       if (width !== 768) {
         // K1's row of the entry itself, with its tag, in the list of its kind.
-        await open(m, `/campaigns/${campaignId}/content/spells`);
+        await open(m, `/campaigns/${campaignId}/content?kind=spells`);
         const tag = m.locator('.mr-tag--danger', { hasText: 'Fora da campanha' }).first();
         await expect(tag).toBeVisible();
+        await expectScreenPasses(m, `Conteúdo da mesa, a linha fora da campanha ${where}`);
         await shootLeftOut(m, 'linha', width, colorScheme, tag);
         await open(m, `/campaigns/${campaignId}/content`);
         await expect(panel).toBeVisible();
