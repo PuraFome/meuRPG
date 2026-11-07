@@ -188,6 +188,10 @@ func tryAcquire(ctx context.Context, db *sql.DB, holder string, ttl time.Duratio
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil // someone else holds a live lease
 	}
+	if lostTheRace(err) {
+		// 40001: another run sent the same statement at once and won, so the lock is held.
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("take the migration lock: %w", err)
 	}
