@@ -891,7 +891,7 @@
                       [theatre]="theatre()"
                       [contestAttacks]="contestAttacks()"
                       [contest]="contestFacts()"
-                      [maneuverDice]="opts.maneuverDice"
+                      [maneuverDice]="opts.maneuverDice ?? []"
                       (contestAttack)="contest.openAttack($event)"
                       (escape)="contest.openEscape()"
                       [extraAction]="opts.extraAction ?? null"

@@ -29,6 +29,7 @@ function setup(
   opts: {
     present?: boolean;
     fail?: boolean;
+    dice?: { uses: number; name: string }[];
     attacks?: { key: string; name: string; detail: string; attack: null }[];
   } = {},
 ) {
@@ -59,7 +60,15 @@ function setup(
             attack: null,
           },
         ],
-        options: {} as never,
+        options: (opts.dice
+          ? {
+              maneuverDice: opts.dice.map((d) => ({
+                die: { namePt: d.name, sides: 8 },
+                resourceNamePt: 'Reserva de Golpes',
+                usesLeft: d.uses,
+              })),
+            }
+          : {}) as never,
       };
     },
     state,
@@ -168,5 +177,46 @@ describe('OpportunitySheet', () => {
     expect(Array.from(el.querySelectorAll('.btn'), (b) => plain(b.textContent))).toEqual([
       'Fechar',
     ]);
+  });
+
+  describe('the table die line', () => {
+    const line = (el: HTMLElement) => plain(el.querySelector('.die')?.textContent);
+    async function opened(dice?: { uses: number; name: string }[]) {
+      const r = setup({ dice });
+      await r.fixture.whenStable();
+      r.fixture.detectChanges();
+      return r;
+    }
+
+    it('says under the weapons that the die may join this attack, with the uses left, the icon hidden', async () => {
+      const { el } = await opened([{ uses: 2, name: 'Golpe Certeiro' }]);
+      expect(line(el)).toContain(
+        'Golpe Certeiro (d8) pode entrar neste ataque: você marca ao rolar. Restam 2.',
+      );
+      expect(el.querySelector('.die mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+      expect(el.querySelector('.die button, .die input')).toBeNull();
+    });
+
+    it('says "Sem usos." at zero, without claiming a recharge', async () => {
+      const { el } = await opened([{ uses: 0, name: 'Golpe Certeiro' }]);
+      expect(line(el)).toContain('você marca ao rolar. Sem usos.');
+      expect(line(el)).not.toMatch(/descanso/);
+    });
+
+    it('names both dice in the plural', async () => {
+      const { el } = await opened([
+        { uses: 1, name: 'Golpe Certeiro' },
+        { uses: 1, name: 'Ataque Firme' },
+      ]);
+      expect(line(el)).toContain(
+        'Golpe Certeiro (d8) e Ataque Firme (d8) podem entrar neste ataque',
+      );
+    });
+
+    it('is absent without dice (the master answering for an NPC), and "Não atacar" stays first', async () => {
+      const { el } = await opened();
+      expect(el.querySelector('.die')).toBeNull();
+      expect(plain(el.querySelector('.stack .btn')?.textContent)).toBe('Não atacar');
+    });
   });
 });
