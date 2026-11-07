@@ -334,7 +334,9 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
   The sheet and the vitals are read only for a roll of a player's character that may ask and has a kind that a reroll covers.
 - **Lucky.** The two never meet in one roll.
   A roll that asks Lucky's question (a 1 on a halfling's d20) is not offered the reroll, before or after Lucky is answered.
-- **The switch.** Nothing is asked unless `Config.D20Rerolls` is on, and `cmd/api` leaves it off because the web has no screen for the question.
+- **The switch.** Nothing is asked unless `Config.D20Rerolls` is on.
+  `cmd/api` turns it on, since the web has the screens for the question (#573); the field stays so a test can turn it off.
+  With it on, these rolls wait for the question whenever a rule covers them and the character can pay: the weapon attack and the spell attack, the scene check, the group check, the effect's saving throw and the concentration save.
   With it off the roll settles as if the player declined: nothing is held, spent or written.
   A question written while it was on and still waiting when it goes off is stale: the next roll that runs the gate forgets it, it never refuses a roll, and answering it fails.
 - **Kinds that ask** (`heldKindDef.rerollApplies`):
@@ -358,4 +360,9 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 - **Columns** of `inspiration_holds` ([Play data](../../data/play.md)): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
   The cleanup of orphan holds keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
 - **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` (`reroll`, a boolean) in `AnswerHeldRollRequest`.
-- **Web.** No screen answers the question; an offer of this kind renders the die's prompt with zero sides.
+- **Web.** `HeldRollPrompt` (the roller) and `HeldQuestion` (the master) answer it.
+  The title is "Tirou N: rolar de novo?" with N the face at `reroll_index`; the line names the feature by `source_name` (empty reads "uma característica") and the cost, "Gasta 1 uso de Sorte Teimosa." The offer carries the resource only as a content key, so the feature's name stands for the resource in that line.
+  The answer is `{ kind: 'reroll', reroll }` and goes as `RerollAnswer`; nothing is typed, because the server rolls the new d20 (see Answer above), and the die drawn is `sides` (a d20 when the server sends none).
+  The log writes the rule's reroll as "Sorte Teimosa: 2 → 14 · 1d20 (14) + 5 = 19", the dice a floor raised as "2d10 (1 → 2, 7) = 9" with "Chama Insistente: o 1 contou como 2.", and a d20 a feature raised as "d20: 3 → 8 (Vontade de Ferro) + 2 = 10", each only where the server sent the faces and the `*_source_name`.
+  The live stream (`WatchGameSession`) carries none of the messages that get `*_source_name`: its events are hints, so the web reads the names from the unary responses only.
+

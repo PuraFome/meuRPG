@@ -627,7 +627,8 @@ Members read the campaign's content, except creatures (below); only the master w
     Answering yes spends the uses and rolls a new d20 that stands, even when it is another low face; answering no spends nothing.
     It applies to weapon and spell attack rolls, to the scene check, the group check, the saving throw of an effect and the concentration save.
     It never applies to a contest (a grapple, a shove, an escape), Hide, the Counterspell check, a death save, the initiative, a trap search or a puzzle hint.
-    The app has no screen for the question, so it does not ask: every roll stands as rolled and nothing is held or spent.
+    The question is on: the app asks on those rolls, and the roll waits for the answer.
+    The player reads "Tirou 2: rolar de novo?" with the name of the feature, "Rolar de novo" and "Ficar com o 2"; the master reads it in the roller's row and may answer for the roller after ten seconds.
     The question is for the roller's player and the master, as Lucky's is (RN-35).
   - **Lucky.** A roll that asks the halfling's Lucky question is not offered the reroll, so the two never meet in one roll.
   - **Damage.** The app rolls the damage dice again by itself and never asks.

@@ -627,7 +627,8 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
     Responder sim gasta os usos e rola um novo d20 que vale, mesmo se for outra face baixa; responder não não gasta nada.
     Vale para jogadas de ataque com arma e com magia, para o teste de cena, o teste em grupo, o teste de resistência de um efeito e o teste de concentração.
     Nunca vale para uma disputa (agarrar, empurrar, escapar), Esconder-se, o teste do Contramágica, um teste contra a morte, a iniciativa, uma busca por armadilha ou uma dica de enigma.
-    O app não tem tela para a pergunta, então ele não pergunta: toda jogada vale como foi rolada e nada fica retido nem é gasto.
+    A pergunta está ligada: o app pergunta nessas jogadas, e a jogada espera a resposta.
+    O jogador lê "Tirou 2: rolar de novo?" com o nome da característica, "Rolar de novo" e "Ficar com o 2"; o mestre a lê na linha de quem rolou e pode responder por essa pessoa depois de dez segundos.
     A pergunta é do jogador da rolagem e do mestre, como a do Sortudo (RN-35).
   - **Sortudo.** Uma jogada que faz a pergunta do Sortudo do halfling não recebe a de rolar de novo, então as duas nunca se encontram numa jogada.
   - **Dano.** O app rola os dados de dano de novo sozinho e nunca pergunta.

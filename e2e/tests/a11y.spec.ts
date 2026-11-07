@@ -28,6 +28,7 @@ import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createChar
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
+import { rerollTable } from './reroll-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
@@ -7578,6 +7579,88 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
 test('o painel de perguntas pendentes fora do combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@MR-015', '@RN-35'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanHeldPanelScreens(browser, 'dark', 390);
+});
+
+/** The question of a table feature's reroll (issue #573; R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
+ * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. The roller answers first, so the
+ * scans that need the master's buttons wait until they are enabled, never for a fixed time. */
+async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done, swing } = await rerollTable(browser, `Acessibilidade rolar de novo ${Date.now()}`, { colorScheme, playerWidth: width, masterWidth: width });
+  try {
+    await swing(2);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    const asked = p.getByRole('heading', { name: 'Tirou 2: rolar de novo?' });
+    await expect(asked).toBeVisible();
+    await expect(p.getByText(/Sorte Teimosa: você rola este d20 de novo/)).toBeVisible();
+    await expectScreenPasses(p, `Pergunta de rolar de novo, a do jogador ${where}`);
+
+    // The master's card: while the roller answers first the buttons wait; then they are his.
+    const question = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ });
+    const keep = question.getByRole('button', { name: 'Ficar com o 2' });
+    await expect(question.getByRole('button', { name: 'Rolar de novo' })).toBeVisible();
+    if (await keep.isDisabled()) {
+      await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre espera o jogador ${where}`);
+    }
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await expect(question.getByText('O app rola o novo d20; não há resultado para digitar.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre pode responder ${where}`);
+
+    // The player's answer on its way: the spinner says the d20 is being rolled.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await p.route('**/meurpg.play.v1.ResourceService/AnswerHeldRoll', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await p.getByRole('button', { name: 'Rolar de novo' }).click();
+    await expect(p.getByText('Rolando o d20 de novo…')).toBeVisible();
+    await expectScreenPasses(p, `Pergunta de rolar de novo, rolando o d20 ${where}`);
+    release();
+    await expect(asked).toBeHidden();
+    await p.unroute('**/meurpg.play.v1.ResourceService/AnswerHeldRoll');
+    await expect(m.getByText('Vex respondeu.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o jogador respondeu ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+/** The other way round: the roller does not answer and the master does, so the player reads that the master answered for them. */
+async function scanRerollMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done, swing } = await rerollTable(browser, `Acessibilidade rolar de novo mestre ${Date.now()}`, { colorScheme, playerWidth: width, masterWidth: width });
+  try {
+    await swing(2);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.getByRole('heading', { name: 'Tirou 2: rolar de novo?' })).toBeVisible();
+    const keep = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ }).getByRole('button', { name: 'Ficar com o 2' });
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await keep.click();
+    await expect(m.getByText('Você respondeu por Vex: ficou com o 2.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre respondeu ${where}`);
+    await expect(p.getByText('O mestre respondeu por você.')).toBeVisible();
+    await expectScreenPasses(p, `Pergunta de rolar de novo, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('a pergunta de rolar de novo passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollQuestionScreens(browser, 'light', 390);
+});
+
+test('a pergunta de rolar de novo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollQuestionScreens(browser, 'dark', 390);
+});
+
+test('a pergunta de rolar de novo respondida pelo mestre passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollMasterAnswers(browser, 'light', 390);
 });
 
 /** The rage (PM-07): the chip on the order and the sheet, the damage with its resistance step on the

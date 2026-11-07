@@ -526,10 +526,9 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
-	// D20Rerolls lets a d20 be held for "rolar de novo?" when a reroll rule covers it (held_reroll.go). False by default
-	// and not set by cmd/api: the web client has no screen for the question (an unknown case of the offer renders the
-	// die's prompt with zero sides, held-roll-prompt.ts and held-text.ts), so the server must not hold a roll for it.
-	// With it off the roll settles as if the player declined: nothing is held, nothing is spent.
+	// D20Rerolls lets a d20 be held for "rolar de novo?" when a reroll rule covers it (held_reroll.go). cmd/api turns it
+	// on: the web answers the question (held-roll-prompt, held-question). False in a Config that does not set it, so a
+	// test can turn it off: the roll then settles as if the player declined, with nothing held or spent.
 	D20Rerolls bool
 }
 
