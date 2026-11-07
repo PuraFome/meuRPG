@@ -899,7 +899,10 @@ O jogador lê a espera e depois um teste que passou ou falhou, nunca a rolagem, 
 Uma criatura sem a característica ou sem uso sobrando é rolada na hora.
 A característica não é oferecida em nenhum outro teste de resistência: o de uma armadilha, Expulsar Mortos-Vivos, Repreensão Infernal ou uma manobra de provocação.
 Um monstro com a reação Aparar (Capitão Bandido, Erínia, Gladiador, Cavaleiro, Marilith, Nobre) pode somar 2 a 5 à sua classe de armadura contra um ataque corpo a corpo com arma que o acertaria (RN-31).
-O mestre lê a oferta e responde pela criatura; o jogador lê só a espera, depois um acerto ou erro comum, nunca a reação, o bônus nem a classe de armadura (RN-20).
+O servidor decide o Aparar sozinho, sem janela, para que uma espera nunca diga aos jogadores quais NPCs têm a reação (RN-10).
+Quando o bônus transforma um acerto em erro, é um erro, e os jogadores leem um erro mais a linha "<nome> aparou o ataque.", sem número, quando o mestre não escondeu deles nem a criatura nem o atacante.
+Quando não transformaria, nada muda e nada espera.
+O mestre lê os números no registro e pode pôr uma criatura em "Perguntar" para responder por ela numa janela; o jogador nunca lê o modo, o bônus nem a classe de armadura (RN-20).
 As outras reações dele (Dividir, Grito, Pegar Pedra, Máscara Inquietante...) são texto na ficha da criatura que o app não resolve.
 Uma criatura com ações lendárias (SRD 5.1) tem 3 por rodada, como o SRD dá a toda criatura lendária.
 Elas são só do mestre e voltam no começo do turno da própria criatura.
@@ -973,12 +976,13 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Lenta (monge 4) | O monge em queda tira 5 vezes o nível dele do próprio dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
-| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, respondida pelo mestre pela criatura. |
+| Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, decidido pelo servidor sem janela (uma janela só para o mestre em "Perguntar"). |
 | Resistência Lendária | A magia de um jogador com teste de resistência, ou um efeito de acerto que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). A área de uma magia que pega essa criatura pede o teste dela só ao mestre. |
 
-O Aparar de um monstro é um por rodada, e a rolagem guardada é comparada com a nova classe de armadura.
+O Aparar de um monstro é um por rodada, e a rolagem é comparada com a nova classe de armadura.
 Um acerto que não a alcança mais vira erro.
-Não abre janela quando a criatura não pode reagir, não vê o atacante ou já reagiu na rodada, nem para um ataque à distância ou de magia ou um acerto crítico.
+O servidor só apara quando isso muda o resultado; não faz nada quando a criatura não pode reagir, não vê o atacante ou já reagiu na rodada, nem para um ataque à distância ou de magia ou um acerto crítico.
+Em "Perguntar" abre uma janela para o mestre a cada acerto corpo a corpo que não é crítico, também quando o bônus não muda nada.
 O reator rola no app, digita um dado físico ou deixa a jogada para o mestre.
 A ação em espera aguarda até a janela ser respondida, e é descartada se não puder mais acontecer; só o mestre lê isso.
 O turno espera pelas janelas abertas.

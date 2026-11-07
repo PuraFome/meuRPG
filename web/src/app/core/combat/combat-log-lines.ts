@@ -10,6 +10,7 @@ import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
 import { luckyText } from './lucky';
 import { castCountedNotes, castTreatedNotes, rerollNote } from './combat-log-dice';
+import { legendaryOptionName } from './legendary-card';
 import {
   actionText,
   channelNotes,
@@ -303,7 +304,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   // his alone, with the creature, the option as the stat block names it (SRD, English) and the cost.
   [
     CombatLogKind.LEGENDARY_SPENT,
-    ({ e, base }) => {
+    ({ e, base, ctx }) => {
       const spent = e.legendarySpent;
       if (!spent) {
         return null;
@@ -313,7 +314,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         ...base,
         hidden: true,
         icon: 'bolt',
-        text: `gastou ${spent.cost} ${actions}: ${spent.optionName}`,
+        text: `gastou ${spent.cost} ${actions}: ${legendaryOptionName(ctx.legendaryNames, e.actorId, spent.optionName) ?? spent.optionName}`,
       };
     },
   ],
