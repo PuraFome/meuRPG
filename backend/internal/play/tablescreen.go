@@ -63,7 +63,9 @@ func (s *Service) GetTableScreen(
 	choice := tvChoiceOf(session)
 	pick := resolveStage(choice, facts)
 	stage := &playv1.TableScreenStage{Kind: pick.Kind}
-	projectStageBody(stage)
+	if err := s.projectStageBody(ctx, session, stage); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&playv1.GetTableScreenResponse{
 		ChoiceRevision: session.TvChoiceRevision,
 		Choice:         &playv1.TableScreenChoice{Mirror: choice.Mirror, Pin: choice.Pin},
@@ -74,15 +76,6 @@ func (s *Service) GetTableScreen(
 		Party:          party,
 		Options:        tvOptions(facts),
 	}), nil
-}
-
-// projectStageBody sets the content of the stage the kind asks for. Only the idle screen has one so
-// far: it carries nothing. The other kinds leave the body unset until their projectors are written;
-// each is a list of field copies from the reads a player with no character makes.
-func projectStageBody(stage *playv1.TableScreenStage) {
-	if stage.GetKind() == playv1.TableScreenKind_TABLE_SCREEN_KIND_IDLE {
-		stage.Body = &playv1.TableScreenStage_Idle{Idle: &playv1.TvIdle{}}
-	}
 }
 
 // partyNames are the names of the living player characters: nobody dead, no NPC, no character waiting
