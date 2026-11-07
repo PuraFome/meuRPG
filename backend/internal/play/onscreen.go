@@ -327,7 +327,7 @@ func (s *Service) ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID
 // does nothing. It implements maps.LiveSession; ev must not be changed
 // after the call.
 func (s *Service) Publish(campaignID string, players bool, ev *playv1.WatchGameSessionResponse) {
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true, Everyone: players}, Message: ev})
+	s.tellMembers(campaignID, players, ev)
 }
 
 // PublishToUsers sends ev to the streams of those of userIDs who watch the
