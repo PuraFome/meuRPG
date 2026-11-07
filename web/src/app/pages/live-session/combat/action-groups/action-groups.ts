@@ -27,6 +27,7 @@ import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
   attackName,
+  attackMarksOf,
   attackTagsOf,
   beamsLeftLine,
   bonusAttackLine,
@@ -442,6 +443,7 @@ export class ActionGroups {
   }
 
   protected readonly attackTags = attackTagsOf;
+  protected readonly attackMarks = attackMarksOf;
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly castRef = castRefOf;

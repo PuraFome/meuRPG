@@ -1,14 +1,13 @@
 import { signal } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { combatErrorMessage, encounterBlocked } from '../../core/combat/combat-errors';
+import type { GearVm, MarksVm } from '../../core/characters/gear';
 import type { GearToggle } from '../../shared/gear-list/gear-list';
-import type {
-  CharacterSheetSource,
-  CharacterSheetVm,
-  FullSheetVm,
-  WeaponMarkVm,
-} from './character-sheet.types';
+import type { WeaponMarksData } from './weapon-marks/weapon-marks-sheet';
+import { marksOf } from './character-sheet-marks';
+import type { CharacterSheetSource, CharacterSheetVm, FullSheetVm } from './character-sheet.types';
 
 /** What the equipping needs of the page that owns it. */
 export interface SheetEquipHost {
@@ -24,6 +23,8 @@ export interface SheetEquipHost {
   readonly vm: () => CharacterSheetVm | null;
   /** Shows the answer of a write as the newest word on its character; `false` when the page left it. */
   readonly apply: (characterId: string, vm: CharacterSheetVm) => boolean;
+  /** Opens the sheet of a weapon's marks; it answers `true` when they were saved. */
+  readonly openMarksSheet: (data: WeaponMarksData) => Observable<boolean | undefined>;
 }
 
 /**
@@ -38,23 +39,47 @@ export class SheetEquip {
   /** The sheet could not be read after a change: "Tentar de novo" asks again. */
   readonly readFailed = signal(false);
 
-  /** "Marcar as armas" is open in place of the button. */
-  readonly marking = signal(false);
-  readonly marksSaving = signal(false);
-  readonly marksError = signal('');
+  /** What the last save of marks said ("Marcas salvas."), for the live region under the list. */
   readonly marksNotice = signal('');
 
   constructor(private readonly host: SheetEquipHost) {}
 
-  /** Saves the marks over the whole stored sheet, at the revision the page holds. */
-  async saveMarks(marks: readonly WeaponMarkVm[]): Promise<void> {
+  /** The weapon's "⋮": its marks in a sheet; "Salvar marcas" saves them over the whole stored sheet, at the revision the page holds. */
+  openMarks(piece: GearVm): void {
     const vm = this.host.vm();
-    const campaignId = this.host.campaignId();
-    if (!vm?.fullSheet || !campaignId || this.marksSaving()) {
+    if (!vm?.fullSheet) {
       return;
     }
-    this.marksSaving.set(true);
-    this.marksError.set('');
+    this.marksNotice.set('');
+    const current =
+      vm.sheet.kind === 'full'
+        ? vm.sheet.weaponMarks.find((m) => m.weaponKey === piece.key)
+        : undefined;
+    this.host
+      .openMarksSheet({
+        weaponName: piece.namePt,
+        characterName: vm.name,
+        isMaster: vm.isMaster,
+        marks: current ?? piece.marks ?? { silvered: false, adamantine: false, magical: false },
+        save: (marks) => this.saveMarks(piece.key, marks),
+      })
+      .subscribe((saved) => {
+        if (saved) {
+          this.marksNotice.set('Marcas salvas.');
+        }
+      });
+  }
+
+  /** Saves one weapon's marks over the whole stored sheet; the answer is the refusal in words, or '' when it is saved. */
+  private async saveMarks(weaponKey: string, marks: MarksVm): Promise<string> {
+    const vm = this.host.vm();
+    const campaignId = this.host.campaignId();
+    if (!vm?.fullSheet || !campaignId) {
+      return 'A ficha não está aberta.';
+    }
+    const others = vm.fullSheet.weaponMarks.filter((m) => m.weaponKey !== weaponKey);
+    const mine =
+      marks.silvered || marks.adamantine || marks.magical ? [{ weaponKey, ...marks }] : [];
     try {
       const saved = await this.host.source.setWeaponMarks(
         campaignId,
@@ -62,28 +87,13 @@ export class SheetEquip {
         vm.revision,
         vm.name,
         vm.fullSheet,
-        marks,
+        [...others.map((m) => ({ weaponKey: m.weaponKey, ...marksOf(m) })), ...mine],
       );
-      this.marking.set(false);
-      if (this.host.apply(vm.id, saved)) {
-        this.marksNotice.set('Marcas salvas.');
-      }
+      this.host.apply(vm.id, saved);
+      return '';
     } catch (err) {
-      this.marksError.set(describeCharacterError(err));
-    } finally {
-      this.marksSaving.set(false);
+      return describeCharacterError(err);
     }
-  }
-
-  openMarks(): void {
-    this.marksNotice.set('');
-    this.marksError.set('');
-    this.marking.set(true);
-  }
-
-  closeMarks(): void {
-    this.marking.set(false);
-    this.marksError.set('');
   }
 
   /** The tab is shown again: the sheet is read again, so a change made from another tab or by the master is not left

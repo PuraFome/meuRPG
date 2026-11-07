@@ -7991,7 +7991,7 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
-/** The weapon marks (#585): the tags on the gear and attacks, "Marcar as armas" for the owner and the master, never for another player. */
+/** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
@@ -8021,26 +8021,29 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await expect(equipment.getByText('Prateada')).toBeVisible();
     await expect(equipment.getByText('Adamantina')).toBeVisible();
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
-    // The table is in play, so the owner's sheet is locked: no grid for the owner (the master edits it).
-    await expect(equipment.getByRole('button', { name: 'Marcar as armas' })).toHaveCount(0);
+    // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
+    await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
 
-    // The master edits at any time: the grid, then a saved mark.
+    // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
-    await masterEquipment.getByRole('button', { name: 'Marcar as armas' }).click();
-    const grid = masterEquipment.getByRole('form', { name: 'Marcar as armas' });
-    await expect(grid.getByRole('group', { name: 'Espada longa' }).getByRole('checkbox', { name: /Prateada/ })).toBeChecked();
-    await expectScreenPasses(m, `Ficha do mestre, Marcar as armas ${where}`);
-    await grid.getByRole('group', { name: 'Maça' }).getByRole('checkbox', { name: /Mágica/ }).check();
-    await grid.getByRole('button', { name: 'Salvar marcas' }).click();
+    await masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
+    await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
+    await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
+    await expectScreenPasses(m, `Ficha do mestre, Marcas da arma ${where}`);
+    await sheet.getByRole('checkbox', { name: /^Adamantina/ }).check();
+    await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
+    await expect(sheet).toHaveCount(0);
     await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
-    await expect(masterEquipment.getByRole('button', { name: 'Marcar as armas' })).toBeFocused();
+    await expect(masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' })).toBeFocused();
 
     // Another player never sees the grid, nor the marks.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
     await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
-    await expect(outsider.page.getByRole('button', { name: 'Marcar as armas' })).toHaveCount(0);
-    await expect(outsider.page.getByRole('form', { name: 'Marcar as armas' })).toHaveCount(0);
+    await expect(outsider.page.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
     await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
     await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);
 

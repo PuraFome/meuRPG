@@ -51,6 +51,10 @@ export class GearList {
   readonly gear = input.required<readonly GearVm[]>();
   /** Whether the buttons exist: false for a reader who may not change the gear. */
   readonly canChange = input(true);
+  /** Whether each weapon has its "⋮" for its marks (the owner while the sheet is editable, the master always). */
+  readonly canMark = input(false);
+  /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
+  readonly marksOpened = output<GearVm>();
   /** The piece being saved: its button waits, the others stay. */
   readonly busyKey = input<string | null>(null);
   /** The word a button carries beside its verb (the cost of the change in a combat: "grátis", "ação"); empty for none. */

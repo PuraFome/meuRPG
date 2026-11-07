@@ -6,8 +6,10 @@
     [gear]="s.gear"
     [armorClass]="s.armorClass"
     [canChange]="canEquip()"
+    [canMark]="canMark()"
     [busyKey]="equipBusyKey()"
     (toggled)="gearToggled.emit($event)"
+    (marksOpened)="marksOpened.emit($event)"
   />
   @if (s.shieldIdle) {
     <p class="gear__note mr-muted">O escudo não vale nada com uma arma de duas mãos equipada: guarde a arma.</p>
@@ -21,21 +23,8 @@
       }
     </p>
   }
-  @if (canMark() && weapons().length) {
-    @if (marking()) {
-      <app-weapon-marks
-        [weapons]="weapons()"
-        [marks]="s.weaponMarks"
-        [saving]="marksSaving()"
-        [error]="marksError()"
-        (saved)="marksSaved.emit($event)"
-        (cancelled)="marksClosed.emit()"
-      />
-    } @else {
-      <button matButton="outlined" type="button" class="gear__marks" data-marks-open (click)="marksOpened.emit()">
-        Marcar as armas
-      </button>
-    }
+  @if (!canMark() && hasWeapons() && canEquip()) {
+    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Marcas das armas: depois da trava, só o mestre muda.</p>
   }
   <p class="gear__notice" role="status">{{ marksNotice() }}</p>
   <ul class="gear">
