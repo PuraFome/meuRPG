@@ -108,11 +108,12 @@
   }
 }
 
-// Decline first, then the primary, side by side in two equal columns from 390 px up (the 1280 px side panel is about 298 px
-// wide inside its card); a long label wraps inside its button, which is 48 px high (44 px from 768 px).
+// Decline first, then the primary: side by side when each column fits "Usar Resistência Lendária" on one line, else one
+// under the other (the 1280 px side panel is about 298 px wide inside its card, board 557-03). A label that still wraps
+// grows its button, which is at least 48 px high (44 px from 768 px).
 .offer__btns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr));
   gap: 10px;
 }
 
@@ -124,6 +125,10 @@
   width: 100%;
   white-space: normal;
   line-height: 18px;
+  // The label may wrap to a second or third line, and the button grows with it: the token is the least height.
+  height: auto;
+  min-height: var(--mat-button-filled-container-height);
+  padding-block: var(--mr-space-2, 8px);
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;

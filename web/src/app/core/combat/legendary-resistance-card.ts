@@ -84,7 +84,7 @@ export function legendaryResistanceCard(
     rows: offers.map((o) => ({
       combatantId: o.combatantId,
       label: o.label,
-      failed: `${o.label} falhou: ${rollText(o.d20, o.total, o.treatedAs)} contra CD ${o.dc}`,
+      failed: `${o.label} falhou${o.d20 === 0 ? ' sem rolar' : `: ${rollText(o.d20, o.total, o.treatedAs)}`} contra CD ${o.dc}`,
       checkboxLabel: 'Usar Resistência Lendária',
       line: one
         ? `Resistência Lendária: restam ${o.usesLeft} de ${o.usesPerDay} hoje · usar gasta 1`

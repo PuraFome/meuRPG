@@ -197,6 +197,10 @@
   width: 100%;
   white-space: normal;
   line-height: 18px;
+  // The label may wrap to a second or third line, and the button grows with it: the token is the least height.
+  height: auto;
+  min-height: var(--mat-button-filled-container-height);
+  padding-block: var(--mr-space-2, 8px);
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;

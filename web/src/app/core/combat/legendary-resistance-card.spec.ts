@@ -72,6 +72,14 @@ describe('the Legendary Resistance window', () => {
     );
   });
 
+  it('says an automatic failure (d20 and total 0: stunned, paralyzed) without a roll, and keeps a real roll of 0 or less', () => {
+    const auto = legendaryResistanceCard(window([offer('d', 'Dragão vermelho adulto', 0, 0)]));
+    expect(auto?.rows[0].failed).toBe('Dragão vermelho adulto falhou sem rolar contra CD 15');
+    // A penalty can take a real total to 0 or below, but the d20 is still a face that came up.
+    const penalty = legendaryResistanceCard(window([offer('d', 'Dragão vermelho adulto', 2, -1)]));
+    expect(penalty?.rows[0].failed).toContain('d20 2');
+  });
+
   it('has no checkbox for one creature: a plain line and a primary that uses it', () => {
     const one = legendaryResistanceCard(window([offer('d', 'Dragão vermelho adulto', 4, 10)]));
     if (!one) {
