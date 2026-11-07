@@ -266,7 +266,7 @@ export function readOfEntry(
         nameOf,
         (key) => catalog?.subclassLevelOf(key) ?? 0,
         parentViewOf(entries),
-        catalog?.offeredByName,
+        catalog?.offeredByRead,
         menu ? (o) => optionSummary(featureToDraft(o), menu, true) : undefined,
       )
     : null;
