@@ -1,13 +1,13 @@
 package play
 
 import (
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Undoing a swap of gear in a combat: the swap is an event of its own, so the master's
