@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 45 stories: 43 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
+The MVP has 46 stories: 44 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
 Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass.
@@ -68,6 +68,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-053](#mr-053-the-master-acts-for-a-players-character) | Combat | MVP |
 | [MR-054](#mr-054-use-a-creatures-action-from-its-turn) | Combat | MVP |
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
+| [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1700,6 +1701,38 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-054](#mr-054-use-a-creatures-action-from-its-turn), [RN-40](rules.md#rn-40-a-rider-on-a-creatures-hit).
+
+### MR-056: Show the table on a screen
+
+**As a** game master, **I want** to open the table on a screen the whole table looks at (a TV), and choose what it shows, **so that** everyone follows the map, the combat, the scene or the image without leaning over a phone.
+
+- Priority: MVP
+- Rules: RN-10, RN-20, RN-36
+- Modules: play, maps
+
+#### Acceptance criteria
+- **Given** an open session, **when** the master taps "Abrir a Tela da mesa", **then** the screen opens in a new tab of the master's browser, to drag to the TV; **given** nothing is on the table, **then** it reads "Nada à mostra ainda" with the names of the characters at the table.
+- **Given** the TV tab, **then** it shows only what every player may read (RN-10): the map as the group sees it, the order with a word of state instead of hit points (RN-20), the lines of the log every player reads, the free rolls made for the table, the scene and the image shown to the whole table. It never shows hit points, armor class, a hidden NPC, the master's notes, hooks, clues and DCs, a roll "Só eu", or the conversation (RN-36).
+- **Given** "Espelhar o que eu mostro" is chosen (it is the default), **then** the TV shows the first that exists: an image shown to the whole table, the combat, a scene open to the whole table, the map, the waiting screen; and it follows each change the master makes, without a reload.
+- **Given** the master picks one row of "Fixar" (the map, an image, the scene, the combat or the waiting screen), **then** the TV shows that item whatever else is on the table, and the panel says "Na TV agora" with its name and "fixa".
+- **Given** the table has no combat, no image, no scene open to all or no map the TV can show, **then** the row of "Fixar" for it is dashed, cannot be picked and says why ("Nenhum combate agora.", "Nenhuma imagem à mostra.", "Nenhuma cena aberta.", "A cena está aberta só para alguns.", "Nenhum mapa agora.", "Precisa da Visão do grupo (editor do mapa).").
+- **Given** a pinned item that ends (the combat is over, the scene closes, the image or the map leaves the table), **then** the TV goes to the waiting screen with a line that says so ("O combate acabou. A TV foi para a tela de espera."); **when** an item of that kind comes back, **then** the pin shows it again.
+- **Given** a map with the fog on and "Visão do grupo" off, **then** the TV shows the waiting screen with the line "O mapa tem névoa e a Visão do grupo está desligada, então a TV não o mostra."; **given** a combat on that map, **then** the place of the map reads "O mapa fica na tela de cada um." and the order, the rolls and the log stay; **given** "Visão do grupo" on, **then** the TV shows the squares the group sees or remembers, and never the map's whole picture.
+- **Given** a scene open only to some players, **then** the TV does not show it and the panel says so; the same for an image meant for chosen players.
+- **Given** a player, a pending member or a stranger, **when** they open the address of the TV or ask the server for it, **then** the player reads the card "Só o mestre abre a Tela da mesa." and nobody receives anything of the campaign; the server answers a stranger as it does for a campaign that does not exist.
+- **Given** the master taps "Copiar o link", **then** what is copied is the address of the tab and nothing else: no query, no key, no token. The tab signs in as the master, and the server decides what it shows on every read.
+- **Given** the TV loses its connection, **then** after a few seconds it says "Reconectando…" and that it may be late, and after a minute it hides what it showed and says "Sem conexão desde 21:14"; **when** the connection returns, **then** it comes back by itself. The master's panel says "Sem conexão desde 21:14." too.
+- **Given** the session ends, **then** the TV says "A sessão 3 terminou às 23:40." and that the master may close the tab; **given** no session is open, it says "Não há sessão aberta.".
+- **Given** a TV from 900 px wide, **then** the screen fits the window with no page scroll, and draws only the rows that fit, with "+N" for the ones left out; **given** a phone, **then** it is one column that scrolls.
+- **Given** the master's session screen, **then** the panel "Tela da mesa" opens from a button in the bar (from 1024 px) or from a line of the "Sessão" menu (below it), shows whether a TV is "Aberta", "Fechada" or "Sem conexão", and fits one screen on a phone of 390 x 844 and on a laptop of 1280 x 800.
+
+#### In the app
+- A TV tab is a page of its own, without the app's top bar and footer, that asks nothing of the session's data: it reads one service, which answers only what the TV may show. See [Design](../design/session.md#the-table-screen-tela-da-mesa) and [The table screen](../architecture/play/table-screen.md).
+- The panel stores nothing in the browser; the choice is stored with the session, so a reload of the TV or of the master's page keeps it.
+- A screen for a player's own device, to watch the table from home, is not part of this story ([#764](https://github.com/PuraFome/meuRPG/issues/764)).
+
+#### Related
+- [MR-012](#mr-012-follow-the-session), [MR-028](#mr-028-show-an-image-to-the-players), [MR-036](#mr-036-fog-of-war-by-sight), [RN-10](rules.md#rn-10-map-without-spoilers).
 
 ## Priority: MVP (prerequisite)
 
