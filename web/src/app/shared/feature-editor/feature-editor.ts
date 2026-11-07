@@ -46,7 +46,7 @@ export class FeatureEditor {
   /**
    * "Opções para escolher": a class or subclass feature may carry a list of options the player picks (a table's maneuvers),
    * each edited here as a feature of its own (name, text, effects). A feature that has options needs a "Uma opção de uma
-   * lista do SRD" choice, whose empty list offers them.
+   * lista" choice, whose empty list offers them.
    */
   readonly allowOptions = input(false);
   /** The options are a race or subrace trait's one-time choice of one, picked at creation; no "Escolha" effect offers them. */

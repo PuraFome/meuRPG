@@ -156,7 +156,7 @@ export function menuResponse(): GetEffectMenuResponse {
         name: 'choice_kinds',
         values: [
           { key: 'skill', namePt: 'Perícias' },
-          { key: 'feature', namePt: 'Uma opção de uma lista do SRD' },
+          { key: 'feature', namePt: 'Uma opção de uma lista' },
           { key: 'feat', namePt: 'Talentos' },
         ],
       },
