@@ -1,12 +1,16 @@
 package play
 
 import (
+	"context"
+	"time"
+
 	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Undoing a swap of gear in a combat (#787): the swap is an event of its own, so the master's
@@ -180,5 +184,101 @@ func TestUndoTheSwapBumpsTheEncounterRevision(t *testing.T) {
 	a.mustUndo(t, e)
 	if after := rev(); after <= before {
 		t.Errorf("revision %d -> %d, want it to move", before, after)
+	}
+}
+
+// The undo locks the session and then the character (RestoreEquipped); SetEquipped locks the
+// character and then the session. When they cross, the database aborts one with 40P01 and
+// db.InTx runs the undo again: the undo still succeeds, and the evidence of the retry is that
+// the second attempt waits for the session's lock, which the first one took without waiting.
+func TestUndoOfASwapCrossingASetEquippedTakesTurns(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	e = a.passTo(t, e, "Reator")
+	a.mustSwap(t, a.ana, a.pens, daggerKey, false)
+	id := a.lastEventID(t, e)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	observer := dbtest.SideConnection(t, a.h.pool)
+	deadlocks := func() int64 {
+		var n int64
+		if err := observer.QueryRow(ctx, `SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()`).Scan(&n); err != nil {
+			t.Fatalf("read the deadlock counter: %v", err)
+		}
+		return n
+	}
+	waiting := func(like string) int {
+		n, err := dbtest.WaitingStatements(ctx, observer, like)
+		if err != nil {
+			t.Fatalf("look for waiting statements: %v", err)
+		}
+		return n
+	}
+	waitFor := func(what, like string) {
+		t.Helper()
+		start := time.Now()
+		for waiting(like) < 1 {
+			if ctx.Err() != nil || time.Since(start) > 15*time.Second {
+				rows, _ := observer.Query(context.Background(), `SELECT pid, coalesce(wait_event_type, ''), left(query, 160) FROM pg_stat_activity WHERE datname = current_database() AND state <> 'idle'`)
+				for rows != nil && rows.Next() {
+					var pid int
+					var w, q string
+					_ = rows.Scan(&pid, &w, &q)
+					t.Logf("active: %d [%s] %s", pid, w, q)
+				}
+				t.Fatalf("%s never waited", what)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	before := deadlocks()
+
+	// SetEquipped's side: the character first.
+	owner, err := dbtest.SideConnection(t, a.h.pool).Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	defer owner.Rollback(ctx) //nolint:errcheck // rolled back unless committed
+	if _, err := owner.Exec(ctx, `SELECT id FROM characters WHERE id = $1 FOR UPDATE`, a.pens.GetId()); err != nil {
+		t.Fatalf("lock the character: %v", err)
+	}
+	// The undo takes the session and stops at the character: its first write to the combatant
+	// asks for a share of the character's row (the foreign key), which the lock above refuses.
+	undone := make(chan error, 1)
+	go func() { undone <- a.undo(t, a.master, e, id) }()
+	waitFor("the undo", `%UPDATE combatants%`)
+	// SetEquipped's side goes on to the session: the cycle.
+	locked := make(chan error, 1)
+	go func() {
+		_, err := owner.Exec(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL FOR UPDATE`, a.campaignID)
+		locked <- err
+	}()
+	// The database aborts the undo (the older wait): SetEquipped's side gets the session...
+	if err := <-locked; err != nil {
+		t.Fatalf("the owner's side was the one aborted: %v", err)
+	}
+	// ...and the second attempt of the undo now waits for the session's lock.
+	waitFor("the retry of the undo", `%FROM game_sessions%FOR UPDATE%`)
+	select {
+	case err := <-undone:
+		t.Fatalf("UndoLastAction() returned while the session was held: %v", err)
+	default:
+	}
+	if err := owner.Commit(ctx); err != nil {
+		t.Fatalf("commit the owner's side: %v", err)
+	}
+	if err := <-undone; err != nil {
+		t.Fatalf("UndoLastAction() after the retry error = %v", err)
+	}
+	if a.hasCarried(t, daggerKey) {
+		t.Error("the dagger is still stowed after the retried undo")
+	}
+	a.wantTurn(t, "after the retried undo", false, false)
+	deadline := time.Now().Add(10 * time.Second)
+	for deadlocks() <= before && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if got := deadlocks(); got <= before {
+		t.Errorf("deadlocks %d -> %d, want the database to have counted the 40P01", before, got)
 	}
 }
