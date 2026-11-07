@@ -318,7 +318,11 @@ The SRD's rows are shared, so a row is copied before it changes.
 A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
 An archived entry still applies to the sheets that have the class.
 Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt`, `.effects` and `.summon`.
-A class feature may carry a `summon` (`TableClassFeature.summon`) that brings creatures to every character that has the feature at its level, checked and cast as a [table feature's summon](#table-feature-summons); its `resource_key` is a resource the entry's own `resource` effects define (or one of its class, or an SRD one). A player reads only its `creature_keys`.
+A class feature may carry a `summon` (`TableClassFeature.summon`).
+It brings creatures to every character that has the feature at its level.
+It is checked and cast as a [table feature's summon](#table-feature-summons).
+Its `resource_key` is a resource the entry's own `resource` effects define, or one of its class or the SRD.
+A player reads only its `creature_keys`.
 
 ## Table creatures
 
@@ -638,7 +642,9 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 
 ## Table feature summons
 
-A `TableFeature` of a class, a subclass, a race trait or a background, and a `TableClassFeature` entry, may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
+A `TableFeature` of a class, a subclass, a race trait or a background, and a `TableClassFeature` entry, may carry a `summon` (`TableFeature.Summon`, a `TableSummon`).
+It has the same creatures, count and limits as a spell's summon.
+It is spent with a use of a resource instead of a slot.
 An option carries none (`value` at `.summon`).
 The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
 It is not a spell of the holder's list: a sheet cannot list it.
@@ -658,7 +664,8 @@ If another entry already has that key, the feature is refused at `.key`, and the
 `slot()` is 0 in the count of a feature's summon and in the formulas of its creatures.
 How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
 A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
-Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`; for a class feature entry, `TestATableClassFeatureSummonsThroughTheSpellChecks` and `TestATableClassFeatureSummonIsRefusedAtTheFieldThatIsWrong`.
+Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.
+Tests for a class feature entry: `TestATableClassFeatureSummonsThroughTheSpellChecks` and `TestATableClassFeatureSummonIsRefusedAtTheFieldThatIsWrong`.
 
 ## Entries the rules refuse on reading
 

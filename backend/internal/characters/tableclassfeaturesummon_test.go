@@ -1,7 +1,6 @@
 package characters
 
 import (
-	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -12,7 +11,7 @@ import (
 // The summon of a table class feature (#578), as the table content RPCs take and show it. These tests need the
 // database (MEURPG_TEST_DATABASE_URL).
 
-func packCall() *rulesv1.TableClassFeature {
+func classFeatureSummonBody() *rulesv1.TableClassFeature {
 	return &rulesv1.TableClassFeature{
 		NamePt: "Chamado da Matilha", DescPt: []string{"O druida chama a matilha."}, ClassKey: "class:druid", Level: 2,
 		Effects: []*rulesv1.TableEffect{{Type: "resource", Resource: "chamados", Max: "2", Recharge: "long_rest"}},
@@ -23,7 +22,7 @@ func packCall() *rulesv1.TableClassFeature {
 func TestATableClassFeatureWithASummonIsAcceptedAndAPlayerReadsOnlyTheCreatures(t *testing.T) {
 	t.Parallel()
 	tb := newChoiceTable(t)
-	key := tb.master.addEntry(t, tb.campaign, packCall()).GetKey()
+	key := tb.master.addEntry(t, tb.campaign, classFeatureSummonBody()).GetKey()
 	if s := tb.master.entries(t, tb.campaign)[key].GetTableClassFeature().GetSummon(); s.GetCount() != "1 + prof()" || s.GetResourceKey() != "chamados" || s.GetMaxLive() != 4 {
 		t.Errorf("the master reads summon = %v, want it whole", s)
 	}
@@ -50,19 +49,33 @@ func TestATableClassFeatureSummonIsRefusedAtTheFieldThatIsWrong(t *testing.T) {
 		field string
 	}{
 		{"a resource the class does not define", func(f *rulesv1.TableClassFeature) { f.Summon.ResourceKey = "pontos" }, "table_class_feature.summon.resource_key"},
+		{"a creature that does not exist", func(f *rulesv1.TableClassFeature) { f.Summon.CreatureKeys = []string{"creature:fantasma@mesa"} }, "table_class_feature.summon.creature_keys[0]"},
 		{"a count nobody can read", func(f *rulesv1.TableClassFeature) { f.Summon.Count = "1 +" }, "table_class_feature.summon.count"},
 	} {
-		f := packCall()
+		f := classFeatureSummonBody()
 		tc.edit(f)
 		_, err := tb.master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(tb.campaign, f)))
 		found := false
 		for _, v := range violationsOfErr(t, err) {
-			found = found || strings.HasSuffix(v.GetField(), tc.field)
+			found = found || v.GetField() == tc.field
 		}
 		if !found {
 			t.Errorf("%s: no violation at %s in %v", tc.name, tc.field, err)
 		}
 	}
+}
+
+func TestADuplicateClassFeatureNameIsRefusedAtTheBodyFieldOfTheRequest(t *testing.T) {
+	t.Parallel()
+	tb := newChoiceTable(t)
+	tb.master.addEntry(t, tb.campaign, classFeatureSummonBody())
+	_, err := tb.master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(tb.campaign, classFeatureSummonBody())))
+	for _, v := range violationsOfErr(t, err) {
+		if v.GetField() == "table_class_feature.name_pt" && v.GetReason() == reasonDuplicateName {
+			return
+		}
+	}
+	t.Errorf("no duplicate_name violation at table_class_feature.name_pt in %v", err)
 }
 
 func TestAPlayerViewOfAClassFeatureSummonDropsTheCountAndTheUnheldCreatures(t *testing.T) {

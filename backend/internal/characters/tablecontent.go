@@ -182,8 +182,14 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
 
-// bodyField is the name of the body's field in a request, for violations.
-func bodyField(kind rulesv1.TableContentKind) string { return "table_" + kindPrefix(kind) }
+// bodyField is the name of the body's field in a request, for violations: "table_" and the kind's prefix, except
+// for a class feature, whose key prefix ("classfeature") is not the field's name ("table_class_feature").
+func bodyField(kind rulesv1.TableContentKind) string {
+	if kind == rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE {
+		return "table_class_feature"
+	}
+	return "table_" + kindPrefix(kind)
+}
 
 // entryRow is a stored entry with its body decoded.
 type entryRow struct {
@@ -760,7 +766,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 		return v
 	}
 	e := list[n]
-	v.Field = "table_" + strings.Replace(kindPrefix(e.kind), "classfeature", "class_feature", 1) + m[3] // the body's own name in the request
+	v.Field = bodyField(e.kind) + m[3]
 	if e.row.ContentKey != entry {
 		v.Key = e.row.ContentKey
 	}
