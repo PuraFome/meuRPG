@@ -253,7 +253,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableClassFeature:
 			o.ClassFeatures = append(o.ClassFeatures, rules.TableClassFeature{
 				TableEntry: te, DescPT: b.GetDescPt(), Class: b.GetClassKey(), Level: int(b.GetLevel()),
-				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()),
+				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()), Summon: tableSummonOf(b.GetSummon()),
 			})
 			idx["class_features"] = append(idx["class_features"], e)
 		case *rulesv1.TableCreature:
@@ -760,7 +760,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 		return v
 	}
 	e := list[n]
-	v.Field = "table_" + kindPrefix(e.kind) + m[3]
+	v.Field = "table_" + strings.Replace(kindPrefix(e.kind), "classfeature", "class_feature", 1) + m[3] // the body's own name in the request
 	if e.row.ContentKey != entry {
 		v.Key = e.row.ContentKey
 	}
@@ -1166,6 +1166,8 @@ func summons(body tableBody) bool {
 		return hasSummon(b.GetTraits())
 	case *rulesv1.TableBackground:
 		return b.GetFeature().GetSummon() != nil
+	case *rulesv1.TableClassFeature:
+		return b.GetSummon() != nil
 	}
 	return false
 }
@@ -1201,7 +1203,7 @@ func (v playerView) strip(body tableBody) {
 	case *rulesv1.TableOption:
 		v.stripOption(b)
 	case *rulesv1.TableClassFeature:
-		v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+		v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Summon: b.GetSummon()}})
 		if v.hidden(b.GetReplacesFeatureKey()) {
 			b.ReplacesFeatureKey = "" // a feature the players do not see is not named to them
 		}

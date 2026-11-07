@@ -554,6 +554,11 @@ message TableClassFeature {
   string replaces_feature_key = 5;
   // At most 20. A `choice` effect asks the player at the level, like any feature's.
   repeated TableEffect effects = 6;
+  // The creatures the class feature brings to every character that has it at its level, or unset. They are
+  // cast like a summoning spell, with a use of a resource the class feature defines with a `resource` effect
+  // (`summon.resource_key`) instead of a slot: the same options, checks, concentration, replacement and
+  // dismissal as TableFeature.summon.
+  TableSummon summon = 7;
 }
 
 // TableCreature is a creature the master adds as a table entry "creature:<slug>@mesa":
