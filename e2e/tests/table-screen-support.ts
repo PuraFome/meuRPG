@@ -152,10 +152,17 @@ export async function expectPanelFits(panel: Locator, where: string): Promise<vo
   expect(over, `the panel scrolls ${where}`).toEqual({ height: 0, width: 0 });
 }
 
-/** The TV page's own scroll: how far the document reaches past the window (`height` only counts where the TV must fit one screen). */
+/**
+ * How far the TV reaches past its window, in the document and in the page's own box: the app's root clips what the page overflows
+ * (the document measures 800 of 800 while the page is 3123 high), so the page's box is where an overflow shows.
+ */
 export function pageOverflow(tv: Page): Promise<{ height: number; width: number }> {
-  return tv.evaluate(() => ({
-    height: document.documentElement.scrollHeight - window.innerHeight,
-    width: document.documentElement.scrollWidth - window.innerWidth,
-  }));
+  return tv.evaluate(() => {
+    const root = document.documentElement;
+    const host = document.querySelector('app-table-screen-page');
+    return {
+      height: Math.max(root.scrollHeight - window.innerHeight, host ? host.scrollHeight - host.clientHeight : 0),
+      width: Math.max(root.scrollWidth - window.innerWidth, host ? host.scrollWidth - host.clientWidth : 0),
+    };
+  });
 }
