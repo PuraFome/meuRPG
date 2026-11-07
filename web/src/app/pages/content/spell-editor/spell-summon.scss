@@ -23,7 +23,7 @@
 .line {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--mr-space-2);
   margin: 0;
   font-size: var(--mr-font-14);
   line-height: 20px;
@@ -36,9 +36,9 @@
 
   .mat-icon {
     flex: none;
-    width: 16px;
-    height: 16px;
-    margin-top: 2px;
+    width: var(--mr-font-16);
+    height: var(--mr-font-16);
+    margin-top: calc(var(--mr-space-1) / 2);
     font-size: var(--mr-font-16);
   }
 }

@@ -308,15 +308,22 @@ export function draftToSpell(d: SpellDraft): SpellInit {
  */
 export function withMechanic(d: SpellDraft, mechanic: MechanicChoice): SpellDraft {
   if (mechanic !== 'summon') {
-    return { ...d, mechanic };
+    const { beforeSummon: was, ...rest } = d;
+    const back = d.mechanic === 'summon' && was && d.target === 'self' && d.range === 'self';
+    return { ...rest, mechanic, ...(back ? { target: was.target, range: was.range } : {}) };
+  }
+  if (d.mechanic === 'summon') {
+    return d;
   }
   const next = d.target === 'self' ? d : withTarget(d, 'self');
-  return { ...next, mechanic, summon: d.summon ?? emptySummon() };
+  const beforeSummon = d.target === 'self' ? undefined : { target: d.target, range: d.range };
+  return { ...next, mechanic, summon: d.summon ?? emptySummon(), beforeSummon };
 }
 
 /** Choosing "Só quem conjura" makes the range "Pessoal" (the server asks for it); leaving it gives the distance back. */
 export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
-  const next = { ...d, target };
+  const { beforeSummon: _, ...kept } = d;
+  const next = { ...kept, target };
   if (target === 'self') {
     next.range = 'self';
   } else if (d.target === 'self' && d.range === 'self' && target !== 'area') {

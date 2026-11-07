@@ -118,7 +118,7 @@ const SPELL_CASES: [field: string, reason: string, text: string][] = [
   [
     'table_spell.summon.count_per_slot_level',
     'bad_value',
-    'De 0 a 10 criaturas a mais por nível acima do da magia.',
+    'De 0 a 10 criaturas a mais por círculo acima do da magia.',
   ],
   [
     'table_spell.summon.max_live',
@@ -144,7 +144,7 @@ const SPELL_CASES: [field: string, reason: string, text: string][] = [
   [
     'table_spell.summon',
     'bad_value',
-    'Confira a magia: ela pede 1º nível ou mais, alvo “Só quem conjura”, sem ataque, teste, dano, cura, área nem ritual, e o tempo, a duração e a concentração são os dela.',
+    'Confira a magia: ela pede 1º círculo ou mais, alvo “Só quem conjura”, sem ataque, teste, dano, cura, área nem ritual, e o tempo, a duração e a concentração são os dela.',
   ],
 ];
 

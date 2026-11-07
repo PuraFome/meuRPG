@@ -23,7 +23,7 @@
         @if (d.range === 'ranged') {
           <app-text-field label="Distância" [value]="d.rangeM" suffix="m" inputmode="decimal" path="table_spell.range.distance_ft" [issues]="saver.issues('table_spell.range.distance_ft')" hint="Em passos de 1,5 m." (valueChange)="patch({ rangeM: $event })" />
         }
-        <app-select-field label="Duração" [options]="durationOptions" [value]="d.duration" path="table_spell.duration.kind" [issues]="saver.issues('table_spell.duration.kind')" (valueChange)="patch({ duration: $any($event) })" />
+        <app-select-field label="Duração" [options]="durationOptions" [value]="d.duration" path="table_spell.duration.kind" [issues]="fieldIssues('table_spell.duration.kind')" (valueChange)="patch({ duration: $any($event) })" />
       </div>
       @if (d.duration === 'timed') {
         <div class="grid grid--3">
@@ -127,7 +127,7 @@
         }
         @case ('summon') {
           @if (d.summon; as s) {
-            <app-spell-summon [summon]="s" [campaignId]="campaignId()" [entries]="entries()" [issuesOf]="summonIssues" [lockIssues]="fieldIssues('table_spell.summon')" (summonChange)="patch({ summon: $event })" />
+            <app-spell-summon [summon]="s" [campaignId]="campaignId()" [entries]="entries()" [issuesOf]="fieldIssues" [lockIssues]="fieldIssues('table_spell.summon')" (summonChange)="patch({ summon: $event })" />
           }
         }
       }

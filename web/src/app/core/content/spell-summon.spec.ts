@@ -3,6 +3,8 @@ import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
 import {
   TableContentKind,
   TableEntrySchema,
+  TableEffectApplies,
+  TableSpellEffectSchema,
   TableSpellSchema,
   TableSpellZoneSchema,
   TableSummonReplaces,
@@ -11,7 +13,7 @@ import {
   TableSummonTurnMode,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
-import { draftToSpell, spellToDraft, withMechanic } from './spell-draft';
+import { draftToSpell, spellToDraft, withMechanic, withTarget } from './spell-draft';
 import { spellFieldPaths } from './spell-preview';
 import { SUMMON_LOCK_PT, summonRefusals } from './spell-summon';
 import { emptySpell } from './spell-types';
@@ -157,8 +159,8 @@ describe('what the engine will refuse about a summoning spell, said before the s
     const got = summonRefusals(on({ level: 0, target: 'creature', ritual: true }));
     expect(got.map((r) => r.path)).toEqual([
       'table_spell.level',
-      'table_spell.target.kind',
       'table_spell.ritual',
+      'table_spell.target.kind',
     ]);
     expect(got[0].text).toContain('Um truque não invoca');
   });
@@ -167,6 +169,33 @@ describe('what the engine will refuse about a summoning spell, said before the s
     const d = spellToDraft(stored());
     const withZone = { ...d, kept: { zone: create(TableSpellZoneSchema) } };
     expect(summonRefusals(withZone).map((r) => r.path)).toEqual(['table_spell.summon']);
+  });
+
+  it('refuses a stored effect on an instantaneous spell, and one that is not for all, with what to do', () => {
+    const effect = create(TableSpellEffectSchema, { applies: TableEffectApplies.FAILED_SAVE });
+    const d = { ...on({}), kept: { effect } };
+    expect(d.duration).toBe('instant');
+    const got = summonRefusals(d);
+    expect(got.map((r) => r.path)).toEqual(['table_spell.duration.kind', 'table_spell.summon']);
+    expect(got[1].text).toContain('Escolha outra mecânica.');
+    const all = {
+      ...d,
+      duration: 'until_dispelled' as const,
+      kept: { effect: create(TableSpellEffectSchema, { applies: TableEffectApplies.ALL }) },
+    };
+    expect(summonRefusals(all)).toEqual([]);
+  });
+
+  it('gives the target and the range back on leaving "Invocar" while they are still the caster\'s', () => {
+    const d = { ...emptySpell(), target: 'creature' as const, range: 'touch' as const };
+    const on = withMechanic(d, 'summon');
+    expect(withMechanic(on, 'text')).toMatchObject({ target: 'creature', range: 'touch' });
+    expect(withMechanic(on, 'text').beforeSummon).toBeUndefined();
+    expect(withMechanic(withTarget(on, 'area'), 'text').target).toBe('area');
+    expect(withMechanic(withMechanic(on, 'summon'), 'text')).toMatchObject({ range: 'touch' });
+    expect(
+      withMechanic({ ...emptySpell(), target: 'self', range: 'self' }, 'summon').beforeSummon,
+    ).toBeUndefined();
   });
 
   it('says the rule the same as the board', () => {

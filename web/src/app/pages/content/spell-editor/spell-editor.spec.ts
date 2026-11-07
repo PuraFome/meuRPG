@@ -406,7 +406,7 @@ describe('SpellEditor', () => {
         '0: sem limite. Até 40.',
         'Turno',
         'Ao usar de novo',
-        'Turno e “Ao usar de novo” como na característica (C2). Sem recurso, tempo nem duração: a magia tem os seus.',
+        'Sem recurso, tempo nem duração: a magia tem os seus.',
         '“Invocar” pede uma magia de 1º círculo ou mais, com alvo “Só quem conjura”, sem ataque, teste, dano, cura ou área, e que não seja ritual.',
       ]) {
         expect(block).toContain(t);
@@ -414,7 +414,7 @@ describe('SpellEditor', () => {
       expect(el.querySelector('app-spell-summon .lock mat-icon')?.textContent).toContain('lock');
     });
 
-    it('chooses the caster as the target, and the preview says who is summoned', async () => {
+    it('opens a spell that summons on "Invocar", and the preview says who is summoned', async () => {
       rememberCreatureName('monster:wolf', 'Lobo');
       const { fixture, el } = setup(true, SUMMON);
       expect(
@@ -452,6 +452,45 @@ describe('SpellEditor', () => {
       click(el, 'Salvar magia');
       await settle(fixture, 3);
       expect(save.mock.calls[1][2].value.summon).toBeUndefined();
+    });
+
+    it('gives the old target and range back when "Invocar" is left, and keeps what the master chose since', async () => {
+      const { fixture, el } = setup(true, {
+        target: { kind: 1 },
+        range: { kind: 3, distanceFt: 60 },
+      });
+      expect(text(el.querySelector('.preview')!)).toContain('Uma criatura');
+      await choose(fixture, el, 'Invocar');
+      expect(text(el.querySelector('.preview')!)).toContain('Só quem conjura');
+      expect(text(el.querySelector('.preview')!)).toContain('Pessoal');
+      await choose(fixture, el, 'Só texto');
+      const back = text(el.querySelector('.preview')!);
+      expect(back).toContain('Uma criatura');
+      expect(back).toContain('60 m'.replace('60', '18'));
+      // a target the master picked on "Invocar" is theirs: leaving does not undo it
+      await choose(fixture, el, 'Invocar');
+      const area = Array.from(
+        el.querySelectorAll<HTMLInputElement>(
+          '[data-field="table_spell.target.kind"] input[type="radio"]',
+        ),
+      ).find((i) => i.closest('label')?.textContent?.includes('Várias'))!;
+      area.click();
+      await settle(fixture, 3);
+      await choose(fixture, el, 'Só texto');
+      expect(text(el.querySelector('.preview')!)).toContain('criaturas');
+    });
+
+    it('refuses in advance a stored effect that the caster alone cannot have, and one on an instantaneous spell', async () => {
+      const effect = { applies: 2, conditions: ['condition:blinded'] };
+      const { fixture, el } = setup(true, { ...SUMMON, effect });
+      expect(text(el.querySelector('app-spell-summon')!)).toContain('Escolha outra mecânica.');
+      expect(text(field(el, 'table_spell.duration.kind').closest('app-select-field')!)).toContain(
+        'escolha uma duração que não seja instantânea',
+      );
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(save).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(field(el, 'table_spell.duration.kind'));
     });
 
     it('says before the save what the engine refuses, on each field, blocks the save and lands on the first', async () => {
@@ -494,7 +533,7 @@ describe('SpellEditor', () => {
         expect(field(el, `table_spell.summon.${f}`).getAttribute('aria-invalid')).toBe('true');
       }
       expect(text(el.querySelector('app-spell-summon')!)).toContain(
-        'De 0 a 10 criaturas a mais por nível acima do da magia.',
+        'De 0 a 10 criaturas a mais por círculo acima do da magia.',
       );
       expect(text(el.querySelector('app-spell-summon')!)).toContain('Confira a magia:');
       expect(field(el, 'table_spell.summon.creature_keys').contains(document.activeElement)).toBe(

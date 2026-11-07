@@ -60,7 +60,7 @@ export const SUMMON_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text
 export const SPELL_SUMMON_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
   {
     shape: /^table_spell\.summon\.count_per_slot_level$/,
-    text: 'De 0 a 10 criaturas a mais por nível acima do da magia.',
+    text: 'De 0 a 10 criaturas a mais por círculo acima do da magia.',
   },
   {
     shape: /^table_spell\.summon\.(resource_key|resource_cost)$/,
@@ -72,6 +72,6 @@ export const SPELL_SUMMON_TEXTS: readonly { shape: RegExp; reason?: string; text
   },
   {
     shape: /^table_spell\.summon$/,
-    text: 'Confira a magia: ela pede 1º nível ou mais, alvo “Só quem conjura”, sem ataque, teste, dano, cura, área nem ritual, e o tempo, a duração e a concentração são os dela.',
+    text: 'Confira a magia: ela pede 1º círculo ou mais, alvo “Só quem conjura”, sem ataque, teste, dano, cura, área nem ritual, e o tempo, a duração e a concentração são os dela.',
   },
 ];

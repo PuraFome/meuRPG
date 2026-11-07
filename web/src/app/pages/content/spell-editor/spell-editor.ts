@@ -225,16 +225,14 @@ export class SpellEditor {
   private readonly advance = computed(() => summonRefusals(this.draft()));
 
   /** The messages of one input: the server's, and the form's own (the spell's level, target or ritual that "Invocar" cannot take). */
-  protected fieldIssues(path: string): readonly string[] {
+  protected readonly fieldIssues = (path: string): readonly string[] => {
     return [
       ...this.saver.issues(path),
       ...this.advance()
         .filter((r) => r.path === path)
         .map((r) => r.text),
     ];
-  }
-
-  protected readonly summonIssues = (path: string): readonly string[] => this.fieldIssues(path);
+  };
 
   protected toggleClass(key: string, on: boolean): void {
     const d = this.draft();

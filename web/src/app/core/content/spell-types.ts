@@ -71,6 +71,8 @@ export interface SpellDraft {
   typed?: Partial<Record<SpellCountField, string>>;
   /** What "Invocar" edits (#578); only sent while that mechanic is chosen, kept here so choosing it again gives the creatures back. */
   summon: SummonDraft | null;
+  /** The target and the range "Invocar" replaced with the caster's: given back when the mechanic is left and they are still the caster's. */
+  beforeSummon?: { target: TargetChoice; range: RangeChoice };
   /** What the form has no control for: the stored effect and zone go back as they were loaded. */
   kept?: KeptSpellFields;
 }
