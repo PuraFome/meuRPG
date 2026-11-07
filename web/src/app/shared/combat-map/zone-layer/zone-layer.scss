@@ -1,6 +1,7 @@
-// The zones sit among the map's marks: the footprint under the tokens (z 2, as the area overlay), the labels over them (z 4).
-// It never takes a pointer; the map's own layer does.
+// The zones sit among the map's marks: the footprint under the tokens (z 2, as the area overlay), the badges over them (z 4).
+// It never takes a pointer; the map's own layer does. The map's tokens do not follow the theme, so the looks read the same in both.
 :host {
+  --zl-r: 12px; // half a badge: the badge's centre stays this far from the map's edge
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -15,15 +16,29 @@
   height: 100%;
 }
 
-.zl__fill {
-  fill: color-mix(in srgb, var(--mr-map-token-surface) 38%, transparent);
+// The veil under the pattern: its colour here, its strength in `fill-opacity`.
+.zl__veil--surface {
+  fill: var(--mr-map-token-surface);
+}
+
+.zl__veil--ink {
+  fill: var(--mr-map-token-ink);
+}
+
+.zl__veil--accent {
+  fill: var(--mr-map-accent);
 }
 
 .zl__ink,
-.zl__accent {
+.zl__accent,
+.zl__light {
   fill: none;
   stroke-linecap: round;
-  stroke-width: 0.045;
+  stroke-linejoin: round;
+}
+
+.zl__light {
+  stroke: var(--mr-map-token-surface);
 }
 
 .zl__ink {
@@ -49,40 +64,38 @@
   stroke-width: 2.5;
 }
 
+.zl__edge--dashed,
 .zl__zone--dashed .zl__edge {
   stroke-dasharray: 6 4;
 }
 
-.zl__label {
+// The corner badge: a white diamond (never a square: a square reads as an NPC token) holding the zone's letter.
+.zl__badge {
   position: absolute;
   z-index: 4;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   box-sizing: border-box;
-  height: 22px;
-  padding: 0 9px;
-  border: 1.5px solid var(--mr-map-token-ink);
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-map-token-surface);
+  width: calc(var(--zl-r) * 2);
+  height: calc(var(--zl-r) * 2);
   color: var(--mr-map-token-ink);
-  font-size: var(--mr-font-13);
+  font-size: var(--mr-font-12);
   font-weight: 700;
-  line-height: 19px;
-  white-space: nowrap;
-  transform: translate(-50%, calc(-100% - 4px));
+  line-height: 1;
+  transform: translate(-50%, -50%);
 }
 
-.zl__label--below {
-  transform: translate(-50%, 4px);
+.zl__badge::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--mr-map-token-ink);
+  background: var(--mr-map-token-surface);
+  transform: rotate(45deg);
 }
 
-.zl__label--hidden {
+.zl__badge--dashed::before {
   border-style: dashed;
-}
-
-.zl__label .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: var(--mr-font-16);
 }

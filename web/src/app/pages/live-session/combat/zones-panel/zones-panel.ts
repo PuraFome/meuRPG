@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { zonePattern } from '../../../../core/combat/zone-pattern';
 import type { ZoneView } from '../../../../core/combat/zones';
+import { ZoneLetter } from '../../../../shared/combat-map/zone-layer/zone-letter';
 import { ZoneSwatch } from '../../../../shared/combat-map/zone-layer/zone-swatch';
 import { type ZoneNote, zoneNotice } from './zones-announce';
 
@@ -29,7 +30,7 @@ import { type ZoneNote, zoneNotice } from './zones-announce';
  */
 @Component({
   selector: 'app-zones-panel',
-  imports: [MatButtonModule, MatIconModule, ZoneSwatch],
+  imports: [MatButtonModule, MatIconModule, ZoneLetter, ZoneSwatch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './zones-panel.html',
   styleUrl: './zones-panel.scss',

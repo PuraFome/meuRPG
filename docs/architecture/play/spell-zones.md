@@ -221,12 +221,17 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zo
 
 ### The map, the panel and the end
 
-- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern: the first six catalog spells a fixed one, every other spell a hash of the key.
-  Fog Cloud lands on the pattern of Spirit Guardians, Darkness on Cloudkill's, Spike Growth on Moonbeam's and Wall of Fire on Entangle's.
-  Web, Stinking Cloud and Silence share one pattern, the dots.
+- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`, and a wall's `ZoneView.burningSquares` (the server's `burning_squares`, already limited to what the viewer may read) as a layer of its own.
+  `core/combat/zone-pattern.ts` gives every catalog spell a look of its own: a drawing class (lines, dots, waves, triangles, rings, asterisks, squares, crosses, light dots, bricks), a tint of the map's tokens and a veil that says what the zone does to sight.
+  The burning side is its own layer: arrows turned toward that side (`arrowTurn`), garnet, dashed outline.
+  Only a spell the table defined, or one the app does not know, takes a hash of its key, and only onto the first six looks, none of which veils.
+  The map's tokens do not follow the theme, so a look reads the same in both.
+  A zone laid over another is drawn over it, and both outlines stay.
+  No name floats on the map: each zone carries its letter (A, B, C in the list's order) in a white corner diamond (`zone-badge.ts`, `ZoneView.letter`), kept inside the map box; the burning side takes the wall's letter.
+  The legend (`zoneLegend`) and the list show the same letter in a diamond (`app-zone-letter`, read as "Zona A") beside the name, the caster and the concentration.
   The master's calls (Darkness against a light spell, Fog Cloud's wind, Stinking Cloud's breathing) are a `call` key on the zone def, sent as a note (`master_light`, `master_wind`, `master_breath`); `addDetails` sends the key to the master alone (the caster's player gets the other notes and no call; a leak row in `internal/leaktest` reads the raw body), `zoneView` turns it into the one-line `reminder`, and the app rules none of them.
   `zoneLegend` gives the entries the card lists.
-  The layer and its labels are `aria-hidden`; the panel is the accessible version.
+  The layer and its badges are `aria-hidden`; the panel is the accessible version.
   The move page's map does not draw zones.
 - **Panel.** `pages/live-session/combat/zones-panel` (`app-zones-panel`) lists the zones: the master's column and the player's side column. Its live region (`zoneNotice`) compares the ids of the list with the last one it read. `details_hidden` cards render the name, the area and the caster only.
 - **End.** The panel asks in place and emits `end`; `ZoneFlow` (`zone-flow.ts`, built in `combat-view-parts.ts`) calls `endSpellZone` under the screen's one-call-at-a-time rule (`calls.busy`) and words a refusal with `zoneEndError`.

@@ -48,6 +48,15 @@ const button = (el: HTMLElement, text: string) =>
   [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(text)) ?? null;
 
 describe('ZonesPanel', () => {
+  it('gives each card its letter, in the diamond and for a screen reader', () => {
+    const { el } = mount([spellZone({ id: 'a' }), spellZone({ id: 'b', spellNamePt: 'Teia' })]);
+    const cards = el.querySelectorAll('.zp__card');
+    expect(plain(cards[0].querySelector('.zp__letter')?.textContent)).toContain('A');
+    expect(plain(cards[1].querySelector('.zp__letter')?.textContent)).toContain('B');
+    const named = cards[1].querySelector('.zp__letter [role="img"]');
+    expect(named?.getAttribute('aria-label')).toBe('Zona B');
+  });
+
   it('draws nothing for an empty list', () => {
     const { el } = mount([]);
     expect(el.querySelector('section')).toBeNull();
@@ -112,7 +121,7 @@ describe('ZonesPanel', () => {
       { master: false },
     );
     const card = plain(el.querySelector('li')!.textContent);
-    expect(card).toBe('Raio Lunar · Bartolo Cilindro de 1,5 m de raio');
+    expect(card).toBe('A Raio Lunar · Bartolo Cilindro de 1,5 m de raio');
     expect(el.querySelector('button')).toBeNull();
   });
 

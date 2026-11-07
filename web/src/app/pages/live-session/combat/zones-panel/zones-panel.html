@@ -5,7 +5,10 @@
     <ul class="zp__list">
       @for (z of zones(); track z.id) {
         <li class="zp__card" [attr.data-zone]="z.id">
-          <app-zone-swatch class="zp__swatch" [pattern]="pattern(z.spellKey)" [dashed]="z.dashed" />
+          <span class="zp__mark">
+            <app-zone-letter class="zp__letter" [letter]="z.letter" />
+            <app-zone-swatch class="zp__swatch" [pattern]="pattern(z.spellKey)" [dashed]="z.dashed" />
+          </span>
           <div class="zp__body">
             <h3 class="zp__name">
               {{ z.label }}

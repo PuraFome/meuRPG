@@ -322,21 +322,46 @@ describe('CombatMapCard: the zones the spells keep', () => {
       zone({ id: 'c' }),
     ]);
     expect(el.querySelector('app-combat-map app-zone-layer')).not.toBeNull();
-    const names = [...el.querySelectorAll('.legend__zone')].map((n) => plain(n.textContent));
+    const names = [...el.querySelectorAll('.legend__zone .legend__name')].map((n) =>
+      plain(n.textContent),
+    );
     expect(names).toEqual(['Raio Lunar', 'Teia']);
+    const letters = [...el.querySelectorAll('.legend__zone')].map((li) =>
+      [...li.querySelectorAll('app-zone-letter [role="img"]')].map((l) =>
+        l.getAttribute('aria-label'),
+      ),
+    );
+    expect(letters).toEqual([['Zona A', 'Zona C'], ['Zona B']]);
+  });
+
+  it("lists the burning side of a wall in the legend under the wall's letter", () => {
+    const { el } = withZones([
+      zone({
+        id: 'w',
+        spellKey: 'spell:wall-of-fire',
+        spellNamePt: 'Muralha de Fogo',
+        burningSquares: [{ col: 1, row: 0 }],
+      }),
+    ]);
+    const names = [...el.querySelectorAll('.legend__zone .legend__name')].map((n) =>
+      plain(n.textContent),
+    );
+    expect(names).toEqual(['Muralha de Fogo', 'Lado que queima']);
   });
 
   it('says "só você vê" in the legend for a hidden caster\'s spell', () => {
     const { el } = withZones([
       zone({ id: 'a', visibility: SpellZoneVisibility.MASTER_ONLY, spellNamePt: 'Nuvem Mortal' }),
     ]);
-    expect(plain(el.querySelector('.legend__zone')?.textContent)).toBe('Nuvem Mortal só você vê');
+    expect(plain(el.querySelector('.legend__zone .legend__name')?.textContent)).toBe(
+      'Nuvem Mortal só você vê',
+    );
   });
 
   it('gives a player the zones the server sent, and no master-only wording', () => {
     const { el } = withZones([zone({ id: 'a' })], false);
     expect(el.querySelector('app-zone-layer')).not.toBeNull();
-    expect(plain(el.querySelector('.legend__zone')?.textContent)).toBe('Raio Lunar');
+    expect(plain(el.querySelector('.legend__zone .legend__name')?.textContent)).toBe('Raio Lunar');
   });
 });
 
