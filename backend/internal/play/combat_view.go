@@ -444,7 +444,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, c, e)
 	}
 	if v.master || v.owns(c) { // the limits of a creature: the master's and the player's who controls it (RN-29)
-		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c)
+		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c, r.npcs[sheetKey(c)].persistent && c.Kind == kindNPC)
 	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
 		shareEconomy(p, c)
@@ -765,6 +765,9 @@ type masterNPC struct {
 	legendary rules.LegendaryProfile
 	// limited are the actions of its stat block that Recharge, have uses a day or wait for a rest.
 	limited []rules.ActionPlan
+	// persistent says the NPC is a character the table keeps (not combat_only): what it spent of its uses a day and of
+	// its rest actions outlasts the combat.
+	persistent bool
 }
 
 // npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its
@@ -790,7 +793,7 @@ func (s *Service) npcDetails(ctx context.Context, m authz.Membership, d *encount
 	}
 	out := make(map[string]masterNPC, len(chars))
 	for _, c := range chars {
-		n := masterNPC{monsterKey: c.MonsterKey, challengeRating: c.ChallengeRating}
+		n := masterNPC{monsterKey: c.MonsterKey, challengeRating: c.ChallengeRating, persistent: !c.CombatOnly}
 		if c.PortraitImageID != "" {
 			n.portrait = imagesPath + c.PortraitImageID
 		}

@@ -8,7 +8,7 @@ import (
 
 // What a persistent NPC kept of its uses a day (npc_spell_use.creature_spent) is the master's alone, as the creature's
 // state in a combat is (RN-20, RN-29): a copy of the NPC that joins a combat with the uses already spent shows nothing of
-// them to a player. The master reads the copy's uses left (the positive control).
+// them to a player, kept (LimitedAction.kept) included: another player's copy has no limited action to carry it. The master reads the copy's uses left (the positive control).
 func TestAPersistentNPCsKeptUsesAreTheMastersAlone(t *testing.T) {
 	w := newWorld(t)
 	needles := w.limitedNeedles()
@@ -49,6 +49,8 @@ func TestAPersistentNPCsKeptUsesAreTheMastersAlone(t *testing.T) {
 	w.encounter = e
 	if l := w.limitedOf(w.master, &playv1.Combatant{Id: copyID}, monster+"#"+action); l == nil || l.GetUsesLeft() != 2 {
 		t.Fatalf("the master reads %v on the copy, want 2 uses left", l)
+	} else if !l.GetKept() {
+		t.Errorf("the master reads kept = false on a persistent NPC's per-day action, want true (the positive control of kept)")
 	}
 	for _, p := range []*person{w.ana, w.caio} {
 		for _, c := range p.currentEncounter(w).GetCombatants() {
