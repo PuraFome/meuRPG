@@ -79,6 +79,14 @@ func TestAContestAddsTheCheckBonusOfAnEffect(t *testing.T) {
 			if with.player.GetTotal() != with.player.GetFaces()[0]+with.player.GetModifier() {
 				t.Errorf("roll = %v, want the total to be the d20 and the modifier", with.player)
 			}
+			if with.player.GetMode() != playv1.RollModeKind_ROLL_MODE_KIND_NORMAL || len(with.player.GetFaces()) != 1 {
+				t.Errorf("roll = %v, want one d20 in normal mode: the bonus note is no advantage or disadvantage", with.player)
+			}
+			for _, n := range with.player.GetNotes() {
+				if n.GetKind() == "effect_bonus" && n.GetAdvantage() {
+					t.Errorf("note %v says advantage, want none", n)
+				}
+			}
 			if txt := noteTexts(with.player); !strings.Contains(txt, "Marca de Nanquim +3") {
 				t.Errorf("notes = %q, want the effect and its bonus named", txt)
 			}

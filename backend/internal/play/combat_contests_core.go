@@ -652,9 +652,15 @@ func (s *Service) withCheckBonus(ctx context.Context, tx pgx.Tx, campaignID stri
 	if len(bonuses) == 0 {
 		return n, notes, nil
 	}
-	names, err := s.namerFor(ctx, tx, campaignID)
-	if err != nil {
-		return n, notes, err
+	// A roll in its transaction reads the content there, and fails with it; a view names what it can.
+	var names func(string) string
+	if tx != nil {
+		var err error
+		if names, err = s.namerFor(ctx, tx, campaignID); err != nil {
+			return n, notes, err
+		}
+	} else {
+		names = s.namesFor(ctx, campaignID)
 	}
 	notes = slices.Clone(notes)
 	for _, b := range bonuses {
