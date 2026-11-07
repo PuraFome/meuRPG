@@ -12,7 +12,7 @@ The natural roll is the d20 as it counts: a table's roll minimum can raise a 1 t
 The response carries the roll in numbers (`1d20 (13) + 6 = 19`) and the result, never the AC for the player; the master's response carries `target_armor_class`, with a Shield's +5 stored in the event so a resend finds the same.
 `TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` searches the AC in the player's JSON and checks the master's has it.
 A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
-The AC is the sheet's: a shield beside a two-handed weapon on the sheet adds nothing, in the combat and in the comparison alike.
+The AC is the sheet's: a shield beside an equipped two-handed weapon adds nothing, in the combat and in the comparison alike.
 A Protection used on the attack gives the roll disadvantage, with its own source in the mode (see [Reactions](reactions.md#protection)).
 A weapon attack held for a Lucky or Bardic Inspiration question is in [Held rolls](held-rolls.md); a hit that waits for a reaction is in [Reactions](reactions.md).
 `RollAttackRequest.maneuver_key` adds a table die of applies `attack` to a weapon attack of the player's own character.

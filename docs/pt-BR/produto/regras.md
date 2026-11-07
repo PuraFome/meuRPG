@@ -119,7 +119,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Uma armadura ou um escudo com bônus mágico soma o bônus à classe de armadura.
   O bônus é separado da proficiência e do modificador de habilidade, e fica quando o dano é o da mão secundária, que perde o modificador de habilidade.
   Só vale para uma peça equipada: uma peça guardada não soma nada.
-  Um escudo não soma nada enquanto uma arma de duas mãos está na ficha, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
+  Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
 - **Integridade Corporal do monge da Mão Aberta (nível 6).**
@@ -1070,7 +1070,7 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
 - **Opções que ainda não podem ser tomadas** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) são listadas, pontilhadas, com o motivo. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
 - **Uma ficha travada** cuja classe ganhou uma escolha continua jogável. O dono e o mestre leem "N escolhas pendentes", e o jogador completa só as escolhas que faltam, sem mudar mais nada na ficha (RN-01). O mestre também lê "N escolhas em aberto" na página da campanha; um jogador nunca vê as de outro.
 - **A subida de nível** também pede as escolhas deixadas para trás ("Escolhas que ficaram para trás") e as novas do nível, e recusa uma invocação cujo pré-requisito não foi cumprido.
-- **Um escudo e uma arma de duas mãos.** Um escudo soma +2 à classe de armadura só enquanto há uma mão livre para ele. A ficha lista as armas carregadas e não tem mãos, então uma arma de duas mãos na ficha tira o bônus do escudo, na ficha e no combate; a ficha diz por quê ("O escudo não soma na CA…") e o jogador recupera o bônus tirando uma das duas da ficha. Uma arma versátil conta como de uma mão, porque a ficha não diz como ela é empunhada. O estilo de luta Proteção (RN-31) precisa que o escudo conte.
+- **Um escudo e uma arma de duas mãos.** Um escudo soma +2 à classe de armadura só enquanto há uma mão livre para ele. A ficha lista as armas carregadas e não tem mãos, então uma arma de duas mãos equipada tira o bônus do escudo, na ficha e no combate, e uma carregada não tira; a ficha diz por quê ("O escudo não soma na CA…") e o jogador recupera o bônus guardando uma das duas. Uma arma versátil conta como de uma mão, porque a ficha não diz como ela é empunhada. O estilo de luta Proteção (RN-31) precisa que o escudo conte.
 - **O que uma escolha dá** (sopro, resistência, magias do Corruptor, os +1) aparece na ficha.
 
 Como é construído: [Arquitetura](../../architecture/rules-level-up.md) e [personagens](../../architecture/characters.md).

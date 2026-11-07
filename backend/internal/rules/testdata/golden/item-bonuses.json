@@ -18,7 +18,7 @@
         "SourceKey": "equipment:chain-mail",
         "SourceNamePT": "Cota de malha",
         "Counts": false,
-        "ReasonPT": "Guardado na mochila, não equipado."
+        "ReasonPT": "Carregado, não equipado."
       },
       {
         "Target": "ac",
@@ -26,7 +26,7 @@
         "SourceKey": "equipment:shield",
         "SourceNamePT": "Escudo",
         "Counts": false,
-        "ReasonPT": "Guardado na mochila, não equipado."
+        "ReasonPT": "Carregado, não equipado."
       },
       {
         "Target": "attack:equipment:rapier",
@@ -34,7 +34,7 @@
         "SourceKey": "equipment:rapier",
         "SourceNamePT": "Rapieira",
         "Counts": false,
-        "ReasonPT": "Guardado na mochila, não equipado."
+        "ReasonPT": "Carregado, não equipado."
       },
       {
         "Target": "damage:equipment:rapier",
@@ -42,7 +42,7 @@
         "SourceKey": "equipment:rapier",
         "SourceNamePT": "Rapieira",
         "Counts": false,
-        "ReasonPT": "Guardado na mochila, não equipado."
+        "ReasonPT": "Carregado, não equipado."
       }
     ]
   },
@@ -193,7 +193,7 @@
         "SourceKey": "equipment:shield",
         "SourceNamePT": "Escudo",
         "Counts": false,
-        "ReasonPT": "O escudo não conta com uma arma de duas mãos na ficha."
+        "ReasonPT": "Uma arma de duas mãos equipada deixa o escudo parado."
       },
       {
         "Target": "attack:equipment:greatsword",

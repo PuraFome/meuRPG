@@ -93,6 +93,21 @@ func TestShieldBehindATwoHandedWeaponAddsNothing(t *testing.T) {
 	}
 }
 
+// Only an equipped two-handed weapon idles the shield: one in the backpack leaves the shield's +N counting.
+func TestACarriedTwoHandedWeaponLeavesTheShieldBonusCounting(t *testing.T) {
+	t.Parallel()
+	d := derivedWith(t, func(b *Build) {
+		b.Shield, b.Weapons, b.Carried = true, []string{"equipment:greatsword"}, []string{"equipment:greatsword"}
+		b.ItemBonuses = []ItemBonus{{Key: ShieldKey, Bonus: 2}}
+	})
+	base := derivedWith(t, func(b *Build) {
+		b.Shield, b.Weapons, b.Carried = true, []string{"equipment:greatsword"}, []string{"equipment:greatsword"}
+	})
+	if d.ArmorClass != base.ArmorClass+2 || d.ShieldIdle || len(d.ItemModifiers) != 1 || !d.ItemModifiers[0].Counts {
+		t.Errorf("AC %d (base %d), idle %v, modifiers %+v, want +2 counting", d.ArmorClass, base.ArmorClass, d.ShieldIdle, d.ItemModifiers)
+	}
+}
+
 func TestAttunementGatesTheBonus(t *testing.T) {
 	t.Parallel()
 	for _, attuned := range []bool{false, true} {

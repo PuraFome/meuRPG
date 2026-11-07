@@ -68,9 +68,9 @@ func (x *deriver) itemModifiers() {
 		reason, on := "", ib.counts()
 		switch {
 		case x.b.IsCarried(ib.Key):
-			reason, on = "Guardado na mochila, não equipado.", false
+			reason, on = "Carregado, não equipado.", false
 		case ib.Key == shieldKey && x.b.Shield && !x.shieldWielded():
-			reason, on = "O escudo não conta com uma arma de duas mãos na ficha.", false
+			reason, on = "Uma arma de duas mãos equipada deixa o escudo parado.", false
 		case !ib.counts() && ib.Bonus > 0:
 			reason = "Pede sintonização."
 		}

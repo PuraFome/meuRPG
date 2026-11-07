@@ -119,7 +119,7 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   An armor or a shield with a magic bonus adds it to the armor class.
   The bonus is separate from proficiency and from the ability modifier, and it stays when the damage is the off-hand's, which loses the ability modifier.
   It counts only for a piece that is equipped: a carried piece adds nothing.
-  A shield adds nothing while a two-handed weapon is on the sheet, and a piece that needs attunement adds nothing until the character is attuned to it.
+  A shield adds nothing while a two-handed weapon is equipped, and a piece that needs attunement adds nothing until the character is attuned to it.
   The sheet lists each bonus with its source and says why one adds nothing.
   Two weapons with one key are one row and share the bonus.
 - **Wholeness of Body of the Open Hand monk (level 6).**
@@ -1071,7 +1071,7 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.
 - **Level up** also asks the choices left behind ("Escolhas que ficaram para trás") and the new ones of the level, and refuses an invocation whose prerequisite is unmet.
 - **What a pick gives** (breath weapon, resistance, Fiend spells, the +1s) appears on the sheet.
-- **A shield and a two-handed weapon.** A shield adds +2 to the armor class only while a hand is free for it. The sheet lists the weapons carried and has no hands, so a two-handed weapon on the sheet takes the shield's bonus away, in the sheet and in the combat; the sheet says why ("O escudo não soma na CA…") and the player gets the bonus back by taking one of the two off the sheet. A versatile weapon counts as one-handed, since the sheet does not say how it is gripped. The Protection fighting style (RN-31) needs the shield to count.
+- **A shield and a two-handed weapon.** A shield adds +2 to the armor class only while a hand is free for it. The sheet lists the weapons carried and has no hands, so an equipped two-handed weapon takes the shield's bonus away, in the sheet and in the combat; a carried one does not; the sheet says why ("O escudo não soma na CA…") and the player gets the bonus back by stowing one of the two. A versatile weapon counts as one-handed, since the sheet does not say how it is gripped. The Protection fighting style (RN-31) needs the shield to count.
 
 How it is built: [Architecture](../architecture/rules-level-up.md) and [characters](../architecture/characters.md).
 
