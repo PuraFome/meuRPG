@@ -213,7 +213,7 @@ func (s *Service) tvLog(ctx context.Context, tv authz.Membership, encounterID st
 	if err != nil {
 		return nil, s.dbError(ctx, "read the combat log", err)
 	}
-	v, err := s.logViewer(ctx, tv)
+	v, err := s.tvLogViewer(ctx, tv)
 	if err != nil {
 		return nil, err
 	}
@@ -227,6 +227,14 @@ func (s *Service) tvLog(ctx context.Context, tv authz.Membership, encounterID st
 		}
 	}
 	return lines, nil
+}
+
+// tvLogViewer is who reads the log for the TV: a player, who sees the log as every player does, but with the keys
+// whole. A player's view blanks the key of an NPC's stat block action, and RN-23 is decided on the key.
+func (s *Service) tvLogViewer(ctx context.Context, tv authz.Membership) (combatViewer, error) {
+	v, err := s.logViewer(ctx, tv)
+	v.wholeKeys = true
+	return v, err
 }
 
 // tvLogLine is the sentence of one entry a player reads. A name of table content (RN-23) is not told: the

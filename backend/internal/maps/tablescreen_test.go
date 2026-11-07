@@ -2,8 +2,10 @@ package maps
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -56,6 +58,50 @@ func tvText(t *testing.T, m link.TableScreenMap) string {
 // canaries are the things of the master that no player reads, each next to the party where the group sees.
 type canaries struct {
 	names, ids []string
+	// numbers are canaries that are numbers (a treasure's value). They are searched as numbers, in the number fields
+	// of the reply, never as digits in its text: a UUID, a timestamp or a revision holds any digits by chance.
+	numbers []float64
+}
+
+// leaksIn lists what the reply (the app's JSON) holds of the canaries: a name or an id as text, a number as a JSON
+// number. ids limits the ids searched.
+func (c canaries) leaksIn(body string, ids []string) []string {
+	var out []string
+	for _, w := range append(slices.Clone(c.names), ids...) {
+		if strings.Contains(body, w) {
+			out = append(out, w)
+		}
+	}
+	// The reply is the map and its vision, two documents in a row.
+	dec := json.NewDecoder(strings.NewReader(body))
+	for dec.More() {
+		var doc any
+		if dec.Decode(&doc) != nil {
+			break
+		}
+		out = append(out, c.numbersIn(doc)...)
+	}
+	return out
+}
+
+// numbersIn lists the canary numbers among the JSON numbers of the document.
+func (c canaries) numbersIn(v any) []string {
+	var out []string
+	switch v := v.(type) {
+	case float64:
+		if slices.Contains(c.numbers, v) {
+			out = append(out, strconv.FormatFloat(v, 'f', -1, 64))
+		}
+	case []any:
+		for _, e := range v {
+			out = append(out, c.numbersIn(e)...)
+		}
+	case map[string]any:
+		for _, e := range v {
+			out = append(out, c.numbersIn(e)...)
+		}
+	}
+	return out
 }
 
 // hideThings puts a hidden point, a trap, a treasure, a secret door and a hidden NPC in the squares the party
@@ -86,8 +132,9 @@ func (c *cave) hideThings(t *testing.T) canaries {
 		t.Fatal("the master's GetMap does not carry the hidden NPC: the control is void")
 	}
 	return canaries{
-		names: []string{"CanarioPontoOculto", "CanarioArmadilha", "CanarioTesouro", "Goblin Emboscado", "4321", "TRAP", "descrição de Canario"},
-		ids:   []string{hidden.GetId(), trap.GetId(), treasure.GetId(), c.hiddenGoblin.GetId(), c.goblin1.GetId(), c.captain.GetId()},
+		names:   []string{"CanarioPontoOculto", "CanarioArmadilha", "CanarioTesouro", "Goblin Emboscado", "TRAP", "descrição de Canario"},
+		numbers: []float64{4321},
+		ids:     []string{hidden.GetId(), trap.GetId(), treasure.GetId(), c.hiddenGoblin.GetId(), c.goblin1.GetId(), c.captain.GetId()},
 	}
 }
 
@@ -98,10 +145,8 @@ func TestTableScreenMapHasOnlyWhatPlayersRead(t *testing.T) {
 	hid := c.hideThings(t)
 	tv := c.tvMap(t, shown)
 	body := tvText(t, tv)
-	for _, w := range append(slices.Clone(hid.names), hid.ids...) {
-		if strings.Contains(body, w) {
-			t.Errorf("the TV's map has %q, which no player reads: %s", w, body)
-		}
+	for _, w := range hid.leaksIn(body, hid.ids) {
+		t.Errorf("the TV's map has %q, which no player reads: %s", w, body)
 	}
 	for _, w := range []string{c.imageID, "thumbnailUrl", "Tocha da guarita", "light:torch", "Goblin 1", "Capitão Goblin"} {
 		if strings.Contains(body, w) {
@@ -151,10 +196,8 @@ func TestTableScreenMapWithoutGroupVisionIsHiddenAndBlack(t *testing.T) {
 		}
 	}
 	body := tvText(t, open)
-	for _, w := range append(slices.Clone(hid.names), hid.ids...) {
-		if strings.Contains(body, w) {
-			t.Errorf("the TV's map has %q: %s", w, body)
-		}
+	for _, w := range hid.leaksIn(body, hid.ids) {
+		t.Errorf("the TV's map has %q: %s", w, body)
 	}
 }
 
@@ -246,10 +289,8 @@ func TestTableScreenMapWithoutFogIsTheWholePlayerMap(t *testing.T) {
 		t.Errorf("tiles on a map with no fog: %v", tv.Vision.GetTilesPath())
 	}
 	body := tvText(t, tv)
-	for _, w := range append(slices.Clone(hid.names), hid.ids[:3]...) {
-		if strings.Contains(body, w) {
-			t.Errorf("the TV's map has %q: %s", w, body)
-		}
+	for _, w := range hid.leaksIn(body, hid.ids[:3]) {
+		t.Errorf("the TV's map has %q: %s", w, body)
 	}
 	// The image route serves the file to the master and to a player alike; only the cache headers differ.
 	url := tv.Map.GetMap().GetImage().GetUrl()
@@ -404,5 +445,25 @@ func TestTableScreenTilesAreRefusedWithoutGroupVision(t *testing.T) {
 	got := c.master.get(path)
 	if got.status != http.StatusNotFound || got.status != missing.status || !bytes.Equal(got.body, missing.body) {
 		t.Errorf("the TV's tile without group vision = %d %q, want the missing tile's %d %q", got.status, got.body, missing.status, missing.body)
+	}
+}
+
+// A random UUID or timestamp holds a canary's digits now and then; the search is by field, so it never trips on one.
+func TestCanariesAreSearchedAsNumbersNotAsDigitsInText(t *testing.T) {
+	t.Parallel()
+	c := canaries{names: []string{"CanarioTesouro"}, numbers: []float64{4321}}
+	// The old search: the number as text, in the whole reply.
+	old := func(body string) bool { return strings.Contains(body, "4321") }
+	clean := `{"image":{"id":"1d07fab1-fc5a-4967-83f9-13443215479a"},"revision":"20264321","at":"2026-11-04T13:43:21Z"}`
+	if !old(clean) {
+		t.Fatal("the crafted reply does not hold the digits: the case proves nothing")
+	}
+	if got := c.leaksIn(clean, nil); len(got) != 0 {
+		t.Errorf("a reply with no canary leaks %v", got)
+	}
+	for _, leaky := range []string{`{"treasureValuePo":4321}`, `{"a":[{"b":4321}]}{"c":1}`, `{"x":"CanarioTesouro"}`} {
+		if got := c.leaksIn(leaky, nil); len(got) == 0 {
+			t.Errorf("a reply with a canary (%s) leaks nothing: the control is void", leaky)
+		}
 	}
 }

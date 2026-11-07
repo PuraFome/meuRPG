@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -13,6 +14,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The projector of the table screen. Each test reads the same thing as the master, as the
@@ -29,6 +32,42 @@ func mustContain(t *testing.T, what, got string, words ...string) {
 			t.Errorf("%s does not carry %q", what, w)
 		}
 	}
+}
+
+// mustHaveNoNumber fails when an integer field of the message, however deep, holds n. A canary that is a number is
+// searched this way and never as digits in the text, where a UUID or a timestamp holds them by chance.
+func mustHaveNoNumber(t *testing.T, what string, m proto.Message, n int64) {
+	t.Helper()
+	var walk func(protoreflect.Message)
+	walk = func(m protoreflect.Message) {
+		m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+			vals := []protoreflect.Value{v}
+			if fd.IsList() {
+				vals = vals[:0]
+				for i := range v.List().Len() {
+					vals = append(vals, v.List().Get(i))
+				}
+			}
+			for _, e := range vals {
+				switch fd.Kind() {
+				case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
+					if e.Int() == n {
+						t.Errorf("%s has the number %d in %s", what, n, fd.FullName())
+					}
+				case protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
+					if strconv.FormatUint(e.Uint(), 10) == strconv.FormatInt(n, 10) {
+						t.Errorf("%s has the number %d in %s", what, n, fd.FullName())
+					}
+				case protoreflect.MessageKind, protoreflect.GroupKind:
+					if !fd.IsMap() {
+						walk(e.Message())
+					}
+				}
+			}
+			return true
+		})
+	}
+	walk(m.ProtoReflect())
 }
 
 func mustNotContain(t *testing.T, what, got string, words ...string) {
@@ -221,7 +260,8 @@ func TestTableScreenCombatShowsOnlyWhatTheTableSees(t *testing.T) {
 	if combat.GetRound() != 1 {
 		t.Errorf("round = %d, want 1", combat.GetRound())
 	}
-	mustNotContain(t, "the table screen", text(got), "Ogro", "4321", "hit_points", "armor_class")
+	mustNotContain(t, "the table screen", text(got), "Ogro", "hit_points", "armor_class")
+	mustHaveNoNumber(t, "the table screen", got, 4321) // the ogre's hit points, by field: a UUID holds digits by chance
 
 	// Hurt and down are words, never numbers.
 	if _, err := a.adjustHP(t, e, "Goblin", damageHP(4)); err != nil { // 7 -> 3
@@ -338,6 +378,7 @@ func TestTvLogLineNamesNoTableContent(t *testing.T) {
 		{cast("spell:fire-bolt", "Raio de Fogo"), "Pensantus conjurou Raio de Fogo", true},
 		{cast("spell:raio-de-nanquim@mesa", "Raio de Nanquim"), "Pensantus conjurou uma magia", true},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, ActorLabel: "Toren", Key: "feature:x@mesa:disengage", KeyNamePt: "Passo de Bruma"}, "Toren agiu", true},
+		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, ActorLabel: "Garra-Torta", Key: "monster:garra-torta@mesa#claws", KeyNamePt: "Garras"}, "Garra-Torta agiu", true},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, TargetLabel: "Goblin"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT, ActorLabel: "Dragão"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, ActorLabel: "Toren"}, "", false},
@@ -560,5 +601,37 @@ func TestTableScreenCombatOnAFogMapShowsOnlyNPCsTheGroupSees(t *testing.T) {
 	}
 	if !strings.Contains(asJSON(t, f.log(t, f.master, f.get(t, f.master))), "Goblin 2") {
 		t.Error("the master's log does not carry the attack on Goblin 2")
+	}
+}
+
+// RN-23: the player's read blanks the key of an NPC's stat block action, but the table screen decides on the key, so
+// it asks for it whole. Without that a table monster's action ("monster:x@mesa#claws") would be named on the TV.
+func TestTheTableScreenReadsTheWholeKeyOfAnNPCsAction(t *testing.T) {
+	t.Parallel()
+	const key = "monster:garra-torta@mesa#claws"
+	npc := playdb.Combatant{Kind: kindNPC}
+	if got := shownKey(combatViewer{}, npc, key); got != "" {
+		t.Errorf("a player's key = %q, want it blank (RN-20)", got)
+	}
+	if got := shownKey(combatViewer{wholeKeys: true}, npc, key); got != key {
+		t.Errorf("the table screen's key = %q, want it whole", got)
+	}
+}
+
+// The log is read for the TV with whole keys: the way the TV's log reader is built is what keeps a table monster's
+// action ("monster:x@mesa#claws") from being named.
+func TestTheTVsLogViewerKeepsTheKeysWhole(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	v, err := a.h.svc.tvLogViewer(t.Context(), tvViewer(a.campaignID))
+	if err != nil {
+		t.Fatalf("tvLogViewer() error = %v", err)
+	}
+	const key = "monster:garra-torta@mesa#claws"
+	if v.master {
+		t.Fatal("the TV's log viewer is the master")
+	}
+	if got := shownKey(v, playdb.Combatant{Kind: kindNPC}, key); got != key || !rules.IsTableKeyAnywhere(got) {
+		t.Errorf("the TV's key = %q, want %q whole", got, key)
 	}
 }

@@ -51,6 +51,9 @@ var tvScreenRead = read{
 	req: func(w *world) proto.Message { return &playv1.GetTableScreenRequest{CampaignId: w.campaign} },
 }
 
+// tvScreenLogRead is tvScreenRead for a world whose combat has a log line when the row is asked.
+var tvScreenLogRead = func() read { r := tvScreenRead; r.tvLog = true; return r }()
+
 // tvReaderName is the name the TV's answers are kept under in the answers of the matrix.
 const tvReaderName = "Tela da mesa"
 
