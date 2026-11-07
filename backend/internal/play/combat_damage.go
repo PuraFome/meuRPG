@@ -495,7 +495,8 @@ func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (comb
 	switch {
 	case g.CastID != nil && strings.Contains(g.AttackKey, "#"): // a creature's action: magical only when the stat block says a spell attack
 		plan, ok, err := f.s.planOfAction(ctx, f.c, f.attacker, g.AttackKey)
-		return combat.Origin{Attack: true, Magical: err == nil && ok && plan.Attack != nil && plan.Attack.Spell}, err
+		spell := err == nil && ok && plan.Attack != nil && plan.Attack.Spell
+		return combat.Origin{Attack: true, Weapon: !spell, Magical: spell}, err
 	case g.CastID != nil:
 		return combat.Origin{Attack: true, Magical: true}, nil
 	case g.AttackerID == nil || g.AttackKey == "":
@@ -510,10 +511,10 @@ func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (comb
 		// The attack is gone from the sheet (the weapon was removed after the hit): the damage
 		// is still an attack, with no mark, so the resistances to nonmagical attacks apply.
 		f.s.logger.WarnContext(ctx, "play: the attack of a pending damage is not on its attacker's sheet", "attack_key", g.AttackKey)
-		return combat.Origin{Attack: true}, nil
+		return combat.Origin{Attack: true, Weapon: true}, nil
 	}
 	a := sheet.Attacks[i]
-	return combat.Origin{Attack: true, Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine}, nil
+	return combat.Origin{Attack: true, Weapon: !a.Spell, Magical: a.Magical, Silvered: a.Silvered, Adamantine: a.Adamantine}, nil
 }
 
 // landHit puts the damage or the heal on the target and notes the vitals it touched.

@@ -586,6 +586,8 @@ func stepKindProto(kind string) playv1.DamageStepKind {
 		return playv1.DamageStepKind_DAMAGE_STEP_KIND_VULNERABILITY
 	case combat.StepImmunity:
 		return playv1.DamageStepKind_DAMAGE_STEP_KIND_IMMUNITY
+	case combat.StepReduction:
+		return playv1.DamageStepKind_DAMAGE_STEP_KIND_REDUCTION
 	}
 	return playv1.DamageStepKind_DAMAGE_STEP_KIND_UNSPECIFIED
 }
@@ -601,10 +603,22 @@ func stepLabel(st combat.Step, names func(string) string, damageTypePT func(stri
 		head = "Vulnerabilidade a "
 	case combat.StepImmunity:
 		head = "Imunidade a "
+	case combat.StepReduction:
+		head = "Redução de dano de arma"
 	}
 	var sources []string
 	for _, s := range st.Sources {
 		sources = append(sources, sourceNamePT(s, names))
+	}
+	if st.Kind == combat.StepReduction { // it covers every damage type of the attack
+		out := head
+		if st.Qualifier == combat.QualifierNonmagical {
+			out += " não mágica"
+		}
+		if len(sources) > 0 {
+			out += " (" + joinPT(sources) + ")"
+		}
+		return out
 	}
 	out := head + damageTypePT(st.DamageType)
 	switch st.Qualifier {
@@ -1178,6 +1192,13 @@ func (s *Service) ownModifiersOf(ctx context.Context, c *combatTx, campaignID st
 		}
 		out = append(out, traitModifier(r))
 	}
+	for _, r := range sheet.Traits.DamageReductions {
+		m := combat.Modifier{Kind: combat.StepReduction, Source: r.Source, Amount: r.Amount}
+		if r.Nonmagical {
+			m.Qualifier = combat.QualifierNonmagical
+		}
+		out = append(out, m)
+	}
 	return out, nil
 }
 
@@ -1255,7 +1276,7 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 			group := stepGroup{DamageType: t, Before: clamp32(byType[t], 0, math.MaxInt32), From: from}
 			for _, m := range mods {
 				if m.Covers(t, from) {
-					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}, Qualifier: m.Qualifier, Hidden: m.Hidden})
+					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}, Qualifier: m.Qualifier, Hidden: m.Hidden, Amount: m.Amount})
 				}
 			}
 			out.groups = append(out.groups, group)

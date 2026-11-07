@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"slices"
+	"strconv"
+	"testing"
+)
 
 // The table modifier targets of the passives, the melee reach and the hit die minimum (#572). The names are invented.
 
@@ -141,9 +145,91 @@ func TestTheEffectMenuListsTheNewModifierTargets(t *testing.T) {
 			got[v.Key] = v.NamePT
 		}
 	}
-	for _, k := range []string{PassivePerceptionTarget, PassiveInvestigationTarget, PassiveInsightTarget, ReachMeleeTarget, HitDieMinimumTarget} {
+	for _, k := range []string{PassivePerceptionTarget, PassiveInvestigationTarget, PassiveInsightTarget, ReachMeleeTarget, HitDieMinimumTarget, CarryCapacityTarget, DamageReductionWeaponTarget, DamageReductionNonmagicalWeaponTarget} {
 		if got[k] == "" {
 			t.Errorf("the menu has no named target %q: %v", k, got)
 		}
 	}
+}
+
+func strengthScore(t *testing.T, d Derived) int {
+	t.Helper()
+	for _, a := range d.Abilities {
+		if a.Ability == STR {
+			return a.Score
+		}
+	}
+	t.Fatal("no Strength")
+	return 0
+}
+
+func TestCarryCapacityIsFifteenTimesTheStrengthScoreAndTheTargetChangesIt(t *testing.T) {
+	t.Parallel()
+	score := strengthScore(t, derivedWith(t, 3))
+	base := 15 * score
+	for _, tc := range []struct {
+		name   string
+		effect []Effect
+		want   int
+	}{
+		{"the default", nil, base},
+		{"add 40", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "add", Value: "40"}}, base + 40},
+		{"set 500", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "set", Value: "500"}}, 500},
+		{"max below it keeps it", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "max", Value: "1"}}, base},
+		{"max above it raises it", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "max", Value: "900"}}, 900},
+		{"a false when keeps it", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "add", Value: "40", When: "level() >= 10"}}, base},
+		{"a negative result is 0", []Effect{{Type: "modifier", Target: CarryCapacityTarget, Mode: "set", Value: "0 - 9"}}, 0},
+		{"a huge one is bounded", manyAdds(CarryCapacityTarget, 1000, 11), MaxCarryCapacityLb},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := derivedWith(t, 3, tc.effect...).CarryCapacityLb; got != tc.want {
+				t.Errorf("CarryCapacityLb = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDamageReductionTargetsListEachFeatureWithItsAmountAndKind(t *testing.T) {
+	t.Parallel()
+	if got := derivedWith(t, 3).DamageReductions; len(got) != 0 {
+		t.Fatalf("DamageReductions = %+v, want none by default", got)
+	}
+	d := Derive(rollBuild(3), withOverlay(t, rollOverlay(
+		[]Effect{
+			{Type: "modifier", Target: DamageReductionWeaponTarget, Mode: "add", Value: "2"},
+			{Type: "modifier", Target: DamageReductionWeaponTarget, Mode: "add", Value: "1"},
+		},
+		[]Effect{
+			{Type: "modifier", Target: DamageReductionNonmagicalWeaponTarget, Mode: "add", Value: "3"},
+			{Type: "modifier", Target: DamageReductionWeaponTarget, Mode: "add", Value: "4", When: "level() >= 10"},
+		},
+	)))
+	want := []DamageReduction{
+		{Source: rollFirst, Amount: 3},
+		{Source: rollSecond, Amount: 3, Nonmagical: true},
+	}
+	if !slices.Equal(d.DamageReductions, want) {
+		t.Errorf("DamageReductions = %+v, want %+v", d.DamageReductions, want)
+	}
+}
+
+func TestDamageReductionIsNeverNegativeAndIsBounded(t *testing.T) {
+	t.Parallel()
+	d := derivedWith(t, 3,
+		Effect{Type: "modifier", Target: DamageReductionWeaponTarget, Mode: "set", Value: "0 - 4"},
+		Effect{Type: "modifier", Target: DamageReductionNonmagicalWeaponTarget, Mode: "set", Value: "900"},
+	)
+	if len(d.DamageReductions) != 1 || d.DamageReductions[0].Amount != MaxDamageReduction || !d.DamageReductions[0].Nonmagical {
+		t.Errorf("DamageReductions = %+v, want only the nonmagical one at %d", d.DamageReductions, MaxDamageReduction)
+	}
+}
+
+// manyAdds is n modifiers that each add the value, for a bound no single literal reaches.
+func manyAdds(target string, value, n int) []Effect {
+	var out []Effect
+	for range n {
+		out = append(out, Effect{Type: "modifier", Target: target, Mode: "add", Value: strconv.Itoa(value)})
+	}
+	return out
 }

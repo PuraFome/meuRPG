@@ -93,6 +93,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		PassiveInvestigation:  i32(d.PassiveInvestigation),
 		PassiveInsight:        i32(d.PassiveInsight),
 		Initiative:            i32(d.Initiative),
+		CarryCapacityLb:       i32(d.CarryCapacityLb),
 		NextLevelXp:           i32(d.NextLevelXP),
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,

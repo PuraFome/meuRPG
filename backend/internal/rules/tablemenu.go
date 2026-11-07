@@ -420,6 +420,8 @@ var (
 		CriticalRangeTarget:     "Margem de acerto crítico",
 		PassivePerceptionTarget: "Percepção passiva", PassiveInvestigationTarget: "Investigação passiva", PassiveInsightTarget: "Intuição passiva",
 		ReachMeleeTarget: "Alcance corpo a corpo", HitDieMinimumTarget: "Mínimo de PV por dado de vida",
+		CarryCapacityTarget: "Capacidade de carga", DamageReductionWeaponTarget: "Redução de dano de arma",
+		DamageReductionNonmagicalWeaponTarget: "Redução de dano de arma não mágica",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -590,6 +592,12 @@ func (c *content) menuModifierTargets() []MenuValue {
 			v.HintPT = "O valor passivo da ficha (10 mais o bônus da perícia). Soma ao valor, não ao teste."
 		case ReachMeleeTarget:
 			v.HintPT = "O alcance corpo a corpo da criatura, em pés; sem regra é 5. Uma arma com alcance maior mantém o seu."
+		case CarryCapacityTarget:
+			v.HintPT = "A capacidade de carga em libras; sem regra é 15 vezes o valor de Força."
+		case DamageReductionWeaponTarget:
+			v.HintPT = "Valor fixo tirado do dano de cada ataque com arma que acerta o personagem, antes de resistência e vulnerabilidade. Não vale para magias nem para dano que não é ataque."
+		case DamageReductionNonmagicalWeaponTarget:
+			v.HintPT = "Como a redução de dano de arma, mas só para ataques que não são mágicos."
 		case HitDieMinimumTarget:
 			v.HintPT = "O mínimo de PV que um dado de vida gasto num descanso curto devolve, já com o modificador de Constituição."
 		}

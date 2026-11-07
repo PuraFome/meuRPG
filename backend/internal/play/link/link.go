@@ -310,6 +310,8 @@ type Traits struct {
 	ArmorUntrained bool
 	// Resistances are the damage resistances, immunities and vulnerabilities the features and traits give.
 	Resistances []Resistance
+	// DamageReductions are the flat amounts the features take off each weapon attack that hits the sheet.
+	DamageReductions []DamageReduction
 	// ConditionImmunities are the conditions the features and traits make the sheet immune to.
 	ConditionImmunities []ConditionImmunity `json:",omitempty"`
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
@@ -353,6 +355,14 @@ type Resistance struct {
 	// limits it to the damage of attacks that are not magical.
 	Kind       string `json:",omitempty"`
 	Nonmagical bool   `json:",omitempty"`
+}
+
+// DamageReduction is the flat reduction of weapon damage one feature gives: the feature's key, the amount, and
+// whether it covers only the attacks that are not magical.
+type DamageReduction struct {
+	Source     string
+	Amount     int
+	Nonmagical bool `json:",omitempty"`
 }
 
 // ConditionImmunity is a condition the sheet takes none of, with the trait that says so.
