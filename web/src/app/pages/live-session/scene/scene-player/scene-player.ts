@@ -90,6 +90,8 @@ export class ScenePlayer {
 
   readonly campaignId = input.required<string>();
   readonly state = input.required<SceneState>();
+  /** Moves when the stream says the questions of the held rolls changed: the roll sheet reads them again. */
+  readonly heldTick = input(0);
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
   /** The skills Talento Confiável raises for the character (the sheet's), for the typed die's preview. */
@@ -206,6 +208,7 @@ export class ScenePlayer {
       reliableTalent: this.reliableTalent(),
       checkFloor: this.checkFloor(),
       rollDice: this.rollDice(),
+      heldTick: this.heldTick,
     }).subscribe(() => {
       this.rollSheetOpen = false;
       if (!this.gone) {
