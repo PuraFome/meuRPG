@@ -2625,7 +2625,9 @@ export type WatchGameSessionResponse_CombatLogChanged = Message<"meurpg.play.v1.
 
   /**
    * The log was rewritten, not just added to (the master undid an action): the app drops what it holds and reads the
-   * whole log again (ListCombatLog with since_seq 0).
+   * whole log again (ListCombatLog with since_seq 0). Only the master's copy carries it: a player's hint is the same
+   * whatever was undone, so it never tells a player of an undo they cannot see. It is an optimisation only: an app reads
+   * the log with since_seq on every combat_log_changed, and the answer is `full` when the log was rewritten for that reader.
    *
    * @generated from field: bool full = 2;
    */

@@ -930,12 +930,18 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 	s.publishLogChange(ctx, campaignID, encounterID, players, false)
 }
 
-// publishLogChange is publishLogChanged with full: the write rewrote the log (an undo), so the app reads all of it again.
+// publishLogChange is publishLogChanged with full: the write rewrote the log (an undo), so the master's app reads all of it again.
+// The players' copy never carries full: the master's undo of an action a player could not see (secret, or out of their sight) must
+// not tell that player anything that an ordinary change does not. A player's own read (ListCombatLog with since_seq) answers with the
+// whole log when an undo they may see happened.
 func (s *Service) publishLogChange(ctx context.Context, campaignID, encounterID string, players, full bool) {
-	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
-	}}
-	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	logChangedMessage := func(full bool) *playv1.WatchGameSessionResponse {
+		return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+			CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
+		}}
+	}
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: logChangedMessage(full)})
+	msg := logChangedMessage(false)
 	if !players {
 		return
 	}

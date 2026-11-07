@@ -159,6 +159,8 @@ func TestCombatLogChangedIsFullAfterAnUndo(t *testing.T) {
 	e := a.threeAndAGoblin(t)
 	stream := a.master.watch(t, a.campaignID)
 	stream.ready(t)
+	playerStream := a.caio.watch(t, a.campaignID)
+	playerStream.ready(t)
 	a.h.roller.queue(15, 3)
 	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", inAppRoll)
 	logChange := func() *playv1.WatchGameSessionResponse_CombatLogChanged {
@@ -169,14 +171,26 @@ func TestCombatLogChangedIsFullAfterAnUndo(t *testing.T) {
 			}
 		}
 	}
+	playerLogChange := func() *playv1.WatchGameSessionResponse_CombatLogChanged {
+		t.Helper()
+		for {
+			if c := playerStream.next(t).GetCombatLogChanged(); c != nil {
+				return c
+			}
+		}
+	}
 	if c := logChange(); c.GetFull() {
 		t.Error("an attack told the streams the log was rewritten")
 	}
+	ordinary := playerLogChange()
 	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
 		t.Fatal(err)
 	}
 	if c := logChange(); !c.GetFull() {
-		t.Error("an undo did not tell the streams the log was rewritten")
+		t.Error("an undo did not tell the master's stream the log was rewritten")
+	}
+	if c := playerLogChange(); !proto.Equal(c, ordinary) {
+		t.Errorf("a player heard %v after the undo, %v after the attack; want the same", c, ordinary)
 	}
 }
 
@@ -414,5 +428,43 @@ func TestDeltaSafeKindsAreKindsOfTheLogBuilders(t *testing.T) {
 		if !deltaSafeKinds[kind] {
 			t.Errorf("%s is listed as writing no line but is not delta-safe", kind)
 		}
+	}
+}
+
+// The hint a player hears is the same whatever the master undid: full is the master's copy alone.
+func TestCombatLogChangedHintOfAPlayerNeverCarriesFull(t *testing.T) {
+	t.Parallel()
+	hub := live.New(0)
+	s := &Service{hub: hub}
+	master, err := hub.Subscribe("camp", live.Subscriber{UserID: "m", Master: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer master.Close()
+	player, err := hub.Subscribe("camp", live.Subscriber{UserID: "p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer player.Close()
+	heard := func(sub *live.Subscription) *playv1.WatchGameSessionResponse {
+		t.Helper()
+		select {
+		case ev := <-sub.Events():
+			sub.Taken(ev)
+			return ev.Message
+		default:
+			t.Fatal("no hint")
+			return nil
+		}
+	}
+	s.publishLogChange(t.Context(), "camp", "enc", true, false)
+	ordinary := heard(player)
+	heard(master)
+	s.publishLogChange(t.Context(), "camp", "enc", true, true) // an undo, of whatever the player could or could not see
+	if got := heard(player); !proto.Equal(got, ordinary) {
+		t.Errorf("a player heard %v after an undo, %v after an ordinary change; want the same", got, ordinary)
+	}
+	if !heard(master).GetCombatLogChanged().GetFull() {
+		t.Error("the master did not hear full after an undo")
 	}
 }
