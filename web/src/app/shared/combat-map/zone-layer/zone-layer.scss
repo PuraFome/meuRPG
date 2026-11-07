@@ -84,11 +84,18 @@ $dash: 6 4;
   box-sizing: border-box;
   width: var(--zl-badge);
   height: var(--zl-badge);
-  color: var(--mr-map-token-ink);
   font-size: var(--mr-font-12);
   font-weight: 700;
   line-height: 1;
   transform: translate(-50%, -50%);
+}
+
+// The diamond below is a positioned pseudo-element, which paints over in-flow text: the letter is its own positioned element
+// above it, in the ink on the diamond's white (about 16:1 in both themes, the tokens do not change with the theme).
+.zl__letter {
+  position: relative;
+  z-index: 1;
+  color: var(--mr-map-token-ink);
 }
 
 .zl__badge::before {

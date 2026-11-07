@@ -308,7 +308,7 @@ export class AreaMap {
   constructor() {
     afterNextRender(() => {
       if (this.autofocus()) {
-        this.app()?.nativeElement.focus();
+        this.app()?.nativeElement.focus({ preventScroll: true });
       }
     });
     inject(DestroyRef).onDestroy(() => this.announcer.clear());

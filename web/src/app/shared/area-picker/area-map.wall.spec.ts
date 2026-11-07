@@ -225,4 +225,28 @@ describe('AreaMap: a wall', () => {
     fixture.detectChanges();
     expect(plain(el.querySelector('p[role="status"]')?.textContent)).toContain('direção leste');
   });
+
+  // Focusing the map when the sheet opens must not scroll the sheet's body to it: that hid the steps and the slot row above the map
+  // (the body opened scrolled by 148 px at 390 px, #640).
+  it('takes the focus when it opens without scrolling anything to it', async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    const fixture = TestBed.createComponent(AreaMap);
+    const ref = fixture.componentRef;
+    ref.setInput('image', { url: 'map.png', width: 1200, height: 800 });
+    ref.setInput('columns', 12);
+    ref.setInput('rows', 8);
+    ref.setInput('combatants', [caster]);
+    ref.setInput('casterId', 'p');
+    ref.setInput('spell', 'Muralha de Fogo');
+    ref.setInput('placement', AreaPlacement.POINT);
+    ref.setInput('area', { shape: SpellAreaShape.LINE, sizeFt: 60, widthFt: 5 });
+    ref.setInput('autofocus', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const app = fixture.nativeElement.querySelector('[role="application"]');
+    const call = focus.mock.calls.findIndex((_, i) => focus.mock.contexts[i] === app);
+    expect(call).toBeGreaterThanOrEqual(0);
+    expect(focus.mock.calls[call][0]).toEqual({ preventScroll: true });
+    focus.mockRestore();
+  });
 });

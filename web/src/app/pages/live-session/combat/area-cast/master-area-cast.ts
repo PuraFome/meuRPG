@@ -53,7 +53,7 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { AreaShape } from '../../../../core/combat/spell-area';
-import { type WallChoice, laysWall } from '../../../../core/combat/spell-wall';
+import { type WallChoice, WALL_NEXT, laysWall } from '../../../../core/combat/spell-wall';
 import { AreaList } from '../../../../shared/area-picker/area-list';
 import { AreaNotice } from '../../../../shared/area-picker/area-notice';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
@@ -130,9 +130,7 @@ export class MasterAreaCast {
   /** The spell lays a wall (Muralha de Fogo): "Onde fica", with its shape, length and burning side. */
   protected readonly lays = !!this.flow.wall();
   protected readonly stepOne = this.lays ? 'Onde fica' : stepOneTitle(this.placement);
-  protected readonly confirmText = this.lays
-    ? 'Próximo: quem está na área'
-    : confirmLabel(this.placement);
+  protected readonly confirmText = this.lays ? WALL_NEXT : confirmLabel(this.placement);
 
   /** `PreviewSpellArea` for the placed area; a wall (Muralha de Fogo) goes as the last argument. */
   private preview(area: AreaChoice | null, wall: WallChoice | null) {

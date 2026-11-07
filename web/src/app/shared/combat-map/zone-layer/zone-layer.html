@@ -63,7 +63,8 @@
       [class.zl__badge--dashed]="z.dashed"
       [style.left]="'clamp(calc(var(--zl-badge) / 2), ' + z.x + '%, calc(100% - var(--zl-badge) / 2))'"
       [style.top]="'clamp(calc(var(--zl-badge) / 2), ' + z.y + '%, calc(100% - var(--zl-badge) / 2))'"
-      >{{ z.letter }}</span
     >
+      <span class="zl__letter">{{ z.letter }}</span>
+    </span>
   }
 }

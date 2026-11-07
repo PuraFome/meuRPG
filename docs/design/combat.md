@@ -82,11 +82,14 @@ The number and unit travel together (non-breaking space) and a "·" never starts
   The side is not preselected.
   Its two buttons are named by where the side lies on the screen ("Acima" and "Abaixo" for a wall that runs east, "Dentro" and "Fora" for a ring).
   "Escolha o lado" warns until one is pressed, and turning the wall takes the pick back.
-  "Próximo: quem está na área" stays off with "Escolha o lado que queima." until then.
+  "Próximo: quem está nela" stays off with "Escolha o lado que queima." until then.
   "Calculando onde a muralha fica…" shows while the server answers.
   "A muralha para na parede: ficou com 9 m (6 quadrados) em vez de 12 m." shows when a straight wall is shorter than asked.
   The map draws the server's wall in bricks and, once the side is picked, its burning side in arrows.
   The start is "Começo" (a ring's is "Centro"), and a drag from the start sets the direction.
+  The sheet shows its two steps in one row, "1 Onde fica" (filled) and "2 Quem está nela".
+  Its footer is pinned under the scrolling body, with "Cancelar" (outlined) and "Próximo: quem está nela" (filled) side by side at every width.
+  A ring adds a card under its controls: "Anel de 6 m · 16 quadrados" and "Na muralha agora: …" with the creatures the server named.
   [Spell zones](../architecture/play/spell-zones.md#the-web-onde-fica) has the rules.
 - **Reactions and opportunity attacks** open an `alertdialog` by themselves, with no close button or Esc, and focus on the safe choice ("Deixar passar", "Não atacar"). The result shows only what the player may read: their own numbers, never an NPC's total or armor class.
 - **Death saves:** the hero on their turn has a `danger-ink` frame, two rows of marks (success ✓, failure ✕, empty ring) and "Rolar teste contra a morte". Only the owner and the master see the marks (RN-24); other players read the state word. The master's confirmation of a death is a question in place with "Ainda não" focused. When a table feature's `death_save_failed` hook stands the character up (`DeathSave.hook`), the result reads "Falha, mas o traço X entrou em ação: você volta com N PV. Nenhuma falha entra na conta." and, because the card of the dying is gone by then, the same sentence is the action note of the turn. A hook that did not heal adds " O traço X entrou em ação: …" to the result. The combat log writes the same hook after the save ("X levantou Toren com 6 PV") and, on an applied damage, the temporary hit points a table action gave ("ganha 2 PV temporários") and the hook that kept the target on its feet (`CombatLogDamage.hook`), in the log's usual line style; only the numbers that arrive are printed.

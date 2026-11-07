@@ -17,6 +17,10 @@ export function laysWall(spellKey: string): boolean {
   return spellKey === WALL_SPELL_KEY;
 }
 
+/** The wall's two steps, as the board names them: where it lies, then who is in it. The footer's button names the second. */
+export const WALL_STEPS = ['Onde fica', 'Quem está nela'] as const;
+export const WALL_NEXT = 'Próximo: quem está nela';
+
 /** The largest a straight wall is, and a ring's diameter, in feet: what the server takes (`wallLength`). */
 export const WALL_LINE_FT = 60;
 export const WALL_RING_FT = 20;

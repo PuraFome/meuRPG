@@ -65,7 +65,7 @@ test(
       await nextStep(sheet).click();
 
       // Step 2: who is in the area (nobody), then the cast.
-      await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeVisible();
+      await expect(sheet.getByRole('heading', { name: 'Quem está nela' })).toBeVisible();
       await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
       await sheet.getByRole('button', { name: 'Conjurar mesmo assim' }).click();
       const done = t.p.getByRole('dialog', { name: 'Muralha de Fogo conjurada' });
@@ -117,11 +117,14 @@ test(
       await tapWallSquare(map, 11, 5);
       await expect(sheet.getByRole('application', { name: 'Mapa: escolha o centro da Muralha de Fogo' })).toBeVisible();
       await expectWallCalculated(sheet);
+      // The ring's card, from the server's preview: the diameter, the squares and who it names (nobody here).
+      await expect(sheet.getByText(/^Anel de\s6\sm\s·\s16\squadrados$/)).toBeVisible();
+      await expect(sheet.getByText('Ninguém que você vê está na muralha agora.')).toBeVisible();
       await pickRadio(sheet, 'Dentro');
       await expect(sheet.getByRole('radio', { name: 'Dentro' })).toBeChecked();
       await expect(nextStep(sheet)).not.toHaveAttribute('aria-disabled', 'true');
       await nextStep(sheet).click();
-      await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeVisible();
+      await expect(sheet.getByRole('heading', { name: 'Quem está nela' })).toBeVisible();
       await sheet.getByRole('button', { name: 'Conjurar mesmo assim' }).click();
       await t.p.getByRole('dialog', { name: 'Muralha de Fogo conjurada' }).getByRole('button', { name: 'Voltar à sua vez' }).click();
 

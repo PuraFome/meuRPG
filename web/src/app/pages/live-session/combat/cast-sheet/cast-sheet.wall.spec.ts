@@ -164,11 +164,71 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     expect(plain(el.textContent)).toContain(
       'A seta no mapa mostra o lado: 5d8 de fogo para quem termina o turno ali, até 3 m.',
     );
-    expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).toBe('true');
+    expect(button('Próximo: quem está nela')?.getAttribute('aria-disabled')).toBe('true');
     expect(plain(el.querySelector('.missing')?.textContent)).toContain(
       'Toque no mapa para marcar onde a muralha fica.',
     );
     expect(previewSpellArea).not.toHaveBeenCalled();
+  });
+
+  it('shows the two steps side by side, "1 Onde fica" now and "2 Quem está nela" next, and the heading is the current one', async () => {
+    const { el, button, radio, placeAt, settle } = await open();
+    const steps = () => plain(el.querySelector('app-area-step')?.textContent);
+    expect(steps()).toContain('Onde fica');
+    expect(steps()).toContain('Quem está nela');
+    expect(plain(el.querySelector('app-area-step h3')?.textContent)).toMatch(/^1\s*Onde fica$/);
+    await placeAt(4, 2);
+    radio('Lado que queima', 'Abaixo')!.click();
+    await settle();
+    button('Próximo: quem está nela')!.click();
+    await settle();
+    expect(plain(el.querySelector('app-area-step h3')?.textContent)).toMatch(
+      /^2\s*Quem está nela$/,
+    );
+    expect(steps()).toContain('Onde fica');
+    expect(document.activeElement?.closest('app-area-step')).not.toBeNull();
+  });
+
+  it('pins "Cancelar" and "Próximo: quem está nela" in the footer, side by side and of one size, outside the scrolling body', async () => {
+    const { el } = await open();
+    const foot = el.querySelector('.frame__foot')!;
+    expect(foot.closest('.frame')).not.toBeNull();
+    expect(el.querySelector('.frame__body')?.contains(foot)).toBe(false);
+    const row = foot.querySelector('.actions')!;
+    expect(row.classList.contains('actions--pair')).toBe(true);
+    expect(row.classList.contains('actions--stack')).toBe(false);
+    const labels = Array.from(row.querySelectorAll('button')).map((b) => plain(b.textContent));
+    expect(labels.sort()).toEqual(['Cancelar', 'Próximo: quem está nela']);
+    expect(row.querySelector('button.cancel')?.className).toContain('outlined');
+    expect(row.querySelector('button.cast')?.className).toContain('unelevated');
+  });
+
+  it('sums the ring up from the server: its diameter, the squares laid and who it names in the wall', async () => {
+    const { el, button, radio, settle, placeAt, previewSpellArea } = await open();
+    previewSpellArea.mockResolvedValue(
+      create(PreviewSpellAreaResponseSchema, {
+        origin: { col: 4, row: 2 },
+        squares: Array.from({ length: 16 }, (_, i) => ({ col: i % 4, row: Math.floor(i / 4) })),
+        burningSquares: [{ col: 5, row: 5 }],
+        targets: [{ combatantId: 'k1', label: 'Kobold 1', distanceFt: 5 }],
+        coverCounts: true,
+        lengthFt: 20,
+      }),
+    );
+    expect(el.querySelector('.wall-summary')).toBeNull();
+    radio('Forma da muralha', 'Anel')!.click();
+    await settle();
+    await placeAt(4, 2);
+    const card = el.querySelector('.wall-summary')!;
+    expect(plain(card.querySelector('strong')?.textContent)).toBe('Anel de 6 m · 16 quadrados');
+    expect(plain(card.textContent)).toContain('Na muralha agora: Kobold 1');
+    expect(button('Próximo: quem está nela')).toBeDefined();
+  });
+
+  it('draws no summary for a straight wall', async () => {
+    const { el, placeAt } = await open();
+    await placeAt(4, 2);
+    expect(el.querySelector('.wall-summary')).toBeNull();
   });
 
   it('previews the wall with a provisional side, draws no burning side, and keeps "Próximo" off until a side is picked', async () => {
@@ -185,16 +245,16 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
       unpicked,
     );
     expect(el.querySelector('app-zone-layer .zl__burn')).toBeNull();
-    expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).toBe('true');
+    expect(button('Próximo: quem está nela')?.getAttribute('aria-disabled')).toBe('true');
     expect(plain(el.querySelector('.missing')?.textContent)).toContain(
       'Escolha o lado que queima.',
     );
-    button('Próximo: quem está na área')!.click();
+    button('Próximo: quem está nela')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Onde fica');
     radio('Lado que queima', 'Abaixo')!.click();
     await settle();
-    expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).not.toBe('true');
+    expect(button('Próximo: quem está nela')?.getAttribute('aria-disabled')).not.toBe('true');
     expect(el.querySelector('app-zone-layer .zl__burn')).not.toBeNull();
   });
 
@@ -265,9 +325,9 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await placeAt(4, 2);
     radio('Lado que queima', 'Abaixo')!.click();
     await settle();
-    button('Próximo: quem está na área')!.click();
+    button('Próximo: quem está nela')!.click();
     await settle();
-    expect(plain(el.textContent)).toContain('Quem está na área');
+    expect(plain(el.textContent)).toContain('Quem está nela');
     expect(el.querySelector('app-wall-controls')).toBeNull();
     button('Conjurar Muralha de Fogo')!.click();
     await settle();
@@ -281,7 +341,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await placeAt(4, 2);
     radio('Lado que queima', 'Abaixo')!.click();
     await settle();
-    button('Próximo: quem está na área')!.click();
+    button('Próximo: quem está nela')!.click();
     await settle();
     button('Mudar o local')!.click();
     await settle();
@@ -303,7 +363,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await placeAt(4, 2);
     radio('Lado que queima', 'Abaixo')!.click();
     await settle();
-    button('Próximo: quem está na área')!.click();
+    button('Próximo: quem está nela')!.click();
     await settle();
     button('Conjurar Muralha de Fogo')!.click();
     await settle();
@@ -317,7 +377,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await settle();
     radio('Lado que queima', 'Acima')!.click();
     await settle();
-    button('Próximo: quem está na área')!.click();
+    button('Próximo: quem está nela')!.click();
     await settle();
     button('Conjurar Muralha de Fogo')!.click();
     await settle();

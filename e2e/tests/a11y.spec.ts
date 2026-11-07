@@ -9923,9 +9923,9 @@ async function scanWallSheetScreens(browser: Browser, colorScheme: 'light' | 'da
 
     // "Próximo": the list step, nobody in the area.
     await nextStep(sheet).click();
-    await expect(sheet.getByRole('heading', { name: 'Quem está na área' })).toBeVisible();
+    await expect(sheet.getByRole('heading', { name: 'Quem está nela' })).toBeVisible();
     await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
-    await expectScreenPasses(p, `Onde fica, quem está na área ${where}`);
+    await expectScreenPasses(p, `Onde fica, quem está nela ${where}`);
   } finally {
     await t.done();
   }

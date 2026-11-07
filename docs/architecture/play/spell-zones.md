@@ -193,8 +193,13 @@ The map (`app-area-map` with `wall`) draws only what the server answered: `squar
 The first square of a line, or the centre of a ring, is a square outlined in the accent colour, named "Começo" or "Centro" in the legend.
 A press on a square and a release on another sets the start and the direction (`WallDrag`), and the reader of the screen hears the direction; a tap only sets the start.
 The start stays on the placed square when the mouse passes over another, and the last wall stays drawn until the next answer arrives.
+The map takes the focus when the sheet opens with `preventScroll`, so the steps and the slot row above it stay in view.
 The map keeps `touch-action: none`, so a finger on the map does not scroll the sheet; the hint says "Ou use as setas abaixo" for the direction pad.
-The footer says "Próximo: quem está na área", and the list step follows as for any area.
+The cast sheet's footer is pinned under the scrolling body with "Cancelar" and "Próximo: quem está nela" side by side, and the list step, "2 Quem está nela", follows as for any area.
+`app-area-step` takes `all` (`WALL_STEPS`) to show both steps in a row, the current one being the heading that takes the focus.
+A ring has a card under its controls (`wallSummary`, `core/combat/wall-summary.ts`): "Anel de 6 m · 16 quadrados" from `squares` and `length_ft` of the preview, and "Na muralha agora: Kobold 2 (teste de Destreza)." from its `targets`, so it names only the creatures the caller sees.
+The card is not drawn while a newer preview is on its way, and a straight wall has none (its note counts the squares).
+The master's dialog has the same button text and no card; it lists who is inside in its second column.
 
 ## What a zone does not change in an attack
 

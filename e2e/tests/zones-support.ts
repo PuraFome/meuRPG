@@ -204,7 +204,14 @@ export async function zoneLetter(page: Page, label: string): Promise<string> {
 export async function expectOnMap(page: Page, label: string): Promise<void> {
   const letter = await zoneLetter(page, label);
   expect(letter, `${label} has no letter in the list`).not.toBe('');
-  await expect(zoneBadges(page).filter({ hasText: new RegExp(`^${letter}$`) })).toHaveCount(1);
+  const badge = zoneBadges(page).filter({ hasText: new RegExp(`^${letter}$`) });
+  await expect(badge).toHaveCount(1);
+  // The letter is painted above the white diamond, in the ink (a bare text node was hidden under the diamond's ::before).
+  const letterEl = badge.locator('.zl__letter');
+  await expect(letterEl).toHaveText(letter);
+  await expect(letterEl).toHaveCSS('position', 'relative');
+  await expect(letterEl).toHaveCSS('z-index', '1');
+  await expect(letterEl).toHaveCSS('color', 'rgb(27, 34, 48)');
 }
 
 /**
@@ -349,7 +356,7 @@ export async function expectWallCalculated(sheet: Locator): Promise<void> {
   await expect(sheet.getByRole('status').filter({ hasText: 'Calculando onde a muralha fica…' })).toHaveCount(0);
 }
 
-/** The "Próximo: quem está na área" button of the step. */
+/** The "Próximo: quem está nela" button of the step. */
 export function nextStep(sheet: Locator): Locator {
-  return sheet.getByRole('button', { name: 'Próximo: quem está na área' });
+  return sheet.getByRole('button', { name: 'Próximo: quem está nela' });
 }

@@ -143,16 +143,16 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
     });
   });
 
-  it('goes to the list with "Próximo: quem está na área" and casts with the wall', async () => {
+  it('goes to the list with "Próximo: quem está nela" and casts with the wall', async () => {
     const { el, button, settle, castSpell, map, side } = await open();
     map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
     await settle();
     expect(plain(el.textContent)).toContain('Escolha o lado que queima.');
-    button('Próximo: quem está na área').click();
+    button('Próximo: quem está nela').click();
     await settle();
     expect(plain(el.textContent)).toContain('Onde fica');
     await side('Abaixo');
-    button('Próximo: quem está na área').click();
+    button('Próximo: quem está nela').click();
     await settle();
     expect(plain(el.textContent)).toContain('Quem está na área');
     button('Conjurar Muralha de Fogo').click();
@@ -177,7 +177,7 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
     map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
     await settle();
     await side('Abaixo');
-    button('Próximo: quem está na área').click();
+    button('Próximo: quem está nela').click();
     await settle();
     button('Conjurar Muralha de Fogo').click();
     await settle();
@@ -190,7 +190,7 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
     button('Mudar o local').click();
     await settle();
     await side('Acima');
-    button('Próximo: quem está na área').click();
+    button('Próximo: quem está nela').click();
     await settle();
     button('Conjurar Muralha de Fogo').click();
     await settle();

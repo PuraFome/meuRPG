@@ -60,6 +60,30 @@ describe('ZoneLayer', () => {
     expect(badges).toEqual(['A', 'B']);
   });
 
+  // The diamond is a positioned ::before: a letter left as bare text in the badge is painted under it (a white diamond with
+  // no letter, #640). The letter is its own positioned element, above the diamond, in the ink token on the diamond's surface.
+  it('puts each badge letter in its own element, painted above the diamond, in the ink on white', () => {
+    const el = mount([
+      view({ id: 'a' }),
+      { ...view({ id: 'b', spellKey: 'spell:web' }), letter: 'B' },
+    ]);
+    const letters = [...el.querySelectorAll<HTMLElement>('.zl__badge > .zl__letter')];
+    expect(letters.map((l) => l.textContent)).toEqual(['A', 'B']);
+    for (const letter of letters) {
+      const style = getComputedStyle(letter);
+      expect(style.position).toBe('relative');
+      expect(Number(style.zIndex)).toBeGreaterThanOrEqual(1);
+    }
+    const css = [...document.querySelectorAll('style')]
+      .map((s) => s.textContent ?? '')
+      .join('\n')
+      .replace(/\s+/g, ' ');
+    expect(css).toMatch(/\.zl__letter[^{]*\{[^}]*color: var\(--mr-map-token-ink\)/);
+    expect(css).toMatch(
+      /\.zl__badge[^{]*::before[^{]*\{[^}]*background: var\(--mr-map-token-surface\)/,
+    );
+  });
+
   it('draws the zone of a hidden caster dashed, with its badge dashed too', () => {
     const el = mount([view({ id: 'a', visibility: SpellZoneVisibility.MASTER_ONLY })]);
     expect(el.querySelector('g.zl__outline.zl__zone--dashed')).not.toBeNull();
