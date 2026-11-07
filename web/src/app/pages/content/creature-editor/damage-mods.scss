@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
 .block {
   gap: var(--mr-space-3);
 }
@@ -23,6 +28,15 @@
   grid-template-columns: 11rem minmax(0, 1fr) minmax(0, 1fr) 44px;
   gap: 0 var(--mr-space-3);
   align-items: start;
+}
+
+// The labels of a stacked row (the head says them when the columns are side by side).
+.cell__label {
+  display: none;
+  margin-bottom: var(--mr-space-1);
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+  color: var(--mr-ink-muted);
 }
 
 .head {
@@ -150,4 +164,40 @@
 .add__count {
   font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
+}
+
+// A section narrower than the three columns need (the preview takes a third of a laptop): the row stacks, the kind with its
+// menu on the first line, the types and "Vale contra" each on a line of their own, so no value is cut.
+@container (max-width: 780px) {
+  .head {
+    display: none;
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: var(--mr-space-2) var(--mr-space-3);
+  }
+
+  .cell--kind {
+    grid-column: 1;
+  }
+
+  .mod__more {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .cell--types,
+  .cell--qualifier {
+    grid-column: 1 / -1;
+  }
+
+  .cell__label {
+    display: block;
+  }
+
+  .mod {
+    padding: var(--mr-space-3) 0;
+  }
 }
