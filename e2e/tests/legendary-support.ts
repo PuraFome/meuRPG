@@ -276,6 +276,28 @@ async function resistanceScreens(l: Look, fight: LegendaryFight): Promise<Legend
   return setConditions(m, [m, p], await refreshed(m, stunned), DRAGON, []);
 }
 
+/**
+ * The default, an automatic Parry: a hit that +2 turns into a miss is a plain miss for the player with the line "aparou o ataque", and
+ * no wait and no window; a hit well above the armor class (the bonus cannot turn it) has no such line.
+ */
+async function automaticParry(l: Look, fight: LegendaryFight, next: () => Promise<LegendaryFight>): Promise<LegendaryFight> {
+  const { m, p } = l;
+  await daggerAtArmorClass(p, fight, BANDIT, 15);
+  const log = await openCombatLog(p);
+  await expect(log.getByRole('listitem').filter({ hasText: 'Pensantus ataca o Capitão bandido' }).first()).toContainText('errou');
+  await expect(log.getByText(`${BANDIT} aparou o ataque.`)).toHaveCount(1);
+  await expect(p.getByTestId('master-wait')).toHaveCount(0);
+  await expect(m.getByTestId('parry-offer')).toHaveCount(0);
+  await expect(m.getByTestId('queue-header')).toHaveCount(0);
+  const again = await next();
+  await daggerAtArmorClass(p, again, BANDIT, 19);
+  await expect(log.getByRole('listitem').filter({ hasText: 'Pensantus ataca o Capitão bandido' }).first()).toContainText('acertou');
+  await expect(log.getByText(`${BANDIT} aparou o ataque.`)).toHaveCount(1);
+  await expect(p.getByTestId('master-wait')).toHaveCount(0);
+  await expect(m.getByTestId('parry-offer')).toHaveCount(0);
+  return again;
+}
+
 /** The checkbox "Aparar: perguntar a cada golpe" of the order's "Mais" menu: only for an NPC with Parry, unchecked until the master switches it. */
 async function parryMenuScreens(l: Look): Promise<void> {
   const { m, p } = l;
@@ -359,6 +381,8 @@ export async function legendaryScreens(m: Page, p: Page, scheme: 'light' | 'dark
   await legendaryCardScreens(l, fight);
   await legendarySpendScreens(l);
   let now = await resistanceScreens(l, fight);
+  now = await nextTurnOfPensantus(m, [m, p], now);
+  now = await automaticParry(l, now, () => nextTurnOfPensantus(m, [m, p], now));
   now = await nextTurnOfPensantus(m, [m, p], now);
   await parryMenuScreens(l);
   const parryText = await parryWindowScreens(l, now);
