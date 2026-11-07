@@ -21,6 +21,7 @@ import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
+import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
@@ -5769,7 +5770,8 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     await passTurnsToAndWait(m, campaignId, 'Goblin', [m, p]);
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Goblin$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um NPC ${where}`);
-    await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
+    await m.getByRole('button', { name: 'Mais ações de Goblin', exact: true }).click();
+    await m.getByRole('menuitem', { name: /Oferecer ataque de oportunidade/ }).click();
     await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
     await expectScreenPasses(m, `Oferecer ataque de oportunidade ${where}`);
     await m.getByRole('radio', { name: /Toren/ }).check({ force: true });
@@ -9143,7 +9145,7 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await attack.getByLabel('Primeiro d20').fill('2');
     await attack.getByLabel('Segundo d20').fill('5');
     await attack.getByRole('button', { name: /^Confirmar/ }).click();
-    await expect(attack).toContainText('+ 1d4 (3)');
+    await expect(attack).toContainText('+ Bênção 1d4 (3)');
     await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
     await p.keyboard.press('Escape');
     await expect(attack).toBeHidden();
@@ -9733,6 +9735,98 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
 test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCreatureActions(browser, 'dark', 390);
+});
+
+/** The table die on a weapon attack (Golpe Certeiro, #643): the weapon list's line, the attack sheet's "Rolar" step with the
+ * die (one die: a checkbox, ticked, with the physical d8; two dice: the radio group with "Nenhum"), and the pool with no use left. */
+async function scanManeuverSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, dice: 1 | 2): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px, ${dice === 1 ? 'um dado' : 'dois dados'})`;
+  let campaignId = '';
+  const openSheet = async () => {
+    await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
+    await p.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(p.getByText('Usar Golpe Certeiro')).toBeVisible();
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await maneuverTable(m, p, `Acessibilidade dado de manobra ${Date.now()}`, dice);
+    campaignId = table.campaignId;
+    await beginManeuverCombatRPC(m, table);
+    await openSessionPage(p, campaignId);
+
+    // The weapon list says the die can go in the attack.
+    const note = p.getByTestId('maneuver-note');
+    await expect(note).toContainText(dice === 1 ? 'pode entrar num ataque com arma' : 'podem entrar num ataque com arma');
+    await expectScreenPasses(p, `Ataques, a linha do dado de manobra ${where}`);
+
+    // "Rolar": the die offer, nothing chosen.
+    await openSheet();
+    const sheet = p.getByRole('dialog');
+    if (dice === 1) {
+      await expect(sheet.getByRole('checkbox', { name: /Usar Golpe Certeiro/ })).not.toBeChecked();
+    } else {
+      await expect(sheet.getByRole('radio', { name: 'Nenhum' })).toBeChecked();
+    }
+    await expectScreenPasses(p, `Atacar, rolar com o dado de manobra ${where}`);
+
+    // The die ticked, and its d8 typed with the physical dice.
+    if (dice === 1) {
+      await pickRadio(sheet, 'Usar Golpe Certeiro');
+    } else {
+      await pickRadio(sheet, 'Usar Golpe Firme');
+    }
+    await expectScreenPasses(p, `Atacar, o dado de manobra marcado ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(sheet.getByLabel(dice === 1 ? /Resultado do d8 \(Golpe Certeiro\)/ : /Resultado do d6 \(Golpe Firme\)/)).toBeVisible();
+    await expectScreenPasses(p, `Rolagem física com o dado de manobra, vazia ${where}`);
+    await sheet.getByLabel(dice === 1 ? /Resultado do d8/ : /Resultado do d6/).fill('5');
+    await sheet.getByLabel(/Role 1d20/).fill('14');
+    await expectScreenPasses(p, `Rolagem física com o dado de manobra, preenchida ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(sheet).toHaveCount(0);
+
+    // No use left: the die is off, with the reason under the group.
+    await spendPoolRPC(m, table);
+    await p.reload();
+    await expect(p.getByTestId('maneuver-note')).toContainText('sem usos');
+    await openSheet();
+    await expect(sheet.getByText('Sem usos de Reserva de Golpes.')).toBeVisible();
+    await expect(sheet.getByRole(dice === 1 ? 'checkbox' : 'radio', { name: /Usar Golpe Certeiro/ })).toBeDisabled();
+    await expectScreenPasses(p, `Atacar, rolar sem usos do dado de manobra ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o dado de manobra no ataque (um dado) passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanManeuverSheetScreens(browser, 'light', 1280, 1);
+});
+
+test('o dado de manobra no ataque (um dado) passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanManeuverSheetScreens(browser, 'dark', 390, 1);
+});
+
+test('o dado de manobra no ataque (dois dados, com "Nenhum") passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-014', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanManeuverSheetScreens(browser, 'dark', 1280, 2);
+});
+
+test('o dado de manobra no ataque (dois dados, com "Nenhum") passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanManeuverSheetScreens(browser, 'light', 390, 2);
 });
 
 // The editor screens of the race, subrace and feat (MR-025, RN-23; #571 and #716), and what a player and the master read of them.
@@ -10404,4 +10498,123 @@ test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferência
 
 test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-10'] }, async ({ browser }) => {
   await scanTableScreen(browser, 'dark', 390);
+});
+
+/** "Mais ações" of the NPC's card and the opportunity attack (#643): the menu with the offer on, the offer panel in place with the
+ * candidates ringed on the map, the player's prompt with the die line and the attack sheet's die, then the menu with the offer off
+ * and its reason (the only one who could react spent the reaction). The menu is driven with the keyboard. */
+async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 1024 ? 800 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await maneuverTable(m, p, `Acessibilidade oferta ${Date.now()}`, 1);
+    campaignId = table.campaignId;
+    const start = await beginManeuverCombatRPC(m, table, { 'Goblin 1': 20, Brutus: 15, 'Capitão Goblin': 10, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
+    // Two NPCs on the party's side: three candidates for the offer.
+    // The sides are setup, set through the API; the page waits for the combat it shows to have them.
+    const setSides = async (side: 'COMBATANT_SIDE_PARTY' | 'COMBATANT_SIDE_ENEMY') => {
+      let enc = start;
+      for (const label of ['Goblin 2', 'Capitão Goblin']) {
+        enc = await combatRPC(m, 'SetCombatantSide', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === label)!.id, side });
+      }
+      await waitForEncounterRevision(m, enc, 'the sides of the NPCs');
+    };
+    await setSides('COMBATANT_SIDE_PARTY');
+    await openTurn(m);
+
+    // The menu, with the offer on: Enter opens it, the arrow keys move, Escape gives the focus back to the button.
+    const trigger = m.getByRole('button', { name: 'Mais ações de Goblin 1' });
+    await trigger.focus();
+    await m.keyboard.press('Enter');
+    const offerItem = m.getByRole('menuitem', { name: /Oferecer ataque de oportunidade/ });
+    await expect(offerItem).toBeVisible();
+    await expect(offerItem).toBeEnabled();
+    await expectScreenPasses(m, `Mais ações do cartão do NPC, com a oferta ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(offerItem).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    // Chosen with Enter: the panel opens in the card and takes the focus; the candidates are ringed on the map beside it.
+    await m.keyboard.press('Enter');
+    await expect(offerItem).toBeFocused();
+    await m.keyboard.press('Enter');
+    const panel = m.getByRole('region', { name: 'Oferecer ataque de oportunidade' });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('radio').first()).toBeFocused();
+    await expect(panel.getByRole('radio')).toHaveCount(3);
+    await expect(panel.getByText(/agora a \d/).first()).toBeVisible();
+    if (width >= 1024) {
+      await expect(m.locator('.cm__pick--offer')).toHaveCount(3);
+    }
+    // The panel has the one filled button, and its actions are in view without scrolling ("Próximo turno" is outlined meanwhile).
+    const give = panel.getByRole('button', { name: /^Oferecer a / });
+    await expect(give).toHaveClass(/mat-mdc-unelevated-button/);
+    await expect(m.getByRole('button', { name: 'Próximo turno' }).first()).toHaveClass(/mat-mdc-outlined-button/);
+    if (width >= 1024) {
+      const box = await give.boundingBox();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(m.viewportSize()!.height);
+    }
+    await expectScreenPasses(m, `Oferecer ataque de oportunidade, no lugar, no mapa ${where}`);
+    await panel.getByRole('button', { name: 'Não oferecer' }).click();
+    await expect(panel).toHaveCount(0);
+    // The two are enemies again: the only one who can react is Brutus (the offer is off once he has spent his reaction).
+    await setSides('COMBATANT_SIDE_ENEMY');
+    await openTurn(m);
+
+    // The goblin leaves Brutus's reach: the player's prompt names the die; the attack sheet offers it.
+    const goblin = start.combatants.find((c) => c.label === 'Goblin 1')!;
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: goblin.id, col: 9, row: 7 });
+    const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
+    await expect(prompt.getByRole('button', { name: 'Não atacar' })).toBeFocused();
+    await expect(prompt.locator('.mr-die-note')).toContainText('Golpe Certeiro (d8) pode entrar neste ataque');
+    await expectScreenPasses(p, `Ataque de oportunidade, o aviso com a linha do dado ${where}`);
+    await prompt.getByRole('button', { name: 'Atacar com Machado grande' }).click();
+    const sheet = p.getByRole('dialog');
+    await expect(sheet.getByRole('heading', { name: 'Ataque de oportunidade · Machado grande' })).toBeVisible();
+    await expect(sheet.getByText('gasta a sua reação')).toBeVisible();
+    await expect(sheet.getByText('Ataque de oportunidade', { exact: true })).toBeVisible();
+    await expect(sheet.getByText('Usar Golpe Certeiro')).toBeVisible();
+    await expectScreenPasses(p, `Ataque de oportunidade, rolar com o dado de manobra ${where}`);
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20/).fill('1');
+    await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(sheet.getByText('Sua reação foi usada.')).toBeVisible();
+    await sheet.getByRole('button', { name: 'Fechar' }).last().click();
+
+    // Nobody can react now: the offer stays in the menu, off, with its reason; Enter on it does nothing.
+    await waitForEncounterRevision(m, await getEncounterRPC(m, campaignId), 'Brutus spent his reaction');
+    await trigger.focus();
+    await m.keyboard.press('Enter');
+    await expect(offerItem).toHaveAttribute('aria-disabled', 'true');
+    await expect(offerItem).toHaveAccessibleDescription('Ninguém pode reagir agora.');
+    await expectScreenPasses(m, `Mais ações do cartão do NPC, com a oferta desligada e o motivo ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o menu "Mais ações" do NPC e a oferta de ataque de oportunidade passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@MR-034'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOfferScreens(browser, 'light', 1280);
+});
+
+test('o menu "Mais ações" do NPC e a oferta de ataque de oportunidade passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@MR-034'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanOfferScreens(browser, 'dark', 390);
 });

@@ -77,6 +77,9 @@
           (press)="escape.emit()"
         />
       }
+      @if (maneuverNote(); as note) {
+        <p class="mr-die-note" data-testid="maneuver-note"><mat-icon aria-hidden="true">casino</mat-icon><span>{{ note }}</span></p>
+      }
       @for (a of attackParts().open; track a.attack?.key) {
         <ng-container *ngTemplateOutlet="attackRow; context: { $implicit: a }" />
       }

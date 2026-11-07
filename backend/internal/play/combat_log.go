@@ -1041,7 +1041,7 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 	out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.BonusDice = bonusDiceOf(e.ev)
-	out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, nil)
+	out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, e.rolls.keyName)
 	out.AttackRoll.Rerolled = strokeRerolls(e.ev.Lucky, e.ev.Stroke) // "Sortudo: 1 → 14", with the d20 it changed; "Golpe de Sorte" for a miss turned into a hit
 }
 

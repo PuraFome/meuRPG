@@ -3754,6 +3754,20 @@ message GetTurnOptionsResponse {
   repeated EffectNote effect_notes = 100;
   // The extra action an effect gives (Velocidade); unset when there is none.
   ExtraActionOption extra_action = 101;
+  // The weapon-attack table dice (rules.v1.RollDie.applies "attack") of the combatant's
+  // character, which RollAttack takes as `maneuver_key`, each with the uses left of its
+  // resource pool. Empty for an NPC and for a combatant with no such die.
+  repeated ManeuverDieOption maneuver_dice = 102;
+}
+
+// ManeuverDieOption is a weapon-attack table die the combatant can add to an attack roll.
+message ManeuverDieOption {
+  // The die, as in rules.v1.DerivedSheet.roll_dice.
+  meurpg.rules.v1.RollDie die = 1;
+  // The Portuguese name of the resource pool the die spends from.
+  string resource_name_pt = 2;
+  // The uses left in that pool, 0 or more. The die is listed at 0.
+  int32 uses_left = 3;
 }
 
 // ResourceTargets lists the creatures a feature action that picks one can choose.

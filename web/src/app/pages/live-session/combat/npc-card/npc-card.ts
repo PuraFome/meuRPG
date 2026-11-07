@@ -11,8 +11,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
-import { creatureSlug } from '../../../../core/creatures/bestiary-format';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -72,6 +70,7 @@ import {
   statsOf,
 } from './npc-card-view';
 import { attacksMade, routinesOf } from './multiattack';
+import { NpcCardMenu } from './npc-card-menu';
 import { PendingDamages } from './pending-damages';
 
 /**
@@ -99,6 +98,7 @@ import { PendingDamages } from './pending-damages';
     MatFormFieldModule,
     MatIconModule,
     MatSelectModule,
+    NpcCardMenu,
     PendingDamages,
     Portrait,
     RageStatus,
@@ -106,7 +106,6 @@ import { PendingDamages } from './pending-damages';
     MultiRoll,
     RollModePicker,
     RollPicker,
-    RouterLink,
   ],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
@@ -131,12 +130,12 @@ export class NpcCard {
   readonly rechargeRolls = input<readonly RechargeRoll[]>([]);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
-  /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
+  /** The combat is played without a map (RN-25): movement is a number. The opportunity offer is in "Mais ações" with a map too. */
   readonly theatre = input(false);
-  /** The offer's form is open: "Oferecer ataque de oportunidade" says so. */
-  readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
+  /** The offer panel is open under the stats: the numbers and chips of what was used leave (screen readers keep them), so its buttons stay in view. */
+  readonly offerOpen = input(false);
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
   /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */
@@ -177,10 +176,6 @@ export class NpcCard {
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
-  /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
-  protected readonly creatureSlug = computed(() =>
-    creatureSlug(this.subject().bestiaryCreatureKey ?? ''),
-  );
   /** "Goblin · ND 1/4": what it is, under the title; empty for a character or a creature of a player. */
   protected readonly identity = computed(() => {
     const c = this.subject();
