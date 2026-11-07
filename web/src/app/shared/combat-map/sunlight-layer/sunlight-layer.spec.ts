@@ -22,8 +22,8 @@ function mount(inputs: Record<string, unknown> = {}) {
   return { fixture, el, pad, changes };
 }
 
-const pointer = (type: string, x: number, y: number) =>
-  new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, bubbles: true, button: 0 });
+const pointer = (type: string, x: number, y: number, pointerId = 1) =>
+  new PointerEvent(type, { clientX: x, clientY: y, pointerId, bubbles: true, button: 0 });
 
 describe('SunlightLayer', () => {
   it('draws crosses and a dotted edge for the squares, and nothing for none', () => {
@@ -92,6 +92,48 @@ describe('SunlightLayer', () => {
     fixture.componentRef.setInput('squares', [sq(1, 0), sq(2, 0)]);
     fixture.detectChanges();
     expect(note()).toBe('Coluna 3, linha 1: luz do sol');
+  });
+
+  it('leaves one finger to paint and the pinch to the browser: touch-action pinch-zoom on the pad', () => {
+    const { pad } = mount({ painting: true });
+    expect(getComputedStyle(pad()!).touchAction).toContain('pinch-zoom');
+  });
+
+  it('drops the stroke when a second finger goes down, and scrolls the map by the two fingers', () => {
+    const { fixture, el, pad, changes } = mount({ painting: true });
+    const holder = document.createElement('div');
+    holder.style.cssText = 'overflow-x:auto;overflow-y:auto;height:50px;width:50px';
+    holder.append(el);
+    document.body.append(holder);
+    const by = vi.fn();
+    holder.scrollBy = by;
+    Object.defineProperty(holder, 'scrollHeight', { value: 500 });
+    pad()!.setPointerCapture = () => undefined;
+    pad()!.dispatchEvent(pointer('pointerdown', 5, 5, 1));
+    pad()!.dispatchEvent(pointer('pointerdown', 25, 5, 2));
+    pad()!.dispatchEvent(pointer('pointermove', 5, 5, 1));
+    pad()!.dispatchEvent(pointer('pointermove', 25, 5, 2));
+    pad()!.dispatchEvent(pointer('pointermove', 5, 0, 1));
+    pad()!.dispatchEvent(pointer('pointermove', 25, 0, 2));
+    // Both fingers rose by 5 px: the midpoint moved 5 px (2.5 per finger move), so the map scrolls 5 px down.
+    expect(by).toHaveBeenCalled();
+    expect(by.mock.calls.reduce((n, c) => n + (c[1] as number), 0)).toBe(5);
+    pad()!.dispatchEvent(pointer('pointerup', 5, 0, 1));
+    pad()!.dispatchEvent(pointer('pointerup', 25, 0, 2));
+    fixture.detectChanges();
+    expect(changes).toEqual([]);
+    holder.remove();
+  });
+
+  it('paints nothing with the finger left down after the other lifts', () => {
+    const { pad, changes } = mount({ painting: true });
+    pad()!.setPointerCapture = () => undefined;
+    pad()!.dispatchEvent(pointer('pointerdown', 5, 5, 1));
+    pad()!.dispatchEvent(pointer('pointerdown', 25, 5, 2));
+    pad()!.dispatchEvent(pointer('pointerup', 5, 5, 1));
+    pad()!.dispatchEvent(pointer('pointermove', 45, 5, 2));
+    pad()!.dispatchEvent(pointer('pointerup', 45, 5, 2));
+    expect(changes).toEqual([]);
   });
 
   it('keeps the keys to itself while painting', () => {

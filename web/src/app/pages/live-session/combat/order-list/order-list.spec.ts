@@ -6,6 +6,7 @@ import {
   CombatantSide,
   CoverDegree,
   CoverSource,
+  SunlightTrait,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { Nudger } from '../../../../core/combat/nudger';
@@ -702,26 +703,48 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
   });
 });
 
-describe('OrderList, the sun tag', () => {
-  it('tags the combatants in the sunlight with "Na luz do sol"', () => {
+describe('OrderList, the sun note', () => {
+  function rows(...combatants: ReturnType<typeof combatant>[]): HTMLElement {
     const fixture = TestBed.createComponent(OrderList);
     fixture.componentRef.setInput(
       'encounter',
-      encounter({
-        sunlightOn: true,
-        combatants: [
-          combatant({ id: 'gh', label: 'Carniçal', inSunlight: true, initiative: 12 }),
-          combatant({ id: 'go', label: 'Goblin', initiative: 10 }),
-        ],
-        currentCombatantId: 'gh',
-      }),
+      encounter({ sunlightOn: true, combatants, currentCombatantId: combatants[0].id }),
     );
     fixture.detectChanges();
-    const tags = (fixture.nativeElement as HTMLElement).querySelectorAll(
-      '[data-testid="order-sun"]',
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('ends the subline of a combatant with the sun trait that stands in the light, as muted text and not a chip', () => {
+    const el = rows(
+      combatant({
+        id: 'gh',
+        label: 'Carniçal',
+        inSunlight: true,
+        sunlightTrait: SunlightTrait.SENSITIVITY,
+        initiative: 15,
+      }),
     );
-    expect(tags.length).toBe(1);
-    expect(tags[0].textContent).toContain('Na luz do sol');
-    expect(tags[0].closest('.row')?.textContent).toContain('Carniçal');
+    const notes = el.querySelectorAll('[data-testid="order-sun"]');
+    expect(notes.length).toBe(1);
+    expect(notes[0].closest('.row__sub')?.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+      'Inic. 15 · Na luz do sol',
+    );
+    expect(el.querySelector('.mr-tag')).toBeNull();
+  });
+
+  it('shows nothing on a combatant without the trait, or with it out of the light', () => {
+    const el = rows(
+      combatant({ id: 'p1', label: 'Aria', inSunlight: true, initiative: 12 }),
+      combatant({ id: 'go', label: 'Goblin', inSunlight: true, initiative: 10 }),
+      combatant({
+        id: 'gh',
+        label: 'Carniçal',
+        inSunlight: false,
+        sunlightTrait: SunlightTrait.WEAKNESS,
+        initiative: 9,
+      }),
+    );
+    expect(el.querySelector('[data-testid="order-sun"]')).toBeNull();
+    expect(el.textContent).not.toContain('Na luz do sol');
   });
 });

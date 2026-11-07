@@ -11015,6 +11015,11 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
     const notice = m.getByTestId('sunlight-notice');
     await expect(notice).toContainText(`${t.drow} está na luz do sol.`);
     await everyWidth('aviso-no-sol', 'O cartão do NPC, o aviso de uma criatura na luz do sol', () => notice);
+    // The order list says it at the end of the Drow's subline, muted, not as a chip (only a creature with the trait, in the light).
+    const orderSun = m.getByTestId('order-sun');
+    await expect(orderSun).toHaveCount(1);
+    await expect(orderSun).toContainText('Na luz do sol');
+    await everyWidth('ordem-na-luz', 'A lista da ordem, com "Na luz do sol" ao fim da linha do Drow', () => orderSun.locator('xpath=ancestor::li[1]'));
 
     // "Onde eu pintar" with no square lit: the Drow is out of the sun, and the map card has its scope controls.
     await openMap(m);

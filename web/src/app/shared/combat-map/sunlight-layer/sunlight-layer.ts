@@ -36,6 +36,12 @@ export const SUN_CROSS = 'M0.05 0.05L0.15 0.15M0.15 0.05L0.05 0.15';
  * over the map: a click or a drag adds (`paint`) or removes (`erase`) squares, the stroke is sent once, when the pointer is
  * released; the arrow keys move a cursor and Space applies the tool to its square, announced in a live region. It draws what the
  * server sent (`squares`) and previews only the stroke under the pointer.
+ *
+ * Two fingers scroll the map, one paints. The pad is `touch-action: pinch-zoom`: one finger never makes the browser scroll (so a
+ * drag is a stroke), a pinch is still the browser's (it then sends `pointercancel` and the stroke is dropped). A second pointer
+ * that goes down cancels the stroke and, as pointer events give no native two-finger pan on a surface that does not pan, the
+ * layer scrolls the nearest scrollable ancestor (or the page) by the movement of the midpoint of the two fingers. Limits: the pan
+ * is done by script (no momentum, no overscroll), and a finger left down after the other lifts paints nothing until it lifts too.
  */
 @Component({
   selector: 'app-sunlight-layer',
@@ -61,6 +67,9 @@ export class SunlightLayer {
   protected readonly cross = SUN_CROSS;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private stroke: { pointer: number; last: Square; touched: Square[] } | null = null;
+  /** Where each finger or pointer on the pad is; two or more means the map is being scrolled, not painted. */
+  private readonly fingers = new Map<number, { x: number; y: number }>();
+  private mid: { x: number; y: number } | null = null;
   private readonly touched = signal<readonly Square[]>([]);
   protected readonly cursor = signal<Square | null>(null);
   private readonly injector = inject(Injector);
@@ -83,6 +92,8 @@ export class SunlightLayer {
     effect(() => {
       if (!this.painting()) {
         this.stroke = null;
+        this.fingers.clear();
+        this.mid = null;
         this.touched.set([]);
         this.cursor.set(null);
         return;
@@ -109,15 +120,30 @@ export class SunlightLayer {
     if (event.button > 0) {
       return;
     }
+    this.fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    if (this.fingers.size > 1) {
+      // A second finger: no stroke, the map scrolls.
+      this.stroke = null;
+      this.touched.set([]);
+      this.mid = this.midpoint();
+      return;
+    }
     const at = this.under(event);
     this.stroke = { pointer: event.pointerId, last: at, touched: [at] };
     this.touched.set([at]);
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
     this.cursor.set(at);
   }
 
   protected move(event: PointerEvent): void {
     event.stopPropagation();
+    if (this.fingers.has(event.pointerId)) {
+      this.fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+    if (this.fingers.size > 1) {
+      this.scrollBy();
+      return;
+    }
     const s = this.stroke;
     if (!s || s.pointer !== event.pointerId) {
       return;
@@ -133,8 +159,11 @@ export class SunlightLayer {
 
   protected up(event: PointerEvent): void {
     event.stopPropagation();
+    const wasPanning = this.fingers.size > 1;
+    this.fingers.delete(event.pointerId);
+    this.mid = this.fingers.size > 1 ? this.midpoint() : null;
     const s = this.stroke;
-    if (!s || s.pointer !== event.pointerId) {
+    if (wasPanning || !s || s.pointer !== event.pointerId) {
       return;
     }
     this.stroke = null;
@@ -142,6 +171,35 @@ export class SunlightLayer {
     if (event.type === 'pointerup') {
       this.send(s.touched);
     }
+  }
+
+  private midpoint(): { x: number; y: number } {
+    const all = [...this.fingers.values()];
+    return {
+      x: all.reduce((n, f) => n + f.x, 0) / all.length,
+      y: all.reduce((n, f) => n + f.y, 0) / all.length,
+    };
+  }
+
+  /** Two fingers: the map follows the midpoint, as a finger pans a page. */
+  private scrollBy(): void {
+    const now = this.midpoint();
+    const before = this.mid ?? now;
+    this.mid = now;
+    const dx = before.x - now.x;
+    const dy = before.y - now.y;
+    let node: HTMLElement | null = this.host.nativeElement.parentElement;
+    while (node) {
+      const style = getComputedStyle(node);
+      const x = /(auto|scroll)/.test(style.overflowX) && node.scrollWidth > node.clientWidth;
+      const y = /(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight;
+      if (x || y) {
+        node.scrollBy(x ? dx : 0, y ? dy : 0);
+        return;
+      }
+      node = node.parentElement;
+    }
+    window.scrollBy(dx, dy);
   }
 
   protected key(event: KeyboardEvent): void {

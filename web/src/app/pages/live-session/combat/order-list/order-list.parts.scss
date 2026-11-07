@@ -9,6 +9,11 @@
   white-space: nowrap;
 }
 
+// The sun note ends the subline: the line wraps rather than cut it with an ellipsis.
+.row__sub:has(.row__sun) {
+  white-space: normal;
+}
+
 .row__hp {
   display: flex;
   flex-direction: column;

@@ -60,8 +60,19 @@ describe('CombatBar, the sun switch', () => {
     expect(asked).toHaveBeenCalledWith(false);
   });
 
-  it('has a 44px target', () => {
+  it('has a 44px target with the sun icon and a visible track and thumb', () => {
     const { sun } = setup();
     expect(sun().classList).toContain('sun');
+    expect(sun().querySelector('mat-icon')).not.toBeNull();
+    expect(sun().querySelector('.sun__track .sun__thumb')).not.toBeNull();
+  });
+
+  it('shows the on state by the filled sun and the class of the track, not only by colour', () => {
+    const off = setup();
+    expect(off.sun().querySelector('mat-icon')!.textContent).toContain('wb_twilight');
+    expect(off.sun().classList).not.toContain('sun--on');
+    const on = setup({ sunlightOn: true, sunlightScope: SunlightScope.MAP });
+    expect(on.sun().querySelector('mat-icon')!.textContent).toContain('wb_sunny');
+    expect(on.sun().classList).toContain('sun--on');
   });
 });

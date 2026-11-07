@@ -54,7 +54,8 @@
   z-index: 6;
   pointer-events: auto;
   cursor: crosshair;
-  touch-action: none;
+  // One finger paints (the browser never scrolls under it), a pinch is still the browser's; two fingers scroll by script (see the class).
+  touch-action: pinch-zoom;
 
   &:focus-visible {
     outline: 3px solid var(--mr-map-accent);

@@ -149,5 +149,6 @@
     (click)="sunlight.emit(!sunOn())"
   >
     <mat-icon aria-hidden="true">{{ sunOn() ? 'wb_sunny' : 'wb_twilight' }}</mat-icon>
+    <span class="sun__track" aria-hidden="true"><span class="sun__thumb"></span></span>
   </button>
 </ng-template>

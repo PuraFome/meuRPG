@@ -115,15 +115,12 @@
             @if (current(c)) {
               <span class="row__turn">Vez</span>
             }
-            @if (c.inSunlight) {
-              <span class="mr-tag mr-tag--pending row__sun" data-testid="order-sun"><mat-icon aria-hidden="true">wb_sunny</mat-icon>Na luz do sol</span>
-            }
             @if (inTurn(c)) {
               <app-part-state [ended]="c.turnPartEnded" />
             }
           </span>
           <span class="row__meta">
-            <span class="row__sub">{{ compactSub(c, inGroup) }}@if (shield(c) > 0) {{{ compactSub(c, inGroup) ? ' · ' : '' }}<b>CA {{ c.armorClass }} + {{ shield(c) }}</b>}</span>
+            <span class="row__sub">{{ compactSub(c, inGroup) }}@if (shield(c) > 0) {{{ compactSub(c, inGroup) ? ' · ' : '' }}<b>CA {{ c.armorClass }} + {{ shield(c) }}</b>}@if (c.inSunlight && c.sunlightTrait !== NoSunTrait) {<span class="row__sun" data-testid="order-sun">{{ compactSub(c, inGroup) || shield(c) > 0 ? ' · ' : '' }}Na luz do sol</span>}</span>
           </span>
         </span>
         <span class="row__hp">

@@ -472,8 +472,15 @@ describe("CombatMapCard: the master's offer rings on a phone", () => {
 describe('CombatMapCard, the sun (#704)', () => {
   const buttons = (el: HTMLElement) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('app-sunlight-controls button'));
-  const named = (el: HTMLElement, text: string) =>
-    buttons(el).find((b) => plain(b.textContent) === text);
+  // The words of a button without its icon ligature ("check", "brush").
+  const words = (b: HTMLElement) =>
+    plain(
+      Array.from(b.childNodes)
+        .filter((n) => n.nodeType === Node.TEXT_NODE)
+        .map((n) => n.textContent)
+        .join(''),
+    );
+  const named = (el: HTMLElement, text: string) => buttons(el).find((b) => words(b) === text);
   const lit = (extra: Record<string, unknown> = {}) =>
     encounter({
       currentCombatantId: 'p',
@@ -505,6 +512,26 @@ describe('CombatMapCard, the sun (#704)', () => {
     expect(el.querySelector('.sc__start')).not.toBeNull();
   });
 
+  it('shows the scope as a label "Luz do sol" and one two-part segmented radio group of equal parts', () => {
+    const { el } = mount({ encounter: lit() });
+    expect(plain(el.querySelector('.sc__label')!.textContent)).toContain('Luz do sol');
+    expect(el.querySelectorAll('[role="radiogroup"]').length).toBe(1);
+    const radios = Array.from(el.querySelectorAll<HTMLElement>('[role="radio"]'));
+    expect(radios.map(words)).toEqual(['Todo o mapa', 'Onde eu pintar']);
+    expect(radios.map((r) => r.getAttribute('tabindex'))).toEqual(['-1', '0']);
+    expect(radios[1].querySelector('mat-icon')?.textContent).toContain('check');
+  });
+
+  it('moves the scope with the arrow keys, as a radio group does', () => {
+    const { fixture, el } = mount({ encounter: lit() });
+    const asked = vi.fn();
+    fixture.componentInstance.sunlightChange.subscribe(asked);
+    named(el, 'Onde eu pintar')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+    );
+    expect(asked).toHaveBeenCalledWith({ scope: SunlightScope.MAP });
+  });
+
   it('has no "Pintar" for the whole map, and asks for a scope', () => {
     const { fixture, el } = mount({ encounter: lit({ sunlightScope: SunlightScope.MAP }) });
     const asked = vi.fn();
@@ -522,6 +549,14 @@ describe('CombatMapCard, the sun (#704)', () => {
     expect(plain(el.querySelector('.sc__status')!.textContent)).toBe(
       'Pintando luz do sol · 1 quadrado',
     );
+    expect(el.querySelector('.sc__card')).not.toBeNull();
+    expect(
+      Array.from(el.querySelectorAll('.sc__hints li')).map((l) => plain(l.textContent)),
+    ).toEqual(['Um dedo: arrasta e pinta', 'Dois dedos: rola o mapa']);
+    expect(el.querySelector('[role="radiogroup"]')).toBeNull();
+    const row = el.querySelector('.sc__row--paint')!;
+    expect(row.querySelector('.sc__seg--tools')).not.toBeNull();
+    expect(row.querySelector('.sc__done')).not.toBeNull();
     expect(el.querySelector('.sl__pad')).not.toBeNull();
     el.querySelector<HTMLButtonElement>('[aria-label^="Apagar"]')!.click();
     fixture.detectChanges();
