@@ -41,7 +41,7 @@ export class TvFit {
     }
   }
 
-  /** Shows every child, then hides, from the first one that goes past the host's bottom edge, that one and the rest. */
+  /** Shows every child, then hides, from the first one that goes past the host's bottom edge, that one and the rest; the very first child is never hidden. */
   fit(): void {
     const children = [...this.host.children] as HTMLElement[];
     children.forEach((child) => child.style.removeProperty('display'));
@@ -49,9 +49,10 @@ export class TvFit {
     let left = 0;
     if (this.host.clientHeight > 0) {
       let past = false;
-      for (const child of children) {
+      for (const [at, child] of children.entries()) {
         past = past || child.getBoundingClientRect().bottom > limit + 1;
-        if (past) {
+        // The first child stays even when it does not fit: a TV never shows an empty list (the current turn's row).
+        if (past && at > 0) {
           child.style.display = 'none';
           left += child.dataset['count'] === undefined ? 0 : 1;
         }

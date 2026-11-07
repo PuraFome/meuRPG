@@ -82,6 +82,15 @@ describe('TvFit', () => {
     expect(fixture.componentInstance.left()).toBe(0);
   });
 
+  it('keeps the first child even when not even it fits', () => {
+    const { fixture, fit, shown } = render();
+    lay(fixture.nativeElement, 5);
+    fit();
+    expect(shown()).toEqual(['a']);
+    // b, c and d are counted; sep is not.
+    expect(fixture.componentInstance.left()).toBe(3);
+  });
+
   it('hides nothing in a list with no height of its own (a phone)', () => {
     const { fixture, fit, shown } = render();
     lay(fixture.nativeElement, 0);
