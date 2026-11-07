@@ -6886,9 +6886,14 @@ type LegendaryOption struct {
 	NamePt string `protobuf:"bytes,7,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	// For kind "attack": the key of the stat block action the option makes, the
 	// `RollAttack.attack_key` of the attack with `legendary_option`. Empty for the other kinds.
-	AttackKey     string `protobuf:"bytes,8,opt,name=attack_key,json=attackKey,proto3" json:"attack_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AttackKey string `protobuf:"bytes,8,opt,name=attack_key,json=attackKey,proto3" json:"attack_key,omitempty"`
+	// Master-only like the rest of LegendaryState. Set only for kind "attack", in Portuguese,
+	// from the stat block action the option makes: "Cauda: +14 · 2d8 + 8 de concussão · alcance
+	// 4,5 m" (the action's name, attack bonus, damage and reach, in meters). Empty for "text"
+	// and "move".
+	AttackDetailPt string `protobuf:"bytes,9,opt,name=attack_detail_pt,json=attackDetailPt,proto3" json:"attack_detail_pt,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *LegendaryOption) Reset() {
@@ -6973,6 +6978,13 @@ func (x *LegendaryOption) GetNamePt() string {
 func (x *LegendaryOption) GetAttackKey() string {
 	if x != nil {
 		return x.AttackKey
+	}
+	return ""
+}
+
+func (x *LegendaryOption) GetAttackDetailPt() string {
+	if x != nil {
+		return x.AttackDetailPt
 	}
 	return ""
 }
@@ -26763,7 +26775,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fresistance_left\x18\x04 \x01(\x05R\x0eresistanceLeft\x129\n" +
 	"\aoptions\x18\x05 \x03(\v2\x1f.meurpg.play.v1.LegendaryOptionR\aoptions\x12\x1d\n" +
 	"\n" +
-	"usable_now\x18\x06 \x01(\bR\tusableNow\"\xcb\x01\n" +
+	"usable_now\x18\x06 \x01(\bR\tusableNow\"\xf5\x01\n" +
 	"\x0fLegendaryOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -26775,7 +26787,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"affordable\x12\x17\n" +
 	"\aname_pt\x18\a \x01(\tR\x06namePt\x12\x1d\n" +
 	"\n" +
-	"attack_key\x18\b \x01(\tR\tattackKey\"n\n" +
+	"attack_key\x18\b \x01(\tR\tattackKey\x12(\n" +
+	"\x10attack_detail_pt\x18\t \x01(\tR\x0eattackDetailPt\"n\n" +
 	"\vParticipant\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x1b\n" +

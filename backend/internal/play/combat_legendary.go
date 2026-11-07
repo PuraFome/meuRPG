@@ -2,7 +2,10 @@ package play
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
@@ -35,6 +38,7 @@ func (s *Service) addStatBlockProfiles(ctx context.Context, campaignID string, n
 		}
 		if plan, ok := content.MonsterPlan(n.monsterKey); ok {
 			n.limited = limitedActionsOf(plan)
+			n.legendaryDetail = legendaryAttackDetails(n.legendary, plan)
 		}
 		npcs[id] = n
 	}
@@ -43,7 +47,7 @@ func (s *Service) addStatBlockProfiles(ctx context.Context, campaignID string, n
 // legendaryView is the master's copy of what a legendary creature has left (RN-20,
 // RN-29), from its stat block's profile and the creature_spent it keeps. nil for a
 // creature without legendary actions or resistance: the field is then absent.
-func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.Encounter) *playv1.LegendaryState {
+func legendaryView(p rules.LegendaryProfile, details map[string]string, who playdb.Combatant, enc playdb.Encounter) *playv1.LegendaryState {
 	if !p.IsLegendary() {
 		return nil
 	}
@@ -58,8 +62,58 @@ func legendaryView(p rules.LegendaryProfile, who playdb.Combatant, enc playdb.En
 	for _, o := range p.Options {
 		out.Options = append(out.Options, &playv1.LegendaryOption{
 			Key: o.Key, Name: o.Name, NamePt: o.NamePT, AttackKey: o.ActionKey, Cost: conv.Int32(o.Cost), Kind: o.Kind, Text: o.Text,
-			Affordable: o.Cost <= int(out.ActionsLeft),
+			Affordable: o.Cost <= int(out.ActionsLeft), AttackDetailPt: details[o.Key],
 		})
+	}
+	return out
+}
+
+// legendaryAttackDetails is, by option key, the numbers of the attack each "attack" option makes,
+// in Portuguese: "Cauda: +14 · 2d8 + 8 de concussão · alcance 4,5 m". It is the master's
+// (LegendaryOption.attack_detail_pt). An option of another kind, or whose action has no
+// attack roll in the plan, has none.
+func legendaryAttackDetails(p rules.LegendaryProfile, plan *rules.MonsterPlan) map[string]string {
+	var out map[string]string
+	for _, o := range p.Options {
+		if o.Kind != "attack" || o.ActionKey == "" {
+			continue
+		}
+		a, ok := plan.Action(o.ActionKey)
+		if !ok || a.Attack == nil {
+			continue
+		}
+		var dmg []string
+		for _, d := range a.Damage {
+			part := fmt.Sprintf("%dd%d", d.Dice.Count, d.Dice.Sides)
+			if d.Dice.Count == 0 {
+				part = strconv.Itoa(d.Dice.Bonus)
+			} else if d.Dice.Bonus > 0 {
+				part += fmt.Sprintf(" + %d", d.Dice.Bonus)
+			} else if d.Dice.Bonus < 0 {
+				part += fmt.Sprintf(" - %d", -d.Dice.Bonus)
+			}
+			dmg = append(dmg, part+" de "+d.TypeNamePT)
+		}
+		reach := "alcance " + metersPT(int32(a.Attack.ReachFt))
+		if !a.Attack.Melee {
+			reach = "alcance " + metersPT(int32(a.Attack.RangeFt))
+			if a.Attack.LongRangeFt > 0 {
+				reach += " / " + metersPT(int32(a.Attack.LongRangeFt))
+			}
+		}
+		name := a.NamePT
+		if name == "" {
+			name = a.Name
+		}
+		parts := []string{fmt.Sprintf("%s: %+d", name, a.Attack.Bonus)}
+		if len(dmg) > 0 {
+			parts = append(parts, strings.Join(dmg, " + "))
+		}
+		parts = append(parts, reach)
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[o.Key] = strings.Join(parts, " · ")
 	}
 	return out
 }

@@ -2950,6 +2950,11 @@ message LegendaryOption {
   // For kind "attack": the key of the stat block action the option makes, the
   // `RollAttack.attack_key` of the attack with `legendary_option`. Empty for the other kinds.
   string attack_key = 8;
+  // Master-only like the rest of LegendaryState. Set only for kind "attack", in Portuguese,
+  // from the stat block action the option makes: "Cauda: +14 · 2d8 + 8 de concussão · alcance
+  // 4,5 m" (the action's name, attack bonus, damage and reach, in meters). Empty for "text"
+  // and "move".
+  string attack_detail_pt = 9;
 }
 
 // Participant is who joins a combat: a character of the campaign.

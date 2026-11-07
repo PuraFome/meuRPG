@@ -37,6 +37,9 @@ func TestTheDragonsLegendaryStateIsTheMastersAlone(t *testing.T) {
 	if tail.GetNamePt() != "Ataque de cauda" || tail.GetAttackKey() == "" || l.GetOptions()[0].GetAttackKey() != "" || l.GetOptions()[2].GetNamePt() != "Ataque de asas" {
 		t.Fatalf("the master reads the options as %v, want name_pt \"Ataque de cauda\" and an attack_key on the tail attack alone", l.GetOptions())
 	}
+	if tail.GetAttackDetailPt() != "Cauda: +14 · 2d8 + 8 de concussão · alcance 4,5 m" || l.GetOptions()[0].GetAttackDetailPt() != "" {
+		t.Fatalf("the master reads the tail attack's detail as %q, want its numbers line, and none on the text option", tail.GetAttackDetailPt())
+	}
 	for _, p := range []*person{w.ana, w.caio} {
 		seen := false
 		mustSee := p == w.ana // the dragon stands in Ana's sight, not in Caio's
@@ -62,7 +65,7 @@ func TestTheDragonsLegendaryStateIsTheMastersAlone(t *testing.T) {
 
 // legendaryWords are what no player reads of a legendary spend: the option names (an attack, a text option),
 // their keys and the word itself. The master's answers hold them (the positive control).
-var legendaryWords = []string{"Wing Attack", "wing-attack", "Tail Attack", "tail-attack", "Ataque de asas", "Ataque de cauda", "Detectar", "legendary"}
+var legendaryWords = []string{"Wing Attack", "wing-attack", "Tail Attack", "tail-attack", "Ataque de asas", "Ataque de cauda", "Detectar", "legendary", "Cauda: +14", "2d8 + 8 de concussão"}
 
 // offTurn passes the turns until the combatant is not the one on turn: it may spend its legendary actions.
 func (w *world) offTurn(c *playv1.Combatant) {

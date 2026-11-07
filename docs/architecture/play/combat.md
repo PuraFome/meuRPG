@@ -114,6 +114,7 @@ Three paths share one rule (`combat_legendary_spend.go`):
 
 An option of kind `attack` is `LEGENDARY_WRONG_KIND` in `SpendLegendaryAction`, and so is one of kind `move` while the creature stands on a square.
 The `ActionKey` of an attack option must be the stat block action of the `attack_key` (`LEGENDARY_WRONG_KIND` otherwise).
+The master's `LegendaryOption.attack_detail_pt` is the numbers of that action in Portuguese ("Cauda: +14 · 2d8 + 8 de concussão · alcance 4,5 m": name, attack bonus, damage, reach in meters); it is empty for `text` and `move` options and is part of `Combatant.legendary`, so no player reads it.
 `LegendaryOption.attack_key` carries that key to the master's screen, and `name_pt` the option's name in Portuguese; the screen shows no other name.
 
 The rule is checked before anything is rolled, and again with the spend inside the transaction of the action, so a refused action spends nothing.
