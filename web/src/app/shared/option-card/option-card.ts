@@ -28,7 +28,7 @@ export type OptionCardKind = 'checkbox' | 'radio' | 'fixed';
         <input
           class="mr-visually-hidden"
           [type]="kind()"
-          [name]="name() || null"
+          [attr.name]="name() || null"
           [checked]="checked()"
           [disabled]="!!why() || disabled()"
           [attr.aria-describedby]="describedByIds()"
