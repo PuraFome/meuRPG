@@ -468,3 +468,34 @@ func TestCombatLogChangedHintOfAPlayerNeverCarriesFull(t *testing.T) {
 		t.Error("the master did not hear full after an undo")
 	}
 }
+
+// A visible event that makes no line for the player (a roll mode request taken back) asks for the whole log once: the answer's
+// last_seq reaches it, so the next read from that number is a plain, empty delta.
+func TestListCombatLogSinceSeqOfAPlayerIsNotFullTwiceForALinelessEvent(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	ask := func(since int64) *playv1.ListCombatLogResponse {
+		res, err := a.caio.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), SinceSeq: since}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	base := ask(0)
+	req, err := a.rmRequestRaw(t, a.caio, e, func(r *playv1.RequestRollModeRequest) { r.AttackKey = battleaxe })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.rmCancel(t, a.caio, e, req.GetRequest().GetId()); err != nil {
+		t.Fatal(err)
+	}
+	first := ask(base.GetLastSeq())
+	if !first.GetFull() || first.GetLastSeq() <= base.GetLastSeq() {
+		t.Fatalf("after the request and its cancel: full = %v, last_seq = %d (was %d); want full and a higher number", first.GetFull(), first.GetLastSeq(), base.GetLastSeq())
+	}
+	second := ask(first.GetLastSeq())
+	if second.GetFull() || len(entriesOf(second)) != 0 || second.GetLastSeq() != first.GetLastSeq() {
+		t.Errorf("a second read from last_seq: full = %v, %d entries, last_seq = %d; want a plain empty delta at %d", second.GetFull(), len(entriesOf(second)), second.GetLastSeq(), first.GetLastSeq())
+	}
+}

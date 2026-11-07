@@ -184,6 +184,9 @@ func (s *Service) ListCombatLog(
 	stampSeqs(entries, snap.events)
 	since := sinceSeqOf(req.Msg.GetSinceSeq(), v, snap.events, entries, snap.cs)
 	res.Full = since == 0
+	if !v.master {
+		res.LastSeq = countedSeq(v, snap.events, entries, snap.cs)
+	}
 	if v.master {
 		res.LastSeq = lastSeqOf(snap.events)
 	}
@@ -275,6 +278,20 @@ func sinceSeqOf(sinceSeq int64, v combatViewer, events []playdb.ListEncounterEve
 	return sinceSeq
 }
 
+// countedSeq is the highest number among the events a player's answer would ask for the whole log for, wherever the app's number
+// stands (a toggle counts when a line they hold, below it, names the combatant). A player's last_seq reaches it, so the next read, from
+// that number, does not meet the same event again and ask for the whole log once more; and it does not fall back when no new event
+// came. Ignored events stay out of it, so a combatant shown again comes back as a new line.
+func countedSeq(v combatViewer, events []playdb.ListEncounterEventsRow, entries []*logEntry, cs []playdb.Combatant) int64 {
+	var counted int64
+	for _, e := range events {
+		if changesHeldView(e, int64(e.Seq)-1, v, events, entries, cs) {
+			counted = max(counted, int64(e.Seq))
+		}
+	}
+	return counted
+}
+
 // changesHeldView says whether the event, after the app's number, may change an entry the viewer holds.
 func changesHeldView(e playdb.ListEncounterEventsRow, sinceSeq int64, v combatViewer, events []playdb.ListEncounterEventsRow, entries []*logEntry, cs []playdb.Combatant) bool {
 	if e.Kind != eventActionUndone && deltaSafeKinds[e.Kind] {
@@ -341,7 +358,8 @@ func heldLineHas(ids []string, sinceSeq int64, v combatViewer, entries []*logEnt
 	return false
 }
 
-// names says the entry has the combatant as its actor, its target or one of its hits.
+// names says the entry has the combatant as its actor, its target or one of its hits. These are the only fields the visibility rules
+// read today; a rule that reads another combatant of the line (an area's caught list, a rider's target) must extend it.
 func (e *logEntry) names(id string) bool {
 	if e.ev.Actor == id || e.ev.Target == id {
 		return true
