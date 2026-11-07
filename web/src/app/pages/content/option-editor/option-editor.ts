@@ -23,20 +23,25 @@ import { type EntryBody, TableContentClient } from '../../../core/content/conten
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import type { FeatureDraft } from '../../../core/content/feature-draft';
-import { type OfferingFeature, offeringFeatures } from '../../../core/content/offering-features';
 import {
+  type OfferingFeature,
+  offeringFeatures,
+  ownerLabel,
+} from '../../../core/content/offering-features';
+import {
+  OFFERED_BY_HELP_PATH,
   OFFERED_BY_PATH,
   OFFERERS,
   type OptionDraft,
   TABLE_FEATURE_SET,
   draftToOption,
   emptyOption,
-  missingOfferingPaths,
+  missingOffering,
   optionPaths,
   optionToDraft,
   unreadableOptionPaths,
 } from '../../../core/content/option-draft';
-import { offeringName, optionSetName } from '../../../core/content/option-text';
+import { optionSetName } from '../../../core/content/option-text';
 import { previewRead } from '../../../core/content/preview';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { PickList } from '../../../shared/form-fields/pick-list';
@@ -115,6 +120,9 @@ export class OptionEditor {
   );
   protected readonly setName = computed(() => optionSetName(this.draft().set));
   protected readonly isTableFeature = computed(() => this.draft().set === TABLE_FEATURE_SET);
+  private static readonly MISSING_TEXT = 'Escolha a característica que oferece a opção.';
+  /** True once a save was tried with no offering feature chosen: the field then says MISSING_TEXT. */
+  private readonly missingShown = signal(false);
   /** The table's class and subclass features that have an option list of their own, by owner. */
   private readonly offerers = computed<OfferingFeature[]>(() =>
     offeringFeatures(this.entries()).sort(
@@ -129,14 +137,11 @@ export class OptionEditor {
     const rows = this.offerers().map((f) => ({
       value: f.key,
       label: `${f.name} · nível ${f.level} · ${f.options.length} ${f.options.length === 1 ? 'opção' : 'opções'}`,
-      group:
-        f.ownerKind === 'subclass'
-          ? `${f.owner} · subclasse de ${this.catalog().nameOf(f.classKey)}`
-          : `${f.owner} · classe da mesa`,
+      group: ownerLabel(f, this.catalog().nameOf),
     }));
-    // A saved choice that is no longer on the list stays on screen, so the refusal lands on what the master sees.
+    // A saved choice that is not on the list any more stays on screen, so the refusal lands on what the master sees.
     return chosen !== '' && !rows.some((r) => r.value === chosen)
-      ? [{ value: chosen, label: offeringName(chosen, (k) => this.nameOf(k)) }, ...rows]
+      ? [{ value: chosen, label: this.catalog().offeredByName(chosen) }, ...rows]
       : rows;
   });
   protected readonly noOfferer = computed(() => this.offeredOptions().length === 0);
@@ -149,11 +154,7 @@ export class OptionEditor {
     if (!f) {
       return 'Só as características com lista de opções própria ("Opções para escolher").';
     }
-    const of =
-      f.ownerKind === 'subclass'
-        ? `${f.owner} · subclasse de ${this.catalog().nameOf(f.classKey)}`
-        : `${f.owner} · classe da mesa`;
-    return `${of} · nível ${f.level}`;
+    return `${ownerLabel(f, this.catalog().nameOf)} · nível ${f.level}`;
   });
   protected readonly offeringList = computed(() => {
     const f = this.offering();
@@ -196,8 +197,10 @@ export class OptionEditor {
   ]);
   /** What a player reads, written by the same function as the player's page. */
   protected readonly preview = computed(() =>
-    previewRead({ case: 'tableOption', value: draftToOption(this.draft(), this.menu()) }, (key) =>
-      this.nameOf(key),
+    previewRead(
+      { case: 'tableOption', value: draftToOption(this.draft(), this.menu()) },
+      (key) => this.nameOf(key),
+      this.catalog().offeredByName,
     ),
   );
 
@@ -233,10 +236,6 @@ export class OptionEditor {
   }
 
   private nameOf(key: string): string {
-    const offerer = this.offerers().find((f) => f.key === key);
-    if (offerer) {
-      return `${offerer.name} (${offerer.owner})`;
-    }
     const named = this.catalog().nameOf(key);
     if (named !== key) {
       return named;
@@ -260,19 +259,13 @@ export class OptionEditor {
     this.missingShown.set(false);
   }
 
-  /** "Escolha a característica..." shows once a save was tried without one. */
-  private readonly missingShown = signal(false);
-  private static readonly MISSING_TEXT = 'Escolha a característica que oferece a opção.';
-
   protected setFeature(feature: FeatureDraft): void {
     this.patch({ feature });
   }
 
   protected readonly issuesOf = (path: string): readonly string[] => [
     ...this.saver.issues(path),
-    ...(path === OFFERED_BY_PATH &&
-    this.missingShown() &&
-    missingOfferingPaths(this.draft()).length > 0
+    ...(path === OFFERED_BY_PATH && this.missingShown() && missingOffering(this.draft())
       ? [OptionEditor.MISSING_TEXT]
       : []),
   ];
@@ -284,12 +277,22 @@ export class OptionEditor {
     if (this.saver.saving() || this.saveBlocked()) {
       return;
     }
-    const missing = missingOfferingPaths(this.draft());
-    this.missingShown.set(missing.length > 0);
+    const missing = missingOffering(this.draft());
+    this.missingShown.set(missing);
+    // With nothing to choose from the select is disabled and cannot take the focus: the link under it does.
+    const missingPath = this.noOfferer() ? OFFERED_BY_HELP_PATH : OFFERED_BY_PATH;
     if (
       this.saver.blockOn(
-        [...missing, ...unreadableOptionPaths(this.draft(), this.menu())],
-        (path) => focusAfterRender(this.host.nativeElement, this.injector, path),
+        [
+          ...(missing ? [OFFERED_BY_PATH] : []),
+          ...unreadableOptionPaths(this.draft(), this.menu()),
+        ],
+        (path) =>
+          focusAfterRender(
+            this.host.nativeElement,
+            this.injector,
+            path === OFFERED_BY_PATH ? missingPath : path,
+          ),
       )
     ) {
       return;

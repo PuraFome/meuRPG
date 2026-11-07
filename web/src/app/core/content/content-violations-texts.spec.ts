@@ -50,6 +50,7 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'feat prerequisite': ['table_feat.prerequisite.minimums.strength', 'bad_value'],
   'spell damage dice': ['table_spell.damage[0].dice', 'bad_value'],
   'option offered by, dangling': ['table_option.offered_by', 'dangling_reference'],
+  // The editor drops the feature with the set, so this one is defensive: a body from another client can still carry it.
   'option offered by, another set': ['table_option.offered_by', 'bad_value'],
 };
 

@@ -11,7 +11,8 @@ import { ContentSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { entry, feature } from './content-testing';
 import { entrySupport } from './content-kinds';
 import { readEntry } from './content-read';
-import { offeringName, optionSetLine } from './option-text';
+import { featureKeyName } from './class-feature-text';
+import { optionSetLine } from './option-text';
 import { offeringFeatures } from './offering-features';
 
 const crow = 'feature:class-guardiao-3f9a1c--truques-de-lamina@mesa';
@@ -37,30 +38,43 @@ const option = (offeredBy: string) =>
       value: create(TableOptionSchema, { namePt: 'Golpe', set: 'table_feature', offeredBy }),
     },
   });
-const nameOf = catalogVm(create(ContentSchema, {}), [owner]).nameOf;
+const cat = catalogVm(create(ContentSchema, {}), [owner]);
+const nameOf = cat.nameOf;
 
 describe('the feature that offers a table option (MR-025)', () => {
-  it('names a feature with its owner, and a key the catalog does not know by its last word', () => {
-    expect(offeringName(crow, nameOf)).toBe('Truques de lâmina (Guarda do Corvo)');
-    expect(offeringName('feature:class-x-1a--votos-antigos@mesa', nameOf)).toBe('Votos antigos');
+  it('names a feature with its owner for the offering lines only, and by its own name everywhere else', () => {
+    expect(cat.offeredByName(crow)).toBe('Truques de lâmina (Guarda do Corvo)');
+    expect(nameOf(crow)).toBe(crow);
+    expect(featureKeyName('feature:class-x-1a--votos-antigos@mesa', nameOf)).toBe('Votos antigos');
+    expect(cat.offeredByName('feature:class-x-1a--votos-antigos@mesa')).toBe('Votos antigos');
+  });
+
+  it('names the feature of an archived owner for the saved options that still name it', () => {
+    const archived = { ...owner, archived: true };
+    const c = catalogVm(create(ContentSchema, {}), [archived]);
+    expect(c.offeredByName(crow)).toBe('Truques de lâmina (Guarda do Corvo)');
+    expect(offeringFeatures([archived])).toEqual([]);
+    expect(offeringFeatures([archived], true)).toHaveLength(1);
   });
 
   it('says "Opção de <feature> (<owner>)" when the server names it and the set when it does not', () => {
-    expect(optionSetLine('table_feature', crow, nameOf)).toBe(
+    expect(optionSetLine('table_feature', crow, cat.offeredByName)).toBe(
       'Opção de Truques de lâmina (Guarda do Corvo)',
     );
-    expect(optionSetLine('table_feature', '', nameOf)).toBe('Opção de característica da mesa');
-    expect(entrySupport(option(crow), nameOf)).toContain(
+    expect(optionSetLine('table_feature', '', cat.offeredByName)).toBe(
+      'Opção de característica da mesa',
+    );
+    expect(entrySupport(option(crow), nameOf, () => 0, cat.offeredByName)).toBe(
       'Opção de Truques de lâmina (Guarda do Corvo)',
     );
-    expect(entrySupport(option(''), nameOf)).toContain('Opção de característica da mesa');
+    expect(entrySupport(option(''), nameOf)).toBe('Opção de característica da mesa');
     expect(entrySupport(option(''), nameOf)).not.toContain(crow);
   });
 
   it('reads "Oferecida por" on the page only when the feature is named', () => {
     const read = (key: string) => {
       const e = option(key);
-      return readEntry(e, nameOf, () => 0).rows;
+      return readEntry(e, nameOf, () => 0, cat.offeredByName).rows;
     };
     expect(read(crow)).toContainEqual({
       label: 'Oferecida por',

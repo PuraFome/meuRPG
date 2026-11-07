@@ -16,6 +16,7 @@ import { type EntryRead, type NameOf } from './content-read-parts';
 import type { FeatInit } from './feat-draft';
 import type { ClassFeatureInit } from './class-feature-draft';
 import type { OptionInit } from './option-draft';
+import type { OfferedByName } from './option-text';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
 import type { SpellInit } from './spell-types';
 
@@ -32,7 +33,11 @@ export type PreviewBody =
   | { readonly case: 'tableOption'; readonly value: OptionInit }
   | { readonly case: 'tableClassFeature'; readonly value: ClassFeatureInit };
 
-export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
+export function previewRead(
+  body: PreviewBody,
+  nameOf: NameOf,
+  offeredByName?: OfferedByName,
+): EntryRead {
   switch (body.case) {
     case 'tableSpell':
       return readEntry(
@@ -81,6 +86,8 @@ export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
           body: { case: 'tableOption', value: create(TableOptionSchema, body.value) },
         }),
         nameOf,
+        () => 0,
+        offeredByName,
       );
     case 'tableClassFeature':
       return readEntry(

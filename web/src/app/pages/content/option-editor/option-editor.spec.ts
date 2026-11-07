@@ -99,7 +99,7 @@ describe('OptionEditor (MR-025)', () => {
     });
     const fixture = TestBed.createComponent(OptionEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');
-    fixture.componentRef.setInput('catalog', catalog());
+    fixture.componentRef.setInput('catalog', catalog(entries));
     fixture.componentRef.setInput('menu', menu());
     fixture.componentRef.setInput('entries', entries);
     if (existing) fixture.componentRef.setInput('entry', saved);
@@ -294,10 +294,30 @@ describe('OptionEditor (MR-025)', () => {
       fixture.detectChanges();
       expect(offerer(el)!.disabled).toBe(true);
       expect(offerer(el)!.options[0].text).toBe('Nenhuma disponível');
+      expect(text(el)).toContain('Crie a lista lá e volte aqui.');
       const link = Array.from(el.querySelectorAll('a')).find((a) =>
         text(a).includes('Ver as subclasses da mesa'),
       )!;
       expect(link.getAttribute('href')).toContain('kind=subclasses');
+    });
+
+    it('takes the focus to the link when a save is tried with nothing to choose from', async () => {
+      const { fixture, el } = setup(false, []);
+      pickSet(el, 'table_feature');
+      fixture.detectChanges();
+      click(el, 'Salvar opção');
+      await settle(fixture, 3);
+      expect(save).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(field(el, 'table_option.offered_by.help'));
+      expect(text(offerer(el)!.closest('app-select-field')!)).toContain(
+        'Escolha a característica que oferece a opção.',
+      );
+    });
+
+    it('names the feature of a saved option whose owner was archived, not its key', () => {
+      const archivedOwners = owners().map((e) => ({ ...e, archived: true }));
+      const { el } = setup(true, archivedOwners as ReturnType<typeof owners>, offered(crow));
+      expect(offerer(el)!.selectedOptions[0].text).toBe('Truques de lâmina (Guarda do Corvo)');
     });
 
     it('keeps a saved feature that is gone on screen and puts the refusal at the field', async () => {

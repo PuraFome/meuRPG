@@ -1,7 +1,8 @@
 import { Ability, type Content } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SelectOption } from '../../shared/form-fields/select-field';
-import { offeringFeatures } from './offering-features';
+import { featureKeyName } from './class-feature-text';
+import { offeringFeatures, offeringLabel } from './offering-features';
 import { circleLabel } from './spell-options';
 
 /**
@@ -46,6 +47,8 @@ export interface CatalogVm {
   readonly srdSpells: readonly SelectOption[];
   /** The Portuguese name of any key of the catalog and of the table's entries (the key itself when unknown). */
   nameOf(key: string): string;
+  /** "Truques de lâmina (Guarda do Corvo)" for the key of a feature with an option list, archived owners included; else the key's last word. */
+  offeredByName(key: string): string;
 }
 
 /** A table key ends with "@mesa". */
@@ -64,10 +67,6 @@ function nameIndex(content: Content, entries: readonly TableEntry[]): Map<string
   for (const s of content.skills) names.set(s.key, s.namePt);
   for (const s of content.spells) names.set(s.key, s.namePt);
   for (const e of entries) names.set(e.key, e.namePt);
-  // A feature with an option list is named with its owner ("Truques de lâmina (Guarda do Corvo)"): only an option points at it.
-  for (const e of entries) {
-    for (const f of offeringFeatures([e])) names.set(f.key, `${f.name} (${f.owner})`);
-  }
   // What a table entry points at that is not an entry: the server names it for every member (a player has no menu).
   for (const n of content.languages) names.set(n.key, n.namePt);
   for (const n of content.proficiencies) names.set(n.key, n.namePt);
@@ -103,6 +102,7 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
     names.set(`ability:${a.field}`, a.name);
     names.set(`ability:${a.ability}`, a.name);
   }
+  const offerers = new Map(offeringFeatures(entries, true).map((f) => [f.key, offeringLabel(f)]));
   const subclassLevels = new Map(content.classes.map((c) => [c.key, c.subclassLevel]));
 
   const schools = schoolNames(content.spells);
@@ -150,5 +150,6 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
       }))
       .sort(byName),
     nameOf: (key) => names.get(key) ?? key,
+    offeredByName: (key) => offerers.get(key) ?? featureKeyName(key, (k) => k),
   };
 }

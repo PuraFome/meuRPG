@@ -5,7 +5,7 @@ import { menu } from './content-testing-menu';
 import {
   draftToOption,
   emptyOption,
-  missingOfferingPaths,
+  missingOffering,
   optionPaths,
   optionToDraft,
 } from './option-draft';
@@ -102,8 +102,8 @@ describe('the option form (MR-025)', () => {
     const own = { ...emptyOption('table_feature') };
     expect(optionPaths(own, menu())).toContain('table_option.offered_by');
     expect(optionPaths(emptyOption('invocation'), menu())).not.toContain('table_option.offered_by');
-    expect(missingOfferingPaths(own)).toEqual(['table_option.offered_by']);
-    expect(missingOfferingPaths({ ...own, offeredBy: 'feature:x@mesa' })).toEqual([]);
-    expect(missingOfferingPaths(emptyOption('invocation'))).toEqual([]);
+    expect(missingOffering(own)).toBe(true);
+    expect(missingOffering({ ...own, offeredBy: 'feature:x@mesa' })).toBe(false);
+    expect(missingOffering(emptyOption('invocation'))).toBe(false);
   });
 });

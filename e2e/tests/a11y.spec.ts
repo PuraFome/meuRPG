@@ -6059,6 +6059,13 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
       await expect(empty).toBeDisabled();
       await expect(m.getByRole('link', { name: 'Ver as subclasses da mesa' })).toBeVisible();
       await expectScreenPasses(m, `Editor de opção, nenhuma característica com lista de opções ${where}`);
+      // A save with nothing to choose from is refused at the field, and the focus goes to the link (a disabled select takes none).
+      await m.getByRole('button', { name: 'Salvar opção' }).click();
+      await expect(m.getByText('Escolha a característica que oferece a opção.')).toBeVisible();
+      await expect(m.getByRole('link', { name: 'Ver as subclasses da mesa' })).toBeFocused();
+      // Another set has no such field.
+      await m.getByLabel('Conjunto').selectOption({ label: 'Invocação mística' });
+      await expect(m.getByLabel('Característica que oferece')).toHaveCount(0);
     }
 
     const subclass = await createSubclassRPC(m, campaignId, subclassBody([withOptions('Truques de lâmina', ['Corte baixo', 'Finta', 'Recuo']), { namePt: 'Sem lista', descPt: ['Só texto.'] }]));
@@ -6118,10 +6125,14 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
       await expectScreenPasses(m, `Opção lida pelo mestre no celular ${where}`);
     }
 
-    // The player reads the feature that offers the option, and the set alone when the server leaves the feature out of the copy.
+    // The player reads the feature that offers the option, and the set alone when the copy has no offering feature.
     await open(p, `/campaigns/${campaignId}/content?kind=options`);
     await expect(p.getByText('Golpe do Corvo').first()).toBeVisible();
+    await expect(p.getByText('Opção de Truques de lâmina (Guarda do Corvo)')).toBeVisible();
     await expectScreenPasses(p, `Opções, vistas por um jogador ${where}`);
+    // This rewrites the response: the server sends no `offeredBy` when the feature is hidden to the player, and a test world cannot
+    // make a player read an option while its subclass is hidden (only a sheet holding the option does, and it holds the subclass too).
+    // The Go tests cover the server; this screen covers what the page draws without the key.
     await p.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route) => {
       const res = await route.fetch();
       const body = await res.json();

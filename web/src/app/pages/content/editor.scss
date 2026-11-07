@@ -253,9 +253,9 @@
 
     mat-icon {
       flex: none;
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
+      width: var(--mr-font-18);
+      height: var(--mr-font-18);
+      font-size: var(--mr-font-18);
     }
   }
 

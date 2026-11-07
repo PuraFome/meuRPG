@@ -7,6 +7,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
@@ -23,13 +24,14 @@ export interface SelectOption<T extends string | number = string> {
 }
 
 /**
- * A native select in the app's outlined field (the same pattern as the trap panel): a real `<select>`, so the phone's own
- * picker opens, with the refusal of the server under it. Options may carry a `group`. Values are strings or numbers; `valueChange` gives back the
- * option's own value, not its text.
+ * A native select in the app's outlined field (the same pattern as the trap panel).
+ * It is a real `<select>`, so the phone's own picker opens, with the refusal of the server under it.
+ * Options with a `group` sit in an `<optgroup>`; `disabled` turns the whole select off.
+ * Values are strings or numbers; `valueChange` gives back the option's own value, not its text.
  */
 @Component({
   selector: 'app-select-field',
-  imports: [FieldNote, MatFormFieldModule, MatInputModule],
+  imports: [FieldNote, MatFormFieldModule, MatInputModule, NgTemplateOutlet],
   template: `
     <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.invalid]="invalid()">
       <mat-label>{{ label() }}</mat-label>
@@ -47,18 +49,19 @@ export interface SelectOption<T extends string | number = string> {
         @for (seg of segments(); track $index) {
           @if (seg.group) {
             <optgroup [label]="seg.group">
-              @for (o of seg.items; track o.value) {
-                <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
-              }
+              <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
             </optgroup>
           } @else {
-            @for (o of seg.items; track o.value) {
-              <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
-            }
+            <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
           }
         }
       </select>
     </mat-form-field>
+    <ng-template #items let-items>
+      @for (o of items; track o.value) {
+        <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
+      }
+    </ng-template>
     <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
   `,
   styles: `

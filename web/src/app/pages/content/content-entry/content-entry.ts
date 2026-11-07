@@ -211,8 +211,9 @@ export class ContentEntry {
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
   protected readonly read = computed(() => {
     const e = this.entry();
+    const c = this.catalog();
     return e
-      ? readEntry(e, this.nameOf(), (key) => this.catalog()?.subclassLevelOf(key) ?? 0)
+      ? readEntry(e, this.nameOf(), (k) => c?.subclassLevelOf(k) ?? 0, c?.offeredByName)
       : null;
   });
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */

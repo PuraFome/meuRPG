@@ -17,8 +17,8 @@
           <app-select-field label="Característica que oferece" [options]="offeredOptions()" [value]="d.offeredBy" [placeholder]="noOfferer() ? 'Nenhuma disponível' : 'Escolha…'" [disabled]="noOfferer()" path="table_option.offered_by" [issues]="issuesOf('table_option.offered_by')" [hint]="offeringHint()" (valueChange)="chooseOffering($event)" />
           <div class="offer">
             @if (noOfferer()) {
-              <p class="hint offer__lock"><mat-icon aria-hidden="true">lock</mat-icon>Nenhuma classe ou subclasse da mesa tem uma característica com "Opções para escolher".</p>
-              <a class="offer__link" [routerLink]="subclassesLink()" [queryParams]="{ kind: 'subclasses' }">Ver as subclasses da mesa<mat-icon aria-hidden="true">chevron_right</mat-icon></a>
+              <p class="hint offer__lock"><mat-icon aria-hidden="true">lock</mat-icon>Nenhuma classe ou subclasse da mesa tem uma característica com "Opções para escolher". Crie a lista lá e volte aqui.</p>
+              <a class="offer__link" data-field="table_option.offered_by.help" [routerLink]="subclassesLink()" [queryParams]="{ kind: 'subclasses' }">Ver as subclasses da mesa<mat-icon aria-hidden="true">chevron_right</mat-icon></a>
             } @else if (offering(); as f) {
               <p class="hint">{{ offeringList() }}</p>
               <a class="offer__link" [routerLink]="offeringLink()">Abrir {{ f.owner }}<mat-icon aria-hidden="true">chevron_right</mat-icon></a>

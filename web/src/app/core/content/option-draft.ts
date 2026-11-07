@@ -102,7 +102,7 @@ export function optionPaths(d: OptionDraft, menu: EffectMenuVm): string[] {
     `${p}.name_pt`,
     `${p}.desc_pt`,
     `${p}.set`,
-    ...(d.set === TABLE_FEATURE_SET ? [`${p}.offered_by`] : []),
+    ...(d.set === TABLE_FEATURE_SET ? [OFFERED_BY_PATH] : []),
     `${p}.prerequisite`,
     `${p}.prerequisite.class_level`,
     `${p}.prerequisite.class_level.class_key`,
@@ -140,11 +140,15 @@ export const OFFERERS: Readonly<Record<string, readonly string[]>> = {
   superior_hunters_defense: ['feature:superior-hunters-defense'],
 };
 
-/** The path of the offering feature while the set asks for one and none is chosen. */
+/** The path of the input that asks for the offering feature. */
 export const OFFERED_BY_PATH = 'table_option.offered_by';
 
-export function missingOfferingPaths(d: OptionDraft): string[] {
-  return d.set === TABLE_FEATURE_SET && d.offeredBy === '' ? [OFFERED_BY_PATH] : [];
+/** The path of the note that stands in for that input when nothing can be chosen (its select is disabled). */
+export const OFFERED_BY_HELP_PATH = 'table_option.offered_by.help';
+
+/** The set asks for an offering feature and none is chosen. */
+export function missingOffering(d: OptionDraft): boolean {
+  return d.set === TABLE_FEATURE_SET && d.offeredBy === '';
 }
 
 /** The paths of the option's number fields whose text is no whole number. */

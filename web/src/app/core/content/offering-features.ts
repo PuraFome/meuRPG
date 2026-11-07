@@ -5,8 +5,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 
 /**
- * The class and subclass features of the table that have a list of options of their own: the only ones a table option of the set
- * "table_feature" can join (the server's `offered_by`). Read from the entries the page already holds.
+ * A class or subclass feature of the table that has an option list of its own.
+ * Only these can be the `offered_by` of a table option of the set "table_feature".
  */
 export interface OfferingFeature {
   readonly key: string;
@@ -18,12 +18,28 @@ export interface OfferingFeature {
   readonly ownerKey: string;
   readonly owner: string;
   readonly ownerKind: 'subclass' | 'class';
-  /** The class a subclass belongs to, by name ('' for a class). */
+  /** The key of the class a subclass belongs to ('' for a class). */
   readonly classKey: string;
 }
 
-export function offeringFeatures(entries: readonly TableEntry[]): OfferingFeature[] {
-  return entries.filter((e) => !e.archived).flatMap(featuresOf);
+/** The offering features of the entries; the archived entries' only with `withArchived` (to name a saved choice, never to offer one). */
+export function offeringFeatures(
+  entries: readonly TableEntry[],
+  withArchived = false,
+): OfferingFeature[] {
+  return entries.filter((e) => withArchived || !e.archived).flatMap(featuresOf);
+}
+
+/** "Truques de lâmina (Guarda do Corvo)": the feature with its owner. */
+export function offeringLabel(f: OfferingFeature): string {
+  return `${f.name} (${f.owner})`;
+}
+
+/** "Guarda do Corvo · subclasse de Guerreiro" or "Guardião do Vale · classe da mesa". */
+export function ownerLabel(f: OfferingFeature, className: (classKey: string) => string): string {
+  return f.ownerKind === 'subclass'
+    ? `${f.owner} · subclasse de ${className(f.classKey)}`
+    : `${f.owner} · classe da mesa`;
 }
 
 type Row = { features: readonly TableFeature[] };

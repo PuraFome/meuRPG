@@ -692,8 +692,10 @@ func (w *world) buildTableContent() {
 	archivedFeat := create("feat-archived", feat())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
-	// An option offered by a feature of an archived subclass: the option is hidden with its offering feature, so neither the option,
-	// the feature's key nor the feature's name reaches a player.
+	// An option offered by a feature of an archived subclass. It proves the option is hidden with its offering feature: no player reads
+	// the option, the feature's key or the feature's name. It does not prove the blanking of `offered_by` in a copy a player reads
+	// through a sheet that holds the option; that case needs a sheet holding the option without its subclass, which no world sheet can
+	// have, so the characters package tests it through the listing (TestASheetHeldOptionNamesNoHiddenOfferingFeature).
 	archivedSubclass := create("subclass-archived", &rulesv1.TableSubclass{
 		ClassKey: "class:fighter",
 		Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{{
