@@ -332,7 +332,7 @@ func TestResourceAndScoreEffectsAreClosed(t *testing.T) {
 		"a recharge_if that is not a Bool":   {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level()", RechargeThen: "short_rest"},
 		"a cap on an armor class":            {Type: "modifier", Target: "ac", Mode: "add", Value: "1", Cap: 24},
 		"a score modifier without a cap":     {Type: "modifier", Target: "score.str", Mode: "add", Value: "4"},
-		"a cap that is the normal ceiling":   {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 20},
+		"a cap below the normal ceiling":     {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 19},
 		"a score modifier that sets":         {Type: "modifier", Target: "score.str", Mode: "set", Value: "4", Cap: 24},
 		"a score of an unknown ability":      {Type: "modifier", Target: "score.luck", Mode: "add", Value: "4", Cap: 24},
 		"beast_spells with a resource":       {Type: "beast_spells", Resource: "x"},
@@ -343,10 +343,11 @@ func TestResourceAndScoreEffectsAreClosed(t *testing.T) {
 		}
 	}
 	for name, e := range map[string]*Effect{
-		"a recharge by level": {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level() >= 5", RechargeThen: "short_rest"},
-		"a score with a cap":  {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 24},
-		"a save for all":      {Type: "modifier", Target: "save.all", Mode: "add", Value: "1"},
-		"beast spells":        {Type: "beast_spells"},
+		"a recharge by level":                  {Type: "resource", Resource: "x", Max: "1", Recharge: "long_rest", RechargeIf: "level() >= 5", RechargeThen: "short_rest"},
+		"a score with a cap":                   {Type: "modifier", Target: "score.str", Mode: "add", Value: "4", Cap: 24},
+		"a score capped at the normal ceiling": {Type: "modifier", Target: "score.str", Mode: "add", Value: "1", Cap: MaxNormalScore},
+		"a save for all":                       {Type: "modifier", Target: "save.all", Mode: "add", Value: "1"},
+		"beast spells":                         {Type: "beast_spells"},
 	} {
 		if err := c.compileEffect("feature:x", e); err != nil {
 			t.Errorf("%s: %v", name, err)

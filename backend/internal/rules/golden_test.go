@@ -153,6 +153,16 @@ func TestValidate(t *testing.T) {
 				b.Weapons = append(b.Weapons, "equipment:dagger")
 			}
 		}, "full.weapon_keys"},
+		{"mark on a weapon not carried", func(b *Build) { b.WeaponMarks = []WeaponMark{{Weapon: "equipment:dagger", Silvered: true}} }, "full.weapon_marks[0].weapon_key"},
+		{"mark twice", func(b *Build) {
+			b.Weapons = []string{"equipment:dagger"}
+			b.WeaponMarks = []WeaponMark{{Weapon: "equipment:dagger", Silvered: true}, {Weapon: "equipment:dagger", Magical: true}}
+		}, "full.weapon_marks[1].weapon_key"},
+		{"mark that sets nothing", func(b *Build) {
+			b.Weapons = []string{"equipment:dagger"}
+			b.WeaponMarks = []WeaponMark{{Weapon: "equipment:dagger"}}
+		}, "full.weapon_marks[0]"},
+		{"too many marks", func(b *Build) { b.WeaponMarks = make([]WeaponMark, MaxWeapons+1) }, "full.weapon_marks"},
 		{"option that is not an option", func(b *Build) { b.FeatureChoices = []string{"feature:arcane-recovery"} }, "full.feature_choice_keys[0]"},
 	}
 	for _, tt := range tests {

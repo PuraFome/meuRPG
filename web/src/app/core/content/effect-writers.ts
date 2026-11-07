@@ -19,6 +19,7 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 
 type NumberKey =
   | 'count'
+  | 'cap'
   | 'healPercentMax'
   | 'diceSides'
   | 'rangeMultiplier'
@@ -47,6 +48,8 @@ const trimmedText =
       | 'resource'
       | 'max'
       | 'textPt'
+      | 'name'
+      | 'set'
       | 'cost'
       | 'costMax'
       | 'valuePerPoint'
@@ -138,6 +141,9 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['ability', pickedText('ability')],
   ['spells', pickedList('spells')],
   ['text_pt', trimmedText('textPt')],
+  ['name', trimmedText('name')],
+  ['set', trimmedText('set')],
+  ['cap', positiveNumber('cap')],
   ['except', pickedText('except')],
   ['while', pickedText('while')],
   ['cost', trimmedText('cost')],
@@ -175,6 +181,9 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['attack_bonus', signedNumber('attackBonus')],
   ['damage_bonus', signedNumber('damageBonus')],
   ['reach_ft', (d) => (rangeFeet(d.reachM) > 0 ? { reachFt: rangeFeet(d.reachM) } : {})],
+  ['magical', (d) => (d.magical ? { magical: true } : {})],
+  ['silvered', (d) => (d.silvered ? { silvered: true } : {})],
+  ['adamantine', (d) => (d.adamantine ? { adamantine: true } : {})],
   ['attack_name', trimmedText('attackName')],
   ['damage_dice', trimmedText('damageDice')],
   ['rolls', pickedList('rolls')],

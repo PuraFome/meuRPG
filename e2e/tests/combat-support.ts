@@ -243,10 +243,16 @@ export const torenSheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equi
 
 /** The master's correction of a player's vitals (hit points, slots used, resources used). */
 export async function adjustVitalsRPC(page: Page, campaignId: string, characterId: string, change: object): Promise<void> {
+  // The correction names the revision of the vitals it read, as the app does.
+  const live = await callRPC(page, 'meurpg.play.v1.PlayService/GetLiveSession', { campaignId });
+  expect(live.ok(), await live.text()).toBeTruthy();
+  const vitals = ((await live.json()) as { vitals?: { characterId: string; revision?: number }[] }).vitals ?? [];
+  const expectedRevision = vitals.find((v) => v.characterId === characterId)?.revision ?? 0;
   const res = await callRPC(page, 'meurpg.play.v1.PlayService/AdjustCharacterVitals', {
     campaignId,
     characterId,
     idempotencyKey: crypto.randomUUID(),
+    expectedRevision,
     ...change,
   });
   expect(res.ok(), await res.text()).toBeTruthy();

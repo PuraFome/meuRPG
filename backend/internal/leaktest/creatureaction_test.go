@@ -234,7 +234,7 @@ func (w *world) hitToren(who *playv1.Combatant, attackKey string) string {
 	ctx := w.t.Context()
 	// Temporary hit points, so that the hit does not down Toren: a downed target is offered no rider.
 	must(w.master.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: new(int32(500)),
+		CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: w.master.revisionOf(w, w.toren.GetId()), HitPointsTemporary: new(int32(500)),
 	})))
 	hit := must(w.master.combat.RollAttack(ctx, rq(&playv1.RollAttackRequest{
 		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), AttackerId: who.GetId(), AttackKey: attackKey, TargetId: w.combatant(w.toren).GetId(),

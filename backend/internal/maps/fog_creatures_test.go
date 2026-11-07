@@ -334,7 +334,7 @@ func TestMR036_TheWolfFallingTellsThePlayerTheirViewChanged(t *testing.T) {
 	drain()
 	zero := int32(0)
 	if _, err := c.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: c.campaign, CharacterId: folha.GetId(), IdempotencyKey: rand32(), WildShapeHitPointsCurrent: &zero,
+		CampaignId: c.campaign, CharacterId: folha.GetId(), IdempotencyKey: rand32(), ExpectedRevision: c.master.revisionOf(c.campaign, folha.GetId()), WildShapeHitPointsCurrent: &zero,
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

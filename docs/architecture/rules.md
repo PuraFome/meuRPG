@@ -102,6 +102,16 @@ The result covers the 12 SRD classes and 9 SRD races from level 1 to 20 (and the
 Active spells such as Mage Armor and Shield, current hit points, spent slots and resources in use belong to the game session (the [play module](play/README.md) stores them; `rules/combat` only does arithmetic on what the session stores).
 A feature with no effect appears only as text and the master resolves it (for instance Diamond Soul, Slippery Mind, Remarkable Athlete, Mystic Arcanum, Signature Spell, and the Aura of Protection's bonus for allies within 10 ft).
 
+## Carried and equipped gear
+
+A piece of gear the sheet lists is equipped unless `Build.Carried` holds its key.
+The keys are `armor_key`, a `weapon_keys` entry and `rules.ShieldKey` (`equipment:shield`); `ValidateCarried` refuses any other key, a repeat and more than `MaxCarried`.
+The empty list means everything is equipped, so a sheet without it derives as before.
+The deriver drops a carried armor and a carried shield before it derives (`equip`), so armor class, hints, proficiency issues and the shield's bonus read only what is worn; callers outside `rules` read `ArmorOn` and `ShieldOn`.
+A carried weapon stays listed and makes no attack and does not count as two-handed.
+`Build.IsCarried`, `ArmorOn`, `ShieldOn` and `ShieldCounts` are the readers.
+Who may change the list and what a running combat charges is in [Characters](characters.md#equipping-gear) and [Combat](play/combat.md#equipping-and-stowing-gear).
+
 ## Effects
 
 The SRD describes features in prose.
@@ -109,7 +119,7 @@ What the engine needs to know is written by hand in `effects/*.json`, in a close
 
 | Type | What it does |
 | --- | --- |
-| `modifier` | Changes a target with a mode (`add`, `max`, `set`) and a formula. Targets: `ac.base` (the highest of the options, e.g. Unarmored Defense `10 + mod("dex") + mod("con")` with `armor() == "none"`), `ac`, `hp.max`, `speed.walk`, `speed.fly`, `speed.swim`, `speed.climb`, `speed.burrow`, `initiative`, `attack.weapon.melee`, `attack.weapon.ranged`, `damage.weapon.melee`, `damage.weapon.ranged`, plus the dynamic targets (a skill, a saving throw, `save.all`, which Aura of Protection uses, and `score.<ability>`). The other speeds start at 0 (no SRD race has one) and are filled in `Derived.SpeedFlyFt`, `SpeedSwimFt`, `SpeedClimbFt` and `SpeedBurrowFt` after the walking speed, so their formulas may read `speedwalk()`; a creature's form (Wild Shape) replaces them with the beast's. A score modifier is an `add` with a `cap` above 20, the highest value the effect lifts it to (Primal Champion: `+4`, cap 24); a score already above the cap is left alone, and no other modifier has a cap. |
+| `modifier` | Changes a target with a mode (`add`, `max`, `set`) and a formula. Targets: `ac.base` (the highest of the options, e.g. Unarmored Defense `10 + mod("dex") + mod("con")` with `armor() == "none"`), `ac`, `hp.max`, `speed.walk`, `speed.fly`, `speed.swim`, `speed.climb`, `speed.burrow`, `initiative`, `attack.weapon.melee`, `attack.weapon.ranged`, `damage.weapon.melee`, `damage.weapon.ranged`, plus the dynamic targets (a skill, a saving throw, `save.all`, which Aura of Protection uses, and `score.<ability>`). The other speeds start at 0 (no SRD race has one) and are filled in `Derived.SpeedFlyFt`, `SpeedSwimFt`, `SpeedClimbFt` and `SpeedBurrowFt` after the walking speed, so their formulas may read `speedwalk()`; a creature's form (Wild Shape) replaces them with the beast's. A score modifier is an `add` with a `cap` from 20 to 30, the highest value the effect lifts it to (Primal Champion: `+4`, cap 24); a score already above the cap is left alone, and no other modifier has a cap. |
 | `proficiency` | A proficiency, expertise, or half proficiency (Jack of All Trades: every skill, raw ability check and initiative). With `only_proficient`, an expertise effect doubles a skill only where the character is proficient from another source (see [Table content](rules-table-content.md#the-closed-menu-of-effects)). |
 | `roll_mode` | Advantage or disadvantage on a kind of roll (`attack`, `death_save`, `initiative`, `check.all`, `save.all`, an ability's checks, a skill, a save). With a tag (`against:magic`, Gnome Cunning) it becomes a hint. Table content may name `against_condition` (one of the 15 conditions) instead of a tag: the targets are saving throws only and the mode is real. The hint carries the condition, `link.TaggedSave` carries it (with `Disadvantage` for a disadvantage) and the combat applies it to the saving throws that are against that condition: the ones of a spell, of an effect that lasts and of a trap that give it, and a rider's (Stunning Strike: stunned). |
 | `sense` | Darkvision, blindsight, truesight, tremorsense, Devil's Sight (`devils-sight`), with the range. |
@@ -125,7 +135,7 @@ What the engine needs to know is written by hand in `effects/*.json`, in a close
 | `breathes_water` | Table content only. The character breathes underwater (`Derived.BreathesWater`, shown on the sheet; the engine keeps no air or drowning count). It takes no field but `when` and `text_pt`. |
 | `granted_spell` | Table content only. A spell the entry gives apart from the lists of the classes (see [Granted spells](rules-table-content.md#granted-spells)): `Derived.GrantedSpells`, each with its source, uses and casting ability numbers. |
 | `state` | Table content only. A temporary state (a stance, a form) with a name, a duration in rounds, the ways it ends and the cost of turning it on; it becomes `Derived.States` and an action (`state_key`, `state_active`). See [Table content](rules-table-content.md#states). |
-| `weapon_rule`, `pseudo_weapon` | Table content only. A rule that changes the weapon lines (another ability, a bonus, a longer reach) and an attack line of its own, both read where `attacks.go` builds a weapon line. See [Table content](rules-table-content.md#states). |
+| `weapon_rule`, `pseudo_weapon` | Table content only. A rule that changes the weapon lines (another ability, a bonus, a longer reach, a silvered, adamantine or magical mark) and an attack line of its own, both read where `attacks.go` builds a weapon line. See [Table content](rules-table-content.md#states). |
 | `reroll` | Table content only. Rolls a die again (`rolls`, `at_most`, optional `resource` and `cost`). See [Table content](rules-table-content.md#reroll). |
 | `roll_minimum` | Table content only. A die below `value` counts as `value` (`rolls`, `value`, optional `damage_type`). See [Table content](rules-table-content.md#roll-minimum). |
 | `ambush` | Table content only. Advantage on attack rolls against a creature that has not had its turn yet, or a critical hit on a surprised one (`applies`). See [Table content](rules-table-content.md#ambush). |

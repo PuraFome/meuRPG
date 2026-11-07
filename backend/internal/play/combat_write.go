@@ -217,6 +217,8 @@ type combatTx struct {
 	// (endEffectRows), which the undo takes back with the change. followUps are what those
 	// effects left behind (Haste's lethargy) and followUpLines the IDs of their "added"
 	// lines (leaveFollowUp), which the undo takes away.
+	// hpBefore is the hit points of the combatants before an undoable change, to keep what it left (Holds).
+	hpBefore      map[string]hpState
 	endedEffects  []playdb.CombatantState
 	endedLines    []string
 	followUps     []effectRef
@@ -371,6 +373,11 @@ func (s *Service) changeInTx(ctx context.Context, tx pgx.Tx, w combatWrite, sigh
 	if err != nil {
 		return err
 	}
+	if w.encounterID != "" && slices.Contains(undoableKinds, w.kind) && !slices.Contains(leavesHPAlone, w.kind) {
+		if c.hpBefore, _, err = s.hpSnapshot(ctx, c); err != nil {
+			return err
+		}
+	}
 	payload, err := do(c)
 	if err != nil || payload == nil {
 		return err
@@ -470,6 +477,10 @@ func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payl
 	}
 	r.ended = c
 	c.stamped = nil
+	payload, err := c.svc.withHolds(ctx, c, payload)
+	if err != nil {
+		return err
+	}
 	if err := insertEvent(ctx, c, c.kind, &w.m.UserID, &w.key, withEndedEffects(c, payload)); err != nil {
 		return err
 	}
