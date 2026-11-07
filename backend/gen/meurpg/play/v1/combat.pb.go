@@ -18520,9 +18520,14 @@ func (x *EndCombatEffectResponse) GetEncounter() *Encounter {
 
 // ListCombatLogRequest names the combat.
 type ListCombatLogRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	EncounterId   string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	// The highest `last_seq` the app holds. Only the entries that changed after it come back;
+	// 0 (the default) asks for the whole log. The server answers with the whole log (`full`) whenever a write after it may have
+	// changed how an entry the app holds is seen without a new event on that entry (a combatant shown or hidden, an answer to a roll
+	// request, an undo, a kind of event it does not know to be safe), so an app that gets `full` replaces everything it holds.
+	SinceSeq      int64 `protobuf:"varint,3,opt,name=since_seq,json=sinceSeq,proto3" json:"since_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -18571,6 +18576,13 @@ func (x *ListCombatLogRequest) GetEncounterId() string {
 	return ""
 }
 
+func (x *ListCombatLogRequest) GetSinceSeq() int64 {
+	if x != nil {
+		return x.SinceSeq
+	}
+	return 0
+}
+
 // ListCombatLogResponse is the combat log.
 type ListCombatLogResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -18580,8 +18592,15 @@ type ListCombatLogResponse struct {
 	// The event UndoLastAction would take back now (a UUID), if any. Only the
 	// master gets it; the entry it belongs to has `undoable` set.
 	UndoableEventId string `protobuf:"bytes,2,opt,name=undoable_event_id,json=undoableEventId,proto3" json:"undoable_event_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The highest event number (session_events.seq) among the entries the caller reads (the master's: among all the combat's events):
+	// the app sends it back as since_seq. It does not move on a write the caller may not see. It is unrelated to
+	// WatchGameSessionResponse.session_seq: two counters, never compared with each other.
+	LastSeq int64 `protobuf:"varint,3,opt,name=last_seq,json=lastSeq,proto3" json:"last_seq,omitempty"`
+	// True when the rounds are the whole log and replace what the app holds: since_seq was 0, or a write after it may have changed
+	// how the entries it holds are seen (an undo the caller may see; see ListCombatLogRequest.since_seq). False when the rounds hold only the entries that are new or changed, which the app puts in place by id.
+	Full          bool `protobuf:"varint,4,opt,name=full,proto3" json:"full,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListCombatLogResponse) Reset() {
@@ -18626,6 +18645,20 @@ func (x *ListCombatLogResponse) GetUndoableEventId() string {
 		return x.UndoableEventId
 	}
 	return ""
+}
+
+func (x *ListCombatLogResponse) GetLastSeq() int64 {
+	if x != nil {
+		return x.LastSeq
+	}
+	return 0
+}
+
+func (x *ListCombatLogResponse) GetFull() bool {
+	if x != nil {
+		return x.Full
+	}
+	return false
 }
 
 // CombatLogRound is the entries of one round, the latest first.
@@ -19071,7 +19104,13 @@ type CombatLogEntry struct {
 	// RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
 	Recharge *CombatLogRecharge `protobuf:"bytes,115,opt,name=recharge,proto3" json:"recharge,omitempty"`
 	// GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
-	GearSwapped   *CombatLogGearSwapped `protobuf:"bytes,117,opt,name=gear_swapped,json=gearSwapped,proto3" json:"gear_swapped,omitempty"`
+	GearSwapped *CombatLogGearSwapped `protobuf:"bytes,117,opt,name=gear_swapped,json=gearSwapped,proto3" json:"gear_swapped,omitempty"`
+	// The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
+	// A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
+	// sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
+	// the app replaces it by id. In an answer that is not full, the master's `undoable` flag is only right on the entry of
+	// `undoable_event_id`; the app derives the flag from it.
+	Seq           int64 `protobuf:"varint,116,opt,name=seq,proto3" json:"seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19517,6 +19556,13 @@ func (x *CombatLogEntry) GetGearSwapped() *CombatLogGearSwapped {
 		return x.GearSwapped
 	}
 	return nil
+}
+
+func (x *CombatLogEntry) GetSeq() int64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -28045,14 +28091,17 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06effect\x18\x04 \x01(\x0e2\x1c.meurpg.play.v1.CombatEffectR\x06effect\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"R\n" +
 	"\x17EndCombatEffectResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"Z\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"w\n" +
 	"\x14ListCombatLogRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
-	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\"{\n" +
+	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12\x1b\n" +
+	"\tsince_seq\x18\x03 \x01(\x03R\bsinceSeq\"\xaa\x01\n" +
 	"\x15ListCombatLogResponse\x126\n" +
 	"\x06rounds\x18\x01 \x03(\v2\x1e.meurpg.play.v1.CombatLogRoundR\x06rounds\x12*\n" +
-	"\x11undoable_event_id\x18\x02 \x01(\tR\x0fundoableEventId\"`\n" +
+	"\x11undoable_event_id\x18\x02 \x01(\tR\x0fundoableEventId\x12\x19\n" +
+	"\blast_seq\x18\x03 \x01(\x03R\alastSeq\x12\x12\n" +
+	"\x04full\x18\x04 \x01(\bR\x04full\"`\n" +
 	"\x0eCombatLogRound\x12\x14\n" +
 	"\x05round\x18\x01 \x01(\x05R\x05round\x128\n" +
 	"\aentries\x18\x02 \x03(\v2\x1e.meurpg.play.v1.CombatLogEntryR\aentries\"\xab\x01\n" +
@@ -28075,7 +28124,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\x93\x16\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xa5\x16\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -28149,7 +28198,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fcreature_action\x18q \x01(\v2'.meurpg.play.v1.CombatLogCreatureActionR\x0ecreatureAction\x12P\n" +
 	"\x0flegendary_spent\x18r \x01(\v2'.meurpg.play.v1.CombatLogLegendarySpentR\x0elegendarySpent\x12=\n" +
 	"\brecharge\x18s \x01(\v2!.meurpg.play.v1.CombatLogRechargeR\brecharge\x12G\n" +
-	"\fgear_swapped\x18u \x01(\v2$.meurpg.play.v1.CombatLogGearSwappedR\vgearSwappedB\x13\n" +
+	"\fgear_swapped\x18u \x01(\v2$.meurpg.play.v1.CombatLogGearSwappedR\vgearSwapped\x12\x10\n" +
+	"\x03seq\x18t \x01(\x03R\x03seqB\x13\n" +
 	"\x11_hit_points_afterB\x15\n" +
 	"\x13_target_armor_class\"\x84\x02\n" +
 	"\x12CombatLogEffectEnd\x124\n" +
