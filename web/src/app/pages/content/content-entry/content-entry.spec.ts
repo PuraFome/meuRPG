@@ -1,15 +1,18 @@
-import { TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
+import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject } from 'rxjs';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { ContentSchema, CreatureSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableContentKind,
   TableContentRefusalSchema,
+  TableCreatureSchema,
   TableRaceSchema,
+  TableSpellSchema,
   TableSubraceSchema,
   TableContentViolationSchema,
   type TableContentViolation,
@@ -19,6 +22,7 @@ import {
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
 import { savedSentence } from '../../../core/content/content-kinds';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import {
   classDefaults,
   entry,
@@ -104,6 +108,22 @@ describe('ContentEntry', () => {
         },
         { provide: CampaignsService, useValue: { getCampaign } },
         {
+          provide: CreaturesClient,
+          useValue: {
+            statBlock: vi.fn().mockResolvedValue(
+              create(CreatureSchema, {
+                summary: {
+                  namePt: 'Lobo',
+                  typePt: 'fera',
+                  sizePt: 'Médio',
+                  challengeRating: '1/4',
+                },
+              }),
+            ),
+            search: vi.fn(),
+          },
+        },
+        {
           provide: TableContentClient,
           useValue: {
             list,
@@ -123,6 +143,15 @@ describe('ContentEntry', () => {
   }
 
   const text = (el: Element) => (el.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  /** Opens the "⋮" menu of a phone and picks one of its items. */
+  async function fromMenu(fixture: ComponentFixture<unknown>, el: HTMLElement, item: string) {
+    el.querySelector<HTMLButtonElement>('button[aria-label^="Mais ações"]')!.click();
+    await settle(fixture, 4);
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button'))
+      .find((b) => text(b).includes(item))!
+      .click();
+    await settle(fixture, 4);
+  }
   const click = (el: HTMLElement, label: string) =>
     Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
       .find((b) => text(b).includes(label))!
@@ -265,7 +294,7 @@ describe('ContentEntry', () => {
     expect(
       Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar')),
     ).toBe(false);
-    expect(el.querySelector('button[aria-label="Mais ações"]')).not.toBeNull();
+    expect(el.querySelector('button[aria-label^="Mais ações"]')).not.toBeNull();
   });
 
   it("on a phone the master reads a subrace: what it replaces, the race's traits tagged, no editor (T7)", async () => {
@@ -423,6 +452,80 @@ describe('ContentEntry', () => {
     expect(el.querySelector('app-spell-editor')).not.toBeNull();
     expect(text(el)).not.toContain('Tentar de novo');
   });
+  it('opens a creature in its editor with the catalog alone (it needs no effect menu), and reads it on a phone', async () => {
+    const wolf = entry(TableContentKind.CREATURE, 'Lobo do Vale', {
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, {
+          namePt: 'Lobo do Vale',
+          baseKey: 'monster:wolf',
+          hitPoints: 40,
+        }),
+      },
+    });
+    const { el } = await setup(Role.MASTER, wolf.key, [wolf], { failMenu: true });
+    expect(el.querySelector('app-creature-editor')).not.toBeNull();
+    expect(text(el.querySelector('.tags')!)).toContain('Criatura da mesa');
+    expect(text(el)).toContain('Voltar para Criaturas');
+    expect(text(el)).not.toContain('Tentar de novo');
+    const phone = await setup(Role.MASTER, wolf.key, [wolf], { phone: true });
+    expect(phone.el.querySelector('app-creature-editor')).toBeNull();
+    expect(phone.el.querySelector('app-creature-read')).not.toBeNull();
+    expect(text(phone.el)).toContain('Lobo (SRD), fera média');
+    expect(text(phone.el)).toContain('PV40');
+  });
+
+  it("gives a player the generic read of a creature, never the master's phone read", async () => {
+    const wolf = entry(TableContentKind.CREATURE, 'Lobo do Vale', {
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, { baseKey: 'monster:wolf', hitPoints: 40 }),
+      },
+    });
+    const { el } = await setup(Role.PLAYER, wolf.key, [wolf]);
+    expect(el.querySelector('app-creature-read')).toBeNull();
+    expect(el.querySelector('app-entry-read')).not.toBeNull();
+    expect(text(el)).toContain('Pontos de vida');
+    expect(el.querySelector('button[aria-label^="Mais ações"]')).toBeNull();
+  });
+
+  it('reads the creature on a phone as the board says: tag, notice, rows, the traits and attacks, who brings it', async () => {
+    const wolf = entry(TableContentKind.CREATURE, 'Lobo do Vale', {
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, {
+          namePt: 'Lobo do Vale',
+          baseKey: 'monster:wolf',
+          hitPointsFormula: '4 + 4 * level()',
+          traits: [{ namePt: 'Elo com o guardião', textPt: 'Entende o dono.' }],
+          attacks: [{ namePt: 'Investida do Vale', melee: true, diceCount: 2, diceSides: 6 }],
+        }),
+      },
+    });
+    wolf.updatedAt = timestampFromDate(new Date(2026, 10, 6, 12));
+    const bringer = entry(TableContentKind.SPELL, 'Chamado da Matilha', {
+      body: {
+        case: 'tableSpell',
+        value: create(TableSpellSchema, {
+          level: 3,
+          summon: { creatureKeys: [wolf.key] },
+        }),
+      },
+    });
+    const { el } = await setup(Role.MASTER, wolf.key, [wolf, bringer], { phone: true });
+    const t = text(el);
+    expect(t).toContain('Voltar para Criaturas');
+    expect(text(el.querySelector('.tags')!)).toContain('Criatura da mesa');
+    expect(text(el.querySelector('.tags')!)).toContain('Atualizada em 06/11/2026');
+    expect(t).toContain(
+      'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.',
+    );
+    expect(t).toContain('com dono, 4 + 4 × nível');
+    expect(t).toContain('Elo com o guardião. Entende o dono.');
+    expect(t).toContain('Investida do Vale. Corpo a corpo, 1,5 m');
+    expect(t).toContain('Trazida por Chamado da Matilha.');
+  });
+
   it('has the entry\'s own switch "Disponível para os jogadores" in the editor, and saves it at once (RN-23)', async () => {
     const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
     const sw = el.querySelector<HTMLButtonElement>('app-players-switch [role="switch"]')!;
@@ -595,6 +698,10 @@ describe('ContentEntry', () => {
       const feat = await newPage('feat');
       expect(text(feat.el.querySelector('h1')!)).toBe('Novo talento');
       expect(text(feat.el)).toContain('Voltar para Talentos');
+      const creature = await newPage('creature');
+      expect(text(creature.el.querySelector('h1')!)).toBe('Nova criatura');
+      expect(text(creature.el)).toContain('Voltar para Criaturas');
+      expect(text(creature.el)).toContain('Criatura do SRD que serve de base');
       const spell = await newPage('spell');
       expect(text(spell.el.querySelector('h1')!)).toBe('Nova magia');
       const odd = await newPage('nonsense');
@@ -641,24 +748,16 @@ describe('ContentEntry', () => {
         Array.from(
           document.querySelectorAll<HTMLButtonElement>('app-archive-sheet app-pair-foot button'),
         ).find((b) => text(b).includes(label))!;
-      const archiveFromMenu = async () => {
-        (el.querySelector('button[aria-label="Mais ações"]') as HTMLButtonElement).click();
-        await settle(fixture, 4);
-        const item = Array.from(
-          document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'),
-        ).find((b) => text(b).includes('Arquivar'))!;
-        item.click();
-        await settle(fixture, 4);
-      };
-      await archiveFromMenu();
+      await fromMenu(fixture, el, 'Arquivar');
       sheetButton('Voltar').click();
       await settle(fixture, 4);
       expect(archive).not.toHaveBeenCalled();
-      await archiveFromMenu();
+      await fromMenu(fixture, el, 'Arquivar');
       sheetButton('Arquivar').click();
       await settle(fixture, 4);
       expect(archive).toHaveBeenCalledWith('camp-1', 'class:guardi-o-do-vale@mesa');
-      expect(text(el)).toContain('Desarquivar');
+      await fromMenu(fixture, el, 'Desarquivar');
+      expect(unarchive).toHaveBeenCalledWith('camp-1', 'class:guardi-o-do-vale@mesa');
     });
   });
 

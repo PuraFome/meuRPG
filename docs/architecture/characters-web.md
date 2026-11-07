@@ -95,13 +95,45 @@ The "Criar NPC" idempotency key is born once per opened dialog; the dialog's arm
 
 The screens of MR-025 and RN-23 use only the server of [Table content](characters-table-content.md): the browser writes no list and does no rule arithmetic, and what the server refuses comes back on the field.
 
-- **Routes** (`pages/content/content.routes.ts`, `loadChildren`, so the editors and the client stay out of the initial bundle): `''` is the list (`content-list`), `options` is "Opções para os jogadores", `import` the pack import, and `new/:kind` and `entries/:key` are the same entry page (`content-entry`), which picks the editor (spell, race, subrace, background, feat, class, subclass) when the caller is the master on a notebook and the read view (`entry-read`) otherwise: the player, and the master on the phone.
+- **Routes** (`pages/content/content.routes.ts`, `loadChildren`, so the editors and the client stay out of the initial bundle): `''` is the list (`content-list`), `options` is "Opções para os jogadores", `import` the pack import, and `new/:kind` and `entries/:key` are the same entry page (`content-entry`), which picks the editor (spell, race, subrace, background, feat, class, subclass, option, class feature, creature) when the caller is the master on a notebook and the read view (`entry-read`) otherwise: the player, and the master on the phone.
   The entry's key (`race:corujeiro@mesa`) is a single encoded segment.
+  On the phone the master gets a "⋮" menu at the right of the title, for every kind, with "Arquivar" or "Desarquivar".
+  The menu stays enabled while a call runs, so the focus stays on it.
 - **The client** (`core/content/content-client.ts`, `TableContentClient`): the list, the writes (`save` creates or swaps the body with the revision the editor read), archive and unarchive, the effect menu, the class defaults and the campaign catalogue.
   Failures are read through the typed detail (`TableContentRefusal`, `TableContentBlocked`), never the message.
   Each violation arrives at the field's exact path, all of an entry's at once.
 - **The drafts** (`spell-draft`, `feature-draft`, `effect-draft`, `feat-draft`, `class-draft`): the form as plain values, with distances in metres (5 ft = 1.5 m; `rangeFeet` and `rangeMeters` are the only arithmetic) and the conversion to the request body.
   The body carries only what the choice uses: a spell's mechanics (`Só texto` has no attack, save, damage or healing), the shape and size only on an area, and for an effect only the fields the server's menu says the type reads (`draftToEffect`).
+- **The creature editor** (`pages/content/creature-editor`, `core/content/creature-draft`, `creature-text`, `creature-preview`, `creature-carriers`) edits a table creature.
+  The base is an SRD creature chosen once with `app-creature-pick` and `srdOnly`.
+  `srdOnly` asks the server for a full page, because the server has no filter for SRD creatures.
+  The name has up to 80 letters.
+  There are four numbers: a fixed value and a formula of the owner's sheet each, with a live echo of the formula in words.
+  Traits (up to 10) and attacks (up to 8) are one-line rows that open in place.
+  A row is removed from its menu, and the focus then goes to the add button.
+  The draft keeps every number as typed and sends an empty one as 0.
+  It sends only a melee attack's reach, or a ranged attack's range and long range.
+  Distances are metres in the form and feet in the entry, and the dice are d4, d6, d8, d10, d12, d20 and d100.
+  The side column writes "Como fica na mesa" from the draft and the base's stat block.
+  It lists who brings the creature (`carriersOf`, read from the entries the editor already has).
+  `damage_mods` are rows of their own (`creature-damage-mods`, `damage-mods.ts`).
+  Each row is one table line of three Material selects: the kind, the damage types (multiple, over the SRD's) and the qualifier.
+  The qualifier is off (dashed, with a block icon) for a vulnerability and for a non-physical type, and one info line under the rows says why.
+  A refusal sits under its select.
+  The client names a repeated damage type (`duplicateText`).
+  A value this build does not know stays as an extra option, "valor desconhecido: x".
+  Changing a kind or a type that takes the qualifier away clears it, so the save is not refused for it.
+  The preview line also carries CA, PV and speed.
+  It adds "Resistências e imunidades" with the table's lines and the base's.
+  The read view lists the rows.
+- **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
+  It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
+  The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".
+  One note says that only the master changes the damage lines and that whoever holds the creature reads them on its sheet.
+  One card holds the traits and the attacks, the base's first, and ends with who brings the creature (`carriersOf`).
+  A player reads the creature with `readCreature` (`core/content/content-read-creature.ts`) in the generic `entry-read`.
+  It shows the numbers, the formulas and the section "Resistências, imunidades e vulnerabilidades", and no carriers.
+  A holder reads the whole body of the entry; a non-holder gets not_found.
 - **The damage warning** (`core/content/spell-warnings.ts`, `unappliedDamage`): the spell editor shows "O app não sabe aplicar este dano" under the combat mechanics when a saved spell has damage and no attack, no saving throw, no area and a target other than the caster alone.
   It is a client-side note beside the form, with no code from the server; it never blocks "Salvar magia", and it goes away when the master picks an attack or a saving throw, or an area target.
   Dice typed under "Só texto" are not sent, so only a saved body raises it.

@@ -317,7 +317,12 @@ The SRD's rows are shared, so a row is copied before it changes.
 `Replaces` is a feature of the class (an SRD one or another table class feature) that leaves the rows from the entry's level on, as the `replaces` effect hides lower tiers; the entry is refused if the class has no such feature at that level or later, or if it came earlier ("a character never loses what it already had"), and a feature replaced twice is refused at the second entry (in key order).
 A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
 An archived entry still applies to the sheets that have the class.
-Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
+Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt`, `.effects` and `.summon`.
+A class feature may carry a `summon` (`TableClassFeature.summon`).
+It brings creatures to every character that has the feature at its level.
+It is checked and cast as a [table feature's summon](#table-feature-summons).
+Its `resource_key` is a resource the entry's own `resource` effects define, or one of its class or the SRD.
+A player reads only its `creature_keys`.
 
 ## Table creatures
 
@@ -499,7 +504,8 @@ Combat uses `Spellcasting.SpellList`, the list the caster reads: the class's or,
 ## Switches and hidden keys
 
 The master switches classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures on or off per campaign, SRD and table alike; everything is on by default.
-The options screen has no creature group, so creatures are switched through the API only.
+The master switches creatures on the options screen, in its "Criaturas" group.
+The creature editor has the same switch.
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.
@@ -644,7 +650,9 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 
 ## Table feature summons
 
-A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
+A `TableFeature` of a class, a subclass, a race trait or a background, and a `TableClassFeature` entry, may carry a `summon` (`TableFeature.Summon` or `TableClassFeature.summon`, a `TableSummon`).
+It has the same creatures, count and limits as a spell's summon.
+It is spent with a use of a resource instead of a slot.
 An option carries none (`value` at `.summon`).
 The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
 It is not a spell of the holder's list: a sheet cannot list it.

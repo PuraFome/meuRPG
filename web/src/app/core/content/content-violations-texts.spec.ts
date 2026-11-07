@@ -2,6 +2,7 @@ import { violationText } from './content-violations';
 
 /** The sentence of every reason at a field of each shape: the branches `violationText` walks, in the order it walks them. */
 const CTX = { aOne: 'uma magia' };
+const CREATURE_CTX = { aOne: 'uma criatura' };
 const CLASS_CTX = { aOne: 'uma classe', maxFeatures: 40, featureCount: 41 };
 
 const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_CTX]> = {
@@ -49,6 +50,40 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'class feature other reason': ['table_class.levels[3].features[1]', 'bad_value'],
   'feat prerequisite': ['table_feat.prerequisite.minimums.strength', 'bad_value'],
   'spell damage dice': ['table_spell.damage[0].dice', 'bad_value'],
+  'creature base missing': ['table_creature.base_key', 'dangling_reference'],
+  'creature base changed': ['table_creature.base_key', 'immutable'],
+  'creature base other': ['table_creature.base_key', 'bad_value'],
+  'creature name duplicate': ['table_creature.name_pt', 'duplicate_name'],
+  'creature name bad': ['table_creature.name_pt', 'bad_name'],
+  'creature mods limit': ['table_creature.damage_mods', 'limit'],
+  'creature mod kind': ['table_creature.damage_mods[2].kind', 'bad_value'],
+  'creature mod no types': ['table_creature.damage_mods[0].damage_types', 'bad_value'],
+  'creature mod type missing': [
+    'table_creature.damage_mods[0].damage_types[1]',
+    'dangling_reference',
+  ],
+  'creature mod type twice': ['table_creature.damage_mods[0].damage_types[1]', 'bad_value'],
+  'creature mod qualifier': ['table_creature.damage_mods[1].qualifier', 'bad_value'],
+  'creature hit points': ['table_creature.hit_points', 'bad_value'],
+  'creature armor class': ['table_creature.armor_class', 'bad_value'],
+  'creature damage bonus': ['table_creature.damage_bonus', 'bad_value'],
+  'creature hit points formula': ['table_creature.hit_points_formula', 'bad_formula'],
+  'creature armor class formula': ['table_creature.armor_class_formula', 'bad_formula'],
+  'creature damage bonus formula': ['table_creature.damage_bonus_formula', 'bad_formula'],
+  'creature attack bonus formula': ['table_creature.attack_bonus_formula', 'bad_formula'],
+  'creature traits limit': ['table_creature.traits', 'limit'],
+  'creature trait name': ['table_creature.traits[2].name_pt', 'bad_name'],
+  'creature trait text': ['table_creature.traits[0].text_pt', 'bad_text'],
+  'creature attacks limit': ['table_creature.attacks', 'limit'],
+  'creature attack name': ['table_creature.attacks[1].name_pt', 'bad_name'],
+  'creature attack reach': ['table_creature.attacks[0].reach_ft', 'bad_value'],
+  'creature attack range': ['table_creature.attacks[0].range_ft', 'bad_value'],
+  'creature attack long range': ['table_creature.attacks[0].long_range_ft', 'bad_value'],
+  'creature attack dice': ['table_creature.attacks[0].dice_count', 'bad_value'],
+  'creature attack sides': ['table_creature.attacks[0].dice_sides', 'bad_value'],
+  'creature attack damage type': ['table_creature.attacks[0].damage_type', 'dangling_reference'],
+  'creature attack to hit': ['table_creature.attacks[0].to_hit', 'bad_formula'],
+  'creature attack damage bonus': ['table_creature.attacks[0].damage_bonus', 'bad_formula'],
   'reroll no rolls': ['table_feat.effects[0].rolls', 'bad_value'],
   'reroll face': ['table_class_feature.effects[1].at_most', 'bad_value'],
   'reroll dangling resource': ['table_feat.effects[0].resource', 'dangling_reference'],
@@ -108,6 +143,48 @@ const EXPECTED: Record<string, string> = {
   'class feature other reason': 'Confira esta característica.',
   'feat prerequisite': 'A pontuação mínima vai de 1 a 30.',
   'spell damage dice': 'Escreva o dado assim: 2d8 (de 1 a 20 dados).',
+  'creature base missing': 'Esta criatura não está no SRD. Escolha outra como base.',
+  'creature base changed': 'Isto não muda depois de criado.',
+  'creature base other': 'Escolha uma criatura do SRD como base.',
+  'creature name bad': 'O nome tem de 1 a 80 letras.',
+  'creature mods limit':
+    'No máximo 12 linhas de resistência, imunidade ou vulnerabilidade. Remova uma para pôr outra.',
+  'creature mod kind': 'Escolha resistência, imunidade ou vulnerabilidade.',
+  'creature mod no types': 'Escolha ao menos um tipo de dano.',
+  'creature mod type missing': 'Este tipo de dano não está no SRD. Tire-o da linha.',
+  'creature mod type twice': 'Há um tipo de dano repetido nesta linha. Tire o repetido.',
+  'creature mod qualifier':
+    'Só resistência ou imunidade a concussão, perfurante e cortante pode ter esse "Vale contra". Escolha "Todo dano desses tipos" ou mude a linha.',
+  'creature name duplicate': 'Já existe uma criatura da mesa com este nome. Escolha outro.',
+  'creature hit points': 'Os pontos de vida vão de 1 a 9.999 (vazio é o da base).',
+  'creature armor class': 'A classe de armadura vai de 1 a 40 (vazio é a da base).',
+  'creature damage bonus': 'O bônus no dano vai de −10 a 30.',
+  'creature hit points formula':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'creature armor class formula':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'creature damage bonus formula':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'creature attack bonus formula':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'creature traits limit': 'No máximo 10 traços. Remova um para pôr outro.',
+  'creature trait name':
+    'Use de 1 a 80 letras numa linha, e um nome que a base e os outros traços e ataques ainda não usem. Escolha outro.',
+  'creature trait text': 'O texto do traço tem de 1 a 4.000 letras.',
+  'creature attacks limit': 'No máximo 8 ataques. Remova um para pôr outro.',
+  'creature attack name':
+    'Use de 1 a 80 letras numa linha, e um nome que a base e os outros traços e ataques ainda não usem. Escolha outro.',
+  'creature attack reach':
+    'O alcance de um ataque corpo a corpo vai de 0 a 9 m; vazio ou 0 é 1,5 m.',
+  'creature attack range': 'O alcance de um ataque à distância vai de 0,3 m a 180 m.',
+  'creature attack long range': 'O alcance longo fica vazio ou passa do alcance normal, até 360 m.',
+  'creature attack dice': 'O ataque tem de 1 a 20 dados.',
+  'creature attack sides': 'Escolha o dado: d4, d6, d8, d10, d12, d20 ou d100.',
+  'creature attack damage type': 'Escolha um tipo de dano da lista.',
+  'creature attack to hit':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
+  'creature attack damage bonus':
+    'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.',
   'reroll no rolls': 'Marque ao menos uma jogada.',
   'reroll face': 'A face vai de 1 a 20.',
   // The type-less sentence: the picker puts the words of the effect's own type in its place (EFFECT_REFUSAL_TEXTS).
@@ -119,7 +196,10 @@ const EXPECTED: Record<string, string> = {
 describe('the sentence of a refusal, by the shape of its field and its reason', () => {
   it.each(Object.keys(CASES))('%s', (name) => {
     const [field, reason, ctx] = CASES[name];
-    const text = violationText({ field, reason }, ctx ?? CTX);
+    const text = violationText(
+      { field, reason },
+      ctx ?? (name.startsWith('creature') ? CREATURE_CTX : CTX),
+    );
     expect(text).toBe(EXPECTED[name]);
   });
 });

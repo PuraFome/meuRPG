@@ -12,9 +12,11 @@ import {
   type TableContentViolation,
   TableClassLevelSchema,
   TableSubclassSchema,
+  TableCreatureSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { TableContentPackSchema as PackSchema } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import {
   entry,
@@ -37,6 +39,7 @@ describe('ContentList', () => {
   const archive = vi.fn();
   const exportPack = vi.fn();
   const getCampaign = vi.fn();
+  const statBlock = vi.fn();
   let watcher = fakeContentWatcher();
 
   async function setup(
@@ -61,6 +64,7 @@ describe('ContentList', () => {
     }));
     archive.mockReset();
     exportPack.mockReset();
+    statBlock.mockReset().mockResolvedValue({ summary: { namePt: 'Lobo' } });
     getCampaign.mockReset().mockResolvedValue({
       campaign: { id: 'camp-1', name: 'Mirathel', myRole: role, awaitingApproval: false },
     });
@@ -83,6 +87,7 @@ describe('ContentList', () => {
           },
         },
         { provide: CampaignsService, useValue: { getCampaign } },
+        { provide: CreaturesClient, useValue: { statBlock } },
         {
           provide: TableContentClient,
           useValue: { list, catalog, unarchive, archive, exportPack },
@@ -130,6 +135,7 @@ describe('ContentList', () => {
       'Talentos0',
       'Opções0',
       'Características de classe0',
+      'Criaturas0',
     ]);
     expect(text(el)).toContain('7 de 1000 entradas · o limite de uma campanha');
     expect(el.querySelector('.menu__item--on')?.getAttribute('aria-current')).toBe('page');
@@ -175,7 +181,7 @@ describe('ContentList', () => {
     expect(text(el)).toContain('Nenhuma entrada com esta busca');
   });
 
-  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, eight kinds with 0', async () => {
+  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, nine kinds with 0', async () => {
     const { el } = await setup(Role.MASTER, { entries: [], kind: 'spells' });
     expect(text(el)).toContain('Nada cadastrado ainda.');
     expect(text(el)).toContain('O SRD continua valendo');
@@ -188,9 +194,50 @@ describe('ContentList', () => {
       '0',
       '0',
       '0',
+      '0',
     ]);
     expect(text(el.querySelector('.empty__new')!)).toContain('Nova magia');
     expect(el.querySelector('input')).toBeNull();
+  });
+
+  it('lists the creatures: the base by its Portuguese name, the numbers of the owner, an archived one tagged', async () => {
+    const wolf = entry(TableContentKind.CREATURE, 'Lobo do Vale', {
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, {
+          namePt: 'Lobo do Vale',
+          baseKey: 'monster:wolf',
+          hitPointsFormula: '4 + level()',
+        }),
+      },
+    });
+    const old = entry(TableContentKind.CREATURE, 'Corvo Antigo', {
+      archived: true,
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, { namePt: 'Corvo Antigo', baseKey: 'monster:wolf' }),
+      },
+    });
+    const { el } = await setup(Role.MASTER, { entries: [wolf, old], kind: 'creatures' });
+    expect(statBlock).toHaveBeenCalledTimes(1);
+    expect(statBlock).toHaveBeenCalledWith('camp-1', 'monster:wolf');
+    expect(text(el.querySelector('.list__head')!)).toContain('Criaturas');
+    expect(text(el.querySelector('.list__head')!)).toContain('Nova criatura');
+    expect(el.querySelector('a[href$="/new/creature"]')).not.toBeNull();
+    const rows = Array.from(el.querySelectorAll('.row')).map((r) => text(r).trim());
+    expect(rows[0]).toContain('Lobo do Vale');
+    expect(rows[0]).toContain('Base Lobo · números do dono');
+    expect(rows[1]).toContain('Corvo Antigo');
+    expect(rows[1]).toContain('Arquivada');
+    expect(el.querySelector('.row--archived')).not.toBeNull();
+  });
+
+  it('says what a creature of the table is when there is none, with "Nova criatura"', async () => {
+    const { el } = await setup(Role.MASTER, { entries: [], kind: 'creatures' });
+    expect(text(el)).toContain('Nenhuma criatura da mesa ainda.');
+    expect(text(el)).toContain('parte de uma do SRD');
+    expect(text(el.querySelector('.empty__new')!)).toContain('Nova criatura');
+    expect(statBlock).not.toHaveBeenCalled();
   });
 
   it('gives a player every entry that is on, kind by kind, with "Da mesa" and no counts, states or controls', async () => {

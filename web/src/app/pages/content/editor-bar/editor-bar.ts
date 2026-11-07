@@ -98,7 +98,7 @@ export class EditorAlerts {
         </button>
       }
       <button matButton="outlined" type="button" (click)="cancel.emit()">Cancelar</button>
-      <p class="bar__note" id="bar-reason">{{ blocked() || 'Mudar vale na hora, também nas fichas travadas.' }}</p>
+      <p class="bar__note" id="bar-reason">{{ blocked() || hint() }}</p>
     </div>
   `,
   styles: `
@@ -142,6 +142,8 @@ export class EditorBar {
   readonly saving = input(false);
   /** Why saving is off right now, or "". */
   readonly blocked = input('');
+  /** The line beside the buttons when saving is on. */
+  readonly hint = input('Mudar vale na hora, também nas fichas travadas.');
   readonly save = output<void>();
   readonly cancel = output<void>();
 }
