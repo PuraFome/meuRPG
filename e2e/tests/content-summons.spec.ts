@@ -27,10 +27,9 @@ test(
     const player = await newSignedInContext(browser, 'Jogador Teste');
     const m = await master.newPage();
     const p = await player.newPage();
-    let campaignId = '';
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const { campaignId } = await tableForCaster(m, p, `Conteúdo invoca ${Date.now()}`, 'druid');
     try {
-      await Promise.all([m.goto('/'), p.goto('/')]);
-      campaignId = (await tableForCaster(m, p, `Conteúdo invoca ${Date.now()}`, 'druid')).campaignId;
       const wolf = await createEntryRPC(m, campaignId, 'tableCreature', creatureBody());
 
       // C2: the feature of the class, with a resource of its own and the block that summons.
@@ -72,7 +71,7 @@ test(
       await m.goto(`/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Chamado do Vale');
       await m.getByLabel('Descrição').fill('Um lobo do vale atravessa o véu e fica ao seu lado.');
-      await m.getByRole('checkbox', { name: 'Druida', exact: true }).check({ force: true });
+      await m.locator('.classes label', { hasText: 'Druida' }).click();
       await m.locator('[aria-label="Mecânica"] label', { hasText: 'Invocar' }).click();
       const spell = m.locator('app-spell-summon');
       await expect(spell.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
@@ -89,9 +88,7 @@ test(
       expect(saved.tableSpell.summon).toMatchObject({ creatureKeys: [wolf], count: '1', countPerSlotLevel: 1, maxLive: 4 });
       expect(saved.tableSpell.target.kind).toBe('TABLE_SPELL_TARGET_KIND_SELF');
     } finally {
-      if (campaignId) {
-        await endOpenSessionRPC(m, campaignId);
-      }
+      await endOpenSessionRPC(m, campaignId);
       await Promise.all([master.close(), player.close()]);
     }
   },
@@ -105,11 +102,10 @@ test(
     const player = await newSignedInContext(browser, 'Jogador Teste');
     const m = await master.newPage();
     const p = await player.newPage();
-    let campaignId = '';
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCaster(m, p, `Invoca jogadora ${Date.now()}`, 'druid');
+    const campaignId = table.campaignId;
     try {
-      await Promise.all([m.goto('/'), p.goto('/')]);
-      const table = await tableForCaster(m, p, `Invoca jogadora ${Date.now()}`, 'druid');
-      campaignId = table.campaignId;
       const wolf = await createEntryRPC(m, campaignId, 'tableCreature', creatureBody());
       await createEntryRPC(m, campaignId, 'tableClassFeature', {
         namePt: 'Companheiro do Vale',
@@ -153,9 +149,7 @@ test(
       await expect(p.locator('.head__origin app-table-mark')).toHaveText(/Da mesa/);
       await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
     } finally {
-      if (campaignId) {
-        await endOpenSessionRPC(m, campaignId);
-      }
+      await endOpenSessionRPC(m, campaignId);
       await Promise.all([master.close(), player.close()]);
     }
   },
