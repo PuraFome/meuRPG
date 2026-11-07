@@ -62,9 +62,8 @@ import {
 import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
-import { GearList, type GearToggle } from '../../../../shared/gear-list/gear-list';
-import type { GearVm } from '../../../../core/characters/gear';
-import { gearBlocked, gearCost } from '../../../../core/combat/gear-flow';
+import type { GearFlow } from '../../../../core/combat/gear-flow';
+import { GearFold } from './gear-fold';
 import { Fold } from '../../../../shared/fold/fold';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
@@ -97,7 +96,7 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
   imports: [
     ActionRow,
     Fold,
-    GearList,
+    GearFold,
     GroupState,
     MatButtonModule,
     MatIconModule,
@@ -110,29 +109,10 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
 })
 export class ActionGroups {
   readonly options = input.required<TurnOptions>();
-  /** The character's gear, as the server derives it, for "Sacar ou guardar" (empty while it is read). */
-  readonly gear = input<readonly GearVm[]>([]);
-  readonly gearArmorClass = input<number | null>(null);
-  readonly gearBusyKey = input<string | null>(null);
-  readonly gearNotice = input('');
-  readonly gearError = input('');
-  /** The master changes gear without cost or turn: the rows say so. */
+  /** The player's gear in the combat (`GearFlow`), for "Sacar ou guardar"; none outside the player's own turn screen. */
+  readonly gearFlow = input<GearFlow | null>(null);
+  /** The master changes gear without cost or turn. */
   readonly gearMaster = input(false);
-  readonly gearToggled = output<GearToggle>();
-  protected readonly gearCostOf = computed(() => {
-    const turn = {
-      objectInteractionUsed: this.own().objectInteractionUsed,
-      master: this.gearMaster(),
-    };
-    return (piece: GearVm) => gearCost(piece, turn);
-  });
-  protected readonly gearBlockedOf = computed(() => {
-    const turn = {
-      objectInteractionUsed: this.own().objectInteractionUsed,
-      master: this.gearMaster(),
-    };
-    return (piece: GearVm) => gearBlocked(piece, turn);
-  });
 
   /** The key of the action whose target the player is choosing on the map (C7-05): its row says "Escolhendo o alvo". */
   readonly choosing = input('');

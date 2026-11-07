@@ -20,6 +20,7 @@ import {
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { toGearVm } from '../../core/characters/gear';
+import { speedExtrasOf } from './character-sheet-speeds';
 import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { SkillProficiency } from '../../core/characters/character-labels';
@@ -257,20 +258,6 @@ function notesVm(derived: GenDerivedSheet) {
     })),
     hints: derived.hints.map((h) => ({ sourceKey: h.sourceKey, text: h.text })),
   };
-}
-
-/** The other speeds, in the table's order, then "Respira na água" (`DerivedSheet`). */
-function speedExtrasOf(derived: GenDerivedSheet): readonly string[] {
-  const speeds: [number, string][] = [
-    [derived.speedFlyFt, 'Voo'],
-    [derived.speedSwimFt, 'Natação'],
-    [derived.speedClimbFt, 'Escalada'],
-    [derived.speedBurrowFt, 'Escavação'],
-  ];
-  const lines = speeds
-    .filter(([ft]) => ft > 0)
-    .map(([ft, name]) => `${name} ${metersWithFeet(ft)}`);
-  return derived.breathesWater ? [...lines, 'Respira na água'] : lines;
 }
 
 function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetVm {

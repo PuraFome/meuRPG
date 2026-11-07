@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { effect, signal, untracked } from '@angular/core';
 
 import type { GearClient, GearVm } from '../characters/gear';
 import { combatErrorMessage } from './combat-errors';
@@ -52,7 +52,13 @@ export class GearFlow {
   readonly error = signal('');
   private loadedFor = '';
 
-  constructor(private readonly ctx: GearFlowContext) {}
+  /** Built where Angular can run an effect (a field of the screen): the gear is read when the screen's character is known. */
+  constructor(private readonly ctx: GearFlowContext) {
+    effect(() => {
+      ctx.characterId();
+      untracked(() => void this.load());
+    });
+  }
 
   /** Reads the gear of the screen's character, once per character. */
   async load(): Promise<void> {

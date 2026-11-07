@@ -7752,7 +7752,7 @@ async function scanGearScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await m.goto('/');
     await p.goto('/');
     const gear = { weaponKeys: ['equipment:longsword', 'equipment:mace'], armorKey: 'equipment:chain-mail', shield: true, carriedKeys: ['equipment:mace'] };
-    const table = await tableForCombat(m, p, `Acessibilidade equipamento ${Date.now()}`, true, true, { build: toren, sheet: gear });
+    const table = await tableForCombat(m, p, `Acessibilidade trocas de arma ${Date.now()}`, true, true, { build: toren, sheet: gear });
     campaignId = table.campaignId;
 
     // The sheet: the two groups, then a weapon stowed (the notice and the focus on the moved row).

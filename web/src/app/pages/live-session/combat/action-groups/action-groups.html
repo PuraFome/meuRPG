@@ -190,22 +190,8 @@
         <ng-container *ngTemplateOutlet="otherActions" />
       }
 
-      @if (gear().length) {
-        <app-fold appearance="row" [muted]="true" title="Sacar ou guardar" [level]="3">
-          <app-gear-list
-            [gear]="gear()"
-            [armorClass]="gearArmorClass()"
-            [busyKey]="gearBusyKey()"
-            [cost]="gearCostOf()"
-            [blocked]="gearBlockedOf()"
-            [canChange]="!locked()"
-            (toggled)="gearToggled.emit($event)"
-          />
-          <p class="group__sub" role="status">{{ gearNotice() }}</p>
-          @if (gearError()) {
-            <p class="group__why" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ gearError() }}</p>
-          }
-        </app-fold>
+      @if (gearFlow(); as flow) {
+        <app-gear-fold [flow]="flow" [own]="own()" [master]="gearMaster()" [locked]="locked()" />
       }
 
       @if (extraAction(); as extra) {

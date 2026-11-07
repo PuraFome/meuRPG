@@ -22,7 +22,6 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { SavingState } from '../../core/connect/saving-state';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
-import { combatErrorMessage, encounterBlocked } from '../../core/combat/combat-errors';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -47,7 +46,7 @@ import {
 } from './character-sheet.types';
 import { CombatColumn } from './combat-column/combat-column';
 import { EquipmentPanel } from './equipment-panel/equipment-panel';
-import type { GearToggle } from '../../shared/gear-list/gear-list';
+import { SheetEquip } from './character-sheet-equip';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
 import { MasterNotes } from './master-notes/master-notes';
@@ -340,49 +339,17 @@ export class CharacterSheetPage {
     this.vitals.update((current) => (current && current.revision > v.revision ? current : v));
   }
 
-  /** The piece whose change is on its way to the server. */
-  protected readonly equipBusyKey = signal<string | null>(null);
-  protected readonly equipNotice = signal('');
-  protected readonly equipError = signal('');
-
-  /** "Equipar" / "Guardar" on the sheet: the server changes the piece and tells the new armor class by the sheet it derives again. */
-  protected async equip(toggle: GearToggle): Promise<void> {
-    const campaignId = this.campaignId();
-    const characterId = this.characterId;
-    if (!campaignId || !characterId || this.equipBusyKey() !== null) {
-      return;
-    }
-    this.equipBusyKey.set(toggle.key);
-    this.equipError.set('');
-    try {
-      await this.source.setEquipped(campaignId, characterId, toggle.key, toggle.equipped);
-      const fresh = await this.reloadQuietly();
-      if (this.destroyed || characterId !== this.characterId) {
-        return;
-      }
-      if (!fresh) {
-        this.equipError.set(
-          'A troca foi feita, mas não deu para ler a ficha de novo. Recarregue a página.',
-        );
-        return;
-      }
+  /** "Equipar" / "Guardar" on the sheet (`SheetEquip`). */
+  protected readonly gear = new SheetEquip({
+    source: this.source,
+    campaignId: () => this.campaignId(),
+    characterId: () => (this.destroyed ? '' : this.characterId),
+    reload: () => this.reloadQuietly(),
+    sheet: () => {
       const st = this.state();
-      const full = st.status === 'ready' && st.vm.sheet.kind === 'full' ? st.vm.sheet : null;
-      const name = full?.gear.find((g) => g.key === toggle.key)?.namePt ?? '';
-      this.equipNotice.set(
-        `${toggle.equipped ? 'Equipado' : 'Guardado'}: ${name}.${full ? ` Classe de armadura ${full.armorClass}.` : ''}`,
-      );
-    } catch (err) {
-      this.equipNotice.set('');
-      this.equipError.set(
-        encounterBlocked(err)
-          ? combatErrorMessage(err, 'mudar o equipamento')
-          : describeCharacterError(err),
-      );
-    } finally {
-      this.equipBusyKey.set(null);
-    }
-  }
+      return st.status === 'ready' && st.vm.sheet.kind === 'full' ? st.vm.sheet : null;
+    },
+  });
 
   /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */
   private async reloadQuietly(): Promise<boolean> {

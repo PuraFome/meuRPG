@@ -1,0 +1,18 @@
+@let f = flow();
+@if (f.gear().length) {
+  <app-fold appearance="row" [muted]="true" title="Sacar ou guardar" [level]="3">
+    <app-gear-list
+      [gear]="f.gear()"
+      [armorClass]="f.armorClass()"
+      [busyKey]="f.busyKey()"
+      [cost]="costOf()"
+      [blocked]="blockedOf()"
+      [canChange]="!locked()"
+      (toggled)="f.toggle($event.key, $event.equipped)"
+    />
+    <p class="gear-fold__note" role="status">{{ f.notice() }}</p>
+    @if (f.error()) {
+      <p class="gear-fold__why" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ f.error() }}</p>
+    }
+  </app-fold>
+}

@@ -313,10 +313,10 @@
           class="sheet__equipment"
           [sheet]="full"
           [canEquip]="vm.state !== 'dead'"
-          [equipBusyKey]="equipBusyKey()"
-          [equipNotice]="equipNotice()"
-          [equipError]="equipError()"
-          (gearToggled)="equip($event)"
+          [equipBusyKey]="gear.busyKey()"
+          [equipNotice]="gear.notice()"
+          [equipError]="gear.error()"
+          (gearToggled)="gear.toggle($event)"
         />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
         <div class="sheet__traits">

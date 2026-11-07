@@ -1,0 +1,24 @@
+.gear-fold__note:empty {
+  display: none;
+}
+
+.gear-fold__note,
+.gear-fold__why {
+  margin: 8px 0 0;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+}
+
+.gear-fold__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}

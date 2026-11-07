@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   Injector,
@@ -29,6 +30,7 @@ export interface GearToggle {
  * gratuita do turno", "usa a ação").
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-gear-list',
   imports: [MatButtonModule, NgTemplateOutlet],
   templateUrl: './gear-list.html',

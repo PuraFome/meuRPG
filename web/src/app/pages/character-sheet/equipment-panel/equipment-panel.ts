@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
 import { FullSheetVm } from '../character-sheet.types';
@@ -10,6 +10,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
  * it sits in the fourth column, above "Características e traços".
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
   imports: [GearList],
   templateUrl: './equipment-panel.html',

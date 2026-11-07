@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { GearVm } from '../characters/gear';
@@ -17,20 +18,23 @@ function flow(
   set = () => Promise.resolve(),
 ) {
   const calls = { read: 0, set: [] as [string, boolean][] };
-  const f = new GearFlow({
-    client: {
-      read: () => {
-        calls.read++;
-        return read();
-      },
-      set: (_c, _ch, key, equipped) => {
-        calls.set.push([key, equipped]);
-        return set();
-      },
-    },
-    campaignId: () => 'c1',
-    characterId: () => 'ch1',
-  });
+  const f = TestBed.runInInjectionContext(
+    () =>
+      new GearFlow({
+        client: {
+          read: () => {
+            calls.read++;
+            return read();
+          },
+          set: (_c, _ch, key, equipped) => {
+            calls.set.push([key, equipped]);
+            return set();
+          },
+        },
+        campaignId: () => 'c1',
+        characterId: () => 'ch1',
+      }),
+  );
   return { f, calls };
 }
 
