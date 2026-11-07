@@ -666,7 +666,6 @@ If another entry already has that key, the feature is refused at `.key`, and the
 How the uses come back is the resource's `recharge` (short rest, long rest, dawn and the others the `resource` effect accepts).
 A `role` of `mount` and a `turn_mode` of `after_owner` are refused as in a spell.
 Tests: `TestATableFeatureSummonsThroughTheSpellChecks`, `TestTheSpellOfAFeatureSummonIsHidden`, `TestTheSpellOfAFeatureSummonIsNoChoiceOfASheet`, `TestAFeatureWithALongKeyKeepsASpellKeyWithinTheLimitAndATakenOneIsRefused`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestASpellSummonStillTakesNothingOfAFeatureSummon`.
-Tests for a class feature entry: `TestATableClassFeatureSummonsThroughTheSpellChecks` and `TestATableClassFeatureSummonIsRefusedAtTheFieldThatIsWrong`.
 
 ## Entries the rules refuse on reading
 
