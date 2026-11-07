@@ -3,6 +3,7 @@ package play
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -31,6 +32,42 @@ func mustContain(t *testing.T, what, got string, words ...string) {
 			t.Errorf("%s does not carry %q", what, w)
 		}
 	}
+}
+
+// mustHaveNoNumber fails when an integer field of the message, however deep, holds n. A canary that is a number is
+// searched this way and never as digits in the text, where a UUID or a timestamp holds them by chance.
+func mustHaveNoNumber(t *testing.T, what string, m proto.Message, n int64) {
+	t.Helper()
+	var walk func(protoreflect.Message)
+	walk = func(m protoreflect.Message) {
+		m.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+			vals := []protoreflect.Value{v}
+			if fd.IsList() {
+				vals = vals[:0]
+				for i := range v.List().Len() {
+					vals = append(vals, v.List().Get(i))
+				}
+			}
+			for _, e := range vals {
+				switch fd.Kind() {
+				case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind, protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
+					if e.Int() == n {
+						t.Errorf("%s has the number %d in %s", what, n, fd.FullName())
+					}
+				case protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
+					if strconv.FormatUint(e.Uint(), 10) == strconv.FormatInt(n, 10) {
+						t.Errorf("%s has the number %d in %s", what, n, fd.FullName())
+					}
+				case protoreflect.MessageKind, protoreflect.GroupKind:
+					if !fd.IsMap() {
+						walk(e.Message())
+					}
+				}
+			}
+			return true
+		})
+	}
+	walk(m.ProtoReflect())
 }
 
 func mustNotContain(t *testing.T, what, got string, words ...string) {
@@ -223,7 +260,8 @@ func TestTableScreenCombatShowsOnlyWhatTheTableSees(t *testing.T) {
 	if combat.GetRound() != 1 {
 		t.Errorf("round = %d, want 1", combat.GetRound())
 	}
-	mustNotContain(t, "the table screen", text(got), "Ogro", "4321", "hit_points", "armor_class")
+	mustNotContain(t, "the table screen", text(got), "Ogro", "hit_points", "armor_class")
+	mustHaveNoNumber(t, "the table screen", got, 4321) // the ogre's hit points, by field: a UUID holds digits by chance
 
 	// Hurt and down are words, never numbers.
 	if _, err := a.adjustHP(t, e, "Goblin", damageHP(4)); err != nil { // 7 -> 3
