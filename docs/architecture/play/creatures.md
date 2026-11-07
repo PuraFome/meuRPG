@@ -172,7 +172,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The master reads the slots and uses left in the options; a player never does.
 - **Turn and economy.** The creature has its own turn and economy, computed from `MonsterDerived`: attacks (each action with an attack bonus, the first damage part), Dash and the standard actions, without "Cast a spell".
   The familiar does not attack (no attacks nor the Attack action, even for the master: `CREATURE_CANNOT_ATTACK`); the Pact of the Chain's has its attacks disabled as an action (`REACTION_ONLY`) and only attacks with `as_reaction`; those of Animate Dead and Conjure Animals attack like any creature.
-  On entering combat the creature copies, like the character, the side (`party`), the size, the flying speed (`size`, `speed_fly_ft`) and the jump (`combat.JumpLimits` from its Strength).
+  On entering combat the creature copies, like the character, the side (`party`), the size, the flying, swimming, climbing and burrowing speeds (`size`, `speed_fly_ft`, `speed_swim_ft`, `speed_climb_ft`, `speed_burrow_ft`) and the jump (`combat.JumpLimits` from its Strength).
   Movement uses the better of walking and flying; whoever moves on the fly speed ignores difficult terrain; swimming and climbing are never the speed on the map.
   The owning player moves it on its turn and the master always; another player gets `permission_denied`.
   A dismissed combatant occupies no square and gives no cover.
@@ -409,7 +409,7 @@ The table's `wild_shape` effects (`Derived.WildShape`: the highest challenge rat
   Healing a druid in the form (`healCombatant`: a spell, Second Wind) heals the beast, up to its maximum.
   `wild_shape_ended` with `reason: damage` and `carried_damage` is written before the damage event and does not close the undo chain.
   The beast does not take temporary HP.
-- **In combat.** On assuming or leaving the form the combatant swaps `speed_ft`, `speed_fly_ft`, `size` and the jumps (`SetCombatantBody`), so movement uses the beast's size and speed; a combat that starts with a druid already in the form puts them in with the beast's numbers.
+- **In combat.** On assuming or leaving the form the combatant swaps `speed_ft`, the four other speeds, `size` and the jumps (`SetCombatantBody`), so movement uses the beast's size and speed; a combat that starts with a druid already in the form puts them in with the beast's numbers.
   The turn options come from the beast's sheet: its attacks (`monster:wolf#bite`), the standard actions, no spell.
   `CastSpell` and `CastSummon` are refused with `WILD_SHAPE_NO_SPELLS` before spending anything, except for a druid of level 18 or more (Beast Spells: `link.Character.CastsInBeastForm`).
   `Combatant` carries `wild_shape_beast_key` and its Portuguese name for everyone who sees it, and the beast's HP (`wild_shape_hit_points_*`) only for the master and the owning player (RN-20).

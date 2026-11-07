@@ -161,6 +161,12 @@ flowchart LR
   `link.Spell` carries `TargetCount` and `TargetPerLevel` and `maxTargetsOf` uses them before the spell's type.
   `GetTurnOptions` carries `SpellTargets.targets_per_level`.
 
+## The other speeds
+
+A table's `speed.fly`, `speed.swim`, `speed.climb` and `speed.burrow` modifiers fill `Derived.SpeedFlyFt`, `SpeedSwimFt`, `SpeedClimbFt` and `SpeedBurrowFt` (0 for none), and a `breathes_water` effect sets `Derived.BreathesWater`.
+`combatCharacter` copies the four speeds to `link.Character`, and the combatant keeps them for the master and the character's player.
+Combat reads no breath: `breathes_water` stays on the sheet.
+
 ## The sheet of a race and a subrace
 
 `Derive` merges a subrace into its race in this order:

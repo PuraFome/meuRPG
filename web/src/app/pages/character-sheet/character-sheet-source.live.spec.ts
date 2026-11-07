@@ -149,6 +149,7 @@ function minimalDerivedSheet(): DerivedSheet {
     breathesWater: false,
     grantedSpells: [],
     rollDice: [],
+    rollMinimums: [],
   };
 }
 
