@@ -628,6 +628,7 @@ Members read the campaign's content, except creatures (below); only the master w
   The weapon list and the opportunity question say that the die can go in.
   They say how many uses are left.
   With physical dice the player types its face beside the d20.
+  The log names each extra die by its source, as in "12 + 6 + Bênção 1d4 (3)"; a source the master hides reads "Outra fonte".
   A maneuver with no die is an action under "Habilidades" that spends one use of the same dice and the action it declares.
 - **Wild Shape.** A table subclass or feature changes the druid's Wild Shape (MR-037): the highest challenge rating of the beasts (a fixed one, or one from the level such as the level divided by 3), how many uses of Wild Shape one change of form costs (none, for a free change), and whether the beast's attacks count as magical. The character takes the most permissive of what it has: the highest rating, the lowest cost, and magical attacks if any feature gives them. The list of forms and the choice agree.
 - **The critical range.**

@@ -5759,7 +5759,8 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     await passTurnsToAndWait(m, campaignId, 'Goblin', [m, p]);
     await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Goblin$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um NPC ${where}`);
-    await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
+    await m.getByRole('button', { name: 'Mais ações de Goblin', exact: true }).click();
+    await m.getByRole('menuitem', { name: /Oferecer ataque de oportunidade/ }).click();
     await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
     await expectScreenPasses(m, `Oferecer ataque de oportunidade ${where}`);
     await m.getByRole('radio', { name: /Toren/ }).check({ force: true });
@@ -8571,7 +8572,7 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await attack.getByLabel('Primeiro d20').fill('2');
     await attack.getByLabel('Segundo d20').fill('5');
     await attack.getByRole('button', { name: /^Confirmar/ }).click();
-    await expect(attack).toContainText('+ 1d4 (3)');
+    await expect(attack).toContainText('+ Bênção 1d4 (3)');
     await expectScreenPasses(p, `Atacar com Bênção, o resultado com o d4 ${where}`);
     await p.keyboard.press('Escape');
     await expect(attack).toBeHidden();

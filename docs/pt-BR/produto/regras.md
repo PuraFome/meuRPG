@@ -628,6 +628,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   A lista de armas e a pergunta do ataque de oportunidade dizem que o dado pode entrar.
   Elas dizem quantos usos restam.
   Com dados físicos, o jogador digita a face dele ao lado do d20.
+  O registro nomeia cada dado extra pela fonte, como em "12 + 6 + Bênção 1d4 (3)"; uma fonte que o mestre esconde aparece como "Outra fonte".
   Uma manobra sem dado é uma ação em "Habilidades" que gasta um uso dos mesmos dados e a ação que ela declara.
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
 - **A margem de acerto crítico.**
