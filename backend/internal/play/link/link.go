@@ -1019,8 +1019,6 @@ type MapGate func(fogged, groupVision bool) bool
 type TableScreenMap struct {
 	// Hidden says the gate refused the map: every other field is empty.
 	Hidden bool
-	// Fogged and GroupVision are the map's, as the gate saw them.
-	Fogged, GroupVision bool
 	// Map is the map, its points and its tokens, from the code of the player's GetMap.
 	Map *mapsv1.GetMapResponse
 	// Vision is the view of the squares, from the code of the player's GetMapVision. Nil for a map with no grid.

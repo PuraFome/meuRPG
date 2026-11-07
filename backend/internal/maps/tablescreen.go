@@ -44,28 +44,27 @@ func (s *Service) tableScreenMap(ctx context.Context, campaignID, mapID string, 
 	if err != nil {
 		return link.TableScreenMap{}, err
 	}
-	cm, err := s.loadMaps(ctx, campaignID)
+	snap, err := s.readMapSnapshot(ctx, campaignID, mapID, v) // the map, its points and its tokens, one snapshot
 	if err != nil {
-		return link.TableScreenMap{}, s.dbError(ctx, "read a map", err)
+		return link.TableScreenMap{}, s.dbError(ctx, "get a map", err)
 	}
-	row, ok := cm.byID[mapID]
-	if !ok || !v.seesMap(row.ID, row.RevealedAt) {
-		return link.TableScreenMap{}, errMapNotFound()
-	}
-	out := link.TableScreenMap{Fogged: foggedFor(v, row), GroupVision: row.GroupVision}
-	if !may(out.Fogged, out.GroupVision) {
-		return link.TableScreenMap{Hidden: true, Fogged: out.Fogged, GroupVision: out.GroupVision}, nil
+	if !may(foggedFor(v, snap.row), snap.row.GroupVision) {
+		return link.TableScreenMap{Hidden: true}, nil
 	}
 	gen := s.tiles.views.generation(mapID)
-	if out.Map, _, err = s.mapFor(ctx, campaignID, mapID, v); err != nil {
+	res, pv, err := s.mapOfSnapshot(ctx, snap, v)
+	if err != nil {
 		return link.TableScreenMap{}, err
 	}
-	if gridOf(row.GridColumns, row.GridFactor, row.ImageWidth, row.ImageHeight).Valid() { // a map with no grid has no squares to see
-		vrow, pv, err := s.visionFor(ctx, campaignID, mapID, v)
-		if err != nil {
-			return link.TableScreenMap{}, err
+	// The TV paints no layer: the counter would move for every stroke of the master's, and the squares
+	// the TV draws are in the vision.
+	res.Map.LayersRevision = 0
+	out := link.TableScreenMap{Map: res}
+	if g := gridOf(snap.row.GridColumns, snap.row.GridFactor, snap.row.ImageWidth, snap.row.ImageHeight); g.Valid() { // no grid, no squares to see
+		if pv == nil {
+			pv = everything(g)
 		}
-		out.Vision = s.visionResponse(mapID, gen, tileViewerOf(v, campaignID, ""), v, vrow, pv)
+		out.Vision = s.visionResponse(mapID, gen, tileViewerOf(v, campaignID, ""), v, snap.row, pv)
 	}
 	out.Revision = tableScreenRevision(out.Map, out.Vision)
 	return out, nil

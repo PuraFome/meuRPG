@@ -2,7 +2,7 @@ package play
 
 import "testing"
 
-// The map on the table screen (issue #648): the TV reads it as a player with no character does, through the
+// The map on the table screen: the TV reads it as a player with no character does, through the
 // maps module. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
 // withTableScreenMaps connects the actual maps service to the play service, as cmd/api does.

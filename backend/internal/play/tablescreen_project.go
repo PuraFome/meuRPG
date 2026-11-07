@@ -69,13 +69,17 @@ func (s *Service) projectMap(ctx context.Context, tv authz.Membership, session p
 }
 
 // tvMap is the TV's form of a map: hidden_by_fog and nothing else when mapOnTV refuses it, otherwise what the
-// maps module answers for the TV's viewer. Nil when the map is gone or no player sees it now.
+// maps module answers for the TV's viewer. Nil when the map is gone or no player sees it now: the field is
+// then unset, which is not hidden_by_fog.
 func (s *Service) tvMap(ctx context.Context, tv authz.Membership, mapID string) (*playv1.TvMap, error) {
 	m, err := s.maps.TableScreenMap(ctx, tv.CampaignID, mapID, mapOnTV)
 	if connect.CodeOf(err) == connect.CodeNotFound {
 		return nil, nil
 	}
 	if err != nil {
+		if _, ok := errors.AsType[*connect.Error](err); ok {
+			return nil, err
+		}
 		return nil, s.dbError(ctx, "read the map for the table screen", err)
 	}
 	if m.Hidden {

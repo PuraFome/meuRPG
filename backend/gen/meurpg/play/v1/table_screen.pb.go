@@ -969,7 +969,10 @@ type TvMap struct {
 	// as the player's GetMap: revealed points, visible tokens, nothing the master hides.
 	// With the fog on, the map carries no image (image_withheld): the page draws the tiles in `vision`.
 	Map *v1.GetMapResponse `protobuf:"bytes,3,opt,name=map,proto3" json:"map,omitempty"`
-	// What the group sees and remembers of the map; the fog of war's cells.
+	// What the group sees and remembers of the map; the fog of war's cells. "Remembered" is the union of
+	// the party's memory: a square any member of the party has seen. With the fog on, the page draws the
+	// tiles of `tiles_path` and asks each with `as=tv` appended; the master's tiles of the TV are kept per
+	// campaign, apart from any player's. The map's layers_revision is 0: the TV paints no layer.
 	Vision *v1.GetMapVisionResponse `protobuf:"bytes,4,opt,name=vision,proto3" json:"vision,omitempty"`
 	// The TV's own revision: a hash of what the TV reads of the map (the map, its points and tokens, and
 	// the vision), so it moves when that moves and not for a change only the master sees. Never a master's
@@ -1057,7 +1060,8 @@ type TvCombat struct {
 	// The lines every player reads, newest first, at most 6. A line only the master or one player
 	// reads, or that names a hidden combatant, is absent.
 	Log []string `protobuf:"bytes,4,rep,name=log,proto3" json:"log,omitempty"`
-	// The combat's map, when it has one, under the rules of TvMap.
+	// The combat's map, when it has one, under the rules of TvMap. Unset when the players do not see the
+	// map (not the current one, or gone); that is not the fog hiding it, which is `hidden_by_fog`.
 	Map           *TvMap `protobuf:"bytes,5,opt,name=map,proto3" json:"map,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

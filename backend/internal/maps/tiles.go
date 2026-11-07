@@ -1085,8 +1085,17 @@ func (s *Service) authorizeTile(ctx context.Context, mapID, as string) (tileAcce
 			return tileAccess{}, errMapNotFound()
 		}
 	}
-	tv := master && as == tileAsTV
-	key := tileViewerOf(viewer{userID: m.UserID, preview: master, tv: tv}, info.CampaignID, as)
+	return tileAccessOf(m, as, info, src)
+}
+
+// tileAccessOf is the access of a member that passed the checks: the viewer the tiles are kept under, and for
+// `as=tv` only a map the group has the vision of (the TV shows a fog map only as the group sees it).
+func tileAccessOf(m authz.Membership, as string, info mapsdb.GetMapTileInfoRow, src tileSource) (tileAccess, error) {
+	tv := m.Role == authz.RoleMaster && as == tileAsTV
+	if tv && !info.GroupVision {
+		return tileAccess{}, errMapNotFound()
+	}
+	key := tileViewerOf(viewer{userID: m.UserID, preview: m.Role == authz.RoleMaster, tv: tv}, info.CampaignID, as)
 	return tileAccess{m: m, as: as, viewer: key, src: src, tv: tv}, nil
 }
 

@@ -408,7 +408,10 @@ export type TvMap = Message<"meurpg.play.v1.TvMap"> & {
   map?: GetMapResponse | undefined;
 
   /**
-   * What the group sees and remembers of the map; the fog of war's cells.
+   * What the group sees and remembers of the map; the fog of war's cells. "Remembered" is the union of
+   * the party's memory: a square any member of the party has seen. With the fog on, the page draws the
+   * tiles of `tiles_path` and asks each with `as=tv` appended; the master's tiles of the TV are kept per
+   * campaign, apart from any player's. The map's layers_revision is 0: the TV paints no layer.
    *
    * @generated from field: meurpg.maps.v1.GetMapVisionResponse vision = 4;
    */
@@ -468,7 +471,8 @@ export type TvCombat = Message<"meurpg.play.v1.TvCombat"> & {
   log: string[];
 
   /**
-   * The combat's map, when it has one, under the rules of TvMap.
+   * The combat's map, when it has one, under the rules of TvMap. Unset when the players do not see the
+   * map (not the current one, or gone); that is not the fog hiding it, which is `hidden_by_fog`.
    *
    * @generated from field: meurpg.play.v1.TvMap map = 5;
    */

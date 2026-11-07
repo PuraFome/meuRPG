@@ -13,9 +13,10 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The map on the table screen (issue #648, RN-10): the TV reads the map as a player with no character does,
+// The map on the table screen (RN-10): the TV reads the map as a player with no character does,
 // through the code of the player's GetMap and GetMapVision. These tests need the database
 // (MEURPG_TEST_DATABASE_URL).
 
@@ -121,8 +122,8 @@ func TestTableScreenMapHasOnlyWhatPlayersRead(t *testing.T) {
 			t.Errorf("the TV's map has the point %q, which is not revealed", p.GetName())
 		}
 	}
-	if !tv.Map.GetMap().GetImageWithheld() || tv.Map.GetMap().GetImage().GetId() != "" || tv.Hidden || !tv.Fogged || !tv.GroupVision {
-		t.Errorf("the TV's map = withheld %v, image %v, hidden %v, fogged %v, group %v; want a fog map with no image", tv.Map.GetMap().GetImageWithheld(), tv.Map.GetMap().GetImage(), tv.Hidden, tv.Fogged, tv.GroupVision)
+	if !tv.Map.GetMap().GetImageWithheld() || tv.Map.GetMap().GetImage().GetId() != "" || tv.Hidden {
+		t.Errorf("the TV's map = withheld %v, image %v, hidden %v; want a fog map with no image", tv.Map.GetMap().GetImageWithheld(), tv.Map.GetMap().GetImage(), tv.Hidden)
 	}
 	if tv.Vision.GetCharacterOnMap() != true || tv.Revision == 0 {
 		t.Errorf("vision on map %v, revision %d; want the group on the map and a revision", tv.Vision.GetCharacterOnMap(), tv.Revision)
@@ -140,7 +141,7 @@ func TestTableScreenMapWithoutGroupVisionIsHiddenAndBlack(t *testing.T) {
 	c := newCave(t)
 	hid := c.hideThings(t)
 	got := c.tvMap(t, refused)
-	if !got.Hidden || got.Map != nil || got.Vision != nil || got.Revision != 0 || !got.Fogged || got.GroupVision {
+	if !got.Hidden || got.Map != nil || got.Vision != nil || got.Revision != 0 {
 		t.Errorf("refused map = %+v, want hidden with nothing else", got)
 	}
 	open := c.tvMap(t, shown)
@@ -224,8 +225,8 @@ func TestTableScreenMapWithoutFogIsTheWholePlayerMap(t *testing.T) {
 	}
 	tv := c.tvMap(t, shown)
 	player := c.ana.mustGetMap(c.campaign, c.mapID)
-	if tv.Fogged || tv.Hidden {
-		t.Fatalf("fogged %v, hidden %v; want a map with no fog", tv.Fogged, tv.Hidden)
+	if tv.Hidden || tv.Vision.GetFogEnabled() {
+		t.Fatalf("hidden %v, fog %v; want a map with no fog", tv.Hidden, tv.Vision.GetFogEnabled())
 	}
 	if tv.Map.GetMap().GetImage().GetUrl() != player.GetMap().GetImage().GetUrl() || tv.Map.GetMap().GetImage().GetUrl() == "" || tv.Map.GetMap().GetImageWithheld() {
 		t.Errorf("image = %v, want a player's %v", tv.Map.GetMap().GetImage(), player.GetMap().GetImage())
@@ -297,5 +298,110 @@ func TestTableScreenViewerIsNeverTheMaster(t *testing.T) {
 	}
 	if k := tileViewerOf(v, "c1", ""); k != "tv:c1" {
 		t.Errorf("tile key = %q, want tv:c1", k)
+	}
+}
+
+// On a map with no fog, a stroke of the master's on a layer (a secret door) does not move the TV's revision:
+// a player reads the secret door as a wall, and the counter of the layers is not the TV's. A point the
+// master reveals still does.
+func TestTableScreenRevisionIgnoresLayerStrokesOnAMapWithoutFog(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	if _, err := c.master.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(false)})); err != nil {
+		t.Fatalf("SetMapFog(off) error = %v", err)
+	}
+	before := c.tvMap(t, shown)
+	if before.Map.GetMap().GetLayersRevision() != 0 {
+		t.Errorf("layers_revision = %d on the TV, want 0", before.Map.GetMap().GetLayersRevision())
+	}
+	c.master.mustPaint(c.campaign, c.mapID, mapsv1.MapLayer_MAP_LAYER_DOORS, int32(mapsv1.DoorState_DOOR_STATE_SECRET), [2]int32{8, 7})
+	if after := c.tvMap(t, shown); after.Revision != before.Revision {
+		t.Errorf("the TV's revision moved from %d to %d for a secret door", before.Revision, after.Revision)
+	}
+	x, y := at(4, 8)
+	p := c.master.createPoint(&mapsv1.CreateMapPointRequest{CampaignId: c.campaign, MapId: c.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "Visível", XBp: x, YBp: y})
+	c.master.setPointRevealed(c.campaign, p, true)
+	if now := c.tvMap(t, shown); now.Revision == before.Revision {
+		t.Error("the TV's revision did not move when a point was revealed")
+	}
+}
+
+// squaresOf lists the squares a view says are remembered (code 5).
+func squaresOf(t *testing.T, res *mapsv1.GetMapVisionResponse, code byte) map[int]bool {
+	t.Helper()
+	out := map[int]bool{}
+	for n, got := range codes(t, res) {
+		if got == code {
+			out[n] = true
+		}
+	}
+	return out
+}
+
+// groupMemoryOf: the TV remembers the squares any member of the party remembers, in the map's current epoch.
+// Ana saw a room and Caio another with no group vision; the TV, once the group has its vision, remembers both.
+func TestTableScreenRemembersTheUnionOfThePartysMemoryOfTheCurrentEpochIncludingTheDeadAndNotWhoLeft(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	ctx := t.Context()
+	g := caveGrid
+	bits := func(sqs ...grid.Square) []byte {
+		l := grid.NewLayer(g)
+		for _, sq := range sqs {
+			l.Set(sq.Col, sq.Row, true)
+		}
+		return l.Encode()
+	}
+	var epoch int32
+	if err := c.h.pool.QueryRow(ctx, `SELECT vision_epoch FROM maps WHERE id = $1`, c.mapID).Scan(&epoch); err != nil {
+		t.Fatalf("read the epoch: %v", err)
+	}
+	userOf := func(u *user) string { return u.id }
+	roomA, roomB, roomOld, roomLeft := grid.Square{Col: 20, Row: 12}, grid.Square{Col: 21, Row: 12}, grid.Square{Col: 22, Row: 12}, grid.Square{Col: 23, Row: 12}
+	put := func(user string, ep int32, sq grid.Square) {
+		if _, err := c.h.pool.Exec(ctx, `INSERT INTO map_vision_memory (map_id, user_id, seen, epoch, updated_at) VALUES ($1, $2, $3, $4, now())
+			ON CONFLICT (map_id, user_id) DO UPDATE SET seen = excluded.seen, epoch = excluded.epoch`, c.mapID, user, bits(sq), ep); err != nil {
+			t.Fatalf("write a memory: %v", err)
+		}
+	}
+	put(userOf(c.ana), epoch, roomA)
+	put(userOf(c.caio), epoch, roomB)
+	put(userOf(c.bia), epoch-1, roomOld) // an older epoch reads as empty
+	// A member whose player is gone is not in the party; a dead character's player keeps their memory.
+	if _, err := c.h.pool.Exec(ctx, `UPDATE characters SET player_user_id = NULL WHERE id = $1`, c.salvia.GetId()); err != nil {
+		t.Fatalf("remove Sálvia's player: %v", err)
+	}
+	if _, err := c.h.pool.Exec(ctx, `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, c.toren.GetId()); err != nil {
+		t.Fatalf("kill Toren: %v", err)
+	}
+	c.groupVision(t, true)
+	tv := squaresOf(t, c.tvMap(t, shown).Vision, 5)
+	at := func(sq grid.Square) int { return sq.Row*g.Columns + sq.Col }
+	if !tv[at(roomA)] || !tv[at(roomB)] {
+		t.Errorf("the TV remembers %v, want Ana's room %d and Caio's room %d", tv, at(roomA), at(roomB))
+	}
+	if tv[at(roomOld)] {
+		t.Error("the TV remembers a square of an older epoch")
+	}
+	if tv[at(roomLeft)] {
+		t.Error("the TV remembers a square of a member who left the party")
+	}
+}
+
+// With the fog on and no group vision the TV has no tile: the route answers as for a missing tile.
+func TestTableScreenTilesAreRefusedWithoutGroupVision(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.groupVision(t, true)
+	tile := c.tvMap(t, shown).Vision.GetTiles()[0]
+	path := TilesPath + c.mapID + "/tiles/" + itoa(tile.GetTx()) + "/" + itoa(tile.GetTy()) + "?as=tv"
+	if got := c.master.get(path); got.status != http.StatusOK {
+		t.Fatalf("the TV's tile with group vision = %d, want 200", got.status)
+	}
+	c.groupVision(t, false)
+	missing := c.master.get(TilesPath + c.mapID + "/tiles/99/99?as=tv")
+	got := c.master.get(path)
+	if got.status != http.StatusNotFound || got.status != missing.status || !bytes.Equal(got.body, missing.body) {
+		t.Errorf("the TV's tile without group vision = %d %q, want the missing tile's %d %q", got.status, got.body, missing.status, missing.body)
 	}
 }
