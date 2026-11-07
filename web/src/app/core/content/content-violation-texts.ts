@@ -278,6 +278,15 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Escolha um conjunto da lista. O conjunto de uma opção salva não muda.',
   },
   {
+    shape: /^table_option\.offered_by$/,
+    reason: 'bad_value',
+    text: 'Só o conjunto "Opção de característica da mesa" tem característica que oferece. Tire esta.',
+  },
+  {
+    shape: /^table_option\.offered_by$/,
+    text: 'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
+  },
+  {
     shape: /^table_option\.prerequisite\.class_level$/,
     text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
   },

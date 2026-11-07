@@ -2,7 +2,7 @@ import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/
 import { joinDots, tight } from '../format/text';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { classFeatureSupport } from './class-feature-text';
-import { optionSupport } from './option-text';
+import { type OfferedByName, optionSupport } from './option-text';
 import { metersText } from '../units';
 
 /**
@@ -362,14 +362,16 @@ export function entrySupport(
   e: TableEntry,
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number = () => 0,
+  offeredByName?: OfferedByName,
 ): string {
-  return joinDots(supportParts(e.body, nameOf, subclassLevelOf));
+  return joinDots(supportParts(e.body, nameOf, subclassLevelOf, offeredByName));
 }
 
 function supportParts(
   body: TableEntry['body'],
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number,
+  offeredByName?: OfferedByName,
 ): string[] {
   switch (body.case) {
     case 'tableClass':
@@ -389,7 +391,13 @@ function supportParts(
     case 'tableFeat':
       return featSupport(body.value, nameOf);
     case 'tableOption':
-      return optionSupport(body.value.set, body.value.prerequisite, nameOf);
+      return optionSupport(
+        body.value.set,
+        body.value.prerequisite,
+        nameOf,
+        body.value.offeredBy,
+        offeredByName,
+      );
     case 'tableClassFeature':
       return classFeatureSupport(
         body.value.classKey,

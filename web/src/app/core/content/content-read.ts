@@ -26,7 +26,7 @@ import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
-import { optionPrerequisiteParts, optionSetName } from './option-text';
+import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
@@ -130,10 +130,11 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
   return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
 }
 
-function readOption(o: TableOption, nameOf: NameOf): EntryRead {
+function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
   const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
+    ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
     { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
   ];
   return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
@@ -163,6 +164,7 @@ export function readEntry(
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number = () => 0,
   parentOf: (raceKey: string) => ParentView = () => ({ traits: [] }),
+  offeredByName: OfferedByName = (key) => featureKeyName(key, nameOf),
 ): EntryRead {
   const body = entry.body;
   switch (body.case) {
@@ -175,7 +177,7 @@ export function readEntry(
     case 'tableFeat':
       return readFeat(body.value, nameOf);
     case 'tableOption':
-      return readOption(body.value, nameOf);
+      return readOption(body.value, nameOf, offeredByName);
     case 'tableClassFeature':
       return readClassFeature(body.value, nameOf);
     case 'tableSpell':

@@ -281,3 +281,36 @@
     }
   }
 }
+
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  min-width: 0;
+
+  &__lock {
+    display: flex;
+    gap: var(--mr-space-2);
+    align-items: flex-start;
+
+    mat-icon {
+      flex: none;
+      width: var(--mr-font-18);
+      height: var(--mr-font-18);
+      font-size: var(--mr-font-18);
+    }
+  }
+
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    font-weight: 600;
+    color: var(--mr-accent-text);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

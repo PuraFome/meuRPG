@@ -68,7 +68,7 @@ import { archiveEntryRPC, costsRaceBody, createEntryRPC, criticalFeatureBody, en
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
-import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
+import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
 import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
 import { enterZoneRPC, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
@@ -6117,6 +6117,137 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
   }
 }
 
+/**
+ * The option editor asks for the feature that offers the option (MR-025, RN-23): the set "opção de característica da mesa" with
+ * no feature to choose from, the refusal before saving, the chosen feature, the saved option, the refusal of a feature that lost its
+ * option list, and what a player reads (the feature named, or the set alone when the server did not send it). On a phone the master only
+ * reads. The entries come through the API.
+ */
+async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade oferecida por ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const withOptions = (name: string, names: string[]) => ({
+      namePt: name,
+      descPt: ['Escolha entre as opções da lista.'],
+      effects: [{ type: 'choice', choice: 'feature', count: 1 }],
+      options: names.map((n) => ({ namePt: n, descPt: [`${n}: um golpe da lista.`] })),
+    });
+    const subclassBody = (features: Record<string, unknown>[]) => ({
+      namePt: 'Guarda do Corvo',
+      classKey: 'class:fighter',
+      descPt: ['Quem aprendeu a lâmina com os corvos.'],
+      levels: [{ level: 3, features }],
+    });
+    const picking = async () => {
+      await open(m, `/campaigns/${campaignId}/content/new/option`);
+      await m.getByLabel('Conjunto', { exact: true }).selectOption({ label: 'Opção de característica da mesa' });
+      return m.getByLabel('Característica que oferece');
+    };
+
+    if (width >= 768) {
+      const empty = await picking();
+      await expect(empty).toBeDisabled();
+      await expect(m.getByRole('link', { name: 'Ver as subclasses da mesa' })).toBeVisible();
+      await expectScreenPasses(m, `Editor de opção, nenhuma característica com lista de opções ${where}`);
+      // A save with nothing to choose from is refused at the field, and the focus goes to the link (a disabled select takes none).
+      await m.getByRole('button', { name: 'Salvar opção' }).click();
+      await expect(m.getByText('Escolha a característica que oferece a opção.')).toBeVisible();
+      await expect(m.getByRole('link', { name: 'Ver as subclasses da mesa' })).toBeFocused();
+      // Another set has no such field.
+      await m.getByLabel('Conjunto', { exact: true }).selectOption({ label: 'Invocação mística' });
+      await expect(m.getByLabel('Característica que oferece')).toHaveCount(0);
+    }
+
+    const subclass = await createSubclassRPC(m, campaignId, subclassBody([withOptions('Truques de lâmina', ['Corte baixo', 'Finta', 'Recuo']), { namePt: 'Sem lista', descPt: ['Só texto.'] }]));
+    const half = halfCasterBody();
+    (half.levels as Record<string, unknown>[])[1].features = [withOptions('Votos do Vale', ['Voto da lua', 'Voto do rio'])];
+    await createClassRPC(m, campaignId, half);
+    const subclassEntry = (await listEntries(m, campaignId)).find((e) => e.key === subclass)!;
+    const feature = subclassEntry.tableSubclass.levels[0].features[0].key as string;
+
+    if (width >= 768) {
+      const field = await picking();
+      await m.getByRole('button', { name: 'Salvar opção' }).click();
+      await expect(m.getByText('Escolha a característica que oferece a opção.')).toBeVisible();
+      await expect(field).toBeFocused();
+      await expectScreenPasses(m, `Editor de opção, a característica a escolher e a recusa antes de salvar ${where}`);
+      await field.selectOption({ label: 'Truques de lâmina · nível 3 · 3 opções' });
+      await m.getByLabel('Nome da opção').fill('Golpe do Corvo');
+      await expect(m.getByText('Guarda do Corvo · subclasse de Guerreiro · nível 3')).toBeVisible();
+      await expectScreenPasses(m, `Editor de opção, a característica escolhida ${where}`);
+    }
+
+    const option = await createEntryRPC(m, campaignId, 'tableOption', {
+      namePt: 'Golpe do Corvo',
+      descPt: ['Depois de acertar, você salta para trás 1,5 m sem provocar ataque de oportunidade.'],
+      set: 'table_feature',
+      offeredBy: feature,
+    });
+    await createEntryRPC(m, campaignId, 'tableOption', { namePt: 'Olhar de Brasa', descPt: ['Você enxerga no escuro.'], set: 'invocation' });
+
+    if (width >= 768) {
+      await open(m, entryRoute(campaignId, option));
+      await expect(m.getByLabel('Característica que oferece')).toHaveValue(feature);
+      await expect(m.getByRole('link', { name: 'Abrir Guarda do Corvo' })).toBeVisible();
+      await expect(m.locator('.preview')).toContainText('Truques de lâmina (Guarda do Corvo)');
+      await expectScreenPasses(m, `Editor de opção, uma opção salva ${where}`);
+      // A feature loses its option list while the form is open: the server refuses and the refusal lands at the field, with the choice kept.
+      const ashes = await createSubclassRPC(m, campaignId, { ...subclassBody([withOptions('Brasas', ['Brasa viva', 'Cinza fria'])]), namePt: 'Guarda de Cinza' });
+      const stale = await picking();
+      await stale.selectOption({ label: 'Brasas · nível 3 · 2 opções' });
+      await m.getByLabel('Nome da opção').fill('Golpe de Cinza');
+      const current = (await listEntries(m, campaignId)).find((e) => e.key === ashes)!;
+      const update = await callRPC(m, 'meurpg.rules.v1.TableContentService/UpdateTableEntry', {
+        campaignId,
+        key: ashes,
+        expectedRevision: current.revision,
+        tableSubclass: { ...subclassBody([{ namePt: 'Brasas', descPt: ['Agora sem lista.'] }]), namePt: 'Guarda de Cinza' },
+      });
+      expect(update.ok(), await update.text()).toBeTruthy();
+      await m.getByRole('button', { name: 'Salvar opção' }).click();
+      await expect(m.getByLabel('Característica que oferece')).toHaveAttribute('aria-invalid', 'true');
+      await expect(m.getByText('Esta característica não existe mais ou não tem lista de opções. Escolha outra.')).toBeVisible();
+      await expect(m.getByLabel('Característica que oferece')).toBeFocused();
+      await expectScreenPasses(m, `Editor de opção, a recusa da característica que perdeu a lista ${where}`);
+    } else {
+      await open(m, entryRoute(campaignId, option));
+      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expectScreenPasses(m, `Opção lida pelo mestre no celular ${where}`);
+    }
+
+    // The player reads the feature that offers the option, and the set alone when the copy has no offering feature.
+    await open(p, `/campaigns/${campaignId}/content?kind=options`);
+    await expect(p.getByText('Golpe do Corvo').first()).toBeVisible();
+    await expect(p.getByText('Opção de Truques de lâmina (Guarda do Corvo)')).toBeVisible();
+    await expectScreenPasses(p, `Opções, vistas por um jogador ${where}`);
+    // This rewrites the response: the server sends no `offeredBy` when the feature is hidden to the player, and a test world cannot
+    // make a player read an option while its subclass is hidden (only a sheet holding the option does, and it holds the subclass too).
+    // The Go tests cover the server; this screen covers what the page draws without the key.
+    await p.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route) => {
+      const res = await route.fetch();
+      const body = await res.json();
+      for (const e of body.entries ?? []) {
+        if (e.tableOption) {
+          e.tableOption.offeredBy = '';
+        }
+      }
+      await route.fulfill({ response: res, json: body });
+    });
+    await open(p, `/campaigns/${campaignId}/content?kind=options`);
+    await expect(p.getByText('Opção de característica da mesa').first()).toBeVisible();
+    await expectScreenPasses(p, `Opções, vistas por um jogador, sem a característica que as oferece ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
 test('as rolagens no editor de efeitos passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanRollEffects(browser, 'light', 1280);
 });
@@ -6127,6 +6258,18 @@ test('as rolagens no editor de efeitos passam no axe e nas conferências de layo
 
 test('as rolagens lidas pelo mestre e pelo jogador passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanRollEffects(browser, 'light', 390);
+});
+
+test('a opção que pede a característica passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptionOfferedBy(browser, 'light', 1280);
+});
+
+test('a opção que pede a característica passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanOptionOfferedBy(browser, 'dark', 1024);
+});
+
+test('a opção que pede a característica passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanOptionOfferedBy(browser, 'dark', 390);
 });
 
 // Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the

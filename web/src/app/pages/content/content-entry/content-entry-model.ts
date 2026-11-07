@@ -251,6 +251,12 @@ export function readOfEntry(
   entries: readonly TableEntry[],
 ): EntryRead | null {
   return entry
-    ? readEntry(entry, nameOf, (key) => catalog?.subclassLevelOf(key) ?? 0, parentViewOf(entries))
+    ? readEntry(
+        entry,
+        nameOf,
+        (key) => catalog?.subclassLevelOf(key) ?? 0,
+        parentViewOf(entries),
+        catalog?.offeredByName,
+      )
     : null;
 }

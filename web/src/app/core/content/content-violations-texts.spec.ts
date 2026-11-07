@@ -53,9 +53,16 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'reroll face': ['table_class_feature.effects[1].at_most', 'bad_value'],
   'reroll dangling resource': ['table_feat.effects[0].resource', 'dangling_reference'],
   'feat effect value': ['table_feat.effects[0].value', 'bad_value'],
+  'option offered by, dangling': ['table_option.offered_by', 'dangling_reference'],
+  // The editor drops the feature with the set, so this one is defensive: a body from another client can still carry it.
+  'option offered by, another set': ['table_option.offered_by', 'bad_value'],
 };
 
 const EXPECTED: Record<string, string> = {
+  'option offered by, dangling':
+    'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
+  'option offered by, another set':
+    'Só o conjunto "Opção de característica da mesa" tem característica que oferece. Tire esta.',
   'entry limit': 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
   'entry size': 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.',
   'entry overlay': 'O conteúdo da mesa não fecha com esta entrada. Confira o que ela usa.',
