@@ -256,7 +256,8 @@ func (c *Content) WithRefused(refused []Refused) *Content {
 	return &Content{c: c.c, refused: refused}
 }
 
-// Refused lists the stored entries the content was built without, in key order.
+// Refused lists the stored entries the content was built without that the master still has to fix, in key order.
+// An entry the master archived is not listed, nor is what it took with it.
 // It is empty for a content built from every entry.
 func (c *Content) Refused() []Refused { return slices.Clone(c.refused) }
 
@@ -351,9 +352,7 @@ func Validate(b Build, c *Content) error {
 // stored sheet always opens: unknown keys, missing data or a formula that
 // breaks become Issues and the rest is still computed.
 func Derive(b Build, c *Content) Derived {
-	d := derive(b, c.c)
-	d.Gear = gearOf(b, c.c, d)
-	return d
+	return derive(b, c.c)
 }
 
 // ValidationError is what Validate returns. Field is the path of the
@@ -681,7 +680,7 @@ type Derived struct {
 	// ShieldIdle says the build carries a shield that adds nothing to ArmorClass
 	// because a two-handed weapon is on the sheet.
 	ShieldIdle bool
-	// Gear lists the armor, the shield and the weapons the sheet lists, equipped or carried, by the catalog's
+	// Gear lists (DeriveGear fills it; Derive leaves it empty, as it is the sheet's projection alone that reads it) the armor, the shield and the weapons the sheet lists, equipped or carried, by the catalog's
 	// names, in the order armor, shield, weapons (see GearPiece).
 	Gear []GearPiece
 	// ArmorCategory is the worn armor's category: "none", "light", "medium" or

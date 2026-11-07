@@ -2919,6 +2919,12 @@ message Combatant {
   // The turn's free object interaction is spent (the first weapon drawn or stowed in the turn; SRD 5.1, "Other Activity on
   // Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
   bool object_interaction_used = 113;
+
+  // The other speeds in feet, 0 for none (a table's speed.swim, speed.climb and speed.burrow modifiers, a creature's
+  // stat block, a Wild Shape form). The grid does not spend them yet. Same audience as `speed_fly_ft`.
+  int32 speed_swim_ft = 114;
+  int32 speed_climb_ft = 115;
+  int32 speed_burrow_ft = 116;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
