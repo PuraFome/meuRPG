@@ -70,6 +70,8 @@ type logEntry struct {
 	actorUser *string
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
+	// gear is the swap of a GEAR_SWAPPED line: its payload is its own type (equip_event.go).
+	gear gearSwapEvent
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
 	shapeStarted bool
 	// hosts are the events the entry shows: an attack's own and the ones of its
@@ -297,6 +299,7 @@ var logHandlers = map[string]logHandler{
 	eventCombatantsAdded:         (*logBuilder).monstersAdded,
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
+	eventGearSwapped:             gearSwappedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -379,6 +382,17 @@ func masterLine(kind playv1.CombatLogKind) logHandler {
 		entry.kind, entry.masterOnly = kind, true
 		return true
 	}
+}
+
+// gearSwappedLine is the handler of a gear swap: a line of the master's and of the character's owner (visibility), with the
+// swap read from the event's own payload.
+func gearSwappedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	gear, err := readGearSwap(e.Payload)
+	if err != nil {
+		return false
+	}
+	entry.kind, entry.masterOnly, entry.gear = playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED, true, gear
+	return true
 }
 
 // effectLine is the handler of the events of the effects that last.
@@ -760,7 +774,7 @@ func (e *logEntry) visibility(v combatViewer, byID map[string]playdb.Combatant, 
 	}
 	// The roll of a Recharge is the line of the master and of the player who controls the creature (RN-29), on
 	// any map: the row is secret and fogged for everybody else.
-	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED && v.owns(actor) {
+	if (e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED) && v.owns(actor) {
 		return true, true
 	}
 	return visible && e.hitsVisible(byID), seen
@@ -826,6 +840,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
@@ -873,6 +888,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:      (*logEntry).fillMonsters,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -930,6 +946,12 @@ func (e *logEntry) fillLegendarySpent(_ *logViewing, out *playv1.CombatLogEntry)
 // fillRechargeRolled is the line of a Recharge roll, the master's and the creature's controller's: the action, the face and whether it recharged.
 func (e *logEntry) fillRechargeRolled(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Recharge = &playv1.CombatLogRecharge{ActionName: e.ev.RechargeName, Face: e.ev.RechargeFace, Recharged: e.ev.Recharged}
+	return true
+}
+
+// fillGearSwapped is the line of a swap of gear, the master's and the owner's: the piece, whether it is equipped now and what it cost.
+func (e *logEntry) fillGearSwapped(_ *logViewing, out *playv1.CombatLogEntry) bool {
+	out.GearSwapped = &playv1.CombatLogGearSwapped{NamePt: e.gear.Name, Kind: e.gear.Kind, Equipped: !e.gear.EquippedBefore, Cost: e.gear.Cost}
 	return true
 }
 
