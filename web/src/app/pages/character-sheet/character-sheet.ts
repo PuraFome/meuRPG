@@ -45,6 +45,7 @@ import {
   IssueVm,
 } from './character-sheet.types';
 import { CombatColumn } from './combat-column/combat-column';
+import type { GearToggle } from '../../shared/gear-list/gear-list';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
 import { MasterNotes } from './master-notes/master-notes';
@@ -337,6 +338,41 @@ export class CharacterSheetPage {
   }
 
   /** Reads the character again without the loading state, so the page does not blink. */
+  /** The piece whose change is on its way to the server. */
+  protected readonly equipBusyKey = signal<string | null>(null);
+  protected readonly equipNotice = signal('');
+  protected readonly equipError = signal('');
+
+  /** "Equipar" / "Guardar" on the sheet: the server changes the piece and tells the new armor class by the sheet it derives again. */
+  protected async equip(toggle: GearToggle): Promise<void> {
+    const campaignId = this.campaignId();
+    const characterId = this.characterId;
+    if (!campaignId || !characterId || this.equipBusyKey() !== null) {
+      return;
+    }
+    this.equipBusyKey.set(toggle.key);
+    this.equipError.set('');
+    try {
+      await this.source.setEquipped(campaignId, characterId, toggle.key, toggle.equipped);
+      await this.reloadQuietly();
+      if (this.destroyed || characterId !== this.characterId) {
+        return;
+      }
+      const st = this.state();
+      const full = st.status === 'ready' && st.vm.sheet.kind === 'full' ? st.vm.sheet : null;
+      const name = full?.gear.find((g) => g.key === toggle.key)?.namePt ?? '';
+      this.equipNotice.set(
+        `${toggle.equipped ? 'Equipado' : 'Guardado'}: ${name}.${full ? ` Classe de armadura ${full.armorClass}.` : ''}`,
+      );
+      this.focusAfterRender(`[data-gear-key="${CSS.escape(toggle.key)}"]`);
+    } catch (err) {
+      this.equipNotice.set('');
+      this.equipError.set(describeCharacterError(err));
+    } finally {
+      this.equipBusyKey.set(null);
+    }
+  }
+
   private async reloadQuietly(): Promise<void> {
     const campaignId = this.campaignId();
     if (!campaignId || !this.characterId) {

@@ -166,6 +166,18 @@ export interface HintVm {
   readonly text: string;
 }
 
+/** One piece of gear the sheet lists, equipped or carried (`DerivedSheet.gear`): the names and the armor class
+ * come from the server, never from the browser. */
+export interface GearVm {
+  readonly key: string;
+  readonly namePt: string;
+  readonly kind: 'armor' | 'shield' | 'weapon';
+  readonly equipped: boolean;
+  readonly twoHanded: boolean;
+  /** The armor class with this piece's state flipped (0: the server does not preview it, e.g. an armor spell). */
+  readonly armorClassIfToggled: number;
+}
+
 export interface EquipmentItemVm {
   readonly name: string;
   readonly quantity: number;
@@ -210,6 +222,8 @@ export interface FullSheetVm {
   /** Whether the shield adds nothing to `armorClass` because a two-handed weapon is on the
    * sheet (`DerivedSheet.shield_idle`). */
   readonly shieldIdle: boolean;
+  /** The gear, equipped and carried (`DerivedSheet.gear`). */
+  readonly gear: readonly GearVm[];
   readonly hitPointsMax: number;
   readonly hitDice: string;
   readonly speedWalkFt: number;
@@ -435,6 +449,13 @@ export abstract class CharacterSheetSource {
   abstract loadSpellDetails(campaignId: string, spellKey: string): Promise<SpellDetailsVm>;
 
   abstract getXpMode(campaignId: string): Promise<CampaignXpMode>;
+  /** Equips or stows one piece (`SetEquipped`); the page reads the sheet again for the new numbers. */
+  abstract setEquipped(
+    campaignId: string,
+    characterId: string,
+    key: string,
+    equipped: boolean,
+  ): Promise<void>;
   abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
   /** Called only when `isMaster` — never for a player (RN-11). */
   abstract getMasterNotes(campaignId: string, characterId: string): Promise<string>;

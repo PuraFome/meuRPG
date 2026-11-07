@@ -196,19 +196,22 @@
 
 <section class="mr-panel" aria-labelledby="equipamento-heading">
   <h2 id="equipamento-heading" class="mr-panel__title">Equipamento</h2>
+  <p class="gear__ac">Classe de armadura <strong>{{ s.armorClass }}</strong></p>
+  <app-gear-list
+    [gear]="s.gear"
+    [armorClass]="s.armorClass"
+    [canChange]="canEquip()"
+    [busyKey]="equipBusyKey()"
+    (toggled)="gearToggled.emit($event)"
+  />
+  @if (s.shieldIdle) {
+    <p class="gear__note mr-muted">O escudo não vale nada com uma arma de duas mãos equipada: guarde a arma.</p>
+  }
+  <p class="gear__notice" role="status">{{ equipNotice() }}</p>
+  @if (equipError()) {
+    <p class="gear__error" role="alert">{{ equipError() }}</p>
+  }
   <ul class="gear">
-    <li>{{ armorName() ?? 'Sem armadura' }}</li>
-    @if (s.hasShield) {
-      <li>
-        Escudo
-        @if (s.shieldIdle) {
-          <span class="mr-muted">(sem efeito: arma de duas mãos)</span>
-        }
-      </li>
-    }
-    @for (weapon of weaponNames(); track $index) {
-      <li>{{ weapon }}</li>
-    }
     @for (item of s.equipment; track $index) {
       <li>
         {{ item.name }}

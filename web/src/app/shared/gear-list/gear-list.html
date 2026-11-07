@@ -1,0 +1,57 @@
+@if (gear().length === 0) {
+  <p class="mr-muted">Sem equipamento.</p>
+} @else {
+  <section class="gear-group" [attr.aria-labelledby]="'gear-eq-' + idBase">
+    <h3 class="gear-group__title" [id]="'gear-eq-' + idBase">Equipado</h3>
+    @if (equipped().length === 0) {
+      <p class="mr-muted">Nada equipado.</p>
+    } @else {
+      <ul class="gear-rows">
+        @for (g of equipped(); track g.key) {
+          <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" />
+        }
+      </ul>
+    }
+  </section>
+  <section class="gear-group" [attr.aria-labelledby]="'gear-ca-' + idBase">
+    <h3 class="gear-group__title" [id]="'gear-ca-' + idBase">Carregado</h3>
+    @if (carried().length === 0) {
+      <p class="mr-muted">Nada guardado.</p>
+    } @else {
+      <ul class="gear-rows">
+        @for (g of carried(); track g.key) {
+          <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" />
+        }
+      </ul>
+    }
+  </section>
+}
+
+<ng-template #row let-g>
+  <li class="gear-row">
+    <span class="gear-row__name">{{ g.namePt }}</span>
+    <span class="gear-row__kind mr-muted">{{ kindLabel(g) }}</span>
+    @if (cost()(g); as line) {
+      <span class="gear-row__cost mr-muted">{{ line }}</span>
+    }
+    @if (canChange()) {
+      @if (blocked()(g); as why) {
+        <span class="gear-row__blocked mr-muted">{{ why }}</span>
+      } @else {
+        <button
+          type="button"
+          class="mr-btn gear-row__button"
+          [attr.data-gear-key]="g.key"
+          [disabled]="busyKey() !== null"
+          [attr.aria-label]="(g.equipped ? 'Guardar ' : 'Equipar ') + g.namePt"
+          (click)="ask(g)"
+        >
+          {{ g.equipped ? 'Guardar' : 'Equipar' }}
+          @if (armorLine(g, armorClass()); as ac) {
+            <span class="gear-row__ac">{{ ac }}</span>
+          }
+        </button>
+      }
+    }
+  </li>
+</ng-template>

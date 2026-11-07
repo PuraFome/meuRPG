@@ -1,11 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 
-import {
-  abilityLabel,
-  formatModifier,
-  splitArmorDescription,
-} from '../../../core/characters/character-labels';
+import { abilityLabel, formatModifier } from '../../../core/characters/character-labels';
 import type { VitalsVm } from '../../../core/play/live-session.types';
+import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
@@ -31,7 +28,7 @@ import {
  */
 @Component({
   selector: 'app-combat-column',
-  imports: [CombatStats, SpellHelp],
+  imports: [CombatStats, GearList, SpellHelp],
   templateUrl: './combat-column.html',
   styleUrl: './combat-column.scss',
 })
@@ -40,6 +37,16 @@ export class CombatColumn {
   /** This character's live vitals while its campaign has an open session; `null` otherwise. */
   readonly vitals = input<VitalsVm | null>(null);
 
+  /** Whether the gear list has its buttons: the owner while the sheet is theirs to change, the master always. */
+  readonly canEquip = input(false);
+  /** The piece whose change is being saved. */
+  readonly equipBusyKey = input<string | null>(null);
+  /** What the last change said ("Guardado: Espada longa. Classe de armadura 14."), for the live region under the list. */
+  readonly equipNotice = input('');
+  /** A refusal of the last change, shown beside the list. */
+  readonly equipError = input('');
+  /** A tap on "Equipar" / "Guardar": the page calls the server and reads the sheet again. */
+  readonly gearToggled = output<GearToggle>();
   /** Only to show what Ajuda adds. */
   protected readonly aidVitals = computed(() => {
     const v = this.vitals();
@@ -74,21 +81,6 @@ export class CombatColumn {
   protected readonly pactRow = computed(() => pactSlotRow(this.sheet().pactSlots));
   protected readonly hasSaveAttack = computed(() => this.sheet().attacks.some((a) => a.saveDc > 0));
 
-  /** The armour's own name, only when the stored sheet has armour: without
-   * it, the AC description may name a feature (Unarmored Defense), not
-   * something carried. */
-  protected readonly armorName = computed(() => {
-    const s = this.sheet();
-    return s.wearsArmor ? splitArmorDescription(s.armorClassDescription).armorNamePt : null;
-  });
-  /** The weapons are the attacks of kind `weapon` (a damage cantrip is not
-   * equipment, and neither is the unarmed strike every character has): no
-   * separate request for `FullSheet.weapon_keys`' names. */
-  protected readonly weaponNames = computed(() =>
-    this.sheet()
-      .attacks.filter((a) => a.kind === 'weapon' && a.key !== 'attack:unarmed-strike')
-      .map((a) => a.namePt),
-  );
   /** The background's equipment text, with each number kept beside its unit. */
   protected readonly backgroundEquipment = computed(() =>
     keepUnitsTogether(this.sheet().backgroundEquipment),

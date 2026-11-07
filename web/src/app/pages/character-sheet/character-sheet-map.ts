@@ -17,6 +17,8 @@ import {
   Attack as GenAttack,
   AttackKind as GenAttackKind,
   DerivedSheet as GenDerivedSheet,
+  GearEntry as GenGearEntry,
+  GearKind,
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
@@ -31,6 +33,7 @@ import {
   CharacterSheetVm,
   CharacterStoryVm,
   FullSheetVm,
+  GearVm,
   ReviewVm,
 } from './character-sheet.types';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
@@ -272,6 +275,23 @@ function speedExtrasOf(derived: GenDerivedSheet): readonly string[] {
   return derived.breathesWater ? [...lines, 'Respira na água'] : lines;
 }
 
+const GEAR_KINDS: Record<number, GearVm['kind']> = {
+  [GearKind.ARMOR]: 'armor',
+  [GearKind.SHIELD]: 'shield',
+  [GearKind.WEAPON]: 'weapon',
+};
+
+function toGearVm(g: GenGearEntry): GearVm {
+  return {
+    key: g.key,
+    namePt: g.namePt,
+    kind: GEAR_KINDS[g.kind] ?? 'weapon',
+    equipped: g.equipped,
+    twoHanded: g.twoHanded,
+    armorClassIfToggled: g.armorClassIfToggled,
+  };
+}
+
 function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetVm {
   return {
     kind: 'full',
@@ -286,6 +306,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     wearsArmor: full.armorKey !== '',
     hasShield: full.shield,
     shieldIdle: derived.shieldIdle,
+    gear: derived.gear.map(toGearVm),
     hitPointsMax: derived.hitPointsMax,
     hitDice: hitDiceWords(derived.hitDice),
     speedWalkFt: derived.speedWalkFt,

@@ -259,6 +259,30 @@
   line-height: 22px;
 }
 
+.gear__ac {
+  margin: 0 0 var(--mr-space-2);
+}
+
+.gear__note {
+  margin: var(--mr-space-2) 0 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+}
+
+.gear__notice:empty {
+  display: none;
+}
+
+.gear__notice,
+.gear__error {
+  margin: var(--mr-space-2) 0 0;
+  font-size: var(--mr-font-14);
+}
+
+.gear__error {
+  color: var(--mr-danger-ink, var(--mr-ink));
+}
+
 .gear__background {
   margin: var(--mr-space-2) 0 0;
   line-height: 22px;
