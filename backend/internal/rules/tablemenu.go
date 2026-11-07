@@ -53,6 +53,8 @@ type MenuField struct {
 // in Portuguese. Hint is a short explanation where the name alone does not say.
 type MenuValue struct {
 	Key, NamePT, HintPT string
+	// Group is the key that groups the value: for race_traits, the race that has the trait.
+	Group string
 	// OnlyModes, for a target of a modifier, are the only modifier modes it takes (the critical range is
 	// set, never added); empty means every mode. Min and Max, for the same, bound a literal value of the
 	// modifier (both zero: unbounded). The editor offers nothing else for that target.
@@ -159,6 +161,12 @@ const (
 	ListStateEconomies = "state_economies"
 	ListWeaponFilters  = "weapon_filters"
 	ListWeaponKinds    = "weapon_kinds"
+	// ListLackableFeatures are the SRD features, traits, background features and feats a feat's
+	// `prerequisite.lacks_feature_key` may name besides the table's own, which the editor already holds.
+	ListLackableFeatures = "lackable_features"
+	// ListRaceTraits are the traits of the SRD races: what a subrace's `replaces_trait_keys` may name
+	// for an SRD parent, each with its race as Group.
+	ListRaceTraits = "race_traits"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -702,7 +710,98 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListStateEconomies, Values: namedMenu(stateEconomies, func(k string) string { return economyNms[k] })},
 		{Name: ListWeaponFilters, Values: namedMenuHint(weaponFilters, weaponFilterNms)},
 		{Name: ListWeaponKinds, Values: namedMenuHint(weaponKinds, weaponFilterNms)},
+		{Name: ListLackableFeatures, Values: c.menuLackableFeatures()},
+		{Name: ListRaceTraits, Values: c.menuRaceTraits()},
 	}
+}
+
+// menuLackableFeatures are the SRD keys a feat's lacks_feature may name that the editor offers: the class and
+// subclass features, the racial traits, the background features and the feats, by Portuguese name. Each
+// passes isFeatureKey; the keys that check also accepts for options are not listed. The
+// table's entries (keys ending in "@mesa") are left out, and each value's hint says where it comes from.
+func (c *content) menuLackableFeatures() []MenuValue {
+	var out []MenuValue
+	add := func(key, hint string) {
+		out = append(out, MenuValue{Key: key, NamePT: c.namePT(key), HintPT: hint})
+	}
+	for _, k := range sortedKeys(c.features) {
+		if isTableKey(k) {
+			continue
+		}
+		hint := c.namePT(c.features[k].Class)
+		if n := c.features[k].Level; n > 0 {
+			hint += fmt.Sprintf(", nível %d", n)
+		}
+		add(k, hint)
+	}
+	for _, k := range sortedKeys(c.traits) {
+		if !isTableKey(k) {
+			add(k, "traço do SRD")
+		}
+	}
+	for _, k := range sortedKeys(c.backgrounds) {
+		if f := c.backgrounds[k].Feature.Key; f != "" && !isTableKey(f) {
+			add(f, "antecedente do SRD")
+		}
+	}
+	for _, k := range sortedKeys(c.feats) {
+		if !isTableKey(k) {
+			add(k, "talento do SRD")
+		}
+	}
+	sortMenuByName(out)
+	return out
+}
+
+// menuRaceTraits are the traits of the SRD races, the keys checkReplacedTraits accepts in a
+// subrace's replaces_trait_keys, by race (sorted by the race's Portuguese name, then in the race's
+// own order). The hint is the first sentence of the trait's Portuguese text, when it has one. The
+// table's races and traits are left out: the editor already holds them.
+func (c *content) menuRaceTraits() []MenuValue {
+	raceKeys := make([]string, 0, len(c.races))
+	for _, k := range sortedKeys(c.races) {
+		if !isTableKey(k) {
+			raceKeys = append(raceKeys, k)
+		}
+	}
+	slices.SortStableFunc(raceKeys, func(a, b string) int {
+		return strings.Compare(strings.ToLower(c.namePT(a)), strings.ToLower(c.namePT(b)))
+	})
+	var out []MenuValue
+	for _, rk := range raceKeys {
+		for _, k := range c.races[rk].Traits {
+			if isTableKey(k) || c.traits[k] == nil {
+				continue
+			}
+			hint := ""
+			if text, ok := c.ruleTextPT(k); ok && len(text) > 0 {
+				hint = firstSentence(text[0], maxTraitHint)
+			}
+			out = append(out, MenuValue{Key: k, NamePT: c.namePT(k), HintPT: hint, Group: rk})
+		}
+	}
+	return out
+}
+
+// maxTraitHint is the longest one-line summary of a race trait, in characters.
+const maxTraitHint = 160
+
+// firstSentence is the first sentence of a paragraph, cut at a word with an ellipsis past limit
+// characters.
+func firstSentence(text string, limit int) string {
+	text = strings.Join(strings.Fields(text), " ")
+	if i := strings.Index(text, ". "); i >= 0 {
+		text = text[:i+1]
+	}
+	r := []rune(text)
+	if len(r) <= limit {
+		return text
+	}
+	cut := string(r[:limit])
+	if i := strings.LastIndex(cut, " "); i > 0 {
+		cut = cut[:i]
+	}
+	return strings.TrimRight(cut, " ,;:") + "…"
 }
 
 // menuGrantAbilities are the casting abilities of a granted spell, and the pick the player makes.

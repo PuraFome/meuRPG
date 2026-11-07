@@ -25,6 +25,10 @@ export interface ReadRow {
 export interface ReadItem {
   readonly title: string;
   readonly text: string;
+  /** Where the item comes from, after the title: "(de Corujeiro)". */
+  readonly tag?: string;
+  /** The options of a trait that is a choice of one, each an item of its own. */
+  readonly options?: readonly ReadItem[];
 }
 
 export interface ReadSection {
@@ -58,6 +62,14 @@ const SENSE_WORDS: Readonly<Record<string, string>> = {
   truesight: 'Visão verdadeira',
   'devils-sight': 'Visão do diabo',
 };
+
+/** What a subrace's reader knows of its race. */
+export interface ParentView {
+  /** The race's traits the reader can see; none when the reader has no trait list. */
+  readonly traits: readonly TableFeature[];
+  /** The editor's preview: two parts, and no "Substitui" row. */
+  readonly split?: boolean;
+}
 
 export type NameOf = (key: string) => string;
 
@@ -108,7 +120,10 @@ export function featureItem(f: TableFeature, nameOf: NameOf, prefix = ''): ReadI
     .map((e) => effectLine(e, nameOf))
     .filter((l) => l !== '' && !said.includes(l.toLowerCase()));
   const text = [...f.descPt, ...lines].map(ensureStop).join(' ');
-  return { title: `${prefix}${f.namePt}`, text };
+  const item = { title: `${prefix}${f.namePt}`, text };
+  return f.options.length > 0
+    ? { ...item, options: f.options.map((o) => featureItem(o, nameOf)) }
+    : item;
 }
 
 export function bonusesOf(b: TableRace['abilityBonuses']): Bonuses {

@@ -614,8 +614,8 @@ Members read the campaign's content, except creatures (below); only the master w
   An effect from a caster the players do not see names no caster.
   The lasting effect of a class or a feature is a state of its owner.
 - **Classes.** A table class brings the 20-level table (proficiency bonus, features, cantrips and spells known, slots or pact slots), hit die, saving throws, skills, proficiencies, the ability score improvement levels (4, 8, 12, 16 and 19 by default) and spellcasting (none, full, half or pact). The one-third caster is a subclass that casts. The class editor starts from the server's numbers. Multiclass at creation and level up work with table classes, with the SRD prerequisites as a sheet notice.
-- **Races and subraces.** A table subrace adds its ability bonuses and traits to its race's. It may instead replace some of the race's traits, or all of the race's ability bonuses, the ones the player places included. A character of that subrace does not have a replaced trait, and the catalog and the editor's preview show what it replaces. A trait may offer a one-time "one of" choice, asked in "Escolhas" (RN-33). The editor has no fields for these; a content pack carries them.
-- **Feats.** A table feat may ask for ability scores, a proficiency, spellcasting, a level, one of several races (a subrace counts as its race), a size, or a feature the character must not have. A player who does not meet it is refused at the level up and in a feat choice, and a race, a feat to lack or a feature that the master hid is never named to a player, in their copy of the feat, in the level-up options or in the feat cards, except what their own sheet has (its race, or a feat or feature it holds). A feat that asks only for hidden races is not offered to them. The editor has no fields for the races, the size or the missing feature; a content pack carries them.
+- **Races and subraces.** A table subrace adds its ability bonuses and traits to its race's. It may instead replace some of the race's traits, or all of the race's ability bonuses, the ones the player places included. A character of that subrace does not have a replaced trait, and the catalog and the editor's preview show what it replaces. A trait may offer a one-time "one of" choice, asked in "Escolhas" (RN-33). The subrace editor lists the race's traits as a checklist to mark the ones it replaces, and the trait editor has the options of a "one of" choice. A pack carries the same fields.
+- **Feats.** A table feat may ask for ability scores, a proficiency, spellcasting, a level, one of several races (a subrace counts as its race), a size, or a feature the character must not have. A player who does not meet it is refused at the level up and in a feat choice, and a race, a feat to lack or a feature that the master hid is never named to a player, in their copy of the feat, in the level-up options or in the feat cards, except what their own sheet has (its race, or a feat or feature it holds). A feat that asks only for hidden races is not offered to them. The feat editor has fields for the races, the size and the missing feature, and a pack carries them too.
 - **Feat options and picks.** A table feat may have a list of up to 60 options the player picks from, or offer a whole SRD option set (the fighting styles, for example) instead. It may also ask the player for an ability or a damage type, give it a name, and use it in the feat's other effects: the proficiency in that ability's saving throw, resistance to that damage type, the save DC from that ability. Until the pick is made, the effects that use it do not apply and the sheet asks for it. A modifier of an ability score takes a limit from 20 to 30, and a score already above it stays as it is.
   A feat's own options hide only with the feat.
   Only the options of an option set hide one by one.
@@ -899,7 +899,10 @@ The save a spell's area (for example Moonbeam or Spirit Guardians) asks of such 
 A player reads the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
 A creature without the trait or without a use left is rolled at once.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
-The master reads the offer and answers for the creature; the player reads only the wait, then an ordinary hit or miss, never the reaction, the bonus or the armor class (RN-20).
+The server decides the Parry on its own, with no window, so that a wait never tells the players which NPCs have the reaction (RN-10).
+When the bonus turns a hit into a miss it is a miss, and the players read a miss plus the line "<name> aparou o ataque.", with no number, when the master has hidden neither the creature nor the attacker from them.
+When it would not, nothing changes and nothing waits.
+The master reads the numbers in the log, and can switch a creature to "Perguntar" to answer for it in a window; the player never reads the mode, the bonus or the armor class (RN-20).
 Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
 A creature with legendary actions (SRD 5.1) has 3 a round, as the SRD gives every legendary creature.
 They are the master's alone, and they come back at the start of the creature's own turn.
@@ -973,12 +976,13 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
-| Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, answered by the master for the creature. |
+| Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
 
-A monster's Parry is one a round, and the kept roll is compared with the new armor class.
+A monster's Parry is one a round, and the roll is compared with the new armor class.
 A hit that no longer meets it is a miss.
-It opens no window when the creature cannot react, cannot see the attacker or already reacted this round, nor for a ranged or spell attack or a critical hit.
+The server parries only when it changes the outcome; it does nothing when the creature cannot react, cannot see the attacker or already reacted this round, nor for a ranged or spell attack or a critical hit.
+In "Perguntar" a window opens for the master for each melee hit that is not a critical one, also when the bonus changes nothing.
 The reactor rolls in the app, types a physical die, or leaves the roll to the master.
 The held action waits until the window is answered, and is dropped if it can no longer happen; only the master reads that.
 The turn waits for open windows.

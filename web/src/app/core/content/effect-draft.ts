@@ -208,6 +208,8 @@ export interface MenuOption {
   readonly hintPt: string;
   /** A modifier target: the only modes it takes (the critical range is "set"); empty or absent is every mode. */
   readonly onlyModes?: readonly string[];
+  /** The key that groups the value (`race_traits`: the race that has the trait); '' or absent elsewhere. */
+  readonly group?: string;
 }
 
 /** The menu the pickers read, from `GetEffectMenu`. */

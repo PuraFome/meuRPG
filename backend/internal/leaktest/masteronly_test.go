@@ -123,6 +123,7 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "bestiary_creature_key", "which creature an NPC is", nil},
 	{"meurpg.play.v1.Combatant", "challenge_rating", "which creature an NPC is", nil},
 	{"meurpg.play.v1.Combatant", "legendary", "a creature's legendary actions, resistance and options are the master's (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Combatant", "parry_ask", "whether the master answers a creature's Parry or the server decides it is the master's (RN-10, RN-31)", nil},
 	{"meurpg.play.v1.Combatant", "limited_actions", "what a creature spent of its Recharge and N/day actions is the master's and the player's who controls it (RN-20, RN-29)", ownsCreature},
 	{"meurpg.play.v1.CombatLogEntry", "recharge", "the d6 the server rolls for a creature's Recharge action is the master's and the player's who controls the creature (RN-20, RN-29)", actorIsOwnCreature},
 	{"meurpg.play.v1.CombatLogEffect", "resisted", "a save the master made a success reads as a save that passed to a player (RN-20, RN-29)", nil},
