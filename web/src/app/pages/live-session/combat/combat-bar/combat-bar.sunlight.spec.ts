@@ -42,6 +42,24 @@ describe('CombatBar, the sun switch', () => {
     expect(on.asked).toHaveBeenCalledWith(false);
   });
 
+  it('is on the end-only bar of the tabbed combat too, beside "Encerrar combate"', () => {
+    const fixture = TestBed.createComponent(CombatBar);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ sunlightOn: true, sunlightScope: SunlightScope.MAP }),
+    );
+    fixture.componentRef.setInput('endOnly', true);
+    const asked = vi.fn();
+    fixture.componentInstance.sunlight.subscribe(asked);
+    fixture.detectChanges();
+    const sun = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+      '.end-only__row button[role="switch"]',
+    )!;
+    expect(sun.getAttribute('aria-label')).toBe('Luz do sol: todo o mapa');
+    sun.click();
+    expect(asked).toHaveBeenCalledWith(false);
+  });
+
   it('has a 44px target', () => {
     const { sun } = setup();
     expect(sun().classList).toContain('sun');

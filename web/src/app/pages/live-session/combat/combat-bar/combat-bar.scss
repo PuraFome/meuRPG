@@ -270,7 +270,14 @@
 }
 
 .end--block {
+  flex: 1 1 auto;
   width: 100%;
+}
+
+.end-only__row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
 }
 
 // "Você age por Pensantus" (C8-01): the garnet tag beside whose turn comes next.

@@ -3,9 +3,13 @@
     @if (confirming()) {
       <ng-container *ngTemplateOutlet="endConfirm" />
     } @else {
-      <button matButton="outlined" type="button" class="end end--block" (click)="ask()">
-        <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
-      </button>
+      <div class="end-only__row">
+        <button matButton="outlined" type="button" class="end end--block" (click)="ask()">
+          <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
+        </button>
+        <!-- The tabbed combat (a phone, a tablet) has no bar of its own: the sun switch sits here, by "Encerrar combate". -->
+        <ng-container *ngTemplateOutlet="sunSwitch" />
+      </div>
     }
   </section>
 } @else {

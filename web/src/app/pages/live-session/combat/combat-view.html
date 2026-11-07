@@ -1000,7 +1000,9 @@
           [encounter]="e"
           [endOnly]="true"
           [theatre]="theatre()"
+          [busy]="busy()"
           (end)="endCombat()"
+          (sunlight)="setSunlight($event)"
         />
       </div>
       <div

@@ -251,8 +251,9 @@ export class CombatMapCard {
     (this.pick() ?? []).some((m) => m.mode === 'offer'),
   );
 
+  /** The phone's cropped preview; painting the sun needs the whole map, so the preview gives way while the master paints. */
   protected readonly preview = computed(
-    () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick(),
+    () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick() && !this.painting(),
   );
 
   /** Where the 2x map sits inside the preview frame, so that the one on turn
@@ -288,13 +289,12 @@ export class CombatMapCard {
   /** The zones the spells keep, as the server sent them for whoever looks (RN-37): drawn under the tokens and named in the legend. */
   protected readonly zones = computed(() => zoneViews(this.encounter(), this.isMaster()));
   protected readonly zoneLegend = computed(() => zoneLegend(this.zones()));
-  /** The sun controls: the sun is on, the viewer is the master and the combat has a map (the phone's cropped preview has none). */
+  /** The sun controls: the sun is on, the viewer is the master and the combat has a map (on the phone's cropped preview they are there too: "Pintar" swaps the preview for the whole map). */
   protected readonly sunControls = computed(
     () =>
       this.isMaster() &&
       this.encounter().sunlightOn &&
       !isTheatre(this.encounter()) &&
-      !this.preview() &&
       !this.compact(),
   );
   protected readonly sunSquares = computed(

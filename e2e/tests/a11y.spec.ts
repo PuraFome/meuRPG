@@ -90,6 +90,7 @@ import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layou
 import { waitForEncounterRevision } from './revision-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
+import { LIT, WIDTHS as SUN_WIDTHS, bar as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -10768,3 +10769,74 @@ test('o menu "Mais ações" do NPC e a oferta de ataque de oportunidade passam n
   test.setTimeout(300_000);
   await scanOfferScreens(browser, 'dark', 390);
 });
+
+/** The sunlight of a combat (#704, RN-20, RN-29), as the master reads it: the switch on the setup bar, the switch on the combat bar with the
+ * sun on, the Drow's notice in the sun and out of it, the map card with "Todo o mapa | Onde eu pintar" and "Pintar", and paint mode. Each
+ * screen is judged at 390, 768 and 1280 px; E2E_SHOTS_DIR, when set, also saves the screenshots (sunlight-support.ts). */
+async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const t = await sunlightTable(browser, 'Acessibilidade luz do sol', 1280, colorScheme);
+  const { m, campaignId } = t;
+  const everyWidth = async (name: string, what: string, at: () => Locator, tab: 'Turno' | 'Mapa' | null = 'Turno') => {
+    for (const width of SUN_WIDTHS) {
+      await m.setViewportSize(sunViewport(width));
+      // The running combat's turn and map are tabs below 1024 px (a phone, a tablet; the setup has none: `null`); a computer shows them side by side.
+      if (tab && width < 1024) {
+        await m.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
+      }
+      await expectScreenPasses(m, `${what} (${colorScheme}, ${width}px)`);
+      await shootSun(m, name, width, colorScheme, at());
+    }
+  };
+  try {
+    await openSessionPage(m, campaignId);
+
+    // Setup: the switch off, then on, beside "Começar o combate".
+    await expect(sunSwitch(m, 'Luz do sol: desligada')).toHaveAttribute('aria-checked', 'false');
+    await everyWidth('preparacao-barra', 'A barra da preparação, com a luz do sol desligada', () => sunBar(m), null);
+    await sunSwitch(m).click();
+    await expect(sunSwitch(m, 'Luz do sol: todo o mapa')).toHaveAttribute('aria-checked', 'true');
+    await everyWidth('preparacao-barra-ligada', 'A barra da preparação, com a luz do sol em todo o mapa', () => sunBar(m), null);
+
+    // The combat runs: the Drow is first, in the sun of the whole map.
+    await m.getByRole('button', { name: 'Começar o combate' }).click();
+    await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
+    await expect(sunSwitch(m, 'Luz do sol: todo o mapa')).toHaveAttribute('aria-checked', 'true');
+    await everyWidth('barra-ligada', 'A barra do combate, com a luz do sol ligada', () => sunBar(m));
+    const notice = m.getByTestId('sunlight-notice');
+    await expect(notice).toContainText(`${t.drow} está na luz do sol.`);
+    await everyWidth('aviso-no-sol', 'O cartão do NPC, o aviso de uma criatura na luz do sol', () => notice);
+
+    // "Onde eu pintar" with no square lit: the Drow is out of the sun, and the map card has its scope controls.
+    await openMap(m);
+    await m.getByRole('radio', { name: 'Onde eu pintar' }).click();
+    await expect(sunSwitch(m, 'Luz do sol: onde eu pintar')).toBeVisible();
+    await openTurn(m);
+    await expect(notice).toContainText(`${t.drow} está fora da luz do sol. Rola normal.`);
+    await everyWidth('aviso-fora-do-sol', 'O cartão do NPC, o aviso de uma criatura fora da luz do sol', () => notice);
+
+    // Some squares lit (the SetSunlight call): the scope controls and the "Pintar" button on the map card.
+    const lit = await setSunlightRPC(m, { campaignId, encounterId: t.enc.id }, { scope: 'SUNLIGHT_SCOPE_SQUARES', addSquares: LIT });
+    await waitForEncounterRevision(m, lit, 'the sunlit squares');
+    await expect(notice).toContainText(`${t.drow} está na luz do sol.`);
+    await openMap(m);
+    await expect(m.getByRole('radio', { name: 'Onde eu pintar' })).toHaveAttribute('aria-checked', 'true');
+    await expect(m.getByRole('button', { name: 'Pintar luz do sol no mapa' })).toBeVisible();
+    await everyWidth('mapa-escopo', 'O cartão do mapa, com o escopo e o botão Pintar', () => sunMapCard(m), 'Mapa');
+
+    // Paint mode: the tools, "Pronto" and the count; "Próximo turno" waits.
+    await m.getByRole('button', { name: 'Pintar luz do sol no mapa' }).click();
+    await expect(sunPaintStatus(m)).toHaveText(`Pintando luz do sol · ${LIT.length} quadrados`);
+    await everyWidth('mapa-pintando', 'O cartão do mapa em modo de pintura', () => sunMapCard(m), 'Mapa');
+    await m.getByRole('button', { name: 'Pronto: sair da pintura da luz do sol' }).click();
+    await expect(m.getByRole('button', { name: 'Pintar luz do sol no mapa' })).toBeVisible();
+  } finally {
+    await t.done();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`a luz do sol no combate passa no axe e nas conferências de layout no tema ${theme}: o interruptor, o aviso do NPC, o escopo e a pintura, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-20', '@RN-29'] }, async ({ browser }) => {
+    test.setTimeout(400_000);
+    await scanSunlightScreens(browser, colorScheme);
+  });
+}

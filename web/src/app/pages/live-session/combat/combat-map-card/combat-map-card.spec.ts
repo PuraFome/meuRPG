@@ -550,4 +550,35 @@ describe('CombatMapCard, the sun (#704)', () => {
     expect(legend(mount().el)).not.toContain('Luz do sol');
     expect(legend(mount({ encounter: lit(), isMaster: false }).el)).not.toContain('Luz do sol');
   });
+
+  describe('on a phone, over the cropped preview', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('keeps the controls, and "Pintar" swaps the preview for the whole map until "Pronto"', () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: /max-width: 767/.test(query),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }));
+      TestBed.resetTestingModule();
+      const fixture = TestBed.createComponent(CombatMapCard);
+      fixture.componentRef.setInput('encounter', lit());
+      fixture.componentRef.setInput('image', { url: '', width: 2000, height: 1400 });
+      fixture.componentRef.setInput('isMaster', true);
+      fixture.componentRef.setInput('cropOnPhone', true);
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.card__preview')).not.toBeNull();
+      expect(el.querySelector('app-sunlight-layer')).toBeNull();
+      el.querySelector<HTMLButtonElement>('[aria-label="Pintar luz do sol no mapa"]')!.click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.painting()).toBe(true);
+      expect(el.querySelector('.card__preview')).toBeNull();
+      expect(el.querySelector('app-sunlight-layer')).not.toBeNull();
+      el.querySelector<HTMLButtonElement>('.sc__done')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('.card__preview')).not.toBeNull();
+    });
+  });
 });
