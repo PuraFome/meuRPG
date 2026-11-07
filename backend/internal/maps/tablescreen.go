@@ -29,7 +29,7 @@ func (s *Service) tvViewer(ctx context.Context, campaignID string) (viewer, erro
 // master.
 //
 // may decides, from the map's fog and "Visão do grupo", whether the map goes to the TV at all; when it does
-// not, the answer is Hidden and nothing of the map is read. It returns a `not_found` Connect error for a map
+// not, the answer is Hidden and nothing of the map goes out (the snapshot is read first, to know the fog). It returns a `not_found` Connect error for a map
 // that is not the campaign's or that no player sees now (RN-10).
 func (sm *SessionMaps) TableScreenMap(ctx context.Context, campaignID, mapID string, may link.MapGate) (link.TableScreenMap, error) {
 	id, ok := uid.Canonical(mapID)
@@ -44,6 +44,9 @@ func (s *Service) tableScreenMap(ctx context.Context, campaignID, mapID string, 
 	if err != nil {
 		return link.TableScreenMap{}, err
 	}
+	// The generation is read before the snapshot, as GetMapVision does: a change that commits between the
+	// read and the cache put drops the views, and the views built from the older read must not be kept.
+	gen := s.tiles.views.generation(mapID)
 	snap, err := s.readMapSnapshot(ctx, campaignID, mapID, v) // the map, its points and its tokens, one snapshot
 	if err != nil {
 		return link.TableScreenMap{}, s.dbError(ctx, "get a map", err)
@@ -51,7 +54,6 @@ func (s *Service) tableScreenMap(ctx context.Context, campaignID, mapID string, 
 	if !may(foggedFor(v, snap.row), snap.row.GroupVision) {
 		return link.TableScreenMap{Hidden: true}, nil
 	}
-	gen := s.tiles.views.generation(mapID)
 	res, pv, err := s.mapOfSnapshot(ctx, snap, v)
 	if err != nil {
 		return link.TableScreenMap{}, err

@@ -2,7 +2,7 @@
 //
 // Source: meurpg/play/v1/table_screen.proto
 
-// The table screen (issue #648): what the master sends to the TV at the table, a browser tab that
+// The table screen: what the master sends to the TV at the table, a browser tab that
 // follows the master's choice. The calls are TableScreenService's; the messages are here.
 //
 // The TV is a player with no account and no character (RN-10). Every message of the stage

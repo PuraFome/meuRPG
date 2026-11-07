@@ -367,6 +367,7 @@ func TestTableScreenRemembersTheUnionOfThePartysMemoryOfTheCurrentEpochIncluding
 	put(userOf(c.ana), epoch, roomA)
 	put(userOf(c.caio), epoch, roomB)
 	put(userOf(c.bia), epoch-1, roomOld) // an older epoch reads as empty
+	put(userOf(c.dani), epoch, roomLeft) // Sálvia's player has a memory, then leaves
 	// A member whose player is gone is not in the party; a dead character's player keeps their memory.
 	if _, err := c.h.pool.Exec(ctx, `UPDATE characters SET player_user_id = NULL WHERE id = $1`, c.salvia.GetId()); err != nil {
 		t.Fatalf("remove Sálvia's player: %v", err)

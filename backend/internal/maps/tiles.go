@@ -1089,7 +1089,9 @@ func (s *Service) authorizeTile(ctx context.Context, mapID, as string) (tileAcce
 }
 
 // tileAccessOf is the access of a member that passed the checks: the viewer the tiles are kept under, and for
-// `as=tv` only a map the group has the vision of (the TV shows a fog map only as the group sees it).
+// `as=tv` only a map the group has the vision of (the TV shows a fog map only as the group sees it). The
+// route has already checked that the fog is on, so this repeats the play module's mapOnTV rule (fog on and
+// "Visão do grupo" off: no map); the maps module cannot import play, and the tile route has no play call.
 func tileAccessOf(m authz.Membership, as string, info mapsdb.GetMapTileInfoRow, src tileSource) (tileAccess, error) {
 	tv := m.Role == authz.RoleMaster && as == tileAsTV
 	if tv && !info.GroupVision {

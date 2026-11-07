@@ -9,7 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// The master's table screen (issue #648). These tests need the database (MEURPG_TEST_DATABASE_URL).
+// The master's table screen. These tests need the database (MEURPG_TEST_DATABASE_URL).
 
 func (a *armed) getScreen(t *testing.T, u *user) (*playv1.GetTableScreenResponse, error) {
 	t.Helper()

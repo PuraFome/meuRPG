@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The table screen (issue #648): the TV at the table shows what the master chose. The choice is three
+// The table screen: the TV at the table shows what the master chose. The choice is three
 // columns of the open session (tv_mirror, tv_pin, tv_choice_revision); what the TV shows now is decided
 // by resolveStage from facts read for the TV, never from the master's own reads.
 
