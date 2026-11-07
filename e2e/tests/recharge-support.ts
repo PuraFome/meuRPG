@@ -98,10 +98,17 @@ export async function beginVrockFight(master: Page, player: Page, name: string):
 }
 
 /** The two signed-in pages of a Vrock fight at one width and color scheme. */
+/** A time zone where it is 14h now, whatever the hour of the machine: the player's page then reads "desde 14:MM" in the session bar, a
+ * text with "de 1" in it (as one in 10h to 19h), so a search of the whole page for a use count would match the clock and fail by the hour. */
+function afternoonZone(): string {
+  const offset = 14 - new Date().getUTCHours(); // -9 to +14 hours from UTC
+  return offset === 0 ? 'UTC' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+}
+
 export async function pagesFor(browser: Browser, colorScheme: 'light' | 'dark', width: number) {
   const viewport = viewportOf(width);
   const master = await newSignedInContext(browser, 'Mestre Teste', { viewport, colorScheme, ...shotScale });
-  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme, ...shotScale });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme, timezoneId: afternoonZone(), ...shotScale });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
