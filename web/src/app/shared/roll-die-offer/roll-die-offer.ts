@@ -118,7 +118,7 @@ export class RollDieOffer {
     for (const d of this.dice()) {
       const u = this.uses()[d.key];
       if (u && u.left <= 0) {
-        pools.set(u.resource, u.resourceNamePt);
+        pools.set(u.resource || d.key, u.resourceNamePt);
       }
     }
     return [...pools].map(([key, name]) => ({ key, name }));
@@ -132,7 +132,7 @@ export class RollDieOffer {
   /** The id of the "Sem usos de ..." line that says why the die is off. */
   protected noneId(d: RollDie): string {
     const u = this.uses()[d.key];
-    return `${this.group}-none-${this.spent().findIndex((r) => r.key === u?.resource)}`;
+    return `${this.group}-none-${this.spent().findIndex((r) => r.key === (u?.resource || d.key))}`;
   }
 
   protected empty(d: RollDie): boolean {
