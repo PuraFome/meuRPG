@@ -33,7 +33,10 @@ export async function* tvEvents(
   for await (const res of stream) {
     switch (res.event.case) {
       case 'ready':
-        yield { kind: 'ready' };
+        yield { kind: 'ready', sessionSeq: Number(res.event.value.sessionSeq) };
+        break;
+      case 'heartbeat':
+        yield { kind: 'heartbeat', sessionSeq: Number(res.event.value.sessionSeq) };
         break;
       case 'changed':
         yield { kind: 'contentChanged' };
@@ -95,6 +98,8 @@ export class TableScreenWatcher {
           this.dropDebounce();
           void this.read();
         },
+        // A heartbeat ahead of the stream's number: a `changed` was lost, so the screen is read again, once.
+        onBehind: () => this.read(),
         onVitals: () => undefined,
         onContentChanged: () => this.hint(),
         onEnded: () => this.state.ended(),
@@ -123,22 +128,25 @@ export class TableScreenWatcher {
     });
   }
 
-  private async read(): Promise<void> {
+  /** Reads the screen; `true` when the read worked (or was folded into the one already out). */
+  private async read(): Promise<boolean> {
     if (this.reading) {
       this.again = true;
-      return;
+      return true;
     }
     const campaignId = this.campaignId;
     if (campaignId === '') {
-      return;
+      return false;
     }
     this.reading = true;
+    let ok = true;
     try {
       const res = await this.client.get(campaignId);
       if (campaignId === this.campaignId) {
         this.state.loaded(toTvScreen(res));
       }
     } catch (err) {
+      ok = false;
       if (campaignId === this.campaignId) {
         this.failed(err);
       }
@@ -147,8 +155,9 @@ export class TableScreenWatcher {
     }
     if (this.again) {
       this.again = false;
-      await this.read();
+      return this.read();
     }
+    return ok;
   }
 
   private failed(err: unknown): void {

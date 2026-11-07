@@ -89,6 +89,40 @@ describe('TableScreenWatcher', () => {
     expect(gets).toHaveBeenCalledTimes(2);
   });
 
+  it('reads the screen once when a heartbeat is ahead of the number from `ready` (a lost `changed`)', async () => {
+    watcher.start('c1');
+    await settleAll();
+    last().push('ready', 4n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(1);
+    last().push('heartbeat', 4n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(1);
+    last().push('heartbeat', 6n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(2);
+    last().push('heartbeat', 6n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the number when the read behind fails, and reads again at the next heartbeat', async () => {
+    watcher.start('c1');
+    await settleAll();
+    last().push('ready', 4n);
+    await settleAll();
+    gets.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    last().push('heartbeat', 5n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(2);
+    last().push('heartbeat', 5n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(3);
+    last().push('heartbeat', 5n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(3);
+  });
+
   it('makes one more read, not many, for a hint that comes during a read', async () => {
     watcher.start('c1');
     await settleAll();
@@ -263,15 +297,20 @@ describe('TableScreenWatcher', () => {
 describe('tvEvents', () => {
   it('maps the stream to the events of the live stream', async () => {
     async function* wire() {
-      yield tvWire('ready');
-      yield tvWire('heartbeat');
+      yield tvWire('ready', 3n);
+      yield tvWire('heartbeat', 5n);
       yield tvWire('changed');
       yield tvWire('sessionEnded');
     }
-    const kinds: string[] = [];
+    const events = [];
     for await (const e of tvEvents(wire())) {
-      kinds.push(e.kind);
+      events.push(e);
     }
-    expect(kinds).toEqual(['ready', 'heartbeat', 'contentChanged', 'ended']);
+    expect(events).toEqual([
+      { kind: 'ready', sessionSeq: 3 },
+      { kind: 'heartbeat', sessionSeq: 5 },
+      { kind: 'contentChanged' },
+      { kind: 'ended' },
+    ]);
   });
 });
