@@ -119,6 +119,11 @@ func (s *Service) writeSheetSave(ctx context.Context, u *sheetSave) (charactersd
 // sheet checked against it, the portrait's gallery row, the write, and what play is told.
 func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave) (charactersdb.Character, error) {
 	q := s.queries.WithTx(tx)
+	// The session's row before the character's, the order of a combat write: a save that changes
+	// the armor or the shield goes on to call play (tellGearChange), which takes the session's lock.
+	if err := s.lockSessionForGear(ctx, tx, u.m.CampaignID); err != nil {
+		return charactersdb.Character{}, err
+	}
 	current, err := lockSheetToSave(ctx, q, u)
 	if err != nil {
 		return charactersdb.Character{}, err

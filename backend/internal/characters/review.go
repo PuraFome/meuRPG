@@ -373,6 +373,13 @@ type ReviewHost interface {
 	// the combat's log ("O mestre reviveu <name>") and returns the combat's ID, empty when
 	// the character is in none (the caller then writes the line to the session).
 	ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, at time.Time) (encounterID string, err error)
+	// LockSession takes the campaign's open session row FOR UPDATE, inside tx, and does nothing when
+	// the campaign has none. A change of gear locks the character's row, and play's combat writes
+	// lock the session's row first and then reach the character's: so a path that goes on to call
+	// EquipInCombat, GearChanged or ArmorWorn calls this before it locks the character, and the two
+	// take their locks in the one order, session then character.
+	// It is the same method as CreatureHost.LockSession.
+	LockSession(ctx context.Context, tx pgx.Tx, campaignID string) error
 	// ArmorWorn tells play that the character's sheet wears armor now, inside tx: the effects
 	// that need none (Mage Armor, SRD 5.1: "the spell ends if the target dons armor") end. It
 	// returns what to call after the commit (the streams are told), or nil.
@@ -405,6 +412,14 @@ const (
 	EquipShield = link.EquipShield
 	EquipArmor  = link.EquipArmor
 )
+
+// lockSessionForGear takes play's session lock ahead of a character's lock (ReviewHost.LockSession).
+func (s *Service) lockSessionForGear(ctx context.Context, tx pgx.Tx, campaignID string) error {
+	if s.reviewHost == nil {
+		return nil
+	}
+	return s.reviewHost.LockSession(ctx, tx, campaignID)
+}
 
 // SetReviewHost connects the play module.
 func (s *Service) SetReviewHost(h ReviewHost) { s.reviewHost = h }
