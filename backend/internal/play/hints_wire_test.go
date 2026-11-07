@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // The stream carries the session's hint number: on Ready, on every heartbeat (read from the database), and on the events a
@@ -199,15 +200,16 @@ func TestListCombatLogSinceSeqIsFullWhenTheViewMayHaveChanged(t *testing.T) {
 	cases := []struct {
 		name  string
 		write func()
-		full  bool
+		full  *bool // nil: either, as long as the answer rebuilds the whole log
 	}{
 		{"a master-only hit point correction adds no change to old lines", func() {
 			if _, err := a.adjustHP(t, e, "Goblin", damageHP(1)); err != nil {
 				t.Fatal(err)
 			}
-		}, false},
-		{"the Goblin is hidden", func() { hideAgain(t, a, e, "Goblin") }, true},
-		{"the Goblin is shown", func() { showNPC(t, a, e, "Goblin") }, true},
+		}, new(false)},
+		{"the Goblin is hidden", func() { hideAgain(t, a, e, "Goblin") }, new(true)},
+		// The player's number fell below the Goblin's lines when they went, so the line comes as a new one: no need for the whole log.
+		{"the Goblin is shown", func() { showNPC(t, a, e, "Goblin") }, nil},
 		{"a roll mode request is answered", func() {
 			req, err := a.rmRequestRaw(t, a.caio, e, func(r *playv1.RequestRollModeRequest) { r.AttackKey = battleaxe })
 			if err != nil {
@@ -216,13 +218,16 @@ func TestListCombatLogSinceSeqIsFullWhenTheViewMayHaveChanged(t *testing.T) {
 			if err := a.answerMode(t, a.master, e, req.GetRequest().GetId(), playv1.RollMode_ROLL_MODE_ADVANTAGE); err != nil {
 				t.Fatal(err)
 			}
-		}, true},
+		}, new(true)},
 	}
 	for _, tc := range cases {
 		base := player()
 		got := sinceAfter(base, tc.write)
-		if got.GetFull() != tc.full {
-			t.Errorf("%s: full = %v, want %v", tc.name, got.GetFull(), tc.full)
+		if tc.full != nil && got.GetFull() != *tc.full {
+			t.Errorf("%s: full = %v, want %v", tc.name, got.GetFull(), *tc.full)
+		}
+		if held, want := rebuilt(base, got), player(); !sameLines(held, want) {
+			t.Errorf("%s: the app's log after the answer has %d lines, the whole log %d", tc.name, len(held), len(entriesOf(want)))
 		}
 	}
 }
@@ -279,6 +284,135 @@ func TestCombatLogChangedIsFullOnARetriedUndo(t *testing.T) {
 				}
 				break
 			}
+		}
+	}
+}
+
+func entriesOf(l *playv1.ListCombatLogResponse) (out []*playv1.CombatLogEntry) {
+	for _, r := range l.GetRounds() {
+		out = append(out, r.GetEntries()...)
+	}
+	return out
+}
+
+// rebuilt is what an app holding base has after it applies the answer: all of it when full, else the new entries by id.
+func rebuilt(base, answer *playv1.ListCombatLogResponse) map[string]int64 {
+	held := map[string]int64{}
+	if !answer.GetFull() {
+		for _, e := range entriesOf(base) {
+			held[e.GetId()] = e.GetSeq()
+		}
+	}
+	for _, e := range entriesOf(answer) {
+		held[e.GetId()] = e.GetSeq()
+	}
+	return held
+}
+
+func sameLines(held map[string]int64, whole *playv1.ListCombatLogResponse) bool {
+	want := entriesOf(whole)
+	if len(held) != len(want) {
+		return false
+	}
+	for _, e := range want {
+		if seq, ok := held[e.GetId()]; !ok || seq != e.GetSeq() {
+			return false
+		}
+	}
+	return true
+}
+
+// A player's answer to a since_seq does not move on a toggle of an NPC that is in no line they hold.
+func TestListCombatLogSinceSeqOfAPlayerIgnoresAToggleOfAnNPCTheyNeverSaw(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	hideAgain(t, a, e, "Goblin") // before any line names it
+	base := a.log(t, a.caio, e)
+	ask := func() *playv1.ListCombatLogResponse {
+		res, err := a.caio.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), SinceSeq: base.GetLastSeq()}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	before := ask()
+	if before.GetFull() || base.GetLastSeq() == 0 {
+		t.Fatalf("the starting answer: full = %v, last_seq = %d; want a delta from a held line", before.GetFull(), base.GetLastSeq())
+	}
+	showNPC(t, a, e, "Goblin")
+	if after := ask(); !proto.Equal(before, after) {
+		t.Errorf("showing an NPC in no held line changed the answer:\n before %v\n after  %v", before, after)
+	}
+	hideAgain(t, a, e, "Goblin")
+	if after := ask(); !proto.Equal(before, after) {
+		t.Errorf("hiding an NPC in no held line changed the answer:\n before %v\n after  %v", before, after)
+	}
+}
+
+// The synthetic cases of the player's rule: events built by hand, as the database holds them.
+func TestSinceSeqOfForAPlayerHearsOnlyWhatTheyMaySee(t *testing.T) {
+	t.Parallel()
+	player := combatViewer{userID: "ana"}
+	row := func(id string, seq int32, kind, payload string) playdb.ListEncounterEventsRow {
+		return playdb.ListEncounterEventsRow{ID: id, Seq: seq, Kind: kind, Payload: []byte(payload)}
+	}
+	held := func(seq int64, actor string) *logEntry { // a line the player holds: seq 5, naming the actor
+		return &logEntry{seq: seq, ev: actionEvent{Actor: actor}}
+	}
+	cs := []playdb.Combatant{{ID: "c-gob", CreatureID: new("cr-1")}}
+	events := func(extra ...playdb.ListEncounterEventsRow) []playdb.ListEncounterEventsRow {
+		return append([]playdb.ListEncounterEventsRow{
+			row("e-seen", 4, eventAttackRolled, `{"combatant_id":"c-toren","round":1}`),
+			row("e-fogged", 5, eventAttackRolled, `{"combatant_id":"c-gob","fogged":true,"seen_by":["bia"]}`),
+			row("e-secret", 6, eventAttackRolled, `{"combatant_id":"c-gob","secret":true}`),
+		}, extra...)
+	}
+	cases := []struct {
+		name    string
+		extra   []playdb.ListEncounterEventsRow
+		entries []*logEntry
+		master  bool
+		want    int64 // 0: the whole log
+	}{
+		{"an undo of a fogged action the player never saw", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-fogged"}`)}, nil, false, 5},
+		{"the master hears of that undo", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-fogged"}`)}, nil, true, 0},
+		{"an undo of a secret action", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-secret"}`)}, nil, false, 5},
+		{"an undo of an action the player saw", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-seen"}`)}, nil, false, 0},
+		{"a summon with a secret line", []playdb.ListEncounterEventsRow{row("s1", 7, eventCreatureSummoned, `{"combatant_id":"c-gob","secret":true,"creature_ids":["cr-1"]}`)}, []*logEntry{held(4, "c-gob")}, false, 5},
+		{"a dismissal of a creature in no held line", []playdb.ListEncounterEventsRow{row("d1", 7, eventCreatureDismissed, `{"creature_ids":["cr-1"]}`)}, []*logEntry{held(4, "c-toren")}, false, 5},
+		{"a dismissal of a creature in a held line", []playdb.ListEncounterEventsRow{row("d1", 7, eventCreatureDismissed, `{"creature_ids":["cr-1"]}`)}, []*logEntry{held(4, "c-gob")}, false, 0},
+		{"a toggle of a combatant in a master-only line", []playdb.ListEncounterEventsRow{row("h1", 7, eventCombatantHiddenSet, `{"combatant_id":"c-gob"}`)}, []*logEntry{{seq: 4, masterOnly: true, ev: actionEvent{Actor: "c-gob"}}}, false, 5},
+		{"a secret roll mode answer", []playdb.ListEncounterEventsRow{row("r1", 7, eventRollModeAnswered, `{"secret":true}`)}, nil, false, 5},
+		{"a roll mode answer the player may see", []playdb.ListEncounterEventsRow{row("r1", 7, eventRollModeAnswered, `{}`)}, nil, false, 0},
+		{"an event no one can read", []playdb.ListEncounterEventsRow{row("x1", 7, eventRollModeAnswered, `not json`)}, nil, false, 5},
+		{"an unreadable event, for the master", []playdb.ListEncounterEventsRow{row("x1", 7, eventRollModeAnswered, `not json`)}, nil, true, 0},
+	}
+	for _, c := range cases {
+		v := player
+		v.master = c.master
+		if got := sinceSeqOf(5, v, events(c.extra...), c.entries, cs); got != c.want {
+			t.Errorf("%s: since = %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+// deltaSafeKinds cannot drift from the log builders: a kind on it is one a builder handles, or one that writes no line.
+func TestDeltaSafeKindsAreKindsOfTheLogBuilders(t *testing.T) {
+	t.Parallel()
+	noLine := map[string]bool{eventEncounterStarted: true, eventInitiativeSubmitted: true, eventInitiativeOrderSet: true, eventTurnEnded: true}
+	for kind := range deltaSafeKinds {
+		_, handled := logHandlers[kind]
+		switch {
+		case !handled && !noLine[kind]:
+			t.Errorf("%s is delta-safe but no log builder handles it and it is not a kind that writes no line", kind)
+		case handled && noLine[kind]:
+			t.Errorf("%s is listed as writing no line, but a log builder handles it", kind)
+		}
+	}
+	for kind := range noLine {
+		if !deltaSafeKinds[kind] {
+			t.Errorf("%s is listed as writing no line but is not delta-safe", kind)
 		}
 	}
 }

@@ -181,12 +181,12 @@ func (s *Service) ListCombatLog(
 	}
 
 	res := &playv1.ListCombatLogResponse{}
-	since := sinceSeqOf(req.Msg.GetSinceSeq(), v.master, snap.events)
+	stampSeqs(entries, snap.events)
+	since := sinceSeqOf(req.Msg.GetSinceSeq(), v, snap.events, entries, snap.cs)
 	res.Full = since == 0
 	if v.master {
 		res.LastSeq = lastSeqOf(snap.events)
 	}
-	stampSeqs(entries, snap.events)
 	var lastID string
 	if v.master {
 		if last, ok := lastAction(snap.recent, snap.enc.ID); ok {
@@ -250,32 +250,103 @@ var deltaSafeKinds = map[string]bool{
 }
 
 // sinceSeqOf is the number the log is filtered by: sinceSeq, or 0 (the whole log) when an event after it may have changed an
-// entry the app holds. An undo takes lines back; the kinds off deltaSafeKinds change how entries are seen. For a player only what
-// the player may see counts, as for last_seq: an undo of a secret action takes back lines the player never held.
-func sinceSeqOf(sinceSeq int64, master bool, events []playdb.ListEncounterEventsRow) int64 {
+// entry the app holds. The master hears of every such event. A player hears only of what they may see, so the answer tells them
+// nothing a secret or unseen write did:
+//   - an event the player does not hear of (Secret, or off the fog's list of who saw it) is ignored;
+//   - an undo counts only when the action it took back is one the player may see (not Secret, seen), not when the undo itself is;
+//   - a combatant toggle (shown, hidden, summoned, dismissed, removed) counts only when the combatant is in a line the player holds:
+//     one at or below sinceSeq that is not Secret, not the master's alone and seen. Lines that stay secret stay invisible after a
+//     reveal, so only held lines can appear or go;
+//   - any other kind off deltaSafeKinds counts when the player may see it.
+//
+// An event that cannot be read is ignored for a player (fail closed: they are told nothing from what the server cannot read) and
+// counted for the master (when in doubt, the whole log).
+// The publishing of the undo (publishUndoRun, players = !ev.Secret) still tells a player of an undo of a fogged action it did not see
+// with a hint; the answer to their read is what this function decides.
+func sinceSeqOf(sinceSeq int64, v combatViewer, events []playdb.ListEncounterEventsRow, entries []*logEntry, cs []playdb.Combatant) int64 {
 	if sinceSeq <= 0 {
 		return 0
 	}
 	for _, e := range events {
-		if int64(e.Seq) <= sinceSeq {
-			continue
-		}
-		switch {
-		case e.Kind == eventActionUndone:
-			if master || !secretEvent(e) {
-				return 0
-			}
-		case !deltaSafeKinds[e.Kind]:
+		if int64(e.Seq) > sinceSeq && changesHeldView(e, sinceSeq, v, events, entries, cs) {
 			return 0
 		}
 	}
 	return sinceSeq
 }
 
-// secretEvent says the event was written as one the players do not hear of.
-func secretEvent(e playdb.ListEncounterEventsRow) bool {
+// changesHeldView says whether the event, after the app's number, may change an entry the viewer holds.
+func changesHeldView(e playdb.ListEncounterEventsRow, sinceSeq int64, v combatViewer, events []playdb.ListEncounterEventsRow, entries []*logEntry, cs []playdb.Combatant) bool {
+	if e.Kind != eventActionUndone && deltaSafeKinds[e.Kind] {
+		return false
+	}
 	ev, err := readEvent(e.Payload)
-	return err != nil || ev.Secret
+	if v.master {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+	switch {
+	case e.Kind == eventActionUndone:
+		return undoneMaySeen(ev, v, events)
+	case ev.Secret || !ev.seenByViewer(v):
+		return false
+	case toggleKinds[e.Kind]:
+		return heldLineHas(ev.toggled(cs), sinceSeq, v, entries)
+	}
+	return true
+}
+
+// toggleKinds are the events that show, hide, add or take away a combatant.
+var toggleKinds = map[string]bool{
+	eventCombatantHiddenSet: true, eventCreatureSummoned: true, eventCreatureDismissed: true, eventCombatantRemoved: true,
+}
+
+// undoneMaySeen says the viewer may see one of the actions an undo took back.
+func undoneMaySeen(undo actionEvent, v combatViewer, events []playdb.ListEncounterEventsRow) bool {
+	ids := append([]string{undo.Undone}, undo.UndoneAlso...)
+	for _, e := range events {
+		if !slices.Contains(ids, e.ID) {
+			continue
+		}
+		if ev, err := readEvent(e.Payload); err == nil && !ev.Secret && ev.seenByViewer(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// toggled are the combatants a toggle event is about: the one it names, the target, and the combatants of the creatures it made or dismissed.
+func (ev actionEvent) toggled(cs []playdb.Combatant) []string {
+	ids := []string{ev.Actor, ev.Target}
+	for _, c := range cs {
+		if c.CreatureID != nil && slices.Contains(ev.Created, *c.CreatureID) {
+			ids = append(ids, c.ID)
+		}
+	}
+	return slices.DeleteFunc(ids, func(id string) bool { return id == "" })
+}
+
+// heldLineHas says a line the viewer holds (at or below sinceSeq, not Secret, not the master's alone, seen) names one of the combatants.
+func heldLineHas(ids []string, sinceSeq int64, v combatViewer, entries []*logEntry) bool {
+	for _, e := range entries {
+		if e.seq > sinceSeq || e.masterOnly || e.ev.Secret || !e.ev.seenByViewer(v) {
+			continue
+		}
+		if slices.ContainsFunc(ids, func(id string) bool { return e.names(id) }) {
+			return true
+		}
+	}
+	return false
+}
+
+// names says the entry has the combatant as its actor, its target or one of its hits.
+func (e *logEntry) names(id string) bool {
+	if e.ev.Actor == id || e.ev.Target == id {
+		return true
+	}
+	return slices.ContainsFunc(e.ev.Hits, func(h castHit) bool { return h.Target == id })
 }
 
 // lastSeqOf is the highest event number the combat's events reach, for the master. A player's is the highest entry number among the
