@@ -150,7 +150,7 @@
           <button matButton="filled" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="answer({ kind: 'app' })">
             Continuar
           </button>
-        } @else if (held.offer()) {
+        } @else if (held.offer() || follow.vanish.notice()) {
           <button matButton="outlined" type="button" class="btn" data-initial-focus [disabled]="busy()" (click)="close()">Fechar</button>
         } @else if (!view().handed) {
           <div class="stack">

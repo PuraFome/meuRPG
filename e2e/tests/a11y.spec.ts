@@ -7720,6 +7720,7 @@ async function scanEffectSaveMasterAnswers(browser: Browser, colorScheme: 'light
     await expect(save.getByText('O mestre respondeu por você.')).toBeVisible();
     await expect(save.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
     await expect(save.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toHaveCount(0);
     await expectScreenPasses(p, `O teste de resistência do fim do turno, o mestre respondeu pelo jogador ${where}`);
   } finally {
     if (campaignId) {

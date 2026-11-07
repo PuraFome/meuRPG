@@ -21,10 +21,12 @@ export class HeldFollow {
     if (!shown) {
       return;
     }
+    // Another hold on the roller is not this question: the one the sheet shows is gone.
+    const mine = open?.holdId === shown.holdId ? open : null;
     this.vanish.observe(shown);
-    this.vanish.observe(open ?? null);
+    this.vanish.observe(mine);
     if (this.vanish.notice()) {
-      this.held.ask(open ?? null);
+      this.held.ask(mine);
     }
   }
 

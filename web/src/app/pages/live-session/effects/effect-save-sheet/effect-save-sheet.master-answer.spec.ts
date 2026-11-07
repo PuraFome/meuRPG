@@ -109,6 +109,8 @@ describe('EffectSaveSheet: the master answers the question for the roller', () =
     );
     expect(s.buttons()).not.toContain('Ficar com o 1');
     expect(s.buttons().filter((b) => b.startsWith('Rolar de novo'))).toEqual([]);
+    // The save the master settled cannot be rolled again from the footer.
+    expect(s.buttons().filter((b) => b.includes('Rolar no app') || b.includes('Digitar'))).toEqual([]);
   });
 
   it('keeps the question while the combat still carries it', async () => {
