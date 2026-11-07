@@ -79,7 +79,11 @@ func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Com
 	if err != nil {
 		return wv.s.dbError(wv.ctx, "read the sheet", err)
 	}
-	creature := creatureFacts(reactor, states, sheet.Traits)
+	sun, err := wv.s.sunlightOf(wv.ctx, wv.s.queries, wv.d.enc)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "read the sunlight", err)
+	}
+	creature := sun.facts(creatureFacts(reactor, states, sheet.Traits), reactor)
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true, Against: against})
 	if onDamage {
 		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})

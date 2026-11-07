@@ -266,6 +266,8 @@ type modeFacts struct {
 	surprised []string
 	// down are the player's characters at 0 hit points: unconscious for an attack against them.
 	down []string
+	// sun is the combat's sunlight, off by default (Sunlight Sensitivity and Weakness).
+	sun sunlight
 }
 
 // modeResult is the mode of one roll: the truth, and what a viewer may read.
@@ -316,7 +318,7 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		reach, long = shape.MeleeReachFt, 0
 	}
 	s := combat.AttackScene{
-		Attacker: creatureFacts(attacker, f.states, traits), Target: creatureFacts(target, f.states, link.Traits{}),
+		Attacker: f.sun.facts(creatureFacts(attacker, f.states, traits), attacker), Target: f.sun.facts(creatureFacts(target, f.states, link.Traits{}), target),
 		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
 		// A table feat's ranged_attack effect: the weapon keeps its aim at long range.
@@ -754,9 +756,13 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
+	sun, err := s.sunlightOf(ctx, s.queries, d.enc)
+	if err != nil {
+		return turnModes{}, err
+	}
 	return turnModes{
 		who: who, sheet: sheet, viewer: v, names: s.namesFor(ctx, campaignID), ownTurn: actsNow(d.enc, who),
-		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps, enc: d.enc, surprised: surprised, down: down},
+		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps, enc: d.enc, surprised: surprised, down: down, sun: sun},
 	}, nil
 }
 

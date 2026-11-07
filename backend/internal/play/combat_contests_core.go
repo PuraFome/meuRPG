@@ -410,8 +410,12 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
 	}
+	sun, err := s.sunlightOf(ctx, q, enc)
+	if err != nil {
+		return nil, err
+	}
 	scene := combat.SaveScene{
-		Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: checkAbilityOf(skill), Check: true,
+		Creature: sun.facts(creatureFacts(who, statesOf(states), sheet.Traits), who), Ability: checkAbilityOf(skill), Check: true,
 		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skill == skillPercept,
 	}
 	var out []rollNote

@@ -125,6 +125,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainProtection,
 	chainResistance,
 	chainReactionMode,
+	chainSunlight,
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
@@ -270,6 +271,15 @@ func chainProtection(c chainEvent) chainVerdict {
 // back, so it never closes the chain: the undo goes on to the action before it.
 func chainReactionMode(c chainEvent) chainVerdict {
 	if c.row.Kind == eventMonsterReactionSet {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
+// chainSunlight: the master's switch of the sunlight changes nothing an undo could put back, so it never closes
+// the chain either.
+func chainSunlight(c chainEvent) chainVerdict {
+	if c.row.Kind == eventSunlightSet {
 		return chainSkip
 	}
 	return chainGoOn

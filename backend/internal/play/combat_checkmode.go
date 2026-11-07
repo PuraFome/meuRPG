@@ -98,8 +98,12 @@ func (s *Service) baseCheckModeOf(ctx context.Context, tx pgx.Tx, campaignID, se
 	if err != nil {
 		return checkMode{}, err
 	}
+	sun, err := s.sunlightOf(ctx, q, enc)
+	if err != nil {
+		return checkMode{}, err
+	}
 	sources := combat.SaveMode(combat.SaveScene{
-		Creature: creatureFacts(who, states, sheet.Traits), Ability: ability, Check: check, EffectVisible: true,
+		Creature: sun.facts(creatureFacts(who, states, sheet.Traits), who), Ability: ability, Check: check, EffectVisible: true,
 		StealthArmor: skillKey == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skillKey == skillPercept,
 	})
 	// A Help with this check gives advantage on it, whatever rolls it (SRD 5.1, "Help").

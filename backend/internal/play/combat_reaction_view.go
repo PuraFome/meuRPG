@@ -505,7 +505,11 @@ func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *play
 		if err != nil {
 			return wv.s.dbError(wv.ctx, "read a sheet", err)
 		}
-		sources := concentrationSources(creatureFacts(*reactor, statesOf(wv.d.states), sheet.Traits))
+		sun, err := wv.s.sunlightOf(wv.ctx, wv.s.queries, wv.d.enc)
+		if err != nil {
+			return wv.s.dbError(wv.ctx, "read the sunlight", err)
+		}
+		sources := concentrationSources(sun.facts(creatureFacts(*reactor, statesOf(wv.d.states), sheet.Traits), *reactor))
 		p.Mode = modeKey(combat.Resolve(sources))
 		for _, src := range shownSources(sources, wv.names) {
 			p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())

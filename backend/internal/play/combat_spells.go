@@ -751,7 +751,7 @@ func (s *Service) spellSaveScene(ctx context.Context, c *combatTx, campaignID st
 		return link.Sheet{}, combat.Creature{}, nil, err
 	}
 	against, err := s.spellSaveAgainst(ctx, c, sp)
-	return targetSheet, creatureFacts(target, modes.in.states, targetSheet.Traits), against, err
+	return targetSheet, modes.in.sun.facts(creatureFacts(target, modes.in.states, targetSheet.Traits), target), against, err
 }
 
 // spellSaveAgainst is what the saving throw against a spell is against: its own kinds (spellAgainst) and the

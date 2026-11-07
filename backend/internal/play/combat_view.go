@@ -378,6 +378,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	out.NpcOnlyGroups = d.npcOnlyGroups(v)
 	out.HitRiders = d.hitRidersView(v, vitals)
 	out.Zones = d.zonesView(v, names)
+	d.sunlightView(v, out)
 	rd := combatantReader{
 		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names,
 		ties:        unresolvedTies(d.cs),

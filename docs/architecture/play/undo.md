@@ -20,6 +20,7 @@ The roll of a Recharge action at a turn start (`recharge_rolled`) cannot be undo
 The death confirmation cannot be undone, and neither can a contest, a hit rider, a turn passing, an effect's or a concentration's saving throw (so a use of Legendary Resistance on those saves, or on a rider's, is not given back; a zone's catch at a cast is the exception above).
 The line of a Parry the server used on an attack is written just before the attack's event, and the undo of the attack takes it back with the attack and gives the creature its reaction back.
 The master's choice of a monster's Parry mode (`monster_reaction_mode_set`) never closes the chain: the undo goes on to the action before it.
+The master's switch of the sunlight (`sunlight_set`, secret, no log line) is the same: it never closes the chain.
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 
 Some events are written just before the change's own event and never close the chain, because the undo acts on the change and takes them along:

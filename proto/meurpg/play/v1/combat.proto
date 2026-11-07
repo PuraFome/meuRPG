@@ -565,6 +565,21 @@ service CombatService {
   //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
   rpc SetMonsterReactionMode(SetMonsterReactionModeRequest) returns (SetMonsterReactionModeResponse);
 
+  // SetSunlight switches the sunlight of the combat (RN-20, RN-29): `on` says whether the combat is in
+  // sunlight, `scope` says where (the whole map, or only the listed squares), and `add_squares` and
+  // `remove_squares` change the list of sunlit squares. Turning `on` off keeps the scope and the squares, so the
+  // master can switch back. A creature with Sunlight Sensitivity or Weakness rolls at a disadvantage while it
+  // stands in sunlight; magical Darkness beats the sunlight. A combat with no map (a theatre, or a grid with no
+  // map) has no squares: its scope is always the whole map. Only the master may call it, and only the master
+  // reads the state back (Encounter.sunlight_on, sunlight_scope, sunlight_squares).
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: a square is off the grid, squares were given for a combat with no map, the scope is
+  //     SQUARES for a combat with no map, or the list would pass 4096 squares.
+  //   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
+  rpc SetSunlight(SetSunlightRequest) returns (SetSunlightResponse);
+
   // AddCombatants brings reinforcements into the combat: copies of NPCs, as
   // in StartEncounter. Only the master may call it, while the combat is in
   // SETUP or ACTIVE. Each new NPC rolls its initiative at once and takes its
@@ -2201,6 +2216,13 @@ message Encounter {
   // master all of them (the ones of a hidden caster marked MASTER_ONLY), a player only
   // the ones whose caster they see. Empty in THEATRE mode and when no spell keeps one.
   repeated SpellZone zones = 31;
+  // Whether the combat is in sunlight (SetSunlight). Master only (RN-20, RN-29): a player reads none of
+  // sunlight_on, sunlight_scope and sunlight_squares, only the roll's result.
+  bool sunlight_on = 32;
+  // Where the sunlight reaches: the whole map, or only sunlight_squares. Master only (RN-20, RN-29).
+  SunlightScope sunlight_scope = 33;
+  // The sunlit squares, sorted by row then column, read when the scope is SQUARES. Master only (RN-20, RN-29).
+  repeated SunlightSquare sunlight_squares = 34;
 }
 
 // SpellZone is a lingering area a spell keeps on the map for a while (Moonbeam, Spirit
@@ -3433,6 +3455,41 @@ message SetMonsterReactionModeRequest {
 
 // SetMonsterReactionModeResponse returns the combat after the change.
 message SetMonsterReactionModeResponse {
+  Encounter encounter = 1;
+}
+
+// SunlightScope is where the sunlight of a combat reaches.
+enum SunlightScope {
+  SUNLIGHT_SCOPE_UNSPECIFIED = 0;
+  // The whole map (or the whole combat, when it has no map).
+  SUNLIGHT_SCOPE_MAP = 1;
+  // Only the squares in Encounter.sunlight_squares.
+  SUNLIGHT_SCOPE_SQUARES = 2;
+}
+
+// SunlightSquare is one square of the grid, column and row from 0.
+message SunlightSquare {
+  int32 col = 1;
+  int32 row = 2;
+}
+
+// SetSunlightRequest switches the sunlight of a combat.
+message SetSunlightRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  string idempotency_key = 3;
+  // True puts the combat in sunlight; false takes it out, keeping the scope and the squares.
+  bool on = 4;
+  // Where the sunlight reaches. UNSPECIFIED keeps the current scope.
+  SunlightScope scope = 5;
+  // Squares that become sunlit.
+  repeated SunlightSquare add_squares = 6;
+  // Squares that stop being sunlit.
+  repeated SunlightSquare remove_squares = 7;
+}
+
+// SetSunlightResponse returns the combat after the change.
+message SetSunlightResponse {
   Encounter encounter = 1;
 }
 

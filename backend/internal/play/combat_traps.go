@@ -174,9 +174,16 @@ func (s *Service) trapDice(e dice.Expr) (dice.Result, error) {
 func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, effect *rulesv1.TrapEffect, caught []playdb.Combatant, states map[string][]playdb.CombatantState) ([]trapTarget, error) {
 	ability := trapSaveAbility(effect)
 	out := make([]trapTarget, len(caught))
+	var sun sunlight // the caught are all in one combat; a trap that catches nobody needs none
+	if len(caught) > 0 {
+		var err error
+		if sun, err = s.sunlightRead(ctx, s.queriesIn(tx), caught[0].EncounterID); err != nil {
+			return nil, err
+		}
+	}
 	for i, c := range caught {
 		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapSaveAgainst(effect), &out[i]); err != nil {
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, sun, states, ability, trapSaveAgainst(effect), &out[i]); err != nil {
 			return nil, err
 		}
 		if trapNeedsAC(effect) {
@@ -866,12 +873,12 @@ func (v trapView) statusOf(pendingID string) (playv1.PendingDamageStatus, bool) 
 // throw (SRD 5.1): the combatant's conditions and states count, and so does Danger
 // Sense, but only against a trap the character knew before it fired: a hidden trap
 // is no effect it sees, and the source is not even named (RN-10).
-func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, against []string, out *trapTarget) error {
+func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, sun sunlight, states map[string][]playdb.CombatantState, ability string, against []string, out *trapTarget) error {
 	sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 	if err != nil {
 		return err
 	}
-	creature := creatureFacts(c, states, sheet.Traits)
+	creature := sun.facts(creatureFacts(c, states, sheet.Traits), c)
 	out.facts = creature
 	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
 	out.attackSources = attack.Sources
