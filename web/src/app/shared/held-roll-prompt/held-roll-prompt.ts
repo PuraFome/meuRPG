@@ -28,10 +28,11 @@ import {
 } from '../../core/held-rolls/held-roll-offer';
 import {
   INDOMITABLE_WHAT,
-  REROLL_ROLLER_FOOTER,
   STROKE_WHAT,
+  askingText,
   indomitableTitle,
   questionTitle,
+  rerollRollerFooter,
   rerollWhat,
   strokeTitle,
 } from '../../core/held-rolls/held-text';
@@ -105,7 +106,10 @@ export class HeldRollPrompt {
   protected readonly rerollTitle = computed(() => questionTitle(this.offer()));
   protected readonly rerollWhat = computed(() => rerollWhat(this.offer()));
   protected readonly rerollFace = computed(() => rerollFace(this.offer()));
-  protected readonly rerollFooter = REROLL_ROLLER_FOOTER;
+  protected readonly rerollFooter = computed(() => rerollRollerFooter(this.offer()));
+  protected readonly rerollBusy = computed(() =>
+    askingText({ kind: 'reroll', reroll: this.choice() === 'again', roll: null }, this.offer()),
+  );
   /** Which button of the reroll question is on its way, so the spinner says what it is doing. */
   protected readonly choice = signal<'again' | 'keep' | null>(null);
   /** Which question of which roll: it changes when Lucky's answer brings the die's. */

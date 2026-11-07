@@ -13,8 +13,8 @@ import {
 import { answeredText } from './held-roll-result';
 import { heldAnswer, heldDie, heldReroll } from './held-roll-testing';
 import {
-  REROLL_MASTER_FOOTER,
-  REROLL_ROLLER_FOOTER,
+  rerollMasterFooter,
+  rerollRollerFooter,
   askingText,
   d20Chip,
   d20Line,
@@ -67,7 +67,7 @@ describe('the reroll rule’s question (rolar de novo?)', () => {
       text: 'você rola este d20 de novo e fica com o novo resultado, mesmo se for pior. Gasta 1 uso de Sorte Teimosa.',
     });
     expect(d20Line(offer)).toBe('d20 · bônus +5 · total 7');
-    expect(REROLL_ROLLER_FOOTER).toBe(
+    expect(rerollRollerFooter(offer)).toBe(
       `O app rola o novo d20, também numa mesa de dados físicos. Se você não responder, o mestre pode responder por você depois de ${MASTER_WAIT_SECONDS} s.`,
     );
   });
@@ -86,7 +86,9 @@ describe('the reroll rule’s question (rolar de novo?)', () => {
 
   it('words the master’s card: the rule and that nothing is typed', () => {
     expect(questionRule(heldReroll())).toEqual({ lead: '', text: 'Sorte Teimosa gasta 1 uso.' });
-    expect(REROLL_MASTER_FOOTER).toBe('O app rola o novo d20; não há resultado para digitar.');
+    expect(rerollMasterFooter(heldReroll())).toBe(
+      'O app rola o novo d20; não há resultado para digitar.',
+    );
   });
 
   it('says what the answer on the way is doing', () => {

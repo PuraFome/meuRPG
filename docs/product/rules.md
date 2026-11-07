@@ -392,6 +392,7 @@ If it does not, everyone uses the type the master picks.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
 - The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
+- A table feature's reroll ("rolar de novo?", RN-23) is rolled by the app even when the master forces physical dice: it is the one d20 the player cannot type. *To confirm with the product owner.*
 - The hit points rolled when a character is created are not part of this rule.
 - Screens: the master's "Dados" panel, the player's "Como você rola os dados", and the roll sheets, which show "Rolar no app" and "Digitar o resultado" in the order of the preference, or only the way a forced mode allows.
 
@@ -627,7 +628,7 @@ Members read the campaign's content, except creatures (below); only the master w
     Answering yes spends the uses and rolls a new d20 that stands, even when it is another low face; answering no spends nothing.
     It applies to weapon and spell attack rolls, to the scene check, the group check, the saving throw of an effect and the concentration save.
     It never applies to a contest (a grapple, a shove, an escape), Hide, the Counterspell check, a death save, the initiative, a trap search or a puzzle hint.
-    The question is on: the app asks on those rolls, and the roll waits for the answer.
+    The app asks on those rolls, and the roll waits for the answer.
     The player reads "Tirou 2: rolar de novo?" with the name of the feature, "Rolar de novo" and "Ficar com o 2"; the master reads it in the roller's row and may answer for the roller after ten seconds.
     The question is for the roller's player and the master, as Lucky's is (RN-35).
   - **Lucky.** A roll that asks the halfling's Lucky question is not offered the reroll, so the two never meet in one roll.
@@ -640,8 +641,7 @@ Members read the campaign's content, except creatures (below); only the master w
   - **Physical dice.** The app rolls the new d20 and the new damage dice itself even at a physical-dice table, so this die is not typed by the player (RN-18 does not hold for it).
   - **The feature's name.** The roller's player and the master read the name of the entry that changed a roll (a reroll or a minimum) next to the roll.
     Another player never reads it, and nobody reads the name of an entry the master retired or switched off.
-  - **Not covered.** The master's editor lists "Rolar de novo" and "Valor mínimo no dado" but cannot save them: write them through the API.
-    The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
+  - **Not covered.** The critical range is chosen in the editor as a modifier, and the server refuses any mode but "Definir".
 - **Spell slots.** A table feature can turn uses of its resource into a free spell slot of a level, until the next long rest; spend a spell slot of a level the player picks to heal more dice for each level; or, after a short rest, take expended slots back up to a level and a combined level, once per use of its resource (the shape of Arcane Recovery). Each spend goes through the character's numbers like any other, shows in the combat log with the slot's level, and the master's undo gives it back; the recovery, like Arcane Recovery, is not undone, the master adjusts the slots by hand.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
 - **Creatures.**

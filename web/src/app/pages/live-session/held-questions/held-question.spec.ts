@@ -298,12 +298,12 @@ describe('HeldQuestion', () => {
       expect(el.querySelector('h3')?.textContent?.trim()).toBe('Tirou 2: rolar de novo?');
     });
 
-    it('closes with "Brisa respondeu." when the roller answered first', () => {
+    it('closes with a neutral line when the question is gone, since the master did not answer it', () => {
       const { fixture, el } = mount(reroll(3));
       questions.sync([]);
       fixture.detectChanges();
       expect(el.querySelector('[data-testid="held-note"]')?.textContent).toContain(
-        'Brisa respondeu.',
+        'Essa pergunta não vale mais.',
       );
     });
   });

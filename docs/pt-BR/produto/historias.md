@@ -665,8 +665,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma característica com o efeito "Valor mínimo no dado" em dano com o valor 6, **quando** o dono rola o dano de uma arma e um d4 mostra 1, **então** o dado conta como 4 (o seu maior valor) e a linha de dano mostra o 1 e como ele conta; **e** um d8 que mostra 3 conta como 6 sob o mesmo mínimo.
   Outro jogador não lê nem a face nem o número.
 - **Dado** uma característica com o efeito "Rolar de novo" em jogadas de ataque, no máximo 2, gastando 1 uso de um recurso da característica, **quando** o d20 do dono mostra 2 ou menos e sobra um uso, **então** o jogador recebe "rolar de novo?" antes de a jogada ser dita bem-sucedida ou falha; "sim" gasta o uso e o novo d20 vale, "não" não gasta nada.
-  O app não tem tela para a pergunta, então o servidor não retém a jogada; o teste da API cobre o critério.
-  O efeito se escreve pela API: o editor o lista, mas não consegue salvá-lo.
+  O app faz a pergunta na tela do jogador, e o mestre a lê na linha de quem rolou.
 - **Dado** uma característica com o efeito "Rolar de novo" em dano, no máximo 2, gastando 1 uso, **quando** o dono rola o dano de uma arma e um dado mostra 1 ou 2, **então** o app rola esse dado de novo sem perguntar, a parte do dano o lista e o uso é gasto; **quando** o mestre desfaz o dano, **então** o uso volta.
   Uma característica sem recurso rola de novo de graça; um custo que o recurso nunca paga deixa o efeito fora da ficha.
 

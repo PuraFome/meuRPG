@@ -17,7 +17,7 @@
         @if (busy() && choice()) {
           <p class="ask__busy">
             <mat-spinner diameter="20" aria-hidden="true" />
-            {{ choice() === 'again' ? 'Rolando o d20 de novo…' : 'Ficando com o resultado…' }}
+            {{ rerollBusy() }}
           </p>
         }
       </div>
@@ -40,7 +40,7 @@
       >
         Ficar com o {{ rerollFace() }}
       </button>
-      <p class="ask__foot">{{ rerollFooter }}</p>
+      <p class="ask__foot">{{ rerollFooter() }}</p>
     </section>
   </div>
 } @else if (lucky()) {

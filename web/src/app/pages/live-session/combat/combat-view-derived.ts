@@ -8,7 +8,15 @@ import {
 import { ActionKey } from '../../../core/connect/idempotency';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { HeldRollKind } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { asksLucky, heldOfferOf, weaponHold } from '../../../core/held-rolls/held-roll-offer';
+import {
+  asksLucky,
+  asksReroll,
+  asksStroke,
+  dieOf,
+  heldOfferOf,
+  rerollFace,
+  weaponHold,
+} from '../../../core/held-rolls/held-roll-offer';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { wildActionLine } from '../../../core/combat/combat-notices';
 import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
@@ -373,5 +381,10 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     return own ? weaponHold(heldOfferOf(own)) : null;
   });
   protected readonly ownLucky = computed(() => asksLucky(this.ownHeld()));
-  protected readonly ownDieAsked = computed(() => this.ownHeld() !== null && !this.ownLucky());
+  /** The weapon attack waits for a table feature's reroll ("Tirou 2: rolar de novo?"). */
+  protected readonly ownReroll = computed(() => asksReroll(this.ownHeld()));
+  protected readonly ownRerollFace = computed(() => rerollFace(this.ownHeld()));
+  protected readonly ownStroke = computed(() => asksStroke(this.ownHeld()));
+  /** The Bardic Inspiration die's question, and only it. */
+  protected readonly ownDieAsked = computed(() => dieOf(this.ownHeld()) !== undefined);
 }

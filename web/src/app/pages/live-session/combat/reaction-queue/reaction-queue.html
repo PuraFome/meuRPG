@@ -283,6 +283,14 @@
       }
     }
     <span class="mr-visually-hidden" role="status" aria-live="polite">{{ said() }}</span>
+    <div class="mr-live" role="status">
+      @if (heldNote()) {
+        <div class="mr-notice mr-notice--warning">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <p>{{ heldNote() }}</p>
+        </div>
+      }
+    </div>
     @if (error()) {
       <div class="mr-notice mr-notice--danger" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>

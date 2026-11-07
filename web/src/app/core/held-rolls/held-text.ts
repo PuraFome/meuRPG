@@ -75,11 +75,15 @@ export function rerollWhat(offer: HeldRollOffer): { readonly lead: string; reado
   return { lead: `${rerollSourceName(offer)}:`, text: `${what} ${rerollCost(offer)}` };
 }
 
-/** The footer of the reroll question the roller reads. The app rolls the new d20 on every table, so nothing is typed. */
-export const REROLL_ROLLER_FOOTER = `O app rola o novo d20, também numa mesa de dados físicos. Se você não responder, o mestre pode responder por você depois de ${MASTER_WAIT_SECONDS} s.`;
+/** The footer of the reroll question the roller reads. The app rolls the new die on every table, so nothing is typed. */
+export function rerollRollerFooter(offer: HeldRollOffer): string {
+  return `O app rola o novo d${rerollSides(offer)}, também numa mesa de dados físicos. Se você não responder, o mestre pode responder por você depois de ${MASTER_WAIT_SECONDS} s.`;
+}
 
 /** The footer of the reroll question the master reads. */
-export const REROLL_MASTER_FOOTER = 'O app rola o novo d20; não há resultado para digitar.';
+export function rerollMasterFooter(offer: HeldRollOffer): string {
+  return `O app rola o novo d${rerollSides(offer)}; não há resultado para digitar.`;
+}
 
 /** The title the roller reads: "Tirou 1: rolar de novo?", "Usar a Inspiração de Bardo (d8)?" or Indomitable's. */
 export function questionTitle(offer: HeldRollOffer): string {

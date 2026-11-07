@@ -9,21 +9,21 @@ The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.g
 
 Whichever path rolls the d20 asks the same gate.
 
-| Kind (`heldKind`) | Path | Where it is held |
-| --- | --- | --- |
-| Weapon attack | `RollAttack` (the attack is written under the request's key from the request the hold kept, with the mode the gate pinned in it, so the stored hash is the pinned request's; the request made again gives the written attack back, `retryOfHeldAttack`, and the same key for another request is refused) | `inspiration_holds` |
-| Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
-| The effect's saving throw | `RollEffectSave` (a retry of a written save answers with its result read back from the event, the Bardic Inspiration die's sides and face included: the event keeps the die in `Res`) | `inspiration_holds` |
-| The concentration save | `ResolveConcentrationSave` (a retry of a written save answers with its result read back from the event: the d20, the Bardic Inspiration die in `Res` and the d20 Lucky rolled again) | `inspiration_holds` |
-| Scene check | `RollSceneCheck` | `inspiration_holds` |
-| Group check | `RollGroupCheck` | `inspiration_holds` |
-| Trap search | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody) | `inspiration_holds` |
-| Puzzle hint try | `TryPuzzleHint` (the try row keeps the die in `bonus_sides` and `bonus_face`, so a retry answers with it) | `inspiration_holds` |
-| Death save | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s) | `inspiration_holds` |
-| Contest check | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check | `inspiration_holds` |
-| Hide check | `Hide` (the Stealth check) | `inspiration_holds` |
-| Counterspell check | `AnswerReaction` (the ability check of a Counterspell above the slot's level) | `inspiration_holds` |
-| Initiative | `SubmitInitiative` (a player's character in SETUP; the master may roll for it and then waits for the player's first 10 s) | `inspiration_holds` |
+| Kind (`heldKind`)               | Path                                                                                                                                                                                                                                                                                                     | Where it is held    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Weapon attack                   | `RollAttack` (the attack is written under the request's key from the request the hold kept, with the mode the gate pinned in it, so the stored hash is the pinned request's; the request made again gives the written attack back, `retryOfHeldAttack`, and the same key for another request is refused) | `inspiration_holds` |
+| Spell attack against one target | `CastSpell` (`inspiration_held.go`)                                                                                                                                                                                                                                                                      | `inspiration_holds` |
+| The effect's saving throw       | `RollEffectSave` (a retry of a written save answers with its result read back from the event, the Bardic Inspiration die's sides and face included: the event keeps the die in `Res`)                                                                                                                    | `inspiration_holds` |
+| The concentration save          | `ResolveConcentrationSave` (a retry of a written save answers with its result read back from the event: the d20, the Bardic Inspiration die in `Res` and the d20 Lucky rolled again)                                                                                                                     | `inspiration_holds` |
+| Scene check                     | `RollSceneCheck`                                                                                                                                                                                                                                                                                         | `inspiration_holds` |
+| Group check                     | `RollGroupCheck`                                                                                                                                                                                                                                                                                         | `inspiration_holds` |
+| Trap search                     | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody)                                                                                                                                  | `inspiration_holds` |
+| Puzzle hint try                 | `TryPuzzleHint` (the try row keeps the die in `bonus_sides` and `bonus_face`, so a retry answers with it)                                                                                                                                                                                                | `inspiration_holds` |
+| Death save                      | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s)                                                                                                                                                          | `inspiration_holds` |
+| Contest check                   | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check                                                                                                                                                                                    | `inspiration_holds` |
+| Hide check                      | `Hide` (the Stealth check)                                                                                                                                                                                                                                                                               | `inspiration_holds` |
+| Counterspell check              | `AnswerReaction` (the ability check of a Counterspell above the slot's level)                                                                                                                                                                                                                            | `inspiration_holds` |
+| Initiative                      | `SubmitInitiative` (a player's character in SETUP; the master may roll for it and then waits for the player's first 10 s)                                                                                                                                                                                | `inspiration_holds` |
 
 **Death saves.** The d20 of a death save is gated like a saving throw with no modifier (`deathSaveWrite`): a Bardic Inspiration die the combatant holds or a halfling's 1 keeps it with the counts untouched until the answer, and the die moves the total across 10 (`combat.DeathSaveWith`) but never a natural 1 (two failures) or a natural 20 (back with 1 hit point). The event keeps the die (`Res`, which the undo gives back) and the Lucky reroll. A failed death save is also offered Indomitable once Lucky and the die are answered, and the counts stay untouched until that is answered too. The player's screen shows the question under the counts (`CombatDeaths.held`, read again from the combatant's `held_roll_offer`).
 
@@ -335,7 +335,7 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 - **Lucky.** The two never meet in one roll.
   A roll that asks Lucky's question (a 1 on a halfling's d20) is not offered the reroll, before or after Lucky is answered.
 - **The switch.** Nothing is asked unless `Config.D20Rerolls` is on.
-  `cmd/api` turns it on, since the web has the screens for the question (#573); the field stays so a test can turn it off.
+  `cmd/api` turns it on, and the field stays so a test can turn it off.
   With it on, these rolls wait for the question whenever a rule covers them and the character can pay: the weapon attack and the spell attack, the scene check, the group check, the effect's saving throw and the concentration save.
   With it off the roll settles as if the player declined: nothing is held, spent or written.
   A question written while it was on and still waiting when it goes off is stale: the next roll that runs the gate forgets it, it never refuses a roll, and answering it fails.
@@ -345,6 +345,7 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
   - `save`: the effect's saving throw and the concentration save.
 
   The contests, Hide, the Counterspell check, the death save, the initiative, the trap search and the puzzle hint never ask it, whatever the character has.
+
 - **Order.** The reroll comes after Lucky and before the Bardic Inspiration die.
   Indomitable and Stroke of Luck look at the new roll.
 - **Answer.** Rolling again makes the service roll a d20 with its own roller, whatever the campaign's dice mode.
@@ -360,9 +361,17 @@ The damage dice are not a held roll: the app rolls them again by itself ([Attack
 - **Columns** of `inspiration_holds` ([Play data](../../data/play.md)): `reroll_ask`, `reroll_index`, `reroll_at_most`, `reroll_resource`, `reroll_cost`, `reroll_source`, `reroll_answer_key`, `reroll_from`, `reroll_to`.
   The cleanup of orphan holds keeps a hold with `reroll_ask` set, since a question outside a combat has no die.
 - **Wire.** `RerollQuestion` in `HeldRollOffer.question`, `RerollAnswer` (`reroll`, a boolean) in `AnswerHeldRollRequest`.
-- **Web.** `HeldRollPrompt` (the roller) and `HeldQuestion` (the master) answer it.
-  The title is "Tirou N: rolar de novo?" with N the face at `reroll_index`; the line names the feature by `source_name` (empty reads "uma característica") and the cost, "Gasta 1 uso de Sorte Teimosa." The offer carries the resource only as a content key, so the feature's name stands for the resource in that line.
-  The answer is `{ kind: 'reroll', reroll }` and goes as `RerollAnswer`; nothing is typed, because the server rolls the new d20 (see Answer above), and the die drawn is `sides` (a d20 when the server sends none).
-  The log writes the rule's reroll as "Sorte Teimosa: 2 → 14 · 1d20 (14) + 5 = 19", the dice a floor raised as "2d10 (1 → 2, 7) = 9" with "Chama Insistente: o 1 contou como 2.", and a d20 a feature raised as "d20: 3 → 8 (Vontade de Ferro) + 2 = 10", each only where the server sent the faces and the `*_source_name`.
-  The live stream (`WatchGameSession`) carries none of the messages that get `*_source_name`: its events are hints, so the web reads the names from the unary responses only.
-
+- **Web.** `HeldRollPrompt` asks the roller and `HeldQuestion` asks the master.
+  The title is "Tirou N: rolar de novo?", with N the face at `reroll_index`.
+  The line names the feature by `source_name`, and "uma característica" when it is empty.
+  It also says the cost: "Gasta 1 uso de Sorte Teimosa."
+  The answer is `RerollAnswer`, and nothing is typed, because the server rolls the new d20.
+  After a reload the weapon attack's question reopens its sheet.
+  The other rolls come back from `ListHeldRolls` in the session panel's block.
+  When the master rolls a player's save from the reaction queue, a notice says the roll waits for the player.
+  The log writes a rule's reroll as "Sorte Teimosa: 2 → 14 · 1d20 (14) + 5 = 19".
+  It writes the dice a floor raised as "2d10 (1 → 2, 7) = 9", with "Chama Insistente: o 1 contou como 2.".
+  It writes a d20 a feature raised as "d20: 3 → 8 (Vontade de Ferro) + 2 = 10".
+  Each line appears only where the server sent the faces and the `*_source_name`.
+  The live stream (`WatchGameSession`) carries none of the messages that get `*_source_name`.
+  Its events are hints, so the web reads the names from the unary responses only.

@@ -13,7 +13,7 @@ import {
   dieOf,
 } from '../../../core/held-rolls/held-roll-offer';
 import {
-  REROLL_MASTER_FOOTER,
+  rerollMasterFooter,
   d20Chip,
   d20Line,
   questionRule,
@@ -85,7 +85,10 @@ export class HeldQuestion {
   protected readonly stroke = computed(() => asksStroke(this.offer()));
   /** A table feature's reroll: the server rolls the new d20, so the master has nothing to type. */
   protected readonly ruleReroll = computed(() => asksReroll(this.offer()));
-  protected readonly rerollFooter = REROLL_MASTER_FOOTER;
+  protected readonly rerollFooter = computed(() => {
+    const offer = this.offer();
+    return offer ? rerollMasterFooter(offer) : '';
+  });
   /** The question rolls a d20 again (Lucky's, Indomitable's or a reroll rule's), not the Bardic Inspiration die. */
   protected readonly rerolls = computed(
     () => this.lucky() || this.indomitable() || this.ruleReroll(),
@@ -124,8 +127,9 @@ export class HeldQuestion {
     if (!this.ruleReroll() || this.layout() !== 'card' || !q.lead()) {
       return '';
     }
+    const who = this.offer()?.rollerLabel ? `por ${q.roller}` : 'pelo jogador';
     return q.countdown()
-      ? `${q.lead()}. Você pode responder por ${q.roller} em ${q.seconds()} s.`
+      ? `${q.lead()}. Você pode responder ${who} em ${q.seconds()} s.`
       : `${q.lead()}.`;
   });
   protected readonly waiting = computed(() => this.phase() !== 'ready');

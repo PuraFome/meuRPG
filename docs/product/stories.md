@@ -665,8 +665,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a feature with the effect "Valor mínimo no dado" on damage with the value 6, **when** its owner rolls a weapon's damage and a d4 shows 1, **then** the die counts as 4 (its highest face) and the damage line shows the 1 and what it counts as; **and** a d8 that shows 3 counts as 6 under the same minimum.
   Another player reads neither the face nor the number.
 - **Given** a feature with the effect "Rolar de novo" on attack rolls, at most 2, spending 1 use of a resource of the feature, **when** its owner's d20 shows 2 or lower and a use is left, **then** the player is asked "rolar de novo?" before the roll is said to succeed or fail; "sim" spends the use and the new d20 stands, "não" spends nothing.
-  The app has no screen for the question, so the server does not hold the roll; the API test covers the criterion.
-  The effect is written through the API: the editor lists it but cannot save it.
+  The app asks the question on the player's screen, and the master reads it in the roller's row.
 - **Given** a feature with the effect "Rolar de novo" on damage, at most 2, spending 1 use, **when** its owner rolls a weapon's damage and a die shows 1 or 2, **then** the app rolls that die again without asking, the part of the damage lists it, and the use is spent; **when** the master undoes the damage, **then** the use comes back.
   A feature with no resource rerolls for free; a cost the resource can never pay leaves the effect out of the sheet.
 
