@@ -117,10 +117,12 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The side column writes "Como fica na mesa" from the draft and the base's stat block.
   It lists who brings the creature (`carriersOf`, read from the entries the editor already has).
   `damage_mods` are rows of their own (`creature-damage-mods`, `damage-mods.ts`).
-  A row has a kind (`app-segmented`), the damage types (`app-pick-list` over the SRD's damage types) and the qualifier (`app-radio-cards`).
-  The qualifier is off for a vulnerability and for a non-physical type, with the reason under it.
+  Each row is one table line of three Material selects: the kind, the damage types (multiple, over the SRD's) and the qualifier.
+  The qualifier is off (dashed, with a block icon) for a vulnerability and for a non-physical type, and one info line under the rows says why.
+  A refusal sits under its select; a repeated damage type is named by the client (`duplicateText`).
+  A value this build does not know stays as an extra option, "valor desconhecido: x".
   Changing a kind or a type that takes the qualifier away clears it, so the save is not refused for it.
-  The preview adds "Resistências e imunidades" with the table's lines and the base's, and the read view lists the rows.
+  The preview line also carries CA, PV and speed, and it adds "Resistências e imunidades" with the table's lines and the base's, and the read view lists the rows.
 - **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
   It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
   The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".
