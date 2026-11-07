@@ -398,7 +398,7 @@ func heldLineHas(ids []string, sinceSeq int64, v combatViewer, entries []*logEnt
 		if e.seq > sinceSeq || e.masterOnly || e.ev.Secret || !e.ev.seenByViewer(v) {
 			continue
 		}
-		if slices.ContainsFunc(ids, func(id string) bool { return e.names(id) }) {
+		if slices.ContainsFunc(ids, func(id string) bool { return e.names(id, v) }) {
 			return true
 		}
 	}
@@ -412,14 +412,16 @@ func (ev actionEvent) heardBy(v combatViewer) bool {
 	return v.master || (!ev.Secret && ev.seenByViewer(v) && !ev.Trap.addsNothingFor(v))
 }
 
-// names says the entry has the combatant as its actor, its target or one of its hits. These are the only fields the visibility rules
+// names says the entry has the combatant as its actor, its target or one of its hits, or as a creature of a firing the viewer is given. These are the only fields the visibility rules
 // read today; a rule that reads another combatant of the line (an area's caught list, a rider's target) must extend it.
-func (e *logEntry) names(id string) bool {
+func (e *logEntry) names(id string, v combatViewer) bool {
 	if e.ev.Actor == id || e.ev.Target == id {
 		return true
 	}
-	if e.ev.Trap != nil && slices.ContainsFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id }) {
-		return true // a creature a firing caught: its being shown or hidden changes the line
+	// A creature a firing caught: its being shown or hidden changes the line, but only for a viewer the line gives it to. One hidden
+	// when the trap fired, or that this viewer did not see, is not in their line, and a toggle of it must tell them nothing.
+	if e.ev.Trap != nil && slices.ContainsFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id && !cc.hiddenFrom(v) }) {
+		return true
 	}
 	return slices.ContainsFunc(e.ev.Hits, func(h castHit) bool { return h.Target == id })
 }
@@ -436,30 +438,45 @@ func lastSeqOf(events []playdb.ListEncounterEventsRow) int64 {
 
 // stampSeqs sets each entry's seq: the highest number among the events it shows. A player's counts the entry's own event (the line
 // is theirs or it is not shown at all: a reactor's own player gets the line of a reaction the fog or Secret hides from the table) and,
-// of the events that join it, only the ones the player hears of (not Secret, seen): an event that joins a line the player holds
-// without being told to them (a legendary resistance spent on a save they see) moves nothing they read, so it cannot move the number
-// of that line, and the number of their answer, either.
+// of the events that join it, only the ones the player hears of (not Secret, seen, not an addition of creatures they are not given):
+// an event that joins a line the player holds without being told to them (the damage a master applies to a hidden target of a cast
+// they see, a hidden NPC added to a firing they saw) moves nothing they read, so it cannot move the number of that line, nor the
+// number of their answer.
 func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow, v combatViewer) {
-	type host struct {
-		seq   int64
-		heard bool
-	}
-	byID := make(map[string]host, len(events))
+	heard := heardJoined(entries, events, v)
+	seqOf := make(map[string]int64, len(events))
 	for _, e := range events {
-		heard := v.master
-		if !heard {
-			ev, err := readEvent(e.Payload)
-			heard = err == nil && ev.heardBy(v)
-		}
-		byID[e.ID] = host{seq: int64(e.Seq), heard: heard}
+		seqOf[e.ID] = int64(e.Seq)
 	}
 	for _, entry := range entries {
 		for i, id := range entry.hosts {
-			if h := byID[id]; h.heard || i == 0 {
-				entry.seq = max(entry.seq, h.seq)
+			if i == 0 || v.master || heard[id] {
+				entry.seq = max(entry.seq, seqOf[id])
 			}
 		}
 	}
+}
+
+// heardJoined are the events that join an entry (not its first) which the player hears of. Only those payloads are read, and none
+// for the master, who hears of all.
+func heardJoined(entries []*logEntry, events []playdb.ListEncounterEventsRow, v combatViewer) map[string]bool {
+	heard := map[string]bool{}
+	if v.master {
+		return heard
+	}
+	joined := map[string]bool{}
+	for _, entry := range entries {
+		for _, id := range entry.hosts[min(1, len(entry.hosts)):] {
+			joined[id] = true
+		}
+	}
+	for _, e := range events {
+		if joined[e.ID] {
+			ev, err := readEvent(e.Payload)
+			heard[e.ID] = err == nil && ev.heardBy(v)
+		}
+	}
+	return heard
 }
 
 // logViewer is who reads the log: the member, and for a player the table's rule on the

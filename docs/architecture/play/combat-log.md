@@ -82,7 +82,7 @@ When in doubt a kind stays off the list.
 
 Because a player's answer ignores what they cannot see, it tells them nothing a hidden write did.
 A player's `last_seq` is the highest entry number among the entries they read, raised to the highest event that would have asked for the whole log, so the next read does not meet the same event again and ask for everything once more.
-It does not move on a write they may not see, whether that write makes a line of its own (the master's alone, secret, out of their sight) or only joins a line they hold (a legendary resistance spent on a save they see, a hidden NPC added to a firing).
+It does not move on a write they may not see, whether that write makes a line of its own (the master's alone, secret, out of their sight) or only joins a line they hold (the damage the master applies to a hidden target of a cast they see, a hidden NPC added to a firing).
 The master's `last_seq` is the highest event number of the combat.
 In a delta, the master's `undoable_event_id` entry is always sent, so the app can derive the `undoable` flag: it is right only on the entry of that id.
 
