@@ -301,6 +301,9 @@ type Effect struct {
 	// DC, a number of uses).
 	TextPT string `json:"text_pt,omitempty"`
 
+	// flag (effectflags.go): the closed rule of the game it switches on, one of effectFlags.
+	Flag string `json:"flag,omitempty"`
+
 	// roll_minimum (rolleffects.go) uses Rolls too, with Value the lowest a die counts as (a literal, 2 to 20).
 	// A critical_range modifier uses Applies for its scope (CriticalScope*).
 	// reroll (rolleffects.go): Rolls are the rolls it covers (Roll*), a list because Applies holds one
@@ -333,7 +336,7 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
-		"reroll", "roll_minimum",
+		"reroll", "roll_minimum", "flag",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -430,6 +433,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"weapon_rule":        effectCompiler.weaponRule,
 	"pseudo_weapon":      effectCompiler.pseudoWeapon,
 	"breathes_water":     effectCompiler.breathesWater,
+	"flag":               effectCompiler.flag,
 	"granted_spell":      effectCompiler.grantedSpell,
 	"replaces":           effectCompiler.replaces,
 	"modifier":           effectCompiler.modifier,
@@ -545,6 +549,9 @@ func (x effectCompiler) strayFields() error {
 		return err
 	}
 	if err := x.strayCosts(); err != nil {
+		return err
+	}
+	if err := x.strayFlag(); err != nil {
 		return err
 	}
 	return x.straySpellAndRangeFields()

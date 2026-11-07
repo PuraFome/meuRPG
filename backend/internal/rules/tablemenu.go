@@ -167,6 +167,8 @@ const (
 	// ListRaceTraits are the traits of the SRD races: what a subrace's `replaces_trait_keys` may name
 	// for an SRD parent, each with its race as Group.
 	ListRaceTraits = "race_traits"
+	// ListEffectFlags are the flags a flag effect names.
+	ListEffectFlags = "effect_flags"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -382,6 +384,11 @@ var menuTypes = []MenuType{
 		{Name: "rolls", Required: true, Kind: "choices", List: ListRollApplies},
 		{Name: "value", Required: true, Kind: "text"},
 		{Name: "damage_type", Kind: "choice", List: ListDamageTypes},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "flag", NamePT: "Sinalizador", HintPT: "Liga uma regra do jogo para o personagem, entre as da lista: não ser surpreendido, ou atirar com arma à distância sem desvantagem por inimigo perto.", Fields: []MenuField{
+		{Name: "flag", Required: true, Kind: "cards", List: ListEffectFlags},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -729,6 +736,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListWeaponKinds, Values: namedMenuHint(weaponKinds, weaponFilterNms)},
 		{Name: ListLackableFeatures, Values: c.menuLackableFeatures()},
 		{Name: ListRaceTraits, Values: c.menuRaceTraits()},
+		{Name: ListEffectFlags, Values: effectFlagValues()},
 	}
 }
 

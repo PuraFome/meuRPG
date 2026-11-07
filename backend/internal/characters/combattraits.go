@@ -164,6 +164,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	t.RerollRules = rerollRulesOf(d)
+	t.Flags = slices.Clone(d.Flags)
 	t.RollMinimums, t.SpellCriticalRange = rollMinimumsOf(d), spellCriticalRangeOf(d)
 	return t
 }

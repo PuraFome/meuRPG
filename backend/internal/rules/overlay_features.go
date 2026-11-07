@@ -18,7 +18,7 @@ import (
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
 	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
-	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "choice", "ability_increase", "note",
+	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "flag", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -355,6 +355,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"ambush":           (*overlayBuilder).checkOnTarget,
 	"reroll":           (*overlayBuilder).checkReroll,
 	"roll_minimum":     (*overlayBuilder).checkRollMinimum,
+	"flag":             func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkFlag(site, e) },
 	"modifier":         (*overlayBuilder).checkModifier,
 	"resource":         (*overlayBuilder).checkResourceEffect,
 	"slot_recovery":    (*overlayBuilder).checkSlotRecovery,
@@ -672,6 +673,8 @@ var ownFields = map[string][]string{
 	"pseudo_weapon": {"attack_name", "weapon", "damage_dice", "damage_type", "ability", "reach_ft", "range_ft", "while"},
 	// breathes_water has no field of its own: only the when that gates it.
 	"breathes_water": {},
+	// A flag names the rule it switches on, and the when that gates it.
+	"flag": {"flag"},
 	// A granted_spell names the spell, from which level, what it spends, and the switches.
 	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known"},
 }
@@ -772,6 +775,7 @@ var effectFields = []effectField{
 	{"damage_dice", func(e *Effect) bool { return e.DamageDice != "" }, func(e *Effect) { e.DamageDice = "" }},
 	{"rolls", func(e *Effect) bool { return len(e.Rolls) > 0 }, func(e *Effect) { e.Rolls = nil }},
 	{"at_most", func(e *Effect) bool { return e.AtMost != 0 }, func(e *Effect) { e.AtMost = 0 }},
+	{"flag", func(e *Effect) bool { return e.Flag != "" }, func(e *Effect) { e.Flag = "" }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.

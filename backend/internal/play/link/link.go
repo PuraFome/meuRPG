@@ -322,6 +322,9 @@ type Traits struct {
 	RerollRules []RerollRule `json:",omitempty"`
 	// RollMinimums are the lowest values a die counts as that the table's features give (roll_minimum effects).
 	RollMinimums []RollMinimum `json:",omitempty"`
+	// Flags are the closed rules of the game the table's features switch on (flag effects), sorted. The play reads them
+	// only through HasFlag.
+	Flags []string `json:",omitempty"`
 	// SpellCriticalRange is the lowest natural d20 that is a critical hit on a spell attack roll when a table
 	// feature lowers it (critical_range with the spell or both scope, 15 at the least); 0 is 20. The weapon
 	// range is Sheet.CriticalRange.
@@ -344,6 +347,9 @@ type Traits struct {
 	// surprised creature critical; empty for none.
 	UnactedAdvantage, SurprisedCritical string
 }
+
+// HasFlag says a flag effect of the table's features switches the flag on for the character (rules.FlagNeverSurprised...).
+func (t Traits) HasFlag(name string) bool { return slices.Contains(t.Flags, name) }
 
 // Resistance is a damage resistance of a feature or trait: its key and name, the
 // damage types it halves ("damage-type:fire") and when ("" always, "rage").
