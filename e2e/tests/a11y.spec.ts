@@ -63,6 +63,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
+import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { archiveEntryRPC, costsRaceBody, createEntryRPC, criticalFeatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
@@ -9396,4 +9397,223 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
 test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCreatureActions(browser, 'dark', 390);
+});
+
+// The editor screens of the race, subrace and feat (MR-025, RN-23; #571 and #716), and what a player and the master read of them.
+// A race whose trait asks the player to pick one of two options, a subrace that replaces a trait and the bonuses of its race, and
+// feats that ask for races, a size and a feature the character must not have, all through the API.
+
+/** The trait "Sentidos da noite" of the race, with its two options and the empty list of another trait. */
+async function scanTraitOptions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    const campaignId = await masterCampaign(m, `Acessibilidade traço ${Date.now()}`);
+    const night = await createNightRaceRPC(m, campaignId);
+    await open(m, entryRoute(campaignId, night.race));
+    const options = m.getByRole('region', { name: 'Opções para escolher de Sentidos da noite' });
+    await expect(options.getByLabel('Nome da opção')).toHaveCount(2);
+    await expect(options.getByLabel('Nome da opção').nth(1)).toHaveValue('Passo de pena');
+    await expectScreenPasses(m, `Editor de raça, o traço com opções para escolher ${where}`);
+    // A trait with no options says so, and a new option with no name says it is not saved.
+    const planar = m.getByRole('region', { name: 'Opções para escolher de Planar' });
+    await expect(planar.getByText('Nenhuma opção.')).toBeVisible();
+    await planar.getByRole('button', { name: 'Adicionar uma opção' }).click();
+    await planar.getByLabel('Texto da opção').fill('Uma opção que ainda não tem nome.');
+    await expect(planar.getByText('Sem nome, esta opção não é salva.')).toBeVisible();
+    await expectScreenPasses(m, `Editor de raça, uma opção nova sem nome ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('o traço com opções para escolher passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanTraitOptions(browser, 'light', 1280);
+});
+
+test('o traço com opções para escolher passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanTraitOptions(browser, 'dark', 768);
+});
+
+/** The subrace "Corujeiro das Neves": the bonuses it replaces, the checklist of the race's traits with one marked, and a second mark. */
+async function scanSubraceReplaces(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    const campaignId = await masterCampaign(m, `Acessibilidade sub-raça ${Date.now()}`);
+    const night = await createNightRaceRPC(m, campaignId);
+    const subrace = await createSnowSubraceRPC(m, campaignId, night);
+    await open(m, entryRoute(campaignId, subrace));
+    await expect(m.locator('#replaced-t')).toHaveText('Traços de Corujeiro');
+    await expect(m.getByRole('switch', { name: 'Substituiu os bônus de Corujeiro' })).toHaveAttribute('aria-checked', 'true');
+    await expect(m.getByRole('checkbox', { name: /Olhos de caçador/ })).toBeChecked();
+    await expect(m.getByText('Substituído')).toHaveCount(1);
+    await expectScreenPasses(m, `Editor de sub-raça, o traço da raça marcado como substituído ${where}`);
+    await pickRadio(m.locator('app-replaced-traits'), /Sentidos da noite/);
+    await expect(m.getByRole('checkbox', { name: /Sentidos da noite/ })).toBeChecked();
+    await expect(m.getByText('Substituído')).toHaveCount(2);
+    await expectScreenPasses(m, `Editor de sub-raça, dois traços substituídos ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('a sub-raça que substitui traços passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSubraceReplaces(browser, 'light', 1280);
+});
+
+test('a sub-raça que substitui traços passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanSubraceReplaces(browser, 'dark', 768);
+});
+
+/** The master on a phone reads the subrace: what it replaces, and the traits of its race that it keeps. */
+async function scanSubraceOnPhone(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(390) });
+  const m = await context.newPage();
+  try {
+    await m.goto('/');
+    const campaignId = await masterCampaign(m, `Acessibilidade sub-raça celular ${Date.now()}`);
+    const night = await createNightRaceRPC(m, campaignId);
+    const subrace = await createSnowSubraceRPC(m, campaignId, night);
+    await open(m, entryRoute(campaignId, subrace));
+    await expect(m.getByText('Pele de geada')).toBeVisible();
+    await expect(m.getByText('Sentidos da noite')).toBeVisible();
+    await expectScreenPasses(m, `Sub-raça lida pelo mestre no celular (${colorScheme}, 390px)`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('a sub-raça lida pelo mestre no celular passa no axe e nas conferências de layout no tema claro', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  await scanSubraceOnPhone(browser, 'light');
+});
+
+test('a sub-raça lida pelo mestre no celular passa no axe e nas conferências de layout no tema escuro', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(120_000);
+  await scanSubraceOnPhone(browser, 'dark');
+});
+
+/** The feat "Pequeno e Escorregadio": races, size and "Não pode ter" chosen, then the open search of each. */
+async function scanFeatAsks(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await context.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await m.goto('/');
+    const campaignId = await masterCampaign(m, `Acessibilidade talento ${Date.now()}`);
+    const feats = await createFeatsRPC(m, campaignId);
+    await open(m, entryRoute(campaignId, feats.smallAndSlippery));
+    await expect(m.getByLabel('Nome do talento')).toHaveValue('Pequeno e Escorregadio');
+    const races = m.getByRole('list', { name: 'Escolhidas' }).first();
+    await expect(races.getByRole('listitem')).toHaveCount(3);
+    await expect(races).toContainText('Desligada');
+    await expect(m.getByRole('list', { name: 'Escolhidas' }).nth(1)).toContainText('Agarrador');
+    await expectScreenPasses(m, `Editor de talento, raças, tamanho e "Não pode ter" escolhidos ${where}`);
+    const raceSearch = m.getByRole('combobox', { name: 'Raças (basta uma)' });
+    await raceSearch.fill('co');
+    await expect(m.getByRole('listbox', { name: 'Raças (basta uma)' })).toBeVisible();
+    await expectScreenPasses(m, `Editor de talento, a busca de raça aberta ${where}`);
+    await raceSearch.press('Escape');
+    const lacks = m.getByRole('combobox', { name: 'Não pode ter' });
+    await lacks.fill('o');
+    await expect(m.getByRole('listbox', { name: 'Não pode ter' })).toBeVisible();
+    await expectScreenPasses(m, `Editor de talento, a busca de "Não pode ter" aberta ${where}`);
+  } finally {
+    await context.close();
+  }
+}
+
+test('o talento que pede raças, tamanho e o que não pode ter passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsks(browser, 'light', 1280);
+});
+
+test('o talento que pede raças, tamanho e o que não pode ter passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsks(browser, 'dark', 768);
+});
+
+/** The player makes a character of the table's race: the step "Escolhas" with the trait's choice open, then picked. */
+async function scanTraitChoice(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = (await emptyTable(m, p, `Acessibilidade escolha do traço ${Date.now()}`)).campaignId;
+    await createNightRaceRPC(m, campaignId);
+    const pick = async (label: string, option: string | RegExp) => {
+      const control = p.getByRole('combobox', { name: label, exact: true });
+      await control.focus();
+      await control.press('Enter');
+      await p.getByRole('option', { name: option }).click();
+    };
+    await open(p, `/campaigns/${campaignId}/characters/new`);
+    await p.getByLabel('Nome do personagem', { exact: true }).fill('Brisa');
+    await pick('Raça', /^Corujeiro/);
+    await pick('Classe', 'Bardo');
+    await p.getByRole('tab', { name: /^Escolhas/ }).click();
+    const card = p.getByRole('region', { name: 'Sentidos da noite' });
+    await expect(card).toContainText('Falta escolher');
+    await expectScreenPasses(p, `Escolhas, o traço que pede uma opção ${where}`);
+    await card.getByRole('radio', { name: /Olhos de coruja/ }).click();
+    await expect(card).not.toContainText('Falta escolher');
+    await expectScreenPasses(p, `Escolhas, a opção do traço escolhida ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a escolha do traço na criação do personagem passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanTraitChoice(browser, 'light', 390);
+});
+
+test('a escolha do traço na criação do personagem passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanTraitChoice(browser, 'dark', 1280);
+});
+
+/** Tor goes from Guerreiro 3 to 4 and takes a feat: the list with what he does not meet, one condition the table hides. */
+async function scanFeatList(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade talentos ${Date.now()}`, { build: tor, session: false });
+    await createFeatsRPC(m, table.campaignId);
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
+    await passClassStep(p);
+    await pickRadio(p, 'Um talento');
+    await expect(p.getByRole('heading', { name: 'Ainda não cumpre' })).toBeVisible();
+    await expect(p.getByText('Só para Gnomo ou Halfling.')).toBeVisible();
+    await expect(p.getByText('uma condição que a mesa não mostra')).toBeVisible();
+    await expectScreenPasses(p, `Subir de nível, os talentos que o personagem ainda não cumpre ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a lista de talentos do subir de nível com o que não cumpre passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatList(browser, 'light', 1280);
+});
+
+test('a lista de talentos do subir de nível com o que não cumpre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatList(browser, 'dark', 390);
 });

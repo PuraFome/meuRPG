@@ -20,6 +20,36 @@ export const LONG_TEXT = 'Este texto é longo demais. Encurte o parágrafo.';
  * reason answers any reason. The rows are ordered: the first that matches wins. The paths and reasons are the server's
  * (rules.TestEntryViolationPaths pins them). */
 export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
+  // A race or subrace trait with options, and a subrace's replaced traits: backend/internal/rules/overlay_features.go.
+  {
+    shape: /^table_(race|subrace)\.traits\[\]\.effects\[\]\.choice$/,
+    reason: 'bad_value',
+    text: 'Um traço com opções já é a escolha: troque este efeito por “Só texto” ou outro.',
+  },
+  {
+    shape: /^table_(race|subrace)\.traits\[\]\.options\[\]\.name_pt$/,
+    reason: 'bad_name',
+    text: 'Duas opções deste traço têm o mesmo nome. Mude uma delas.',
+  },
+  {
+    shape: /\.options\[\]\.name_pt$/,
+    reason: 'bad_name',
+    text: 'Duas opções desta característica têm o mesmo nome. Mude uma delas.',
+  },
+  {
+    shape: /^table_subrace\.replaces_trait_keys$/,
+    reason: 'limit',
+    text: 'Uma sub-raça substitui até 60 traços.',
+  },
+  {
+    shape: /^table_subrace\.replaces_trait_keys\[\]$/,
+    reason: 'dangling_reference',
+    text: 'Este traço não é da raça da sub-raça. Desmarque para salvar.',
+  },
+  {
+    shape: /^table_subrace\.replaces_trait_keys\[\]$/,
+    text: 'Este traço está marcado duas vezes. Desmarque um.',
+  },
   // A class and a subclass (E10-02): the paths and reasons of backend/internal/rules/overlay_class.go.
   { shape: /^table_class\.hit_die$/, text: 'O dado de vida é d6, d8, d10 ou d12.' },
   {

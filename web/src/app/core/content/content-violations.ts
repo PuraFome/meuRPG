@@ -1,4 +1,5 @@
 import type { TableContentViolation } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { NAME_MAX } from './feature-draft';
 import {
   BAD_EFFECT_VALUE,
   DANGLING_TEXT,
@@ -109,7 +110,7 @@ function nameText(r: string, ctx: ViolationContext): string | undefined {
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
-    return 'O nome tem de 1 a 60 letras.';
+    return `O nome tem de 1 a ${NAME_MAX} letras.`;
   }
   if (r === 'bad_key' || r === 'reserved_key' || r === 'duplicate_key') {
     return 'Este nome não pode ser usado. Escolha outro.';
@@ -194,7 +195,12 @@ export function violationText(
   }
   const leaf = shape.slice(shape.lastIndexOf('.') + 1);
   const named = leaf === 'name_pt' ? nameText(v.reason, ctx) : undefined;
+  // Two options of one feature with one name is about the options, not the name's length.
+  const optionName = shape.endsWith('.options[].name_pt')
+    ? rowText(shape, v.reason, ctx)
+    : undefined;
   return (
+    optionName ??
     named ??
     reasonText(shape, leaf, v.reason) ??
     rowText(shape, v.reason, ctx) ??

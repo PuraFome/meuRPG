@@ -239,3 +239,45 @@
   font-weight: 600;
   color: var(--mr-ink);
 }
+
+// The master's editor note (a subrace's "Substitui"): an eye-off heading, then the line.
+// Players read the catalog's "Substitui" line instead, for the traits they can see.
+.master-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-4);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+    margin: 0;
+    font-size: var(--mr-font-17);
+    font-weight: 700;
+
+    .mat-icon {
+      width: var(--mr-font-20);
+      height: var(--mr-font-20);
+      font-size: var(--mr-font-20);
+    }
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--mr-space-4);
+    margin: 0;
+
+    dt {
+      flex: none;
+      color: var(--mr-ink-muted);
+    }
+
+    dd {
+      margin: 0;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+  }
+}
