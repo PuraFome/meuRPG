@@ -1,7 +1,12 @@
-# Functions in internal/play and internal/maps (non-test) that write session state in a transaction outside the funnel (Service.tx, Service.txOn).
+# Functions in internal/play and internal/maps (non-test) that open a transaction which writes (INSERT, UPDATE or DELETE of the package's own queries) outside the funnel (Service.tx, Service.txOn).
 # One entry per line, sorted: "package file function" ("(*T).Method" for a method). The reason after # starts with the area of the #735 plan.
-# Areas: 4b, 4c, 4d (play), 4d maps, characters host (task B), unassigned (no area yet), unclear (a site the rule lists and a person has not classified).
-# The list can only shrink: convert the writer to Service.tx and delete its line. A line whose function is no longer an offender fails the test.
+# Two sections, told apart by the reason:
+#   work queue: any reason but "permanent:". Areas: 4b, 4c, 4d (play), 4d maps, session lifecycle, characters host (task B).
+#     The queue can only shrink: convert the writer to Service.tx and delete its line.
+#   permanent: "# permanent: <reason>" is accepted forever, because the function never touches what a live session shows. It is still listed,
+#     so that a new writer is noticed, and it is stale like any entry when it stops being an offender.
+# An entry sits on the callee. Converting it can need the calling module to change too (characters, progression call into play with their own transaction).
+# A line whose function is no longer an offender fails the test.
 maps carriedlight.go (*Service).SetCarriedLight # 4d maps: map, token, fog or point row the live session shows
 maps clues.go (*Service).RevealSceneClue # 4d maps: map, token, fog or point row the live session shows
 maps clues.go (*SessionMaps).DiscoverScene # 4d maps: map, token, fog or point row the live session shows
@@ -9,18 +14,18 @@ maps clues.go (*SessionMaps).DiscoverSceneFor # 4d maps: map, token, fog or poin
 maps creaturetokens.go (*Service).placeCreatureToken # 4d maps: map, token, fog or point row the live session shows
 maps creaturetokens.go (*Service).removeCreatureToken # 4d maps: map, token, fog or point row the live session shows
 maps doors.go (*Service).OpenDoors # 4d maps: map, token, fog or point row the live session shows
-maps dungeons.go (*Service).RedrawDungeonMap # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps dungeons.go (*Service).insertDungeon # unclear: images: gallery and image generation rows; session state only where the image is on a map
+maps dungeons.go (*Service).RedrawDungeonMap # 4d maps: redraws the image of a map the live session may show
+maps dungeons.go (*Service).insertDungeon # 4d maps: creates a map and its image rows
 maps fog.go (*Service).rememberFor # 4d maps: map, token, fog or point row the live session shows
-maps fogimage.go (*Service).ownImage # unclear: images: gallery and image generation rows; session state only where the image is on a map
+maps fogimage.go (*Service).ownImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 maps fogreads.go (*Service).ForgetMapVision # 4d maps: map, token, fog or point row the live session shows
-maps gallery.go (*Service).RenameGalleryImage # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps gallery.go (*Service).deleteImageRows # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps imagegen_map.go (*Service).UseGeneratedImageAsMapImage # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps imagegen_read.go (*Service).CancelImageGeneration # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps imagegen_read.go (*Service).readGeneration # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps imagegen_start.go (*Service).freshStatus # unclear: images: gallery and image generation rows; session state only where the image is on a map
-maps imagegen_start.go (*Service).reserve # unclear: images: gallery and image generation rows; session state only where the image is on a map
+maps gallery.go (*Service).RenameGalleryImage # 4d maps: the name is the caption of the shown image (ShownImage.name), so a rename changes what is on screen
+maps gallery.go (*Service).deleteImageRows # 4d maps: deleting an image sets game_sessions.shown_image_id to NULL (ON DELETE SET NULL), so the screen changes; also ClearPortraits
+maps imagegen_map.go (*Service).UseGeneratedImageAsMapImage # 4d maps: the image becomes the image of a map the live session may show
+maps imagegen_read.go (*Service).CancelImageGeneration # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
+maps imagegen_read.go (*Service).readGeneration # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
+maps imagegen_start.go (*Service).freshStatus # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
+maps imagegen_start.go (*Service).reserve # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 maps layers.go (*Service).PaintMapCells # 4d maps: map, token, fog or point row the live session shows
 maps layers.go (*Service).writeFog # 4d maps: map, token, fog or point row the live session shows
 maps mapcrud.go (*Service).CreateMap # 4d maps: map, token, fog or point row the live session shows
@@ -28,8 +33,8 @@ maps mapcrud.go (*Service).DeleteMap # 4d maps: map, token, fog or point row the
 maps mapcrud.go (*Service).SetMapRevealed # 4d maps: map, token, fog or point row the live session shows
 maps mapgrid.go (*Service).SetMapGrid # 4d maps: map, token, fog or point row the live session shows
 maps mapupdate.go (*Service).UpdateMap # 4d maps: map, token, fog or point row the live session shows
-maps package.go (*imagesPart).Apply # unclear: import: campaign package import writes maps before any live session; may need no hint
-maps package.go (*mapsPart).Apply # unclear: import: campaign package import writes maps before any live session; may need no hint
+maps package.go (*imagesPart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
+maps package.go (*mapsPart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
 maps pointwrites.go (*Service).changePointTx # 4d maps: map, token, fog or point row the live session shows
 maps pointwrites.go (*Service).createPointTx # 4d maps: map, token, fog or point row the live session shows
 maps pointwrites.go (*Service).deletePointTx # 4d maps: map, token, fog or point row the live session shows
@@ -56,12 +61,12 @@ maps traps_play.go (*Service).SearchTraps # 4d maps: map, token, fog or point ro
 maps traps_play.go (*Service).TriggerTrap # 4d maps: map, token, fog or point row the live session shows
 maps traps_play.go (*Service).recordNotices # 4d maps: map, token, fog or point row the live session shows
 maps treasure.go (*Service).PlaceTreasure # 4d maps: map, token, fog or point row the live session shows
-maps upload.go (*Service).storeImage # unclear: images: gallery and image generation rows; session state only where the image is on a map
+maps upload.go (*Service).storeImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 play combat_groupcheck.go (*Service).groupWrite # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play creature_host.go (*Service).CreatureRenamed # 4c: traps, lasting effects, creatures
 play creature_host.go (*Service).CreaturesLeaving # 4c: traps, lasting effects, creatures
-play encounters.go (*Service).ClearBattleEncounter # unassigned: session start/end and the battle encounter link
-play encounters.go (*Service).keepBattleEncounter # unassigned: session start/end and the battle encounter link
+play encounters.go (*Service).ClearBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
+play encounters.go (*Service).keepBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play equip_combat.go (*Service).EquipInCombat # characters host: called by characters with its transaction (task B, lock order)
 play free_roll_rpc.go (*Service).RollFreeDice # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play inspiration_outside.go (*Service).giveOutsideTx # 4b: vitals, resources, rests, revivify
@@ -74,7 +79,7 @@ play messages_send.go (*Service).SendSessionMessage # 4d: scene, stage, puzzles,
 play onscreen.go (*Service).SetCurrentMap # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play onscreen.go (*Service).swapShownImage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play onscreen_audience.go (*Service).SetShownImageAudience # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play package.go (*packagePart).Apply # unclear: import: campaign package import before any live session; may need no hint
+play package.go (*packagePart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
 play puzzles_hints.go (*Service).TryPuzzleHint # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play puzzles_master.go (*Service).CreatePuzzle # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play puzzles_master.go (*Service).UpdatePuzzle # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
@@ -88,8 +93,8 @@ play revive.go (*Service).ReviveInCombat # 4b: vitals, resources, rests, revivif
 play revivify.go (*Service).SetRevivifyBlocked # 4b: vitals, resources, rests, revivify
 play revivify_requests.go (*Service).ConfirmRevivifyTime # 4b: vitals, resources, rests, revivify
 play revivify_requests.go (*Service).RequestRevivify # 4b: vitals, resources, rests, revivify
-play rpc.go (*Service).EndGameSession # unassigned: session start/end and the battle encounter link
-play rpc.go (*Service).StartGameSession # unassigned: session start/end and the battle encounter link
+play rpc.go (*Service).EndGameSession # session lifecycle: ends the session row and the live view
+play rpc.go (*Service).StartGameSession # session lifecycle: there is no row to lock before it creates one
 play scene.go (*Service).CloseScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play scene.go (*Service).GrantSceneAttempt # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play scene.go (*Service).OpenScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen

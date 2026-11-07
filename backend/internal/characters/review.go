@@ -421,6 +421,28 @@ func (s *Service) lockSessionForGear(ctx context.Context, tx pgx.Tx, campaignID 
 	return s.reviewHost.LockSession(ctx, tx, campaignID)
 }
 
+// lockSessionBeforeCharacter takes play's session lock ahead of the character's lock for a path that
+// reaches play's combat and session writes inside its transaction (a sheet save that changes gear, a revive), unless the
+// character's row, read here without a lock, settles that the path ends before play is reached: the
+// character is not found, it is not one the path serves (skip), or its revision is ahead of the
+// request's (the revision check refuses it as stale; a revision never goes back). Any other case takes
+// the lock, so a path that the unlocked read could not rule out keeps the one order, session then character.
+func (s *Service) lockSessionBeforeCharacter(ctx context.Context, tx pgx.Tx, campaignID, characterID string, skip func(charactersdb.Character) bool) error {
+	if s.reviewHost == nil {
+		return nil
+	}
+	pre, err := s.queries.WithTx(tx).GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: campaignID, ID: characterID})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil // the path answers: not found
+	case err != nil:
+		return wrap("read character", err)
+	case skip(pre):
+		return nil
+	}
+	return s.lockSessionForGear(ctx, tx, campaignID)
+}
+
 // SetReviewHost connects the play module.
 func (s *Service) SetReviewHost(h ReviewHost) { s.reviewHost = h }
 

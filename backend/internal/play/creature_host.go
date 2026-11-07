@@ -203,7 +203,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))
 }
 
-// LockSession takes the open session's row (characters.CreatureHost): the lock
+// LockSession takes the open session's row (characters.CreatureHost and characters.ReviewHost): the lock
 // every combat write takes first.
 func (s *Service) LockSession(ctx context.Context, tx pgx.Tx, campaignID string) error {
 	if _, err := s.queries.WithTx(tx).GetOpenGameSessionForUpdate(ctx, campaignID); err != nil && !errors.Is(err, pgx.ErrNoRows) {

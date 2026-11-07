@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"regexp"
@@ -15,10 +16,13 @@ import (
 	"testing"
 )
 
-// sessionWriteExceptions lists the functions of internal/play and internal/maps that write session state in a
-// transaction of their own, outside the funnel (Service.tx and Service.txOn in internal/play/hints.go). An entry names the
-// function, not each site in it. It can only shrink: converting a writer to Service.tx removes its line, and a line whose
-// function no longer writes outside the funnel fails the test.
+// sessionWriteExceptions lists the functions of internal/play and internal/maps that write (INSERT, UPDATE or DELETE of the
+// package's own queries) in a transaction of their own, outside the funnel (Service.tx and Service.txOn in
+// internal/play/hints.go). An entry names the function, not each site in it. The rule does not know which table a query
+// writes: an entry whose reason starts with "permanent:" is accepted forever (the function never touches what a live
+// session shows) and the rest is the work queue of #735 part 2, which can only shrink. Both kinds are listed, so a new
+// writer is noticed, and a function that is no longer an offender fails the test ("remove it").
+// An entry sits on the callee: converting it can need the calling module (characters, progression) to change too.
 //
 //go:embed sessionwrite_exceptions.txt
 var sessionWriteExceptions string
@@ -34,18 +38,18 @@ var sessionFunnel = map[string]bool{
 	"internal/play/hints.go:(*Service).txOn": true,
 }
 
-// sessionSentinels are the names whose call is a session write or a tell of one in any package: the number of the
-// session's event (NextSessionEventSeq), the hint number (BumpHintSeq), the streams (send, tellMembers in play, publish in
-// maps) and the touch of the session (touch).
+// sessionSentinels are the names whose call is a write or a tell of one in any package: the number of the session's event
+// (NextSessionEventSeq), the hint number (BumpHintSeq), the streams (send, tellMembers in play, publish in maps) and the
+// touch of the session (touch). They are matched by bare name.
 var sessionSentinels = []string{"send", "tellMembers", "publish", "touch", "NextSessionEventSeq", "BumpHintSeq"}
 
-// TestSessionWritesGoThroughTheFunnel fails for a transaction that writes session state and is not Service.tx or
-// Service.txOn: part 2 of #735 moves every such writer into the funnel, so that the hint number moves with the write, and
-// this test keeps a new writer from being born outside it. A function that sessionwrite_exceptions.txt lists is allowed; a
-// listed function that no longer writes outside the funnel fails ("remove it"), so the list is the queue of work and
-// can only shrink.
+// TestWritesGoThroughTheFunnel fails for a transaction that writes and is not Service.tx or Service.txOn: part 2 of #735
+// moves every writer of session state into the funnel, so that the hint number moves with the write, and this test keeps a
+// new writer from being born outside it. A function that sessionwrite_exceptions.txt lists is allowed; a listed function
+// that no longer writes outside the funnel fails ("remove it"), so the work queue can only shrink, and a "permanent:"
+// entry records a writer that never touches session state (the rule cannot tell tables apart).
 //
-// What counts as a session write, by name and without types (go/parser only, as the other rules here):
+// What counts as a write, by name and without types (go/parser only, as the other rules here):
 //   - a transaction is a function literal given to db.InTx, or a call of Begin or BeginTx on a value named pool or ending in
 //     .pool; the function that holds it is the offender, once, whatever the number of sites in it;
 //   - the literal writes if it, nested literals included, calls a method or function that is a query of the package's own
@@ -59,12 +63,19 @@ var sessionSentinels = []string{"send", "tellMembers", "publish", "touch", "Next
 //   - an exported function or method with a pgx.Tx parameter is also an offender when it writes by that rule: it is the seam
 //     a module calls with its own transaction (characters' ReviewHost), and no closure of this package holds it.
 //
-// Limits: a closure that is a method value, a field or a package-level function is not read (one that is a parameter is not read either, but a closure that calls a parameter of function type is taken to write); a name that two
-// functions share is followed in both, which can list a site that only reads (list it, with the reason, or rename the
-// helper); a call through an interface or a function value is not followed; a write by raw SQL in a string is seen only
-// through the named queries (the txhints rule keeps hint_seq out of strings); a savepoint (tx.Begin) is part of its
-// transaction and not read on its own.
-func TestSessionWritesGoThroughTheFunnel(t *testing.T) {
+// Limits:
+//   - a closure that is a method value, a field or a package-level function is not read;
+//   - a closure that is a parameter of the enclosing function is not read either, but a literal that calls a parameter of
+//     function type is taken to write;
+//   - a name that two functions share is followed in both, which can list a site that only reads (list it, with the reason,
+//     or rename the helper);
+//   - a call through an interface or a function value is not followed;
+//   - a write by raw SQL in a string is seen only through the named queries (the txhints rule keeps hint_seq out of strings);
+//   - a savepoint (tx.Begin) is part of its transaction and not read on its own;
+//   - a sentinel is matched by its bare name: any x.send, x.publish or x.touch call marks a writer, even if x is not a
+//     session stream;
+//   - db.InTx is recognized only when the receiver is an identifier literally named db.
+func TestWritesGoThroughTheFunnel(t *testing.T) {
 	root := os.DirFS(backendRoot)
 	found := map[string]string{}
 	files := 0
@@ -100,23 +111,41 @@ func TestSessionWritesGoThroughTheFunnel(t *testing.T) {
 			t.Fatalf("%s: %v", dir, err)
 		}
 		for _, k := range keys {
-			found[k] = fmt.Sprintf("%q writes session state in a transaction outside the funnel: use Service.tx (internal/play/hints.go) "+
-				"and collect the hints with h.tell, or list the function in sessionwrite_exceptions.txt", k)
+			found[k] = fmt.Sprintf("%q writes in a transaction outside the funnel: use Service.tx (internal/play/hints.go) "+
+				"and collect the hints with h.tell, or list the function in sessionwrite_exceptions.txt "+
+				"(# permanent: <reason> if it never touches session state)", k)
 		}
 	}
 	failProblems(t, compareExceptions("sessionwrite_exceptions.txt", parseExceptions(sessionWriteExceptions), found))
-	t.Logf("%d non-test Go files checked; %d known exceptions", files, len(found))
+	work, permanent := countExceptions(sessionWriteExceptions)
+	t.Logf("%d non-test Go files checked; %d known exceptions: %d in the work queue, %d permanent", files, len(found), work, permanent)
+}
+
+// countExceptions returns the number of entries of the work queue and of the permanent ones (the reason, after " #", starts
+// with "permanent:").
+func countExceptions(text string) (work, permanent int) {
+	for line := range strings.Lines(text) {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if _, reason, ok := strings.Cut(line, " #"); ok && strings.HasPrefix(strings.TrimSpace(reason), "permanent:") {
+			permanent++
+		} else {
+			work++
+		}
+	}
+	return work, permanent
 }
 
 var (
 	queryNameRe  = regexp.MustCompile(`^--\s*name:\s*(\w+)`)
-	forUpdateRe  = regexp.MustCompile(`(?i)\bFOR\s+(NO\s+KEY\s+)?UPDATE\b`)
 	writeStmtRe  = regexp.MustCompile(`(?i)\b(INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+\w+(\s+(AS\s+)?\w+)?\s+SET)\b`)
 	commentTailR = regexp.MustCompile(`\s--.*$`)
 )
 
 // writerQueries returns the names of the queries in sqlc query text that write: an INSERT INTO, a DELETE FROM or an
-// UPDATE ... SET in a line that is not a comment (FOR UPDATE is a lock, not a write).
+// UPDATE ... SET in a line that is not a comment (FOR UPDATE is a lock, not a write: UPDATE there is not followed by SET).
 func writerQueries(sql string) map[string]bool {
 	bodies := map[string]string{}
 	cur := ""
@@ -132,7 +161,7 @@ func writerQueries(sql string) map[string]bool {
 	}
 	out := map[string]bool{}
 	for name, body := range bodies {
-		if writeStmtRe.MatchString(forUpdateRe.ReplaceAllString(body, "")) {
+		if writeStmtRe.MatchString(body) {
 			out[name] = true
 		}
 	}
@@ -150,7 +179,7 @@ type sessionFile struct {
 // that are exported with a pgx.Tx parameter and write.
 func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string, error) {
 	var files []sessionFile
-	for _, p := range slices.Sorted(mapKeys(srcs)) {
+	for _, p := range slices.Sorted(maps.Keys(srcs)) {
 		f, err := parser.ParseFile(token.NewFileSet(), p, srcs[p], parser.SkipObjectResolution)
 		if err != nil {
 			return nil, err
@@ -190,16 +219,6 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 	}
 	slices.Sort(keys)
 	return keys, nil
-}
-
-func mapKeys[V any](m map[string][]V) func(yield func(string) bool) {
-	return func(yield func(string) bool) {
-		for k := range m {
-			if !yield(k) {
-				return
-			}
-		}
-	}
 }
 
 // callName is the name a call is made by: f(...) or x.f(...).
@@ -276,7 +295,7 @@ func writes(n ast.Node, writers, reach map[string]bool) bool {
 func opensWritingTx(root ast.Node, writers, reach map[string]bool) bool {
 	lits := funcLiterals(root)
 	unknown := funcParams(root)
-	writes := func(n ast.Node, writers, reach map[string]bool) bool {
+	writesOrCallsParam := func(n ast.Node) bool {
 		return writes(n, writers, reach) || callsAny(n, unknown)
 	}
 	found := false
@@ -291,13 +310,13 @@ func opensWritingTx(root ast.Node, writers, reach map[string]bool) bool {
 				if id, ok := arg.(*ast.Ident); ok && lits[id.Name] != nil {
 					arg = lits[id.Name]
 				}
-				if lit, ok := arg.(*ast.FuncLit); ok && writes(lit, writers, reach) {
+				if lit, ok := arg.(*ast.FuncLit); ok && writesOrCallsParam(lit) {
 					found = true
 				}
 			}
 		case isPoolBegin(call):
 			// Everything after a pool.Begin of the function belongs to the transaction it opens.
-			found = writes(root, writers, reach)
+			found = writesOrCallsParam(root)
 		}
 		return !found
 	})
@@ -381,6 +400,13 @@ func TestWriterQueries(t *testing.T) {
 	}
 }
 
+func TestCountExceptions(t *testing.T) {
+	work, permanent := countExceptions("# c\n\na f F # 4d: x\nb g G # permanent: y\nc h H\nd i I # permanent: z\n")
+	if work != 2 || permanent != 2 {
+		t.Errorf("countExceptions = %d work, %d permanent, want 2 and 2", work, permanent)
+	}
+}
+
 func TestSessionWriteKeys(t *testing.T) {
 	writers := map[string]bool{"UpdateThing": true}
 	cases := []struct {
@@ -390,12 +416,37 @@ func TestSessionWriteKeys(t *testing.T) {
 	}{
 		{
 			"a fresh unconverted writer",
-			map[string]string{"internal/play/a.go": "package play\nfunc (s *Service) Fresh() error { return db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.queries.WithTx(tx).UpdateThing(c, p); return err }) }"},
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func (s *Service) Fresh() error {\n" +
+					"\treturn db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.queries.WithTx(tx).UpdateThing(c, p); return err })\n" +
+					"}",
+			},
 			[]string{"play a.go (*Service).Fresh"},
 		},
-		{"a read is not a write", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.q.GetThing(c); return err }) }"}, nil},
-		{"through Service.tx", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { return s.tx(c, id, func(tx pgx.Tx, h *hints) error { _, err := s.q.UpdateThing(c); return err }) }"}, nil},
-		{"a sentinel", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { s.touch(c); return nil }) }"}, []string{"play a.go F"}},
+		{
+			"a read is not a write",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func F(s S) error { return db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.q.GetThing(c); return err }) }",
+			},
+			nil,
+		},
+		{
+			"through Service.tx",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func F(s S) error { return s.tx(c, id, func(tx pgx.Tx, h *hints) error { _, err := s.q.UpdateThing(c); return err }) }",
+			},
+			nil,
+		},
+		{
+			"a sentinel",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { s.touch(c); return nil }) }",
+			},
+			[]string{"play a.go F"},
+		},
 		{
 			"through a helper, in another file",
 			map[string]string{
@@ -404,26 +455,103 @@ func TestSessionWriteKeys(t *testing.T) {
 			},
 			[]string{"maps a.go F"},
 		},
-		{"a helper that only reads", map[string]string{"internal/maps/a.go": "package maps\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.look(c) }) }\nfunc (s S) look(c C) error { return q.GetThing(c) }"}, nil},
-		{"named closure", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { run := func(tx pgx.Tx) error { return q.UpdateThing(c) }; return db.InTx(c, p, run) }"}, []string{"play a.go F"}},
-		{"a closure that is a parameter is not read", map[string]string{"internal/play/a.go": "package play\nfunc F(s S, run func(pgx.Tx) error) error { return db.InTx(c, p, run) }"}, nil},
-		{"a closure that calls a function parameter", map[string]string{"internal/play/a.go": "package play\nfunc F(s S, change func(Q) error) error { return db.InTx(c, p, func(tx pgx.Tx) error { return change(q) }) }"}, []string{"play a.go F"}},
-		{"a closure that calls a local func is not a parameter", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return change(q) }) }"}, nil},
-		{"another InTx", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { return other.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }"}, nil},
-		{"pool.Begin", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) error { tx, _ := s.pool.Begin(c); return q.UpdateThing(c) }"}, []string{"play a.go F"}},
-		{"a savepoint is not a pool", map[string]string{"internal/play/a.go": "package play\nfunc F(c C) error { sp, _ := c.tx.Begin(c); return q.UpdateThing(c) }"}, nil},
+		{
+			"a helper that only reads",
+			map[string]string{
+				"internal/maps/a.go": "package maps\n" +
+					"func F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.look(c) }) }\n" +
+					"func (s S) look(c C) error { return q.GetThing(c) }",
+			},
+			nil,
+		},
+		{
+			"named closure",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S) error { run := func(tx pgx.Tx) error { return q.UpdateThing(c) }; return db.InTx(c, p, run) }",
+			},
+			[]string{"play a.go F"},
+		},
+		{
+			"a closure that is a parameter is not read",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S, run func(pgx.Tx) error) error { return db.InTx(c, p, run) }",
+			},
+			nil,
+		},
+		{
+			"a closure that calls a function parameter",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func F(s S, change func(Q) error) error { return db.InTx(c, p, func(tx pgx.Tx) error { return change(q) }) }",
+			},
+			[]string{"play a.go F"},
+		},
+		{
+			"a closure that calls a local func is not a parameter",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return change(q) }) }",
+			},
+			nil,
+		},
+		{
+			"another InTx",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S) error { return other.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }",
+			},
+			nil,
+		},
+		{
+			"pool.Begin",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(s S) error { tx, _ := s.pool.Begin(c); return q.UpdateThing(c) }",
+			},
+			[]string{"play a.go F"},
+		},
+		{
+			"a savepoint is not a pool",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(c C) error { sp, _ := c.tx.Begin(c); return q.UpdateThing(c) }",
+			},
+			nil,
+		},
 		{
 			"the seam: exported with a pgx.Tx",
-			map[string]string{"internal/play/a.go": "package play\nfunc (s *Service) Host(c C, tx pgx.Tx) error { return s.helper() }\nfunc (s *Service) helper() error { return q.UpdateThing(c) }\nfunc (s *Service) quiet(c C, tx pgx.Tx) error { return q.UpdateThing(c) }"},
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func (s *Service) Host(c C, tx pgx.Tx) error { return s.helper() }\n" +
+					"func (s *Service) helper() error { return q.UpdateThing(c) }\n" +
+					"func (s *Service) quiet(c C, tx pgx.Tx) error { return q.UpdateThing(c) }",
+			},
 			[]string{"play a.go (*Service).Host"},
 		},
-		{"the seam that only reads", map[string]string{"internal/play/a.go": "package play\nfunc (s *Service) Host(c C, tx pgx.Tx) error { return q.GetThing(c) }"}, nil},
+		{
+			"the seam that only reads",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc (s *Service) Host(c C, tx pgx.Tx) error { return q.GetThing(c) }",
+			},
+			nil,
+		},
 		{"the funnel is not an offender and not entered", map[string]string{
-			"internal/play/hints.go": "package play\nfunc (s *Service) tx(c C, id string, fn F) error { return s.txOn(c, s.pool, id, fn) }\nfunc (s *Service) txOn(c C, st S, id string, fn F) error { return db.InTx(c, st, func(tx pgx.Tx) error { q.BumpHintSeq(c, id); return fn(tx, &h) }) }",
-			"internal/play/a.go":     "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.tx(c, id, nil) }) }",
+			"internal/play/hints.go": "package play\n" +
+				"func (s *Service) tx(c C, id string, fn F) error { return s.txOn(c, s.pool, id, fn) }\n" +
+				"func (s *Service) txOn(c C, st S, id string, fn F) error { return db.InTx(c, st, func(tx pgx.Tx) error { q.BumpHintSeq(c, id); return fn(tx, &h) }) }",
+			"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.tx(c, id, nil) }) }",
 		}, nil},
-		{"package-level literal", map[string]string{"internal/play/a.go": "package play\nvar run = func(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }"}, []string{"play a.go run"}},
-		{"one key per function", map[string]string{"internal/play/a.go": "package play\nfunc F(s S) { db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }); db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }"}, []string{"play a.go F"}},
+		{
+			"package-level literal",
+			map[string]string{
+				"internal/play/a.go": "package play\nvar run = func(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }",
+			},
+			[]string{"play a.go run"},
+		},
+		{
+			"one key per function",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"func F(s S) { db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }); db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }",
+			},
+			[]string{"play a.go F"},
+		},
 	}
 	for _, c := range cases {
 		srcs := map[string][]byte{}

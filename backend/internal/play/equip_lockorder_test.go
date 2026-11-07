@@ -57,6 +57,12 @@ func (l *lockSpy) ArmorWorn(ctx context.Context, tx pgx.Tx, campaignID, characte
 	return after, err
 }
 
+func (l *lockSpy) ReviveInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, at time.Time) (string, error) {
+	enc, err := l.ReviewHost.ReviveInCombat(ctx, tx, campaignID, characterID, actorUserID, at)
+	l.note(err)
+	return enc, err
+}
+
 // gearRace is one gear path to race against a combat write on the same character.
 type gearRace struct {
 	a           *armed
@@ -147,6 +153,110 @@ func TestGearPathsTakeTheSessionBeforeTheCharacter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			runGearRace(t, tt.make(t))
+		})
+	}
+}
+
+func reviveRace(t *testing.T) gearRace {
+	t.Helper()
+	a := newCastingParty(t)
+	a.execSQL(t, `UPDATE characters SET status = 'dead', died_at = now() WHERE id = $1`, a.toren.GetId())
+	return gearRace{
+		a: a, characterID: a.toren.GetId(),
+		act: func() error {
+			_, err := a.master.characters.ReviveCharacter(t.Context(), connect.NewRequest(&charactersv1.ReviveCharacterRequest{
+				CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(),
+			}))
+			return err
+		},
+		verify: func(t *testing.T) {
+			t.Helper()
+			if got := a.vitals(t, a.toren).GetHitPointsCurrent(); got != 1 {
+				t.Errorf("the revived character's hit points = %d, want 1", got)
+			}
+		},
+	}
+}
+
+// TestReviveTakesTheSessionBeforeTheCharacter is the same race for ReviveCharacter: it locks the
+// character, writes it back to life, and then reaches play (ReviveInCombat), which takes the session's row.
+func TestReviveTakesTheSessionBeforeTheCharacter(t *testing.T) {
+	t.Parallel()
+	runGearRace(t, reviveRace(t))
+}
+
+// heldSession locks the campaign's open session row on a side connection until the returned release runs,
+// as a combat write in the middle of its transaction does.
+func (a *armed) heldSession(t *testing.T) (release func()) {
+	t.Helper()
+	side := dbtest.SideConnection(t, a.h.pool)
+	tx, err := side.Begin(t.Context())
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	if _, err := tx.Exec(t.Context(), `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL FOR UPDATE`, a.campaignID); err != nil {
+		t.Fatalf("lock the session: %v", err)
+	}
+	released := false
+	release = func() {
+		if !released {
+			released = true
+			_ = tx.Rollback(context.WithoutCancel(t.Context()))
+		}
+	}
+	t.Cleanup(release)
+	return release
+}
+
+// A sheet save that leaves the armor and the shield alone, or that is refused as stale, never reaches
+// play's gear calls, so it must not wait for the session's lock: a held session row does not block it.
+func TestASaveWithoutAGearChangeDoesNotTakeTheSessionLock(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name string
+		edit func(*charactersv1.FullSheet)
+		// stale makes another save come first, so that the one under test carries an old revision.
+		stale   bool
+		wantErr bool
+	}{
+		{name: "the gear is the same", edit: func(*charactersv1.FullSheet) {}},
+		{name: "a stale revision", edit: func(f *charactersv1.FullSheet) { f.Shield = true }, stale: true, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			a := newCastingParty(t)
+			save := a.sheetEdit(t, a.pens, tt.edit)
+			if tt.stale {
+				if err := a.sheetEdit(t, a.pens, func(*charactersv1.FullSheet) {})(); err != nil {
+					t.Fatalf("the save that comes first: %v", err)
+				}
+			}
+			a.heldSession(t)
+			observer := dbtest.SideConnection(t, a.h.pool)
+			done := make(chan error, 1)
+			go func() { done <- save() }()
+			deadline := time.Now().Add(20 * time.Second)
+			for {
+				select {
+				case err := <-done:
+					if (err != nil) != tt.wantErr {
+						t.Errorf("the save error = %v, want error: %v", err, tt.wantErr)
+					}
+					return
+				default:
+				}
+				n, err := dbtest.WaitingStatements(t.Context(), observer, `%FROM game_sessions%FOR UPDATE%`)
+				if err != nil {
+					t.Fatalf("look for a waiting statement: %v", err)
+				}
+				if n > 0 {
+					t.Fatal("the save waits for the session's lock although it changes no gear")
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("the save never finished")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
 		})
 	}
 }
