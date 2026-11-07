@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
@@ -42,6 +43,9 @@ type read struct {
 	// as the reader of the TV (tvReader), who reads what every player reads and nothing of what only one
 	// does, and the master's own reads are its positive control (checkCanariesAreReachable).
 	asTV bool
+	// tvLog marks an asTV row of a world with a combat whose log has a line by the time it is asked: the TV's answer
+	// must carry at least one, so that the check for a name in the log cannot pass on an empty log.
+	tvLog bool
 }
 
 // request is the request person p sends.
@@ -130,6 +134,12 @@ func (w *world) runRead(t *testing.T, r read, got *answers) {
 		got.keep(tv, mr)
 		for _, f := range w.inspect(tv, mr, r.ignore) {
 			t.Errorf("the TV: %s\n\tanswer: %s", f, shorten(mr.body))
+		}
+		if r.tvLog {
+			screen := &playv1.GetTableScreenResponse{}
+			if err := protojson.Unmarshal(mr.body, screen); err != nil || len(screen.GetStage().GetCombat().GetLog()) == 0 {
+				t.Errorf("the TV's combat carries no log line: the check for a table name in it proves nothing\n\tanswer: %s", shorten(mr.body))
+			}
 		}
 	}
 

@@ -217,6 +217,7 @@ func (s *Service) tvLog(ctx context.Context, tv authz.Membership, encounterID st
 	if err != nil {
 		return nil, err
 	}
+	v.wholeKeys = true // a player's view blanks the key of an NPC's stat block action, and RN-23 is decided on the key
 	var lines []string
 	for _, e := range s.logViews(ctx, tv, &snap, v, "") {
 		if line, ok := tvLogLine(e); ok {

@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // The projector of the table screen. Each test reads the same thing as the master, as the
@@ -338,6 +339,7 @@ func TestTvLogLineNamesNoTableContent(t *testing.T) {
 		{cast("spell:fire-bolt", "Raio de Fogo"), "Pensantus conjurou Raio de Fogo", true},
 		{cast("spell:raio-de-nanquim@mesa", "Raio de Nanquim"), "Pensantus conjurou uma magia", true},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, ActorLabel: "Toren", Key: "feature:x@mesa:disengage", KeyNamePt: "Passo de Bruma"}, "Toren agiu", true},
+		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, ActorLabel: "Garra-Torta", Key: "monster:garra-torta@mesa#claws", KeyNamePt: "Garras"}, "Garra-Torta agiu", true},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, TargetLabel: "Goblin"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT, ActorLabel: "Dragão"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, ActorLabel: "Toren"}, "", false},
@@ -560,5 +562,19 @@ func TestTableScreenCombatOnAFogMapShowsOnlyNPCsTheGroupSees(t *testing.T) {
 	}
 	if !strings.Contains(asJSON(t, f.log(t, f.master, f.get(t, f.master))), "Goblin 2") {
 		t.Error("the master's log does not carry the attack on Goblin 2")
+	}
+}
+
+// RN-23: the player's read blanks the key of an NPC's stat block action, but the table screen decides on the key, so
+// it asks for it whole. Without that a table monster's action ("monster:x@mesa#claws") would be named on the TV.
+func TestTheTableScreenReadsTheWholeKeyOfAnNPCsAction(t *testing.T) {
+	t.Parallel()
+	const key = "monster:garra-torta@mesa#claws"
+	npc := playdb.Combatant{Kind: kindNPC}
+	if got := shownKey(combatViewer{}, npc, key); got != "" {
+		t.Errorf("a player's key = %q, want it blank (RN-20)", got)
+	}
+	if got := shownKey(combatViewer{wholeKeys: true}, npc, key); got != key {
+		t.Errorf("the table screen's key = %q, want it whole", got)
 	}
 }
