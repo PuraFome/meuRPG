@@ -24,6 +24,7 @@ import {
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RechargeNotice } from './recharge-notice';
 import { StatBlockLoad } from './stat-block-load';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
@@ -101,6 +102,7 @@ import { PendingDamages } from './pending-damages';
     PendingDamages,
     Portrait,
     RageStatus,
+    RechargeNotice,
     MultiRoll,
     RollModePicker,
     RollPicker,

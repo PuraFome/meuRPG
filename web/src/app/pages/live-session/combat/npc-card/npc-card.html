@@ -57,6 +57,7 @@
         Movimento <span class="chip__word">{{ stats().movement }}</span>
       </li>
     </ul>
+    <app-recharge-notice [rolls]="rechargeRolls()" [limited]="subject().limitedActions" />
     <!-- On a legendary creature's own turn the card tells what came back and that its legendary actions wait for another's turn. -->
     <ng-content select="[legendary-slot]" />
 
@@ -203,7 +204,6 @@
         [state]="state()"
         [creature]="block()"
         [pendings]="pendings()"
-        [rechargeRolls]="rechargeRolls()"
         [blockState]="blockState()"
         (retry)="statBlock.retry()"
         [theatre]="theatre()"

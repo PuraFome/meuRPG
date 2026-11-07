@@ -2,12 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   effect,
   inject,
   input,
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +25,6 @@ import {
   type CreatureAction,
   SpellSaveSuccess,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import type { RechargeRoll } from '../../../../core/combat/combat-derived';
 import { isHostile } from '../../../../core/combat/attack-flow';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -37,7 +38,6 @@ import {
   asksSave,
   classNote,
   limitView,
-  rechargeFaces,
   resultNotes,
   showsText,
   usableActions,
@@ -80,12 +80,11 @@ export class CreatureActions {
   readonly creature = input<Creature | null>(null);
   /** The damage waiting for the master, from the turn's options: the part the last use opened shows under its result. */
   readonly pendings = input<readonly PendingDamage[]>([]);
-  /** The d6 rolled for this creature at the start of its turn, from the log: one notice for the turn. */
-  readonly rechargeRolls = input<readonly RechargeRoll[]>([]);
   /** Where the stat block is: `loading` shows a skeleton, `failed` the notice with "Tentar de novo". */
   readonly blockState = input<'idle' | 'loading' | 'failed' | 'ready'>('ready');
   /** "Tentar de novo" on the stat block that could not be read. */
   readonly retry = output<void>();
+  private readonly title = viewChild<ElementRef<HTMLElement>>('title');
   /** The combat has no map: the master names the targets, even for an area. */
   readonly theatre = input(false);
   /** The page's own call (the turn passing) is in flight. */
@@ -119,19 +118,6 @@ export class CreatureActions {
   protected readonly needsTargets = computed(() =>
     this.actions().some((a) => this.takesTargets(a)),
   );
-  /** The turn-start notice: what the d6 said, and for each action the faces it needed. */
-  protected readonly rolled = computed(() => {
-    const rolls = this.rechargeRolls();
-    if (rolls.length === 0) {
-      return null;
-    }
-    const lines = rolls.map((r) => {
-      const copy = this.subject().limitedActions.find((l) => (l.namePt || l.name) === r.action);
-      const faces = copy ? rechargeFaces(copy.usage) : '';
-      return `rolou ${r.face} no d6. ${r.action} ${r.recharged ? 'recarregou' : 'não recarregou'}${r.recharged || !faces ? '' : ` (precisa de ${faces})`}.`;
-    });
-    return { ready: rolls.some((r) => r.recharged), lines };
-  });
   /** The creature keeps what it spent after the combat (a persistent NPC's uses a day or rest action). */
   protected readonly keeps = computed(() => this.subject().limitedActions.some((l) => l.kept));
   protected readonly spent = computed(() => this.subject().actionUsed);
@@ -211,6 +197,25 @@ export class CreatureActions {
       return false;
     }
     return this.theatre() || areaPlacementOf(a) === null;
+  }
+
+  /** "Tentar de novo": the button goes with the error, so the focus moves to the section's heading first and stays there. */
+  protected tryAgain(): void {
+    this.title()?.nativeElement.focus();
+    this.retry.emit();
+  }
+
+  /** The actions whose SRD text is open: it is a reminder, folded behind the document icon beside the name. */
+  protected readonly textOpen = signal<ReadonlySet<string>>(new Set());
+
+  protected toggleText(key: string): void {
+    this.textOpen.update((s) => {
+      const next = new Set(s);
+      if (!next.delete(key)) {
+        next.add(key);
+      }
+      return next;
+    });
   }
 
   /** One filled dot for each use left, one empty for each spent. */

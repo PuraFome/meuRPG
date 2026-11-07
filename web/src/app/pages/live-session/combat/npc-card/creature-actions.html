@@ -1,33 +1,29 @@
-@if (blockState() === 'loading') {
-<section class="acts" aria-labelledby="acts-title" aria-busy="true">
-  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
-  <div class="skeleton" role="status">
-    <p class="act__line">Lendo a ficha da criatura…</p>
-    <span class="skeleton__bar"></span><span class="skeleton__bar skeleton__bar--short"></span>
-  </div>
-</section>
-} @else if (blockState() === 'failed') {
-<section class="acts" aria-labelledby="acts-title">
-  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
-  <div class="mr-notice mr-notice--danger" role="alert">
-    <mat-icon aria-hidden="true">error</mat-icon>
-    <p>Não deu para ler as outras ações da criatura.</p>
-  </div>
-  <button matButton="outlined" type="button" class="offer" (click)="retry.emit()">
-    <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
-  </button>
-</section>
-} @else if (actions().length) {
-<section class="acts" aria-labelledby="acts-title">
-  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
+@if (blockState() === 'loading' || blockState() === 'failed' || actions().length) {
+<section class="acts" aria-labelledby="acts-title" [attr.aria-busy]="blockState() === 'loading'">
+  <h3 class="acts__cap" id="acts-title" tabindex="-1" #title>Outras ações</h3>
 
-  @if (rolled(); as r) {
-    <p class="mr-notice recharge-note" [class.mr-notice--success]="r.ready" [class.mr-notice--neutral]="!r.ready" role="status" data-testid="recharge-rolled">
-      <mat-icon aria-hidden="true">casino</mat-icon>
-      <span><b>Recarga no começo do turno:</b> {{ r.lines.join(' ') }}</span>
-    </p>
+  <!-- The live region stays mounted through loading, failing and retrying: only its text changes, so it is announced. -->
+  <div class="acts__live" aria-live="polite">
+    @if (blockState() === 'loading') {
+      <div class="skeleton">
+        <p class="act__line">Lendo a ficha da criatura…</p>
+        <span class="skeleton__bar"></span><span class="skeleton__bar skeleton__bar--short"></span>
+      </div>
+    }
+    @if (blockState() === 'failed') {
+      <div class="mr-notice mr-notice--danger">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>Não deu para ler as outras ações da criatura.</p>
+      </div>
+    }
+  </div>
+  @if (blockState() === 'failed') {
+    <button matButton="outlined" type="button" class="offer" (click)="tryAgain()">
+      <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
+    </button>
   }
 
+  @if (blockState() !== 'loading' && blockState() !== 'failed') {
   @if (keeps()) {
     <p class="mr-notice mr-notice--neutral" data-testid="creature-keeps">
       <mat-icon aria-hidden="true">history</mat-icon>
@@ -54,6 +50,18 @@
       <li class="act">
         <p class="act__head">
           <b class="act__name">{{ c.name }}</b>
+          @if (c.text) {
+            <button
+              type="button"
+              class="act__doc"
+              [attr.aria-expanded]="textOpen().has(c.action.key)"
+              [attr.aria-controls]="'act-text-' + $index"
+              [attr.aria-label]="'Texto do SRD de ' + c.name"
+              (click)="toggleText(c.action.key)"
+            >
+              <mat-icon aria-hidden="true">description</mat-icon>
+            </button>
+          }
           @if (c.usage) {
             <span class="act__usage">{{ c.usage }}</span>
           }
@@ -79,8 +87,8 @@
         @if (c.note) {
           <p class="act__note">{{ c.note }}</p>
         }
-        @if (c.text) {
-          <p class="act__text"><span class="act__tag">Texto do SRD, em inglês</span> <span lang="en">{{ c.text }}</span></p>
+        @if (c.text && textOpen().has(c.action.key)) {
+          <p class="act__text" [id]="'act-text-' + $index"><span class="act__tag">Texto do SRD, em inglês</span><span lang="en">{{ c.text }}</span></p>
         }
         <div class="act__use">
           <button
@@ -151,6 +159,7 @@
       <mat-icon aria-hidden="true">error</mat-icon>
       <p>{{ error() }}</p>
     </div>
+  }
   }
 </section>
 }

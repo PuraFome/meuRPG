@@ -159,6 +159,7 @@
 }
 
 .act__tag {
+  display: block;
   font-weight: 700;
 }
 
@@ -265,4 +266,34 @@
 .recharge-note {
   padding: 8px 12px;
   font-size: var(--mr-font-14);
+}
+
+// The small document icon beside an action's name opens its SRD text. The touch target is the 44px square; the icon stays small.
+.act__doc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-md);
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: var(--mr-font-20);
+  }
+
+  &[aria-expanded='true'] {
+    color: var(--mr-ink);
+  }
+}
+
+.acts__live:empty {
+  display: none;
 }

@@ -114,7 +114,7 @@ describe("NpcCard: the creature's other actions", () => {
 
   it('says the stat block could not be read and offers "Tentar de novo", the rest of the card working', async () => {
     const { root } = await open({});
-    expect(root.querySelector('app-creature-actions [role="alert"]')?.textContent).toContain(
+    expect(root.querySelector('app-creature-actions .acts__live')?.textContent).toContain(
       'Não deu para ler as outras ações da criatura.',
     );
     const retry = [...root.querySelectorAll('app-creature-actions button')].find((b) =>
