@@ -54,16 +54,22 @@ function listWith(items: readonly string[], word: 'e' | 'ou'): string {
     : `${items.slice(0, -1).join(', ')} ${word} ${items[items.length - 1]}`;
 }
 
-const SIZE_NAMES: Readonly<Record<string, string>> = {
-  Tiny: 'miúdo',
-  Small: 'pequeno',
-  Medium: 'médio',
-  Large: 'grande',
+/** The sizes the server writes in English, in Portuguese ("Médio"). */
+export const SIZE_WORDS: Readonly<Record<string, string>> = {
+  Tiny: 'Miúdo',
+  Small: 'Pequeno',
+  Medium: 'Médio',
+  Large: 'Grande',
 };
 
 /** "médio", for a size the server writes in English ("Medium"); an unknown size is shown as it came. */
 function sizeName(size: string): string {
-  return SIZE_NAMES[size] ?? size;
+  return SIZE_WORDS[size]?.toLowerCase() ?? size;
+}
+
+/** The races (and sub-races) a feat asks for, as the draft has them: the single `raceKey` first, then the list. */
+export function askedRaces(raceKey: string, races: readonly string[]): string[] {
+  return [...(raceKey ? [raceKey] : []), ...races.filter((r) => r !== raceKey)];
 }
 
 /** What the server says for a condition the player may not read; the same words in the "Pede:" line and in the unmet line. */
@@ -79,14 +85,14 @@ export interface LacksView {
 /** What the feat asks of who the character is: the races, the size and the feature to lack. */
 function whoParts(p: FeatPrerequisite, nameOf: KeyName, lacks?: LacksView): string[] {
   const parts: string[] = [];
-  const races = [...(p.raceKey ? [p.raceKey] : []), ...p.races.filter((r) => r !== p.raceKey)];
+  const races = askedRaces(p.raceKey, p.races);
   if (races.length > 0) {
     parts.push(`ser ${listWith(races.map(nameOf), 'ou')}`);
   }
   if (p.size) {
     parts.push(`ter tamanho ${sizeName(p.size)}`);
   }
-  if (lacks?.hidden) {
+  if (lacks?.hidden || p.lacksHidden) {
     parts.push(HIDDEN_ASK);
   } else if (p.lacksFeatureKey) {
     parts.push(`não ter ${lacks?.name || nameOf(p.lacksFeatureKey)}`);

@@ -22,7 +22,7 @@
   <div class="grid" [class.grid--lead]="withLead()">
     <app-text-field
       [label]="nameLabel()"
-      [maxlength]="isOption() ? 60 : 0"
+      [maxlength]="isOption() ? nameMax : 0"
       [value]="feature().name"
       [path]="path('name_pt')"
       [issues]="issuesOf()(path('name_pt'))"

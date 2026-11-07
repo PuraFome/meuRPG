@@ -578,8 +578,8 @@ func TestEffectMenuNamesArePortuguese(t *testing.T) {
 	}
 }
 
-// TestLackableFeaturesAreTheSRDKeysAFeatMayName: the list holds exactly the SRD keys a feat's
-// lacks_feature accepts (each one passes isFeatureKey), by name, with where each comes from, and a
+// TestLackableFeaturesAreTheSRDKeysAFeatMayName: the list holds the SRD features, traits, background
+// features and feats a feat's lacks_feature may name (each value passes isFeatureKey), by name, with where each comes from, and a
 // table entry never appears in it.
 func TestLackableFeaturesAreTheSRDKeysAFeatMayName(t *testing.T) {
 	overlay := Overlay{Revision: 1, Feats: []TableFeat{{

@@ -333,6 +333,7 @@
     "value": {
       "namePt": "Talento 5",
       "prerequisite": {
+        "lacksHidden": true,
         "races": [
           "race:elf",
           "race:dwarf"

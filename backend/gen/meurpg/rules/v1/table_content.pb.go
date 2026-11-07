@@ -8067,8 +8067,8 @@ type EffectMenuList struct {
 	// "ability_increase_amounts" (its `value`: "1" or "2"), "state_ends" (a state's
 	// `ends_on`), "state_economies" (its `economy`), "weapon_filters" (a weapon_rule's
 	// `weapon`), "weapon_kinds" (a pseudo_weapon's), "lackable_features" (the SRD
-	// features, traits and feats a feat's `prerequisite.lacks_feature_key` may name; `hint_pt` is where
-	// each comes from, and the table's own entries are not in it) or "race_traits" (the traits of
+	// features, traits, background features and feats a feat's `prerequisite.lacks_feature_key` may
+	// name; `hint_pt` is where each comes from, and the table's own entries are not in it) or "race_traits" (the traits of
 	// the SRD races a subrace's `replaces_trait_keys` may name; `group` is the race, `hint_pt` a
 	// one-line summary of the trait or empty, and the table's own races and traits are not in it).
 	Name          string             `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`

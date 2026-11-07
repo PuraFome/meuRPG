@@ -6,7 +6,7 @@ import { toren } from './levelup-support';
 import { setTableRulesRPC } from './table-rules-support';
 import type { CharacterBuild } from './support';
 
-// Setup for the a11y rows of the race, subrace and feat screens of the editor (MR-025, RN-23; #571 and #716): a table race whose
+// Setup for the a11y rows of the race, subrace and feat screens of the editor (MR-025, RN-23): a table race whose
 // trait asks the player to pick one of two options, a subrace that replaces one trait and the bonuses of its race, and feats that ask
 // for races, a size and a feature the character must not have. Everything comes through the API, so a row proves its screen and not
 // the editors; invented names, as the other content specs have.

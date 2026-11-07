@@ -29,7 +29,6 @@ import {
 } from '../../../core/content/feat-draft';
 import {
   LACK_GROUPS,
-  askedRaces,
   lackChips,
   lackOptions,
   pickableLacks,
@@ -40,7 +39,9 @@ import {
   ABILITY_FIELDS,
   type AbilityField,
   type FeatureDraft,
+  SIZE_OPTIONS,
 } from '../../../core/content/feature-draft';
+import { askedRaces } from '../../../core/content/feat-text';
 import { previewRead } from '../../../core/content/preview';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
@@ -56,13 +57,7 @@ const RACES = 'table_feat.prerequisite.races';
 const LACKS = 'table_feat.prerequisite.lacks_feature_key';
 
 /** The sizes a feat may ask for, as the server writes them. */
-const SIZE_OPTIONS: SelectOption[] = [
-  { value: '', label: 'Qualquer' },
-  { value: 'Tiny', label: 'Miúdo' },
-  { value: 'Small', label: 'Pequeno' },
-  { value: 'Medium', label: 'Médio' },
-  { value: 'Large', label: 'Grande' },
-];
+const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OPTIONS];
 
 /**
  * The feat editor: a name, a text, what the feat asks of a character, and its effects.
@@ -121,7 +116,7 @@ export class FeatEditor {
     { value: '', label: 'Nenhuma' },
     ...this.catalog().proficiencies,
   ]);
-  protected readonly sizes = SIZE_OPTIONS;
+  protected readonly sizes = FEAT_SIZES;
   protected readonly lackGroups = LACK_GROUPS;
   private readonly lackAll = computed(() =>
     lackOptions(this.menu().list('lackable_features'), this.entries(), this.catalog().nameOf),
@@ -132,7 +127,7 @@ export class FeatEditor {
     const catalog = this.catalog();
     return (key: string) => srd.get(key) ?? catalog.nameOf(key);
   });
-  /** The races asked: the single race of an older feat stands in the list as one more chip. */
+  /** The races asked: a feat's single race_key stands in the list as one more chip. */
   private readonly asked = computed(() => askedRaces(this.draft().raceKey, this.draft().races));
   /** The key of each race the server refused, with the path of its refusal. */
   private readonly refusedRaces = computed(() => {
@@ -147,7 +142,7 @@ export class FeatEditor {
     d.races.forEach((key, i) => at(key, `${RACES}[${i}]`));
     return out;
   });
-  protected readonly raceChips = computed(() =>
+  protected readonly raceChipList = computed(() =>
     raceChips(this.asked(), this.entries(), this.nameOf(), this.refusedRaces()),
   );
   protected readonly raceSearch = computed(() =>
@@ -165,7 +160,7 @@ export class FeatEditor {
   protected readonly lackSearch = computed(() =>
     pickableLacks(this.lackAll(), this.entry()?.key ?? '', this.draft().lacksFeatureKey),
   );
-  protected readonly lackChips = computed(() =>
+  protected readonly lackChipList = computed(() =>
     lackChips(
       this.draft().lacksFeatureKey,
       this.lackAll(),
@@ -206,7 +201,7 @@ export class FeatEditor {
     this.patch({ feature });
   }
 
-  /** A race is added to the list; a single race an older feat has moves into it, so the server never gets both. */
+  /** A race is added to the list; a feat's single race_key moves into it, so the server never gets both. */
   protected addRace(key: string): void {
     const d = this.draft();
     this.patch({ raceKey: '', races: [...askedRaces(d.raceKey, d.races), key] });

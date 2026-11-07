@@ -1276,6 +1276,13 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 }
 
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
+// clearReadMarks zeroes what only a player's read sets, so a master's round trip never stores it.
+func clearReadMarks(body tableBody) {
+	if feat, ok := body.(*rulesv1.TableFeat); ok && feat.GetPrerequisite() != nil {
+		feat.Prerequisite.LacksHidden = false
+	}
+}
+
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Options: b.GetOptions()}})
 	if p := b.GetPrerequisite(); p != nil {
@@ -1285,6 +1292,7 @@ func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 		p.Races = v.visible(p.Races)
 		if v.hidden(p.GetLacksFeatureKey()) {
 			p.LacksFeatureKey = "" // nor a feature the players do not see
+			p.LacksHidden = true
 		}
 	}
 }

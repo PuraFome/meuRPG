@@ -395,6 +395,21 @@ describe('what a player reads of a feat (MR-025)', () => {
     noRawKeys(read.rows.map((r) => r.value));
   });
 
+  it('reads a hidden "lacks" condition as words, never a key', () => {
+    const e = entry(TableContentKind.FEAT, 'Sem a pele', {
+      body: {
+        case: 'tableFeat',
+        value: create(TableFeatSchema, {
+          namePt: 'Sem a pele',
+          prerequisite: { lacksHidden: true },
+        }),
+      },
+    });
+    const read = readEntry(e, nameOf);
+    expect(flat(read.rows[0].value)).toBe('uma condição que a mesa não mostra');
+    noRawKeys(read.rows.map((r) => r.value));
+  });
+
   it('says "Nenhum" for a feat that asks nothing', () => {
     const e = entry(TableContentKind.FEAT, 'Livre', {
       body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },

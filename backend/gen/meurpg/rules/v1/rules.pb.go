@@ -3132,8 +3132,11 @@ type FeatPrerequisite struct {
 	// The guided level-up judges it before the feat's grants. The sheet judges it on what
 	// the character owns.
 	LacksFeatureKey string `protobuf:"bytes,9,opt,name=lacks_feature_key,json=lacksFeatureKey,proto3" json:"lacks_feature_key,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// True when the condition names a feature the player may not read; the key is then empty.
+	// Set by the server on a player's read. Ignored on write.
+	LacksHidden   bool `protobuf:"varint,10,opt,name=lacks_hidden,json=lacksHidden,proto3" json:"lacks_hidden,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FeatPrerequisite) Reset() {
@@ -3227,6 +3230,13 @@ func (x *FeatPrerequisite) GetLacksFeatureKey() string {
 		return x.LacksFeatureKey
 	}
 	return ""
+}
+
+func (x *FeatPrerequisite) GetLacksHidden() bool {
+	if x != nil {
+		return x.LacksHidden
+	}
+	return false
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):
@@ -12701,7 +12711,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fconstitution\x18\x03 \x01(\x05R\fconstitution\x12\"\n" +
 	"\fintelligence\x18\x04 \x01(\x05R\fintelligence\x12\x16\n" +
 	"\x06wisdom\x18\x05 \x01(\x05R\x06wisdom\x12\x1a\n" +
-	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xd9\x02\n" +
+	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xfc\x02\n" +
 	"\x10FeatPrerequisite\x12:\n" +
 	"\bminimums\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\bminimums\x125\n" +
 	"\x06any_of\x18\x02 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x05anyOf\x12'\n" +
@@ -12711,7 +12721,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05level\x18\x06 \x01(\x05R\x05level\x12\x14\n" +
 	"\x05races\x18\a \x03(\tR\x05races\x12\x12\n" +
 	"\x04size\x18\b \x01(\tR\x04size\x12*\n" +
-	"\x11lacks_feature_key\x18\t \x01(\tR\x0flacksFeatureKey\"h\n" +
+	"\x11lacks_feature_key\x18\t \x01(\tR\x0flacksFeatureKey\x12!\n" +
+	"\flacks_hidden\x18\n" +
+	" \x01(\bR\vlacksHidden\"h\n" +
 	"\fFeatIncrease\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12,\n" +
 	"\x04from\x18\x02 \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x04from\x12\x14\n" +

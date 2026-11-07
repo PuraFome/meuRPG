@@ -30,7 +30,7 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
             <li class="rows__item">
               <app-check-row
                 [label]="r.stale ? 'Um traço que não é de ' + raceName() : r.name"
-                [sub]="r.stale ? 'Veio marcado num pacote' : r.summary"
+                [sub]="r.stale ? 'Este traço não existe mais em ' + raceName() + '.' : r.summary"
                 [checked]="r.checked"
                 [invalid]="r.stale"
                 [ariaInvalid]="r.stale"
@@ -48,6 +48,9 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
             </li>
           }
         </ul>
+        @for (m of issues(); track m) {
+          <p class="inline-issue list-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+        }
       }
     </section>
   `,
@@ -119,6 +122,10 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
         font-size: var(--mr-font-18);
       }
     }
+
+    .list-issue {
+      margin-left: 0;
+    }
   `,
 })
 export class ReplacedTraits {
@@ -128,6 +135,8 @@ export class ReplacedTraits {
   readonly locked = input(false);
   /** The path of the subrace's `replaces_trait_keys`, for a refusal to find its row. */
   readonly basePath = input('table_subrace.replaces_trait_keys');
+  /** The refusals about the whole list, each shown once under the checklist. */
+  readonly issues = input<readonly string[]>([]);
   /** The place of each marked key in the list, by key: the index a refusal names. */
   readonly places = input<ReadonlyMap<string, number>>(new Map());
   readonly toggled = output<{ readonly key: string; readonly on: boolean }>();

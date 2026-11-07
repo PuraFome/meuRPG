@@ -10,14 +10,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog, entry } from './content-testing';
 import { menu } from './content-testing-menu';
-import {
-  askedRaces,
-  lackChips,
-  lackOptions,
-  pickableLacks,
-  pickableRaces,
-  raceChips,
-} from './feat-lookup';
+import { lackChips, lackOptions, pickableLacks, pickableRaces, raceChips } from './feat-lookup';
+import { askedRaces } from './feat-text';
 
 const nameOf = catalog().nameOf;
 

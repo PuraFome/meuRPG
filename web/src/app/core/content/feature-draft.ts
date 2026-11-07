@@ -122,6 +122,9 @@ export function bonusText(b: Bonuses, abilities: readonly CatalogAbility[]): str
 }
 
 /** What a bonus can be: the server's limit (`rules.maxRaceBonus`, 4 in either direction). */
+/** The longest name of an entry, a trait or an option. */
+export const NAME_MAX = 60;
+
 export const BONUS_MIN = -4;
 export const BONUS_MAX = 4;
 

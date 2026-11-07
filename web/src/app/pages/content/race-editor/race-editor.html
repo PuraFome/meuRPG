@@ -13,7 +13,7 @@
       }
       @if (isRace()) {
         <div class="grid grid--4">
-          <app-text-field class="span-2" label="Nome" [value]="r.name" [maxlength]="60" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
+          <app-text-field class="span-2" label="Nome" [value]="r.name" [maxlength]="nameMax" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
           <app-select-field label="Tamanho" [options]="sizes" [value]="r.size" [path]="prefix() + '.size'" [issues]="issuesOf(prefix() + '.size')" (valueChange)="patchRace({ size: $event })" />
         </div>
         <div class="grid grid--4">
@@ -23,7 +23,7 @@
         <p class="hint">O deslocamento e a visão vão em passos de 1,5 m. Visão no escuro vazia ou 0 = sem visão no escuro.</p>
       } @else {
         <div class="grid grid--4">
-          <app-text-field class="span-2" label="Nome" [value]="name()" [maxlength]="60" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
+          <app-text-field class="span-2" label="Nome" [value]="name()" [maxlength]="nameMax" [path]="prefix() + '.name_pt'" [issues]="issuesOf(prefix() + '.name_pt')" (valueChange)="setName($event)" />
         </div>
       }
     </section>
@@ -72,7 +72,7 @@
     }
 
     @if (!isRace()) {
-      <app-replaced-traits [raceName]="parentName()" [rows]="traitRows()" [locked]="sub().raceKey === ''" [places]="keyPlaces()" (toggled)="setReplaced($event.key, $event.on)" />
+      <app-replaced-traits [raceName]="parentName()" [rows]="traitRows()" [locked]="sub().raceKey === ''" [places]="keyPlaces()" [issues]="issuesOf(prefix() + '.replaces_trait_keys')" (toggled)="setReplaced($event.key, $event.on)" />
     }
 
     <section class="mr-panel block" aria-labelledby="traits-t">

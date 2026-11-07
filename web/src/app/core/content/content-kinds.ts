@@ -1,6 +1,6 @@
 import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
-import { prerequisiteSupport } from './feat-text';
+import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { classFeatureSupport } from './class-feature-text';
 import { optionSupport } from './option-text';
 import { metersText } from '../units';
@@ -401,13 +401,6 @@ function supportParts(
       return [];
   }
 }
-
-export const SIZE_WORDS: Readonly<Record<string, string>> = {
-  Tiny: 'Miúdo',
-  Small: 'Pequeno',
-  Medium: 'Médio',
-  Large: 'Grande',
-};
 
 export const CASTING_WORDS: Readonly<Record<string, string>> = {
   full: 'completa',

@@ -465,6 +465,9 @@ message FeatPrerequisite {
   // The guided level-up judges it before the feat's grants. The sheet judges it on what
   // the character owns.
   string lacks_feature_key = 9;
+  // True when the condition names a feature the player may not read; the key is then empty.
+  // Set by the server on a player's read. Ignored on write.
+  bool lacks_hidden = 10;
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):

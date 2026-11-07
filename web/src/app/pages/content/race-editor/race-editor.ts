@@ -43,6 +43,7 @@ import {
   emptyRace,
   emptySubrace,
   featurePaths,
+  NAME_MAX,
   raceToDraft,
   SIZE_OPTIONS,
   subraceToDraft,
@@ -119,6 +120,7 @@ export class RaceEditor {
   readonly reload = output<void>();
   readonly cancelled = output<void>();
 
+  protected readonly nameMax = NAME_MAX;
   protected readonly race = signal<RaceDraft>(emptyRace());
   protected readonly sub = signal<SubraceDraft>(emptySubrace());
   protected readonly saver = new EntrySaver(
@@ -181,7 +183,7 @@ export class RaceEditor {
   protected readonly keyPlaces = computed(
     () => new Map(this.sub().replacesTraitKeys.map((k, i) => [k, i] as const)),
   );
-  /** "Olhos de caçador e os bônus de Corujeiro": the master's note (players never read it from here). */
+  /** "Olhos de caçador e os bônus de Corujeiro": the master's editor note; players read the catalog's "Substitui" line, for visible traits only. */
   protected readonly replacesNote = computed(() =>
     replacesLine(
       replacedNames(this.parentTraits(), this.sub().replacesTraitKeys),

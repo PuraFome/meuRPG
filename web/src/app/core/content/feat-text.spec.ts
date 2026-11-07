@@ -129,6 +129,11 @@ describe('what a feat asks, in Portuguese', () => {
     expect(line).not.toMatch(/feat:|trait:/);
   });
 
+  it("reads the server's lacks_hidden mark as the hidden condition, with no key", () => {
+    const p = create(FeatPrerequisiteSchema, { lacksHidden: true });
+    expect(prerequisiteSupport(p, nameOf)).toBe('uma condição que a mesa não mostra');
+  });
+
   it("writes the whole prerequisite of the master's board in one line", () => {
     const p = create(FeatPrerequisiteSchema, {
       minimums: { dexterity: 13 },

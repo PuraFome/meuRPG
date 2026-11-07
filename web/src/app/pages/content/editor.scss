@@ -240,7 +240,8 @@
   color: var(--mr-ink);
 }
 
-// The note only the master reads (a subrace's "Substitui"): an eye-off heading, then the line.
+// The master's editor note (a subrace's "Substitui"): an eye-off heading, then the line.
+// Players read the catalog's "Substitui" line instead, for the traits they can see.
 .master-note {
   display: flex;
   flex-direction: column;

@@ -90,8 +90,8 @@ function scoresOf(s: AbilityScores | undefined): Scores {
   return out;
 }
 
-/** The race list, the size and the feature to lack, as the feat has them. */
-function passedThrough(
+/** The race list, the size and the feature to lack of a saved prerequisite. */
+function whoOf(
   p: TableFeat['prerequisite'],
 ): Pick<FeatDraft, 'races' | 'size' | 'lacksFeatureKey'> {
   return {
@@ -115,7 +115,7 @@ export function featToDraft(f: TableFeat): FeatDraft {
     proficiencyKey: p?.proficiencyKey ?? '',
     spellcasting: p?.spellcasting ?? false,
     raceKey: p?.raceKey ?? '',
-    ...passedThrough(p),
+    ...whoOf(p),
     level: p && p.level > 0 ? String(p.level) : '',
     options: [...f.options],
   };
@@ -146,7 +146,7 @@ export function draftToFeat(d: FeatDraft, menu: EffectMenuVm): FeatInit {
       proficiencyKey: d.proficiencyKey,
       spellcasting: d.spellcasting,
       raceKey: d.raceKey,
-      // The single race the master typed replaces the list: the server refuses both.
+      // A feat with raceKey sends no list (the server refuses both).
       races: d.raceKey ? [] : d.races,
       size: d.size,
       lacksFeatureKey: d.lacksFeatureKey,

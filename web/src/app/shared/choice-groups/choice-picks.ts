@@ -87,7 +87,7 @@ export function isTraitChoice(group: ChoiceGroup, choice: Choice): boolean {
     group.origin === ChoiceOrigin.RACE &&
     choice.kind === ChoiceKind.OPTIONS &&
     choice.featureKey.startsWith('trait:') &&
-    // The choice of the trait's own options; a feat or a part of it is "<trait>#<part>".
+    // The choice of the trait's own options; a part of a choice is "<trait>#<part>".
     choice.key === choice.featureKey
   );
 }

@@ -417,6 +417,7 @@ func checkWriteBody(body tableBody, kind rulesv1.TableContentKind) error {
 	if body == nil {
 		return invalidArgument(fieldErr("body", "is required: exactly one of the table_* messages"))
 	}
+	clearReadMarks(body)
 	if v := checkFeatureCount(kind, body); len(v) > 0 {
 		return errRefusedContent(v)
 	}

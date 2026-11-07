@@ -161,8 +161,8 @@ const (
 	ListStateEconomies = "state_economies"
 	ListWeaponFilters  = "weapon_filters"
 	ListWeaponKinds    = "weapon_kinds"
-	// ListLackableFeatures are the SRD features, traits and feats a feat's `prerequisite.lacks_feature_key`
-	// may name besides the table's own, which the editor already holds.
+	// ListLackableFeatures are the SRD features, traits, background features and feats a feat's
+	// `prerequisite.lacks_feature_key` may name besides the table's own, which the editor already holds.
 	ListLackableFeatures = "lackable_features"
 	// ListRaceTraits are the traits of the SRD races: what a subrace's `replaces_trait_keys` may name
 	// for an SRD parent, each with its race as Group.
@@ -715,8 +715,9 @@ func (c *content) menuLists() []MenuList {
 	}
 }
 
-// menuLackableFeatures are the SRD keys isFeatureKey accepts in a feat's lacks_feature: the class and
-// subclass features, the racial traits, the background features and the feats, by Portuguese name. The
+// menuLackableFeatures are the SRD keys a feat's lacks_feature may name that the editor offers: the class and
+// subclass features, the racial traits, the background features and the feats, by Portuguese name. Each
+// passes isFeatureKey; the keys that check also accepts for options are not listed. The
 // table's entries (keys ending in "@mesa") are left out, and each value's hint says where it comes from.
 func (c *content) menuLackableFeatures() []MenuValue {
 	var out []MenuValue

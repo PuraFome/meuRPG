@@ -117,11 +117,6 @@ export function lackChips(
   ];
 }
 
-/** The races (and sub-races) a feat asks for, as the draft has them: the single `raceKey` first, then the list. */
-export function askedRaces(raceKey: string, races: readonly string[]): string[] {
-  return [...(raceKey ? [raceKey] : []), ...races.filter((r) => r !== raceKey)];
-}
-
 /**
  * The chips of the races asked.
  * "Desligada" marks one the master switched off or archived, which the players do not read.

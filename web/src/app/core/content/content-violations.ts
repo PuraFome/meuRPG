@@ -1,4 +1,5 @@
 import type { TableContentViolation } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { NAME_MAX } from './feature-draft';
 import { FIELD_TEXTS, FORMULA_TEXT, LONG_TEXT } from './content-violation-texts';
 
 /**
@@ -103,7 +104,7 @@ function nameText(r: string, ctx: ViolationContext): string | undefined {
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
-    return 'O nome tem de 1 a 60 letras.';
+    return `O nome tem de 1 a ${NAME_MAX} letras.`;
   }
   if (r === 'bad_key' || r === 'reserved_key' || r === 'duplicate_key') {
     return 'Este nome não pode ser usado. Escolha outro.';

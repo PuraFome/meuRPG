@@ -8,7 +8,6 @@ import type {
   TableSpell,
   TableSubrace,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { SIZE_WORDS } from './content-kinds';
 import { readClass, readSubclass } from './content-read-class';
 import {
   type EntryRead,
@@ -24,7 +23,7 @@ import {
 import { bonusText } from './feature-draft';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
-import { prerequisiteSupport } from './feat-text';
+import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { optionPrerequisiteParts, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';

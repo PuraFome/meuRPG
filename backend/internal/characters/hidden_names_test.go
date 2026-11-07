@@ -141,6 +141,40 @@ func TestAPlayersCopyOfAFeatNamesNoHiddenEntry(t *testing.T) {
 	wantNames(t, "the player's entries", player, false, hiddenWords...)
 	wantNames(t, "the player's entries", player, false, tb.race, tb.feat, tb.trait, onlyHiddenName)
 	wantNames(t, "the player's entries", player, true, mixedName, lacksTraitName, openFeatName)
+	// The condition on a hidden feature reads as hidden (and keyless) to the player, as itself to the master.
+	lacks := func(res *rulesv1.ListTableEntriesResponse, key string) *rulesv1.FeatPrerequisite {
+		for _, e := range res.GetEntries() {
+			if e.GetKey() == key {
+				return e.GetTableFeat().GetPrerequisite()
+			}
+		}
+		return nil
+	}
+	for _, key := range []string{tb.lacksTrait, tb.lacksFeat, tb.mixed} {
+		if p := lacks(player, key); p == nil || !p.GetLacksHidden() || p.GetLacksFeatureKey() != "" {
+			t.Errorf("the player's condition of %s = %v, want hidden and keyless", key, p)
+		}
+		if p := lacks(master, key); p == nil || p.GetLacksHidden() || p.GetLacksFeatureKey() == "" {
+			t.Errorf("the master's condition of %s = %v, want the key, not hidden", key, p)
+		}
+	}
+	if p := lacks(player, tb.open); p.GetLacksHidden() {
+		t.Errorf("a feat with no condition reads as hidden: %v", p)
+	}
+}
+
+// The mark is the server's: a master who sends it stores nothing of it.
+func TestTheLacksHiddenMarkIsNeverStored(t *testing.T) {
+	t.Parallel()
+	tb := newHiddenNamesTable(t)
+	key := tb.master.addEntry(t, tb.campaign, &rulesv1.TableFeat{
+		NamePt: "Marcado a mão", DescPt: []string{"Texto."},
+		Prerequisite: &rulesv1.FeatPrerequisite{LacksFeatureKey: tb.trait, LacksHidden: true},
+	}).GetKey()
+	got := tb.master.entries(t, tb.campaign)[key].GetTableFeat().GetPrerequisite()
+	if got.GetLacksHidden() || got.GetLacksFeatureKey() != tb.trait {
+		t.Errorf("the stored condition = %v, want the key and no mark", got)
+	}
 }
 
 func TestAPlayersFeatCardsAtCreationNameNoHiddenEntry(t *testing.T) {
