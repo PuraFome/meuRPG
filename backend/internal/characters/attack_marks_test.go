@@ -1,8 +1,10 @@
 package characters
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
 
 // An attack's marks (silvered, adamantine, magical) reach the wire as the engine derived them, from whichever source
 // gave them: the proto fields are a copy for the screens, never a second rule.
