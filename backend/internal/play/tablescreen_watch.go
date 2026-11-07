@@ -233,7 +233,7 @@ func (s *Service) screenLeft(ctx context.Context, campaignID, sessionID string, 
 // The caller holds the presence lock; Publish never waits.
 func (s *Service) publishPresence(campaignID string, revision int32, ev *playv1.WatchGameSessionResponse_TableScreenChanged) {
 	ev.PresenceKnown, ev.ChoiceRevision = true, revision
-	s.hub.Publish(campaignID, live.Event{
+	s.send(campaignID, live.Event{
 		Audience: live.Audience{Master: true, NoScreens: true},
 		Message:  &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TableScreenChanged_{TableScreenChanged: ev}},
 	})
