@@ -113,7 +113,7 @@
     </div>
 
     @if (tools()) {
-    <div class="fm__tools">
+      <div class="fm__tools">
         <div class="fm__zoom" role="group" aria-label="Zoom do mapa">
           <button type="button" class="fm__btn" aria-label="Reduzir" [disabled]="!vision() || (view()?.scale() ?? 1) <= 1" (click)="zoomOut()">
             <mat-icon aria-hidden="true">remove</mat-icon>

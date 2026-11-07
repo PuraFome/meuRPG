@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatIconModule } from '@angular/material/icon';
 
 import type { TvRollVm } from '../../../core/play/table-screen-view';
+import { TvFit } from '../tv-fit/tv-fit';
 
 /** "4 e 4", "2, 5 e 6": the faces that came up, as a sentence. */
 export function facesText(faces: readonly number[]): string {
@@ -14,7 +15,7 @@ export function facesText(faces: readonly number[]): string {
 /** "Rolagens da mesa": the free rolls the whole table sees, newest first; the newest is the big one. */
 @Component({
   selector: 'app-tv-rolls',
-  imports: [MatIconModule],
+  imports: [MatIconModule, TvFit],
   templateUrl: './tv-rolls.html',
   styleUrl: './tv-rolls.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

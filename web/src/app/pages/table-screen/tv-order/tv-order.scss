@@ -1,17 +1,27 @@
+@use '../tv-panel' as tv;
+
 :host {
   display: block;
-  min-height: 0;
+
+  @media (min-width: 900px) {
+    @include tv.fill;
+  }
 }
 
 .tv-order {
   display: flex;
   flex-direction: column;
-  height: 100%;
   padding: 0;
   overflow: hidden;
+
+  @media (min-width: 900px) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
 }
 
 .tv-order__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -47,13 +57,17 @@
   }
 }
 
+// On a TV the list is the room the panel has left, and only the rows that fit are drawn (`appTvFit`).
 .tv-order__list {
-  flex: 1 1 auto;
-  min-height: 0;
   margin: 0;
   padding: 0;
   list-style: none;
-  overflow: hidden;
+
+  @media (min-width: 900px) {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .tv-order__row {
@@ -139,9 +153,27 @@
   }
 }
 
+// "+N", under the list: its room is kept while it is empty, so the rows that fit do not change when it appears.
 .tv-order__more {
-  padding: 6px var(--mr-space-4);
+  flex: none;
+  margin: 0;
+  min-height: 1.6em;
+  padding: 2px var(--mr-space-4);
   border-top: 1px solid var(--mr-rule);
   font-weight: 700;
   color: var(--mr-ink-muted);
+
+  &:empty {
+    border-top-color: transparent;
+  }
+
+  @media (min-width: 1600px) {
+    font-size: var(--mr-font-24);
+  }
+
+  @media (max-width: 899.98px) {
+    &:empty {
+      display: none;
+    }
+  }
 }

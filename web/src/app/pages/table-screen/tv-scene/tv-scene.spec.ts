@@ -43,7 +43,7 @@ describe('TvScene', () => {
     }));
     const el = render('', crowd);
     expect(el.querySelectorAll('.tv-scene__npc')).toHaveLength(TV_STAGE_MAX);
-    expect(el.querySelector('.tv-scene__more')?.textContent).toBe('+2');
+    expect(el.querySelector('.tv-scene__more')?.textContent?.trim()).toBe('+2');
   });
 
   it('draws no description paragraph when there is none', () => {

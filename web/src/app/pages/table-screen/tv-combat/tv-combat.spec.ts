@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import type { TvCombatantVm, TvMapVm } from '../../../core/play/table-screen-view';
 import { fogMapBody, rollsOf } from '../table-screen-testing';
-import { TV_LOG_WITH_MAP, TV_LOG_WITHOUT_MAP, TvCombat } from './tv-combat';
+import { TV_LOG_LINES, TvCombat } from './tv-combat';
 
 const order: TvCombatantVm[] = [
   { name: 'Brisa', initial: 'B', stateWord: null, onTurn: false, isPlayer: true },
@@ -32,16 +32,16 @@ describe('TvCombat', () => {
     expect(el.querySelector('.tv-combat--map')).toBeNull();
     expect(el.querySelector('app-tv-order')).not.toBeNull();
     const lines = [...el.querySelectorAll('.tv-combat__line')].map((l) => l.textContent);
-    expect(lines).toEqual(log.slice(0, TV_LOG_WITHOUT_MAP));
+    expect(lines).toEqual(log.slice(0, TV_LOG_LINES));
     expect(el.querySelector('#tv-log-title')?.textContent).toContain('Último no combate');
   });
 
-  it('with a map is the map, the order and only the last line', () => {
+  it('with a map is the map, the order and the log', () => {
     const el = render({ map: fogVm() });
     expect(el.querySelector('.tv-combat--map')).not.toBeNull();
     expect(el.querySelector('app-tv-map app-fog-map')).not.toBeNull();
     expect(el.querySelectorAll('app-tv-order')).toHaveLength(1);
-    expect(el.querySelectorAll('.tv-combat__line')).toHaveLength(TV_LOG_WITH_MAP);
+    expect(el.querySelectorAll('.tv-combat__line')).toHaveLength(log.length);
   });
 
   it('with the fog hiding the map is the card, the order and the log', () => {

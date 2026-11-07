@@ -84,7 +84,13 @@
 }
 
 .tv-idle__more {
+  margin: 0;
+  font-weight: 700;
   color: var(--mr-ink-muted);
+
+  @media (min-width: 1600px) {
+    font-size: var(--mr-font-24);
+  }
 }
 
 .tv-idle__name {

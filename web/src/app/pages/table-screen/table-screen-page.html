@@ -10,7 +10,7 @@
       @if (heading(); as h) {
         <app-tv-header [icon]="h.icon" [kicker]="h.kicker" [title]="h.title" [link]="link()" />
       }
-      <div class="mr-live tv__late">
+      <div class="mr-live tv__late" role="status">
         @if (late(); as text) {
           <div class="mr-notice mr-notice--warning" data-testid="tv-late">
             <mat-icon aria-hidden="true">history_toggle_off</mat-icon>
@@ -18,6 +18,11 @@
           </div>
         }
       </div>
+      @if (screen(); as s) {
+        @if (s.notice) {
+          <p class="tv__notice" data-testid="tv-notice">{{ s.notice }}</p>
+        }
+      }
       <div class="tv__stage">
         @if (screen(); as s) {
           @switch (s.stage.kind) {
@@ -65,14 +70,15 @@
       </div>
     }
     @case ('stale') {
-      <app-tv-header icon="tv" title="Tela da mesa" link="lost" />
+      <app-tv-header icon="tv" [kicker]="p.campaignName" [title]="p.sessionLabel || 'Tela da mesa'" link="lost" />
       <div class="tv__stage">
         <app-tv-message icon="cloud_off" [title]="p.title" [detail]="p.detail" [level]="2" />
       </div>
     }
     @case ('ended') {
+      <app-tv-header icon="flag" [kicker]="p.campaignName" [title]="p.sessionLabel || 'Tela da mesa'" link="ended" [endedAt]="p.endedAt" />
       <div class="tv__stage">
-        <app-tv-message icon="flag" [title]="p.title" [detail]="p.farewell" [hint]="p.hint" />
+        <app-tv-message icon="flag" [title]="p.title" [detail]="p.farewell" [hint]="p.hint" [level]="2" />
       </div>
     }
     @case ('no-access') {

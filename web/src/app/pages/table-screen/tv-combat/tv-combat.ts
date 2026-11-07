@@ -3,13 +3,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatIconModule } from '@angular/material/icon';
 
 import type { TvCombatantVm, TvMapVm, TvRollVm } from '../../../core/play/table-screen-view';
+import { TvFit } from '../tv-fit/tv-fit';
 import { TvMap } from '../tv-map/tv-map';
 import { TvOrder } from '../tv-order/tv-order';
 import { TvRolls } from '../tv-rolls/tv-rolls';
 
-/** Lines of "Último no combate" beside a map (the order and the rolls share the column), and with no map. */
-export const TV_LOG_WITH_MAP = 1;
-export const TV_LOG_WITHOUT_MAP = 6;
+/** The lines of "Último no combate" the server sends; the panel draws the ones that fit its height. */
+export const TV_LOG_LINES = 6;
 
 /**
  * The combat as the table sees it: the map (or its card, or nothing in a combat without one), the order with the
@@ -17,7 +17,7 @@ export const TV_LOG_WITHOUT_MAP = 6;
  */
 @Component({
   selector: 'app-tv-combat',
-  imports: [MatIconModule, NgTemplateOutlet, TvMap, TvOrder, TvRolls],
+  imports: [MatIconModule, NgTemplateOutlet, TvFit, TvMap, TvOrder, TvRolls],
   templateUrl: './tv-combat.html',
   styleUrl: './tv-combat.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,7 +30,5 @@ export class TvCombat {
   readonly map = input<TvMapVm | null>(null);
   readonly rolls = input<readonly TvRollVm[]>([]);
 
-  protected readonly lines = computed(() =>
-    this.log().slice(0, this.map() ? TV_LOG_WITH_MAP : TV_LOG_WITHOUT_MAP),
-  );
+  protected readonly lines = computed(() => this.log().slice(0, TV_LOG_LINES));
 }

@@ -15,6 +15,11 @@
         <mat-icon aria-hidden="true">sync_problem</mat-icon>Reconectando…
       </span>
     }
+    @case ('ended') {
+      <span class="mr-tag tv-head__chip" data-testid="tv-link-ended">
+        <mat-icon aria-hidden="true">flag</mat-icon>Encerrada{{ endedAt() ? ' às ' + endedAt() : '' }}
+      </span>
+    }
     @case ('lost') {
       <span class="mr-tag mr-tag--pending tv-head__chip" data-testid="tv-link-lost">
         <mat-icon aria-hidden="true">cloud_off</mat-icon>Sem conexão

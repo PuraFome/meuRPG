@@ -1,23 +1,28 @@
 :host {
   display: block;
-  min-height: 0;
+
+  @media (min-width: 900px) {
+    min-height: 0;
+  }
 }
 
+// A phone: one column of natural height, every panel whole. A TV: the grid is the screen, and each panel in the side column
+// takes the height it needs up to its share, so nothing overlaps and nothing is cut (the lists draw the rows that fit).
 .tv-combat {
   box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--mr-space-4);
-  height: 100%;
   padding: var(--mr-space-4) var(--mr-gutter);
 
   @media (min-width: 900px) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
+    height: 100%;
     padding: var(--mr-space-5) var(--mr-space-6);
   }
 
-  // With a map: the map takes the room, the order and the log a column beside it.
+  // With a map: the map takes the room, the order, the rolls and the log a column beside it.
   &--map {
     @media (min-width: 900px) {
       grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 520px);
@@ -30,25 +35,59 @@
   flex-direction: column;
   gap: var(--mr-space-3);
   min-width: 0;
-  min-height: 0;
+
+  @media (min-width: 900px) {
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .tv-combat__order {
-  flex: 1 1 auto;
+  @media (min-width: 900px) {
+    flex: 1 1 0;
+    min-height: 0;
+  }
 }
 
-// Without a map the order is the first column and the log the second, each as tall as the screen allows.
-.tv-combat:not(.tv-combat--map) .tv-combat__log {
-  flex: 1 1 auto;
+.tv-combat__rolls {
+  @media (min-width: 900px) {
+    flex: 0 1 auto;
+    max-height: 34%;
+  }
 }
 
 .tv-combat__log {
-  flex: none;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+
+  @media (min-width: 900px) {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 26%;
+  }
+}
+
+// Without a map the order is the first column, and the rolls and the log share the second.
+.tv-combat:not(.tv-combat--map) {
+  @media (min-width: 900px) {
+    .tv-combat__order {
+      height: 100%;
+    }
+
+    .tv-combat__rolls {
+      max-height: 45%;
+    }
+
+    .tv-combat__log {
+      flex: 1 1 0;
+      max-height: none;
+    }
+  }
 }
 
 .tv-combat__log-title {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
@@ -66,6 +105,12 @@
   margin: 0;
   padding: 0;
   list-style: none;
+
+  @media (min-width: 900px) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
 
   > li + li {
     border-top: 1px solid var(--mr-rule);

@@ -18,14 +18,14 @@
 
 .tv-head__icon {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: var(--mr-font-32);
+  height: var(--mr-font-32);
   font-size: var(--mr-font-32);
   color: var(--mr-accent-text);
 
   @media (min-width: 1600px) {
-    width: 48px;
-    height: 48px;
+    width: var(--mr-font-48);
+    height: var(--mr-font-48);
     font-size: var(--mr-font-48);
   }
 }
@@ -79,7 +79,16 @@
     align-self: center;
   }
 
+  // On a big TV the chip is read from the sofa: its words and its height grow with the rest.
   @media (min-width: 1600px) {
-    zoom: 1.5;
+    height: 44px;
+    padding-inline: var(--mr-space-4);
+    font-size: var(--mr-font-24);
+
+    .mat-icon {
+      width: var(--mr-font-24);
+      height: var(--mr-font-24);
+      font-size: var(--mr-font-24);
+    }
   }
 }

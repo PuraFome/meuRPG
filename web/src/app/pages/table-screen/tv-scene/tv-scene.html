@@ -13,9 +13,9 @@
       <h2 class="tv-scene__title" id="tv-scene-npcs">
         <mat-icon aria-hidden="true">person_outline</mat-icon>Em cena
       </h2>
-      <ul class="tv-scene__list">
+      <ul class="tv-scene__list" [appTvFit]="shown()" (fitted)="cut.set($event)">
         @for (npc of shown(); track $index) {
-          <li class="tv-scene__npc" [class.tv-scene__npc--speaking]="npc.speaking">
+          <li class="tv-scene__npc" data-count [class.tv-scene__npc--speaking]="npc.speaking">
             <app-combatant-token [initial]="initial(npc.name)" [npc]="true" [current]="npc.speaking" [size]="40" />
             <span class="tv-scene__name">{{ npc.name }}</span>
             @if (npc.speaking) {
@@ -25,10 +25,12 @@
             }
           </li>
         }
-        @if (more() > 0) {
-          <li class="tv-scene__more">+{{ more() }}</li>
-        }
       </ul>
+      <p class="tv-scene__more" data-testid="tv-scene-more">
+        @if (more() > 0) {
+          +{{ more() }}
+        }
+      </p>
     </section>
   }
 </div>

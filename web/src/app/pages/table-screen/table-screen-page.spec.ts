@@ -94,9 +94,13 @@ describe('TableScreenPage', () => {
         kind: 'stale',
         title: 'Sem conexão desde 21:14',
         detail: 'Esta tela escondeu o que mostrava.',
+        campaignName: 'Mirathel',
+        sessionLabel: 'Sessão 3',
       });
       const { el } = render();
       expect(el.querySelectorAll('h1')).toHaveLength(1);
+      expect(el.querySelector('h1')?.textContent).toBe('Sessão 3');
+      expect(el.querySelector('.tv-head__kicker')?.textContent).toBe('Mirathel');
       expect(el.querySelector('h2')?.textContent).toBe('Sem conexão desde 21:14');
       expect(el.querySelector('[data-testid="tv-link-lost"]')).not.toBeNull();
       expect(el.querySelector('app-tv-idle')).toBeNull();
@@ -108,11 +112,34 @@ describe('TableScreenPage', () => {
         title: 'A sessão 3 terminou às 23:40.',
         farewell: 'Até a próxima sessão de Mirathel.',
         hint: 'O mestre pode fechar esta aba.',
+        campaignName: 'Mirathel',
+        sessionLabel: 'Sessão 3',
+        endedAt: '23:40',
       });
       const { el } = render();
-      expect(el.querySelector('h1')?.textContent).toBe('A sessão 3 terminou às 23:40.');
+      expect(el.querySelector('h1')?.textContent).toBe('Sessão 3');
+      expect(el.querySelector('.tv-head__kicker')?.textContent).toBe('Mirathel');
+      expect(el.querySelector('[data-testid="tv-link-ended"]')?.textContent).toContain(
+        'Encerrada às 23:40',
+      );
+      expect(el.querySelector('h2')?.textContent).toBe('A sessão 3 terminou às 23:40.');
       expect(el.textContent).toContain('Até a próxima sessão de Mirathel.');
       expect(el.textContent).toContain('O mestre pode fechar esta aba.');
+    });
+
+    it('ended before any read: no names, "Tela da mesa" as the title', () => {
+      phase.set({
+        kind: 'ended',
+        title: 'Não há sessão aberta.',
+        farewell: '',
+        hint: 'O mestre pode fechar esta aba.',
+        campaignName: '',
+        sessionLabel: '',
+        endedAt: '',
+      });
+      const { el } = render();
+      expect(el.querySelector('h1')?.textContent).toBe('Tela da mesa');
+      expect(el.querySelector('.tv-head__kicker')).toBeNull();
     });
 
     it('refused: the card "Só o mestre abre a Tela da mesa", with no table behind it', () => {
@@ -216,13 +243,13 @@ describe('TableScreenPage', () => {
       expect(el.textContent).toContain('Fala agora');
     });
 
-    it('combat with a map: the map, the order and the last line', () => {
+    it('combat with a map: the map, the order and the log', () => {
       phase.set(ready(stage(TableScreenKind.COMBAT, combatBody(fogMapBody()), rollsOf)));
       const { el } = render();
       expect(el.querySelector('h1')?.textContent).toBe('Combate · Cripta do Corvo');
       expect(el.querySelector('app-tv-combat app-fog-map')).not.toBeNull();
       expect(el.querySelector('app-tv-order')?.textContent).toContain('Tor');
-      expect(el.querySelectorAll('.tv-combat__line')).toHaveLength(1);
+      expect(el.querySelectorAll('.tv-combat__line')).toHaveLength(2);
     });
 
     it('combat without a map: no map card, the whole log', () => {
@@ -255,7 +282,7 @@ describe('TableScreenPage', () => {
       );
       const notice = el.querySelector('[data-testid="tv-late"]')!;
       expect(notice.textContent).toContain('pode estar atrasada desde 21:14');
-      expect(notice.closest('.mr-live')).not.toBeNull();
+      expect(notice.closest('.mr-live')?.getAttribute('role')).toBe('status');
       expect(el.querySelector('app-tv-idle')).not.toBeNull();
     });
 
@@ -267,6 +294,23 @@ describe('TableScreenPage', () => {
       phase.set(ready(readyScreen(), 'Esta tela pode estar atrasada.'));
       fixture.detectChanges();
       expect(el.querySelector('[data-testid="tv-late"]')).not.toBeNull();
+    });
+  });
+
+  describe('the notice', () => {
+    it('says why the TV is not showing what the master asked for, as a line under the header', () => {
+      phase.set(
+        ready({ ...readyScreen(), notice: 'O combate acabou. A TV foi para a tela de espera.' }),
+      );
+      const { el } = render();
+      expect(el.querySelector('[data-testid="tv-notice"]')?.textContent).toBe(
+        'O combate acabou. A TV foi para a tela de espera.',
+      );
+    });
+
+    it('draws no line without one', () => {
+      phase.set(ready());
+      expect(render().el.querySelector('[data-testid="tv-notice"]')).toBeNull();
     });
   });
 
@@ -404,7 +448,7 @@ describe('TableScreenPage with the real watcher', () => {
       await nextTurn();
       TestBed.tick();
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('h1')?.textContent).toBe('Não há sessão aberta.');
+      expect(fixture.nativeElement.querySelector('h2')?.textContent).toBe('Não há sessão aberta.');
       fixture.destroy();
     } finally {
       vi.useRealTimers();

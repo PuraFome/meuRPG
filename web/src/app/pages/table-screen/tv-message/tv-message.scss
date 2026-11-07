@@ -21,14 +21,10 @@
 }
 
 .tv-msg__icon {
-  width: 48px;
-  height: 48px;
+  width: var(--mr-font-48);
+  height: var(--mr-font-48);
   font-size: var(--mr-font-48);
   color: var(--mr-ink-muted);
-
-  @media (min-width: 1600px) {
-    zoom: 1.6;
-  }
 }
 
 .tv-msg__title {

@@ -1,13 +1,47 @@
 :host {
   display: block;
-  min-height: 0;
+
+  @media (min-width: 900px) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 }
 
+:host(:empty) {
+  display: none;
+}
+
+// On a TV the card is as tall as its rolls, up to what the column gives it, and only the rolls that fit are drawn.
 .tv-rolls {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+
+  @media (min-width: 900px) {
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+}
+
+.tv-rolls__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: 900px) {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  > li + li {
+    border-top: 1px solid var(--mr-rule);
+  }
 }
 
 .tv-rolls__title {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
@@ -77,16 +111,6 @@
   }
 }
 
-.tv-rolls__older {
-  margin: var(--mr-space-2) 0 0;
-  padding: 0;
-  list-style: none;
-
-  > li + li {
-    border-top: 1px solid var(--mr-rule);
-  }
-}
-
 .tv-rolls__row {
   display: flex;
   align-items: center;
@@ -131,5 +155,16 @@
 
   @media (min-width: 1600px) {
     font-size: var(--mr-font-38);
+  }
+}
+
+// A short TV (720 p): the newest roll is smaller, so the order beside it keeps its room.
+@media (min-width: 900px) and (max-height: 800px) {
+  .tv-rolls__total {
+    font-size: var(--mr-font-34);
+  }
+
+  .tv-rolls__faces {
+    display: none;
   }
 }

@@ -41,6 +41,21 @@ describe('TvHeader', () => {
     );
   });
 
+  it('says "Encerrada às 23:40" when the session ended, and just "Encerrada" without the hour', () => {
+    const fixture = TestBed.createComponent(TvHeader);
+    fixture.componentRef.setInput('icon', 'flag');
+    fixture.componentRef.setInput('title', 'Sessão 3');
+    fixture.componentRef.setInput('link', 'ended');
+    fixture.componentRef.setInput('endedAt', '23:40');
+    fixture.detectChanges();
+    const chip = () => fixture.nativeElement.querySelector('[data-testid="tv-link-ended"]');
+    expect(chip().textContent).toContain('Encerrada às 23:40');
+    fixture.componentRef.setInput('endedAt', '');
+    fixture.detectChanges();
+    expect(chip().textContent.trim()).toContain('Encerrada');
+    expect(chip().textContent).not.toContain('às');
+  });
+
   it('draws no chip without a link', () => {
     const el = render(null);
     expect(el.querySelector('.tv-head__chip')).toBeNull();

@@ -68,12 +68,17 @@ describe('TvOrder', () => {
     expect(el.querySelector('[data-testid="tv-round-line"]')).toBeNull();
   });
 
+  it('keeps the room of "+N" empty while every row is drawn', () => {
+    const el = render([who('Tor', { onTurn: true })]);
+    expect(el.querySelector('.tv-order__more')?.textContent?.trim()).toBe('');
+  });
+
   it('cuts a long order with "+N"', () => {
     const many = Array.from({ length: TV_ORDER_MAX + 4 }, (_, i) =>
       who(`P${i}`, { onTurn: i === 0 }),
     );
     const el = render(many);
     expect(el.querySelectorAll('.tv-order__name')).toHaveLength(TV_ORDER_MAX);
-    expect(el.querySelector('.tv-order__more')?.textContent).toBe('+4');
+    expect(el.querySelector('.tv-order__more')?.textContent?.trim()).toBe('+4');
   });
 });
