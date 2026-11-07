@@ -57,6 +57,21 @@
     min-height: 44px;
   }
 
+  &__more {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--mr-line);
+    border-radius: var(--mr-radius-md);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    cursor: pointer;
+  }
+
   .mr-page-title {
     margin-bottom: var(--mr-space-2);
 
@@ -117,5 +132,11 @@
     width: 24px;
     height: 24px;
     font-size: var(--mr-font-24);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .head {
+    flex-direction: row;
   }
 }
