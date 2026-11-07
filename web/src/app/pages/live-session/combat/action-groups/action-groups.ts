@@ -69,11 +69,11 @@ import { Fold } from '../../../../shared/fold/fold';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
-import { THROW_BACK_KEY } from '../attack-sheet/attack-sheet-data';
 import { ActionRow, type RowEconomy } from './action-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { GroupState } from './group-state';
 import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
+import { offersWeaponAttack } from './weapon-offer';
 
 /**
  * "O que você pode fazer" (E6-06 on a phone, E6-14 on a laptop): the options
@@ -270,11 +270,7 @@ export class ActionGroups {
   );
   /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */
   protected readonly maneuverNote = computed(() =>
-    this.attackParts().open.some(
-      (a) => a.attack?.kind === AttackKind.WEAPON && a.attack.key !== THROW_BACK_KEY,
-    )
-      ? maneuverLine(this.maneuverDice(), 'list')
-      : '',
+    offersWeaponAttack(this.attackParts().open) ? maneuverLine(this.maneuverDice(), 'list') : '',
   );
   protected readonly spellParts = computed(() =>
     partByEconomy(
