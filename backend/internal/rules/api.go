@@ -679,6 +679,9 @@ type Derived struct {
 	// ShieldIdle says the build carries a shield that adds nothing to ArmorClass
 	// because a two-handed weapon is on the sheet.
 	ShieldIdle bool
+	// Gear lists (DeriveGear fills it; Derive leaves it empty, as it is the sheet's projection alone that reads it) the armor, the shield and the weapons the sheet lists, equipped or carried, by the catalog's
+	// names, in the order armor, shield, weapons (see GearPiece).
+	Gear []GearPiece
 	// ArmorCategory is the worn armor's category: "none", "light", "medium" or
 	// "heavy" (a shield is separate). Rage gives its benefits only without heavy armor.
 	ArmorCategory string

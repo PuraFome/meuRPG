@@ -26,6 +26,8 @@ import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { HeldQuestions } from '../../../core/held-rolls/held-questions';
 import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
 import { pendingCountText } from '../../../core/held-rolls/held-text';
+import { GearClient } from '../../../core/characters/gear';
+import { GearFlow } from '../../../core/combat/gear-flow';
 import { ResourceClient } from '../../../core/resources/resources-client';
 
 /** The parts the screen is composed of (`CombatSheets`, `MoveFlow`, `ContestHost`) and the calls of the turn, the
@@ -125,6 +127,8 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     calls: this.calls,
     campaignId: () => this.campaignId(),
     encounter: () => this.encounter(),
+    theatre: () => this.theatre(),
+    options: () => this.options(),
     toAnswer: () => this.toAnswer(),
     info: () => this.info(),
     attack: (offer, key, options) =>
@@ -145,6 +149,19 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     preference: () => this.dicePreference(),
     target: () => this.targeting,
   });
+  /** The player's gear in the combat: "Sacar ou guardar" (`GearFlow`). */
+  protected readonly gearFlow = new GearFlow({
+    client: inject(GearClient),
+    campaignId: () => this.campaignId(),
+    characterId: () => (this.isMaster() ? '' : (this.own()?.characterId ?? '')),
+    signature: () => {
+      const o = this.own();
+      return o
+        ? `${o.objectInteractionUsed}|${o.actionUsed}|${o.bonusActionUsed}|${o.armorClassBonus}`
+        : '';
+    },
+  });
+
   /** The master's questions about the rolls that wait for their roller (kept in step with the combat's, in its effects). */
   protected readonly held = new HeldQuestions({
     send: (holdId, answer, key) =>

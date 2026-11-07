@@ -249,6 +249,7 @@
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
   "ShieldIdle": false,
+  "Gear": null,
   "ArmorCategory": "none",
   "ArmorUntrained": {
     "Armor": false,

@@ -1,3 +1,8 @@
+import { create } from '@bufbuild/protobuf';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -32,6 +37,7 @@ import {
   FullSheetVm,
   ReviewVm,
 } from './character-sheet.types';
+import type { GearVm } from '../../core/characters/gear';
 import { nextTurn } from '../../../test-settle';
 
 @Injectable()
@@ -44,6 +50,7 @@ class FakeCharacterSheetSource {
     Promise.resolve('');
   updateMasterNotesFn: (campaignId: string, characterId: string, notes: string) => Promise<void> =
     () => Promise.resolve();
+  setEquippedFn: (key: string, equipped: boolean) => Promise<void> = () => Promise.resolve();
   markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
     () => Promise.reject(new Error('not stubbed'));
   updateCharacterStoryFn: (
@@ -133,6 +140,15 @@ class FakeCharacterSheetSource {
   updateMasterNotes(campaignId: string, characterId: string, notes: string): Promise<void> {
     return this.updateMasterNotesFn(campaignId, characterId, notes);
   }
+  setEquipped(
+    _campaignId: string,
+    _characterId: string,
+    key: string,
+    equipped: boolean,
+  ): Promise<void> {
+    return this.setEquippedFn(key, equipped);
+  }
+
   markCharacterDead(campaignId: string, characterId: string): Promise<CharacterSheetVm> {
     return this.markCharacterDeadFn(campaignId, characterId);
   }
@@ -179,6 +195,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     wearsArmor: false,
     hasShield: false,
     shieldIdle: false,
+    gear: [],
     speedExtras: [],
     grantedSpells: [],
     hitPointsMax: 10,
@@ -328,6 +345,19 @@ function activatedRouteFor(campaignId: string, characterId: string) {
 function ddAfter(el: HTMLElement, term: string): HTMLElement | null {
   const dt = Array.from(el.querySelectorAll('dt')).find((d) => d.textContent?.trim() === term);
   return (dt?.nextElementSibling as HTMLElement | null) ?? null;
+}
+
+function gearPiece(overrides: Partial<GearVm> = {}): GearVm {
+  return {
+    key: 'equipment:shortsword',
+    namePt: 'Espada curta',
+    kind: 'weapon',
+    equipped: true,
+    twoHanded: false,
+    armorClassIfToggled: 0,
+    count: 1,
+    ...overrides,
+  };
 }
 
 function sectionTitled(el: HTMLElement, title: string): HTMLElement {
@@ -713,8 +743,8 @@ describe('CharacterSheetPage', () => {
     const el = await render();
     const headings = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
     // Document order is the order of a phone, which is the order of use: the
-    // medallions, then the numbers used in play (combat, spells and equipment),
-    // then saves and skills, the features and the player's notes, and the story.
+    // medallions, then the numbers used in play (combat and spells),
+    // then saves and skills, the equipment, the features and the player's notes, and the story.
     // From 1200px the grid puts the four columns in the paper sheet's order.
     // "Habilidades" and "Combate" are for screen readers only; the
     // medallions and the shield are their visible titles. No "Ataques"
@@ -723,9 +753,11 @@ describe('CharacterSheetPage', () => {
       'Habilidades',
       'Combate',
       'Magias de mago',
-      'Equipamento',
       'Testes de resistência',
       'Perícias',
+      // "Equipamento" is the first block of the fourth column, with the features and the notes: the grid shows it right
+      // after the combat numbers on a phone and a tablet, and under the player's notes from 1200px.
+      'Equipamento',
       'Características e traços',
       // The player's own notes: after the game numbers and the features; the first block of the fourth column from 1200px (E8-07).
       'Anotações',
@@ -1073,7 +1105,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).not.toContain('XP');
   });
 
-  it('lists the armor, shield and weapons carried, not just free-text items (integrator fix)', async () => {
+  it('lists the armor, shield and weapons the server gives, equipped and carried, besides the free-text items', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1082,6 +1114,11 @@ describe('CharacterSheetPage', () => {
             armorClassDescription: 'Armadura de couro + escudo',
             wearsArmor: true,
             hasShield: true,
+            gear: [
+              gearPiece({ key: 'equipment:leather', namePt: 'Armadura de couro', kind: 'armor' }),
+              gearPiece({ key: 'equipment:shield', namePt: 'Escudo', kind: 'shield' }),
+              gearPiece({ equipped: false }),
+            ],
             attacks: [
               {
                 key: 'equipment:shortsword',
@@ -1115,10 +1152,15 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     const section = sectionTitled(el, 'Equipamento');
-    const items = Array.from(section.querySelectorAll('li')).map((li) => li.textContent?.trim());
-    // The armour's own name, without the AC description's shield suffix.
-    expect(items).toContain('Armadura de couro');
-    expect(items).toContain('Escudo');
+    const names = Array.from(section.querySelectorAll('.gear-row__name')).map((n) =>
+      n.textContent?.trim(),
+    );
+    // The names are the server's, one row per piece, equipped or carried.
+    expect(names).toEqual(['Armadura de couro', 'Escudo', 'Espada curta']);
+    const groups = Array.from(section.querySelectorAll('.gear-group__title')).map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(groups).toEqual(['Equipado', 'Carregado']);
     expect(section.textContent).toContain('Espada curta');
     // A damage cantrip is not a weapon — never listed as equipment.
     expect(section.textContent).not.toContain('Raio de Fogo');
@@ -1144,7 +1186,7 @@ describe('CharacterSheetPage', () => {
       );
     const el = await render();
     expect(el.textContent).toContain('O escudo não soma na CA');
-    expect(sectionTitled(el, 'Equipamento').textContent).toContain('sem efeito: arma de duas mãos');
+    expect(sectionTitled(el, 'Equipamento').textContent).toContain('guarde a arma');
   });
 
   it('says nothing about the shield when it counts', async () => {
@@ -1239,18 +1281,7 @@ describe('CharacterSheetPage', () => {
     expect(el.textContent).not.toContain('Sem moedas');
   });
 
-  it('shows "Sem armadura" and no "Escudo" line when neither is carried', async () => {
-    configure();
-    fake.getCharacterSheetFn = () =>
-      Promise.resolve(vm({ sheet: fullSheet({ armorClassDescription: 'Sem armadura' }) }));
-
-    const el = await render();
-    const section = sectionTitled(el, 'Equipamento');
-    expect(section.textContent).toContain('Sem armadura');
-    expect(section.textContent).not.toContain('Escudo');
-  });
-
-  it('says "Sem armadura" when a feature, not armor, gives the AC (Unarmored Defense)', async () => {
+  it('says nothing of armor or shield when the server lists no gear, and never the AC description (Unarmored Defense)', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1261,8 +1292,245 @@ describe('CharacterSheetPage', () => {
 
     const el = await render();
     const section = sectionTitled(el, 'Equipamento');
-    expect(section.textContent).toContain('Sem armadura');
+    expect(section.textContent).toContain('Sem equipamento.');
+    expect(section.textContent).not.toContain('Escudo');
     expect(section.textContent).not.toContain('Defesa sem Armadura');
+  });
+
+  describe('equip and stow (#562)', () => {
+    const sword = gearPiece({ key: 'equipment:longsword', namePt: 'Espada longa' });
+    const shield = gearPiece({
+      key: 'equipment:shield',
+      namePt: 'Escudo',
+      kind: 'shield',
+      equipped: false,
+      armorClassIfToggled: 12,
+      count: 1,
+    });
+
+    function withGear(equippedSword: boolean, ac: number): CharacterSheetVm {
+      return vm({
+        sheet: fullSheet({
+          armorClass: ac,
+          gear: [{ ...sword, equipped: equippedSword }, shield],
+        }),
+      });
+    }
+
+    function button(el: HTMLElement, label: string): HTMLButtonElement {
+      return el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+    }
+
+    it('asks the server, reads the sheet again, says the change and the server armor class, and focuses the moved row', async () => {
+      configure();
+      const asked: [string, boolean][] = [];
+      let stowed = false;
+      fake.setEquippedFn = (key, equipped) => {
+        asked.push([key, equipped]);
+        stowed = true;
+        return Promise.resolve();
+      };
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(!stowed, stowed ? 10 : 12));
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Classe de armadura 12');
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+
+      expect(asked).toEqual([['equipment:longsword', false]]);
+      const section = sectionTitled(el, 'Equipamento');
+      expect(section.querySelector('[role="status"]')!.textContent).toContain(
+        'Guardado: Espada longa. Classe de armadura 10.',
+      );
+      expect(button(el, 'Equipar Espada longa')).toBeTruthy();
+    });
+
+    it('does not say the sheet could not be read when a stream reload overtakes the change’s own reload', async () => {
+      configure();
+      openSessions.set([
+        {
+          sessionId: 's1',
+          campaignId: 'camp-1',
+          campaignName: 'Mirathel',
+          sessionNumber: 5,
+          startedAt: new Date(),
+          isMaster: false,
+        },
+      ]);
+      let reads = 0;
+      let stowed = false;
+      let late!: (v: CharacterSheetVm) => void;
+      fake.setEquippedFn = () => {
+        stowed = true;
+        return Promise.resolve();
+      };
+      fake.getCharacterSheetFn = () => {
+        reads++;
+        if (reads === 2) {
+          return new Promise((res) => (late = res)); // the change's own reload, slow
+        }
+        return Promise.resolve(withGear(!stowed, stowed ? 10 : 12));
+      };
+
+      const el = await render();
+      const onCharacter = xpWatcher.follow.mock.calls.at(-1)![6]!;
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      onCharacter('char-1'); // the stream's reload starts later, ends first
+      await nextTurn();
+      late(withGear(false, 10));
+      await nextTurn();
+      await Promise.resolve();
+
+      const section = sectionTitled(el, 'Equipamento');
+      expect(section.textContent).not.toContain('não deu para ler a ficha');
+      expect(section.querySelector('[role="alert"]')).toBeNull();
+      expect(button(el, 'Equipar Espada longa')).toBeTruthy();
+      openSessions.set([]);
+    });
+
+    it('clears the previous notice when the next change starts', async () => {
+      configure();
+      let stowed = false;
+      let release!: () => void;
+      fake.setEquippedFn = () => {
+        if (stowed) {
+          return new Promise<void>((res) => (release = res));
+        }
+        stowed = true;
+        return Promise.resolve();
+      };
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(!stowed, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+      const status = () => sectionTitled(el, 'Equipamento').querySelector('[role="status"]')!;
+      expect(status().textContent).toContain('Guardado: Espada longa');
+      button(el, 'Equipar Espada longa').click();
+      await nextTurn();
+      expect(status().textContent).not.toContain('Guardado');
+      release();
+    });
+
+    it('shows the server refusal and keeps the list', async () => {
+      configure();
+      fake.setEquippedFn = () => Promise.reject(new Error('boom'));
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(true, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+
+      expect(
+        sectionTitled(el, 'Equipamento').querySelector('[role="alert"]')!.textContent,
+      ).not.toBe('');
+      expect(button(el, 'Guardar Espada longa')).toBeTruthy();
+    });
+
+    it('says a combat refusal in words, not the generic error', async () => {
+      configure();
+      fake.setEquippedFn = () =>
+        Promise.reject(
+          new ConnectError('armor', Code.FailedPrecondition, undefined, [
+            {
+              desc: EncounterBlockedSchema,
+              value: create(EncounterBlockedSchema, {
+                reason: EncounterBlockedReason.ARMOR_IN_COMBAT,
+              }),
+            },
+          ]),
+        );
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(true, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+
+      expect(
+        sectionTitled(el, 'Equipamento').querySelector('[role="alert"]')!.textContent,
+      ).toContain('Vestir ou tirar armadura leva minutos');
+    });
+
+    it('does not announce the change when the sheet could not be read again', async () => {
+      configure();
+      let reads = 0;
+      fake.getCharacterSheetFn = () =>
+        reads++ === 0 ? Promise.resolve(withGear(true, 12)) : Promise.reject(new Error('x'));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+
+      const section = sectionTitled(el, 'Equipamento');
+      expect(section.querySelector('[role="status"]')!.textContent).toBe('');
+      expect(section.querySelector('[role="alert"]')!.textContent).toContain('não deu para ler');
+    });
+
+    it('offers "Tentar de novo" after a change whose sheet could not be read, and clears the error when it comes back', async () => {
+      configure();
+      let reads = 0;
+      fake.getCharacterSheetFn = () =>
+        reads++ === 1 ? Promise.reject(new Error('x')) : Promise.resolve(withGear(true, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+      const section = sectionTitled(el, 'Equipamento');
+      const retry = Array.from(section.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Tentar de novo'),
+      )!;
+      expect(retry).toBeTruthy();
+
+      retry.click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+      expect(section.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('reads the sheet again when the tab is shown, so a change from another tab does not linger', async () => {
+      configure();
+      let stowed = false;
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(!stowed, stowed ? 10 : 12));
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Classe de armadura 12');
+      stowed = true; // the sword was stowed from another tab
+      document.dispatchEvent(new Event('visibilitychange'));
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Classe de armadura 10');
+      expect(button(el, 'Equipar Espada longa')).toBeTruthy();
+    });
+
+    it('has no buttons on a dead character’s sheet (the lock of the sheet does not matter: gear is played)', async () => {
+      configure();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve({ ...withGear(true, 12), state: 'dead', canEdit: false });
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').querySelector('.gear-row__button')).toBeNull();
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Espada longa');
+    });
+
+    it('has the buttons while the sheet is locked by the play', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve({ ...withGear(true, 12), canEdit: false });
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').querySelector('.gear-row__button')).not.toBeNull();
+    });
   });
 
   describe('class and race choices (PM-05)', () => {

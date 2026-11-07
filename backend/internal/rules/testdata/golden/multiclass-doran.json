@@ -256,6 +256,7 @@
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
     "ShieldIdle": false,
+    "Gear": null,
     "ArmorCategory": "heavy",
     "ArmorUntrained": {
       "Armor": false,
@@ -1223,6 +1224,7 @@
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
     "ShieldIdle": false,
+    "Gear": null,
     "ArmorCategory": "heavy",
     "ArmorUntrained": {
       "Armor": false,
