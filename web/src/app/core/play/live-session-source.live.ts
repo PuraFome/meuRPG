@@ -1,3 +1,4 @@
+import { type CheckFloor } from '../combat/combat-dice';
 import { Injectable, inject } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { createClient } from '@connectrpc/connect';
@@ -60,6 +61,17 @@ export function reliableTalentSkills(derived: DerivedSheet): string[] {
     .map((k) => k.key);
 }
 
+/** The highest minimum of the table that covers ability checks, with the feature that gives it; `null` without one. A tie keeps the first. */
+export function checkFloorOfSheet(derived: DerivedSheet): CheckFloor | null {
+  let best: CheckFloor | null = null;
+  for (const m of derived.rollMinimums) {
+    if (m.applies.includes('check') && (best === null || m.value > best.value)) {
+      best = { value: m.value, source: m.sourceKey, name: m.sourceName };
+    }
+  }
+  return best;
+}
+
 /** The bonuses "Procurar armadilhas" and the checks read from the sheet. */
 function searchSkillsOf(derived: DerivedSheet): SearchSkills {
   const skill = (key: string) => derived.skills.find((k) => k.key === key)?.bonus ?? null;
@@ -68,6 +80,7 @@ function searchSkillsOf(derived: DerivedSheet): SearchSkills {
     investigation: skill('skill:investigation'),
     others: otherSkills(derived.skills),
     reliableTalent: reliableTalentSkills(derived),
+    checkFloor: checkFloorOfSheet(derived),
   };
 }
 

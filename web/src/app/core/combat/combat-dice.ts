@@ -117,21 +117,43 @@ export function treatedSpeech(roll: DiceRoll): string | null {
   return `d20: ${face}, contou ${roll.treatedAs} por ${treatedSourceName(roll.treatedAsSource, roll.treatedAsSourceName)}${mod}, total ${roll.total}`;
 }
 
-/** The typed d20's live total before it is sent, when the character's Talento Confiável will raise it: "6 → 10 (Talento
- * Confiável) + 9 = 19". The server owns the rule; this only shows the account the sheet already knows. */
+/** The lowest a d20 of a check counts as for a character: the value, the feature that gives it (content key) and its name. */
+export interface CheckFloor {
+  readonly value: number;
+  readonly source: string;
+  readonly name: string;
+}
+
+/** The floor of a check the sheet knows: Talento Confiável (10) for a skill with proficiency, and the highest table minimum
+ * that covers checks. The higher wins and a tie keeps Talento Confiável, as the server decides it. `null` when none applies. */
+export function checkFloorOf(
+  skillKey: string | null,
+  reliableTalent: readonly string[] | undefined,
+  table: CheckFloor | null | undefined,
+): CheckFloor | null {
+  const reliable: CheckFloor | null =
+    skillKey && reliableTalent?.includes(skillKey)
+      ? { value: TREATED_FLOOR, source: RELIABLE_TALENT, name: '' }
+      : null;
+  if (reliable && (!table || table.value <= reliable.value)) {
+    return reliable;
+  }
+  return table ?? null;
+}
+
+/** The typed d20's live total before it is sent, when a floor will raise it: "6 → 10 (Talento Confiável) + 9 = 19". The
+ * server owns the rule; this only shows the account the sheet already knows. */
 export function treatedPreview(
   face: number,
   bonus: number,
-  source: string,
-  name = '',
+  floor: CheckFloor,
 ): { readonly text: string; readonly total: number } | null {
-  const to = TREATED_FLOOR;
-  if (face >= to) {
+  if (face >= floor.value) {
     return null;
   }
-  const total = to + bonus;
+  const total = floor.value + bonus;
   return {
-    text: `${face} → ${to} (${treatedSourceName(source, name)})${modifierText(bonus)} = ${total}`,
+    text: `${face} → ${floor.value} (${treatedSourceName(floor.source, floor.name)})${modifierText(bonus)} = ${total}`,
     total,
   };
 }

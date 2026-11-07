@@ -1,3 +1,4 @@
+import type { CheckFloor } from '../../../../core/combat/combat-dice';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
@@ -93,6 +94,7 @@ export class ScenePlayer {
   readonly dicePreference = input.required<DicePreference>();
   /** The skills Talento Confiável raises for the character (the sheet's), for the typed die's preview. */
   readonly reliableTalent = input<readonly string[]>([]);
+  readonly checkFloor = input<CheckFloor | null>(null);
   /** The table dice the character may add to a roll. */
   readonly rollDice = input<readonly RollDie[]>([]);
   /** A phone (C7-07): the scene is in tabs, "Ações · Mapa · Imagens"; the map and the images come projected (`sceneMap`, `sceneImages`). */
@@ -202,6 +204,7 @@ export class ScenePlayer {
       preference: this.dicePreference(),
       state: this.state(),
       reliableTalent: this.reliableTalent(),
+      checkFloor: this.checkFloor(),
       rollDice: this.rollDice(),
     }).subscribe(() => {
       this.rollSheetOpen = false;
