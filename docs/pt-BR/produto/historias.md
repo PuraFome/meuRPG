@@ -779,6 +779,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   As entradas de quem convocou listam uma criatura só enquanto um personagem dela a tem viva, então uma dispensa, uma substituição ou um desfazer a tiram de novo.
   A invocação só é conjurada pela habilidade: uma Contramágica não a responde e ela não é uma das magias conhecidas do personagem.
 - **Dado** que edito uma classe, subclasse, raça, antecedente ou característica de classe no notebook, **quando** ligo "Invoca criaturas" numa característica, **então** escolho de 1 a 8 criaturas (as da mesa e as do SRD), o número como fórmula, o máximo ao mesmo tempo, o recurso que cada uso gasta, o turno, o que uma nova conjuração faz com as criaturas antigas, o tempo e a duração.
+- **Dado** que edito uma magia no notebook, **quando** escolho a mecânica "Invocar", **então** escolho de 1 a 8 criaturas, quantas vêm (uma fórmula que pode usar o círculo do espaço), quantas a mais por círculo acima, o máximo ao mesmo tempo, o turno e o que uma nova conjuração faz com as criaturas antigas, e o editor avisa antes de salvar que a magia deve ser de 1º círculo ou mais, só em quem conjura, sem ritual e sem ataque, teste de resistência, dano, cura ou área.
   O recurso é um dos efeitos `resource` da própria característica; sem nenhum, o bloco diz isso e o "Salvar" espera.
   A concentração fica desligada enquanto a duração não for por tempo.
   Desligar o interruptor não envia invocação, e ele volta ligado quando abro uma entrada que tem uma.

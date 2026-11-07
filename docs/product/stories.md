@@ -780,6 +780,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The summon is cast only through the feature: a Counterspell does not answer it and it is not one of the character's known spells.
   (`TestATableFeatureSummonsThroughTheSpellChecks`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestMR578_ATableFeatureSummonsItsCreaturesOutsideACombatForAUse`, `TestMR578_ATableFeatureSummonsInACombatAndTheUndoGivesTheUseBack`)
 - **Given** I edit a class, subclass, race, background or class feature on a laptop, **when** I turn on "Invoca criaturas" on a feature, **then** I pick 1 to 8 creatures (the table's and the SRD's), the count as a formula, the most at a time, the resource a use spends, the turn, what a new casting does to the old creatures, the time and the duration.
+- **Given** I edit a spell on a laptop, **when** I choose the mechanic "Invocar", **then** I pick 1 to 8 creatures, how many come (a formula that may use the circle of the slot), how many more for each circle above, the most at a time, the turn and what a new casting does to the old creatures, and the editor says before I save that the spell must be of the 1st circle or more, on only the caster, not a ritual and with no attack, saving throw, damage, healing or area.
   The resource is one of the feature's own `resource` effects; with none, the block says so and "Salvar" waits.
   Concentration is off while the duration is not by time.
   Turning the switch off sends no summon, and the switch is on again when I open an entry that has one.
