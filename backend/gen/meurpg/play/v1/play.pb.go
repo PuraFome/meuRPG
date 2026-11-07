@@ -2520,12 +2520,13 @@ type WatchGameSessionResponse struct {
 	//	*WatchGameSessionResponse_AttackHit_
 	//	*WatchGameSessionResponse_TableScreenChanged_
 	Event isWatchGameSessionResponse_Event `protobuf_oneof:"event"`
-	// The session's hint number as the write that sent this event left it (game_sessions.hint_seq): it grows by one for every
-	// write that told the streams something, however many events it told. A stream that sees a number ahead of the ones it
-	// has applied (on a heartbeat, above all) knows it missed a hint and reads the session again. It is a counter and says
-	// nothing of what changed. On an event it is 0 when the event did not come from a write that counted (typing, presence,
-	// and every change not yet counted): 0 means "no number", never compare it. Ready and Heartbeat always carry the
-	// current number. Only a member who may watch the stream reads it.
+	// The session's hint number (game_sessions.hint_seq): it grows by one for every write that told the streams something,
+	// however many events it told. A stream that sees a number ahead of the ones it has applied (on a heartbeat, above all)
+	// knows it missed a hint and reads the session again. It is a counter and says nothing of what changed.
+	// Ready and Heartbeat carry the number as the database holds it; a Heartbeat that could not read it carries 0.
+	// An event carries the number its write left, and 0 when it did not come from a counted write (typing, presence, and the
+	// writes outside the combat write path): 0 means "no number", never compare it.
+	// Only a member who may watch the stream reads it.
 	// The numbers on events are not ordered: two writes can commit in one order and send in the other, so an app must not
 	// drop an event for an old number, nor look for gaps in them. Only the numbers of Ready and Heartbeat are the session's
 	// own: an app that sees a heartbeat ahead of the highest number it applied reads the session again.

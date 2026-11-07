@@ -110,7 +110,7 @@ The TV reads `GetTableScreen` after `ready`, so that read includes every write u
 A `changed` can be lost, and the screen would then stay stale; a heartbeat whose number is ahead of the watcher's reads the screen again, once.
 `seenSeq` moves to that number only when the read worked, so a failed read is tried again at the next heartbeat.
 A heartbeat that arrives during a read joins it, and one more read follows.
-The number is a counter and carries nothing of what the master chose or hid, so the stream still tells the TV nothing a read would not.
+The number is a counter and carries nothing of what the master chose or hid, so the stream tells the TV nothing a read would not.
 The watcher is `web/src/app/core/play/table-screen-watcher.ts`.
 It lives at most 10 minutes, like `WatchGameSession`.
 Its hub user id is `tv:` and the master's id.

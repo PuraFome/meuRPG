@@ -287,6 +287,9 @@ func (s *Service) watchLoop(ctx context.Context, stream *connect.ServerStream[pl
 func (s *Service) currentHintSeq(ctx context.Context, sessionID string) int64 {
 	seq, err := s.queries.GetHintSeq(ctx, sessionID)
 	if err != nil {
+		if ctx.Err() != nil {
+			return 0 // the stream is closing
+		}
 		s.logger.WarnContext(ctx, "read the session's hint number for a heartbeat", "error", err)
 		return 0
 	}

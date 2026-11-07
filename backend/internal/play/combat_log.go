@@ -259,7 +259,9 @@ func (c logCut) rounds(ctx context.Context, entries []*logEntry, v combatViewer,
 				continue
 			}
 		}
-		out.Seq = e.seq
+		if v.master { // a player's entries carry no number: the gaps where a hidden event sits would show it
+			out.Seq = e.seq
+		}
 		rounds = appendToRound(rounds, out)
 	}
 	return rounds, lastSeq

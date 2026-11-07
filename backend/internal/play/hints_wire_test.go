@@ -131,8 +131,8 @@ func TestListCombatLogSinceSeq(t *testing.T) {
 	a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), inAppDamage)
 	delta := since(a.caio, playerFirst.GetLastSeq())
 	got := entries(delta)
-	if delta.GetFull() || len(got) != 1 || got[0].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK || got[0].GetSeq() <= playerFirst.GetLastSeq() || delta.GetLastSeq() < got[0].GetSeq() {
-		t.Fatalf("after the damage: full = %v, entries = %v, last_seq = %d; want only the attack's entry, with a higher seq", delta.GetFull(), got, delta.GetLastSeq())
+	if delta.GetFull() || len(got) != 1 || got[0].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK || got[0].GetSeq() != 0 || delta.GetLastSeq() <= playerFirst.GetLastSeq() {
+		t.Fatalf("after the damage: full = %v, entries = %v, last_seq = %d; want only the attack's entry with no seq of its own (a player's entries carry none) and a higher last_seq", delta.GetFull(), got, delta.GetLastSeq())
 	}
 	if all := a.log(t, a.caio, e); len(entries(all)) < 2 {
 		t.Errorf("the whole log has %d entries, want the delta to be a part of more", len(entries(all)))

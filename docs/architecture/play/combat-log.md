@@ -58,10 +58,11 @@ On a fogged map, each event is also stamped with the users who saw its NPCs (see
 `ListCombatLog` answers with the whole log or with what changed after the number the app holds.
 The app sends `since_seq`, the `last_seq` of its last answer; 0 asks for the whole log.
 The answer carries `last_seq` (the number to send next time) and `full` (the rounds replace everything the app holds).
-A delta holds the entries whose `CombatLogEntry.seq` is above `since_seq`, and the app puts each in place by id, in the round and the place it already has.
+A delta holds the entries whose newest event is above `since_seq`, and the app puts each in place by id, in the round and the place it already has.
 An entry that a later event joins (the damage of an attack) takes that event's number, so it comes again and replaces its old copy.
 
-`CombatLogEntry.seq` and `last_seq` are numbers of `session_events.seq`.
+`last_seq` is a number of `session_events.seq`; so is `CombatLogEntry.seq`, which only the master reads.
+A player's entries carry `seq` 0: the numbers of the entries a player reads would have gaps where an event they may not see sits.
 They are unrelated to the live stream's `session_seq`, the hint number ([Live session](live-session.md#the-hint-number)): two counters, never compared.
 
 ### When the answer is the whole log
@@ -93,6 +94,7 @@ The master's `combat_log_changed` carries `full` when the log was rewritten (an 
 That is an optimisation only: the answer is `full` whenever the log was rewritten for that reader.
 A player's `combat_log_changed` never carries `full`: an undo they cannot see must not tell them anything an ordinary change does not.
 An `encounter_changed` hint with no revision may mean a combatant was shown or hidden, so the app reads the whole log then.
+Renaming a creature (`RenameCreature`) and changing the table rules (`SetTableRules`) write no event and send no hint, so a line the app holds keeps the old name until the next read of the whole log.
 
 ## Events
 

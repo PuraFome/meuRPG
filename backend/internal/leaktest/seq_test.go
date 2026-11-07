@@ -349,6 +349,9 @@ func hiddenWriteWorld(t *testing.T, write *hiddenWrite, variant int) seqSnapshot
 		base[p] = views{plain: first, since: w.seqLog(p, first.GetLastSeq())}
 	}
 	masterBefore := w.seqLog(w.master, 0)
+	if n := len(masterBefore.GetRounds()[0].GetEntries()); n == 0 || masterBefore.GetRounds()[0].GetEntries()[0].GetSeq() == 0 {
+		t.Fatalf("the master's entries carry no number (%d entries): the control is gone", n)
+	}
 
 	if write != nil {
 		doWrite()
@@ -378,6 +381,7 @@ func hiddenWriteWorld(t *testing.T, write *hiddenWrite, variant int) seqSnapshot
 			t.Errorf("a player read another answer to since_seq after a write only the master sees (%s):\n before %s\n after  %s", p.name, jsonOf(base[p].since), jsonOf(after.since))
 		}
 		for _, v := range []*playv1.ListCombatLogResponse{after.plain, after.since} {
+			requireNoEntrySeq(t, p.name, v)
 			for _, f := range w.inspect(p, asReply(v), nil) {
 				t.Errorf("%s: the combat log: %s", p.name, f)
 			}
@@ -431,6 +435,19 @@ func hiddenWriteWorld(t *testing.T, write *hiddenWrite, variant int) seqSnapshot
 		}
 	}
 	return snap
+}
+
+// requireNoEntrySeq fails for an entry of a player's log that carries a number: the numbers of the entries a player reads would have
+// gaps where an event they may not see sits. The master's entries carry theirs.
+func requireNoEntrySeq(t *testing.T, who string, l *playv1.ListCombatLogResponse) {
+	t.Helper()
+	for _, r := range l.GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetSeq() != 0 {
+				t.Errorf("%s's entry %s carries seq %d, want 0 (the master's alone)", who, en.GetId(), en.GetSeq())
+			}
+		}
+	}
 }
 
 func (w *world) seqLog(p *person, since int64) *playv1.ListCombatLogResponse {
@@ -517,6 +534,7 @@ func TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee(t *testing.T) {
 		write()
 		after := ask(h)
 		for _, p := range unmoved {
+			requireNoEntrySeq(t, p.name, after[p])
 			if !proto.Equal(before[p], after[p]) {
 				t.Errorf("%s: %s's answer to since_seq=%d moved:\n before %s\n after  %s", name, p.name, h[p], jsonOf(before[p]), jsonOf(after[p]))
 			}

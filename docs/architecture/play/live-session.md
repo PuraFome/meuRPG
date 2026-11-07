@@ -164,7 +164,7 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
   A player who was not told the event is "behind" and reads once at the next heartbeat.
   That costs one extra read per hidden write within 25 s, and it tells the player nothing about the write.
 - **Only the combat write path counts.** `write`, `changeInTx` and `StartEncounter` run in `Service.tx` (`play/hints.go`).
-  Every other writer of the `play` package still tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
+  Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.
   A hint lost by one of those is not detected by the number.
 
@@ -224,8 +224,10 @@ The forced moves of a cast, a creature action or a rider answer are worked out f
 What the stored event does not keep is not recovered:
 
 - a public cast change, because the spell level is not kept;
-- a reaction window that closed, because the combat the retry reads already shows it closed;
-- the hints `AnswerReaction` tells from its handler after the write (`encounter_changed`, `combat_log_changed`, the answer's vitals): they do not go through the collector, so they carry no number, and a repeat sends the generic combat and log hints and the forced moves from the stored event (`publishRetried`), with the vitals coming from the replay's step for the combat's players.
+- a reaction window that closed, because the combat the retry reads already shows it closed.
+
+The hints `AnswerReaction` tells from its handler after the write (`encounter_changed`, `combat_log_changed`, the answer's vitals) do not go through the collector, so they carry no number.
+A repeat of it sends the generic combat and log hints and the forced moves from the stored event (`publishRetried`), with the vitals coming from the replay's step for the combat's players.
 
 ### What the number leaks
 

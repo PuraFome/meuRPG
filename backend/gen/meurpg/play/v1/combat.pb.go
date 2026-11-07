@@ -18491,7 +18491,7 @@ type ListCombatLogRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
-	// The highest `last_seq` the app holds. Only the entries that changed after it come back (CombatLogEntry.seq above it);
+	// The highest `last_seq` the app holds. Only the entries that changed after it come back;
 	// 0 (the default) asks for the whole log. The server answers with the whole log (`full`) whenever a write after it may have
 	// changed how an entry the app holds is seen without a new event on that entry (a combatant shown or hidden, an answer to a roll
 	// request, an undo, a kind of event it does not know to be safe), so an app that gets `full` replaces everything it holds.
@@ -19071,9 +19071,11 @@ type CombatLogEntry struct {
 	LegendarySpent *CombatLogLegendarySpent `protobuf:"bytes,114,opt,name=legendary_spent,json=legendarySpent,proto3" json:"legendary_spent,omitempty"`
 	// RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
 	Recharge *CombatLogRecharge `protobuf:"bytes,115,opt,name=recharge,proto3" json:"recharge,omitempty"`
-	// The highest event number (session_events.seq) among the events the entry shows. A later event that joins the entry
-	// (the damage of an attack) raises it, so the entry comes again after a since_seq and the app replaces it by id. In an answer that
-	// is not full, the master's `undoable` flag is only right on the entry of `undoable_event_id`; the app derives the flag from it.
+	// The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
+	// A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
+	// sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
+	// the app replaces it by id. In an answer that is not full, the master's `undoable` flag is only right on the entry of
+	// `undoable_event_id`; the app derives the flag from it.
 	Seq           int64 `protobuf:"varint,116,opt,name=seq,proto3" json:"seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

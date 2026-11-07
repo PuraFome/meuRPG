@@ -41,7 +41,8 @@ A cancelled call returns its connection to the pool after about 100 ms, the time
 
 ## Hints sent after the commit
 
-A write of the `play` module that tells the live streams runs in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
+The combat write path of the `play` module (`write`, `changeInTx`, `StartEncounter`) runs in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
+Other writers of the module call `db.InTx` and then `send`; they do not bump the hint number.
 `txOn` is the same on any transaction starter; a test passes one whose `COMMIT` fails.
 
 | Rule | How it is met |
