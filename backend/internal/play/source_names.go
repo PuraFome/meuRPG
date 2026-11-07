@@ -40,7 +40,9 @@ var canName sync.Map // protoreflect.FullName -> bool
 
 func canNameSources(md protoreflect.MessageDescriptor) bool {
 	if v, ok := canName.Load(md.FullName()); ok {
-		return v.(bool)
+		if can, isBool := v.(bool); isBool {
+			return can
+		}
 	}
 	ok := reaches(md, map[protoreflect.FullName]bool{})
 	canName.Store(md.FullName(), ok)
