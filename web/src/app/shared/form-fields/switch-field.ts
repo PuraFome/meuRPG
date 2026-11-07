@@ -48,13 +48,10 @@ let nextId = 0;
       min-height: 48px;
     }
 
-    // A switch that cannot be turned yet: dimmed, its state still in words.
-    .row--off {
+    // A switch that cannot be turned yet: only the control is dimmed, so its words keep their contrast.
+    .row--off .switch {
       opacity: 0.55;
-
-      .switch {
-        cursor: not-allowed;
-      }
+      cursor: not-allowed;
     }
 
     .text {
