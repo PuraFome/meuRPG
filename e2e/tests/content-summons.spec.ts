@@ -165,6 +165,8 @@ test(
       await expect(p.locator('.abilities')).toHaveCount(0);
       // On a phone (390x844) the whole note is on the first screen.
       await p.setViewportSize({ width: 390, height: 844 });
+      // `setViewportSize` returns before the renderer has laid the page out at the new size (CI run 42421994660: the read made 6 ms later came from a layout whose notice was 148 px tall, the settled one is about 68), so the page's own width is awaited first.
+      await expect.poll(() => p.evaluate(() => document.documentElement.clientWidth)).toBe(390);
       // The shell's live notice sits above the page and is dismissible; whether it shows depends on when the session's hint arrives, so the page's own content is measured below it (notice and note read at the same instant).
       const { noteBottom, noticeHeight } = await p.evaluate(() => ({
         noteBottom: document.querySelector('.table-note')!.getBoundingClientRect().bottom,
