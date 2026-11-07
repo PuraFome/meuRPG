@@ -235,14 +235,17 @@ export class AttackSheet {
   constructor() {
     const { s } = this;
     this.question.ask(this.data.held?.offer);
-    // The master answers the question for the roller: the sheet drops it, so it never offers an answer that is no longer open.
+    // The master answers the question for the roller: the sheet drops it (or shows the next one), so it never offers an answer that is no longer open.
     effect(() => {
       const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId);
-      const offer = me && heldOfferOf(me);
+      if (!me) {
+        return;
+      }
+      const offer = heldOfferOf(me);
       untracked(() => {
         this.vanish.observe(offer);
         if (this.vanish.notice()) {
-          this.question.ask(null);
+          this.question.ask(offer);
         }
       });
     });

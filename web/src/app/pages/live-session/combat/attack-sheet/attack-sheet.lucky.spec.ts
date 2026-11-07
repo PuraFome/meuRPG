@@ -317,6 +317,22 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
     expect(button('Ficar com o 1')).toBeUndefined();
   });
 
+  it('keeps the question when the combat it reads no longer lists the attacker at all', async () => {
+    const hold = create(HeldRollOfferSchema, { ...lucky, holdId: 'hold-absent' });
+    const { el, state, settle, button } = open({ held: { offer: hold, targetLabel: 'Goblin' } });
+    state.apply(
+      encounter({
+        currentCombatantId: 'p',
+        combatants: [{ ...pipo, heldRollOffer: hold }, goblin],
+      }),
+    );
+    await settle();
+    state.apply(encounter({ currentCombatantId: 'g', combatants: [goblin] }));
+    await settle();
+    expect(el.querySelector('[data-testid="sheet-held-vanished"]')).toBeNull();
+    expect(button('Ficar com o 1')).toBeTruthy();
+  });
+
   it('does not say the master answered when the player answered here', async () => {
     const { el, state, settle, button } = open({
       held: { offer: masterHold, targetLabel: 'Goblin' },
