@@ -2048,3 +2048,11 @@ UPDATE combatants SET creature_spent = $2 WHERE id = $1;
 -- What the combatant's stat block has spent now (JSON), read inside the change's
 -- transaction so two spends in one change add up.
 SELECT creature_spent FROM combatants WHERE id = $1;
+
+-- name: SetTableScreenChoice :one
+-- The master's choice for the TV; the caller holds the session's lock and has checked the
+-- revision. It writes these three columns and nothing else.
+UPDATE game_sessions
+SET tv_mirror = sqlc.arg(tv_mirror), tv_pin = sqlc.arg(tv_pin), tv_choice_revision = tv_choice_revision + 1
+WHERE id = sqlc.arg(id)
+RETURNING *;

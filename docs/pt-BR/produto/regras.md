@@ -306,6 +306,27 @@ O mestre pode abrir um ponto de cena escondido; a cena chega aos jogadores e o p
 **Personagens reservados** ([MR-049](historias.md#mr-049-personagens-reservados-e-links-para-assumir)).
 Nenhum jogador lê um personagem que o mestre fez para um jogador assumir, até alguém assumi-lo: nem em listas, nem por ID, nem no grupo, no combate, no mapa, no XP ou no resumo da sessão. A pessoa com o link, depois de logada, vê só nome, raça, classe, nível, quem o enviou e o nome da campanha.
 
+**A tela da mesa** (a TV da mesa).
+O mestre a abre numa tela que a mesa toda vê, e ela lê como um jogador sem personagem: o que todo jogador pode ler, e nada do que só um deles lê.
+O mestre escolhe seguir o que a mesa vê ou fixar um item, e o servidor decide o que aparece.
+O que vai para a TV:
+
+| Parte | A TV recebe | A TV nunca recebe |
+| --- | --- | --- |
+| "Mapa" | O mapa como o grupo o vê: pontos revelados, tokens visíveis e os quadrados que o grupo vê ou lembra. Com a névoa ligada e a "Visão do grupo" desligada, só que o mapa está escondido pela névoa | A imagem do mapa num mapa com névoa, pontos escondidos, armadilhas, tesouros, luz, células não vistas, um token que nenhum personagem vê |
+| "Ordem e vez" | Os combatentes que a mesa vê com nome, inicial e uma palavra de estado (RN-20), de quem é a vez e "Vez do mestre" quando a vez é de um combatente que a mesa não vê. Uma criatura da mesa no combate tem nome. O servidor manda a palavra de estado: FALLEN para um personagem de jogador caído ou estável, DEFEATED para um morto, como o jogador a lê | Pontos de vida, classe de armadura, iniciativa, condições, um NPC escondido, um NPC não visto num mapa com névoa |
+| "Combate" | A rodada e até 6 linhas do registro que todo jogador lê ("Último no combate"). O servidor manda até 6 em todo combate; o app escolhe quantas desenhar | Uma linha que só alguns jogadores leem, as linhas do mestre, um combatente escondido, os dados de um NPC, o nome de conteúdo da mesa que o mestre escondeu (RN-23). Só combate iniciado, combate encerrado, porta aberta e as entradas contadas como movimento, ataque, magia ou ação viram linha; nenhum outro tipo vira |
+| "Imagem e documento" | A imagem mostrada à mesa toda (a TV não tem documento próprio: o documento da campanha é do mestre) | Uma imagem para jogadores escolhidos, uma deixada com os jogadores, a galeria |
+| "Cena" | O nome e a descrição de uma cena aberta à mesa toda, e os NPCs que a mesa vê no palco, com quem fala agora | Uma cena para jogadores escolhidos, um NPC escondido, ganchos, pistas, ações e CDs |
+| "Rolagens" | Até 3 rolagens livres feitas para a mesa toda | Uma rolagem "Só eu" |
+| "Conversa" | Nada: a conversa nunca vai para a TV (RN-36) | Toda linha, a narração para a mesa toda inclusive |
+| "Conteúdo da mesa" | Só o nome que a ordem ou o registro já dá a todo jogador (uma criatura da mesa no combate). Uma magia ou ação da mesa é contada como "conjurou uma magia" ou "agiu", nunca pelo nome | Nunca a entrada em si nem uma entrada que o mestre escondeu |
+| "Do mestre" | Nada | Notas, o documento da campanha, ganchos, pistas e CDs, os ajustes do mestre, perguntas pendentes |
+
+Uma cena ou uma imagem para jogadores escolhidos não aparece; o painel do mestre avisa ("Cena aberta só para alguns").
+Só o mestre abre a tela da mesa: um jogador é recusado, e quem não é da campanha recebe a resposta de uma campanha que não existe.
+Ver [A tela da mesa](../../architecture/play/table-screen.md).
+
 **Outros segredos.**
 O motivo que o mestre dá ao pedir ajustes em um personagem (RN-15) chega só ao mestre e ao dono.
 As notas de um jogador são privadas dele. O mestre não as lê.
