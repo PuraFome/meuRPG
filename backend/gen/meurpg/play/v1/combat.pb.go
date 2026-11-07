@@ -6101,8 +6101,13 @@ type Combatant struct {
 	// The turn's free object interaction is spent (the first weapon drawn or stowed in the turn; SRD 5.1, "Other Activity on
 	// Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
 	ObjectInteractionUsed bool `protobuf:"varint,113,opt,name=object_interaction_used,json=objectInteractionUsed,proto3" json:"object_interaction_used,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// The other speeds in feet, 0 for none (a table's speed.swim, speed.climb and speed.burrow modifiers, a creature's
+	// stat block, a Wild Shape form). The grid does not spend them yet. Same audience as `speed_fly_ft`.
+	SpeedSwimFt   int32 `protobuf:"varint,114,opt,name=speed_swim_ft,json=speedSwimFt,proto3" json:"speed_swim_ft,omitempty"`
+	SpeedClimbFt  int32 `protobuf:"varint,115,opt,name=speed_climb_ft,json=speedClimbFt,proto3" json:"speed_climb_ft,omitempty"`
+	SpeedBurrowFt int32 `protobuf:"varint,116,opt,name=speed_burrow_ft,json=speedBurrowFt,proto3" json:"speed_burrow_ft,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -6702,6 +6707,27 @@ func (x *Combatant) GetObjectInteractionUsed() bool {
 		return x.ObjectInteractionUsed
 	}
 	return false
+}
+
+func (x *Combatant) GetSpeedSwimFt() int32 {
+	if x != nil {
+		return x.SpeedSwimFt
+	}
+	return 0
+}
+
+func (x *Combatant) GetSpeedClimbFt() int32 {
+	if x != nil {
+		return x.SpeedClimbFt
+	}
+	return 0
+}
+
+func (x *Combatant) GetSpeedBurrowFt() int32 {
+	if x != nil {
+		return x.SpeedBurrowFt
+	}
+	return 0
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -26887,7 +26913,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xb0\x1f\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xa2 \n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -26984,7 +27010,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"!initiative_treated_as_source_name\x18o \x01(\tR\x1dinitiativeTreatedAsSourceName\x12 \n" +
 	"\tparry_ask\x18p \x01(\bH\n" +
 	"R\bparryAsk\x88\x01\x01\x126\n" +
-	"\x17object_interaction_used\x18q \x01(\bR\x15objectInteractionUsedB\r\n" +
+	"\x17object_interaction_used\x18q \x01(\bR\x15objectInteractionUsed\x12\"\n" +
+	"\rspeed_swim_ft\x18r \x01(\x05R\vspeedSwimFt\x12$\n" +
+	"\x0espeed_climb_ft\x18s \x01(\x05R\fspeedClimbFt\x12&\n" +
+	"\x0fspeed_burrow_ft\x18t \x01(\x05R\rspeedBurrowFtB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +

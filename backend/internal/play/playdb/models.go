@@ -223,6 +223,9 @@ type Combatant struct {
 	InitiativeCountedAs     *int32
 	InitiativeCountedBy     string
 	ObjectInteractionUsed   bool
+	SpeedSwimFt             int32
+	SpeedClimbFt            int32
+	SpeedBurrowFt           int32
 }
 
 type CombatantState struct {

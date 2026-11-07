@@ -3638,13 +3638,15 @@ const insertCombatant = `-- name: InsertCombatant :one
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value,
-    side, size, speed_fly_ft, jump_long_dft, jump_high_dft, jump_long_bonus_dft
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft, jump_long_bonus_dft,
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
-    $19, $20, $21, $22, $23, $24
+    $19, $20, $21, $22, $23, $24,
+    $25, $26, $27
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft
 `
 
 type InsertCombatantParams struct {
@@ -3672,6 +3674,9 @@ type InsertCombatantParams struct {
 	JumpLongDft      int32
 	JumpHighDft      int32
 	JumpLongBonusDft int32
+	SpeedSwimFt      int32
+	SpeedClimbFt     int32
+	SpeedBurrowFt    int32
 }
 
 func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams) (Combatant, error) {
@@ -3700,6 +3705,9 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.JumpLongDft,
 		arg.JumpHighDft,
 		arg.JumpLongBonusDft,
+		arg.SpeedSwimFt,
+		arg.SpeedClimbFt,
+		arg.SpeedBurrowFt,
 	)
 	var i Combatant
 	err := row.Scan(
@@ -3791,6 +3799,9 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		&i.InitiativeCountedAs,
 		&i.InitiativeCountedBy,
 		&i.ObjectInteractionUsed,
+		&i.SpeedSwimFt,
+		&i.SpeedClimbFt,
+		&i.SpeedBurrowFt,
 	)
 	return i, err
 }
@@ -3871,14 +3882,16 @@ INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
     creature_id, monster_key, summon_attack, summon_group_id,
-    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft,
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
     $15, $16, $17, $18,
-    'party', $19, $20, $21, $22
+    'party', $19, $20, $21, $22,
+    $23, $24, $25
 )
-RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used
+RETURNING id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft
 `
 
 type InsertCreatureCombatantParams struct {
@@ -3904,6 +3917,9 @@ type InsertCreatureCombatantParams struct {
 	SpeedFlyFt      int32
 	JumpLongDft     int32
 	JumpHighDft     int32
+	SpeedSwimFt     int32
+	SpeedClimbFt    int32
+	SpeedBurrowFt   int32
 }
 
 // The character's creatures in a combat (MR-037). A creature is a
@@ -3935,6 +3951,9 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		arg.SpeedFlyFt,
 		arg.JumpLongDft,
 		arg.JumpHighDft,
+		arg.SpeedSwimFt,
+		arg.SpeedClimbFt,
+		arg.SpeedBurrowFt,
 	)
 	var i Combatant
 	err := row.Scan(
@@ -4026,6 +4045,9 @@ func (q *Queries) InsertCreatureCombatant(ctx context.Context, arg InsertCreatur
 		&i.InitiativeCountedAs,
 		&i.InitiativeCountedBy,
 		&i.ObjectInteractionUsed,
+		&i.SpeedSwimFt,
+		&i.SpeedClimbFt,
+		&i.SpeedBurrowFt,
 	)
 	return i, err
 }
@@ -6073,7 +6095,7 @@ func (q *Queries) ListCombatantStates(ctx context.Context, encounterID string) (
 }
 
 const listCombatants = `-- name: ListCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft FROM combatants
 WHERE encounter_id = $1 AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -6178,6 +6200,9 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 			&i.InitiativeCountedAs,
 			&i.InitiativeCountedBy,
 			&i.ObjectInteractionUsed,
+			&i.SpeedSwimFt,
+			&i.SpeedClimbFt,
+			&i.SpeedBurrowFt,
 		); err != nil {
 			return nil, err
 		}
@@ -6190,7 +6215,7 @@ func (q *Queries) ListCombatants(ctx context.Context, encounterID string) ([]Com
 }
 
 const listCombatantsWithDismissed = `-- name: ListCombatantsWithDismissed :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft FROM combatants
 WHERE encounter_id = $1
 ORDER BY order_index, created_at, id
 `
@@ -6294,6 +6319,9 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 			&i.InitiativeCountedAs,
 			&i.InitiativeCountedBy,
 			&i.ObjectInteractionUsed,
+			&i.SpeedSwimFt,
+			&i.SpeedClimbFt,
+			&i.SpeedBurrowFt,
 		); err != nil {
 			return nil, err
 		}
@@ -6306,7 +6334,7 @@ func (q *Queries) ListCombatantsWithDismissed(ctx context.Context, encounterID s
 }
 
 const listCreatureCombatants = `-- name: ListCreatureCombatants :many
-SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used FROM combatants
+SELECT id, encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face, tie_ordered, order_index, grid_col, grid_row, speed_ft, movement_used_ft, dashed, action_used, bonus_action_used, reaction_used, hp_current, hp_max, hp_temp, defeated, death_successes, death_failures, conditions, concentration_spell, created_at, attacks_made, ac_bonus, death_save_rolled, xp_value, turn_state, movement_used_dft, last_move_dft, side, size, speed_fly_ft, jump_long_dft, jump_high_dft, cover_mark, disengaged, creature_id, monster_key, summon_attack, summon_group_id, dismissed, action_surged, spell_cast, bonus_spell_cast, action_attack_key, bonus_attacks_left, hp_max_bonus, mage_armor_ac, attacked_hostile, took_damage, rage_end_pending, condition_sources, sneak_attack_turn, colossus_slayer_turn, inspiration_sides, inspiration_from, inspiration_expires_round, slots_used, death_round, death_order_index, revivify_blocked, effect_conditions, effect_ac_bonus, effect_speed_pct, effect_speed_add_ft, effect_no_action, effect_no_move, extra_action_used, exhaustion_level, hp_max_base, melee_hit_turn, effect_no_reaction, jump_long_bonus_dft, jump_doubled, table_once_turns, creature_spent, reaction_kind, reaction_round, initiative_counted_as, initiative_counted_by, object_interaction_used, speed_swim_ft, speed_climb_ft, speed_burrow_ft FROM combatants
 WHERE encounter_id = $1 AND kind = 'creature' AND NOT dismissed
 ORDER BY order_index, created_at, id
 `
@@ -6411,6 +6439,9 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 			&i.InitiativeCountedAs,
 			&i.InitiativeCountedBy,
 			&i.ObjectInteractionUsed,
+			&i.SpeedSwimFt,
+			&i.SpeedClimbFt,
+			&i.SpeedBurrowFt,
 		); err != nil {
 			return nil, err
 		}
@@ -6939,7 +6970,7 @@ func (q *Queries) ListOpenAttackHolds(ctx context.Context, encounterID *string) 
 }
 
 const listOpenCombatantsOfCreatures = `-- name: ListOpenCombatantsOfCreatures :many
-SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.hp_max_bonus, cb.mage_armor_ac, cb.attacked_hostile, cb.took_damage, cb.rage_end_pending, cb.condition_sources, cb.sneak_attack_turn, cb.colossus_slayer_turn, cb.inspiration_sides, cb.inspiration_from, cb.inspiration_expires_round, cb.slots_used, cb.death_round, cb.death_order_index, cb.revivify_blocked, cb.effect_conditions, cb.effect_ac_bonus, cb.effect_speed_pct, cb.effect_speed_add_ft, cb.effect_no_action, cb.effect_no_move, cb.extra_action_used, cb.exhaustion_level, cb.hp_max_base, cb.melee_hit_turn, cb.effect_no_reaction, cb.jump_long_bonus_dft, cb.jump_doubled, cb.table_once_turns, cb.creature_spent, cb.reaction_kind, cb.reaction_round, cb.initiative_counted_as, cb.initiative_counted_by, cb.object_interaction_used FROM combatants AS cb
+SELECT cb.id, cb.encounter_id, cb.character_id, cb.user_id, cb.label, cb.kind, cb.hidden, cb.initiative, cb.initiative_bonus, cb.initiative_face, cb.tie_ordered, cb.order_index, cb.grid_col, cb.grid_row, cb.speed_ft, cb.movement_used_ft, cb.dashed, cb.action_used, cb.bonus_action_used, cb.reaction_used, cb.hp_current, cb.hp_max, cb.hp_temp, cb.defeated, cb.death_successes, cb.death_failures, cb.conditions, cb.concentration_spell, cb.created_at, cb.attacks_made, cb.ac_bonus, cb.death_save_rolled, cb.xp_value, cb.turn_state, cb.movement_used_dft, cb.last_move_dft, cb.side, cb.size, cb.speed_fly_ft, cb.jump_long_dft, cb.jump_high_dft, cb.cover_mark, cb.disengaged, cb.creature_id, cb.monster_key, cb.summon_attack, cb.summon_group_id, cb.dismissed, cb.action_surged, cb.spell_cast, cb.bonus_spell_cast, cb.action_attack_key, cb.bonus_attacks_left, cb.hp_max_bonus, cb.mage_armor_ac, cb.attacked_hostile, cb.took_damage, cb.rage_end_pending, cb.condition_sources, cb.sneak_attack_turn, cb.colossus_slayer_turn, cb.inspiration_sides, cb.inspiration_from, cb.inspiration_expires_round, cb.slots_used, cb.death_round, cb.death_order_index, cb.revivify_blocked, cb.effect_conditions, cb.effect_ac_bonus, cb.effect_speed_pct, cb.effect_speed_add_ft, cb.effect_no_action, cb.effect_no_move, cb.extra_action_used, cb.exhaustion_level, cb.hp_max_base, cb.melee_hit_turn, cb.effect_no_reaction, cb.jump_long_bonus_dft, cb.jump_doubled, cb.table_once_turns, cb.creature_spent, cb.reaction_kind, cb.reaction_round, cb.initiative_counted_as, cb.initiative_counted_by, cb.object_interaction_used, cb.speed_swim_ft, cb.speed_climb_ft, cb.speed_burrow_ft FROM combatants AS cb
 JOIN encounters AS e ON e.id = cb.encounter_id
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID
@@ -7054,6 +7085,9 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 			&i.InitiativeCountedAs,
 			&i.InitiativeCountedBy,
 			&i.ObjectInteractionUsed,
+			&i.SpeedSwimFt,
+			&i.SpeedClimbFt,
+			&i.SpeedBurrowFt,
 		); err != nil {
 			return nil, err
 		}
@@ -8943,7 +8977,8 @@ func (q *Queries) SetCombatantAttacksMade(ctx context.Context, arg SetCombatantA
 
 const setCombatantBody = `-- name: SetCombatantBody :exec
 UPDATE combatants
-SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6, jump_long_bonus_dft = $7
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6, jump_long_bonus_dft = $7,
+    speed_swim_ft = $8, speed_climb_ft = $9, speed_burrow_ft = $10
 WHERE id = $1
 `
 
@@ -8955,6 +8990,9 @@ type SetCombatantBodyParams struct {
 	JumpLongDft      int32
 	JumpHighDft      int32
 	JumpLongBonusDft int32
+	SpeedSwimFt      int32
+	SpeedClimbFt     int32
+	SpeedBurrowFt    int32
 }
 
 // A character's numbers as a combatant change with its Wild Shape form (MR-037):
@@ -8969,6 +9007,9 @@ func (q *Queries) SetCombatantBody(ctx context.Context, arg SetCombatantBodyPara
 		arg.JumpLongDft,
 		arg.JumpHighDft,
 		arg.JumpLongBonusDft,
+		arg.SpeedSwimFt,
+		arg.SpeedClimbFt,
+		arg.SpeedBurrowFt,
 	)
 	return err
 }
@@ -8977,9 +9018,10 @@ const setCombatantBodyOfCharacter = `-- name: SetCombatantBodyOfCharacter :exec
 UPDATE combatants
 SET speed_ft = $1, speed_fly_ft = $2, size = $3,
     jump_long_dft = $4, jump_high_dft = $5,
-    jump_long_bonus_dft = $6
-WHERE character_id = $7 AND kind = 'player'
-  AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = $8 AND e.status <> 'ended')
+    jump_long_bonus_dft = $6,
+    speed_swim_ft = $7, speed_climb_ft = $8, speed_burrow_ft = $9
+WHERE character_id = $10 AND kind = 'player'
+  AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = $11 AND e.status <> 'ended')
 `
 
 type SetCombatantBodyOfCharacterParams struct {
@@ -8989,6 +9031,9 @@ type SetCombatantBodyOfCharacterParams struct {
 	JumpLongDft      int32
 	JumpHighDft      int32
 	JumpLongBonusDft int32
+	SpeedSwimFt      int32
+	SpeedClimbFt     int32
+	SpeedBurrowFt    int32
 	CharacterID      string
 	GameSessionID    string
 }
@@ -9004,6 +9049,9 @@ func (q *Queries) SetCombatantBodyOfCharacter(ctx context.Context, arg SetCombat
 		arg.JumpLongDft,
 		arg.JumpHighDft,
 		arg.JumpLongBonusDft,
+		arg.SpeedSwimFt,
+		arg.SpeedClimbFt,
+		arg.SpeedBurrowFt,
 		arg.CharacterID,
 		arg.GameSessionID,
 	)

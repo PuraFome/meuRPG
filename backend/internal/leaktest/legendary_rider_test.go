@@ -318,7 +318,14 @@ func checkPassedAndResistedRider(t *testing.T, build func(*world) riderScene) {
 	t.Run("the save fails and the master uses the trait", func(t *testing.T) { resisted = riderRun(t, build, 1, useTrait) })
 	for _, name := range []string{"Ana", "Caio"} {
 		if passed.player[name] != resisted.player[name] {
-			t.Errorf("%s reads a passed save and a resisted one differently:\n--- passed\n%s\n--- resisted\n%s", name, passed.player[name], resisted.player[name])
+			a, b := passed.player[name], resisted.player[name]
+			at := 0
+			for at < len(a) && at < len(b) && a[at] == b[at] {
+				at++
+			}
+			from := max(at-200, 0)
+			t.Errorf("%s reads a passed save and a resisted one differently, first at byte %d:\n--- passed\n…%s\n--- resisted\n…%s",
+				name, at, a[from:min(at+300, len(a))], b[from:min(at+300, len(b))])
 		}
 	}
 	if !strings.Contains(passed.player["Caio"], "Esperando o mestre") {
