@@ -23,6 +23,7 @@ const ON_WORDS: Readonly<Record<ContentNavKind['slug'], { one: string; many: str
   feats: { one: 'ligado', many: 'ligados' },
   options: { one: 'ligada', many: 'ligadas' },
   classfeatures: { one: 'ligada', many: 'ligadas' },
+  creatures: { one: 'ligada', many: 'ligadas' },
 };
 
 export interface OptionCount {
