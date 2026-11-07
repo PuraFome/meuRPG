@@ -292,6 +292,7 @@ type GameSession struct {
 	OpenSceneEveryone   bool
 	ShownImageAudience  string
 	ScenePlayersMayJoin bool
+	HintSeq             int64
 }
 
 type GroupCheck struct {

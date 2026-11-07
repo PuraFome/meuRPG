@@ -2048,3 +2048,12 @@ UPDATE combatants SET creature_spent = $2 WHERE id = $1;
 -- What the combatant's stat block has spent now (JSON), read inside the change's
 -- transaction so two spends in one change add up.
 SELECT creature_spent FROM combatants WHERE id = $1;
+
+-- name: BumpHintSeq :one
+-- A write that told the live streams something adds 1 to the session's number, in the same transaction as the write
+-- (Service.tx). It takes the session row's lock until the commit.
+UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1 RETURNING hint_seq;
+
+-- name: GetHintSeq :one
+-- The session's number now: a read of one row by its primary key.
+SELECT hint_seq FROM game_sessions WHERE id = $1;
