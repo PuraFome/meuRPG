@@ -162,7 +162,7 @@ Migrations are numbered `NNNNN_description.sql` files in `backend/migrations/`, 
 It is the lease lock of `migrate up` and `migrate down`: one row (`id = 1`, `CHECK`) with `holder` and `expires_at`, created by the lock's own code (`backend/migrations/lock.go`) before goose runs, because goose has no lock for CockroachDB.
 Whoever runs first writes the row with a validity of 60 s and renews it every 20 s.
 A second `migrate` waits (up to 10 minutes, polling every second) and then exits with a clear message.
-Two runs that send the statement together are not an error: the database may abort one with `40001`, and that run reads it as "the other one won", waits and tries again.
+If two runs take the lock at the same instant, the database may abort one with `40001`; that run treats it as "the other one won" and retries after the poll.
 A run that cannot renew cancels itself before the lease can end, so goose stops between statements; a statement already sent keeps going as a CockroachDB schema-change job, which no lock holds back.
 A run that crashed leaves the row, and the next run takes it once `expires_at` has passed.
 All times are the database clock's `now()`, never the runner's.

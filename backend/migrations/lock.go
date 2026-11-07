@@ -186,9 +186,7 @@ func tryAcquire(ctx context.Context, db *sql.DB, holder string, ttl time.Duratio
 		return false, nil // someone else holds a live lease
 	}
 	if lostTheRace(err) {
-		// Another run sent the same statement at the same moment and the
-		// database aborted this one (40001): that run won, as if the row
-		// were held. The loop waits and asks again.
+		// 40001: another run sent the same statement at once and won, so the lock is held.
 		return false, nil
 	}
 	if err != nil {

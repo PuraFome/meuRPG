@@ -16,7 +16,7 @@ func IsUniqueViolation(err error, name string) bool {
 
 // IsSerializationFailure reports whether err is a serialization failure
 // (40001): the database aborted the statement because it raced another one.
-// A statement outside a transaction that meets it may be sent again.
+// Outside a transaction, the statement is safe to resend.
 func IsSerializationFailure(err error) bool {
 	pgErr, ok := errors.AsType[*pgconn.PgError](err)
 	return ok && pgErr.Code == sqlstateSerialization
