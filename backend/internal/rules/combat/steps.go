@@ -2,6 +2,7 @@ package combat
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -22,8 +23,8 @@ const (
 	StepResistance    = "resistance"
 	StepVulnerability = "vulnerability"
 	StepImmunity      = "immunity"
-	// StepReduction is a flat amount taken off a weapon attack's damage, before resistance and
-	// vulnerability (SRD 5.1: "other modifiers" come first).
+	// StepReduction is a flat amount taken once off a weapon attack's damage, before resistance and
+	// vulnerability (those two apply last, after every other adjustment).
 	StepReduction = "reduction"
 )
 
@@ -160,16 +161,29 @@ func Adjust(amount int, damageType string, mods []Modifier, ignored []string, fr
 	return amount, steps
 }
 
-// reduction is the step of the flat reductions that cover the damage: every covering amount adds
-// (two entries of one source add too) and each source is named once; the damage stops at 0.
+// reduction is the step of the flat reductions on the damage of one type.
 func reduction(amount int, damageType string, mods []Modifier, ignored []string, from Origin) (Step, bool) {
-	step := Step{Kind: StepReduction, DamageType: damageType, Before: amount}
-	total, plain := 0, false
+	step, after, ok := Reduce(map[string]int{damageType: amount}, mods, ignored, from)
+	if !ok {
+		return Step{}, false
+	}
+	step.DamageType, step.After = damageType, after[damageType]
+	return step, true
+}
+
+// Reduce takes the flat reductions that cover the attack off its damage once: every covering
+// amount adds (two entries of one source add too), each source is named once, and the total is
+// taken from the types largest first (ties by the type key) until it is spent or the damage is
+// 0. The step is of the whole attack, so it has no damage type. It reports false when nothing is
+// taken.
+func Reduce(byType map[string]int, mods []Modifier, ignored []string, from Origin) (Step, map[string]int, bool) {
+	step := Step{Kind: StepReduction}
+	reduce, plain := 0, false
 	for _, m := range mods {
-		if m.Kind != StepReduction || m.Amount <= 0 || !m.Covers(damageType, from) || slices.Contains(ignored, m.Source) {
+		if m.Kind != StepReduction || m.Amount <= 0 || !m.Covers("", from) || slices.Contains(ignored, m.Source) {
 			continue
 		}
-		total += m.Amount
+		reduce += m.Amount
 		if !slices.Contains(step.Sources, m.Source) {
 			step.Sources = append(step.Sources, m.Source)
 		}
@@ -179,6 +193,26 @@ func reduction(amount int, damageType string, mods []Modifier, ignored []string,
 	if plain {
 		step.Qualifier = ""
 	}
-	step.After = max(amount-total, 0)
-	return step, total > 0
+	types := make([]string, 0, len(byType))
+	for t, n := range byType {
+		step.Before += max(n, 0)
+		types = append(types, t)
+	}
+	if reduce == 0 || step.Before == 0 {
+		return Step{}, nil, false
+	}
+	slices.SortFunc(types, func(a, b string) int {
+		if byType[a] != byType[b] {
+			return byType[b] - byType[a]
+		}
+		return strings.Compare(a, b)
+	})
+	after := make(map[string]int, len(byType))
+	for _, t := range types {
+		taken := min(reduce, max(byType[t], 0))
+		after[t] = max(byType[t], 0) - taken
+		reduce -= taken
+		step.After += after[t]
+	}
+	return step, after, true
 }

@@ -195,6 +195,8 @@ export interface FullSheetVm {
   readonly passivePerception: number;
   readonly passiveInvestigation: number;
   readonly passiveInsight: number;
+  /** The load the character can carry, in pounds (15 times Strength, then the table's modifiers). */
+  readonly carryCapacityLb: number;
   readonly initiative: number;
   readonly armorClass: number;
   /** How `armorClass` was computed, in Portuguese, e.g. "Armadura de

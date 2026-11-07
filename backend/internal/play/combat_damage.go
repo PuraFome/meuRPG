@@ -511,6 +511,7 @@ func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (comb
 		// The attack is gone from the sheet (the weapon was removed after the hit): the damage
 		// is still an attack, with no mark, so the resistances to nonmagical attacks apply.
 		f.s.logger.WarnContext(ctx, "play: the attack of a pending damage is not on its attacker's sheet", "attack_key", g.AttackKey)
+		// Weapon is assumed here: a spell attack is not tied to a sheet weapon, so the removed one was a weapon.
 		return combat.Origin{Attack: true, Weapon: true}, nil
 	}
 	a := sheet.Attacks[i]

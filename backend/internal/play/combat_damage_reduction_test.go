@@ -206,3 +206,53 @@ func TestAHiddenReductionSourceReadsOutraFonteToAPlayer(t *testing.T) {
 		t.Errorf("the step goes %d to %d, want 8 to 5", master[0].GetBefore(), master[0].GetAfter())
 	}
 }
+
+// A weapon hit of two damage types loses the reduction once, not once per type (#572).
+func TestAReductionIsTakenOnceFromAHitOfTwoDamageTypes(t *testing.T) {
+	t.Parallel()
+	cut, fire := "damage-type:slashing", "damage-type:fire"
+	mods := []combat.Modifier{{Kind: combat.StepReduction, Source: "feat:couro-grosso@mesa", Amount: 3}}
+	from := combat.Origin{Attack: true, Weapon: true}
+	land := settleSteps(map[string]int{cut: 8, fire: 4}, mods, nil, from)
+	if land.amount != 9 {
+		t.Errorf("the landing is %d, want 9: 12 minus 3 once", land.amount)
+	}
+	steps := stepsProto(land.groups, nil, func(string) string { return "Couro grosso" }, dtPT, true)
+	if len(steps) != 1 || steps[0].GetBefore() != 12 || steps[0].GetAfter() != 9 || steps[0].GetDamageTypeKey() != "" {
+		t.Errorf("steps = %v, want one reduction of the whole attack, 12 to 9, with no damage type", steps)
+	}
+	if got := reapply(12, land.groups, nil); got != 9 {
+		t.Errorf("reapply = %d, want 9", got)
+	}
+	if got := reapply(12, land.groups, []string{"feat:couro-grosso@mesa"}); got != 12 {
+		t.Errorf("reapply without the source = %d, want 12", got)
+	}
+	struck := stepsProto(land.groups, []string{"feat:couro-grosso@mesa"}, func(string) string { return "Couro grosso" }, dtPT, true)
+	if len(struck) != 1 || !struck[0].GetIgnored() {
+		t.Errorf("the struck steps = %v, want one, ignored", struck)
+	}
+	// The master edits a part: the damage is worked out again from the stored groups.
+	again := settleSteps(map[string]int{cut: 8, fire: 2}, modsOfGroups(land.groups), nil, originOfGroups(land.groups))
+	if again.amount != 7 {
+		t.Errorf("the landing after an edit is %d, want 7: 10 minus 3 once", again.amount)
+	}
+}
+
+// The reduction spills to the next type, and resistance then works on what is left of each type.
+func TestAReductionLargerThanTheBiggestTypeSpillsAndThenResistanceApplies(t *testing.T) {
+	t.Parallel()
+	cut, fire := "damage-type:slashing", "damage-type:fire"
+	mods := []combat.Modifier{
+		{Kind: combat.StepReduction, Source: "feat:couro-grosso@mesa", Amount: 5},
+		{Kind: combat.StepResistance, Source: "feat:sangue-frio@mesa", DamageTypes: []string{fire}},
+	}
+	land := settleSteps(map[string]int{cut: 3, fire: 6}, mods, nil, combat.Origin{Attack: true, Weapon: true})
+	// fire is the largest: 6 - 5 = 1, halved to 0; slashing stays 3.
+	if land.amount != 3 {
+		t.Errorf("the landing is %d, want 3", land.amount)
+	}
+	spill := settleSteps(map[string]int{cut: 3, fire: 1}, mods[:1], nil, combat.Origin{Attack: true, Weapon: true})
+	if spill.amount != 0 {
+		t.Errorf("the landing is %d, want 0: 4 minus 5 stops at 0", spill.amount)
+	}
+}

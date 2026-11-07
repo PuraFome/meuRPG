@@ -80,3 +80,46 @@ func reductionOf(mods []Modifier, ignored []string, from Origin) int {
 	}
 	return total
 }
+
+// The reduction is taken once from the whole attack, largest damage first (ties by the type key).
+func TestReduceTakesTheAmountOnceFromTheLargestTypeFirst(t *testing.T) {
+	t.Parallel()
+	cut, fire, cold := "damage-type:slashing", "damage-type:fire", "damage-type:cold"
+	three := []Modifier{{Kind: StepReduction, Source: "feature:thick-hide", Amount: 3}}
+	weapon := Origin{Attack: true, Weapon: true}
+	for _, tt := range []struct {
+		name   string
+		by     map[string]int
+		mods   []Modifier
+		ignore []string
+		origin Origin
+		want   map[string]int // nil for no step
+	}{
+		{"the largest type loses it", map[string]int{cut: 8, fire: 4}, three, nil, weapon, map[string]int{cut: 5, fire: 4}},
+		{"it spills to the next type", map[string]int{cut: 2, fire: 4}, three, nil, weapon, map[string]int{cut: 2, fire: 1}},
+		{"it spills over several types and stops at 0", map[string]int{cut: 1, fire: 1, cold: 1}, three, nil, weapon, map[string]int{cut: 0, fire: 0, cold: 0}},
+		{"a tie goes by the type key", map[string]int{cut: 4, fire: 4}, three, nil, weapon, map[string]int{cut: 4, fire: 1}},
+		{"the source left out takes nothing", map[string]int{cut: 8, fire: 4}, three, []string{"feature:thick-hide"}, weapon, nil},
+		{"a spell takes nothing", map[string]int{cut: 8}, three, nil, Origin{Attack: true}, nil},
+		{"no damage takes no step", map[string]int{cut: 0}, three, nil, weapon, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			step, after, ok := Reduce(tt.by, tt.mods, tt.ignore, tt.origin)
+			if ok != (tt.want != nil) {
+				t.Fatalf("Reduce ok = %v, step %+v", ok, step)
+			}
+			if !ok {
+				return
+			}
+			for k, v := range tt.want {
+				if after[k] != v {
+					t.Errorf("%s = %d, want %d (all %v)", k, after[k], v, after)
+				}
+			}
+			if step.DamageType != "" || step.Kind != StepReduction {
+				t.Errorf("step = %+v, want a reduction of the whole attack with no damage type", step)
+			}
+		})
+	}
+}
