@@ -6070,7 +6070,7 @@ type Combatant struct {
 	// (a reaction window opens for each melee hit, as it did before the server decided), false when the server
 	// decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
 	// Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
-	ParryAsk      *bool `protobuf:"varint,111,opt,name=parry_ask,json=parryAsk,proto3,oneof" json:"parry_ask,omitempty"`
+	ParryAsk      *bool `protobuf:"varint,112,opt,name=parry_ask,json=parryAsk,proto3,oneof" json:"parry_ask,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -26732,7 +26732,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0ereaction_round\x18l \x01(\x05R\rreactionRound\x127\n" +
 	"\x15initiative_treated_as\x18m \x01(\x05H\tR\x13initiativeTreatedAs\x88\x01\x01\x12?\n" +
 	"\x1cinitiative_treated_as_source\x18n \x01(\tR\x19initiativeTreatedAsSource\x12 \n" +
-	"\tparry_ask\x18o \x01(\bH\n" +
+	"\tparry_ask\x18p \x01(\bH\n" +
 	"R\bparryAsk\x88\x01\x01B\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +

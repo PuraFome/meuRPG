@@ -2885,7 +2885,7 @@ message Combatant {
   // (a reaction window opens for each melee hit, as it did before the server decided), false when the server
   // decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
   // Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
-  optional bool parry_ask = 111;
+  optional bool parry_ask = 112;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
