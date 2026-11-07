@@ -6051,7 +6051,6 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
     });
     await refuseEntries(
       m,
-      campaignId,
       [
         { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
         { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },

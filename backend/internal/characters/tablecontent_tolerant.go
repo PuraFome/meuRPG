@@ -90,7 +90,9 @@ func parentOf(e entryRow) string {
 }
 
 // unfinished is the entries of out that the master still has to fix.
-// An archived entry is retired, so it is not one, and neither is what is out only because its parent is.
+// An archived entry is retired, so it is not one, and neither is what is out only because its parent is: a child whose
+// violation is the dangling reference to its retired parent, as deep as the chain goes.
+// A live child with a violation of its own (not the missing parent) is still the master's to fix, so it stays.
 func unfinished(out []leftOut) []leftOut {
 	retired := map[string]bool{}
 	for _, l := range out {
@@ -101,12 +103,17 @@ func unfinished(out []leftOut) []leftOut {
 	for grew := true; grew; { // a dependent of a dependent, as deep as the chain goes
 		grew = false
 		for _, l := range out {
-			if !retired[l.Key] && l.Parent != "" && retired[l.Parent] {
+			if !retired[l.Key] && l.Parent != "" && retired[l.Parent] && onlyTheParent(l) {
 				retired[l.Key], grew = true, true
 			}
 		}
 	}
 	return slices.DeleteFunc(slices.Clone(out), func(l leftOut) bool { return retired[l.Key] })
+}
+
+// onlyTheParent says the entry is out for the reference to its parent and nothing else.
+func onlyTheParent(l leftOut) bool {
+	return len(l.Violations) > 0 && l.Violations[0].GetReason() == "dangling_reference"
 }
 
 // refusedOf is what the content reports of the entries left out that the master has to fix.

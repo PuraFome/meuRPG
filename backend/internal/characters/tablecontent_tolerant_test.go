@@ -179,3 +179,25 @@ func TestRefusedLeavesOutAnUnreadableRowOnlyWhileItIsLive(t *testing.T) {
 		t.Errorf("Refused() = %v, want only the live unreadable row", got)
 	}
 }
+
+// TestUnfinishedKeepsALiveChildWithAViolationOfItsOwn: a child out only because its parent is retired goes with it, and a
+// child that is also wrong in a field of its own stays, because the master still has to fix it.
+func TestUnfinishedKeepsALiveChildWithAViolationOfItsOwn(t *testing.T) {
+	t.Parallel()
+	v := func(reason string) []*rulesv1.TableContentViolation {
+		return []*rulesv1.TableContentViolation{{Reason: reason}}
+	}
+	out := []leftOut{
+		{Key: "class:a@mesa", Archived: true, Violations: v("bad_name")},
+		{Key: "subclass:only@mesa", Parent: "class:a@mesa", Violations: v("dangling_reference")},
+		{Key: "classfeature:deep@mesa", Parent: "subclass:only@mesa", Violations: v("dangling_reference")},
+		{Key: "subclass:own@mesa", Parent: "class:a@mesa", Violations: v("bad_formula")},
+	}
+	var got []string
+	for _, l := range unfinished(out) {
+		got = append(got, l.Key)
+	}
+	if want := []string{"subclass:own@mesa"}; !slices.Equal(got, want) {
+		t.Errorf("unfinished() = %v, want %v", got, want)
+	}
+}

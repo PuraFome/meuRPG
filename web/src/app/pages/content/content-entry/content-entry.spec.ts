@@ -18,6 +18,7 @@ import {
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
+import { savedSentence } from '../../../core/content/content-kinds';
 import {
   classDefaults,
   entry,
@@ -751,7 +752,38 @@ describe('ContentEntry', () => {
         scroll.mockRestore();
       }
       expect(text(el)).not.toContain('voltou para a campanha');
+      expect(text(el)).toContain(savedSentence(c.kind, c.namePt));
       expect(text(el.querySelector('.tags')!)).toContain('Fora da campanha');
+    });
+
+    it('drops the tag and the note at once when the master archives the entry that is out', async () => {
+      const { c, entries, leftOut } = out();
+      const { fixture, el } = await setup(Role.MASTER, c.key, entries, { leftOut });
+      expect(text(el.querySelector('.tags')!)).toContain('Fora da campanha');
+      await (fixture.componentInstance as unknown as { archive(): Promise<void> }).archive();
+      await settle(fixture, 4);
+      expect(archive).toHaveBeenCalledWith('camp-1', c.key);
+      expect(text(el.querySelector('.tags')!)).not.toContain('Fora da campanha');
+      expect(el.querySelector('.mr-notice--danger')).toBeNull();
+    });
+
+    it('says the entry was saved when another entry stays out', async () => {
+      const { entries, leftOut } = out();
+      const race = entries.find((e) => e.kind === TableContentKind.RACE)!;
+      const { fixture, el } = await setup(Role.MASTER, race.key, entries, { leftOut });
+      const page = fixture.componentInstance as unknown as {
+        onSaved(r: { entry: unknown; affected: unknown[] }): Promise<void>;
+      };
+      list.mockResolvedValue({ entries, tableRevision: 8, contentVersion: '', leftOut });
+      const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+      try {
+        await page.onSaved({ entry: { ...race, revision: 9 }, affected: [] });
+        await settle(fixture, 4);
+      } finally {
+        scroll.mockRestore();
+      }
+      expect(text(el)).toContain(savedSentence(race.kind, race.namePt));
+      expect(text(el)).not.toContain('voltou para a campanha');
     });
 
     it('says a subclass is out because its class is, and links to the class', async () => {

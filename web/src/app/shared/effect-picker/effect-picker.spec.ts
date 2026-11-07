@@ -161,6 +161,22 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     );
   });
 
+  it('never says a spell of the catalog, or a value of a list that is not loaded, "saiu do menu"', () => {
+    setup(
+      { ...emptyEffect('granted_spell'), spell: 'spell:outra', ability: 'choice' },
+      { menu: grantedSpellMenu() },
+    );
+    fixture.componentRef.setInput('spellOptions', [{ value: 'spell:light', label: 'Luz' }]);
+    fixture.detectChanges();
+    const spell = field('spell') as HTMLSelectElement;
+    expect(Array.from(spell.options).map((o) => o.text.trim())).not.toContain(
+      'Um valor que saiu do menu',
+    );
+    expect(text(el)).not.toContain('não existe nas regras novas');
+    setup({ ...emptyEffect('granted_spell'), spell: 'spell:light' }, { menu: grantedSpellMenu() });
+    expect(text(el)).not.toContain('saiu do menu');
+  });
+
   it("asks a sense's range in metres and keeps feet underneath", () => {
     setup({ ...emptyEffect('sense'), sense: 'darkvision', rangeM: '18' });
     const range = field('range_ft') as HTMLInputElement;

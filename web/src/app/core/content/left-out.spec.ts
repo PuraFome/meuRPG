@@ -152,6 +152,22 @@ describe('the entries left out', () => {
     expect(NO_LEFT_OUT.count).toBe(0);
   });
 
+  it('counts only what the page shows: a key with no entry is not counted, and an archived entry is no longer reported', () => {
+    const retired = { ...talento, archived: true };
+    const model = buildLeftOut(
+      [guardiao(), retired, ok],
+      [
+        v('class:guardiao@mesa', TARGET, 'bad_value'),
+        v('feat:chama@mesa', '', 'bad_name'),
+        v('race:ausente@mesa', '', 'bad_name'),
+      ],
+    );
+    expect(model.count).toBe(1);
+    expect(model.rows.map((r) => r.entry.key)).toEqual(['class:guardiao@mesa']);
+    expect([...model.keys]).toEqual(['class:guardiao@mesa']);
+    expect(buildLeftOut([retired], [v('feat:chama@mesa', '', 'bad_name')])).toBe(NO_LEFT_OUT);
+  });
+
   it('makes a row of each entry to fix, with its subclass under the class, and counts all three', () => {
     const model = buildLeftOut(
       [guardiao(), sub, talento, ok],

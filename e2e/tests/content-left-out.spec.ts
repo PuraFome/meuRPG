@@ -1,10 +1,10 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
-import { createEntryRPC, listEntriesJSON, raceBody, spellBody } from './content-support';
+import { createEntryRPC, entryRoute, listEntriesJSON, raceBody, spellBody } from './content-support';
 import { refuseEntries } from './left-out-support';
 import { campaignWithEmptyPlayer } from './table-rules-support';
-import { boxOf, callRPC, gotoCampaignTab, newSignedInContext } from './support';
+import { boxOf, gotoCampaignTab, newSignedInContext } from './support';
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -25,7 +25,7 @@ async function table(browser: import('@playwright/test').Browser) {
   const campaignId = await campaignWithEmptyPlayer(m, p, `Mesa dos recusados ${Date.now()}`);
   const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
   const race = await createEntryRPC(m, campaignId, 'tableRace', modifierRace());
-  await refuseEntries(m, campaignId, [
+  await refuseEntries(m, [
     { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
     { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },
   ], {
@@ -63,13 +63,13 @@ test(
       await m.goto(`/campaigns/${campaignId}/content`);
       await m.getByRole('button', { name: 'Mais ações de Lâmina de Nanquim' }).click();
       await m.getByRole('menuitem', { name: 'Remover' }).click();
-      await m.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click();
+      await m.getByRole('dialog').getByRole('button', { name: 'Remover' }).click();
       await expect(m.getByRole('region', { name: '1 entrada fora da campanha' })).toBeVisible();
       await expect(m.getByRole('link', { name: 'Lâmina de Nanquim' })).toHaveCount(0);
       expect((await listEntriesJSON(m, campaignId)).entries!.find((e) => e.key === spell)?.archived).toBe(true);
       await m.getByRole('button', { name: 'Mais ações de Corujeiro' }).click();
       await m.getByRole('menuitem', { name: 'Remover' }).click();
-      await m.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click();
+      await m.getByRole('dialog').getByRole('button', { name: 'Remover' }).click();
       await expect(m.getByRole('region', { name: /entrada.* fora da campanha/ })).toHaveCount(0);
       expect((await listEntriesJSON(m, campaignId)).entries!.find((e) => e.key === race)?.archived).toBe(true);
     } finally {
@@ -80,10 +80,34 @@ test(
 );
 
 test(
-  'a campanha mostra o aviso ao mestre e o jogador não vê nada fora da campanha @MR-025',
+  'o mestre corrige o alvo, salva, e a raça volta para a campanha @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, p, campaignId, race, spell } = await table(browser);
+    const { master, player, m, campaignId, race } = await table(browser);
+    try {
+      await m.goto(entryRoute(campaignId, race));
+      const target = m.getByLabel('O que muda');
+      await expect(target).toHaveValue('alvo_antigo');
+      await target.selectOption({ label: 'Margem de acerto crítico' });
+      await m.getByRole('button', { name: 'Salvar raça' }).click();
+      await expect(m.getByText('Corujeiro voltou para a campanha.')).toBeVisible();
+      await expect(m.locator('.mr-tag--danger', { hasText: 'Fora da campanha' })).toHaveCount(0);
+      await expect(m.getByText('Esta raça está fora da campanha.')).toHaveCount(0);
+      // The list lost the race and kept the spell.
+      await m.goto(`/campaigns/${campaignId}/content`);
+      await expect(m.getByRole('region', { name: '1 entrada fora da campanha' })).toBeVisible();
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'a campanha mostra o aviso ao mestre e a página do jogador não tem o painel nem o aviso @MR-025',
+  { tag: ['@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    const { master, player, m, p, campaignId } = await table(browser);
     try {
       await gotoCampaignTab(m, campaignId, 'Regras');
       const content = m.getByRole('region', { name: 'Conteúdo da mesa' });
@@ -91,14 +115,12 @@ test(
       await content.getByRole('link', { name: 'Ver o conteúdo da mesa' }).click();
       await expect(m.getByRole('region', { name: '2 entradas fora da campanha' })).toBeVisible();
 
-      // The player's answer has no `leftOut` and the screens say nothing of it, whatever the master has refused.
-      const answer = await (await callRPC(p, 'meurpg.rules.v1.TableContentService/ListTableEntries', { campaignId })).json();
-      expect(answer.leftOut ?? []).toEqual([]);
+      // What a player's page shows. That the server never sends a player `left_out`, its count, a path or the name of a retired
+      // entry is proved by the leak test (backend/internal/leaktest, TestLeftOutIsTheMastersAlone), where the table really has
+      // refused entries; here the refusal is seeded in the master's page only, so this checks the player's screens alone.
       await p.goto(`/campaigns/${campaignId}/content`);
       await expect(p.getByRole('heading', { level: 1, name: 'Conteúdo da mesa' })).toBeVisible();
       await expect(p.getByText('fora da campanha')).toHaveCount(0);
-      void race;
-      void spell;
     } finally {
       await master.close();
       await player.close();
@@ -125,7 +147,7 @@ test(
       await m.getByRole('button', { name: 'Mais ações de Lâmina de Nanquim' }).click();
       await expect(m.getByRole('menuitem', { name: 'Exportar para corrigir num pacote' })).toHaveCount(0);
       await m.getByRole('menuitem', { name: 'Remover' }).click();
-      await m.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click();
+      await m.getByRole('dialog').getByRole('button', { name: 'Remover' }).click();
       await expect(m.getByRole('region', { name: '1 entrada fora da campanha' })).toBeVisible();
       expect((await listEntriesJSON(m, campaignId)).entries!.find((e) => e.key === spell)?.archived).toBe(true);
     } finally {

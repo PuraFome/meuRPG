@@ -321,9 +321,8 @@ export class EffectPicker {
     return choiceList(this.optionsOf(f), this.leftTheMenu(f), f, this.effect().type);
   }
 
-  /** The value the entry holds for a closed list that the menu no longer lists, or `''`. */
   private leftTheMenu(f: EffectMenuField): string {
-    return f.kind === 'choice' ? leftTheMenuValue(this.read(f.name), this.optionsOf(f)) : '';
+    return leftTheMenuValue(f, this.read(f.name), this.optionsOf(f));
   }
 
   /** The cards of a short closed list (a resistance's kind), with the menu's line under each. */

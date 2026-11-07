@@ -235,8 +235,15 @@ export function buildLeftOut(
   if (leftOut.length === 0) {
     return NO_LEFT_OUT;
   }
-  const out = new Map(leftOut.map((v) => [v.key, v]));
   const byKey = new Map(entries.map((e) => [e.key, e]));
+  // Only what is on the page counts: a key with no entry is not shown, and an entry the master archived is no longer reported
+  // (the server drops it too; the page does it at once, before it reads again).
+  const out = new Map(
+    leftOut.filter((v) => byKey.get(v.key)?.archived === false).map((v) => [v.key, v]),
+  );
+  if (out.size === 0) {
+    return NO_LEFT_OUT;
+  }
   const dependents = new Map<string, LeftOutDependent[]>();
   const rows: LeftOutRow[] = [];
   for (const entry of entries) {
@@ -273,7 +280,11 @@ export function buildLeftOut(
     });
   }
   const withDependents = rows.map((r) => ({ ...r, dependents: dependents.get(r.entry.key) ?? [] }));
-  return { rows: withDependents, count: leftOut.length, keys: new Set(out.keys()) };
+  const shown = withDependents.flatMap((r) => [
+    r.entry.key,
+    ...r.dependents.map((d) => d.entry.key),
+  ]);
+  return { rows: withDependents, count: shown.length, keys: new Set(shown) };
 }
 
 /** "3 entradas fora da campanha". */

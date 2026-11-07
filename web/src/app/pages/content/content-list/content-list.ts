@@ -52,7 +52,7 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { openSheet } from '../../../shared/sheet/sheet-host';
-import { ArchiveSheet } from '../archive/archive-sheet';
+import { ArchiveSheet, type ArchiveSheetData } from '../archive/archive-sheet';
 
 type PageState =
   | { status: 'loading' }
@@ -267,12 +267,12 @@ export class ContentList {
     this.actionError.set('');
     this.status.set('');
     const confirmed = await new Promise<boolean>((resolve) =>
-      openSheet<ArchiveSheet, { name: string; using: number }, boolean>(
+      openSheet<ArchiveSheet, ArchiveSheetData, boolean>(
         this.dialog,
         this.bottomSheet,
         ArchiveSheet,
         {
-          data: { name: row.entry.namePt, using: row.entry.charactersUsing },
+          data: { name: row.entry.namePt, using: row.entry.charactersUsing, verb: 'Remover' },
           ariaLabel: `Remover ${row.entry.namePt}?`,
           labelledBy: 'archive-t',
         },
@@ -332,7 +332,7 @@ export class ContentList {
     this.actionError.set('');
     if (!e.archived) {
       const confirmed = await new Promise<boolean>((resolve) =>
-        openSheet<ArchiveSheet, { name: string; using: number }, boolean>(
+        openSheet<ArchiveSheet, ArchiveSheetData, boolean>(
           this.dialog,
           this.bottomSheet,
           ArchiveSheet,

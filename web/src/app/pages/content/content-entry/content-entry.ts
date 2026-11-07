@@ -366,7 +366,7 @@ export class ContentEntry {
     if (before.count > 0) {
       // The server says again which entries are out, and a fix says the entry came back.
       await this.refresh();
-      this.savedLine.set(backInSentence(before, this.leftOut().model, res.entry, entries) ?? saved);
+      this.savedLine.set(backInSentence(before, this.leftOut().model, res.entry, entries) || saved);
     }
     if (!this.key()) {
       // A new entry has its key now: its page is the entry's own.

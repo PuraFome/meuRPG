@@ -530,16 +530,17 @@ describe('ContentList', () => {
         Array.from(
           document.querySelectorAll<HTMLButtonElement>('app-archive-sheet app-pair-foot button'),
         ).find((b) => text(b).includes(label))!;
-      expect(text(document.querySelector('app-archive-sheet')!)).toContain(
-        'Arquivar Guardião do Vale?',
-      );
+      const sheet = text(document.querySelector('app-archive-sheet')!);
+      expect(sheet).toContain('Remover Guardião do Vale?');
+      expect(sheet).toContain('A entrada é arquivada, não apagada.');
+      expect(sheet).not.toContain('Arquivar');
       list.mockResolvedValue({
         entries: entries.map((e) => (e.key === classe.key ? { ...e, archived: true } : e)),
         tableRevision: 8,
         contentVersion: '',
         leftOut: leftOut.filter((v) => v.key === 'feat:chama-insistente@mesa'),
       });
-      ask('Arquivar').click();
+      ask('Remover').click();
       await again();
       expect(archive).toHaveBeenCalledWith('camp-1', classe.key);
       expect(text(el.querySelector('.out__title')!)).toContain('1 entrada fora da campanha');
@@ -569,7 +570,7 @@ describe('ContentList', () => {
       expect(archive).not.toHaveBeenCalled();
       archive.mockRejectedValueOnce(new ConnectError('refused', Code.PermissionDenied));
       await open();
-      ask('Arquivar').click();
+      ask('Remover').click();
       await again();
       expect(text(el.querySelector('[role="alert"]')!)).toContain('Só o mestre');
       expect(el.querySelectorAll('.out__item')).toHaveLength(2);

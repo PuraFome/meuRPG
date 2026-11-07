@@ -1,9 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type Locator, type Page } from '@playwright/test';
-
-import { listEntriesJSON } from './content-support';
+import { type Locator, type Page, type Route } from '@playwright/test';
 
 // Setup for the "left out" specs (issue #736): the engine refuses an entry only when the data changes under it (a newer
 // rule set), and the API refuses to save one it would refuse, so no call can make a refused entry. The test says it the
@@ -21,24 +19,42 @@ export interface FakeViolation {
 /** From now on this page's ListTableEntries says these entries are refused, until the entry is archived. */
 export async function refuseEntries(
   page: Page,
-  campaignId: string,
   violations: readonly FakeViolation[],
   /** What the stored entry says, by key: the data that the engine refuses (a target that left the menu), as the API gives it. */
   stored: Readonly<Record<string, (entry: Record<string, any>) => void>> = {},
 ): Promise<void> {
+  // The revision each entry had when it was first listed: a save moves it, and the server would read the entry again (and,
+  // fixed, leave it in), so the refusal lifts with it.
+  const seen = new Map<string, number>();
   await page.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route) => {
+    try {
+      await answer(route);
+    } catch {
+      // The test ended (the page closed) while the answer was being read: nobody is waiting for it.
+      await route.abort().catch(() => undefined);
+    }
+  });
+
+  async function answer(route: Route): Promise<void> {
     const real = await route.fetch();
-    const archived = new Set((await listEntriesJSON(page, campaignId)).entries?.filter((e) => e.archived).map((e) => e.key as string));
-    const live = violations.filter((v) => !archived.has(v.key));
+    const body = (await real.json()) as Record<string, unknown>;
+    const entries = (body.entries ?? []) as Record<string, any>[];
+    for (const e of entries) {
+      seen.set(e.key, seen.get(e.key) ?? (e.revision as number));
+    }
+    const archived = new Set(entries.filter((e) => e.archived).map((e) => e.key as string));
+    const fixed = new Set(entries.filter((e) => e.revision !== seen.get(e.key)).map((e) => e.key as string));
+    const live = violations.filter((v) => !archived.has(v.key) && !fixed.has(v.key));
     const headers = { ...real.headers() };
     delete headers['content-length'];
     delete headers['content-encoding'];
-    const body = (await real.json()) as Record<string, unknown>;
-    for (const entry of (body.entries ?? []) as Record<string, any>[]) {
-      stored[entry.key]?.(entry);
+    for (const entry of entries) {
+      if (live.some((v) => v.key === entry.key)) {
+        stored[entry.key]?.(entry);
+      }
     }
     await route.fulfill({ status: real.status(), headers, body: JSON.stringify({ ...body, leftOut: live.map((v) => ({ ...v, message: v.message ?? '' })) }) });
-  });
+  }
 }
 
 /** The folder the screenshots go to when `E2E_SHOTS_DIR` names one; otherwise nothing is written. */

@@ -687,4 +687,4 @@ A write of the master that repairs a left-out entry is accepted, as are archivin
 An import is checked over the stored entries as they are stored, so a pack that breaks one is refused.
 Rows that cannot be decoded fail the listing, the export, the import and every write.
 The deploy audit of the same rules is in the [runbook](../operations/runbook.md#entries-a-new-revision-would-leave-out).
-Tests: `TestBuildTolerantLeavesOutManyRefusedEntries`, `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestListTableEntriesLeftOutClearsWhenTheMasterRetiresTheEntry`, `TestRefusedLeavesOutWhatTheMasterRetired`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.
+Tests: `TestBuildTolerantLeavesOutManyRefusedEntries`, `TestTableSourceReadsWithoutTheEntriesTheRulesRefuse`, `TestTableContentWritesWorkWithARefusedEntryStored`, `TestListTableEntriesTellsOnlyTheMasterWhatIsLeftOut`, `TestAuditTableContentLogsWhatTheRulesWouldLeaveOut`.

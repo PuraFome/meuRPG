@@ -749,6 +749,7 @@ func (w *world) buildTableContent() {
 	// not as an entry and not in left_out, where it no longer is.
 	retiredLeftOut := create("spell-left-out-retired", spell())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: retiredLeftOut.GetKey()})))
+	w.leftOutKey, w.retiredLeftOutKey, w.retiredLeftOutName = leftOut.GetKey(), retiredLeftOut.GetKey(), retiredLeftOut.GetNamePt()
 	for _, key := range []string{leftOut.GetKey(), retiredLeftOut.GetKey()} {
 		if _, err := w.pool.Exec(ctx, `UPDATE campaign_content SET data = jsonb_set(data, '{level}', '12') WHERE campaign_id = $1 AND content_key = $2`, w.campaign, key); err != nil {
 			w.t.Fatalf("refuse the stored spell: %v", err)
