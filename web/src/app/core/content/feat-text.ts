@@ -95,8 +95,10 @@ function whoParts(p: FeatPrerequisite, nameOf: KeyName, lacks?: LacksView): stri
 }
 
 /**
- * The conditions of a prerequisite, one phrase each ("Força 13 e Destreza 13", "proficiência em Armadura média"); none when it asks nothing.
- * A player's `lacks` names the feature to lack (or says it is hidden); without it the key is named by `nameOf`.
+ * The conditions of a prerequisite, one phrase each, such as "Força 13 e Destreza 13".
+ * Nothing comes back when the prerequisite asks nothing.
+ * A player's `lacks` names the feature to lack, or says it is hidden.
+ * Without `lacks`, `nameOf` names the key.
  */
 export function prerequisiteParts(
   p: FeatPrerequisite | undefined,

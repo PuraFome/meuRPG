@@ -97,12 +97,42 @@ describe('the features a feat may ask not to have', () => {
     expect(labels('', 'feat:grappler')).not.toContain('Agarrador');
   });
 
-  it('writes the chip with the origin, and names an archived or unknown key without its hint', () => {
+  it('writes the chip with the name and the origin of a listed feature', () => {
     expect(lackChips('feat:grappler', all(), nameOf)).toEqual([
-      { value: 'feat:grappler', label: 'Agarrador', hint: 'talento do SRD', tag: '' },
+      {
+        value: 'feat:grappler',
+        label: 'Agarrador',
+        hint: 'talento do SRD',
+        tag: '',
+        invalid: false,
+      },
     ]);
-    expect(lackChips('feat:pegada-velha@mesa', all(), nameOf)[0].label).toBe('Pegada Velha');
     expect(lackChips('', all(), nameOf)).toEqual([]);
+  });
+
+  it('keeps the name of an archived feature on its chip, with the origin', () => {
+    expect(lackChips('feat:pegada-velha@mesa', all(), nameOf)[0]).toMatchObject({
+      label: 'Pegada Velha',
+      hint: 'talento da mesa',
+    });
+  });
+
+  it('names a key no list knows by the catalog, with no origin, and marks a refused one', () => {
+    const [chip] = lackChips('feat:gone', all(), (k) => `Nome de ${k}`, true);
+    expect(chip).toMatchObject({ label: 'Nome de feat:gone', hint: '', invalid: true });
+  });
+
+  it('groups an SRD value by the prefix of its key, whatever its hint says', () => {
+    const odd = lackOptions(
+      [
+        { key: 'feat:x', namePt: 'X', hintPt: 'qualquer coisa' },
+        { key: 'trait:y', namePt: 'Y', hintPt: '' },
+        { key: 'feature:z', namePt: 'Z', hintPt: 'talento do SRD' },
+      ],
+      [],
+      nameOf,
+    );
+    expect(odd.map((o) => o.group)).toEqual(['feat', 'trait', 'feature']);
   });
 });
 
@@ -126,6 +156,19 @@ describe('the races a feat asks for', () => {
       (k) => k.replace(/^race:/, ''),
     );
     expect(chips.map((c) => c.tag)).toEqual(['Desligada', 'Desligada', '', '']);
+  });
+
+  it('marks the chips whose refusal is known, with the path it lands on', () => {
+    const chips = raceChips(
+      ['race:a', 'race:b'],
+      [],
+      (k) => k,
+      new Map([['race:b', 'p.races[1]']]),
+    );
+    expect(chips.map((c) => [c.invalid, c.path])).toEqual([
+      [false, undefined],
+      [true, 'p.races[1]'],
+    ]);
   });
 
   it("offers the catalog's races and sub-races without the ones already asked", () => {

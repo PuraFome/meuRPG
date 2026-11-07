@@ -52,6 +52,9 @@ import { EntryRead } from '../entry-read/entry-read';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
+const RACES = 'table_feat.prerequisite.races';
+const LACKS = 'table_feat.prerequisite.lacks_feature_key';
+
 /** The sizes a feat may ask for, as the server writes them. */
 const SIZE_OPTIONS: SelectOption[] = [
   { value: '', label: 'Qualquer' },
@@ -62,9 +65,11 @@ const SIZE_OPTIONS: SelectOption[] = [
 ];
 
 /**
- * The feat editor (MR-025): a name, a text, what the feat asks of a character (ability scores, a proficiency, spellcasting, races, a size, a
- * feature to lack, a level) and its effects, from the server's menu (the types only a feat has included, such as "Aumento de
- * habilidade"). "Salvar talento" sends the whole entry; whether a character meets the prerequisite is the server's to say.
+ * The feat editor: a name, a text, what the feat asks of a character, and its effects.
+ * The prerequisite has ability scores, a proficiency, spellcasting, races, a size, a feature to lack and a level.
+ * The effects come from the server's menu, with the types only a feat has.
+ * "Salvar talento" sends the whole entry.
+ * Whether a character meets the prerequisite is the server's to say.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -116,7 +121,7 @@ export class FeatEditor {
     { value: '', label: 'Nenhuma' },
     ...this.catalog().proficiencies,
   ]);
-  protected readonly sizeOptions: SelectOption[] = SIZE_OPTIONS;
+  protected readonly sizes = SIZE_OPTIONS;
   protected readonly lackGroups = LACK_GROUPS;
   private readonly lackAll = computed(() =>
     lackOptions(this.menu().list('lackable_features'), this.entries(), this.catalog().nameOf),
@@ -129,25 +134,44 @@ export class FeatEditor {
   });
   /** The races asked: the single race of an older feat stands in the list as one more chip. */
   private readonly asked = computed(() => askedRaces(this.draft().raceKey, this.draft().races));
+  /** The key of each race the server refused, with the path of its refusal. */
+  private readonly refusedRaces = computed(() => {
+    const d = this.draft();
+    const out = new Map<string, string>();
+    const at = (key: string, path: string) => {
+      if (key !== '' && this.saver.issues(path).length > 0) {
+        out.set(key, path);
+      }
+    };
+    at(d.raceKey, 'table_feat.prerequisite.race_key');
+    d.races.forEach((key, i) => at(key, `${RACES}[${i}]`));
+    return out;
+  });
   protected readonly raceChips = computed(() =>
-    raceChips(this.asked(), this.entries(), this.nameOf()),
+    raceChips(this.asked(), this.entries(), this.nameOf(), this.refusedRaces()),
   );
   protected readonly raceSearch = computed(() =>
     pickableRaces(this.catalog().raceChoices, this.asked()),
   );
-  /** The input answers to the field the master's feat uses: its list, or the single race an older feat has. */
-  protected readonly racePath = computed(() =>
-    this.draft().raceKey ? 'table_feat.prerequisite.race_key' : 'table_feat.prerequisite.races',
-  );
-  protected readonly raceIssues = computed(() => [
-    ...this.saver.issues('table_feat.prerequisite.race_key'),
-    ...this.saver.issues('table_feat.prerequisite.races'),
-  ]);
+  /** Every refusal about the races, each text once: of the list, of one race and of the single race. */
+  protected readonly raceIssues = computed(() => {
+    const paths = [
+      RACES,
+      'table_feat.prerequisite.race_key',
+      ...this.draft().races.map((_, i) => `${RACES}[${i}]`),
+    ];
+    return [...new Set(paths.flatMap((p) => this.saver.issues(p)))];
+  });
   protected readonly lackSearch = computed(() =>
     pickableLacks(this.lackAll(), this.entry()?.key ?? '', this.draft().lacksFeatureKey),
   );
   protected readonly lackChips = computed(() =>
-    lackChips(this.draft().lacksFeatureKey, this.lackAll(), this.nameOf()),
+    lackChips(
+      this.draft().lacksFeatureKey,
+      this.lackAll(),
+      this.nameOf(),
+      this.saver.issues(LACKS).length > 0,
+    ),
   );
   /** What a player reads, written by the same function as the player's page. */
   protected readonly preview = computed(() =>

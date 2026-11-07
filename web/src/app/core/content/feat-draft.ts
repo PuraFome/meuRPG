@@ -169,6 +169,7 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
   for (const a of ABILITY_FIELDS) {
     out.push(`${p}.prerequisite.minimums.${a}`, `${p}.prerequisite.any_of.${a}`);
   }
+  d.races.forEach((_, i) => out.push(`${p}.prerequisite.races[${i}]`));
   d.feature.effects.forEach((e, k) => {
     const at = `${p}.effects[${k}]`;
     out.push(at, `${at}.type`);

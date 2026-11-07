@@ -75,7 +75,6 @@ describe('app-search-pick', () => {
 
   it('opens a grouped dropdown on focus and says which group has no match', () => {
     expect(el.querySelector('[role="listbox"]')).toBeNull();
-    input().dispatchEvent(new Event('focus'));
     type('agar');
     expect(input().getAttribute('aria-expanded')).toBe('true');
     expect(text(el.querySelector('[role="listbox"]')!)).toContain('Talentos');
@@ -120,6 +119,71 @@ describe('app-search-pick', () => {
     fixture.componentInstance.issues.set(['Esta raça ou sub-raça não existe mais. Escolha outra.']);
     fixture.detectChanges();
     expect(text(el)).toContain('Esta raça ou sub-raça não existe mais.');
+    expect(input().getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('opens on a click and not on a programmatic focus, and reopens after Escape', () => {
+    input().focus();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="listbox"]')).toBeNull();
+    expect(input().getAttribute('aria-controls')).toBeNull();
+    input().click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="listbox"]')).not.toBeNull();
+    expect(input().getAttribute('aria-controls')).toBe(el.querySelector('[role="listbox"]')!.id);
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(el.querySelector('[role="listbox"]')).toBeNull();
+    input().click();
+    fixture.detectChanges();
+    expect(el.querySelector('[role="listbox"]')).not.toBeNull();
+  });
+
+  it('closes the panel on blur', () => {
+    input().click();
+    fixture.detectChanges();
+    input().dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(el.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  it('wraps around with ArrowUp from the first option to the last', () => {
+    input().click();
+    fixture.detectChanges();
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    fixture.detectChanges();
+    const all = el.querySelectorAll('[role="option"]');
+    expect(input().getAttribute('aria-activedescendant')).toBe(all[all.length - 1].id);
+  });
+
+  it('does nothing on Enter while no option is active', () => {
+    input().click();
+    fixture.detectChanges();
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(fixture.componentInstance.added).toEqual([]);
+  });
+
+  it('labels each group of the dropdown by its heading', () => {
+    input().click();
+    fixture.detectChanges();
+    const group = el.querySelector('[role="group"]')!;
+    expect(text(el.querySelector(`#${group.getAttribute('aria-labelledby')}`)!)).toBe('Talentos');
+  });
+
+  it('gives the focus back to the input when a chip is taken off', () => {
+    el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Corujeiro"]')!.focus();
+    el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Corujeiro"]')!.click();
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('outlines a refused chip and puts the field in error', () => {
+    fixture.componentInstance.chips.set([
+      { value: 'x', label: 'Corujeiro', hint: '', tag: '', invalid: true, path: 'p.races[0]' },
+    ]);
+    fixture.detectChanges();
+    expect(el.querySelector('.chip')!.classList).toContain('chip--invalid');
+    expect(el.querySelector('.chip')!.getAttribute('data-field')).toBe('p.races[0]');
     expect(input().getAttribute('aria-invalid')).toBe('true');
   });
 });

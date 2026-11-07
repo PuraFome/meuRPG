@@ -2,10 +2,12 @@ import { type TableEntry, TableContentKind } from '../../../gen/meurpg/rules/v1/
 import type { SearchChip, SearchGroup, SearchOption } from '../../shared/form-fields/search-pick';
 import type { MenuOption } from './effect-draft';
 
-/**
- * What the feat editor searches: the races and sub-races a feat may ask for, and the feature, trait or feat it may ask the
- * character not to have. The SRD's features come from the effect menu (`lackable_features`); the table's own come from its
- * entries, which the menu does not list.
+/*
+ * What the feat editor searches.
+ * The races and sub-races a feat may ask for come from the catalog.
+ * The feature, trait or feat it may ask the character not to have comes from two sources.
+ * The SRD's come from the effect menu (`lackable_features`).
+ * The table's own come from its entries, which the menu does not list.
  */
 
 export const LACK_GROUPS: readonly SearchGroup[] = [
@@ -14,17 +16,18 @@ export const LACK_GROUPS: readonly SearchGroup[] = [
   { id: 'trait', title: 'Traços', empty: 'Nenhum traço com esse nome.' },
 ];
 
-/** A feature a feat may ask not to have; `archived` ones are named on a chip but not offered again. */
+/** A feature a feat may ask not to have. */
 export interface LackOption extends SearchOption {
+  /** An archived one is named on its chip but not offered again. */
   readonly archived: boolean;
 }
 
-/** The group of an SRD value, from the origin the server writes in its hint. */
-function srdGroup(hint: string): string {
-  if (hint === 'talento do SRD') {
+/** The group of an SRD value, from the prefix of its key. */
+function srdGroup(key: string): string {
+  if (key.startsWith('feat:')) {
     return 'feat';
   }
-  return hint === 'traço do SRD' ? 'trait' : 'feature';
+  return key.startsWith('trait:') ? 'trait' : 'feature';
 }
 
 /** Every feature, trait and feat the master may ask not to have: the SRD's (menu) and the table's own (entries). */
@@ -37,7 +40,7 @@ export function lackOptions(
     value: m.key,
     label: m.namePt,
     hint: m.hintPt,
-    group: srdGroup(m.hintPt),
+    group: srdGroup(m.key),
     archived: false,
   }));
   const add = (value: string, label: string, hint: string, group: string, archived: boolean) =>
@@ -103,12 +106,15 @@ export function lackChips(
   key: string,
   all: readonly LackOption[],
   nameOf: (key: string) => string,
+  invalid = false,
 ): SearchChip[] {
   if (key === '') {
     return [];
   }
   const found = all.find((o) => o.value === key);
-  return [{ value: key, label: found?.label ?? nameOf(key), hint: found?.hint ?? '', tag: '' }];
+  return [
+    { value: key, label: found?.label ?? nameOf(key), hint: found?.hint ?? '', tag: '', invalid },
+  ];
 }
 
 /** The races (and sub-races) a feat asks for, as the draft has them: the single `raceKey` first, then the list. */
@@ -116,11 +122,16 @@ export function askedRaces(raceKey: string, races: readonly string[]): string[] 
   return [...(raceKey ? [raceKey] : []), ...races.filter((r) => r !== raceKey)];
 }
 
-/** The chips of the races asked: "Desligada" on one the master switched off or archived (the players do not read it). */
+/**
+ * The chips of the races asked.
+ * "Desligada" marks one the master switched off or archived, which the players do not read.
+ * `refused` maps a key to the path its refusal lands on.
+ */
 export function raceChips(
   keys: readonly string[],
   entries: readonly TableEntry[],
   nameOf: (key: string) => string,
+  refused: ReadonlyMap<string, string> = new Map(),
 ): SearchChip[] {
   return keys.map((key) => {
     const entry = entries.find((e) => e.key === key && isRaceKind(e.kind));
@@ -129,6 +140,8 @@ export function raceChips(
       label: nameOf(key),
       hint: '',
       tag: entry && (entry.off || entry.archived) ? 'Desligada' : '',
+      invalid: refused.has(key),
+      path: refused.get(key),
     };
   });
 }

@@ -108,9 +108,9 @@ describe('FeatEditor (MR-025)', () => {
       (field(el, 'table_feat.prerequisite.minimums.dexterity') as HTMLInputElement).value,
     ).toBe('');
     expect((field(el, 'table_feat.prerequisite.level') as HTMLInputElement).value).toBe('4');
-    expect(
-      text(field(el, 'table_feat.prerequisite.race_key').closest('app-search-pick')!),
-    ).toContain('Humano');
+    expect(text(field(el, 'table_feat.prerequisite.races').closest('app-search-pick')!)).toContain(
+      'Humano',
+    );
     expect(
       (field(el, 'table_feat.effects[0].type') as HTMLSelectElement).selectedOptions[0].text,
     ).toBe('Aumento de habilidade');
@@ -194,9 +194,9 @@ describe('FeatEditor (MR-025)', () => {
     expect(text(field(el, 'table_feat.prerequisite.level').closest('app-text-field')!)).toContain(
       'O nível vai de 1 a 20',
     );
-    expect(
-      text(field(el, 'table_feat.prerequisite.race_key').closest('app-search-pick')!),
-    ).toContain('Esta raça ou sub-raça não existe mais.');
+    expect(text(field(el, 'table_feat.prerequisite.races').closest('app-search-pick')!)).toContain(
+      'Esta raça ou sub-raça não existe mais.',
+    );
     expect(text(field(el, 'table_feat.effects[0].count').closest('app-text-field')!)).toContain(
       'Quantos o jogador escolhe',
     );
@@ -257,35 +257,45 @@ describe('FeatEditor (MR-025)', () => {
     });
   });
 
-  it('finds a feature to lack by name, in its group, and sends its key', async () => {
-    const { fixture, el } = setup(false);
-    save.mockResolvedValue({ entry: stored(), affected: [] });
+  const searchLacks = (el: HTMLElement, fixture: { detectChanges(): void }, query: string) => {
     const lack = field(el, 'table_feat.prerequisite.lacks_feature_key') as HTMLInputElement;
-    lack.dispatchEvent(new Event('focus'));
-    lack.value = 'agar';
+    lack.value = query;
     lack.dispatchEvent(new Event('input'));
     fixture.detectChanges();
+  };
+
+  it('lists the features to lack found by name, under Talentos, Características and Traços', () => {
+    const { fixture, el } = setup(false);
+    searchLacks(el, fixture, 'agar');
     const list = text(el.querySelector('[role="listbox"]')!);
     expect(list).toContain('Talentos');
     expect(list).toContain('Agarrador · talento do SRD');
     expect(list).toContain('Agarrar com firmeza · Monge, nível 6');
     expect(list).toContain('Nenhum traço com esse nome.');
-    const option = Array.from(el.querySelectorAll<HTMLElement>('[role="option"]')).find((o) =>
-      text(o).includes('Agarrador'),
-    )!;
-    option.click();
-    fixture.detectChanges();
-    remove(el, 'Agarrador');
-    fixture.detectChanges();
-    expect(el.querySelector('.chip')).toBeNull();
-    lack.value = 'visao';
-    lack.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
+  });
+
+  it('sends the key of the feature picked, and none once its chip is taken off', async () => {
+    const { fixture, el } = setup(false);
+    save.mockResolvedValue({ entry: stored(), affected: [] });
+    searchLacks(el, fixture, 'visao');
     el.querySelector<HTMLElement>('[role="option"]')!.click();
     fixture.detectChanges();
+    expect(text(el.querySelector('.chip')!)).toContain('Visão no Escuro · traço do SRD');
     click(el, 'Salvar talento');
     await settle(fixture, 3);
     expect(save.mock.calls[0][2].value.prerequisite.lacksFeatureKey).toBe('trait:darkvision');
+    remove(el, 'Visão no Escuro');
+    fixture.detectChanges();
+    expect(el.querySelector('.chip')).toBeNull();
+    click(el, 'Salvar talento');
+    await settle(fixture, 3);
+    expect(save.mock.calls[1][2].value.prerequisite.lacksFeatureKey).toBe('');
+  });
+
+  it('does not offer the feat being edited in the search', () => {
+    const { fixture, el } = setup();
+    searchLacks(el, fixture, 'mestre');
+    expect(text(el.querySelector('[role="listbox"]')!)).not.toContain('Mestre das Cordas');
   });
 
   it('moves the single race of an older feat into the list when another race is added, never sending both', async () => {
@@ -299,9 +309,7 @@ describe('FeatEditor (MR-025)', () => {
     );
     const { fixture, el } = setup(true, two);
     save.mockResolvedValue({ entry: stored(), affected: [] });
-    const search = field(el, 'table_feat.prerequisite.race_key') as HTMLInputElement;
-    expect(search).toBeTruthy();
-    search.dispatchEvent(new Event('focus'));
+    const search = field(el, 'table_feat.prerequisite.races') as HTMLInputElement;
     search.value = '';
     search.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -369,5 +377,24 @@ describe('FeatEditor (MR-025)', () => {
     expect(at('table_feat.prerequisite.lacks_feature_key')).toContain(
       'Um talento não pode pedir que ele mesmo não esteja na ficha.',
     );
+  });
+
+  it('outlines the refused race chip and the field, and the refused feature to lack', async () => {
+    const { fixture, el } = setup(withRaces());
+    save.mockRejectedValue(
+      refusal(
+        ['table_feat.prerequisite.races[1]', 'dangling_reference'],
+        ['table_feat.prerequisite.lacks_feature_key', 'bad_value'],
+      ),
+    );
+    click(el, 'Salvar talento');
+    await settle(fixture, 3);
+    const races = field(el, 'table_feat.prerequisite.races').closest('app-search-pick')!;
+    const chips = Array.from(races.querySelectorAll('.chip'));
+    expect(chips.map((c) => c.classList.contains('chip--invalid'))).toEqual([false, true]);
+    expect(field(el, 'table_feat.prerequisite.races').getAttribute('aria-invalid')).toBe('true');
+    const lack = field(el, 'table_feat.prerequisite.lacks_feature_key');
+    expect(lack.getAttribute('aria-invalid')).toBe('true');
+    expect(lack.closest('app-search-pick')!.querySelector('.chip--invalid')).not.toBeNull();
   });
 });
