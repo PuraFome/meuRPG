@@ -6202,7 +6202,7 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
       await open(m, entryRoute(campaignId, option));
       await expect(m.getByLabel('Característica que oferece')).toHaveValue(feature);
       await expect(m.getByRole('link', { name: 'Abrir Guarda do Corvo' })).toBeVisible();
-      await expect(m.locator('.preview')).toContainText('Truques de lâmina (Guarda do Corvo)');
+      await expect(m.locator('.preview')).toContainText('Truques de lâmina (Guarda do Corvo, Guerreiro 3)');
       await expectScreenPasses(m, `Editor de opção, uma opção salva ${where}`);
       // A feature loses its option list while the form is open: the server refuses and the refusal lands at the field, with the choice kept.
       const ashes = await createSubclassRPC(m, campaignId, { ...subclassBody([withOptions('Brasas', ['Brasa viva', 'Cinza fria'])]), namePt: 'Guarda de Cinza' });
@@ -6221,6 +6221,7 @@ async function scanOptionOfferedBy(browser: Browser, colorScheme: 'light' | 'dar
       await expect(m.getByLabel('Característica que oferece')).toHaveAttribute('aria-invalid', 'true');
       await expect(m.getByText('Esta característica não existe mais ou não tem lista de opções. Escolha outra.')).toBeVisible();
       await expect(m.getByLabel('Característica que oferece')).toBeFocused();
+      await expect(m.getByText('Entra na lista com')).toHaveCount(0);
       await expectScreenPasses(m, `Editor de opção, a recusa da característica que perdeu a lista ${where}`);
     } else {
       await open(m, entryRoute(campaignId, option));

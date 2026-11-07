@@ -256,7 +256,7 @@ export function readOfEntry(
         nameOf,
         (key) => catalog?.subclassLevelOf(key) ?? 0,
         parentViewOf(entries),
-        catalog?.offeredByName,
+        catalog?.offeredByRead,
       )
     : null;
 }
