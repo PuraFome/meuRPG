@@ -20,6 +20,7 @@ let nextId = 0;
         [attr.aria-checked]="checked()"
         [attr.aria-labelledby]="labelId"
         [attr.aria-describedby]="describedBy() || null"
+        [attr.aria-invalid]="invalid() ? 'true' : null"
         [disabled]="disabled()"
         [attr.data-field]="path() || null"
         (click)="toggled.emit(!checked())"
@@ -146,6 +147,7 @@ export class SwitchField {
   /** The switch cannot be turned (the line that says why is `describedBy`'s). */
   readonly disabled = input(false);
   readonly describedBy = input('');
+  readonly invalid = input(false);
   readonly toggled = output<boolean>();
   protected readonly labelId = `sw-${nextId++}`;
 }

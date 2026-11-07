@@ -76,3 +76,38 @@
     font-size: var(--mr-font-16);
   }
 }
+
+.fixed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--mr-font-14);
+  line-height: 18px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+
+  &__btn {
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    color: var(--mr-accent-text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+}

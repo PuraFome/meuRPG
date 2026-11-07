@@ -315,9 +315,13 @@ describe('unreadableFeaturePaths', () => {
         't.summon.count',
       );
       expect(unreadableFeaturePaths('t', draft, menu())).toEqual([]);
-      expect(unreadableFeaturePaths('t', { ...draft, effects: [] }, menu())).toEqual([
-        't.summon.resource_key',
-      ]);
+      expect(
+        unreadableFeaturePaths(
+          't',
+          { ...draft, summon: { ...draft.summon!, resourceKey: '' } },
+          menu(),
+        ),
+      ).toEqual(['t.summon.resource_key']);
     });
   });
 });

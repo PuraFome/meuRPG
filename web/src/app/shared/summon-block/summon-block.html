@@ -1,6 +1,16 @@
 <section class="summon" [attr.data-summon]="summon() ? 'on' : 'off'">
-  <app-switch-field label="Invoca criaturas" [checked]="summon() !== null" [path]="at()" (toggled)="toggle($event)" />
+  <app-switch-field
+    label="Invoca criaturas"
+    [checked]="summon() !== null"
+    [path]="at()"
+    [invalid]="issuesOf()(at()).length > 0"
+    [describedBy]="issuesOf()(at()).length > 0 ? id + '-note' : ''"
+    (toggled)="toggle($event)"
+  />
   <app-field-note [id]="id + '-note'" [issues]="issuesOf()(at())" />
+  @if (fixedOff()) {
+    <p class="fixed" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ fixedOffText }}<button type="button" class="fixed__btn" (click)="resetDefaults()">Usar o padrão</button></p>
+  }
   @if (summon(); as s) {
     <p class="summon__line">Quem tem a característica a usa como uma magia de invocação, com um uso do recurso no lugar do espaço de magia.</p>
     <app-summon-creatures
@@ -14,14 +24,14 @@
     <div class="row">
       <app-text-field label="Quantas vêm" hint="Fórmula do dono; de 1 a 20." [value]="s.count" [path]="path('count')" [issues]="issues('count')" (valueChange)="patch({ count: $event })" />
       <app-text-field label="No máximo ao mesmo tempo" hint="0: sem limite. Até {{ maxLive }}." inputmode="numeric" [value]="s.maxLive" [path]="path('max_live')" [issues]="issues('max_live')" (valueChange)="patch({ maxLive: $event })" />
-      @if (resources().length > 0) {
+      @if (hasResource()) {
         <app-select-field
           label="Gasta 1 uso de"
           [options]="resourceOptions()"
-          [value]="stale() ? '' : s.resourceKey"
-          [placeholder]="stale() ? 'Escolha…' : ''"
+          [value]="s.resourceKey"
+          [placeholder]="s.resourceKey.trim() === '' ? 'Escolha…' : ''"
           [path]="path('resource_key')"
-          [issues]="stale() ? [staleText, ...issues('resource_key')] : issues('resource_key')"
+          [issues]="issues('resource_key')"
           (valueChange)="patch({ resourceKey: $event })"
         />
       } @else {
@@ -50,8 +60,9 @@
         <app-switch-field
           label="Concentração"
           [checked]="s.concentration"
-          [disabled]="!timed()"
-          [describedBy]="timed() ? id + '-conc' : id + '-conc-why'"
+          [disabled]="!timed() && !s.concentration"
+          [invalid]="issues('concentration').length > 0"
+          [describedBy]="issues('concentration').length > 0 ? id + '-conc' : timed() ? '' : id + '-conc-why'"
           [path]="path('concentration')"
           (toggled)="patch({ concentration: $event })"
         />

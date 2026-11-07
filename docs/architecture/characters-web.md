@@ -130,7 +130,7 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   `app-feature-editor` draws it behind `allowSummon`, which is on for a class, subclass, race, subrace, background and class-feature entry, and off for an option and a feat.
   The draft keeps the formula and the most at a time as typed and the stored message in `base`, so the role, the cost, the count per slot level and a field this build does not know go back as loaded.
   The creatures are chips with a search (`app-creature-pick`): "Da mesa" for a table creature and "· SRD" for the SRD's.
-  The cost is one of the feature's own `resource` effects, and with none the block says so and `summonBlockedPaths` stops the save.
+  The cost is one of the feature's own `resource` effects, and with none the block says so and `summonBlockedPaths` stops the save only while no resource key is chosen (a key the feature does not define is the class's, shown as "(da classe)" and left to the server).
   Time and duration are selects of presets, and a stored value they do not list is one more option.
   Concentration is off until the duration is by time.
   Turning the switch off sends no summon.

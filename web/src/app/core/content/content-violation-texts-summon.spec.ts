@@ -1,4 +1,4 @@
-import { violationText } from './content-violations';
+import { placeViolations, violationText } from './content-violations';
 
 const CTX = { aOne: 'uma classe' };
 
@@ -86,5 +86,18 @@ const CASES: [field: string, reason: string, text: string][] = [
 describe("the sentence of a refusal at a feature's summon (#578)", () => {
   it.each(CASES)('%s (%s)', (field, reason, text) => {
     expect(violationText({ field, reason }, CTX)).toBe(text);
+  });
+});
+
+describe("a violation the server echoes at the summon's own text", () => {
+  it("lands on the feature's text field", () => {
+    const known = (path: string) =>
+      path === 'table_class_feature.desc_pt' || path === 'table_class_feature.summon';
+    const placed = placeViolations(
+      [{ field: 'table_class_feature.summon.desc_pt[0]', reason: 'bad_text', key: '' } as never],
+      known,
+      CTX,
+    );
+    expect(placed.fields).toEqual(['table_class_feature.desc_pt']);
   });
 });

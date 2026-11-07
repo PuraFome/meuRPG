@@ -10,7 +10,9 @@ import { SpellDurationKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   MAX_SUMMON_LIVE,
   NO_RESOURCE_TEXT,
-  STALE_RESOURCE_TEXT,
+  FIXED_OFF_TEXT,
+  hasFixedOff,
+  resetFixed,
   type SummonDraft,
   type SummonResource,
   emptySummon,
@@ -96,7 +98,7 @@ export class SummonBlock {
   protected readonly repliesCards = REPLACES_CARDS;
   protected readonly maxLive = MAX_SUMMON_LIVE;
   protected readonly noResource = NO_RESOURCE_TEXT;
-  /** What was off is kept while the page stays, so a switch turned by mistake gives the creatures back. */
+  /** What was switched off, kept while the card stays open, so a switch turned by mistake gives the creatures back. */
   private readonly stash = signal<SummonDraft | null>(null);
 
   protected readonly at = computed(() => `${this.basePath()}.summon`);
@@ -107,18 +109,20 @@ export class SummonBlock {
     return this.issuesOf()(this.path(field));
   }
 
-  protected readonly resourceOptions = computed<SelectOption[]>(() =>
-    this.resources().map((r) => ({ value: r.key, label: r.label })),
-  );
-  /** The summon spends a resource the feature no longer defines (its effect was renamed or taken away). */
-  protected readonly stale = computed(() => {
-    const s = this.summon();
-    return (
-      s !== null &&
-      this.resources().length > 0 &&
-      !this.resources().some((r) => r.key === s.resourceKey)
-    );
+  /** The feature's resources, and a stored key it does not define as one more option: the server accepts the class's. */
+  protected readonly resourceOptions = computed<SelectOption[]>(() => {
+    const key = this.summon()?.resourceKey.trim() ?? '';
+    const own = this.resources().map((r) => ({ value: r.key, label: r.label }));
+    return key === '' || own.some((o) => o.value === key)
+      ? own
+      : [...own, { value: key, label: `${key} (da classe)` }];
   });
+  protected readonly hasResource = computed(() => this.resourceOptions().length > 0);
+  protected readonly fixedOff = computed(() => {
+    const s = this.summon();
+    return s !== null && hasFixedOff(s);
+  });
+  protected readonly fixedOffText = FIXED_OFF_TEXT;
   protected readonly timeOptions = computed(() => timeOptions(this.summon()!.time));
   protected readonly durationOptions = computed(() => durationOptions(this.summon()!.duration));
   protected readonly timed = computed(
@@ -158,5 +162,12 @@ export class SummonBlock {
 
   protected readonly timeValue = timeValue;
   protected readonly durationValue = durationValue;
-  protected readonly staleText = STALE_RESOURCE_TEXT;
+
+  protected resetDefaults(): void {
+    this.patchAll(resetFixed(this.summon()!));
+  }
+
+  private patchAll(s: SummonDraft): void {
+    this.summonChange.emit(s);
+  }
 }

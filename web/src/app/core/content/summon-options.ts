@@ -4,6 +4,7 @@ import {
   SpellDurationUnit,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { SelectOption } from '../../shared/form-fields/select-field';
+import { DURATION_OPTIONS } from './spell-options';
 import type { SummonDuration, SummonTime } from './summon-draft';
 
 /**
@@ -12,6 +13,9 @@ import type { SummonDuration, SummonTime } from './summon-draft';
  * the API) is shown as one more option, so the select never claims it is something else.
  */
 
+/** The spell editor's own word for it. */
+const UNTIL_DISPELLED =
+  DURATION_OPTIONS.find((o) => o.value === 'until_dispelled')?.label ?? 'Até ser dissipada';
 const LONG_REST_HOURS = 8;
 const DAY_HOURS = 24;
 
@@ -34,7 +38,7 @@ const DURATIONS: readonly { duration: SummonDuration; label: string }[] = [
   { duration: timed(DAY_HOURS, SpellDurationUnit.HOUR), label: '24 horas' },
   {
     duration: { kind: SpellDurationKind.UNTIL_DISPELLED, amount: 0, unit: 0, upTo: false },
-    label: 'Até ser dispensada',
+    label: UNTIL_DISPELLED,
   },
 ];
 
@@ -65,23 +69,25 @@ function timed(amount: number, unit: SpellDurationUnit): SummonDuration {
   return { kind: SpellDurationKind.TIMED, amount, unit, upTo: false };
 }
 
-/** An empty time is 1 action, an empty duration is instantaneous (the server's own reading). */
+/** An empty time is 1 action, an empty duration is instantaneous (the server's own reading); any other stored value keeps its own. */
 export function timeValue(t: SummonTime): string {
-  return t.unit === CastingTimeUnit.UNSPECIFIED
+  return t.unit === CastingTimeUnit.UNSPECIFIED && t.amount === 0
     ? `${CastingTimeUnit.ACTION}:1`
-    : `${t.unit}:${Math.max(t.amount, 1)}`;
+    : `${t.unit}:${t.amount}`;
 }
 
 export function durationValue(d: SummonDuration): string {
-  switch (d.kind) {
-    case SpellDurationKind.UNSPECIFIED:
-    case SpellDurationKind.INSTANTANEOUS:
-      return String(SpellDurationKind.INSTANTANEOUS);
-    case SpellDurationKind.TIMED:
-      return `${d.kind}:${d.amount}:${d.unit}`;
-    default:
-      return String(d.kind);
+  const plain = d.amount === 0 && d.unit === 0 && !d.upTo;
+  if (
+    plain &&
+    (d.kind === SpellDurationKind.UNSPECIFIED || d.kind === SpellDurationKind.INSTANTANEOUS)
+  ) {
+    return String(SpellDurationKind.INSTANTANEOUS);
   }
+  if (plain && d.kind !== SpellDurationKind.TIMED) {
+    return String(d.kind);
+  }
+  return `${d.kind}:${d.amount}:${d.unit}${d.upTo ? ':up' : ''}`;
 }
 
 function timeLabel(t: SummonTime): string {
@@ -92,9 +98,9 @@ function timeLabel(t: SummonTime): string {
 function durationLabel(d: SummonDuration): string {
   if (d.kind === SpellDurationKind.TIMED) {
     const [one, many] = DURATION_UNITS[d.unit] ?? ['unidade', 'unidades'];
-    return `${d.amount} ${d.amount === 1 ? one : many}`;
+    return `${d.upTo ? 'Até ' : ''}${d.amount} ${d.amount === 1 ? one : many}`;
   }
-  return d.kind === SpellDurationKind.UNTIL_DISPELLED ? 'Até ser dispensada' : 'Duração';
+  return d.kind === SpellDurationKind.UNTIL_DISPELLED ? UNTIL_DISPELLED : 'Instantânea';
 }
 
 /** The times to pick from, with the stored one added when it is none of them. */

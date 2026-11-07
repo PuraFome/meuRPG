@@ -226,5 +226,23 @@ describe('FeatureEditor (a trait, a feature)', () => {
       name!.dispatchEvent(new Event('input'));
       expect(emitted[0].summon?.resourceKey).toBe('vale');
     });
+
+    it("does not rewrite a stored resource the feature never defined (the class's)", () => {
+      const stored = create(TableSummonSchema, {
+        creatureKeys: ['monster:wolf'],
+        count: '1',
+        resourceKey: 'da_classe',
+      });
+      setup(
+        { ...resourceFeature(), summon: summonToDraft(stored) },
+        { allowSummon: true, costs: true },
+      );
+      const name = el.querySelector<HTMLInputElement>(
+        '[data-field="table_race.traits[1].effects[0].resource"]',
+      )!;
+      name.value = 'vale';
+      name.dispatchEvent(new Event('input'));
+      expect(emitted[0].summon?.resourceKey).toBe('da_classe');
+    });
   });
 });

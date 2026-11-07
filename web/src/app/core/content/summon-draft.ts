@@ -10,6 +10,7 @@ import {
   TableSpellDurationSchema,
   type TableSummon,
   TableSummonReplaces,
+  TableSummonRole,
   TableSummonSchema,
   TableSummonTurnMode,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -166,40 +167,61 @@ export function resourcesOf(f: {
   });
 }
 
-/** The path of the resource field while the switch is on and the feature has no resource for it: saving waits, the block says why. */
+/** The path of the resource field while the switch is on and no resource is chosen at all: saving waits, the block says why. A key the feature does not define is the class's (the server checks it), so it is not blocked. */
 export function summonBlockedPaths(
   base: string,
-  f: {
-    readonly name: string;
-    readonly effects: readonly EffectDraft[];
-    readonly summon: SummonDraft | null;
-  },
+  f: { readonly summon: SummonDraft | null },
 ): string[] {
-  const s = f.summon;
-  return s && !resourcesOf(f).some((r) => r.key === s.resourceKey)
-    ? [`${base}.summon.resource_key`]
-    : [];
+  return f.summon && f.summon.resourceKey.trim() === '' ? [`${base}.summon.resource_key`] : [];
 }
 
 /** What the block asks of the feature's resources: the one the summon spends must be one the feature defines. */
 export const NO_RESOURCE_TEXT =
   'Esta característica não define um recurso. Ponha nela um efeito Recurso para dar os usos da invocação.';
-export const STALE_RESOURCE_TEXT = 'Escolha o recurso que cada uso gasta.';
+export const FIXED_OFF_TEXT =
+  'Esta invocação tem um papel, um custo ou criaturas por nível de espaço que o editor não muda, e o servidor não aceita.';
 
-/** The feature after its effects changed: a summon that spent the one resource it had follows that resource's new name. */
+/**
+ * The feature after its effects changed: a summon that spent the feature's one resource follows that resource's new name.
+ * A key the feature never defined (the class's resource, written through the API) is never rewritten.
+ */
 export function followResource<
   F extends {
     readonly name: string;
     readonly effects: readonly EffectDraft[];
     readonly summon: SummonDraft | null;
   },
->(f: F): F {
-  const resources = resourcesOf(f);
-  const s = f.summon;
-  if (!s || resources.length !== 1 || resources[0].key === s.resourceKey) {
-    return f;
+>(before: F, after: F): F {
+  const s = after.summon;
+  const was = resourcesOf(before);
+  const now = resourcesOf(after);
+  if (!s || was.length !== 1 || now.length !== 1 || was[0].key !== s.resourceKey) {
+    return after;
   }
-  return resources.some((r) => r.key === s.resourceKey)
-    ? f
-    : { ...f, summon: { ...s, resourceKey: resources[0].key } };
+  return now[0].key === s.resourceKey
+    ? after
+    : { ...after, summon: { ...s, resourceKey: now[0].key } };
+}
+
+/** The role, the cost and the creatures per slot level the block cannot change: whether the stored summon has something else than the defaults. */
+export function hasFixedOff(d: SummonDraft): boolean {
+  const b = d.base;
+  return (
+    !!b &&
+    ((b.role !== TableSummonRole.UNSPECIFIED && b.role !== TableSummonRole.COMPANION) ||
+      (b.resourceCost !== 0 && b.resourceCost !== 1) ||
+      b.countPerSlotLevel !== 0)
+  );
+}
+
+/** "Usar o padrão": a companion, one use, no creature per slot level. */
+export function resetFixed(d: SummonDraft): SummonDraft {
+  if (!d.base) {
+    return d;
+  }
+  const base = clone(TableSummonSchema, d.base);
+  base.role = TableSummonRole.COMPANION;
+  base.resourceCost = 1;
+  base.countPerSlotLevel = 0;
+  return { ...d, base };
 }

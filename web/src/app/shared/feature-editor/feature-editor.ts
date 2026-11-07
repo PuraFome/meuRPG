@@ -109,7 +109,7 @@ export class FeatureEditor {
   protected readonly resources = computed(() => resourcesOf(this.feature()));
 
   protected patch(p: Partial<FeatureDraft>): void {
-    this.featureChange.emit(followResource({ ...this.feature(), ...p }));
+    this.featureChange.emit(followResource(this.feature(), { ...this.feature(), ...p }));
   }
 
   protected setSummon(summon: SummonDraft | null): void {

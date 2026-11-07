@@ -6,9 +6,10 @@ import {
   TableContentKind,
   TableEntrySchema,
   TableSummonReplaces,
+  TableSummonSchema,
   TableSummonTurnMode,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { type SummonDraft, emptySummon } from '../../core/content/summon-draft';
+import { type SummonDraft, draftToSummon, emptySummon } from '../../core/content/summon-draft';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { SummonBlock } from './summon-block';
 
@@ -166,18 +167,39 @@ describe('SummonBlock ("Invoca criaturas", board C2)', () => {
     expect(emitted[1]).toMatchObject({ maxLive: '0' });
   });
 
-  it('the resource select lists what the feature defines; a stale key asks to choose again', () => {
+  it('the resource select lists what the feature defines; a stored key it does not define is one more option, kept', () => {
     setup(on());
     const select = field(at('resource_key')) as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual([
       'Companheiro do Vale (1)',
     ]);
     expect(select.value).toBe('companheiro');
-    setup(on({ resourceKey: 'sumiu' }));
-    expect(text(el)).toContain('Escolha o recurso que cada uso gasta.');
-    expect((field(at('resource_key')) as HTMLSelectElement).getAttribute('aria-invalid')).toBe(
-      'true',
-    );
+    setup(on({ resourceKey: 'da_classe' }));
+    const withClass = field(at('resource_key')) as HTMLSelectElement;
+    expect(Array.from(withClass.options).map((o) => o.textContent?.trim())).toEqual([
+      'Companheiro do Vale (1)',
+      'da_classe (da classe)',
+    ]);
+    expect(withClass.value).toBe('da_classe');
+    expect(emitted).toHaveLength(0);
+  });
+
+  it('a class resource with no resource of the feature is a select, not the no-resource note', () => {
+    setup(on({ resourceKey: 'da_classe' }), { resources: [] });
+    expect(el.querySelector('select[data-field$="resource_key"]')).not.toBeNull();
+    expect(text(el)).not.toContain('Esta característica não define um recurso.');
+  });
+
+  it('offers "Usar o padrão" for a stored role, cost or per-slot count the block cannot change', async () => {
+    setup(on());
+    expect(text(el)).not.toContain('Usar o padrão');
+    const odd = on();
+    odd.base = create(TableSummonSchema, { role: 2, resourceCost: 4, countPerSlotLevel: 1 });
+    setup(odd);
+    const btn = Array.from(el.querySelectorAll('button')).find((b) => text(b) === 'Usar o padrão')!;
+    btn.click();
+    const out = draftToSummon(emitted[0]!);
+    expect([out.role, out.resourceCost, out.countPerSlotLevel]).toEqual([1, 1, 0]);
   });
 
   it('a feature with no resource says so in one line, with the field a blocked save lands on', () => {
@@ -265,5 +287,33 @@ describe('SummonBlock ("Invoca criaturas", board C2)', () => {
     expect(field(at('max_live'))!.getAttribute('aria-describedby')).toBeTruthy();
     expect(field(at('creature_keys'))!.getAttribute('aria-invalid')).toBe('true');
     expect(field(at(''))).not.toBeNull();
+  });
+
+  it('a stored concentration with a duration that is not by time shows checked and enabled, so it can be turned off', () => {
+    setup(on({ concentration: true }));
+    expect(sw('Concentração').getAttribute('aria-checked')).toBe('true');
+    expect(sw('Concentração').disabled).toBe(false);
+    sw('Concentração').click();
+    expect(emitted[0]).toMatchObject({ concentration: false });
+  });
+
+  it('the switches point at their refusals and are marked invalid', () => {
+    setup(on());
+    const issues: Record<string, string[]> = {
+      [at('')]: ['Confira.'],
+      [at('concentration')]: ['Concentração pede uma duração por tempo.'],
+    };
+    fixture.componentRef.setInput('issuesOf', (path: string) => issues[path] ?? []);
+    fixture.detectChanges();
+    const main = sw('Invoca criaturas');
+    expect(main.getAttribute('aria-invalid')).toBe('true');
+    expect(el.querySelector(`#${main.getAttribute('aria-describedby')}`)?.textContent).toContain(
+      'Confira.',
+    );
+    const conc = sw('Concentração');
+    expect(conc.getAttribute('aria-invalid')).toBe('true');
+    expect(el.querySelector(`#${conc.getAttribute('aria-describedby')}`)?.textContent).toContain(
+      'duração por tempo',
+    );
   });
 });

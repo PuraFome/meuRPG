@@ -17,6 +17,8 @@ import {
   draftToSummon,
   emptySummon,
   followResource,
+  hasFixedOff,
+  resetFixed,
   resourcesOf,
   summonBlockedPaths,
   summonPaths,
@@ -140,32 +142,72 @@ describe('the resources a summon spends', () => {
     expect(resourcesOf({ ...one, effects: [resource('  ', '1')] })).toEqual([]);
   });
 
-  it('blocks the save while the switch is on with no resource, or with one the feature no longer has', () => {
+  it("blocks the save only while no resource key is chosen at all; the class's key is the server's to check", () => {
     const f = { ...emptyFeature(), summon: emptySummon('') };
     expect(summonBlockedPaths('table_race.traits[0]', f)).toEqual([
       'table_race.traits[0].summon.resource_key',
     ]);
-    const ok = {
-      ...f,
+    expect(summonBlockedPaths('t', { ...f, summon: emptySummon('da_classe') })).toEqual([]);
+    expect(summonBlockedPaths('t', { ...f, summon: null })).toEqual([]);
+  });
+
+  it("follows the new name of the feature's one resource, and never rewrites a key the feature did not define", () => {
+    const own = {
+      ...emptyFeature(),
       effects: [resource('companheiro', '1')],
       summon: emptySummon('companheiro'),
     };
-    expect(summonBlockedPaths('t', ok)).toEqual([]);
-    expect(summonBlockedPaths('t', { ...ok, summon: emptySummon('outro') })).toHaveLength(1);
-    expect(summonBlockedPaths('t', { ...ok, summon: null })).toEqual([]);
+    const renamed = { ...own, effects: [resource('companheiro2', '1')] };
+    expect(followResource(own, renamed).summon?.resourceKey).toBe('companheiro2');
+    const api = { ...own, summon: emptySummon('da_classe') };
+    const edited = { ...api, effects: [resource('outro', '1')] };
+    expect(followResource(api, edited)).toBe(edited);
+    const two = { ...own, effects: [resource('a', '1'), resource('b', '1')] };
+    expect(followResource(own, two)).toBe(two);
   });
 
-  it('follows the name of its one resource when the master edits it', () => {
-    const f = {
-      ...emptyFeature(),
-      effects: [resource('companheiro2', '1')],
-      summon: emptySummon('companheiro'),
-    };
-    expect(followResource(f).summon?.resourceKey).toBe('companheiro2');
-    const two = { ...f, effects: [resource('a', '1'), resource('b', '1')] };
-    expect(followResource(two)).toBe(two);
-    expect(followResource({ ...f, summon: null }).summon).toBeNull();
+  it('an API-written summon that spends a class resource goes back unchanged through edits of the feature', () => {
+    const s = create(TableSummonSchema, {
+      creatureKeys: ['monster:wolf'],
+      count: '1',
+      resourceKey: 'da_classe',
+    });
+    const f = { ...emptyFeature(), name: 'x', summon: summonToDraft(s) };
+    const edited = followResource(f, { ...f, effects: [resource('nova', '2')] });
+    expect(edited.summon?.resourceKey).toBe('da_classe');
+    expect(draftToSummon(edited.summon!).resourceKey).toBe('da_classe');
+    expect(summonBlockedPaths('t', edited)).toEqual([]);
   });
+
+  it('knows a stored role, cost or creatures per slot level the block cannot change, and resets them', () => {
+    const odd = create(TableSummonSchema, {
+      creatureKeys: ['monster:wolf'],
+      count: '1',
+      resourceKey: 'x',
+      role: TableSummonRole.MOUNT,
+      resourceCost: 3,
+      countPerSlotLevel: 2,
+    });
+    const d = summonToDraft(odd);
+    expect(hasFixedOff(d)).toBe(true);
+    const fixed = resetFixed(d);
+    expect(hasFixedOff(fixed)).toBe(false);
+    const out = draftToSummon(fixed);
+    expect([out.role, out.resourceCost, out.countPerSlotLevel]).toEqual([
+      TableSummonRole.COMPANION,
+      1,
+      0,
+    ]);
+    expect(hasFixedOff(summonToDraft(stored()))).toBe(false);
+    expect(hasFixedOff(emptySummon('x'))).toBe(false);
+  });
+});
+
+const instantDuration = () => ({
+  kind: SpellDurationKind.INSTANTANEOUS,
+  amount: 0,
+  unit: 0 as const,
+  upTo: false,
 });
 
 describe('the time and duration lists', () => {
@@ -182,6 +224,23 @@ describe('the time and duration lists', () => {
       upTo: false,
     });
     expect(dur[dur.length - 1].label).toBe('3 rodadas');
+  });
+
+  it('does not hide a stored value a preset does not represent', () => {
+    const upTo = {
+      kind: SpellDurationKind.TIMED,
+      amount: 1,
+      unit: SpellDurationUnit.HOUR,
+      upTo: true,
+    };
+    expect(durationValue(upTo)).not.toBe(durationValue({ ...upTo, upTo: false }));
+    expect(durationOptions(upTo).some((o) => o.label === 'Até 1 hora')).toBe(true);
+    const odd = { kind: SpellDurationKind.INSTANTANEOUS, amount: 5, unit: 0 as const, upTo: false };
+    expect(durationValue(odd)).not.toBe(String(SpellDurationKind.INSTANTANEOUS));
+    expect(timeValue({ unit: CastingTimeUnit.ACTION, amount: 0, triggerPt: '' })).not.toBe(
+      timeValue({ unit: CastingTimeUnit.ACTION, amount: 1, triggerPt: '' }),
+    );
+    expect(durationOptions(instantDuration())[7].label).toBe('Até ser dissipada');
   });
 
   it('reads a value back, keeping a stored trigger only while the unit stays', () => {
@@ -213,6 +272,11 @@ describe('the names of the creatures a summon lists', () => {
     expect(creatureNameOf('monster:giant-wolf-spider', nameOf)).toBe('Giant wolf spider');
     rememberCreatureName('monster:giant-wolf-spider', 'Aranha-lobo gigante');
     expect(creatureNameOf('monster:giant-wolf-spider', nameOf)).toBe('Aranha-lobo gigante');
+  });
+
+  it("remembers only the SRD's names: a table creature's name is its entry's and never crosses a campaign", () => {
+    rememberCreatureName('creature:outra-mesa@mesa', 'Nome de outra mesa');
+    expect(creatureNameOf('creature:outra-mesa@mesa', (k) => k)).toBe('Creature:outra mesa@mesa');
   });
 
   it('says "Invoca: Lobo do Vale, Unheard of." and nothing for a feature with no summon', () => {

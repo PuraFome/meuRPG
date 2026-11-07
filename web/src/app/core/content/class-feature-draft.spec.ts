@@ -71,7 +71,13 @@ describe('the class feature form (MR-025)', () => {
     expect(classFeaturePaths(draft, menu())).toContain('table_class_feature.summon.creature_keys');
     expect(unreadableClassFeaturePaths(draft, menu())).toEqual([]);
     expect(
-      unreadableClassFeaturePaths({ ...draft, feature: { ...draft.feature, effects: [] } }, menu()),
+      unreadableClassFeaturePaths(
+        {
+          ...draft,
+          feature: { ...draft.feature, summon: { ...draft.feature.summon!, resourceKey: '' } },
+        },
+        menu(),
+      ),
     ).toEqual(['table_class_feature.summon.resource_key']);
   });
 
