@@ -389,6 +389,12 @@ func TestSinceSeqOfForAPlayerHearsOnlyWhatTheyMaySee(t *testing.T) {
 		master  bool
 		want    int64 // 0: the whole log
 	}{
+		{"monsters added hidden", []playdb.ListEncounterEventsRow{row("m1", 7, eventCombatantsAdded, `{"round":1,"monsters":{"count":1,"hidden":true}}`)}, nil, false, 5},
+		{"monsters added hidden, for the master", []playdb.ListEncounterEventsRow{row("m1", 7, eventCombatantsAdded, `{"round":1,"monsters":{"count":1,"hidden":true}}`)}, nil, true, 0},
+		{"monsters added in the open", []playdb.ListEncounterEventsRow{row("m1", 7, eventCombatantsAdded, `{"round":1,"monsters":{"count":1}}`)}, nil, false, 0},
+		{"combatants added, all hidden", []playdb.ListEncounterEventsRow{row("a1", 7, eventCombatantsAdded, `{"added":2,"hidden_added":2}`)}, nil, false, 5},
+		{"combatants added, one in the open", []playdb.ListEncounterEventsRow{row("a1", 7, eventCombatantsAdded, `{"added":2,"hidden_added":1}`)}, nil, false, 0},
+		{"combatants added by an older server", []playdb.ListEncounterEventsRow{row("a1", 7, eventCombatantsAdded, `{"added":1}`)}, nil, false, 0},
 		{"an undo of a fogged action the player never saw", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-fogged"}`)}, nil, false, 5},
 		{"the master hears of that undo", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-fogged"}`)}, nil, true, 0},
 		{"an undo of a secret action", []playdb.ListEncounterEventsRow{row("u1", 7, eventActionUndone, `{"undone_id":"e-secret"}`)}, nil, false, 5},
@@ -497,5 +503,36 @@ func TestListCombatLogSinceSeqOfAPlayerIsNotFullTwiceForALinelessEvent(t *testin
 	second := ask(first.GetLastSeq())
 	if second.GetFull() || len(entriesOf(second)) != 0 || second.GetLastSeq() != first.GetLastSeq() {
 		t.Errorf("a second read from last_seq: full = %v, %d entries, last_seq = %d; want a plain empty delta at %d", second.GetFull(), len(entriesOf(second)), second.GetLastSeq(), first.GetLastSeq())
+	}
+}
+
+// A roll mode request answered while the target is hidden is a secret event: the player's answer to the same since_seq is what it
+// was before the answer, and the master's moves.
+func TestListCombatLogSinceSeqOfAPlayerIgnoresASecretRollModeAnswer(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	req, err := a.rmRequestRaw(t, a.caio, e, func(r *playv1.RequestRollModeRequest) { r.AttackKey = battleaxe })
+	if err != nil {
+		t.Fatal(err)
+	}
+	hideAgain(t, a, e, "Goblin") // the target goes hidden before the master answers
+	ask := func(u *user, since int64) *playv1.ListCombatLogResponse {
+		res, err := u.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), SinceSeq: since}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	playerSince, masterSince := a.log(t, a.caio, e).GetLastSeq(), a.log(t, a.master, e).GetLastSeq()
+	playerBefore, masterBefore := ask(a.caio, playerSince), ask(a.master, masterSince)
+	if err := a.answerMode(t, a.master, e, req.GetRequest().GetId(), playv1.RollMode_ROLL_MODE_ADVANTAGE); err != nil {
+		t.Fatal(err)
+	}
+	if after := ask(a.caio, playerSince); !proto.Equal(playerBefore, after) {
+		t.Errorf("a secret roll mode answer changed the player's answer:\n before %v\n after  %v", playerBefore, after)
+	}
+	if after := ask(a.master, masterSince); proto.Equal(masterBefore, after) {
+		t.Error("the master's answer did not move after the answer: the control is gone")
 	}
 }

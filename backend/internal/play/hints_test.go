@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -345,6 +346,29 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 	}
 	if got := w.seq(t); got != 2 {
 		t.Errorf("hint_seq = %d, want 2", got)
+	}
+}
+
+// The number does not depend on how much a transaction told: one event with a long body and one with a short one add 1 each.
+func TestTxBumpsOnceWhateverTheSizeOfWhatItTold(t *testing.T) {
+	w := newHintTable(t)
+	ctx := t.Context()
+	for i, body := range []string{"x", strings.Repeat("a long hidden body ", 4000)} {
+		err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
+			h.tell(w.campaignID, live.Event{
+				Audience: live.Audience{Master: true},
+				Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+					CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: body},
+				}},
+			})
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("tx() error = %v", err)
+		}
+		if got := w.seq(t); got != int64(i+1) {
+			t.Errorf("hint_seq = %d after a body of %d bytes, want %d", got, len(body), i+1)
+		}
 	}
 }
 

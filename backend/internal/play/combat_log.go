@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -286,6 +287,8 @@ var deltaSafeKinds = map[string]bool{
 //   - a combatant toggle (shown, hidden, summoned, dismissed, removed) counts only when the combatant is in a line the player holds:
 //     one at or below sinceSeq that is not Secret, not the master's alone and seen. Lines that stay secret stay invisible after a
 //     reveal, so only held lines can appear or go;
+//   - an add whose combatants all came in hidden (the flag is in the payload, not in Secret: addedAllHidden) is ignored; an add
+//     with at least one visible combatant counts;
 //   - any other kind off deltaSafeKinds counts when the player may see it.
 //
 // An event that cannot be read is ignored for a player (fail closed: they are told nothing from what the server cannot read) and
@@ -335,10 +338,26 @@ func changesHeldView(e playdb.ListEncounterEventsRow, sinceSeq int64, v combatVi
 		return undoneMaySeen(ev, v, events)
 	case ev.Secret || !ev.seenByViewer(v):
 		return false
+	case e.Kind == eventCombatantsAdded && addedAllHidden(ev, e.Payload):
+		return false // every combatant added was hidden: no player has a view to change
 	case toggleKinds[e.Kind]:
 		return heldLineHas(ev.toggled(cs), sinceSeq, v, entries)
 	}
 	return true
+}
+
+// addedAllHidden says every combatant a combatants_added event put in came in hidden, and there was one at least. The flag is in
+// the payload, not in Secret: AddMonsters keeps one for all the monsters of the event, AddCombatants counts the hidden_added ones beside
+// the added ones. A mixed add counts (a player may see some of it), and so does an event that says nothing of hiding.
+func addedAllHidden(ev actionEvent, payload []byte) bool {
+	if ev.Monsters != nil {
+		return ev.Monsters.Hidden
+	}
+	var n struct {
+		Added       int `json:"added"`
+		HiddenAdded int `json:"hidden_added"`
+	}
+	return json.Unmarshal(payload, &n) == nil && n.Added > 0 && n.HiddenAdded == n.Added
 }
 
 // toggleKinds are the events that show, hide, add or take away a combatant.
