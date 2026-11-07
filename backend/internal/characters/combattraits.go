@@ -156,11 +156,15 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		}
 	}
 	t.Resistances, t.ConditionImmunities = protections(content, d)
+	for _, r := range d.DamageReductions {
+		t.DamageReductions = append(t.DamageReductions, link.DamageReduction{Source: r.Source, Amount: r.Amount, Nonmagical: r.Nonmagical})
+	}
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	t.RerollRules = rerollRulesOf(d)
+	t.Flags = slices.Clone(d.Flags)
 	t.RollMinimums, t.SpellCriticalRange = rollMinimumsOf(d), spellCriticalRangeOf(d)
 	return t
 }

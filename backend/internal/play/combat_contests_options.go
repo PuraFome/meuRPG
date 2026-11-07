@@ -129,7 +129,7 @@ func (s *Service) contestTurnState(ctx context.Context, m authz.Membership, d *e
 		}
 	}
 	state.HoldingId = holdingOf(cd, d.cs, v, who)
-	surprised, err := s.surprisedNow(ctx, nil, d.enc, who)
+	surprised, err := s.surprisedNow(ctx, nil, m.CampaignID, d.enc, who)
 	if err != nil {
 		return nil, err
 	}

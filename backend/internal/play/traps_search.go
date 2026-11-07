@@ -472,7 +472,7 @@ func (s *Service) tellTrapSearch(ctx context.Context, ts *trapSearch) {
 		s.publishEncounterChanged(pctx, ts.m.CampaignID, ts.place.enc)
 		s.publishLogChanged(pctx, ts.m.CampaignID, ts.place.enc.ID, false) // the master's log has the search
 	}
-	s.Publish(ts.m.CampaignID, false, mapChangedHint(ts.place.mapID)) // the master's activity read has a new line: a hint with no content
+	s.tellMembers(ts.m.CampaignID, false, mapChangedHint(ts.place.mapID)) // the master's activity read has a new line: a hint with no content
 }
 
 // trapSearchAnswer is the response for the event of the search.

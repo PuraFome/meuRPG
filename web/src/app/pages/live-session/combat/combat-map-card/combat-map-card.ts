@@ -19,6 +19,7 @@ import {
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { ZoneLayer } from '../../../../shared/combat-map/zone-layer/zone-layer';
+import { ZoneLetter } from '../../../../shared/combat-map/zone-layer/zone-letter';
 import { ZoneSwatch } from '../../../../shared/combat-map/zone-layer/zone-swatch';
 import { zoneLegend } from '../../../../core/combat/zone-pattern';
 import { zoneViews } from '../../../../core/combat/zones';
@@ -60,6 +61,7 @@ const CROP_MAX_SHARE = 0.6;
     MatButtonModule,
     MatIconModule,
     ZoneLayer,
+    ZoneLetter,
     ZoneSwatch,
   ],
   templateUrl: './combat-map-card.html',
