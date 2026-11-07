@@ -66,7 +66,19 @@
           </div>
         </div>
         @if (isMaster() && entry() && !entry()!.archived && !asking()) {
-          <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+          @if (phone()) {
+            <!-- Rare actions live behind the "⋮" on a phone (E10-01 R5). -->
+            <button type="button" class="head__more" aria-label="Mais ações" [matMenuTriggerFor]="moreMenu">
+              <mat-icon aria-hidden="true">more_vert</mat-icon>
+            </button>
+            <mat-menu #moreMenu="matMenu">
+              <button mat-menu-item type="button" (click)="askArchive()">
+                <mat-icon aria-hidden="true">archive</mat-icon>Arquivar {{ entry()!.namePt }}
+              </button>
+            </mat-menu>
+          } @else {
+            <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+          }
         }
       </header>
 

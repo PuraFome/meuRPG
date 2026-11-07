@@ -12,10 +12,11 @@ import {
   TableSubraceSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
-import { type EntryRead, type NameOf } from './content-read-parts';
+import { type EntryRead, type NameOf, type ParentView } from './content-read-parts';
 import type { FeatInit } from './feat-draft';
 import type { ClassFeatureInit } from './class-feature-draft';
 import type { OptionInit } from './option-draft';
+import type { OfferedByName } from './option-text';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
 import type { SpellInit } from './spell-types';
 
@@ -32,7 +33,13 @@ export type PreviewBody =
   | { readonly case: 'tableOption'; readonly value: OptionInit }
   | { readonly case: 'tableClassFeature'; readonly value: ClassFeatureInit };
 
-export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
+/** `parent` is the race of a subrace: what its traits add to the preview. */
+export function previewRead(
+  body: PreviewBody,
+  nameOf: NameOf,
+  parent?: ParentView,
+  offeredByName?: OfferedByName,
+): EntryRead {
   switch (body.case) {
     case 'tableSpell':
       return readEntry(
@@ -57,6 +64,8 @@ export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
           body: { case: 'tableSubrace', value: create(TableSubraceSchema, body.value) },
         }),
         nameOf,
+        undefined,
+        () => parent ?? { traits: [] },
       );
     case 'tableBackground':
       return readEntry(
@@ -81,6 +90,9 @@ export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
           body: { case: 'tableOption', value: create(TableOptionSchema, body.value) },
         }),
         nameOf,
+        () => 0,
+        undefined,
+        offeredByName,
       );
     case 'tableClassFeature':
       return readEntry(

@@ -49,9 +49,20 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'class feature other reason': ['table_class.levels[3].features[1]', 'bad_value'],
   'feat prerequisite': ['table_feat.prerequisite.minimums.strength', 'bad_value'],
   'spell damage dice': ['table_spell.damage[0].dice', 'bad_value'],
+  'reroll no rolls': ['table_feat.effects[0].rolls', 'bad_value'],
+  'reroll face': ['table_class_feature.effects[1].at_most', 'bad_value'],
+  'reroll dangling resource': ['table_feat.effects[0].resource', 'dangling_reference'],
+  'feat effect value': ['table_feat.effects[0].value', 'bad_value'],
+  'option offered by, dangling': ['table_option.offered_by', 'dangling_reference'],
+  // The editor drops the feature with the set, so this one is defensive: a body from another client can still carry it.
+  'option offered by, another set': ['table_option.offered_by', 'bad_value'],
 };
 
 const EXPECTED: Record<string, string> = {
+  'option offered by, dangling':
+    'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
+  'option offered by, another set':
+    'Só o conjunto "Opção de característica da mesa" tem característica que oferece. Tire esta.',
   'entry limit': 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
   'entry size': 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.',
   'entry overlay': 'O conteúdo da mesa não fecha com esta entrada. Confira o que ela usa.',
@@ -97,6 +108,12 @@ const EXPECTED: Record<string, string> = {
   'class feature other reason': 'Confira esta característica.',
   'feat prerequisite': 'A pontuação mínima vai de 1 a 30.',
   'spell damage dice': 'Escreva o dado assim: 2d8 (de 1 a 20 dados).',
+  'reroll no rolls': 'Marque ao menos uma jogada.',
+  'reroll face': 'A face vai de 1 a 20.',
+  // The type-less sentence: the picker puts the words of the effect's own type in its place (EFFECT_REFUSAL_TEXTS).
+  'reroll dangling resource': 'Isto aponta para algo que não existe mais. Escolha de novo.',
+  'feat effect value':
+    'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).',
 };
 
 describe('the sentence of a refusal, by the shape of its field and its reason', () => {
