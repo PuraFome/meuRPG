@@ -4,7 +4,7 @@
     [checked]="summon() !== null"
     [path]="at()"
     [invalid]="issuesOf()(at()).length > 0"
-    [describedBy]="issuesOf()(at()).length > 0 ? id + '-note' : ''"
+    [describedby]="issuesOf()(at()).length > 0 ? id + '-note' : ''"
     (toggled)="toggle($event)"
   />
   <app-field-note [id]="id + '-note'" [issues]="issuesOf()(at())" />
@@ -62,7 +62,7 @@
           [checked]="s.concentration"
           [disabled]="!timed() && !s.concentration"
           [invalid]="issues('concentration').length > 0"
-          [describedBy]="issues('concentration').length > 0 ? id + '-conc' : timed() ? '' : id + '-conc-why'"
+          [describedby]="issues('concentration').length > 0 ? id + '-conc' : timed() ? '' : id + '-conc-why'"
           [path]="path('concentration')"
           (toggled)="patch({ concentration: $event })"
         />

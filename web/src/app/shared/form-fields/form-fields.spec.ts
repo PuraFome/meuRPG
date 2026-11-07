@@ -245,7 +245,7 @@ describe('TextField: what an empty field means', () => {
     f.componentRef.setInput('label', 'Concentração');
     f.componentRef.setInput('checked', false);
     f.componentRef.setInput('disabled', true);
-    f.componentRef.setInput('describedBy', 'why');
+    f.componentRef.setInput('describedby', 'why');
     const toggled = vi.fn();
     f.componentInstance.toggled.subscribe(toggled);
     f.detectChanges();
