@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -24,24 +24,21 @@ import { isPlayer } from '../../../../core/combat/combat-view';
   selector: 'app-npc-card-menu',
   imports: [MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   template: `
-    @if (offerOn() || slug()) {
+    @if (hasItems()) {
       <button
         matButton="outlined"
         type="button"
         class="trigger"
         [attr.aria-label]="'Mais ações de ' + subject().label"
         [matMenuTriggerFor]="menu"
-        [matMenuTriggerRestoreFocus]="!chosen()"
-        (menuOpened)="chosen.set(false)"
       >
         <mat-icon aria-hidden="true">more_vert</mat-icon>Mais ações
       </button>
-      <mat-menu #menu="matMenu" xPosition="before">
+      <mat-menu #menu="matMenu" xPosition="before" (closed)="closed()">
         @if (offerOn()) {
           <button
             mat-menu-item
             type="button"
-            [attr.aria-expanded]="offering()"
             [attr.aria-describedby]="offerWhy() ? 'offer-why' : null"
             [disabled]="!!offerWhy()"
             disabledInteractive
@@ -71,15 +68,13 @@ export class NpcCardMenu {
   readonly encounter = input.required<Encounter>();
   /** The one on turn. */
   readonly subject = input.required<Combatant>();
-  /** The offer's panel is open. */
-  readonly offering = input(false);
   /** Why the offer cannot be made now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
-  /** The offer was chosen: the page opens the panel. */
+  /** The offer was chosen and the menu is closed: the page opens the panel, or keeps it open and gives it the focus. */
   readonly offer = output<void>();
 
-  /** The offer was chosen in the menu: the focus is the panel's, not the button's. */
-  protected readonly chosen = signal(false);
+  /** The offer row was chosen: the page is told once the menu has closed and given the focus back, so the panel is the one to take it. */
+  private chose = false;
   protected readonly offerOn = computed(
     () =>
       !isPlayer(this.subject()) &&
@@ -89,9 +84,18 @@ export class NpcCardMenu {
   /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
   protected readonly slug = computed(() => creatureSlug(this.subject().bestiaryCreatureKey ?? ''));
 
+  /** Each line of the menu has its own condition; a new line adds its own here (`|| …`) and its own block in the template. */
+  protected readonly hasItems = computed(() => this.offerOn() || !!this.slug());
+
   protected choose(): void {
     if (!this.offerWhy()) {
-      this.chosen.set(true);
+      this.chose = true;
+    }
+  }
+
+  protected closed(): void {
+    if (this.chose) {
+      this.chose = false;
       this.offer.emit();
     }
   }

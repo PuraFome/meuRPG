@@ -126,8 +126,6 @@ export class NpcCard {
   readonly turnBusy = input(false);
   /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
   readonly theatre = input(false);
-  /** The offer's form is open: "Oferecer ataque de oportunidade" says so. */
-  readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
   /** "Oferecer ataque de oportunidade": the page opens the form. */

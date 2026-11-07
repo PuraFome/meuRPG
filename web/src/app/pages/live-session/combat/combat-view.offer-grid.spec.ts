@@ -59,10 +59,10 @@ const spent = combatant({
 });
 const goblin = combatant({ id: 'g', label: 'Goblin', placed: true, col: 3, row: 3 });
 
-function setup(offer?: (args: unknown[]) => unknown) {
+function setup(offer?: (args: unknown[]) => unknown, phone = false) {
   TestBed.resetTestingModule();
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: /min-width: 1024px/.test(query),
+    matches: phone ? /max-width: 767/.test(query) : /min-width: 1024px/.test(query),
     media: query,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
@@ -190,6 +190,25 @@ describe('CombatView on a map: "Oferecer ataque de oportunidade"', () => {
     );
     // Choosing from the menu leaves the focus on the panel's checked radio, not back on "Mais ações".
     expect(document.activeElement).toBe(panel.querySelector('input:checked'));
+  });
+
+  it('choosing the offer again while the panel is open keeps it open and puts the focus on its checked radio', async () => {
+    const { fixture, el } = setup();
+    await openPanel(fixture, el);
+    const panel = el.querySelector('app-offer-panel')!;
+    (el.querySelector('input[type="radio"]:not(:checked):not(:disabled)') as HTMLElement).focus();
+    await openPanel(fixture, el);
+    await settle(fixture);
+    expect(el.querySelector('app-offer-panel')).toBe(panel);
+    expect(document.activeElement).toBe(panel.querySelector('input:checked'));
+  });
+
+  it('on a phone the panel talks of no rings (the map is the Mapa tab)', async () => {
+    const { fixture, el } = setup(undefined, true);
+    await openPanel(fixture, el);
+    const text = plain(el.querySelector('app-offer-panel')?.textContent);
+    expect(text).toContain('Escolha quem saiu do alcance.');
+    expect(text).not.toContain('anel');
   });
 
   it('rings the candidates on the map, not the one with the reaction spent, and names the ring in the legend', async () => {

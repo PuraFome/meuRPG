@@ -470,6 +470,7 @@
 <ng-template #mapBlock>
   @if (encounter(); as e) {
     @if (image(); as img) {
+      <!-- The offer's rings need an NPC on turn and a target pick needs a player's turn: the two never run together. -->
       <app-combat-map-card
         [encounter]="e"
         [image]="img"
@@ -688,20 +689,20 @@
         [reactionStopped]="reactionStopped()"
         [turnBusy]="busy()"
         [theatre]="theatre()"
-        [offering]="offers.offering()"
         [offerWhy]="offers.why()"
         (castArea)="sheets.masterArea($event)"
         (creatureArea)="sheets.creatureArea($event)"
-        (offer)="offers.toggle()"
+        (offer)="offers.open()"
         (endRage)="rage.end($event)"
         (settledNote)="settled()"
       >
         @if (offers.offering()) {
           <app-offer-panel
             offer-slot
-            [moverLabel]="who.label"
             [rows]="offers.rows()"
             [grid]="!theatre()"
+            [mapBeside]="!phone()"
+            [focusAsk]="offers.focusAsk()"
             [hints]="offers.hints()"
             [(picked)]="offers.picked"
             [busy]="busy()"

@@ -59,6 +59,8 @@ export class CombatOffers {
   });
   /** The candidate the master picked (the panel's choice, or a tap on its ring on the map); `''` until the panel preselects one. */
   readonly picked = signal('');
+  /** Counts the times the master chose the offer: the panel takes the focus at each one. */
+  readonly focusAsk = signal(0);
   /** On a map: how far each candidate is now, as the mover's own attacks measure it ("agora a 3 m"). Absent for a theatre or an unknown distance. */
   readonly hints = computed<ReadonlyMap<string, string>>(() => {
     const near = new Map<string, number>();
@@ -204,6 +206,14 @@ export class CombatOffers {
       // A refused offer is not a retry: the next try is a new one.
       this.keys.delete(reactorId);
     }
+  }
+
+  /** "Oferecer ataque de oportunidade" chosen in the card's menu: opens the form, or, when it is open already, keeps it and asks it to take the focus. */
+  open(): void {
+    if (!this.offering()) {
+      this.toggle();
+    }
+    this.focusAsk.update((n) => n + 1);
   }
 
   /** A tap on a ringed candidate of the map picks it in the panel. */

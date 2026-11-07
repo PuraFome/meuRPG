@@ -272,7 +272,6 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     ),
   ) {
     const fixture = TestBed.createComponent(OfferPanel);
-    fixture.componentRef.setInput('moverLabel', 'Goblin 1');
     fixture.componentRef.setInput('rows', rows);
     const offered: string[] = [];
     let cancelled = 0;
@@ -350,6 +349,7 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     );
     const { fixture, el } = setup(rows);
     fixture.componentRef.setInput('grid', true);
+    fixture.componentRef.setInput('mapBeside', true);
     fixture.componentRef.setInput('hints', new Map([['t', 'agora a 3 m']]));
     await fixture.whenStable();
     fixture.detectChanges();
@@ -365,6 +365,40 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     expect(radios.map((r) => r.disabled)).toEqual([false, true]);
   });
 
+  it('on a phone, where the map is another tab, says nothing of rings', async () => {
+    const { fixture, el } = setup();
+    fixture.componentRef.setInput('grid', true);
+    fixture.componentRef.setInput('mapBeside', false);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = plain(el.textContent);
+    expect(text).toContain('Escolha quem saiu do alcance.');
+    expect(text).not.toContain('anel');
+    fixture.componentRef.setInput('mapBeside', true);
+    fixture.detectChanges();
+    expect(plain(el.textContent)).toContain('Os candidatos têm um anel no mapa.');
+  });
+
+  it('puts another candidate in the place of a pick that can no longer react', async () => {
+    const both = reactorRows(
+      theatre({
+        currentCombatantId: 'g1',
+        combatants: [toren, { ...toren, id: 't2', label: 'Brisa' }, goblin],
+      }),
+      () => '',
+    );
+    const { fixture } = setup(both);
+    await fixture.whenStable();
+    expect(fixture.componentInstance.picked()).toBe('t');
+    fixture.componentRef.setInput(
+      'rows',
+      both.map((r) => (r.id === 't' ? { ...r, spent: true } : r)),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.picked()).toBe('t2');
+  });
+
   it('keeps a candidate the page picked (a tap on its ring) instead of preselecting the first', async () => {
     const rows = reactorRows(
       theatre({
@@ -374,7 +408,6 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
       () => '',
     );
     const fixture = TestBed.createComponent(OfferPanel);
-    fixture.componentRef.setInput('moverLabel', 'Goblin 1');
     fixture.componentRef.setInput('rows', rows);
     fixture.componentRef.setInput('picked', 't2');
     fixture.detectChanges();

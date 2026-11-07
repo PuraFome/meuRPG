@@ -182,6 +182,7 @@
             [class.cm__pick--offer]="m.mode === 'offer'"
             [attr.data-pick]="c.id"
             [attr.aria-disabled]="m.reason ? 'true' : null"
+            [attr.aria-pressed]="m.mode === 'offer' ? m.count > 0 : null"
             [attr.aria-label]="layer.name(m)"
             [style.left.%]="centerX(c)"
             [style.top.%]="centerY(c)"
