@@ -33,6 +33,13 @@ describe("the bestiary's words (MR-042)", () => {
     expect(say('morto-vivo', 'Médio')).toBe('morto-vivo médio');
     expect(say('dragão', 'Imenso')).toBe('dragão imenso');
     expect(say('Gigante', 'Grande')).toBe('gigante grande');
+    expect(say('construto', 'Médio')).toBe('construto médio');
+    expect(say('ínfero', 'Pequeno')).toBe('ínfero pequeno');
+    expect(say('gosma', 'Grande')).toBe('gosma grande');
+    expect(say('gosma', 'Médio')).toBe('gosma média');
+    expect(say('enxame de feras miúdas', 'Médio').replace(/\u00a0/g, ' ')).toBe(
+      'Enxame de feras miúdas · Médio',
+    );
     expect(say('coisa', 'Médio').replace(/\u00a0/g, ' ')).toBe('Coisa · Médio');
     expect(say('fera', 'Colossal').replace(/\u00a0/g, ' ')).toBe('Fera · Colossal');
   });

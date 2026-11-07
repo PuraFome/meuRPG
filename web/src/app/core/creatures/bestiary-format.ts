@@ -11,25 +11,16 @@ export function typeAndSize(s: Pick<CreatureSummary, 'typePt' | 'sizePt'>): stri
   return joinDots([capitalized(s.typePt), s.sizePt].filter((p) => p !== ''));
 }
 
-const FEMININE_TYPES = new Set([
-  'fera',
-  'besta',
-  'criatura',
-  'monstruosidade',
-  'aberração',
-  'planta',
-  'fada',
-]);
+// The type names the server sends (creatureTypeNamePT in backend/internal/rules/creatures.go).
+const FEMININE_TYPES = new Set(['fera', 'monstruosidade', 'aberração', 'planta', 'fada', 'gosma']);
 const MASCULINE_TYPES = new Set([
   'morto-vivo',
   'humanoide',
   'dragão',
   'gigante',
-  'limo',
-  'constructo',
-  'planar',
+  'construto',
   'celestial',
-  'corruptor',
+  'ínfero',
   'elemental',
 ]);
 const FEMININE_SIZES: Readonly<Record<string, string>> = {
