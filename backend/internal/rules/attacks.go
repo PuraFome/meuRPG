@@ -34,6 +34,9 @@ func (x *deriver) attacks() {
 	martialArts := x.hasHandler("monk.martial_arts") && x.armorCategory == "none" && !x.b.Shield
 	martialDie := x.martialArtsDie()
 	for i, key := range x.b.Weapons {
+		if x.b.IsCarried(key) {
+			continue
+		}
 		x.weaponAttack(i, key, martialArts, martialDie)
 	}
 	for _, key := range x.b.Cantrips {
@@ -58,9 +61,12 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	has := func(property string) bool { return slices.Contains(w.Properties, "weapon-property:"+property) }
 	monkWeapon := martialArts && has("monk")
 	// The weapon rules offer other abilities: the best of the options attacks, and the best hurts.
-	t := x.tuneWeapon(x.weaponAbility(kind, has("finesse") || monkWeapon), weaponFacts{
+	sheetMagical, _, _ := x.sheetMarks(key)
+	facts := weaponFacts{
 		name: foldPT(strings.TrimSpace(c.namePT(key))), melee: kind == "melee", finesse: has("finesse"),
-	})
+		magical: sheetMagical,
+	}
+	t := x.tuneWeapon(x.weaponAbility(kind, has("finesse") || monkWeapon), facts)
 	if has("heavy") {
 		x.heavyWeaponHint(key, kind)
 	}
@@ -84,6 +90,7 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		TwoHanded:    has("two-handed"),
 		DamageNotePT: note,
 	}
+	a.Magical, a.Silvered, a.Adamantine = x.weaponMarks(key, facts)
 	monkDie := 0
 	if monkWeapon {
 		monkDie = martialDie
@@ -101,6 +108,40 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	a.DamageDice, _ = ParseDice(a.Damage)
 	a.VersatileDice, _ = ParseDice(a.VersatileDamage)
 	x.d.Attacks = append(x.d.Attacks, a)
+}
+
+// sheetMarks is what the sheet's own mark (full.weapon_marks) says of the carried weapon.
+// It alone feeds the "magic" weapon filter (see weaponMarks).
+func (x *deriver) sheetMarks(key string) (magical, silvered, adamantine bool) {
+	for _, m := range x.b.WeaponMarks {
+		if m.Weapon == key {
+			magical, silvered, adamantine = magical || m.Magical, silvered || m.Silvered, adamantine || m.Adamantine
+		}
+	}
+	return magical, silvered, adamantine
+}
+
+// weaponMarks is the ONE place that says whether a carried weapon's attack is magical,
+// silvered or adamantine, for the resistances and immunities to nonmagical attacks. It
+// merges the sheet's mark on the weapon with the marks of the weapon_rule effects whose
+// filter chooses the line (f). The "magic" filter reads only the sheet's own marks
+// (f.magical, from sheetMarks): not a rule's, so a rule cannot choose itself, and not
+// equipment. Equipment that makes a weapon magical (+1 weapons, #564) must set magical
+// here, and that later source must decide whether it also feeds the "magic" filter
+// (f.magical); until then it does not. Only the carried weapons come through here: a
+// pseudo_weapon line is never marked by a weapon_rule (pseudoWeapon does not call this),
+// and the unarmed strike (Ki-Empowered Strikes), a spell attack and a creature's attack
+// do not either.
+func (x *deriver) weaponMarks(key string, f weaponFacts) (magical, silvered, adamantine bool) {
+	magical, silvered, adamantine = x.sheetMarks(key)
+	for _, a := range x.active {
+		e := a.effect
+		if e.Type != "weapon_rule" || (!e.Magical && !e.Silvered && !e.Adamantine) || !e.matchesWeapon(f) || !x.applies(a) {
+			continue
+		}
+		magical, silvered, adamantine = magical || e.Magical, silvered || e.Silvered, adamantine || e.Adamantine
+	}
+	return magical, silvered, adamantine
 }
 
 // weaponAbility is the ability a weapon attacks with: STR, or DEX if it is
@@ -230,23 +271,26 @@ const kiEmpoweredStrikes = "feature:ki-empowered-strikes"
 
 // unarmedStrike adds the unarmed strike line: STR (DEX too for a monk with
 // Martial Arts), proficient, 1 + modifier bludgeoning, or the monk die plus
-// modifier. With Ki-Empowered Strikes it counts as magical for the resistances
-// and immunities to nonmagical attacks, and for nothing else.
+// modifier. For the resistances and immunities to nonmagical attacks it is magical
+// with Ki-Empowered Strikes or when a weapon_rule marks it magical, and silvered or
+// adamantine when a weapon_rule marks it so (weaponMarks); the marks count for nothing else.
 func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	ab := STR
 	if martialArts && x.mods[DEX] > x.mods[STR] {
 		ab = DEX
 	}
-	magical := HasFeature(*x.d, kiEmpoweredStrikes)
+	ki := HasFeature(*x.d, kiEmpoweredStrikes)
 	namePT := x.c.namePT(UnarmedStrikeKey)
-	t := x.tuneWeapon(ab, weaponFacts{name: foldPT(strings.TrimSpace(namePT)), melee: true, magical: magical})
+	facts := weaponFacts{name: foldPT(strings.TrimSpace(namePT)), melee: true, magical: ki}
+	t := x.tuneWeapon(ab, facts)
+	magical, silvered, adamantine := x.weaponMarks(UnarmedStrikeKey, facts)
 	mod := x.mods[t.damageAbility]
 	a := Attack{
 		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: namePT, Kind: "weapon", Ability: t.attackAbility,
 		AttackBonus: x.mods[t.attackAbility] + x.prof + t.attackBonus, Proficient: true,
 		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
 		Melee: true, RangeFt: max(unarmedReachFt, t.reachFt), MartialArts: martialArts, AbilityMod: mod,
-		Magical: magical,
+		Magical: magical || ki, Silvered: silvered, Adamantine: adamantine,
 	}
 	if t.reachFt > 0 {
 		a.ReachFt = t.reachFt

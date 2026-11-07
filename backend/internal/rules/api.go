@@ -73,6 +73,7 @@ const (
 	MaxClasses        = 12
 	MaxSkillKeys      = 18 // SkillProficiencies, Expertise, and at most 2 custom background skills
 	MaxWeapons        = 20
+	MaxCarried        = MaxWeapons + 2 // the armor, the shield and the weapons
 	MaxCantrips       = 30
 	MaxKnownSpells    = 200
 	MaxPreparedSpells = 100
@@ -135,8 +136,8 @@ type Build struct {
 	Size string
 	// HitPoints says how levels after the first add hit points.
 	HitPoints HitPoints
-	// Armor is the worn body armor, or empty. Shield says whether a shield
-	// is carried.
+	// Armor is the body armor the sheet lists, or empty. Shield says whether
+	// the sheet lists a shield. Carried says which of them are not equipped.
 	Armor  string
 	Shield bool
 	// MageArmor says Mage Armor is on the character right now (SRD 5.1, Mage
@@ -145,8 +146,16 @@ type Build struct {
 	// not a part of the sheet, so the caller sets it from the game session and
 	// the sheet never stores it.
 	MageArmor bool
-	// Weapons are the weapons carried, for the sheet's attacks.
+	// Weapons are the weapons the sheet lists, for its attacks (equipped ones only).
 	Weapons []string
+	// Carried lists the armor, the shield (shieldKey) and the weapons of the
+	// sheet that are carried, not equipped: they count for no armor class,
+	// attack or property. Empty means all are equipped; the field is left out
+	// of a Build's JSON when empty.
+	Carried []string `json:",omitempty"`
+	// WeaponMarks say which of the Weapons is silvered, adamantine or magical (at most
+	// MaxWeapons, one per weapon, each setting something).
+	WeaponMarks []WeaponMark
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
 	// character knows (the wizard's spellbook, the sorcerer's known
 	// spells). SpellsPrepared are the prepared ones, for classes that
@@ -631,6 +640,10 @@ type Derived struct {
 	// StatBlockConditionImmunities are the condition keys a creature's stat block lists as immune
 	// ("condition:poisoned"); empty for a character. Content.ConditionImmunities lists them with the stat block.
 	StatBlockConditionImmunities []string `json:",omitempty"`
+	// FeatPicks are the valid picks of the named choices of the feats the sheet applies and
+	// that read one (picks.go), by choice key ("feat:x@mesa#ability") to the stored value
+	// ("ability:dex"). Content.Resistances reads them for the effects that name a pick.
+	FeatPicks map[string]string `json:",omitempty"`
 	// ContentVersion is Content.Version() at the time of Derive.
 	ContentVersion string
 	// RaceNamePT and SubraceNamePT name the race and subrace, and
@@ -930,6 +943,14 @@ type PactMagic struct {
 	Slots     int
 }
 
+// WeaponMark says a carried weapon is silvered, adamantine or magical (the sheet's
+// full.weapon_marks). A valid mark names a weapon of Build.Weapons and sets at least
+// one of the three.
+type WeaponMark struct {
+	Weapon                        string
+	Silvered, Adamantine, Magical bool
+}
+
 // Attack is one line of the sheet's attacks: a weapon or an attack cantrip.
 type Attack struct {
 	// Key is the weapon or spell key; Name is the SRD's English name and
@@ -995,9 +1016,16 @@ type Attack struct {
 	AbilityMod int
 	// Magical says the attack's damage is magical, for the resistances and
 	// immunities to nonmagical attacks: true for a spell, and for a creature's
-	// weapon attack when its stat block has the trait "Magic Weapons". A weapon
-	// of a character is not, nor is the unarmed strike.
+	// weapon attack when its stat block has the trait "Magic Weapons"; for a weapon of
+	// a character, when the sheet's mark or a weapon_rule says so (weaponMarks), and for
+	// the unarmed strike, when a weapon_rule says so or it has Ki-Empowered Strikes.
 	Magical bool `json:",omitempty"`
+	// Silvered and Adamantine say the attack's weapon is of that material, for the
+	// resistances and immunities to nonmagical attacks that exempt it. A character's
+	// weapon has them from the sheet's mark or a weapon_rule (weaponMarks), and the unarmed
+	// strike from a weapon_rule; a creature's attack has neither.
+	Silvered   bool `json:",omitempty"`
+	Adamantine bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

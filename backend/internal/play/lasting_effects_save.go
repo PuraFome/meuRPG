@@ -427,6 +427,7 @@ func (s *Service) readEffectSaveFacts(ctx context.Context, c *combatTx, x *effec
 	}
 	f.mode = combat.Resolve(sources)
 	f.save, err = s.saveOf(ctx, c.tx, c.session.CampaignID, x.reactor, x.ability)
+	f.save = withRollBonus(f.save, f.states, x.reactor.ID, rules.RollAppliesSave)
 	return f, err
 }
 

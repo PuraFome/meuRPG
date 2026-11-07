@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { Code, ConnectError } from '@connectrpc/connect';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
@@ -25,7 +26,10 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
   beforeEach(() => {
     adjustVitals.mockReset();
     close.mockReset();
+    onStale.mockReset();
   });
+
+  const onStale = vi.fn();
 
   function setup(vitals: VitalsVm, playerName: string | null = 'Ana') {
     const data: AdjustVitalsData = {
@@ -33,6 +37,7 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
       vitals,
       sub: 'Ladina 3, de Ana',
       playerName,
+      onStale,
     };
     TestBed.configureTestingModule({
       imports: [AdjustVitals],
@@ -109,8 +114,9 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     await settle(fixture);
 
     expect(adjustVitals).toHaveBeenCalledTimes(1);
-    const [campaignId, characterId, key, change] = adjustVitals.mock.calls[0];
+    const [campaignId, characterId, key, change, revision] = adjustVitals.mock.calls[0];
     expect([campaignId, characterId]).toEqual(['mirathel', 'brisa']);
+    expect(revision).toBe(brisaVitals().revision); // the revision the sheet was opened with
     expect(key).toMatch(/^[0-9a-f-]{36}$/);
     expect(change).toEqual({ hitPointsCurrent: 4 });
     expect(close).toHaveBeenCalledWith({ kind: 'saved', vitals: saved });
@@ -152,6 +158,20 @@ describe('AdjustVitals (RN-02, E5-05)', () => {
     expect(button(el, 'Salvar ajuste')).toBeUndefined();
     button(el, 'Fechar').click();
     expect(close).toHaveBeenCalledWith({ kind: 'ended' });
+  });
+
+  it('says the numbers changed, and reads them again, when the server refuses a stale revision', async () => {
+    adjustVitals.mockRejectedValue(new ConnectError('stale', Code.Aborted));
+    const { el, fixture } = setup(brisaVitals());
+    byLabel(el, 'Somar 1 PV').click();
+    await settle(fixture);
+    button(el, 'Salvar ajuste').click();
+    await settle(fixture);
+
+    expect(el.textContent).toContain('mudaram desde que você abriu o "Ajustar"');
+    expect(el.textContent).not.toContain('Não foi possível salvar o ajuste.');
+    expect(onStale).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('closes without a call when nothing changed', async () => {

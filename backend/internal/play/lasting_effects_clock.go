@@ -388,13 +388,14 @@ func (s *Service) turnTempHP(ctx context.Context, c *combatTx, who playdb.Combat
 	})
 }
 
-// clearTempHP takes the temporary hit points off a combatant: what an effect gave goes when it ends.
-func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+// clearTempHP takes the temporary hit points off a combatant: what an effect gave goes when it ends. With
+// atMost above 0 it takes them only if the combatant has no more than that.
+func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Combatant, atMost int) error {
 	t, err := s.readFxTarget(ctx, c, who)
 	if err != nil {
 		return err
 	}
-	if t.temp == 0 {
+	if t.temp == 0 || (atMost > 0 && t.temp > atMost) {
 		return nil
 	}
 	c.tempCleared = append(c.tempCleared, tempCleared{Combatant: who.ID, Temp: clamp32(t.temp, 0, maxTempHitPoints)})

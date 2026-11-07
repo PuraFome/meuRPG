@@ -19,6 +19,11 @@ type TableFeat struct {
 	DescPT       []string
 	Prerequisite FeatPrerequisite
 	Effects      []Effect
+	// Options is the feat's option list, as a class feature's (TableFeature.Options): up
+	// to MaxFeatureOptions options, each a feature "feature:...@mesa" whose effects apply
+	// only while it is picked. They do not nest. The feat's choice of features lists
+	// them in `from` (or, with none, offers all of them), or offers an option set (Effect.Set).
+	Options []TableFeature
 }
 
 // addFeat registers a feat and its effects, which are compiled later with the
@@ -46,14 +51,16 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 	}
 	// A feat's own resources and states are the ones its effects (a granted spell, an action, a hook)
 	// may spend and read.
-	k := featureKind{owner: key}
+	k := featureKind{owner: key, prefix: featureKeyPrefix}
 	b.know(key, k)
-	b.declareResources(k, tf.Effects)
-	b.declareStates(key, key, tf.Effects)
+	effects := b.featOptions(&c, tf, k, path)
+	b.declareResources(k, effects)
+	b.declareStates(key, key, effects)
+	b.writeFeatOfferer(&c, feat, effects, path)
 	// The effects are queued before the entry is judged: if it is refused, its effects'
 	// problems come with the rest (compileEffectsOf).
-	if len(tf.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
+	if len(effects) > 0 {
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: effects, path: path, strict: b.strict[key]})
 	}
 	if err := c.err(); err != nil {
 		return err
@@ -61,6 +68,46 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 	b.register(tf.TableEntry)
 	n.feats[key] = feat
 	return nil
+}
+
+// featOptions registers the feat's option list, when it has one, as featureOptions does for a feature.
+// It returns the feat's effects, with the choice of features that has no `from` offering the options.
+// A problem is reported at the option's own path.
+func (b *overlayBuilder) featOptions(c *entryErrors, tf *TableFeat, k featureKind, path string) []Effect {
+	if len(tf.Options) == 0 {
+		return tf.Effects
+	}
+	shim := &TableFeature{Key: tf.Key, NamePT: tf.NamePT, Effects: tf.Effects, Options: tf.Options}
+	effects, err := b.featureOptions(shim, k, path)
+	if err != nil {
+		c.add(err)
+		return tf.Effects
+	}
+	return effects
+}
+
+// writeFeatOfferer makes the feat the offerer of the options its choice of features lists, as writeFeature does.
+// The feat's Options and OptionsChoose say what it offers, or OptionSet for a whole set.
+// offeredBy says, for each listed option, that the feat offers it.
+// For a set, offerFeatSets does that once every option has joined.
+// A feat offers one choice of options.
+func (b *overlayBuilder) writeFeatOfferer(c *entryErrors, feat *srd51.Feat, effects []Effect, path string) {
+	offers := false
+	for i := range effects {
+		e := &effects[i]
+		if !isFeatureChoice(e) {
+			continue
+		}
+		if offers {
+			c.at(feat.Key, path, ".effects", ReasonEffect, "a feat offers one choice of options")
+			return
+		}
+		offers = true
+		feat.Options, feat.OptionsChoose, feat.OptionSet = slices.Clone(e.From), e.Count, e.Set
+		for _, o := range e.From {
+			b.n.offeredBy[o] = append(b.n.offeredBy[o], feat.Key)
+		}
+	}
 }
 
 // checkFeatPrerequisite reports what is wrong with a feat's prerequisite, each

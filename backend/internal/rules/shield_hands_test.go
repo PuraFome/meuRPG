@@ -2,7 +2,7 @@ package rules
 
 import "testing"
 
-// shieldFighter is a fighter in chain mail with a shield and the weapons listed.
+// shieldFighter is a fighter in chain mail with a shield and the weapons listed, all equipped.
 func shieldFighter(weapons ...string) Build {
 	b := standard("class:fighter", 1)
 	b.Armor, b.Shield = "equipment:chain-mail", true

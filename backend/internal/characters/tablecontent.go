@@ -275,6 +275,9 @@ func tableCreatureOf(te rules.TableEntry, b *rulesv1.TableCreature) rules.TableC
 	for _, t := range b.GetTraits() {
 		c.Traits = append(c.Traits, rules.TableCreatureTrait{NamePT: t.GetNamePt(), TextPT: t.GetTextPt()})
 	}
+	for _, m := range b.GetDamageMods() {
+		c.DamageMods = append(c.DamageMods, rules.TableCreatureDamageMod{Kind: m.GetKind(), DamageTypes: m.GetDamageTypes(), Qualifier: m.GetQualifier()})
+	}
 	for _, a := range b.GetAttacks() {
 		c.Attacks = append(c.Attacks, rules.TableCreatureAttack{
 			NamePT: a.GetNamePt(), Melee: a.GetMelee(), ReachFt: int(a.GetReachFt()), RangeFt: int(a.GetRangeFt()), LongRangeFt: int(a.GetLongRangeFt()),
@@ -425,9 +428,10 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			WeaponName: e.GetWeaponName(), AttackAbility: e.GetAttackAbility(), DamageAbility: e.GetDamageAbility(),
 			AttackBonus: int(e.GetAttackBonus()), DamageBonus: int(e.GetDamageBonus()), ReachFt: int(e.GetReachFt()),
 			AttackName: e.GetAttackName(), DamageDice: e.GetDamageDice(),
+			Magical: e.GetMagical(), Silvered: e.GetSilvered(), Adamantine: e.GetAdamantine(),
 			MaxCR: e.GetMaxCr(), MaxCRFrom: e.GetMaxCrFrom(), FormCost: e.GetFormCost(), MagicalAttacks: e.GetMagicalAttacks(), NoFly: e.GetNoFly(), NoSwim: e.GetNoSwim(),
 			GivesSlot: e.GetGivesSlot(), SpendsSlot: e.GetSpendsSlot(), RecoverMaxLevel: e.GetRecoverMaxLevel(), RecoverLevels: e.GetRecoverLevels(),
-			Rolls: e.GetRolls(), AtMost: int(e.GetAtMost()),
+			Rolls: e.GetRolls(), AtMost: int(e.GetAtMost()), Name: e.GetName(), Set: e.GetSet(), Cap: int(e.GetCap()),
 			Dice: e.GetDice(), DiceSides: int(e.GetDiceSides()), DamageType: e.GetDamageType(), Weapon: e.GetWeapon(),
 			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
 			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),
@@ -441,7 +445,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 	p := b.GetPrerequisite()
 	return rules.TableFeat{
-		TableEntry: te, DescPT: b.GetDescPt(), Effects: tableEffectsOf(b.GetEffects()),
+		TableEntry: te, DescPT: b.GetDescPt(), Effects: tableEffectsOf(b.GetEffects()), Options: tableFeaturesOf(b.GetOptions()),
 		Prerequisite: rules.FeatPrerequisite{
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
@@ -500,6 +504,41 @@ var (
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_START_OF_TURN: rules.ZoneStartOfTurn,
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY:   rules.ZoneFirstEntry,
 		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_BOTH:          rules.ZoneBoth,
+	}
+	effectAppliesOf = map[rulesv1.TableEffectApplies]string{
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_ALL:         "all",
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_FAILED_SAVE: "failed_save",
+		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_HIT:         "hit",
+	}
+	effectAudienceOf = map[rulesv1.TableEffectAudience]string{
+		rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC: rules.EffectVisibilityPublic,
+		rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER:  rules.EffectVisibilityOwner,
+	}
+	effectRollOf = map[rulesv1.TableEffectRollKind]string{
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK: rules.RollAppliesAttack,
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE:   rules.RollAppliesSave,
+		rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_CHECK:  rules.RollAppliesCheck,
+	}
+	resistanceKindOf = map[rulesv1.TableResistanceKind]string{
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_RESIST:     rules.ResistanceKindResist,
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_IMMUNE:     rules.ResistanceKindImmune,
+		rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_VULNERABLE: rules.ResistanceKindVulnerable,
+	}
+	effectModifierKindOf = map[rulesv1.TableEffectModifierKind]string{
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_DIE:            rules.ModifierRollDie,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_AC_BONUS:            rules.ModifierACBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SPEED_ADD:           rules.ModifierSpeedAdd,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SPEED_MULTIPLIER:    rules.ModifierSpeedMultiplier,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_BONUS:         rules.ModifierCheckBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_ADVANTAGE:      rules.ModifierSaveAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_ADVANTAGE:     rules.ModifierCheckAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_DISADVANTAGE: rules.ModifierAttackDisadvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ROLL_BONUS:          rules.ModifierRollBonus,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_TEMP_HP:             rules.ModifierTempHP,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_RESISTANCE:          rules.ModifierResistance,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE:    rules.ModifierAttackAdvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE:   rules.ModifierSaveDisadvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE:  rules.ModifierCheckDisadvantage,
 	}
 	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
@@ -562,7 +601,37 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 		s.Heal = &rules.TableSpellHeal{Dice: h.GetDice(), PerSlotLevel: h.GetPerSlotLevel(), AddsModifier: h.GetAddsModifier()}
 	}
 	s.Summon = tableSummonOf(b.GetSummon())
+	s.Effect = tableSpellEffectOf(b.GetEffect())
 	return s
+}
+
+// tableSpellEffectOf is the lasting effect of a table spell's body, nil for none. An unset enum is the rules'
+// default (""), and a number this build does not know is "unknown", which the rules refuse at its field. The
+// modifier's kind has no default: unset reaches the rules as "" and is refused there.
+func tableSpellEffectOf(m *rulesv1.TableSpellEffect) *rules.TableSpellEffect {
+	if m == nil {
+		return nil
+	}
+	e := &rules.TableSpellEffect{
+		Applies: enumOrUnknown(effectAppliesOf, m.GetApplies()), Conditions: m.GetConditions(),
+		PlayerLabelPT: m.GetPlayerLabelPt(), Visibility: enumOrUnknown(effectAudienceOf, m.GetVisibility()),
+	}
+	for _, x := range m.GetModifiers() {
+		mod := rules.EffectModifier{
+			Kind: enumOrUnknown(effectModifierKindOf, x.GetKind()), Die: int(x.GetDie()), Sign: int(x.GetSign()), Value: int(x.GetValue()),
+			Abilities: x.GetAbilities(), Conditions: x.GetConditions(), Skill: x.GetSkill(),
+			ResistanceKind: enumOrUnknown(resistanceKindOf, x.GetResistanceKind()), DamageTypes: x.GetDamageTypes(),
+		}
+		for _, r := range x.GetAppliesTo() {
+			w := enumOrUnknown(effectRollOf, r)
+			if w == "" {
+				w = "unknown" // an unset roll is not "no roll": the rules refuse it at applies_to
+			}
+			mod.AppliesTo = append(mod.AppliesTo, w)
+		}
+		e.Modifiers = append(e.Modifiers, mod)
+	}
+	return e
 }
 
 // tableCastingTimeOf is how long a table spell, or a feature's summon, takes.
@@ -808,6 +877,15 @@ func slugOfStoredKey(key string) string {
 // path, when the entry is compiled.
 func checkFeatureCount(kind rulesv1.TableContentKind, body tableBody) []*rulesv1.TableContentViolation {
 	limit, what := rules.MaxTableFeatures, "features"
+	if feat, ok := body.(*rulesv1.TableFeat); ok {
+		if n := len(feat.GetOptions()); n > rules.MaxFeatureOptions {
+			return []*rulesv1.TableContentViolation{{
+				Field: bodyField(kind) + ".options", Reason: rules.ReasonLimit,
+				Message: fmt.Sprintf("%d options; the limit is %d", n, rules.MaxFeatureOptions),
+			}}
+		}
+		return nil
+	}
 	switch body.(type) {
 	case *rulesv1.TableRace, *rulesv1.TableSubrace:
 		limit, what = rules.MaxTraits, "traits"
@@ -848,6 +926,7 @@ func importFeatureKeys(entryKey string, body, old tableBody) []*rulesv1.TableCon
 func assignFeatureKeys(entryKey string, body, old tableBody, foreign bool) []*rulesv1.TableContentViolation {
 	a := &keyAssigner{entryKey: entryKey, taken: map[string]bool{}, owned: map[string]bool{}, slugs: map[string]bool{}, byName: map[string]string{}, foreign: foreign}
 	a.collectOld(old)
+	a.collectOldFeat(entryKey, old)
 	var out []*rulesv1.TableContentViolation
 	a.violations = &out
 	switch b := body.(type) {
@@ -867,6 +946,8 @@ func assignFeatureKeys(entryKey string, body, old tableBody, foreign bool) []*ru
 		if f := b.GetFeature(); f != nil {
 			a.assign("table_background", "background-feature:", featureStem("background", entryKey), 0, []*rulesv1.TableFeature{f})
 		}
+	case *rulesv1.TableFeat:
+		a.assignIn("table_feat.options", "feature:", featureStem("feat", entryKey), optionScope(entryKey), b.GetOptions())
 	}
 	return out
 }
@@ -943,6 +1024,20 @@ func (a *keyAssigner) collectOld(old tableBody) {
 				a.byName[optionScope(f.GetKey())+"\x00"+o.GetNamePt()] = o.GetKey()
 			}
 		}
+	}
+}
+
+// collectOldFeat is collectOld for the option list of a feat, which has no features: its options
+// are looked up in the scope of the entry's own key.
+func (a *keyAssigner) collectOldFeat(entryKey string, old tableBody) {
+	feat, ok := old.(*rulesv1.TableFeat)
+	if !ok {
+		return
+	}
+	for _, o := range feat.GetOptions() {
+		a.owned[o.GetKey()] = true
+		a.slugs[slugOfStoredKey(o.GetKey())] = true
+		a.byName[optionScope(entryKey)+"\x00"+o.GetNamePt()] = o.GetKey()
 	}
 }
 
@@ -1182,7 +1277,7 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
-	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Options: b.GetOptions()}})
 	if p := b.GetPrerequisite(); p != nil {
 		if v.hidden(p.GetRaceKey()) {
 			p.RaceKey = "" // a race or subrace the players do not see is not named to them

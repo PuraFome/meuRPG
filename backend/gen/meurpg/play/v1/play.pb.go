@@ -3360,9 +3360,17 @@ type AdjustCharacterVitalsRequest struct {
 	HitDiceUsedByDie map[int32]int32 `protobuf:"bytes,30,rep,name=hit_dice_used_by_die,json=hitDiceUsedByDie,proto3" json:"hit_dice_used_by_die,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	// The keys of states to end (CharacterVitals.active_states[].key), whatever the way
 	// each says it ends. `invalid_argument` for a state the character does not have on.
-	EndStates     []string `protobuf:"bytes,11,rep,name=end_states,json=endStates,proto3" json:"end_states,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	EndStates []string `protobuf:"bytes,11,rep,name=end_states,json=endStates,proto3" json:"end_states,omitempty"`
+	// The CharacterVitals.revision the caller last read. Required: the correction is
+	// written only if the character's vitals still have that revision, because every
+	// value set here replaces the current one and a combat, a rest or another
+	// correction may have changed it since. 0 is a revision (nobody has adjusted the
+	// character yet), so an absent field is not 0: it is refused too. A retry with the
+	// same idempotency_key is answered before this check. `aborted` when the revision
+	// is not the character's now or the field is absent: read the vitals again.
+	ExpectedRevision *int32 `protobuf:"varint,31,opt,name=expected_revision,json=expectedRevision,proto3,oneof" json:"expected_revision,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AdjustCharacterVitalsRequest) Reset() {
@@ -3477,6 +3485,13 @@ func (x *AdjustCharacterVitalsRequest) GetEndStates() []string {
 		return x.EndStates
 	}
 	return nil
+}
+
+func (x *AdjustCharacterVitalsRequest) GetExpectedRevision() int32 {
+	if x != nil && x.ExpectedRevision != nil {
+		return *x.ExpectedRevision
+	}
+	return 0
 }
 
 // ResourceUsed sets how many uses of one resource are spent.
@@ -6387,7 +6402,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x15\n" +
-	"\x13NudgePlayerResponse\"\xf1\x06\n" +
+	"\x13NudgePlayerResponse\"\xb9\a\n" +
 	"\x1cAdjustCharacterVitalsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -6403,7 +6418,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	" \x01(\x05H\x04R\x19wildShapeHitPointsCurrent\x88\x01\x01\x12r\n" +
 	"\x14hit_dice_used_by_die\x18\x1e \x03(\v2B.meurpg.play.v1.AdjustCharacterVitalsRequest.HitDiceUsedByDieEntryR\x10hitDiceUsedByDie\x12\x1d\n" +
 	"\n" +
-	"end_states\x18\v \x03(\tR\tendStates\x1aC\n" +
+	"end_states\x18\v \x03(\tR\tendStates\x120\n" +
+	"\x11expected_revision\x18\x1f \x01(\x05H\x05R\x10expectedRevision\x88\x01\x01\x1aC\n" +
 	"\x15HitDiceUsedByDieEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01B\x15\n" +
@@ -6411,7 +6427,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x15_hit_points_temporaryB\x12\n" +
 	"\x10_pact_slots_usedB\x10\n" +
 	"\x0e_hit_dice_usedB \n" +
-	"\x1e_wild_shape_hit_points_current\"4\n" +
+	"\x1e_wild_shape_hit_points_currentB\x14\n" +
+	"\x12_expected_revision\"4\n" +
 	"\fResourceUsed\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x05R\x04used\":\n" +

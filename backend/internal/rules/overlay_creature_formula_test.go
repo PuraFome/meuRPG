@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -588,6 +589,60 @@ func TestResolvedDerivedTrustsTheContentNotTheValue(t *testing.T) {
 	again, _ := c.ResolveCreature(swarmLord, env, 0)
 	if again.Traits[0].NamePT != "Teia Densa" {
 		t.Errorf("a trait written through a resolved value changed the content: %q", again.Traits[0].NamePT)
+	}
+}
+
+// The damage mods of a resolved value are a copy, are read from the entry (an old snapshot with none, or a
+// forged one, still has the entry's), and survive a JSON round trip.
+func TestResolvedDamageModsAreTheEntrysAndSurviveJSON(t *testing.T) {
+	t.Parallel()
+	cr := spiderLord()
+	cr.DamageMods = []TableCreatureDamageMod{dmod("resist", "nonmagical", "damage-type:piercing")}
+	c := withOverlay(t, creatureOverlay(cr))
+	env := owner(5, 3, map[string]int{"druid": 5}, nil)
+	good, _ := c.ResolveCreature(swarmLord, env, 0)
+	spec := c.c.creatureSpecs[swarmLord]
+	baseMonster := c.c.monsters[spiderKey]
+	baseResist := len(baseMonster.Resistances)
+	resistances := func(r ResolvedCreature) int {
+		m, ok := ApplyResolved(baseMonster, spec.trusted(r))
+		if !ok {
+			t.Fatal("ApplyResolved refused")
+		}
+		return len(m.Resistances)
+	}
+	if got := resistances(good); got != baseResist+1 {
+		t.Fatalf("resistances = %d, base %d; want one more", got, baseResist)
+	}
+	// A copy: writing through the resolved value leaves the content alone.
+	good.DamageMods[0].DamageTypes[0] = "damage-type:fire"
+	good.DamageMods[0].Kind = "immune"
+	again, _ := c.ResolveCreature(swarmLord, env, 0)
+	if again.DamageMods[0].Kind != "resist" {
+		t.Errorf("a mod written through a resolved value changed the content: %+v", again.DamageMods[0])
+	}
+	// The mods are cloned entry by entry in the damage types too.
+	if again.DamageMods[0].DamageTypes[0] != "damage-type:piercing" {
+		t.Errorf("the damage types of the content changed: %v", again.DamageMods[0].DamageTypes)
+	}
+	// A new snapshot round-trips; an old one without the field gets the entry's mods.
+	raw, err := json.Marshal(again)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back ResolvedCreature
+	if err := json.Unmarshal(raw, &back); err != nil || !reflect.DeepEqual(back.DamageMods, again.DamageMods) {
+		t.Fatalf("round trip: %v, %+v", err, back.DamageMods)
+	}
+	old := `{"Key":"` + swarmLord + `","HitPoints":30,"ArmorClass":13}`
+	var legacy ResolvedCreature
+	if err := json.Unmarshal([]byte(old), &legacy); err != nil || legacy.DamageMods != nil {
+		t.Fatalf("an old snapshot: %v, mods %+v", err, legacy.DamageMods)
+	}
+	for name, r := range map[string]ResolvedCreature{"round trip": back, "old snapshot": legacy} {
+		if _, _, ok := c.ResolvedDerived(r); !ok || resistances(r) != baseResist+1 {
+			t.Errorf("%s: ok %v, resistances %d, want the entry's one more than the base's", name, ok, resistances(r))
+		}
 	}
 }
 

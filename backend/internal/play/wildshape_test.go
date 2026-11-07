@@ -581,7 +581,7 @@ func TestMR037_WildShapeOutsideACombat(t *testing.T) {
 	_, err = s.master.adjust(t, s.campaignID, s.bri.GetId(), func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(3)) })
 	wantCode(t, "AdjustCharacterVitals of a beast pool with no form", err, connect.CodeInvalidArgument)
 	if _, err := s.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: s.campaignID, CharacterId: s.bri.GetId(), IdempotencyKey: newKey(), ResourcesUsed: []*playv1.ResourceUsed{{Key: wildShapeResource, Used: 0}},
+		CampaignId: s.campaignID, CharacterId: s.bri.GetId(), IdempotencyKey: newKey(), ExpectedRevision: s.master.revisionOf(t, s.campaignID, s.bri.GetId()), ResourcesUsed: []*playv1.ResourceUsed{{Key: wildShapeResource, Used: 0}},
 	})); err != nil {
 		t.Fatalf("giving the uses back: %v", err)
 	}

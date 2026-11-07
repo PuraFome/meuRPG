@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"slices"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Where an effect lives (RN-22). An effect belongs to the character it is on: in a running
@@ -39,7 +41,7 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		return err
 	}
 	def, ok := content.CombatSpellEffect(plan.spell)
-	if !ok || def.Applies != "all" || len(plan.g.targets) == 0 {
+	if !ok || def.Applies != "all" || len(s.effectTargetsAll(plan)) == 0 { // a spell on the caster alone has no targets listed
 		return nil
 	}
 	seconds, kind := castClockOf(plan, def)
@@ -53,20 +55,33 @@ func (s *Service) castCharacterEffects(ctx context.Context, c *combatTx, plan ca
 		if !t.Player {
 			continue // an NPC has no vitals and no combat outside a fight: the master narrates
 		}
-		mods, ok, err := s.modifiersFor(ctx, c, def, t.ID, opts)
+		ok, err := s.castOnCharacter(ctx, c, plan, def, t.ID, castClock{seconds: seconds, kind: kind}, opts)
 		if err != nil {
 			return err
 		}
-		if !ok {
-			continue
+		if ok {
+			touched = append(touched, t.ID)
 		}
-		clock := castClock{seconds: seconds, kind: kind}
-		if err := s.putCharacterEffect(ctx, c, plan, def, t.ID, caster, mods, clock); err != nil {
-			return err
-		}
-		touched = append(touched, t.ID)
 	}
 	return s.syncArmorBase(ctx, c, touched...)
+}
+
+// castOnCharacter puts the effect of a cast on one character and gives its temporary hit points.
+// It says whether the effect took hold (a base armor class takes none on a creature that wears armor).
+func (s *Service) castOnCharacter(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID string, clock castClock, opts castOpts) (bool, error) {
+	mods, ok, err := s.modifiersFor(ctx, c, def, characterID, opts)
+	if err != nil || !ok {
+		return false, err
+	}
+	prior, err := s.priorCharacterClaim(ctx, c, characterID, plan)
+	if err != nil {
+		return false, err
+	}
+	row, err := s.putCharacterEffect(ctx, c, plan, def, characterID, plan.g.caster.ID, mods, clock)
+	if err != nil {
+		return false, err
+	}
+	return true, s.giveCharacterTempHP(ctx, c, row, mods, prior)
 }
 
 // castClock is the clock a spell cast outside a combat gives its effect: game time, or none.
@@ -88,14 +103,14 @@ func castClockOf(plan castPlan, def *rules.EffectDef) (*int32, string) {
 }
 
 // putCharacterEffect writes the effect of a spell on a character, replacing the same spell on it.
-func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID, caster string, mods []rules.EffectModifier, clock castClock) error {
+func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan castPlan, def *rules.EffectDef, characterID, caster string, mods []rules.EffectModifier, clock castClock) (playdb.CharacterEffect, error) {
 	body, err := json.Marshal(mods)
 	if err != nil {
-		return fmt.Errorf("encode the modifiers: %w", err)
+		return playdb.CharacterEffect{}, fmt.Errorf("encode the modifiers: %w", err)
 	}
 	// The same spell on the same target does not stack (SRD 5.1, Combining Magical Effects).
 	if _, err := c.q.DeleteCharacterEffectsOfSpell(ctx, playdb.DeleteCharacterEffectsOfSpellParams{CharacterID: characterID, SourceKey: plan.spell, GroupID: plan.row.ID}); err != nil {
-		return fmt.Errorf("replace the same spell: %w", err)
+		return playdb.CharacterEffect{}, fmt.Errorf("replace the same spell: %w", err)
 	}
 	p := playdb.InsertCharacterEffectParams{
 		CampaignID: c.session.CampaignID, CharacterID: characterID, SourceCharacterID: &caster, GroupID: plan.row.ID, SourceKey: plan.spell,
@@ -105,10 +120,11 @@ func (s *Service) putCharacterEffect(ctx context.Context, c *combatTx, plan cast
 	if def.Visibility == rules.EffectVisibilityOwner {
 		p.Audience = audienceOwner
 	}
-	if _, err := c.q.InsertCharacterEffect(ctx, p); err != nil {
-		return fmt.Errorf("put the effect on the character: %w", err)
+	row, err := c.q.InsertCharacterEffect(ctx, p)
+	if err != nil {
+		return playdb.CharacterEffect{}, fmt.Errorf("put the effect on the character: %w", err)
 	}
-	return nil
+	return row, nil
 }
 
 // endCharacterEffectsOfCast takes away the effects a cast left on characters out of a combat
@@ -383,16 +399,85 @@ func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.C
 	}
 }
 
+// giveCharacterTempHP gives a character the temporary hit points of a temp_hp modifier of a spell cast outside a
+// combat. They do not stack: it keeps the larger of what it had and what the effect gives (SRD 5.1,
+// "Temporary Hit Points"). As in a combat (giveEffectTempHP), the row keeps the pool it set, or no temp_hp
+// when it raised nothing, and takes the claim off the character's other effects; they go when the row does
+// (afterCharacterEffectsGone).
+func (s *Service) giveCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, mods []rules.EffectModifier, prior int) error {
+	amount := combat.TempHP(mods)
+	if amount <= 0 {
+		return nil
+	}
+	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, row.CharacterID)
+	if connect.CodeOf(err) == connect.CodeNotFound { // no vitals: no hit points to give, and nothing to take back
+		return c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: row.ID, Modifiers: claimedTempHP(mods, 0)})
+	}
+	if err != nil {
+		return err
+	}
+	if int(v.GetHitPointsTemporary()) >= amount {
+		amount = prior // a recast keeps the claim of the cast it replaced
+	} else if err := s.raiseCharacterTempHP(ctx, c, row, amount); err != nil {
+		return err
+	}
+	return c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: row.ID, Modifiers: claimedTempHP(mods, amount)})
+}
+
+// priorCharacterClaim is the temp_hp claim of the same spell's effect another casting left on the character,
+// which the recast replaces.
+func (s *Service) priorCharacterClaim(ctx context.Context, c *combatTx, characterID string, plan castPlan) (int, error) {
+	all, err := c.q.ListCharacterEffects(ctx, []string{characterID})
+	if err != nil {
+		return 0, fmt.Errorf("list the effects: %w", err)
+	}
+	n := 0
+	for _, o := range all {
+		if o.SourceKey == plan.spell && o.GroupID != plan.row.ID {
+			n = max(n, combat.TempHPClaim(modifiersOf(o.Modifiers)))
+		}
+	}
+	return n, nil
+}
+
+func (s *Service) raiseCharacterTempHP(ctx context.Context, c *combatTx, row playdb.CharacterEffect, amount int) error {
+	temp := clamp32(amount, 0, maxTempHitPoints)
+	_, got, err := s.vitalsOf(ctx, c, row.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+	if err != nil {
+		return err
+	}
+	if got != nil {
+		c.told = append(c.told, got)
+	}
+	others, err := c.q.ListCharacterEffects(ctx, []string{row.CharacterID})
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	for _, o := range others {
+		if o.ID == row.ID || combat.TempHPClaim(modifiersOf(o.Modifiers)) == 0 {
+			continue
+		}
+		if err := c.q.SetCharacterEffectModifiers(ctx, playdb.SetCharacterEffectModifiersParams{ID: o.ID, Modifiers: claimedTempHP(modifiersOf(o.Modifiers), 0)}); err != nil {
+			return fmt.Errorf("drop the claim of an older effect: %w", err)
+		}
+	}
+	return nil
+}
+
 // afterCharacterEffectsGone does what follows effects that ended on characters out of a combat:
-// the temporary hit points a spell gave go with it (SRD 5.1, Heroism).
+// the temporary hit points a spell gave go with it (SRD 5.1, Heroism). Those of temp_hp go only if the character
+// has no more than the effect gave.
 func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, rows []playdb.CharacterEffect) error {
 	none := int32(0)
 	for _, r := range rows {
-		if !slices.ContainsFunc(modifiersOf(r.Modifiers), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP }) {
+		mods := modifiersOf(r.Modifiers)
+		turn := slices.ContainsFunc(mods, func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierTurnTempHP })
+		given := combat.TempHPClaim(mods)
+		if !turn && given == 0 {
 			continue
 		}
 		v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.CharacterID)
-		if err != nil || v.GetHitPointsTemporary() == 0 {
+		if err != nil || v.GetHitPointsTemporary() == 0 || (!turn && int(v.GetHitPointsTemporary()) > given) {
 			continue
 		}
 		if _, got, err := s.vitalsOf(ctx, c, r.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &none}); err != nil {

@@ -164,6 +164,13 @@ func (cb *choiceBuilder) featOwners() {
 		}
 		cb.featChoice(cb.group(ChoiceOriginFeat, key, 0, 0), key)
 	}
+	// A feat taken through a choice asks its own choices too.
+	if !slices.ContainsFunc(cb.b.FeatureChoices, func(k string) bool { _, _, ok := featPickParts(k); return ok }) {
+		return
+	}
+	for _, cf := range cb.c.pickedChoiceFeats(cb.b, ownedBy(cb.b, *cb.derive())) {
+		cb.featChoice(cb.group(ChoiceOriginFeat, cf.Feat, 0, 0), cf.Feat)
+	}
 }
 
 // featChoice adds the choice of a feat that owner grants, if any: the options are
@@ -174,6 +181,7 @@ func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 	c := cb.c
 	cb.grantAbilityChoice(g, owner) // every owner of a choice passes here
 	cb.proficiencyChoices(g, owner)
+	cb.featPickChoices(g, owner)
 	picks, from, ok := c.featChoiceSpec(owner)
 	if !ok || owner == "" {
 		return
@@ -395,4 +403,79 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
 	}
 	return ""
+}
+
+// featPickChoices adds the choices a feat of the table asks besides the feats it grants:
+// its options, as a class feature's has them (a choice of features, or an option set),
+// and the named picks of an ability or a damage type.
+func (cb *choiceBuilder) featPickChoices(g *groupBuild, owner string) {
+	c := cb.c
+	f := c.feats[owner]
+	if f == nil {
+		return
+	}
+	if options := c.featOptionKeys(f); len(options) > 0 && f.OptionsChoose > 0 {
+		cb.optionChoice(g, owner, f.OptionsChoose, options)
+	}
+	for _, e := range c.namedPickChoices(owner) {
+		cb.namedPickChoice(g, owner, e)
+	}
+}
+
+// namedPickChoice is the choice of one named pick: the abilities or the damage types the choice offers
+// (all of them without a list), stored as "<feat key>#<name>=<value>".
+func (cb *choiceBuilder) namedPickChoice(g *groupBuild, owner string, e *Effect) {
+	c := cb.c
+	key := PickChoiceKey(owner, e.Name)
+	ch := &Choice{Key: key, FeatureKey: owner, Kind: ChoiceKindOptions, Picks: max(e.Count, 1)}
+	var values []string
+	if e.Choice == pickAbility {
+		ch.TitlePT, ch.HintPT = c.pickTitle(owner, e, "Habilidade", "ª"), "A habilidade que o talento "+c.namePT(owner)+" usa."
+		for _, a := range AllAbilities() {
+			if len(e.From) == 0 || slices.Contains(e.From, string(a)) {
+				values = append(values, abilityValue(a))
+			}
+		}
+	} else {
+		ch.TitlePT, ch.HintPT = c.pickTitle(owner, e, "Tipo de dano", "º"), "O tipo de dano que o talento "+c.namePT(owner)+" usa."
+		for _, d := range c.damageTypeEntries() {
+			if len(e.From) == 0 || slices.Contains(e.From, d.Key) {
+				values = append(values, d.Key)
+			}
+		}
+	}
+	for _, v := range values {
+		name := c.namePT(v)
+		if e.Choice == pickAbility {
+			name = c.namePT(strings.TrimPrefix(v, abilityPrefix))
+		}
+		ch.Options = append(ch.Options, ChoiceOption{Key: v, Stored: ScopedChoice(key, v), NamePT: name})
+	}
+	cb.addChoice(g, ch)
+	cb.takeScoped(ch)
+}
+
+// pickTitle is the title of a named pick: the kind's name, numbered in the order of the feat's effects when
+// the feat has two or more picks of that kind ("Habilidade (1ª)"). It never shows the master's own name.
+func (c *content) pickTitle(owner string, e *Effect, title, ordinal string) string {
+	n, at := 0, 0
+	for _, o := range c.namedPickChoices(owner) {
+		if o.Choice != e.Choice {
+			continue
+		}
+		n++
+		if o == e {
+			at = n
+		}
+	}
+	if n == 1 { // a single pick of a kind keeps the plain title
+		return title
+	}
+	return fmt.Sprintf("%s (%d%s)", title, at, ordinal)
+}
+
+// damageTypeEntries are the damage types of the content, sorted by Portuguese name.
+func (c *content) damageTypeEntries() []NamedEntry {
+	_, _, damageTypes := c.namedEntries()
+	return damageTypes
 }
