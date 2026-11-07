@@ -6781,41 +6781,30 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 }
 
 const listNPCsGivingBackToRest = `-- name: ListNPCsGivingBackToRest :many
-SELECT ch.id, ch.name
+SELECT npc.character_id
 FROM npc_spell_use npc
-JOIN characters ch ON ch.id = npc.character_id
-WHERE ch.campaign_id = $1
-  AND (($2::bool AND (npc.slots_used <> '{}'::jsonb OR npc.creature_spent <> '{}'::jsonb))
-    OR EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%'))
-ORDER BY ch.name, ch.id
+WHERE ($1::bool AND (npc.slots_used <> '{}'::jsonb OR npc.creature_spent <> '{}'::jsonb))
+   OR EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%')
+ORDER BY npc.character_id
 `
 
-type ListNPCsGivingBackToRestParams struct {
-	CampaignID *string
-	LongRest   bool
-}
-
-type ListNPCsGivingBackToRestRow struct {
-	ID   string
-	Name string
-}
-
-// The hand-made NPCs of the campaign that this rest gives something back to, by name: after a long rest every NPC that
-// kept a spell slot, a use a day, a rest action or Legendary Resistance (what ResetNPCSpellUseOfCampaign clears); after a
-// short rest every NPC that kept a rest action (what ResetNPCRestUsesOfCampaign clears). The master's rest preview.
-func (q *Queries) ListNPCsGivingBackToRest(ctx context.Context, arg ListNPCsGivingBackToRestParams) ([]ListNPCsGivingBackToRestRow, error) {
-	rows, err := q.db.Query(ctx, listNPCsGivingBackToRest, arg.CampaignID, arg.LongRest)
+// The hand-made NPCs (of any campaign: the caller keeps its campaign's, by name, through the roster) that this rest gives something
+// back to: after a long rest every NPC that kept a spell slot, a use a day, a rest action or Legendary Resistance (what
+// ResetNPCSpellUseOfCampaign clears); after a short rest every NPC that kept a rest action (what ResetNPCRestUsesOfCampaign
+// clears). The master's rest preview.
+func (q *Queries) ListNPCsGivingBackToRest(ctx context.Context, longRest bool) ([]string, error) {
+	rows, err := q.db.Query(ctx, listNPCsGivingBackToRest, longRest)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListNPCsGivingBackToRestRow
+	var items []string
 	for rows.Next() {
-		var i ListNPCsGivingBackToRestRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		var character_id string
+		if err := rows.Scan(&character_id); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, character_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
