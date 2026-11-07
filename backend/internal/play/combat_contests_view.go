@@ -435,7 +435,7 @@ func isHidden(hiding []playdb.CombatHiding, id string) bool {
 // surpriseView is who is surprised: the master every combatant, a player their own.
 func (r *contestReader) surpriseView(ctx context.Context) (*playv1.SurpriseView, error) {
 	out := &playv1.SurpriseView{}
-	ids, err := r.s.surprisedIDs(ctx, r.d.enc, r.d.cs, r.d.surprised)
+	ids, err := r.s.surprisedIDs(ctx, nil, r.m.CampaignID, r.d.enc, r.d.cs, r.d.surprised)
 	if err != nil {
 		return nil, err
 	}

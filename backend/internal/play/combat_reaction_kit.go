@@ -89,7 +89,7 @@ func (s *Service) kitOf(ctx context.Context, tx pgx.Tx, campaignID string, who p
 		k.down = isDownIn(k.vit)
 	}
 	// A surprised combatant takes no reaction until its first turn ends (SRD 5.1, "Surprise").
-	if k.surprised, err = s.surprisedReactor(ctx, tx, who); err != nil {
+	if k.surprised, err = s.surprisedReactor(ctx, tx, campaignID, who); err != nil {
 		return kit{}, false, err
 	}
 	if k.muted, err = s.mutedReactor(ctx, tx, who); err != nil {

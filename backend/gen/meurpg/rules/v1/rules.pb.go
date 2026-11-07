@@ -3894,9 +3894,12 @@ type DerivedSheet struct {
 	// effect), in the order of the effects, each with the feature that gives it.
 	// Only a minimum whose feature is in `features` is listed. The web previews the
 	// counted total of a typed d20 with them.
-	RollMinimums  []*RollMinimum `protobuf:"bytes,53,rep,name=roll_minimums,json=rollMinimums,proto3" json:"roll_minimums,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RollMinimums []*RollMinimum `protobuf:"bytes,53,rep,name=roll_minimums,json=rollMinimums,proto3" json:"roll_minimums,omitempty"`
+	// The load the character can carry, in pounds: 15 times the Strength score (SRD 5.1, "Carrying Capacity"), then the
+	// `carry.capacity` modifiers of the table's features. Never below 0.
+	CarryCapacityLb int32 `protobuf:"varint,54,opt,name=carry_capacity_lb,json=carryCapacityLb,proto3" json:"carry_capacity_lb,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *DerivedSheet) Reset() {
@@ -4298,6 +4301,13 @@ func (x *DerivedSheet) GetRollMinimums() []*RollMinimum {
 		return x.RollMinimums
 	}
 	return nil
+}
+
+func (x *DerivedSheet) GetCarryCapacityLb() int32 {
+	if x != nil {
+		return x.CarryCapacityLb
+	}
+	return 0
 }
 
 // RollMinimum is a roll minimum a feature gives: a die of the covered rolls that
@@ -13071,7 +13081,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
 	"descPtOnly\x121\n" +
 	"\x15lacks_feature_name_pt\x18\x0e \x01(\tR\x12lacksFeatureNamePt\x120\n" +
-	"\x14lacks_feature_hidden\x18\x0f \x01(\bR\x12lacksFeatureHidden\"\xc0\x14\n" +
+	"\x14lacks_feature_hidden\x18\x0f \x01(\bR\x12lacksFeatureHidden\"\xec\x14\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -13135,7 +13145,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04size\x182 \x01(\tR\x04size\x125\n" +
 	"\x06states\x183 \x03(\v2\x1d.meurpg.rules.v1.DerivedStateR\x06states\x12.\n" +
 	"\x04gear\x184 \x03(\v2\x1a.meurpg.rules.v1.GearEntryR\x04gear\x12A\n" +
-	"\rroll_minimums\x185 \x03(\v2\x1c.meurpg.rules.v1.RollMinimumR\frollMinimums\"\x81\x01\n" +
+	"\rroll_minimums\x185 \x03(\v2\x1c.meurpg.rules.v1.RollMinimumR\frollMinimums\x12*\n" +
+	"\x11carry_capacity_lb\x186 \x01(\x05R\x0fcarryCapacityLb\"\x81\x01\n" +
 	"\vRollMinimum\x12\x18\n" +
 	"\aapplies\x18\x01 \x03(\tR\aapplies\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value\x12\x1f\n" +

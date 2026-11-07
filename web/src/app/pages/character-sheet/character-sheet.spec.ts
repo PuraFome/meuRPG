@@ -209,6 +209,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     passivePerception: 10,
     passiveInvestigation: 10,
     passiveInsight: 10,
+    carryCapacityLb: 150,
     initiative: 0,
     armorClass: 10,
     armorClassDescription: 'Sem armadura',
@@ -414,6 +415,21 @@ describe('CharacterSheetPage', () => {
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
+
+  it('shows the carrying capacity the server sent in kilograms and pounds, on one line next to the senses', async () => {
+    configure();
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(vm({ sheet: fullSheet({ carryCapacityLb: 225 }) }));
+
+    const el = await render();
+    const lines = Array.from(el.querySelectorAll('p')).filter((p) =>
+      p.textContent?.includes('Capacidade de carga'),
+    );
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Capacidade de carga 112,5 kg (225 lb)',
+    );
+  });
 
   it('shows exactly the server-sent numbers, even an inconsistent modifier', async () => {
     configure();

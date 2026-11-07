@@ -671,7 +671,15 @@ type Derived struct {
 	PassivePerception    int
 	PassiveInvestigation int
 	PassiveInsight       int
-	Initiative           int
+	// HitDieMinimum is the least hit points a hit die spent on a short rest gives back (the hitdie.minimum
+	// modifier), 0 when nothing sets one.
+	HitDieMinimum int
+	// CarryCapacityLb is the carrying capacity in pounds: 15 times the Strength score, then the
+	// carry.capacity modifiers, 0 to MaxCarryCapacityLb.
+	CarryCapacityLb int
+	// DamageReductions are the flat reductions of weapon damage the features give, one per feature and kind.
+	DamageReductions []DamageReduction `json:",omitempty"`
+	Initiative       int
 	// ArmorClass is the best AC with the worn armor and shield, and
 	// ArmorClassDescription says in Portuguese how it was computed, such as
 	// "Sem armadura" or "Armadura de couro + escudo".
@@ -761,6 +769,8 @@ type Derived struct {
 	Rerolls []RerollRule `json:",omitempty"`
 	// RollMinimums are the roll_minimum effects of the character, in the order of the effects (rolleffects.go).
 	RollMinimums []RollMinimum `json:",omitempty"`
+	// Flags are the flags of the flag effects that hold, sorted and without repeats (effectflags.go).
+	Flags []string `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.

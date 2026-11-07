@@ -841,14 +841,19 @@
             "x"
           ],
           "Qualifier": "x",
-          "hidden": true
+          "hidden": true,
+          "Amount": 1
         }
       ],
       "origin": {
         "attack": true,
+        "weapon": true,
         "magical": true,
         "silvered": true,
         "adamantine": true
+      },
+      "allot": {
+        "x": 1
       }
     }
   ],

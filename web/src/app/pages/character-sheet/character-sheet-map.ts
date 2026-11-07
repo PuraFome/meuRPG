@@ -269,6 +269,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     passivePerception: derived.passivePerception,
     passiveInvestigation: derived.passiveInvestigation,
     passiveInsight: derived.passiveInsight,
+    carryCapacityLb: derived.carryCapacityLb,
     initiative: derived.initiative,
     armorClass: derived.armorClass,
     armorClassDescription: derived.armorClassDescription,

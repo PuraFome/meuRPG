@@ -187,7 +187,7 @@ Whether an NPC attacks a player it cannot see with disadvantage is not ruled, no
   A zone's save counts the spell as magic: advantages against magic apply, as for any save against a spell.
 - **No save.** A zone whose row has no save ability inserts a pending damage awaiting its roll with the caster as attacker (`catchWithoutSave`), rolled and applied by the paths of any damage.
 - **Ending.** `endZonesOf` writes an `ended` line for each zone (reason `concentration` or `concentration_replaced`), the clock writes `duration`, `EndSpellZone` (master only) writes `ended_by_master`. They are written at once, not held, because a concentration also ends outside the changes that flush the zone lines.
-- **Speed and terrain.** A zone with `slows` adds `effect:spirit-guardians-slowed` (speed 50%, until the end of the creature's turn) when it catches a creature. A zone with `difficult` is added to the Difficult layer of `terrainOf` (`withZoneTerrain`, a copy, so the map's own layer is untouched).
+- **Speed and terrain.** A zone with `slows` adds `effect:spirit-guardians-slowed` (speed 50%, until the end of the creature's turn) when it catches a creature. A zone with `difficult` is added to the `ZoneDifficult` layer of `terrainOf` (`withZoneTerrain`, a layer of its own, so the map's `Difficult` layer is untouched). `Terrain.DifficultFor` reads both: a mover with `Mover.IgnoresMapDifficult` (the `ignore_difficult_terrain` flag, set by `moverWith`) skips the map's layer and still pays for a zone's.
 
 ## The view and the privacy
 

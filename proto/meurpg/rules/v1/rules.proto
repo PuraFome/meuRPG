@@ -783,6 +783,9 @@ message DerivedSheet {
   // Only a minimum whose feature is in `features` is listed. The web previews the
   // counted total of a typed d20 with them.
   repeated RollMinimum roll_minimums = 53;
+  // The load the character can carry, in pounds: 15 times the Strength score (SRD 5.1, "Carrying Capacity"), then the
+  // `carry.capacity` modifiers of the table's features. Never below 0.
+  int32 carry_capacity_lb = 54;
 }
 
 // RollMinimum is a roll minimum a feature gives: a die of the covered rolls that

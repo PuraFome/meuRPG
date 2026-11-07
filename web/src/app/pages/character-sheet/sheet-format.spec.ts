@@ -21,6 +21,7 @@ describe('sheet-format', () => {
     expect(keepUnitsTogether('Corda de 15 m e 2 kg de ração, 3 pés de fio')).toBe(
       'Corda de 15\u00a0m e 2\u00a0kg de ração, 3\u00a0pés de fio',
     );
+    expect(keepUnitsTogether('Carga de 90 kg (180 lb)')).toBe('Carga de 90\u00a0kg (180\u00a0lb)');
     // A word that only starts like a unit stays as it is.
     expect(keepUnitsTogether('5 mapas e 2 pontas, 10 POTES')).toBe('5 mapas e 2 pontas, 10 POTES');
   });
