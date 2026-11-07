@@ -19,6 +19,9 @@ import (
 // it takes no context and waits for nobody; it reports how many subscriptions
 // received the event.
 func (s *Service) send(campaignID string, ev live.Event) int {
+	if s.dropSend != nil && s.dropSend(campaignID, ev) {
+		return 0
+	}
 	return s.hub.Publish(campaignID, ev)
 }
 
