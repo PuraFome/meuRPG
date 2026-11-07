@@ -83,6 +83,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
+import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -9160,4 +9161,73 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
 test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCreatureActions(browser, 'dark', 390);
+});
+
+/** The Tela da mesa (#648): the master's panel in the live session (open, then with a pin that has a dashed row beside it) and the TV tab it opens
+ * (the waiting screen, the map with a roll, the combat on the map), in one table with the fog on. The TV tab is a page of the master's own context. */
+async function scanTableScreen(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const pensantusPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const torenPlayer = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+  const m = await master.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    const ap = await pensantusPlayer.newPage();
+    const bp = await torenPlayer.newPage();
+    await Promise.all([m.goto('/'), ap.goto('/'), bp.goto('/')]);
+    const table = await tableForFog(m, ap, bp, `Acessibilidade tela da mesa ${Date.now()}`);
+    campaignId = table.campaignId;
+    const fog = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapFog', { campaignId, mapId: table.mapId, groupVision: true });
+    expect(fog.ok(), await fog.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+
+    const tv = await master.newPage();
+    await tv.goto(tvRoute(campaignId));
+    await expect(tv.locator('app-fog-map img[src$="as=tv"]').first()).toBeVisible();
+
+    // The panel with the TV open and following the table.
+    const panel = await openTvPanel(m);
+    await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+    await expect(panel.getByTestId('tv-pin-combat').getByRole('radio')).toBeDisabled();
+    await expectScreenPasses(m, `Tela da mesa, o painel aberto ${where}`);
+
+    // Pinned to the waiting screen: the combat row stays dashed, with its reason.
+    await chooseRow(panel, 'tv-pin-idle');
+    await expect(panel.getByTestId('tv-now')).toContainText('A tela de espera, fixa.');
+    await expectScreenPasses(m, `Tela da mesa, a TV fixa na espera e a linha tracejada ${where}`);
+    await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, a tela de espera ${where}`);
+
+    // Following the table again: the map the group sees, with a roll beside it.
+    await chooseRow(panel, 'tv-mirror');
+    await rollForTableRPC(m, campaignId);
+    await expect(tv.locator('app-fog-map img[src$="as=tv"]').first()).toBeVisible();
+    await expect(tv.getByTestId('tv-roll-last')).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, o mapa e a rolagem ${where}`);
+
+    // The combat, drawn on the map.
+    await beginFogCombat(m, table);
+    await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, o combate no mapa ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await pensantusPlayer.close();
+    await torenPlayer.close();
+  }
+}
+
+test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-10'] }, async ({ browser }) => {
+  await scanTableScreen(browser, 'light', 1280);
+});
+
+test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-10'] }, async ({ browser }) => {
+  await scanTableScreen(browser, 'dark', 390);
 });

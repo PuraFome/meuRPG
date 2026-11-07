@@ -1,0 +1,261 @@
+import { expect } from '@playwright/test';
+import { test } from './diagnostics';
+
+import { beginFogCombat, tableForFog } from './fog-support';
+import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import {
+  addTvContent,
+  chooseRow,
+  closeTvPanel,
+  openTvPanel,
+  openTvTab,
+  putMapOnTable,
+  putSceneOnTable,
+  recordTraffic,
+  rollForTableRPC,
+  showImageRPC,
+  storageOf,
+  tableForTv,
+  tvButton,
+  tvRoute,
+  tvTitle,
+} from './table-screen-support';
+import { callRPC, newSignedInContext } from './support';
+
+// #648 "Tela da mesa": the master opens the TV tab from the live session and chooses what it shows; the TV is a tab signed in as the
+// master that reads only what every player may read (RN-10). Setup goes through the API; the control, the TV tab and the requests the TV
+// tab makes are what is under test.
+
+const TABLE_SCREEN = '/meurpg.play.v1.TableScreenService/';
+const GET_ME = '/meurpg.identity.v1.IdentityService/GetMe';
+
+test(
+  'o mestre abre a Tela da mesa pela barra da sessão: a TV espera, espelha o que ele mostra, fixa outro item, recusa o que não existe e guarda a escolha ao recarregar',
+  { tag: '@RN-10' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    let campaignId = '';
+    const master = await masterContext.newPage();
+    try {
+      const player = await playerContext.newPage();
+      await Promise.all([master.goto('/'), player.goto('/')]);
+      const table = await tableForTv(master, player, `Tela da mesa ${Date.now()}`);
+      campaignId = table.campaignId;
+      const content = await addTvContent(master, campaignId);
+      await openSessionPage(master, campaignId);
+
+      // The bar offers the panel; before any TV is open it says so and offers the link.
+      await expect(tvButton(master)).toContainText('Tela da mesa');
+      let panel = await openTvPanel(master);
+      await expect(panel.getByTestId('tv-state')).toContainText('Fechada');
+      await expect(panel.getByTestId('tv-closed')).toBeVisible();
+
+      // The link opens the TV in a new tab of the master's browser: idle, because nothing is on the table.
+      const tv = await openTvTab(masterContext, panel, campaignId);
+      await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+      await expect(tvTitle(tv)).toContainText('Sessão 1');
+      await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+      await expect(panel.getByTestId('tv-now')).toContainText('A tela de espera.');
+      await expect(panel.getByTestId('tv-mirror').getByRole('radio')).toBeChecked();
+
+      // Espelhar: the map the session has, then a roll for the table, the scene and the image, each over the one before.
+      await putMapOnTable(master, campaignId, content.mapId);
+      await expect(tvTitle(tv)).toHaveText('Estrada do Vale');
+      await expect(tv.getByRole('region', { name: 'Mapa Estrada do Vale' })).toBeVisible();
+      await rollForTableRPC(master, campaignId);
+      await expect(tv.getByTestId('tv-roll-last')).toContainText('1d20');
+
+      await putSceneOnTable(master, campaignId, content.sceneId);
+      await expect(tvTitle(tv)).toHaveText('A carroça tombada');
+      await expect(tv.getByText('Uma carroça de mercador tombada na estrada.')).toBeVisible();
+      await expect(tv.getByRole('region', { name: 'Mapa Estrada do Vale' })).toHaveCount(0);
+
+      await showImageRPC(master, campaignId, content.imageId);
+      await expect(tvTitle(tv)).toHaveText('Capitão Goblin');
+      await expect(tv.getByRole('img', { name: 'Capitão Goblin' })).toBeVisible();
+
+      // The panel reads the table when it opens (the master's page is behind it): opened again, it says what the TV shows now.
+      await closeTvPanel(master);
+      panel = await openTvPanel(master);
+      await expect(panel.getByTestId('tv-now')).toContainText('A imagem Capitão Goblin.');
+
+      // Fixar: the map, while the image and the scene are still on the table. The bar says it is pinned.
+      await chooseRow(panel, 'tv-pin-map');
+      await expect(tvTitle(tv)).toHaveText('Estrada do Vale');
+      await expect(tv.getByRole('img', { name: 'Capitão Goblin' })).toHaveCount(0);
+      await expect(panel.getByTestId('tv-now')).toContainText('O mapa Estrada do Vale, fixa.');
+      await expect(tvButton(master)).toContainText('Na TV: Mapa');
+      await expect(panel.getByTestId('tv-mirror').getByRole('radio')).not.toBeChecked();
+
+      // A pin with nothing behind it is dashed, says why, and cannot be chosen.
+      const combatRow = panel.getByTestId('tv-pin-combat');
+      await expect(combatRow).toContainText('Nenhum combate agora.');
+      await expect(combatRow.getByRole('radio')).toBeDisabled();
+      await expect(combatRow.locator('.row')).toHaveCSS('border-top-style', 'dashed');
+      await expect(panel.getByTestId('tv-pin-scene').getByRole('radio')).toBeEnabled();
+
+      // The choice is stored, not the tab's: the reloaded TV still shows the pinned map, not the image over it.
+      await tv.reload();
+      await expect(tvTitle(tv)).toHaveText('Estrada do Vale');
+      await expect(tv.getByRole('img', { name: 'Capitão Goblin' })).toHaveCount(0);
+      await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+
+      // The pinned image ends: the TV falls back to the waiting screen and says why, in the TV and in the panel.
+      await chooseRow(panel, 'tv-pin-image');
+      await expect(tvTitle(tv)).toHaveText('Capitão Goblin');
+      await showImageRPC(master, campaignId, '');
+      await expect(tv.getByTestId('tv-notice')).toContainText('A imagem saiu da mesa.');
+      await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+      await closeTvPanel(master);
+      panel = await openTvPanel(master);
+      await expect(panel.getByTestId('tv-notice')).toContainText('A imagem saiu da mesa.');
+
+      // Espelhar again follows the table: the scene is the first thing there.
+      await chooseRow(panel, 'tv-mirror');
+      await expect(tvTitle(tv)).toHaveText('A carroça tombada');
+      await expect(tv.getByTestId('tv-notice')).toHaveCount(0);
+    } finally {
+      await endOpenSessionRPC(master, campaignId);
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test('um jogador que abre a Tela da mesa vê a recusa, sem nada da mesa', { tag: '@RN-10' }, async ({ browser }) => {
+  const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+  let campaignId = '';
+  const master = await masterContext.newPage();
+  try {
+    const player = await playerContext.newPage();
+    await Promise.all([master.goto('/'), player.goto('/')]);
+    const table = await tableForTv(master, player, `Tela da mesa recusada ${Date.now()}`);
+    campaignId = table.campaignId;
+    const content = await addTvContent(master, campaignId);
+    await putMapOnTable(master, campaignId, content.mapId);
+
+    // The master sees the table; the player gets the card of the refusal and nothing of the campaign.
+    await player.goto(tvRoute(campaignId));
+    await expect(player.getByText('Só o mestre abre a Tela da mesa.')).toBeVisible();
+    await expect(player.getByText('Ela é a tela da sala; você joga pela sessão no seu aparelho.')).toBeVisible();
+    await expect(player.getByText('Estrada do Vale')).toHaveCount(0);
+    await expect(player.getByText('Pensantus')).toHaveCount(0);
+    const asked = await callRPC(player, 'meurpg.play.v1.TableScreenService/GetTableScreen', { campaignId });
+    expect(asked.status()).toBe(403);
+  } finally {
+    await endOpenSessionRPC(master, campaignId);
+    await masterContext.close();
+    await playerContext.close();
+  }
+});
+
+test(
+  'a aba da TV só fala com a Tela da mesa: nenhuma chamada aos dados da sessão do mestre, e os ladrilhos de mapa são os da TV',
+  { tag: '@RN-10' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const pensantusContext = await newSignedInContext(browser, 'Jogador Teste');
+    const torenContext = await newSignedInContext(browser, 'E-mail Não Verificado');
+    let campaignId = '';
+    const master = await masterContext.newPage();
+    try {
+      const pensantusPage = await pensantusContext.newPage();
+      const torenPage = await torenContext.newPage();
+      await Promise.all([master.goto('/'), pensantusPage.goto('/'), torenPage.goto('/')]);
+      const table = await tableForFog(master, pensantusPage, torenPage, `Tela da mesa rede ${Date.now()}`);
+      campaignId = table.campaignId;
+      // With the fog on, the TV draws only what the group sees: "Visão do grupo" on.
+      const fog = await callRPC(master, 'meurpg.maps.v1.MapService/SetMapFog', { campaignId, mapId: table.mapId, groupVision: true });
+      expect(fog.ok(), await fog.text()).toBeTruthy();
+
+      // The TV tab is recorded from its first request, through a map, a roll and a combat on that map.
+      const tv = await masterContext.newPage();
+      const traffic = recordTraffic(tv);
+      await tv.goto(tvRoute(campaignId));
+      const tiles = tv.locator('app-fog-map img[src$="as=tv"]');
+      await expect(tiles.first()).toBeVisible();
+      await rollForTableRPC(master, campaignId);
+      await expect(tv.getByTestId('tv-roll-last')).toBeVisible();
+      await beginFogCombat(master, table);
+      await expect(tvTitle(tv)).toContainText('Combate');
+      await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+      await expect(tv.getByText('Rodada 1')).toBeVisible();
+      await expect(tiles.first()).toBeVisible();
+
+      const procedures = traffic.procedures();
+      // The positive control: the recorder saw the TV's own calls.
+      expect(procedures, 'the recorder did not see the TV read the table screen').toContain(`${TABLE_SCREEN}GetTableScreen`);
+      expect(procedures, 'the recorder did not see the TV open its stream').toContain(`${TABLE_SCREEN}WatchTableScreen`);
+
+      // The master's own session data, one by one so the failure names the call.
+      for (const forbidden of ['GetLiveSession', 'GetEncounter', 'ListCombatLog', 'ListOpenGameSessions']) {
+        const calls = procedures.filter((path) => path.endsWith(`/${forbidden}`));
+        expect(calls, `the TV tab called ${forbidden}, a read of the master's session`).toEqual([]);
+      }
+      // Anything else outside TableScreenService (and GetMe, for the route's guard).
+      const outside = [...new Set(procedures.filter((path) => !path.startsWith(TABLE_SCREEN) && path !== GET_ME))];
+      expect(outside, `the TV tab called procedures outside TableScreenService: ${outside.join(', ')}`).toEqual([]);
+
+      // The images: tiles of the TV, never the map's picture or a tile of the master's own view.
+      const pictures = traffic.images().filter((path) => path.startsWith('/maps/') || path.startsWith('/images/'));
+      expect(pictures.length, 'the TV drew no map tile').toBeGreaterThan(0);
+      const notTv = pictures.filter((path) => !/\/tiles\//.test(path) || !path.endsWith('as=tv'));
+      expect(notTv, `the TV tab asked for images that are not map tiles of the TV: ${notTv.join(', ')}`).toEqual([]);
+    } finally {
+      await endOpenSessionRPC(master, campaignId);
+      await masterContext.close();
+      await pensantusContext.close();
+      await torenContext.close();
+    }
+  },
+);
+
+test(
+  '"Copiar o link" põe só o endereço da Tela da mesa na área de transferência, sem consulta nem chave, e o painel não grava nada no navegador',
+  { tag: '@RN-10' },
+  async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste', { permissions: ['clipboard-read', 'clipboard-write'] });
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    let campaignId = '';
+    const master = await masterContext.newPage();
+    try {
+      const player = await playerContext.newPage();
+      await Promise.all([master.goto('/'), player.goto('/')]);
+      const table = await tableForTv(master, player, `Tela da mesa link ${Date.now()}`);
+      campaignId = table.campaignId;
+      await openSessionPage(master, campaignId);
+      const tv = await masterContext.newPage();
+      await tv.goto(tvRoute(campaignId));
+      await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+
+      // Everything the browser keeps for the app before the panel is opened.
+      const before = await storageOf(master);
+
+      const panel = await openTvPanel(master);
+      await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+      await chooseRow(panel, 'tv-pin-idle');
+      await expect(panel.getByTestId('tv-now')).toContainText('A tela de espera, fixa.');
+      await chooseRow(panel, 'tv-mirror');
+      await expect(panel.getByTestId('tv-now')).toContainText('A tela de espera.');
+      await panel.locator('.js-copy').click();
+      await expect(panel.locator('.js-copy')).toContainText('Link copiado');
+
+      const origin = new URL(master.url()).origin;
+      const copied = await master.evaluate(() => navigator.clipboard.readText());
+      expect(copied).toBe(`${origin}${tvRoute(campaignId)}`);
+      const url = new URL(copied);
+      expect(url.search).toBe('');
+      expect(url.hash).toBe('');
+      expect(url.username + url.password).toBe('');
+
+      // The panel kept nothing: no choice, no link, no token in either store.
+      expect(await storageOf(master)).toBe(before);
+    } finally {
+      await endOpenSessionRPC(master, campaignId);
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
