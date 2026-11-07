@@ -9,6 +9,11 @@ import {
   draftToEffect,
   effectToDraft,
   emptyEffect,
+  choiceRef,
+  choicesBefore,
+  featChoices,
+  formulaInsertions,
+  missingChoices,
   missingRequired,
   rangeFeet,
   unreadableRange,
@@ -629,5 +634,121 @@ describe('breathes_water: no field of its own', () => {
       textPt: 'Respira na água.',
     });
     expect(missingRequired(emptyEffect('breathes_water'), m)).toEqual([]);
+  });
+});
+
+describe('the named choices of a feat', () => {
+  const pick = (choice: string, name: string): EffectDraft => ({
+    ...emptyEffect('choice'),
+    choice,
+    name,
+    count: 1,
+  });
+  const mod = (over: Partial<EffectDraft>): EffectDraft => ({
+    ...emptyEffect('modifier'),
+    ...over,
+  });
+
+  it('numbers two choices of one kind and leaves a lone one plain', () => {
+    const effects = [pick('ability', 'a'), pick('damage_type', 't'), mod({}), pick('ability', 'b')];
+    expect(featChoices(effects).map((c) => [c.name, c.label, c.number, c.index])).toEqual([
+      ['a', 'Habilidade (1ª)', 1, 0],
+      ['t', 'Tipo de dano', 1, 1],
+      ['b', 'Habilidade (2ª)', 2, 3],
+    ]);
+    const types = featChoices([pick('damage_type', 'x'), pick('damage_type', 'y')]);
+    expect(types.map((c) => c.label)).toEqual(['Tipo de dano (1º)', 'Tipo de dano (2º)']);
+  });
+
+  it('skips a choice with no name, of another kind or of another type', () => {
+    const effects = [
+      pick('ability', ''),
+      pick('skill', 'x'),
+      { ...pick('ability', 'y'), type: 'note' },
+    ];
+    expect(featChoices(effects)).toEqual([]);
+  });
+
+  it('offers only the earlier choices of the field own kind', () => {
+    const effects = [
+      pick('ability', 'a'),
+      pick('damage_type', 't'),
+      mod({}),
+      pick('ability', 'later'),
+    ];
+    expect(choicesBefore(effects, 2, 'ability').map((c) => c.name)).toEqual(['a']);
+    expect(choicesBefore(effects, 2, 'damage_type').map((c) => c.name)).toEqual(['t']);
+    expect(choicesBefore(effects, 0, 'ability')).toEqual([]);
+  });
+
+  it('writes the reference and the formula insertions of the abilities', () => {
+    const [a, b] = featChoices([
+      pick('ability', 'a'),
+      pick('ability', 'b'),
+      pick('damage_type', 't'),
+    ]);
+    expect(choiceRef(a)).toBe('@a');
+    expect(
+      formulaInsertions(featChoices([pick('ability', 'a'), pick('damage_type', 't')])),
+    ).toEqual([
+      { text: 'mod("@a")', label: 'Modificador · Habilidade' },
+      { text: 'score("@a")', label: 'Valor · Habilidade' },
+    ]);
+    expect(formulaInsertions([a, b]).map((i) => i.label)).toEqual([
+      'Modificador · Habilidade (1ª)',
+      'Valor · Habilidade (1ª)',
+      'Modificador · Habilidade (2ª)',
+      'Valor · Habilidade (2ª)',
+    ]);
+  });
+
+  it('finds a field that points at a missing or later choice, plain and in a formula', () => {
+    const effects = [
+      mod({ target: 'score.@gone', value: '1' }),
+      pick('ability', 'a'),
+      mod({ proficiency: 'save.@a', value: 'mod("@gone") + 1' }),
+      mod({ damageTypes: ['damage-type:@later'] }),
+      pick('damage_type', 'later'),
+    ];
+    expect(missingChoices(effects)).toEqual([
+      { index: 0, path: 'table_feat.effects[0].target', name: 'gone' },
+      { index: 2, path: 'table_feat.effects[2].value', name: 'gone' },
+      { index: 3, path: 'table_feat.effects[3].damage_types', name: 'later' },
+    ]);
+    expect(missingChoices([pick('ability', 'a'), mod({ value: 'score("@a")' })])).toEqual([]);
+  });
+
+  it('ignores a field the effect type does not read when the menu is given', () => {
+    const stale = { ...emptyEffect('choice'), choice: 'skill', damageType: 'damage-type:@old' };
+    expect(missingChoices([stale])).toHaveLength(1);
+    expect(missingChoices([stale], menu())).toEqual([]);
+  });
+
+  it('forces "Quantos" to 1 for a named choice', () => {
+    const named = { ...pick('ability', 'a'), count: 3 };
+    expect(draftToEffect(named, menu()).count).toBe(1);
+    expect(draftToEffect({ ...named, name: '' }, menu()).count).toBe(3);
+  });
+
+  it('round-trips a named choice and the references of the effects after it', () => {
+    const stored = [
+      create(TableEffectSchema, {
+        type: 'choice',
+        choice: 'ability',
+        count: 1,
+        name: 'habilidade',
+      }),
+      create(TableEffectSchema, {
+        type: 'modifier',
+        target: 'score.@habilidade',
+        mode: 'add',
+        value: 'mod("@habilidade")',
+        cap: 20,
+      }),
+    ];
+    const back = stored.map((e) => draftToEffect(effectToDraft(e), menu()));
+    expect(back[0]).toEqual({ type: 'choice', choice: 'ability', count: 1, name: 'habilidade' });
+    expect(back[1]).toMatchObject({ target: 'score.@habilidade', value: 'mod("@habilidade")' });
+    expect(missingChoices(stored.map(effectToDraft))).toEqual([]);
   });
 });
