@@ -2934,6 +2934,23 @@ message Combatant {
   // The turn's free object interaction is spent (the first weapon drawn or stowed in the turn; SRD 5.1, "Other Activity on
   // Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
   bool object_interaction_used = 113;
+
+  // Only the master (RN-20, RN-29): the combatant stands in sunlight now. It is the fact the rolls read: the switch is on,
+  // and the combatant is in the whole map's sun or in a sunlit square, and not in magical Darkness. A player's copy has
+  // the zero value.
+  bool in_sunlight = 117;
+  // Only the master: the sunlight trait its stat block has (a creature that has the trait is marked whether or not the
+  // sun is on it now; a player's character is not read). A player's copy has the zero value.
+  SunlightTrait sunlight_trait = 118;
+}
+
+// The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
+enum SunlightTrait {
+  SUNLIGHT_TRAIT_NONE = 0;
+  // Sunlight Sensitivity: disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight.
+  SUNLIGHT_TRAIT_SENSITIVITY = 1;
+  // Sunlight Weakness: disadvantage on attack rolls, ability checks and saving throws.
+  SUNLIGHT_TRAIT_WEAKNESS = 2;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.

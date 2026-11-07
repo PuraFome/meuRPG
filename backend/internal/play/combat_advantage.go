@@ -461,6 +461,9 @@ func (c textContext) conditionSentence(key, effect string) string {
 
 // sentence writes a source in Portuguese: an attack roll's here, the others in otherSentence.
 func (c textContext) sentence(src combat.Source) string {
+	if text, ok := sunlightSentence(src); ok {
+		return text
+	}
 	if text, ok := c.attackerSentence(src); ok {
 		return text
 	}
@@ -471,6 +474,60 @@ func (c textContext) sentence(src combat.Source) string {
 		return text
 	}
 	return c.otherSentence(src)
+}
+
+// The sunlight's sources are the master's (RN-20, RN-29): the sentence names the sun and the trait that makes it
+// count, and a player is never given it (hidesSunlight).
+const (
+	sunlightSensitivityName = "Sensibilidade à Luz do Sol"
+	sunlightWeaknessName    = "Fraqueza à Luz do Sol"
+)
+
+// sunlightSentence writes a sunlight source, false for any other kind.
+func sunlightSentence(src combat.Source) (string, bool) {
+	trait := sunlightSensitivityName
+	if src.Condition == combat.TraitSunlightWeakness {
+		trait = sunlightWeaknessName
+	}
+	switch src.Kind {
+	case combat.SourceSunlightAttack, combat.SourceSunlightSave:
+		return fmt.Sprintf("Luz do sol (%s)", trait), true
+	case combat.SourceSunlightPerception:
+		if src.Condition == combat.TraitSunlightWeakness {
+			return fmt.Sprintf("Luz do sol (%s)", trait), true
+		}
+		return fmt.Sprintf("Luz do sol, nos testes que dependem da visão (%s)", trait), true
+	}
+	return "", false
+}
+
+// isSunlight says the source is one of the sun's.
+func isSunlight(src combat.Source) bool {
+	switch src.Kind {
+	case combat.SourceSunlightAttack, combat.SourceSunlightPerception, combat.SourceSunlightSave:
+		return true
+	}
+	return false
+}
+
+// hidesSunlight is the hide of whoever is not the master: the sun and the trait behind it are the master's, so a
+// player reads "Outra fonte" for them, on their own roll too.
+func hidesSunlight(src combat.Source) bool { return isSunlight(src) }
+
+// hideUnlessMaster is hidesSunlight for a viewer: nil for the master, who reads everything.
+func hideUnlessMaster(master bool) func(combat.Source) bool {
+	if master {
+		return nil
+	}
+	return hidesSunlight
+}
+
+// orHide is a hide that holds when either does; a nil hide hides nothing.
+func orHide(a, b func(combat.Source) bool) func(combat.Source) bool {
+	if a == nil {
+		return b
+	}
+	return func(src combat.Source) bool { return a(src) || b(src) }
 }
 
 // attackerSentence writes a source that comes from the one who attacks.
@@ -552,10 +609,6 @@ var staticSentences = map[string]string{
 	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
 	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
 	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
-	// The sunlight's sources are the master's: sourceProto turns each into "Outra fonte" for a player.
-	combat.SourceSunlightAttack:     "Sob a luz do sol: desvantagem nas jogadas de ataque",
-	combat.SourceSunlightPerception: "Sob a luz do sol: desvantagem no teste",
-	combat.SourceSunlightSave:       "Sob a luz do sol: desvantagem nos testes de resistência",
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
@@ -857,7 +910,7 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 
 // shownSources writes the sources of a saving throw or an ability check.
 func shownSources(sources []combat.Source, names func(string) string) []*playv1.AdvantageSource {
-	return shownSourcesHiding(sources, names, nil)
+	return shownSourcesHiding(sources, names, hidesSunlight)
 }
 
 // shownSourcesHiding is shownSources with the sources of an effect the master hides turned

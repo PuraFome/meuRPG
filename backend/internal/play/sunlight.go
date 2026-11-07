@@ -3,6 +3,10 @@ package play
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -56,18 +60,30 @@ func (s *Service) sunlightOf(ctx context.Context, q *playdb.Queries, enc playdb.
 	if !enc.SunlightOn {
 		return sunlight{}, nil
 	}
+	var zs []*zone
+	if !isTheatre(enc) {
+		var err error
+		if zs, err = readZonesOf(ctx, q, enc.ID); err != nil {
+			return sunlight{}, err
+		}
+	}
+	return sunlightFrom(enc, zs), nil
+}
+
+// sunlightFrom is the sunlight of a combat from its row and the zones it keeps: the pure part of sunlightOf, which
+// the master's view of the combat reads from the data it already has.
+func sunlightFrom(enc playdb.Encounter, zones []*zone) sunlight {
+	if !enc.SunlightOn {
+		return sunlight{}
+	}
 	out := sunlight{on: true}
 	if isTheatre(enc) {
-		return out, nil
+		return out
 	}
 	if enc.SunlightScope == sunScopeSquares {
 		out.squaresOnly, out.squares = true, squareSet(squaresOfJSON(enc.SunlightSquares))
 	}
-	zs, err := readZonesOf(ctx, q, enc.ID)
-	if err != nil {
-		return sunlight{}, err
-	}
-	for _, z := range zs {
+	for _, z := range zones {
 		if z.def.sight != sightDark {
 			continue
 		}
@@ -78,7 +94,24 @@ func (s *Service) sunlightOf(ctx context.Context, q *playdb.Queries, enc playdb.
 			out.dark[sq] = true
 		}
 	}
-	return out, nil
+	return out
+}
+
+// sunTraitOf is the sunlight trait the stat block of a monster has, none for a key that is not one.
+func sunTraitOf(content *rules.Content, monsterKey string) playv1.SunlightTrait {
+	d, ok := content.MonsterDerived(monsterKey)
+	if !ok {
+		return playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE
+	}
+	for _, f := range d.Features {
+		switch {
+		case strings.HasSuffix(f.Key, "#sunlight-weakness"):
+			return playv1.SunlightTrait_SUNLIGHT_TRAIT_WEAKNESS
+		case strings.HasSuffix(f.Key, "#sunlight-sensitivity"):
+			return playv1.SunlightTrait_SUNLIGHT_TRAIT_SENSITIVITY
+		}
+	}
+	return playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE
 }
 
 // sunlightRead reads the sunlight of the combat the encounter id names (for a caller with no encounter row).

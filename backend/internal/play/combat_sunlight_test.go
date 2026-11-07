@@ -17,7 +17,7 @@ const (
 	drowKey = "monster:drow"
 	drow    = "Drow"
 	// sunSentence is what the master reads of the sunlight behind a roll.
-	sunSentence = "Sob a luz do sol: desvantagem nas jogadas de ataque"
+	sunSentence = "Luz do sol (Sensibilidade à Luz do Sol)"
 )
 
 func sunSq(col, row int32) *playv1.SunlightSquare { return &playv1.SunlightSquare{Col: col, Row: row} }

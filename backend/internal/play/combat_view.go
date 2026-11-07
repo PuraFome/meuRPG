@@ -385,6 +385,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 		byCombatant: statesOf(d.states),
 		// Players in the same joint turn read each other's economy: they act
 		// together and say what each still has. A player outside the group does not.
+		sun:    sunlightFrom(d.enc, d.zones),
 		shared: !v.master && slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return v.owns(c) && inTurn(d.enc, c) }),
 	}
 	for _, c := range d.cs {
@@ -433,6 +434,8 @@ type combatantReader struct {
 	ties        map[string]bool
 	byCombatant map[string][]playdb.CombatantState
 	shared      bool
+	// sun is the combat's sunlight, as the rolls read it: the master's copy says who stands in it.
+	sun sunlight
 }
 
 // read builds the copy of a combatant the viewer sees.
@@ -473,6 +476,7 @@ func (r combatantReader) masterView(p *playv1.Combatant, c playdb.Combatant) {
 	if c.Kind == kindNPC && npc.parry {
 		p.ParryAsk = new(parryAsks(c))
 	}
+	p.InSunlight, p.SunlightTrait = r.sun.lit(c), npc.sunTrait // the master's alone (RN-20, RN-29)
 }
 
 // deathSaveGoal is how many death save successes make a character stable, and how many
@@ -786,6 +790,8 @@ type masterNPC struct {
 	persistent bool
 	// parry says its stat block has a Parry that adds to the armor class (the master reads its mode).
 	parry bool
+	// sunTrait is the sunlight trait its stat block has (the master's copy of the combatant marks it).
+	sunTrait playv1.SunlightTrait
 }
 
 // npcDetails reads the portrait URL of each NPC in the combat and, for a monster, its

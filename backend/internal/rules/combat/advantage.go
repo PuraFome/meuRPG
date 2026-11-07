@@ -82,6 +82,7 @@ const (
 	// disadvantage on its attack rolls (both traits), on the checks the sunlight spoils (the
 	// Sensitivity's Wisdom (Perception) checks that rely on sight; every ability check for the
 	// Weakness) and, for the Weakness, on saving throws.
+	// Source.Condition of these sources is the trait that causes it (a TraitSunlight* constant).
 	SourceSunlightAttack     = "sunlight_attack"
 	SourceSunlightPerception = "sunlight_perception"
 	SourceSunlightSave       = "sunlight_save"
@@ -111,6 +112,12 @@ type TaggedSave struct {
 	// Disadvantage says the trait gives disadvantage instead of advantage (a table's roll mode).
 	Disadvantage bool
 }
+
+// The traits that cause the sunlight sources: the Condition of a SourceSunlight* source.
+const (
+	TraitSunlightSensitivity = "sunlight_sensitivity"
+	TraitSunlightWeakness    = "sunlight_weakness"
+)
 
 // The condition keys and numbers the rules read.
 const (
@@ -280,6 +287,15 @@ type Creature struct {
 // sunlightSpoils says the creature is in sunlight and has a trait that spoils its attack rolls there.
 func (c Creature) sunlightSpoils() bool {
 	return c.Sunlit && (c.SunlightSensitivity || c.SunlightWeakness)
+}
+
+// sunlightTrait is the trait that makes the sun spoil the creature's rolls: the Weakness when it has both, since it
+// spoils more.
+func (c Creature) sunlightTrait() string {
+	if c.SunlightWeakness {
+		return TraitSunlightWeakness
+	}
+	return TraitSunlightSensitivity
 }
 
 // Has says whether it carries a condition.
@@ -506,7 +522,7 @@ func sceneRules(s AttackScene) []sourceRule {
 		{s.AttackerUnseen && !s.Attacker.Has(conditionInvisible), SourceUnseenAttacker, ModeAdvantage, ""},
 		{s.TargetUnseen && !s.Target.Has(conditionInvisible), SourceUnseenTarget, ModeDisadvantage, ""},
 		{s.Helped, SourceHelp, ModeAdvantage, ""},
-		{s.Attacker.sunlightSpoils(), SourceSunlightAttack, ModeDisadvantage, ""},
+		{s.Attacker.sunlightSpoils(), SourceSunlightAttack, ModeDisadvantage, s.Attacker.sunlightTrait()},
 		{s.Attacker.ArmorUntrained && s.StrengthOrDexterityWeapon, SourceArmorUntrained, ModeDisadvantage, ""},
 	}
 }
@@ -606,7 +622,7 @@ func saveRules(s SaveScene) []sourceRule {
 		{slices.Contains(c.SaveAdvantage, s.Ability), SourceEffectSave, ModeAdvantage, ""},
 		{slices.Contains(c.SaveDisadvantage, s.Ability), SourceEffectSave, ModeDisadvantage, ""},
 		{c.Exhaustion >= exhaustionAttackLevel, SourceExhaustionSave, ModeDisadvantage, ""},
-		{c.Sunlit && c.SunlightWeakness, SourceSunlightSave, ModeDisadvantage, ""},
+		{c.Sunlit && c.SunlightWeakness, SourceSunlightSave, ModeDisadvantage, TraitSunlightWeakness},
 	}
 }
 
@@ -650,7 +666,7 @@ func checkRules(s SaveScene) []sourceRule {
 		{s.StealthArmor && s.Ability == dexterityAbility, SourceStealthArmor, ModeDisadvantage, ""},
 		{c.Has(conditionPoisoned), SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned},
 		{c.Has(conditionFrightened), SourceFrightenedCheck, ModeDisadvantage, conditionFrightened},
-		{c.Sunlit && (c.SunlightWeakness || c.SunlightSensitivity && s.Perception), SourceSunlightPerception, ModeDisadvantage, ""},
+		{c.Sunlit && (c.SunlightWeakness || c.SunlightSensitivity && s.Perception), SourceSunlightPerception, ModeDisadvantage, c.sunlightTrait()},
 	}
 }
 
