@@ -126,6 +126,39 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The preview line also carries CA, PV and speed.
   It adds "Resistências e imunidades" with the table's lines and the base's.
   The read view lists the rows.
+- **The summon block** (`shared/summon-block`, `core/content/summon-draft`, `summon-options`, `summon-names`) is "Invoca criaturas" on a feature's card.
+  `app-feature-editor` draws it behind `allowSummon`, which is on for a class, subclass, race, subrace, background and class-feature entry, and off for an option and a feat.
+  The draft keeps the formula and the most at a time as typed and the stored message in `base`, so the role, the cost, the count per slot level and a field this build does not know go back as loaded.
+  The creatures are chips with a search (`app-creature-pick`): "Da mesa" for a table creature and "· SRD" for the SRD's.
+  The cost is one of the feature's own `resource` effects, and with none the block says so and `summonBlockedPaths` stops the save only while no resource key is chosen (a key the feature does not define is the class's, shown as "(da classe)" and left to the server).
+  Time and duration are selects of presets, and a stored value they do not list is one more option.
+  Concentration is off until the duration is by time.
+  The summon follows the feature's resource by the row id of its effect (`followResource`), so a rename, a name cleared and typed again, or a second resource does not lose it.
+  Switching the block off and on again re-reads the resources (`restoredSummon`).
+  Turning the switch off sends no summon.
+  A refusal at `<feature>.summon.*` sits under its own field (`content-violation-texts-summon.ts`), and one at `count_per_slot_level` or `role` lands on the switch.
+  The preview and the read view add "Invoca: Lobo." from `summonLine`, with SRD names remembered from the bestiary (`summon-names.ts`).
+- **The spell's "Invocar"** (`core/content/spell-summon`, `pages/content/spell-editor/spell-summon`) is the fifth mechanic of the spell editor.
+  It edits `TableSpell.summon` with the same chips, search and radio cards as the block above.
+  The draft keeps the summon in `SpellDraft.summon` and sends it only while "Invocar" is chosen.
+  Leaving it drops the summon like the other mechanics, and a stored spell with a summon opens on "Invocar".
+  `draftToSpellSummon` clones the stored message, so the role and any field this build does not know go back as loaded.
+  It never sends a resource, a cost, a time, a duration or a concentration, which the server refuses on a spell.
+  Choosing "Invocar" selects the target "Só quem conjura" and the range "Pessoal", and never changes the level or the ritual.
+  Leaving it gives the old target and range back while they are still the caster's (`beforeSummon`).
+  `summonRefusals` says before the save what the server refuses, on the field the master changes.
+  Those are a cantrip, a ritual, a target other than the caster, a stored zone, and a stored effect that is for those who fail a save or are hit or that has an instantaneous duration.
+  "Salvar magia" stops and lands on the first of them.
+  A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).
+  The preview and the read view add "Invoca: Lobo do Vale, Lobo." from `summonLine`.
+- **A table creature on the player's side** is known by the `@mesa` end of its key (`isTableCreature` in `core/creatures/creature-format`), because the server sends no flag for it.
+  The summon sheet's list (`rowsOf`, `ChoiceRow.table`) puts the table's creature first and tags the row "Da mesa" (`app-table-mark`) with "Os números vêm da sua ficha quando ele chega." in place of the line of numbers.
+  A book creature in the same list has the row of a beast: size, ND, speed, CA, PV and its attack.
+  The sheet's header is the feature's name and, under it, "<classe> <nível> · 1 ação · gasta 1 uso (resta N)" (`GetSummonOptions.granted_by_label_pt`, `subtitleOf`).
+  A dialog with a short list is as tall as the list.
+  The creature's page tags it "Da mesa" beside its origin and is compact (`pages/character-sheet/creature-page`): CA, PV and speed, the actions, the traits and last "Os números vêm da ficha de <dono> quando ele chegou" (`tableCreatureNote`), with "do dono" when the sheet has no name.
+  It reads `GetCreature` with the creature's id, so the numbers, the attacks and the damage are the ones worked out for the owner when the creature arrived, not the entry's static ones.
+  The list names only the creatures `GetSummonOptions` returns, which leave out the archived and the switched-off ones.
 - **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
   It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
   The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".

@@ -2073,3 +2073,17 @@ UPDATE game_sessions
 SET tv_mirror = sqlc.arg(tv_mirror), tv_pin = sqlc.arg(tv_pin), tv_choice_revision = tv_choice_revision + 1
 WHERE id = sqlc.arg(id)
 RETURNING *;
+
+-- name: LockSessionForHints :one
+-- The first statement of Service.tx: it takes the session's row lock until the transaction ends, so the writes of one
+-- session take turns in the same order (GetOpenGameSessionForUpdate takes the same lock).
+SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE;
+
+-- name: BumpHintSeq :one
+-- A write that told the live streams something adds 1 to the session's number, in the same transaction as the write
+-- (Service.tx), which holds the row's lock already (LockSessionForHints).
+UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1 RETURNING hint_seq;
+
+-- name: GetHintSeq :one
+-- The session's number now: a read of one row by its primary key.
+SELECT hint_seq FROM game_sessions WHERE id = $1;
