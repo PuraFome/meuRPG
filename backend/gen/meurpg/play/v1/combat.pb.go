@@ -6716,7 +6716,8 @@ type LimitedAction struct {
 	UsesLeft    int32 `protobuf:"varint,8,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
 	// Whether the creature keeps what it spent of this action after the combat: a persistent
 	// NPC's action with uses a day or after a rest. A Recharge action, a one-fight monster and a
-	// creature never keep it. The master's and the controller's copy alone.
+	// creature never keep it. It belongs to a persistent NPC, so only the master reads it: a
+	// creature a player controls never carries it (false in the controller's copy).
 	Kept          bool `protobuf:"varint,9,opt,name=kept,proto3" json:"kept,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

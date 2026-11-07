@@ -77,6 +77,12 @@
   font-size: var(--mr-font-16);
 }
 
+.act__usage {
+  // On its own line under the name (board 556-02), after the state and the uses, which stay beside the name.
+  order: 3;
+  flex-basis: 100%;
+}
+
 .act__usage,
 .act__note,
 .act__why,
@@ -294,6 +300,8 @@
   }
 }
 
+// The live region stays in the accessibility tree while idle (`display: none` would drop it, and its text would not be
+// announced when it arrives): empty, it takes no room.
 .acts__live:empty {
-  display: none;
+  position: absolute;
 }

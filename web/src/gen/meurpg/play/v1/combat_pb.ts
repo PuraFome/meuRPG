@@ -2303,7 +2303,8 @@ export type LimitedAction = Message<"meurpg.play.v1.LimitedAction"> & {
   /**
    * Whether the creature keeps what it spent of this action after the combat: a persistent
    * NPC's action with uses a day or after a rest. A Recharge action, a one-fight monster and a
-   * creature never keep it. The master's and the controller's copy alone.
+   * creature never keep it. It belongs to a persistent NPC, so only the master reads it: a
+   * creature a player controls never carries it (false in the controller's copy).
    *
    * @generated from field: bool kept = 9;
    */

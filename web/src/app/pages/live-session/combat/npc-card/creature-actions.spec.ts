@@ -427,6 +427,15 @@ describe('CreatureActions: reading the stat block', () => {
     expect(live?.textContent).toContain('Lendo a ficha da criatura…');
   });
 
+  it('keeps the idle live region in the accessibility tree: its box is not display none', async () => {
+    const { root } = await opened('ready');
+    const live = root.querySelector('.acts__live');
+    expect(live).not.toBeNull();
+    expect(live?.textContent?.trim()).toBe('');
+    expect(getComputedStyle(live as Element).display).not.toBe('none');
+    expect(getComputedStyle(live as Element).visibility).not.toBe('hidden');
+  });
+
   it('keeps the focus on the section heading when "Tentar de novo" swaps the button for the skeleton', async () => {
     const { fixture, root } = await opened('failed');
     const retried: number[] = [];

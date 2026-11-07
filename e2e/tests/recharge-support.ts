@@ -35,6 +35,7 @@ export async function shoot(page: Page, screen: string, width: number, colorSche
   await page.setViewportSize(viewportOf(width));
   if (at) {
     await at.evaluate((el) => {
+      el.style.scrollMarginTop = '140px'; // clear the sticky header of the page
       el.scrollIntoView({ block: el.getBoundingClientRect().height < innerHeight * 0.8 ? 'center' : 'start' });
     });
   } else {

@@ -9896,8 +9896,8 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
       const screech = acts.locator('li.act').filter({ hasText: 'Guincho atordoante' });
       await expect(screech.getByText('0 de 1')).toBeVisible();
       await expect(screech.getByText(`Sem usos hoje. O ${fight.label} tem de novo no próximo combate.`)).toBeVisible();
-      // Scrolled to the state it is named for: the whole row, its uses and its reason, in view.
-      await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => screech);
+      // Scrolled to the state it is named for: the list from the card's first header to the whole row, its uses and its reason.
+      await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => acts.locator('.acts__list'));
     });
   });
   test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: os limites na linha da ordem e a jogadora que não os lê, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
