@@ -38,6 +38,10 @@ type read struct {
 	// once marks a read that depends on whose turn it is: it is asked before the stream
 	// test's changes (the turn passes then), not again after them.
 	once bool
+	// asTV marks a read whose answer to the master is what the TV at the table shows: it is inspected
+	// as the reader of the TV (tvReader), who reads what every player reads and nothing of what only one
+	// does, and the master's own reads are its positive control (checkCanariesAreReachable).
+	asTV bool
 }
 
 // request is the request person p sends.
@@ -121,6 +125,13 @@ func (w *world) runRead(t *testing.T, r read, got *answers) {
 		t.Errorf("the master's call failed: HTTP %d %s", mr.status, mr.body)
 	}
 	got.keep(w.master, mr)
+	if r.asTV && mr.ok() {
+		tv := w.tvReader()
+		got.keep(tv, mr)
+		for _, f := range w.inspect(tv, mr, r.ignore) {
+			t.Errorf("the TV: %s\n\tanswer: %s", f, shorten(mr.body))
+		}
+	}
 
 	allowed := r.allow(w)
 	for _, p := range w.players() {
@@ -182,12 +193,14 @@ func TestLeakMatrix(t *testing.T) {
 	t.Run("images and tiles", func(t *testing.T) { checkImagesAndTiles(t, w) })
 	t.Run("the audio of the lines", func(t *testing.T) { checkLineAudio(t, w) })
 	t.Run("calls that are not reads", func(t *testing.T) { checkNotReads(t, w, got) })
+	t.Run("the table screen", func(t *testing.T) { checkTableScreen(t, w, got) })
 	t.Run("stream", func(t *testing.T) { checkStream(t, w, got) })
 	// The stream test ended the combat and the session: what only exists then.
 	for _, r := range readsAfterTheSession {
 		t.Run("after the session "+r.name(), func(t *testing.T) { w.runRead(t, r, got) })
 	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })
+	t.Run("the TV's controls", func(t *testing.T) { checkTVCarries(t, w, got) })
 }
 
 // ownCharacter is the character that belongs to p: Ana's, Caio's or the pending member's

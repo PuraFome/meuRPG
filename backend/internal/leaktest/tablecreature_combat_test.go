@@ -123,6 +123,7 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 				return &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}
 			},
 		},
+		tvScreenRead, // what the TV shows of a combat with a table creature the master archived (RN-23)
 		{
 			procedure: playv1connect.CombatServiceGetTurnOptionsProcedure, label: "the table creature", allow: onlyAna, why: "the creature's options are its owner's and the master's",
 			req: func(w *world) proto.Message {

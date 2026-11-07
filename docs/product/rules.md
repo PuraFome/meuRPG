@@ -306,6 +306,27 @@ The master may open a hidden scene point; the scene reaches the players and the 
 **Reserved characters** ([MR-049](stories.md#mr-049-reserved-characters-and-claim-links)).
 No player reads a character the master made for a player to claim until someone claims it: not in lists, by ID, in the party, the combat, the map, the XP or the session summary. The person with the link, once signed in, sees only name, race, class, level, who sent it and the campaign's name.
 
+**The table screen** (the TV at the table).
+The master opens it on a screen the whole table sees, and it reads as a player with no character: what every player may read, and nothing that only one of them does.
+The master chooses to follow what the table sees or to pin one item, and the server decides what shows.
+What goes to the TV:
+
+| Part | The TV receives | The TV never receives |
+| --- | --- | --- |
+| Mapa | The map as the group sees it: revealed points, visible tokens and the squares the group sees or remembers. With the fog on and "Visão do grupo" off, only that the map is hidden by the fog | The map's image on a fog map, hidden points, traps, treasures, light, unseen cells, a token no character sees |
+| Ordem e vez | The combatants the table sees with name, initial and one word of state (RN-20), whose turn it is, and "Vez do mestre" when the turn is a combatant the table does not see | Hit points, armor class, initiative, conditions, a hidden NPC, an NPC unseen on a fog map |
+| Combate e Último no combate | The round and up to 6 lines of the log that every player reads | A line only some players read, the master's lines, a hidden combatant, an NPC's dice, the name of table content the master hid (RN-23) |
+| Imagem | The image shown to the whole table | An image for chosen players, one left with the players, the gallery |
+| Cena | The name and description of a scene open to the whole table, and the NPCs the table sees on its stage | A scene for chosen players, a hidden NPC, hooks, clues, actions and DCs |
+| Rolagens | Up to 3 free rolls made for the whole table | A roll "Só eu", a group check |
+| Conversa | Nothing: the conversation never goes to the TV (RN-36) | Every line, narration to the whole table included |
+| Conteúdo da mesa | Nothing: a log line says that a spell or action was used, never its name | The entries the master hid |
+| Do mestre | Nothing | Notes, the campaign document, hooks, clues and DCs |
+
+A scene or an image meant for chosen players is not shown; the master's panel says so ("Cena aberta só para alguns").
+Only the master opens the table screen: a player is refused, and someone who is not in the campaign gets the answer for a campaign that does not exist.
+See [The table screen](../architecture/play/table-screen.md).
+
 **Other secrets.**
 The reason the master gives when asking for changes to a character (RN-15) reaches only the master and the owner.
 A player's notes are private to them. The master does not read them.
