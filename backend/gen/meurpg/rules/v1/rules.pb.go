@@ -1709,8 +1709,8 @@ const (
 	// A spell, or a cantrip that makes an attack roll: the character wears armor or a shield
 	// it is not proficient with, and cannot cast spells (SRD 5.1, "Armor").
 	DisabledReasonCode_DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT DisabledReasonCode = 112
-	// A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
-	// size and damaging side (CastSpellRequest.wall), which the screen does not send.
+	// Reserved: the server does not send it. The cast sheet sends the wall (CastSpellRequest.wall) that a spell like
+	// Wall of Fire needs, so the spell is listed as available.
 	DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED DisabledReasonCode = 113
 )
 

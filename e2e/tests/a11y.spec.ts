@@ -75,7 +75,7 @@ import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
 import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
-import { castZoneRPC, enterZoneRPC, moreZonesTable, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
+import { castZoneRPC, enterZoneRPC, expectOnMap, expectWallCalculated, moreZonesTable, nextStep, openWallSheet, openZoneMenu, tapWallSquare, WALL_SPELL, wallTable, zoneAction, zoneBadges, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -9866,7 +9866,7 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     const masterTitle = zonesPanel(m).getByRole('heading', { level: 2 });
     await expect(masterTitle).toHaveText('Zonas ativas (3)');
-    await expect(zoneLayer(m)).toContainText('Teia · Pensantus');
+    await expectOnMap(m, 'Teia · Pensantus');
     await expect(zoneCard(m, 'Raio Lunar · Sombra')).toContainText('Só você vê');
     await expectScreenPasses(m, `Zonas no mapa e a lista, o mestre ${where}`);
 
@@ -9876,9 +9876,17 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(zoneCard(p, 'Raio Lunar · Druida')).not.toContainText('Constituição');
     await expectScreenPasses(p, `Zonas no mapa e a lista, o jogador com detalhes ocultos ${where}`);
 
+    // The "Mais ações" menu of a zone that moves, open: "Mover" and "Encerrar zona".
+    const menu = await openZoneMenu(m, 'Raio Lunar · Druida');
+    await expect(menu.getByRole('menuitem', { name: 'Mover', exact: true })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Encerrar zona', exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Mais ações da zona, o menu aberto ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+
     // The end: the question in place, under the zone's card.
     const web = zoneCard(m, 'Teia · Pensantus');
-    await web.getByRole('button', { name: 'Encerrar zona' }).click();
+    await zoneAction(m, 'Teia · Pensantus', 'Encerrar zona');
     const ask = web.getByRole('group', { name: 'Encerrar a zona?' });
     await expect(ask).toBeVisible();
     await expectScreenPasses(m, `Encerrar a zona, a pergunta no lugar ${where}`);
@@ -9886,7 +9894,7 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(ask).toHaveCount(0);
 
     // The move sheet: the map picker with a square picked and its preview.
-    await zoneCard(m, 'Raio Lunar · Druida').getByRole('button', { name: 'Mover', exact: true }).click();
+    await zoneAction(m, 'Raio Lunar · Druida', 'Mover');
     const sheet = m.getByRole('dialog', { name: 'Mover o Raio Lunar' });
     await expect(sheet).toBeVisible();
     const map = sheet.getByRole('group', { name: /Mapa de batalha/ });
@@ -9972,7 +9980,7 @@ async function scanMoreZoneScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(zoneCard(m, 'Escuridão · Mago')).toContainText('Você decide');
     await expectScreenPasses(m, `Mais zonas no mapa e a lista, o mestre ${where}`);
     await expect(zonesPanel(p).getByRole('heading', { level: 2 })).toHaveText('Zonas ativas (4)');
-    await expect(zoneLayer(p)).toContainText('Escuridão · Mago');
+    await expectOnMap(p, 'Escuridão · Mago');
     await expect(zonesPanel(p)).not.toContainText('Você decide');
     await expectScreenPasses(p, `Mais zonas no mapa e a lista, o jogador ${where}`);
 
@@ -10016,6 +10024,120 @@ test('mais zonas de magia passam no axe e nas conferências de layout no tema cl
 test('mais zonas de magia passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
   test.setTimeout(500_000);
   await scanMoreZoneScreens(browser, 'dark', 390);
+});
+
+/**
+ * Wall of Fire's cast sheet (RN-37, #640), the step "Onde fica": a line before anything is placed, a line placed with its
+ * side not picked and then picked, a ring the same way, and the step that follows. Each scan waits for the state it judges: the
+ * server's preview ("Calculando onde a muralha fica…" gone) and the words of the missing side.
+ */
+async function scanWallSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await wallTable(browser, `Acessibilidade muralha ${Date.now()}`, { width, colorScheme });
+  const { p } = t;
+  try {
+    await openSessionPage(p, t.campaignId);
+    const { sheet, map } = await openWallSheet(p);
+    await expect(sheet.getByText('Toque no mapa para marcar onde a muralha fica.')).toBeVisible();
+    await expectScreenPasses(p, `Onde fica, a linha, nada colocado ${where}`);
+
+    // A line from (11, 3) to the south: the side is not picked, and "Próximo" says why it waits.
+    await tapWallSquare(map, 11, 3);
+    await sheet.getByRole('button', { name: 'Para o sul' }).click();
+    await expectWallCalculated(sheet);
+    await expect(sheet.getByText('Escolha o lado que queima.')).toBeVisible();
+    await expect(nextStep(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, a linha, sem lado ${where}`);
+    await pickRadio(sheet, 'À direita');
+    await expect(nextStep(sheet)).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, a linha com o lado ${where}`);
+
+    // The ring: the centre at (11, 5), a diameter, "Dentro" or "Fora".
+    await pickRadio(sheet, 'Anel');
+    await expect(sheet.getByRole('group', { name: 'Diâmetro' })).toBeVisible();
+    await tapWallSquare(map, 11, 5);
+    await expectWallCalculated(sheet);
+    await expect(sheet.getByRole('radio', { name: 'Dentro' })).not.toBeChecked();
+    await expect(nextStep(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, o anel, sem lado ${where}`);
+    await pickRadio(sheet, 'Dentro');
+    await expect(nextStep(sheet)).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, o anel com o lado ${where}`);
+
+    // "Próximo": the list step, nobody in the area.
+    await nextStep(sheet).click();
+    await expect(sheet.getByRole('heading', { name: 'Quem está nela' })).toBeVisible();
+    await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
+    await expectScreenPasses(p, `Onde fica, quem está nela ${where}`);
+  } finally {
+    await t.done();
+  }
+}
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'light', 1280);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'dark', 1280);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'light', 390);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'dark', 390);
+});
+
+/**
+ * The master's map tab on a phone with the layers of a fog map: a Fog Cloud and a Wall of Fire with its burning side, each a
+ * corner letter on the map and a name in the legend (RN-37, #640). The scan waits for the two badges and the burning layer.
+ */
+async function scanWallMapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await moreZonesTable(
+    browser,
+    `Acessibilidade mapa muralha ${Date.now()}`,
+    [
+      { label: 'Druida', at: [3, 2], face: 20 },
+      { label: 'Mago', at: [8, 5], face: 19, wizard: [WALL_SPELL] },
+    ],
+    { width, colorScheme, fog: true },
+  );
+  const { m, campaignId } = t;
+  try {
+    await passTurnsTo(m, campaignId, 'Druida');
+    await castZoneRPC(m, t, t.id('Druida'), 'spell:fog-cloud', { col: 16, row: 10 }, 1);
+    await passTurnsTo(m, campaignId, 'Mago');
+    await castZoneRPC(m, t, t.id('Mago'), WALL_SPELL, { col: 11, row: 3 }, 4, { direction: { dx: 0, dy: 1 }, side: 'WALL_SIDE_LEFT', lengthFt: 30 });
+    await openSessionPage(m, campaignId);
+    await m.getByRole('tab', { name: /^Mapa/ }).click();
+    const panel = m.getByRole('tabpanel', { name: /^Mapa/ });
+    await expect(panel.getByRole('group', { name: /^Mapa/ })).toBeVisible();
+    await expect(zoneBadges(m)).toHaveCount(2);
+    await expect(zoneLayer(m).locator('.zl__burn')).toHaveCount(1);
+    // The map names nothing: the legend beside it ties each letter to a name.
+    await expect(panel.locator('li.legend__zone').filter({ hasText: 'Muralha de Fogo' })).toBeVisible();
+    await expect(panel.locator('li.legend__zone').filter({ hasText: 'Névoa Obscurecente' })).toBeVisible();
+    await expectScreenPasses(m, `Mapa com a névoa e a muralha de fogo, o mestre ${where}`);
+  } finally {
+    await t.done();
+  }
+}
+
+test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallMapScreens(browser, 'light', 390);
+});
+
+test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallMapScreens(browser, 'dark', 390);
 });
 
 /**

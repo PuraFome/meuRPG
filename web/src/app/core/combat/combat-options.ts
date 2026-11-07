@@ -60,8 +60,9 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.SPEED_ZERO]: 'Indisponível: deslocamento 0',
   // Armor or a shield without proficiency stops every spell (SRD 5.1, "Armor").
   [DisabledReasonCode.ARMOR_NOT_PROFICIENT]: 'Armadura ou escudo sem proficiência',
-  // A wall needs its shape, size and damaging side, which the cast sheet does not send.
-  [DisabledReasonCode.WALL_PLACEMENT_REQUIRED]: 'A muralha não pode ser posicionada por aqui',
+  // A wall needs its shape, size and damaging side; the cast sheet's "Onde fica" sends them, so the server no longer lists the
+  // spell with this reason. It stays so an answer that carries it still reads.
+  [DisabledReasonCode.WALL_PLACEMENT_REQUIRED]: 'Falta dizer onde fica a muralha',
 };
 
 /** Why an option is disabled, in words, by code. `''` when there is none. */

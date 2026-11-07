@@ -8182,8 +8182,8 @@ export enum DisabledReasonCode {
   ARMOR_NOT_PROFICIENT = 112,
 
   /**
-   * A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
-   * size and damaging side (CastSpellRequest.wall), which the screen does not send.
+   * Reserved: the server does not send it. The cast sheet sends the wall (CastSpellRequest.wall) that a spell like
+   * Wall of Fire needs, so the spell is listed as available.
    *
    * @generated from enum value: DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED = 113;
    */
