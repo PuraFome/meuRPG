@@ -454,9 +454,9 @@ func (x *deriver) skills() {
 		})
 	}
 	slices.SortFunc(x.d.Skills, func(a, b Skill) int { return comparePT(a.NamePT, b.NamePT) })
-	x.d.PassivePerception = 10 + bonus["skill:perception"]
-	x.d.PassiveInvestigation = 10 + bonus["skill:investigation"]
-	x.d.PassiveInsight = 10 + bonus["skill:insight"]
+	x.d.PassivePerception = max(x.modifiers(PassivePerceptionTarget, 10+bonus["skill:perception"]), 0)
+	x.d.PassiveInvestigation = max(x.modifiers(PassiveInvestigationTarget, 10+bonus["skill:investigation"]), 0)
+	x.d.PassiveInsight = max(x.modifiers(PassiveInsightTarget, 10+bonus["skill:insight"]), 0)
 
 	// Initiative is a Dexterity check: Jack of All Trades adds half the
 	// proficiency bonus to it, through an "initiative" proficiency effect.

@@ -340,6 +340,7 @@ var (
 		"attack.weapon.melee", "attack.weapon.ranged",
 		"damage.weapon.melee", "damage.weapon.ranged",
 		CriticalRangeTarget,
+		PassivePerceptionTarget, PassiveInvestigationTarget, PassiveInsightTarget, ReachMeleeTarget, HitDieMinimumTarget,
 	}
 	modifierModes     = []string{"add", "max", "set"}
 	proficiencyLevels = []string{"half", "full", "expertise"}

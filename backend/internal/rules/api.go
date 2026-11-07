@@ -672,7 +672,10 @@ type Derived struct {
 	PassivePerception    int
 	PassiveInvestigation int
 	PassiveInsight       int
-	Initiative           int
+	// HitDieMinimum is the least hit points a hit die spent on a short rest gives back (the hitdie.minimum
+	// modifier), 0 when nothing sets one.
+	HitDieMinimum int
+	Initiative    int
 	// ArmorClass is the best AC with the worn armor and shield, and
 	// ArmorClassDescription says in Portuguese how it was computed, such as
 	// "Sem armadura" or "Armadura de couro + escudo".

@@ -417,7 +417,9 @@ var (
 		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
-		CriticalRangeTarget: "Margem de acerto crítico",
+		CriticalRangeTarget:     "Margem de acerto crítico",
+		PassivePerceptionTarget: "Percepção passiva", PassiveInvestigationTarget: "Investigação passiva", PassiveInsightTarget: "Intuição passiva",
+		ReachMeleeTarget: "Alcance corpo a corpo", HitDieMinimumTarget: "Mínimo de PV por dado de vida",
 	}
 	modeNames   = map[string][2]string{"add": {"Somar", "Soma o valor ao número."}, "max": {"Pelo menos", "O número não fica abaixo do valor."}, "set": {"Definir", "O número passa a ser o valor."}}
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
@@ -580,9 +582,16 @@ func (c *content) menuModifierTargets() []MenuValue {
 	var targets []MenuValue
 	for _, k := range modifierTargets {
 		v := MenuValue{Key: k, NamePT: modifierTargetNames[k]}
-		if k == CriticalRangeTarget {
+		switch k {
+		case CriticalRangeTarget:
 			v.HintPT = "O menor d20 natural que é acerto crítico."
 			v.OnlyModes, v.Min, v.Max = []string{"set"}, MinCriticalRange, MaxCriticalRange
+		case PassivePerceptionTarget, PassiveInvestigationTarget, PassiveInsightTarget:
+			v.HintPT = "O valor passivo da ficha (10 mais o bônus da perícia). Soma ao valor, não ao teste."
+		case ReachMeleeTarget:
+			v.HintPT = "O alcance corpo a corpo da criatura, em pés; sem regra é 5. Uma arma com alcance maior mantém o seu."
+		case HitDieMinimumTarget:
+			v.HintPT = "O mínimo de PV que um dado de vida gasto num descanso curto devolve, já com o modificador de Constituição."
 		}
 		targets = append(targets, v)
 	}
