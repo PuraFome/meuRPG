@@ -2,16 +2,13 @@ import { Component, computed, input, output } from '@angular/core';
 
 import { abilityLabel, formatModifier } from '../../../core/characters/character-labels';
 import type { VitalsVm } from '../../../core/play/live-session.types';
-import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
 import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
-  coinEntries,
   grantedSpellLevel,
   grantedSpellNumbers,
   grantedSpellTags,
-  keepUnitsTogether,
   pactSlotRow,
   spellGroups,
   spellLimitsText,
@@ -23,12 +20,11 @@ import {
  * The paper sheet's middle column: the combat numbers, "Ataques" (a real
  * table: the weapons carried, then the damage cantrips, in the server's
  * order), "Magias" (per class: ability, DC and attack; the slots as circles;
- * the cantrips and spells) and "Equipamento" (armour, shield, weapons,
- * items, the background's equipment as text, then the coins).
+ * the cantrips and spells); "Equipamento" is its own panel (`EquipmentPanel`).
  */
 @Component({
   selector: 'app-combat-column',
-  imports: [CombatStats, GearList, SpellHelp],
+  imports: [CombatStats, SpellHelp],
   templateUrl: './combat-column.html',
   styleUrl: './combat-column.scss',
 })
@@ -37,16 +33,6 @@ export class CombatColumn {
   /** This character's live vitals while its campaign has an open session; `null` otherwise. */
   readonly vitals = input<VitalsVm | null>(null);
 
-  /** Whether the gear list has its buttons: the owner while the sheet is theirs to change, the master always. */
-  readonly canEquip = input(false);
-  /** The piece whose change is being saved. */
-  readonly equipBusyKey = input<string | null>(null);
-  /** What the last change said ("Guardado: Espada longa. Classe de armadura 14."), for the live region under the list. */
-  readonly equipNotice = input('');
-  /** A refusal of the last change, shown beside the list. */
-  readonly equipError = input('');
-  /** A tap on "Equipar" / "Guardar": the page calls the server and reads the sheet again. */
-  readonly gearToggled = output<GearToggle>();
   /** Only to show what Ajuda adds. */
   protected readonly aidVitals = computed(() => {
     const v = this.vitals();
@@ -80,12 +66,6 @@ export class CombatColumn {
   protected readonly slotRows = computed(() => spellSlotRows(this.sheet().spellSlots));
   protected readonly pactRow = computed(() => pactSlotRow(this.sheet().pactSlots));
   protected readonly hasSaveAttack = computed(() => this.sheet().attacks.some((a) => a.saveDc > 0));
-
-  /** The background's equipment text, with each number kept beside its unit. */
-  protected readonly backgroundEquipment = computed(() =>
-    keepUnitsTogether(this.sheet().backgroundEquipment),
-  );
-  protected readonly coins = computed(() => coinEntries(this.sheet().coins));
 
   protected range(count: number): number[] {
     return Array.from({ length: count }, (_, i) => i);

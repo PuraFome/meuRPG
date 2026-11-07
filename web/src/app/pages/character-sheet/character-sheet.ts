@@ -45,6 +45,7 @@ import {
   IssueVm,
 } from './character-sheet.types';
 import { CombatColumn } from './combat-column/combat-column';
+import { EquipmentPanel } from './equipment-panel/equipment-panel';
 import type { GearToggle } from '../../shared/gear-list/gear-list';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
@@ -110,6 +111,7 @@ type PageState =
     BasicSheet,
     ChangedContentNotice,
     CombatColumn,
+    EquipmentPanel,
     CreaturesPanel,
     FeaturesPanel,
     LevelUpBanner,
@@ -364,7 +366,6 @@ export class CharacterSheetPage {
       this.equipNotice.set(
         `${toggle.equipped ? 'Equipado' : 'Guardado'}: ${name}.${full ? ` Classe de armadura ${full.armorClass}.` : ''}`,
       );
-      this.focusAfterRender(`[data-gear-key="${CSS.escape(toggle.key)}"]`);
     } catch (err) {
       this.equipNotice.set('');
       this.equipError.set(describeCharacterError(err));

@@ -166,17 +166,8 @@ export interface HintVm {
   readonly text: string;
 }
 
-/** One piece of gear the sheet lists, equipped or carried (`DerivedSheet.gear`): the names and the armor class
- * come from the server, never from the browser. */
-export interface GearVm {
-  readonly key: string;
-  readonly namePt: string;
-  readonly kind: 'armor' | 'shield' | 'weapon';
-  readonly equipped: boolean;
-  readonly twoHanded: boolean;
-  /** The armor class with this piece's state flipped (0: the server does not preview it, e.g. an armor spell). */
-  readonly armorClassIfToggled: number;
-}
+import type { GearVm } from '../../core/characters/gear';
+export type { GearVm };
 
 export interface EquipmentItemVm {
   readonly name: string;

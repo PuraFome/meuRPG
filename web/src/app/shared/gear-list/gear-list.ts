@@ -1,7 +1,18 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, computed, inject, input, output } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  untracked,
+} from '@angular/core';
 
-import type { GearVm } from '../../pages/character-sheet/character-sheet.types';
+import type { GearVm } from '../../core/characters/gear';
 
 /** What a tap on a row's button asks: this piece, equipped or stowed. */
 export interface GearToggle {
@@ -25,6 +36,9 @@ export interface GearToggle {
 export class GearList {
   private static next = 0;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  private askedKey: string | null = null;
+  private wasBusy = false;
   protected readonly idBase = `gl${GearList.next++}`;
 
   readonly gear = input.required<readonly GearVm[]>();
@@ -41,6 +55,21 @@ export class GearList {
   readonly armorClass = input<number | null>(null);
 
   readonly toggled = output<GearToggle>();
+
+  constructor() {
+    // The call ended (the list is the new one): the focus follows the piece that moved to its button in the other group.
+    effect(() => {
+      const busy = this.busyKey() !== null;
+      untracked(() => {
+        if (this.wasBusy && !busy && this.askedKey) {
+          const key = this.askedKey;
+          this.askedKey = null;
+          afterNextRender(() => this.focusRow(key), { injector: this.injector });
+        }
+        this.wasBusy = busy;
+      });
+    });
+  }
 
   protected readonly equipped = computed(() => this.gear().filter((g) => g.equipped));
   protected readonly carried = computed(() => this.gear().filter((g) => !g.equipped));
@@ -63,6 +92,7 @@ export class GearList {
   }
 
   protected ask(g: GearVm): void {
+    this.askedKey = g.key;
     this.toggled.emit({ key: g.key, equipped: !g.equipped });
   }
 

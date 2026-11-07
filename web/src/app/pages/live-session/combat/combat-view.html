@@ -916,6 +916,12 @@
                   <div class="player__blocks">
                     <app-action-groups
                       [options]="turnOptions"
+                      [gear]="gearFlow.gear()"
+                      [gearArmorClass]="gearFlow.armorClass()"
+                      [gearBusyKey]="gearFlow.busyKey()"
+                      [gearNotice]="gearFlow.notice()"
+                      [gearError]="gearFlow.error()"
+                      (gearToggled)="gearFlow.toggle($event.key, $event.equipped)"
                       [choosing]="targeting.mode.session()?.key ?? ''"
                       [own]="me"
                       [attacksLeft]="attacksLeft()"

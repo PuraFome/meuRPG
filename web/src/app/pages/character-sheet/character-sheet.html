@@ -290,7 +290,7 @@
 
       <div class="sheet" [class.sheet--pnotes]="!vm.isMaster">
         <app-ability-medallions class="sheet__abilities" [abilities]="full.abilities" />
-        <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()" [liveSlots]="hasLiveSlots()" [canEquip]="vm.canEdit && vm.state !== 'dead'" [equipBusyKey]="equipBusyKey()" [equipNotice]="equipNotice()" [equipError]="equipError()" (gearToggled)="equip($event)" (spellOpened)="describeSpell($event)">
+        <app-combat-column class="sheet__combat" [sheet]="full" [vitals]="vitals()" [liveSlots]="hasLiveSlots()" (spellOpened)="describeSpell($event)">
           <!-- The live counters of an open session (PM-07b 7), right after the combat numbers. -->
           @if (vitals(); as live) {
             <app-resource-counters resources [vitals]="live" />
@@ -309,6 +309,15 @@
             />
           }
         </app-combat-column>
+        <app-equipment-panel
+          class="sheet__equipment"
+          [sheet]="full"
+          [canEquip]="vm.canEdit && vm.state !== 'dead'"
+          [equipBusyKey]="equipBusyKey()"
+          [equipNotice]="equipNotice()"
+          [equipError]="equipError()"
+          (gearToggled)="equip($event)"
+        />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />
         <div class="sheet__traits">
           <app-features-panel class="sheet__features" [sheet]="full" />

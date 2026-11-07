@@ -159,6 +159,11 @@ export class CombatView extends CombatViewPartsDirective {
       void e.revision;
       untracked(() => void this.turn.load(this.api, campaignId, e.id, who.id));
     });
+    // The player's gear is read once for their character.
+    effect(() => {
+      this.own();
+      untracked(() => void this.gearFlow.load());
+    });
     // The log is read again on every `combat_log_changed` and after every
     // reconnection (the page bumps `logTick`).
     effect(() => {
