@@ -65,7 +65,7 @@ func TestSunlightDisadvantageCancelsWithAnAdvantageAndDoesNotStack(t *testing.T)
 	}
 	prone := AttackScene{Attacker: spoiled, Target: Creature{Conditions: []string{conditionStunned}}}
 	if m := Resolve(AttackMode(prone).Sources); m != ModeNormal {
-		t.Errorf("against a stunned target the sun's disadvantage is cancelled: mode = %v, want normal", m)
+		t.Errorf("against a stunned target the sun's disadvantage is canceled: mode = %v, want normal", m)
 	}
 	poisoned := spoiled
 	poisoned.Conditions = []string{conditionPoisoned}

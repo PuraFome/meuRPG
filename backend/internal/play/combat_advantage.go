@@ -522,14 +522,6 @@ func hideUnlessMaster(master bool) func(combat.Source) bool {
 	return hidesSunlight
 }
 
-// orHide is a hide that holds when either does; a nil hide hides nothing.
-func orHide(a, b func(combat.Source) bool) func(combat.Source) bool {
-	if a == nil {
-		return b
-	}
-	return func(src combat.Source) bool { return a(src) || b(src) }
-}
-
 // attackerSentence writes a source that comes from the one who attacks.
 func (c textContext) attackerSentence(src combat.Source) (string, bool) {
 	switch src.Kind {

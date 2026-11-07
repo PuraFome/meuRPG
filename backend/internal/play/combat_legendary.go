@@ -159,7 +159,7 @@ func (s *Service) creatureLimits(ctx context.Context, campaignID string, d *enco
 		if plan, ok := content.MonsterPlan(conv.OrZero(c.MonsterKey)); ok {
 			n.limited = limitedActionsOf(plan)
 		}
-		if n.sunTrait != playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE || n.limited != nil {
+		if n.sunTrait != playv1.SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED || n.limited != nil {
 			out[sheetKey(c)] = n
 		}
 	}

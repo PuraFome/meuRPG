@@ -47,7 +47,7 @@ func TestTheSunlightIsTheMastersAloneOnAFoggedMap(t *testing.T) {
 			t.Errorf("%s reads the sunlight of the combat: on=%v scope=%v squares=%v", p.name, enc.GetSunlightOn(), enc.GetSunlightScope(), enc.GetSunlightSquares())
 		}
 		for _, c := range enc.GetCombatants() {
-			if c.GetInSunlight() || c.GetSunlightTrait() != playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE {
+			if c.GetInSunlight() || c.GetSunlightTrait() != playv1.SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED {
 				t.Errorf("%s reads the sunlight of %s: in=%v trait=%v", p.name, c.GetId(), c.GetInSunlight(), c.GetSunlightTrait())
 			}
 		}

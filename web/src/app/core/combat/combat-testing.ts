@@ -68,7 +68,7 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     bestiaryCreatureKey: '',
     challengeRating: '',
     inSunlight: false,
-    sunlightTrait: SunlightTrait.NONE,
+    sunlightTrait: SunlightTrait.UNSPECIFIED,
     ...over,
   } as unknown as Combatant;
 }

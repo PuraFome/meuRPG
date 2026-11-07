@@ -45,7 +45,7 @@ export class SunlightNotice {
 
   protected readonly text = computed(() => {
     const c = this.creature();
-    if (!this.sunlightOn() || c.sunlightTrait === SunlightTrait.NONE) {
+    if (!this.sunlightOn() || c.sunlightTrait === SunlightTrait.UNSPECIFIED) {
       return '';
     }
     if (!c.inSunlight) {

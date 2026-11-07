@@ -37,6 +37,6 @@ describe('SunlightNotice', () => {
 
   it('says nothing with the sun off or without the trait', () => {
     expect(notice({ sunlightTrait: SunlightTrait.WEAKNESS, inSunlight: false }, false)).toBeNull();
-    expect(notice({ sunlightTrait: SunlightTrait.NONE, inSunlight: true })).toBeNull();
+    expect(notice({ sunlightTrait: SunlightTrait.UNSPECIFIED, inSunlight: true })).toBeNull();
   });
 });

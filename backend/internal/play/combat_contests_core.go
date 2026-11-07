@@ -399,8 +399,8 @@ var checkSourceNotes = map[string]rollNote{
 	combat.SourceExhaustionCheck: {Kind: "exhaustion", Label: "Exaustão"},
 	combat.SourceEffectCheck:     {Kind: "effect", Label: "Efeito ativo", Adv: true},
 	// The sun is the master's (RN-20, RN-29): the note a player could read says neither what it is nor that it is the sun.
-	combat.SourceSunlightPerception: {Kind: "other", Label: "Outra fonte"},
-	combat.SourceSunlightSave:       {Kind: "other", Label: "Outra fonte"},
+	combat.SourceSunlightPerception: {Kind: "other", Label: otherSourceTx},
+	combat.SourceSunlightSave:       {Kind: "other", Label: otherSourceTx},
 }
 
 // checkAbilityOf is the ability a skill's check rolls: Strength for Athletics, Wisdom for

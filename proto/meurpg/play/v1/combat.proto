@@ -2952,7 +2952,7 @@ message Combatant {
 
 // The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
 enum SunlightTrait {
-  SUNLIGHT_TRAIT_NONE = 0;
+  SUNLIGHT_TRAIT_UNSPECIFIED = 0;
   // Sunlight Sensitivity: disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight.
   SUNLIGHT_TRAIT_SENSITIVITY = 1;
   // Sunlight Weakness: disadvantage on attack rolls, ability checks and saving throws.

@@ -57,7 +57,8 @@ func (a *armed) mustSunlight(t *testing.T, e *playv1.Encounter, edit func(*playv
 func drowFight(t *testing.T) (*armed, *playv1.Encounter) {
 	t.Helper()
 	a, e := monsterFightOn(t, newCastersGear(t, 3, "", []string{battleaxe}), drowKey, drow)
-	return a, a.passTo(t, e, drow)
+	e = a.passTo(t, e, drow)
+	return a, e
 }
 
 // drowReads is the Drow's melee attack on Toren as the master reads it in the turn options: the mode and whether a

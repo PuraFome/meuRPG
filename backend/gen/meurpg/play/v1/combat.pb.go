@@ -1623,7 +1623,7 @@ func (HitRiderLogResult) EnumDescriptor() ([]byte, []int) {
 type SunlightTrait int32
 
 const (
-	SunlightTrait_SUNLIGHT_TRAIT_NONE SunlightTrait = 0
+	SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED SunlightTrait = 0
 	// Sunlight Sensitivity: disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight.
 	SunlightTrait_SUNLIGHT_TRAIT_SENSITIVITY SunlightTrait = 1
 	// Sunlight Weakness: disadvantage on attack rolls, ability checks and saving throws.
@@ -1633,12 +1633,12 @@ const (
 // Enum value maps for SunlightTrait.
 var (
 	SunlightTrait_name = map[int32]string{
-		0: "SUNLIGHT_TRAIT_NONE",
+		0: "SUNLIGHT_TRAIT_UNSPECIFIED",
 		1: "SUNLIGHT_TRAIT_SENSITIVITY",
 		2: "SUNLIGHT_TRAIT_WEAKNESS",
 	}
 	SunlightTrait_value = map[string]int32{
-		"SUNLIGHT_TRAIT_NONE":        0,
+		"SUNLIGHT_TRAIT_UNSPECIFIED": 0,
 		"SUNLIGHT_TRAIT_SENSITIVITY": 1,
 		"SUNLIGHT_TRAIT_WEAKNESS":    2,
 	}
@@ -6880,7 +6880,7 @@ func (x *Combatant) GetSunlightTrait() SunlightTrait {
 	if x != nil {
 		return x.SunlightTrait
 	}
-	return SunlightTrait_SUNLIGHT_TRAIT_NONE
+	return SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -29266,9 +29266,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aHIT_RIDER_LOG_RESULT_SAVED\x10\x01\x12\x1f\n" +
 	"\x1bHIT_RIDER_LOG_RESULT_FAILED\x10\x02\x12 \n" +
 	"\x1cHIT_RIDER_LOG_RESULT_APPLIED\x10\x03\x12!\n" +
-	"\x1dHIT_RIDER_LOG_RESULT_DECLINED\x10\x04*e\n" +
-	"\rSunlightTrait\x12\x17\n" +
-	"\x13SUNLIGHT_TRAIT_NONE\x10\x00\x12\x1e\n" +
+	"\x1dHIT_RIDER_LOG_RESULT_DECLINED\x10\x04*l\n" +
+	"\rSunlightTrait\x12\x1e\n" +
+	"\x1aSUNLIGHT_TRAIT_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aSUNLIGHT_TRAIT_SENSITIVITY\x10\x01\x12\x1b\n" +
 	"\x17SUNLIGHT_TRAIT_WEAKNESS\x10\x02*c\n" +
 	"\rSunlightScope\x12\x1e\n" +

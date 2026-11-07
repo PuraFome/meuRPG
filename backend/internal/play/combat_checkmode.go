@@ -202,7 +202,7 @@ func notesOfSources(sources []combat.Source, hide func(combat.Source) bool) []ro
 	for _, src := range sources {
 		label, kind := textContext{self: true, names: func(k string) string { return k }}.sentence(src), src.Kind
 		if hide != nil && hide(src) {
-			label, kind = "Outra fonte", "other" // an effect the master hides (RN-22), or the sun (RN-20): the kind says no more than the label
+			label, kind = otherSourceTx, "other" // an effect the master hides (RN-22), or the sun (RN-20): the kind says no more than the label
 		}
 		out = append(out, rollNote{Kind: kind, Label: label, Adv: src.Effect == combat.ModeAdvantage})
 	}

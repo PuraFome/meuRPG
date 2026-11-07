@@ -101,7 +101,7 @@ func sunlightFrom(enc playdb.Encounter, zones []*zone) sunlight {
 func sunTraitOf(content *rules.Content, monsterKey string) playv1.SunlightTrait {
 	d, ok := content.MonsterDerived(monsterKey)
 	if !ok {
-		return playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE
+		return playv1.SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED
 	}
 	for _, f := range d.Features {
 		switch {
@@ -111,7 +111,7 @@ func sunTraitOf(content *rules.Content, monsterKey string) playv1.SunlightTrait 
 			return playv1.SunlightTrait_SUNLIGHT_TRAIT_SENSITIVITY
 		}
 	}
-	return playv1.SunlightTrait_SUNLIGHT_TRAIT_NONE
+	return playv1.SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED
 }
 
 // sunlightRead reads the sunlight of the combat the encounter id names (for a caller with no encounter row).
