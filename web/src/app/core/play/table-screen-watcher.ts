@@ -68,7 +68,6 @@ export class TableScreenWatcher {
 
   private readonly stream = signal<LiveStream | null>(null);
   private campaignId = '';
-  private reading = false;
   private again = false;
   private cancelDebounce: (() => void) | null = null;
 
@@ -128,36 +127,46 @@ export class TableScreenWatcher {
     });
   }
 
-  /** Reads the screen; `true` when the read worked (or was folded into the one already out). */
-  private async read(): Promise<boolean> {
-    if (this.reading) {
+  private inflight: Promise<boolean> | null = null;
+
+  /** Reads the screen; resolves `true` when the read worked. A call that comes during a read joins it (one more read follows
+   * it) and gets the outcome of the last read that ran. */
+  private read(): Promise<boolean> {
+    if (this.inflight) {
       this.again = true;
-      return true;
+      return this.inflight;
     }
+    const run = this.readUntilQuiet().finally(() => (this.inflight = null));
+    this.inflight = run;
+    return run;
+  }
+
+  private async readUntilQuiet(): Promise<boolean> {
+    let ok = await this.readOnce();
+    while (this.again) {
+      this.again = false;
+      ok = await this.readOnce();
+    }
+    return ok;
+  }
+
+  private async readOnce(): Promise<boolean> {
     const campaignId = this.campaignId;
     if (campaignId === '') {
       return false;
     }
-    this.reading = true;
-    let ok = true;
     try {
       const res = await this.client.get(campaignId);
       if (campaignId === this.campaignId) {
         this.state.loaded(toTvScreen(res));
       }
+      return true;
     } catch (err) {
-      ok = false;
       if (campaignId === this.campaignId) {
         this.failed(err);
       }
-    } finally {
-      this.reading = false;
+      return false;
     }
-    if (this.again) {
-      this.again = false;
-      return this.read();
-    }
-    return ok;
   }
 
   private failed(err: unknown): void {

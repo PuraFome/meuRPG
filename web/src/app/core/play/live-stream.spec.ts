@@ -612,6 +612,41 @@ describe('LiveStream (ADR-0005 client rules)', () => {
       expect(behind).toHaveBeenCalledTimes(2);
     });
 
+    it('ignores a read of an old connection that ends after the new one is ready', async () => {
+      await connect(7);
+      let finish = (_ok: boolean): void => undefined;
+      behind.mockReturnValueOnce(new Promise<boolean>((resolve) => (finish = resolve)));
+      last().push({ kind: 'heartbeat', sessionSeq: 15 });
+      await flush();
+      last().end();
+      await vi.advanceTimersByTimeAsync(backoffDelay(0, () => 0.5));
+      last().push({ kind: 'ready', sessionSeq: 12 });
+      await flush();
+      finish(true);
+      await flush();
+      last().push({ kind: 'heartbeat', sessionSeq: 12 });
+      await flush();
+      expect(behind).toHaveBeenCalledTimes(1);
+      // The old read did not move the new connection's number to 15.
+      last().push({ kind: 'heartbeat', sessionSeq: 14 });
+      await flush();
+      expect(behind).toHaveBeenCalledTimes(2);
+    });
+
+    it('can re-read on the new connection while a read of the old one is still out', async () => {
+      await connect(7);
+      behind.mockReturnValueOnce(new Promise<boolean>(() => undefined));
+      last().push({ kind: 'heartbeat', sessionSeq: 9 });
+      await flush();
+      last().end();
+      await vi.advanceTimersByTimeAsync(backoffDelay(0, () => 0.5));
+      last().push({ kind: 'ready', sessionSeq: 12 });
+      await flush();
+      last().push({ kind: 'heartbeat', sessionSeq: 14 });
+      await flush();
+      expect(behind).toHaveBeenCalledTimes(2);
+    });
+
     it('takes the number again from each `ready`', async () => {
       await connect(7);
       last().end();

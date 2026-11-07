@@ -79,36 +79,38 @@ export class CombatLogState {
   }
 }
 
-/** The held rounds with the entries of a delta put in place: an entry with a known id replaces that one where it stands, a new one
- * goes before the first held entry with a lower `seq` (the rounds and their entries are latest first). */
+/** The held rounds with the entries of a delta put in place. The server lists an entry where its first event stands (creation
+ * order, latest first), so an entry whose id is held is replaced at the same place, in the same round, whatever its `seq` is now.
+ * A new id is newer than every held entry (it was created after the answer the app holds), so it goes at the front of its round,
+ * in the order the answer lists it, and a round the app does not hold yet is added in order (latest first). */
 function mergeRounds(
   held: readonly CombatLogRound[],
   delta: readonly CombatLogRound[],
 ): CombatLogRound[] {
   const rounds = held.map((r) => ({ ...r, entries: [...r.entries] }));
+  const holder = (id: string) => rounds.find((r) => r.entries.some((e) => e.id === id));
   for (const d of delta) {
+    const fresh: CombatLogEntry[] = [];
     for (const entry of d.entries) {
-      for (const r of rounds) {
-        const at = r.entries.findIndex((e) => e.id === entry.id);
-        if (at >= 0) {
-          r.entries.splice(at, 1);
-        }
+      const home = holder(entry.id);
+      if (home) {
+        home.entries[home.entries.findIndex((e) => e.id === entry.id)] = entry;
+      } else {
+        fresh.push(entry);
       }
     }
-  }
-  for (const d of delta) {
+    if (fresh.length === 0) {
+      continue;
+    }
     let round = rounds.find((r) => r.round === d.round);
     if (!round) {
       round = { ...d, entries: [] };
       const after = rounds.findIndex((r) => r.round < d.round);
       rounds.splice(after < 0 ? rounds.length : after, 0, round);
     }
-    for (const entry of d.entries) {
-      const at = round.entries.findIndex((e) => e.seq < entry.seq);
-      round.entries.splice(at < 0 ? round.entries.length : at, 0, entry);
-    }
+    round.entries.unshift(...fresh);
   }
-  return rounds.filter((r) => r.entries.length > 0) as CombatLogRound[];
+  return rounds as CombatLogRound[];
 }
 
 /** The rounds with `undoable` set on the entries this answer sent as undoable, and only if the answer names an undoable event. */

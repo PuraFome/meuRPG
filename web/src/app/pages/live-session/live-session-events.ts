@@ -127,8 +127,10 @@ export class LiveSessionEvents {
         if (mapId === state.currentMapId()) {
           void parts.mapState.refresh();
           this.loader.scheduleVision();
-          // What a player sees changed: so may the log lines they read.
-          parts.combat.touchLog(true);
+          // What a player sees changed: so may the log lines they read (a log is only read in an open combat).
+          if (parts.combat.encounter()) {
+            parts.combat.touchLog(true);
+          }
           // In a combat the NPCs come with the combat, not with the map: a player whose sight changed (their own move, an
           // ally's, a light, a door) may now see one the last read left out. Only the combat read carries it (RN-10).
           if (!state.isMaster() && parts.combat.encounter() && !view.inTheatre()) {
@@ -162,7 +164,7 @@ export class LiveSessionEvents {
           this.loader.scheduleVision();
         }
         // A hint with no revision may mean a visibility change (a combatant shown or hidden): read the whole log.
-        if (change.revision === 0) {
+        if (change.revision === 0 && parts.combat.encounter()) {
           parts.combat.touchLog(true);
         }
         // Read again only when the news is newer than the copy on screen. A hint with no revision

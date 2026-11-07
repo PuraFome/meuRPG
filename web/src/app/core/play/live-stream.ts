@@ -128,6 +128,8 @@ export class LiveStream {
     }
     const controller = new AbortController();
     this.controller = controller;
+    // A re-read that began on the connection before this one no longer holds the new one back.
+    this.catchingUp = false;
     this.armDeadTimer();
     try {
       for await (const event of this.options.open(controller.signal)) {
@@ -190,9 +192,12 @@ export class LiveStream {
         () => false,
       )
       .then((ok) => {
+        // A newer connection set its own number from its own `ready`, and its own re-read state.
+        if (controller !== this.controller) {
+          return;
+        }
         this.catchingUp = false;
-        // A newer connection set its own number from its own `ready`.
-        if (ok && controller === this.controller) {
+        if (ok) {
           this.seenSeq = Math.max(this.seenSeq, sessionSeq);
         }
       });

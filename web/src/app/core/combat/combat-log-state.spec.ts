@@ -73,16 +73,42 @@ describe('CombatLogState (since_seq)', () => {
     expect(asked[2]).toBe(60n);
   });
 
-  it('puts an entry that comes again where it stands, replaced by id', async () => {
+  it('puts an entry that comes again where it stands, whatever its seq is now', async () => {
+    // The server lists entries by where their first event stands (creation order, latest first), not by seq.
     answers.push(
       answer([[1, [entry('b', 20), entry('a', 10)]]], { lastSeq: 20, full: true }),
       answer([[1, [entry('a', 25, { actorLabel: 'Goblin 2' })]]], { lastSeq: 25 }),
     );
     await log.load(api, 'c1', 'e1');
     await log.load(api, 'c1', 'e1');
-    expect(log.rounds()[0].entries.map((e) => e.id)).toEqual(['a', 'b']);
-    expect(log.rounds()[0].entries[0].actorLabel).toBe('Goblin 2');
-    expect(log.rounds()[0].entries).toHaveLength(2);
+    expect(log.rounds()[0].entries.map((e) => e.id)).toEqual(['b', 'a']);
+    expect(log.rounds()[0].entries[1].actorLabel).toBe('Goblin 2');
+  });
+
+  it('replaces a held entry in its own round and puts a new one in front of its round, in the order sent', async () => {
+    answers.push(
+      answer(
+        [
+          [2, [entry('d', 40)]],
+          [1, [entry('c', 30), entry('b', 20), entry('a', 10)]],
+        ],
+        { lastSeq: 40, full: true },
+      ),
+      answer(
+        [
+          [3, [entry('g', 70)]],
+          [2, [entry('f', 60), entry('e', 50), entry('d', 65, { actorLabel: 'again' })]],
+          [1, [entry('b', 55, { actorLabel: 'again' })]],
+        ],
+        { lastSeq: 70 },
+      ),
+    );
+    await log.load(api, 'c1', 'e1');
+    await log.load(api, 'c1', 'e1');
+    expect(ids()).toEqual([['g'], ['f', 'e', 'd'], ['c', 'b', 'a']]);
+    expect(log.rounds().map((r) => r.round)).toEqual([3, 2, 1]);
+    expect(log.rounds()[1].entries[2].actorLabel).toBe('again');
+    expect(log.rounds()[2].entries[1].actorLabel).toBe('again');
   });
 
   it('replaces everything when the answer says full, and when asked for a full read', async () => {

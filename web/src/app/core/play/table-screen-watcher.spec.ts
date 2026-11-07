@@ -123,6 +123,35 @@ describe('TableScreenWatcher', () => {
     expect(gets).toHaveBeenCalledTimes(3);
   });
 
+  it('tells a heartbeat that joined a read the real outcome of that read and its retry', async () => {
+    watcher.start('c1');
+    await settleAll();
+    last().push('ready', 4n);
+    await settleAll();
+    let fail = (): void => undefined;
+    gets.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        fail = () => reject(new ConnectError('down', Code.Unavailable));
+      }),
+    );
+    last().push('changed');
+    await settleAll();
+    clock.advance(TV_DEBOUNCE_MS);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(2);
+    // The heartbeat joins the read that is out; that read and the one after it fail.
+    gets.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    last().push('heartbeat', 5n);
+    await settleAll();
+    fail();
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(3);
+    // Not reported as read: the next heartbeat with the same number reads again.
+    last().push('heartbeat', 5n);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(4);
+  });
+
   it('makes one more read, not many, for a hint that comes during a read', async () => {
     watcher.start('c1');
     await settleAll();
