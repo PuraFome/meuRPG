@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   TableContentKind,
+  TableCreatureSchema,
   TableFeatSchema,
   TableSubclassSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
@@ -20,6 +21,11 @@ import {
 } from './content-kinds';
 import { entry, mirathel } from './content-testing';
 
+const creature = (name: string, init: object) =>
+  entry(TableContentKind.CREATURE, name, {
+    body: { case: 'tableCreature', value: create(TableCreatureSchema, { namePt: name, ...init }) },
+  });
+
 describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
   const entries = mirathel();
   const nav = (slug: string) => navBySlug(slug)!;
@@ -35,6 +41,7 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
       feats: 0,
       options: 0,
       classfeatures: 0,
+      creatures: 0,
     });
     expect(limitLine(entries)).toBe('7 de 1000 entradas · o limite de uma campanha');
     expect(summaryLine(entries)).toBe('7 entradas, 1 arquivada');
@@ -118,6 +125,39 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
     expect(entryState(entries[0], false)).toBeNull();
     expect(usageSentence('Corujeiro', 2)).toBe('2 fichas usam Corujeiro agora.');
     expect(usageSentence('Corujeiro', 0)).toBe('Nenhuma ficha usa Corujeiro agora.');
+  });
+
+  it('lists the creatures of the table as a kind of its own, with its words and its empty state', () => {
+    const creatures = nav('creatures');
+    expect(creatures).toMatchObject({
+      plural: 'Criaturas',
+      singular: 'criatura',
+      newLabel: 'Nova criatura',
+      aOne: 'uma criatura',
+      createSegment: 'creature',
+      editable: true,
+      kinds: [TableContentKind.CREATURE],
+    });
+    expect(creatures.empty?.title).toBe('Nenhuma criatura da mesa ainda.');
+    const wolf = creature('Lobo do Vale', {
+      baseKey: 'monster:wolf',
+      hitPointsFormula: '4 + level()',
+    });
+    const crow = creature('Corvo Mensageiro', {
+      baseKey: 'monster:raven',
+      hitPoints: 4,
+      armorClass: 13,
+    });
+    const archived = { ...creature('Antigo', { baseKey: 'monster:wolf' }), archived: true };
+    expect(countOfNav([wolf, crow, archived, ...entries], creatures)).toBe(3);
+    expect(
+      filterEntries([wolf, crow, archived], creatures, '', 'all').map((e) => e.namePt),
+    ).toEqual(['Lobo do Vale', 'Corvo Mensageiro', 'Antigo']);
+    const base = (k: string) => (k === 'monster:wolf' ? 'Lobo' : 'Corvo');
+    expect(entrySupportRaw(wolf, base).replace(/\u00a0/g, ' ')).toBe('Base Lobo · números do dono');
+    expect(entrySupportRaw(crow, base).replace(/\u00a0/g, ' ')).toBe('Base Corvo · PV 4, CA 13');
+    expect(entrySupportRaw(creature('Nu', { baseKey: 'monster:wolf' }), base)).toBe('Base Lobo');
+    expect(entryState(archived, true)).toEqual({ text: 'Arquivada', archived: true });
   });
 
   it('writes the support line of a row from the body', () => {

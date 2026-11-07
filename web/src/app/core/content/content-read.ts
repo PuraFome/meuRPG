@@ -25,6 +25,7 @@ import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
 import { prerequisiteParts } from './feat-text';
 import { featureKeyName } from './class-feature-text';
+import { readCreature } from './content-read-creature';
 import { optionPrerequisiteParts, optionSetName } from './option-text';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
@@ -153,6 +154,8 @@ export function readEntry(
       return readClassFeature(body.value, nameOf);
     case 'tableSpell':
       return readSpell(body.value, nameOf);
+    case 'tableCreature':
+      return readCreature(body.value, nameOf);
     case 'tableClass':
       return readClass(body.value, nameOf);
     case 'tableSubclass':

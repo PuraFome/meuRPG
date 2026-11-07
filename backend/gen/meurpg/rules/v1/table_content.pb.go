@@ -2776,7 +2776,6 @@ func (x *TableClassFeature) GetSummon() *TableSummon {
 // master and for a player whose character holds it), giving it to a character, combat and
 // "Criar NPC" read it by that key. Summoning spells, Wild Shape and the encounter tools
 // offer SRD creatures only.
-// The web app has no editor for creatures: they are created through the API or a content pack.
 type TableCreature struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	NamePt string                 `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`

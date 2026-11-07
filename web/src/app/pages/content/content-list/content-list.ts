@@ -38,6 +38,7 @@ import {
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
 import { packFileName, packToText } from '../../../core/content/content-pack';
 import { saveTextFile } from '../../../core/content/save-file';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import { ContentWatcher } from '../../../core/content/content-watcher';
 import { LiveSessionSourceLive } from '../../../core/play/live-session-source.live';
 import { TextField } from '../../../shared/form-fields/text-field';
@@ -81,6 +82,7 @@ export class ContentList {
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
   private readonly watcher = inject(ContentWatcher);
+  private readonly creatures = inject(CreaturesClient);
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly nav = CONTENT_NAV;
@@ -102,6 +104,8 @@ export class ContentList {
   protected readonly actionError = signal('');
   protected readonly busyKey = signal('');
   protected readonly exporting = signal(false);
+  /** The Portuguese names of the SRD creatures the table's creatures are made from ("Base Lobo"), as the stat blocks come in. */
+  private readonly baseNames = signal<ReadonlyMap<string, string>>(new Map());
 
   protected readonly ctx = computed(() => {
     const s = this.state();
@@ -161,6 +165,7 @@ export class ContentList {
       const res = await loadContext(this.campaigns, this.client, this.campaignId());
       if (res.status === 'ok' && this.state().status === 'ready') {
         this.state.set({ status: 'ready', ctx: res.ctx });
+        void this.readBaseNames(res.ctx.entries);
         void this.client.catalog(this.campaignId()).then(
           (content) => this.catalog.set(catalogVm(content, res.ctx.entries)),
           () => undefined,
@@ -180,6 +185,7 @@ export class ContentList {
         return;
       }
       this.state.set({ status: 'ready', ctx: res.ctx });
+      void this.readBaseNames(res.ctx.entries);
       // The names a subclass or a subrace row says ("Subclasse de Mago") come from the catalog.
       void this.client.catalog(this.campaignId()).then(
         (content) => this.catalog.set(catalogVm(content, res.ctx.entries)),
@@ -194,6 +200,29 @@ export class ContentList {
         message: contentErrorText(err, 'abrir o conteúdo da mesa'),
       });
     }
+  }
+
+  /** The names of the bases of the creatures on the list; a stat block that does not come leaves the base's code on its row. */
+  private async readBaseNames(entries: readonly TableEntry[]): Promise<void> {
+    const bases = new Set(
+      entries.flatMap((e) => (e.body.case === 'tableCreature' ? [e.body.value.baseKey] : [])),
+    );
+    const names = new Map(this.baseNames());
+    await Promise.all(
+      [...bases]
+        .filter((k) => !names.has(k))
+        .map(async (key) => {
+          try {
+            names.set(
+              key,
+              (await this.creatures.statBlock(this.campaignId(), key)).summary?.namePt ?? '',
+            );
+          } catch {
+            // The row says the base's code.
+          }
+        }),
+    );
+    this.baseNames.set(names);
   }
 
   /** "Exportar": the campaign's own entries as a file the master keeps (`<campanha>-conteudo.json`). */
@@ -226,7 +255,7 @@ export class ContentList {
     return entrySupport(
       e,
       (key) =>
-        cat?.nameOf(key) ??
+        (this.baseNames().get(key) || cat?.nameOf(key)) ??
         this.entries().find((x) => x.key === key)?.namePt ??
         key.replace(/^[a-z]+:/, ''),
       (classKey) => cat?.subclassLevelOf(classKey) ?? 0,

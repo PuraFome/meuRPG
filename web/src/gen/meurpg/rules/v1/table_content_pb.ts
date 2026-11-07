@@ -1253,7 +1253,6 @@ export const TableClassFeatureSchema: GenMessage<TableClassFeature> = /*@__PURE_
  * master and for a player whose character holds it), giving it to a character, combat and
  * "Criar NPC" read it by that key. Summoning spells, Wild Shape and the encounter tools
  * offer SRD creatures only.
- * The web app has no editor for creatures: they are created through the API or a content pack.
  *
  * @generated from message meurpg.rules.v1.TableCreature
  */

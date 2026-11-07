@@ -189,7 +189,11 @@ export function violationText(
     return entryText(v.reason);
   }
   const leaf = shape.slice(shape.lastIndexOf('.') + 1);
-  const named = leaf === 'name_pt' ? nameText(v.reason, ctx) : undefined;
+  // A trait's or an attack's name has one reason for every way it is wrong: its own row says them all.
+  const named =
+    leaf === 'name_pt' && !/^table_creature\.(traits|attacks)\[\]\./.test(shape)
+      ? nameText(v.reason, ctx)
+      : undefined;
   return (
     named ??
     reasonText(shape, leaf, v.reason) ??

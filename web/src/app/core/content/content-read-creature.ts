@@ -1,0 +1,39 @@
+import type { TableCreature } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { joinDots } from '../format/text';
+import { type EntryRead, type NameOf, type ReadRow } from './content-read-parts';
+import { formulaWords } from './creature-text';
+
+/** One number of a creature as the table reads it: the fixed value (or the base's), then "com dono, <formula>". */
+function numberRow(label: string, fixed: number, formula: string, ifNone: string): ReadRow | null {
+  const own = formula === '' ? '' : `com dono, ${formulaWords(formula)}`;
+  const value = joinDots([fixed > 0 ? String(fixed) : ifNone, own].filter((x) => x));
+  return value === '' ? null : { label, value };
+}
+
+/** A table creature as the table reads it: the base and the numbers it changes, then the traits and the attacks it adds. The full
+ * stat block read (what the base gives) is the bestiary's. */
+export function readCreature(c: TableCreature, nameOf: NameOf): EntryRead {
+  const bonus =
+    c.damageBonus === 0 ? '' : c.damageBonus > 0 ? `+${c.damageBonus}` : `−${-c.damageBonus}`;
+  const rows = [
+    { label: 'Base', value: nameOf(c.baseKey) },
+    numberRow('Pontos de vida', c.hitPoints, c.hitPointsFormula, 'os da base'),
+    numberRow('Classe de armadura', c.armorClass, c.armorClassFormula, 'a da base'),
+    numberRow('Bônus no dano', 0, c.damageBonusFormula, bonus),
+    numberRow('Bônus de ataque', 0, c.attackBonusFormula, ''),
+  ].filter((r): r is ReadRow => r !== null);
+  const sections = [
+    {
+      title: 'Traços',
+      items: c.traits.map((t) => ({ title: t.namePt, text: t.textPt })),
+    },
+    {
+      title: 'Ataques',
+      items: c.attacks.map((a) => ({
+        title: a.namePt,
+        text: `${a.diceCount}d${a.diceSides}${a.toHit === '' && a.damageBonus === '' ? ', acerto e dano da criatura' : ''}.`,
+      })),
+    },
+  ].filter((s) => s.items.length > 0);
+  return { rows, sections, text: [] };
+}

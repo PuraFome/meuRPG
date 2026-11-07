@@ -702,7 +702,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam com o mestre e, no caso dos pontos de vida, com o dono.
   As magias de invocação, a Forma Selvagem e o gerador, o avaliador e as trocas de encontro oferecem só criaturas do SRD.
   Um encontro de pacote que cita uma criatura da mesa é recusado como conteúdo desconhecido.
-  O app web não tem editor de criaturas: elas são criadas pela API ou por um pacote de conteúdo.
+  O mestre cria e edita criaturas da mesa no app web, no editor de criaturas do "Conteúdo da mesa" no notebook; um pacote de conteúdo também as traz.
 - **Limites:** 1.000 entradas por campanha, 64 KiB por entrada, 60 características por classe, 60 traços por raça e sub-raça, 10 traços por criatura, 6.000 efeitos e 500 fórmulas distintas (100 KiB de texto) no total, cada fórmula com até 1.024 bytes.
 
 Na tela: "Conteúdo da mesa" (a lista por tipo com contagens e o estado de cada entrada, editores para cada tipo, "Esta entrada mudou enquanto você editava" com "Recarregar", "N fichas ficaram com aviso" depois de uma edição). No celular, o mestre só lê e arquiva. Detalhes: [Design](../../design/sheet.md#editors), [Arquitetura](../../architecture/rules-table-content.md), [personagens](../../architecture/characters-table-content.md) e [web](../../architecture/characters-web.md#table-content-screens). Histórias: [MR-025](historias.md#mr-025-cadastrar-conteúdo-da-mesa), [MR-045](historias.md#mr-045-consultar-as-magias).

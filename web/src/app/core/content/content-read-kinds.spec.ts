@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import {
   TableBackgroundSchema,
   TableClassSchema,
+  TableCreatureSchema,
   TableContentKind,
   TableEntrySchema,
   TableFeatSchema,
@@ -60,6 +61,12 @@ const subclass = (init: object) =>
   dressed(TableContentKind.SUBCLASS, {
     case: 'tableSubclass',
     value: create(TableSubclassSchema, init as never),
+  });
+
+const creature = (init: object) =>
+  dressed(TableContentKind.CREATURE, {
+    case: 'tableCreature',
+    value: create(TableCreatureSchema, init as never),
   });
 
 const slots = [4, 2];
@@ -192,6 +199,26 @@ const CASES: Record<string, () => unknown> = {
         classKey: 'class:paladin',
         casting: { kind: 'third', ability: 4, preparation: 'prepared' },
         levels: [level(2, { features: [] }), level(3, { features: [] })],
+      }),
+      nameOf,
+    ),
+  'creature with only a base': () => readEntry(creature({ baseKey: 'monster:wolf' }), nameOf),
+  'creature in full': () =>
+    readEntry(
+      creature({
+        baseKey: 'monster:wolf',
+        hitPoints: 40,
+        armorClass: 17,
+        damageBonus: -2,
+        hitPointsFormula: '4 + 4 * level()',
+        armorClassFormula: '13 + prof()',
+        damageBonusFormula: 'prof()',
+        attackBonusFormula: 'mod("wis") + prof()',
+        traits: [{ namePt: 'Elo', textPt: 'Entende o dono.' }],
+        attacks: [
+          { namePt: 'Investida', melee: true, diceCount: 2, diceSides: 6 },
+          { namePt: 'Uivo', diceCount: 1, diceSides: 8, toHit: 'prof()' },
+        ],
       }),
       nameOf,
     ),
@@ -436,6 +463,38 @@ const EXPECTED: Record<string, unknown> = {
       {
         title: 'Conjuração por nível',
         items: [{ title: 'Nível 3', text: '2 truques · 1 magia conhecida · 4 de 1º, 2 de 2º' }],
+      },
+    ],
+    text: [],
+  },
+  'creature with only a base': {
+    rows: [
+      { label: 'Base', value: 'monster:wolf' },
+      { label: 'Pontos de vida', value: 'os da base' },
+      { label: 'Classe de armadura', value: 'a da base' },
+    ],
+    sections: [],
+    text: [],
+  },
+  'creature in full': {
+    rows: [
+      { label: 'Base', value: 'monster:wolf' },
+      { label: 'Pontos de vida', value: '40 · com dono, 4 + 4 × nível do dono' },
+      { label: 'Classe de armadura', value: '17 · com dono, 13 + bônus de proficiência' },
+      { label: 'Bônus no dano', value: '−2 · com dono, bônus de proficiência' },
+      {
+        label: 'Bônus de ataque',
+        value: 'com dono, modificador de Sabedoria + bônus de proficiência',
+      },
+    ],
+    sections: [
+      { title: 'Traços', items: [{ title: 'Elo', text: 'Entende o dono.' }] },
+      {
+        title: 'Ataques',
+        items: [
+          { title: 'Investida', text: '2d6, acerto e dano da criatura.' },
+          { title: 'Uivo', text: '1d8.' },
+        ],
       },
     ],
     text: [],

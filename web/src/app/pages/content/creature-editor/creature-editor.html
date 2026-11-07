@@ -1,0 +1,238 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="cr-base-t">
+      <h2 class="mr-panel__title" id="cr-base-t">Base e nome</h2>
+      @if (d.baseKey === '') {
+        <div data-field="table_creature.base_key">
+          <app-creature-pick [campaignId]="campaignId()" label="Criatura do SRD que serve de base" placeholder="Procure no Bestiário pelo nome" [srdOnly]="true" (picked)="pickBase($event)" />
+          @for (m of messages('table_creature.base_key'); track m) {
+            <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+          }
+        </div>
+        <p class="hint">Só criaturas do SRD: uma criatura da mesa não é base de outra. A base não muda depois de salvar.</p>
+      } @else {
+        <p class="hint" data-field="table_creature.base_key"><strong>Base:</strong> {{ baseLine() }}. A base dá o que você não muda aqui: tamanho, deslocamento, habilidades, sentidos e ações. Não muda depois de salvar.</p>
+        @for (m of messages('table_creature.base_key'); track m) {
+          <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+        }
+        <div class="name">
+          <app-text-field label="Nome" [value]="d.name" [maxlength]="80" path="table_creature.name_pt" [issues]="messages('table_creature.name_pt')" (valueChange)="patch({ name: $event })" />
+          <span class="name__links">
+            <a class="link" [routerLink]="baseLink()">Ver {{ baseName() }} no bestiário<mat-icon aria-hidden="true">chevron_right</mat-icon></a>
+            @if (isNew()) {
+              <button type="button" class="link link--btn" (click)="changeBase()">Trocar a base</button>
+            }
+          </span>
+        </div>
+      }
+    </section>
+
+    @if (d.baseKey !== '') {
+      <section class="mr-panel block" aria-labelledby="cr-nums-t">
+        <h2 class="mr-panel__title" id="cr-nums-t">Números</h2>
+        <p class="hint">O fixo vale quando a criatura não tem dono (Pôr no combate, Criar NPC). A fórmula usa a ficha de quem recebe a criatura e ganha do fixo. Vazio: o da base.</p>
+        @for (r of numberRows; track r.path) {
+          <div class="num" role="group" [attr.aria-label]="r.label">
+            <span class="num__label" aria-hidden="true">{{ r.label }}</span>
+            @if (r.fixed) {
+              <app-text-field
+                class="num__fixed"
+                label="Fixo"
+                [ariaLabel]="r.label + ', valor fixo'"
+                inputmode="numeric"
+                [placeholder]="fixedPlaceholder(r)"
+                [value]="numberText(r.fixed)"
+                [path]="'table_creature.' + r.path"
+                [issues]="messages('table_creature.' + r.path)"
+                (valueChange)="setNumber(r.fixed, $event)"
+              />
+            } @else {
+              <p class="num__fixed num__only">Só com o dono; sem dono, o da base.</p>
+            }
+            <app-text-field
+              class="num__formula"
+              label="Com o dono"
+              [ariaLabel]="r.label + ', fórmula com o dono'"
+              [value]="numberText(r.formula)"
+              [path]="'table_creature.' + r.path + '_formula'"
+              [issues]="messages('table_creature.' + r.path + '_formula')"
+              [hint]="echo(r)"
+              (valueChange)="setNumber(r.formula, $event)"
+            />
+          </div>
+        }
+        <p class="hint">
+          Na fórmula: nível do dono <code>level()</code> · bônus de proficiência <code>prof()</code> · modificador de Força, Destreza, Constituição, Inteligência, Sabedoria ou Carisma <code>mod("str")</code>, <code>mod("dex")</code>, <code>mod("con")</code>, <code>mod("int")</code>, <code>mod("wis")</code>, <code>mod("cha")</code> · círculo da magia que invocou <code>slot()</code>.
+        </p>
+      </section>
+
+      <!-- Resistências, imunidades e vulnerabilidades: as linhas entram aqui (T3). O rascunho já guarda o que a entrada tem (`kept`). -->
+
+      <section class="mr-panel block" aria-labelledby="cr-traits-t" data-field="table_creature.traits">
+        <h2 class="mr-panel__title" id="cr-traits-t">Traços</h2>
+        <p class="hint">Somam-se aos da base, só como texto. Até {{ maxTraits }}.</p>
+        @for (m of messages('table_creature.traits'); track m) {
+          <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+        }
+        @if (d.traits.length > 0) {
+          <ul class="rows">
+            @for (t of d.traits; track t.id; let i = $index) {
+              @let at = 'table_creature.traits[' + i + ']';
+              @let on = isOpen(t.id, at);
+              <li class="row" [class.row--open]="on">
+                <div class="row__head">
+                  <button type="button" class="row__toggle" [attr.aria-expanded]="on" [attr.aria-controls]="'cr-t-' + t.id" (click)="toggle(t.id)">
+                    <mat-icon aria-hidden="true">{{ on ? 'expand_more' : 'chevron_right' }}</mat-icon>
+                    <span class="row__text">
+                      <span class="row__name">{{ t.name.trim() || 'Traço sem nome' }}</span>
+                      @if (!on && traitLine(t.text)) {
+                        <span class="row__sub">{{ traitLine(t.text) }}</span>
+                      }
+                    </span>
+                  </button>
+                  <button type="button" class="row__more" [attr.aria-label]="'Mais ações do traço ' + (t.name.trim() || i + 1)" [matMenuTriggerFor]="traitMenu">
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                  <mat-menu #traitMenu="matMenu" xPosition="before">
+                    <button mat-menu-item type="button" (click)="removeTrait(t.id)"><mat-icon aria-hidden="true">delete</mat-icon>Remover traço</button>
+                  </mat-menu>
+                </div>
+                @if (on) {
+                  <div class="row__body" [id]="'cr-t-' + t.id">
+                    <app-text-field label="Nome do traço" [value]="t.name" [maxlength]="80" [path]="at + '.name_pt'" [issues]="messages(at + '.name_pt')" (valueChange)="patchTrait(t.id, { name: $event })" />
+                    <app-text-field label="Texto do traço" [rows]="3" [value]="t.text" [path]="at + '.text_pt'" [issues]="messages(at + '.text_pt')" (valueChange)="patchTrait(t.id, { text: $event })" />
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+        <div class="add">
+          @if (traitsFull()) {
+            <button matButton="outlined" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="cr-traits-full"><mat-icon aria-hidden="true">add</mat-icon>Adicionar traço</button>
+            <p class="add__why" id="cr-traits-full"><mat-icon aria-hidden="true">lock</mat-icon>No máximo {{ maxTraits }} traços. Remova um para pôr outro.</p>
+          } @else {
+            <button matButton="outlined" type="button" (click)="addTrait()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar traço</button>
+          }
+        </div>
+      </section>
+
+      <section class="mr-panel block" aria-labelledby="cr-attacks-t" data-field="table_creature.attacks">
+        <h2 class="mr-panel__title" id="cr-attacks-t">Ataques</h2>
+        <p class="hint">Entram depois das ações da base, fora do Ataque Múltiplo dela. Até {{ maxAttacks }}.</p>
+        @for (m of messages('table_creature.attacks'); track m) {
+          <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+        }
+        @if (d.attacks.length > 0) {
+          <ul class="rows">
+            @for (a of d.attacks; track a.id; let i = $index) {
+              @let at = 'table_creature.attacks[' + i + ']';
+              @let on = isOpen(a.id, at);
+              <li class="row" [class.row--open]="on">
+                <div class="row__head">
+                  <button type="button" class="row__toggle" [attr.aria-expanded]="on" [attr.aria-controls]="'cr-a-' + a.id" (click)="toggle(a.id)">
+                    <mat-icon aria-hidden="true">{{ on ? 'expand_more' : 'chevron_right' }}</mat-icon>
+                    <span class="row__text">
+                      <span class="row__name">{{ a.name.trim() || 'Ataque sem nome' }}</span>
+                      @if (!on) {
+                        <span class="row__sub">{{ attackLine(a) }}</span>
+                      }
+                    </span>
+                  </button>
+                  <button type="button" class="row__more" [attr.aria-label]="'Mais ações do ataque ' + (a.name.trim() || i + 1)" [matMenuTriggerFor]="attackMenu">
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                  <mat-menu #attackMenu="matMenu" xPosition="before">
+                    <button mat-menu-item type="button" (click)="removeAttack(a.id)"><mat-icon aria-hidden="true">delete</mat-icon>Remover ataque</button>
+                  </mat-menu>
+                </div>
+                @if (on) {
+                  <div class="row__body" [id]="'cr-a-' + a.id">
+                    <div class="grid grid--2">
+                      <app-text-field label="Nome do ataque" [value]="a.name" [maxlength]="80" [path]="at + '.name_pt'" [issues]="messages(at + '.name_pt')" (valueChange)="patchAttack(a.id, { name: $event })" />
+                      <app-select-field label="Tipo de ataque" [options]="shapes" [value]="shapeOf(a)" [path]="at + '.melee'" [issues]="messages(at + '.melee')" (valueChange)="patchAttack(a.id, { melee: $event === 'melee' })" />
+                    </div>
+                    <div class="grid grid--4">
+                      @if (a.melee) {
+                        <app-text-field label="Alcance (m)" inputmode="decimal" placeholder="1,5" [value]="a.reachM" [path]="at + '.reach_ft'" [issues]="messages(at + '.reach_ft')" (valueChange)="patchAttack(a.id, { reachM: $event })" />
+                      } @else {
+                        <app-text-field label="Alcance (m)" inputmode="decimal" [value]="a.rangeM" [path]="at + '.range_ft'" [issues]="messages(at + '.range_ft')" (valueChange)="patchAttack(a.id, { rangeM: $event })" />
+                        <app-text-field label="Alcance longo (m)" inputmode="decimal" [value]="a.longRangeM" [path]="at + '.long_range_ft'" [issues]="messages(at + '.long_range_ft')" (valueChange)="patchAttack(a.id, { longRangeM: $event })" />
+                      }
+                      <app-text-field label="Dados" inputmode="numeric" [value]="a.diceCount" [path]="at + '.dice_count'" [issues]="messages(at + '.dice_count')" (valueChange)="patchAttack(a.id, { diceCount: $event })" />
+                      <app-select-field label="Dado" [options]="diceSides" [value]="a.diceSides" placeholder="Escolha…" [path]="at + '.dice_sides'" [issues]="messages(at + '.dice_sides')" (valueChange)="patchAttack(a.id, { diceSides: $event })" />
+                      <app-select-field label="Tipo de dano" [options]="damageTypes()" [value]="a.damageType" placeholder="Escolha…" [path]="at + '.damage_type'" [issues]="messages(at + '.damage_type')" (valueChange)="patchAttack(a.id, { damageType: $event })" />
+                    </div>
+                    <div class="grid grid--2">
+                      <app-text-field label="Bônus de acerto (fórmula)" hint="Vazio: o da criatura." [value]="a.toHit" [path]="at + '.to_hit'" [issues]="messages(at + '.to_hit')" (valueChange)="patchAttack(a.id, { toHit: $event })" />
+                      <app-text-field label="Bônus no dano (fórmula)" hint="Vazio: o da criatura." [value]="a.damageBonus" [path]="at + '.damage_bonus'" [issues]="messages(at + '.damage_bonus')" (valueChange)="patchAttack(a.id, { damageBonus: $event })" />
+                    </div>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+        <div class="add">
+          @if (attacksFull()) {
+            <button matButton="outlined" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="cr-attacks-full"><mat-icon aria-hidden="true">add</mat-icon>Adicionar ataque</button>
+            <p class="add__why" id="cr-attacks-full"><mat-icon aria-hidden="true">lock</mat-icon>No máximo {{ maxAttacks }} ataques. Remova um para pôr outro.</p>
+          } @else {
+            <button matButton="outlined" type="button" (click)="addAttack()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar ataque</button>
+          }
+        </div>
+      </section>
+
+      <app-editor-bar saveLabel="Salvar criatura" hint="Quem já tem a criatura fica com os números que recebeu." [sticky]="true" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+    }
+  </div>
+
+  @if (d.baseKey !== '') {
+    <aside class="editor__side" aria-label="Como fica na mesa">
+      <section class="mr-panel preview" aria-labelledby="cr-preview-t">
+        <h2 class="mr-panel__title" id="cr-preview-t">Como fica na mesa</h2>
+        @let p = preview();
+        <p class="preview__name">
+          <span>{{ p.name }}</span>
+          <app-table-mark [fromTable]="true" />
+        </p>
+        @if (p.line) {
+          <p class="preview__line">{{ p.line }}</p>
+        }
+        <dl class="preview__rows">
+          @for (r of p.rows; track r.label) {
+            <div class="preview__row"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
+          }
+        </dl>
+        @if (p.actions.length > 0) {
+          <h3 class="preview__sub">Ações sem dono</h3>
+          <ul class="preview__actions">
+            @for (a of p.actions; track $index) {
+              <li><strong>{{ a.name }}</strong>&ngsp;<span class="preview__origin">({{ a.origin }})</span>. {{ a.detail }}.</li>
+            }
+          </ul>
+          @if (p.ownerNote) {
+            <p class="preview__note">{{ p.ownerNote }}</p>
+          }
+        }
+        @if (carriers().length > 0) {
+          <h3 class="preview__sub">Quem traz esta criatura</h3>
+          <ul class="carriers">
+            @for (c of carriers(); track $index) {
+              <li>
+                <a [routerLink]="['/campaigns', campaignId(), 'content', 'entries', c.key]"><mat-icon aria-hidden="true">{{ c.detail.startsWith('magia') ? 'auto_fix_high' : 'menu_book' }}</mat-icon>{{ c.name }}</a>
+                <span class="carriers__why">{{ c.detail }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+      @if (entry(); as saved) {
+        <app-players-switch [campaignId]="campaignId()" [entry]="saved" noteText="Os jogadores não veem a lista de criaturas: só quem tem uma criatura dela lê a ficha." (switched)="switched.emit($event)" />
+      }
+    </aside>
+  }
+</div>

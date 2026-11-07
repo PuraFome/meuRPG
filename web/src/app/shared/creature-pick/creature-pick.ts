@@ -22,7 +22,7 @@ let nextId = 0;
   imports: [CreatureArt, MatIconModule],
   template: `
     <label class="pick__field" [for]="id + '-in'">
-      <span class="pick__label mr-label">Adicionar criatura</span>
+      <span class="pick__label mr-label">{{ label() }}</span>
       <span class="pick__box">
         <mat-icon aria-hidden="true">search</mat-icon>
         <input
@@ -31,7 +31,7 @@ let nextId = 0;
           role="combobox"
           autocomplete="off"
           aria-autocomplete="list"
-          placeholder="Procure no Bestiário pelo nome"
+          [attr.placeholder]="placeholder()"
           [attr.aria-expanded]="open()"
           [attr.aria-controls]="id + '-list'"
           [attr.aria-activedescendant]="active() >= 0 ? id + '-o' + active() : null"
@@ -76,6 +76,10 @@ export class CreaturePick {
 
   readonly campaignId = input.required<string>();
   readonly disabled = input(false);
+  readonly label = input('Adicionar criatura');
+  readonly placeholder = input('Procure no Bestiário pelo nome');
+  /** Offer the SRD's creatures only ("monster:…"): a table creature is never the base of another. */
+  readonly srdOnly = input(false);
   readonly picked = output<CreatureSummary>();
 
   protected readonly text = signal('');
@@ -128,8 +132,11 @@ export class CreaturePick {
     try {
       const res = await this.client.search(this.campaignId(), { query, pageSize: 8 });
       if (mine === this.seq) {
-        this.found.set(res.creatures);
-        this.active.set(res.creatures.length > 0 ? 0 : -1);
+        const shown = this.srdOnly()
+          ? res.creatures.filter((c) => c.key.startsWith('monster:'))
+          : res.creatures;
+        this.found.set(shown);
+        this.active.set(shown.length > 0 ? 0 : -1);
       }
     } catch (err) {
       if (mine === this.seq) {

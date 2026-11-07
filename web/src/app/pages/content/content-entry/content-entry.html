@@ -152,7 +152,7 @@
             <p>{{ extrasError() }}</p>
           </div>
           <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
-        } @else if (catalog() && (menu() || kind() === Kind.SPELL) && (!needsDefaults() || defaults())) {
+        } @else if (catalog() && (menu() || kind() === Kind.SPELL || kind() === Kind.CREATURE) && (!needsDefaults() || defaults())) {
           @switch (kind()) {
             @case (Kind.SPELL) {
               <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
@@ -177,6 +177,9 @@
             }
             @case (Kind.CLASS_FEATURE) {
               <app-class-feature-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
+            @case (Kind.CREATURE) {
+              <app-creature-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
             @case (Kind.BACKGROUND) {
               <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />

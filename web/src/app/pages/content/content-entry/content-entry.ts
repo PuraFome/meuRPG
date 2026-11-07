@@ -29,7 +29,6 @@ import { TableContentClient, contentErrorText } from '../../../core/content/cont
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
 import { readEntry } from '../../../core/content/content-read';
 import {
-  KIND_WORDS,
   type ContentNavKind,
   entryState,
   navOfKind,
@@ -44,6 +43,7 @@ import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
 import { ClassFeatureEditor } from '../class-feature-editor/class-feature-editor';
+import { CreatureEditor } from '../creature-editor/creature-editor';
 import { OptionEditor } from '../option-editor/option-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
@@ -68,6 +68,7 @@ import {
   nounPhraseOf,
   replaceEntry,
   updatedLine,
+  usesNoMenu,
 } from './content-entry-model';
 import { SubclassEditor } from '../subclass-editor/subclass-editor';
 
@@ -94,6 +95,7 @@ type PageState =
     FeatEditor,
     OptionEditor,
     ClassFeatureEditor,
+    CreatureEditor,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -118,7 +120,6 @@ export class ContentEntry {
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly Kind = TableContentKind;
-  protected readonly kindWords = KIND_WORDS;
   protected readonly phone = mediaQuery(PHONE_QUERY);
 
   protected readonly campaignId = signal('');
@@ -154,7 +155,7 @@ export class ContentEntry {
       catalog: this.catalogError(),
       menu: this.menuError(),
       defaults: this.defaultsError(),
-      spell: this.kind() === TableContentKind.SPELL,
+      noMenu: usesNoMenu(this.kind()),
       needsDefaults: this.needsDefaults(),
     }),
   );

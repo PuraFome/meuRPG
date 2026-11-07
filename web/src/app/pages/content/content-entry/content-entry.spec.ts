@@ -5,15 +5,17 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { BehaviorSubject } from 'rxjs';
 
 import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import { ContentSchema, CreatureSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableContentKind,
   TableContentRefusalSchema,
+  TableCreatureSchema,
   TableSubraceSchema,
   TableContentViolationSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import {
   classDefaults,
   entry,
@@ -91,6 +93,22 @@ describe('ContentEntry', () => {
           useValue: { paramMap: params$, snapshot: { queryParamMap: convertToParamMap({}) } },
         },
         { provide: CampaignsService, useValue: { getCampaign } },
+        {
+          provide: CreaturesClient,
+          useValue: {
+            statBlock: vi.fn().mockResolvedValue(
+              create(CreatureSchema, {
+                summary: {
+                  namePt: 'Lobo',
+                  typePt: 'fera',
+                  sizePt: 'Médio',
+                  challengeRating: '1/4',
+                },
+              }),
+            ),
+            search: vi.fn(),
+          },
+        },
         {
           provide: TableContentClient,
           useValue: {
@@ -358,6 +376,28 @@ describe('ContentEntry', () => {
     expect(el.querySelector('app-spell-editor')).not.toBeNull();
     expect(text(el)).not.toContain('Tentar de novo');
   });
+  it('opens a creature in its editor with the catalog alone (it needs no effect menu), and reads it on a phone', async () => {
+    const wolf = entry(TableContentKind.CREATURE, 'Lobo do Vale', {
+      body: {
+        case: 'tableCreature',
+        value: create(TableCreatureSchema, {
+          namePt: 'Lobo do Vale',
+          baseKey: 'monster:wolf',
+          hitPoints: 40,
+        }),
+      },
+    });
+    const { el } = await setup(Role.MASTER, wolf.key, [wolf], { failMenu: true });
+    expect(el.querySelector('app-creature-editor')).not.toBeNull();
+    expect(text(el.querySelector('.tags')!)).toContain('Criatura da mesa');
+    expect(text(el)).toContain('Voltar para Criaturas');
+    expect(text(el)).not.toContain('Tentar de novo');
+    const phone = await setup(Role.MASTER, wolf.key, [wolf], { phone: true });
+    expect(phone.el.querySelector('app-creature-editor')).toBeNull();
+    expect(text(phone.el)).toContain('Pontos de vida');
+    expect(text(phone.el)).toContain('40');
+  });
+
   it('has the entry\'s own switch "Disponível para os jogadores" in the editor, and saves it at once (RN-23)', async () => {
     const { fixture, el } = await setup(Role.MASTER, 'race:corujeiro@mesa');
     const sw = el.querySelector<HTMLButtonElement>('app-players-switch [role="switch"]')!;
@@ -511,6 +551,10 @@ describe('ContentEntry', () => {
       const feat = await newPage('feat');
       expect(text(feat.el.querySelector('h1')!)).toBe('Novo talento');
       expect(text(feat.el)).toContain('Voltar para Talentos');
+      const creature = await newPage('creature');
+      expect(text(creature.el.querySelector('h1')!)).toBe('Nova criatura');
+      expect(text(creature.el)).toContain('Voltar para Criaturas');
+      expect(text(creature.el)).toContain('Criatura do SRD que serve de base');
       const spell = await newPage('spell');
       expect(text(spell.el.querySelector('h1')!)).toBe('Nova magia');
       const odd = await newPage('nonsense');

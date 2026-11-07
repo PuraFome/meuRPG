@@ -248,8 +248,9 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
 - **Packages.** A campaign package carries the creature entry with the rest of the table content.
   A package without the creature of an NPC's link is refused as unknown content.
   A package battle encounter that names a table creature is refused as unknown content.
-- **The web app.** It has no editor for creatures and no creature group in the options screen.
-  A creature is created and switched through the API or a content pack.
+- **The web app.** The creature editor of "Conteúdo da mesa" makes and edits a creature from an SRD base, which never changes after the first save.
+  It edits the name, the fixed numbers and formulas, the traits and the attacks, and keeps the resistances, immunities and vulnerabilities as the entry has them.
+  The master switches the creature in the editor.
 
 ## Wild Shape and spell slots
 
