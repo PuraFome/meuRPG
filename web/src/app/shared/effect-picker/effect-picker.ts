@@ -52,8 +52,8 @@ import {
   fieldView,
   fixedHint,
   fixedMode,
-  isCriticalRange,
-  leftTheMenuValue,
+  holdsSomething,
+  leftTheMenuChoice,
   listOptions,
   modeLockNote,
   refHint,
@@ -181,14 +181,7 @@ export class EffectPicker {
   protected readonly typeIssues = computed(() => this.issuesOf()(`${this.basePath()}.type`));
 
   private filled(f: EffectMenuField): boolean {
-    const v = this.effect()[meterKey(f.name) ?? draftKey(f.name)];
-    return Array.isArray(v)
-      ? v.length > 0
-      : typeof v === 'number'
-        ? v !== 0
-        : typeof v === 'string'
-          ? v.trim() !== ''
-          : v === true;
+    return holdsSomething(this.effect()[meterKey(f.name) ?? draftKey(f.name)]);
   }
 
   protected path(field: string): string {
@@ -303,8 +296,7 @@ export class EffectPicker {
     }
     if (f.kind === 'choice') {
       const value = this.read(f.name);
-      const picked = this.optionsOf(f).find((o) => o.value === value);
-      return choiceHint(picked?.hint || this.feat.hint(f, value), this.leftTheMenu(f), own);
+      return choiceHint(this.optionsOf(f), f, value, this.feat.hint(f, value), own);
     }
     return own;
   }
@@ -316,12 +308,8 @@ export class EffectPicker {
 
   protected choiceOptions(f: EffectMenuField): SelectOption[] {
     const list = this.feat.withChoices(f, this.optionsOf(f));
-    const field = { name: f.name, required: f.required || this.unreadable(f) };
-    return choiceList(list, this.leftTheMenu(f), field, this.effect().type);
-  }
-
-  private leftTheMenu(f: EffectMenuField): string {
-    return leftTheMenuValue(f, this.read(f.name), this.optionsOf(f));
+    const kept = leftTheMenuChoice(f, this.read(f.name), this.optionsOf(f));
+    return choiceList(list, kept, f.required || this.unreadable(f), this.effect().type);
   }
 
   protected groupsOf(f: EffectMenuField) {

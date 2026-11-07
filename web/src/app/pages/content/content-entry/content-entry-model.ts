@@ -288,15 +288,19 @@ export function leftOutView(
   readonly model: LeftOutModel;
   readonly violation: TableContentViolation | null;
   readonly note: LeftOutNote | null;
+  /** "Remover" on an entry the rules left out, "Arquivar" otherwise: the same archive, the master's word for it. */
+  readonly verb: 'Arquivar' | 'Remover';
 } {
   const model = ctx?.isMaster ? buildLeftOut(ctx.entries, ctx.leftOut) : NO_LEFT_OUT;
   const entry = ctx?.entries.find((e) => e.key === key);
+  const violation =
+    ctx && model.rows.some((r) => r.entry.key === key)
+      ? (violationOfEntry(ctx.leftOut, key) ?? null)
+      : null;
   return {
     model,
-    violation:
-      ctx && model.rows.some((r) => r.entry.key === key)
-        ? (violationOfEntry(ctx.leftOut, key) ?? null)
-        : null,
+    violation,
     note: entry ? leftOutNote(entry, model, editing) : null,
+    verb: violation ? 'Remover' : 'Arquivar',
   };
 }

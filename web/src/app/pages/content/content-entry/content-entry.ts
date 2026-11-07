@@ -207,13 +207,11 @@ export class ContentEntry {
     const e = this.entry();
     return e ? entryState(e, this.isMaster()) : null;
   });
-  /** The entries the rules refuse (the master's only): the violation on the editor's field and the note above it. */
+  /** The entries the rules refuse (the master's only): the violation on the editor's field, the note above it, and "Remover" for "Arquivar". */
   protected readonly leftOut = computed(() => leftOutView(this.ctx(), this.key(), this.editing()));
   protected readonly updated = computed(() => updatedLine(this.entry()));
   protected readonly archivedOn = computed(() => archivedDay(this.entry()));
   protected readonly using = computed(() => usageOf(this.entry()));
-  /** "Remover" on an entry the rules left out, "Arquivar" otherwise: the same archive, the master's word for it. */
-  protected readonly verb = computed(() => (this.leftOut().violation ? 'Remover' : 'Arquivar'));
   protected readonly backLabel = computed(() => backLabelOf(this.isMaster(), this.nav()));
   protected readonly backQuery = computed(() =>
     this.isMaster() && this.nav() ? { kind: this.nav()!.slug } : {},
@@ -386,15 +384,10 @@ export class ContentEntry {
   protected async askArchive(): Promise<void> {
     this.actionError.set('');
     const e = this.entry();
-    if (!e) {
-      return;
-    }
-    if (!this.phone()) {
+    const { verb } = this.leftOut();
+    if (e && !this.phone()) {
       this.asking.set(true);
-      return;
-    }
-    const confirmed = await confirmArchiveInSheet(this.dialog, this.bottomSheet, e, this.verb());
-    if (confirmed) {
+    } else if (e && (await confirmArchiveInSheet(this.dialog, this.bottomSheet, e, verb))) {
       await this.archive();
     }
   }
