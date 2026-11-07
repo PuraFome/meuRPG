@@ -113,7 +113,11 @@ export async function shoot(page: Page, screen: string, width: number, colorSche
     return;
   }
   mkdirSync(shotsDir, { recursive: true });
-  await page.screenshot({ path: join(shotsDir, `557-${screen}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`), fullPage: true });
+  // A tall viewport instead of a full-page capture: the phone's fixed bottom bar then sits at the foot of the page, not over the cards.
+  const tall = await page.evaluate(() => document.documentElement.scrollHeight);
+  await page.setViewportSize({ width, height: tall });
+  await page.screenshot({ path: join(shotsDir, `557-${screen}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`) });
+  await page.setViewportSize({ width, height: 1100 });
 }
 
 /** Runs `check` at each width of `WIDTHS` on the pages: the pages are resized first, so the same screen is judged at all three. */
@@ -245,7 +249,8 @@ async function resistanceScreens(l: Look, fight: LegendaryFight): Promise<Legend
   const offer = m.getByTestId('resistance-offer');
   await expect(offer).toBeVisible();
   await expect(offer.getByRole('heading', { name: 'Transformar a falha em sucesso?' })).toBeVisible();
-  await expect(offer).toContainText(`${DRAGON} falhou:`);
+  await expect(offer).toContainText(new RegExp(`${DRAGON} falhou sem rolar contra CD \\d+`));
+  await expect(offer).not.toContainText('d20 0');
   await expect(offer).toContainText('Resistência Lendária: restam 3 de 3 hoje · usar gasta 1');
   await expect(offer.getByRole('checkbox')).toHaveCount(0);
   const decline = offer.getByRole('button', { name: 'Deixar como rolou' });
