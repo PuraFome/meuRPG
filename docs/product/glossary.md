@@ -242,6 +242,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Tempo de jogo | Game time | Time in the fiction; a round is 6 seconds. It moves outside combat only when the master moves it. |
 | Janela de reação | Reaction window | The question "you may react?" that holds the triggering action until answered. A player reads only their own; for an NPC's, "Esperando o mestre". |
 | Reação | Reaction | An action once per round, returning at the start of the combatant's turn: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta and the opportunity attack. |
+| Recarga | Recharge | A limit on a creature's action: "Recarga 5–6" means that once used it is spent, and at the start of each of the creature's turns the server rolls a d6; a face in the range makes it "Pronta" again. It is the master's to read (and the controlling player's); an action with uses a day ("3/dia") is counted instead and comes back at the table's long rest. |
 | Registro do combate | Combat log | What happened, last round first. A player gets only what they see; the master gets everything, with "Só o mestre vê" (RN-20). |
 | Destaques do combate | Combat highlights | The end-of-combat screen: who dealt the most damage, healed the most, took the most, landed the most killing blows and critical hits. Ties name everyone (MR-032). |
 | Surpresa | Surprise | A creature that cannot move, act or react until its first turn ends (RN-34). |
