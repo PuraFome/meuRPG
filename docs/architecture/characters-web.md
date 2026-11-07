@@ -102,8 +102,19 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   Each violation arrives at the field's exact path, all of an entry's at once.
 - **The drafts** (`spell-draft`, `feature-draft`, `effect-draft`, `feat-draft`, `class-draft`): the form as plain values, with distances in metres (5 ft = 1.5 m; `rangeFeet` and `rangeMeters` are the only arithmetic) and the conversion to the request body.
   The body carries only what the choice uses: a spell's mechanics (`Só texto` has no attack, save, damage or healing), the shape and size only on an area, and for an effect only the fields the server's menu says the type reads (`draftToEffect`).
-- **The creature editor** (`pages/content/creature-editor`, `core/content/creature-draft`, `creature-text`, `creature-preview`, `creature-carriers`): a table creature is an SRD creature chosen once as the base (`app-creature-pick` with `srdOnly`, which asks the server for a full page because it has no filter for SRD creatures), a name of up to 80 letters, four numbers (a fixed value and a formula of the owner's sheet each, with a live echo of the formula in words), traits (name and text) and attacks (up to 10 and 8), each a one-line row that opens in place and is removed from its menu, after which the focus goes to the add button.
-  The draft keeps every number as typed, sends an empty one as 0 and a melee attack's reach or a ranged attack's range and long range only; distances are metres in the form and feet in the entry, the dice go from d4 to d100. The side column writes "Como fica na mesa" from the draft and the base's stat block and lists who brings the creature (`carriersOf`, read from the entries the editor already has). `damage_mods` has no rows yet and goes back as the entry has them (`kept`).
+- **The creature editor** (`pages/content/creature-editor`, `core/content/creature-draft`, `creature-text`, `creature-preview`, `creature-carriers`) edits a table creature.
+  The base is an SRD creature chosen once with `app-creature-pick` and `srdOnly`.
+  `srdOnly` asks the server for a full page, because the server has no filter for SRD creatures.
+  The name has up to 80 letters.
+  There are four numbers: a fixed value and a formula of the owner's sheet each, with a live echo of the formula in words.
+  Traits (up to 10) and attacks (up to 8) are one-line rows that open in place.
+  A row is removed from its menu, and the focus then goes to the add button.
+  The draft keeps every number as typed and sends an empty one as 0.
+  It sends only a melee attack's reach, or a ranged attack's range and long range.
+  Distances are metres in the form and feet in the entry, and the dice go from d4 to d100.
+  The side column writes "Como fica na mesa" from the draft and the base's stat block.
+  It lists who brings the creature (`carriersOf`, read from the entries the editor already has).
+  `damage_mods` has no rows yet and goes back as the entry has them (`kept`).
 - **The damage warning** (`core/content/spell-warnings.ts`, `unappliedDamage`): the spell editor shows "O app não sabe aplicar este dano" under the combat mechanics when a saved spell has damage and no attack, no saving throw, no area and a target other than the caster alone.
   It is a client-side note beside the form, with no code from the server; it never blocks "Salvar magia", and it goes away when the master picks an attack or a saving throw, or an area target.
   Dice typed under "Só texto" are not sent, so only a saved body raises it.
