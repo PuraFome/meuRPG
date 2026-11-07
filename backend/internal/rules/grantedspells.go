@@ -25,6 +25,9 @@ const (
 // GrantedAbilities are the casting abilities a grant names.
 var GrantedAbilities = []Ability{INT, WIS, CHA}
 
+// MaxGrantUsesCost is the most uses one cast of a granted spell can cost on the menu.
+const MaxGrantUsesCost = 20
+
 // GrantedAbilityChoiceKey is the key of the choice of the casting ability of the
 // grants an entry (a trait, a feature or a feat) makes, shared by all of them.
 func GrantedAbilityChoiceKey(owner string) string { return owner + grantedAbilityChoiceSuffix }
