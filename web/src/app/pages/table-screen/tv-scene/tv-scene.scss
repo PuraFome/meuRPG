@@ -73,8 +73,8 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10em, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--mr-space-3);
   margin: 0;
   padding: 0;
@@ -83,9 +83,8 @@
 
 .tv-scene__npc {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--mr-space-2);
+  gap: var(--mr-space-3);
   min-width: 0;
   font-size: var(--mr-font-18);
   color: var(--mr-ink);
@@ -94,7 +93,13 @@
     font-size: var(--mr-font-28);
   }
 
-  &--speaking .tv-scene__name {
+  &--speaking .tv-scene__who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .tv-scene__name {
     font-weight: 700;
   }
 }
@@ -122,7 +127,10 @@
 // "+N", under the list; its room is kept while it is empty.
 .tv-scene__more {
   flex: none;
-  min-height: 1.6em;
+  box-sizing: border-box;
+  height: 1.6em;
+  overflow: hidden;
+  line-height: 1.4;
   margin: 0;
   color: var(--mr-ink-muted);
   font-weight: 700;

@@ -1,6 +1,11 @@
 :host {
   display: block;
   min-height: 0;
+
+  // On a TV the card fills the stage beside the order, as the board draws it.
+  @media (min-width: 900px) {
+    height: 100%;
+  }
 }
 
 .tv-fog {

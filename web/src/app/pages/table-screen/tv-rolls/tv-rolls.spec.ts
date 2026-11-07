@@ -31,7 +31,7 @@ describe('TvRolls', () => {
     expect(last.textContent).toContain('Brisa rolou');
     expect(last.querySelector('.tv-rolls__total')?.textContent).toBe('11');
     expect(last.textContent).toContain('2d6+3');
-    expect(last.textContent).toContain('2 e 2 · rolagem livre');
+    expect(last.textContent).toContain('· 2 e 2');
     const rows = el.querySelectorAll('.tv-rolls__row');
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('Tor');

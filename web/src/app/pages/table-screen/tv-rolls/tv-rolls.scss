@@ -57,6 +57,10 @@
 }
 
 .tv-rolls__last {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
   padding: var(--mr-space-2) var(--mr-space-3);
   border: 2px solid var(--mr-accent);
   border-radius: var(--mr-radius-md);
@@ -65,6 +69,10 @@
   p {
     margin: 0;
   }
+}
+
+.tv-rolls__text {
+  min-width: 0;
 }
 
 .tv-rolls__who {
@@ -83,6 +91,7 @@
 .tv-rolls__total {
   font-family: var(--mr-font-display);
   font-weight: 800;
+  flex: none;
   font-size: var(--mr-font-48);
   line-height: 1.1;
   color: var(--mr-accent-text);
@@ -102,8 +111,7 @@
 }
 
 .tv-rolls__faces {
-  display: block;
-  font-size: var(--mr-font-13);
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 
   @media (min-width: 1600px) {
@@ -155,16 +163,5 @@
 
   @media (min-width: 1600px) {
     font-size: var(--mr-font-38);
-  }
-}
-
-// A short TV (720 p): the newest roll is smaller, so the order beside it keeps its room.
-@media (min-width: 900px) and (max-height: 800px) {
-  .tv-rolls__total {
-    font-size: var(--mr-font-34);
-  }
-
-  .tv-rolls__faces {
-    display: none;
   }
 }

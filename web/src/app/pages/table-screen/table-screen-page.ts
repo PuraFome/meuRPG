@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -38,6 +39,7 @@ import { TvScene } from './tv-scene/tv-scene';
 @Component({
   selector: 'app-table-screen-page',
   imports: [
+    NgTemplateOutlet,
     MatIconModule,
     TvCombat,
     TvFogCard,

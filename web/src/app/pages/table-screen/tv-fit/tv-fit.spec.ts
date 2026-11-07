@@ -97,4 +97,72 @@ describe('TvFit', () => {
     fit();
     expect(shown()).toEqual(['a', 'b', 'sep', 'c', 'd']);
   });
+
+  it('lets a row go two pixels past the edge (sub-pixel rounding) but not three', () => {
+    const { fixture, fit, shown } = render();
+    lay(fixture.nativeElement, 28);
+    fit();
+    expect(shown()).toEqual(['a', 'b', 'sep']);
+    lay(fixture.nativeElement, 27);
+    fit();
+    expect(shown()).toEqual(['a', 'b']);
+  });
+
+  describe('when the layout settles after the first fit', () => {
+    const observed: Element[] = [];
+    let notify: () => void = () => undefined;
+
+    beforeEach(() => {
+      observed.length = 0;
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: () => void) {
+            notify = callback;
+          }
+          observe(el: Element): void {
+            observed.push(el);
+          }
+          unobserve(el: Element): void {
+            observed.splice(observed.indexOf(el), 1);
+          }
+          disconnect(): void {
+            observed.length = 0;
+          }
+        },
+      );
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('watches the children too and shows the row that fits once a sibling shrinks', () => {
+      const { fixture, list, fit, shown } = render();
+      lay(fixture.nativeElement, 100);
+      fit();
+      expect(observed).toContain(list);
+      for (const li of [...list.children]) {
+        expect(observed).toContain(li);
+      }
+      // The "+N" slot grew while the rows were measured: the rows past the edge are hidden...
+      lay(fixture.nativeElement, 25);
+      fit();
+      expect(shown()).toEqual(['a', 'b']);
+      // ...and when it settles back, the observer refits and the row that fits comes back.
+      lay(fixture.nativeElement, 40);
+      notify();
+      fixture.detectChanges();
+      expect(shown()).toEqual(['a', 'b', 'sep', 'c']);
+      expect(fixture.componentInstance.left()).toBe(1);
+    });
+
+    it('stops watching a child that left the list', () => {
+      const { fixture, list, fit } = render();
+      lay(fixture.nativeElement, 100);
+      fit();
+      const gone = list.children[3];
+      fixture.componentInstance.items.set(['a', 'b', 'sep', 'd']);
+      fixture.detectChanges();
+      fit();
+      expect(observed).not.toContain(gone);
+    });
+  });
 });

@@ -17,12 +17,14 @@
         @for (npc of shown(); track $index) {
           <li class="tv-scene__npc" data-count [class.tv-scene__npc--speaking]="npc.speaking">
             <app-combatant-token [initial]="initial(npc.name)" [npc]="true" [current]="npc.speaking" [size]="40" />
-            <span class="tv-scene__name">{{ npc.name }}</span>
-            @if (npc.speaking) {
-              <span class="tv-scene__speaking">
-                <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora
-              </span>
-            }
+            <span class="tv-scene__who">
+              <span class="tv-scene__name">{{ npc.name }}</span>
+              @if (npc.speaking) {
+                <span class="tv-scene__speaking">
+                  <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora
+                </span>
+              }
+            </span>
           </li>
         }
       </ul>

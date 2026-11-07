@@ -360,6 +360,15 @@ describe('TableScreenPage', () => {
       expect(el.querySelector('app-tv-fullscreen-hint')).toBeNull();
     });
 
+    it('puts the hint under the header, never above the title', () => {
+      fullscreenSupport(true);
+      phase.set(ready());
+      const { el } = render();
+      const head = el.querySelector('app-tv-header')!;
+      const hint = el.querySelector('app-tv-fullscreen-hint')!;
+      expect(head.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('says nothing where the browser has no full screen', () => {
       phase.set(ready());
       expect(render().el.querySelector('app-tv-fullscreen-hint')).toBeNull();
