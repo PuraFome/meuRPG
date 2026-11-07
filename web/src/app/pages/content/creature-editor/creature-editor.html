@@ -69,7 +69,7 @@
         </p>
       </section>
 
-      <app-creature-damage-mods [mods]="d.damageMods" [damageTypes]="catalog().damageTypes" [nameOf]="nameOf" [baseText]="baseMods()" [baseName]="baseName()" [issues]="messages" (modsChange)="patch({ damageMods: $event })" />
+      <app-creature-damage-mods [mods]="d.damageMods" [damageTypes]="catalog().damageTypes" [nameOf]="nameOf" [baseText]="baseMods()" [baseName]="baseName()" [issues]="messages" (modsChange)="setMods($event)" />
 
       <section class="mr-panel block" aria-labelledby="cr-traits-t" data-field="table_creature.traits">
         <h2 class="mr-panel__title" id="cr-traits-t">Traços</h2>

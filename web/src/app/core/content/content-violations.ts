@@ -38,6 +38,34 @@ export function withoutFields(placement: Placement, paths: readonly string[]): P
   return { byField, top: placement.top, fields, count: fields.length + placement.top.length };
 }
 
+/** Where a path goes after row `index` of `list` is removed: `null` for a path inside that row, the next index down for the rows after it. */
+export function pathAfterRowRemoved(path: string, list: string, index: number): string | null {
+  const head = `${list}[`;
+  if (!path.startsWith(head)) {
+    return path;
+  }
+  const close = path.indexOf(']', head.length);
+  const at = Number(path.slice(head.length, close));
+  if (close < 0 || Number.isNaN(at) || at < index) {
+    return path;
+  }
+  return at === index ? null : `${head}${at - 1}${path.slice(close)}`;
+}
+
+/** The placement after row `index` of `list` is removed: its messages go, the rows below keep theirs at their new place, the rest stays. */
+export function withoutRow(placement: Placement, list: string, index: number): Placement {
+  const move = (path: string) => pathAfterRowRemoved(path, list, index);
+  const byField = new Map<string, readonly PlacedViolation[]>();
+  for (const [path, found] of placement.byField) {
+    const to = move(path);
+    if (to !== null) {
+      byField.set(to, found);
+    }
+  }
+  const fields = placement.fields.flatMap((path) => move(path) ?? []);
+  return { byField, top: placement.top, fields, count: fields.length + placement.top.length };
+}
+
 /** "table_race.traits[1].effects[0].value" without its indexes: "table_race.traits[].effects[].value". */
 export function shapeOf(path: string): string {
   return path.replace(/\[\d+\]/g, '[]');

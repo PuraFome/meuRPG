@@ -48,6 +48,28 @@
     width: 100%;
     --mat-form-field-container-height: 44px;
     --mat-form-field-container-vertical-padding: 10px;
+    // The compact size of the board: 14px values, so the table's longest ones fit one line at 1024 and at 1280.
+    --mat-select-trigger-text-size: var(--mr-font-14);
+    --mat-form-field-container-text-size: var(--mr-font-14);
+  }
+
+  // The value shows its whole text; one that still does not fit ends in an ellipsis, never over the arrow.
+  ::ng-deep .mat-mdc-select-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ::ng-deep .mat-mdc-select-min-line {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  ::ng-deep .mat-mdc-select-arrow-wrapper {
+    flex: none;
+    margin-left: var(--mr-space-2);
   }
 }
 
@@ -70,16 +92,33 @@
   --mat-form-field-outlined-focus-outline-color: var(--mr-danger-ink);
 }
 
-// "Vale contra" cannot apply: dashed, with the block icon where the arrow was.
+// "Vale contra" cannot apply: a dashed box, with the block icon where the arrow was. The outline's own segments are
+// hidden: a dashed border on them draws a thick bar at the leading edge.
 .off {
   color: var(--mr-ink-muted);
 
+  ::ng-deep .mdc-notched-outline {
+    border: 1px dashed var(--mr-line);
+    border-radius: var(--mr-radius-sm);
+  }
+
   ::ng-deep .mdc-notched-outline > * {
-    border-style: dashed;
+    border-color: transparent;
   }
 
   ::ng-deep .mat-mdc-select-arrow-wrapper {
     display: none;
+  }
+
+  ::ng-deep .mat-mdc-select-min-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ::ng-deep .mat-mdc-select-value {
+    // Room for the block icon at the right.
+    padding-right: 24px;
   }
 
   .mat-icon {

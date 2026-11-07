@@ -4,6 +4,7 @@ import { TableContentViolationSchema } from '../../../gen/meurpg/rules/v1/table_
 import {
   inputFor,
   parentOf,
+  pathAfterRowRemoved,
   placeViolations,
   refusalSummary,
   shapeOf,
@@ -525,5 +526,18 @@ describe("the refusals of a feat, on the feat editor's fields", () => {
     expect(violationText(v('table_feat.name_pt', 'duplicate_name'), feat)).toBe(
       'Já existe um talento da mesa com este nome. Escolha outro.',
     );
+  });
+});
+
+describe('pathAfterRowRemoved (#578)', () => {
+  it('drops a path inside the removed row, moves the rows below up and leaves the rest', () => {
+    const at = (path: string) => pathAfterRowRemoved(path, 'a.rows', 1);
+    expect(at('a.rows[1]')).toBeNull();
+    expect(at('a.rows[1].name')).toBeNull();
+    expect(at('a.rows[2].name')).toBe('a.rows[1].name');
+    expect(at('a.rows[12].x[3]')).toBe('a.rows[11].x[3]');
+    expect(at('a.rows[0].name')).toBe('a.rows[0].name');
+    expect(at('a.rows')).toBe('a.rows');
+    expect(at('a.other[2]')).toBe('a.other[2]');
   });
 });
