@@ -261,6 +261,35 @@ func (w wallSpec) onDamagingSide(origin, sq grid.Square) bool {
 	return cross > 0
 }
 
+// burning is the squares of the damaging side the wall's own squares do not take, row by row from the top.
+func (z *zone) burning() []grid.Square {
+	if z.wall == nil {
+		return nil
+	}
+	return z.wall.burning(z.origin(), z.squares)
+}
+
+// burning is burning for a wall laid as these squares from the origin.
+func (w wallSpec) burning(origin grid.Square, wall []grid.Square) []grid.Square {
+	own := make(map[grid.Square]bool, len(wall))
+	for _, sq := range wall {
+		own[sq] = true
+	}
+	var out []grid.Square
+	for sq := range w.reach(origin, wall) {
+		if !own[sq] {
+			out = append(out, sq)
+		}
+	}
+	slices.SortFunc(out, func(a, b grid.Square) int {
+		if a.Row != b.Row {
+			return a.Row - b.Row
+		}
+		return a.Col - b.Col
+	})
+	return out
+}
+
 // hurtsAtEnd says whether the square is one the damaging side of the wall reaches.
 func (z *zone) hurtsAtEnd(sq grid.Square) bool { return z.reach[sq] }
 

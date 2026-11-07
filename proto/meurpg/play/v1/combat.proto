@@ -2262,6 +2262,13 @@ message SpellZone {
   repeated string notes = 23;
   // The combatants standing in the area now that the caller sees ("Aqui: Tor, Jabuti").
   repeated string occupant_ids = 24;
+  // The squares of a wall's burning side (Wall of Fire): the ones within 10 feet of the wall on the side
+  // that deals damage, the wall's own squares not among them (those are `squares`). Empty for a zone that
+  // is no wall. The caller reads only the ones it may read: the master all of them, a player the ones it
+  // sees now, as `squares` (RN-10). These are plain grid squares: SpellOrigin is only the message's shape here.
+  repeated SpellOrigin burning_squares = 25;
+  // The side of the wall that burns; UNSPECIFIED for a zone that is no wall.
+  WallSide wall_side = 26;
 }
 
 // SpellZoneMovement says how a zone changes place while it lasts.
@@ -4827,6 +4834,12 @@ message PreviewSpellAreaResponse {
   // True when the point of origin is not the one asked for (a wall was in the
   // way).
   bool moved = 6;
+  // The squares of a wall's burning side (Wall of Fire), as SpellZone.burning_squares; empty for any other
+  // spell.
+  repeated SpellOrigin burning_squares = 7;
+  // The length of the wall the server laid, in feet: `wall.length_ft` with 0 taken as the full size.
+  // 0 for any other spell.
+  int32 length_ft = 8;
 }
 
 // AreaTarget is a creature inside a placed area.

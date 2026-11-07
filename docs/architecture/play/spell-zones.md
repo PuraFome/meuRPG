@@ -164,6 +164,9 @@ The caster says the wall in `CastSpellRequest.wall` and `PreviewSpellAreaRequest
 - **Sight and movement.** The wall is a cloud (`sightCloud`): its squares block sight as Fog Cloud's do (see above).
   It does not block movement.
 - **The turn options.** The casting panel sends no `wall`, so `GetTurnOptions` lists the spell unavailable with `DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED` (`refuseWallSpells`).
+- **The burning side.** `SpellZone.wall_side` and `burning_squares` tell it: the squares the damage reaches that are not the wall's own (`burning`).
+  The master reads all of them and a player the ones they see now.
+  `PreviewSpellAreaResponse.burning_squares` and `length_ft` tell the caster the same for the wall they are laying.
 - **Privacy.** A hidden caster's wall follows the rule of the clouds: the zone and the caster are the master's, and the players read only the squares their view hides.
   The pending damage of a hit names the caster only to the master and the caster's own player.
 
@@ -196,12 +199,15 @@ A player gets the zones of casters they `sees` (not hidden, not in the dark of a
 `rounds_left` is the round the zone ends at, minus the current round, 0 for a zone with no round count.
 The hint of a zone that moved goes to the master alone when the caster is hidden (`publishZoneMoved`).
 The event of a catch is `Secret` for a hidden caster or a hidden creature, and its actor is the caster and its target the creature, so the log's own rule hides it from a player who does not see either (RN-10); the DC is the master's, and the target's player's with `show_save_dc` on (`effectLogRoll`).
-A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `rounds_left`) only for a zone of their own character; for another they get `details_hidden` and the name, shape, squares, concentration and the occupants they see. The squares of a visible caster's zone reach every player, also on a fog map where they have not explored them: the shape of a spell is not a secret the fog keeps.
+A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `rounds_left`) only for a zone of their own character; for another they get `details_hidden` and the name, shape, squares, concentration and the occupants they see. On a fog map a player reads the squares of a zone only where they see now (`onlySeen`, `zones_view.go`), never the squares they remember: a zone with none left is not sent, and the origin is one of the squares they read.
+A zone that blocks sight has no square the fog counts as seen, so its face counts: a square of it that touches a square the player sees now (`faces`).
+The answer of a zone half in sight is the same as a zone whose squares are all the ones they see: no flag and no count says there is more.
+The caster's own player and the master read the whole zone, and a map without the fog sends it whole.
 
 ## Tests
 
 `zones_silence_test.go` (Silence: the gate, the immunity, the deafened state, the overlap and the hidden caster), `zones_grease_test.go` (Grease: the shape, the cast, entering, the end of the turn, the end of the zone and the undo; Entangle: the shape, the cast only, the end with the concentration and the undo) and `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint), `zones_spikes_test.go` (Spike Growth: the area, the damage for every square, what counts as movement) and `zones_wall_test.go` (Wall of Fire: the geometry, the request, the cast, the later hits, the fog and the refusal); `internal/leaktest` classifies `MoveSpellZone`.
-`internal/leaktest` reads the map as a player (`mapzones_test.go`): a Darkness takes a creature off a darkvision player's map while a Devil's Sight player and the master keep it, a hidden caster's Fog Cloud or Wall of Fire reaches no player but the unseen squares, the damage a hidden caster's wall leaves names no caster to a player, a hidden caster's Silence deafens in the view of the master and the creature's own player alone, and a cloud that ends leaves nothing new in the streams.
+`internal/leaktest` reads the map as a player (`mapzones_test.go`): a Darkness takes a creature off a darkvision player's map while a Devil's Sight player and the master keep it, a hidden caster's Fog Cloud or Wall of Fire reaches no player but the unseen squares, a revealed caster's wall reaches a player only where they see (the master reads the burning side behind it), the damage a hidden caster's wall leaves names no caster to a player, a hidden caster's Silence deafens in the view of the master and the creature's own player alone, and a cloud that ends leaves nothing new in the streams.
 The grid cube is in `rules/grid/area_test.go`.
 
 ## The web

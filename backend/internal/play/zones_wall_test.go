@@ -407,6 +407,12 @@ func TestAPreviewOfTheWallShowsTheSquaresTheCastLays(t *testing.T) {
 			t.Errorf("the preview has %v, which the zone does not", s)
 		}
 	}
+	if got, want := squaresOf(res.Msg.GetBurningSquares()), squaresOf(z.GetBurningSquares()); len(want) == 0 || !slices.Equal(got, want) {
+		t.Errorf("preview burning squares = %v, want the zone's %v", got, want)
+	}
+	if res.Msg.GetLengthFt() != wallLineFt || z.GetWallSide() != playv1.WallSide_WALL_SIDE_LEFT {
+		t.Errorf("length_ft = %d, wall_side = %v, want the full %d and LEFT", res.Msg.GetLengthFt(), z.GetWallSide(), wallLineFt)
+	}
 	_, err = c.ana.combat.PreviewSpellArea(t.Context(), connect.NewRequest(&playv1.PreviewSpellAreaRequest{
 		CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), CasterId: c.id(t, "Pensantus"), SpellKey: wallOfFireKey,
 		Slot: slotOfLevel(4), Area: &playv1.PreviewSpellAreaRequest_Origin{Origin: at(7, 8)},

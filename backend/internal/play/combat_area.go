@@ -438,6 +438,9 @@ func previewResponse(plan areaPlan, sp link.Spell, caster playdb.Combatant, v co
 		Origin: originProto(plan.origin), Squares: squaresProto(plan.squares), CoverCounts: counts,
 		RangeFt: placedRangeFt(sp), Moved: plan.origin != plan.asked,
 	}
+	if w := plan.wall; w != nil {
+		out.BurningSquares, out.LengthFt = squaresProto(w.burning(plan.origin, plan.squares)), clamp32(w.LengthFt, 0, math.MaxInt32)
+	}
 	for _, t := range plan.targets {
 		if v.sees(t.who) { // a hidden creature, or one in the dark, is not named or counted
 			out.Targets = append(out.Targets, previewTarget(t, caster, plan.origin, counts, v))
