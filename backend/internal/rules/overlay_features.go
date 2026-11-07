@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon", "natural_attack",
 	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "flag", "choice", "ability_increase", "note",
 }
 
@@ -343,6 +343,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	},
 	"weapon_rule":      (*overlayBuilder).checkWeaponEffects,
 	"pseudo_weapon":    (*overlayBuilder).checkWeaponEffects,
+	"natural_attack":   (*overlayBuilder).checkNaturalAttackEffect,
 	"choice":           (*overlayBuilder).checkChoiceEffect,
 	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
 	"proficiency":      func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
@@ -671,6 +672,8 @@ var ownFields = map[string][]string{
 	// A weapon rule changes the weapons its filter chooses; a pseudo-weapon is an attack line of its own.
 	"weapon_rule":   {"weapon", "weapon_name", "attack_ability", "damage_ability", "attack_bonus", "damage_bonus", "reach_ft", "magical", "silvered", "adamantine", "while"},
 	"pseudo_weapon": {"attack_name", "weapon", "damage_dice", "damage_type", "ability", "reach_ft", "range_ft", "while"},
+	// A natural attack: the name, the dice, the damage type, the ability and the reach; the when that gates it.
+	"natural_attack": {"attack_name", "damage_dice", "damage_type", "ability", "reach_ft"},
 	// breathes_water has no field of its own: only the when that gates it.
 	"breathes_water": {},
 	// A flag names the rule it switches on, and the when that gates it.

@@ -169,6 +169,8 @@ const (
 	ListRaceTraits = "race_traits"
 	// ListEffectFlags are the flags a flag effect names.
 	ListEffectFlags = "effect_flags"
+	// ListNaturalAbilities are the abilities a natural attack uses: Strength, Dexterity or the better of the two.
+	ListNaturalAbilities = "natural_abilities"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -326,6 +328,15 @@ var menuTypes = []MenuType{
 		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "natural_attack", NamePT: "Ataque natural", HintPT: "Dá à ficha um ataque desarmado com nome próprio (uma mordida, garras, chifres): dados de dano, tipo de dano, a habilidade que usa (Força, Destreza ou a melhor das duas) e o alcance, que é de 1,5 m se ficar em branco. Só corpo a corpo, sempre com proficiência. Aparece na lista de ataques e no combate, e as regras de arma também a mudam; não é o golpe desarmado, então as regras que citam esse golpe não a leem.", Fields: []MenuField{
+		{Name: "attack_name", Required: true, Kind: "text"},
+		{Name: "damage_dice", Required: true, Kind: "text"},
+		{Name: "damage_type", Required: true, Kind: "choice", List: ListDamageTypes},
+		{Name: "ability", Required: true, Kind: "choice", List: ListNaturalAbilities},
+		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
+		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "condition_immunity", NamePT: "Imunidade a condição", HintPT: "O personagem não fica com as condições escolhidas: nenhuma magia, armadilha ou golpe as coloca nele.", Fields: []MenuField{
@@ -737,6 +748,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListLackableFeatures, Values: c.menuLackableFeatures()},
 		{Name: ListRaceTraits, Values: c.menuRaceTraits()},
 		{Name: ListEffectFlags, Values: effectFlagValues()},
+		{Name: ListNaturalAbilities, Values: c.menuNaturalAbilities()},
 	}
 }
 
@@ -963,5 +975,14 @@ func menuHelpers() []FormulaHelper {
 		{Call: "ceil(x)", Returns: "number", HintPT: "Arredonda para cima."},
 		{Call: "min(a, b)", Returns: "number", HintPT: "O menor dos dois."},
 		{Call: "max(a, b)", Returns: "number", HintPT: "O maior dos dois."},
+	}
+}
+
+// menuNaturalAbilities are the abilities of a natural attack: Strength, Dexterity, or the better of the two.
+func (c *content) menuNaturalAbilities() []MenuValue {
+	return []MenuValue{
+		{Key: string(STR), NamePT: c.menuAbilityName(STR)},
+		{Key: string(DEX), NamePT: c.menuAbilityName(DEX)},
+		{Key: NaturalAbilityBest, NamePT: "A melhor das duas", HintPT: "Usa a Força ou a Destreza, a que tiver o modificador maior."},
 	}
 }

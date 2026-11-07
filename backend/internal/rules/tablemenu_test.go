@@ -270,6 +270,9 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		}
 		effects = append(effects, e)
 	}
+	for _, v := range menuList(t, m, ListNaturalAbilities) {
+		effects = append(effects, Effect{Type: "natural_attack", AttackName: "Mordida " + v.Key, DamageDice: "1d6", DamageType: "damage-type:piercing", Ability: v.Key})
+	}
 	// The option sets: each option of each set, offered by a feature choice.
 	if len(m.OptionSets) == 0 {
 		t.Fatal("the menu has no option set (fighting styles...)")
@@ -338,6 +341,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"condition_immunity": {Type: "condition_immunity", Conditions: []string{"condition:poisoned"}},
 		"breathes_water":     {Type: "breathes_water"},
 		"flag":               {Type: "flag", Flag: FlagNeverSurprised},
+		"natural_attack":     {Type: "natural_attack", AttackName: "Mordida de Teste", DamageDice: "1d6", DamageType: "damage-type:piercing", Ability: "best"},
 		"granted_spell":      {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},

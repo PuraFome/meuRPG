@@ -336,7 +336,7 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
-		"reroll", "roll_minimum", "flag",
+		"reroll", "roll_minimum", "flag", "natural_attack",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -432,6 +432,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"state":              effectCompiler.state,
 	"weapon_rule":        effectCompiler.weaponRule,
 	"pseudo_weapon":      effectCompiler.pseudoWeapon,
+	"natural_attack":     effectCompiler.naturalAttack,
 	"breathes_water":     effectCompiler.breathesWater,
 	"flag":               effectCompiler.flag,
 	"granted_spell":      effectCompiler.grantedSpell,
@@ -593,7 +594,7 @@ func (x effectCompiler) strayExtraDamage() error {
 		return x.fail("dice, dice_sides, frequency and no_crit_doubling belong to extra_damage")
 	}
 	if !slices.Contains(damageTypeEffects, e.Type) && e.DamageType != "" {
-		return x.fail("damage_type belongs to extra_damage, spell_modifier, pseudo_weapon and roll_minimum")
+		return x.fail("damage_type belongs to extra_damage, spell_modifier, pseudo_weapon, natural_attack and roll_minimum")
 	}
 	if !slices.Contains(weaponEffects, e.Type) && e.Weapon != "" {
 		return x.fail("weapon belongs to extra_damage, weapon_rule and pseudo_weapon")
@@ -1136,5 +1137,5 @@ func (c *content) validRollTarget(t string) bool {
 // weapon lines a weapon_rule chooses, the kind of a pseudo_weapon) and damage_type.
 var (
 	weaponEffects     = []string{"extra_damage", "weapon_rule", "pseudo_weapon"}
-	damageTypeEffects = []string{"extra_damage", "spell_modifier", "pseudo_weapon", "roll_minimum"}
+	damageTypeEffects = []string{"extra_damage", "spell_modifier", "pseudo_weapon", "natural_attack", "roll_minimum"}
 )
