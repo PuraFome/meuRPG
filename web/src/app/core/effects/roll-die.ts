@@ -102,6 +102,8 @@ export function attackDieCost(die: RollDie, uses: DieUses): string {
 /** What a weapon-attack die listing needs: the die and its pool. */
 export type ListedDie = Pick<ManeuverDieOption, 'die' | 'resourceNamePt' | 'usesLeft'>;
 
+const cap = (t: string): string => t[0].toUpperCase() + t.slice(1);
+
 function usesWord(left: number): string {
   if (left <= 0) {
     return 'sem usos';
@@ -132,9 +134,10 @@ export function maneuverLine(dice: readonly ListedDie[], where: 'list' | 'attack
   const lead = `${who} entrar ${where === 'list' ? 'num ataque com arma' : 'neste ataque'}: você marca ao rolar.`;
   if (where === 'attack' && pools.size === 1) {
     const left = [...pools.values()][0];
-    const word = usesWord(left);
-    return `${lead} ${word[0].toUpperCase()}${word.slice(1)}.`;
+    return `${lead} ${cap(usesWord(left))}.`;
   }
-  const tail = [...pools].map(([pool, left]) => `${pool ? `${pool}: ` : ''}${usesWord(left)}.`).join(' ');
+  const tail = [...pools]
+    .map(([pool, left]) => (pool ? `${pool}: ${usesWord(left)}.` : `${cap(usesWord(left))}.`))
+    .join(' ');
   return `${lead} ${tail}`;
 }

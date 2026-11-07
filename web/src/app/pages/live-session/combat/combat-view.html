@@ -231,9 +231,9 @@
               (letEnd)="rage.answer($event, true)"
             />
             <app-hit-rider-card
-              [offers]="encounter()?.hitRiders"
+              [offers]="encounter()?.hitRiders ?? []"
               [campaignId]="campaignId()"
-              [combatants]="encounter()?.combatants"
+              [combatants]="encounter()?.combatants ?? []"
               [busy]="busy()"
               (answer)="answerRider($event)"
             />
@@ -271,7 +271,7 @@
                 [armorClass]="armorClass()"
                 [slots]="ownSlots()"
                 [hitPoints]="ownHitPoints()"
-                [effectNotes]="options()?.effectNotes"
+                [effectNotes]="options()?.effectNotes ?? []"
                 (endTurn)="nextTurn()"
                 (move)="moves.open()"
                 (endRage)="rage.end($event)"

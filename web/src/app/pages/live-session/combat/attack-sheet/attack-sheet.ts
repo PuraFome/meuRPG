@@ -179,6 +179,10 @@ export class AttackSheet {
   };
   /** Any extra die is asked beside the d20: the total and the confirm button read it. */
   protected readonly hasExtras = computed(() => this.typedFields().length > 0);
+  /** An extra die is asked and its face is not typed yet: the total and "Confirmar" wait for it. */
+  protected readonly extrasPending = computed(
+    () => this.hasExtras() && this.typedExtras() === null,
+  );
   /** The attack bonus with the typed extra dice, for the total of the two d20. */
   protected readonly pairModifier = computed(() => {
     const extras = this.typedExtras();

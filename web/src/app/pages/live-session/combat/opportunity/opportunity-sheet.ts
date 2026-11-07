@@ -93,7 +93,7 @@ export type OpportunityAnswer = {
             }
           </ul>
           @if (dieLine()) {
-            <p class="die"><mat-icon aria-hidden="true">casino</mat-icon><span>{{ dieLine() }}</span></p>
+            <p class="mr-die-note"><mat-icon aria-hidden="true">casino</mat-icon><span>{{ dieLine() }}</span></p>
           }
         } @else if (readFailed()) {
           <p class="small" role="status">Não deu para ler os seus ataques. Dá para tentar de novo, ou não atacar.</p>

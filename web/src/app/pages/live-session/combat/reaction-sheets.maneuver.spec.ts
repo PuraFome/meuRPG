@@ -3,9 +3,9 @@ import { of } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
-  type GetTurnOptionsResponse,
+  GetTurnOptionsResponseSchema,
   ManeuverDieOptionSchema,
-  type OpportunityOffer,
+  OpportunityOfferSchema,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
   AttackKind,
@@ -35,16 +35,16 @@ const strike = create(ManeuverDieOptionSchema, {
   resourceNamePt: 'Reserva de Golpes',
   usesLeft: 2,
 });
-const options = {
+const options = create(GetTurnOptionsResponseSchema, {
   options: create(TurnOptionsSchema, { attacks: [{ attack: sword }] }),
   maneuverDice: [strike],
-} as unknown as GetTurnOptionsResponse;
-const offer = {
+});
+const offer = create(OpportunityOfferSchema, {
   id: 'o1',
   reactorId: 't',
   moverId: 'g',
   moverLabel: 'Goblin',
-} as unknown as OpportunityOffer;
+});
 
 function opened(byMaster: boolean): AttackSheetData {
   const configs: { data: AttackSheetData }[] = [];

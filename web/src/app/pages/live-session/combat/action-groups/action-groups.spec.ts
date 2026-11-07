@@ -1,8 +1,10 @@
 import { create } from '@bufbuild/protobuf';
 import { TestBed } from '@angular/core/testing';
 
-import { ManeuverDieOptionSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantSchema,
+  ManeuverDieOptionSchema,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   ActionOptionSchema,
@@ -624,10 +626,10 @@ describe('ActionGroups: Fúria of a Berserker asks about the frenzy', () => {
 });
 
 describe('ActionGroups: the table die line above the weapon rows', () => {
-  const die = (name: string, usesLeft: number) =>
+  const die = (name: string, usesLeft: number, resourceNamePt = 'Reserva de Golpes') =>
     create(ManeuverDieOptionSchema, {
       die: { key: name, namePt: name, applies: 'attack', sides: 8 },
-      resourceNamePt: 'Reserva de Golpes',
+      resourceNamePt,
       usesLeft,
     });
   const weapon = (kind = AttackKind.WEAPON) =>
@@ -669,6 +671,18 @@ describe('ActionGroups: the table die line above the weapon rows', () => {
     expect(note(el)).toContain(
       'Golpe Certeiro (d8) e Ataque Firme (d8) podem entrar num ataque com arma',
     );
+  });
+
+  it('says "resta 1" in the singular for one use', () => {
+    expect(note(setup([weapon()], [die('Golpe Certeiro', 1)]))).toContain(
+      'Reserva de Golpes: resta 1.',
+    );
+  });
+
+  it('leaves out the pool prefix when the pool has no name', () => {
+    const text = note(setup([weapon()], [die('Golpe Certeiro', 2, '')]));
+    expect(text).toContain('você marca ao rolar. Restam 2.');
+    expect(text).not.toContain(': Restam');
   });
 
   it('says "sem usos" at zero and claims no recharge', () => {

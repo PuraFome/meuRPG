@@ -1,4 +1,7 @@
+import { create } from '@bufbuild/protobuf';
+
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
+import { ExtraDieSchema } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import {
   d20TotalText,
   damageFormula,
@@ -221,18 +224,30 @@ describe('a d20 that Talento Confiável raised (PM-03b)', () => {
 });
 
 describe('the dice an effect or a maneuver added to the roll', () => {
-  const golpe = {
+  const golpe = create(ExtraDieSchema, {
     sourceKey: 'maneuver:golpe',
     sourceNamePt: 'Golpe Certeiro',
     faces: 8,
     sign: 1,
     face: 5,
-  };
-  const bless = { sourceKey: 'spell:bless', sourceNamePt: 'Bênção', faces: 4, sign: 1, face: 3 };
-  const curse = { sourceKey: 'spell:bane', sourceNamePt: 'Perdição', faces: 4, sign: -1, face: 2 };
+  });
+  const bless = create(ExtraDieSchema, {
+    sourceKey: 'spell:bless',
+    sourceNamePt: 'Bênção',
+    faces: 4,
+    sign: 1,
+    face: 3,
+  });
+  const curse = create(ExtraDieSchema, {
+    sourceKey: 'spell:bane',
+    sourceNamePt: 'Perdição',
+    faces: 4,
+    sign: -1,
+    face: 2,
+  });
 
   it('writes each die after the modifier, and names its source when asked', () => {
-    const r = roll({ faces: [12], modifier: 6, total: 23, extraDice: [golpe] as never });
+    const r = roll({ faces: [12], modifier: 6, total: 23, extraDice: [golpe] });
     expect(extraDiceText(r)).toEqual({ text: ' + 1d8 (5)', sum: 5 });
     expect(extraDiceText(r, true)).toEqual({ text: ' + Golpe Certeiro 1d8 (5)', sum: 5 });
     expect(rollFormula(r)).toBe('1d20 (12) + 6 + 1d8 (5) = 23');
@@ -244,7 +259,7 @@ describe('the dice an effect or a maneuver added to the roll', () => {
       faces: [12],
       modifier: 6,
       total: 19,
-      extraDice: [bless, curse, { ...golpe, face: 0 }] as never,
+      extraDice: [bless, curse, create(ExtraDieSchema, { ...golpe, face: 0 })],
     });
     expect(rollFormula(r, true)).toBe('1d20 (12) + 6 + Bênção 1d4 (3) − Perdição 1d4 (2) = 19');
   });
@@ -255,7 +270,7 @@ describe('the dice an effect or a maneuver added to the roll', () => {
       physical: true,
       modifier: 6,
       total: 23,
-      extraDice: [{ ...golpe, sourceNamePt: '' }] as never,
+      extraDice: [create(ExtraDieSchema, { ...golpe, sourceNamePt: '' })],
     });
     expect(rollFormula(r, true)).toBe('12 + 6 + 1d8 (5) = 23');
   });

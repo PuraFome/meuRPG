@@ -10,6 +10,7 @@ import {
   EncounterMode,
   type ManeuverDieOption,
   ManeuverDieOptionSchema,
+  TargetInReachSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ResourceBlockedReason,
@@ -23,6 +24,7 @@ import {
 import {
   EffectModifierKind,
   EffectRollKind,
+  type LastingEffect,
   LastingEffectSchema,
 } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
@@ -72,7 +74,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
       dice?: readonly ManeuverDieOption[];
       diceMode?: DiceMode;
       advantage?: boolean;
-      effects?: unknown[];
+      effects?: LastingEffect[];
     } = {},
   ) {
     const toren = combatant({
@@ -82,7 +84,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
       side: CombatantSide.PARTY,
       mine: true,
       effects: opts.effects ?? [],
-    } as never);
+    });
     const state = new CombatState();
     state.apply(
       encounter({
@@ -104,13 +106,13 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
         ? {
             target: 'cap',
             targets: [
-              {
+              create(TargetInReachSchema, {
                 combatantId: 'cap',
                 label: 'Capitão bandido',
                 rollMode: RollMode.ADVANTAGE,
                 sources: [],
-              },
-            ] as never,
+              }),
+            ],
           }
         : {
             targets: [],
