@@ -2,7 +2,7 @@ package rules
 
 import "testing"
 
-func derivedWith(t *testing.T, mut func(*Build)) Derived {
+func derivedWithBuild(t *testing.T, mut func(*Build)) Derived {
 	t.Helper()
 	c := loadForTest(t)
 	b := standard("class:fighter", 1)
@@ -25,8 +25,8 @@ const sword = "equipment:longsword"
 
 func TestWeaponBonusAddsToAttackDamageAndMakesItMagical(t *testing.T) {
 	t.Parallel()
-	plain := derivedWith(t, func(b *Build) { b.Weapons = []string{sword} })
-	plus := derivedWith(t, func(b *Build) {
+	plain := derivedWithBuild(t, func(b *Build) { b.Weapons = []string{sword} })
+	plus := derivedWithBuild(t, func(b *Build) {
 		b.Weapons = []string{sword}
 		b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 1}}
 	})
@@ -47,8 +47,8 @@ func TestWeaponBonusAddsToAttackDamageAndMakesItMagical(t *testing.T) {
 
 func TestArmorAndShieldBonusAddToArmorClass(t *testing.T) {
 	t.Parallel()
-	base := derivedWith(t, func(b *Build) { b.Armor, b.Shield = "equipment:chain-mail", true }).ArmorClass
-	d := derivedWith(t, func(b *Build) {
+	base := derivedWithBuild(t, func(b *Build) { b.Armor, b.Shield = "equipment:chain-mail", true }).ArmorClass
+	d := derivedWithBuild(t, func(b *Build) {
 		b.Armor, b.Shield = "equipment:chain-mail", true
 		b.ItemBonuses = []ItemBonus{{Key: "equipment:chain-mail", Bonus: 2}, {Key: ShieldKey, Bonus: 1}}
 	})
@@ -62,8 +62,8 @@ func TestArmorAndShieldBonusAddToArmorClass(t *testing.T) {
 
 func TestACofACarriedPieceAddsNothingAndSaysWhy(t *testing.T) {
 	t.Parallel()
-	base := derivedWith(t, func(b *Build) { b.Armor, b.Carried = "equipment:chain-mail", []string{"equipment:chain-mail"} }).ArmorClass
-	d := derivedWith(t, func(b *Build) {
+	base := derivedWithBuild(t, func(b *Build) { b.Armor, b.Carried = "equipment:chain-mail", []string{"equipment:chain-mail"} }).ArmorClass
+	d := derivedWithBuild(t, func(b *Build) {
 		b.Armor, b.Carried = "equipment:chain-mail", []string{"equipment:chain-mail", sword}
 		b.Weapons = []string{sword}
 		b.ItemBonuses = []ItemBonus{{Key: "equipment:chain-mail", Bonus: 1}, {Key: sword, Bonus: 1}}
@@ -83,11 +83,11 @@ func TestACofACarriedPieceAddsNothingAndSaysWhy(t *testing.T) {
 
 func TestShieldBehindATwoHandedWeaponAddsNothing(t *testing.T) {
 	t.Parallel()
-	d := derivedWith(t, func(b *Build) {
+	d := derivedWithBuild(t, func(b *Build) {
 		b.Shield, b.Weapons = true, []string{"equipment:greatsword"}
 		b.ItemBonuses = []ItemBonus{{Key: ShieldKey, Bonus: 2}}
 	})
-	base := derivedWith(t, func(b *Build) { b.Shield, b.Weapons = true, []string{"equipment:greatsword"} })
+	base := derivedWithBuild(t, func(b *Build) { b.Shield, b.Weapons = true, []string{"equipment:greatsword"} })
 	if d.ArmorClass != base.ArmorClass || d.ItemModifiers[0].Counts {
 		t.Errorf("AC %d (base %d), modifier %+v", d.ArmorClass, base.ArmorClass, d.ItemModifiers[0])
 	}
@@ -96,11 +96,11 @@ func TestShieldBehindATwoHandedWeaponAddsNothing(t *testing.T) {
 // Only an equipped two-handed weapon idles the shield: one in the backpack leaves the shield's +N counting.
 func TestACarriedTwoHandedWeaponLeavesTheShieldBonusCounting(t *testing.T) {
 	t.Parallel()
-	d := derivedWith(t, func(b *Build) {
+	d := derivedWithBuild(t, func(b *Build) {
 		b.Shield, b.Weapons, b.Carried = true, []string{"equipment:greatsword"}, []string{"equipment:greatsword"}
 		b.ItemBonuses = []ItemBonus{{Key: ShieldKey, Bonus: 2}}
 	})
-	base := derivedWith(t, func(b *Build) {
+	base := derivedWithBuild(t, func(b *Build) {
 		b.Shield, b.Weapons, b.Carried = true, []string{"equipment:greatsword"}, []string{"equipment:greatsword"}
 	})
 	if d.ArmorClass != base.ArmorClass+2 || d.ShieldIdle || len(d.ItemModifiers) != 1 || !d.ItemModifiers[0].Counts {
@@ -111,12 +111,12 @@ func TestACarriedTwoHandedWeaponLeavesTheShieldBonusCounting(t *testing.T) {
 func TestAttunementGatesTheBonus(t *testing.T) {
 	t.Parallel()
 	for _, attuned := range []bool{false, true} {
-		d := derivedWith(t, func(b *Build) {
+		d := derivedWithBuild(t, func(b *Build) {
 			b.Weapons = []string{sword}
 			b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 3, RequiresAttunement: true, Attuned: attuned}}
 		})
 		a := weaponLine(t, d, sword)
-		plain := weaponLine(t, derivedWith(t, func(b *Build) { b.Weapons = []string{sword} }), sword)
+		plain := weaponLine(t, derivedWithBuild(t, func(b *Build) { b.Weapons = []string{sword} }), sword)
 		if got := a.AttackBonus - plain.AttackBonus; (got == 3) != attuned || (got != 0 && got != 3) {
 			t.Errorf("attuned %v: attack differs by %d", attuned, got)
 		}
@@ -128,7 +128,7 @@ func TestAttunementGatesTheBonus(t *testing.T) {
 
 func TestABonusOnAWeaponTheContentDoesNotKnowListsNothing(t *testing.T) {
 	t.Parallel()
-	d := derivedWith(t, func(b *Build) {
+	d := derivedWithBuild(t, func(b *Build) {
 		b.Weapons = []string{"equipment:no-such-blade"}
 		b.ItemBonuses = []ItemBonus{{Key: "equipment:no-such-blade", Bonus: 1}}
 	})
@@ -200,7 +200,7 @@ func TestItemBonusGolden(t *testing.T) {
 	}
 	got := map[string]view{}
 	for name, mut := range cases {
-		d := derivedWith(t, mut)
+		d := derivedWithBuild(t, mut)
 		v := view{ArmorClass: d.ArmorClass, Description: d.ArmorClassDescription, ItemModifiers: d.ItemModifiers}
 		for _, a := range d.Attacks {
 			v.Attacks = append(v.Attacks, line{a.Key, a.AttackBonus, a.Damage, a.VersatileDamage, a.Magical})
