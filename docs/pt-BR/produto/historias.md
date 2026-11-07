@@ -882,6 +882,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
     Uma escolha do tipo "Uma habilidade" ou "Um tipo de dano" ganha um nome sozinha ("habilidade", "habilidade_2"), e o cartão "Escolhas deste talento" lista cada uma com o efeito dela e em quantos efeitos é usada.
     Um efeito seguinte do mesmo talento aponta para a escolha pelo grupo "A escolha do talento", acima de "Valores fixos", nos campos que a aceitam, e uma fórmula a lê com os botões "Modificador" e "Valor".
     Um campo que aponta para uma escolha removida, ou que está abaixo dele, diz qual ("A escolha “habilidade” que este campo usava foi removida"), e "Salvar talento" espera até o mestre escolher outro valor.
+    No celular o mestre lê o talento com o título "Opções" e uma linha para cada opção, com o nome à esquerda e o que ela faz em poucas palavras à direita ("Classe de Armadura +1"); o jogador lê as opções com os textos delas.
 - **Recusas:** cada violação volta no campo que ela nomeia, em português, também numa célula da tabela e numa característica recolhida, que se abre.
   Um resumo no alto diz quantos campos precisam de ajuste, e o que o mestre digitou fica.
   "Esta entrada mudou enquanto você editava" oferece "Recarregar".

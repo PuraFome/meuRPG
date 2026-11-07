@@ -1,4 +1,8 @@
-import type { TableEffect, TableFeat } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type {
+  TableEffect,
+  TableFeat,
+  TableFeature,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { type NameOf, type ReadItem, type ReadRow, featureItem } from './content-read-parts';
 import { CHOICE_KINDS, choiceKindOf } from './effect-choices';
 import { optionSetName } from './option-text';
@@ -28,7 +32,20 @@ export function featChoiceRows(f: TableFeat): ReadRow[] {
   });
 }
 
-/** The options the feat lists of its own, each with its text and what its effects say. */
-export function featOptionItems(f: TableFeat, nameOf: NameOf): ReadItem[] {
-  return f.options.filter((o) => o.namePt !== '').map((o) => featureItem(o, nameOf));
+/**
+ * The options the feat lists of its own, each with its text and what its effects say.
+ * With `sideOf` (the master, who has the effect menu) each also carries a few words of what it does, for a row.
+ */
+export function featOptionItems(
+  f: TableFeat,
+  nameOf: NameOf,
+  sideOf?: (o: TableFeature) => string,
+): ReadItem[] {
+  return f.options
+    .filter((o) => o.namePt !== '')
+    .map((o) => {
+      const item = featureItem(o, nameOf);
+      const side = sideOf?.(o) ?? '';
+      return side === '' ? item : { ...item, side };
+    });
 }

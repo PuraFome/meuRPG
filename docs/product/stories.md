@@ -883,6 +883,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
     A choice of kind "Uma habilidade" or "Um tipo de dano" gets a name by itself ("habilidade", "habilidade_2"), and the card "Escolhas deste talento" lists each one with its effect and how many effects use it.
     A later effect of the same feat points at the choice from the group "A escolha do talento" above "Valores fixos" in the fields that take it, and a formula reads it with "Modificador" and "Valor" buttons.
     A field that points at a choice that was removed or sits below it says which one ("A escolha “habilidade” que este campo usava foi removida"), and "Salvar talento" waits until the master picks another value.
+    On a phone the master reads the feat with an "Opções" heading and one row for each option, its name at the left and what it does in a few words at the right ("Classe de Armadura +1"); a player reads the options with their texts.
 - **Refusals:** each violation returns on the field it names, in Portuguese, also on a table cell and on a collapsed feature, which opens.
   A summary on top says how many fields need adjusting, and what the game master typed stays.
   "Esta entrada mudou enquanto você editava" offers "Recarregar".

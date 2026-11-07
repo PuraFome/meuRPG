@@ -65,7 +65,7 @@ import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
-import { createFeatOptionsRPC, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
+import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, costsRaceBody, createEntryRPC, criticalFeatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
@@ -9777,12 +9777,12 @@ type FeatOptionsScreen = 'options' | 'limit' | 'set' | 'choice' | 'damage' | 're
 
 /** What the master reads on a phone, by the feat: the row of what the player picks, and one line of what it lists. */
 const featRead: Record<FeatOptionsScreen, { key: keyof FeatOptionsTable; name: string; picks: string; sees: string }> = {
-  options: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Guarda Alta.' },
+  options: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Classe de Armadura +1' },
   limit: { key: 'limit', name: 'Livro de Estilos', picks: '1 de 60 opções', sees: 'Um livro de estilos de luta' },
   set: { key: 'school', name: 'Escola de Armas', picks: '1 estilo de luta', sees: 'Escolha um estilo de luta ao pegar o talento.' },
   choice: { key: 'resilient', name: 'Resiliente', picks: '1 habilidade', sees: 'Escolha uma habilidade' },
   damage: { key: 'affinity', name: 'Afinidade Elemental', picks: '1 tipo de dano', sees: 'Escolha um elemento.' },
-  refusals: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Mão Firme.' },
+  refusals: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Dano de arma corpo a corpo +1' },
   formula: { key: 'command', name: 'Voz de Comando', picks: '1 habilidade', sees: 'Sua voz faz o grupo se firmar.' },
 };
 
@@ -9845,6 +9845,7 @@ async function featStates(m: Page, screen: FeatOptionsScreen, table: FeatOptions
       await expect(proficiency).toHaveValue('save.@habilidade');
       await openSelect(proficiency);
       await expect(proficiency.locator('optgroup legend').first()).toContainText('A escolha do talento');
+      await expectInViewport(m, proficiency.locator('option.footer'));
       await judge('o grupo "A escolha do talento" aberto', 'resiliente-grupo-aberto');
       await proficiency.press('Escape');
       break;
@@ -9886,7 +9887,8 @@ async function featStates(m: Page, screen: FeatOptionsScreen, table: FeatOptions
       await judge('a fórmula com os botões da escolha', 'formula');
       await formula.focus();
       await m.getByRole('button', { name: 'Valor · Habilidade' }).click();
-      await expect(formula).toHaveValue('8 + prof() + mod("@habilidade")score("@habilidade")');
+      await expect(formula).toHaveValue('8 + prof() + mod("@habilidade") + score("@habilidade")');
+      await expect(m.locator('.reading', { hasText: 'Lê-se: 8' })).toContainText('modificador da escolha Habilidade + valor da escolha Habilidade');
       await judge('a fórmula depois de pôr a escolha', 'formula-inserida');
       break;
     }

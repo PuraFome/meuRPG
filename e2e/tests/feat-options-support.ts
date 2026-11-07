@@ -147,9 +147,26 @@ export async function shootFeat(page: Page, screen: string, width: number, schem
   }
 }
 
-/** Opens a rich select (the browser's customizable `<select>`) and waits until its list is drawn. */
+/** Opens a rich select (the browser's customizable `<select>`) with room below it for the list, and waits until it is drawn. */
 export async function openSelect(select: Locator): Promise<void> {
-  await select.scrollIntoViewIfNeeded();
+  // The list opens below the field: the field goes near the top of the viewport, under the page's bar, so the whole list fits.
+  await select.evaluate((el) => {
+    el.scrollIntoView({ block: 'start' });
+    window.scrollBy(0, -120);
+  });
   await select.click();
   await expect.poll(() => select.evaluate((el) => el.matches(':open'))).toBe(true);
+}
+
+/** Asserts that a line of the open list is drawn whole inside the viewport (a list cut by the fold fails, and says where the line is). */
+export async function expectInViewport(page: Page, line: Locator): Promise<void> {
+  await expect(line).toHaveCount(1);
+  const viewport = page.viewportSize()!;
+  await expect
+    .poll(async () => {
+      const box = await line.boundingBox();
+      const inside = box !== null && box.y >= 0 && box.y + box.height <= viewport.height;
+      return `${inside ? 'inside' : 'outside'} ${JSON.stringify({ box, viewport })}`;
+    })
+    .toMatch(/^inside /);
 }

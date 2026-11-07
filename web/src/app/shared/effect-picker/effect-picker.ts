@@ -20,6 +20,8 @@ import {
   EFFECT_TYPE_FIELD_HINTS,
   RESOURCE_PICK_COPY,
   ROLLS_NOTES,
+  formulaHintFor,
+  typeHintFor,
 } from '../../core/content/effect-field-copy';
 import {
   type EffectDraft,
@@ -143,8 +145,10 @@ export class EffectPicker {
     const t = this.effect().type;
     return t === ''
       ? 'Só o texto aparece na ficha; o app não faz conta com ele.'
-      : (this.menu().typeOf(t)?.hintPt ?? '');
+      : typeHintFor(t, this.menu().typeOf(t)?.hintPt ?? '', this.inFeat());
   });
+  /** In the feat editor (its effects and its options) the hints are one line. */
+  private readonly inFeat = computed(() => this.featEditor() || this.featOption());
   protected readonly allFields = computed(() =>
     visibleFields(this.menu().fieldsOf(this.effect().type), this.effect()).filter(
       // The feat editor names a choice by itself ("habilidade"), so the field is not asked.
@@ -285,7 +289,7 @@ export class EffectPicker {
       EFFECT_TYPE_FIELD_HINTS[this.effect().type]?.[f.name] ?? EFFECT_FIELD_HINTS[f.name] ?? '';
     if (f.kind === 'formula') {
       // One hint: a field's own sentence says what it is for; the menu's line (the functions) is the fallback
-      return own || this.menu().formulaHint();
+      return formulaHintFor(own, this.menu().formulaHint(), this.inFeat());
     }
     if (f.kind === 'resource_ref' || f.kind === 'state_ref') {
       return refHint(this.effect(), this.menu(), f, own);
@@ -335,10 +339,6 @@ export class EffectPicker {
     return f.name === 'spells'
       ? [...this.spellOptions()]
       : this.feat.withChoices(f, this.optionsOf(f));
-  }
-
-  protected chipNames(f: EffectMenuField) {
-    return this.feat.chipNames(f, this.list(f.name));
   }
 
   protected pickHint(f: EffectMenuField): string {

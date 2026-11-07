@@ -175,7 +175,11 @@ export interface SelectGroup {
           line-height: 18px;
         }
 
+        // The line stays at the foot of the list while the options scroll under it.
         &.footer {
+          position: sticky;
+          bottom: 0;
+          background: var(--mr-surface);
           min-height: 0;
           padding-block: var(--mr-space-2);
           border-top: 1px solid var(--mr-line);

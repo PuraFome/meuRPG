@@ -48,8 +48,11 @@ function signed(mode: string, value: string): string {
   return mode === 'add' && /^\d/.test(v) ? `+${v}` : v;
 }
 
-/** The line under an option's name: what its first effect does, or the start of its text. */
-export function optionSummary(o: FeatureDraft, menu: EffectMenuVm): string {
+/**
+ * The line under an option's name: what its first effect does, or the start of its text.
+ * The short form leaves out the effect's type ("Classe de Armadura +1" for "Modificador: Classe de Armadura +1"), for the row of a read.
+ */
+export function optionSummary(o: FeatureDraft, menu: EffectMenuVm, short = false): string {
   const e = o.effects[0];
   if (!e) {
     const text = o.text.trim().split('\n')[0];
@@ -60,7 +63,7 @@ export function optionSummary(o: FeatureDraft, menu: EffectMenuVm): string {
     case 'modifier':
       return e.target === ''
         ? type
-        : `${type}: ${menu.nameOf('modifier_targets', e.target)} ${signed(e.mode, e.value)}`.trim();
+        : `${short ? '' : `${type}: `}${menu.nameOf('modifier_targets', e.target)} ${signed(e.mode, e.value)}`.trim();
     case 'proficiency':
       return e.proficiency === ''
         ? type

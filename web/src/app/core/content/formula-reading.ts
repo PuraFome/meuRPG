@@ -44,7 +44,13 @@ export function formulaReading(text: string, choices: readonly FeatChoice[]): Re
   };
   let at = 0;
   for (const m of text.trim().matchAll(TOKEN)) {
-    plain(text.trim().slice(at, m.index));
+    const between = text.trim().slice(at, m.index);
+    if (between.trim() === '' && parts.length > 0) {
+      // Two calls with nothing between them are read as a sum, as the editor writes them.
+      parts.push({ text: ' + ', strong: false });
+    } else {
+      plain(between);
+    }
     if (m[1]) {
       parts.push(readCall(m[1], m[2], choices));
     } else {

@@ -48,6 +48,12 @@ describe('formulaReading', () => {
     expect(sentence('mod("@sumiu")')).toBe('modificador da escolha @sumiu');
   });
 
+  it('reads two calls with nothing between them as a sum', () => {
+    expect(sentence('mod("@a")score("@a")', [ability('a', 'Habilidade')])).toBe(
+      'modificador da escolha Habilidade + valor da escolha Habilidade',
+    );
+  });
+
   it('reads nothing for an empty formula', () => {
     expect(formulaReading('   ', [])).toEqual([]);
   });

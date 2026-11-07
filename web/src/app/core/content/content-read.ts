@@ -3,6 +3,7 @@ import type {
   TableClassFeature,
   TableEntry,
   TableFeat,
+  TableFeature,
   TableOption,
   TableRace,
   TableSpell,
@@ -116,7 +117,11 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
-function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
+function readFeat(
+  f: TableFeat,
+  nameOf: NameOf,
+  optionSide?: (o: TableFeature) => string,
+): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
   const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
   for (const e of f.effects) {
@@ -129,7 +134,7 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
     }
   }
   rows.push(...featChoiceRows(f));
-  const options = featOptionItems(f, nameOf);
+  const options = featOptionItems(f, nameOf, optionSide);
   return {
     rows,
     sections: [],
@@ -174,6 +179,7 @@ export function readEntry(
   subclassLevelOf: (classKey: string) => number = () => 0,
   parentOf: (raceKey: string) => ParentView = () => ({ traits: [] }),
   offeredByName: OfferedByName = (key) => featureKeyName(key, nameOf),
+  optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const body = entry.body;
   switch (body.case) {
@@ -184,7 +190,7 @@ export function readEntry(
     case 'tableBackground':
       return readBackground(body.value, nameOf);
     case 'tableFeat':
-      return readFeat(body.value, nameOf);
+      return readFeat(body.value, nameOf, optionSide);
     case 'tableOption':
       return readOption(body.value, nameOf, offeredByName);
     case 'tableClassFeature':

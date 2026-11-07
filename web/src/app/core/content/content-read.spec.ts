@@ -503,6 +503,34 @@ describe('what a player reads of a feat (MR-025)', () => {
     ]);
   });
 
+  it('gives each option a few words of what it does only when the reader says them', () => {
+    const entryOf = () =>
+      entry(TableContentKind.FEAT, 'Estilo', {
+        body: {
+          case: 'tableFeat',
+          value: create(TableFeatSchema, {
+            namePt: 'Estilo',
+            options: [
+              { namePt: 'Guarda Alta', descPt: ['Você mantém a lâmina erguida.'] },
+              { namePt: 'Mão Firme', descPt: ['Seu golpe cai no mesmo ponto.'] },
+            ],
+          }),
+        },
+      });
+    const noSide = readEntry(entryOf(), nameOf);
+    expect(noSide.options?.map((o) => o.side)).toEqual([undefined, undefined]);
+    const withSide = readEntry(
+      entryOf(),
+      nameOf,
+      () => 0,
+      undefined,
+      undefined,
+      (o) => (o.namePt === 'Guarda Alta' ? 'Classe de Armadura +1' : ''),
+    );
+    expect(withSide.options?.map((o) => o.side)).toEqual(['Classe de Armadura +1', undefined]);
+    expect(withSide.options?.[0].text).toBe('Você mantém a lâmina erguida.');
+  });
+
   it('says "Nenhum" for a feat that asks nothing', () => {
     const e = entry(TableContentKind.FEAT, 'Livre', {
       body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },

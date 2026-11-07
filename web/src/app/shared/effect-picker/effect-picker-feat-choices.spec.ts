@@ -308,6 +308,23 @@ describe('EffectPicker: the named choices of a feat', () => {
       );
     });
 
+    it("writes its own one-line hint for the effect type in the feat editor, and the menu's elsewhere", () => {
+      const resistance = emptyEffect('resistance');
+      setup(resistance);
+      const note = () => text(field('type')!.closest('app-select-field')!.querySelector('.note')!);
+      expect(note()).toBe('Resistência ou imunidade a dano.');
+      setup(resistance, { featEditor: false });
+      expect(note()).toBe('Sofre menos dano.');
+    });
+
+    it('keeps the hint under a formula to one line in the feat editor', () => {
+      setup({ ...emptyEffect('modifier'), target: 'ac', mode: 'add', value: '8' });
+      expect(text(field('value')!.closest('.frow')!)).toContain(
+        'Um número ou uma fórmula, como 8 + prof().',
+      );
+      expect(text(field('value')!.closest('.frow')!)).not.toContain('Funções:');
+    });
+
     it('says nothing of a field whose pick reads, or of a feature that has no choices', () => {
       const ok = { ...emptyEffect('modifier'), target: 'score.@habilidade' };
       setup(ok);
@@ -547,7 +564,13 @@ describe('EffectPicker: the named choices of a feat', () => {
       const input = field('value') as HTMLInputElement;
       input.setSelectionRange(4, 4);
       click('Modificador · Habilidade (1ª)');
-      expect(emitted.at(-1)?.value).toBe('8 + mod("@habilidade")prof() + ');
+      expect(emitted.at(-1)?.value).toBe('8 + mod("@habilidade") + prof() + ');
+    });
+
+    it('puts a " + " between a formula that ends in a call and the next one', () => {
+      setup(note('8 + prof() + mod("@habilidade")'));
+      click('Valor · Habilidade (1ª)');
+      expect(emitted.at(-1)?.value).toBe('8 + prof() + mod("@habilidade") + score("@habilidade")');
     });
 
     it('replaces the selection and writes score("@name")', () => {

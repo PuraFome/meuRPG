@@ -46,6 +46,8 @@ describe('the feat options helpers', () => {
       effects: [{ ...emptyEffect('proficiency'), proficiency: 'skill:perception' }],
     };
     expect(optionSummary(proficiency, menu())).toBe('Proficiência em Percepção');
+    expect(optionSummary(modifier, menu(), true)).toBe('Classe de Armadura +1');
+    expect(optionSummary(proficiency, menu(), true)).toBe('Proficiência em Percepção');
     expect(optionSummary({ ...emptyFeature(), effects: [emptyEffect('modifier')] }, menu())).toBe(
       'Modificador',
     );

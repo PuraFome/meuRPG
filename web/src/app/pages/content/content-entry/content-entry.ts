@@ -210,7 +210,7 @@ export class ContentEntry {
   protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
   protected readonly read = computed(() =>
-    readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries()),
+    readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries(), this.menu()),
   );
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */
   protected readonly nounPhrase = computed(() => nounPhraseOf(this.entry()));

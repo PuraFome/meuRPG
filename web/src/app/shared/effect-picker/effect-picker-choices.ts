@@ -149,7 +149,14 @@ export function pickedRef(options: readonly RefOption[], value: string): RefOpti
   return options.find((o) => o.value === value);
 }
 
-/** The text with `insert` written over the selection (at the end when there is none), and where the cursor goes after it. */
+/** What a formula may end with, or start with, with no operator needed between it and what comes next. */
+const ENDS_OPEN = /[+\-*/(,<>=!&|?:]$/;
+const STARTS_CLOSED = /^[+\-*/),<>=!&|?:]/;
+
+/**
+ * The text with `insert` written over the selection (at the end when there is none), and where the cursor goes after it.
+ * Next to an operand the formula would run together ("mod(…)score(…)"), so a " + " goes between them.
+ */
 export function insertAt(
   text: string,
   insert: string,
@@ -158,5 +165,15 @@ export function insertAt(
 ): { next: string; caret: number } {
   const start = Math.min(from ?? text.length, text.length);
   const end = Math.min(to ?? start, text.length);
-  return { next: text.slice(0, start) + insert + text.slice(end), caret: start + insert.length };
+  let left = text.slice(0, start);
+  let right = text.slice(end);
+  const before = left.trimEnd();
+  if (before !== '' && !ENDS_OPEN.test(before)) {
+    left = `${before} + `;
+  }
+  const after = right.trimStart();
+  if (after !== '' && !STARTS_CLOSED.test(after)) {
+    right = ` + ${after}`;
+  }
+  return { next: left + insert + right, caret: left.length + insert.length };
 }
