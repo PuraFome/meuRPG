@@ -9,7 +9,7 @@ type ArmorUntrained struct {
 	// Armor is set when the worn body armor is one the character is not trained
 	// in (its category or the armor itself); false without armor.
 	Armor bool
-	// Shield is set when a shield in use (no two-handed weapon beside it) is carried without the training.
+	// Shield is set when a shield in use (no two-handed weapon beside it) is equipped without the training.
 	Shield bool
 }
 

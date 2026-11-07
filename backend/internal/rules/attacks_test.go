@@ -366,7 +366,7 @@ func duelist(weapons ...string) Build {
 
 // TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon: SRD 5.1 Dueling gives +2 to
 // damage while a melee weapon is wielded in one hand and no other weapon is. The
-// sheet lists the weapons carried, not the ones in hand, so the bonus is applied to
+// sheet lists the weapons, not the ones in hand, so the bonus is applied to
 // the damage every one-handed melee weapon rolls in one hand, and the attack line
 // says the condition for the table to check.
 func TestDuelingAddsTwoDamageToEveryOneHandedMeleeWeapon(t *testing.T) {

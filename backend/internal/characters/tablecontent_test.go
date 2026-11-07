@@ -1695,3 +1695,199 @@ func TestTableSpellZoneIsReadFromTheMessage(t *testing.T) {
 		t.Errorf("Zone = %+v, want none", none.Zone)
 	}
 }
+
+// effectTestSpell is an invented table spell that lasts a minute and leaves the given effect on a creature.
+func effectTestSpell(name string, e *rulesv1.TableSpellEffect) *rulesv1.TableSpell {
+	s := testSpell(name, "class:wizard")
+	s.Attack, s.Damage = "", nil
+	s.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE}
+	s.Effect = e
+	return s
+}
+
+// effectTestEffects are three effects that, together, use every kind of modifier a table spell may have.
+func effectTestEffects() []*rulesv1.TableSpellEffect {
+	k := rulesv1.TableEffectModifierKind_value
+	kind := func(n string) rulesv1.TableEffectModifierKind {
+		return rulesv1.TableEffectModifierKind(k["TABLE_EFFECT_MODIFIER_KIND_"+n])
+	}
+	roll := func(r ...rulesv1.TableEffectRollKind) []rulesv1.TableEffectRollKind { return r }
+	attack, save := rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_ATTACK, rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_SAVE
+	return []*rulesv1.TableSpellEffect{
+		{
+			Applies: rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_ALL, Conditions: []string{"condition:invisible"},
+			PlayerLabelPt: "Bênção de brasa", Visibility: rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC,
+			Modifiers: []*rulesv1.TableEffectModifier{
+				{Kind: kind("ROLL_DIE"), Die: 4, Sign: 1, AppliesTo: roll(attack, save)},
+				{Kind: kind("AC_BONUS"), Value: 2},
+				{Kind: kind("SPEED_ADD"), Value: 10},
+				{Kind: kind("SPEED_MULTIPLIER"), Value: 50},
+				{Kind: kind("CHECK_BONUS"), Skill: "skill:stealth", Value: 5},
+				{Kind: kind("SAVE_ADVANTAGE"), Abilities: []string{"wis"}},
+				{Kind: kind("CHECK_ADVANTAGE"), Abilities: []string{"str"}},
+				{Kind: kind("ATTACK_DISADVANTAGE")},
+			},
+		},
+		{Modifiers: []*rulesv1.TableEffectModifier{
+			{Kind: kind("ROLL_BONUS"), Value: -2, AppliesTo: roll(attack)},
+			{Kind: kind("TEMP_HP"), Value: 5},
+			{Kind: kind("RESISTANCE"), ResistanceKind: rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_IMMUNE, DamageTypes: []string{"damage-type:fire"}},
+		}},
+		{Modifiers: []*rulesv1.TableEffectModifier{
+			{Kind: kind("ATTACK_ADVANTAGE")},
+			{Kind: kind("SAVE_DISADVANTAGE"), Abilities: []string{"dex"}},
+			{Kind: kind("CHECK_DISADVANTAGE"), Abilities: []string{"cha"}},
+			{Kind: kind("RESISTANCE"), ResistanceKind: rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_VULNERABLE, DamageTypes: []string{"nonmagical_bps"}},
+			{Kind: kind("RESISTANCE"), DamageTypes: []string{"all"}},
+		}},
+	}
+}
+
+// A table spell's effect is read from the message as the master wrote it: every kind of modifier, the unset
+// enums as the rules' defaults, and a number this build does not know as a value the rules refuse.
+func TestTableSpellEffectIsReadFromTheMessage(t *testing.T) {
+	t.Parallel()
+	if none := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{}); none.Effect != nil {
+		t.Errorf("Effect = %+v, want none", none.Effect)
+	}
+	kinds := map[string]bool{}
+	for _, e := range effectTestEffects() {
+		got := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Effect: e}).Effect
+		if got == nil || len(got.Modifiers) != len(e.GetModifiers()) {
+			t.Fatalf("Effect = %+v, want %d modifiers", got, len(e.GetModifiers()))
+		}
+		for _, m := range got.Modifiers {
+			kinds[m.Kind] = true
+		}
+	}
+	for _, name := range rulesv1.TableEffectModifierKind_name {
+		if strings.HasSuffix(name, "_UNSPECIFIED") {
+			continue
+		}
+		if w := strings.ToLower(strings.TrimPrefix(name, "TABLE_EFFECT_MODIFIER_KIND_")); !kinds[w] {
+			t.Errorf("modifier kind %q is not read as %q", name, w)
+		}
+	}
+	first := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Effect: effectTestEffects()[0]}).Effect
+	if first.Applies != "all" || first.Visibility != rules.EffectVisibilityPublic || !slices.Equal(first.Modifiers[0].AppliesTo, []string{"attack", "save"}) {
+		t.Errorf("Effect = %+v, want applies all, public, a die on attack and save", first)
+	}
+	bare := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Effect: &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{}}}}).Effect
+	if bare.Applies != "" || bare.Visibility != "" || bare.Modifiers[0].Kind != "" || bare.Modifiers[0].ResistanceKind != "" {
+		t.Errorf("Effect = %+v, want the unset fields empty for the rules to default or refuse", bare)
+	}
+	odd := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Effect: &rulesv1.TableSpellEffect{
+		Applies: 99, Visibility: 99,
+		Modifiers: []*rulesv1.TableEffectModifier{{Kind: 99, ResistanceKind: 99, AppliesTo: []rulesv1.TableEffectRollKind{0, 99}}},
+	}}).Effect
+	m := odd.Modifiers[0]
+	if odd.Applies != "unknown" || odd.Visibility != "unknown" || m.Kind != "unknown" || m.ResistanceKind != "unknown" || !slices.Equal(m.AppliesTo, []string{"unknown", "unknown"}) {
+		t.Errorf("Effect = %+v, want every unknown number read as \"unknown\"", odd)
+	}
+}
+
+// A table spell with an effect is written, stored and read back as the master wrote it, for every kind of
+// modifier, and again after the entry is updated.
+func TestTableContentSpellEffectRoundTrip(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	for i, e := range effectTestEffects() {
+		body := effectTestSpell("Escudo de brasa "+strconv.Itoa(i), e)
+		created := master.addEntry(t, campaign, body)
+		if got := bodyMessage(created).(*rulesv1.TableSpell).GetEffect(); !proto.Equal(got, e) {
+			t.Errorf("created effect %d = %v, want %v", i, got, e)
+		}
+		stored := master.entries(t, campaign)[created.GetKey()]
+		if stored == nil {
+			t.Fatalf("entry %q is not listed", created.GetKey())
+		}
+		if got := bodyMessage(stored).(*rulesv1.TableSpell).GetEffect(); !proto.Equal(got, e) {
+			t.Errorf("stored effect %d = %v, want %v", i, got, e)
+		}
+	}
+	// An update takes the effect away, and the entry reads back with none.
+	e := effectTestEffects()[0]
+	created := master.addEntry(t, campaign, effectTestSpell("Escudo de cinza", e))
+	plain := proto.Clone(bodyMessage(created)).(*rulesv1.TableSpell)
+	plain.Effect = nil
+	if _, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, created.GetKey(), created.GetRevision(), plain))); err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	if got := bodyMessage(master.entries(t, campaign)[created.GetKey()]).(*rulesv1.TableSpell).GetEffect(); got != nil {
+		t.Errorf("effect after the update = %v, want none", got)
+	}
+}
+
+// A malformed effect is refused at the field that is wrong, in the body's own names, one violation each.
+func TestTableContentSpellEffectRefusals(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master := h.newUser("Samuel")
+	campaign := h.newCampaign(master, "Mirathel")
+	kind := func(n string) rulesv1.TableEffectModifierKind {
+		return rulesv1.TableEffectModifierKind(rulesv1.TableEffectModifierKind_value["TABLE_EFFECT_MODIFIER_KIND_"+n])
+	}
+	cases := []struct {
+		name   string
+		mutate func(*rulesv1.TableSpell)
+		field  string
+	}{
+		{"value out of range", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("TEMP_HP"), Value: 5}, {Kind: kind("ROLL_BONUS"), Value: 99, AppliesTo: []rulesv1.TableEffectRollKind{rulesv1.TableEffectRollKind_TABLE_EFFECT_ROLL_KIND_CHECK}}}}
+		}, "table_spell.effect.modifiers[1].value"},
+		{"unset kind", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{}}}
+		}, "table_spell.effect.modifiers[0].kind"},
+		{"unknown applies", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Applies: 99, Conditions: []string{"condition:poisoned"}}
+		}, "table_spell.effect.applies"},
+		{"unknown condition", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Conditions: []string{"condition:poisoned", "condition:bored"}}
+		}, "table_spell.effect.conditions[1]"},
+		{"empty effect", func(s *rulesv1.TableSpell) { s.Effect = &rulesv1.TableSpellEffect{} }, "table_spell.effect"},
+		{"hit without an attack", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Applies: rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_HIT, Conditions: []string{"condition:poisoned"}}
+		}, "table_spell.effect.applies"},
+		{"resistance without damage types", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("RESISTANCE")}}}
+		}, "table_spell.effect.modifiers[0].damage_types"},
+		{"unknown visibility", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Visibility: 99, Conditions: []string{"condition:poisoned"}}
+		}, "table_spell.effect.visibility"},
+		{"unknown resistance kind", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("RESISTANCE"), ResistanceKind: 99, DamageTypes: []string{"damage-type:fire"}}}}
+		}, "table_spell.effect.modifiers[0].resistance_kind"},
+		{"unknown modifier kind", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: 99}}}
+		}, "table_spell.effect.modifiers[0].kind"},
+		{"unset roll", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("ROLL_BONUS"), Value: 1, AppliesTo: []rulesv1.TableEffectRollKind{0}}}}
+		}, "table_spell.effect.modifiers[0].applies_to"},
+		{"unknown roll", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("ROLL_BONUS"), Value: 1, AppliesTo: []rulesv1.TableEffectRollKind{99}}}}
+		}, "table_spell.effect.modifiers[0].applies_to"},
+		{"unknown ability", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("SAVE_DISADVANTAGE"), Abilities: []string{"luck"}}}}
+		}, "table_spell.effect.modifiers[0].abilities"},
+		{"unknown skill", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: kind("CHECK_BONUS"), Skill: "skill:flying", Value: 2}}}
+		}, "table_spell.effect.modifiers[0].skill"},
+		{"label over 30 characters", func(s *rulesv1.TableSpell) {
+			s.Effect = &rulesv1.TableSpellEffect{Conditions: []string{"condition:poisoned"}, PlayerLabelPt: strings.Repeat("é", 31)}
+		}, "table_spell.effect.player_label_pt"},
+		{"instantaneous", func(s *rulesv1.TableSpell) {
+			s.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_INSTANTANEOUS}
+		}, "table_spell.effect"},
+	}
+	for _, tc := range cases {
+		body := effectTestSpell("Escudo de teste", &rulesv1.TableSpellEffect{Conditions: []string{"condition:poisoned"}})
+		tc.mutate(body)
+		_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, body)))
+		v := violationsOfErr(t, err)
+		if len(v) != 1 || v[0].GetField() != tc.field {
+			t.Errorf("%s: violations = %v, want one at %q", tc.name, v, tc.field)
+		}
+	}
+}

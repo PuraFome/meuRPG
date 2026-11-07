@@ -97,8 +97,14 @@ export function emptyEffect(type = ''): EffectDraft {
     attackBonus: 0,
     damageBonus: 0,
     reachM: '',
+    magical: false,
+    silvered: false,
+    adamantine: false,
     attackName: '',
     damageDice: '',
+    name: '',
+    set: '',
+    cap: 0,
   };
 }
 
@@ -170,8 +176,14 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     attackBonus: e.attackBonus,
     damageBonus: e.damageBonus,
     reachM: rangeMeters(e.reachFt),
+    magical: e.magical,
+    silvered: e.silvered,
+    adamantine: e.adamantine,
     attackName: e.attackName,
     damageDice: e.damageDice,
+    name: e.name,
+    set: e.set,
+    cap: e.cap,
   };
 }
 

@@ -4,8 +4,14 @@ import { catalog } from './content-testing';
 import { Ability, SpellRangeKind, SpellSaveSuccess } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableAreaShape,
+  TableEffectApplies,
+  TableEffectModifierKind,
+  TableSpellEffectSchema,
   TableSpellSchema,
   TableSpellTargetKind,
+  TableSpellZoneSchema,
+  TableSummonSchema,
+  TableZoneTrigger,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { draftToSpell, spellToDraft, withTarget } from './spell-draft';
 import { RANGE_OPTIONS, TARGET_OPTIONS, moreLabel, sizeLabel } from './spell-options';
@@ -258,5 +264,40 @@ describe('a count the text does not read as a number', () => {
       perSlot: Number.NaN,
     };
     expect(draftToSpell(d).target?.perSlotLevel).toBe(0);
+  });
+});
+
+describe('what the form has no control for', () => {
+  it('goes back as it was loaded: the effect, the zone and the summon', () => {
+    const stored = create(TableSpellSchema, {
+      namePt: 'Marca de Nanquim',
+      level: 2,
+      schoolKey: 'school:abjuration',
+      effect: create(TableSpellEffectSchema, {
+        applies: TableEffectApplies.ALL,
+        conditions: ['condition:invisible'],
+        modifiers: [{ kind: TableEffectModifierKind.AC_BONUS, value: 2 }],
+      }),
+      zone: create(TableSpellZoneSchema, {
+        trigger: TableZoneTrigger.START_OF_TURN,
+        followsCaster: true,
+      }),
+      summon: create(TableSummonSchema, { creatureKeys: ['creature:wolf'], count: '1' }),
+    });
+    const draft = { ...spellToDraft(stored), name: 'Marca de Cinza' };
+    const sent = create(TableSpellSchema, draftToSpell(draft));
+    expect(sent.namePt).toBe('Marca de Cinza');
+    expect(sent.effect).toEqual(stored.effect);
+    expect(sent.zone).toEqual(stored.zone);
+    expect(sent.summon).toEqual(stored.summon);
+  });
+
+  it('sends none of them for a spell that had none', () => {
+    const sent = draftToSpell(
+      spellToDraft(create(TableSpellSchema, { namePt: 'Simples', level: 1 })),
+    );
+    expect(sent.effect).toBeUndefined();
+    expect(sent.zone).toBeUndefined();
+    expect(sent.summon).toBeUndefined();
   });
 });

@@ -305,6 +305,83 @@ var pseudoWeaponRefusals = []struct {
 	{"a state of nobody", func(e *Effect) { e.While = "fantasma" }, ".while"},
 	{"a field of another type", func(e *Effect) { e.Target = "ac" }, ".target"},
 	{"a field of a weapon rule", func(e *Effect) { e.AttackBonus = 1 }, ".attack_bonus"},
+	{"a mark", func(e *Effect) { e.Silvered = true }, ".silvered"},
+}
+
+func TestWeaponRuleMarksOnly(t *testing.T) {
+	t.Parallel()
+	// A rule that sets only a mark changes something, so it is accepted...
+	for _, e := range []Effect{
+		{Type: "weapon_rule", Weapon: WeaponAny, Magical: true},
+		{Type: "weapon_rule", Weapon: WeaponAny, Silvered: true},
+		{Type: "weapon_rule", Weapon: WeaponAny, Adamantine: true},
+	} {
+		o := stateOverlay([]Effect{e})
+		o.Strict = []string{stateSubclass}
+		if _, err := loadForTest(t).With(o); err != nil {
+			t.Errorf("%+v: %v", e, err)
+		}
+	}
+	// ...and one that sets nothing is still refused, and a mark on another effect too.
+	refusedAt(t, Effect{Type: "weapon_rule", Weapon: WeaponAny}, ".type")
+	refusedAt(t, Effect{Type: "note", TextPT: "x", Silvered: true}, ".silvered")
+}
+
+func TestWeaponMarksOfTheSheetReachTheAttack(t *testing.T) {
+	t.Parallel()
+	b := ruleBuild()
+	b.WeaponMarks = []WeaponMark{{Weapon: ruleRapier, Silvered: true}, {Weapon: ruleLongsword, Adamantine: true, Magical: true}}
+	a := ruleAttacks(t, b, Effect{Type: "note", TextPT: "Sem regra."})
+	if got := a[ruleRapier]; !got.Silvered || got.Magical || got.Adamantine {
+		t.Errorf("silvered rapier = silvered %v, magical %v, adamantine %v; want only silvered", got.Silvered, got.Magical, got.Adamantine)
+	}
+	if got := a[ruleLongsword]; got.Silvered || !got.Magical || !got.Adamantine {
+		t.Errorf("longsword = silvered %v, magical %v, adamantine %v; want magical and adamantine", got.Silvered, got.Magical, got.Adamantine)
+	}
+	for _, k := range []string{ruleShortbow, ruleDagger, UnarmedStrikeKey} {
+		if got := a[k]; got.Silvered || got.Magical || got.Adamantine {
+			t.Errorf("%s is marked: %+v", k, got)
+		}
+	}
+}
+
+func TestWeaponRuleMarksTheLinesItsFilterChooses(t *testing.T) {
+	t.Parallel()
+	a := ruleAttacks(t, ruleBuild(), Effect{Type: "weapon_rule", Weapon: WeaponNamed, WeaponName: "Rapieira", Silvered: true})
+	if !a[ruleRapier].Silvered {
+		t.Errorf("the rapier is not silvered: %+v", a[ruleRapier])
+	}
+	for _, k := range []string{ruleLongsword, ruleShortbow, ruleDagger, UnarmedStrikeKey} {
+		if a[k].Silvered {
+			t.Errorf("%s is silvered", k)
+		}
+	}
+	// A rule marks even a weapon the sheet marks otherwise, and the marks add up.
+	b := ruleBuild()
+	b.WeaponMarks = []WeaponMark{{Weapon: ruleRapier, Adamantine: true}}
+	a = ruleAttacks(t, b, Effect{Type: "weapon_rule", Weapon: WeaponMelee, Magical: true})
+	if r := a[ruleRapier]; !r.Magical || !r.Adamantine || r.Silvered {
+		t.Errorf("rapier = %+v, want magical and adamantine", r)
+	}
+	if a[ruleShortbow].Magical {
+		t.Error("a melee rule marked the bow")
+	}
+}
+
+func TestMagicFilterReadsTheSheetMarksNotTheRulesOwn(t *testing.T) {
+	t.Parallel()
+	b := ruleBuild()
+	b.WeaponMarks = []WeaponMark{{Weapon: ruleDagger, Magical: true}}
+	a := ruleAttacks(t, b,
+		Effect{Type: "weapon_rule", Weapon: WeaponAny, Magical: true, AttackBonus: 1},
+		Effect{Type: "weapon_rule", Weapon: WeaponMagic, DamageBonus: 2})
+	// Only the dagger is magical on the sheet: the first rule's marks do not feed the filter.
+	if got := a[ruleDagger].Damage; got != "1d4+3" {
+		t.Errorf("dagger damage = %q, want the +2 of the magic filter (1d4+1+2)", got)
+	}
+	if got := a[ruleLongsword].Damage; got != "1d8" {
+		t.Errorf("longsword damage = %q, want 1d8 (the magic filter does not choose it)", got)
+	}
 }
 
 func refusedAt(t *testing.T, e Effect, field string) {
@@ -397,6 +474,47 @@ func TestWeaponRuleReachNeverChangesTheThrowingRange(t *testing.T) {
 		got := ruleAttacks(t, ruleBuild(), Effect{Type: "weapon_rule", Weapon: WeaponAny, ReachFt: reach})[ruleDagger]
 		if got.ReachFt != reach || got.RangeFt != 20 || got.LongRangeFt != 60 {
 			t.Errorf("dagger with a %d ft reach = reach %d, range %d/%d, want the reach and 20/60", reach, got.ReachFt, got.RangeFt, got.LongRangeFt)
+		}
+	}
+}
+
+// A weapon_rule marks the unarmed strike like any weapon line its filter chooses (the sheet has no
+// mark entry for it); Ki-Empowered Strikes keeps it magical; a pseudo_weapon is never marked.
+func TestWeaponRuleMarksTheUnarmedStrike(t *testing.T) {
+	t.Parallel()
+	unarmedName := baseAttacks(t)[UnarmedStrikeKey].NamePT
+	for _, tc := range []struct {
+		name   string
+		effect Effect
+	}{
+		{"any", Effect{Type: "weapon_rule", Weapon: WeaponAny, Silvered: true}},
+		{"melee", Effect{Type: "weapon_rule", Weapon: WeaponMelee, Silvered: true}},
+		{"named", Effect{Type: "weapon_rule", Weapon: WeaponNamed, WeaponName: unarmedName, Silvered: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := ruleAttacks(t, ruleBuild(), tc.effect)
+			if got := a[UnarmedStrikeKey]; !got.Silvered || got.Magical || got.Adamantine {
+				t.Errorf("unarmed strike = silvered %v, magical %v, adamantine %v; want only silvered", got.Silvered, got.Magical, got.Adamantine)
+			}
+		})
+	}
+	// A rule that names another weapon leaves it alone.
+	a := ruleAttacks(t, ruleBuild(), Effect{Type: "weapon_rule", Weapon: WeaponNamed, WeaponName: "Rapieira", Silvered: true})
+	if a[UnarmedStrikeKey].Silvered {
+		t.Error("a rule for the rapier silvered the unarmed strike")
+	}
+	// Ki-Empowered Strikes stays magical, with or without a rule, and a rule adds its marks.
+	monk := ruleBuild() // a fighter of the rule's subclass, and a monk 6 as a multiclass
+	monk.Classes = append(monk.Classes, ClassLevel{Class: "class:monk", Level: 6})
+	for _, withRule := range []bool{false, true} {
+		effects := []Effect{{Type: "note", TextPT: "Sem regra."}}
+		if withRule {
+			effects = []Effect{{Type: "weapon_rule", Weapon: WeaponAny, Silvered: true}}
+		}
+		got := ruleAttacks(t, monk, effects...)[UnarmedStrikeKey]
+		if !got.Magical || got.Silvered != withRule {
+			t.Errorf("monk 6 and fighter 3, rule %v: unarmed strike magical %v, silvered %v; want magical and silvered %v", withRule, got.Magical, got.Silvered, withRule)
 		}
 	}
 }

@@ -315,6 +315,8 @@ service PlayService {
   //     not a UUID or was already used for another character, or a value
   //     outside 0 to its maximum. The message names the field, such as
   //     `spell_slots_used[0].used`.
+  //   - `aborted`: expected_revision is absent or is not the revision of the
+  //     character's vitals now. Nothing is written.
   rpc AdjustCharacterVitals(AdjustCharacterVitalsRequest) returns (AdjustCharacterVitalsResponse);
 
   // NudgePlayer is the master's "Chamar a atenção": it makes the player of one
@@ -1977,6 +1979,14 @@ message AdjustCharacterVitalsRequest {
   // The keys of states to end (CharacterVitals.active_states[].key), whatever the way
   // each says it ends. `invalid_argument` for a state the character does not have on.
   repeated string end_states = 11;
+  // The CharacterVitals.revision the caller last read. Required: the correction is
+  // written only if the character's vitals still have that revision, because every
+  // value set here replaces the current one and a combat, a rest or another
+  // correction may have changed it since. 0 is a revision (nobody has adjusted the
+  // character yet), so an absent field is not 0: it is refused too. A retry with the
+  // same idempotency_key is answered before this check. `aborted` when the revision
+  // is not the character's now or the field is absent: read the vitals again.
+  optional int32 expected_revision = 31;
 }
 
 // ResourceUsed sets how many uses of one resource are spent.

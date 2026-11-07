@@ -50,7 +50,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 
 | Type | Notes |
 | --- | --- |
-| `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). |
+| `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). A `modifier` on `score.<ability>` is an `add` with a `cap` from 20 to 30 (`MaxNormalScore` to `MaxScore`), and no other modifier has a cap. A score above its cap stays as it is. |
 | `proficiency` with `only_proficient` | A switch of the effect with level `expertise` on a skill (`skill:*` is every skill): the skill is doubled only where the character already has its proficiency from another source when the sheet is worked out (the race, the background, the sheet's picks or another feature), never from the effect itself or from another `only_proficient` effect. Without the switch the effect doubles the skill, proficient or not. Any other level, a target that is not a skill and any other effect type refuse it at `.only_proficient` (`bad_value`). It is a `yes_no` field of the proficiency type in the effect menu. |
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
@@ -61,13 +61,13 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
 | `resistance` | Resistance, immunity or vulnerability (`kind`: `resist`, the default, `immune` or `vulnerable`) to the `damage_types` it lists: `damage-type:` keys of the content, `all` (alone) or `nonmagical_bps` (bludgeoning, piercing and slashing from attacks that are not magical); or to every type but `except`. `except` and `damage_types` exclude each other and one is required. `while` is empty (always), `rage` or the `state_name` of a `state` effect of the same entry (`.while`: `bad_reference` for a state nothing defines). Refusals name the field: `.damage_types` (unknown type, empty, a type twice, `all` mixed with others, both `except` and `damage_types`), `.except` (`bad_reference`), `.kind`, `.while`, and `.when` or `.tags` (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
 | `state` | A temporary state the character turns on and off: a stance, a form. `state_name` (1 to 40 of `a-z`, `0-9`, `_`; the name the entry's other effects read it by; unique in the entry), `duration_rounds` (an Int formula in rounds, 0 to 14,400; empty or 0 lasts until it ends), `ends_on` (any of `dismiss`, `incapacitated`, `short_rest`, `long_rest`), `economy` (`action`, `bonus_action` or `free`, what turning it on costs) and optionally `resource` (as in `grant_action`). At most 8 states for an entry (`limit`). See [States](#states). |
-| `weapon_rule` | Changes the weapon lines its filter picks. `weapon` is `any`, `melee`, `ranged`, `finesse`, `magic` or `named` (then `weapon_name` is the Portuguese name of the weapon); `attack_ability` and `damage_ability` name another ability (the better of it and the weapon's counts); `attack_bonus` and `damage_bonus` are -5 to 10; `reach_ft` (5 to 60, in steps of 5) is a longer melee reach. At least one ability, bonus or reach must be set (refused at `.type`); `weapon_name` is required with `named` and refused otherwise; a reach is refused on `ranged`; no `tags`. Gated by `while` and `when`. |
+| `weapon_rule` | Changes the weapon lines its filter picks. `weapon` is `any`, `melee`, `ranged`, `finesse`, `magic` or `named` (then `weapon_name` is the Portuguese name of the weapon); `attack_ability` and `damage_ability` name another ability (the better of it and the weapon's counts); `attack_bonus` and `damage_bonus` are -5 to 10; `reach_ft` (5 to 60, in steps of 5) is a longer melee reach. `magical`, `silvered` and `adamantine` mark the lines the filter picks for the resistances to nonmagical attacks (weapon_rule only; the `magic` filter reads only the sheet's own marks, `full.weapon_marks`, never a rule's nor the equipment's; the carried weapons and the unarmed strike are marked, a `pseudo_weapon` line is never marked by a rule). At least one ability, bonus, reach or mark must be set (refused at `.type`); `weapon_name` is required with `named` and refused otherwise; a reach is refused on `ranged`; no `tags`. Gated by `while` and `when`. |
 | `pseudo_weapon` | An attack line of its own on the sheet: `attack_name`, `weapon` (`melee` or `ranged`), `damage_dice` (`NdS`, N up to 10, S a weapon die), `damage_type`, `ability`, `reach_ft` (melee, 5 to 60, optional) or `range_ft` (ranged, 5 to 300, required; each kind refuses the other's field). It is never an item, counts as a weapon the character is proficient with, and the weapon rules change it too. Gated by `while` and `when`. |
 | `condition_immunity` | `conditions`: the keys of the conditions (`condition:poisoned`, one of the 15 of `combat_effects.json`), listed once each, at least one; refused at `.conditions`. The character takes none of them (see [Effects](rules.md#effects)). |
 | `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
 | `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
-| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
+| `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `reroll` | See [Reroll](#reroll). |
@@ -92,6 +92,30 @@ The pick is stored with the sheet's choices and checked against the options; one
 A trait with options takes no `choice` of kind `feature` (refused at `.effects[i].choice`, `bad_value`).
 The character picks one option, never more.
 Refused, each at its field: options on a background feature, nested options, options on a class or subclass feature with no `choice` of features, a repeated option name or `from` key, a `from` key of another entry's list, a `choice` inside an option, more options than the limit.
+
+**Feat options and picks.**
+A feat may carry `TableFeat.options`, at most 60 (`MaxFeatureOptions`), checked like a class feature's option list.
+Each option is a feature with a server-made key (`feature:<stem>--<option name>@mesa`).
+It applies only while the character has the feat and has picked it.
+A `feature` choice of the feat with an empty `from` offers them; a feat has one choice of options.
+That choice may instead name `set`, one of the SRD's option sets but `table_feature`, and offers every option of the set, the table's included.
+A `set` choice cannot ask for more than the options of the set (`.count`, `bad_value`), and only a feat has `set`.
+An option of a feat never reads the feat's picks.
+
+A choice of kind `ability` or `damage_type` is a pick, and only a feat has one.
+It needs a `name` (1 to 40 of `a-z`, `0-9` and `_`, the first a letter, and not `mesa`), picks one (`count` 1), and lists `from` keys of its kind once each (empty is all six abilities or all damage types).
+Only these two kinds have a name, and a feat's names are unique.
+A later effect of the same feat writes `@name` for the local part of the pick (`ability:dex` is `dex`, `damage-type:fire` is `fire`), in `proficiency` (`save.@name`), `target`, `targets`, `ability`, `attack_ability`, `damage_ability`, `damage_type`, `damage_types` and `except` (`damage-type:@name`), and in the formulas of the fields `pickFields` lists as `mod("@name")` and `score("@name")`.
+A token for a name the feat has not declared before the effect is refused at the field (`bad_reference`).
+A token of the wrong kind, in an option of a feat or in an entry that is not a feat is refused at the field (`bad_value`).
+A formula that writes `@name` anywhere but in `mod` or `score` does not compile (`bad_formula`).
+A formula that reads a pick is checked when the content is imported and uses the pick the player made when the sheet is worked out.
+An effect whose pick is missing or not offered does not apply.
+The pick is a choice of the choice engine with the key `<feat>#<name>`, stored as `<feat>#<name>=ability:dex`, and `Derived.FeatPicks` holds the valid picks of the feats that read one.
+`Content.Resistances` must be given the `Derived` of the same sheet, since the picks come from it.
+A feat's own options hide only with the feat.
+Only the options of an option set hide one by one.
+A hidden option stays named for a sheet that holds it.
 
 ### Maneuvers
 
@@ -314,6 +338,22 @@ The base is never written: the SRD's maps are copied before the first table crea
 | `HitPointsFormula`, `ArmorClassFormula`, `DamageBonusFormula` | Formulas of the owner that replace `HitPoints`, `ArmorClass` and `DamageBonus` | Results clamped to 1 to 9,999, 1 to 40 and -10 to 30; a result beyond the engine's limit (`formula.MaxResult`, 10,000 in absolute value) is a failed formula and the static value stands |
 | `AttackBonusFormula` | The to-hit of the base's attacks, and of an own attack with no `ToHit` | Clamped to -10 to 30; a result beyond the engine's limit is a failed formula and the base's value stands |
 | `Attacks` | Attack actions added after the base's, keyed `<creature key>#<slug of the name>`, with an attack roll. Not part of the base's Multiattack. A melee attack has a reach (0 is 5 ft., to 30) and no range; a ranged one has a range (1 to 600) and a long range (0 or up to 1,200). The dice are 1 to 20 of a d4, d6, d8, d10, d12 or d20. `DamageType` is a `damage-type:` key of the SRD | At most 8 (`MaxCreatureAttacks`, `limit` at `.attacks`); a name as a trait's, not repeating a trait, a base action or another attack |
+| `DamageMods` | Resistances, immunities and vulnerabilities, added to the base's lists (rules under the table). | At most 12 (`MaxCreatureDamageMods`, `limit` at `.damage_mods`) |
+
+The rules of `DamageMods`:
+
+- Each entry has a `kind`: `resist`, `immune` or `vulnerable`.
+- Its `damage_types` are `damage-type:` keys of the SRD, each once, at least 1.
+- Its `qualifier` is empty, `nonmagical`, `nonmagical_unless_silvered` or `nonmagical_unless_adamantine`, mapped to the `srd51.Qualifier*` words in one table.
+- A qualifier is only on `resist` or `immune`, and only when every type is bludgeoning, piercing or slashing.
+- Each entry becomes a `srd51.MonsterDamageMod` with an English note like the SRD's.
+- The stat block and combat read it as an SRD one.
+- An entry is added to the base's lists and never replaces or narrows them.
+- If the base already resists a type, a qualified entry for that type does not remove the base's resistance.
+- The entries are read from the content's entry by key, not kept per owner, so editing them changes the creatures already given.
+- A snapshot of a creature's numbers does not hold them: `ResolvedDerived` ignores any `DamageMods` in it (`trusted` takes them from the entry).
+- Violations: `bad_value` at `.damage_mods[i].kind`, `.damage_types` or `.qualifier`; `bad_reference` and `bad_value` at `.damage_types[j]` (not an SRD damage type, repeated).
+- A bad kind or a bad damage type is the only violation of its entry: the qualifier is not judged then.
 
 ### Formulas of the owner
 
@@ -526,6 +566,51 @@ No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 ## The area a spell keeps on the map
 
 `TableSpell.Zone` (`TableSpellZone`: `Trigger` of `ZoneStartOfTurn`, `ZoneFirstEntry` or `ZoneBoth`, and `FollowsCaster`) is checked by `checkSpellZone` and kept in `Content.spellZones` (`Content.SpellZone`). Refused at `.zone.trigger` (not one of the three), `.zone.follows_caster` (needs the range Self if it follows, a distance if it does not) and `.zone` (a cantrip; a target that is not a sphere, a cylinder or a cube; not exactly one damage type; a spell attack or healing; neither a timed duration nor concentration). The combat reads it through `link.Spell.Zone` ([Spell zones](play/spell-zones.md)).
+
+## The lasting effect of a spell
+
+`TableSpell.Effect` (`TableSpellEffect`, `rules/overlay_spell_effect.go`) is what the spell leaves on its targets while it lasts.
+`checkSpellEffect` turns it into the `EffectDef` of the spell's key.
+`With` keeps it in `Content.tableSpellEffects`, so `Content.CombatSpellEffect` answers for a table spell as for an SRD one.
+The whole of [Lasting effects](play/lasting-effects.md) then works unchanged: the clock, the concentration, the saves, the undo and the card.
+An archived or switched-off spell has no effect.
+
+- **Where it takes hold.**
+  `applies` is `all` (the default), `failed_save` or `hit`.
+  `failed_save` takes the targets that fail the spell's save, so the spell needs a `save`.
+  `hit` takes the targets the spell attack hits, so the spell needs an `attack`.
+  A spell whose target is Self applies `all` to its caster.
+- **How long.**
+  The spell's duration and concentration.
+  An instantaneous spell has no effect (`.effect`).
+- **What it is.**
+  `conditions` are SRD condition keys, each once, at most 8.
+  `modifiers` are at most 8.
+  An effect with neither is refused.
+- **The modifiers.**
+  The kinds are those of `combat_effects.json` that fit a table spell, and nothing else.
+  `ac_bonus`, `speed_add` and `speed_multiplier` change the numbers of the creature.
+  `roll_die` adds a die as Bless does, `roll_bonus` a flat bonus on `attack`, `save` or `check`, and `check_bonus` a flat bonus on the checks of one skill.
+  `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage` and `check_disadvantage` give a roll a mode.
+  `resistance` takes a `resistance_kind` (`resist`, `immune` or `vulnerable`) and `damage_types` as the feature effect does.
+  `temp_hp` gives temporary hit points when the effect lands.
+  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are kinds of the shared vocabulary: the SRD file may use them too.
+  The table keeps no list of its own.
+- **Refused, each at its field.**
+  `base_ac`, `extra_action`, `no_move`, `no_action`, `no_reaction`, `condition_immunity`, `turn_temp_hp`, `choose` and `from_caster`, and `once` or `except_source` on `attack_disadvantage`.
+  A number out of its range, at `.value` or `.die` (`checkModifier` has the ranges).
+  An unknown condition, skill or damage type, at its own field.
+  A repeated condition, ability or roll.
+  A `player_label_pt` over 30 characters.
+  A `visibility` that is not `public` or `owner`.
+  An `applies` the spell cannot honor, at `.effect.applies`.
+  The path is `spells[i].effect...`, and `table_spell.effect...` in the API.
+- **Tags.**
+  `EffectTagsPT` writes the short Portuguese tags of the owner's card ("CA +2", "PV temporários: 5").
+  `player_label_pt` is the label the other players read.
+
+A feature's lasting effect is its owner's and needs no field of its own.
+A `state` effect turns on the effects gated by `when active("name")` or `while` for its duration (see [States](#states)).
 
 ## Table spell summons
 

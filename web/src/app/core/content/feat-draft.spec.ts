@@ -19,6 +19,29 @@ const stored = () =>
   });
 
 describe('the feat form (MR-025)', () => {
+  it('sends the options and the named choice back when only the name changes', () => {
+    const body = create(TableFeatSchema, {
+      namePt: 'Resistente',
+      descPt: ['Texto.'],
+      options: [{ key: 'feature:opcao@mesa', namePt: 'Opção', descPt: ['Texto.'] }],
+      effects: [
+        { type: 'choice', choice: 'ability', count: 1, name: 'habilidade' },
+        { type: 'choice', choice: 'feature', count: 1, set: 'fighting_style' },
+        { type: 'modifier', target: 'score.str', mode: 'add', value: '1', cap: 20 },
+      ],
+    });
+    const draft = featToDraft(body);
+    draft.feature = { ...draft.feature, name: 'Muito resistente' };
+    const sent = draftToFeat(draft, menu());
+    expect(sent.namePt).toBe('Muito resistente');
+    expect(sent.options).toEqual(body.options);
+    expect(sent.effects).toEqual([
+      { type: 'choice', choice: 'ability', count: 1, name: 'habilidade' },
+      { type: 'choice', choice: 'feature', count: 1, set: 'fighting_style' },
+      { type: 'modifier', target: 'score.str', mode: 'add', value: '1', cap: 20 },
+    ]);
+  });
+
   it('turns a stored feat into a draft and back to the same body', () => {
     const draft = featToDraft(stored());
     expect(draft.feature.text).toBe('Primeiro.\n\nSegundo.');

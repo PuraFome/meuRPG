@@ -13,18 +13,18 @@ const (
 )
 
 // wieldsTwoHanded says a weapon that needs both hands is on the sheet. The sheet lists
-// the weapons carried and has no notion of the hand each one is in, so a two-handed
+// the weapons and has no notion of the hand each one is in, so a two-handed
 // weapon on it is read as the one in hand, and the player puts the shield back to use
-// by taking that weapon off the sheet. A versatile weapon counts as one-handed: the
+// by carrying that weapon instead of equipping it. A versatile weapon counts as one-handed: the
 // sheet does not say whether the player grips it with both hands.
 func (x *deriver) wieldsTwoHanded() bool {
 	return slices.ContainsFunc(x.b.Weapons, func(key string) bool {
 		eq, ok := x.c.equipment[key]
-		return ok && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty)
+		return ok && !x.b.IsCarried(key) && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty)
 	})
 }
 
-// shieldWielded says the shield on the sheet counts: it is carried and no two-handed
+// shieldWielded says the shield on the sheet counts: it is equipped and no two-handed
 // weapon takes the hand it needs.
 func (x *deriver) shieldWielded() bool {
 	return x.b.Shield && !x.wieldsTwoHanded()

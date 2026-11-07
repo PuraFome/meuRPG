@@ -151,6 +151,9 @@ const (
 	ListGrantAbilities = "granted_spell_abilities"
 	// ListOptionSetNames are the option sets a table option may join (TableOption.set).
 	ListOptionSetNames = "option_set_names"
+	// ListFeatOptionSets are the sets a feat's choice of options may offer whole: the same sets
+	// but the options of a table's class feature.
+	ListFeatOptionSets = "feat_option_sets"
 	// ListStateEnds and ListStateEconomies are the ways a state ends and what starting one costs;
 	// ListWeaponFilters and ListWeaponKinds are the weapons a weapon rule chooses and the kinds of
 	// attack a pseudo-weapon is.
@@ -169,10 +172,11 @@ const (
 // menuTypes is the menu's types, in the picker's order, with the copy in
 // Portuguese, in our own words. Only the types of overlayEffectTypes appear.
 var menuTypes = []MenuType{
-	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir e pode valer para armas, magias ou os dois.", Fields: []MenuField{
+	{Type: "modifier", NamePT: "Modificador", HintPT: "Soma, define ou limita um número da ficha: CA, PV, deslocamento, ataque, dano, uma perícia. A margem de acerto crítico só aceita o modo Definir e pode valer para armas, magias ou os dois. Uma habilidade (escore) só aceita o modo Somar e pede o limite, de 20 a 30: a habilidade sobe até ele e nunca passa dele.", Fields: []MenuField{
 		{Name: "target", Required: true, Kind: "choice", List: ListModifierTargets},
 		{Name: "mode", Required: true, Kind: "choice", List: ListModifierModes},
 		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "cap", Kind: "number", Min: MaxNormalScore, Max: MaxScore},
 		{Name: "applies", Kind: "choice", List: ListCriticalScopes},
 		{Name: "when", Kind: "condition"},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
@@ -295,7 +299,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo. Vale também para as armas da característica.", Fields: []MenuField{
+	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo, ou a marca de mágica, de prata ou de adamantina nas armas que o filtro escolhe, o golpe desarmado incluído (vale contra as resistências a ataques não mágicos). Vale também para as armas da característica, menos as marcas.", Fields: []MenuField{
 		{Name: "weapon", Required: true, Kind: "choice", List: ListWeaponFilters},
 		{Name: "weapon_name", Kind: "text"},
 		{Name: "attack_ability", Kind: "choice", List: ListAbilities, AlwaysShown: true},
@@ -303,6 +307,9 @@ var menuTypes = []MenuType{
 		{Name: "attack_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
 		{Name: "damage_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
 		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
+		{Name: "magical", Kind: "yes_no", AlwaysShown: true},
+		{Name: "silvered", Kind: "yes_no", AlwaysShown: true},
+		{Name: "adamantine", Kind: "yes_no", AlwaysShown: true},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
@@ -378,10 +385,12 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
+	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras). Num talento, também uma habilidade ou um tipo de dano: dê um nome à escolha e escreva @nome nos efeitos seguintes do talento (por exemplo, a proficiência save.@habilidade). Em vez da lista, uma escolha de opções pode oferecer um conjunto inteiro do SRD (o campo set).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
 		{Name: "from", Kind: "choices"},
+		{Name: "name", Kind: "text"},
+		{Name: "set", Kind: "choice", List: ListFeatOptionSets},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -456,7 +465,7 @@ var (
 	choiceNames = map[string]string{
 		"skill": "Perícias", "expertise": "Especialização", "cantrip": "Truques", "spell": "Magias",
 		"language": "Idiomas", "tool": "Ferramentas", "feature": "Uma opção de uma lista do SRD",
-		"feat": "Talentos",
+		"feat": "Talentos", "ability": "Uma habilidade (só em talento)", "damage_type": "Um tipo de dano (só em talento)",
 	}
 	rollTargetNames = map[string]string{
 		"attack": "Ataques", "death_save": "Testes contra a morte", "initiative": "Iniciativa",
@@ -482,7 +491,7 @@ var (
 		WeaponMelee:   {"Corpo a corpo", "As armas de corpo a corpo, arremessadas ou não."},
 		WeaponRanged:  {"À distância", "As armas de disparo e de arremesso à distância."},
 		WeaponFinesse: {"Com acuidade", "As armas com a propriedade acuidade."},
-		WeaponMagic:   {"Mágica", "As armas que a ficha marca como mágicas, como o golpe desarmado de quem tem Golpes Fortalecidos por Ki."},
+		WeaponMagic:   {"Mágica", "As armas que a própria ficha marca como mágicas (a marca da arma na ficha, ou o golpe desarmado de quem tem Golpes Fortalecidos por Ki). Não lê as marcas de outras regras de arma nem o equipamento."},
 		WeaponNamed:   {"Uma arma pelo nome", "A arma cujo nome em português é o escrito no campo ao lado, sem diferença de maiúsculas ou acentos."},
 	}
 )
@@ -554,6 +563,18 @@ func (c *content) menuSaves() []MenuValue {
 	return out
 }
 
+// menuScores are the six ability scores as targets ("score.dex"). They take only the mode "add" and a cap.
+func (c *content) menuScores() []MenuValue {
+	var out []MenuValue
+	for _, a := range AllAbilities() {
+		out = append(out, MenuValue{
+			Key: "score." + string(a), NamePT: "Valor de " + c.menuAbilityName(a), OnlyModes: []string{"add"},
+			HintPT: "Soma ao valor da habilidade, até o limite que o efeito pede (de 20 a 30). Um valor que já passa do limite fica como está.",
+		})
+	}
+	return out
+}
+
 // menuModifierTargets are the fixed targets, then the skills, then the saves.
 func (c *content) menuModifierTargets() []MenuValue {
 	var targets []MenuValue
@@ -566,7 +587,8 @@ func (c *content) menuModifierTargets() []MenuValue {
 		targets = append(targets, v)
 	}
 	targets = append(targets, c.menuSkillRolls()...)
-	return append(targets, c.menuSaves()...)
+	targets = append(targets, c.menuSaves()...)
+	return append(targets, c.menuScores()...)
 }
 
 // menuRollTargets are the fixed rolls, the ability checks, the skills and the
@@ -682,6 +704,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListConditions, Values: c.menuConditions()},
 		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
 		{Name: ListOptionSetNames, Values: menuOptionSetNames()},
+		{Name: ListFeatOptionSets, Values: menuFeatOptionSets()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 		{Name: ListStateEnds, Values: namedMenuHint(stateEnds, stateEndNms)},
 		{Name: ListStateEconomies, Values: namedMenu(stateEconomies, func(k string) string { return economyNms[k] })},
@@ -794,6 +817,17 @@ func menuOptionSetNames() []MenuValue {
 	out := make([]MenuValue, len(optionSetDefs))
 	for i, d := range optionSetDefs {
 		out[i] = MenuValue{Key: d.Name, NamePT: d.NamePT, HintPT: d.HintPT}
+	}
+	return out
+}
+
+// menuFeatOptionSets are the sets a feat may offer: every set but the table's feature options.
+func menuFeatOptionSets() []MenuValue {
+	var out []MenuValue
+	for _, v := range menuOptionSetNames() {
+		if v.Key != tableFeatureSet {
+			out = append(out, v)
+		}
 	}
 	return out
 }

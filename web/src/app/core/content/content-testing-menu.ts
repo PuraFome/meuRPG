@@ -8,6 +8,10 @@ import {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { EffectMenuVm } from './effect-draft';
 
+/** The lowest and highest cap a score modifier may write (backend MaxNormalScore to its ceiling). */
+const SCORE_CAP_MIN = 20;
+const SCORE_CAP_MAX = 30;
+
 /** The menu: the real one's types and field order (backend/internal/rules/tablemenu.go), with a few of its lists. */
 export function menuResponse(): GetEffectMenuResponse {
   const field = (name: string, kind: string, required = false, list = '', min = 0, max = 0) => ({
@@ -28,6 +32,7 @@ export function menuResponse(): GetEffectMenuResponse {
           field('target', 'choice', true, 'modifier_targets'),
           field('mode', 'choice', true, 'modifier_modes'),
           field('value', 'formula', true),
+          field('cap', 'number', false, '', SCORE_CAP_MIN, SCORE_CAP_MAX),
           field('when', 'condition'),
           field('tags', 'tags', false, 'tag_prefixes'),
           field('text_pt', 'text'),
@@ -90,6 +95,8 @@ export function menuResponse(): GetEffectMenuResponse {
         fields: [
           field('choice', 'choice', true, 'choice_kinds'),
           field('count', 'number', true, '', 1),
+          field('name', 'text'),
+          field('set', 'text'),
           field('from', 'choices'),
           field('when', 'condition'),
           field('text_pt', 'text'),
