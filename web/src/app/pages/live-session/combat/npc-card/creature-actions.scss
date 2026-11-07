@@ -249,3 +249,20 @@
 .skeleton__bar--short {
   width: 60%;
 }
+
+// "Usar" and the reason it is off share a line (wrapping on a phone), so a spent action costs no extra row.
+.act__use {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.act__use .act__why {
+  flex: 1 1 14rem;
+}
+
+.recharge-note {
+  padding: 8px 12px;
+  font-size: var(--mr-font-14);
+}

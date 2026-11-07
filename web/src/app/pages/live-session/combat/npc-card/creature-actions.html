@@ -22,7 +22,7 @@
   <h3 class="acts__cap" id="acts-title">Outras ações</h3>
 
   @if (rolled(); as r) {
-    <p class="mr-notice" [class.mr-notice--success]="r.ready" [class.mr-notice--neutral]="!r.ready" role="status" data-testid="recharge-rolled">
+    <p class="mr-notice recharge-note" [class.mr-notice--success]="r.ready" [class.mr-notice--neutral]="!r.ready" role="status" data-testid="recharge-rolled">
       <mat-icon aria-hidden="true">casino</mat-icon>
       <span><b>Recarga no começo do turno:</b> {{ r.lines.join(' ') }}</span>
     </p>
@@ -82,22 +82,24 @@
         @if (c.text) {
           <p class="act__text"><span class="act__tag">Texto do SRD, em inglês</span> <span lang="en">{{ c.text }}</span></p>
         }
-        <button
-          matButton="outlined"
-          type="button"
-          class="offer"
-          [class.mr-button--off]="!!c.why"
-          [attr.aria-label]="'Usar ' + c.name"
-          [attr.aria-describedby]="c.why ? 'act-why-' + $index : null"
-          [disabled]="busy() || turnBusy() || !!c.why"
-          disabledInteractive
-          (click)="use(c.action)"
-        >
-          <mat-icon aria-hidden="true">bolt</mat-icon>Usar
-        </button>
-        @if (c.why) {
-          <p class="act__why" [id]="'act-why-' + $index"><mat-icon aria-hidden="true">block</mat-icon>{{ c.why }}</p>
-        }
+        <div class="act__use">
+          <button
+            matButton="outlined"
+            type="button"
+            class="offer"
+            [class.mr-button--off]="!!c.why"
+            [attr.aria-label]="'Usar ' + c.name"
+            [attr.aria-describedby]="c.why ? 'act-why-' + $index : null"
+            [disabled]="busy() || turnBusy() || !!c.why"
+            disabledInteractive
+            (click)="use(c.action)"
+          >
+            <mat-icon aria-hidden="true">bolt</mat-icon>Usar
+          </button>
+          @if (c.why) {
+            <p class="act__why" [id]="'act-why-' + $index"><mat-icon aria-hidden="true">block</mat-icon>{{ c.why }}</p>
+          }
+        </div>
       </li>
     }
   </ul>

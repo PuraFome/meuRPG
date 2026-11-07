@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { test } from './diagnostics';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
@@ -83,6 +83,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
+import { WIDTHS, beginVrockFight, pagesFor, shoot, viewportOf } from './recharge-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -9160,4 +9161,100 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
 test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCreatureActions(browser, 'dark', 390);
+});
+
+/** The master's Recharge and uses-per-day screens (#556): the card of a Vrock's turn with Esporos (Recharge 6) and Guincho atordoante (1/day), ready,
+ * spent, the d6 at the start of the turn, the uses gone, the opened row of the order, the stat block that is slow and the one that cannot be read; and
+ * the player, who reads none of it (RN-20, RN-29). Each state is checked and saved at 390, 768 and 1280 px (E2E_SHOTS_DIR). */
+async function scanRechargeScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const { m, p, close } = await pagesFor(browser, colorScheme, 1280);
+  try {
+    const fight = await beginVrockFight(m, p, 'Acessibilidade recarga');
+    const acts = fight.card.locator('app-creature-actions');
+    const everyWidth = async (page: Page, screen: string, what: string, at?: () => Locator, order = false) => {
+      for (const width of WIDTHS) {
+        await page.setViewportSize(viewportOf(width));
+        // The order is its own tab on a phone: its screen opens the row there, every other screen is the turn's.
+        await (order ? openOrderRow(page, fight.label) : openTurn(page));
+        await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+        await shoot(page, screen, width, colorScheme, at?.());
+      }
+    };
+
+    // Both actions ready: Esporos "Pronta", Guincho atordoante with its use.
+    await expect(acts.getByText('Pronta')).toBeVisible();
+    await expect(acts.getByText('1 de 1')).toBeVisible();
+    await everyWidth(m, 'recarga-pronta', 'Recarga: as ações prontas', () => acts);
+
+    // The master uses Esporos: spent, and "Usar" is dashed with the reason of the turn.
+    await acts.getByRole('button', { name: /^Usar Esporos/ }).click();
+    await expect(m.getByTestId('creature-action-result')).toBeVisible();
+    await expect(acts.getByText('Gasta')).toBeVisible();
+    await expect(acts.getByText('A ação deste turno já foi usada.').first()).toBeVisible();
+    await everyWidth(m, 'recarga-gasta', 'Recarga: Esporos gasta no turno', () => acts);
+
+    // The turn comes back: the server rolled the d6 at its start, and the card says what it said.
+    await fight.nextTurn();
+    const rolled = m.getByTestId('recharge-rolled');
+    await expect(rolled).toContainText(/rolou \d no d6\./);
+    if (/não recarregou/.test((await rolled.textContent()) ?? '')) {
+      await expect(acts.getByText(/Volta com 6 no d6 que o app rola no começo de cada turno do/)).toBeVisible();
+    }
+    await everyWidth(m, 'recarga-comeco-do-turno', 'Recarga: a rolagem no começo do turno', () => rolled);
+
+    // Guincho atordoante (1/day): used, and gone for the combat.
+    await acts.getByRole('button', { name: /^Usar Guincho atordoante/ }).click();
+    await expect(m.getByTestId('creature-action-result')).toBeVisible();
+    await expect(acts.getByText('0 de 1')).toBeVisible();
+    await fight.nextTurn();
+    await expect(acts.getByText(`Sem usos hoje. O ${fight.label} tem de novo no próximo combate.`)).toBeVisible();
+    await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => acts);
+
+    // The opened row of the order lists the limits, one line each.
+    await openOrderRow(m, fight.label);
+    const lines = m.getByTestId('order-limit');
+    await expect(lines).toHaveCount(2);
+    await expect(lines.filter({ hasText: /^\s*(autorenew)?\s*Esporos · Recarga 6 · (pronta|gasta)/ })).toHaveCount(1);
+    await expect(lines.filter({ hasText: 'Guincho atordoante · 1/dia · 0 de 1' })).toHaveCount(1);
+    await everyWidth(m, 'ordem-limites', 'Recarga: os limites na linha da ordem', () => lines.first(), true);
+
+    // A player reads nothing of it: no state, no uses, no roll, no "Outras ações".
+    await openSessionPage(p, fight.campaignId);
+    await p.reload();
+    await openSessionPage(p, fight.campaignId);
+    for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'de 1', 'Recarga']) {
+      await expect(p.locator('body')).not.toContainText(word);
+    }
+    await everyWidth(p, 'jogador-sem-limites', 'Recarga: a jogadora não lê os limites', undefined);
+
+    // The stat block is slow to read, then cannot be read; "Tentar de novo" reads it.
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await m.route('**/meurpg.rules.v1.ContentService/GetCreature', async (route) => {
+      await held;
+      await route.abort();
+    });
+    await m.reload();
+    await openSessionPage(m, fight.campaignId);
+    await expect(fight.card.getByText('Lendo a ficha da criatura…')).toBeVisible();
+    await everyWidth(m, 'ficha-lendo', 'Recarga: lendo a ficha da criatura', () => fight.card.locator('app-creature-actions'));
+    release();
+    await expect(fight.card.getByRole('alert')).toContainText('Não deu para ler as outras ações da criatura.');
+    await everyWidth(m, 'ficha-erro', 'Recarga: a ficha não pôde ser lida', () => fight.card.locator('app-creature-actions'));
+    await m.unroute('**/meurpg.rules.v1.ContentService/GetCreature');
+    await fight.card.getByRole('button', { name: 'Tentar de novo' }).click();
+    await expect(fight.card.getByRole('button', { name: /^Usar Esporos/ })).toBeVisible();
+  } finally {
+    await close();
+  }
+}
+
+test('a recarga e os usos por dia passam no axe e nas conferências de layout no tema claro, a 390, 768 e 1280 px', { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanRechargeScreens(browser, 'light');
+});
+
+test('a recarga e os usos por dia passam no axe e nas conferências de layout no tema escuro, a 390, 768 e 1280 px', { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] }, async ({ browser }) => {
+  test.setTimeout(600_000);
+  await scanRechargeScreens(browser, 'dark');
 });
