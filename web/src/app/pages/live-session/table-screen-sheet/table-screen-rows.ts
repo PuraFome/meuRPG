@@ -42,7 +42,7 @@ function subtitle(kind: TableScreenKind, names: TvNames): string {
     case TableScreenKind.SCENE:
       return names.scene || 'A cena aberta';
     case TableScreenKind.COMBAT:
-      return 'A ordem e o registro do combate';
+      return names.map ? `A ordem e o mapa da ${names.map}` : 'A ordem do combate';
     default:
       return 'Só o nome da campanha e da sessão';
   }
@@ -92,13 +92,15 @@ export function nowLine(data: GetTableScreenResponse, pinned: boolean): TvNowLin
       return { icon: 'image', before: 'A imagem ', name: body.value.name, after: end };
     case 'scene':
       return { icon: 'chat', before: 'A cena ', name: body.value.name, after: end };
-    case 'combat':
+    case 'combat': {
+      const map = body.value.map?.name;
       return {
         icon: 'swords',
-        before: `O combate, rodada ${body.value.round}`,
+        before: `O combate${pinned ? ', fixo' : ''}: a ordem${map ? ` e o mapa da ${map}` : ''}`,
         name: '',
-        after: end,
+        after: '.',
       };
+    }
     default:
       return { icon: 'tv', before: 'A tela de espera', name: '', after: end };
   }

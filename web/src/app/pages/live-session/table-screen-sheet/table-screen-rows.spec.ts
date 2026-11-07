@@ -40,6 +40,14 @@ describe('pinRows', () => {
     expect(row.sub).toBe('Indisponível agora.');
   });
 
+  it('says the map of the combat in its row, or only the order without one', () => {
+    const options = [{ kind: K.COMBAT, available: true }] as never;
+    expect(pinRows(options, { ...NONE, map: 'Cripta do Corvo' })[0].sub).toBe(
+      'A ordem e o mapa da Cripta do Corvo',
+    );
+    expect(pinRows(options, NONE)[0].sub).toBe('A ordem do combate');
+  });
+
   it('uses a plain subtitle where the session has no name yet', () => {
     const rows = pinRows(
       [
@@ -58,6 +66,19 @@ describe('pinRows', () => {
 });
 
 describe('nowLine', () => {
+  it('says the map of a pinned combat', () => {
+    const data = screenResponse({
+      stage: {
+        kind: K.COMBAT,
+        body: { case: 'combat', value: { round: 1, map: { name: 'Cripta do Corvo' } } },
+      },
+    });
+    expect(nowLine(data, true)).toMatchObject({
+      before: 'O combate, fixo: a ordem e o mapa da Cripta do Corvo',
+      after: '.',
+    });
+  });
+
   it('names the scene on the stage, and marks a pin', () => {
     const data = screenResponse({
       stage: { kind: K.SCENE, body: { case: 'scene', value: { name: 'A taverna' } } },
@@ -74,7 +95,8 @@ describe('nowLine', () => {
     const combat = screenResponse({
       stage: { kind: K.COMBAT, body: { case: 'combat', value: { round: 3 } } },
     });
-    expect(nowLine(combat, false).before).toBe('O combate, rodada 3');
+    expect(nowLine(combat, false).before).toBe('O combate: a ordem');
+    expect(nowLine(combat, true).before).toBe('O combate, fixo: a ordem');
     expect(nowLine(screenResponse(), true)).toMatchObject({
       icon: 'tv',
       before: 'A tela de espera',

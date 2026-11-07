@@ -45,7 +45,7 @@ import { MatIconModule } from '@angular/material/icon';
       display: flex;
       align-items: center;
       box-sizing: border-box;
-      min-height: 50px;
+      min-height: 48px;
       border: 1px solid var(--mr-control-line);
       border-radius: var(--mr-radius-sm);
       background: var(--mr-surface);
@@ -133,8 +133,23 @@ import { MatIconModule } from '@angular/material/icon';
 
     .row__sub {
       font-size: var(--mr-font-13);
-      line-height: 18px;
+      line-height: 17px;
       color: var(--mr-ink-muted);
+    }
+
+    // From a tablet up the rows are tighter: the panel must fit a 1280x720 screen.
+    @media (min-width: 768px) {
+      .row {
+        min-height: 44px;
+      }
+
+      .row__main {
+        padding-block: 2px;
+      }
+
+      .row__sub {
+        line-height: 16px;
+      }
     }
 
     .row__aside:not(:empty) {

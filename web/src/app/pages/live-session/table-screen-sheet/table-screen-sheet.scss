@@ -7,6 +7,14 @@
   gap: 10px;
 }
 
+// From a tablet up the dialog is tighter still: the longest state must fit a 1280x720 screen (the dialog is 92dvh high).
+@media (min-width: 768px) {
+  :host ::ng-deep .frame:not(.frame--phone) {
+    gap: 8px;
+    padding: 16px 20px 12px;
+  }
+}
+
 .head-tag {
   align-self: center;
   margin-top: -2px;
@@ -58,7 +66,7 @@
 }
 
 .note {
-  padding: 8px 14px;
+  padding: 6px 12px;
   font-size: var(--mr-font-14);
   line-height: 20px;
 }
@@ -117,7 +125,8 @@
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-3);
-  margin: 0;
+  // Air above the buttons: the line is a statement, not a label of them.
+  margin: 0 0 8px;
   font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);

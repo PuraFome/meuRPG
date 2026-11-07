@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { vi } from 'vitest';
@@ -123,7 +124,7 @@ describe('TableScreenSheet', () => {
     expect(radios(h.el)).toHaveLength(0);
     expect(text(byId(h.el, 'tv-state'))).toBe('Fechada');
     expect(text(byId(h.el, 'tv-closed'))).toBe(
-      'Abra a Tela da mesa na TV; depois escolha o que ela mostra.',
+      'Nenhuma Tela da mesa aberta agora. O que você escolher vale assim que abrir uma.',
     );
   });
 
@@ -287,6 +288,30 @@ describe('TableScreenSheet', () => {
     const field = h.el.querySelector<HTMLInputElement>('input.field')!;
     expect(field.value).toBe(`${location.origin}/campaigns/c1/table-screen`);
     expect(field.readOnly).toBe(true);
+  });
+
+  it('tells the phone sheet how the TV gets the page, and the dialog does not', async () => {
+    const h = await mount();
+    expect(byId(h.el, 'tv-how')).toBeNull();
+    TestBed.resetTestingModule();
+    const get = vi.fn(() => Promise.resolve(screenResponse({ options: OPTIONS, presence: OPEN })));
+    const panel = new TableScreenPanel({ get, set: vi.fn() } as never, () => 'c1');
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { panel, campaignId: 'c1', names: signal({ map: '', image: '', scene: '' }) },
+        },
+        { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
+        // The bottom sheet's own refs: the phone's container.
+        { provide: MatBottomSheetRef, useValue: { dismiss: vi.fn(), disableClose: false } },
+      ],
+    });
+    const fixture = TestBed.createComponent(TableScreenSheet);
+    fixture.detectChanges();
+    expect(text(byId(fixture.nativeElement, 'tv-how'))).toContain(
+      'Para a TV: no computador ligado a ela, abra esta sessão e use Tela da mesa na barra',
+    );
   });
 
   it('closes from the frame', async () => {

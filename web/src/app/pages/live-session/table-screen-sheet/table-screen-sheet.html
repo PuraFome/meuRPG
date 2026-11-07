@@ -31,7 +31,9 @@
         </p>
       </div>
     } @else if (!open()) {
-      <p class="line line--plain" data-testid="tv-closed">Abra a Tela da mesa na TV; depois escolha o que ela mostra.</p>
+      <p class="line line--plain" data-testid="tv-closed">
+        Nenhuma Tela da mesa aberta agora. O que você escolher vale assim que abrir uma.
+      </p>
     } @else if (notSaved()) {
       <!-- A save that did not go through: the notice and the retry are all the panel says, so they are never out of sight. -->
       <div class="mr-notice mr-notice--danger" role="alert" data-testid="tv-not-saved">
@@ -109,6 +111,16 @@
       </div>
     }
 
+    @if (inSheet) {
+      <!-- On a phone the master opens the panel from the menu: this says how the TV gets the page (MasterPhoneSheet). -->
+      <p class="mr-notice mr-notice--neutral note" data-testid="tv-how">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>
+          Para a TV: no computador ligado a ela, abra esta sessão e use <b>Tela da mesa</b> na barra (numa tela estreita,
+          ⋮ › <b>Tela da mesa…</b>).
+        </span>
+      </p>
+    }
     <p class="mr-visually-hidden" role="status">{{ announce() }}</p>
   </div>
 
