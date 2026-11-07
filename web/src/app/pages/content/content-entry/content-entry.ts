@@ -43,6 +43,8 @@ import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
 import { ClassFeatureEditor } from '../class-feature-editor/class-feature-editor';
+import { CreatureEditor } from '../creature-editor/creature-editor';
+import { CreatureRead } from '../creature-read/creature-read';
 import { OptionEditor } from '../option-editor/option-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
@@ -68,8 +70,11 @@ import {
   readOfEntry,
   replaceEntry,
   updatedLine,
+  usesNoMenu,
 } from './content-entry-model';
 import { SubclassEditor } from '../subclass-editor/subclass-editor';
+
+const NO_READ = { rows: [], sections: [], text: [] };
 
 type PageState =
   | { status: 'loading' }
@@ -94,6 +99,8 @@ type PageState =
     FeatEditor,
     OptionEditor,
     ClassFeatureEditor,
+    CreatureEditor,
+    CreatureRead,
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
@@ -141,7 +148,6 @@ export class ContentEntry {
   protected readonly savedLine = signal('');
   protected readonly affected = signal<readonly AffectedCharacter[]>([]);
   protected readonly actionError = signal('');
-  protected readonly loadingExtras = signal(false);
   /** The catalog or the effect menu did not come: the page says so, with "Tentar de novo". */
   /** Moves with each read of the entries: of two that overlap, only the newest lands. */
   private reads = 0;
@@ -154,7 +160,7 @@ export class ContentEntry {
       catalog: this.catalogError(),
       menu: this.menuError(),
       defaults: this.defaultsError(),
-      spell: this.kind() === TableContentKind.SPELL,
+      noMenu: usesNoMenu(this.kind()),
       needsDefaults: this.needsDefaults(),
     }),
   );
@@ -185,7 +191,6 @@ export class ContentEntry {
     const k = this.kind();
     return this.isMaster() && !this.phone() && k !== null && EDITABLE.has(k);
   });
-  protected readonly readOnly = computed(() => !this.editing());
   protected readonly isNew = computed(() => this.entry() === null && this.newKind() !== null);
   protected readonly missing = computed(
     () => this.ctx() !== null && this.entry() === null && this.newKind() === null,
@@ -209,9 +214,11 @@ export class ContentEntry {
   );
   protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
-  protected readonly read = computed(() =>
-    readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries()),
-  );
+  protected readonly read = computed(() => {
+    // The master's creature on a phone is read by `app-creature-read`, which writes its own text.
+    const own = this.isMaster() && this.kind() === TableContentKind.CREATURE;
+    return own ? NO_READ : readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries());
+  });
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */
   protected readonly nounPhrase = computed(() => nounPhraseOf(this.entry()));
   protected readonly archivedWord = computed(() => archivedWordOf(this.entry()));
@@ -314,7 +321,6 @@ export class ContentEntry {
     if (!ctx) {
       return;
     }
-    this.loadingExtras.set(true);
     this.catalogError.set('');
     this.menuError.set('');
     this.defaultsError.set('');
@@ -334,16 +340,11 @@ export class ContentEntry {
       this.defaultsError.set(errors.defaults);
       this.catalogError.set(errors.catalog);
       this.menuError.set(errors.menu);
-      this.loadingExtras.set(false);
     });
   }
 
   protected backLink(): string[] {
     return ['/campaigns', this.campaignId(), 'content'];
-  }
-
-  protected entryLink(e: TableEntry): string[] {
-    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
   }
 
   protected goBack(): void {
@@ -424,7 +425,8 @@ export class ContentEntry {
     done: () => void,
   ): Promise<void> {
     const e = this.entry();
-    if (!e) {
+    // The "⋮" stays enabled (the focus stays on it), so a second tap while the first call runs is ignored here.
+    if (!e || this.archiving()) {
       return;
     }
     this.archiving.set(true);

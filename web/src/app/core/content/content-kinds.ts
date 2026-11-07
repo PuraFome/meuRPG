@@ -2,6 +2,7 @@ import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/
 import { joinDots, tight } from '../format/text';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { classFeatureSupport } from './class-feature-text';
+import { creatureSupport } from './creature-text';
 import { type OfferedByName, optionSupport } from './option-text';
 import { metersText } from '../units';
 
@@ -24,7 +25,8 @@ export interface ContentNavKind {
     | 'spells'
     | 'feats'
     | 'options'
-    | 'classfeatures';
+    | 'classfeatures'
+    | 'creatures';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -39,6 +41,8 @@ export interface ContentNavKind {
   readonly editable: boolean;
   /** The master's way in: the page of "Nova …" (empty when there is no editor yet). */
   readonly createSegment: string;
+  /** What the empty list says when it needs more than "Nada cadastrado ainda." (the creatures'). */
+  readonly empty?: { readonly icon: string; readonly title: string; readonly text: string };
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
@@ -121,6 +125,21 @@ export const CONTENT_NAV: readonly ContentNavKind[] = [
     aOne: 'uma característica de classe',
     editable: true,
     createSegment: 'classfeature',
+  },
+  {
+    slug: 'creatures',
+    plural: 'Criaturas',
+    singular: 'criatura',
+    kinds: [TableContentKind.CREATURE],
+    newLabel: 'Nova criatura',
+    aOne: 'uma criatura',
+    editable: true,
+    createSegment: 'creature',
+    empty: {
+      icon: 'pets',
+      title: 'Nenhuma criatura da mesa ainda.',
+      text: 'Uma criatura da mesa parte de uma do SRD, com os seus números e ataques; uma característica ou magia da mesa pode trazê-la.',
+    },
   },
 ];
 
@@ -405,6 +424,8 @@ function supportParts(
         body.value.replacesFeatureKey,
         nameOf,
       );
+    case 'tableCreature':
+      return [creatureSupport(body.value, nameOf)];
     default:
       return [];
   }
