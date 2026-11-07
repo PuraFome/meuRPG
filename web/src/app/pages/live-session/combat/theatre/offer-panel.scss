@@ -5,9 +5,9 @@
 .offer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   box-sizing: border-box;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
   background: var(--mr-surface);
@@ -29,7 +29,7 @@
 }
 
 .offer__sub {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-weight: 700;
   font-size: var(--mr-font-16);
 }
@@ -132,20 +132,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 2px;
-
-  // On a laptop the buttons stay at the bottom of the window while the panel is taller than it.
-  @media (min-width: 1024px) {
-    position: sticky;
-    bottom: 0;
-    padding: 8px 0 2px;
-    background: var(--mr-surface);
-  }
-
-  // Two buttons of one size, from a phone to a desktop.
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, 220px);
-  }
+  margin-top: 0;
 }
 
 .btn {

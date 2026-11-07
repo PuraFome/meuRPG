@@ -29,7 +29,7 @@
   <app-rage-status class="card__rage" [subject]="subject()" [busy]="turnBusy()" (endRage)="endRage.emit(subject().id)" />
 
   @if (full()) {
-    <div class="stats">
+    <div class="stats" [class.mr-visually-hidden]="offerOpen() && isNpc()">
       @if (stats().hp; as hp) {
         <div class="stat">
           <span class="stat__cap">Pontos de vida</span>

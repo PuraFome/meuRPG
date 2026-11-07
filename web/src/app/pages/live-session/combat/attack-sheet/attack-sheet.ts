@@ -266,7 +266,7 @@ export class AttackSheet {
     this.s.typing()
       ? 'Digite o resultado do dado'
       : this.data.opportunity
-        ? `Ataque de oportunidade · ${this.name}`
+        ? `Ataque de oportunidade\u00a0· ${this.name}`
         : `Atacar com ${this.name}`,
   );
   /** An opportunity attack names who attacks and what it costs; the numbers of the weapon are on the list. */

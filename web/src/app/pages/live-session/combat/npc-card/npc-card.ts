@@ -128,7 +128,7 @@ export class NpcCard {
   readonly theatre = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
-  /** The offer panel is open under the stats: the chips of what was used leave, so its buttons stay in view. */
+  /** The offer panel is open under the stats: the numbers and chips of what was used leave (screen readers keep them), so its buttons stay in view. */
   readonly offerOpen = input(false);
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();

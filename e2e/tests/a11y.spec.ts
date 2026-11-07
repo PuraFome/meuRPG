@@ -9260,7 +9260,7 @@ test('o dado de manobra no ataque (dois dados, com "Nenhum") passa no axe e nas 
  * candidates ringed on the map, the player's prompt with the die line and the attack sheet's die, then the menu with the offer off
  * and its reason (the only one who could react spent the reaction). The menu is driven with the keyboard. */
 async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
-  const viewport = { width, height: 900 };
+  const viewport = { width, height: width >= 1024 ? 800 : 844 };
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
@@ -9312,6 +9312,14 @@ async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark',
     if (width >= 1024) {
       await expect(m.locator('.cm__pick--offer')).toHaveCount(3);
     }
+    // The panel has the one filled button, and its actions are in view without scrolling ("Próximo turno" is outlined meanwhile).
+    const give = panel.getByRole('button', { name: /^Oferecer a / });
+    await expect(give).toHaveClass(/mat-mdc-unelevated-button/);
+    await expect(m.getByRole('button', { name: 'Próximo turno' }).first()).toHaveClass(/mat-mdc-outlined-button/);
+    if (width >= 1024) {
+      const box = await give.boundingBox();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(m.viewportSize()!.height);
+    }
     await expectScreenPasses(m, `Oferecer ataque de oportunidade, no lugar, no mapa ${where}`);
     await panel.getByRole('button', { name: 'Não oferecer' }).click();
     await expect(panel).toHaveCount(0);
@@ -9328,6 +9336,9 @@ async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expectScreenPasses(p, `Ataque de oportunidade, o aviso com a linha do dado ${where}`);
     await prompt.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     const sheet = p.getByRole('dialog');
+    await expect(sheet.getByRole('heading', { name: 'Ataque de oportunidade · Machado grande' })).toBeVisible();
+    await expect(sheet.getByText('gasta a sua reação')).toBeVisible();
+    await expect(sheet.getByText('Ataque de oportunidade', { exact: true })).toBeVisible();
     await expect(sheet.getByText('Usar Golpe Certeiro')).toBeVisible();
     await expectScreenPasses(p, `Ataque de oportunidade, rolar com o dado de manobra ${where}`);
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
