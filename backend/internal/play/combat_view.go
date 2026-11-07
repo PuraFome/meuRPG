@@ -439,12 +439,8 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		vit = r.vitals[c.CharacterID]
 	}
 	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names)
-	if v.master { // the creature of a monster: the master's alone (RN-20)
-		p.BestiaryCreatureKey, p.ChallengeRating = r.npcs[sheetKey(c)].monsterKey, r.npcs[sheetKey(c)].challengeRating
-		p.Legendary = legendaryView(r.npcs[sheetKey(c)].legendary, r.npcs[sheetKey(c)].legendaryDetail, c, e)
-		if c.Kind == kindNPC && r.npcs[sheetKey(c)].parry {
-			p.ParryAsk = new(parryAsks(c))
-		}
+	if v.master {
+		r.masterView(p, c)
 	}
 	if v.master || v.owns(c) { // the limits of a creature: the master's and the player's who controls it (RN-29)
 		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c, r.npcs[sheetKey(c)].persistent && c.Kind == kindNPC)
@@ -463,6 +459,16 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
 	}
 	return p
+}
+
+// masterView adds what only the master reads of a creature of a monster (RN-20): its creature, rating, Legendary actions and Parry ask.
+func (r combatantReader) masterView(p *playv1.Combatant, c playdb.Combatant) {
+	npc := r.npcs[sheetKey(c)]
+	p.BestiaryCreatureKey, p.ChallengeRating = npc.monsterKey, npc.challengeRating
+	p.Legendary = legendaryView(npc.legendary, npc.legendaryDetail, c, r.d.enc)
+	if c.Kind == kindNPC && npc.parry {
+		p.ParryAsk = new(parryAsks(c))
+	}
 }
 
 // deathSaveGoal is how many death save successes make a character stable, and how many
