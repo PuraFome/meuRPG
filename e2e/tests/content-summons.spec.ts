@@ -165,8 +165,15 @@ test(
       await expect(p.locator('.abilities')).toHaveCount(0);
       // On a phone (390x844) the whole note is on the first screen.
       await p.setViewportSize({ width: 390, height: 844 });
-      const noteBox = (await p.locator('.table-note').boundingBox())!;
-      expect(noteBox.y + noteBox.height).toBeLessThan(844);
+      // The shell's live notice sits above the page and is dismissible; whether it shows depends on when the session's hint arrives, so the page's own content is measured below it (notice and note read at the same instant).
+      const { noteBottom, noticeHeight } = await p.evaluate(() => ({
+        noteBottom: document.querySelector('.table-note')!.getBoundingClientRect().bottom,
+        noticeHeight: [...document.querySelectorAll('app-live-notice .live-notice')].reduce(
+          (sum, n) => sum + n.getBoundingClientRect().height + parseFloat(getComputedStyle(n).marginBottom),
+          0,
+        ),
+      }));
+      expect(noteBottom - noticeHeight).toBeLessThan(844);
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await Promise.all([master.close(), player.close()]);
