@@ -1,6 +1,39 @@
-@if (actions().length) {
+@if (blockState() === 'loading') {
+<section class="acts" aria-labelledby="acts-title" aria-busy="true">
+  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
+  <div class="skeleton" role="status">
+    <p class="act__line">Lendo a ficha da criatura…</p>
+    <span class="skeleton__bar"></span><span class="skeleton__bar skeleton__bar--short"></span>
+  </div>
+</section>
+} @else if (blockState() === 'failed') {
 <section class="acts" aria-labelledby="acts-title">
   <h3 class="acts__cap" id="acts-title">Outras ações</h3>
+  <div class="mr-notice mr-notice--danger" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>Não deu para ler as outras ações da criatura.</p>
+  </div>
+  <button matButton="outlined" type="button" class="offer" (click)="retry.emit()">
+    <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
+  </button>
+</section>
+} @else if (actions().length) {
+<section class="acts" aria-labelledby="acts-title">
+  <h3 class="acts__cap" id="acts-title">Outras ações</h3>
+
+  @if (rolled(); as r) {
+    <p class="mr-notice" [class.mr-notice--success]="r.ready" [class.mr-notice--neutral]="!r.ready" role="status" data-testid="recharge-rolled">
+      <mat-icon aria-hidden="true">casino</mat-icon>
+      <span><b>Recarga no começo do turno:</b> {{ r.lines.join(' ') }}</span>
+    </p>
+  }
+
+  @if (keeps()) {
+    <p class="mr-notice mr-notice--neutral" data-testid="creature-keeps">
+      <mat-icon aria-hidden="true">history</mat-icon>
+      <span><b>{{ subject().label }} guarda o que gastou.</b> Os usos por dia gastos continuam gastos até o descanso longo da mesa; o que volta depois de um descanso curto também volta no descanso curto. A Recarga começa pronta em todo combate.</span>
+    </p>
+  }
 
   @if (needsTargets()) {
     <div class="targets" role="group" aria-labelledby="acts-targets">
@@ -23,6 +56,21 @@
           <b class="act__name">{{ c.name }}</b>
           @if (c.usage) {
             <span class="act__usage">{{ c.usage }}</span>
+          }
+          @if (c.limit.tag) {
+            <span class="act__tag-state" [class.act__tag-state--ready]="c.limit.tag === 'Pronta'">
+              <mat-icon aria-hidden="true">{{ c.limit.tag === 'Pronta' ? 'check' : 'autorenew' }}</mat-icon>{{ c.limit.tag }}
+            </span>
+          }
+          @if (c.limit.uses; as u) {
+            <span class="act__uses" [attr.aria-label]="c.limit.usesText + ' usos'">
+              <span class="act__dots" aria-hidden="true">
+                @for (d of dotsOf(u); track $index) {
+                  <i class="act__dot" [class.act__dot--left]="d"></i>
+                }
+              </span>
+              {{ c.limit.usesText }}
+            </span>
           }
         </p>
         @for (line of c.lines; track $index) {
@@ -48,7 +96,7 @@
           <mat-icon aria-hidden="true">bolt</mat-icon>Usar
         </button>
         @if (c.why) {
-          <p class="act__why" [id]="'act-why-' + $index">{{ c.why }}</p>
+          <p class="act__why" [id]="'act-why-' + $index"><mat-icon aria-hidden="true">block</mat-icon>{{ c.why }}</p>
         }
       </li>
     }

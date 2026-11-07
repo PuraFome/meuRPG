@@ -43,6 +43,7 @@ import {
   roundLabel,
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
+import type { RechargeRoll } from '../../../../core/combat/combat-derived';
 import { defaultTarget, isHostile } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -123,6 +124,8 @@ export class NpcCard {
   readonly framed = input(true);
   /** The newest attack of this one was stopped by the target's Escudo (from the log). */
   readonly reactionStopped = input(false);
+  /** The d6 the server rolled for this creature at the start of its turn (a Recharge action it had spent), from the log. */
+  readonly rechargeRolls = input<readonly RechargeRoll[]>([]);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
   /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
@@ -157,6 +160,8 @@ export class NpcCard {
   private key = newKey();
   /** The creature's stat block, read once per kind (the client keeps it): its Multiattack routines. `null` until read, and when it cannot be. */
   protected readonly block = signal<Creature | null>(null);
+  /** Reading the stat block: its "Outras ações" show a skeleton while it loads and "Tentar de novo" when it could not be read. */
+  protected readonly blockState = signal<'idle' | 'loading' | 'failed' | 'ready'>('idle');
   protected readonly creatureDamageIds = signal<readonly string[]>([]);
   /** The routine the master picked, when the creature has a choice between several. */
   protected readonly routineIdx = signal(0);
@@ -280,6 +285,31 @@ export class NpcCard {
   protected readonly pairHint = computed(() => pairHintOf(this.combine()));
   protected readonly rollLabel = computed(() => rollLabelOf(this.attack()));
 
+  /** Reads the creature's stat block; the card works as it was while it loads or when it cannot be read. */
+  protected loadBlock(campaignId: string, key: string): void {
+    this.blockState.set('loading');
+    this.creatures.statBlock(campaignId, key).then(
+      (block) => {
+        if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
+          this.block.set(block);
+          this.blockState.set('ready');
+        }
+      },
+      () => {
+        if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
+          this.blockState.set('failed');
+        }
+      },
+    );
+  }
+
+  protected retryBlock(): void {
+    const key = this.subject().bestiaryCreatureKey ?? '';
+    if (key) {
+      this.loadBlock(this.campaignId(), key);
+    }
+  }
+
   constructor() {
     // Each new turn starts clean, with the first attack and the first target.
     let turnOf = '';
@@ -313,17 +343,10 @@ export class NpcCard {
       untracked(() => {
         this.block.set(null);
         this.routineIdx.set(0);
-        if (!key) {
-          return;
+        this.blockState.set(key ? 'loading' : 'idle');
+        if (key) {
+          this.loadBlock(campaignId, key);
         }
-        this.creatures.statBlock(campaignId, key).then(
-          (block) => {
-            if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
-              this.block.set(block);
-            }
-          },
-          () => undefined, // no routine to show: the card is as it was
-        );
       });
     });
     // A new turn (no attack counted) starts the routine again.

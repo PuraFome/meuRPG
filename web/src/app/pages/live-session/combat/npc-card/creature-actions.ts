@@ -23,6 +23,7 @@ import {
   type CreatureAction,
   SpellSaveSuccess,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type { RechargeRoll } from '../../../../core/combat/combat-derived';
 import { isHostile } from '../../../../core/combat/attack-flow';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -35,6 +36,8 @@ import {
   areaPlacementOf,
   asksSave,
   classNote,
+  limitView,
+  rechargeFaces,
   resultNotes,
   showsText,
   usableActions,
@@ -77,6 +80,12 @@ export class CreatureActions {
   readonly creature = input<Creature | null>(null);
   /** The damage waiting for the master, from the turn's options: the part the last use opened shows under its result. */
   readonly pendings = input<readonly PendingDamage[]>([]);
+  /** The d6 rolled for this creature at the start of its turn, from the log: one notice for the turn. */
+  readonly rechargeRolls = input<readonly RechargeRoll[]>([]);
+  /** Where the stat block is: `loading` shows a skeleton, `failed` the notice with "Tentar de novo". */
+  readonly blockState = input<'idle' | 'loading' | 'failed' | 'ready'>('ready');
+  /** "Tentar de novo" on the stat block that could not be read. */
+  readonly retry = output<void>();
   /** The combat has no map: the master names the targets, even for an area. */
   readonly theatre = input(false);
   /** The page's own call (the turn passing) is in flight. */
@@ -110,6 +119,21 @@ export class CreatureActions {
   protected readonly needsTargets = computed(() =>
     this.actions().some((a) => this.takesTargets(a)),
   );
+  /** The turn-start notice: what the d6 said, and for each action the faces it needed. */
+  protected readonly rolled = computed(() => {
+    const rolls = this.rechargeRolls();
+    if (rolls.length === 0) {
+      return null;
+    }
+    const lines = rolls.map((r) => {
+      const copy = this.subject().limitedActions.find((l) => (l.namePt || l.name) === r.action);
+      const faces = copy ? rechargeFaces(copy.usage) : '';
+      return `rolou ${r.face} no d6. ${r.action} ${r.recharged ? 'recarregou' : 'não recarregou'}${r.recharged || !faces ? '' : ` (precisa de ${faces})`}.`;
+    });
+    return { ready: rolls.some((r) => r.recharged), lines };
+  });
+  /** The creature keeps what it spent after the combat (a persistent NPC's uses a day or rest action). */
+  protected readonly keeps = computed(() => this.subject().limitedActions.some((l) => l.kept));
   protected readonly spent = computed(() => this.subject().actionUsed);
   protected readonly cards = computed(() =>
     this.actions().map((a) => ({
@@ -119,6 +143,7 @@ export class CreatureActions {
       note: classNote(a),
       text: showsText(a) ? a.text : '',
       usage: usageText(a.usage),
+      limit: this.limitOf(a),
       why: this.whyNot(a),
     })),
   );
@@ -188,10 +213,25 @@ export class CreatureActions {
     return this.theatre() || areaPlacementOf(a) === null;
   }
 
+  /** One filled dot for each use left, one empty for each spent. */
+  protected dotsOf(u: { allowed: number; left: number }): boolean[] {
+    return Array.from({ length: u.allowed }, (_, i) => i < u.left);
+  }
+
+  /** The state of the action's limit, from the server's copy for the master and the controller (`''` tag and no uses: no limit). */
+  private limitOf(a: CreatureAction) {
+    const copy = this.subject().limitedActions.find((l) => l.actionKey === a.key);
+    return limitView(copy, this.subject().label);
+  }
+
   /** Why "Usar" cannot be pressed now, or `''`. */
   private whyNot(a: CreatureAction): string {
     if (this.spent()) {
       return 'A ação deste turno já foi usada.';
+    }
+    const limit = this.limitOf(a).why;
+    if (limit) {
+      return limit;
     }
     if (this.takesTargets(a) && this.chosen().size === 0) {
       return 'Escolha ao menos um alvo.';

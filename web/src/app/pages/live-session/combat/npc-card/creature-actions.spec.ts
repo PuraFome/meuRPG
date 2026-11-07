@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { create } from '@bufbuild/protobuf';
+import { create, type MessageInitShape } from '@bufbuild/protobuf';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   AreaPlacement,
   CombatantSide,
   CreatureActionResultSchema,
+  LimitedActionSchema,
   PendingDamageSchema,
   SaveOutcome,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -20,6 +21,7 @@ import {
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
+import type { RechargeRoll } from '../../../../core/combat/combat-derived';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, creatureAction, encounter } from '../../../../core/combat/combat-testing';
 import { settle } from '../../../../../test-settle';
@@ -104,10 +106,20 @@ const sentResult = () =>
   });
 
 async function open(
-  over: { theatre?: boolean; spent?: boolean; useCreatureAction?: ReturnType<typeof vi.fn> } = {},
+  over: {
+    theatre?: boolean;
+    spent?: boolean;
+    useCreatureAction?: ReturnType<typeof vi.fn>;
+    limited?: readonly MessageInitShape<typeof LimitedActionSchema>[];
+    rolls?: readonly RechargeRoll[];
+  } = {},
 ) {
   TestBed.resetTestingModule();
-  const subject = { ...hound, actionUsed: over.spent ?? false } as typeof hound;
+  const subject = {
+    ...hound,
+    actionUsed: over.spent ?? false,
+    limitedActions: (over.limited ?? []).map((l) => create(LimitedActionSchema, l)),
+  } as typeof hound;
   const enc = encounter({ combatants: [subject, toren, brisa, orc] });
   const apply = vi.fn();
   const useCreatureAction =
@@ -125,6 +137,7 @@ async function open(
   fixture.componentRef.setInput('state', { apply } as unknown as CombatState);
   fixture.componentRef.setInput('creature', lore());
   fixture.componentRef.setInput('theatre', over.theatre ?? false);
+  fixture.componentRef.setInput('rechargeRolls', over.rolls ?? []);
   await settle(fixture);
   const root = fixture.nativeElement as HTMLElement;
   const use = (name: string) =>
@@ -301,5 +314,102 @@ describe('CreatureActions: an action with no roll', () => {
     expect(text(root.querySelector('[role="status"]') as HTMLElement)).toContain(
       'Lembrete registrado',
     );
+  });
+});
+
+describe('CreatureActions: the limits of the actions (RN-29)', () => {
+  const breath = {
+    actionKey: 'monster:hell-hound#fire-breath',
+    kind: 'recharge',
+    usage: 'Recharge 5-6',
+    usesAllowed: 1,
+  };
+
+  it('tags a ready Recharge action "Pronta" and leaves "Usar" on', async () => {
+    const { root, use } = await open({ limited: [{ ...breath, available: true, usesLeft: 1 }] });
+    expect(text(root)).toContain('Pronta');
+    expect(use('Sopro de fogo').disabled).toBe(false);
+  });
+
+  it('tags a spent Recharge action "Gasta", turns "Usar" off and says when it comes back', async () => {
+    const { root, use, useCreatureAction } = await open({
+      limited: [{ ...breath, available: false, usesLeft: 0 }],
+    });
+    expect(text(root)).toContain('Gasta');
+    expect(text(root)).toContain(
+      'Volta com 5 ou 6 no d6 que o app rola no começo de cada turno do Cão Infernal.',
+    );
+    use('Sopro de fogo').click();
+    expect(useCreatureAction).not.toHaveBeenCalled();
+    expect(use('Sopro de fogo').getAttribute('aria-disabled')).toBe('true');
+    expect(use('Sopro de fogo').getAttribute('aria-describedby')).not.toBeNull();
+  });
+
+  it('counts the uses a day with dots and "N de M"', async () => {
+    const { root } = await open({
+      limited: [
+        {
+          actionKey: breath.actionKey,
+          kind: 'per_day',
+          usage: '3/day',
+          usesAllowed: 3,
+          usesLeft: 2,
+          available: true,
+        },
+      ],
+    });
+    expect(text(root)).toContain('2 de 3');
+    expect(root.querySelectorAll('.act__dot--left')).toHaveLength(2);
+    expect(root.querySelectorAll('.act__dot')).toHaveLength(3);
+  });
+
+  it('says the d6 the server rolled at the start of the turn, green when it recharged', async () => {
+    const { root } = await open({
+      limited: [
+        { ...breath, available: true, usesLeft: 1, name: 'Fire Breath', namePt: 'Sopro de fogo' },
+      ],
+      rolls: [{ action: 'Sopro de fogo', face: 5, recharged: true }],
+    });
+    const note = root.querySelector('[data-testid="recharge-rolled"]')!;
+    expect(note.textContent).toContain('rolou 5 no d6. Sopro de fogo recarregou.');
+    expect(note.classList.contains('mr-notice--success')).toBe(true);
+  });
+
+  it('says it did not recharge, neutral, with the faces it needed', async () => {
+    const { root } = await open({
+      limited: [
+        { ...breath, available: false, usesLeft: 0, name: 'Fire Breath', namePt: 'Sopro de fogo' },
+      ],
+      rolls: [{ action: 'Sopro de fogo', face: 2, recharged: false }],
+    });
+    const note = root.querySelector('[data-testid="recharge-rolled"]')!;
+    expect(note.textContent).toContain('Sopro de fogo não recarregou (precisa de 5 ou 6)');
+    expect(note.classList.contains('mr-notice--neutral')).toBe(true);
+  });
+
+  it('shows no notice and no state for a creature the server sent no limits for', async () => {
+    const { root } = await open({});
+    expect(root.querySelector('[data-testid="recharge-rolled"]')).toBeNull();
+    expect(root.querySelector('[data-testid="creature-keeps"]')).toBeNull();
+    expect(root.querySelector('.act__tag-state')).toBeNull();
+  });
+
+  it('says a persistent NPC keeps what it spent', async () => {
+    const { root } = await open({
+      limited: [
+        {
+          actionKey: breath.actionKey,
+          kind: 'per_day',
+          usage: '1/day',
+          usesAllowed: 1,
+          usesLeft: 0,
+          kept: true,
+        },
+      ],
+    });
+    expect(root.querySelector('[data-testid="creature-keeps"]')?.textContent).toContain(
+      'Cão Infernal guarda o que gastou.',
+    );
+    expect(text(root)).toContain('Sem usos: voltam no descanso longo da mesa.');
   });
 });
