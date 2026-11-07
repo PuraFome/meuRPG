@@ -6712,8 +6712,13 @@ type LimitedAction struct {
 	Available bool `protobuf:"varint,6,opt,name=available,proto3" json:"available,omitempty"`
 	// How many uses the action has (1 for a Recharge action and for one that recharges after a
 	// rest) and how many are left.
-	UsesAllowed   int32 `protobuf:"varint,7,opt,name=uses_allowed,json=usesAllowed,proto3" json:"uses_allowed,omitempty"`
-	UsesLeft      int32 `protobuf:"varint,8,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	UsesAllowed int32 `protobuf:"varint,7,opt,name=uses_allowed,json=usesAllowed,proto3" json:"uses_allowed,omitempty"`
+	UsesLeft    int32 `protobuf:"varint,8,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	// Whether the creature keeps what it spent of this action after the combat: a persistent
+	// NPC's action with uses a day or after a rest. A Recharge action, a one-fight monster and a
+	// creature never keep it. It belongs to a persistent NPC, so only the master reads it: a
+	// creature a player controls never carries it (false in the controller's copy).
+	Kept          bool `protobuf:"varint,9,opt,name=kept,proto3" json:"kept,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6802,6 +6807,13 @@ func (x *LimitedAction) GetUsesLeft() int32 {
 		return x.UsesLeft
 	}
 	return 0
+}
+
+func (x *LimitedAction) GetKept() bool {
+	if x != nil {
+		return x.Kept
+	}
+	return false
 }
 
 // LegendaryState is what a legendary creature has left of its legendary actions this
@@ -26896,7 +26908,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1a_wild_shape_hit_points_maxB\x18\n" +
 	"\x16_initiative_treated_asB\f\n" +
 	"\n" +
-	"_parry_ask\"\xe3\x01\n" +
+	"_parry_ask\"\xf7\x01\n" +
 	"\rLimitedAction\x12\x1d\n" +
 	"\n" +
 	"action_key\x18\x01 \x01(\tR\tactionKey\x12\x12\n" +
@@ -26906,7 +26918,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05usage\x18\x05 \x01(\tR\x05usage\x12\x1c\n" +
 	"\tavailable\x18\x06 \x01(\bR\tavailable\x12!\n" +
 	"\fuses_allowed\x18\a \x01(\x05R\vusesAllowed\x12\x1b\n" +
-	"\tuses_left\x18\b \x01(\x05R\busesLeft\"\x90\x02\n" +
+	"\tuses_left\x18\b \x01(\x05R\busesLeft\x12\x12\n" +
+	"\x04kept\x18\t \x01(\bR\x04kept\"\x90\x02\n" +
 	"\x0eLegendaryState\x12*\n" +
 	"\x11actions_per_round\x18\x01 \x01(\x05R\x0factionsPerRound\x12!\n" +
 	"\factions_left\x18\x02 \x01(\x05R\vactionsLeft\x12,\n" +

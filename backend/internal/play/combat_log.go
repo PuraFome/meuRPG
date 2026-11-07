@@ -166,7 +166,6 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the combat log", err)
 	}
-	slices.Reverse(snap.events) // oldest first, as buildLog reads them
 	// The log's lines are filtered by who could see them when they happened
 	// (actionEvent.SeenBy), not by what the viewer sees now; only the current
 	// rules about hidden combatants are worked out from the combatants as they are.
@@ -174,12 +173,7 @@ func (s *Service) ListCombatLog(
 	if err != nil {
 		return nil, err
 	}
-	entries := buildLog(snap.events)
-	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
-	for _, e := range entries {
-		e.rolls = rolls
-	}
-
+	entries := s.logEntries(ctx, m, &snap)
 	res := &playv1.ListCombatLogResponse{}
 	stampSeqs(entries, snap.events)
 	since := sinceSeqOf(req.Msg.GetSinceSeq(), v, snap.events, entries, snap.cs)
@@ -198,14 +192,46 @@ func (s *Service) ListCombatLog(
 		}
 	}
 
+	names, byID := s.logNames(m, &snap)
+	cut := logCut{since: since, lastID: lastID}
+	res.Rounds, res.LastSeq = cut.rounds(ctx, entries, v, byID, names, res.LastSeq)
+	return connect.NewResponse(res), nil
+}
+
+// logEntries are the entries of the snapshot's combat, oldest first, with the rolls they show. The snapshot's events are turned
+// around in place.
+func (s *Service) logEntries(ctx context.Context, m authz.Membership, snap *logSnapshot) []*logEntry {
+	slices.Reverse(snap.events) // oldest first, as buildLog reads them
+	entries := buildLog(snap.events)
+	rolls := newLogRolls(snap.reasons, snap.requests, s.namesFor(ctx, m.CampaignID))
+	for _, e := range entries {
+		e.rolls = rolls
+	}
+	return entries
+}
+
+// logNames are the names and the combatants a line is worked out from.
+func (s *Service) logNames(m authz.Membership, snap *logSnapshot) (*keyNames, map[string]playdb.Combatant) {
 	names := &keyNames{s: s, campaignID: m.CampaignID, byCharacter: map[string]link.Sheet{}}
 	byID := make(map[string]playdb.Combatant, len(snap.cs))
 	for _, c := range snap.cs {
 		byID[c.ID] = c
 	}
-	cut := logCut{since: since, lastID: lastID}
-	res.Rounds, res.LastSeq = cut.rounds(ctx, entries, v, byID, names, res.LastSeq)
-	return connect.NewResponse(res), nil
+	return names, byID
+}
+
+// logViews are the lines of the snapshot's combat that the viewer reads, latest first. The snapshot's events
+// are turned around in place.
+func (s *Service) logViews(ctx context.Context, m authz.Membership, snap *logSnapshot, v combatViewer, lastID string) []*playv1.CombatLogEntry {
+	entries := s.logEntries(ctx, m, snap)
+	names, byID := s.logNames(m, snap)
+	var out []*playv1.CombatLogEntry
+	for _, e := range slices.Backward(entries) {
+		if view, ok := e.view(ctx, v, byID, names, lastID); ok {
+			out = append(out, view)
+		}
+	}
+	return out
 }
 
 // logCut is the part of the log an answer holds: the entries above since (0: all of them), and the master's undoable one.
