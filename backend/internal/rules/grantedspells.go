@@ -79,18 +79,25 @@ func (x effectCompiler) grantedSpell() error {
 	if e.RitualOnly && e.AlsoWithSlot {
 		return x.fail("ritual_only and also_with_slot exclude each other")
 	}
-	if e.UsesCost < 0 {
-		return x.fail("uses_cost: at least 1 use")
-	}
-	if e.UsesCost > MaxGrantUsesCost {
-		return x.fail("uses_cost: at most %d uses", MaxGrantUsesCost)
-	}
-	if e.UsesCost != 0 && (e.Uses == "" || e.Uses == GrantedAtWill) {
-		return x.fail("uses_cost: a resource in uses is needed")
+	if err := x.grantedCost(e); err != nil {
+		return err
 	}
 	var err error
 	e.fromLevel, err = x.compile(e.FromLevel, formula.Int)
 	return err
+}
+
+// grantedCost checks the uses a cast of the grant spends: 1 to MaxGrantUsesCost, and only with a resource.
+func (x *effectCompiler) grantedCost(e *Effect) error {
+	switch {
+	case e.UsesCost < 0:
+		return x.fail("uses_cost: at least 1 use")
+	case e.UsesCost > MaxGrantUsesCost:
+		return x.fail("uses_cost: at most %d uses", MaxGrantUsesCost)
+	case e.UsesCost != 0 && (e.Uses == "" || e.Uses == GrantedAtWill):
+		return x.fail("uses_cost: a resource in uses is needed")
+	}
+	return nil
 }
 
 func grantedAbilityKeys() []string {
