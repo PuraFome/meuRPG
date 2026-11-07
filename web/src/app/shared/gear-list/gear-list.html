@@ -29,29 +29,30 @@
 
 <ng-template #row let-g>
   <li class="gear-row">
-    <span class="gear-row__name">{{ g.namePt }}</span>
-    <span class="gear-row__kind mr-muted">{{ kindLabel(g) }}</span>
-    @if (cost()(g); as line) {
-      <span class="gear-row__cost mr-muted">{{ line }}</span>
+    <span class="gear-row__text">
+      <span class="gear-row__name">{{ g.namePt }}</span>
+      <span class="gear-row__kind mr-muted">{{ kindLabel(g) }}</span>
+    </span>
+    @if (canChange() && !blocked()(g)) {
+      <button
+        matButton="outlined"
+        type="button"
+        class="gear-row__button"
+        [attr.data-gear-key]="g.key"
+        [disabled]="busyKey() !== null"
+        [attr.aria-label]="buttonLabel(g)"
+        (click)="ask(g)"
+      >
+        {{ g.equipped ? 'Guardar' : 'Equipar' }}
+        @if (armorLine(g, armorClass()); as ac) {
+          <span class="gear-row__ac" aria-hidden="true">{{ ac }}</span>
+        }
+      </button>
     }
-    @if (canChange()) {
-      @if (blocked()(g); as why) {
-        <span class="gear-row__blocked mr-muted">{{ why }}</span>
-      } @else {
-        <button
-          type="button"
-          class="mr-btn gear-row__button"
-          [attr.data-gear-key]="g.key"
-          [disabled]="busyKey() !== null"
-          [attr.aria-label]="(g.equipped ? 'Guardar ' : 'Equipar ') + g.namePt"
-          (click)="ask(g)"
-        >
-          {{ g.equipped ? 'Guardar' : 'Equipar' }}
-          @if (armorLine(g, armorClass()); as ac) {
-            <span class="gear-row__ac">{{ ac }}</span>
-          }
-        </button>
-      }
+    @if (canChange() && blocked()(g); as why) {
+      <span class="gear-row__line gear-row__blocked mr-muted">{{ why }}</span>
+    } @else if (cost()(g); as line) {
+      <span class="gear-row__line gear-row__cost mr-muted">{{ line }}</span>
     }
   </li>
 </ng-template>

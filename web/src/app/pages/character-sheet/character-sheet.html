@@ -312,7 +312,7 @@
         <app-equipment-panel
           class="sheet__equipment"
           [sheet]="full"
-          [canEquip]="vm.canEdit && vm.state !== 'dead'"
+          [canEquip]="vm.state !== 'dead'"
           [equipBusyKey]="equipBusyKey()"
           [equipNotice]="equipNotice()"
           [equipError]="equipError()"

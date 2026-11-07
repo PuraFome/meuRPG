@@ -58,6 +58,10 @@ On a player character's turn the master's "Turno" leads with that character's ca
 - **A reaction nobody answered (C8-04):** after 10 s the player's optional reaction comes to the master at the top of "Turno" (`app-reaction-queue` with `part="late"`, above the held questions and the NPC card), on the warning surface: "Pensantus pode usar Escudo Arcano", the tag "10 s sem resposta", the numbers (the attack against the armor class, with and without the spell), the cost (the reaction and the lowest free slot, "1º nível (3 de 4 livres)"), and "Usar" / "Não usar", outlined, the same size. The bar says "Falta responder por Pensantus" and the tab count includes it. Nothing passes it by itself: the master answers, the player may too, the first answer wins and the other reads "Já respondido".
 - **Rolling for someone (C8-05):** in the initiative list of the setup, "Rolar por Brisa" (the app's dice, with the character's bonus) sits beside "Digitar pelo jogador" for each player who has not rolled; in the group check and the scene's requests the same button, with the typed result when the table plays with physical dice. "Começar o combate" is dashed until everyone has rolled.
 
+### Sacar ou guardar
+
+The player's "Outras" tab ends with a folded row "Sacar ou guardar" (`action-groups`, the same `gear-list` as the sheet's "Equipamento"): "Equipado" and "Carregado", a button on each piece and, under each row, what the change costs: "Usa a interação gratuita do turno." for the first weapon, "Usa a sua ação." for the next weapon and for the shield, and for armor "Vestir ou tirar armadura leva minutos: não dá em pleno combate." with no button. The master's rows say "Sem custo: o mestre muda o equipamento quando quiser." The server charges and refuses (`ARMOR_IN_COMBAT`, `NOT_YOUR_TURN`, `ACTION_USED`, `COMBATANT_DOWN`); the screen says the refusal in words in an alert under the list and the focus goes to the moved piece's button.
+
 ## Distance and units
 
 Every distance the screen writes comes from `core/units.ts`: 1 square = 1.5 m = 5 ft.

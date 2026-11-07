@@ -1353,13 +1353,22 @@ describe('CharacterSheetPage', () => {
       expect(button(el, 'Guardar Espada longa')).toBeTruthy();
     });
 
-    it('has no buttons when the sheet is not the reader’s to change', async () => {
+    it('has no buttons on a dead character’s sheet (the lock of the sheet does not matter: gear is played)', async () => {
       configure();
-      fake.getCharacterSheetFn = () => Promise.resolve({ ...withGear(true, 12), canEdit: false });
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve({ ...withGear(true, 12), state: 'dead', canEdit: false });
 
       const el = await render();
       expect(sectionTitled(el, 'Equipamento').querySelector('.gear-row__button')).toBeNull();
       expect(sectionTitled(el, 'Equipamento').textContent).toContain('Espada longa');
+    });
+
+    it('has the buttons while the sheet is locked by the play', async () => {
+      configure();
+      fake.getCharacterSheetFn = () => Promise.resolve({ ...withGear(true, 12), canEdit: false });
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').querySelector('.gear-row__button')).not.toBeNull();
     });
   });
 

@@ -7739,6 +7739,68 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
   await scanHeldPanelScreens(browser, 'dark', 390);
 });
 
+/** The gear (#562): the sheet's "Equipamento" with "Equipar" / "Guardar", and the combat's "Sacar ou guardar" with the cost of each change. */
+async function scanGearScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const gear = { weaponKeys: ['equipment:longsword', 'equipment:mace'], armorKey: 'equipment:chain-mail', shield: true, carriedKeys: ['equipment:mace'] };
+    const table = await tableForCombat(m, p, `Acessibilidade equipamento ${Date.now()}`, true, true, { build: toren, sheet: gear });
+    campaignId = table.campaignId;
+
+    // The sheet: the two groups, then a weapon stowed (the notice and the focus on the moved row).
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('heading', { name: 'Equipado', level: 3 })).toBeVisible();
+    await expect(equipment.getByRole('heading', { name: 'Carregado', level: 3 })).toBeVisible();
+    await expectScreenPasses(p, `Ficha, Equipamento ${where}`);
+    await equipment.getByRole('button', { name: 'Guardar Escudo' }).click();
+    await expect(equipment.getByRole('status')).toContainText('Guardado: Escudo.');
+    await expect(equipment.getByRole('button', { name: 'Equipar Escudo' })).toBeFocused();
+    await expectScreenPasses(p, `Ficha, Equipamento depois de guardar o escudo ${where}`);
+    await equipment.getByRole('button', { name: 'Equipar Escudo' }).click();
+    await expect(equipment.getByRole('button', { name: 'Guardar Escudo' })).toBeFocused();
+
+    // The combat: the fold on the player's turn, with what each change costs.
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    const tab = await openActionTab(p, 'Outras');
+    await tab.getByRole('button', { name: 'Sacar ou guardar' }).click();
+    await expect(tab.getByText('Usa a interação gratuita do turno.').first()).toBeVisible();
+    await expect(tab.getByText('Vestir ou tirar armadura leva minutos')).toBeVisible();
+    await expectScreenPasses(p, `Combate, Sacar ou guardar ${where}`);
+    await tab.getByRole('button', { name: 'Guardar Espada longa' }).click();
+    await expect(tab.getByRole('status')).toContainText('Guardado: Espada longa.');
+    await expect(tab.getByRole('button', { name: 'Equipar Espada longa' })).toBeFocused();
+    // The free interaction is spent: the next change costs the action.
+    await expect(tab.getByText('Usa a sua ação.').first()).toBeVisible();
+    await expectScreenPasses(p, `Combate, Sacar ou guardar, depois da interação gratuita ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o equipamento passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@562'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanGearScreens(browser, 'light', 1280);
+});
+
+test('o equipamento passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@562'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanGearScreens(browser, 'dark', 390);
+});
+
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
 async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {

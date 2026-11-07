@@ -1,4 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import {
   Component,
   ElementRef,
@@ -29,7 +30,7 @@ export interface GearToggle {
  */
 @Component({
   selector: 'app-gear-list',
-  imports: [NgTemplateOutlet],
+  imports: [MatButtonModule, NgTemplateOutlet],
   templateUrl: './gear-list.html',
   styleUrl: './gear-list.scss',
 })
@@ -89,6 +90,12 @@ export class GearList {
       return '';
     }
     return `CA ${g.armorClassIfToggled}`;
+  }
+
+  /** What a screen reader hears: the action, the piece and the armor class the server says it would give. */
+  protected buttonLabel(g: GearVm): string {
+    const ac = this.armorLine(g, this.armorClass());
+    return `${g.equipped ? 'Guardar' : 'Equipar'} ${g.namePt}${ac ? `: ${ac}` : ''}`;
   }
 
   protected ask(g: GearVm): void {
