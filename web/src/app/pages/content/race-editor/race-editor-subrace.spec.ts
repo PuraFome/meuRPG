@@ -170,17 +170,32 @@ describe('RaceEditor, a subrace that replaces traits of its race (T2, T6)', () =
     expect(rows(el).some((r) => box(r).checked)).toBe(false);
   });
 
-  it('keeps the marked keys of an SRD race, whose traits the web does not list, and says so', async () => {
-    const srd = sub({ raceKey: 'race:human', replacesTraitKeys: ['trait:keen-senses'] });
+  it("lists an SRD race's traits from the menu, name and summary, with the marked one checked", async () => {
+    const srd = sub({ raceKey: 'race:elf', replacesTraitKeys: ['trait:keen-senses'] });
     const { fixture, el } = setup({ entry: srd });
-    expect(rows(el)).toHaveLength(0);
-    expect(text(el.querySelector('app-replaced-traits')!)).toContain(
-      'Os traços das raças do SRD ainda não aparecem aqui',
-    );
+    expect(rows(el)).toHaveLength(2);
+    expect(text(rows(el)[0])).toContain('Sentidos Aguçados');
+    expect(text(rows(el)[0])).toContain('Você tem proficiência na perícia Percepção.');
+    expect(box(rows(el)[0]).checked).toBe(true);
+    expect(box(rows(el)[1]).checked).toBe(false);
+    expect(text(rows(el)[1])).not.toContain('Sortudo');
+    box(rows(el)[1]).click();
+    fixture.detectChanges();
     save.mockResolvedValue({ entry: srd, affected: [] });
     click(el, 'Salvar sub-raça');
     await settle(fixture, 3);
-    expect(save.mock.calls[0][2].value.replacesTraitKeys).toEqual(['trait:keen-senses']);
+    expect(save.mock.calls[0][2].value.replacesTraitKeys).toEqual([
+      'trait:keen-senses',
+      'trait:trance',
+    ]);
+  });
+
+  it('marks a key that is no trait of an SRD parent as stale, as for a table race', () => {
+    const srd = sub({ raceKey: 'race:elf', replacesTraitKeys: ['trait:lucky'] });
+    const { el } = setup({ entry: srd });
+    expect(rows(el)).toHaveLength(3);
+    expect(text(rows(el).at(-1)!)).toContain('Um traço que não é de');
+    expect(box(rows(el).at(-1)!).checked).toBe(true);
   });
 
   it('shows a marked key that is no trait of the race as a red row, and saving drops it once unmarked', async () => {

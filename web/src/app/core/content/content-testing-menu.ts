@@ -212,6 +212,24 @@ export function menuResponse(): GetEffectMenuResponse {
           { key: 'trait:darkvision', namePt: 'Visão no Escuro', hintPt: 'traço do SRD' },
         ],
       },
+      {
+        name: 'race_traits',
+        values: [
+          {
+            key: 'trait:keen-senses',
+            namePt: 'Sentidos Aguçados',
+            hintPt: 'Você tem proficiência na perícia Percepção.',
+            group: 'race:elf',
+          },
+          {
+            key: 'trait:trance',
+            namePt: 'Transe',
+            hintPt: 'Elfos não precisam dormir.',
+            group: 'race:elf',
+          },
+          { key: 'trait:lucky', namePt: 'Sortudo', hintPt: '', group: 'race:halfling' },
+        ],
+      },
     ],
     helpers: [
       { call: 'mod("<habilidade>")', returns: 'number', hintPt: 'O modificador.' },

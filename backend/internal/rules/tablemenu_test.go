@@ -109,10 +109,12 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 			if v.Key == "" || v.NamePT == "" {
 				t.Errorf("list %s has a value without a key or a Portuguese name: %+v", l.Name, v)
 			}
-			if seen[v.Key] {
-				t.Errorf("list %s repeats %q", l.Name, v.Key)
+			// A value is unique by its key within its group (several races share the trait Darkvision).
+			if id := v.Group + "/" + v.Key; seen[id] {
+				t.Errorf("list %s repeats %q in %q", l.Name, v.Key, v.Group)
+			} else {
+				seen[id] = true
 			}
-			seen[v.Key] = true
 		}
 	}
 
@@ -604,5 +606,48 @@ func TestLackableFeaturesAreTheSRDKeysAFeatMayName(t *testing.T) {
 				t.Error("the list names a table feat")
 			}
 		})
+	}
+}
+
+// TestRaceTraitsAreTheSRDKeysASubraceMayReplace: every value is a trait of the SRD race in its group, and
+// a subrace of that race replacing all of them is accepted by the same check the server uses
+// (checkReplacedTraits); a table race or trait never appears in it.
+func TestRaceTraitsAreTheSRDKeysASubraceMayReplace(t *testing.T) {
+	base := loadForTest(t)
+	values := menuList(t, base.EffectMenu(), ListRaceTraits)
+	if len(values) < 20 {
+		t.Fatalf("the list has %d values, want the traits of the SRD races", len(values))
+	}
+	byRace := map[string][]string{}
+	seen := map[string]bool{}
+	hinted := 0
+	for _, v := range values {
+		if v.NamePT == "" || v.Group == "" || isTableKey(v.Key) || isTableKey(v.Group) || seen[v.Group+v.Key] {
+			t.Errorf("value %+v: want a name, an SRD race and an SRD key, once", v)
+		}
+		seen[v.Group+v.Key] = true
+		if v.HintPT != "" {
+			hinted++
+		}
+		byRace[v.Group] = append(byRace[v.Group], v.Key)
+	}
+	if hinted == 0 {
+		t.Error("no trait has a summary")
+	}
+	for race, keys := range byRace {
+		o := Overlay{Revision: 1, Subraces: []TableSubrace{{
+			TableEntry: TableEntry{Key: "subrace:teste" + tableSuffix, NamePT: "Teste"}, Race: race, ReplacesTraitKeys: keys,
+		}}}
+		if _, err := base.With(o); err != nil {
+			t.Errorf("a subrace of %s replacing %v: %v", race, keys, err)
+		}
+		if got := len(base.c.races[race].Traits); got < len(keys) {
+			t.Errorf("%s: %d values for %d traits", race, len(keys), got)
+		}
+	}
+	for key, r := range base.c.races {
+		if _, ok := byRace[key]; !ok && len(r.Traits) > 0 {
+			t.Errorf("the race %s has traits and none is in the list", key)
+		}
 	}
 }

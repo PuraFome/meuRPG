@@ -8,6 +8,7 @@ import {
   parentViewOf,
   replacedNames,
   replacesLine,
+  srdParentTraits,
   traitRows,
   traitSummary,
   withReplaced,
@@ -99,5 +100,22 @@ describe('the traits a subrace replaces', () => {
     expect(replacesLine(['A', 'B'], '')).toBe('A e B');
     expect(replacesLine([], 'Corujeiro')).toBe('os bônus de Corujeiro');
     expect(replacesLine([], '')).toBe('');
+  });
+
+  it("takes an SRD race's traits from the menu's race_traits, only the ones of that race", () => {
+    const list = [
+      { key: 'trait:darkvision', namePt: 'Visão', hintPt: 'Vê no escuro.', group: 'race:elf' },
+      { key: 'trait:darkvision', namePt: 'Visão', hintPt: 'Vê no escuro.', group: 'race:gnome' },
+      { key: 'trait:lucky', namePt: 'Sortudo', hintPt: '', group: 'race:halfling' },
+    ];
+    expect(srdParentTraits(list, 'race:elf')).toEqual([
+      { key: 'trait:darkvision', name: 'Visão', summary: 'Vê no escuro.' },
+    ]);
+    expect(srdParentTraits(list, 'race:human')).toEqual([]);
+    const rows = traitRows(srdParentTraits(list, 'race:elf'), ['trait:darkvision', 'trait:gone']);
+    expect(rows.map((r) => [r.key, r.checked, r.stale])).toEqual([
+      ['trait:darkvision', true, false],
+      ['trait:gone', true, true],
+    ]);
   });
 });

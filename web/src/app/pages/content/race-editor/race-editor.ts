@@ -53,6 +53,7 @@ import { NumberStepper } from '../../../shared/form-fields/number-stepper';
 import {
   parentFeaturesOf,
   parentTraitsOf,
+  srdParentTraits,
   replacedNames,
   replacesLine,
   traitRows,
@@ -162,19 +163,19 @@ export class RaceEditor {
   );
   protected readonly name = computed(() => (this.isRace() ? this.race().name : this.sub().name));
   protected readonly parentName = computed(() => this.catalog().nameOf(this.sub().raceKey));
-  /** The parent race's saved traits when it is a table race of this list; `null` for an SRD race (the web has no list of those). */
+  /** The parent race's saved traits when it is a table race of this list; `null` for an SRD race (its traits come from the menu). */
   private readonly parentFeatures = computed(() =>
     parentFeaturesOf(this.entries(), this.sub().raceKey),
   );
-  protected readonly parentUnknown = computed(
-    () => this.sub().raceKey !== '' && this.parentFeatures() === null,
-  );
-  private readonly parentTraits = computed(() =>
-    parentTraitsOf(this.parentFeatures() ?? [], this.catalog().nameOf),
-  );
-  /** The checklist of the parent's traits; an SRD parent has none to draw (its marked keys stay as they are). */
+  private readonly parentTraits = computed(() => {
+    const features = this.parentFeatures();
+    return features === null
+      ? srdParentTraits(this.menu().list('race_traits'), this.sub().raceKey)
+      : parentTraitsOf(features, this.catalog().nameOf);
+  });
+  /** The checklist of the parent's traits: a table race's saved ones, or an SRD race's from the menu. */
   protected readonly traitRows = computed(() =>
-    this.parentUnknown() ? [] : traitRows(this.parentTraits(), this.sub().replacesTraitKeys),
+    traitRows(this.parentTraits(), this.sub().replacesTraitKeys),
   );
   /** Where each marked key sits in the list: the index a refusal at `replaces_trait_keys[i]` names. */
   protected readonly keyPlaces = computed(

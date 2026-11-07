@@ -19,12 +19,8 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
       @if (locked()) {
         <p class="hint"><mat-icon aria-hidden="true">lock</mat-icon>Escolha a raça da sub-raça primeiro: aqui aparecem os traços dela para marcar.</p>
       } @else {
-        @if (unknownRace()) {
-          <p class="hint">Os traços das raças do SRD ainda não aparecem aqui. O que já estava marcado fica como está.</p>
-        } @else {
-          <p class="hint">Marque os traços da raça que esta sub-raça substitui. Quem é desta sub-raça não tem o traço marcado, nem a escolha e as perícias que só ele dá.</p>
-        }
-        @if (rows().length === 0 && !unknownRace()) {
+        <p class="hint">Marque os traços da raça que esta sub-raça substitui. Quem é desta sub-raça não tem o traço marcado, nem a escolha e as perícias que só ele dá.</p>
+        @if (rows().length === 0) {
           <p class="hint">{{ raceName() }} ainda não tem traços salvos para marcar.</p>
         }
         <ul class="rows">
@@ -126,8 +122,6 @@ export class ReplacedTraits {
   readonly rows = input.required<readonly TraitRow[]>();
   /** The race is not chosen yet. */
   readonly locked = input(false);
-  /** The race has no trait list the page can read (an SRD race): the keys already marked are kept untouched. */
-  readonly unknownRace = input(false);
   /** The path of the subrace's `replaces_trait_keys`, for a refusal to find its row. */
   readonly basePath = input('table_subrace.replaces_trait_keys');
   /** The place of each marked key in the list, by key: the index a refusal names. */

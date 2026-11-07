@@ -190,6 +190,8 @@ export interface MenuOption {
   readonly key: string;
   readonly namePt: string;
   readonly hintPt: string;
+  /** The key that groups the value (`race_traits`: the race that has the trait); '' or absent elsewhere. */
+  readonly group?: string;
 }
 
 /** The menu the pickers read, from `GetEffectMenu`. */

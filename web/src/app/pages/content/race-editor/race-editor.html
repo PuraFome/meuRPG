@@ -72,7 +72,7 @@
     }
 
     @if (!isRace()) {
-      <app-replaced-traits [raceName]="parentName()" [rows]="traitRows()" [locked]="sub().raceKey === ''" [unknownRace]="parentUnknown()" [places]="keyPlaces()" (toggled)="setReplaced($event.key, $event.on)" />
+      <app-replaced-traits [raceName]="parentName()" [rows]="traitRows()" [locked]="sub().raceKey === ''" [places]="keyPlaces()" (toggled)="setReplaced($event.key, $event.on)" />
     }
 
     <section class="mr-panel block" aria-labelledby="traits-t">

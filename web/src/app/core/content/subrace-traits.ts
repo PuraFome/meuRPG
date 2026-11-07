@@ -1,9 +1,10 @@
 import type { TableEntry, TableFeature } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type { MenuOption } from './effect-draft';
 import { type NameOf, type ParentView, effectLine } from './content-read-parts';
 
 /**
  * The parent race's traits a subrace can replace (MR-025, RN-23): the checklist of the subrace editor and the words the master
- * and the player read. The parent's traits come from the table's race entry; the SRD's races list no traits to the web.
+ * and the player read. The parent's traits come from the table's race entry, or from the effect menu's `race_traits` for an SRD race.
  */
 
 export interface ParentTrait {
@@ -47,6 +48,13 @@ export function parentViewOf(entries: readonly TableEntry[]): (raceKey: string) 
 
 export function parentTraitsOf(features: readonly TableFeature[], nameOf: NameOf): ParentTrait[] {
   return features.map((t) => ({ key: t.key, name: t.namePt, summary: traitSummary(t, nameOf) }));
+}
+
+/** The traits of an SRD race, from the menu's `race_traits` list (the server's, with a one-line summary where the SRD has one). */
+export function srdParentTraits(list: readonly MenuOption[], raceKey: string): ParentTrait[] {
+  return list
+    .filter((t) => t.group === raceKey)
+    .map((t) => ({ key: t.key, name: t.namePt, summary: t.hintPt }));
 }
 
 /** The checklist: every parent trait, marked or not, then the marked keys that are no parent trait. */
