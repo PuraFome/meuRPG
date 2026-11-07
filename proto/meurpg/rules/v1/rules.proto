@@ -774,6 +774,24 @@ message DerivedSheet {
   // with the ones that are on marked. Which are on is the game session's, not the
   // sheet's. Each has an action in `actions`.
   repeated DerivedState states = 51;
+  // The roll minimums the character's features give (a table's `roll_minimum`
+  // effect), in the order of the effects, each with the feature that gives it.
+  // Only a minimum whose feature is in `features` is listed. The web previews the
+  // counted total of a typed d20 with them.
+  repeated RollMinimum roll_minimums = 53;
+}
+
+// RollMinimum is a roll minimum a feature gives: a die of the covered rolls that
+// shows less than `value` counts as `value`.
+message RollMinimum {
+  // The rolls it covers: "attack", "check", "save" or "damage".
+  repeated string applies = 1;
+  // The lowest a die counts as.
+  int32 value = 2;
+  // The key of the feature that gives it, one of `DerivedSheet.features`.
+  string source_key = 3;
+  // The Portuguese name of that feature.
+  string source_name = 4;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.
