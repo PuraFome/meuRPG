@@ -27,7 +27,6 @@ import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
 import { TableContentClient, contentErrorText } from '../../../core/content/content-client';
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
-import { readEntry } from '../../../core/content/content-read';
 import {
   KIND_WORDS,
   type ContentNavKind,
@@ -66,6 +65,7 @@ import {
   mergeRefreshed,
   nameResolver,
   nounPhraseOf,
+  readOfEntry,
   replaceEntry,
   updatedLine,
 } from './content-entry-model';
@@ -209,12 +209,9 @@ export class ContentEntry {
   );
   protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
-  protected readonly read = computed(() => {
-    const e = this.entry();
-    return e
-      ? readEntry(e, this.nameOf(), (key) => this.catalog()?.subclassLevelOf(key) ?? 0)
-      : null;
-  });
+  protected readonly read = computed(() =>
+    readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries()),
+  );
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */
   protected readonly nounPhrase = computed(() => nounPhraseOf(this.entry()));
   protected readonly archivedWord = computed(() => archivedWordOf(this.entry()));

@@ -190,7 +190,12 @@ export function violationText(
   }
   const leaf = shape.slice(shape.lastIndexOf('.') + 1);
   const named = leaf === 'name_pt' ? nameText(v.reason, ctx) : undefined;
+  // Two options of one feature with one name is about the options, not the name's length.
+  const optionName = shape.endsWith('.options[].name_pt')
+    ? rowText(shape, v.reason, ctx)
+    : undefined;
   return (
+    optionName ??
     named ??
     reasonText(shape, leaf, v.reason) ??
     rowText(shape, v.reason, ctx) ??

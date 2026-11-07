@@ -49,6 +49,8 @@ export class FeatureEditor {
    * lista do SRD" choice, whose empty list offers them.
    */
   readonly allowOptions = input(false);
+  /** The options are a trait's one-time "one of" (a race or subrace trait): no "Escolha" effect offers them, the player picks one at creation. */
+  readonly oneOf = input(false);
   /** The feature is one of a list of options: an option with no name is not sent. */
   readonly isOption = input(false);
   /** An option that has content but no name: the save leaves it out, and the screen says so. */

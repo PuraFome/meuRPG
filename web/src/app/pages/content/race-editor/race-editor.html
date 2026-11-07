@@ -6,7 +6,7 @@
       <h2 class="mr-panel__title" id="data-t">{{ isRace() ? 'Dados da raça' : 'Dados da sub-raça' }}</h2>
       @if (!isRace()) {
         @if (raceKnown()) {
-          <p class="hint">Sub-raça de <strong>{{ parentName() }}</strong>. A raça não muda depois de criada; a sub-raça soma bônus e traços a ela.</p>
+          <p class="hint">Sub-raça de <strong>{{ parentName() }}</strong>. A raça não muda depois de criada; a sub-raça soma bônus e traços a ela, ou substitui os que você marcar abaixo.</p>
         } @else {
           <app-select-field label="Raça da sub-raça" [options]="raceOptions()" [value]="sub().raceKey" placeholder="Escolha…" path="table_subrace.race_key" [issues]="issuesOf('table_subrace.race_key')" hint="Da lista do SRD ou das raças da mesa. Não muda depois de criada." (valueChange)="setParent($event)" />
         }
@@ -38,6 +38,12 @@
       @for (m of abilityIssues(); track m) {
         <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
       }
+      @if (!isRace()) {
+        <div class="choose">
+          <app-switch-field [label]="sub().raceKey === '' ? 'Substitui os bônus da raça' : 'Substituiu os bônus de ' + parentName()" [checked]="sub().replacesBonuses" [disabled]="sub().raceKey === ''" path="table_subrace.replaces_ability_bonuses" (toggled)="sub.update(d => ({ ...d, replacesBonuses: $event }))" />
+          <p class="hint">Ligado: só valem os bônus de cima, não os da raça nem os à escolha dela. Desligado: os de cima se somam aos da raça.</p>
+        </div>
+      }
       @if (isRace()) {
         <div class="choose">
           <app-switch-field label="O jogador escolhe onde pôr os bônus" [checked]="r.choosing" (toggled)="patchRace({ choosing: $event })" />
@@ -65,9 +71,17 @@
       </section>
     }
 
+    @if (!isRace()) {
+      <app-replaced-traits [raceName]="parentName()" [rows]="traitRows()" [locked]="sub().raceKey === ''" [unknownRace]="parentUnknown()" [places]="keyPlaces()" (toggled)="setReplaced($event.key, $event.on)" />
+    }
+
     <section class="mr-panel block" aria-labelledby="traits-t">
       <h2 class="mr-panel__title" id="traits-t">Traços</h2>
-      <p class="hint">Cada traço tem um efeito escolhido de um menu (modificador, proficiência, sentido...) ou só o texto.</p>
+      @if (isRace()) {
+        <p class="hint">Cada traço tem um efeito escolhido de um menu (modificador, proficiência, sentido...) ou só o texto. Um traço também pode dar uma escolha: o jogador fica com uma das opções.</p>
+      } @else {
+        <p class="hint">Somam-se aos traços de {{ parentName() }} que ficam.</p>
+      }
       @for (t of traits(); track t.id) {
         <app-feature-editor
           [feature]="t"
@@ -75,6 +89,8 @@
           [basePath]="prefix() + '.traits[' + $index + ']'"
           [issuesOf]="issuesOf"
           [spellOptions]="spellOptions()"
+          [allowOptions]="true"
+          [oneOf]="true"
           nameLabel="Nome do traço"
           removeLabel="Remover traço"
           [index]="$index"
@@ -130,6 +146,15 @@
       </p>
       <app-entry-read [read]="preview()" [plain]="true" />
     </section>
+    @if (!isRace() && replacesNote() !== '') {
+      <section class="mr-panel master-note" aria-labelledby="note-t">
+        <h2 class="master-note__title" id="note-t"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</h2>
+        <dl class="master-note__row">
+          <dt>Substitui</dt>
+          <dd>{{ replacesNote() }}</dd>
+        </dl>
+      </section>
+    }
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }

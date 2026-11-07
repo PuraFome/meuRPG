@@ -11,13 +11,14 @@ let nextId = 0;
   selector: 'app-switch-field',
   imports: [MatIconModule],
   template: `
-    <div class="row">
+    <div class="row" [class.row--off]="disabled()">
       <button
         type="button"
         role="switch"
         class="switch"
         [class.switch--on]="checked()"
         [attr.aria-checked]="checked()"
+        [disabled]="disabled()"
         [attr.aria-labelledby]="labelId"
         [attr.data-field]="path() || null"
         (click)="toggled.emit(!checked())"
@@ -44,6 +45,15 @@ let nextId = 0;
       align-items: center;
       gap: var(--mr-space-3);
       min-height: 48px;
+    }
+
+    // A switch that cannot be turned yet: dimmed, its state still in words.
+    .row--off {
+      opacity: 0.55;
+
+      .switch {
+        cursor: not-allowed;
+      }
     }
 
     .text {
@@ -133,6 +143,8 @@ export class SwitchField {
   readonly label = input.required<string>();
   readonly checked = input.required<boolean>();
   readonly path = input('');
+  /** The switch cannot be turned (what it needs is not chosen yet). */
+  readonly disabled = input(false);
   /** The words beside the label: "Ligado"/"Desligado", or "Ligada"/"Desligada" where the noun is feminine. */
   readonly onWord = input('Ligado');
   readonly offWord = input('Desligado');

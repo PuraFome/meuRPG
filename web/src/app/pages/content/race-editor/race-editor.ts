@@ -41,8 +41,8 @@ import {
   draftToSubrace,
   emptyFeature,
   emptyRace,
+  emptySubrace,
   featurePaths,
-  noBonuses,
   raceToDraft,
   SIZE_OPTIONS,
   subraceToDraft,
@@ -50,6 +50,14 @@ import {
 } from '../../../core/content/feature-draft';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { NumberStepper } from '../../../shared/form-fields/number-stepper';
+import {
+  parentFeaturesOf,
+  parentTraitsOf,
+  replacedNames,
+  replacesLine,
+  traitRows,
+  withReplaced,
+} from '../../../core/content/subrace-traits';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';
@@ -57,6 +65,7 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import { EntryRead } from '../entry-read/entry-read';
+import { ReplacedTraits } from './replaced-traits';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
 /** The race and the subrace share one form: a subrace has a name, bonuses and traits, and its race never changes. */
@@ -79,6 +88,7 @@ export type RaceMode = 'race' | 'subrace';
     MatIconModule,
     NumberStepper,
     PickList,
+    ReplacedTraits,
     RouterLink,
     SelectField,
     SwitchField,
@@ -109,14 +119,17 @@ export class RaceEditor {
   readonly cancelled = output<void>();
 
   protected readonly race = signal<RaceDraft>(emptyRace());
-  protected readonly sub = signal<SubraceDraft>({
-    name: '',
-    raceKey: '',
-    bonuses: noBonuses(),
-    traits: [],
-  });
+  protected readonly sub = signal<SubraceDraft>(emptySubrace());
   protected readonly saver = new EntrySaver(
-    { aOne: 'uma raça', nameOf: (key) => this.entries().find((e) => e.key === key)?.namePt ?? '' },
+    {
+      aOne: 'uma raça',
+      nameOf: (key) => this.entries().find((e) => e.key === key)?.namePt ?? '',
+      // A "Escolha" effect on a trait with options is refused at the effect; the screen says it under the effect's select.
+      redirect: (field, reason) =>
+        reason === 'bad_value' && /\.traits\[\d+\]\.effects\[\d+\]\.choice$/.test(field)
+          ? field.replace(/\.choice$/, '.type')
+          : field,
+    },
     'a raça',
   );
 
@@ -149,6 +162,31 @@ export class RaceEditor {
   );
   protected readonly name = computed(() => (this.isRace() ? this.race().name : this.sub().name));
   protected readonly parentName = computed(() => this.catalog().nameOf(this.sub().raceKey));
+  /** The parent race's saved traits when it is a table race of this list; `null` for an SRD race (the web has no list of those). */
+  private readonly parentFeatures = computed(() =>
+    parentFeaturesOf(this.entries(), this.sub().raceKey),
+  );
+  protected readonly parentUnknown = computed(
+    () => this.sub().raceKey !== '' && this.parentFeatures() === null,
+  );
+  private readonly parentTraits = computed(() =>
+    parentTraitsOf(this.parentFeatures() ?? [], this.catalog().nameOf),
+  );
+  /** The checklist of the parent's traits; an SRD parent has none to draw (its marked keys stay as they are). */
+  protected readonly traitRows = computed(() =>
+    this.parentUnknown() ? [] : traitRows(this.parentTraits(), this.sub().replacesTraitKeys),
+  );
+  /** Where each marked key sits in the list: the index a refusal at `replaces_trait_keys[i]` names. */
+  protected readonly keyPlaces = computed(
+    () => new Map(this.sub().replacesTraitKeys.map((k, i) => [k, i] as const)),
+  );
+  /** "Olhos de caçador e os bônus de Corujeiro": the master's note (players never read it from here). */
+  protected readonly replacesNote = computed(() =>
+    replacesLine(
+      replacedNames(this.parentTraits(), this.sub().replacesTraitKeys),
+      this.sub().replacesBonuses ? this.parentName() : '',
+    ),
+  );
   protected readonly subraces = computed(() => {
     const e = this.entry();
     return e
@@ -163,7 +201,11 @@ export class RaceEditor {
     const body = this.isRace()
       ? ({ case: 'tableRace', value: draftToRace(this.race(), this.menu()) } as const)
       : ({ case: 'tableSubrace', value: draftToSubrace(this.sub(), this.menu()) } as const);
-    return previewRead(body, this.catalog().nameOf);
+    return previewRead(
+      body,
+      this.catalog().nameOf,
+      this.isRace() ? undefined : { traits: this.parentFeatures() ?? [], split: true },
+    );
   });
 
   constructor() {
@@ -188,7 +230,7 @@ export class RaceEditor {
         const base: SubraceDraft =
           e?.body.case === 'tableSubrace'
             ? subraceToDraft(e.body.value)
-            : { name: '', raceKey: this.parentKey(), bonuses: noBonuses(), traits: [] };
+            : emptySubrace(this.parentKey());
         this.sub.set(base);
       }
       this.saver.clear();
@@ -269,7 +311,15 @@ export class RaceEditor {
   }
 
   protected setParent(raceKey: string): void {
-    this.sub.update((d) => ({ ...d, raceKey }));
+    // Another race has other traits: what was marked on the last one goes.
+    this.sub.update((d) => ({ ...d, raceKey, replacesTraitKeys: [] }));
+  }
+
+  protected setReplaced(key: string, on: boolean): void {
+    this.sub.update((d) => ({
+      ...d,
+      replacesTraitKeys: withReplaced(d.replacesTraitKeys, key, on),
+    }));
   }
 
   protected abilityIssues(): readonly string[] {
@@ -307,6 +357,13 @@ export class RaceEditor {
   private readonly known = (path: string): boolean => {
     const p = this.prefix();
     const fixed = [`${p}.name_pt`, `${p}.traits`];
+    const keys = this.sub().replacesTraitKeys;
+    if (!this.isRace()) {
+      fixed.push(
+        `${p}.replaces_trait_keys`,
+        ...keys.map((_, i) => `${p}.replaces_trait_keys[${i}]`),
+      );
+    }
     for (const a of ABILITY_FIELDS) fixed.push(`${p}.ability_bonuses.${a}`);
     fixed.push(`${p}.ability_bonuses`);
     if (this.isRace()) {

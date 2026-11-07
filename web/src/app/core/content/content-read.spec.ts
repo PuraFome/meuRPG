@@ -9,6 +9,7 @@ import {
   TableFeatSchema,
   TableRaceSchema,
   TableSubclassSchema,
+  TableSubraceSchema,
   TableSpellSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
@@ -28,6 +29,80 @@ function noRawKeys(texts: readonly string[]): void {
 }
 
 describe('what a player reads of an entry (E10-01 state 9)', () => {
+  describe('a subrace and the race it comes from (T7)', () => {
+    const RACE = 'race:corujeiro@mesa';
+    const olhos = feature('Olhos de caçador', [
+      { type: 'proficiency', proficiency: 'skill:perception' },
+    ]);
+    const parent = [
+      olhos,
+      feature('Planar'),
+      { ...feature('Sentidos da noite'), options: [feature('Olhos de coruja')] },
+    ];
+    const names = (k: string) => (k === RACE ? 'Corujeiro' : nameOf(k));
+    const sub = (init: object) =>
+      entry(TableContentKind.SUBRACE, 'Corujeiro das Neves', {
+        body: {
+          case: 'tableSubrace',
+          value: create(TableSubraceSchema, {
+            raceKey: RACE,
+            abilityBonuses: { constitution: 2, wisdom: 1 },
+            traits: [feature('Pele de geada')],
+            replacesTraitKeys: [olhos.key],
+            replacesAbilityBonuses: true,
+            ...init,
+          }),
+        },
+      });
+
+    it("lists its own traits first and the race's that stay, tagged with the race, and says what it replaces", () => {
+      const read = readEntry(
+        sub({}),
+        names,
+        () => 0,
+        () => ({ traits: parent }),
+      );
+      expect(read.rows.map((r) => `${r.label}: ${flat(r.value)}`)).toEqual([
+        'Raça: Corujeiro',
+        'Habilidades: Constituição +2, Sabedoria +1, no lugar da raça',
+        'Substitui: Olhos de caçador',
+      ]);
+      expect(read.sections).toHaveLength(1);
+      expect(read.sections[0].items.map((i) => `${i.title}${i.tag ?? ''}`)).toEqual([
+        'Pele de geada',
+        'Planar(de Corujeiro)',
+        'Sentidos da noite(de Corujeiro)',
+      ]);
+      expect(read.sections[0].items[2].options?.map((o) => o.title)).toEqual(['Olhos de coruja']);
+    });
+
+    it('splits the race\'s traits from its own in the editor\'s preview, with no "Substitui" row', () => {
+      const read = readEntry(
+        sub({}),
+        names,
+        () => 0,
+        () => ({ traits: parent, split: true }),
+      );
+      expect(read.rows.map((r) => r.label)).toEqual(['Raça', 'Habilidades']);
+      expect(read.sections.map((x) => x.title)).toEqual([
+        'Traços de Corujeiro',
+        'Traços da sub-raça',
+      ]);
+      expect(read.sections[0].items.map((i) => i.title)).toEqual(['Planar', 'Sentidos da noite']);
+    });
+
+    it('names no replaced trait the reader cannot see (RN-23) and adds no race trait', () => {
+      const read = readEntry(sub({}), names);
+      expect(read.rows.map((r) => r.label)).toEqual(['Raça', 'Habilidades']);
+      expect(read.sections[0].items.map((i) => i.title)).toEqual(['Pele de geada']);
+    });
+
+    it('keeps the bonuses plain when the subrace adds them to the race', () => {
+      const read = readEntry(sub({ replacesAbilityBonuses: false }), names);
+      expect(flat(read.rows[1].value)).toBe('Constituição +2, Sabedoria +1');
+    });
+  });
+
   it('reads a race in full: numbers, languages and each trait with its effect', () => {
     const body = create(TableRaceSchema, {
       namePt: 'Corujeiro',

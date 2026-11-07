@@ -13,6 +13,7 @@ import { readClass, readSubclass } from './content-read-class';
 import {
   type EntryRead,
   type NameOf,
+  type ParentView,
   type ReadRow,
   abilitiesOf,
   bonusesOf,
@@ -26,6 +27,7 @@ import { previewRows } from './spell-preview';
 import { prerequisiteSupport } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { optionPrerequisiteParts, optionSetName } from './option-text';
+import { parentTraitsOf, replacedNames } from './subrace-traits';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
   const choice =
@@ -60,18 +62,40 @@ function readRace(r: TableRace, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
-function readSubrace(s: TableSubrace, nameOf: NameOf): EntryRead {
+function subraceTraitSections(
+  s: TableSubrace,
+  nameOf: NameOf,
+  parent: ParentView,
+): EntryRead['sections'] {
+  const raceName = nameOf(s.raceKey);
+  const own = s.traits.map((t) => featureItem(t, nameOf));
+  const kept = parent.traits
+    .filter((t) => !s.replacesTraitKeys.includes(t.key))
+    .map((t) => featureItem(t, nameOf));
+  if (parent.split) {
+    return [
+      ...(kept.length > 0 ? [{ title: `Traços de ${raceName}`, items: kept }] : []),
+      ...(own.length > 0 ? [{ title: 'Traços da sub-raça', items: own }] : []),
+    ];
+  }
+  const all = [...own, ...kept.map((i) => ({ ...i, tag: `(de ${raceName})` }))];
+  return all.length > 0 ? [{ title: 'Traços', items: all }] : [];
+}
+
+function readSubrace(s: TableSubrace, nameOf: NameOf, parent: ParentView): EntryRead {
   const rows: ReadRow[] = [];
-  if (s.raceKey) rows.push({ label: 'Sub-raça de', value: nameOf(s.raceKey) });
+  if (s.raceKey) rows.push({ label: 'Raça', value: nameOf(s.raceKey) });
+  const bonuses = bonusText(bonusesOf(s.abilityBonuses), abilitiesOf(nameOf));
   rows.push({
     label: 'Habilidades',
-    value: bonusText(bonusesOf(s.abilityBonuses), abilitiesOf(nameOf)),
+    value: s.replacesAbilityBonuses ? `${bonuses}, no lugar da raça` : bonuses,
   });
-  const sections =
-    s.traits.length > 0
-      ? [{ title: 'Traços', items: s.traits.map((t) => featureItem(t, nameOf)) }]
-      : [];
-  return { rows, sections, text: [] };
+  // Only a trait the reader can name: a key it cannot see says nothing (RN-23).
+  const replaced = replacedNames(parentTraitsOf(parent.traits, nameOf), s.replacesTraitKeys);
+  if (!parent.split && replaced.length > 0) {
+    rows.push({ label: 'Substitui', value: replaced.join(', ') });
+  }
+  return { rows, sections: subraceTraitSections(s, nameOf, parent), text: [] };
 }
 
 function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
@@ -134,13 +158,14 @@ export function readEntry(
   entry: TableEntry,
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number = () => 0,
+  parentOf: (raceKey: string) => ParentView = () => ({ traits: [] }),
 ): EntryRead {
   const body = entry.body;
   switch (body.case) {
     case 'tableRace':
       return readRace(body.value, nameOf);
     case 'tableSubrace':
-      return readSubrace(body.value, nameOf);
+      return readSubrace(body.value, nameOf, parentOf(body.value.raceKey));
     case 'tableBackground':
       return readBackground(body.value, nameOf);
     case 'tableFeat':

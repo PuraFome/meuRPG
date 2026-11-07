@@ -176,7 +176,10 @@ The class's Ability Score Improvement points remain.
 
 The catalog says what a subrace replaces (`replaces_trait_keys`, `replaces_ability_bonuses`, and `replaced_skill_keys` for the race's skills that go with the traits), and the editor's preview follows it.
 A player's copy of a subrace drops the replaced keys that are hidden (an archived or switched-off entry).
-The table editor has no inputs for `replaces_trait_keys`, `replaces_ability_bonuses` or the options of a trait; they are written through a pack or the API.
+The table editor has the inputs for them: a trait's "Opções para escolher", and on a subrace the "Substituiu os bônus de <raça>" switch and a checklist of the race's traits.
+The checklist reads the traits of a table race; the web has no trait list of an SRD race, so a subrace of one keeps the keys it has and the editor marks none.
+A marked key that is no trait of the race shows as a red row until it is unmarked; the server refuses it at `table_subrace.replaces_trait_keys[i]`.
+A reader names a replaced trait only when it sees the race's trait list: a player who cannot see the race reads no "Substitui" line.
 
 ## Table options
 

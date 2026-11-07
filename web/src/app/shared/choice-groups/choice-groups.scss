@@ -26,26 +26,18 @@
   background: var(--mat-sys-surface-container-low);
 }
 
-.choice__title {
+.choice__bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+
+.choice__title {
   margin: 0;
   font: var(--mat-sys-title-medium);
   // Takes focus from the app (to start a screen reader at the choice), so it has no ring of its own: the global
   // rule for `tabindex="-1"` covers it, as for every other heading that takes focus.
-}
-
-.choice__mark {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--mat-sys-error);
-  color: var(--mat-sys-on-error);
-  font-weight: 700;
-  font-size: 0.8rem;
 }
 
 .choice__origin,

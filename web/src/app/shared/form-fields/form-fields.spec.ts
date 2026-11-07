@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import { CheckRow } from './check-row';
@@ -181,5 +181,49 @@ describe('form fields', () => {
     expect(text(stepper)).toContain('−2');
     minus.click();
     expect(host().n()).toBe(-3);
+  });
+});
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CheckRow, SwitchField],
+  template: `
+    <app-check-row label="Olhos de caçador" sub="Proficiência em Percepção" [checked]="true" [invalid]="bad()" />
+    <app-check-row label="Planar" [checked]="false" />
+    <app-switch-field label="Substitui" [checked]="false" [disabled]="true" (toggled)="toggled.set(true)" />
+  `,
+})
+class Host2 {
+  readonly bad = signal(false);
+  readonly toggled = signal(false);
+}
+
+describe('form fields: a line under a check row, a row in error, a switch that cannot be turned', () => {
+  it('draws the line only when there is one, bold words with it, and the danger colour when the row is invalid', () => {
+    TestBed.resetTestingModule();
+    const fixture = TestBed.createComponent(Host2);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const rows = Array.from(el.querySelectorAll('app-check-row'));
+    expect(rows[0].querySelector('.sub')?.textContent).toBe('Proficiência em Percepção');
+    expect(rows[0].querySelector('.label--strong')).not.toBeNull();
+    expect(rows[1].querySelector('.sub')).toBeNull();
+    expect(rows[1].querySelector('.label--strong')).toBeNull();
+    expect(rows[0].querySelector('.row--invalid')).toBeNull();
+    fixture.componentInstance.bad.set(true);
+    fixture.detectChanges();
+    expect(rows[0].querySelector('.row--invalid')).not.toBeNull();
+  });
+
+  it('keeps a disabled switch off its toggle and dims it', () => {
+    TestBed.resetTestingModule();
+    const fixture = TestBed.createComponent(Host2);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const sw = el.querySelector<HTMLButtonElement>('button[role="switch"]')!;
+    expect(sw.disabled).toBe(true);
+    sw.click();
+    expect(fixture.componentInstance.toggled()).toBe(false);
+    expect(el.querySelector('.row--off')).not.toBeNull();
   });
 });

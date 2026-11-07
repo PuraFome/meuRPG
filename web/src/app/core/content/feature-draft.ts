@@ -44,9 +44,9 @@ export interface FeatureDraft {
   text: string;
   effects: EffectDraft[];
   /**
-   * The feature's option list ("Opções para escolher"): options the player picks, each with a name, a text and effects. Only a
-   * class or subclass feature has them; an option has none of its own. Their keys are made by the server and sent back on
-   * every save, so a pick keeps its option.
+   * The feature's option list ("Opções para escolher"): options the player picks, each with a name, a text and effects. A class
+   * or subclass feature has them, and so does a race or subrace trait (a one-time "one of"); an option has none of its own.
+   * Their keys are made by the server and sent back on every save, so a pick keeps its option.
    */
   options: FeatureDraft[];
 }
@@ -235,6 +235,21 @@ export interface SubraceDraft {
   raceKey: string;
   bonuses: Bonuses;
   traits: FeatureDraft[];
+  /** The keys of the parent race's traits this subrace replaces, in the order stored (a key that is no longer a parent trait stays until unmarked). */
+  replacesTraitKeys: string[];
+  /** "Substituiu os bônus da raça": the subrace's bonuses stand alone instead of adding to the race's. */
+  replacesBonuses: boolean;
+}
+
+export function emptySubrace(raceKey = ''): SubraceDraft {
+  return {
+    name: '',
+    raceKey,
+    bonuses: noBonuses(),
+    traits: [],
+    replacesTraitKeys: [],
+    replacesBonuses: false,
+  };
 }
 
 export function subraceToDraft(s: TableSubrace): SubraceDraft {
@@ -243,6 +258,8 @@ export function subraceToDraft(s: TableSubrace): SubraceDraft {
     raceKey: s.raceKey,
     bonuses: bonusesOf(s.abilityBonuses),
     traits: s.traits.map(featureToDraft),
+    replacesTraitKeys: [...s.replacesTraitKeys],
+    replacesBonuses: s.replacesAbilityBonuses,
   };
 }
 
@@ -252,6 +269,8 @@ export function draftToSubrace(d: SubraceDraft, menu: EffectMenuVm): SubraceInit
     raceKey: d.raceKey,
     abilityBonuses: { ...d.bonuses },
     traits: d.traits.map((t) => draftToFeature(t, menu)),
+    replacesTraitKeys: [...d.replacesTraitKeys],
+    replacesAbilityBonuses: d.replacesBonuses,
   };
 }
 
