@@ -6418,7 +6418,15 @@ type Attack struct {
 	// 5 ft; 0 otherwise. A melee weapon with the reach property (a glaive, a halberd, a whip)
 	// keeps its reach in `range_ft`, with no long range. `range_ft` is at least this for a
 	// melee attack.
-	ReachFt       int32 `protobuf:"varint,21,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
+	ReachFt int32 `protobuf:"varint,21,opt,name=reach_ft,json=reachFt,proto3" json:"reach_ft,omitempty"`
+	// The weapon is silvered: the sheet's mark or a table weapon_rule gave it (the same value the engine
+	// uses against resistances and immunities to nonmagical attacks that exempt silvered weapons).
+	Silvered bool `protobuf:"varint,22,opt,name=silvered,proto3" json:"silvered,omitempty"`
+	// The weapon is adamantine, from the same two sources.
+	Adamantine bool `protobuf:"varint,23,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
+	// The attack counts as magical for those resistances: a spell, the mark, a weapon_rule or a creature's
+	// Magic Weapons. Display only: the engine decides from the derived value, never from this field.
+	Magical       bool `protobuf:"varint,24,opt,name=magical,proto3" json:"magical,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6598,6 +6606,27 @@ func (x *Attack) GetReachFt() int32 {
 		return x.ReachFt
 	}
 	return 0
+}
+
+func (x *Attack) GetSilvered() bool {
+	if x != nil {
+		return x.Silvered
+	}
+	return false
+}
+
+func (x *Attack) GetAdamantine() bool {
+	if x != nil {
+		return x.Adamantine
+	}
+	return false
+}
+
+func (x *Attack) GetMagical() bool {
+	if x != nil {
+		return x.Magical
+	}
+	return false
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -13274,7 +13303,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fattack_bonus\x18\v \x01(\x05R\vattackBonus\x12\x17\n" +
 	"\asave_dc\x18\f \x01(\x05R\x06saveDc\x12\x1d\n" +
 	"\n" +
-	"from_level\x18\r \x01(\x05R\tfromLevel\"\xf4\x05\n" +
+	"from_level\x18\r \x01(\x05R\tfromLevel\"\xca\x06\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -13299,7 +13328,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"spell_dice\x18\x13 \x01(\tR\tspellDice\x12$\n" +
 	"\x0edamage_note_pt\x18\x14 \x01(\tR\fdamageNotePt\x12\x19\n" +
-	"\breach_ft\x18\x15 \x01(\x05R\areachFt\"\xb3\x02\n" +
+	"\breach_ft\x18\x15 \x01(\x05R\areachFt\x12\x1a\n" +
+	"\bsilvered\x18\x16 \x01(\bR\bsilvered\x12\x1e\n" +
+	"\n" +
+	"adamantine\x18\x17 \x01(\bR\n" +
+	"adamantine\x12\x18\n" +
+	"\amagical\x18\x18 \x01(\bR\amagical\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

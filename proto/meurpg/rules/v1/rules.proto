@@ -1292,6 +1292,14 @@ message Attack {
   // keeps its reach in `range_ft`, with no long range. `range_ft` is at least this for a
   // melee attack.
   int32 reach_ft = 21;
+  // The weapon is silvered: the sheet's mark or a table weapon_rule gave it (the same value the engine
+  // uses against resistances and immunities to nonmagical attacks that exempt silvered weapons).
+  bool silvered = 22;
+  // The weapon is adamantine, from the same two sources.
+  bool adamantine = 23;
+  // The attack counts as magical for those resistances: a spell, the mark, a weapon_rule or a creature's
+  // Magic Weapons. Display only: the engine decides from the derived value, never from this field.
+  bool magical = 24;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

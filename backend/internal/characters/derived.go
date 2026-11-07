@@ -302,6 +302,9 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		DamageNotePt:        a.DamageNotePT,
 		SpellDice:           a.SpellDice,
 		ReachFt:             i32(a.ReachFt),
+		Silvered:            a.Silvered,
+		Adamantine:          a.Adamantine,
+		Magical:             a.Magical,
 	}
 }
 

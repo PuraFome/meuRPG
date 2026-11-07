@@ -8201,6 +8201,91 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
+async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const marked = {
+      weaponKeys: ['equipment:longsword', 'equipment:mace'],
+      armorKey: 'equipment:chain-mail',
+      shield: true,
+      carriedKeys: ['equipment:mace'],
+      weaponMarks: [{ weaponKey: 'equipment:longsword', silvered: true, magical: true }, { weaponKey: 'equipment:mace', adamantine: true }],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade marcas das armas ${Date.now()}`, true, true, { build: toren, sheet: marked });
+    campaignId = table.campaignId;
+
+    // The owner: the tags in words on both groups of the gear, and the grid.
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('list', { name: 'Marcas da arma' })).toHaveCount(2);
+    await expect(equipment.getByText('Prateada')).toBeVisible();
+    await expect(equipment.getByText('Adamantina')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
+    // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
+    await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
+
+    // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
+    await masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
+    await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
+    await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
+    await expectScreenPasses(m, `Ficha do mestre, Marcas da arma ${where}`);
+    await sheet.getByRole('checkbox', { name: /^Adamantina/ }).check();
+    await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
+    await expect(masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' })).toBeFocused();
+
+    // Another player never sees the grid, nor the marks.
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+    await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(outsider.page.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
+    await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);
+
+    // The combat: the tags on the gear row of the fold.
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    const tab = await openActionTab(p, 'Ataques');
+    await expect(tab.getByRole('button', { name: 'Sacar ou guardar' })).toBeVisible();
+    await expect(tab.getByRole('list', { name: 'Marcas da arma' }).first()).toBeVisible();
+    await expectScreenPasses(p, `Combate, marcas das armas ${where}`);
+  } finally {
+    if (outsider) {
+      await outsider.close();
+    }
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as marcas das armas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@585'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanWeaponMarksScreens(browser, 'light', 1280);
+});
+
+test('as marcas das armas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@585'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanWeaponMarksScreens(browser, 'dark', 390);
+});
+
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
 async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {

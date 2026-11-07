@@ -11,6 +11,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { type MarksVm, markWords } from '../characters/gear';
 import { rechargeText } from './combat-errors';
 import { circleLabel } from './combat-grid';
 import { metersText } from '../units';
@@ -314,4 +315,16 @@ export function groupState(used: boolean): string {
  * shared decision 2). */
 export function endTurnIsPrimary(own: { actionUsed: boolean; bonusActionUsed: boolean }): boolean {
   return own.actionUsed && own.bonusActionUsed;
+}
+
+/** The tags under an attack's name: "Truque" for a cantrip (its economy has its own mark). */
+export function attackTagsOf(o: AttackOption): string[] {
+  return o.attack && isCantrip(o.attack) ? ['Truque'] : [];
+}
+
+/** The marks of a weapon attack, for its chip beside the name; none for a spell or a creature's attack. */
+export function attackMarksOf(a: Attack | undefined): MarksVm | null {
+  return a?.kind === AttackKind.WEAPON && markWords(a).length > 0
+    ? { silvered: a.silvered, adamantine: a.adamantine, magical: a.magical }
+    : null;
 }
