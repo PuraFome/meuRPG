@@ -58,8 +58,8 @@ const LISTED_OPTIONS = 3;
 /**
  * The table option editor (MR-025): an option for one of the SRD's option sets (an invocation, a Metamagic option, a fighting
  * style, a Pact Boon...). A name, a text and effects from the server's menu like a feat's, the set (chosen once, read-only after
- * the first save: it is in the key) and what the option asks of a character (a level in a class, other options, a Pact Boon, a
- * spell). "Salvar opção" sends the whole entry; whether a character qualifies is the server's to say.
+ * the first save: it is in the key), for the set of a table feature the feature that offers the option, and what the option
+ * asks of a character (a level in a class, other options, a Pact Boon, a spell). "Salvar opção" sends the whole entry; whether a character qualifies is the server's to say.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,

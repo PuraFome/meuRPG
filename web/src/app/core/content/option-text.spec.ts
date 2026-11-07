@@ -12,7 +12,7 @@ import { entry, feature } from './content-testing';
 import { entrySupport } from './content-kinds';
 import { readEntry } from './content-read';
 import { featureKeyName } from './class-feature-text';
-import { optionSetLine } from './option-text';
+import { optionSetLine, optionSupport } from './option-text';
 import { offeringFeatures } from './offering-features';
 
 const crow = 'feature:class-guardiao-3f9a1c--truques-de-lamina@mesa';
@@ -98,5 +98,11 @@ describe('the feature that offers a table option (MR-025)', () => {
       ['Guardião do Vale', 2, 'class'],
       ['Guarda do Corvo', 3, 'subclass'],
     ]);
+  });
+});
+
+describe('the support line of an option list row', () => {
+  it('names the set and nothing more when the option asks nothing', () => {
+    expect(optionSupport('invocation', undefined, (key) => key)).toEqual(['Invocação mística']);
   });
 });

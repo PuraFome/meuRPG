@@ -19,7 +19,7 @@ export interface SelectOption<T extends string | number = string> {
   readonly value: T;
   readonly label: string;
   readonly disabled?: boolean;
-  /** The group the option sits in (an `<optgroup>`); options with the same group are listed together, in order. */
+  /** The group the option sits in (an `<optgroup>`); adjacent options with the same group sit in one `<optgroup>`. */
   readonly group?: string;
 }
 
