@@ -16,12 +16,15 @@ import (
 )
 
 // An NPC's Parry is decided by the server, with no window (RN-10, RN-31): a window would tell the players, by the
-// wait, which NPCs have a reaction. When a melee weapon attack hits an NPC that can parry, and the Parry's bonus
-// turns the hit into a miss, the server spends the NPC's reaction and the attack is a miss, exactly as an ordinary
-// miss reads. When the bonus would not change the outcome (or the NPC cannot react, or does not see the attacker),
-// nothing happens and the hit goes on. A critical hit is never parried: it hits whatever the armor class.
-// Once a round falls out of the reaction, which comes back at the creature's turn. The master can switch a creature
-// to "Perguntar" (SetMonsterReactionMode): its Parry then opens the window of combat_reaction_parry.go.
+// wait, which NPCs have a reaction.
+// When a melee weapon attack hits an NPC that can parry, and the Parry's bonus turns the hit into a miss, the server
+// spends the NPC's reaction and the attack is a miss.
+// When the bonus would not change the outcome (or the NPC cannot react, or does not see the attacker), nothing
+// happens and the hit goes on.
+// A critical hit is never parried: it hits whatever the armor class. Neither is a hit made with Stroke of Luck.
+// The reaction comes back at the creature's turn.
+// The master can switch a creature to "Perguntar" (SetMonsterReactionMode): its Parry then opens the window of
+// combat_reaction_parry.go.
 
 // parryUsed is the Parry the server used on an attack: the event of its line, written before the attack's own.
 type parryUsed struct {
@@ -41,44 +44,62 @@ func (f *attackFlow) autoParry(ctx context.Context) error {
 	if !f.result.Hit || f.result.Critical || f.rolled.Stroke != nil || f.target.Kind != kindNPC || parryAsks(f.target) {
 		return nil
 	}
-	// An ordinary monster has no Parry: one read of its stat block settles it, before the kit's other queries.
-	st, err := f.s.roster.ReactionStats(ctx, f.c.tx, f.m.CampaignID, f.target.CharacterID)
-	if connect.CodeOf(err) == connect.CodeNotFound {
-		return nil
-	}
-	if err != nil {
+	base, bonus, ok, err := f.parryApplies(ctx)
+	if err != nil || !ok {
 		return err
 	}
-	if _, ok := parryOf(st); !ok {
-		return nil
+	return f.parryHit(ctx, base, bonus)
+}
+
+// parryApplies says the target's Parry turns this hit into a miss, with the armor class the hit was compared with and
+// the Parry's bonus. The cheap checks come first: an ordinary monster has no Parry, and one read of its stat block
+// settles it before the kit's other queries.
+func (f *attackFlow) parryApplies(ctx context.Context) (base, bonus int32, ok bool, err error) {
+	st, err := f.s.roster.ReactionStats(ctx, f.c.tx, f.m.CampaignID, f.target.CharacterID)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return 0, 0, false, nil
+	}
+	if err != nil {
+		return 0, 0, false, err
+	}
+	if _, has := parryOf(st); !has {
+		return 0, 0, false, nil
 	}
 	k, ok, err := f.s.kitOf(ctx, f.c.tx, f.m.CampaignID, f.target)
 	if err != nil || !ok || !k.canReact() {
-		return err
+		return 0, 0, false, err
 	}
-	parry, ok := parryOf(k.st)
-	if !ok || len(k.slotsFor(spellShield)) > 0 { // a Shield in the stat block keeps its window
-		return nil
+	parry, has := parryOf(k.st)
+	if !has || len(k.slotsFor(spellShield)) > 0 { // a Shield in the stat block keeps its window
+		return 0, 0, false, nil
 	}
-	base, bonus := clamp32(f.targetAC, 0, math.MaxInt32), clamp32(parry.ACBonus, 0, math.MaxInt32)
-	total := conv.Int32(f.result.Total)
-	if total >= base+bonus {
-		return nil
+	base, bonus = clamp32(f.targetAC, 0, math.MaxInt32), clamp32(parry.ACBonus, 0, math.MaxInt32)
+	if conv.Int32(f.result.Total) >= base+bonus {
+		return 0, 0, false, nil
 	}
+	ok, err = f.parryCanAnswer(ctx)
+	return base, bonus, ok, err
+}
+
+// parryCanAnswer says the blow is a melee weapon attack and the target sees its attacker.
+func (f *attackFlow) parryCanAnswer(ctx context.Context) (bool, error) {
 	melee, err := f.s.meleeWeaponUse(ctx, f.c, f.attacker, f.target, f.attackKey)
 	if err != nil || !melee {
-		return err
+		return false, err
 	}
-	if _, sees, err := f.s.reactorSees(ctx, f.c, f.cs, f.target, f.attacker); err != nil || !sees {
-		return err
-	}
+	_, sees, err := f.s.reactorSees(ctx, f.c, f.cs, f.target, f.attacker)
+	return sees, err
+}
+
+// parryHit spends the target's reaction, writes the line and turns the hit into a miss.
+func (f *attackFlow) parryHit(ctx context.Context, base, bonus int32) error {
 	if err := f.s.spendReaction(ctx, f.c, f.target, reaction.ParryKind); err != nil {
 		return err
 	}
 	id, err := insertEventID(ctx, f.c, eventReactionUsed, &f.c.actorUserID, nil, actionEvent{
 		Round: f.c.enc.Round, Secret: f.target.Hidden, AttackerHidden: f.attacker.Hidden, Actor: f.target.ID, Target: f.attacker.ID,
 		Stopped: true, ReactionBefore: f.target.ReactionUsed,
-		Reaction: &reactionEvent{Kind: string(reaction.ParryKind), Used: true, Stopped: true, Auto: true, Before: total, AC: base, Bonus: bonus},
+		Reaction: &reactionEvent{Kind: string(reaction.ParryKind), Used: true, Stopped: true, Auto: true, Before: conv.Int32(f.result.Total), AC: base, Bonus: bonus},
 	})
 	if err != nil {
 		return err

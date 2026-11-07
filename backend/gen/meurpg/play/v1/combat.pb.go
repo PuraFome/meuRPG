@@ -6081,7 +6081,7 @@ type Combatant struct {
 	InitiativeTreatedAs       *int32 `protobuf:"varint,109,opt,name=initiative_treated_as,json=initiativeTreatedAs,proto3,oneof" json:"initiative_treated_as,omitempty"`
 	InitiativeTreatedAsSource string `protobuf:"bytes,110,opt,name=initiative_treated_as_source,json=initiativeTreatedAsSource,proto3" json:"initiative_treated_as_source,omitempty"`
 	// How the creature's Parry is decided (SetMonsterReactionMode): true when the master asked to be asked
-	// (a reaction window opens for each melee hit, as it did before the server decided), false when the server
+	// (a reaction window opens for each melee hit), false when the server
 	// decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
 	// Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
 	ParryAsk      *bool `protobuf:"varint,112,opt,name=parry_ask,json=parryAsk,proto3,oneof" json:"parry_ask,omitempty"`

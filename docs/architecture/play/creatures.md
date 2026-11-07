@@ -366,7 +366,7 @@ Every other reaction (Split, Shriek, Rock Catching, Unnerving Mask, the Shield G
 The server decides Parry on its own, one per round, with no window ([Reactions](reactions.md#parry)); the master can switch a creature to "Perguntar" and answer for it in a window.
 It is the NPC's alone: a player's character made from a stat block gets no Parry window.
 The reaction is the creature's `reaction_used` column, the same as a player's: spent by the answer, back at the start of the creature's own turn.
-The only thing kept in `creature_spent` is the master's mode, the key `parry_ask` (1 for "Perguntar").
+The only thing the Parry keeps in `creature_spent` is the master's mode, the key `parry_ask` (1 for "Perguntar").
 
 **Who sees what (RN-20, RN-29).**
 Only the master reads the mode (`Combatant.parry_ask`), the window of "Perguntar", the bonus, the armor class with it and that the creature has the reaction.

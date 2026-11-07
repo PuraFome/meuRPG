@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -82,40 +83,54 @@ func legendaryAttackDetails(p rules.LegendaryProfile, plan *rules.MonsterPlan) m
 		if !ok || a.Attack == nil {
 			continue
 		}
-		var dmg []string
-		for _, d := range a.Damage {
-			part := fmt.Sprintf("%dd%d", d.Dice.Count, d.Dice.Sides)
-			if d.Dice.Count == 0 {
-				part = strconv.Itoa(d.Dice.Bonus)
-			} else if d.Dice.Bonus > 0 {
-				part += fmt.Sprintf(" + %d", d.Dice.Bonus)
-			} else if d.Dice.Bonus < 0 {
-				part += fmt.Sprintf(" - %d", -d.Dice.Bonus)
-			}
-			dmg = append(dmg, part+" de "+d.TypeNamePT)
-		}
-		reach := "alcance " + metersPT(int32(a.Attack.ReachFt))
-		if !a.Attack.Melee {
-			reach = "alcance " + metersPT(int32(a.Attack.RangeFt))
-			if a.Attack.LongRangeFt > 0 {
-				reach += " / " + metersPT(int32(a.Attack.LongRangeFt))
-			}
-		}
-		name := a.NamePT
-		if name == "" {
-			name = a.Name
-		}
-		parts := []string{fmt.Sprintf("%s: %+d", name, a.Attack.Bonus)}
-		if len(dmg) > 0 {
-			parts = append(parts, strings.Join(dmg, " + "))
-		}
-		parts = append(parts, reach)
 		if out == nil {
 			out = map[string]string{}
 		}
-		out[o.Key] = strings.Join(parts, " · ")
+		out[o.Key] = attackDetailPT(a)
 	}
 	return out
+}
+
+// attackDetailPT is the line of an action with an attack roll: its name, attack bonus, damage and reach.
+func attackDetailPT(a rules.ActionPlan) string {
+	name := cmp.Or(a.NamePT, a.Name)
+	parts := []string{fmt.Sprintf("%s: %+d", name, a.Attack.Bonus)}
+	var dmg []string
+	for _, d := range a.Damage {
+		dmg = append(dmg, damageDiceText(d.Dice)+" de "+d.TypeNamePT)
+	}
+	if len(dmg) > 0 {
+		parts = append(parts, strings.Join(dmg, " + "))
+	}
+	parts = append(parts, "alcance "+attackReachPT(a.Attack))
+	return strings.Join(parts, " · ")
+}
+
+// damageDiceText writes a damage part's dice: "2d8 + 8", "1d6 - 1", or a flat "5".
+func damageDiceText(d rules.DiceFormula) string {
+	if d.Count == 0 {
+		return strconv.Itoa(d.Bonus)
+	}
+	text := fmt.Sprintf("%dd%d", d.Count, d.Sides)
+	switch {
+	case d.Bonus > 0:
+		text += fmt.Sprintf(" + %d", d.Bonus)
+	case d.Bonus < 0:
+		text += fmt.Sprintf(" - %d", -d.Bonus)
+	}
+	return text
+}
+
+// attackReachPT is a melee attack's reach in meters, or a ranged attack's range ("18 m / 72 m").
+func attackReachPT(a *rules.ActionAttack) string {
+	if a.Melee {
+		return metersPT(int32(a.ReachFt))
+	}
+	text := metersPT(int32(a.RangeFt))
+	if a.LongRangeFt > 0 {
+		text += " / " + metersPT(int32(a.LongRangeFt))
+	}
+	return text
 }
 
 // creatureLimits are the limited actions of the creatures of a stat block that the viewer reads: all of them for the

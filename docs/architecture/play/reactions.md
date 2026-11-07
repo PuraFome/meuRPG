@@ -84,13 +84,13 @@ The opportunity attack is `RollAttack` with `as_reaction`: a melee attack off tu
 
 ## Parry
 
-The server decides an NPC's Parry on its own, with no window (`autoParry`, `combat_parry_auto.go`).
+The server decides an NPC's Parry on its own, with no window.
 A window would tell the players, by the wait, which NPCs have a reaction (RN-10).
 The decision is made where the attack is resolved, before the attack's event is written.
 It parries when a melee weapon attack hits an NPC whose stat block has Parry and the Parry's bonus turns the hit into a miss.
 That is, the attack total is below the armor class the hit was compared with plus the bonus.
 That armor class includes cover, an active Shield spell and an effect's armor class bonus.
-Then the server spends the creature's reaction (`spendReaction`) and the attack is a miss: no pending damage opens and no rider is offered.
+Then the server spends the creature's reaction and the attack is a miss: no pending damage opens and no rider is offered.
 The attack reads as a miss to a player, plus one line of the Parry.
 When the bonus would not turn the hit, nothing happens: the hit goes on to its damage, the reaction stays free and nothing waits.
 A critical hit is never parried: it hits whatever the armor class.
@@ -109,7 +109,7 @@ The server parries when all of this holds:
 
 The app does not know what the creature wields, so it takes it that the creature wields a melee weapon.
 The Parry's line is a `reaction_used` event (`reaction.auto`, no pending damage) written just before the attack's own event, and the attack's event keeps it (`parried`).
-The undo of the attack gives the reaction back and takes the line along (`UndoneAlso`).
+The undo of the attack gives the reaction back, and takes the line along.
 The line is never an action of its own to undo.
 
 ### "Perguntar"

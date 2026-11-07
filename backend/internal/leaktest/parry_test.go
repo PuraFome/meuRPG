@@ -15,7 +15,7 @@ import (
 // A Knight's Parry (SRD 5.1, RN-20, RN-31) is decided by the server, with no window: a hit that the bonus does not turn
 // goes on exactly as against a creature with no Parry (no wait, no window, no reaction status), and a hit it turns is a
 // miss that the players read with one line ("aparou o ataque.") and no number. When the master asks to be asked
-// (SetMonsterReactionMode), a melee hit on the creature waits for him as before: a player reads "Esperando o mestre" and,
+// (SetMonsterReactionMode), a melee hit on the creature waits for him: a player reads "Esperando o mestre" and,
 // after the answer, an ordinary miss. The mode is the master's alone. The master reads everything (the positive controls).
 
 // parryWords are what no player reads of a Parry, before or after it is used: "aparou" is the players' line of an

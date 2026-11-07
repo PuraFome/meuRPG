@@ -897,7 +897,9 @@ The save a spell's area (for example Moonbeam or Spirit Guardians) asks of such 
 A player reads the wait and then a save that passed or failed, never the roll, the uses or the trait (RN-20).
 A creature without the trait or without a use left is rolled at once.
 A monster with a Parry reaction (Bandit Captain, Erinyes, Gladiator, Knight, Marilith, Noble) can add 2 to 5 to its armor class against one melee weapon attack that would hit it (RN-31).
-The server decides the Parry on its own, with no window, so that a wait never tells the players which NPCs have the reaction (RN-10): when the bonus turns a hit into a miss it is a miss and the players read a miss plus the line "<name> aparou o ataque.", with no number, when they see both the creature and the attacker; when it would not, nothing changes and nothing waits.
+The server decides the Parry on its own, with no window, so that a wait never tells the players which NPCs have the reaction (RN-10).
+When the bonus turns a hit into a miss it is a miss, and the players read a miss plus the line "<name> aparou o ataque.", with no number, when the master has hidden neither the creature nor the attacker from them.
+When it would not, nothing changes and nothing waits.
 The master reads the numbers in the log, and can switch a creature to "Perguntar" to answer for it in a window; the player never reads the mode, the bonus or the armor class (RN-20).
 Its other reactions (Split, Shriek, Rock Catching, Unnerving Mask...) are text on the creature sheet that the app does not resolve.
 A creature with legendary actions (SRD 5.1) has 3 a round, as the SRD gives every legendary creature.

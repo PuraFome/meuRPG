@@ -41,7 +41,7 @@ Initiative, turn order and reinforcements are not log lines.
 | A casting that touches a hidden one | Yes, with `hidden` on | No line |
 | The amount the master applied in place of the rolled one | Both | Only what the character took |
 | The reaction notice (Shield) | All, with the attacker | Only their own character's, without the attacker and the blow's total |
-| An NPC's Parry used by the server | The line "<name> aparou (+N CA): T contra CA A, o ataque errou." (`COMBAT_LOG_KIND_REACTION_WINDOW`), and the attack's own line, a plain miss | The line "<name> aparou o ataque." when they see the creature and the attacker, with no number, and the attack's own line, a plain miss |
+| An NPC's Parry used by the server | The line "<name> aparou (+N CA): T contra CA A, o ataque errou." (`COMBAT_LOG_KIND_REACTION_WINDOW`), and the attack's own line, a plain miss | The line "<name> aparou o ataque." when the master has hidden neither the creature nor the attacker from them, with no number, and the attack's own line, a plain miss |
 | An NPC's Parry answered in a window ("Perguntar") | The line "<name> aparou (+N CA)" with the total and the armor class, and the attack's line stopped by a reaction (`stopped_by_reaction`) | No line of the reaction; the attack's line is a plain miss (`stopped_by_reaction` unset, no armor class), or a hit when Parry did not turn it |
 | A Parry that changed nothing | No line | No line |
 | Conditions | All | Those of the combatants they see |

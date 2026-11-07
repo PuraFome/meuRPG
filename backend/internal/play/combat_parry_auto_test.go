@@ -9,7 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// An NPC's Parry is decided by the server, with no window (RN-10, RN-31, issue #557). These tests need the database
+// An NPC's Parry is decided by the server, with no window (RN-10, RN-31). These tests need the database
 // (MEURPG_TEST_DATABASE_URL). Toren attacks with +6 to hit; the Knight's armor class is 18 and its Parry adds 2.
 
 const (
@@ -271,7 +271,7 @@ func TestParryAuto_UndoOfTheAttackGivesTheReactionBack(t *testing.T) {
 	}
 }
 
-// "Perguntar": the creature asked for opens the window as before, for the hit that Parry turns and for the one it does not.
+// "Perguntar": the creature asked for opens the window, for the hit that Parry turns and for the one it does not.
 func TestParryAuto_AskModeOpensTheWindow(t *testing.T) {
 	t.Parallel()
 	a, e := autoParryFight(t, knightKey, knight)
