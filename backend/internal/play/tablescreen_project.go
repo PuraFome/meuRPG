@@ -74,7 +74,6 @@ func (s *Service) projectImage(ctx context.Context, tv authz.Membership, session
 // projectScene copies the scene open to the whole table: its name and description, and the NPCs the table
 // sees on the stage. It reads the point and the shown stage, not the player's OpenSceneInfo, which carries
 // actions, rolls and the group check of a player's character. A scene open to only some players has no body.
-// The scene has no image of its own a player reads, so image_url stays empty.
 func (s *Service) projectScene(ctx context.Context, tv authz.Membership, session playdb.GameSession, stage *playv1.TableScreenStage) error {
 	if session.OpenScenePointID == nil || !session.OpenSceneEveryone {
 		return nil
@@ -202,7 +201,7 @@ func tvLogLine(e *playv1.CombatLogEntry) (string, bool) {
 	actor, target := e.GetActorLabel(), e.GetTargetLabel()
 	what := ""
 	// A key with "@mesa" anywhere is table content (a spell, or an action of a table feature), which the master may
-	// have hidden. A stat-block action of an NPC has its key blanked by shownKey, so its name never gets here.
+	// have hidden. The name of a stat-block action of an NPC is the creature's own, as a player reads it.
 	if e.GetKeyNamePt() != "" && !rules.IsTableKeyAnywhere(e.GetKey()) {
 		what = e.GetKeyNamePt()
 	}
