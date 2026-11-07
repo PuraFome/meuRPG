@@ -43,7 +43,7 @@ func damageLinesOf(r reply, keys ...string) (mods, statBlocks int) {
 		if fd.Message() == nil || fd.IsMap() {
 			return
 		}
-		c := v.Message() // the answers are decoded dynamically: the messages are recognised by name
+		c := v.Message() // the answers are decoded dynamically: the messages are recognized by name
 		switch c.Descriptor().FullName() {
 		case "meurpg.rules.v1.TableCreatureDamageMod":
 			mods++
@@ -147,6 +147,7 @@ func TestTheDamageLinesOfATableCreatureAreItsHolderAndTheMastersAlone(t *testing
 	// check runs every row of the state and asserts the lines: the master reads them in the entry's body and in the stat
 	// block; Ana reads the stat block of what she holds; Caio reads no line anywhere.
 	check := func(t *testing.T, state string, holds map[string]bool) {
+		t.Helper()
 		got = newAnswers()
 		for _, key := range keys {
 			for _, r := range rows(key, holds[key]) {
