@@ -1240,8 +1240,11 @@ func (v playerView) stripSummon(m *rulesv1.TableSummon) {
 // playerSummonFields are the fields of a TableSummon a player reads: stripSummon copies these and no other.
 var playerSummonFields = map[string]bool{"creature_keys": true}
 
-// stripOption takes the hidden keys out of an option: its effects and what it requires.
+// stripOption takes the hidden keys out of an option: its effects, what it requires and the feature that offers it.
 func (v playerView) stripOption(b *rulesv1.TableOption) {
+	if v.hidden(b.GetOfferedBy()) {
+		b.OfferedBy = "" // a feature the players do not see is not named to them
+	}
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
 	if p := b.GetPrerequisite(); p != nil {
 		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)

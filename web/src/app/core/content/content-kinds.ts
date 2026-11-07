@@ -389,7 +389,7 @@ function supportParts(
     case 'tableFeat':
       return featSupport(body.value, nameOf);
     case 'tableOption':
-      return optionSupport(body.value.set, body.value.prerequisite, nameOf);
+      return optionSupport(body.value.set, body.value.prerequisite, nameOf, body.value.offeredBy);
     case 'tableClassFeature':
       return classFeatureSupport(
         body.value.classKey,

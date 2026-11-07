@@ -194,6 +194,7 @@ The editor menu offers the `score.<ability>` targets (mode `add`, with `cap`), t
 The key names the set and the set never changes (`table_option.set`, `immutable`); the slug is unique within the set, and the key may have up to 100 characters (migration 00281 widens `campaign_content_key_valid` and `campaign_content_off_key_valid`).
 `TableOption` is a feature (name, text, effects) plus `set` and an `OptionPrerequisite`; the engine side is in [Table content](rules-table-content.md#table-options).
 It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches` lists it with the kind), pack, "A classe mudou" notice ("A opção mudou") and player view as the other kinds; a player's copy drops a hidden class, option, pact or spell from the prerequisite and from the effects.
+A player's copy of an option leaves `offered_by` blank when the offering feature is hidden to the player, so no key of an archived class or subclass feature reaches a player.
 The choice engine reads it with the SRD options: `GetLevelUpOptions`, `PreviewChoices`, `CompleteCharacterChoices` and the sheet's own save list it in the choice of its set, blocked with its reason when the character lacks a prerequisite, and refuse a pick that does not qualify (`PREREQUISITE_UNMET`) or that the master switched off for the players (`SWITCHED_OFF_CONTENT`).
 
 ## Table class features

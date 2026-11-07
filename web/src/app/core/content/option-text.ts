@@ -40,6 +40,28 @@ export function optionKeyName(key: string, nameOf: KeyName): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** The name of the feature that offers an option ("Truques de lâmina (Guarda do Corvo)"): the catalog's, or the last word of a key it does not know. */
+export function offeringName(key: string, nameOf: KeyName): string {
+  const named = nameOf(key);
+  if (named !== key) {
+    return named;
+  }
+  const last =
+    key
+      .split('--')
+      .pop()
+      ?.split(':')
+      .pop()
+      ?.replace(/@mesa$/, '') ?? key;
+  const words = last.replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** What the set is, for a list row: "Opção de Truques de lâmina (Guarda do Corvo)" when the server names the offering feature, the set's name otherwise. */
+export function optionSetLine(set: string, offeredBy: string, nameOf: KeyName): string {
+  return offeredBy === '' ? optionSetName(set) : `Opção de ${offeringName(offeredBy, nameOf)}`;
+}
+
 /** The conditions of an option's prerequisite, one phrase each; none when it asks nothing. */
 export function optionPrerequisiteParts(
   p: OptionPrerequisite | undefined,
@@ -64,12 +86,16 @@ export function optionPrerequisiteParts(
   return out;
 }
 
-/** The one line of a list row: the set, then what the option asks. */
+/** The one line of a list row: the set, then what the option asks (nothing more when it asks nothing). */
 export function optionSupport(
   set: string,
   p: OptionPrerequisite | undefined,
   nameOf: KeyName,
+  offeredBy = '',
 ): string[] {
   const asks = optionPrerequisiteParts(p, nameOf);
-  return [optionSetName(set), asks.length > 0 ? `Exige ${asks.join(', ')}` : 'Sem pré-requisito'];
+  return [
+    optionSetLine(set, offeredBy, nameOf),
+    ...(asks.length > 0 ? [`Exige ${asks.join(', ')}`] : []),
+  ];
 }

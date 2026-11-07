@@ -49,9 +49,15 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
   'class feature other reason': ['table_class.levels[3].features[1]', 'bad_value'],
   'feat prerequisite': ['table_feat.prerequisite.minimums.strength', 'bad_value'],
   'spell damage dice': ['table_spell.damage[0].dice', 'bad_value'],
+  'option offered by, dangling': ['table_option.offered_by', 'dangling_reference'],
+  'option offered by, another set': ['table_option.offered_by', 'bad_value'],
 };
 
 const EXPECTED: Record<string, string> = {
+  'option offered by, dangling':
+    'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
+  'option offered by, another set':
+    'Só o conjunto "Opção de característica da mesa" tem característica que oferece. Tire esta.',
   'entry limit': 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
   'entry size': 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.',
   'entry overlay': 'O conteúdo da mesa não fecha com esta entrada. Confira o que ela usa.',

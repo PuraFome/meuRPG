@@ -198,6 +198,11 @@ export function menuResponse(): GetEffectMenuResponse {
             hintPt: 'Uma opção da Invocação mística do bruxo.',
           },
           { key: 'fighting_style', namePt: 'Estilo de luta' },
+          {
+            key: 'table_feature',
+            namePt: 'Opção de característica da mesa',
+            hintPt: 'As opções de uma característica de classe ou subclasse da mesa.',
+          },
         ],
       },
       {

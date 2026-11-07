@@ -18,11 +18,13 @@ export interface SelectOption<T extends string | number = string> {
   readonly value: T;
   readonly label: string;
   readonly disabled?: boolean;
+  /** The group the option sits in (an `<optgroup>`); options with the same group are listed together, in order. */
+  readonly group?: string;
 }
 
 /**
  * A native select in the app's outlined field (the same pattern as the trap panel): a real `<select>`, so the phone's own
- * picker opens, with the refusal of the server under it. Values are strings or numbers; `valueChange` gives back the
+ * picker opens, with the refusal of the server under it. Options may carry a `group`. Values are strings or numbers; `valueChange` gives back the
  * option's own value, not its text.
  */
 @Component({
@@ -36,13 +38,24 @@ export interface SelectOption<T extends string | number = string> {
         matNativeControl
         [attr.data-field]="path() || null"
         [attr.aria-describedby]="describedBy()"
+        [disabled]="disabled()"
         (change)="pick($any($event.target).selectedIndex)"
       >
         @if (placeholder()) {
           <option value="" [selected]="value() === ''" [disabled]="true">{{ placeholder() }}</option>
         }
-        @for (o of options(); track o.value) {
-          <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
+        @for (seg of segments(); track $index) {
+          @if (seg.group) {
+            <optgroup [label]="seg.group">
+              @for (o of seg.items; track o.value) {
+                <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
+              }
+            </optgroup>
+          } @else {
+            @for (o of seg.items; track o.value) {
+              <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
+            }
+          }
         }
       </select>
     </mat-form-field>
@@ -76,6 +89,8 @@ export class SelectField<T extends string | number = string> {
   readonly hint = input('');
   /** A disabled first option ("Escolha…") for a value that is not chosen yet. */
   readonly placeholder = input('');
+  /** The select cannot be opened (nothing to choose from). */
+  readonly disabled = input(false);
   readonly valueChange = output<T>();
 
   protected readonly noteId = `fn-s${nextId++}`;
@@ -83,6 +98,21 @@ export class SelectField<T extends string | number = string> {
   protected readonly describedBy = computed(() =>
     this.issues().length > 0 || this.hint() ? this.noteId : null,
   );
+
+  /** The options in runs of the same group, in order: an option with no group is drawn outside any `<optgroup>`. */
+  protected readonly segments = computed(() => {
+    const out: { group: string; items: SelectOption<T>[] }[] = [];
+    for (const o of this.options()) {
+      const group = o.group ?? '';
+      const last = out.at(-1);
+      if (last && last.group === group) {
+        last.items.push(o);
+      } else {
+        out.push({ group, items: [o] });
+      }
+    }
+    return out;
+  });
 
   private readonly control = viewChild<ElementRef<HTMLSelectElement>>('control');
 

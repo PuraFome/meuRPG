@@ -25,7 +25,7 @@ import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
 import { prerequisiteParts } from './feat-text';
 import { featureKeyName } from './class-feature-text';
-import { optionPrerequisiteParts, optionSetName } from './option-text';
+import { offeringName, optionPrerequisiteParts, optionSetName } from './option-text';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
   const choice =
@@ -108,6 +108,9 @@ function readOption(o: TableOption, nameOf: NameOf): EntryRead {
   const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
+    ...(o.offeredBy === ''
+      ? []
+      : [{ label: 'Oferecida por', value: offeringName(o.offeredBy, nameOf) }]),
     { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
   ];
   return { rows, sections: [], text: o.descPt };

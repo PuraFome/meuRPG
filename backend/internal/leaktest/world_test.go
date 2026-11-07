@@ -636,6 +636,12 @@ func (w *world) buildTableContent() {
 		case *rulesv1.TableCreature:
 			b.NamePt = w.secrets.marker(kind, readers...)
 			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: b}}
+		case *rulesv1.TableSubclass:
+			b.NamePt = w.secrets.marker(kind, readers...)
+			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: b}}
+		case *rulesv1.TableOption:
+			b.NamePt = w.secrets.marker(kind, readers...)
+			req = &rulesv1.CreateTableEntryRequest{CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableOption{TableOption: b}}
 		}
 		e := must(m.table.CreateTableEntry(ctx, rq(req))).GetEntry()
 		w.secrets.id(kind+"-key", e.GetKey(), readers...)
@@ -686,6 +692,19 @@ func (w *world) buildTableContent() {
 	archivedFeat := create("feat-archived", feat())
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedFeat.GetKey()})))
 	offFeat := create("feat-off", feat())
+	// An option offered by a feature of an archived subclass: the option is hidden with its offering feature, so neither the option,
+	// the feature's key nor the feature's name reaches a player.
+	archivedSubclass := create("subclass-archived", &rulesv1.TableSubclass{
+		ClassKey: "class:fighter",
+		Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{{
+			NamePt: w.secrets.marker("subclass-feature-name"), Effects: []*rulesv1.TableEffect{{Type: "choice", Choice: "feature", Count: 1}},
+			Options: []*rulesv1.TableFeature{{NamePt: w.secrets.marker("subclass-feature-option-name")}},
+		}}}},
+	})
+	offeredBy := archivedSubclass.GetTableSubclass().GetLevels()[0].GetFeatures()[0].GetKey()
+	w.secrets.id("subclass-feature", offeredBy)
+	create("option-offered-by-archived", &rulesv1.TableOption{Set: "table_feature", OfferedBy: offeredBy, DescPt: []string{w.secrets.marker("option-text")}})
+	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: archivedSubclass.GetKey()})))
 	offRace := create("race-off", race())
 	// Creatures. A table creature is the master's alone, whatever its state (RN-23), except to the
 	// player whose character holds one: that player reads the creature (its name, key, stat block with the trait,

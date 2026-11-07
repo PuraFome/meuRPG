@@ -20,6 +20,9 @@ import { paragraphs } from './spell-draft';
  * whether a character qualifies is the server's, which lists the option blocked with what it lacks.
  */
 
+/** The set whose options join the option list of a class or subclass feature of the table. */
+export const TABLE_FEATURE_SET = 'table_feature';
+
 export type OptionInit = MessageInitShape<typeof TableOptionSchema>;
 
 export interface OptionDraft {
@@ -81,7 +84,7 @@ export function draftToOption(d: OptionDraft, menu: EffectMenuVm): OptionInit {
     namePt: d.feature.name.trim(),
     descPt: paragraphs(d.feature.text),
     set: d.set,
-    offeredBy: d.offeredBy,
+    offeredBy: d.set === TABLE_FEATURE_SET ? d.offeredBy : '',
     prerequisite: {
       ...(classLevel ? { classLevel } : {}),
       requiresOptionKeys: [...d.requiresOptions],
@@ -99,6 +102,7 @@ export function optionPaths(d: OptionDraft, menu: EffectMenuVm): string[] {
     `${p}.name_pt`,
     `${p}.desc_pt`,
     `${p}.set`,
+    ...(d.set === TABLE_FEATURE_SET ? [`${p}.offered_by`] : []),
     `${p}.prerequisite`,
     `${p}.prerequisite.class_level`,
     `${p}.prerequisite.class_level.class_key`,
@@ -135,6 +139,13 @@ export const OFFERERS: Readonly<Record<string, readonly string[]>> = {
   multiattack: ['feature:multiattack'],
   superior_hunters_defense: ['feature:superior-hunters-defense'],
 };
+
+/** The path of the offering feature while the set asks for one and none is chosen. */
+export const OFFERED_BY_PATH = 'table_option.offered_by';
+
+export function missingOfferingPaths(d: OptionDraft): string[] {
+  return d.set === TABLE_FEATURE_SET && d.offeredBy === '' ? [OFFERED_BY_PATH] : [];
+}
 
 /** The paths of the option's number fields whose text is no whole number. */
 export function unreadableOptionPaths(d: OptionDraft, menu: EffectMenuVm): string[] {

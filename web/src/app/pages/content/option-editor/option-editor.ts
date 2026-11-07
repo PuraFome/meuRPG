@@ -12,6 +12,7 @@ import {
   untracked,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 
 import {
   type TableEntry,
@@ -22,16 +23,20 @@ import { type EntryBody, TableContentClient } from '../../../core/content/conten
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import type { FeatureDraft } from '../../../core/content/feature-draft';
+import { type OfferingFeature, offeringFeatures } from '../../../core/content/offering-features';
 import {
+  OFFERED_BY_PATH,
   OFFERERS,
   type OptionDraft,
+  TABLE_FEATURE_SET,
   draftToOption,
   emptyOption,
+  missingOfferingPaths,
   optionPaths,
   optionToDraft,
   unreadableOptionPaths,
 } from '../../../core/content/option-draft';
-import { optionSetName } from '../../../core/content/option-text';
+import { offeringName, optionSetName } from '../../../core/content/option-text';
 import { previewRead } from '../../../core/content/preview';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { PickList } from '../../../shared/form-fields/pick-list';
@@ -41,6 +46,9 @@ import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import type { EditorSaved } from '../spell-editor/spell-editor';
+
+/** How many of the feature's options the side line names before "...". */
+const LISTED_OPTIONS = 3;
 
 /**
  * The table option editor (MR-025): an option for one of the SRD's option sets (an invocation, a Metamagic option, a fighting
@@ -59,6 +67,7 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
     MatIconModule,
     PickList,
     PlayersSwitch,
+    RouterLink,
     SelectField,
     TextField,
   ],
@@ -105,6 +114,60 @@ export class OptionEditor {
         .find((s) => s.key === this.draft().set)?.hintPt ?? '',
   );
   protected readonly setName = computed(() => optionSetName(this.draft().set));
+  protected readonly isTableFeature = computed(() => this.draft().set === TABLE_FEATURE_SET);
+  /** The table's class and subclass features that have an option list of their own, by owner. */
+  private readonly offerers = computed<OfferingFeature[]>(() =>
+    offeringFeatures(this.entries()).sort(
+      (a, b) =>
+        a.owner.localeCompare(b.owner, 'pt-BR') ||
+        a.level - b.level ||
+        a.name.localeCompare(b.name, 'pt-BR'),
+    ),
+  );
+  protected readonly offeredOptions = computed<SelectOption[]>(() => {
+    const chosen = this.draft().offeredBy;
+    const rows = this.offerers().map((f) => ({
+      value: f.key,
+      label: `${f.name} · nível ${f.level} · ${f.options.length} ${f.options.length === 1 ? 'opção' : 'opções'}`,
+      group:
+        f.ownerKind === 'subclass'
+          ? `${f.owner} · subclasse de ${this.catalog().nameOf(f.classKey)}`
+          : `${f.owner} · classe da mesa`,
+    }));
+    // A saved choice that is no longer on the list stays on screen, so the refusal lands on what the master sees.
+    return chosen !== '' && !rows.some((r) => r.value === chosen)
+      ? [{ value: chosen, label: offeringName(chosen, (k) => this.nameOf(k)) }, ...rows]
+      : rows;
+  });
+  protected readonly noOfferer = computed(() => this.offeredOptions().length === 0);
+  /** The feature the draft names, when the entries have it. */
+  protected readonly offering = computed(() =>
+    this.offerers().find((f) => f.key === this.draft().offeredBy),
+  );
+  protected readonly offeringHint = computed(() => {
+    const f = this.offering();
+    if (!f) {
+      return 'Só as características com lista de opções própria ("Opções para escolher").';
+    }
+    const of =
+      f.ownerKind === 'subclass'
+        ? `${f.owner} · subclasse de ${this.catalog().nameOf(f.classKey)}`
+        : `${f.owner} · classe da mesa`;
+    return `${of} · nível ${f.level}`;
+  });
+  protected readonly offeringList = computed(() => {
+    const f = this.offering();
+    if (!f) {
+      return '';
+    }
+    const first = f.options.slice(0, LISTED_OPTIONS).join(', ');
+    return `Entra na lista com ${first}${f.options.length > LISTED_OPTIONS ? '...' : ''}`;
+  });
+  protected readonly offeringLink = computed(() => {
+    const f = this.offering();
+    return f ? ['/campaigns', this.campaignId(), 'content', 'entries', f.ownerKey] : null;
+  });
+  protected readonly subclassesLink = computed(() => ['/campaigns', this.campaignId(), 'content']);
   protected readonly classOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'Nenhuma' },
     ...this.catalog().classes,
@@ -153,6 +216,7 @@ export class OptionEditor {
           e?.body.case === 'tableOption' ? optionToDraft(e.body.value) : emptyOption(),
         );
         this.saver.clear();
+        this.missingShown.set(false);
       });
     });
   }
@@ -169,6 +233,10 @@ export class OptionEditor {
   }
 
   private nameOf(key: string): string {
+    const offerer = this.offerers().find((f) => f.key === key);
+    if (offerer) {
+      return `${offerer.name} (${offerer.owner})`;
+    }
     const named = this.catalog().nameOf(key);
     if (named !== key) {
       return named;
@@ -181,11 +249,33 @@ export class OptionEditor {
     this.draft.update((d) => ({ ...d, ...p }));
   }
 
+  /** Another set has no offering feature: the choice is dropped with the set. */
+  protected chooseSet(set: string): void {
+    this.patch(set === TABLE_FEATURE_SET ? { set } : { set, offeredBy: '' });
+    this.missingShown.set(false);
+  }
+
+  protected chooseOffering(offeredBy: string): void {
+    this.patch({ offeredBy });
+    this.missingShown.set(false);
+  }
+
+  /** "Escolha a característica..." shows once a save was tried without one. */
+  private readonly missingShown = signal(false);
+  private static readonly MISSING_TEXT = 'Escolha a característica que oferece a opção.';
+
   protected setFeature(feature: FeatureDraft): void {
     this.patch({ feature });
   }
 
-  protected readonly issuesOf = (path: string): readonly string[] => this.saver.issues(path);
+  protected readonly issuesOf = (path: string): readonly string[] => [
+    ...this.saver.issues(path),
+    ...(path === OFFERED_BY_PATH &&
+    this.missingShown() &&
+    missingOfferingPaths(this.draft()).length > 0
+      ? [OptionEditor.MISSING_TEXT]
+      : []),
+  ];
 
   private readonly known = (path: string): boolean =>
     optionPaths(this.draft(), this.menu()).includes(path);
@@ -194,9 +284,12 @@ export class OptionEditor {
     if (this.saver.saving() || this.saveBlocked()) {
       return;
     }
+    const missing = missingOfferingPaths(this.draft());
+    this.missingShown.set(missing.length > 0);
     if (
-      this.saver.blockOn(unreadableOptionPaths(this.draft(), this.menu()), (path) =>
-        focusAfterRender(this.host.nativeElement, this.injector, path),
+      this.saver.blockOn(
+        [...missing, ...unreadableOptionPaths(this.draft(), this.menu())],
+        (path) => focusAfterRender(this.host.nativeElement, this.injector, path),
       )
     ) {
       return;

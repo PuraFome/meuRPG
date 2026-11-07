@@ -100,6 +100,34 @@ describe('form fields', () => {
     expect(host().school()).toBe('c');
   });
 
+  it('select field: draws the options of a group in an optgroup and still gives back the option by its place', () => {
+    TestBed.resetTestingModule();
+    const f = TestBed.createComponent(SelectField);
+    f.componentRef.setInput('label', 'Característica');
+    f.componentRef.setInput('value', '');
+    f.componentRef.setInput('placeholder', 'Escolha…');
+    f.componentRef.setInput('options', [
+      { value: 'a', label: 'Alfa', group: 'Um' },
+      { value: 'b', label: 'Beta', group: 'Um' },
+      { value: 'c', label: 'Gama', group: 'Dois' },
+    ]);
+    f.detectChanges();
+    const select = (f.nativeElement as HTMLElement).querySelector('select')!;
+    expect(Array.from(select.querySelectorAll('optgroup')).map((g) => g.label)).toEqual([
+      'Um',
+      'Dois',
+    ]);
+    expect(select.querySelectorAll('optgroup')[0].querySelectorAll('option')).toHaveLength(2);
+    let got = '';
+    f.componentInstance.valueChange.subscribe((v) => (got = String(v)));
+    select.selectedIndex = 3;
+    select.dispatchEvent(new Event('change'));
+    expect(got).toBe('c');
+    f.componentRef.setInput('disabled', true);
+    f.detectChanges();
+    expect(select.disabled).toBe(true);
+  });
+
   it('pick list: chips with a 44 px remove button, and a select for the values still free', () => {
     const list = el.querySelector('app-pick-list')!;
     expect(text(list)).toContain('Alfa');

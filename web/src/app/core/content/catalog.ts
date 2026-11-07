@@ -1,6 +1,7 @@
 import { Ability, type Content } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SelectOption } from '../../shared/form-fields/select-field';
+import { offeringFeatures } from './offering-features';
 import { circleLabel } from './spell-options';
 
 /**
@@ -63,6 +64,10 @@ function nameIndex(content: Content, entries: readonly TableEntry[]): Map<string
   for (const s of content.skills) names.set(s.key, s.namePt);
   for (const s of content.spells) names.set(s.key, s.namePt);
   for (const e of entries) names.set(e.key, e.namePt);
+  // A feature with an option list is named with its owner ("Truques de lâmina (Guarda do Corvo)"): only an option points at it.
+  for (const e of entries) {
+    for (const f of offeringFeatures([e])) names.set(f.key, `${f.name} (${f.owner})`);
+  }
   // What a table entry points at that is not an entry: the server names it for every member (a player has no menu).
   for (const n of content.languages) names.set(n.key, n.namePt);
   for (const n of content.proficiencies) names.set(n.key, n.namePt);
