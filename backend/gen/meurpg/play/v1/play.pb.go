@@ -4218,8 +4218,8 @@ type WatchGameSessionResponse_TableScreenChanged struct {
 	// The revision of the master's choice (SetTableScreen), so the panel reads it again only when it
 	// is newer than the one it holds.
 	ChoiceRevision int32 `protobuf:"varint,3,opt,name=choice_revision,json=choiceRevision,proto3" json:"choice_revision,omitempty"`
-	// True when `open` and `lost_at` were counted for this event; false when the event is only a
-	// change of the choice, and the panel keeps the presence it last heard.
+	// True when a TV tab connected or left and `open` and `lost_at` were counted for this event; false
+	// when the event is only a change of the choice, and the panel keeps the presence it last heard.
 	PresenceKnown bool `protobuf:"varint,4,opt,name=presence_known,json=presenceKnown,proto3" json:"presence_known,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

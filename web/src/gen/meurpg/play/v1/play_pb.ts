@@ -1773,8 +1773,8 @@ export type WatchGameSessionResponse_TableScreenChanged = Message<"meurpg.play.v
   choiceRevision: number;
 
   /**
-   * True when `open` and `lost_at` were counted for this event; false when the event is only a
-   * change of the choice, and the panel keeps the presence it last heard.
+   * True when a TV tab connected or left and `open` and `lost_at` were counted for this event; false
+   * when the event is only a change of the choice, and the panel keeps the presence it last heard.
    *
    * @generated from field: bool presence_known = 4;
    */

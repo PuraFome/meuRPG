@@ -803,6 +803,10 @@ func (noDice) ForcedDice(context.Context, pgx.Tx, string, string) (DiceForce, er
 
 type noCampaigns struct{}
 
+func (noCampaigns) CampaignName(context.Context, pgx.Tx, string) (string, error) {
+	return "", errors.New("not in this test")
+}
+
 func (noCampaigns) ActiveCampaigns(context.Context, string) ([]*campaignsv1.Campaign, error) {
 	return nil, errors.New("not in this test")
 }

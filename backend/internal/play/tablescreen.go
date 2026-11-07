@@ -37,26 +37,28 @@ func (s *Service) GetTableScreen(
 	if err != nil {
 		return nil, err
 	}
-	var session playdb.GameSession
-	var facts tvFacts
-	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+	var (
+		session playdb.GameSession
+		facts   tvFacts
+		name    string
+		party   []string
+	)
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error { // one snapshot for the whole response
 		var err error
 		if session, err = openSessionWith(ctx, s.queriesIn(tx), m.CampaignID); err != nil {
 			return err
 		}
-		facts, err = s.tvFactsOf(ctx, tx, session)
+		if facts, err = s.tvFactsOf(ctx, tx, session); err != nil {
+			return err
+		}
+		if name, err = s.campaigns.CampaignName(ctx, tx, m.CampaignID); err != nil {
+			return err
+		}
+		party, err = s.partyNames(ctx, tx, m.CampaignID)
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "read the table screen", err)
-	}
-	name, err := s.campaignNameOf(ctx, m)
-	if err != nil {
-		return nil, err
-	}
-	party, err := s.partyNames(ctx, m.CampaignID)
-	if err != nil {
-		return nil, err
 	}
 	choice := tvChoiceOf(session)
 	pick := resolveStage(choice, facts)
@@ -83,26 +85,12 @@ func projectStageBody(stage *playv1.TableScreenStage) {
 	}
 }
 
-// campaignNameOf is the name of the master's campaign.
-func (s *Service) campaignNameOf(ctx context.Context, m authz.Membership) (string, error) {
-	campaigns, err := s.campaigns.ActiveCampaigns(ctx, m.UserID)
-	if err != nil {
-		return "", s.dbError(ctx, "read the campaign's name", err)
-	}
-	for _, c := range campaigns {
-		if c.GetId() == m.CampaignID {
-			return c.GetName(), nil
-		}
-	}
-	return "", connect.NewError(connect.CodeNotFound, errors.New("campaign not found"))
-}
-
 // partyNames are the names of the living player characters: nobody dead, no NPC, no character waiting
 // for the master's approval (CombatParty lists only the living, active ones).
-func (s *Service) partyNames(ctx context.Context, campaignID string) ([]string, error) {
-	party, err := s.roster.CombatParty(ctx, nil, campaignID)
+func (s *Service) partyNames(ctx context.Context, tx pgx.Tx, campaignID string) ([]string, error) {
+	party, err := s.roster.CombatParty(ctx, tx, campaignID)
 	if err != nil {
-		return nil, s.dbError(ctx, "list the party", err)
+		return nil, err
 	}
 	names := make([]string, 0, len(party))
 	for _, c := range party {
@@ -128,8 +116,10 @@ func (s *Service) tvFactsOf(ctx context.Context, tx pgx.Tx, session playdb.GameS
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return f, err
 	}
-	f.CombatActive = err == nil && enc.Status == "active"
+	f.CombatActive = err == nil && enc.Status == statusActive
 	if session.OpenScenePointID != nil {
+		// Only whether the point is still a scene: ScenePoint also loads the master's hooks and clues, which are
+		// dropped here and never reach the TV.
 		_, err := s.maps.ScenePoint(ctx, tx, session.CampaignID, *session.OpenScenePointID)
 		if err != nil && connect.CodeOf(err) != connect.CodeNotFound { // not found: the point stopped being a scene
 			return f, err

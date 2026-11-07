@@ -1640,8 +1640,8 @@ message WatchGameSessionResponse {
     // The revision of the master's choice (SetTableScreen), so the panel reads it again only when it
     // is newer than the one it holds.
     int32 choice_revision = 3;
-    // True when `open` and `lost_at` were counted for this event; false when the event is only a
-    // change of the choice, and the panel keeps the presence it last heard.
+    // True when a TV tab connected or left and `open` and `lost_at` were counted for this event; false
+    // when the event is only a change of the choice, and the panel keeps the presence it last heard.
     bool presence_known = 4;
   }
 

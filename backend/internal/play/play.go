@@ -447,6 +447,8 @@ type CampaignDirectory interface {
 	// ActiveCampaigns returns the campaigns userID is an active member of
 	// (never a pending one), with their name and the user's role (my_role).
 	ActiveCampaigns(ctx context.Context, userID string) ([]*campaignsv1.Campaign, error)
+	// CampaignName returns the campaign's name, read in tx (nil: the pool).
+	CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
 }
 
 // The live stream's timing (docs/operations/README.md). Tests shorten them through

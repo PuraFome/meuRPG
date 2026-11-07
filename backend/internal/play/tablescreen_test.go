@@ -193,3 +193,35 @@ func TestGetTableScreenFollowsTheTable(t *testing.T) {
 		t.Errorf("mirroring with the combat on: stage = %v, want the combat", got.GetStage().GetKind())
 	}
 }
+
+func TestSetTableScreenAtTheSameRevisionHasOneWinner(t *testing.T) {
+	a := newArmed(t)
+	const writers = 4
+	errs := make(chan error, writers)
+	for i := range writers {
+		pin := tvPinnable[i%len(tvPinnable)]
+		go func() {
+			_, err := a.setScreen(a.master, 0, false, pin)
+			errs <- err
+		}()
+	}
+	wins, stale := 0, 0
+	for range writers {
+		switch err := <-errs; connect.CodeOf(err) {
+		case connect.CodeUnknown: // no error
+			if err == nil {
+				wins++
+			}
+		case connect.CodeAborted:
+			stale++
+		default:
+			t.Errorf("SetTableScreen error = %v, want none or aborted", err)
+		}
+	}
+	if wins != 1 || stale != writers-1 {
+		t.Errorf("%d won and %d were refused as stale, want 1 and %d", wins, stale, writers-1)
+	}
+	if got := a.mustGetScreen(t); got.GetChoiceRevision() != 1 {
+		t.Errorf("revision = %d, want 1", got.GetChoiceRevision())
+	}
+}
