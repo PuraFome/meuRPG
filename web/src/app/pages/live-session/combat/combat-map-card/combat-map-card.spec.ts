@@ -6,7 +6,9 @@ import { create } from '@bufbuild/protobuf';
 import {
   CombatantKind,
   CombatantSide,
+  EncounterMode,
   HiddenRevealQuestionSchema,
+  SunlightScope,
   SpellZoneVisibility,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, spellZone } from '../../../../core/combat/combat-testing';
@@ -464,5 +466,88 @@ describe("CombatMapCard: the master's offer rings on a phone", () => {
     // The window starts one square before the mover (column 3 of 20: 10%), not at the first candidate.
     expect(col(offer)).toBeCloseTo(-10);
     expect(col(target)).toBeLessThan(col(offer));
+  });
+});
+
+describe('CombatMapCard, the sun (#704)', () => {
+  const buttons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('app-sunlight-controls button'));
+  const named = (el: HTMLElement, text: string) =>
+    buttons(el).find((b) => plain(b.textContent) === text);
+  const lit = (extra: Record<string, unknown> = {}) =>
+    encounter({
+      currentCombatantId: 'p',
+      sunlightOn: true,
+      sunlightScope: SunlightScope.SQUARES,
+      sunlightSquares: [{ col: 1, row: 1 }],
+      combatants: [combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER })],
+      ...extra,
+    } as never);
+
+  it('has no controls while the sun is off', () => {
+    const { el } = mount();
+    expect(el.querySelector('app-sunlight-controls')).toBeNull();
+  });
+
+  it('has none for a player, and none for a combat without a map', () => {
+    expect(
+      mount({ encounter: lit(), isMaster: false }).el.querySelector('app-sunlight-controls'),
+    ).toBeNull();
+    const theatre = mount({ encounter: lit({ mode: EncounterMode.THEATRE }) });
+    expect(theatre.el.querySelector('app-sunlight-controls')).toBeNull();
+  });
+
+  it('offers the scope and "Pintar" while the sun is on over squares', () => {
+    const { el } = mount({ encounter: lit() });
+    expect(el.querySelector('[role="radiogroup"]')).not.toBeNull();
+    expect(named(el, 'Onde eu pintar')!.getAttribute('aria-checked')).toBe('true');
+    expect(named(el, 'Todo o mapa')!.getAttribute('aria-checked')).toBe('false');
+    expect(el.querySelector('.sc__start')).not.toBeNull();
+  });
+
+  it('has no "Pintar" for the whole map, and asks for a scope', () => {
+    const { fixture, el } = mount({ encounter: lit({ sunlightScope: SunlightScope.MAP }) });
+    const asked = vi.fn();
+    fixture.componentInstance.sunlightChange.subscribe(asked);
+    expect(el.querySelector('.sc__start')).toBeNull();
+    named(el, 'Onde eu pintar')!.click();
+    expect(asked).toHaveBeenCalledWith({ scope: SunlightScope.SQUARES });
+  });
+
+  it('enters paint mode with the tool, the count and "Pronto"', () => {
+    const { fixture, el } = mount({ encounter: lit() });
+    el.querySelector<HTMLButtonElement>('.sc__start')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.painting()).toBe(true);
+    expect(plain(el.querySelector('.sc__status')!.textContent)).toBe(
+      'Pintando luz do sol · 1 quadrado',
+    );
+    expect(el.querySelector('.sl__pad')).not.toBeNull();
+    el.querySelector<HTMLButtonElement>('[aria-label^="Apagar"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[aria-label^="Apagar"]')!.getAttribute('aria-pressed')).toBe('true');
+    el.querySelector<HTMLButtonElement>('.sc__done')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.painting()).toBe(false);
+    expect(el.querySelector('.sl__pad')).toBeNull();
+  });
+
+  it('leaves paint mode when the sun goes off', () => {
+    const { fixture } = mount({ encounter: lit() });
+    fixture.componentRef.setInput('painting', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('encounter', lit({ sunlightOn: false }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.painting()).toBe(false);
+  });
+
+  it('names the sun in the legend for squares and for the whole map, only for the master', () => {
+    const legend = (el: HTMLElement) => plain(el.querySelector('.legend')?.textContent);
+    expect(legend(mount({ encounter: lit() }).el)).toContain('Luz do sol (só você vê)');
+    expect(legend(mount({ encounter: lit({ sunlightScope: SunlightScope.MAP }) }).el)).toContain(
+      'Luz do sol (só você vê)',
+    );
+    expect(legend(mount().el)).not.toContain('Luz do sol');
+    expect(legend(mount({ encounter: lit(), isMaster: false }).el)).not.toContain('Luz do sol');
   });
 });
