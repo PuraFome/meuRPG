@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 45 histórias: 43 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
+O MVP tem 46 histórias: 44 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
 Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam.
@@ -68,6 +68,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-053](#mr-053-o-mestre-age-pelo-personagem-de-um-jogador) | Combate | MVP |
 | [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela) | Combate | MVP |
 | [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
+| [MR-056](#mr-056-mostrar-a-mesa-em-uma-tela) | Sessão | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1690,6 +1691,38 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela), [RN-40](regras.md#rn-40-efeito-extra-no-acerto-de-uma-criatura).
+
+### MR-056: Mostrar a mesa em uma tela
+
+**Como** mestre, **quero** abrir a mesa em uma tela que a mesa toda olha (uma TV) e escolher o que ela mostra, **para que** todos acompanhem o mapa, o combate, a cena ou a imagem sem se debruçar sobre um celular.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-20, RN-36
+- Módulos: play, maps
+
+#### Critérios de aceitação
+- **Dado** uma sessão aberta, **quando** o mestre aperta "Abrir a Tela da mesa", **então** a tela abre em uma aba nova do navegador do mestre, para arrastar até a TV; **dado** que nada está na mesa, **então** ela diz "Nada à mostra ainda" com os nomes dos personagens da mesa.
+- **Dado** a aba da TV, **então** ela mostra só o que todo jogador pode ler (RN-10): o mapa como o grupo o vê, a ordem com uma palavra de estado no lugar dos pontos de vida (RN-20), as linhas do registro que todo jogador lê, as rolagens livres feitas para a mesa, a cena e a imagem mostradas à mesa toda. Ela nunca mostra pontos de vida, classe de armadura, um NPC escondido, as notas do mestre, ganchos, pistas e CDs, uma rolagem "Só eu" nem a conversa (RN-36).
+- **Dado** que "Espelhar o que eu mostro" está escolhido (é o padrão), **então** a TV mostra o primeiro que houver: uma imagem mostrada à mesa toda, o combate, uma cena aberta a todos, o mapa, a tela de espera; e acompanha cada mudança do mestre, sem recarregar.
+- **Dado** que o mestre escolhe uma linha de "Fixar" (o mapa, uma imagem, a cena, o combate ou a tela de espera), **então** a TV mostra esse item, seja o que for que esteja na mesa, e o painel diz "Na TV agora" com o nome dele e "fixa".
+- **Dado** que a mesa não tem combate, imagem, cena aberta a todos ou mapa que a TV possa mostrar, **então** a linha de "Fixar" correspondente fica tracejada, não pode ser escolhida e diz por quê ("Nenhum combate agora.", "Nenhuma imagem à mostra.", "Nenhuma cena aberta.", "A cena está aberta só para alguns.", "Nenhum mapa agora.", "Precisa da Visão do grupo (editor do mapa).").
+- **Dado** um item fixo que acaba (o combate termina, a cena fecha, a imagem ou o mapa sai da mesa), **então** a TV vai para a tela de espera com uma linha que diz isso ("O combate acabou. A TV foi para a tela de espera."); **quando** um item desse tipo volta, **então** o fixo o mostra de novo.
+- **Dado** um mapa com a névoa ligada e a "Visão do grupo" desligada, **então** a TV não mostra o mapa e diz "O mapa fica na tela de cada um."; **dado** a "Visão do grupo" ligada, **então** ela mostra os quadrados que o grupo vê ou lembra, e nunca a imagem inteira do mapa.
+- **Dado** uma cena aberta só para alguns jogadores, **então** a TV não a mostra e o painel diz isso; o mesmo vale para uma imagem para jogadores escolhidos.
+- **Dado** um jogador, um membro pendente ou um estranho, **quando** abre o endereço da TV ou o pede ao servidor, **então** lê o cartão "Só o mestre abre a Tela da mesa." e não recebe nada da campanha; o servidor responde a um estranho como a uma campanha que não existe.
+- **Dado** que o mestre aperta "Copiar o link", **então** o que se copia é o endereço da aba e nada mais: sem consulta, sem chave, sem token. A aba entra como o mestre, e o servidor decide o que ela mostra a cada leitura.
+- **Dado** que a TV perde a conexão, **então** depois de poucos segundos ela diz "Reconectando…" e que pode estar atrasada, e depois de um minuto esconde o que mostrava e diz "Sem conexão desde 21:14"; **quando** a conexão volta, **então** ela volta sozinha. O painel do mestre também diz "Sem conexão desde 21:14.".
+- **Dado** que a sessão termina, **então** a TV diz "A sessão 3 terminou às 23:40." e que o mestre pode fechar a aba; **dado** que não há sessão aberta, ela diz "Não há sessão aberta.".
+- **Dado** uma TV a partir de 900 px de largura, **então** a tela cabe na janela sem rolagem de página e desenha só as linhas que cabem, com "+N" para as que ficaram de fora; **dado** um celular, **então** ela é uma coluna que rola.
+- **Dado** a tela de sessão do mestre, **então** o painel "Tela da mesa" abre por um botão na barra (a partir de 1024 px) ou por uma linha do menu "Sessão" (abaixo disso), diz se a TV está "Aberta", "Fechada" ou "Sem conexão", e cabe em uma tela num celular de 390 x 844 e num notebook de 1280 x 800.
+
+#### No app
+- A aba da TV é uma página própria, sem a barra de cima nem o rodapé do app, que não pede nada dos dados da sessão: ela lê um só serviço, que responde apenas o que a TV pode mostrar. Ver [Design](../../design/session.md#the-table-screen-tela-da-mesa) e [A tela da mesa](../../architecture/play/table-screen.md).
+- O painel não guarda nada no navegador; a escolha fica guardada com a sessão, então recarregar a TV ou a página do mestre a mantém.
+- Uma tela para o aparelho do próprio jogador, para ver a mesa de casa, não faz parte desta história ([#764](https://github.com/PuraFome/meuRPG/issues/764)).
+
+#### Relacionadas
+- [MR-012](#mr-012-acompanhar-a-sessão), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-036](#mr-036-névoa-de-guerra-pela-visão), [RN-10](regras.md#rn-10-mapa-sem-spoiler).
 
 ## Prioridade: MVP (pré-requisito)
 

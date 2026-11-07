@@ -188,6 +188,7 @@ A log is never a source for answering a data subject request.
   The master opens it on a screen the whole table sees, so it receives what every player may read and nothing more: the image and the scene shown to the whole table, the combatants the table sees with a word of state instead of numbers, the lines of the log every player reads, the free rolls made for the table, and a fog map only as the group sees it.
   It never receives hit points, armor class, hidden NPCs, the master's notes, hooks, clues and DCs, a roll "Só eu", the conversation or what is meant for chosen players.
   Its stream carries no content: it only says "read again", so a change only the master sees shows nothing.
+  The tab signs in with the master's own cookie, its address carries no token or key, and it keeps nothing in the browser.
   See [The table screen](architecture/play/table-screen.md).
 - **The stream stores nothing.**
   Every 60 seconds it checks the session and the membership again; signing out, a revoked session or leaving the campaign ends it.

@@ -188,6 +188,7 @@ Um log nunca é fonte para responder a um pedido do titular.
   O mestre a abre numa tela que a mesa toda vê, então ela recebe o que qualquer jogador pode ler e nada além: a imagem e a cena mostradas à mesa toda, os combatentes que a mesa vê com uma palavra de estado no lugar de números, as linhas do registro que todo jogador lê, as rolagens livres feitas para a mesa e um mapa com névoa só como o grupo o vê.
   Ela nunca recebe pontos de vida, classe de armadura, NPCs escondidos, as notas do mestre, ganchos, pistas e CDs, uma rolagem "Só eu", a conversa ou o que é só para jogadores escolhidos.
   O stream dela não leva conteúdo: só diz "leia de novo", então uma mudança que só o mestre vê não aparece.
+  A aba entra com o cookie do próprio mestre, o endereço dela não leva token nem chave, e ela não guarda nada no navegador.
   Ver [A tela da mesa](../architecture/play/table-screen.md).
 - **O stream não guarda nada.**
   A cada 60 segundos ele confere a sessão e a participação de novo; sair, uma sessão revogada ou deixar a campanha o encerra.

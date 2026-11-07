@@ -325,7 +325,7 @@ What goes to the TV:
 
 A scene or an image meant for chosen players is not shown; the master's panel says so ("Cena aberta só para alguns").
 Only the master opens the table screen: a player is refused, and someone who is not in the campaign gets the answer for a campaign that does not exist.
-See [The table screen](../architecture/play/table-screen.md).
+See [MR-056](stories.md#mr-056-show-the-table-on-a-screen) and [The table screen](../architecture/play/table-screen.md).
 
 **Other secrets.**
 The reason the master gives when asking for changes to a character (RN-15) reaches only the master and the owner.

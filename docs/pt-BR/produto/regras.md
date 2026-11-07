@@ -325,7 +325,7 @@ O que vai para a TV:
 
 Uma cena ou uma imagem para jogadores escolhidos não aparece; o painel do mestre avisa ("Cena aberta só para alguns").
 Só o mestre abre a tela da mesa: um jogador é recusado, e quem não é da campanha recebe a resposta de uma campanha que não existe.
-Ver [A tela da mesa](../../architecture/play/table-screen.md).
+Ver [MR-056](historias.md#mr-056-mostrar-a-mesa-em-uma-tela) e [A tela da mesa](../../architecture/play/table-screen.md).
 
 **Outros segredos.**
 O motivo que o mestre dá ao pedir ajustes em um personagem (RN-15) chega só ao mestre e ao dono.
