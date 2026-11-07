@@ -275,7 +275,9 @@ export class AttackSheet {
       return `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}`;
     }
     if (this.data.opportunity) {
-      const who = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId)?.label;
+      const who = this.data.state
+        .encounter()
+        ?.combatants.find((c) => c.id === this.data.attackerId)?.label;
       return who ? `${who} · gasta a sua reação` : 'Gasta a sua reação';
     }
     return this.detail;

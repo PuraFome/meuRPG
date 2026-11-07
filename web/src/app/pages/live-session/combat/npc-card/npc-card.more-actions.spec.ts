@@ -138,7 +138,10 @@ describe('NpcCard, "Mais ações"', () => {
 
   it('keeps the numbers and the chips for a screen reader only while the offer panel is open', () => {
     const { fixture, el } = render();
-    const hidden = () => [el.querySelector('.stats'), el.querySelector('.chips')].map((n) => n?.classList.contains('mr-visually-hidden'));
+    const hidden = () =>
+      [el.querySelector('.stats'), el.querySelector('.chips')].map((n) =>
+        n?.classList.contains('mr-visually-hidden'),
+      );
     expect(hidden()).toEqual([false, false]);
     fixture.componentRef.setInput('offerOpen', true);
     fixture.detectChanges();
