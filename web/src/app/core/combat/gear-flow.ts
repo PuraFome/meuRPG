@@ -60,8 +60,16 @@ export class GearFlow {
     if (!characterId || characterId === this.loadedFor) {
       return;
     }
+    if (this.loadedFor !== '' && this.loadedFor !== characterId) {
+      this.gear.set([]);
+      this.armorClass.set(null);
+      this.notice.set('');
+      this.error.set('');
+    }
     this.loadedFor = characterId;
-    await this.read(characterId);
+    if (!(await this.read(characterId))) {
+      this.loadedFor = ''; // the next look at the screen tries again: without a list there is no button to ask for it
+    }
   }
 
   private async read(characterId: string): Promise<boolean> {
@@ -90,7 +98,16 @@ export class GearFlow {
     this.notice.set('');
     try {
       await this.ctx.client.set(this.ctx.campaignId(), characterId, key, equipped);
-      await this.read(characterId);
+      const fresh = await this.read(characterId);
+      if (characterId !== this.ctx.characterId()) {
+        return false;
+      }
+      if (!fresh) {
+        this.error.set(
+          'A troca foi feita, mas não deu para ler o equipamento de novo. Tente de novo em instantes.',
+        );
+        return true;
+      }
       const ac = this.armorClass();
       this.notice.set(
         `${equipped ? 'Equipado' : 'Guardado'}: ${name}.${ac === null ? '' : ` Classe de armadura ${ac}.`}`,

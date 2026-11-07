@@ -22,6 +22,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { SavingState } from '../../core/connect/saving-state';
 import { setPageSubject } from '../../core/title/page-title';
 import { formatModifier } from '../../core/characters/character-labels';
+import { combatErrorMessage, encounterBlocked } from '../../core/combat/combat-errors';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -339,7 +340,6 @@ export class CharacterSheetPage {
     this.vitals.update((current) => (current && current.revision > v.revision ? current : v));
   }
 
-  /** Reads the character again without the loading state, so the page does not blink. */
   /** The piece whose change is on its way to the server. */
   protected readonly equipBusyKey = signal<string | null>(null);
   protected readonly equipNotice = signal('');
@@ -356,8 +356,14 @@ export class CharacterSheetPage {
     this.equipError.set('');
     try {
       await this.source.setEquipped(campaignId, characterId, toggle.key, toggle.equipped);
-      await this.reloadQuietly();
+      const fresh = await this.reloadQuietly();
       if (this.destroyed || characterId !== this.characterId) {
+        return;
+      }
+      if (!fresh) {
+        this.equipError.set(
+          'A troca foi feita, mas não deu para ler a ficha de novo. Recarregue a página.',
+        );
         return;
       }
       const st = this.state();
@@ -368,16 +374,21 @@ export class CharacterSheetPage {
       );
     } catch (err) {
       this.equipNotice.set('');
-      this.equipError.set(describeCharacterError(err));
+      this.equipError.set(
+        encounterBlocked(err)
+          ? combatErrorMessage(err, 'mudar o equipamento')
+          : describeCharacterError(err),
+      );
     } finally {
       this.equipBusyKey.set(null);
     }
   }
 
-  private async reloadQuietly(): Promise<void> {
+  /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */
+  private async reloadQuietly(): Promise<boolean> {
     const campaignId = this.campaignId();
     if (!campaignId || !this.characterId) {
-      return;
+      return false;
     }
     const seq = ++this.sheetSeq;
     try {
@@ -385,9 +396,12 @@ export class CharacterSheetPage {
       if (seq === this.sheetSeq && this.state().status === 'ready') {
         this.state.set({ status: 'ready', vm });
         this.refreshPendingChoices(campaignId, vm, seq);
+        return true;
       }
+      return false;
     } catch {
       // Keep what is on screen: the next change reads again.
+      return false;
     }
   }
 

@@ -1,3 +1,8 @@
+import { create } from '@bufbuild/protobuf';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -1351,6 +1356,48 @@ describe('CharacterSheetPage', () => {
         sectionTitled(el, 'Equipamento').querySelector('[role="alert"]')!.textContent,
       ).not.toBe('');
       expect(button(el, 'Guardar Espada longa')).toBeTruthy();
+    });
+
+    it('says a combat refusal in words, not the generic error', async () => {
+      configure();
+      fake.setEquippedFn = () =>
+        Promise.reject(
+          new ConnectError('armor', Code.FailedPrecondition, undefined, [
+            {
+              desc: EncounterBlockedSchema,
+              value: create(EncounterBlockedSchema, {
+                reason: EncounterBlockedReason.ARMOR_IN_COMBAT,
+              }),
+            },
+          ]),
+        );
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(true, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+
+      expect(
+        sectionTitled(el, 'Equipamento').querySelector('[role="alert"]')!.textContent,
+      ).toContain('Vestir ou tirar armadura leva minutos');
+    });
+
+    it('does not announce the change when the sheet could not be read again', async () => {
+      configure();
+      let reads = 0;
+      fake.getCharacterSheetFn = () =>
+        reads++ === 0 ? Promise.resolve(withGear(true, 12)) : Promise.reject(new Error('x'));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+
+      const section = sectionTitled(el, 'Equipamento');
+      expect(section.querySelector('[role="status"]')!.textContent).toBe('');
+      expect(section.querySelector('[role="alert"]')!.textContent).toContain('não deu para ler');
     });
 
     it('has no buttons on a dead character’s sheet (the lock of the sheet does not matter: gear is played)', async () => {

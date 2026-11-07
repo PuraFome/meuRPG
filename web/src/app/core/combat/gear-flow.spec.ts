@@ -69,6 +69,34 @@ describe('GearFlow', () => {
   });
 });
 
+describe('GearFlow, when a read fails', () => {
+  it('tries the first read again on the next look', async () => {
+    let fail = true;
+    const { f, calls } = flow(() =>
+      fail ? Promise.reject(new Error('x')) : Promise.resolve({ gear: [sword], armorClass: 14 }),
+    );
+    await f.load();
+    expect(f.gear()).toEqual([]);
+    fail = false;
+    await f.load();
+    expect(calls.read).toBe(2);
+    expect(f.gear()).toEqual([sword]);
+  });
+
+  it('does not announce a change whose list could not be read again', async () => {
+    let n = 0;
+    const { f } = flow(() =>
+      n++ === 0
+        ? Promise.resolve({ gear: [sword], armorClass: 14 })
+        : Promise.reject(new Error('x')),
+    );
+    await f.load();
+    expect(await f.toggle(sword.key, false)).toBe(true);
+    expect(f.notice()).toBe('');
+    expect(f.error()).toContain('não deu para ler');
+  });
+});
+
 describe('the cost line', () => {
   const turn = { objectInteractionUsed: false, master: false };
   it('is the free interaction for the first weapon and the action for the next, the shield and nothing for armor', () => {
