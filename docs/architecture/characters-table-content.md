@@ -94,7 +94,8 @@ This is what the server stores and shows:
 ## Player options and the live hint
 
 The master switches on and off, per campaign, each class, subclass, race, subrace, background, spell, feat, option, class feature and creature, from the SRD and the table (`campaign_content_off`, one row per switched-off option; no row means on).
-The options screen has no creature group, so creatures are switched through the API only.
+The master switches creatures on the options screen, in its "Criaturas" group.
+The creature editor has the same switch (`app-players-switch`).
 What is switched off never reaches a player, in any read; the master sees everything with the `off` mark.
 The engine side is [Switches and hidden keys](rules-table-content.md#switches-and-hidden-keys).
 
@@ -208,6 +209,8 @@ The choice engine reads it with the SRD options: `GetLevelUpOptions`, `PreviewCh
 It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches`), pack and player view as the other kinds, and a sheet that has the class gets the notice "A classe mudou" when it changes.
 The engine side is [Table class features](rules-table-content.md#table-class-features).
 A player's copy drops a hidden class, a hidden replaced feature and the effects' hidden references.
+The body may carry a `summon`.
+A player's copy keeps only its `creature_keys`: the table creatures the player holds, and the SRD's.
 
 ## Table creatures
 
@@ -253,8 +256,12 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
 - **Packages.** A campaign package carries the creature entry with the rest of the table content.
   A package without the creature of an NPC's link is refused as unknown content.
   A package battle encounter that names a table creature is refused as unknown content.
-- **The web app.** It has no editor for creatures and no creature group in the options screen.
-  A creature is created and switched through the API or a content pack.
+- **The web app.** The creature editor of "Conteúdo da mesa" makes and edits a creature from an SRD base, which never changes after the first save.
+  It edits the name, the fixed numbers and formulas, the traits and the attacks.
+  It also edits up to 12 rows of resistance, immunity or vulnerability, each with its damage types and a "Vale contra".
+  The "Vale contra" is off for a vulnerability and for a type that is not bludgeoning, piercing or slashing.
+  The holder of the creature reads the rows on its sheet (`GetCreature`); the editor is the master's.
+  The master switches the creature in the editor.
 
 ## Wild Shape and spell slots
 

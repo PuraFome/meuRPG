@@ -32,12 +32,18 @@ export interface ReadItem {
 }
 
 export interface ReadSection {
+  /** Empty for a card with no heading of its own (then `label` names it for a screen reader). */
   readonly title: string;
+  readonly label?: string;
   readonly items: readonly ReadItem[];
+  /** A small line under the items. */
+  readonly note?: string;
 }
 
 export interface EntryRead {
   readonly rows: readonly ReadRow[];
+  /** A small line under the rows (what only the master reads). */
+  readonly rowsNote?: string;
   readonly sections: readonly ReadSection[];
   /** Text of the entry itself (a spell's description, a subclass's). */
   readonly text: readonly string[];

@@ -15,7 +15,7 @@ let nextId = 0;
   selector: 'app-text-field',
   imports: [FieldNote, MatFormFieldModule, MatInputModule],
   template: `
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.invalid]="invalid()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" [floatLabel]="placeholder() ? 'always' : 'auto'" [class.invalid]="invalid()">
       <mat-label>{{ label() }}</mat-label>
       @if (rows() > 0) {
         <textarea
@@ -37,6 +37,8 @@ let nextId = 0;
           [attr.aria-invalid]="invalid() ? 'true' : null"
           [attr.aria-describedby]="describedBy()"
           [attr.maxlength]="maxlength() || null"
+          [attr.placeholder]="placeholder() || null"
+          [attr.aria-label]="ariaLabel() || null"
           [disabled]="disabled()"
           [value]="value()"
           (input)="valueChange.emit($any($event.target).value)"
@@ -83,6 +85,10 @@ export class TextField {
   readonly rows = input(0);
   readonly maxlength = input(0);
   readonly inputmode = input('');
+  /** What a field left empty means ("da base"); the label then stays above it. */
+  readonly placeholder = input('');
+  /** The name a screen reader reads when the label shows less than it ("Fixo" in the row of "Pontos de vida"). */
+  readonly ariaLabel = input('');
   readonly disabled = input(false);
   readonly valueChange = output<string>();
 

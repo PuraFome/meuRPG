@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import type { EntryRead as Read } from '../../../core/content/content-read-parts';
 
@@ -10,6 +11,7 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
  */
 @Component({
   selector: 'app-entry-read',
+  imports: [MatIconModule],
   template: `
     @if (read().rows.length > 0) {
       <section [class.mr-panel]="!plain()" aria-label="Dados">
@@ -21,11 +23,16 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
             </div>
           }
         </dl>
+        @if (read().rowsNote) {
+          <p class="note"><mat-icon aria-hidden="true">info</mat-icon>{{ read().rowsNote }}</p>
+        }
       </section>
     }
     @for (s of read().sections; track s.title) {
-      <section [class.mr-panel]="!plain()" [class.sec]="plain()" [attr.aria-labelledby]="'sec-' + $index">
-        <h2 [class.mr-panel__title]="!plain()" [class.sec__title]="plain()" [id]="'sec-' + $index">{{ s.title }}</h2>
+      <section [class.mr-panel]="!plain()" [class.sec]="plain()" [attr.aria-labelledby]="s.title ? 'sec-' + $index : null" [attr.aria-label]="s.title ? null : s.label">
+        @if (s.title) {
+          <h2 [class.mr-panel__title]="!plain()" [class.sec__title]="plain()" [id]="'sec-' + $index">{{ s.title }}</h2>
+        }
         <ul class="items">
           @for (i of s.items; track $index) {
             <li>
@@ -44,6 +51,9 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
             </li>
           }
         </ul>
+        @if (s.note) {
+          <p class="note note--plain">{{ s.note }}</p>
+        }
       </section>
     }
     @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0) {
@@ -113,6 +123,27 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
       padding: 0;
       list-style: none;
       overflow-wrap: anywhere;
+    }
+
+    .note {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--mr-space-2);
+      margin: var(--mr-space-3) 0 0;
+      font-size: var(--mr-font-15);
+      color: var(--mr-ink-muted);
+
+      .mat-icon {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        font-size: var(--mr-font-20);
+      }
+
+      &--plain {
+        display: block;
+        margin-top: var(--mr-space-3);
+      }
     }
 
     // "(de Corujeiro)": where a trait of the race comes from, smaller and muted.

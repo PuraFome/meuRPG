@@ -127,9 +127,9 @@ func TestATableFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone(t 
 
 // The spell a feature's summon lowers to belongs to the feature's entry: GetSpellDetails answers it to the master and to
 // a player whose character has the entry, whether the entry is live or archived, and as an unknown spell to every other
-// member. The canary is the feature's name, which the spell carries. The entry is a class or a race.
+// member. The canary is the feature's name, which the spell carries. The entry is a class, a race or a class feature of an SRD class.
 func TestTheHiddenSpellOfAFeatureSummonIsReadOnlyByTheMasterAndTheHolderOfItsEntry(t *testing.T) {
-	for _, owner := range []string{"class", "race"} {
+	for _, owner := range []string{"class", "race", "classfeature"} {
 		t.Run(owner, func(t *testing.T) { hiddenSpellOfAFeatureSummon(t, owner) })
 	}
 }
@@ -149,12 +149,21 @@ func hiddenSpellOfAFeatureSummon(t *testing.T, owner string) {
 	summon := &rulesv1.TableSummon{CreatureKeys: []string{"monster:wolf"}, Count: "2", MaxLive: 4, ResourceKey: "chamados"}
 	var entry *rulesv1.TableEntry
 	sheet := &charactersv1.FullSheet{BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}}
-	if owner == "class" {
+	switch owner {
+	case "classfeature":
+		entry = must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+			CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: &rulesv1.TableClassFeature{
+				NamePt: featureName, DescPt: []string{"O texto da habilidade."}, ClassKey: "class:fighter", Level: 1, Summon: summon,
+				Effects: []*rulesv1.TableEffect{{Type: "resource", Resource: "chamados", Max: "2", Recharge: "long_rest"}},
+			}},
+		}))).GetEntry()
+		sheet.RaceKey, sheet.Classes = "race:gnome", []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 1}}
+	case "class":
 		entry = must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
 			CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClass{TableClass: summonerClass("Guardiã da Matilha", featureName, "O texto da habilidade.", summon)},
 		}))).GetEntry()
 		sheet.RaceKey, sheet.Classes = "race:gnome", []*charactersv1.ClassLevel{{ClassKey: entry.GetKey(), Level: 1}}
-	} else {
+	default:
 		entry = must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
 			CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableRace{TableRace: &rulesv1.TableRace{
 				NamePt: "Povo da Matilha", Size: "Medium", SpeedFt: 30, Languages: []string{"language:common"},
@@ -182,6 +191,24 @@ func hiddenSpellOfAFeatureSummon(t *testing.T, owner string) {
 				t.Errorf("%s: %s does not read the hidden spell of the feature (the positive control): %d %s", when, p.name, r.status, shorten(r.body))
 			}
 		}
+		// The catalog (ListContent) lists neither the feature's hidden spell nor a table class feature, to anyone, the master and the holder
+		// reading it for their own sheet included: its six lists are the races, sub-races, classes, subclasses, backgrounds and spells of
+		// the table and the SRD, so the keys of a sheet's build are all `ownSheetKeys` needs to keep an archived one (a class feature is
+		// no key of the build, and no entry of the catalog).
+		for _, who := range []struct {
+			p         *person
+			character string
+		}{{m, ""}, {w.ana, ""}, {w.ana, w.pens.GetId()}, {w.caio, ""}, {w.caio, w.toren.GetId()}} {
+			r := who.p.call(rulesv1connect.ContentServiceListContentProcedure, &rulesv1.ListContentRequest{CampaignId: w.campaign, CharacterId: who.character})
+			if who.p == m || who.p == w.ana {
+				if !r.ok() {
+					t.Fatalf("%s: %s cannot read the catalog (the positive control): %d %s", when, who.p.name, r.status, shorten(r.body))
+				}
+			}
+			if strings.Contains(string(r.body), spell) || (owner == "classfeature" && strings.Contains(string(r.body), entry.GetKey())) {
+				t.Errorf("%s: the catalog %s reads (character %q) names the feature's hidden spell or class feature", when, who.p.name, who.character)
+			}
+		}
 		if r := details(w.caio); r.ok() || strings.Contains(string(r.body), featureName) {
 			t.Errorf("%s: Caio, whose character has not the entry, reads the feature's hidden spell: %d %s", when, r.status, shorten(r.body))
 		}
@@ -189,6 +216,9 @@ func hiddenSpellOfAFeatureSummon(t *testing.T, owner string) {
 	check("live " + owner)
 	must(m.table.ArchiveTableEntry(ctx, rq(&rulesv1.ArchiveTableEntryRequest{CampaignId: w.campaign, Key: entry.GetKey()})))
 	check("archived " + owner)
+	must(m.table.UnarchiveTableEntry(ctx, rq(&rulesv1.UnarchiveTableEntryRequest{CampaignId: w.campaign, Key: entry.GetKey()})))
+	must(m.table.SetOptionSwitches(ctx, rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: entry.GetKey(), Off: true}}})))
+	check("off " + owner)
 }
 
 // summonerClass is a table class whose level 1 feature summons: two uses of "chamados" back on a long rest.
@@ -210,4 +240,82 @@ func summonerClass(name, feature, text string, summon *rulesv1.TableSummon) *rul
 		c.Levels = append(c.Levels, row)
 	}
 	return c
+}
+
+// A table class feature that summons (#578): an entry of its own on an SRD class. The creature's key and the count
+// formula are the master's and the holder's, as a class feature's of a table class: Ana, whose character has the
+// class, reads the creature in her options and no count; Caio, who holds none, reads neither at any step. The master
+// reads both (the positive control).
+func TestATableClassFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNone(t *testing.T) {
+	const countFormula = "2 + 5 * prof()"
+	w := &world{stack: newStack(t), secrets: newSecrets(), pts: map[string]*mapsv1.MapPoint{}, puzzles: map[string]*playv1.Puzzle{}, notes: map[string]string{}}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("building the fixture: %v", r)
+		}
+	}()
+	ctx := t.Context()
+	w.buildPeople()
+	m := w.master
+	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
+
+	creatureKey := must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: &rulesv1.TableCreature{
+			NamePt: w.secrets.marker("class-feature-summon-creature-name", w.ana), BaseKey: "monster:giant-crab", HitPoints: 31,
+		}},
+	}))).GetEntry().GetKey()
+	w.secrets.id("class-feature-summon-creature-key", creatureKey, w.ana)
+	w.secrets.add(&canary{needle: countFormula, kind: "class-feature-summon-count-formula"})
+	feature := must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
+		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: &rulesv1.TableClassFeature{
+			NamePt: w.secrets.public("class-feature-summon-feature-name"), DescPt: []string{w.secrets.public("class-feature-summon-feature-text")},
+			ClassKey: "class:fighter", Level: 1,
+			Effects: []*rulesv1.TableEffect{{Type: "resource", Resource: "chamados", Max: "2", Recharge: "long_rest"}},
+			Summon:  &rulesv1.TableSummon{CreatureKeys: []string{creatureKey}, Count: countFormula, MaxLive: 8, ResourceKey: "chamados"},
+		}},
+	}))).GetEntry()
+	w.pens = must(w.ana.characters.CreateCharacter(ctx, rq(&charactersv1.CreateCharacterRequest{
+		CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Pensantus",
+		Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8},
+			RaceKey:    "race:gnome", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: 1}},
+		}}},
+	}))).GetCharacter()
+	w.toren = w.pc(w.caio, "Toren", "race:human")
+
+	entries := read{
+		procedure: rulesv1connect.TableContentServiceListTableEntriesProcedure, allow: members,
+		why: "the class feature's summon names no creature the reader does not hold, and no count",
+		req: func(w *world) proto.Message { return &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign} },
+	}
+	options := read{
+		procedure: charactersv1connect.CharacterServiceGetSummonOptionsProcedure, label: "Ana's character", allow: onlyAna,
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	}
+	got := newAnswers()
+	t.Run("reads", func(t *testing.T) {
+		w.runRead(t, options, got)
+		w.runRead(t, entries, got)
+	})
+	listed := rulesv1connect.TableContentServiceListTableEntriesProcedure
+	for _, p := range []*person{w.ana, w.caio} {
+		body := string(p.call(listed, &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign}).body)
+		if strings.Contains(body, creatureKey) || strings.Contains(body, countFormula) {
+			t.Errorf("%s, who holds no creature, reads the class feature's creature or count: %s", p.name, shorten([]byte(body)))
+		}
+		if !strings.Contains(body, feature.GetKey()) {
+			t.Errorf("%s does not read the class feature in the entries: the control is missing", p.name)
+		}
+	}
+	masterBody := string(m.call(listed, &rulesv1.ListTableEntriesRequest{CampaignId: w.campaign}).body)
+	if !strings.Contains(masterBody, creatureKey) || !strings.Contains(masterBody, countFormula) {
+		t.Errorf("the master does not read the creature and the count (the positive control): %s", shorten([]byte(masterBody)))
+	}
+	optsRes := w.ana.call(charactersv1connect.CharacterServiceGetSummonOptionsProcedure, &charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()})
+	if !strings.Contains(string(optsRes.body), creatureKey) {
+		t.Errorf("Ana's options do not name the creature (the positive control): %s", shorten(optsRes.body))
+	}
+	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })
 }

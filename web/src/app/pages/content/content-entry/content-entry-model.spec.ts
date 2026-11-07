@@ -12,6 +12,7 @@ import {
   backLabelOf,
   entriesAfterSave,
   extrasErrorOf,
+  usesNoMenu,
   extrasErrors,
   headingOf,
   kindTagOf,
@@ -33,6 +34,15 @@ describe('the content entry model', () => {
     expect(NEW_KINDS['spell']).toBe(TableContentKind.SPELL);
     expect(NEW_KINDS['nonsense']).toBeUndefined();
     expect(EDITABLE.has(TableContentKind.FEAT)).toBe(true);
+    // The creature (#578): "new/creature" opens its editor.
+    expect(NEW_KINDS['creature']).toBe(TableContentKind.CREATURE);
+    expect(EDITABLE.has(TableContentKind.CREATURE)).toBe(true);
+    expect(headingOf(null, TableContentKind.CREATURE)).toBe('Nova criatura');
+    expect(kindTagOf(TableContentKind.CREATURE)).toBe('Criatura da mesa');
+    expect(usesNoMenu(TableContentKind.CREATURE)).toBe(true);
+    expect(usesNoMenu(TableContentKind.SPELL)).toBe(true);
+    expect(usesNoMenu(TableContentKind.FEAT)).toBe(false);
+    expect(usesNoMenu(null)).toBe(false);
   });
 
   it('titles the page by the entry, by the kind of a new one, or by the table', () => {
@@ -111,11 +121,11 @@ describe('the content entry model', () => {
       catalog: '',
       menu: 'menu',
       defaults: 'defaults',
-      spell: false,
+      noMenu: false,
       needsDefaults: false,
     };
     expect(extrasErrorOf(e)).toBe('menu');
-    expect(extrasErrorOf({ ...e, spell: true })).toBe('');
+    expect(extrasErrorOf({ ...e, noMenu: true })).toBe('');
     expect(extrasErrorOf({ ...e, menu: '', needsDefaults: true })).toBe('defaults');
     expect(extrasErrorOf({ ...e, catalog: 'catalog' })).toBe('catalog');
   });
