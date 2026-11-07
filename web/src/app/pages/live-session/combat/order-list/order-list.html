@@ -115,6 +115,9 @@
             @if (current(c)) {
               <span class="row__turn">Vez</span>
             }
+            @if (c.inSunlight) {
+              <span class="mr-tag mr-tag--pending row__sun" data-testid="order-sun"><mat-icon aria-hidden="true">wb_sunny</mat-icon>Na luz do sol</span>
+            }
             @if (inTurn(c)) {
               <app-part-state [ended]="c.turnPartEnded" />
             }

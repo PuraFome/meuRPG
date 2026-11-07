@@ -33,7 +33,7 @@
     @switch (e.status) {
       @case (Status.SETUP) {
         <div class="stack">
-          <app-combat-bar [encounter]="e" [busy]="busy()" (begin)="begin()" (cancelCombat)="endCombat()" />
+          <app-combat-bar [encounter]="e" [busy]="busy()" (begin)="begin()" (cancelCombat)="endCombat()" (sunlight)="setSunlight($event)" />
           <div class="setup-wrap"><div class="setup">
             <app-initiative-setup
               class="setup__list"
@@ -126,6 +126,7 @@
               [quiet]="offers.offering()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
+              (sunlight)="setSunlight($event)"
             />
           }
           @if (traps(); as board) {

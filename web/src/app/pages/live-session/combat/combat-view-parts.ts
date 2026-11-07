@@ -352,6 +352,11 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     );
   }
 
+  /** The master's sun switch in the combat bar: `on` puts the combat in the sun or takes it out, keeping the scope. */
+  protected setSunlight(on: boolean): Promise<boolean> {
+    return this.calls.run((e) => this.api.combatants.setSunlight(this.campaignId(), e.id, { on }));
+  }
+
   /** "Atacar": the attack sheet (Alvo, Rolar, Dano). `asReaction` is the
    * opportunity attack, off turn. */
   protected openAttack(key: string, asReaction = false, useExtraAction = false): void {

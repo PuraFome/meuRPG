@@ -61,6 +61,7 @@
         Começar o combate
       </button>
       <button matButton="outlined" type="button" class="end" (click)="askCancel()">Cancelar combate</button>
+      <ng-container *ngTemplateOutlet="sunSwitch" />
     </div>
   } @else if (confirming()) {
     <ng-container *ngTemplateOutlet="endConfirm" />
@@ -102,6 +103,7 @@
       <button matButton="outlined" type="button" class="end" (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
       </button>
+      <ng-container *ngTemplateOutlet="sunSwitch" />
     </div>
   }
 </section>
@@ -128,4 +130,20 @@
         </button>
       </div>
     </div>
+</ng-template>
+
+<ng-template #sunSwitch>
+  <button
+    type="button"
+    role="switch"
+    class="sun"
+    [class.sun--on]="sunOn()"
+    [attr.aria-checked]="sunOn()"
+    [attr.aria-label]="sunLabel()"
+    [title]="sunLabel()"
+    [disabled]="busy()"
+    (click)="sunlight.emit(!sunOn())"
+  >
+    <mat-icon aria-hidden="true">{{ sunOn() ? 'wb_sunny' : 'wb_twilight' }}</mat-icon>
+  </button>
 </ng-template>

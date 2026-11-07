@@ -14,7 +14,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Encounter,
+  EncounterStatus,
+  SunlightScope,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   combatantInitial,
   missingInitiative,
@@ -88,6 +92,20 @@ export class CombatBar {
   readonly begin = output<void>();
   /** "Cancelar combate" in setup, confirmed. */
   readonly cancelCombat = output<void>();
+  /** The sun switch: `true` asks for the sun, `false` takes it out (the scope stays). */
+  readonly sunlight = output<boolean>();
+
+  protected readonly sunOn = computed(() => this.encounter().sunlightOn);
+  /** "Luz do sol: todo o mapa" / "Luz do sol: onde eu pintar" while on, "Luz do sol: desligada" off: the switch's name. */
+  protected readonly sunLabel = computed(() => {
+    const e = this.encounter();
+    if (!e.sunlightOn) {
+      return 'Luz do sol: desligada';
+    }
+    return e.sunlightScope === SunlightScope.SQUARES
+      ? 'Luz do sol: onde eu pintar'
+      : 'Luz do sol: todo o mapa';
+  });
 
   protected readonly confirming = signal(false);
   /** The question "Cancelar o combate?" of the setup is open. */

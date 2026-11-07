@@ -701,3 +701,27 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
     });
   });
 });
+
+describe('OrderList, the sun tag', () => {
+  it('tags the combatants in the sunlight with "Na luz do sol"', () => {
+    const fixture = TestBed.createComponent(OrderList);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        sunlightOn: true,
+        combatants: [
+          combatant({ id: 'gh', label: 'Carniçal', inSunlight: true, initiative: 12 }),
+          combatant({ id: 'go', label: 'Goblin', initiative: 10 }),
+        ],
+        currentCombatantId: 'gh',
+      }),
+    );
+    fixture.detectChanges();
+    const tags = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '[data-testid="order-sun"]',
+    );
+    expect(tags.length).toBe(1);
+    expect(tags[0].textContent).toContain('Na luz do sol');
+    expect(tags[0].closest('.row')?.textContent).toContain('Carniçal');
+  });
+});

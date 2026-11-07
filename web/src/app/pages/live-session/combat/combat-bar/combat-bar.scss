@@ -299,3 +299,30 @@
     }
   }
 }
+
+// The master's sun switch: a round icon button with a 44px target; pressed (on) it is filled in the warning color.
+.sun {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &--on {
+    border-color: var(--mr-warning-line);
+    background: var(--mr-warning-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-accent);
+    outline-offset: 2px;
+  }
+}
