@@ -9,6 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // send is the one place in this package that hands an event to the live hub:
@@ -33,7 +34,10 @@ func (s *Service) tellMembers(campaignID string, players bool, ev *playv1.WatchG
 // Service.tx makes it and hands it to the closure; nothing in it is sent before the commit.
 type hints struct {
 	events  []told
+	afters  []func(ctx context.Context, say func(campaignID string, ev live.Event))
 	touched bool
+	// replayed says the attempt found its write already made (a key used before): see replay.
+	replayed bool
 	// seq is the session's hint_seq as this transaction left it: set by Service.tx after it bumped the number, 0 while it did not.
 	// txOn stamps the events with it (WatchGameSessionResponse.session_seq) just before it sends them.
 	seq int64
@@ -58,11 +62,31 @@ func (h *hints) tell(campaignID string, ev live.Event) {
 // stream that missed the change knows it is behind.
 func (h *hints) touch() { h.touched = true }
 
+// after collects a step that runs once the transaction has committed and the events told have gone out: what the hint needs is
+// the committed state (a read through the pool, which would not see this transaction's rows) or another module's own sending (the
+// maps module's fog). fn gets the context of the after-commit work (the request's values, without its cancellation, bounded by
+// publishTimeout) and say, which stamps an event with the session's number and sends it as send does; fn must send through say and
+// never through send, so its events carry the number. Steps run in the order they were collected, after the told events, and not
+// at all if the transaction fails. A step moves nothing by itself: the write touches or tells.
+func (h *hints) after(fn func(ctx context.Context, say func(campaignID string, ev live.Event))) {
+	h.afters = append(h.afters, fn)
+}
+
+// replay marks the attempt as the repeat of a write already made: the closure found the idempotency key stored and did not write
+// again. The first call may have committed and died before it told the streams, so the closure fills the collector with the
+// hints that call would have sent, worked out from the stored result, and tx sends them: a hint only says "read again", so a
+// second one is harmless. A replay does not move the session's number (nothing was written), whatever it tells or touches; its
+// events carry the number as it stands.
+func (h *hints) replay() { h.replayed = true }
+
 // reset empties the collector: the start of every attempt calls it, so a retried attempt keeps nothing of the one the database rolled back.
 func (h *hints) reset() { *h = hints{} }
 
 // moves reports whether the write must move the session's number.
-func (h *hints) moves() bool { return h.touched || len(h.events) > 0 }
+func (h *hints) moves() bool { return !h.replayed && (h.touched || len(h.events) > 0) }
+
+// speaks reports whether the attempt has anything to send once it committed.
+func (h *hints) speaks() bool { return len(h.events) > 0 || len(h.afters) > 0 }
 
 // tx runs fn in a transaction (db.InTx, so with its retries and its rules for fn) on the session sessionID and tells the
 // streams what fn collected, after the commit.
@@ -75,7 +99,9 @@ func (h *hints) moves() bool { return h.touched || len(h.events) > 0 }
 // When fn returns nil having told or touched, tx adds 1 to game_sessions.hint_seq of sessionID in the same transaction
 // (once, however many events were told), so the number is saved with the write or not at all; the session's row must exist.
 // A transaction that told nothing and touched nothing takes the lock and writes nothing: the number stays as it was.
-// When InTx returns nil, tx stamps each collected event with the new number and sends them, in the order they were told. On any error, nothing is sent.
+// When InTx returns nil, tx stamps each collected event with the new number and sends them, in the order they were told, then runs
+// the steps of h.after. On any error, nothing is sent. A closure that finds its write already made (an idempotency key stored) calls
+// h.replay and tells what the first call would have: tx sends it with the number as it stands, and does not bump.
 //
 // A hint that goes with no write (typing, presence, the table screen's "changed") does not go through tx: it calls send.
 func (s *Service) tx(ctx context.Context, sessionID string, fn func(pgx.Tx, *hints) error) error {
@@ -95,7 +121,7 @@ func (s *Service) txOn(ctx context.Context, starter db.TxStarter, sessionID stri
 			return err
 		}
 		if !h.moves() {
-			return nil
+			return h.stand(ctx, q, sessionID)
 		}
 		seq, err := q.BumpHintSeq(ctx, sessionID)
 		if err != nil {
@@ -107,11 +133,37 @@ func (s *Service) txOn(ctx context.Context, starter db.TxStarter, sessionID stri
 	if err != nil {
 		return err
 	}
-	for _, t := range h.events {
-		if h.seq > 0 && t.event.Message != nil {
-			t.event.Message.SessionSeq = h.seq // not shared with a stream yet: send is next
-		}
-		s.send(t.campaignID, t.event)
+	s.sendTold(ctx, &h)
+	return nil
+}
+
+// stand reads the number as it stands, for a replay that has something to send: it wrote nothing, so it moves nothing.
+func (h *hints) stand(ctx context.Context, q *playdb.Queries, sessionID string) (err error) {
+	if !h.replayed || !h.speaks() {
+		return nil
+	}
+	if h.seq, err = q.GetHintSeq(ctx, sessionID); err != nil {
+		return fmt.Errorf("read the session's hint number: %w", err)
 	}
 	return nil
+}
+
+// sendTold sends what the committed attempt collected: the events in the order told, then the steps of after.
+func (s *Service) sendTold(ctx context.Context, h *hints) {
+	say := func(campaignID string, ev live.Event) {
+		if h.seq > 0 && ev.Message != nil {
+			ev.Message.SessionSeq = h.seq // not shared with a stream yet: send is next
+		}
+		s.send(campaignID, ev)
+	}
+	for _, t := range h.events {
+		say(t.campaignID, t.event)
+	}
+	if len(h.afters) > 0 {
+		pctx, stop := afterCommit(ctx) // committed: a caller that hangs up must not leave the streams unheard
+		defer stop()
+		for _, fn := range h.afters {
+			fn(pctx, say)
+		}
+	}
 }

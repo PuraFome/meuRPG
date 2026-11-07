@@ -3,6 +3,8 @@ package play
 import (
 	"context"
 	"errors"
+	"fmt"
+	"maps"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -428,4 +430,92 @@ func TestHintSeqContentionOnCockroachDB(t *testing.T) {
 	run("with the bump, session row read first", 5, true, true)
 	run("control, no bump, session row read first", 5, false, true)
 	run("one writer, with the bump", 1, true, false)
+}
+
+// numbers drains the master's stream and returns the session number each event carries, by name.
+func (w *hintTable) numbers() map[string]int64 {
+	out := map[string]int64{}
+	for {
+		select {
+		case ev := <-w.master.Events():
+			w.master.Taken(ev)
+			out[ev.Coalesce] = ev.Message.GetSessionSeq()
+		default:
+			return out
+		}
+	}
+}
+
+// A replay sends what the closure told, stamped with the number as it stands, and does not move it.
+func TestTxReplaySendsWithoutMovingTheNumber(t *testing.T) {
+	w := newHintTable(t)
+	ctx := t.Context()
+	if err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error { h.touch(); return nil }); err != nil {
+		t.Fatalf("tx() error = %v", err)
+	}
+	err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
+		h.replay()
+		h.touch() // a replay wrote nothing: touching does not move the number
+		h.tell(w.campaignID, w.event("told", true))
+		h.after(func(_ context.Context, say func(string, live.Event)) { say(w.campaignID, w.event("after", false)) })
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("tx() error = %v", err)
+	}
+	if got := w.seq(t); got != 1 {
+		t.Errorf("hint_seq = %d after a replay, want 1: it wrote nothing", got)
+	}
+	if got, want := w.numbers(), map[string]int64{"told": 1, "after": 1}; !maps.Equal(got, want) {
+		t.Errorf("the replay's events carry %v, want %v", got, want)
+	}
+	// A replay that tells nothing sends nothing and moves nothing.
+	if err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error { h.replay(); return nil }); err != nil {
+		t.Fatalf("tx() error = %v", err)
+	}
+	if got, heard := w.seq(t), w.heard(); got != 1 || len(heard) != 0 {
+		t.Errorf("an empty replay left hint_seq %d and sent %q, want 1 and nothing", got, heard)
+	}
+}
+
+// The steps of after run once the transaction committed, after the told events, in order, stamped with the new number; a
+// failed transaction runs none, and a retried attempt keeps the steps of its last attempt only.
+func TestTxAfterRunsAfterTheCommitInOrder(t *testing.T) {
+	w := newHintTable(t)
+	ctx := t.Context()
+	var order []string
+	attempts := 0
+	err := w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
+		attempts++
+		round := attempts
+		h.tell(w.campaignID, w.event("told", true))
+		h.after(func(_ context.Context, say func(string, live.Event)) {
+			order = append(order, fmt.Sprintf("first of attempt %d", round))
+			say(w.campaignID, w.event("first", true))
+		})
+		h.after(func(context.Context, func(string, live.Event)) {
+			order = append(order, fmt.Sprintf("second of attempt %d", round))
+		})
+		if round == 1 {
+			return &pgconn.PgError{Code: "40001"} // the database asks for a retry
+		}
+		return w.write(ctx, tx, 1)
+	})
+	if err != nil {
+		t.Fatalf("tx() error = %v", err)
+	}
+	if want := []string{"first of attempt 2", "second of attempt 2"}; !slices.Equal(order, want) {
+		t.Errorf("the steps ran %q, want %q", order, want)
+	}
+	if got, want := w.numbers(), map[string]int64{"told": 1, "first": 1}; !maps.Equal(got, want) {
+		t.Errorf("the events carry %v, want %v", got, want)
+	}
+	ran := false
+	err = w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
+		h.after(func(context.Context, func(string, live.Event)) { ran = true })
+		return errors.New("refused")
+	})
+	if err == nil || ran {
+		t.Errorf("a failed transaction returned %v and ran its step = %v, want an error and no step", err, ran)
+	}
 }
