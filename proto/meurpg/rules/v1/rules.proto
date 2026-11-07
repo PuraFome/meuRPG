@@ -778,6 +778,9 @@ message DerivedSheet {
   // sheet's gear list reads them (the derived attacks skip a carried weapon, and the armor class description ignores a
   // carried armor).
   repeated GearEntry gear = 52;
+  // The load the character can carry, in pounds: 15 times the Strength score (SRD 5.1, "Carrying Capacity"), then the
+  // `carry.capacity` modifiers of the table's features. Never below 0.
+  int32 carry_capacity_lb = 54;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.

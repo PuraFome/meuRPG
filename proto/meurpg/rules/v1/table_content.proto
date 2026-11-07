@@ -424,6 +424,8 @@ message TableEffect {
   bool silvered = 83;
   // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
   bool adamantine = 84;
+  // flag only: one word of the closed list the menu gives under "effect_flags" ("never_surprised", ...).
+  string flag = 85 [(meurpg.options.v1.max_len) = 64];
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

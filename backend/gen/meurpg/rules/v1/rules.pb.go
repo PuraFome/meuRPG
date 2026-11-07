@@ -3889,9 +3889,12 @@ type DerivedSheet struct {
 	// The armor, the shield and the weapons the sheet lists, equipped or carried, in that order, by the catalog's names. The
 	// sheet's gear list reads them (the derived attacks skip a carried weapon, and the armor class description ignores a
 	// carried armor).
-	Gear          []*GearEntry `protobuf:"bytes,52,rep,name=gear,proto3" json:"gear,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Gear []*GearEntry `protobuf:"bytes,52,rep,name=gear,proto3" json:"gear,omitempty"`
+	// The load the character can carry, in pounds: 15 times the Strength score (SRD 5.1, "Carrying Capacity"), then the
+	// `carry.capacity` modifiers of the table's features. Never below 0.
+	CarryCapacityLb int32 `protobuf:"varint,54,opt,name=carry_capacity_lb,json=carryCapacityLb,proto3" json:"carry_capacity_lb,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *DerivedSheet) Reset() {
@@ -4286,6 +4289,13 @@ func (x *DerivedSheet) GetGear() []*GearEntry {
 		return x.Gear
 	}
 	return nil
+}
+
+func (x *DerivedSheet) GetCarryCapacityLb() int32 {
+	if x != nil {
+		return x.CarryCapacityLb
+	}
+	return 0
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.
@@ -12944,7 +12954,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
 	"descPtOnly\x121\n" +
 	"\x15lacks_feature_name_pt\x18\x0e \x01(\tR\x12lacksFeatureNamePt\x120\n" +
-	"\x14lacks_feature_hidden\x18\x0f \x01(\bR\x12lacksFeatureHidden\"\xfd\x13\n" +
+	"\x14lacks_feature_hidden\x18\x0f \x01(\bR\x12lacksFeatureHidden\"\xa9\x14\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -13007,7 +13017,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\troll_dice\x181 \x03(\v2\x18.meurpg.rules.v1.RollDieR\brollDice\x12\x12\n" +
 	"\x04size\x182 \x01(\tR\x04size\x125\n" +
 	"\x06states\x183 \x03(\v2\x1d.meurpg.rules.v1.DerivedStateR\x06states\x12.\n" +
-	"\x04gear\x184 \x03(\v2\x1a.meurpg.rules.v1.GearEntryR\x04gear\"\xbc\x02\n" +
+	"\x04gear\x184 \x03(\v2\x1a.meurpg.rules.v1.GearEntryR\x04gear\x12*\n" +
+	"\x11carry_capacity_lb\x186 \x01(\x05R\x0fcarryCapacityLb\"\xbc\x02\n" +
 	"\fDerivedState\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

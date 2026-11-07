@@ -356,6 +356,8 @@ const (
 	DamageStepKind_DAMAGE_STEP_KIND_RESISTANCE    DamageStepKind = 1
 	DamageStepKind_DAMAGE_STEP_KIND_VULNERABILITY DamageStepKind = 2
 	DamageStepKind_DAMAGE_STEP_KIND_IMMUNITY      DamageStepKind = 3
+	// A flat amount taken off a weapon attack's damage, before resistance and vulnerability.
+	DamageStepKind_DAMAGE_STEP_KIND_REDUCTION DamageStepKind = 4
 )
 
 // Enum value maps for DamageStepKind.
@@ -365,12 +367,14 @@ var (
 		1: "DAMAGE_STEP_KIND_RESISTANCE",
 		2: "DAMAGE_STEP_KIND_VULNERABILITY",
 		3: "DAMAGE_STEP_KIND_IMMUNITY",
+		4: "DAMAGE_STEP_KIND_REDUCTION",
 	}
 	DamageStepKind_value = map[string]int32{
 		"DAMAGE_STEP_KIND_UNSPECIFIED":   0,
 		"DAMAGE_STEP_KIND_RESISTANCE":    1,
 		"DAMAGE_STEP_KIND_VULNERABILITY": 2,
 		"DAMAGE_STEP_KIND_IMMUNITY":      3,
+		"DAMAGE_STEP_KIND_REDUCTION":     4,
 	}
 )
 
@@ -1945,12 +1949,13 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +
 	"!ROLL_MODE_REQUEST_STATUS_ANSWERED\x10\x02\x12#\n" +
-	"\x1fROLL_MODE_REQUEST_STATUS_CLOSED\x10\x03*\x96\x01\n" +
+	"\x1fROLL_MODE_REQUEST_STATUS_CLOSED\x10\x03*\xb6\x01\n" +
 	"\x0eDamageStepKind\x12 \n" +
 	"\x1cDAMAGE_STEP_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bDAMAGE_STEP_KIND_RESISTANCE\x10\x01\x12\"\n" +
 	"\x1eDAMAGE_STEP_KIND_VULNERABILITY\x10\x02\x12\x1d\n" +
-	"\x19DAMAGE_STEP_KIND_IMMUNITY\x10\x03*\xec\x01\n" +
+	"\x19DAMAGE_STEP_KIND_IMMUNITY\x10\x03\x12\x1e\n" +
+	"\x1aDAMAGE_STEP_KIND_REDUCTION\x10\x04*\xec\x01\n" +
 	"\x12CombatantStateKind\x12$\n" +
 	" COMBATANT_STATE_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19COMBATANT_STATE_KIND_RAGE\x10\x01\x12,\n" +

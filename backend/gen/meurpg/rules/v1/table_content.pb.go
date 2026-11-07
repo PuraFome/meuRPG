@@ -1603,7 +1603,9 @@ type TableEffect struct {
 	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as silvered.
 	Silvered bool `protobuf:"varint,83,opt,name=silvered,proto3" json:"silvered,omitempty"`
 	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
-	Adamantine    bool `protobuf:"varint,84,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
+	Adamantine bool `protobuf:"varint,84,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
+	// flag only: one word of the closed list the menu gives under "effect_flags" ("never_surprised", ...).
+	Flag          string `protobuf:"bytes,85,opt,name=flag,proto3" json:"flag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2224,6 +2226,13 @@ func (x *TableEffect) GetAdamantine() bool {
 		return x.Adamantine
 	}
 	return false
+}
+
+func (x *TableEffect) GetFlag() string {
+	if x != nil {
+		return x.Flag
+	}
+	return ""
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -8303,7 +8312,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\x97\x13\n" +
+	"\x04body\"\xb1\x13\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -8404,7 +8413,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\bsilvered\x18S \x01(\bR\bsilvered\x12\x1e\n" +
 	"\n" +
 	"adamantine\x18T \x01(\bR\n" +
-	"adamantine\"\x81\x02\n" +
+	"adamantine\x12\x18\n" +
+	"\x04flag\x18U \x01(\tB\x04\x90\xb5\x18@R\x04flag\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
