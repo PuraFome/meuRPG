@@ -1,5 +1,12 @@
 import type { TableContentViolation } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { FIELD_TEXTS, FORMULA_TEXT, LONG_TEXT } from './content-violation-texts';
+import { NAME_MAX } from './feature-draft';
+import {
+  BAD_EFFECT_VALUE,
+  DANGLING_TEXT,
+  FIELD_TEXTS,
+  FORMULA_TEXT,
+  LONG_TEXT,
+} from './content-violation-texts';
 
 /**
  * What the server refused in a write, put back on the fields (MR-025, E10-01 state 5). A violation has the path of
@@ -103,7 +110,7 @@ function nameText(r: string, ctx: ViolationContext): string | undefined {
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
-    return 'O nome tem de 1 a 60 letras.';
+    return `O nome tem de 1 a ${NAME_MAX} letras.`;
   }
   if (r === 'bad_key' || r === 'reserved_key' || r === 'duplicate_key') {
     return 'Este nome não pode ser usado. Escolha outro.';
@@ -153,12 +160,10 @@ function rowText(shape: string, r: string, ctx: ViolationContext): string | unde
 /** What is said when nothing above matched the field: by the reason alone. */
 function fallbackText(shape: string, r: string): string {
   if (r === 'dangling_reference') {
-    return 'Isto aponta para algo que não existe mais. Escolha de novo.';
+    return DANGLING_TEXT;
   }
   if (shape.includes('.effects[].')) {
-    return r === 'bad_value'
-      ? 'Este valor não serve para este efeito.'
-      : 'Confira este campo do efeito.';
+    return r === 'bad_value' ? BAD_EFFECT_VALUE : 'Confira este campo do efeito.';
   }
   switch (r) {
     case 'bad_text':
@@ -190,7 +195,12 @@ export function violationText(
   }
   const leaf = shape.slice(shape.lastIndexOf('.') + 1);
   const named = leaf === 'name_pt' ? nameText(v.reason, ctx) : undefined;
+  // Two options of one feature with one name is about the options, not the name's length.
+  const optionName = shape.endsWith('.options[].name_pt')
+    ? rowText(shape, v.reason, ctx)
+    : undefined;
   return (
+    optionName ??
     named ??
     reasonText(shape, leaf, v.reason) ??
     rowText(shape, v.reason, ctx) ??

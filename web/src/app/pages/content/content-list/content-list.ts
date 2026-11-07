@@ -230,6 +230,7 @@ export class ContentList {
         this.entries().find((x) => x.key === key)?.namePt ??
         key.replace(/^[a-z]+:/, ''),
       (classKey) => cat?.subclassLevelOf(classKey) ?? 0,
+      cat?.offeredByName,
     );
   }
 

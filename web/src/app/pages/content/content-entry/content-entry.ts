@@ -14,6 +14,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -27,9 +28,7 @@ import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
 import { TableContentClient, contentErrorText } from '../../../core/content/content-client';
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
-import { readEntry } from '../../../core/content/content-read';
 import {
-  KIND_WORDS,
   type ContentNavKind,
   entryState,
   navOfKind,
@@ -66,6 +65,7 @@ import {
   mergeRefreshed,
   nameResolver,
   nounPhraseOf,
+  readOfEntry,
   replaceEntry,
   updatedLine,
 } from './content-entry-model';
@@ -80,9 +80,9 @@ type PageState =
 /**
  * One entry of the table's content (MR-025, RN-23; E10-01 states 4 to 9): the master's editor for a spell, a race, a subrace
  * and a background on a laptop, and the read view for everything else (a player; the master on a phone, where it reads and
- * archives only; the master's classes and subclasses until 10.12). The header carries the state in words, "Arquivar" and
- * its question in place (a bottom sheet on a phone), and, after a write, what changed for the sheets that use the entry.
- * Nothing is ever deleted: an archived entry says so, offers "Desarquivar", and can still be edited.
+ * archives only; the master's classes and subclasses until 10.12). The header carries the state in words, "Arquivar" (behind
+ * the "⋮" on a phone) and its question in place (a bottom sheet on a phone), and, after a write, what changed for the sheets
+ * that use the entry. Nothing is ever deleted: an archived entry says so, offers "Desarquivar", and can still be edited.
  */
 @Component({
   selector: 'app-content-entry',
@@ -96,6 +96,7 @@ type PageState =
     ClassFeatureEditor,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     MatProgressSpinnerModule,
     RaceEditor,
     RouterLink,
@@ -118,7 +119,6 @@ export class ContentEntry {
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly Kind = TableContentKind;
-  protected readonly kindWords = KIND_WORDS;
   protected readonly phone = mediaQuery(PHONE_QUERY);
 
   protected readonly campaignId = signal('');
@@ -209,12 +209,9 @@ export class ContentEntry {
   );
   protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
-  protected readonly read = computed(() => {
-    const e = this.entry();
-    return e
-      ? readEntry(e, this.nameOf(), (key) => this.catalog()?.subclassLevelOf(key) ?? 0)
-      : null;
-  });
+  protected readonly read = computed(() =>
+    readOfEntry(this.entry(), this.nameOf(), this.catalog(), this.entries()),
+  );
   /** "A raça Corujeiro" / "O antecedente Cartógrafo": the noun of the kind with its article, so the copy agrees. */
   protected readonly nounPhrase = computed(() => nounPhraseOf(this.entry()));
   protected readonly archivedWord = computed(() => archivedWordOf(this.entry()));
