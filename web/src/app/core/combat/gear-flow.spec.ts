@@ -89,6 +89,18 @@ describe('GearFlow', () => {
     expect(f.gear()[0].equipped).toBe(false);
   });
 
+  it('reads again after the master’s undo of a swap, so the piece comes back to the list', async () => {
+    let gear = [{ ...sword, equipped: false }];
+    const { f, calls, revision, settle } = flow(() => Promise.resolve(read({ gear })));
+    await settle();
+    expect(f.gear()[0].equipped).toBe(false);
+    gear = [sword]; // the undo put the piece back and moved the encounter's revision
+    revision.set(2);
+    await settle();
+    expect(calls.read).toBe(2);
+    expect(f.gear()[0].equipped).toBe(true);
+  });
+
   it('asks the server, reads again and says the change with the server armor class', async () => {
     let ac = 14;
     const { f, calls, settle } = flow(() => Promise.resolve(read({ armorClass: ac })));
