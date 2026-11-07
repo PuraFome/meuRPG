@@ -211,9 +211,9 @@
           <h3 class="preview__sub">Resistências e imunidades</h3>
           <div class="preview__mods">
             @for (l of p.mods; track l.kind) {
-              <p><strong>{{ l.kind }}</strong>&ngsp;@for (part of l.parts; track $index; let last = $last) {{{ part.text }} <span class="preview__origin">({{ part.origin }})</span>@if (!last) { e }}.</p>
+              <p><strong>{{ l.kind }}</strong>&ngsp;@for (part of l.parts; track $index; let last = $last) {{{ part.text }} <span class="preview__origin">({{ part.origin }})</span>@if (!last) {{{ $index === l.parts.length - 2 ? ' e ' : ', ' }}}}.</p>
             }
-            <p class="preview__note preview__private"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você lê estas linhas. Nem quem traz a criatura as vê.</p>
+            <p class="preview__note preview__private"><mat-icon aria-hidden="true">info</mat-icon>Só você muda estas linhas. Quem tem a criatura as lê na ficha dela.</p>
           </div>
         }
         @if (p.actions.length > 0) {

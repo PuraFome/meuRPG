@@ -31,7 +31,7 @@ export function modToDraft(m: TableCreatureDamageMod): DamageModDraft {
   return { id: newRowId(), kind: m.kind, types: [...m.damageTypes], qualifier: m.qualifier };
 }
 
-export const MOD_KINDS: readonly { value: DamageModKind; label: string; icon: string }[] = [
+export const MOD_KINDS: readonly { value: string; label: string; icon: string }[] = [
   { value: 'resist', label: 'Resistência', icon: 'shield' },
   { value: 'immune', label: 'Imunidade', icon: 'verified_user' },
   { value: 'vulnerable', label: 'Vulnerabilidade', icon: 'gpp_maybe' },
@@ -81,7 +81,9 @@ export function listWords(words: readonly string[]): string {
     : `${words.slice(0, -1).join(', ')} e ${words[words.length - 1]}`;
 }
 
-const kindLabel = (kind: string): string => MOD_KINDS.find((k) => k.value === kind)?.label ?? '';
+/** The name of a kind; a kind this build does not know (an entry from a newer one) is shown as it is, never as nothing. */
+export const kindLabel = (kind: string): string =>
+  MOD_KINDS.find((k) => k.value === kind)?.label ?? (kind || 'Linha sem tipo');
 const shortOf = (q: string): string => QUALIFIERS.find((x) => x.value === q)?.short ?? '';
 
 type NameOf = (key: string) => string;

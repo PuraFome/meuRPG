@@ -35,19 +35,11 @@
           </div>
           @if (on) {
             <div class="row__body" [id]="'cr-m-' + m.id">
-              <div class="seg" role="radiogroup" [attr.aria-label]="'Tipo da linha ' + (i + 1)">
-                <span class="seg__legend" aria-hidden="true">Tipo</span>
-                <div class="seg__opts">
-                  @for (k of kinds; track k.value; let first = $first) {
-                    <label class="seg__opt" [class.seg__opt--on]="m.kind === k.value">
-                      <input type="radio" class="mr-visually-hidden" [name]="'cr-k-' + m.id" [value]="k.value" [checked]="m.kind === k.value" [attr.data-field]="first ? at + '.kind' : null" (change)="setKind(m, k.value)" />
-                      <mat-icon aria-hidden="true">{{ m.kind === k.value ? 'check' : k.icon }}</mat-icon>{{ k.label }}
-                    </label>
-                  }
-                </div>
-                <app-field-note [issues]="issues()(at + '.kind')" />
+              <div class="kind">
+                <app-segmented [label]="'Tipo da linha ' + (i + 1)" [segments]="kinds" [value]="m.kind" [path]="at + '.kind'" [invalid]="issues()(at + '.kind').length > 0" [describedBy]="'cr-kn-' + m.id" (choose)="setKind(m, $event)" />
+                <app-field-note [id]="'cr-kn-' + m.id" [issues]="issues()(at + '.kind')" />
               </div>
-              <app-pick-list label="Tipos de dano" addLabel="Adicionar tipo de dano" [options]="damageTypes()" [values]="m.types" [path]="at + '.damage_types'" [issues]="issues()(at + '.damage_types')" (added)="addType(m, $event)" (removed)="removeType(m, $event)" />
+              <app-pick-list label="Tipos de dano" addLabel="Adicionar tipo de dano" [options]="damageTypes()" [values]="m.types" [path]="at + '.damage_types'" [issues]="issues()(at + '.damage_types')" (added)="addType(m, $event)" (removedAt)="removeTypeAt(m, $event)" />
               <app-radio-cards label="Vale contra" [options]="cards(m)" [value]="m.qualifier" [path]="at + '.qualifier'" [issues]="issues()(at + '.qualifier')" [hint]="why(m)" (valueChange)="setQualifier(m, $event)" />
             </div>
           }

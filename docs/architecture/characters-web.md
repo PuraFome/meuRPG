@@ -114,7 +114,9 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   Distances are metres in the form and feet in the entry, and the dice go from d4 to d100.
   The side column writes "Como fica na mesa" from the draft and the base's stat block.
   It lists who brings the creature (`carriersOf`, read from the entries the editor already has).
-  `damage_mods` are rows of their own (`creature-damage-mods`, `damage-mods.ts`): a kind, the damage types (`app-pick-list` over the SRD's damage types) and the qualifier (`app-radio-cards`, off for a vulnerability and for a non-physical type, with the reason under it).
+  `damage_mods` are rows of their own (`creature-damage-mods`, `damage-mods.ts`).
+  A row has a kind (`app-segmented`), the damage types (`app-pick-list` over the SRD's damage types) and the qualifier (`app-radio-cards`).
+  The qualifier is off for a vulnerability and for a non-physical type, with the reason under it.
   Changing a kind or a type that takes the qualifier away clears it, so the save is not refused for it.
   The preview adds "Resistências e imunidades" with the table's lines and the base's, and the read view lists the rows.
 - **The damage warning** (`core/content/spell-warnings.ts`, `unappliedDamage`): the spell editor shows "O app não sabe aplicar este dano" under the combat mechanics when a saved spell has damage and no attack, no saving throw, no area and a target other than the caster alone.

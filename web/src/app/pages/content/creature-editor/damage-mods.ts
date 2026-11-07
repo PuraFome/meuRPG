@@ -20,12 +20,14 @@ import {
   MOD_KINDS,
   QUALIFIERS,
   emptyDamageMod,
+  kindLabel,
   modSub,
   modTitle,
   qualifierWhy,
 } from '../../../core/content/creature-damage-mods';
 import { focusAfterRender } from '../../../core/content/entry-saver';
 import { FieldNote } from '../../../shared/form-fields/field-note';
+import { Segmented } from '../../../shared/segmented/segmented';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { type RadioCard, RadioCards } from '../../../shared/form-fields/radio-cards';
 import type { SelectOption } from '../../../shared/form-fields/select-field';
@@ -48,7 +50,15 @@ const CARDS_OFF: readonly RadioCard[] = CARDS.map((c) => ({ ...c, disabled: c.va
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-creature-damage-mods',
-  imports: [FieldNote, MatButtonModule, MatIconModule, MatMenuModule, PickList, RadioCards],
+  imports: [
+    FieldNote,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    PickList,
+    RadioCards,
+    Segmented,
+  ],
   templateUrl: './damage-mods.html',
   styleUrls: ['../editor.scss', './creature-rows.scss', './damage-mods.scss'],
 })
@@ -73,6 +83,11 @@ export class CreatureDamageMods {
   protected readonly full = computed(() => this.mods().length >= MAX_DAMAGE_MODS);
   protected readonly status = signal('');
   private readonly open = signal<ReadonlySet<string>>(new Set());
+
+  /** The live region says a repeated message again: the text alternates by a no-break space, so it always changes. */
+  private say(text: string): void {
+    this.status.update((s) => (s === text ? `${text}\u00a0` : text));
+  }
 
   protected rowPath(i: number): string {
     return `${P}[${i}]`;
@@ -101,7 +116,7 @@ export class CreatureDamageMods {
   }
 
   protected kindLabel(m: DamageModDraft): string {
-    return this.kinds.find((k) => k.value === m.kind)?.label ?? '';
+    return kindLabel(m.kind);
   }
 
   protected why(m: DamageModDraft): string {
@@ -130,8 +145,9 @@ export class CreatureDamageMods {
     this.change(m.id, this.withQualifier(m, { types: [...m.types, key] }));
   }
 
-  protected removeType(m: DamageModDraft, key: string): void {
-    this.change(m.id, { types: m.types.filter((t) => t !== key) });
+  /** One chip off, by its place: a row that holds a type twice keeps the other until it is taken off too. */
+  protected removeTypeAt(m: DamageModDraft, at: number): void {
+    this.change(m.id, { types: m.types.filter((_, i) => i !== at) });
   }
 
   protected setQualifier(m: DamageModDraft, qualifier: string): void {
@@ -146,13 +162,13 @@ export class CreatureDamageMods {
     const at = this.mods().length;
     this.modsChange.emit([...this.mods(), m]);
     this.open.update((s) => new Set(s).add(m.id));
-    this.status.set('Linha adicionada.');
+    this.say('Linha adicionada.');
     focusAfterRender(this.host.nativeElement, this.injector, `${this.rowPath(at)}.kind`);
   }
 
   protected remove(id: string): void {
     this.modsChange.emit(this.mods().filter((m) => m.id !== id));
-    this.status.set('Linha removida.');
+    this.say('Linha removida.');
     afterNextRender(
       () => {
         this.host.nativeElement.querySelector<HTMLElement>('.add button')?.focus();

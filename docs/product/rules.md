@@ -703,7 +703,10 @@ Members read the campaign's content, except creatures (below); only the master w
   Summoning spells, Wild Shape and the encounter generator, evaluator and swaps offer SRD creatures only.
   A package battle encounter that names a table creature is refused as unknown content.
   The master makes and edits table creatures in the web app, in the creature editor of "Conteúdo da mesa" on a laptop; a content pack carries them too.
-  The same editor has up to 12 lines of resistance, immunity or vulnerability that add to the base's, each with its damage types and a "Vale contra" (all damage, or only nonmagical, not silvered or not adamantine attacks, for bludgeoning, piercing and slashing); the lines are the master's to read.
+  The same editor has up to 12 lines of resistance, immunity or vulnerability.
+  They add to the base's and never take one away.
+  Each has its damage types and a "Vale contra": all damage, or, for bludgeoning, piercing and slashing, only nonmagical attacks (not silvered, or not adamantine).
+  Only the master edits them; whoever holds the creature reads them on its sheet.
 - **Limits:** 1,000 entries per campaign, 64 KiB per entry, 60 features per class, 60 traits per race and subrace, 10 traits per creature, 6,000 effects and 500 distinct formulas (100 KiB of text) in all, each formula of at most 1,024 bytes.
 
 On screen: "Conteúdo da mesa" (the list by kind with counts and each entry's state, editors for each kind, "Esta entrada mudou enquanto você editava" with "Recarregar", "N fichas ficaram com aviso" after an edit). On a phone the master only reads and archives. Details: [Design](../design/sheet.md#editors), [Architecture](../architecture/rules-table-content.md), [characters](../architecture/characters-table-content.md) and [web](../architecture/characters-web.md#table-content-screens). Stories: [MR-025](stories.md#mr-025-register-table-content), [MR-045](stories.md#mr-045-look-up-spells).

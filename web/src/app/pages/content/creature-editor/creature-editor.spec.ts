@@ -515,6 +515,116 @@ describe('CreatureEditor (#578)', () => {
       );
     });
 
+    it('puts the refusal of the kind and of the missing types under their fields, marks the groups invalid and tells them apart', async () => {
+      const { fixture, el } = setup(
+        withMods(
+          { kind: 'resist', damageTypes: ['damage-type:fire'] },
+          { kind: 'resist', damageTypes: [] },
+        ),
+      );
+      await settle(fixture, 3);
+      save.mockRejectedValue(
+        refusal(
+          ['table_creature.damage_mods[0].kind', 'bad_value'],
+          ['table_creature.damage_mods[0].damage_types[0]', 'dangling_reference'],
+          ['table_creature.damage_mods[1].damage_types', 'bad_value'],
+        ),
+      );
+      button(el, 'Salvar criatura').click();
+      await settle(fixture, 3);
+      const [first, second] = modRows(el);
+      const group = (row: Element, sel: string) => row.querySelector(sel)!;
+      expect(text(group(first, '.kind'))).toContain(
+        'Escolha resistência, imunidade ou vulnerabilidade.',
+      );
+      const kind = group(first, '.seg');
+      expect(kind.getAttribute('aria-invalid')).toBe('true');
+      const noteId = kind.getAttribute('aria-describedby')!;
+      expect(el.querySelector(`#${noteId}`)!.textContent).toContain('Escolha resistência');
+      expect(text(group(first, 'app-pick-list').parentElement!)).toContain(
+        'Este tipo de dano não está no SRD. Tire-o da linha.',
+      );
+      expect(group(first, 'app-pick-list [role="group"]').getAttribute('aria-invalid')).toBe(
+        'true',
+      );
+      expect(text(group(second, 'app-pick-list').parentElement!)).toContain(
+        'Escolha ao menos um tipo de dano.',
+      );
+      // The cards of a row with no refusal are not marked.
+      expect(
+        group(first, 'app-radio-cards [role="radiogroup"]').getAttribute('aria-invalid'),
+      ).toBeNull();
+      // The focus goes to the first refused field: the kind of the first row.
+      expect(document.activeElement).toBe(field(el, 'table_creature.damage_mods[0].kind'));
+    });
+
+    it('puts the focus on the first field of a damage-mod refusal that is below the numbers', async () => {
+      const { fixture, el } = setup(
+        withMods({
+          kind: 'vulnerable',
+          damageTypes: ['damage-type:fire'],
+          qualifier: 'nonmagical',
+        }),
+      );
+      await settle(fixture, 3);
+      save.mockRejectedValue(refusal(['table_creature.damage_mods[0].qualifier', 'bad_value']));
+      button(el, 'Salvar criatura').click();
+      await settle(fixture, 3);
+      expect(document.activeElement).toBe(field(el, 'table_creature.damage_mods[0].qualifier'));
+      expect(
+        field(el, 'table_creature.damage_mods[0].qualifier')
+          .closest('app-radio-cards')!
+          .querySelector('[role="radiogroup"]')!
+          .getAttribute('aria-invalid'),
+      ).toBe('true');
+    });
+
+    it('sends a kind or a qualifier this build does not know as the entry has it, and names the row by it', async () => {
+      const { fixture, el } = setup(
+        withMods({ kind: 'reflect', damageTypes: ['damage-type:fire'], qualifier: 'cold_iron' }),
+      );
+      await settle(fixture, 3);
+      expect(text(modRows(el)[0].querySelector('.row__name')!)).toBe('reflect a fogo');
+      await open(fixture, modRows(el)[0]);
+      expect(text(modRows(el)[0].querySelector('.row__name')!)).toBe('1 · reflect');
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      button(el, 'Salvar criatura').click();
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.damageMods[0]).toMatchObject({
+        kind: 'reflect',
+        damageTypes: ['damage-type:fire'],
+        qualifier: 'cold_iron',
+      });
+    });
+
+    it('takes off one chip of a type the row holds twice, not both', async () => {
+      const { fixture, el } = setup(
+        withMods({ kind: 'immune', damageTypes: ['damage-type:fire', 'damage-type:fire'] }),
+      );
+      await settle(fixture, 3);
+      const row = modRows(el)[0];
+      await open(fixture, row);
+      expect(row.querySelectorAll('.chip')).toHaveLength(2);
+      row.querySelector<HTMLButtonElement>('.chip__x')!.click();
+      await settle(fixture, 3);
+      expect(modRows(el)[0].querySelectorAll('.chip')).toHaveLength(1);
+    });
+
+    it('joins three parts of the preview with commas and an "e"', async () => {
+      const { fixture, el } = setup(
+        withMods(
+          { kind: 'immune', damageTypes: ['damage-type:necrotic'] },
+          { kind: 'immune', damageTypes: ['damage-type:fire'] },
+        ),
+        undefined,
+        withPoisonImmunity(),
+      );
+      await settle(fixture, 3);
+      expect(text(el.querySelector('.preview__mods')!)).toContain(
+        'Imunidade a necrótico (da mesa), a fogo (da mesa) e a veneno (da base).',
+      );
+    });
+
     it('puts the refusal of the limit above the rows', async () => {
       const { fixture, el } = setup();
       await settle(fixture, 3);
@@ -534,7 +644,9 @@ describe('CreatureEditor (#578)', () => {
       const preview = text(el.querySelector('.preview')!);
       expect(preview).toContain('Resistências e imunidades');
       expect(preview).toContain('Imunidade a necrótico (da mesa) e a veneno (da base).');
-      expect(preview).toContain('Só você lê estas linhas. Nem quem traz a criatura as vê.');
+      expect(preview).toContain(
+        'Só você muda estas linhas. Quem tem a criatura as lê na ficha dela.',
+      );
     });
 
     it('has no such block in the preview when there are no lines', async () => {

@@ -101,8 +101,8 @@ const NUMBER_ROWS: readonly NumberRow[] = [
  * The table creature editor (#578): the master makes a creature of the table from an SRD creature (the base, chosen once and
  * read-only after the first save), with its own name, four numbers (a fixed value and a formula of the owner's sheet), traits (text
  * only) and attacks. The side panel writes "Como fica na mesa" from the draft and the base's stat block, and lists what brings the
- * creature to a character. The resistances, immunities and vulnerabilities have no rows yet: the draft keeps them as the entry has
- * them (`kept`). "Salvar criatura" sends the whole entry; the server says what is wrong, field by field.
+ * creature to a character.
+ * The resistances, immunities and vulnerabilities are rows of their own (`damage-mods`). "Salvar criatura" sends the whole entry; the server says what is wrong, field by field.
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -288,6 +288,11 @@ export class CreatureEditor {
     this.patch({ baseKey: '' });
   }
 
+  /** The live region says a repeated message again: the text alternates by a no-break space, so it always changes. */
+  private say(text: string): void {
+    this.status.update((s) => (s === text ? `${text}\u00a0` : text));
+  }
+
   protected readonly hasIssue = (prefix: string): boolean => {
     return this.saver.placement().fields.some((f) => f === prefix || f.startsWith(`${prefix}.`));
   };
@@ -323,7 +328,7 @@ export class CreatureEditor {
     const at = this.draft().traits.length;
     this.patch({ traits: [...this.draft().traits, t] });
     this.show(t.id);
-    this.status.set('Traço adicionado.');
+    this.say('Traço adicionado.');
     focusAfterRender(this.host.nativeElement, this.injector, `${P}.traits[${at}].name_pt`);
   }
 
@@ -335,7 +340,7 @@ export class CreatureEditor {
     this.patch({ traits: this.draft().traits.filter((t) => t.id !== id) });
     // The refusals name rows by their place: after a row goes, they would sit on the wrong one.
     this.saver.clear();
-    this.status.set('Traço removido.');
+    this.say('Traço removido.');
     this.focusAdd('traits');
   }
 
@@ -347,7 +352,7 @@ export class CreatureEditor {
     const at = this.draft().attacks.length;
     this.patch({ attacks: [...this.draft().attacks, a] });
     this.show(a.id);
-    this.status.set('Ataque adicionado.');
+    this.say('Ataque adicionado.');
     focusAfterRender(this.host.nativeElement, this.injector, `${P}.attacks[${at}].name_pt`);
   }
 
@@ -358,7 +363,7 @@ export class CreatureEditor {
   protected removeAttack(id: string): void {
     this.patch({ attacks: this.draft().attacks.filter((a) => a.id !== id) });
     this.saver.clear();
-    this.status.set('Ataque removido.');
+    this.say('Ataque removido.');
     this.focusAdd('attacks');
   }
 

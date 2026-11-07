@@ -24,7 +24,7 @@ export interface RadioCard {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FieldNote],
   template: `
-    <div class="group" role="radiogroup" [attr.aria-label]="label()" [attr.aria-describedby]="noteId">
+    <div class="group" role="radiogroup" [attr.aria-label]="label()" [attr.aria-describedby]="noteId" [attr.aria-invalid]="issues().length > 0 || null">
       <span class="legend" aria-hidden="true">{{ label() }}</span>
       <div class="cards">
         @for (o of options(); track o.value; let first = $first) {
