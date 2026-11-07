@@ -28,7 +28,7 @@ var publishFunnels = map[string]string{
 	"internal/maps": "internal/maps/visibility.go:(*Service).publish",
 }
 
-// TestPublishOnlyThroughTheFunnel fails for a call to Publish, on any value, in a non-test file of
+// TestPublishOnlyThroughTheFunnel fails for a use of Publish (a call or a method value), on any value, in a non-test file of
 // internal/play or internal/maps other than its funnel function.
 // A function that publish_exceptions.txt lists is allowed.
 // A listed function that no longer calls Publish fails.
@@ -56,9 +56,8 @@ func TestPublishOnlyThroughTheFunnel(t *testing.T) {
 				t.Fatalf("parsing %s: %v", p, err)
 			}
 			for _, k := range keys {
-				found[k] = fmt.Sprintf("%s calls Publish: tell the streams through %s "+
-					"(Service.send in play, Service.publish in maps), because the funnel is the one place that "+
-					"will order, count and hold back a hint (or list the function in publish_exceptions.txt)", k, funnel)
+				found[k] = fmt.Sprintf("%s uses Publish: tell the streams through %s "+
+					"(Service.send in play, Service.publish in maps), or list the function in publish_exceptions.txt", k, funnel)
 			}
 		}
 	}
@@ -103,14 +102,13 @@ func publishKeys(p string, src []byte, funnel string) ([]string, error) {
 	return keys, nil
 }
 
-// callsPublish reports whether the node contains a call whose selector is Publish.
+// callsPublish reports whether the node contains a selector named Publish: a call, or a method value such as
+// pub := s.hub.Publish. A method declaration is not a selector.
 func callsPublish(n ast.Node) bool {
 	found := false
 	ast.Inspect(n, func(n ast.Node) bool {
-		if c, ok := n.(*ast.CallExpr); ok {
-			if sel, ok := c.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Publish" {
-				found = true
-			}
+		if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel.Name == "Publish" {
+			found = true
 		}
 		return !found
 	})
@@ -125,6 +123,7 @@ func TestPublishKeys(t *testing.T) {
 	}{
 		{"hub call", "internal/x/a.go", "package x\ntype S struct{ hub H }\nfunc (s *S) F() { s.hub.Publish(\"c\", 1) }", []string{"internal/x/a.go:(*S).F"}},
 		{"method on the service", "internal/x/a.go", "package x\nfunc F(s S) { s.Publish(\"c\", true, nil) }", []string{"internal/x/a.go:F"}},
+		{"method value", "internal/x/a.go", "package x\nfunc F(s S) { pub := s.hub.Publish; pub() }", []string{"internal/x/a.go:F"}},
 		{"inside a literal", "internal/x/a.go", "package x\nfunc F(s S) { go func() { s.live.Publish() }() }", []string{"internal/x/a.go:F"}},
 		{"package-level literal", "internal/x/a.go", "package x\nvar tell = func(s S) { s.Publish() }", []string{"internal/x/a.go:tell"}},
 		{"one key per function", "internal/x/a.go", "package x\nfunc F(s S) { s.Publish(); s.Publish() }", []string{"internal/x/a.go:F"}},
