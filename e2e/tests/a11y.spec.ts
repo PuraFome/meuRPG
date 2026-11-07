@@ -9271,27 +9271,20 @@ async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await p.goto('/');
     const table = await maneuverTable(m, p, `Acessibilidade oferta ${Date.now()}`, 1);
     campaignId = table.campaignId;
-    const sideOf = async (label: string) => ((await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === label) as { side?: string } | undefined)?.side ?? '';
     const start = await beginManeuverCombatRPC(m, table, { 'Goblin 1': 20, Brutus: 15, 'Capitão Goblin': 10, 'Goblin 2': 4 });
     await openSessionPage(p, campaignId);
     await openSessionPage(m, campaignId);
     await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
     // Two NPCs on the party's side: three candidates for the offer.
-    // The order's rows repaint as the combat changes, which can swallow a click on the menu: the choice is tried again until the server has it.
-    const markSide = (label: string, ally: boolean) =>
-      expect(async () => {
-        if (/PARTY/.test(await sideOf(label)) === ally) {
-          return;
-        }
-        await m.keyboard.press('Escape');
-        await openOrderRow(m, label);
-        await m.getByRole('button', { name: `Mais ações para ${label}` }).click({ timeout: 3_000 });
-        await m.getByRole('menuitem', { name: ally ? 'Marcar como aliado' : 'Voltar a ser inimigo' }).click({ timeout: 3_000 });
-        await expect.poll(async () => /PARTY/.test(await sideOf(label)), { timeout: 5_000 }).toBe(ally);
-      }).toPass({ timeout: 40_000 });
-    for (const label of ['Goblin 2', 'Capitão Goblin']) {
-      await markSide(label, true);
-    }
+    // The sides are setup, set through the API; the page waits for the combat it shows to have them.
+    const setSides = async (side: 'COMBATANT_SIDE_PARTY' | 'COMBATANT_SIDE_ENEMY') => {
+      let enc = start;
+      for (const label of ['Goblin 2', 'Capitão Goblin']) {
+        enc = await combatRPC(m, 'SetCombatantSide', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === label)!.id, side });
+      }
+      await waitForEncounterRevision(m, enc, 'the sides of the NPCs');
+    };
+    await setSides('COMBATANT_SIDE_PARTY');
     await openTurn(m);
 
     // The menu, with the offer on: Enter opens it, the arrow keys move, Escape gives the focus back to the button.
@@ -9322,9 +9315,7 @@ async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await panel.getByRole('button', { name: 'Não oferecer' }).click();
     await expect(panel).toHaveCount(0);
     // The two are enemies again: the only one who can react is Brutus (the offer is off once he has spent his reaction).
-    for (const label of ['Goblin 2', 'Capitão Goblin']) {
-      await markSide(label, false);
-    }
+    await setSides('COMBATANT_SIDE_ENEMY');
     await openTurn(m);
 
     // The goblin leaves Brutus's reach: the player's prompt names the die; the attack sheet offers it.
