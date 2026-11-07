@@ -31,6 +31,10 @@ export class CastArea {
   readonly stepOne: string;
   readonly confirmText: string;
   readonly notPlaced: string;
+  /** Why the step's button is off: nothing placed yet, or (a wall) no side picked. */
+  readonly notReady = computed(() =>
+    this.flow?.wall() && this.flow.placed() ? 'Escolha o lado que queima.' : this.notPlaced,
+  );
   /** One key for the cast of a placed area: its request is the same while the slot, place and roll are. */
   readonly key = new ActionKey();
   readonly combatants = computed<readonly Combatant[]>(

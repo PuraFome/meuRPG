@@ -147,25 +147,32 @@ const lineWall = {
   lengthFt: 60,
   side: WallSide.RIGHT,
 };
+/** What the first preview asks with: no side is picked, so the server is asked with a provisional one. */
+const unpicked = { ...lineWall, side: WallSide.LEFT };
 
 describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
-  it('opens on "Onde fica" with the shape, the direction, the length and the side, each labelled', async () => {
-    const { el, button, previewSpellArea } = await open();
+  it('opens on "Onde fica" with the shape, the direction, the length and the side, each labelled, no side picked', async () => {
+    const { el, button, radio, previewSpellArea } = await open();
     expect(plain(el.textContent)).toContain('Onde fica');
     expect(plain(el.textContent)).not.toContain('Onde ela explode');
     expect(el.querySelector('[role="radiogroup"][aria-label="Forma da muralha"]')).not.toBeNull();
     expect(el.querySelectorAll('[aria-label^="Direção da muralha"] button')).toHaveLength(8);
     expect(plain(el.querySelector('output')?.textContent)).toContain('18 m');
-    expect(el.querySelector('[role="radiogroup"][aria-label="Lado que queima"]')).not.toBeNull();
+    expect(radio('Lado que queima', 'Acima')?.checked).toBe(false);
+    expect(radio('Lado que queima', 'Abaixo')?.checked).toBe(false);
+    expect(plain(el.textContent)).toContain('Escolha o lado');
     expect(plain(el.textContent)).toContain(
       'A seta no mapa mostra o lado: 5d8 de fogo para quem termina o turno ali, até 3 m.',
     );
     expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).toBe('true');
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain(
+      'Toque no mapa para marcar onde a muralha fica.',
+    );
     expect(previewSpellArea).not.toHaveBeenCalled();
   });
 
-  it('asks the server with the wall when the start is placed, and again at every change of it', async () => {
-    const { button, radio, placeAt, settle, previewSpellArea } = await open();
+  it('previews the wall with a provisional side, draws no burning side, and keeps "Próximo" off until a side is picked', async () => {
+    const { el, button, radio, placeAt, settle, previewSpellArea } = await open();
     await placeAt(4, 2);
     expect(previewSpellArea).toHaveBeenLastCalledWith(
       'c',
@@ -175,34 +182,74 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
       slot,
       { origin: { col: 4, row: 2 } },
       '',
-      lineWall,
+      unpicked,
     );
-    button('Para o sul')!.click();
+    expect(el.querySelector('app-zone-layer .zl__burn')).toBeNull();
+    expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).toBe('true');
+    expect(plain(el.querySelector('.missing')?.textContent)).toContain(
+      'Escolha o lado que queima.',
+    );
+    button('Próximo: quem está na área')!.click();
+    await settle();
+    expect(plain(el.textContent)).toContain('Onde fica');
+    radio('Lado que queima', 'Abaixo')!.click();
+    await settle();
+    expect(button('Próximo: quem está na área')?.getAttribute('aria-disabled')).not.toBe('true');
+    expect(el.querySelector('app-zone-layer .zl__burn')).not.toBeNull();
+  });
+
+  it('asks again at every change of the wall, and a turn takes the picked side back', async () => {
+    const { button, radio, placeAt, settle, previewSpellArea } = await open();
+    await placeAt(4, 2);
+    radio('Lado que queima', 'Abaixo')!.click();
     await settle();
     button('Diminuir o comprimento em 1,5 m')!.click();
     await settle();
-    radio('Lado que queima', 'À esquerda')!.click();
+    expect(previewSpellArea).toHaveBeenCalledTimes(3);
+    expect((previewSpellArea.mock.calls.at(-1) as unknown[])[7]).toEqual({
+      ...lineWall,
+      lengthFt: 55,
+    });
+    button('Para o sul')!.click();
     await settle();
     expect(previewSpellArea).toHaveBeenCalledTimes(4);
-    expect(previewSpellArea).toHaveBeenLastCalledWith(
-      'c',
-      'enc',
-      'p',
-      'spell:wall-of-fire',
-      slot,
-      { origin: { col: 4, row: 2 } },
-      '',
-      { ring: false, direction: { dx: 0, dy: 1 }, lengthFt: 55, side: WallSide.LEFT },
+    expect((previewSpellArea.mock.calls.at(-1) as unknown[])[7]).toEqual({
+      ring: false,
+      direction: { dx: 0, dy: 1 },
+      lengthFt: 55,
+      side: WallSide.LEFT,
+    });
+    expect(radio('Lado que queima', 'À direita')?.checked).toBe(false);
+    expect(radio('Lado que queima', 'À esquerda')?.checked).toBe(false);
+  });
+
+  it('says it is working out the wall while the preview is on its way', async () => {
+    let answer!: (r: typeof laid) => void;
+    const { el, placeAt, settle, previewSpellArea } = await open();
+    previewSpellArea.mockReturnValueOnce(new Promise<typeof laid>((r) => (answer = r)));
+    await placeAt(4, 2);
+    expect(plain(el.textContent)).toContain('Calculando onde a muralha fica…');
+    answer(laid);
+    await settle();
+    expect(plain(el.textContent)).not.toContain('Calculando onde a muralha fica…');
+  });
+
+  it('warns when the wall stopped at a wall of the map', async () => {
+    const { el, placeAt } = await open();
+    // The answer holds 2 squares; the 18 m wall holds 12 on open floor.
+    await placeAt(4, 2);
+    expect(plain(el.textContent)).toContain(
+      'A muralha para na parede: ficou com 3 m (2 quadrados) em vez de 18 m.',
     );
   });
 
-  it('a ring has no direction pad and no left or right, only inside and outside', async () => {
+  it('a ring has no direction pad and no side of a line, only Dentro and Fora, none picked', async () => {
     const { el, radio, placeAt, settle, previewSpellArea } = await open();
     radio('Forma da muralha', 'Anel')!.click();
     await settle();
     expect(el.querySelector('[aria-label^="Direção da muralha"]')).toBeNull();
-    expect(radio('Lado que queima', 'À esquerda')).toBeUndefined();
-    expect(radio('Lado que queima', 'Por dentro')?.checked).toBe(true);
+    expect(radio('Lado que queima', 'Acima')).toBeUndefined();
+    expect(radio('Lado que queima', 'Dentro')?.checked).toBe(false);
     expect(plain(el.querySelector('output')?.textContent)).toContain('6 m');
     await placeAt(5, 5);
     expect((previewSpellArea.mock.calls.at(-1) as unknown[])[7]).toEqual({
@@ -216,7 +263,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
   it('goes to who is inside with "Próximo", and casts with the same wall and the start', async () => {
     const { el, button, radio, placeAt, settle, castSpell } = await open();
     await placeAt(4, 2);
-    radio('Lado que queima', 'À esquerda')!.click();
+    radio('Lado que queima', 'Abaixo')!.click();
     await settle();
     button('Próximo: quem está na área')!.click();
     await settle();
@@ -226,23 +273,20 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await settle();
     expect(castSpell).toHaveBeenCalledTimes(1);
     const call = castSpell.mock.calls[0] as unknown[];
-    expect(call[12]).toEqual({
-      area: { origin: { col: 4, row: 2 } },
-      wall: { ...lineWall, side: WallSide.LEFT },
-    });
+    expect(call[12]).toEqual({ area: { origin: { col: 4, row: 2 } }, wall: lineWall });
   });
 
   it('"Mudar o local" brings the controls back with the wall as it was', async () => {
     const { el, button, radio, placeAt, settle } = await open();
     await placeAt(4, 2);
-    radio('Lado que queima', 'À esquerda')!.click();
+    radio('Lado que queima', 'Abaixo')!.click();
     await settle();
     button('Próximo: quem está na área')!.click();
     await settle();
     button('Mudar o local')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Onde fica');
-    expect(radio('Lado que queima', 'À esquerda')?.checked).toBe(true);
+    expect(radio('Lado que queima', 'Abaixo')?.checked).toBe(true);
   });
 
   it('retries a lost cast with the same key, and takes a new key when the wall changed', async () => {
@@ -257,6 +301,8 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
       });
     const { button, radio, placeAt, settle } = await open({ castSpell });
     await placeAt(4, 2);
+    radio('Lado que queima', 'Abaixo')!.click();
+    await settle();
     button('Próximo: quem está na área')!.click();
     await settle();
     button('Conjurar Muralha de Fogo')!.click();
@@ -269,7 +315,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     expect((calls[1][12] as { wall: unknown }).wall).toEqual(lineWall);
     button('Mudar o local')!.click();
     await settle();
-    radio('Lado que queima', 'À esquerda')!.click();
+    radio('Lado que queima', 'Acima')!.click();
     await settle();
     button('Próximo: quem está na área')!.click();
     await settle();

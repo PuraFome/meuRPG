@@ -9,6 +9,14 @@
       <mat-icon aria-hidden="true">{{ wall().ring ? 'check' : 'radio_button_unchecked' }}</mat-icon>Anel
     </label>
   </div>
+  <div class="status" role="status">
+    @if (loading()) {
+      <p class="status__line"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Calculando onde a muralha fica…</p>
+    }
+    @if (stops(); as why) {
+      <p class="status__warn"><mat-icon aria-hidden="true">warning</mat-icon>{{ why }}</p>
+    }
+  </div>
 } @else {
   @if (!wall().ring) {
     <div class="block">
@@ -68,6 +76,9 @@
         </label>
       }
     </div>
+    @if (!picked()) {
+      <p class="status__warn"><mat-icon aria-hidden="true">warning</mat-icon><strong>Escolha o lado</strong></p>
+    }
     <p class="note">{{ sideNote() }}</p>
   </div>
 }

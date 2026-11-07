@@ -11,7 +11,9 @@ import {
   minLengthFt,
   sideChoices,
   sideNote,
+  sidePicked,
   stepFt,
+  reorient,
   stepLength,
   switchShape,
 } from '../../core/combat/spell-wall';
@@ -61,12 +63,17 @@ export class WallControls {
   /** The dice of the burning side at the slot ("5d8"); empty when the details are not read yet. */
   readonly dice = input('');
   readonly part = input<'shape' | 'size'>('size');
+  /** The preview is on its way. */
+  readonly loading = input(false);
+  /** "A muralha para na parede: ...", or `null`. */
+  readonly stops = input<string | null>(null);
   readonly disabled = input(false);
   readonly changed = output<WallChoice>();
 
   protected readonly id = `wall-controls-${nextId++}`;
   protected readonly pad = PAD.map((d) => (d ? this.cell(d) : null));
-  protected readonly sides = computed(() => sideChoices(this.wall().ring));
+  protected readonly sides = computed(() => sideChoices(this.wall()));
+  protected readonly picked = computed(() => sidePicked(this.wall()));
   protected readonly lengthText = computed(() => lengthText(this.wall()));
   protected readonly lengthNote = computed(() => lengthNote(this.wall()));
   protected readonly sideNote = computed(() => sideNote(this.wall(), this.dice()));
@@ -102,7 +109,7 @@ export class WallControls {
 
   protected turn(direction: Direction): void {
     if (!this.disabled() && !this.chosen(direction)) {
-      this.changed.emit({ ...this.wall(), direction });
+      this.changed.emit(reorient(this.wall(), direction));
     }
   }
 

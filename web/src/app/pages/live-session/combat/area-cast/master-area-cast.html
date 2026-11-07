@@ -3,7 +3,7 @@
     <div class="col">
       <app-area-step [n]="1" [title]="stepOne" />
       @if (flow.wall(); as w) {
-        <app-wall-controls part="shape" [wall]="w" [disabled]="flow.step() === 'list'" (changed)="flow.setWall($event)" />
+        <app-wall-controls part="shape" [wall]="w" [loading]="flow.loading()" [stops]="flow.stops()" [disabled]="flow.step() === 'list'" (changed)="flow.setWall($event)" />
       }
       <app-area-map
         [image]="data.map.image"
@@ -86,6 +86,9 @@
         <mat-icon aria-hidden="true">auto_awesome</mat-icon>{{ nobody() ? 'Conjurar mesmo assim' : 'Conjurar ' + data.name }}
       </button>
     } @else {
+      @if (flow.wall() && !flow.ready()) {
+        <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ flow.placed() ? 'Escolha o lado que queima.' : 'Toque no mapa para marcar onde a muralha fica.' }}</p>
+      }
       <button
         matButton="filled"
         type="button"

@@ -64,7 +64,7 @@
         @if (f.step() === 'place' && ar.placement !== Placement.CASTER) {
           <app-area-step [n]="1" [title]="ar.stepOne" />
           @if (f.wall(); as w) {
-            <app-wall-controls part="shape" [wall]="w" (changed)="f.setWall($event)" />
+            <app-wall-controls part="shape" [wall]="w" [loading]="f.loading()" [stops]="f.stops()" (changed)="f.setWall($event)" />
           }
           @if (data.map; as m) {
             <app-area-map
@@ -336,7 +336,7 @@
         @if (ch.missing()) {
           <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ch.missing() }}</p>
         } @else if (!f.ready()) {
-          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ar.notPlaced }}</p>
+          <p class="missing" role="status"><mat-icon aria-hidden="true">block</mat-icon>{{ ar.notReady() }}</p>
         }
         <div class="actions actions--stack">
           <button

@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 
 import { zonePattern } from '../../../../core/combat/zone-pattern';
 import type { ZoneView } from '../../../../core/combat/zones';
@@ -30,7 +31,7 @@ import { type ZoneNote, zoneNotice } from './zones-announce';
  */
 @Component({
   selector: 'app-zones-panel',
-  imports: [MatButtonModule, MatIconModule, ZoneLetter, ZoneSwatch],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, ZoneLetter, ZoneSwatch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './zones-panel.html',
   styleUrl: './zones-panel.scss',
@@ -80,7 +81,7 @@ export class ZonesPanel {
 
   protected cancel(id: string): void {
     this.asking.set(null);
-    this.focusLater(`[data-zone="${id}"] .zp__end`);
+    this.focusLater(`[data-zone="${id}"] .zp__more`);
   }
 
   private focusLater(selector: string): void {

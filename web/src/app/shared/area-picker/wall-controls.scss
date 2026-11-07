@@ -127,3 +127,23 @@
   font-size: var(--mr-font-19);
   font-weight: 700;
 }
+
+.status__line,
+.status__warn {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+}
+
+.status__warn {
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.status:empty {
+  display: none;
+}

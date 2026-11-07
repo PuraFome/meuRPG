@@ -14,12 +14,19 @@ function words(r: HTMLInputElement): string {
   return plain(card.textContent);
 }
 
-function setup(wall: WallChoice, part: 'shape' | 'size' = 'size', dice = '5d8') {
+function setup(
+  wall: WallChoice,
+  part: 'shape' | 'size' = 'size',
+  dice = '5d8',
+  extra: { loading?: boolean; stops?: string | null } = {},
+) {
   const fixture = TestBed.createComponent(WallControls);
   const ref = fixture.componentRef;
   ref.setInput('wall', wall);
   ref.setInput('part', part);
   ref.setInput('dice', dice);
+  ref.setInput('loading', extra.loading ?? false);
+  ref.setInput('stops', extra.stops ?? null);
   const changes: WallChoice[] = [];
   fixture.componentInstance.changed.subscribe((w) => {
     changes.push(w);
@@ -100,16 +107,48 @@ describe('WallControls: a straight wall', () => {
     expect(changes).toEqual([]);
   });
 
-  it('offers left and right, with the arrow note and the dice of the slot', () => {
+  it('offers the sides by where they lie on the screen, none picked, with the arrow note and the dice of the slot', () => {
     const { el, radios, changes } = setup(newWall(false));
     const side = radios('Lado que queima');
-    expect(side.map((r) => words(r))).toEqual(['À esquerda', 'À direita']);
-    expect(side.map((r) => r.checked)).toEqual([false, true]);
+    expect(side.map((r) => words(r))).toEqual(['Acima', 'Abaixo']);
+    expect(side.map((r) => r.checked)).toEqual([false, false]);
+    expect(plain(el.textContent)).toContain('Escolha o lado');
     expect(plain(el.textContent)).toContain(
       'A seta no mapa mostra o lado: 5d8 de fogo para quem termina o turno ali, até 3 m.',
     );
     side[0].click();
     expect(changes[0].side).toBe(WallSide.LEFT);
+  });
+
+  it('does not warn once a side is picked, and names the sides again when the wall turns', () => {
+    const { el, radios, button, fixture } = setup({ ...newWall(false), side: WallSide.RIGHT });
+    expect(plain(el.textContent)).not.toContain('Escolha o lado');
+    expect(radios('Lado que queima')[1].checked).toBe(true);
+    button('Para o sul').click();
+    fixture.detectChanges();
+    expect(radios('Lado que queima').map((r) => words(r))).toEqual(['À direita', 'À esquerda']);
+    expect(radios('Lado que queima').map((r) => r.checked)).toEqual([false, false]);
+    expect(plain(el.textContent)).toContain('Escolha o lado');
+  });
+});
+
+describe('WallControls: what the server is doing', () => {
+  it('says it is working out where the wall goes, with the hourglass, in a live region', () => {
+    const { el } = setup(newWall(false), 'shape', '5d8', { loading: true });
+    const live = el.querySelector('[role="status"]')!;
+    expect(plain(live.textContent)).toContain('Calculando onde a muralha fica…');
+    expect(live.querySelector('mat-icon')?.textContent).toBe('hourglass_empty');
+    const idle = setup(newWall(false), 'shape');
+    expect(idle.el.querySelector('[role="status"]')?.textContent?.trim()).toBe('');
+  });
+
+  it('warns when the wall stopped at a wall of the map', () => {
+    const { el } = setup(newWall(false), 'shape', '5d8', {
+      stops: 'A muralha para na parede: ficou com 9 m (6 quadrados) em vez de 12 m.',
+    });
+    expect(plain(el.querySelector('[role="status"]')?.textContent)).toContain(
+      'A muralha para na parede: ficou com 9 m (6 quadrados) em vez de 12 m.',
+    );
   });
 });
 
@@ -120,8 +159,8 @@ describe('WallControls: a ring', () => {
     expect(plain(el.textContent)).toContain('Diâmetro');
     expect(plain(el.querySelector('output')?.textContent)).toBe('6 m');
     expect(plain(el.textContent)).toContain('3 m ou 6 m de diâmetro.');
-    expect(radios('Lado que queima').map((r) => words(r))).toEqual(['Por dentro', 'Por fora']);
+    expect(radios('Lado que queima').map((r) => words(r))).toEqual(['Dentro', 'Fora']);
     expect(button('Diminuir o diâmetro em 3 m')).toBeTruthy();
-    expect(plain(el.textContent)).toContain('dentro do anel');
+    expect(plain(el.textContent)).toContain('no lado que queima');
   });
 });

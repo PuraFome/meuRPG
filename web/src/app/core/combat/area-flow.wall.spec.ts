@@ -7,7 +7,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { AreaFlow } from './area-flow';
 import type { AreaChoice } from './combat-client-types';
-import { type WallChoice, newWall, stepLength, switchShape } from './spell-wall';
+import { type WallChoice, askable, newWall, stepLength, switchShape } from './spell-wall';
 import { nextTurn } from '../../../test-settle';
 
 const answer = () =>
@@ -57,7 +57,9 @@ describe('AreaFlow for a wall', () => {
     expect(flow.wall()).toEqual(newWall(false));
     flow.place({ kind: 'point', square: { col: 4, row: 3 } });
     await nextTurn();
-    expect(asked).toEqual([{ area: { origin: { col: 4, row: 3 } }, wall: newWall(false) }]);
+    expect(asked).toEqual([
+      { area: { origin: { col: 4, row: 3 } }, wall: askable(newWall(false)) },
+    ]);
     expect(flow.preview()?.burningSquares).toHaveLength(1);
   });
 
@@ -72,11 +74,53 @@ describe('AreaFlow for a wall', () => {
     await nextTurn();
     flow.setWall({ ...flow.wall()!, side: WallSide.LEFT });
     await nextTurn();
+    flow.setWall({ ...flow.wall()!, side: WallSide.RIGHT });
+    await nextTurn();
+    const base = { ...newWall(false), lengthFt: 55 };
     expect(asked.map((a) => a.wall)).toEqual([
-      { ...newWall(false), lengthFt: 55 },
-      { ...newWall(false), lengthFt: 55, direction: { dx: 0, dy: 1 } },
-      { ...newWall(false), lengthFt: 55, direction: { dx: 0, dy: 1 }, side: WallSide.LEFT },
+      { ...base, side: WallSide.LEFT },
+      { ...base, direction: { dx: 0, dy: 1 }, side: WallSide.LEFT },
+      { ...base, direction: { dx: 0, dy: 1 }, side: WallSide.LEFT },
+      { ...base, direction: { dx: 0, dy: 1 }, side: WallSide.RIGHT },
     ]);
+  });
+
+  it('is not ready, and cannot go to the list, until a side is picked, although the wall is previewed', async () => {
+    const { flow, asked } = wallFlow();
+    flow.place({ kind: 'point', square: { col: 4, row: 3 } });
+    await nextTurn();
+    expect(asked[0].wall?.side).toBe(WallSide.LEFT);
+    expect(flow.ready()).toBe(false);
+    expect(await flow.confirm()).toBe(false);
+    expect(flow.step()).toBe('place');
+    flow.setWall({ ...flow.wall()!, side: WallSide.RIGHT });
+    expect(flow.ready()).toBe(true);
+    await nextTurn();
+    expect(await flow.confirm()).toBe(true);
+  });
+
+  it('a drag to another way takes the picked side back, a drag the same way keeps it', async () => {
+    const { flow } = wallFlow();
+    flow.setWall({ ...flow.wall()!, side: WallSide.RIGHT });
+    flow.placeWall({ col: 2, row: 2 }, { dx: 1, dy: 0 });
+    expect(flow.wall()?.side).toBe(WallSide.RIGHT);
+    flow.placeWall({ col: 2, row: 2 }, { dx: 0, dy: 1 });
+    expect(flow.wall()?.side).toBe(WallSide.UNSPECIFIED);
+    expect(flow.ready()).toBe(false);
+    await nextTurn();
+  });
+
+  it('says the wall stopped at a wall of the map when the server laid fewer squares than the open floor holds', async () => {
+    const { flow } = wallFlow();
+    flow.setWall({ ...flow.wall()!, lengthFt: 40 });
+    flow.place({ kind: 'point', square: { col: 4, row: 3 } });
+    await nextTurn();
+    // The answer holds 1 square against the 8 of 12 m on open floor.
+    expect(flow.stops()).toContain('A muralha para na parede');
+    expect(flow.stops()).toContain('ficou com 1,5');
+    flow.setWall({ ...flow.wall()!, lengthFt: 5 });
+    await nextTurn();
+    expect(flow.stops()).toBeNull();
   });
 
   it('a drag places the start and sets the direction with one question', async () => {
@@ -100,10 +144,12 @@ describe('AreaFlow for a wall', () => {
       lengthFt: 20,
       side: WallSide.INNER,
     });
+    expect(flow.wall()?.side).toBe(WallSide.UNSPECIFIED);
   });
 
   it('keeps the wall when it goes back to the map, and cannot change it on the list', async () => {
     const { flow, asked } = wallFlow();
+    flow.setWall({ ...flow.wall()!, side: WallSide.RIGHT });
     flow.place({ kind: 'point', square: { col: 4, row: 3 } });
     await nextTurn();
     await flow.confirm();
@@ -136,7 +182,8 @@ describe('AreaFlow for a wall', () => {
     const fast = deferred<ReturnType<typeof answer>>();
     const queue = [slow, fast];
     const flow = new AreaFlow(AreaPlacement.POINT, () => queue.shift()!.promise, true);
-    flow.placeWall({ col: 2, row: 2 }, { dx: 0, dy: 1 });
+    flow.setWall({ ...flow.wall()!, side: WallSide.RIGHT });
+    flow.placeWall({ col: 2, row: 2 }, { dx: 1, dy: 0 });
     flow.setWall({ ...flow.wall()!, lengthFt: 25 });
     const confirming = flow.confirm();
     slow.resolve(create(PreviewSpellAreaResponseSchema, { lengthFt: 60 }));

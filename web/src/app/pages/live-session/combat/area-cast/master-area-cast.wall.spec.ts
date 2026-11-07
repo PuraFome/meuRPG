@@ -104,8 +104,18 @@ async function open(over: { castSpell?: ReturnType<typeof vi.fn> } = {}) {
     Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
       (b) => b.getAttribute('aria-label') === label || plain(b.textContent).includes(label),
     )!;
+  const side = async (word: string) => {
+    Array.from(
+      el.querySelectorAll<HTMLInputElement>(
+        '[role="radiogroup"][aria-label="Lado que queima"] input',
+      ),
+    )
+      .find((r) => plain(r.closest('label')?.textContent).includes(word))!
+      .click();
+    await settle();
+  };
   const map = fixture.debugElement.query(By.directive(AreaMap)).componentInstance as AreaMap;
-  return { el, button, settle, castSpell, previewSpellArea, map };
+  return { el, button, settle, castSpell, previewSpellArea, map, side };
 }
 
 describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
@@ -124,7 +134,7 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
       { level: 4, pact: false },
       { origin: { col: 6, row: 4 } },
       '',
-      { ring: false, direction: { dx: 1, dy: 0 }, lengthFt: 60, side: WallSide.RIGHT },
+      { ring: false, direction: { dx: 1, dy: 0 }, lengthFt: 60, side: WallSide.LEFT },
     );
     button('Para o oeste').click();
     await settle();
@@ -134,9 +144,14 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
   });
 
   it('goes to the list with "Próximo: quem está na área" and casts with the wall', async () => {
-    const { el, button, settle, castSpell, map } = await open();
+    const { el, button, settle, castSpell, map, side } = await open();
     map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
     await settle();
+    expect(plain(el.textContent)).toContain('Escolha o lado que queima.');
+    button('Próximo: quem está na área').click();
+    await settle();
+    expect(plain(el.textContent)).toContain('Onde fica');
+    await side('Abaixo');
     button('Próximo: quem está na área').click();
     await settle();
     expect(plain(el.textContent)).toContain('Quem está na área');
@@ -158,9 +173,10 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
       .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
       .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
       .mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
-    const { el, button, settle, map } = await open({ castSpell });
+    const { button, settle, map, side } = await open({ castSpell });
     map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
     await settle();
+    await side('Abaixo');
     button('Próximo: quem está na área').click();
     await settle();
     button('Conjurar Muralha de Fogo').click();
@@ -173,13 +189,7 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
     expect((calls[1][12] as { wall: unknown }).wall).toMatchObject({ lengthFt: 60 });
     button('Mudar o local').click();
     await settle();
-    const left = Array.from(
-      el.querySelectorAll<HTMLInputElement>(
-        '[role="radiogroup"][aria-label="Lado que queima"] input',
-      ),
-    )[0];
-    left.click();
-    await settle();
+    await side('Acima');
     button('Próximo: quem está na área').click();
     await settle();
     button('Conjurar Muralha de Fogo').click();

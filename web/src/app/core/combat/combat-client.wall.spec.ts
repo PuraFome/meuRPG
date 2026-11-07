@@ -28,7 +28,12 @@ function setup() {
 describe('CombatClient: the wall of a spell', () => {
   it('sends the wall with the preview, with the point in origin, a ring without direction', async () => {
     const { client, previews } = setup();
-    const line = { ...newWall(false), direction: { dx: 0, dy: -1 }, lengthFt: 35 };
+    const line = {
+      ...newWall(false),
+      direction: { dx: 0, dy: -1 },
+      lengthFt: 35,
+      side: WallSide.RIGHT,
+    };
     await client.casts.previewSpellArea(
       'c',
       'e',
@@ -47,7 +52,7 @@ describe('CombatClient: the wall of a spell', () => {
       null,
       { origin: { col: 1, row: 1 } },
       '',
-      newWall(true),
+      { ...newWall(true), side: WallSide.INNER },
     );
     expect(previews[0]).toMatchObject({
       area: { case: 'origin', value: { col: 4, row: 3 } },

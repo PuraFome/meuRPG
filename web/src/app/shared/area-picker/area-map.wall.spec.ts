@@ -4,6 +4,7 @@ import { create } from '@bufbuild/protobuf';
 import {
   AreaPlacement,
   CombatantKind,
+  WallSide,
   PreviewSpellAreaResponseSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -45,6 +46,8 @@ const laid = create(PreviewSpellAreaResponseSchema, {
   ],
   lengthFt: 15,
 });
+
+const picked = { ...newWall(false), side: WallSide.RIGHT };
 
 function setup(wall: WallChoice | null = newWall(false), over: { master?: boolean } = {}) {
   const fixture = TestBed.createComponent(AreaMap);
@@ -104,7 +107,7 @@ describe('AreaMap: a wall', () => {
   });
 
   it('draws what the server laid: the wall in bricks and the burning side in arrows, from its squares', () => {
-    const { ref, el, fixture } = setup();
+    const { ref, el, fixture } = setup(picked);
     ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
     fixture.detectChanges();
     expect(el.querySelector('app-zone-layer svg')).toBeNull();
@@ -121,8 +124,18 @@ describe('AreaMap: a wall', () => {
     expect(el.querySelector('.am__fill')?.getAttribute('d') ?? '').toBe('');
   });
 
-  it('marks the start (or the center) with a square, not the diamond, and names it in the legend', () => {
+  it('draws the wall but not the burning side until the side is picked', () => {
     const { ref, el, fixture } = setup();
+    ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
+    ref.setInput('preview', laid);
+    fixture.detectChanges();
+    expect(el.querySelector('app-zone-layer svg')).not.toBeNull();
+    expect(el.querySelector('app-zone-layer .zl__burn')).toBeNull();
+    expect(el.querySelectorAll('app-zone-layer path.zl__pat')).toHaveLength(1);
+  });
+
+  it('marks the start (or the center) with a square, not the diamond, and names it in the legend', () => {
+    const { ref, el, fixture } = setup(picked);
     ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
     ref.setInput('preview', laid);
     fixture.detectChanges();
@@ -191,7 +204,7 @@ describe('AreaMap: a wall', () => {
   });
 
   it('keeps the last wall drawn while the next answer is on its way, and drops it with the start', () => {
-    const { ref, el, fixture } = setup();
+    const { ref, el, fixture } = setup(picked);
     ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
     ref.setInput('preview', laid);
     fixture.detectChanges();

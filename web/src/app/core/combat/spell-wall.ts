@@ -1,7 +1,7 @@
 import { WallSide } from '../../../gen/meurpg/play/v1/combat_pb';
 import { SQUARE_FT, metersText, reachSquares } from '../units';
 import type { Square } from './combat-grid';
-import type { Direction } from './spell-area';
+import { type Direction, rangeFt } from './spell-area';
 import type { ZoneView } from './zones';
 
 /**
@@ -39,13 +39,13 @@ const EAST: Direction = { dx: 1, dy: 0 };
 export const maxLengthFt = (ring: boolean) => (ring ? WALL_RING_FT : WALL_LINE_FT);
 export const minLengthFt = (ring: boolean) => (ring ? RING_MIN_FT : SQUARE_FT);
 
-/** A wall at its full size: a line to the east with its right side burning, or a ring with its inside burning. */
+/** A wall at its full size: a line to the east, or a ring. No side burns until the caster picks one. */
 export function newWall(ring: boolean): WallChoice {
   return {
     ring,
     direction: ring ? null : EAST,
     lengthFt: maxLengthFt(ring),
-    side: ring ? WallSide.INNER : WallSide.RIGHT,
+    side: WallSide.UNSPECIFIED,
   };
 }
 
@@ -96,17 +96,79 @@ export interface SideChoice {
   readonly icon: string;
 }
 
-/** The sides the shape offers: left or right of a line, inside or outside a ring. */
-export function sideChoices(ring: boolean): readonly SideChoice[] {
-  return ring
-    ? [
-        { side: WallSide.INNER, label: 'Por dentro', icon: 'center_focus_weak' },
-        { side: WallSide.OUTER, label: 'Por fora', icon: 'fullscreen' },
-      ]
-    : [
-        { side: WallSide.LEFT, label: 'À esquerda', icon: 'arrow_back' },
-        { side: WallSide.RIGHT, label: 'À direita', icon: 'arrow_forward' },
-      ];
+/** Where a side lies on the screen, by the vector (dx, dy) from the wall (y grows downward): word and arrow. */
+const LIES: Readonly<Record<string, readonly [string, string]>> = {
+  '0,-1': ['Acima', 'arrow_upward'],
+  '0,1': ['Abaixo', 'arrow_downward'],
+  '-1,0': ['À esquerda', 'arrow_back'],
+  '1,0': ['À direita', 'arrow_forward'],
+  '1,-1': ['Acima, à direita', 'north_east'],
+  '-1,1': ['Abaixo, à esquerda', 'south_west'],
+  '-1,-1': ['Acima, à esquerda', 'north_west'],
+  '1,1': ['Abaixo, à direita', 'south_east'],
+};
+
+/**
+ * The sides the shape offers. A line's are named by where they lie on the screen: for a wall running (dx, dy) the LEFT side lies
+ * toward (dy, -dx) and the RIGHT side toward (-dy, dx), so an east wall has "Acima" (left) and "Abaixo" (right). A ring's are
+ * "Dentro" and "Fora".
+ */
+export function sideChoices(wall: WallChoice): readonly SideChoice[] {
+  if (wall.ring) {
+    return [
+      { side: WallSide.INNER, label: 'Dentro', icon: 'adjust' },
+      { side: WallSide.OUTER, label: 'Fora', icon: 'fullscreen' },
+    ];
+  }
+  const { dx, dy } = wall.direction ?? EAST;
+  const of = (side: WallSide, vx: number, vy: number): SideChoice => {
+    const [label, icon] = LIES[`${vx},${vy}`];
+    return { side, label, icon };
+  };
+  return [of(WallSide.LEFT, dy, -dx), of(WallSide.RIGHT, -dy, dx)];
+}
+
+/** The wall turned to another way: the sides swap their sense, so the pick is taken back and asked again. */
+export function reorient(wall: WallChoice, direction: Direction): WallChoice {
+  const now = wall.direction;
+  if (now && now.dx === direction.dx && now.dy === direction.dy) {
+    return wall;
+  }
+  return { ...wall, direction, side: WallSide.UNSPECIFIED };
+}
+
+/** The caster chose the side that burns. */
+export const sidePicked = (wall: WallChoice): boolean => wall.side !== WallSide.UNSPECIFIED;
+
+/** The wall a preview asks about: the server refuses a wall without a side, so one not picked yet is asked with a provisional
+ * side (its squares do not depend on it) and the answer's burning squares are not drawn. */
+export function askable(wall: WallChoice): WallChoice {
+  return sidePicked(wall) ? wall : { ...wall, side: wall.ring ? WallSide.INNER : WallSide.LEFT };
+}
+
+/**
+ * "A muralha para na parede: ficou com 9 m (6 quadrados) em vez de 12 m.": the squares a straight wall of this length has on open
+ * floor (the map's distance, as the server counts: a square is in while its distance from the start plus the square is at most
+ * the length, so 60 ft are 12 squares along a row and 9 along a diagonal) against the squares the server laid. `null` when it is
+ * whole, and for a ring, which the line of effect cuts in ways this does not count.
+ */
+export function stopsText(wall: WallChoice, laid: number): string | null {
+  if (wall.ring || !wall.direction) {
+    return null;
+  }
+  const origin = { col: 0, row: 0 };
+  let open = 0;
+  for (let k = 0; k <= reachSquares(wall.lengthFt); k++) {
+    const at = { col: k * wall.direction.dx, row: k * wall.direction.dy };
+    if (rangeFt(origin, at) + SQUARE_FT > wall.lengthFt) {
+      break;
+    }
+    open++;
+  }
+  if (laid >= open) {
+    return null;
+  }
+  return `A muralha para na parede: ficou com ${metersText(laid * SQUARE_FT)} (${laid} ${laid === 1 ? 'quadrado' : 'quadrados'}) em vez de ${metersText(wall.lengthFt)}.`;
 }
 
 /** What the burning side does, with the dice of the slot ("5d8"; empty says only "dano de fogo"). */
@@ -115,8 +177,13 @@ export function sideNote(wall: WallChoice, dice: string): string {
   if (!wall.ring) {
     return `A seta no mapa mostra o lado: ${fire} para quem termina o turno ali, até ${metersText(10)}.`;
   }
-  const where = wall.side === WallSide.OUTER ? 'fora' : 'dentro';
-  return `Quem termina o turno ${where} do anel, ou entra na muralha, sofre ${dice ? dice : 'dano'} de fogo.`;
+  const where =
+    wall.side === WallSide.OUTER
+      ? 'fora do anel'
+      : wall.side === WallSide.INNER
+        ? 'dentro do anel'
+        : 'no lado que queima';
+  return `Quem termina o turno ${where}, ou entra na muralha, sofre ${dice ? dice : 'dano'} de fogo.`;
 }
 
 /** The wall as `CastSpell.wall` and `PreviewSpellArea.wall` take it: a ring sends no direction. */
@@ -172,7 +239,8 @@ export function wallZoneView(
     canEnd: false,
     origin: answer.origin ? { col: answer.origin.col, row: answer.origin.row } : null,
     squares: squares(answer.squares),
-    burningSquares: squares(answer.burningSquares),
+    // Until the side is picked the preview's burning squares belong to a provisional side: nothing burns on the map yet.
+    burningSquares: side === WallSide.UNSPECIFIED ? [] : squares(answer.burningSquares),
     wallSide: side,
   };
 }
